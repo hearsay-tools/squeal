@@ -1230,6 +1230,9 @@ function storePaths(commonDir) {
 function lockFileFor(commonDir, worktreeId) {
   return join2(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
+function daemonLogFor(commonDir, worktreeId) {
+  return join2(storePaths(commonDir).dir, "logs", `daemon-${worktreeId}.log`);
+}
 
 // src/core/presence/marks.ts
 import { existsSync, readFileSync as readFileSync3, statSync } from "node:fs";
@@ -2890,7 +2893,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.486";
+  if (true) return "0.1.488";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -16012,7 +16015,7 @@ var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync11, mkdirSync as mkdirSync8 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync11, mkdirSync as mkdirSync9 } from "node:fs";
 
 // src/core/process-label.ts
 import { basename as basename5, delimiter as delimiter2, dirname as dirname11, resolve as resolve7 } from "node:path";
@@ -16037,6 +16040,42 @@ function projectOf(commonDir) {
 function projectComponent(name2) {
   const safe = name2.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return safe.slice(0, PROJECT_MAX).replace(/-+$/, "") || "project";
+}
+
+// src/core/daemon/log-file.ts
+import {
+  closeSync,
+  copyFileSync,
+  fstatSync,
+  ftruncateSync,
+  mkdirSync as mkdirSync8,
+  openSync,
+  statSync as statSync5,
+  writeSync
+} from "node:fs";
+import { dirname as dirname12 } from "node:path";
+var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
+function rotateDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    if (statSync5(path).size < maxBytes) return;
+    copyFileSync(path, `${path}.1`);
+    const fd = openSync(path, "r+");
+    try {
+      ftruncateSync(fd, 0);
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+  }
+}
+function openDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    mkdirSync8(dirname12(path), { recursive: true });
+    rotateDaemonLog(path, maxBytes);
+    return openSync(path, "a", 384);
+  } catch {
+    return null;
+  }
 }
 
 // src/core/daemon/ensure.ts
@@ -16106,19 +16145,19 @@ async function ensureDaemonProcess(root, options = {}) {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
-    mkdirSync8(cwd, { recursive: true });
+    mkdirSync9(cwd, { recursive: true });
     const node2 = pinnedNode(root);
     const pinned = "binary" in node2;
-    const child = spawn2(
-      pinned ? node2.binary : process.execPath,
-      [cli, "daemon", root, ...lockWait],
-      {
+    const log = openDaemonLog(daemonLogFor(commonDir, worktreeIdFor(root)));
+    const child = spawnLogging(
+      log,
+      () => spawn2(pinned ? node2.binary : process.execPath, [cli, "daemon", root, ...lockWait], {
         argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
         cwd,
         detached: true,
-        stdio: "ignore",
+        stdio: log === null ? "ignore" : ["ignore", log, log],
         env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
-      }
+      })
     );
     let ended = child.pid === void 0;
     const end = () => {
@@ -16130,6 +16169,18 @@ async function ensureDaemonProcess(root, options = {}) {
     return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
+  }
+}
+function spawnLogging(log, start) {
+  try {
+    return start();
+  } finally {
+    if (log !== null) {
+      try {
+        closeSync2(log);
+      } catch {
+      }
+    }
   }
 }
 function daemonCliEntry(cli, env = process.env) {
@@ -16194,13 +16245,13 @@ function listedPaths(status) {
 }
 
 // src/core/presence/lock-events.ts
-import { mkdirSync as mkdirSync9, renameSync as renameSync3, rmSync as rmSync5, writeFileSync as writeFileSync3 } from "node:fs";
-import { dirname as dirname12 } from "node:path";
+import { mkdirSync as mkdirSync10, renameSync as renameSync3, rmSync as rmSync5, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname13 } from "node:path";
 function markSpawn(lockFile, at, heartbeatAt) {
   const first = spawnedAt(lockFile);
   if (first !== null && first <= at && (heartbeatAt === null || heartbeatAt < first)) return;
   try {
-    mkdirSync9(dirname12(lockFile), { recursive: true });
+    mkdirSync10(dirname13(lockFile), { recursive: true });
   } catch {
   }
   writeMark2(spawnMarkFor(lockFile), { at });

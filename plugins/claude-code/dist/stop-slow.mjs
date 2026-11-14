@@ -1131,7 +1131,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.486";
+  if (true) return "0.1.488";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -16079,6 +16079,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     max
   );
 }
+
+// src/core/daemon/log-file.ts
+var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
 
 // src/harness/shared/text.ts
 var LISTED_FAILURES = 10;

@@ -717,6 +717,9 @@ function storePaths(commonDir) {
 function lockFileFor(commonDir, worktreeId) {
   return join3(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
+function daemonLogFor(commonDir, worktreeId) {
+  return join3(storePaths(commonDir).dir, "logs", `daemon-${worktreeId}.log`);
+}
 
 // src/core/presence/marks.ts
 import { existsSync as existsSync2, readFileSync as readFileSync4, statSync as statSync2 } from "node:fs";
@@ -3274,7 +3277,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.486";
+  if (true) return "0.1.488";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5819,7 +5822,7 @@ function groupsCoverage(policy, listed4) {
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync as existsSync7, mkdirSync as mkdirSync4 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync7, mkdirSync as mkdirSync5 } from "node:fs";
 
 // src/core/node-pin.ts
 import { execFileSync } from "node:child_process";
@@ -7975,9 +7978,45 @@ function moveAside(database, at) {
   return movedTo;
 }
 
+// src/core/daemon/log-file.ts
+import {
+  closeSync,
+  copyFileSync,
+  fstatSync,
+  ftruncateSync,
+  mkdirSync as mkdirSync3,
+  openSync,
+  statSync as statSync5,
+  writeSync
+} from "node:fs";
+import { dirname as dirname8 } from "node:path";
+var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
+function rotateDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    if (statSync5(path).size < maxBytes) return;
+    copyFileSync(path, `${path}.1`);
+    const fd = openSync(path, "r+");
+    try {
+      ftruncateSync(fd, 0);
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+  }
+}
+function openDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    mkdirSync3(dirname8(path), { recursive: true });
+    rotateDaemonLog(path, maxBytes);
+    return openSync(path, "a", 384);
+  } catch {
+    return null;
+  }
+}
+
 // src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync3 } from "node:fs";
-import { dirname as dirname8, isAbsolute as isAbsolute8, join as join14 } from "node:path";
+import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync4 } from "node:fs";
+import { dirname as dirname9, isAbsolute as isAbsolute8, join as join14 } from "node:path";
 function runtimeDir(env = process.env) {
   return xdgRuntimeDir(env) ?? userTmpDir();
 }
@@ -7991,9 +8030,9 @@ function socketNameFor(worktreeId) {
   return `squeal-${worktreeId}.sock`;
 }
 function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync3(dirname8(dir), { recursive: true });
+  mkdirSync4(dirname9(dir), { recursive: true });
   try {
-    mkdirSync3(dir, { mode: 448 });
+    mkdirSync4(dir, { mode: 448 });
     chmodSync(dir, 448);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
@@ -8091,19 +8130,19 @@ async function ensureDaemonProcess(root, options = {}) {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
-    mkdirSync4(cwd, { recursive: true });
+    mkdirSync5(cwd, { recursive: true });
     const node2 = pinnedNode(root);
     const pinned = "binary" in node2;
-    const child = spawn2(
-      pinned ? node2.binary : process.execPath,
-      [cli, "daemon", root, ...lockWait],
-      {
+    const log = openDaemonLog(daemonLogFor(commonDir, worktreeIdFor(root)));
+    const child = spawnLogging(
+      log,
+      () => spawn2(pinned ? node2.binary : process.execPath, [cli, "daemon", root, ...lockWait], {
         argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
         cwd,
         detached: true,
-        stdio: "ignore",
+        stdio: log === null ? "ignore" : ["ignore", log, log],
         env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
-      }
+      })
     );
     let ended = child.pid === void 0;
     const end = () => {
@@ -8115,6 +8154,18 @@ async function ensureDaemonProcess(root, options = {}) {
     return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
+  }
+}
+function spawnLogging(log, start) {
+  try {
+    return start();
+  } finally {
+    if (log !== null) {
+      try {
+        closeSync2(log);
+      } catch {
+      }
+    }
   }
 }
 function daemonCliEntry(cli, env = process.env) {
@@ -8223,13 +8274,13 @@ function listedPaths(status) {
 }
 
 // src/core/presence/lock-events.ts
-import { mkdirSync as mkdirSync5, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { dirname as dirname9 } from "node:path";
+import { mkdirSync as mkdirSync6, renameSync as renameSync2, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { dirname as dirname10 } from "node:path";
 function markSpawn(lockFile, at, heartbeatAt) {
   const first = spawnedAt(lockFile);
   if (first !== null && first <= at && (heartbeatAt === null || heartbeatAt < first)) return;
   try {
-    mkdirSync5(dirname9(lockFile), { recursive: true });
+    mkdirSync6(dirname10(lockFile), { recursive: true });
   } catch {
   }
   writeMark(spawnMarkFor(lockFile), { at });
@@ -8365,7 +8416,7 @@ function startingAfter(ensured, at) {
 }
 
 // src/core/code/store/open.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync7 } from "node:fs";
 import { join as join16 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
@@ -9383,7 +9434,7 @@ function openCodeStore(commonDir, policy, options = {}) {
   const path = codeStorePath(commonDir);
   if (!existsSync8(path)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync6(storePaths(commonDir).dir, { recursive: true });
+    mkdirSync7(storePaths(commonDir).dir, { recursive: true });
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
@@ -10044,7 +10095,7 @@ function findingsOf(store, state) {
 }
 
 // src/core/lint/store/open.ts
-import { existsSync as existsSync9, mkdirSync as mkdirSync7 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync8 } from "node:fs";
 import { join as join17 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
@@ -10445,7 +10496,7 @@ function openLintStore(commonDir, policy, options = {}) {
   const path = lintStorePath(commonDir);
   if (!existsSync9(path)) {
     if (options.create === false) return { reason: "missing" };
-    mkdirSync7(storePaths(commonDir).dir, { recursive: true });
+    mkdirSync8(storePaths(commonDir).dir, { recursive: true });
   }
   const busyTimeoutMs = options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS;
   if (!Number.isInteger(busyTimeoutMs) || busyTimeoutMs < 0) {
@@ -15011,7 +15062,7 @@ import { createHash as createHash10, randomBytes } from "node:crypto";
 import {
   linkSync,
   lstatSync as lstatSync5,
-  mkdirSync as mkdirSync8,
+  mkdirSync as mkdirSync9,
   mkdtempSync,
   readdirSync as readdirSync8,
   readFileSync as readFileSync17,
@@ -15020,11 +15071,11 @@ import {
   unlinkSync,
   writeFileSync as writeFileSync3
 } from "node:fs";
-import { basename as basename4, dirname as dirname10, join as join24 } from "node:path";
+import { basename as basename4, dirname as dirname11, join as join24 } from "node:path";
 function repositoryId(commonDir) {
   const dir = storePaths(commonDir).dir;
   const file = join24(dir, "repository-id");
-  mkdirSync8(dir, { recursive: true });
+  mkdirSync9(dir, { recursive: true });
   const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
   writeFileSync3(draft, `${randomBytes(16).toString("hex")}
 `);
@@ -15063,7 +15114,7 @@ var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/slow/slot.ts
 import { existsSync as existsSync10 } from "node:fs";
-import { dirname as dirname11, isAbsolute as isAbsolute10, join as join26 } from "node:path";
+import { dirname as dirname12, isAbsolute as isAbsolute10, join as join26 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
@@ -15373,7 +15424,7 @@ function retriedRuns(store, worktreeId) {
 // src/core/daemon/user-config.ts
 import { readFileSync as readFileSync19, realpathSync as realpathSync5 } from "node:fs";
 import { availableParallelism as availableParallelism2, homedir as homedir2 } from "node:os";
-import { dirname as dirname12, isAbsolute as isAbsolute11, join as join27, resolve as resolve7 } from "node:path";
+import { dirname as dirname13, isAbsolute as isAbsolute11, join as join27, resolve as resolve7 } from "node:path";
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
   const base = xdg !== void 0 && xdg !== "" && isAbsolute11(xdg) ? xdg : join27(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(), ".config");

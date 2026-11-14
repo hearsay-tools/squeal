@@ -1270,6 +1270,9 @@ function storePaths(commonDir) {
 function lockFileFor(commonDir, worktreeId) {
   return join2(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
+function daemonLogFor(commonDir, worktreeId) {
+  return join2(storePaths(commonDir).dir, "logs", `daemon-${worktreeId}.log`);
+}
 
 // src/core/store/schema.ts
 var V1 = `
@@ -7873,7 +7876,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.486";
+  if (true) return "0.1.488";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14374,7 +14377,7 @@ var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
 // src/core/daemon/ensure.ts
 import { spawn } from "node:child_process";
-import { existsSync as existsSync10, mkdirSync as mkdirSync7 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync10, mkdirSync as mkdirSync8 } from "node:fs";
 
 // src/core/process-label.ts
 import { basename as basename5, delimiter as delimiter2, dirname as dirname11, resolve as resolve7 } from "node:path";
@@ -14399,6 +14402,42 @@ function projectOf(commonDir) {
 function projectComponent(name2) {
   const safe = name2.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return safe.slice(0, PROJECT_MAX).replace(/-+$/, "") || "project";
+}
+
+// src/core/daemon/log-file.ts
+import {
+  closeSync,
+  copyFileSync,
+  fstatSync,
+  ftruncateSync,
+  mkdirSync as mkdirSync7,
+  openSync,
+  statSync as statSync5,
+  writeSync
+} from "node:fs";
+import { dirname as dirname12 } from "node:path";
+var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
+function rotateDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    if (statSync5(path).size < maxBytes) return;
+    copyFileSync(path, `${path}.1`);
+    const fd = openSync(path, "r+");
+    try {
+      ftruncateSync(fd, 0);
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+  }
+}
+function openDaemonLog(path, maxBytes = DAEMON_LOG_MAX_BYTES) {
+  try {
+    mkdirSync7(dirname12(path), { recursive: true });
+    rotateDaemonLog(path, maxBytes);
+    return openSync(path, "a", 384);
+  } catch {
+    return null;
+  }
 }
 
 // src/core/daemon/ensure.ts
@@ -14468,19 +14507,19 @@ async function ensureDaemonProcess(root, options = {}) {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
-    mkdirSync7(cwd, { recursive: true });
+    mkdirSync8(cwd, { recursive: true });
     const node2 = pinnedNode(root);
     const pinned = "binary" in node2;
-    const child = spawn(
-      pinned ? node2.binary : process.execPath,
-      [cli, "daemon", root, ...lockWait],
-      {
+    const log = openDaemonLog(daemonLogFor(commonDir, worktreeIdFor(root)));
+    const child = spawnLogging(
+      log,
+      () => spawn(pinned ? node2.binary : process.execPath, [cli, "daemon", root, ...lockWait], {
         argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
         cwd,
         detached: true,
-        stdio: "ignore",
+        stdio: log === null ? "ignore" : ["ignore", log, log],
         env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
-      }
+      })
     );
     let ended = child.pid === void 0;
     const end = () => {
@@ -14492,6 +14531,18 @@ async function ensureDaemonProcess(root, options = {}) {
     return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
+  }
+}
+function spawnLogging(log, start) {
+  try {
+    return start();
+  } finally {
+    if (log !== null) {
+      try {
+        closeSync2(log);
+      } catch {
+      }
+    }
   }
 }
 function daemonCliEntry(cli, env = process.env) {
@@ -14737,29 +14788,29 @@ var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 import { spawnSync } from "node:child_process";
 import {
   chmodSync as chmodSync2,
-  copyFileSync,
+  copyFileSync as copyFileSync2,
   cpSync,
   existsSync as existsSync11,
-  mkdirSync as mkdirSync9,
+  mkdirSync as mkdirSync10,
   readdirSync as readdirSync11,
   readFileSync as readFileSync21,
   renameSync as renameSync4,
   rmSync as rmSync5,
-  statSync as statSync5
+  statSync as statSync6
 } from "node:fs";
-import { basename as basename6, dirname as dirname13, isAbsolute as isAbsolute12, join as join28, resolve as resolve8 } from "node:path";
+import { basename as basename6, dirname as dirname14, isAbsolute as isAbsolute12, join as join28, resolve as resolve8 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
 import {
   linkSync as linkSync2,
-  mkdirSync as mkdirSync8,
+  mkdirSync as mkdirSync9,
   readdirSync as readdirSync10,
   readFileSync as readFileSync20,
   renameSync as renameSync3,
   rmSync as rmSync4,
   writeFileSync as writeFileSync3
 } from "node:fs";
-import { dirname as dirname12, join as join27 } from "node:path";
+import { dirname as dirname13, join as join27 } from "node:path";
 var SCHEMA = 1;
 var VERSION = /^\d+\.\d+\.\d+$/;
 var currentFile = (data) => join27(data, "runtime", "current.json");
@@ -14877,8 +14928,8 @@ function keptCli(data, version) {
   return kept2(data, version, CLI);
 }
 function dataOfCopy(cli) {
-  const versions = dirname13(dirname13(dirname13(dirname13(cli))));
-  return cli.endsWith(`/${CLI}`) && basename6(versions) === "versions" ? dirname13(versions) : null;
+  const versions = dirname14(dirname14(dirname14(dirname14(cli))));
+  return cli.endsWith(`/${CLI}`) && basename6(versions) === "versions" ? dirname14(versions) : null;
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
@@ -14890,7 +14941,7 @@ function keepVersion({ root, data, version }) {
     if (manifestVersion2(root) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
-      mkdirSync9(versions, { recursive: true });
+      mkdirSync10(versions, { recursive: true });
       const part = join28(versions, `.${version}.${process.pid}.tmp`);
       rmSync5(part, { recursive: true, force: true });
       for (const name2 of COPIED) {
@@ -14920,9 +14971,9 @@ function writeLauncher(root, data, version) {
     if (copies(data).some((v) => isNewerVersion(v, version))) return;
     if (readFileSync21(target, "utf8") === readFileSync21(source, "utf8")) return;
   }
-  mkdirSync9(join28(data, "bin"), { recursive: true });
+  mkdirSync10(join28(data, "bin"), { recursive: true });
   const part = `${target}.${process.pid}.tmp`;
-  copyFileSync(source, part);
+  copyFileSync2(source, part);
   chmodSync2(part, 493);
   renameSync4(part, target);
 }
@@ -14957,7 +15008,7 @@ function pruneVersions(data, version) {
 }
 function madeAt(dir) {
   try {
-    return statSync5(dir).mtimeMs;
+    return statSync6(dir).mtimeMs;
   } catch {
     return Number.POSITIVE_INFINITY;
   }
