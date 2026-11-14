@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.479";
+  if (true) return "0.1.480";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -86976,11 +86976,6 @@ function overloadedOf(files5, report4, load, leftMs) {
   if (loadAllows(sample) || sample.oneMinute === null) return null;
   return { load: { oneMinute: sample.oneMinute, cpus: sample.cpus }, files: failed7 };
 }
-function withoutRetried(records, overloaded) {
-  if (overloaded === null) return records;
-  const retried = new Set(overloaded.files.map(testFileId));
-  return new Map([...records].filter(([id]) => !retried.has(id)));
-}
 function afterRetry(files5, ran, overloaded, rerun) {
   if (rerun === null) return [...ran];
   const again2 = new Map(overloaded.files.map((ref3, i3) => [testFileId(ref3), rerun[i3]]));
@@ -87354,10 +87349,8 @@ async function runOne({ pick, index: i3 }, files5, context, rerun) {
     options.hostLoad ?? hostLoad,
     context.deadline - performance.now()
   ) : null;
-  if (rerun === void 0) {
-    const kept6 = withoutRetried(records, overloaded);
-    await tellRan(options.ran, { runner: runner.kind, files: files5, report: report4, records: kept6 });
-  }
+  const retrying = overloaded === null ? {} : { retrying: overloaded.files };
+  await tellRan(options.ran, { runner: runner.kind, files: files5, report: report4, records, ...retrying });
   const ran = [];
   for (const ref3 of files5) {
     const evidence = await evidenceOf4(runner, ref3, report4, records, context.children);
@@ -89337,12 +89330,16 @@ var Expectations = class {
       ...runtime === void 0 ? {} : { runtime },
       ...sources.revisions === void 0 ? {} : { revisions: revisionsSince(sources.revisions) }
     };
-    this.#open.add(pending);
-    for (const id of files5.keys()) this.#expected.set(expectationOf(runner, id), pending);
+    this.#hold(pending);
   }
   /**
    * The lookups that expected one of `run`'s files, each taken whole, so
-   * no other run takes it. The caller ends each one's run of `keys`.
+   * no other run takes it. The caller ends each one's run of `keys` when
+   * `endsRun`. Row 020-55: the files of `run.retrying` are not decided by
+   * this run, so its first failure is never kept. Their lookup stays
+   * expected for them alone, with its inputs and its run of `keys` as the
+   * lookup began them: their rerun takes it, and the window their keep is
+   * judged over runs from the lookup to the rerun's end.
    */
   take(run7) {
     const taken3 = /* @__PURE__ */ new Set();
@@ -89350,15 +89347,31 @@ var Expectations = class {
       const pending = this.#expected.get(expectationOf(run7.runner, testFileId(ref3)));
       if (pending !== void 0) taken3.add(pending);
     }
-    for (const pending of taken3) this.#drop(pending);
-    return [...taken3];
+    const retrying = new Set((run7.retrying ?? []).map(testFileId));
+    return [...taken3].map((pending) => {
+      this.#drop(pending);
+      const files5 = [...pending.files];
+      const rest2 = new Map(files5.filter(([id]) => retrying.has(id)));
+      if (rest2.size === 0) return { pending, endsRun: true };
+      this.#hold({ ...pending, files: rest2 });
+      const now = new Map(files5.filter(([id]) => !retrying.has(id)));
+      return { pending: { ...pending, files: now }, endsRun: false };
+    });
   }
-  /** Ends the run of each lookup no run took, such as one the budget ended before. */
+  /**
+   * Ends the run of each lookup no run took, such as one the budget ended
+   * before, or one whose retried files' rerun never started (row 020-55).
+   */
   close() {
     for (const pending of [...this.#open]) {
       this.#drop(pending);
       pending.keys.endRun();
     }
+  }
+  #hold(pending) {
+    this.#open.add(pending);
+    for (const id of pending.files.keys())
+      this.#expected.set(expectationOf(pending.runner, id), pending);
   }
   #drop(pending) {
     this.#open.delete(pending);
@@ -89908,7 +89921,7 @@ var Keeper = class {
    * costs the write.
    */
   async ran(run7) {
-    for (const pending of this.#expected.take(run7)) await this.#queue(pending, run7);
+    for (const taken3 of this.#expected.take(run7)) await this.#queue(taken3, run7);
   }
   /**
    * D17.5, once the report is out: writes every queued file whose inputs
@@ -89939,13 +89952,13 @@ var Keeper = class {
     this.#expected.close();
     this.#queued.splice(0);
   }
-  async #queue(pending, run7) {
+  async #queue({ pending, endsRun }, run7) {
     try {
       let kept6;
       try {
         kept6 = await this.#keepable(pending, run7);
       } finally {
-        pending.keys.endRun();
+        if (endsRun) pending.keys.endRun();
       }
       const { files: files5, seen } = kept6;
       if (files5.length + seen.length > 0)
