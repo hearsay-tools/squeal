@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.490";
+  if (true) return "0.1.491";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -1328,6 +1328,34 @@ var init_runner = __esm({
   }
 });
 
+// src/core/types/scheduler.ts
+function groupLane(group, runnerLane) {
+  if (group === TESTS_GROUP) return runnerLane;
+  if (group === SLOW_GROUP) return SLOW_LANE_PREFIX + runnerLane;
+  return `${GROUP_LANE_PREFIX}${group}:${runnerLane}`;
+}
+function isGroupLane(lane) {
+  return lane.startsWith(SLOW_LANE_PREFIX) || lane.startsWith(GROUP_LANE_PREFIX);
+}
+function laneGroup(lane) {
+  if (lane.startsWith(SLOW_LANE_PREFIX)) return SLOW_GROUP;
+  if (!lane.startsWith(GROUP_LANE_PREFIX)) return TESTS_GROUP;
+  const rest2 = lane.slice(GROUP_LANE_PREFIX.length);
+  const end = rest2.indexOf(":");
+  return end === -1 ? rest2 : rest2.slice(0, end);
+}
+var TESTS_GROUP, SLOW_GROUP, GROUP_LANE_PREFIX, MAX_PERSISTED_NOTES;
+var init_scheduler = __esm({
+  "src/core/types/scheduler.ts"() {
+    "use strict";
+    init_runner();
+    TESTS_GROUP = "tests";
+    SLOW_GROUP = "slow";
+    GROUP_LANE_PREFIX = "group:";
+    MAX_PERSISTED_NOTES = 20;
+  }
+});
+
 // src/core/types/store.ts
 function worktreeMetaKey(row2, worktreeId) {
   return `${WORKTREE_META_ROWS[row2].prefix}${worktreeId}`;
@@ -1355,16 +1383,16 @@ var init_store = __esm({
       countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
       holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
       leaving: { prefix: "leaving:", owner: "delivery/leaving" },
-      notes: { prefix: "notes.", owner: "types/scheduler" },
-      refined: { prefix: "refined.", owner: "types/scheduler" },
-      awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
-      installCommand: { prefix: "install-command.", owner: "types/scheduler" },
-      checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
+      notes: { prefix: "notes.", owner: "notes" },
+      refined: { prefix: "refined.", owner: "scheduler/refined" },
+      awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
+      installCommand: { prefix: "install-command.", owner: "scheduler/install-wait" },
+      checkpoint: { prefix: "checkpoint.", owner: "scheduler/checkpoint-progress" },
       checkpointLanes: { prefix: "checkpoint-lanes.", owner: "store/repos/runs" },
-      headMove: { prefix: "head-move.", owner: "types/scheduler" },
+      headMove: { prefix: "head-move.", owner: "scheduler/head-move-record" },
       commitReports: { prefix: "commit-reports:", owner: "commit/store" },
       feedDelivered: { prefix: "feed-delivered:", owner: "presence/stored" },
-      daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "types/daemon" },
+      daemonBootstrapped: { prefix: "daemon-bootstrapped:", owner: "daemon/bootstrapped" },
       daemonToken: { prefix: "daemon-token:", owner: "store/repos/worktrees" },
       daemonExit: { prefix: "daemon-exit:", owner: "presence/stored" },
       daemonRest: { prefix: "daemon-rest:", owner: "presence/stored" },
@@ -1404,101 +1432,18 @@ var init_store = __esm({
   }
 });
 
-// src/core/types/scheduler.ts
-function groupLane(group, runnerLane) {
-  if (group === TESTS_GROUP) return runnerLane;
-  if (group === SLOW_GROUP) return SLOW_LANE_PREFIX + runnerLane;
-  return `${GROUP_LANE_PREFIX}${group}:${runnerLane}`;
-}
-function isGroupLane(lane) {
-  return lane.startsWith(SLOW_LANE_PREFIX) || lane.startsWith(GROUP_LANE_PREFIX);
-}
-function laneGroup(lane) {
-  if (lane.startsWith(SLOW_LANE_PREFIX)) return SLOW_GROUP;
-  if (!lane.startsWith(GROUP_LANE_PREFIX)) return TESTS_GROUP;
-  const rest2 = lane.slice(GROUP_LANE_PREFIX.length);
-  const end = rest2.indexOf(":");
-  return end === -1 ? rest2 : rest2.slice(0, end);
-}
+// src/core/notes.ts
+import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 function notesMetaKey(worktreeId) {
   return worktreeMetaKey("notes", worktreeId);
 }
-function refinedMetaKey(worktreeId) {
-  return worktreeMetaKey("refined", worktreeId);
-}
-function awaitingInstallMetaKey(worktreeId) {
-  return worktreeMetaKey("awaitingInstall", worktreeId);
-}
-function headMoveMetaKey(worktreeId) {
-  return worktreeMetaKey("headMove", worktreeId);
-}
-function parseHeadMove(raw) {
-  if (raw === null) return null;
-  try {
-    const value = JSON.parse(raw);
-    const { head: head2, dirty, revision } = value;
-    if (head2 !== null && typeof head2 !== "string") return null;
-    if (typeof dirty !== "boolean" || !Number.isInteger(revision)) return null;
-    return { head: head2, dirty, revision };
-  } catch {
-    return null;
-  }
-}
-function awaitingInstallValue(workspaces2) {
-  return workspaces2.length === 0 ? "true" : JSON.stringify(workspaces2);
-}
-function installCommandMetaKey(worktreeId) {
-  return worktreeMetaKey("installCommand", worktreeId);
-}
-function parseAwaitingInstall(raw) {
-  if (raw === "true") return [];
-  if (raw === null || !raw.startsWith("[")) return null;
-  try {
-    const parsed3 = JSON.parse(raw);
-    return Array.isArray(parsed3) ? parsed3.filter((p) => typeof p === "string") : null;
-  } catch {
-    return null;
-  }
-}
-function checkpointMetaKey(worktreeId) {
-  return worktreeMetaKey("checkpoint", worktreeId);
-}
-function parseCheckpointProgress(raw) {
-  if (raw === null || !raw.startsWith("{")) return null;
-  try {
-    const value = JSON.parse(raw);
-    const numbers2 = [value.revision, value.startedAt, value.done, value.total];
-    if (typeof value.id !== "string" || numbers2.some((n) => typeof n !== "number")) return null;
-    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed = value.owed;
-    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
-    if (!lists.every(Array.isArray)) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-var TESTS_GROUP, SLOW_GROUP, GROUP_LANE_PREFIX, MAX_PERSISTED_NOTES;
-var init_scheduler = __esm({
-  "src/core/types/scheduler.ts"() {
-    "use strict";
-    init_runner();
-    init_store();
-    TESTS_GROUP = "tests";
-    SLOW_GROUP = "slow";
-    GROUP_LANE_PREFIX = "group:";
-    MAX_PERSISTED_NOTES = 20;
-  }
-});
-
-// src/core/notes.ts
-import { stripVTControlCharacters as stripVTControlCharacters2 } from "node:util";
 function appendNote(store, worktreeId, note) {
-  const key3 = notesMetaKey(worktreeId);
   const plain3 = { ...note, text: stripVTControlCharacters2(note.text) };
-  store.transaction(() => {
-    store.meta.set(key3, JSON.stringify(withNote(store.meta.get(key3), plain3)));
-  });
+  store.transaction(() => storeNote(store.meta, worktreeId, plain3));
+}
+function storeNote(meta, worktreeId, note) {
+  const key3 = notesMetaKey(worktreeId);
+  meta.set(key3, JSON.stringify(withNote(meta.get(key3), note)));
 }
 function withNote(raw, note) {
   const list2 = [...parseList(raw), note];
@@ -1556,6 +1501,7 @@ var init_notes = __esm({
   "src/core/notes.ts"() {
     "use strict";
     init_scheduler();
+    init_store();
     NOTES_PER_TOPIC = 3;
   }
 });
@@ -3494,6 +3440,74 @@ var init_runner2 = __esm({
   }
 });
 
+// src/core/scheduler/install-wait.ts
+function awaitingInstallMetaKey(worktreeId) {
+  return worktreeMetaKey("awaitingInstall", worktreeId);
+}
+function installCommandMetaKey(worktreeId) {
+  return worktreeMetaKey("installCommand", worktreeId);
+}
+function readInstallWait(store, worktreeId) {
+  const workspaces2 = parseWorkspaces(store.meta.get(awaitingInstallMetaKey(worktreeId)));
+  if (workspaces2 === null) return null;
+  const command = store.meta.get(installCommandMetaKey(worktreeId));
+  return { workspaces: workspaces2, command: command === "" ? null : command };
+}
+function recordInstallWait(store, worktreeId, workspaces2, command) {
+  const value = workspaces2.length === 0 ? "true" : JSON.stringify(workspaces2);
+  store.meta.set(awaitingInstallMetaKey(worktreeId), value);
+  store.meta.set(installCommandMetaKey(worktreeId), command);
+}
+function endInstallWait(store, worktreeId) {
+  store.meta.set(awaitingInstallMetaKey(worktreeId), "false");
+}
+function parseWorkspaces(raw) {
+  if (raw === "true") return [];
+  if (raw === null || !raw.startsWith("[")) return null;
+  try {
+    const parsed3 = JSON.parse(raw);
+    return Array.isArray(parsed3) ? parsed3.filter((p) => typeof p === "string") : null;
+  } catch {
+    return null;
+  }
+}
+var init_install_wait = __esm({
+  "src/core/scheduler/install-wait.ts"() {
+    "use strict";
+    init_store();
+  }
+});
+
+// src/core/scheduler/refined.ts
+function refinedMetaKey(worktreeId) {
+  return worktreeMetaKey("refined", worktreeId);
+}
+function readRefined(store, worktreeId) {
+  const raw = store.meta.get(refinedMetaKey(worktreeId));
+  const value = raw === null ? Number.NaN : Number(raw);
+  return Number.isInteger(value) ? value : null;
+}
+function isRefined(store, worktreeId, revision) {
+  return covers(readRefined(store, worktreeId), revision);
+}
+function covers(refined, revision) {
+  return refined === null || revision <= refined;
+}
+function recordRefinedApplied(store, worktreeId, revision) {
+  store.meta.set(refinedMetaKey(worktreeId), String(revision));
+}
+function recordRefinedFailed(store, worktreeId, revision) {
+  const key3 = refinedMetaKey(worktreeId);
+  const previous = Number(store.meta.get(key3) ?? Number.NaN);
+  if (!(previous >= revision)) store.meta.set(key3, String(revision));
+}
+var init_refined = __esm({
+  "src/core/scheduler/refined.ts"() {
+    "use strict";
+    init_store();
+  }
+});
+
 // src/core/state/file-class.ts
 function fileClassOf(row2, own) {
   const has3 = (validity) => own.some((s) => s.validity === validity);
@@ -4409,9 +4423,36 @@ var init_optimizer_note = __esm({
   }
 });
 
+// src/core/scheduler/head-move-record.ts
+function headMoveMetaKey(worktreeId) {
+  return worktreeMetaKey("headMove", worktreeId);
+}
+function readHeadMove(store, worktreeId) {
+  const raw = store.meta.get(headMoveMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    const { head: head2, dirty, revision } = value;
+    if (head2 !== null && typeof head2 !== "string") return null;
+    if (typeof dirty !== "boolean" || !Number.isInteger(revision)) return null;
+    return { head: head2, dirty, revision };
+  } catch {
+    return null;
+  }
+}
+function writeHeadMove(store, worktreeId, move) {
+  store.meta.set(headMoveMetaKey(worktreeId), JSON.stringify(move));
+}
+var init_head_move_record = __esm({
+  "src/core/scheduler/head-move-record.ts"() {
+    "use strict";
+    init_store();
+  }
+});
+
 // src/core/state/revision-commit.ts
 function readRevisionCommit(store, worktreeId, latest = store.revisions.latest(worktreeId)) {
-  const moved4 = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
+  const moved4 = readHeadMove(store, worktreeId);
   const number = latest?.number ?? 0;
   if (moved4 !== null && moved4.revision >= number && moved4.head !== latest?.head) {
     return moved4.head === null ? void 0 : { head: moved4.head, sinceHead: 0, dirty: moved4.dirty };
@@ -4431,7 +4472,7 @@ function revisionText(revision, commit) {
 var init_revision_commit = __esm({
   "src/core/state/revision-commit.ts"() {
     "use strict";
-    init_scheduler();
+    init_head_move_record();
   }
 });
 
@@ -4460,9 +4501,10 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = countStates(states);
-  const refinedRevision2 = readRefined(store, worktreeId);
-  const missing2 = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
-  const awaiting2 = missing2 !== null;
+  const refinedRevision = readRefined(store, worktreeId);
+  const wait = readInstallWait(store, worktreeId);
+  const missing2 = wait?.workspaces ?? null;
+  const awaiting2 = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
@@ -4470,7 +4512,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
-  const runnerPartPending = refinedRevision2 !== null && refinedRevision2 < revision;
+  const runnerPartPending = !covers(refinedRevision, revision);
   return {
     revision,
     ...commit === void 0 ? {} : { commit },
@@ -4487,7 +4529,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedCount,
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
-    refinedRevision: refinedRevision2,
+    refinedRevision,
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -4495,7 +4537,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
     ...awaiting2 ? { awaitingInstall: true } : {},
     ...missing2 !== null && missing2.length > 0 ? { missingInstalls: missing2 } : {},
-    ...awaiting2 ? installCommandField(store, worktreeId) : {},
+    ...wait === null || wait.command === null ? {} : { installCommand: wait.command },
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
@@ -4514,18 +4556,9 @@ function groupFields(store, worktreeId, states, keys, policy) {
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
-function installCommandField(store, worktreeId) {
-  const command = store.meta.get(installCommandMetaKey(worktreeId));
-  return command === null || command === "" ? {} : { installCommand: command };
-}
 function laneAfter(latest, full) {
   if (latest?.lane === void 0 || latest.id === full?.id) return null;
   return { lane: latest.lane, revision: latest.revision };
-}
-function readRefined(store, worktreeId) {
-  const raw = store.meta.get(refinedMetaKey(worktreeId));
-  const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(value) ? value : null;
 }
 function isPending(header2) {
   return header2.counts.pending + header2.testFilesWithoutChecks.pending > 0 || header2.runnerPartPending === true;
@@ -4604,7 +4637,8 @@ var init_header = __esm({
     init_policy2();
     init_runner2();
     init_reverse_index();
-    init_scheduler();
+    init_install_wait();
+    init_refined();
     init_derive();
     init_file_class();
     init_groups();
@@ -9625,28 +9659,6 @@ var init_git_head = __esm({
   }
 });
 
-// src/core/types/daemon.ts
-function daemonIncarnation(daemon) {
-  if (daemon?.token === void 0) return null;
-  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
-}
-function predecessorIncarnation(hasRow, last) {
-  if (!hasRow) return null;
-  if (last === null || last.squealVersion === null) return void 0;
-  return daemonIncarnation({ ...last, squealVersion: last.squealVersion }) ?? void 0;
-}
-function bootstrappedMetaKey(worktreeId) {
-  return worktreeMetaKey("daemonBootstrapped", worktreeId);
-}
-var DAEMON_SOCKET_TIMEOUT_MS;
-var init_daemon = __esm({
-  "src/core/types/daemon.ts"() {
-    "use strict";
-    init_store();
-    DAEMON_SOCKET_TIMEOUT_MS = 100;
-  }
-});
-
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS, HOOK_TIMEOUT_MS, LEAVING_GRACE_MS, WAITERLESS_EXPIRY_MS;
 var init_store_records = __esm({
@@ -10858,6 +10870,24 @@ var init_source = __esm({
     init_policy2();
     init_open3();
     readOrNull = (read5) => "read" in read5 ? read5.read : null;
+  }
+});
+
+// src/core/types/daemon.ts
+function daemonIncarnation(daemon) {
+  if (daemon?.token === void 0) return null;
+  return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
+}
+function predecessorIncarnation(hasRow, last) {
+  if (!hasRow) return null;
+  if (last === null || last.squealVersion === null) return void 0;
+  return daemonIncarnation({ ...last, squealVersion: last.squealVersion }) ?? void 0;
+}
+var DAEMON_SOCKET_TIMEOUT_MS;
+var init_daemon = __esm({
+  "src/core/types/daemon.ts"() {
+    "use strict";
+    DAEMON_SOCKET_TIMEOUT_MS = 100;
   }
 });
 
@@ -14354,6 +14384,36 @@ var init_accept = __esm({
   }
 });
 
+// src/core/scheduler/checkpoint-progress.ts
+function checkpointMetaKey(worktreeId) {
+  return worktreeMetaKey("checkpoint", worktreeId);
+}
+function readCheckpointProgress(store, worktreeId) {
+  const raw = store.meta.get(checkpointMetaKey(worktreeId));
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers2 = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers2.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed = value.owed;
+    const lists = owed === void 0 ? [] : [owed.ids, owed.remaining, owed.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+function writeCheckpointProgress(store, worktreeId, progress2) {
+  store.meta.set(checkpointMetaKey(worktreeId), progress2 === null ? "" : JSON.stringify(progress2));
+}
+var init_checkpoint_progress = __esm({
+  "src/core/scheduler/checkpoint-progress.ts"() {
+    "use strict";
+    init_store();
+  }
+});
+
 // src/core/scheduler/checkpoints.ts
 function copyActive(active) {
   const lanes = [...active.lanes].map(
@@ -14386,20 +14446,20 @@ var init_checkpoints = __esm({
   "src/core/scheduler/checkpoints.ts"() {
     "use strict";
     init_reverse_index();
-    init_scheduler();
+    init_checkpoint_progress();
     Checkpoints = class {
       constructor(store, worktreeId, now) {
         this.store = store;
         this.worktreeId = worktreeId;
         this.now = now;
-        this.#left = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+        this.#left = readCheckpointProgress(store, worktreeId);
       }
       store;
       worktreeId;
       now;
       #active = null;
-      /** What `meta` holds, as this tracker last wrote it; `null` before its first write. */
-      #published = null;
+      /** The progress this tracker last wrote, as JSON (`null`: ended); `undefined` before its first write. */
+      #published = void 0;
       /** What the last daemon left in `meta`, read before this one records anything. */
       #left;
       /**
@@ -14641,10 +14701,10 @@ var init_checkpoints = __esm({
         this.#write(active === null ? null : progress(active));
       }
       #write(value) {
-        const text3 = value === null ? "" : JSON.stringify(value);
-        if (text3 === this.#published) return;
+        const text3 = value === null ? null : JSON.stringify(value);
+        if (this.#published !== void 0 && text3 === this.#published) return;
         this.#published = text3;
-        this.store.meta.set(checkpointMetaKey(this.worktreeId), text3);
+        writeCheckpointProgress(this.store, this.worktreeId, value);
       }
     };
   }
@@ -16060,10 +16120,6 @@ function openMoves(store, worktreeId) {
 function movesSeq(store, worktreeId) {
   return readMoves(store, worktreeId)?.seq ?? null;
 }
-function refinedRevision(store, worktreeId) {
-  const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
-  return Number.isInteger(refined) ? refined : null;
-}
 function recordMoves(store, worktreeId, marks, removed, revision, now, by) {
   const moves = nextMoves(store, worktreeId, marks, removed, revision, now, by);
   if (moves !== null) store.meta.set(rekeyedMovesMetaKey(worktreeId), JSON.stringify(moves));
@@ -16093,8 +16149,7 @@ function nextMoves(store, worktreeId, marks, removed, revision, now, by) {
     }
   }
   for (const mark of marks) changed2 = apply(moves, mark, seq, now) || changed2;
-  const refined = refinedRevision(store, worktreeId);
-  const caughtUpAt = refined === null || refined >= revision ? moves.caughtUpAt ?? now : null;
+  const caughtUpAt = isRefined(store, worktreeId, revision) ? moves.caughtUpAt ?? now : null;
   if (caughtUpAt !== moves.caughtUpAt) {
     moves.caughtUpAt = caughtUpAt;
     changed2 = true;
@@ -16148,8 +16203,7 @@ function answerMoves(store, worktreeId, upTo, sinceSeq, incarnation) {
   if (moves === null || !trusted(store, worktreeId, moves, sinceSeq, incarnation)) {
     return { state: "incomplete" };
   }
-  const refined = refinedRevision(store, worktreeId);
-  if (refined !== null && refined < upTo) return { state: "refining" };
+  if (!isRefined(store, worktreeId, upTo)) return { state: "refining" };
   const rows = store.testFileKeys.list(worktreeId);
   const refs2 = new Map(rows.map((row2) => [testFileId(row2.testFile), row2.testFile]));
   const rekeyed = [];
@@ -16173,8 +16227,8 @@ var init_rekeyed_moves = __esm({
     init_json();
     init_reverse_index();
     init_daemon();
-    init_scheduler();
     init_store();
+    init_refined();
     MOVES_RETENTION_MS = 60 * 6e4;
     MOVES_GRACE_MS = 6e4;
     isInt = (value) => typeof value === "number" && Number.isInteger(value);
@@ -16766,6 +16820,7 @@ var init_ledger = __esm({
     init_hold();
     init_promotions_row();
     init_queue();
+    init_refined();
     init_rekeyed_moves();
     init_rekeyed_record();
     init_rerun();
@@ -17215,7 +17270,7 @@ var init_ledger = __esm({
       /**
        * Writes what this round of work owes the store and the sink, in one
        * transaction. `refined` is the revision whose runner part this commit
-       * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
+       * applies; it becomes the worktree's refined revision (`recordRefinedApplied`,
        * spec 001 D2 as amended), so headers stop counting that runner part as
        * pending in the same transaction that applies it.
        */
@@ -17289,7 +17344,7 @@ var init_ledger = __esm({
             this.#refresh(revision, checkpointId, testFiles3);
           }
           if (options.refined !== void 0) {
-            store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
+            recordRefinedApplied(store, worktreeId, options.refined);
           }
         });
         this.#adopted = true;
@@ -53574,14 +53629,14 @@ import { lstat as lstat8 } from "node:fs/promises";
 import { join as join99 } from "node:path";
 function knownHead(context, ledger) {
   const { number, head: head2 } = ledger.revision;
-  const recorded2 = parseHeadMove(context.store.meta.get(headMoveMetaKey(context.worktreeId)));
+  const recorded2 = readHeadMove(context.store, context.worktreeId);
   return recorded2 !== null && recorded2.revision >= number ? recorded2.head : head2;
 }
 async function recordHeadMove(context, ledger) {
   if (await gitHead(context.root) === knownHead(context, ledger)) return;
   const seen = await context.head();
   const move = { head: seen.head, dirty: seen.dirty, revision: ledger.revision.number };
-  context.store.meta.set(headMoveMetaKey(context.worktreeId), JSON.stringify(move));
+  writeHeadMove(context.store, context.worktreeId, move);
 }
 function rememberHead(context, ledger) {
   if (looked.has(context)) return;
@@ -53693,9 +53748,9 @@ var init_head_move = __esm({
     init_tree();
     init_git_layout();
     init_git_head();
-    init_scheduler();
     init_git2();
     init_commit_moment();
+    init_head_move_record();
     looked = /* @__PURE__ */ new WeakMap();
   }
 });
@@ -54350,11 +54405,7 @@ async function applyRefinement(host, context, ledger, part2, refined, carry) {
 }
 async function recordRefined(host, context, revision) {
   const { store, worktreeId } = context;
-  const write3 = async () => store.transaction(() => {
-    const key3 = refinedMetaKey(worktreeId);
-    const previous = Number(store.meta.get(key3) ?? Number.NaN);
-    if (!(previous >= revision)) store.meta.set(key3, String(revision));
-  });
+  const write3 = async () => store.transaction(() => recordRefinedFailed(store, worktreeId, revision));
   const busy2 = host.busy?.();
   if (busy2 === void 0) return write3();
   await retryWhileBusy(write3, {
@@ -54374,8 +54425,8 @@ var init_refine_apply = __esm({
   "src/core/scheduler/refine-apply.ts"() {
     "use strict";
     init_busy();
-    init_scheduler();
     init_imports_waiting();
+    init_refined();
     init_refinement();
     REFINE = "scheduler:refinement";
   }
@@ -54581,7 +54632,7 @@ import { randomUUID as randomUUID15 } from "node:crypto";
 async function scan(context, ledger, resumesRest2 = false) {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
-  const refined = readRefined2(store, worktreeId) ?? latest?.number ?? 0;
+  const refined = readRefined(store, worktreeId) ?? latest?.number ?? 0;
   const started2 = await keys.bootstrap(context.head);
   const revision = started2 ?? latest;
   ledger.revision = revision === null ? { number: 0, ...await context.head() } : { number: revision.number, head: revision.head, dirty: revision.dirty };
@@ -54589,11 +54640,6 @@ async function scan(context, ledger, resumesRest2 = false) {
   if (!resumesRest2 || keys.seededAtStart.length === 0) return unseen;
   const startPaths = started2 === null ? [] : [...unseen.pop() ?? []];
   return [...unseen, /* @__PURE__ */ new Set([...startPaths, ...keys.seededAtStart])];
-}
-function readRefined2(store, worktreeId) {
-  const raw = store.meta.get(refinedMetaKey(worktreeId));
-  const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(value) ? value : null;
 }
 async function baseline(context, ledger, unseen = [], resumesRest2 = false, retry2) {
   const { store, keys, worktreeId, policy } = context;
@@ -54785,7 +54831,6 @@ var init_bootstrap = __esm({
     init_reverse_index();
     init_busy();
     init_connection();
-    init_scheduler();
     init_checkpoint_requests();
     init_context();
     init_edit_cut();
@@ -54796,6 +54841,7 @@ var init_bootstrap = __esm({
     init_notes2();
     init_omitted_test_files();
     init_queue();
+    init_refined();
     init_rekeyed_moves();
     init_rerun();
     init_revision();
@@ -55678,14 +55724,13 @@ async function reconcileWaiting(context, ledger, batch, unseen) {
   return false;
 }
 function recordWait(store, worktreeId, missing2) {
-  store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing2.workspaces));
-  store.meta.set(installCommandMetaKey(worktreeId), missing2.command);
+  recordInstallWait(store, worktreeId, missing2.workspaces, missing2.command);
 }
 function touchesInstall(path) {
   return path === "package.json" || isInstalledLockfile(path);
 }
 function stopWaiting(context) {
-  context.store.meta.set(awaitingInstallMetaKey(context.worktreeId), "false");
+  endInstallWait(context.store, context.worktreeId);
 }
 var AWAITING_INSTALL_REASON, REINSTALL_NOTE, BUN_LOCKFILES, PNP_LOADERS;
 var init_install = __esm({
@@ -55693,10 +55738,10 @@ var init_install = __esm({
     "use strict";
     init_errors();
     init_environment();
-    init_scheduler();
     init_awaiting_install();
     init_batch();
     init_install_command();
+    init_install_wait();
     init_notes2();
     init_workspaces();
     AWAITING_INSTALL_REASON = "no dependencies are installed in this worktree";
@@ -70154,7 +70199,7 @@ __export(source_exports, {
 });
 function mainStoreSource(store, worktreeId, ignored) {
   const headAt = (after3) => {
-    const moved4 = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
+    const moved4 = readHeadMove(store, worktreeId);
     if (moved4 !== null && moved4.revision === after3) return moved4.head;
     return after3 > 0 ? store.revisions.get(worktreeId, after3)?.head : void 0;
   };
@@ -70188,7 +70233,7 @@ function headAfterMove(before4, heads) {
 var init_source3 = __esm({
   "src/core/code/pass/source.ts"() {
     "use strict";
-    init_scheduler();
+    init_head_move_record();
   }
 });
 
@@ -74538,6 +74583,20 @@ function lastTransition(store, worktreeId, check3, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check3).findLast((t) => t.measure === measure2) ?? null;
 }
 
+// src/core/daemon/bootstrapped.ts
+init_store();
+function bootstrappedMetaKey(worktreeId) {
+  return worktreeMetaKey("daemonBootstrapped", worktreeId);
+}
+function markScanned(store, worktreeId, startedAt) {
+  store.meta.set(bootstrappedMetaKey(worktreeId), String(startedAt));
+}
+function lastScannedBy(store, worktreeId) {
+  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
+  const value = marker === null ? Number.NaN : Number(marker);
+  return Number.isFinite(value) ? value : null;
+}
+
 // src/core/delivery/registered.ts
 init_json();
 
@@ -74549,7 +74608,6 @@ init_derive();
 
 // src/core/delivery/registered.ts
 init_git_head();
-init_daemon();
 init_store();
 init_store_records();
 init_slots();
@@ -78225,12 +78283,12 @@ function entry2(records) {
 }
 
 // src/core/status/snapshot.ts
+init_checkpoint_progress();
 init_derive();
 init_header();
 init_open();
 init_store3();
 init_common();
-init_scheduler();
 
 // src/core/status/imports.ts
 init_modules();
@@ -79049,7 +79107,7 @@ function vitestExcluded(root) {
   };
 }
 function openCheckpoint(store, worktreeId, daemon) {
-  const progress2 = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  const progress2 = readCheckpointProgress(store, worktreeId);
   if (progress2 === null) return {};
   const { owed, ...rest2 } = progress2;
   if (owed !== void 0) {
@@ -84539,14 +84597,13 @@ import { realpathSync as realpathSync9 } from "node:fs";
 import { isAbsolute as isAbsolute17, relative as relative7, resolve as resolve15, sep as sep11 } from "node:path";
 
 // src/cli/retry-unlisted.ts
+import { statSync as statSync19 } from "node:fs";
+import { join as join64, posix as posix10 } from "node:path";
 init_policy2();
 init_runner2();
 init_glob();
 init_header();
 init_text();
-init_daemon();
-import { statSync as statSync19 } from "node:fs";
-import { join as join64, posix as posix10 } from "node:path";
 function notKeyed(store, { root, worktreeId, rel: rel2, shown, given: given2 }, keys) {
   const setup = store.knownStates.list(worktreeId).some((s) => s.check.kind === "setup" && s.outcome === "fail" && s.check.testPath === rel2);
   if (setup) {
@@ -84576,11 +84633,10 @@ function unkeyedPath(store, worktreeId, root, rel2, keys, policy = readPolicy(ro
   }
   const pending = header2.runnerPartPending === true;
   const listed9 = pending ? header2.refinedRevision : header2.revision;
-  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  const times = [
-    store.revisions.get(worktreeId, listed9)?.createdAt,
-    marker === null ? void 0 : Number(marker)
-  ].filter((t) => t !== void 0 && Number.isFinite(t));
+  const scanned3 = lastScannedBy(store, worktreeId);
+  const times = [store.revisions.get(worktreeId, listed9)?.createdAt, scanned3 ?? void 0].filter(
+    (t) => t !== void 0 && Number.isFinite(t)
+  );
   if (times.length === 0 || stat10.ctimeMs <= Math.max(...times)) return { kind: "other" };
   return {
     kind: "unlisted",
@@ -85144,22 +85200,20 @@ function checkpointFiles(store, worktreeId, files5) {
 }
 
 // src/cli/wait/progress.ts
-init_scheduler();
+init_checkpoint_progress();
+init_install_wait();
 function checkpointEnd(store, id) {
   return store.checkpoints.get(id)?.end ?? null;
 }
 function openCheckpoint2(store, worktreeId) {
-  return parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  return readCheckpointProgress(store, worktreeId);
 }
 function latestRevision(store, worktreeId) {
   return store.revisions.latest(worktreeId)?.number ?? 0;
 }
 function installWait(store, worktreeId) {
-  if (parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId))) === null) {
-    return null;
-  }
-  const command = store.meta.get(installCommandMetaKey(worktreeId));
-  return { command: command === "" ? null : command };
+  const wait = readInstallWait(store, worktreeId);
+  return wait === null ? null : { command: wait.command };
 }
 
 // src/cli/wait/reads.ts
@@ -88922,13 +88976,13 @@ function outcomeOf2(entry4, { row: row2, evidence }, base, rules) {
 function stateOf(judged2, uses, cc) {
   const { row: row2, evidence, gap } = judged2;
   if (row2.state === "incomplete" && evidence.state === "incomplete") return row2;
-  const covers = (measure2) => uses.some((u) => u.entry.measure === measure2 && u.outcome === "covers");
+  const covers2 = (measure2) => uses.some((u) => u.entry.measure === measure2 && u.outcome === "covers");
   const ccOver = row2.complexity > cc;
-  if (ccOver && !covers("complexity")) return VIOLATION2;
+  if (ccOver && !covers2("complexity")) return VIOLATION2;
   if (evidence.state === "incomplete") return evidence;
   const accepted = gap === null ? ACCEPTED : { state: "incomplete", gap };
   if (evidence.state === "violation") {
-    return covers("crap") ? accepted : { state: row2.state, gap: row2.gap };
+    return covers2("crap") ? accepted : { state: row2.state, gap: row2.gap };
   }
   return ccOver ? accepted : evidence;
 }
@@ -95135,7 +95189,6 @@ var VACANT_LOCK_WAIT_MS = 3e4;
 // src/core/daemon/notes.ts
 init_notes();
 init_paths();
-init_scheduler();
 import { DatabaseSync as DatabaseSync8 } from "node:sqlite";
 function writeNote(store, worktreeId, note, log) {
   try {
@@ -95152,13 +95205,15 @@ function noteInNewerStore(commonDir, worktreeId, note) {
     const columns = db.prepare("SELECT name FROM pragma_table_info('meta')").all();
     const names7 = new Set(columns.map((c) => String(c.name)));
     if (!names7.has("key") || !names7.has("value")) return false;
-    const key3 = notesMetaKey(worktreeId);
+    const table = db;
     db.exec("BEGIN IMMEDIATE");
-    const row2 = db.prepare("SELECT value FROM meta WHERE key = ?").get(key3);
-    const notes = withNote(row2?.value, note);
-    db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(
-      key3,
-      JSON.stringify(notes)
+    storeNote(
+      {
+        get: (key3) => table.prepare("SELECT value FROM meta WHERE key = ?").get(key3)?.value,
+        set: (key3, value) => table.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(key3, value)
+      },
+      worktreeId,
+      note
     );
     db.exec("COMMIT");
     return true;
@@ -96008,9 +96063,9 @@ function forgetCounts(store, consumer) {
 // src/core/delivery/edits.ts
 init_json();
 init_reverse_index();
+init_refined();
 init_rekeyed_record();
 init_derive();
-init_scheduler();
 init_store();
 init_slots();
 function editsMetaKey(worktreeId) {
@@ -97396,7 +97451,7 @@ var Daemon = class {
       lint2();
       await this.#writes.write(
         "the start's scan mark",
-        () => store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt)),
+        () => markScanned(store, worktreeId, this.#startedAt),
         within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null)
       );
       setBusyTimeout(store, DAEMON_BUSY_TIMEOUT_MS);
@@ -107229,12 +107284,12 @@ init_policy2();
 init_compare();
 init_git_layout();
 init_reverse_index();
+init_checkpoint_progress();
 init_files();
 init_ignored_reads();
 init_classify();
 init_state2();
 init_text();
-init_scheduler();
 
 // src/cli/start.ts
 init_client();
@@ -108130,7 +108185,7 @@ async function reportProgress(root, id, io, running) {
     await new Promise((resolve45) => setTimeout(resolve45, PROGRESS_POLL_MS));
     if (!running()) return;
     const line = withStatusStore(root, {}, ({ store }) => {
-      const open7 = parseCheckpointProgress(store.meta.get(checkpointMetaKey(id)));
+      const open7 = readCheckpointProgress(store, id);
       if (open7 === null) return null;
       const activity = readSlowActivity(store, id);
       const queued = activity?.kind === "waiting" && activity.for === "load" ? store.testFileKeys.list(id).filter((row2) => row2.pending === "queued" && isSlow(row2.testFile)).length : 0;
