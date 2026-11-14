@@ -19,7 +19,7 @@ export function backlogSlot(context: SchedulerContext, ref: TestFileRef): number
 
 /**
  * The lanes no tier may start in now, of the tiers `inFlight` whose runs
- * have not ended (`selectTier`'s `busy`): one tier at a time per lane (task
+ * have not ended (the tier plan's `busy`): one tier at a time per lane (task
  * 001-140), with two exceptions for a runner that cannot cancel a run
  * (spec 011 C4 step 5 as amended 2026-10-19, task 011-21):
  *
