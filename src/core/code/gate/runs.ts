@@ -57,11 +57,13 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
   });
 }
 
-const withoutRunner = ({ seconds, files, known, width }: RunEstimate) => ({
+const withoutRunner = ({ seconds, files, known, width, load }: RunEstimate) => ({
   seconds,
   files,
   known,
   width,
+  // Row 020-57: the host's load scaled `seconds`; `load.unscaled` keeps the stored durations' own.
+  ...(load === undefined ? {} : { load }),
 });
 
 /**

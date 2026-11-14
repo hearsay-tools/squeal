@@ -210,7 +210,8 @@ export interface GateRunReport {
   /**
    * D17.1: the estimate told before the first run, of the files this
    * command ran here; absent when none was to run. Advice: the verdict does
-   * not read it.
+   * not read it. Row 020-57: with `load` when the host's load per CPU
+   * scaled `seconds`; `load.unscaled` is the stored durations' own estimate.
    */
   readonly estimate?: Omit<RunEstimate, "runner">;
   /**
