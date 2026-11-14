@@ -67,6 +67,12 @@ export interface StoredOptions {
   readonly runners?: () => readonly RunnerAdapter[];
   /** Why the stores gave nothing, told once; every selected file then runs. */
   readonly note?: (text: string) => void;
+  /**
+   * Row 020-60 (#200, #214), `--rerun-stored-failures`: each file the
+   * stores give a failure is marked to run once more (`storedRerun`), and
+   * its rerun may be kept at its key. Absent, no stored file runs.
+   */
+  readonly rerunFailures?: boolean;
 }
 
 /** A file's key as a daemon here gives it, and the sources its runner's closure loads. */
@@ -120,10 +126,15 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       const keyer = await keyerOf();
       const found = new Map<TestFileRef, TestFileEvidence>();
       const runs = new Map<TestFileRef, CheckKey>();
+      const again = new Map<TestFileRef, CheckKey>();
       for (const [ref, at] of await keyer.keyed(files)) {
         const evidence = evidenceAt(stores, runner, ref, at);
-        if (evidence !== null) found.set(ref, evidence);
-        else runs.set(ref, at.key);
+        if (evidence === null) runs.set(ref, at.key);
+        else if (options.rerunFailures === true && evidence.failed.length > 0) {
+          // Row 020-60: a stored failure, marked to run once more; it stands until a rerun ends it.
+          found.set(ref, { ...evidence, storedRerun: { outcome: "not-finished" } });
+          again.set(ref, at.key);
+        } else found.set(ref, evidence);
       }
       // Row 011-320: the runtime identity, read as the daemon reads it (difference 2), and the
       // revisions a serving daemon records during the run (review 0.1.458 B1).
@@ -136,6 +147,9 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       const store = stores.main;
       const revisions = store === undefined ? {} : { revisions: { store, worktreeId } };
       keeper.expect(runner, keyer.keys, keyer.hasher, runs, { runtime, ...revisions });
+      // Row 020-60: a lookup of their own, which only their rerun takes, so a first run of
+      // `runs` never drops them; their keep is judged from here to the rerun's end (row 020-55).
+      keeper.expect(runner, keyer.keys, keyer.hasher, again, { runtime, ...revisions });
       return found;
     } catch (error) {
       // A store or an adapter that fails here costs only the runs it would have saved.

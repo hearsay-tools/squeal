@@ -184,6 +184,13 @@ export interface TestFileEvidence {
    * load then, and the rerun's end. Absent when it ran once.
    */
   readonly retried?: FileRetry;
+  /**
+   * Row 020-60 (#200, #214): with `--rerun-stored-failures`, the stores
+   * gave it a failure and it ran once more, after the other files and the
+   * reruns under load: the rerun's end. Absent without the flag, and for
+   * any other file.
+   */
+  readonly storedRerun?: StoredRerun;
 }
 
 /**
@@ -199,6 +206,19 @@ export interface FileRetry {
    * The rerun's end: `passed` or `failed` again, and the file's result is
    * the rerun's; `not-finished`, the budget or a crash stopped it, and the
    * first run's failure stands.
+   */
+  readonly outcome: "passed" | "failed" | "not-finished";
+}
+
+/**
+ * Row 020-60 (#200, #214): a file the stores gave a failure that ran once
+ * more with `--rerun-stored-failures`.
+ */
+export interface StoredRerun {
+  /**
+   * The rerun's end: `passed` or `failed` again, and the file's result is
+   * the rerun's; `not-finished`, the budget or a crash stopped it, or it
+   * never started, and the stored failure stands.
    */
   readonly outcome: "passed" | "failed" | "not-finished";
 }

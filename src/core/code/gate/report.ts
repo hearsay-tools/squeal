@@ -18,6 +18,7 @@ import type {
   GateState,
   GateVerdict,
   OmittedFunction,
+  StoredRerun,
   TestFileEvidence,
   UncountedPath,
 } from "./types.js";
@@ -230,6 +231,14 @@ export interface GateRunReport {
    * ran again.
    */
   readonly retried?: Readonly<Record<RelativePath, FileRetry>>;
+  /**
+   * Row 020-60 (#200, #214): with `--rerun-stored-failures`, each selected
+   * file the stores gave a failure, by path, and its rerun's end. `passed`
+   * and `failed` are the file's result here, and `from` reads `run`; with
+   * `not-finished` the stored failure stands, and `from` reads `store`.
+   * Absent without the flag, and when the stores gave no failure.
+   */
+  readonly storedRerun?: Readonly<Record<RelativePath, StoredRerun>>;
   readonly durationMs: number | null;
 }
 

@@ -106,6 +106,21 @@ describe("parseGateArgs (spec 020 D1)", () => {
       parts: ["p/1", "p/2", "p/3"],
     });
   });
+
+  it("reruns stored failures only with --rerun-stored-failures (row 020-60)", () => {
+    expect(parseGateArgs(["--base", "main", "src", "--rerun-stored-failures"])).toEqual({
+      ref: "main",
+      paths: ["src"],
+      tests: [],
+      budgetSeconds: DEFAULT_BUDGET_SECONDS,
+      json: false,
+      rerunStoredFailures: true,
+    });
+    expect(parseGateArgs(["--base", "main"])).not.toHaveProperty("rerunStoredFailures");
+    expect(parseGateArgs(["--base", "main", "--rerun-stored-failures=yes"])).toEqual({
+      error: 'unknown option "--rerun-stored-failures=yes"',
+    });
+  });
 });
 
 describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {

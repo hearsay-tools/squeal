@@ -4,7 +4,7 @@ import type { RunEstimate } from "./estimate.js";
 import type { GatePartRefusal, PartRefusal } from "./parts-refused.js";
 import type { PrepareRun } from "./prepare.js";
 import type { GateEvidenceSource, GateRunReport, GateTimes } from "./report.js";
-import { retriedOf } from "./retry.js";
+import { retriedOf, storedRerunOf } from "./retry.js";
 import { type ChildFiles, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
 /*
@@ -35,6 +35,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
     );
     const overBudget = files.filter((f) => f.overBudget === true).map((f) => f.path);
     const retried = retriedOf(files);
+    const storedRerun = storedRerunOf(files);
     return [
       {
         runner,
@@ -51,6 +52,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         ...(estimate === undefined ? {} : { estimate: withoutRunner(estimate) }),
         ...(overBudget.length === 0 ? {} : { overBudget: sorted(overBudget) }),
         ...(retried === null ? {} : { retried }),
+        ...(storedRerun === null ? {} : { storedRerun }),
         durationMs,
       },
     ];

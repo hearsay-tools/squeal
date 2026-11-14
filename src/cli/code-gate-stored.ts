@@ -55,7 +55,8 @@ export interface Collected {
  * `keep` (D17.3, D17.5); how many came from each is told through
  * `options.note`. The keys hold `options.children`, the base's
  * `coverage.children`, so a record collected otherwise is never read. The
- * stores close at `keep`, or before it rejects.
+ * stores close at `keep`, or before it rejects. Row 020-60: with
+ * `rerunFailures`, each failure the stores give runs once more.
  */
 export async function collectWithStores(
   root: AbsolutePath,
@@ -63,6 +64,7 @@ export async function collectWithStores(
   changed: ChangedSet,
   options: CollectOptions,
   parts: readonly NamedPart[] = [],
+  rerunFailures = false,
 ): Promise<Collected> {
   const note = options.note ?? (() => {});
   const children = options.children === true;
@@ -87,7 +89,7 @@ export async function collectWithStores(
         });
   // Row 020-51: the stores are keyed with the adapters the run opens.
   const opened: RunnerAdapter[] = [];
-  const stored = storedFiles(root, env, note, children, () => opened);
+  const stored = storedFiles(root, env, note, children, () => opened, rerunFailures);
   let evidence: Evidence;
   try {
     const known = inOrder([fromParts, stored?.stored]);
@@ -161,7 +163,8 @@ function inOrder(sources: readonly (StoredEvidence | undefined)[]): StoredEviden
  * branch that turns children on in its own config cannot have its records
  * read where the base keeps them off (the coordinator, request 35b31f66).
  * `runners` gives the adapters the gate's run opened, which key; with
- * none, the keys open the adapters a daemon builds (row 020-51).
+ * none, the keys open the adapters a daemon builds (row 020-51). Row
+ * 020-60: `rerunFailures` marks each stored failure to run once more.
  */
 export function storedFiles(
   root: AbsolutePath,
@@ -169,6 +172,7 @@ export function storedFiles(
   note: (text: string) => void,
   children = false,
   runners?: () => readonly RunnerAdapter[],
+  rerunFailures = false,
 ): StoredFiles | null {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
@@ -184,6 +188,7 @@ export function storedFiles(
     adapters: (tempDir) => daemonAdapters(root, policy, tempDir),
     ...(runners === undefined ? {} : { runners }),
     note,
+    ...(rerunFailures ? { rerunFailures } : {}),
   });
 }
 

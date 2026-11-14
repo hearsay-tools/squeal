@@ -1,11 +1,11 @@
 /*
  * Spec 020 D1 (row 020-05): the arguments of `squeal code --base`. D8 adds
  * `--exceptions` (row 020-09), D13.2 `--parts` (row 020-08b), D14.1
- * `--group` (row 020-15a).
+ * `--group` (row 020-15a), row 020-60 `--rerun-stored-failures`.
  */
 
 export const CODE_GATE_USAGE =
-  "squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
+  "squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--rerun-stored-failures] [--json]";
 
 /** D3.4: the one budget over every run, in seconds. */
 export const DEFAULT_BUDGET_SECONDS = 600;
@@ -22,6 +22,11 @@ export interface GateArgs {
   readonly parts?: readonly string[];
   /** D14.1: the check groups `--group` adds to the scope; absent without `--group`. */
   readonly groups?: readonly string[];
+  /**
+   * Row 020-60 (#200, #214): each selected file the stores give a failure
+   * runs once more; absent without `--rerun-stored-failures`.
+   */
+  readonly rerunStoredFailures?: true;
 }
 
 /** `--flag=value` as the flag and its value; any other argument as itself. */
@@ -36,6 +41,7 @@ interface Draft {
   budget: number | null;
   exceptions: string | null;
   json: boolean;
+  rerunStored: boolean;
   readonly paths: string[];
   readonly tests: string[];
   readonly parts: string[];
@@ -106,6 +112,7 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     budget: null,
     exceptions: null,
     json: false,
+    rerunStored: false,
     paths: [],
     tests: [],
     parts: [],
@@ -124,6 +131,7 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
         error: `--base does not combine with ${flag}: each chooses the functions another way`,
       };
     } else if (arg === "--json") draft.json = true;
+    else if (arg === "--rerun-stored-failures") draft.rerunStored = true;
     else if (take !== undefined) {
       const taken =
         inline === undefined
@@ -135,7 +143,7 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
     else draft.paths.push(arg);
   }
-  const { ref, budget, exceptions, json, paths, tests, parts, groups } = draft;
+  const { ref, budget, exceptions, json, rerunStored, paths, tests, parts, groups } = draft;
   if (ref === null) return { error: "--base names no ref" };
   const budgetSeconds = budget ?? DEFAULT_BUDGET_SECONDS;
   return {
@@ -147,5 +155,6 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     ...(exceptions === null ? {} : { exceptions }),
     ...(parts.length === 0 ? {} : { parts }),
     ...(groups.length === 0 ? {} : { groups }),
+    ...(rerunStored ? { rerunStoredFailures: true as const } : {}),
   };
 }
