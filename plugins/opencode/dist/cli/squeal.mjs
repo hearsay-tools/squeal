@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.484";
+  if (true) return "0.1.485";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4798,12 +4798,12 @@ function judgeFunction(input, policy) {
   const crap = input.coverage === null ? null : crapScore(input.complexity, input.coverage.share);
   const completeness = completenessOf(input, crap);
   const evidence = evidenceOf(input, completeness, crap, policy);
-  const measures = {
+  const measures2 = {
     crap: evidence.state === "pass" ? "pass" : evidence.state === "violation" ? "fail" : unproven(evidence.gap),
     uncovered: uncoveredOf(input, evidence)
   };
   const state = over ? VIOLATION : leftOutOf(input, evidence);
-  return { ...state, evidence, completeness, crap, measures };
+  return { ...state, evidence, completeness, crap, measures: measures2 };
 }
 var UNRUN_GAPS, UNRUN, PASS, VIOLATION, SKIPPED, incomplete, unproven;
 var init_rule = __esm({
@@ -5132,9 +5132,9 @@ var init_seed = __esm({
         const { store, worktreeId, revision } = input;
         const paths = files5.map((f) => f.path);
         const now = new Map(store.files.list(worktreeId, paths).map((f) => [f.path, f]));
-        const { measures, excluded } = this.#checks;
+        const { measures: measures2, excluded } = this.#checks;
         const known3 = new Set(
-          this.#again ? [] : measures.flatMap(
+          this.#again ? [] : measures2.flatMap(
             (measure2) => store.states.list(worktreeId, { measure: measure2, paths }).map((s) => `${measure2}\0${functionKey(s.check)}\0${s.check.path}`)
           )
         );
@@ -5147,7 +5147,7 @@ var init_seed = __esm({
           this.#had.delete(path);
           if (file === void 0 || excluded(path)) continue;
           for (const fn of chosen) {
-            for (const measure2 of measures) {
+            for (const measure2 of measures2) {
               if (known3.has(`${measure2}\0${functionKey(fn)}\0${path}`)) continue;
               states.push({
                 worktreeId,
@@ -5213,8 +5213,8 @@ function coverageChecks(policy) {
     children: policy.coverage.children
   };
 }
-function checksField(measures) {
-  return measures.length === COVERAGE_MEASURES.length ? {} : { checks: measures };
+function checksField(measures2) {
+  return measures2.length === COVERAGE_MEASURES.length ? {} : { checks: measures2 };
 }
 function sameChecks(a, b) {
   return JSON.stringify([a.measures, a.exclude]) === JSON.stringify([b.measures, b.exclude]);
@@ -68826,9 +68826,9 @@ function writeJudgement(input, judged2, brought) {
     store.states.edits(worktreeId, "complexity", paths).filter((e) => e.revision > (brought.get(e.check.path) ?? -1)).map((e) => [`${e.check.path}\0${functionKey(e.check)}`, e])
   );
   const { revision, threshold } = input;
-  const { measures } = input.checks ?? ALL_CHECKS;
+  const { measures: measures2 } = input.checks ?? ALL_CHECKS;
   const { states, transitions, edited } = judgeFiles(
-    { worktreeId, revision, threshold, at: input.now(), prior, edits, measures },
+    { worktreeId, revision, threshold, at: input.now(), prior, edits, measures: measures2 },
     judged2
   );
   store.states.upsertMany(states);
@@ -74481,14 +74481,14 @@ function withCode2(source2, fn) {
 init_failed();
 init_too_big();
 init_compare();
-function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
+function toldOver(store, worktreeId, consumers, measures2 = ["complexity"]) {
   const told3 = new Set(
     consumers.flatMap(
-      (c) => store.views.list(c).filter((v) => measures.includes(v.measure) && v.told !== "count").map(codeKey)
+      (c) => store.views.list(c).filter((v) => measures2.includes(v.measure) && v.told !== "count").map(codeKey)
     )
   );
   if (told3.size === 0) return [];
-  return measures.flatMap(
+  return measures2.flatMap(
     (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told3.has(codeKey(s)))
   );
 }
@@ -74648,8 +74648,8 @@ function toldTo(store, worktreeId, shell) {
   if (own.length > 0) return { consumers: own, scope: "session" };
   return registered2.length === 0 ? null : { consumers: registered2, scope: "worktree" };
 }
-function wentOverSince(code, worktreeId, since, measures = ["complexity"]) {
-  return measures.flatMap(
+function wentOverSince(code, worktreeId, since, measures2 = ["complexity"]) {
+  return measures2.flatMap(
     (measure2) => code.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => {
       const last = lastTransition(code, worktreeId, s.check, measure2);
       return last?.to === "fail" && isOwn(since, last.revision);
@@ -87444,6 +87444,7 @@ init_git_layout();
 init_git_index();
 init_closure();
 init_reverse_index();
+init_load();
 init_runtime();
 import { mkdtempSync as mkdtempSync6, rmSync as rmSync15 } from "node:fs";
 import { tmpdir as tmpdir6 } from "node:os";
@@ -87558,6 +87559,19 @@ init_text();
 import { availableParallelism as availableParallelism5 } from "node:os";
 
 // src/core/code/gate/estimate.ts
+init_load();
+function loadFactor(load) {
+  const per = load === void 0 ? null : perCpu(load);
+  if (per === null) return null;
+  const factor = Math.round(per * 100) / 100;
+  return factor > 1 ? factor : null;
+}
+function scaleEstimate(estimate, factor) {
+  const { seconds: seconds5 } = estimate;
+  if (factor === null || seconds5 === null) return estimate;
+  const load = { perCpu: factor, unscaled: seconds5 };
+  return { ...estimate, seconds: Math.ceil(seconds5 * factor), load };
+}
 function median(values) {
   if (values.length === 0) return null;
   const sorted3 = [...values].sort((a, b) => a - b);
@@ -87601,9 +87615,9 @@ function estimateAll(runners2) {
   return { seconds: runSeconds(each), known: stored3.length };
 }
 function fitBudget(run7, budget2) {
-  const { seconds: seconds5, known: known3 } = run7;
+  const { seconds: seconds5, known: known3, load } = run7;
   const { leftSeconds } = budget2;
-  const fit = { leftSeconds, seconds: seconds5, known: known3 };
+  const fit = { leftSeconds, seconds: seconds5, known: known3, ...load === void 0 ? {} : { load } };
   if (seconds5 === null || seconds5 <= leftSeconds) return fit;
   const spent = Math.max(0, budget2.budgetSeconds - leftSeconds);
   const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds5) / 60) * 60;
@@ -87684,11 +87698,12 @@ function orderRuns(picked, known3, context) {
   }
   const runners2 = [...groups3].map(([runner, of]) => ({ runner, groups: of }));
   const kinds = runnerOrder(runners2);
+  const factor = loadFactor(context.load);
   const estimates = kinds.flatMap((kind) => {
     const of = groups3.get(kind) ?? [];
-    return of.length === 0 ? [] : [estimateRun(kind, of)];
+    return of.length === 0 ? [] : [scaleEstimate(estimateRun(kind, of), factor)];
   });
-  const whole = estimateAll(runners2.filter((r) => r.groups.length > 0));
+  const whole = scaleEstimate(estimateAll(runners2.filter((r) => r.groups.length > 0)), factor);
   return {
     runs: kinds.flatMap((kind) => runs.filter((r) => r.pick.kind === kind)),
     estimates,
@@ -88338,12 +88353,85 @@ function tallyScope(scope2) {
   };
 }
 
+// src/core/code/gate/setup-selection.ts
+init_compare();
+function setupFilesOf(environment) {
+  let config;
+  try {
+    config = JSON.parse(environment.resolvedConfig);
+  } catch {
+    return [];
+  }
+  if (typeof config !== "object" || config === null || !("setupFiles" in config)) return [];
+  const { setupFiles: setupFiles2 } = config;
+  if (!Array.isArray(setupFiles2)) return [];
+  return setupFiles2.filter(
+    (file) => typeof file === "string" && file !== "" && !file.startsWith("/") && !file.startsWith("../") && !/^[A-Za-z]:/.test(file)
+  );
+}
+async function projectInputs2(picked) {
+  const inputs2 = [];
+  for (const { kind, adapter, run: run7 } of picked) {
+    if (run7.length === 0) continue;
+    const environments2 = await Promise.resolve().then(() => adapter.environment()).catch(() => []);
+    for (const environment of environments2) {
+      inputs2.push({
+        runner: kind,
+        project: environment.project,
+        files: new Set(environment.files),
+        setupFiles: new Set(setupFilesOf(environment)),
+        selected: run7.filter((ref3) => ref3.project === environment.project)
+      });
+    }
+  }
+  return inputs2;
+}
+function loadedSetupFiles(inputs2, loaders) {
+  const loaded = /* @__PURE__ */ new Set();
+  for (const { setupFiles: setupFiles2, selected: selected2 } of inputs2) {
+    for (const path of setupFiles2) {
+      const blob = loaders.blob(path);
+      const measuredBy = (ref3) => loaders.planned(ref3) || measures(loaders.known.get(ref3), path, blob);
+      if (selected2.some(measuredBy)) loaded.add(path);
+    }
+  }
+  return loaded;
+}
+function measures(evidence, path, blob) {
+  const record2 = evidence?.completed === true ? evidence.record : null;
+  if (record2 === null || blob === void 0 || record2.unread.includes(path)) return false;
+  return record2.sources.some((source2) => source2.path === path && source2.blob === blob);
+}
+function wholeProjects(inputs2, changed2, known3) {
+  const runners2 = [...new Set(inputs2.map((i3) => i3.runner))];
+  return runners2.flatMap((runner) => {
+    const hit = inputs2.filter(
+      (i3) => i3.runner === runner && i3.selected.length > 0 && changed2.some((p) => i3.files.has(p))
+    );
+    if (hit.length === 0) return [];
+    const paths = changed2.filter((p) => hit.some((i3) => i3.files.has(p)));
+    const setupFiles2 = paths.filter((p) => hit.some((i3) => i3.setupFiles.has(p)));
+    const selected2 = [...new Set(hit.flatMap((i3) => i3.selected))];
+    const projects2 = [...new Set(hit.map((i3) => i3.project))].sort(compare);
+    return [
+      {
+        runner,
+        paths: [...setupFiles2, ...paths.filter((p) => !setupFiles2.includes(p))],
+        setupFiles: setupFiles2,
+        projects: projects2,
+        files: selected2.length,
+        run: selected2.filter((ref3) => !known3.has(ref3)).length
+      }
+    ];
+  });
+}
+
 // src/core/code/gate/prerun.ts
 async function tellSelection(tell, picked, changed2, context) {
   if (tell === void 0) return;
-  const { scope: scope2, tally: tally2, known: known3, excluded = () => false } = context;
+  const { scope: scope2, tally: tally2, known: known3, planned, excluded = () => false } = context;
   const leftOut3 = tally2?.evidence([]).leftOut ?? [];
-  const summary = await summarize(picked, changed2, { scope: scope2, leftOut: leftOut3, known: known3, excluded });
+  const summary = await summarize(picked, changed2, { scope: scope2, leftOut: leftOut3, known: known3, planned, excluded });
   tell(context.children === true ? withChildren2(summary) : summary);
 }
 function withChildren2(summary) {
@@ -88374,8 +88462,24 @@ async function summarize(picked, changed2, context) {
   const candidates = [...new Set(changed2.functions.map((f) => f.path))].filter(
     (path) => !context.excluded(path)
   );
-  const unloaded = await unloadedPaths(picked, candidates);
-  return { runners: runners2, leftOut: context.leftOut, setups, unloaded };
+  const inputs2 = await projectInputs2(picked);
+  const blobs = new Map(changed2.functions.map((f) => [f.path, f.blob]));
+  const loaders = {
+    planned: context.planned,
+    known: known3,
+    blob: (path) => blobs.get(path)
+  };
+  const setupFiles2 = loadedSetupFiles(inputs2, loaders);
+  const unloaded = (await unloadedPaths(picked, candidates)).filter((p) => !setupFiles2.has(p));
+  const whole = wholeProjects(inputs2, changed2.paths, known3);
+  const { leftOut: leftOut3 } = context;
+  return {
+    runners: runners2,
+    leftOut: leftOut3,
+    setups,
+    unloaded,
+    ...whole.length === 0 ? {} : { wholeProjects: whole }
+  };
 }
 function byGroup(scope2, runner, run7) {
   if (scope2 === void 0) return [];
@@ -88605,11 +88709,14 @@ async function collectEvidence(cwd, changed2, options) {
     await openRunners(options.adapters, root, policy, opening, runners2);
     const picked = await select(runners2, { paths, ...options }, tally2);
     const known3 = await storedOf2(picked, options);
-    const order = orderRuns(picked, known3, { durations: durations2, tierSize: policy.runner.tierSize });
+    const load = (options.hostLoad ?? hostLoad)();
+    const order = orderRuns(picked, known3, { durations: durations2, tierSize: policy.runner.tierSize, load });
     const inOrder2 = order.runs.map((run7) => run7.pick);
-    await tellSelection(options.selected, inOrder2, changed2, { ...options, tally: tally2, known: known3 });
-    const gaps = tellClosures(lists, picked, note);
     const { runs, told: told3 } = await fitRuns(order, changed2, { ...options, deadline });
+    const scheduled = new Set(runs.flatMap((run7) => run7.files).map(testFileId));
+    const planned = (ref3) => scheduled.has(testFileId(ref3));
+    await tellSelection(options.selected, inOrder2, changed2, { ...options, tally: tally2, known: known3, planned });
+    const gaps = tellClosures(lists, picked, note);
     const estimates = tellEstimates(options.estimated, order.estimates, told3);
     const blobs = /* @__PURE__ */ new Map();
     const mapping = { format: format2, blobs, provider, children, note };
@@ -88895,11 +89002,13 @@ function runsOf(evidence, durationsMs) {
     ];
   });
 }
-var withoutRunner = ({ seconds: seconds5, files: files5, known: known3, width }) => ({
+var withoutRunner = ({ seconds: seconds5, files: files5, known: known3, width, load }) => ({
   seconds: seconds5,
   files: files5,
   known: known3,
-  width
+  width,
+  // Row 020-57: the host's load scaled `seconds`; `load.unscaled` keeps the stored durations' own.
+  ...load === void 0 ? {} : { load }
 });
 var unfinished2 = (f) => !f.completed && f.notPrepared !== true && f.overBudget !== true;
 function preparesOf2(evidence) {
@@ -88958,7 +89067,7 @@ function pathEvidence(counted3, path, blob, files5) {
   const joined2 = counted3 === void 0 || measured3.length === 0 ? null : joinCoverage(counted3.functions, sources, missing2 !== null);
   return { expected, measured: measured3, missing: missing2, skipped: skipped2, joined: joined2 };
 }
-function report2(fn, measures, judgement) {
+function report2(fn, measures2, judgement) {
   const { count: count3 } = fn;
   return {
     path: fn.path,
@@ -88968,7 +89077,7 @@ function report2(fn, measures, judgement) {
     bodyHash: count3.bodyHash,
     change: fn.change,
     complexity: count3.complexity,
-    ...measures,
+    ...measures2,
     ...judgement
   };
 }
@@ -89025,12 +89134,12 @@ function judge(fn, ctx) {
     ctx.policy
   );
   const leftOut3 = left.length === 0 ? {} : { leftOut: left };
-  const measures = {
+  const measures2 = {
     coverage: coverage === null ? null : { lines: coverage.lines, covered: coverage.covered, share: coverage.share },
     crap: out2.crap,
     loaders: { expected: ev.expected, measured: ev.measured, ...leftOut3 }
   };
-  return { row: report2(fn, measures, stateOf2(out2)), evidence: out2.evidence, gap: out2.completeness };
+  return { row: report2(fn, measures2, stateOf2(out2)), evidence: out2.evidence, gap: out2.completeness };
 }
 function inError(fn) {
   const notCounted = gapOf("not-counted");
@@ -89739,28 +89848,57 @@ function preRunText(summary, changed2) {
 `).join("");
 }
 function preRunOptions(changed2, policy, stderr) {
+  let whole = [];
   return {
-    selected: (summary) => stderr(preRunText(summary, changed2)),
-    excluded: createInputMatcher(policy.coverageExclude)
+    selected: (summary) => {
+      whole = summary.wholeProjects ?? [];
+      stderr(preRunText(summary, changed2));
+    },
+    excluded: createInputMatcher(policy.coverageExclude),
+    estimated: (estimates, left, budget2) => stderr(wholeProjectText(whole, budget2.fit) + estimateText(estimates, left, budget2))
   };
+}
+function wholeProjectText(whole, fit) {
+  return whole.map((w2) => `squeal code: ${wholeProjectLine(w2, fit)}
+`).join("");
+}
+function wholeProjectLine(whole, fit) {
+  const { runner, paths, setupFiles: setupFiles2, projects: projects2, files: files5, run: run7 } = whole;
+  const name3 = RUNNER_NAMES[runner];
+  const named4 = projects2.filter((p) => p !== "").map((p) => JSON.stringify(p));
+  const of = named4.length === 0 ? `every ${name3} test file` : `every test file of ${name3} ${named4.length === 1 ? "project" : "projects"} ${listPaths(named4, NAMED2)}`;
+  const marked4 = paths.map((p) => setupFiles2.includes(p) ? `${p} (setupFiles)` : p);
+  const all2 = files5 === 1 ? "its 1 test file is" : `all ${files5} of them are`;
+  const here = run7 === files5 ? "" : `, ${run7 === 0 ? "none" : run7} to run here`;
+  return `${of} depends on ${listPaths(marked4, NAMED2)}, so ${all2} selected${here}; ${wholeRunText(fit)}`;
+}
+function wholeRunText({ seconds: seconds5, leftSeconds, load }) {
+  if (seconds5 === null) return "the whole run's time is unknown: no stored duration";
+  const at2 = load === void 0 ? "" : " at the host's load";
+  const where3 = seconds5 > leftSeconds ? "over" : "within";
+  return `the whole run takes about ${seconds5} s${at2}, ${where3} the ${leftSeconds} s left of the budget`;
 }
 var WAYS_OUT = "To fit it: a longer --timeout, paths that narrow the changed files, fewer check groups (gate.groups at the base, --group), or CI's results with --parts. The run starts anyway.";
 function estimateText(estimates, leftSeconds, budget2) {
-  const lines = estimates.map(({ runner, seconds: seconds5, files: files5, known: known3, width }) => {
+  const lines = estimates.map(({ runner, seconds: seconds5, files: files5, known: known3, width, load }) => {
     const name3 = RUNNER_NAMES[runner];
     const run7 = `${plural(files5, "test file")} to run here, up to ${width} at once`;
     if (seconds5 === null) return `${name3}: ${run7}; no stored duration, so the time is unknown`;
     const from = known3 < files5 ? `the stored durations of ${known3} (the others at their median)` : files5 === 1 ? "its stored duration" : "their stored durations";
     const over = seconds5 > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name3}: ${run7}: about ${seconds5} s from ${from}${over}`;
+    return `${name3}: ${run7}: about ${seconds5} s from ${from}${scaledText(load)}${over}`;
   });
   const fit = budget2 === void 0 ? null : budgetLine(budget2);
   return [...lines, ...fit === null ? [] : [fit]].map((line) => `squeal code: ${line}
 `).join("");
 }
+function scaledText(load) {
+  if (load === void 0) return "";
+  return `, scaled by the host's load (${load.unscaled} s times ${load.perCpu}, its one-minute load per CPU)`;
+}
 function budgetLine({ fit, rerun, early }) {
   if (rerun === void 0 || fit.seconds === null) return null;
-  const all2 = `about ${fit.seconds} s in all`;
+  const all2 = `about ${fit.seconds} s in all${fit.load === void 0 ? "" : " at the host's load"}`;
   if (early === void 0 || early.overBudget.length === 0) {
     return `${all2}, over the ${fit.leftSeconds} s left of the budget. A rerun that fits: ${rerun.command}`;
   }
@@ -89792,10 +89930,7 @@ function rerunCommand(args2, squeal) {
   };
 }
 function estimateOptions(args2, io) {
-  return {
-    estimated: (estimates, left, budget2) => io.stderr(estimateText(estimates, left, budget2)),
-    rerun: rerunCommand(args2, statusCommand(io.env ?? process.env))
-  };
+  return { rerun: rerunCommand(args2, statusCommand(io.env ?? process.env)) };
 }
 
 // src/cli/code-gate-progress.ts
@@ -91417,6 +91552,7 @@ Usage: ${CODE_GATE_USAGE}
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...durations2 === null ? {} : { durations: durations2.of },
       // Rows 020-45, 020-46: over what is left, one rerun command with a fitted --timeout.
+      // Row 020-57: the estimate lines themselves, with the setup-selection line, come from preRunOptions.
       ...estimateOptions(parsed3, io),
       // Row 020-43: a file still running past its estimate, named once on stderr.
       overran: (file) => io.stderr(overrunText(file)),
