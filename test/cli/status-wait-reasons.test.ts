@@ -5,9 +5,9 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { check, state } from "../status/helpers.js";
@@ -245,7 +245,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
       trigger: "watch",
       changes: [{ path: "vitest.config.ts", oldHash: "a", newHash: "b" }],
     });
-    store.meta.set(refinedMetaKey(repo.mainId), "4");
+    recordRefinedApplied(store, repo.mainId, 4);
 
     const { text } = await timedOut(repo.main, [A]);
 

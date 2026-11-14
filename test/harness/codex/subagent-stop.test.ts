@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { recordRefinedApplied } from "../../../src/core/scheduler/refined.js";
 import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
 import type { PolicyFile } from "../../../src/core/types/policy.js";
-import { refinedMetaKey } from "../../../src/core/types/scheduler.js";
 import { runCodexHook } from "../../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { rootKey, sessionRootFiles } from "../../../src/harness/shared/session-root.js";
@@ -102,11 +102,8 @@ describe("Codex SubagentStop under stop.requireSlowSuite (row 019-05, spec 004 D
     const r = await withSubagent({ requireSlowSuite: true, waitMs: 1_000 }, deps, true);
     const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
     // The runner has not looked at this revision yet, so fast work is pending.
-    r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision - 1));
-    const refined = setTimeout(
-      () => r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision)),
-      300,
-    );
+    recordRefinedApplied(r.store, r.worktreeId, revision - 1);
+    const refined = setTimeout(() => recordRefinedApplied(r.store, r.worktreeId, revision), 300);
     try {
       const started = performance.now();
       const out = decision(await subagentStop(r));

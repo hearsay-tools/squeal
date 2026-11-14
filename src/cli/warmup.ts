@@ -2,6 +2,7 @@ import { loadPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
 import { findWorktreeRoot, worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
+import { readCheckpointProgress } from "../core/scheduler/checkpoint-progress.js";
 import { durationOf } from "../core/scheduler/files.js";
 import { type IgnoredReads, readIgnoredReads } from "../core/scheduler/ignored-reads.js";
 import { slowFiles } from "../core/slow/classify.js";
@@ -10,7 +11,6 @@ import { withStatusStore } from "../core/status/open.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import { checkpointMetaKey, parseCheckpointProgress } from "../core/types/scheduler.js";
 import type { Store } from "../core/types/store.js";
 import type { CliIo } from "./main.js";
 import { runCommand } from "./run.js";
@@ -248,7 +248,7 @@ async function reportProgress(
     await new Promise((resolve) => setTimeout(resolve, PROGRESS_POLL_MS));
     if (!running()) return;
     const line = withStatusStore(root, {}, ({ store }) => {
-      const open = parseCheckpointProgress(store.meta.get(checkpointMetaKey(id)));
+      const open = readCheckpointProgress(store, id);
       if (open === null) return null;
       const activity = readSlowActivity(store, id);
       const queued =

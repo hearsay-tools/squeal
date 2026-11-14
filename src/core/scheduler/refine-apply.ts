@@ -2,11 +2,11 @@ import { type BusyWaits, retryWhileBusy } from "../store/busy.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
-import { refinedMetaKey } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
 import { importsKeyed, importsWaiting } from "./imports-waiting.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
+import { recordRefinedFailed } from "./refined.js";
 import { applyRunnerPart, type RunnerPart } from "./refinement.js";
 
 /** The daemon's busy waits, for the runner work (`ApplyHost.busy`). */
@@ -101,11 +101,7 @@ export async function recordRefined(
 ): Promise<void> {
   const { store, worktreeId } = context;
   const write = async () =>
-    store.transaction(() => {
-      const key = refinedMetaKey(worktreeId);
-      const previous = Number(store.meta.get(key) ?? Number.NaN);
-      if (!(previous >= revision)) store.meta.set(key, String(revision));
-    });
+    store.transaction(() => recordRefinedFailed(store, worktreeId, revision));
   const busy = host.busy?.();
   if (busy === undefined) return write();
   await retryWhileBusy(write, {

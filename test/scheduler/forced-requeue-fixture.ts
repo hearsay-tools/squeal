@@ -1,8 +1,8 @@
 import { lstatSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import type { RelativePath } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/scheduler.js";
 import type { CandidateBatch } from "../../src/core/types/watcher.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore } from "./repo.js";
@@ -70,8 +70,7 @@ export const phaseOf = (h: Harness, path: string) =>
   h.store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === path)?.pending;
 
 /** How many requested files the open checkpoint counts done, as status reads it; none open, `null`. */
-export const doneOf = (h: Harness) =>
-  parseCheckpointProgress(h.store.meta.get(checkpointMetaKey(h.worktreeId)))?.done ?? null;
+export const doneOf = (h: Harness) => readCheckpointProgress(h.store, h.worktreeId)?.done ?? null;
 
 /**
  * A watch batch of `paths` as they are on disk, stat'ed as the fs hasher

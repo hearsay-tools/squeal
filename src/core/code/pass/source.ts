@@ -1,5 +1,5 @@
+import { readHeadMove } from "../../scheduler/head-move-record.js";
 import type { CommitSha, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
-import { headMoveMetaKey, parseHeadMove } from "../../types/scheduler.js";
 import type { Store } from "../../types/store.js";
 import type { PassSource } from "./types.js";
 
@@ -19,7 +19,7 @@ export function mainStoreSource(
    * revision 0, the daemon's first look), else the revision's own.
    */
   const headAt = (after: RevisionNumber): CommitSha | undefined => {
-    const moved = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
+    const moved = readHeadMove(store, worktreeId);
     if (moved !== null && moved.revision === after) return moved.head;
     return after > 0 ? store.revisions.get(worktreeId, after)?.head : undefined;
   };

@@ -2,13 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
+import { recordInstallWait } from "../../src/core/scheduler/install-wait.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import { daemonIncarnation } from "../../src/core/types/daemon.js";
-import {
-  awaitingInstallMetaKey,
-  awaitingInstallValue,
-  refinedMetaKey,
-} from "../../src/core/types/scheduler.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
 import { timed } from "./wait-clock.js";
@@ -52,7 +49,7 @@ function fresh(mode: "edit" | "fallback", refined: null | 0 = null) {
     registeredAt: 1,
     daemon: LIVE,
   });
-  if (refined !== null) store.meta.set(refinedMetaKey(repo.mainId), String(refined));
+  if (refined !== null) recordRefinedApplied(store, repo.mainId, refined);
   const incarnation = daemonIncarnation(LIVE);
   store.transaction(() => recordMoves(store, repo.mainId, [], [], 0, NOW, { writer: incarnation }));
   const current: SyncState =
@@ -136,7 +133,7 @@ describe.each(["edit", "fallback"] as const)("status --wait initial listing (%s)
     const { repo, store, options, checkpoint } = fresh(mode);
     checkpoint();
     store.checkpoints.finish("empty-baseline", "completed", NOW);
-    store.meta.set(awaitingInstallMetaKey(repo.mainId), awaitingInstallValue(["."]));
+    recordInstallWait(store, repo.mainId, ["."], "npm ci");
 
     const wait = await waitForStatus(repo.main, { ...options, timeoutMs: 40 });
 

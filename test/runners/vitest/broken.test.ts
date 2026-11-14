@@ -3,7 +3,8 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SerializedError } from "vitest/node";
 import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
-import { type DaemonNote, notesMetaKey } from "../../../src/core/types/scheduler.js";
+import type { DaemonNote } from "../../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../../src/core/types/store.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { isRunnerFailure } from "../../../src/runners/vitest/broken.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
@@ -210,7 +211,9 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     );
     // The store records the crash; a forced re-run keeps the earlier results current (D5).
     expect([...crashed].map((id) => store.runs.get(id)?.end)).toEqual(["crashed"]);
-    const notes = JSON.parse(store.meta.get(notesMetaKey(a.worktreeId)) ?? "[]") as DaemonNote[];
+    const notes = JSON.parse(
+      store.meta.get(worktreeMetaKey("notes", a.worktreeId)) ?? "[]",
+    ) as DaemonNote[];
     // One note per broken instance, written by the adapter alone.
     const brokenNotes = notes.filter((n) =>
       n.text.startsWith("the Vitest instance failed to load modules and is recreated: "),

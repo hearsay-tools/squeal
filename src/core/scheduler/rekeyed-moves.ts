@@ -2,9 +2,10 @@ import { isRecord } from "../fs/json.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
-import { type RekeyedTestFile, refinedMetaKey } from "../types/scheduler.js";
+import type { RekeyedTestFile } from "../types/scheduler.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
+import { isRefined } from "./refined.js";
 import type { RekeyedMark } from "./rekeyed-record.js";
 
 /*
@@ -201,12 +202,6 @@ export function movesSeq(store: Store, worktreeId: WorktreeId): number | null {
   return readMoves(store, worktreeId)?.seq ?? null;
 }
 
-/** The refined revision, `null` when none was recorded (a store before the runner part had one). */
-function refinedRevision(store: Store, worktreeId: WorktreeId): RevisionNumber | null {
-  const refined = Number(store.meta.get(refinedMetaKey(worktreeId)) ?? Number.NaN);
-  return Number.isInteger(refined) ? refined : null;
-}
-
 /**
  * Records one commit's `marks` and forgets `removed` (`testFileId`s), at
  * `now`, while the worktree's revision is `revision`. Call inside the
@@ -277,8 +272,7 @@ function nextMoves(
     }
   }
   for (const mark of marks) changed = apply(moves, mark, seq, now) || changed;
-  const refined = refinedRevision(store, worktreeId);
-  const caughtUpAt = refined === null || refined >= revision ? (moves.caughtUpAt ?? now) : null;
+  const caughtUpAt = isRefined(store, worktreeId, revision) ? (moves.caughtUpAt ?? now) : null;
   if (caughtUpAt !== moves.caughtUpAt) {
     moves.caughtUpAt = caughtUpAt;
     changed = true;
@@ -360,8 +354,7 @@ export function answerMoves(
   if (moves === null || !trusted(store, worktreeId, moves, sinceSeq, incarnation)) {
     return { state: "incomplete" };
   }
-  const refined = refinedRevision(store, worktreeId);
-  if (refined !== null && refined < upTo) return { state: "refining" };
+  if (!isRefined(store, worktreeId, upTo)) return { state: "refining" };
   const rows = store.testFileKeys.list(worktreeId);
   const refs = new Map(rows.map((row) => [testFileId(row.testFile), row.testFile]));
   const rekeyed: RekeyedTestFile[] = [];

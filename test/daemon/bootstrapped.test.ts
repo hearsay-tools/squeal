@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import { lastScannedBy } from "../../src/core/daemon/bootstrapped.js";
 import { daemonSuite, readNotes, SLOW, waitFor, waitReady, withStore } from "./helpers.js";
 
 /*
@@ -21,7 +21,7 @@ describe("the bootstrap marker", SLOW, () => {
         ? { startedAt: null, marker: null }
         : withStore(repo, (store) => ({
             startedAt: store.worktrees.get(repo.worktreeId)?.daemon?.startedAt ?? null,
-            marker: store.meta.get(bootstrappedMetaKey(repo.worktreeId)),
+            marker: lastScannedBy(store, repo.worktreeId),
           }));
     const heartbeat = await waitFor(
       () => (read().startedAt === null ? null : Date.now()),
@@ -35,7 +35,7 @@ describe("the bootstrap marker", SLOW, () => {
     );
     await waitReady(repo, spawned);
     const { startedAt, marker } = read();
-    expect(marker).toBe(String(startedAt));
+    expect(marker).toBe(startedAt);
     // How long after a spawn a registration can carry the marker, printed for the report.
     console.log(
       `bootstrap marker: heartbeat ${heartbeat - spawnedAt} ms, marker ${scanned - spawnedAt} ms after spawn`,

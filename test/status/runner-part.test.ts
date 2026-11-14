@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { formatRegistration } from "../../src/core/delivery/format.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { isPending, readHeader } from "../../src/core/state/header.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { MAIN_AGENT } from "../../src/core/types/delivery.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";
@@ -41,7 +41,7 @@ function worktreeAt(revision: number, refined: number | null) {
       pending: null,
     },
   ]);
-  if (refined !== null) store.meta.set(refinedMetaKey(repo.mainId), String(refined));
+  if (refined !== null) recordRefinedApplied(store, repo.mainId, refined);
   return { repo, store };
 }
 

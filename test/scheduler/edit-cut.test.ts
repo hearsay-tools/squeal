@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notesMetaKey } from "../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import type { CatchUpFile } from "./catch-up-fixture.js";
 import {
   editAndRun,
@@ -126,7 +126,7 @@ describe("scheduler: an edit keeps its namesakes and the shortest direct importe
     const result = await editAndRun(side, A, C);
     // Task 011-116: the 4 shortest transitive files are an edit's work too, no longer catch-up.
     expectCut(result, [OWN, ...OTHERS, ...BARE, ...shortest4(far)], []);
-    const notes = side.store.meta.get(notesMetaKey(side.worktreeId)) ?? "";
+    const notes = side.store.meta.get(worktreeMetaKey("notes", side.worktreeId)) ?? "";
     expect(notes).toContain("abandoned");
   });
 });

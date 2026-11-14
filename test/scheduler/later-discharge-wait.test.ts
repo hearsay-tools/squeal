@@ -1,13 +1,13 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { readRefined } from "../../src/core/scheduler/refined.js";
 import {
   MOVES_GRACE_MS,
   MOVES_RETENTION_MS,
   recordMoves,
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
@@ -161,7 +161,7 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
         }
         releaseRefinement();
         if (c.prune === true) {
-          const refined = () => Number(h.store.meta.get(refinedMetaKey(h.worktreeId)));
+          const refined = () => readRefined(h.store, h.worktreeId) ?? 0;
           await expect.poll(refined, { timeout: 60_000 }).toBeGreaterThanOrEqual(upTo);
           await h.scheduler.idle();
           commit();

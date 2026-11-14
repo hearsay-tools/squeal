@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { describe as describeStop } from "../../src/core/daemon/terminate.js";
 import { appendNote } from "../../src/core/notes.js";
+import { writeCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
-import {
-  type CheckpointProgress,
-  checkpointMetaKey,
-  type StoppedProcesses,
-} from "../../src/core/types/scheduler.js";
+import type { CheckpointProgress, StoppedProcesses } from "../../src/core/types/scheduler.js";
 import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "./helpers.js";
@@ -65,7 +62,7 @@ function seedBaseline(repo: FakeRepo, store: Store, progress: Partial<Checkpoint
     total: 200,
     ...progress,
   };
-  store.meta.set(checkpointMetaKey(repo.mainId), JSON.stringify(value));
+  writeCheckpointProgress(store, repo.mainId, value);
   store.testFileKeys.upsertMany(
     Array.from({ length: 160 }, (_, i) => ({
       worktreeId: repo.mainId,

@@ -1,3 +1,4 @@
+import { scannedBy } from "../daemon/bootstrapped.js";
 import { isRecord } from "../fs/json.js";
 import { recordRegisteredKeys } from "../state/before-edits.js";
 import { readGitHead } from "../status/git-head.js";
@@ -8,7 +9,6 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "../types/common.js";
-import { bootstrappedMetaKey } from "../types/daemon.js";
 import type { Consumer } from "../types/delivery.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import { CONSUMER_EXPIRY_MS } from "../types/store-records.js";
@@ -109,8 +109,7 @@ export function scannedDaemon(
 ): EpochMs | null {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (!alive || daemon === null) return null;
-  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
-  return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
+  return scannedBy(store, worktreeId, daemon.startedAt) ? daemon.startedAt : null;
 }
 
 /**

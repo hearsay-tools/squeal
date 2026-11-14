@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { groupId } from "../../src/core/status/standing-groups.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { A, B, C, key, NOW, ref, repoWith } from "../cli/status-wait-fixture.js";
 
 /*
@@ -29,7 +29,7 @@ describe("a status group shows each file's yield (011-57)", () => {
   it("an unlisted revision: the promoted file whose run yields reads apart from the other", () => {
     const { repo, store } = repoWith([A, B]);
     const id = repo.mainId;
-    store.meta.set(refinedMetaKey(id), "3");
+    recordRefinedApplied(store, id, 3);
     key(store, id, C, "running");
     store.runs.start({
       id: "run-c",

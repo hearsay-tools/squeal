@@ -23,7 +23,6 @@ import type {
 } from "./daemon-writes.js";
 import type { TestFileRef } from "./keys.js";
 import type { NarrowRun } from "./scheduler.js";
-import { worktreeMetaKey } from "./store.js";
 import type { CheckpointLane, CheckpointRecord, DaemonRecord } from "./store-records.js";
 
 /*
@@ -609,16 +608,4 @@ export interface DaemonExit {
   /** Process exit code: `0` when another daemon serves or nothing is wrong, `1` when this one could not serve. */
   readonly code: 0 | 1;
   readonly message: string;
-}
-
-/**
- * `meta` key of a worktree's bootstrap marker: the `DaemonRecord.startedAt`
- * of the daemon that finished its start scan (`bootstrap`). The scan hashes
- * files it has no hash for without a revision, so an edit made before it
- * can be in no revision; a consumer registered while the marker matches the
- * live daemon may be told "none of the files changed here" while that daemon lives
- * (task 001-96, review wave 10c). No hook waits for it.
- */
-export function bootstrappedMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("daemonBootstrapped", worktreeId);
 }

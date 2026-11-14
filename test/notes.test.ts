@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { appendNote, NOTES_PER_TOPIC, readDaemonNotes, withNote } from "../src/core/notes.js";
 import { persistedNoteTexts } from "../src/core/scheduler/notes.js";
-import { type DaemonNote, MAX_PERSISTED_NOTES, notesMetaKey } from "../src/core/types/scheduler.js";
+import { type DaemonNote, MAX_PERSISTED_NOTES } from "../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../src/core/types/store.js";
 import { fakeCommonDir, open } from "./store/helpers.js";
 
 /*
@@ -16,7 +17,7 @@ describe("persisted notes", () => {
     appendNote(store, "wt-a", { at: 2, revision: 3, text: "second" });
     appendNote(store, "wt-b", { at: 3, revision: 1, text: "other" });
 
-    expect(notesMetaKey("wt-a")).toBe("notes.wt-a");
+    expect(worktreeMetaKey("notes", "wt-a")).toBe("notes.wt-a");
     expect(JSON.parse(store.meta.get("notes.wt-a") ?? "null")).toEqual([
       { at: 1, revision: null, text: "first" },
       { at: 2, revision: 3, text: "second" },
@@ -31,7 +32,9 @@ describe("persisted notes", () => {
     for (let i = 0; i < MAX_PERSISTED_NOTES + 5; i++) {
       appendNote(store, "wt", { at: i, revision: i, text: `note ${i}` });
     }
-    const notes = JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]") as DaemonNote[];
+    const notes = JSON.parse(
+      store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]",
+    ) as DaemonNote[];
     expect(MAX_PERSISTED_NOTES).toBe(20);
     expect(notes).toHaveLength(20);
     expect(notes[0]?.text).toBe("note 5");
@@ -41,9 +44,9 @@ describe("persisted notes", () => {
   it("read back a shutdown's incarnation, and drop one that is not a string (wave-13af B1)", () => {
     const store = open(fakeCommonDir());
     appendNote(store, "wt", { at: 1, revision: null, text: "stop", exitOf: "0.1.121@1#t" });
-    const raw = JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]") as unknown[];
+    const raw = JSON.parse(store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]") as unknown[];
     store.meta.set(
-      notesMetaKey("wt"),
+      worktreeMetaKey("notes", "wt"),
       JSON.stringify([...raw, { at: 2, revision: null, text: "x", exitOf: 7 }]),
     );
     expect(readDaemonNotes(store, "wt")).toEqual([
@@ -54,9 +57,9 @@ describe("persisted notes", () => {
 
   it("start a new list when the stored value is not a list", () => {
     const store = open(fakeCommonDir());
-    store.meta.set(notesMetaKey("wt"), "not json");
+    store.meta.set(worktreeMetaKey("notes", "wt"), "not json");
     appendNote(store, "wt", { at: 1, revision: null, text: "fresh" });
-    expect(JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]")).toEqual([
+    expect(JSON.parse(store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]")).toEqual([
       { at: 1, revision: null, text: "fresh" },
     ]);
   });
@@ -66,7 +69,7 @@ describe("persisted notes", () => {
     const esc = String.fromCharCode(27);
     const coloured = `runner closure of test/a.test.ts failed: ${esc}[31m[PARSE_ERROR] ${esc}[0mExpected ${esc}[1m;${esc}[22m`;
     appendNote(store, "wt", { at: 1, revision: 2, text: coloured });
-    expect(JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]")).toEqual([
+    expect(JSON.parse(store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]")).toEqual([
       {
         at: 1,
         revision: 2,
@@ -78,11 +81,11 @@ describe("persisted notes", () => {
   it("keep stored items as they are, which the read skips when malformed", () => {
     const store = open(fakeCommonDir());
     const foreign = { at: 1, revision: 1, text: "newer", severity: "info" };
-    store.meta.set(notesMetaKey("wt"), JSON.stringify([foreign, { at: "x" }]));
+    store.meta.set(worktreeMetaKey("notes", "wt"), JSON.stringify([foreign, { at: "x" }]));
     const note = { at: 2, revision: 2, text: "ours" };
     appendNote(store, "wt", note);
 
-    const stored = store.meta.get(notesMetaKey("wt"));
+    const stored = store.meta.get(worktreeMetaKey("notes", "wt"));
     expect(JSON.parse(stored ?? "[]")).toEqual([foreign, { at: "x" }, note]);
     expect(withNote(stored, note)).toEqual([foreign, { at: "x" }, note, note]);
     expect(readDaemonNotes(store, "wt")).toEqual([{ at: 1, revision: 1, text: "newer" }, note]);
@@ -119,14 +122,17 @@ describe("persisted notes with a topic (007-39)", () => {
     const store = open(fakeCommonDir());
     appendNote(store, "wt", missing);
     appendNote(store, "wt", ready);
-    expect(JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]")).toEqual([missing, ready]);
+    expect(JSON.parse(store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]")).toEqual([
+      missing,
+      ready,
+    ]);
     expect(readDaemonNotes(store, "wt")).toEqual([ready]);
   });
 
   it("leave an older store's notes, which have no topic, as they are", () => {
     const store = open(fakeCommonDir());
     const old = { at: 1, revision: null, text: "no Python environment" };
-    store.meta.set(notesMetaKey("wt"), JSON.stringify([old]));
+    store.meta.set(worktreeMetaKey("notes", "wt"), JSON.stringify([old]));
     appendNote(store, "wt", ready);
     expect(readDaemonNotes(store, "wt")).toEqual([old, ready]);
   });
@@ -159,7 +165,9 @@ describe("persisted notes with a topic (007-39)", () => {
     for (let i = 1; i <= 10; i++) {
       appendNote(store, "wt", i % 2 === 1 ? { ...missing, at: i } : { ...ready, at: i });
     }
-    const stored = JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]") as DaemonNote[];
+    const stored = JSON.parse(
+      store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]",
+    ) as DaemonNote[];
     expect(NOTES_PER_TOPIC).toBe(3);
     expect(stored).toEqual([
       unrelated,

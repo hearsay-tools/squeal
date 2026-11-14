@@ -15,16 +15,17 @@ import { changedPaths, committedBlobs } from "../commit/tree.js";
 import { resolveCommonDir } from "../fs/git-layout.js";
 import { gitHead } from "../status/git-head.js";
 import type { RelativePath } from "../types/common.js";
-import { type HeadMove, headMoveMetaKey, parseHeadMove } from "../types/scheduler.js";
+import type { HeadMove } from "../types/scheduler.js";
 import { checkIgnored } from "../watcher/git.js";
 import { askCommitGroups, askedTestFile, heldTestFile, testWaitEnded } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
+import { readHeadMove, writeHeadMove } from "./head-move-record.js";
 import type { Ledger } from "./ledger.js";
 
 /** The `HEAD` the store knew at the ledger's revision: a move recorded at or after it, else the revision's. */
 function knownHead(context: SchedulerContext, ledger: Ledger): string | null {
   const { number, head } = ledger.revision;
-  const recorded = parseHeadMove(context.store.meta.get(headMoveMetaKey(context.worktreeId)));
+  const recorded = readHeadMove(context.store, context.worktreeId);
   return recorded !== null && recorded.revision >= number ? recorded.head : head;
 }
 
@@ -39,7 +40,7 @@ export async function recordHeadMove(context: SchedulerContext, ledger: Ledger):
   if ((await gitHead(context.root)) === knownHead(context, ledger)) return;
   const seen = await context.head();
   const move: HeadMove = { head: seen.head, dirty: seen.dirty, revision: ledger.revision.number };
-  context.store.meta.set(headMoveMetaKey(context.worktreeId), JSON.stringify(move));
+  writeHeadMove(context.store, context.worktreeId, move);
 }
 
 /** Per scheduler, the last `HEAD` its commit reports looked at (`rememberHead`). */

@@ -1,15 +1,7 @@
-import type {
-  CommitSha,
-  EpochMs,
-  ProjectName,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "./common.js";
+import type { CommitSha, EpochMs, ProjectName, RelativePath, RevisionNumber } from "./common.js";
 import type { SyncAnswer } from "./daemon.js";
 import type { CheckKey, TestFileRef } from "./keys.js";
 import { type CancelCause, SLOW_LANE_PREFIX } from "./runner.js";
-import { worktreeMetaKey } from "./store.js";
 import type { CheckpointKind, CheckpointLane, CheckpointRecord } from "./store-records.js";
 import type { CandidateBatch } from "./watcher.js";
 
@@ -71,7 +63,7 @@ export interface SchedulerStatus {
  *
  * Spec 001 D7: status shows "the latest persisted daemon notes (runner
  * failures, dropped watcher events, tier pump stopped), kept bounded per
- * worktree in `meta`". Stored under `notesMetaKey(worktreeId)` as a JSON
+ * worktree in `meta`". Stored by `core/notes.ts` as a JSON
  * array, newest last, at most `MAX_PERSISTED_NOTES` entries.
  */
 export interface DaemonNote {
@@ -112,109 +104,14 @@ export interface StoppedProcesses {
 /** Notes kept per worktree; older ones are dropped. */
 export const MAX_PERSISTED_NOTES = 20;
 
-/** `meta` key of a worktree's persisted notes. */
-export function notesMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("notes", worktreeId);
-}
-
-/**
- * `meta` key of a worktree's refined revision: the newest revision whose
- * runner part (invalidation, test file listing, affected set, closures) the
- * daemon applied, as a decimal number. Written by the refinement's commit and
- * by the baseline at daemon start.
- *
- * Spec 001 D2 as amended: "The last revision whose refinement was applied is
- * recorded, and headers, status and every wait treat a revision ahead of it
- * as pending, so a test file added during a tier is never reported as nothing
- * pending." In `meta`, not on the `worktrees` row, so no schema migration is
- * needed and a store without the key reads as nothing pending.
- */
-export function refinedMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("refined", worktreeId);
-}
-
-/**
- * `meta` key that is `"true"` while the daemon of a worktree waits for an
- * install: the root `package.json` declares dependencies and the root has no
- * installed lockfile, so nothing is listed or run (spec 001 D5 as amended,
- * task 001-100, defect 18), or the JSON array of the workspaces still
- * missing theirs while others have one (task 001-107, review wave 11 N2).
- * Any other value, or none, is not waiting. The one source for that state:
- * headers, status and hooks read it here (`parseAwaitingInstall`).
- */
-export function awaitingInstallMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("awaitingInstall", worktreeId);
-}
-
-/**
- * `meta` key of the `HEAD` a reconciliation pass found moved with no file
- * change (a commit, a partial one among them), a JSON `HeadMove` (task
- * 001-406). A revision records `HEAD` only when files change, so this is how
- * headers and status learn of a commit before the next edit.
- */
-export function headMoveMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("headMove", worktreeId);
-}
-
-/** The `headMoveMetaKey` value: `HEAD` and the dirty flag, seen at `revision`. */
+/** A recorded head move (`scheduler/head-move-record.ts`): `HEAD` and the dirty flag, seen at `revision`. */
 export interface HeadMove {
   readonly head: CommitSha;
   readonly dirty: boolean;
   readonly revision: RevisionNumber;
 }
 
-/** A stored `HeadMove`, or `null` when `raw` is none. */
-export function parseHeadMove(raw: string | null): HeadMove | null {
-  if (raw === null) return null;
-  try {
-    const value = JSON.parse(raw) as Record<string, unknown>;
-    const { head, dirty, revision } = value;
-    if (head !== null && typeof head !== "string") return null;
-    if (typeof dirty !== "boolean" || !Number.isInteger(revision)) return null;
-    return { head, dirty, revision: revision as RevisionNumber };
-  } catch {
-    return null;
-  }
-}
-
-/** The `awaitingInstallMetaKey` value of a wait for `workspaces` (none named: `"true"`). */
-export function awaitingInstallValue(workspaces: readonly string[]): string {
-  return workspaces.length === 0 ? "true" : JSON.stringify(workspaces);
-}
-
-/**
- * `meta` key of the command that installs a waiting worktree's dependencies
- * (`npm ci`, …), named by the header's install sentence (task 001-410).
- * Written with `awaitingInstallMetaKey` and read only while it waits.
- */
-export function installCommandMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("installCommand", worktreeId);
-}
-
-/** The workspaces a stored wait names, or `null` when `raw` is not a wait. */
-export function parseAwaitingInstall(raw: string | null): readonly string[] | null {
-  if (raw === "true") return [];
-  if (raw === null || !raw.startsWith("[")) return null;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * `meta` key of a worktree's open checkpoint and its progress, a JSON
- * `CheckpointProgress` (task 001-217): status names a checkpoint in progress
- * from it. Written by the scheduler's checkpoint tracker as its files get
- * results; `""` once it ended. With `owed`, the daemon stopped before an
- * explicit checkpoint ended and the next daemon resumes it (task 001-219).
- */
-export function checkpointMetaKey(worktreeId: WorktreeId): string {
-  return worktreeMetaKey("checkpoint", worktreeId);
-}
-
-/** The open checkpoint of a worktree, as `checkpointMetaKey` holds it. */
+/** The open checkpoint of a worktree, as `scheduler/checkpoint-progress.ts` stores it. */
 export interface CheckpointProgress {
   /** The checkpoint whose id its results carry. */
   readonly id: string;
@@ -238,23 +135,6 @@ export interface OwedCheckpoint {
   readonly remaining: readonly TestFileRef[];
   /** Of `remaining`, those only a run of its own counts for (`run --all --force`). */
   readonly strict: readonly TestFileRef[];
-}
-
-/** The `checkpointMetaKey` value, or `null` when absent, ended or not readable. */
-export function parseCheckpointProgress(raw: string | null): CheckpointProgress | null {
-  if (raw === null || !raw.startsWith("{")) return null;
-  try {
-    const value = JSON.parse(raw) as Partial<CheckpointProgress>;
-    const numbers = [value.revision, value.startedAt, value.done, value.total];
-    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
-    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed = value.owed;
-    const lists = owed === undefined ? [] : [owed.ids, owed.remaining, owed.strict];
-    if (!lists.every(Array.isArray)) return null;
-    return value as CheckpointProgress;
-  } catch {
-    return null;
-  }
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { Checkpoints } from "../../src/core/scheduler/checkpoints.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
-import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/scheduler.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 const a: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -59,7 +59,7 @@ describe("Checkpoints (D7)", () => {
 
 describe("Checkpoints: join, owe and resume (tasks 001-217, 001-219)", () => {
   const progress = (store: ReturnType<typeof tracker>["store"]) =>
-    parseCheckpointProgress(store.meta.get(checkpointMetaKey("wt")));
+    readCheckpointProgress(store, "wt");
 
   it("keeps the open checkpoint's progress in meta, and clears it once it ends", () => {
     const { store, checkpoints } = tracker();
@@ -68,7 +68,7 @@ describe("Checkpoints: join, owe and resume (tasks 001-217, 001-219)", () => {
     checkpoints.done(a, "cp-1");
     expect(progress(store)).toMatchObject({ done: 1, total: 2, revision: 3 });
     checkpoints.done(b, "cp-1");
-    expect(store.meta.get(checkpointMetaKey("wt"))).toBe("");
+    expect(progress(store)).toBeNull();
   });
 
   it("a joined request ends with the open checkpoint, which stays open", () => {
