@@ -1,8 +1,8 @@
 # Row 011-336: tests wait for their writers before they remove a folder
 
-Worker 398af59b, 2026-11-14. Brief: `../wave-87.md` W1; repair `../wave-87.5.md` W1 after review `../../reviews/011-336.md` (B1, S1). Research: `../../research/enotempty-cleanup.md`. Tests only: no `src/**` change.
+Worker 398af59b, 2026-11-14. Brief: `../wave-87.md` W1; repairs `../wave-87.5.md` W1 after review `../../reviews/011-336.md` (B1, S1) and W2 after re-review `../../reviews/011-336-r2.md` (B1). Research: `../../research/enotempty-cleanup.md`. Tests only: no `src/**` change.
 
-Step 3 below is as amended by the repair; "Repair of B1 and S1" says what the repair changed.
+Step 3 below is as amended by the repairs; "Repair of B1 and S1" and "Second repair of B1" say what each changed.
 
 ## What each step changed
 
@@ -22,7 +22,7 @@ Step 3 below is as amended by the repair; "Repair of B1 and S1" says what the re
 Commits: `ade7ff5f7` (tests, red against the reviewed helpers), `1284e64ae` (the change).
 
 - **B1.** Before, `awaitBridges` took the group of any process whose command line held `<dist>/hooks/`; an unrelated `tail -f` on a hook file was killed. Now `detachedLeaders` reads `/proc` and takes a process only when all of these hold:
-  - its last argument is a `.mjs` file directly under `<dist>/hooks` (or the real path of `dist`);
+  - its last argument is a `.mjs` file directly under `<dist>/hooks` (or the real path of `dist`); replaced by the second repair with the exact command `bridgeStart` builds;
   - its executable (`/proc/<pid>/exe`) is named `node` or `nodejs`, because the plugin starts bridges with the Node on `PATH` (`findNode`);
   - its pid is its group's and its session's, as `detached: true` makes it;
   - its environment's `HOME` is the run's private HOME, which `runOpenCode` passes to `settle`.
@@ -33,6 +33,20 @@ Commits: `ade7ff5f7` (tests, red against the reviewed helpers), `1284e64ae` (the
   - `test/harness/opencode/real.test.ts` (new, beside `real.ts`), Linux only. Three negative cases each resolve in under 5 s of a 20 s grace and leave their process alive: the review's detached `tail -f <dist>/hooks/end.mjs`; a Node bridge stand-in with another run's HOME; the hook entry run by Node inside a group that a detached shell leads. One positive case waits for this run's bridge and for the child that outlives it, and kills nothing. One case kills a bridge still there after a 300 ms grace and fails naming it.
   - `test/helpers/opencode.test.ts` gains two `afterFailure` cases: a removable failure, and a `StillAlive` one that keeps the folder.
 - The probe log line, added again for one Node 22.19 dispose run and not committed, showed the stricter identity still finds the real bridges: `bridges=1` in the first two OpenCode runs, waited 995 and 973 ms; `bridges=0` in the third; no kill, nobody alive.
+
+## Second repair of B1 (wave 87.5 W2)
+
+The re-review proved the first repair still too loose. A detached `node observer.mjs <dist>/hooks/end.mjs` with the run's HOME was taken as a bridge and killed, because the selector read only the last argument, and Node executes `observer.mjs`. The human chose one owner for the rule: the command `bridgeStart` builds (`src/harness/opencode/bridge-client.ts:50`).
+
+Commits: `ce06dcb73` (tests, red: `bridgeCommand` did not exist), `6a6c4ffd9` (the change).
+
+- `bridgeCommand(dist)` in `test/harness/opencode/real.ts` accepts a command line only when, after the executable, it is exactly the argument list `bridgeStart` builds for one `.mjs` entry directly under `<dist>/hooks` (or the real path of `dist`). `bridgeStart` builds two forms: `--disable-warning=ExperimentalWarning <entry>`, and with Node's proxy switch (`NODE_USE_ENV_PROXY`) `--disable-warning=ExperimentalWarning --import <restore preload> <entry>`. The selector calls `bridgeStart` itself for both, so the restore preload is never copied and the two cannot drift. `bridge-client.ts` is imported, not changed.
+- `awaitBridges` uses `bridgeCommand(dist)` in place of the last-argument check. The other three checks stay: the executable is `node` or `nodejs`, the process leads its own group and session, and its HOME is the run's private HOME. The survivor report (S1) is unchanged.
+- Tests in `test/harness/opencode/real.test.ts`:
+  - `the bridge command`: `bridgeStart` is called for both forms; the proxy form must carry `--import` and the plain one must not, so a renamed switch fails this test. The selector accepts both forms, and rejects 11 other command lines that name a hook entry: the Node observer with and without the flag, the entry with no flag, an argument after the entry, another preload, an extra flag before the entry, a subfolder of `hooks`, another dist, a `.cjs` entry, the executable alone, an empty list.
+  - `awaitBridges`: the re-review's Node observer with the run's HOME stays alive and the call resolves in under 5 s of a 20 s grace. Every stand-in bridge is now started with `bridgeStart`'s arguments and environment. The surviving-child case runs once per form (`it.each`), and both pass. The other-HOME and not-a-leader cases use the plain form, so they test their own rule.
+- Discriminating check, not committed: with `bridgeCommand` given the old last-argument rule, exactly two rows failed on Node 26.13: the selector's negative list, and the Node observer, which used up the grace until the 5 s test timeout. The other seven passed.
+- The probe log line, added again for one Node 22.19 dispose run (restored from a copy afterwards), showed the real bridges match the plain form exactly: `["--disable-warning=ExperimentalWarning", "<dist>/hooks/wait.mjs"]`, one in each of the first two OpenCode runs, waited 983 and 1,009 ms, none in the third, no kill, nobody alive. The bridge that outlives OpenCode is therefore the idle wake's `wait`, which ends at its next check of OpenCode's pid (`PID_POLL_MS`, 1 s). The research had inferred the `end` bridge.
 
 ## Who calls `runOpenCode`
 
@@ -63,9 +77,18 @@ Repair, on the final code (`1284e64ae`):
 
 After the runs, the private `TMPDIR` was empty and no `sq-oc-`, bridge or test process was left.
 
+Second repair, on the final code (`6a6c4ffd9`):
+
+| Test | Node 22.19.0 | Node 24.15.0 | Node 26.13.0 |
+|---|---|---|---|
+| `real.test.ts`, `process-groups.test.ts`, `opencode.test.ts`, `remove-tree.test.ts` together (23 tests) | 1 of 1 passed | 1 of 1 | 1 of 1 |
+| `test/harness/opencode-dispose.test.ts`, whole file (3 tests) | 3 of 3 (one with the probe line) | 1 of 1 | 1 of 1 |
+
+`test/runners/node-test/run.test.ts` and `remove-tree` are unchanged since the first round; Squeal holds current passes for them.
+
 During the first round's 7 dispose runs, a temporary log line in `awaitBridges` (not committed) recorded what `settle` found. In each file run, the first two OpenCode runs still had one bridge group running after OpenCode's group was gone, and `settle` waited 921–996 ms for it to end. In file order these are the "never released" test and the "drops the old turn's report" test, the one CI failed. The third run (the abort test) had none. No bridge was killed. Before this change, the folder removal ran during that second.
 
-Squeal: first round, all affected test files current with no known failures at revision 14 (11 files) and at revision 16 after the temporary log line was removed. Repair, 14 affected test files current with no known failures at revision 32, the committed tree: the 8 OpenCode test files, `opencode/fresh-store`, `opencode/real.test.ts`, `helpers/opencode.test.ts`, `helpers/process-groups.test.ts`, `helpers/remove-tree.test.ts`, `runners/node-test/run.test.ts`. `pnpm run lint` and `pnpm run typecheck` pass. No full suite was run (host policy).
+Squeal: first round, all affected test files current with no known failures at revision 14 (11 files) and at revision 16 after the temporary log line was removed. Repair, 14 affected test files current with no known failures at revision 32, the committed tree: the 8 OpenCode test files, `opencode/fresh-store`, `opencode/real.test.ts`, `helpers/opencode.test.ts`, `helpers/process-groups.test.ts`, `helpers/remove-tree.test.ts`, `runners/node-test/run.test.ts`. Second repair, 12 affected test files current with no known failures at revision 40, the committed tree. `pnpm run lint` and `pnpm run typecheck` pass. No full suite was run (host policy).
 
 ## The eight other files with `maxRetries`
 
@@ -87,4 +110,5 @@ They keep it, as the brief says. Each is a candidate for `removeTree` where a wr
 - A bridge that OpenCode forked but had not yet exec'd when OpenCode died has OpenCode's command line, not a hook entry, so `awaitBridges` cannot see it. The window is microseconds, and `removeTree` covers a short writer.
 - A group is identified by its leader's pid. If the group empties and the kernel gives that number to a new group between two polls (50 ms), the wait could reach that new group. Pids are handed out in order up to `pid_max`, so this does not happen in practice; it is named here because B1 asks that no other process be signalled.
 - Outside Linux, `awaitBridges` waits for nothing (no `/proc`); OpenCode's own group is still awaited through `ps`.
+- A held-Stop stand-in can outlive a cancelled run. `test/harness/opencode/held-stop.ts` writes a `stop.mjs` that polls for its release file every 5 ms and never stops by itself. When Squeal cancels a dispose-test run mid-test (an edit changed its inputs), the Vitest worker dies, `settle` never runs, and the detached stand-in keeps polling. Two such processes (Squeal runs `d36b18c8` and `9d8f5fcb`, 2026-11-14 11:18 UTC) were found and ended by this worker. This gap is older than this row and is outside its files. Candidate fix for `held-stop.ts`: the stand-in exits once its release folder is gone, or once OpenCode's pid is gone, as the `wait` bridge does.
 - CI is the final evidence: a Node 22 shard where both tests pass, then 20 main runs without this `ENOTEMPTY`.
