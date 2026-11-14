@@ -59,7 +59,9 @@ No other line or exit code changes: a store that is read gives each line as befo
 - `pnpm run typecheck`: exit 0, no output.
 - `squeal status --wait 60000` on `test/cli/group-pending.test.ts`, `test/cli/run-busy-reads.test.ts`, `test/cli/run-group.test.ts`, `test/cli/run-lint-group.test.ts`, `test/cli/wait/lines.test.ts`, `test/cli/run-all-owner.test.ts`: 6 test files, no known failures, each current at revision 12.
 - `squeal status --wait 60000 test/keys/key-format.test.ts test/version-sensitive.test.ts`: 2 test files, no known failures; no key-format raise.
-- The wider affected set (the test files that import `run.ts`, `group-pending.ts` or `beside.ts`): see the final report for its result.
+- `squeal status --wait 60000` on the other test files that reach these lines: `run-covered`, `run-lanes`, `run-all-verdict`, `run-all-verdict-daemon`, `daemon-socket`, `group-pending-release`, `run-group-daemon`, `wait/run-loop`, `wait/covered`, `wait/first-request` (10 files), then `daemon/drain-checkpoint`, `daemon/runtime-gone`, `status/checkpoint`, `evals/retry-claim`, `evals/retry-run`, `retry/gate`, `scheduler/request-covered`, `cli/main`, `cli/warmup`, `cli/warmup-busy`, `cli/warmup-reads` (11 files): no known failures, each current at revision 13.
+- The wider affected set (about 285 test files that import `run.ts` through `main.ts`) was still queued behind host load when this was written; see the final report.
+- **Bundles:** this row changes CLI code, so the committed plugin bundles differ from the build: `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail with "cli/squeal.mjs differs from the build", as expected. The coordinator rebuilds them on the candidate.
 
 ## For the next worker
 
