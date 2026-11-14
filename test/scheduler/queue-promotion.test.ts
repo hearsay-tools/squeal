@@ -86,6 +86,40 @@ describe("RunQueue promotion (spec 011 C15)", () => {
     expect(names(queue.ordered())).toEqual(["b", "z"]);
   });
 
+  it("orders at one clock reading: a wait that ends between two entries' ranks ranks neither (row 011-347)", () => {
+    const { queue, clock } = queueAt();
+    const until = clock.now + 5_000;
+    queue.add(ref("b"), Priority.neverRun);
+    queue.add(ref("y"), Priority.neverRun);
+    queue.add(ref("z"), Priority.neverRun);
+    queue.promote([ref("y"), ref("z")], until);
+    // Z ran; an edit queues it again. It joins Y's batch at the next settle, so until then it
+    // is ranked only while the wait is open.
+    queue.remove(ref("z"));
+    queue.add(ref("z"), Priority.direct);
+    // Each reading of the clock is 1 ms later: the first is the wait's last open moment.
+    clock.now = until - 1;
+    let reads = 0;
+    queue.setPromotionClock(
+      () => clock.now + reads++,
+      () => false,
+    );
+    // One reading, the first: Z is still the batch's, and the edited Z leads it.
+    expect(names(queue.ordered())).toEqual(["z", "y", "b"]);
+    expect(reads).toBe(1);
+    reads = 0;
+    expect(names(queue.orderedBatches())).toEqual(["y", "z"]);
+    expect(reads).toBe(1);
+    // The decision's own reading, passed in: the same order at it, none of the clock's.
+    reads = 0;
+    expect(names(queue.ordered(undefined, false, until - 1))).toEqual(["z", "y", "b"]);
+    expect(names(queue.orderedBatches(undefined, until - 1))).toEqual(["y", "z"]);
+    expect(reads).toBe(0);
+    // At the wait's deadline Z is no batch's; Y, a member, still is.
+    expect(names(queue.ordered(undefined, false, until))).toEqual(["y", "z", "b"]);
+    expect(names(queue.orderedBatches(undefined, until))).toEqual(["y"]);
+  });
+
   it("counts toward the four first-group tiers after which the backlog gets its turn", () => {
     const { queue, clock } = queueAt();
     for (let i = 0; i < 3; i++) queue.add(ref(`backlog${i}`), Priority.failing);
