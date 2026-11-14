@@ -2,7 +2,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { runsVitest } from "../daemon/runner.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { readInstallWait } from "../scheduler/install-wait.js";
-import { isRefined, readRefined } from "../scheduler/refined.js";
+import { covers, readRefined } from "../scheduler/refined.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
@@ -111,7 +111,7 @@ export function readHeader(
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
-  const runnerPartPending = !isRefined(store, worktreeId, revision);
+  const runnerPartPending = !covers(refinedRevision, revision);
   return {
     revision,
     ...(commit === undefined ? {} : { commit }),
