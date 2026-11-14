@@ -78,3 +78,32 @@ Under `squeal code --base`, after `--timeout`:
 - If row 020-59 writes each file as it completes, a stored rerun's files are written by the same path: they reach `keeper.ran` through `tellRan` with no `retrying`.
 - Follow-up (not done, other owners): with the flag, the selection line still says "none to run, N read from the stores" (`prerun.ts`); it could say how many run again. The text report (`code-gate-text.ts`, row 020-61) does not show `storedRerun`; the stderr line does.
 - `squeal retry` and its receipts (#214's retry wording and stall) belong to spec 011, not here.
+
+## Repair R2 (review 0.1.495 B2; wave 22.6)
+
+Worker 24bdc546 again, on `origin/cand/0.1.495` (`9d98a53c0`); the branch was reset there, so the repair replays onto the merged candidate. The pre-R2 head is tagged `wip/24bdc546-pre-r2` locally.
+
+**Defect:** with `--rerun-stored-failures`, the pre-run summary (D14.4) treated every file with known evidence as not run. A run whose only files were stored-failure reruns printed "none to run" and named no global setup, and then ran the file and its setups.
+
+**Fix (`02a2143af`):**
+- `src/core/code/gate/prerun.ts`: `runsHere(known, ref)`: a file runs when it has no known evidence, or when its known evidence is marked `storedRerun`. `RunnerSelection.run` counts with it; `RunnerSelection.storedRerun?` (additive) counts the marked ones; `known.store` and `known.parts` count only the files that do not run again. The global-setup disclosure (`setupsOf`) reads the same predicate, so the marked files' projects and the root's setup are named.
+- `src/cli/code-gate-prerun.ts`: the runner line names the reruns inside the count to run, for example `Vitest: 3 test files selected (tests 3): 1 to run (1 once more after a stored failure), 2 read from the stores`.
+- Unchanged: the estimate and the early stop (`plan.ts` reads only the files with no known evidence), the run order (first runs, load reruns, then stored reruns), the fallback stored failure, and one rerun at most. `stored.ts` needed no change.
+
+**Not changed (not owned):** `setup-selection.ts`'s `wholeProjects` still counts its `run` as files with no known evidence. A changed path every test file of a project depends on changes those files' keys, so the stores hold no evidence for them at the new key, and the count cannot differ in practice.
+
+**Proposed D14.4 text, append:** Amended 2026-11-14 (row 020-60 repair, review 0.1.495 B2): a stored failure that `--rerun-stored-failures` runs once more (D3.4) is a file that runs: the runner line counts it with the files to run and names how many of them run once more after a stored failure, and the global setups it starts, its project's and the root's, are named. It is not counted as read from the stores. It stays out of the estimate and the early stop (D3.4).
+
+**Proposed D3.4 text:** no change; it already keeps stored reruns out of the estimate and the early stop.
+
+**Done-when mapped to tests** (`test/cli/code-gate-stored-rerun-prerun.test.ts`, real CLI, two Vitest projects with global setups that write `setup-runs.txt`):
+- Stored-only rerun prints a correct count and its global-setup line, both before any setup runs; both setups ran; no estimate line and no `runs[].estimate`: "counts a stored-only rerun as a file to run, and names its global setups".
+- Mixed case (one stored rerun, one ordinary file with a new key, one reused pass): "2 to run (1 once more after a stored failure), 1 read from the stores", the setup line, and an estimate of 1 file only: "counts a stored rerun beside an ordinary file; the estimate holds only that file".
+- Without the flag the line reads "none to run, 3 read from the stores" and no setup runs: "without the flag, a stored failure is read, as before".
+- Early stop unchanged: `plan.ts` not changed; `test/code/gate/collect-early.test.ts` passes.
+
+**Checks run (repair):**
+- `pnpm run lint`: "Checked 3435 files … No fixes applied." `pnpm run typecheck` (`tsrs --fast --noEmit`): exit 0.
+- `squeal status --wait`, revision 27–28: `test/cli/code-gate-stored-rerun-prerun.test.ts`: 3 failed first on the missing `(tests 3)` group label in my expectations, then all 3 pass after that test-only fix.
+- `squeal status --wait 540000`, revision 28 (commit `02a2143af`): `test/cli/code-gate-prerun.test.ts`, `test/code/gate/setup-selection.test.ts`, `test/cli/code-gate-stored-rerun.test.ts`, `test/cli/code-gate-setup.test.ts`, `test/code/gate/collect-prerun.test.ts`, `test/code/gate/collect-early.test.ts`, `test/code/gate/lanes-stored-rerun.test.ts`, `test/cli/code-gate-estimate.test.ts`, `test/cli/code-gate-text-left-out.test.ts`: "no known failures; 9 test files, each with a current result".
+- Not run: full suite, `pnpm run build` (wave rule). Other affected test files were still queued in Squeal when this was written.
