@@ -1,6 +1,6 @@
 # 022 Selection strategy: status
 
-Stage: approved (2026-11-14); phase 1 landed on main as 0.1.496 (`a6c03c389`), release pending; phase 2 waits for the human's reading of `squeal reach`
+Stage: approved (2026-11-14); phase 1 shipped in 0.1.496; phase 2 waits for the human's reading of `squeal reach`
 Started: 2026-11-14
 
 ## Decisions so far
@@ -16,6 +16,7 @@ Started: 2026-11-14
 - 2026-11-14, review of `cand/0.1.493` at `d5d89179b` (reviewer ec07058a, `reviews/0.1.493.md`): FAIL. B1: CI export omits the runtime-loaded modules the daemon adds to a key (a real-Vitest probe gave different daemon and CI keys; gate and daemon agree). B2: the reach estimate reads display route labels as import membership (a resolution candidate counted 100% avoidable; an importer missing from the count). S1: D3 said "at open", the code creates the table on first write. Coordinator decisions: S1, keep first-write creation (the `request_covered_files` precedent) and amend D3; the compatibility note, accept delayed cleanup by an older daemon and record it in D3. Repair wave 1.5 (`tasks/wave-1.5.md`): 022-03r (B1) and 022-04r (B2) in parallel from the candidate head; one re-review follows.
 - 2026-11-14, the coordinator: repairs landed on the candidate: 022-03r (worker 274df67e) adds each file's loaded modules to CI parts (optional `PartFile.loaded`, part format stays 4) and joins them at export through one shared rule with the daemon (`src/core/ci/loaded-inputs.ts`); 022-04r (worker 81025666) decides avoidance from stored graph edges and counts importers from edges, with unproved pairs counted by reason and not estimated. 0.1.494 landed above 0.1.493, so the candidate is renumbered 0.1.496 (agreed with 31e1d860, 15729321, fab00745, cdd216e5): `cand/0.1.496` at `b96e3ebf9`, source replayed onto main `ef20a5bc2`. One re-review follows.
 - 2026-11-14, the coordinator: re-review `reviews/0.1.496-r2.md` PASS on `b96e3ebf9` (B1, B2 closed; S1 aligned). Candidate CI 43617670473 green on attempt 2 (attempt 1: the known `handover-batches.test.ts` test 4 flake on Node 26 1/3). Replayed over 0.1.495 with the same source; 31 named test files (022's, bundle drift, 17 code-gate tests) current and passing; landed on main as 0.1.496 at `a6c03c389`. No key format change. Release follows 31e1d860's 0.1.495 release.
+- 2026-11-14, the coordinator: released 0.1.496 (tag `squeal--v0.1.496` at `a6c03c389`, hub `51b6638`, GitHub latest with `install.sh` and both Codex runtime assets). Main CI 43621729125 green on attempt 2; attempt 1 failed `test/cli/wait-stale-start.test.ts` by a 5 s timeout on Node 26 (3/3), recorded on the board's Later list. Phase 1 is shipped. Next: the human reads `squeal reach`'s narrowing section on a project and decides whether phase 2 (D5) is built. Open from the spec: lists with coverage off (Q2), node:test lists (Q3).
 
 ## Open questions
 
