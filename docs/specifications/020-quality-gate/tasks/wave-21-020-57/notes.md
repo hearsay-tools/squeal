@@ -101,3 +101,43 @@ stay as they are.
 - Seam map: `collect.ts` gives `orderRuns` the load → `orderRuns` (`plan.ts`) scales `estimates` and `whole` → `fitRuns` fits `whole` (over-budget, rerun, early) → `steps.ts` `tellEstimates` passes `order.estimates` to the CLI and the report (`runs.ts` `withoutRunner`). The selection side: `collect.ts` `tellSelection` → `prerun.ts` `summarize` → `setup-selection.ts` (`projectInputs` calls `environment()` once per pick with a file in scope; `loadedSetupFiles`; `wholeProjects`) → CLI `preRunOptions.selected` keeps `wholeProjects` for `estimated`.
 - `environment()` is now called once more per gate run per runner with a selected file (the stored lookup calls it too). It reads the setup and global setup closures; it runs nothing.
 - Row 020-55 also edits `collect.ts`. This row's change there is two lines next to `orderRuns`.
+
+## Repair R1 (review `reviews/0.1.483.md` B1, wave 21.5)
+
+Worker cdd2fb40, 2026-11-14. Shape: repair. Base: this branch at `1da20a356`.
+
+**The defect.** The suppression of a `setupFiles` entry's no-loader line (`loadedSetupFiles`) read the selection before the fit. When the load-scaled estimate made the early stop leave out every file of the setup's project, the true line "will read incomplete (no-loader)" was dropped. The report then ended `incomplete`, `no-loader`, with no warning before the run. The reviewer reproduced it with real Vitest: 20 files stored at 20 s, one at a time, a load of four times the CPU count.
+
+**The fix** (`6d7992b89`):
+
+- `collect.ts`: the collector fits its runs (`fitRuns`) before it tells the selection, and gives `tellSelection` the files that the fitted plan runs (`planned`). The fit reads only closures; no setup, `prepare` or test runs before any pre-run line. The order of the lines on stderr does not change: selection, incomplete-closure notes, then the estimate. The load is still read once, before `orderRuns`.
+- `setup-selection.ts`: `loadedSetupFiles(inputs, loaders)` counts a `setupFiles` entry as loaded only in two cases. Either a selected file of its own project is in the fitted plan, or the evidence of such a file from the stores or the parts measured the entry at its head bytes: a completed record with the path in `sources` at the head blob and not in `unread`, as D5's `standing()` reads it.
+- `prerun.ts`: `summarize` and `tellSelection` take `planned` as a required input, so no caller can leave the plan out.
+- Unchanged: the selection counts (`runners[]`, `wholeProjects[].files` and `.run` still count every selected file), the setup-selection line, the early-stop rule, the verdicts, the exit codes and `QUALITY_POLICY_VERSION`.
+
+Type changes: `SetupLoaders` (new, `setup-selection.ts`); `loadedSetupFiles` takes a second argument; `summarize`'s and `tellSelection`'s contexts gain the required `planned: (ref: TestFileRef) => boolean`. All of these are internal to the gate.
+
+**Proposed D14.4 wording change.** In the row 020-57 amendment, replace "a `setupFiles` entry of a project with a selected file that runs or is read is not a path that no runner can load. Each such file runs the entry in its own process before its tests, so its record holds the entry's functions (D5), and the gate prints no line for it." with:
+
+> a `setupFiles` entry is not a path that no runner can load when a selected file of its own project runs in the fitted plan (after the early stop, D17.1), or when that file's evidence from the stores or the parts measured the entry at its head bytes. Each file that runs, runs the entry in its own process before its tests, so its record holds the entry's functions (D5), and the gate prints no line for the entry. When the early stop leaves out every file of the project and none is read, the line stays: the entry's functions will read `no-loader` (review 0.1.483 B1). The selection lines come after the fit, which reads closures only, and before any setup, `prepare` or test.
+
+**Done-when mapped to tests**
+
+| Done-when | Test |
+| --- | --- |
+| A setup-only edit, 20 known durations, a simulated load that moves the estimate past the early-stop threshold: the no-loader line stays when no file runs or is read | `test/cli/code-gate-setup-early.test.ts` "keeps the true no-loader line…" (real Vitest; load 96 on 24 CPUs; 400 s becomes 1600 s; the early-stop line; the setup-selection line still counts all 20; `resetEnv` `incomplete`/`no-loader`; `incomplete`, exit 3). Unit: `setup-selection.test.ts` "keeps the no-loader line when the plan runs no file of its project…". |
+| A surviving `--test` file still drops it | `code-gate-setup-early.test.ts` "drops it when a --test file of the project still runs" (`test/f0.test.ts` completes; `resetEnv` `pass`; verdict `incomplete`, exit 3, from the 19 files left out). Unit: a planned file of the project drops it, and a planned file of another project does not. |
+| A reused record that measures the setup still drops it | `code-gate-setup-early.test.ts` "drops it when the stores' records measured it…" (a run on a free host keeps all 20; the next run at four times the CPU count reads all 20 from the stores; no line; `pass`, exit 0). Unit: a record at the head blob drops it; a record at other bytes, an unfinished file, or a record without the path does not. |
+| Config and global setup lines remain | `code-gate-setup.test.ts` "keeps the true no-loader line for a global setup…" (unchanged, passes); `setup-selection.test.ts` "keeps the no-loader line for a config and a global setup file…". |
+
+Discriminating checks, run and then undone. With `planned` forced to true in `collect.ts` (the old behaviour), "keeps the true no-loader line…" failed: `expected [] to have a length of 1 but got +0`. With the stored-record check switched off in `setup-selection.ts` (a fix based on the plan alone), "drops it when the stores' records measured it…" and its unit test failed. Both pass with the fix.
+
+**Checks run**
+
+- `pnpm run lint`: `Checked 3394 files … No fixes applied.` `pnpm run typecheck`: clean.
+- `squeal status --wait` on `code-gate-setup-early`, `setup-selection`, `code-gate-setup`, `collect-prerun`, `collect-early`, `collect-load`, `code-gate-prerun` and `version-sensitive` at revision 37: no known failures; 8 test files, each with a current result. The affected verdict over the changed sources is in the worker's report.
+- The version-sensitive rule (spec 010 D4) read an array literal that starts with `"--test"` as node's own flag. The new test builds the whole argument list in one array that starts with `--base main`, as the rule's comment shows.
+
+**Checks not run:** no full suite, no `pnpm run build` (wave rules); the four bundle-drift checks stay expected until the integration rebuilds.
+
+**Seen, not changed:** the existing "global setup runs for: …" line is built from the selection minus the stored files, before the fit. When the early stop leaves every file out, that line can name a global setup that will not run. That behaviour predates this row (rows 020-15b and 020-46) and is not in B1. The `planned` input could fix it in a later row.
