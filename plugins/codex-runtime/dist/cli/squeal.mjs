@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.517";
+  if (true) return "0.1.518";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -21627,6 +21627,10 @@ function yieldReach(event2, view) {
     case "stalled":
     case "closing":
     case "pump-ended":
+    case "hold-began":
+    case "slow-ended":
+    case "beside-ended":
+    case "install-missing":
       return NONE2;
     default: {
       const unknown = event2;
@@ -21733,14 +21737,14 @@ var init_yields = __esm({
        * One reading of the clock decides every tier (row 011-194, review
        * `reviews/0.1.296-r2.md` B2): `decideYields` reads only `at`, so a
        * deadline or a bound the clock passes during the check is still the one
-       * the decision stood on. The timer and the published row read their own.
-       * Row 011-354: `decideYields` decides; this applies its answer: the
-       * claim and focused bookkeeping its reads would have written (review
-       * 0.1.514 B1), then tier by tier in its order. Nothing while `held` (row
-       * 011-72).
+       * the decision stood on. Row 011-354: `decideYields` decides; this
+       * applies its answer: the claim and focused bookkeeping its reads would
+       * have written (review 0.1.514 B1), then tier by tier in its order.
+       * Nothing while `held` (row 011-72). `at` is the one reading, the step's
+       * (row 011-366), else the clock's now: the published row is stamped with
+       * it too, and only the timer reads its own.
        */
-      check(context, ledger, tiers, revision, held3) {
-        const at2 = context.now();
+      check(context, ledger, tiers, revision, held3, at2 = context.now()) {
         const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held: held3 };
         const decided = decideYields(at2, revision, view);
         if (decided === null) return;
@@ -21763,7 +21767,7 @@ var init_yields = __esm({
           if (bound === null) this.#bounds.delete(tier.runId);
           else this.#bounds.set(tier.runId, bound);
         }
-        if (decided.changed) this.#publish(context);
+        if (decided.changed) this.#publish(context, at2);
         this.#arm(context);
       }
       /**
@@ -21823,9 +21827,10 @@ var init_yields = __esm({
       #disarm() {
         this.#wake?.clear();
       }
-      #publish(context) {
+      /** Writes the yield row, stamped `at`: a check's reading, else now. */
+      #publish(context, at2 = context.now()) {
         const { store, worktreeId } = context;
-        writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
+        writeYieldRow(store, worktreeId, at2, this.#history.row(this.#standing));
       }
     };
     NONE2 = { reach: "none" };
@@ -58858,8 +58863,8 @@ var init_slow_release = __esm({
 function wakeRank(reason2) {
   return WAKE_ORDER.indexOf(reason2);
 }
-function placeOf(decision) {
-  return DECISION_PLACE[decision.kind];
+function inTurn(decision) {
+  return DECISION_PLACE[decision.kind] === "turn";
 }
 var WAKE_ORDER, DECISION_PLACE;
 var init_step_events = __esm({
@@ -58896,7 +58901,9 @@ var init_step_events = __esm({
       "refresh-install": "after",
       reconcile: "after",
       "close-lanes": "after",
-      "queue-rewalk": "after"
+      "queue-rewalk": "after",
+      "cancel-held": "after",
+      "close-beside": "after"
     };
   }
 });
@@ -58917,19 +58924,24 @@ function yieldCheck(turn, out2, events = turn.events) {
   return void 0;
 }
 function step(turn) {
-  const out2 = new Out(turn.ports);
+  const out2 = new Out(turn.ports, turn.at);
+  const outside2 = turn.reads === null;
+  const answer4 = (wake, error) => {
+    const { decisions, selected: selected2, laneAnswered } = out2;
+    return { decisions, wake, selected: selected2, laneAnswered, error };
+  };
   try {
     for (const rule3 of RULES) {
+      if (outside2 && !OUTSIDE.has(rule3)) continue;
       const wake = rule3(turn, out2);
-      if (wake !== void 0)
-        return { decisions: out2.decisions, wake, selected: out2.selected, error: null };
+      if (wake !== void 0) return answer4(wake, null);
     }
     throw new Error("squeal scheduler: a step ended without a wake");
   } catch (error) {
-    return { decisions: out2.decisions, wake: END, selected: out2.selected, error };
+    return answer4(END, error);
   }
 }
-var END, EVENT, AGAIN, READS, Out, pumpEnded, inTurnEnds, stallHolds, drainRunnerWork, installWait2, nothingMayStart, readInstallStamp, probeDiskFacts, rewalkRead, startFastTier, askSlowLanes, closeSlowLanes, idleAnswer, RULES;
+var END, EVENT, AGAIN, READS, TURN, Out, pumpEnded, holdBegan, inTurnEnds, stallHolds, drainRunnerWork, installWait2, nothingMayStart, readInstallStamp, probeDiskFacts, rewalkRead, reinstallMissing, startFastTier, askSlowLanes, closeSlowLanes, closeBesideLane, idleAnswer, RULES, OUTSIDE;
 var init_step = __esm({
   "src/core/scheduler/step.ts"() {
     "use strict";
@@ -58940,20 +58952,26 @@ var init_step = __esm({
     EVENT = { kind: "event" };
     AGAIN = { kind: "again" };
     READS = { kind: "reads" };
+    TURN = { kind: "turn" };
     Out = class {
-      constructor(ports) {
+      constructor(ports, at2) {
         this.ports = ports;
+        this.at = at2;
       }
       ports;
+      at;
       decisions = [];
       /** A hold stands: nothing starts, the idle slow lanes close. */
       held = false;
       /** The fast plan ran: its idle answer, `null` when it started none and no plan ran. */
       idle = null;
       selected = false;
+      /** A slow lane answered (`Step.laneAnswered`). */
+      laneAnswered = false;
+      /** Row 011-366 (S7): a decision of the turn is carried out at the step's one reading. */
       decide(decision) {
         this.decisions.push(decision);
-        if (placeOf(decision) === "turn") this.ports.carry(decision);
+        if (inTurn(decision)) this.ports.carry(decision, this.at);
       }
     };
     pumpEnded = ({ events, ports }, out2) => {
@@ -58965,7 +58983,12 @@ var init_step = __esm({
       const work = rearm.hasWork || ports.busyWaiting();
       return !rearm.halted && (!ports.stalled() || ports.asked()) && work ? AGAIN : END;
     };
-    inTurnEnds = (turn) => turn.reads === null ? { kind: "turn" } : void 0;
+    holdBegan = ({ events }, out2) => {
+      if (!events.some((event2) => event2.kind === "hold-began")) return void 0;
+      out2.decide({ kind: "cancel-held" });
+      return AGAIN;
+    };
+    inTurnEnds = (turn) => turn.reads === null ? TURN : void 0;
     stallHolds = ({ ports }) => ports.stalled() || ports.admit().halted ? END : void 0;
     drainRunnerWork = ({ ports }, out2) => {
       const { queued, draining } = ports.runnerWork();
@@ -59001,20 +59024,29 @@ var init_step = __esm({
       return void 0;
     };
     rewalkRead = (reads2) => reads2?.rewalk !== void 0;
+    reinstallMissing = ({ events, ports, reads: reads2 }, out2) => {
+      if (events.some((event2) => event2.kind === "install-missing")) {
+        out2.decide({ kind: "reinstall" });
+        return TURN;
+      }
+      if (reads2 === null || out2.held || rewalkRead(reads2)) return void 0;
+      if (ports.admit().fast !== "install-missing") return void 0;
+      out2.selected = true;
+      out2.decide({ kind: "reinstall" });
+      return END;
+    };
     startFastTier = (turn, out2) => {
-      const { ports, reads: reads2 } = turn;
+      const { at: at2, ports, reads: reads2 } = turn;
       if (out2.held || rewalkRead(reads2)) return void 0;
       out2.selected = true;
       const admitted = ports.admit();
       const fast = admitted.fast;
       if (fast === "held") out2.held = true;
-      else if (fast === "install-missing") out2.decide({ kind: "reinstall" });
       else if (fast === "runner-work") return AGAIN;
-      if (fast === "install-missing") return END;
       if (fast !== null) return void 0;
       const stamp2 = reads2?.install?.stamp ?? "";
       let started2 = false;
-      const next = ports.startNext(admitted, (tier) => {
+      const next = ports.startNext(admitted, at2, (tier) => {
         started2 = true;
         out2.decide({ kind: "start-tier", tier, stamp: stamp2, turn: admitted.turn });
         const event2 = {
@@ -59035,18 +59067,31 @@ var init_step = __esm({
         const decided = ports.askLane(group, at2, (run7) => {
           out2.decide({ kind: "start-tier", tier: run7.tier, stamp: stamp2, turn: run7.turn, slow: run7 });
         });
+        out2.laneAnswered = true;
         if (decided === "started" || decided === "again") return AGAIN;
       }
       return void 0;
     };
-    closeSlowLanes = ({ ports }, out2) => {
+    closeSlowLanes = ({ events, ports }, out2) => {
+      const ended2 = events.flatMap((event2) => event2.kind === "slow-ended" ? [event2.lane] : []);
+      if (ended2.length > 0) {
+        const held3 = ports.admit().halts.has("held");
+        const lanes = ended2.filter((lane) => held3 || !ports.slowQueued(lane));
+        if (lanes.length > 0) out2.decide({ kind: "close-lanes", lanes });
+      }
       if (!out2.held) return void 0;
       out2.decide({ kind: "close-lanes", lanes: ports.idleLanes() });
       return END;
     };
+    closeBesideLane = ({ events, ports }, out2) => {
+      for (const event2 of events)
+        if (event2.kind === "beside-ended" && ports.besideDone(event2.lane))
+          out2.decide({ kind: "close-beside", lane: event2.lane });
+      return void 0;
+    };
     idleAnswer = ({ at: at2, events, reads: reads2, ports }, out2) => {
       if (reads2?.rewalk !== void 0) return reads2.rewalk ? AGAIN : END;
-      const idle2 = out2.idle ?? ports.idleNow();
+      const idle2 = out2.idle ?? ports.idleNow(at2);
       if (idle2.idle === "claims" || ports.claimsWaiting()) return { kind: "claims", at: at2 };
       if (idle2.idle === "quiet" && idle2.wakeAt !== null) return { kind: "at", at: idle2.wakeAt };
       if (ports.refused() || idle2.idle === "pool")
@@ -59057,71 +59102,30 @@ var init_step = __esm({
     };
     RULES = [
       pumpEnded,
+      holdBegan,
       yieldCheck,
-      inTurnEnds,
       stallHolds,
       drainRunnerWork,
       installWait2,
       nothingMayStart,
       readInstallStamp,
       probeDiskFacts,
+      reinstallMissing,
       startFastTier,
       askSlowLanes,
       closeSlowLanes,
-      idleAnswer
+      closeBesideLane,
+      idleAnswer,
+      inTurnEnds
     ];
-  }
-});
-
-// src/core/scheduler/stored-keys.ts
-function withoutResult(file, keys, index) {
-  const { key: key3 } = file;
-  if (key3 === null || key3 === file.resultKey || key3 === file.runningKey) return false;
-  if (key3 === file.unknownKey) return false;
-  return keys.has(key3) || (index.keysReadAsOne(key3)?.keys.some((k) => keys.has(k)) ?? false);
-}
-var STORED_KEYS_OVERLAP_MS, StoredKeys;
-var init_stored_keys = __esm({
-  "src/core/scheduler/stored-keys.ts"() {
-    "use strict";
-    init_context();
-    STORED_KEYS_OVERLAP_MS = 12e4;
-    StoredKeys = class {
-      /** When the previous read began; at first, the scheduler's start, before its baseline's lookup. */
-      #readAt;
-      /** The keys the reads within the overlap returned, at their newest record time. */
-      #seen = /* @__PURE__ */ new Map();
-      constructor(start2) {
-        this.#readAt = start2;
-      }
-      /**
-       * Settles this worktree's files at the keys stored since the last read, and
-       * commits. A busy store's error leaves the ledger as the store holds it
-       * (`Ledger.hold`) and the read to the next one (task 001-422).
-       */
-      adopt(context, ledger) {
-        const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
-        const readAt2 = context.now();
-        const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
-        const keys = new Set(fresh.map(({ key: key3 }) => key3));
-        const { index } = context.keys;
-        const refs2 = keys.size === 0 ? [] : [...ledger.files.values()].filter((file) => withoutResult(file, keys, index)).map((f) => f.ref);
-        if (refs2.length > 0) {
-          const restore2 = ledger.hold(refs2);
-          ledger.rereadFormats(refs2);
-          try {
-            ledger.settle(refs2, NOTHING_CHANGED, { queueMisses: false });
-            ledger.commit();
-          } catch (error) {
-            restore2();
-            throw error;
-          }
-        }
-        this.#readAt = readAt2;
-        for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
-        for (const { key: key3, recordedAt: recordedAt2 } of fresh) this.#seen.set(key3, recordedAt2);
-      }
-    };
+    OUTSIDE = /* @__PURE__ */ new Set([
+      holdBegan,
+      yieldCheck,
+      reinstallMissing,
+      closeSlowLanes,
+      closeBesideLane,
+      inTurnEnds
+    ]);
   }
 });
 
@@ -59130,7 +59134,7 @@ function liveView(context, ledger, options) {
   const { queue } = ledger;
   const { traits } = context.runner;
   const { runner } = context.policy;
-  const now = context.now();
+  const now = options.now ?? context.now();
   return {
     now,
     runner: {
@@ -59285,6 +59289,295 @@ var init_tier_start = __esm({
     init_tier_plan();
     init_tier_width();
     init_tiers();
+  }
+});
+
+// src/core/scheduler/step-live.ts
+function unplaced(decision) {
+  throw new Error(`squeal scheduler: a decision no carry-out places: ${String(decision)}`);
+}
+var STEP_OPERATION, StepLive;
+var init_step_live = __esm({
+  "src/core/scheduler/step-live.ts"() {
+    "use strict";
+    init_runner();
+    init_admission();
+    init_beside();
+    init_install();
+    init_install_stamp();
+    init_step();
+    init_step_events();
+    init_tier_live();
+    init_tier_plan();
+    init_tier_start();
+    init_tiers();
+    STEP_OPERATION = "selecting the next tier";
+    StepLive = class {
+      constructor(host) {
+        this.host = host;
+      }
+      host;
+      #listeners = /* @__PURE__ */ new Set();
+      /** The install was found missing at the last read: a start fact (`StartFacts.installMissing`). */
+      #installMissing = false;
+      /**
+       * A change of the install taken and not refreshed yet: owed until the
+       * step's refresh is carried out, so a step that ends first loses none
+       * (review 0.1.515 B1).
+       */
+      #refreshOwed = false;
+      /** The install was found missing at the last read. */
+      get installMissing() {
+        return this.#installMissing;
+      }
+      /** Tells `listener` each step until the returned function is called. */
+      onStep(listener) {
+        this.#listeners.add(listener);
+        return () => this.#listeners.delete(listener);
+      }
+      /**
+       * One step now, after `events`, with `reads` (`null`: inside another lock
+       * turn); its turn's decisions were carried out as made. The slow release's
+       * wake follows a lane's answer; the listeners hear the step.
+       */
+      step(events, reads2) {
+        const turn = { at: this.host.now(), events, reads: reads2, ports: this.#ports };
+        const decided = step(turn);
+        if (decided.laneAnswered) this.host.slowRelease.arm();
+        this.#told(reads2, decided);
+        return decided;
+      }
+      /** Carries out the decisions `decided` placed after its turn, in order; the reads they answer. */
+      async after(decided) {
+        let reads2 = {};
+        for (const decision of decided.decisions)
+          if (!inTurn(decision)) reads2 = { ...reads2, ...await this.#carryAfter(decision) };
+        return reads2;
+      }
+      /** Tells each listener the step `decided` with `reads`. */
+      #told(reads2, decided) {
+        if (this.#listeners.size === 0) return;
+        const { wake } = decided;
+        const seen = {
+          inTurn: reads2 === null,
+          reads: Object.keys(reads2 ?? {}),
+          decisions: decided.decisions.map((decision) => decision.kind),
+          runnerWork: this.host.runnerWork.size,
+          wakes: wake.kind === "turn" ? [] : [wake.kind]
+        };
+        for (const listener of this.#listeners) listener(seen);
+      }
+      /** The step's ports: the scheduler's memory and store (row 011-356). */
+      #ports = {
+        admit: () => this.host.admit(),
+        stalled: () => this.host.stalled(),
+        asked: () => this.host.asked(),
+        // A resume after a busy store runs once with nothing queued too: its writes end the wait.
+        busyWaiting: () => this.host.busyWaiting(),
+        runnerWork: () => ({ queued: this.host.runnerWork.size, draining: this.host.draining() }),
+        yields: {
+          tier: (runId) => this.host.inFlight.get(runId)?.tier,
+          standsNamed: (tier) => this.host.yields.standsNamed(tier)
+        },
+        startNext: (admitted, at2, fly) => {
+          const { context, ledger } = this.host.started();
+          this.host.adopt(context, ledger);
+          const next = startNext(context, ledger, this.#plan(context, ledger, at2), {
+            check: (lane) => checkTurn(admitted, this.host.lock.turn, lane),
+            fly
+          });
+          return { idle: "tier" in next ? null : next.idle };
+        },
+        askLane: (group, at2, fly) => {
+          const { context, ledger } = this.host.started();
+          const lane = this.host.groups.get(group);
+          const doing = (operation) => this.host.lock.relabel(operation);
+          const view = { at: at2, context, ledger, admit: () => this.host.admit(), doing };
+          const decided = lane === void 0 ? "none" : lane.decide(view, fly);
+          this.host.lock.relabel(STEP_OPERATION);
+          return decided;
+        },
+        idleNow: (at2) => this.#idleNow(at2),
+        idleLanes: () => this.host.slowRelease.idleLanes(),
+        slowQueued: (lane) => {
+          const { context, ledger } = this.host.started();
+          return ledger.orderedSlow().some((ref3) => laneOf(context, ref3) === lane);
+        },
+        besideDone: (lane) => {
+          const { context, ledger } = this.host.started();
+          return besideDone(context, ledger, this.host.running(), lane);
+        },
+        claimsWaiting: () => this.host.started().ledger.claims.waiting,
+        refused: () => this.host.refused(),
+        inFlight: () => this.host.inFlight.size,
+        carry: (decision, at2) => this.#carry(decision, at2)
+      };
+      /**
+       * The tier plan of the fast lanes (row 011-346): the free lanes first;
+       * when they start nothing, a tier beside a running batch's tier
+       * (`besideFiles`, spec 011 C4 step 5 as amended 2026-10-29, row 011-269),
+       * an edit's tier of its lane in the lane's second instance; after a
+       * backlog slot, the next selection again, so a lane of slots fills every
+       * free slot in this hold and its slots end, and record, together (task
+       * 011-21 slice 2).
+       */
+      #plan(context, ledger, now) {
+        const view = liveView(context, ledger, {
+          busy: () => this.host.busyLanes(),
+          cut: this.host.yields,
+          beside: () => besideFiles(context, ledger, this.host.running()),
+          slots: true,
+          now
+        });
+        return planTiers(view, liveAsks(context, ledger));
+      }
+      /** Why no fast tier starts at the step's reading `now`: what the plan answers when it ends idle. */
+      #idleNow(now) {
+        const { context, ledger } = this.host.started();
+        const busy2 = () => this.host.busyLanes();
+        const view = liveView(context, ledger, { busy: busy2, cut: this.host.yields, now });
+        return idleOf(view, liveAsks(context, ledger));
+      }
+      /**
+       * The yield check in this lock turn, after `trigger`, taking stored
+       * results first when `adopt` (row 011-123); a hold reaches nothing (row
+       * 011-72): the check reads it in its own lock turn. `at` is the step's
+       * one reading (row 011-366).
+       */
+      #checkYields(trigger, adopt, at2) {
+        const { context, ledger } = this.host.started();
+        if (adopt) this.host.adopt(context, ledger);
+        const held3 = this.host.admit().halts.has("held");
+        const tiers = [...this.host.inFlight.values()].map(({ tier }) => tier);
+        this.host.yields.check(context, ledger, tiers, trigger, held3, at2);
+      }
+      /** Carries out a decision placed in the step's lock turn, as the step makes it. */
+      #carry(decision, at2) {
+        switch (decision.kind) {
+          case "start-tier":
+            this.host.fly(decision.tier, decision.stamp, decision.slow ?? null, decision);
+            return;
+          case "check-yields":
+            this.#checkYields(decision.trigger, decision.adopt, at2);
+            return;
+          case "reinstall":
+            this.host.reinstall(this.host.started().ledger);
+            return;
+          case "tell":
+            if (decision.note === "reinstalled") this.host.tellReinstall();
+            else this.host.tellReinstall(runtimeGoneNote(this.host.runtimeDir ?? ""));
+            return;
+          case "drain":
+            this.host.drain();
+            return;
+          default:
+            unplaced(decision);
+        }
+      }
+      /** Carries out a decision placed after the step's turn; a read's answer goes to the next step. */
+      async #carryAfter(decision) {
+        switch (decision.kind) {
+          case "read-install": {
+            const install = await this.host.install.check();
+            this.#installMissing = install.missing !== null;
+            const { missing: missing2 } = install;
+            if (missing2 === null && this.host.install.takeChange(install)) this.#refreshOwed = true;
+            const changed2 = missing2 === null && this.#refreshOwed;
+            return { install: { stamp: install.stamp, missing: missing2 !== null, changed: changed2 } };
+          }
+          case "read-probe":
+            return { probe: await this.host.probe() };
+          case "refresh-install":
+            await this.host.lock.run(() => {
+              const { context, ledger } = this.host.started();
+              return refreshInstall(context, ledger);
+            }, "refreshing the install");
+            this.#refreshOwed = false;
+            return {};
+          case "reconcile":
+            await this.host.reconcileReleased();
+            return {};
+          case "close-lanes":
+            await this.host.slowRelease.closeIdle(decision.lanes);
+            return {};
+          case "queue-rewalk":
+            return { rewalk: await this.host.queueRewalk() };
+          case "cancel-held":
+            await this.#cancelHeld();
+            return {};
+          case "close-beside":
+            await this.host.releaseLane(`${BESIDE_LANE_PREFIX}${decision.lane}`);
+            return {};
+          default:
+            return unplaced(decision);
+        }
+      }
+      /**
+       * Row 011-74 (011 C9, *Hold command*): a lane waiting for the load guard
+       * gives way, its instance idle (review 0.1.269, B1); each tier in flight
+       * whose runner cancels is cancelled, as the supersession cancel does (C4
+       * step 5); a node:test or pytest slot runs its file to its end. Resolves
+       * once those tiers ended.
+       */
+      async #cancelHeld() {
+        this.host.groups.preempt();
+        const flights = [...this.host.inFlight.values()].filter((flight) => flight.held !== null);
+        for (const { held: held3 } of flights) held3?.abort("hold");
+        await Promise.all(flights.map((flight) => flight.done));
+      }
+    };
+  }
+});
+
+// src/core/scheduler/stored-keys.ts
+function withoutResult(file, keys, index) {
+  const { key: key3 } = file;
+  if (key3 === null || key3 === file.resultKey || key3 === file.runningKey) return false;
+  if (key3 === file.unknownKey) return false;
+  return keys.has(key3) || (index.keysReadAsOne(key3)?.keys.some((k) => keys.has(k)) ?? false);
+}
+var STORED_KEYS_OVERLAP_MS, StoredKeys;
+var init_stored_keys = __esm({
+  "src/core/scheduler/stored-keys.ts"() {
+    "use strict";
+    init_context();
+    STORED_KEYS_OVERLAP_MS = 12e4;
+    StoredKeys = class {
+      /** When the previous read began; at first, the scheduler's start, before its baseline's lookup. */
+      #readAt;
+      /** The keys the reads within the overlap returned, at their newest record time. */
+      #seen = /* @__PURE__ */ new Map();
+      constructor(start2) {
+        this.#readAt = start2;
+      }
+      /**
+       * Settles this worktree's files at the keys stored since the last read, and
+       * commits. A busy store's error leaves the ledger as the store holds it
+       * (`Ledger.hold`) and the read to the next one (task 001-422).
+       */
+      adopt(context, ledger) {
+        const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
+        const readAt2 = context.now();
+        const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
+        const keys = new Set(fresh.map(({ key: key3 }) => key3));
+        const { index } = context.keys;
+        const refs2 = keys.size === 0 ? [] : [...ledger.files.values()].filter((file) => withoutResult(file, keys, index)).map((f) => f.ref);
+        if (refs2.length > 0) {
+          const restore2 = ledger.hold(refs2);
+          ledger.rereadFormats(refs2);
+          try {
+            ledger.settle(refs2, NOTHING_CHANGED, { queueMisses: false });
+            ledger.commit();
+          } catch (error) {
+            restore2();
+            throw error;
+          }
+        }
+        this.#readAt = readAt2;
+        for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
+        for (const { key: key3, recordedAt: recordedAt2 } of fresh) this.#seen.set(key3, recordedAt2);
+      }
+    };
   }
 });
 
@@ -59666,10 +59959,7 @@ import { stat as stat6 } from "node:fs/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
-function unplaced(decision) {
-  throw new Error(`squeal scheduler: a decision no carry-out places: ${String(decision)}`);
-}
-var TierScheduler, PUMP_ENDED, STEP_OPERATION;
+var TierScheduler, PUMP_ENDED, HOLD_BEGAN, INSTALL_MISSING;
 var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
@@ -59685,7 +59975,6 @@ var init_scheduler2 = __esm({
     init_busy();
     init_connection();
     init_text();
-    init_runner();
     init_scheduler();
     init_admission();
     init_batch();
@@ -59727,13 +60016,9 @@ var init_scheduler2 = __esm({
     init_slow();
     init_slow_release();
     init_slow_tier();
-    init_step();
-    init_step_events();
+    init_step_live();
     init_store_decision();
     init_stored_keys();
-    init_tier_live();
-    init_tier_plan();
-    init_tier_start();
     init_tiers();
     init_wakes();
     init_warm_up();
@@ -59826,6 +60111,35 @@ var init_scheduler2 = __esm({
           slowEnded: () => this.#groups.endedOnce(this.#laneEnd()),
           wakes: this.#wakes
         });
+        this.#live = new StepLive({
+          lock: this.#lock,
+          install: this.#install,
+          yields: this.#yields,
+          groups: this.#groups,
+          slowRelease: this.#slowRelease,
+          runnerWork: this.#runnerWork,
+          inFlight: this.#inFlight,
+          runtimeDir: options.runtimeDir,
+          now: this.#now,
+          started: () => this.#started(),
+          admit: () => this.#admit(),
+          stalled: () => this.#stalled,
+          asked: () => this.#asked,
+          busyWaiting: () => this.#busy?.waiting === true,
+          draining: () => this.#draining !== null,
+          refused: () => this.#capacity?.refused() === true,
+          adopt: (context, ledger) => this.#adopt(context, ledger),
+          busyLanes: () => this.#busyLanes(),
+          running: () => this.#running(),
+          releaseLane: (lane) => this.#releaseLane(lane),
+          fly: (tier, stamp2, slow, admitted) => this.#fly(tier, stamp2, slow, admitted),
+          reinstall: (ledger) => this.#reinstall(ledger),
+          tellReinstall: (note) => this.#tellReinstall(note),
+          drain: () => this.#drain(),
+          probe: () => this.#probeRead(),
+          reconcileReleased: () => this.#reconcileReleased(),
+          queueRewalk: () => this.#queueRewalk()
+        });
       }
       options;
       /** Row 011-351: the one clock, `SchedulerOptions.clock` or the host adapter over `now`. */
@@ -59848,7 +60162,7 @@ var init_scheduler2 = __esm({
         closed: () => this.#closed,
         pump: () => this.#pump(),
         backgroundError: (subject, error) => this.#backgroundError(subject, error),
-        applied: () => this.#stepInTurn([{ kind: "runner-work-applied" }]),
+        applied: () => this.#stepOutside([{ kind: "runner-work-applied" }]),
         // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
         busy: () => {
           const waits2 = this.options.busyWaits;
@@ -59881,8 +60195,6 @@ var init_scheduler2 = __esm({
       );
       /** The events of the step queued under the lock, not run yet (rows 011-54, 011-107, 011-356). */
       #queued = [];
-      /** Row 011-356: who hears each step (`onStep`). */
-      #stepListeners = /* @__PURE__ */ new Set();
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
       /** Row 018-12: the files explicit requests queued, whose ends are activity. */
@@ -59910,7 +60222,7 @@ var init_scheduler2 = __esm({
           this.#groups.lanes(this.#started().context.policy);
           this.#groups.get(group)?.preempt();
         },
-        cutTiers: () => this.#stepInTurn([{ kind: "request-taken" }]),
+        cutTiers: () => this.#stepOutside([{ kind: "request-taken" }]),
         pump: () => this.#pump()
       });
       /** The records of the runs that ended (row 011-131). */
@@ -59941,8 +60253,6 @@ var init_scheduler2 = __esm({
       #reinstallTold = false;
       /** The daemon's own runtime went (`runtimeDir`, row 011-106): no tier starts, the queue stays. */
       #runtimeGone = false;
-      /** The pump's last install check found the install gone (task 001-113): a start fact (row 011-340). */
-      #installMissing = false;
       #install;
       /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
       #capacity;
@@ -59967,12 +60277,8 @@ var init_scheduler2 = __esm({
       #retries = 0;
       /** Paths a merge hold released, read by the step's probe and reconciled by its `reconcile` (row 011-356). */
       #released = [];
-      /**
-       * An install change the step's read took (`InstallStamps.takeChange`) and
-       * no `refresh-install` has carried out yet: it outlives the reads of its
-       * iteration (row 011-356, review 0.1.515 B1).
-       */
-      #refreshOwed = false;
+      /** Row 011-365: the step's ports and its carry-out. */
+      #live;
       async start() {
         await this.#lock.run(async () => {
           if (this.#context) throw new Error("squeal scheduler: started twice");
@@ -60104,7 +60410,7 @@ var init_scheduler2 = __esm({
         const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
         if (install || batch.trigger === "interval") {
           const { missing: missing2 } = await this.#install.check();
-          if (missing2 !== null) return this.#reinstall(ledger);
+          if (missing2 !== null) return void this.#stepOutside([INSTALL_MISSING]);
         }
         if (applied === null) {
           if (touched2.length > 0) this.#runnerWork.queueTouched(touched2);
@@ -60112,7 +60418,7 @@ var init_scheduler2 = __esm({
           return;
         }
         this.#groups.preempt();
-        this.#stepInTurn([{ kind: "revision", revision: applied.revision }]);
+        this.#stepOutside([{ kind: "revision", revision: applied.revision }]);
         this.#runnerWork.queueRefine(applied.revision, applied.content, touched2);
       }
       /**
@@ -60126,16 +60432,18 @@ var init_scheduler2 = __esm({
         this.#storedKeys.adopt(context, ledger);
       }
       /**
-       * Row 011-356: the step inside this lock turn, after `event`, with no
-       * reads: it decides the yield check there (C4 step 5 as amended
-       * 2026-10-21, row 011-51) and never starts a tier. A revision's pass,
-       * applied runner work, a request taken, and the queued check.
+       * Row 011-356: the step outside the pump's iteration, after `events`,
+       * with no reads; its turn's decisions were carried out, an error is
+       * thrown. Inside a lock turn it decides the yield check there (C4 step 5
+       * as amended 2026-10-21, row 011-51): a revision's pass, applied runner
+       * work, a request taken, and the queued check. Row 011-366: also a pass's
+       * missing install, a hold's start and a flight's end; the decisions
+       * after its turn are its caller's to carry out (`StepLive.after`).
        */
-      #stepInTurn(events) {
-        const turn = { at: this.#now(), events, reads: null, ports: this.#ports };
-        const decided = step(turn);
-        this.#told(turn, decided);
+      #stepOutside(events) {
+        const decided = this.#live.step(events, null);
         if (decided.error !== null) throw decided.error;
+        return decided;
       }
       /**
        * A file of `tier` ended during its run (row 011-54): the count status
@@ -60158,7 +60466,7 @@ var init_scheduler2 = __esm({
         if (this.#queued.length > 1) return;
         const check3 = () => this.#lock.run(() => {
           const events = this.#queued.splice(0);
-          if (!this.#closed) this.#stepInTurn(events);
+          if (!this.#closed) this.#stepOutside(events);
         }, "checking the tiers in flight").catch(
           (error) => this.#backgroundError("could not check the tiers in flight", error)
         );
@@ -60236,7 +60544,7 @@ var init_scheduler2 = __esm({
           awaitingInstall: this.#awaitingInstall,
           reinstalled: this.#reinstalled,
           held: this.#hold.holding || this.#commandHold.holding,
-          installMissing: this.#installMissing,
+          installMissing: this.#live.installMissing,
           runnerWork: work.size,
           refining: work.refining,
           inFlight: [...this.#inFlight.values()].map(({ tier }) => ({
@@ -60275,23 +60583,13 @@ var init_scheduler2 = __esm({
         if (this.#closed) return false;
         const was = this.#commandHold.holding;
         if (this.#commandHold.check()) {
-          this.#groups.preempt();
-          await this.#cancelHeld();
-          this.#pump();
+          const began = this.#stepOutside([HOLD_BEGAN]);
+          await this.#live.after(began);
+          if (began.wake.kind === "again") this.#pump();
           return true;
         }
         if (was) this.#pump();
         return false;
-      }
-      /**
-       * Row 011-74 (011 C9, *Hold command*): cancels each tier in flight whose
-       * runner cancels, as the supersession cancel does (C4 step 5); a node:test
-       * or pytest slot runs its file to its end. Resolves once those tiers ended.
-       */
-      async #cancelHeld() {
-        const flights = [...this.#inFlight.values()].filter((flight) => flight.held !== null);
-        for (const { held: held3 } of flights) held3?.abort("hold");
-        await Promise.all(flights.map((flight) => flight.done));
       }
       /**
        * Row 011-106: whether the daemon's own runtime went, before a tier and
@@ -60317,10 +60615,7 @@ var init_scheduler2 = __esm({
       }
       /** Row 011-356: each scheduler step, as it ends, until the returned function is called. */
       onStep(listener) {
-        this.#stepListeners.add(listener);
-        return () => {
-          this.#stepListeners.delete(listener);
-        };
+        return this.#live.onStep(listener);
       }
       /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
       watchLock(listener) {
@@ -60636,9 +60931,7 @@ var init_scheduler2 = __esm({
             for (; ; ) {
               const decided = await this.#runSliced(() => this.#step(reads2), STEP_OPERATION);
               if (decided.selected && decided.error === null) this.#busy?.landed();
-              for (const decision of decided.decisions)
-                if (placeOf(decision) === "after")
-                  reads2 = { ...reads2, ...await this.#carryAfter(decision) };
+              reads2 = { ...reads2, ...await this.#live.after(decided) };
               if (decided.error !== null) throw decided.error;
               if (decided.wake.kind === "end") break;
               if (decided.wake.kind !== "reads") reads2 = {};
@@ -60654,9 +60947,7 @@ var init_scheduler2 = __esm({
             );
             await this.#wakes.waitFor({ for: "pieces" }, this.#draining ?? Promise.resolve());
             this.#pumping = null;
-            const turn = { at: this.#now(), events: [PUMP_ENDED], reads: {}, ports: this.#ports };
-            const ended2 = step(turn);
-            this.#told(turn, ended2);
+            const ended2 = this.#live.step([PUMP_ENDED], {});
             failed7 = ended2.error;
             if (failed7 === null && ended2.wake.kind === "again") this.#pump();
             else if (failed7 === null && this.#isIdle())
@@ -60689,140 +60980,7 @@ var init_scheduler2 = __esm({
       }
       /** One step of the pump with `reads` (row 011-356), in this lock turn: the events since the last. */
       #step(reads2) {
-        const turn = { at: this.#now(), events: this.#events.splice(0), reads: reads2, ports: this.#ports };
-        const decided = step(turn);
-        this.#told(turn, decided);
-        return decided;
-      }
-      /** Tells each `onStep` listener the step `decided` after `turn`. */
-      #told(turn, decided) {
-        if (this.#stepListeners.size === 0) return;
-        const { wake } = decided;
-        const seen = {
-          inTurn: turn.reads === null,
-          reads: Object.keys(turn.reads ?? {}),
-          decisions: decided.decisions.map((decision) => decision.kind),
-          runnerWork: this.#runnerWork.size,
-          wakes: wake.kind === "turn" ? [] : [wake.kind]
-        };
-        for (const listener of this.#stepListeners) listener(seen);
-      }
-      /** The step's live adapter: the scheduler's memory and store (row 011-356). */
-      #ports = {
-        admit: () => this.#admit(),
-        stalled: () => this.#stalled,
-        asked: () => this.#asked,
-        // A resume after a busy store runs once with nothing queued too: its writes end the wait.
-        busyWaiting: () => this.#busy?.waiting === true,
-        runnerWork: () => ({ queued: this.#runnerWork.size, draining: this.#draining !== null }),
-        yields: {
-          tier: (runId) => this.#inFlight.get(runId)?.tier,
-          standsNamed: (tier) => this.#yields.standsNamed(tier)
-        },
-        startNext: (admitted, fly) => {
-          const { context, ledger } = this.#started();
-          this.#adopt(context, ledger);
-          const next = startNext(context, ledger, this.#plan(context, ledger), {
-            check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
-            fly
-          });
-          return { idle: "tier" in next ? null : next.idle };
-        },
-        askLane: (group, at2, fly) => {
-          const { context, ledger } = this.#started();
-          const lane = this.#groups.get(group);
-          const doing = (operation) => this.#lock.relabel(operation);
-          const view = { at: at2, context, ledger, admit: () => this.#admit(), doing };
-          const decided = lane === void 0 ? "none" : lane.decide(view, fly);
-          this.#lock.relabel(STEP_OPERATION);
-          this.#slowRelease.arm();
-          return decided;
-        },
-        idleNow: () => this.#idleNow(),
-        idleLanes: () => this.#slowRelease.idleLanes(),
-        claimsWaiting: () => this.#started().ledger.claims.waiting,
-        refused: () => this.#capacity?.refused() === true,
-        inFlight: () => this.#inFlight.size,
-        carry: (decision) => this.#carry(decision)
-      };
-      /**
-       * The yield check in this lock turn, after `trigger`, taking stored
-       * results first when `adopt` (row 011-123); a hold reaches nothing (row
-       * 011-72): the check reads it in its own lock turn.
-       */
-      #checkYields(trigger, adopt) {
-        const { context, ledger } = this.#started();
-        if (adopt) this.#adopt(context, ledger);
-        const held3 = this.#admit().halts.has("held");
-        const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
-        this.#yields.check(context, ledger, tiers, trigger, held3);
-      }
-      /** Carries out a decision placed in the step's lock turn, as the step makes it. */
-      #carry(decision) {
-        switch (decision.kind) {
-          case "start-tier":
-            this.#fly(decision.tier, decision.stamp, decision.slow ?? null, decision);
-            return;
-          case "check-yields":
-            this.#checkYields(decision.trigger, decision.adopt);
-            return;
-          case "reinstall":
-            this.#reinstall(this.#started().ledger);
-            return;
-          case "tell":
-            if (decision.note === "reinstalled") this.#tellReinstall();
-            else this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
-            return;
-          case "drain":
-            this.#drain();
-            return;
-          case "read-install":
-          case "read-probe":
-          case "refresh-install":
-          case "reconcile":
-          case "close-lanes":
-          case "queue-rewalk":
-            throw new Error(`squeal scheduler: ${decision.kind} is carried out after the turn`);
-          default:
-            unplaced(decision);
-        }
-      }
-      /** Carries out a decision placed after the step's turn; a read's answer goes to the next step. */
-      async #carryAfter(decision) {
-        switch (decision.kind) {
-          case "start-tier":
-          case "check-yields":
-          case "tell":
-          case "reinstall":
-          case "drain":
-            return {};
-          case "read-install": {
-            const install = await this.#install.check();
-            this.#installMissing = install.missing !== null;
-            if (install.missing === null && this.#install.takeChange(install)) this.#refreshOwed = true;
-            const changed2 = install.missing === null && this.#refreshOwed;
-            return { install: { stamp: install.stamp, missing: install.missing !== null, changed: changed2 } };
-          }
-          case "read-probe":
-            return { probe: await this.#probeRead() };
-          case "refresh-install":
-            await this.#lock.run(() => {
-              const { context, ledger } = this.#started();
-              return refreshInstall(context, ledger);
-            }, "refreshing the install");
-            this.#refreshOwed = false;
-            return {};
-          case "reconcile":
-            await this.#reconcileReleased();
-            return {};
-          case "close-lanes":
-            await this.#slowRelease.closeIdle(decision.lanes);
-            return {};
-          case "queue-rewalk":
-            return { rewalk: await this.#queueRewalk() };
-          default:
-            return unplaced(decision);
-        }
+        return this.#live.step(this.#events.splice(0), reads2);
       }
       /**
        * Runs `tier` in its lane and records it under the lock; `slow` is the
@@ -60869,7 +61027,8 @@ var init_scheduler2 = __esm({
             for (const note of record2.withheld) this.#note(note);
             slow?.slot.release();
             if (record2.moved.length > 0) await this.#reconcilePaths(record2.moved);
-            if (slow !== null) await this.#slowEnded(tier.lane);
+            if (slow !== null)
+              await this.#live.after(this.#stepOutside([{ kind: "slow-ended", lane: tier.lane }]));
           } catch (error) {
             this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
             if (!recorded2) await this.#requeue(tier, slow !== null);
@@ -60913,17 +61072,6 @@ var init_scheduler2 = __esm({
       #runSliced(task, operation) {
         return this.#sliced(() => this.#lock.run(task, operation));
       }
-      /**
-       * A slow tier of `lane` ended. Its runner instance closes when the pass
-       * drained, no file of it queued (spec 004 D2), or at once on hold (row
-       * 011-211); otherwise `SlowRelease` closes it once it waited its bound.
-       * While still in flight, so the lane's next tier waits for the close.
-       */
-      async #slowEnded(lane) {
-        const { context, ledger } = this.#started();
-        const queued = ledger.orderedSlow().some((ref3) => laneOf(context, ref3) === lane);
-        if (!queued || this.#admit().halts.has("held")) await this.#slowRelease.release(lane);
-      }
       /** The runner's `releaseLane` of `lane`: its instance closes. */
       async #releaseLane(lane) {
         const { context } = this.#started();
@@ -60946,34 +61094,12 @@ var init_scheduler2 = __esm({
         return [...this.#inFlight.values()].filter(({ ran }) => !ran).map(({ tier }) => tier);
       }
       /**
-       * The tier plan of the fast lanes (row 011-346): the free lanes first;
-       * when they start nothing, a tier beside a running batch's tier
-       * (`besideFiles`, spec 011 C4 step 5 as amended 2026-10-29, row 011-269),
-       * an edit's tier of its lane in the lane's second instance; after a
-       * backlog slot, the next selection again, so a lane of slots fills every
-       * free slot in this hold and its slots end, and record, together (task
-       * 011-21 slice 2).
+       * A batch's tier or one beside it in `lane` ended: the step decides its
+       * second instance's close, carried out beside the flight's end.
        */
-      #plan(context, ledger) {
-        const view = liveView(context, ledger, {
-          busy: () => this.#busyLanes(),
-          cut: this.#yields,
-          beside: () => besideFiles(context, ledger, this.#running()),
-          slots: true
-        });
-        return planTiers(view, liveAsks(context, ledger));
-      }
-      /** Why no fast tier starts, read now: what the plan answers when it ends idle. */
-      #idleNow() {
-        const { context, ledger } = this.#started();
-        const view = liveView(context, ledger, { busy: () => this.#busyLanes(), cut: this.#yields });
-        return idleOf(view, liveAsks(context, ledger));
-      }
-      /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
       #besideEnded(lane) {
-        const { context, ledger } = this.#started();
-        if (!besideDone(context, ledger, this.#running(), lane)) return;
-        void this.#wakes.track(() => this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`));
+        const ended2 = this.#stepOutside([{ kind: "beside-ended", lane }]);
+        if (ended2.decisions.length > 0) void this.#wakes.track(() => this.#live.after(ended2));
       }
       /** The lanes no tier may start in now. */
       #busyLanes() {
@@ -61177,7 +61303,8 @@ var init_scheduler2 = __esm({
       }
     };
     PUMP_ENDED = { kind: "pump-ended" };
-    STEP_OPERATION = "selecting the next tier";
+    HOLD_BEGAN = { kind: "hold-began" };
+    INSTALL_MISSING = { kind: "install-missing" };
   }
 });
 
@@ -106999,7 +107126,7 @@ function importPair(test, path, imports2, context) {
   const importer = chain.at(-2) ?? test.ref.path;
   return pair(test, path, between.length === 0 ? "direct" : "transitive", chain, importer);
 }
-var OUTSIDE = /* @__PURE__ */ new Set([
+var OUTSIDE2 = /* @__PURE__ */ new Set([
   "setup",
   "declared input",
   "child process",
@@ -107018,7 +107145,7 @@ function coverageOf3(view, path, kind) {
   if (view.called.has(path)) return "called";
   if (view.loaded.has(path)) return "loaded only";
   if (view.unread.has(path)) return "unread";
-  return OUTSIDE.has(kind) ? "outside the test's process" : "not loaded";
+  return OUTSIDE2.has(kind) ? "outside the test's process" : "not loaded";
 }
 
 // src/core/reach/analyze.ts
