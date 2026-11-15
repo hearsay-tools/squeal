@@ -58,6 +58,7 @@ async function keyed(policy = POLICY, id = worktreeIdFor(root)) {
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(() => readHead(root));
   await keys.setEnvironments([

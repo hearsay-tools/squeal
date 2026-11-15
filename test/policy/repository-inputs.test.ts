@@ -91,6 +91,7 @@ beforeAll(async () => {
     policy,
     squealVersion: "0.0.0-test",
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(head);
   keys.index.setEnvironment("", "environment");

@@ -298,7 +298,10 @@ describe("the rest signal (row 011-352)", () => {
 
   it("does not rest while the lock has a task queued or running", async () => {
     const { wakes } = loop();
-    const lock = new Mutex(undefined, (count) => wakes.locked(count));
+    const lock = new Mutex(
+      () => Date.now(),
+      (count) => wakes.locked(count),
+    );
     let release = () => {};
     const held = lock.run(() => new Promise<void>((resolve) => (release = resolve)));
     const queued = lock.run(() => {});

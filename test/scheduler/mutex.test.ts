@@ -50,8 +50,8 @@ async function interleaving(lock: { run<T>(task: () => T | Promise<T>): Promise<
 describe("the scheduler's lock (row 011-302)", () => {
   it("runs tasks and resumes their callers in the order the plain lock did", async () => {
     const plain = await interleaving(new PlainMutex());
-    expect(await interleaving(new Mutex())).toEqual(plain);
-    const watched = new Mutex();
+    expect(await interleaving(new Mutex(() => Date.now()))).toEqual(plain);
+    const watched = new Mutex(() => Date.now());
     const heard: (LockHolder | null)[] = [];
     watched.watch((holder) => heard.push(holder));
     expect(await interleaving(watched)).toEqual(plain);
@@ -113,7 +113,7 @@ describe("the scheduler's lock (row 011-302)", () => {
   });
 
   it("drops a watcher that throws, hands its error over, and runs the task", async () => {
-    const lock = new Mutex();
+    const lock = new Mutex(() => Date.now());
     const errors: unknown[] = [];
     const broken = new Error("cannot post");
     lock.watch(

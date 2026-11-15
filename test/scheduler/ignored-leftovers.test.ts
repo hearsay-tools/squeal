@@ -92,6 +92,7 @@ function keysOn(opened: Store): WorktreeKeys {
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: (paths) => watched.push([...paths]),
+    now: () => Date.now(),
   });
 }
 

@@ -35,7 +35,7 @@ const QUEUED = { revision: 3 as RevisionNumber, queued: 2 };
 
 /** A scheduler of the real lock whose `requestGroup` takes it, as `TierScheduler`'s does. */
 function lockedScheduler(watch = true) {
-  const lock = new Mutex();
+  const lock = new Mutex(() => Date.now());
   const scheduler = {
     requestGroup: (group: string) => lock.run(() => QUEUED, `taking a squeal run ${group} request`),
     ...(watch

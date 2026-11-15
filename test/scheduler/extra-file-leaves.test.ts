@@ -64,6 +64,7 @@ function keysOn({ watched = [], ignored, policy = POLICY }: Keying = {}): Worktr
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: (paths) => watched.push([...paths]),
+    now: () => Date.now(),
     ignored: ignored ?? ((paths) => marks.among(paths)),
   });
   return keys;

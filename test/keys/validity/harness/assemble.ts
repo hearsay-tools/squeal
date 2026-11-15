@@ -201,6 +201,7 @@ async function keyed(
     squealVersion: "0.0.0-validity",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(() => readHead(root));
   if (input.environment === undefined) keys.index.setEnvironment("", "environment");
