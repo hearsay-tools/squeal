@@ -3,12 +3,14 @@ import { isBusy } from "../store/connection.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Store } from "../types/store.js";
 import type { HarnessProcess } from "../types/store-records.js";
+import { hostClock } from "./clock.js";
 import {
   type CommandHoldEntry,
   type EndedCommandHold,
   pruneCommandHolds,
   readCommandHolds,
 } from "./hold-rows.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 
 /*
  * Row 011-74 (spec 011 C9 as amended 2026-10-21, "Holds", *Hold command*;
@@ -79,16 +81,22 @@ export interface CommandHoldOptions {
   readonly due: () => void;
   /** Whether an entry's holder is gone; default `holderGone` in this process's PID namespace. */
   readonly gone?: (entry: CommandHoldEntry) => boolean;
+  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
+  readonly wakes?: Wakes;
 }
 
 /** The command holds of one worktree, as the daemon last read them. */
 export class CommandHold {
   #entries: readonly CommandHoldEntry[] = [];
   #failed: string | null = null;
-  #timer: NodeJS.Timeout | null = null;
+  /** The wake at the earliest `until` (row 011-352). */
+  readonly #wake: WakeSlot;
   #closed = false;
 
-  constructor(private readonly options: CommandHoldOptions) {}
+  constructor(private readonly options: CommandHoldOptions) {
+    const wakes = options.wakes ?? new Wakes(hostClock(options.now));
+    this.#wake = wakes.slot("command-hold", () => this.options.due());
+  }
 
   get holding(): boolean {
     return this.#entries.length > 0;
@@ -141,25 +149,12 @@ export class CommandHold {
 
   close(): void {
     this.#closed = true;
-    this.#disarm();
+    this.#wake.clear();
   }
 
-  /** One timer at the earliest `until`, none without an entry; unref'd, it never holds the process. */
+  /** The wake at the earliest `until`, none without an entry; the loop clamps a far one and reads again. */
   #arm(): void {
-    this.#disarm();
-    if (this.#entries.length === 0 || this.#closed) return;
-    const until = Math.min(...this.#entries.map((e) => e.until));
-    // A bound past a 32-bit timer's range fires early and reads again, which re-arms.
-    const ms = Math.min(Math.max(0, until - this.options.now()), 2 ** 31 - 1);
-    this.#timer = setTimeout(() => {
-      this.#timer = null;
-      this.options.due();
-    }, ms);
-    this.#timer.unref();
-  }
-
-  #disarm(): void {
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    if (this.#entries.length === 0 || this.#closed) this.#wake.clear();
+    else this.#wake.at(Math.min(...this.#entries.map((e) => e.until)) as EpochMs);
   }
 }

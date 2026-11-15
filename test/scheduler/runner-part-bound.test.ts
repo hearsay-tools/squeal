@@ -5,9 +5,11 @@ import {
   RunnerPartBound,
   runnerPartBoundMs,
 } from "../../src/core/scheduler/runner-work-bound.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import type { DaemonNote } from "../../src/core/types/scheduler.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
@@ -92,13 +94,11 @@ describe("RunnerPartBound (task 001-228)", () => {
   });
 
   it("answers within its bound, abandons past it and makes no later call of that part", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    onTestFinished(() => {
-      vi.useRealTimers();
-    });
-    const bound = new RunnerPartBound(5_000);
+    // Row 011-352: the bound's wake is the loop's, here on the virtual clock.
+    const clock = virtualClock(1_000);
+    const bound = new RunnerPartBound(5_000, new Wakes(clock), clock.now);
     await expect(bound.call(() => Promise.resolve("answered"))).resolves.toBe("answered");
-    expect(vi.getTimerCount()).toBe(0);
+    expect(clock.armed).toBe(0);
 
     let late = (_: Error) => {};
     const stalled = bound.call(
@@ -108,10 +108,10 @@ describe("RunnerPartBound (task 001-228)", () => {
         }),
     );
     const outcome = stalled.catch((error: Error) => error.message);
-    await vi.advanceTimersByTimeAsync(4_999);
-    await vi.advanceTimersByTimeAsync(1);
+    clock.advance(4_999);
+    clock.advance(1);
     await expect(outcome).resolves.toBe("no answer within 5 s; the call was abandoned");
-    expect(vi.getTimerCount()).toBe(0);
+    expect(clock.armed).toBe(0);
 
     const next = vi.fn(() => Promise.resolve("answered"));
     await expect(bound.call(next)).rejects.toThrow("no answer within 5 s; the call was abandoned");
