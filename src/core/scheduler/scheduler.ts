@@ -1192,8 +1192,11 @@ class TierScheduler implements Scheduler {
         } catch (error) {
           this.#stall(error);
         } finally {
-          await Promise.all([...this.#inFlight.values()].map((flight) => flight.done));
-          await this.#draining;
+          // Each flight and the drain count on their own (a flight's run set aside); the pump's wait does not.
+          await this.#wakes.aside(
+            Promise.all([...this.#inFlight.values()].map((flight) => flight.done)),
+          );
+          await this.#wakes.aside(this.#draining ?? Promise.resolve());
           this.#pumping = null;
           const ended = this.#admit();
           if (ended.halts.has("reinstalled")) this.#tellReinstall();
@@ -1477,12 +1480,19 @@ class TierScheduler implements Scheduler {
     }
   }
 
-  /** Settles on the next event; at once when one came since the pump's pass began. */
+  /**
+   * Settles on the next event; at once when one came since the pump's pass
+   * began. The pump counts as the scheduler's work only while it has work it
+   * can do now: its wait is set aside, so a rest can come while it waits,
+   * and its count is back before it acts on the event (review 0.1.513 B1).
+   */
   #nextEvent(): Promise<void> {
     if (this.#events.length > 0) return Promise.resolve();
-    return new Promise((resolve) => {
-      this.#wake = resolve;
-    });
+    return this.#wakes.aside(
+      new Promise((resolve) => {
+        this.#wake = resolve;
+      }),
+    );
   }
 
   /** Posts `event` (row 011-352): the pump's wait ends. */
