@@ -127,23 +127,37 @@ export class Wakes {
     return slot;
   }
 
-  /** Counts `work` as the scheduler's own until it settles; returns it. */
-  track<T>(work: Promise<T>): Promise<T> {
+  /**
+   * Counts `work` as the scheduler's own until it settles; returns it. Given
+   * a function, counts first and then calls it, so an `aside` in its
+   * synchronous start is inside the count (an `async` body runs to its first
+   * `await` before a promise it returns could be handed over).
+   */
+  track<T>(work: Promise<T> | (() => Promise<T>)): Promise<T> {
     this.#tracked += 1;
     const done = () => {
       this.#tracked -= 1;
       this.#poke();
     };
-    work.then(done, done);
-    return work;
+    let promise: Promise<T>;
+    try {
+      promise = typeof work === "function" ? work() : work;
+    } catch (error) {
+      promise = Promise.reject(error);
+    }
+    promise.then(done, done);
+    return promise;
   }
 
   /**
-   * Sets `run`, a runner's run awaited inside tracked work, aside until it
-   * settles: a run a test holds counts as rest; its end, and what follows
-   * it, does not. Returns `run`.
+   * Sets `run`, a runner's run or a wait awaited inside tracked work, aside
+   * until it settles: a run a test holds counts as rest; its end, and what
+   * follows it, does not. Returns `run`. Called outside tracked work it sets
+   * nothing aside, so the count never goes below what tracked work holds
+   * (its caller must be inside tracked work when any is open).
    */
   aside<T>(run: Promise<T>): Promise<T> {
+    if (this.#tracked <= 0) return run;
     this.#tracked -= 1;
     this.#poke();
     const back = () => {

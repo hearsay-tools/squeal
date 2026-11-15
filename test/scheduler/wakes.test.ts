@@ -313,20 +313,35 @@ describe("the rest signal (row 011-352)", () => {
     const run = new Promise<string>((resolve) => (end = () => resolve("ran")));
     let recorded = false;
     let finish = () => {};
-    void wakes.track(
-      (async () => {
-        await wakes.aside(run);
-        // What follows the run, a record, is the scheduler's own work again.
-        await new Promise<void>((resolve) => (finish = resolve));
-        recorded = true;
-      })(),
-    );
+    void wakes.track(async () => {
+      await wakes.aside(run);
+      // What follows the run, a record, is the scheduler's own work again.
+      await new Promise<void>((resolve) => (finish = resolve));
+      recorded = true;
+    });
     await wakes.rest();
     end();
     expect(await rests(wakes)).toBe(false);
     finish();
     await wakes.rest();
     expect(recorded).toBe(true);
+  });
+
+  it("an aside outside tracked work sets nothing aside: work tracked after it still holds the rest", async () => {
+    const { wakes } = loop();
+    let endWait = () => {};
+    // A slot record on a loop that tracks nothing, as a test builds one.
+    const wait = wakes.aside(new Promise<void>((resolve) => (endWait = resolve)));
+    let end = () => {};
+    const work = wakes.track(new Promise<void>((resolve) => (end = resolve)));
+    expect(await rests(wakes)).toBe(false);
+    end();
+    await work;
+    await wakes.rest();
+    endWait();
+    await wait;
+    // Its end gives no count back either.
+    await expect(rests(wakes)).resolves.toBe(true);
   });
 
   it("a closed loop rests once its tracked work ends, past wakes or not", async () => {
