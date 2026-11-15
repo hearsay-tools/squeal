@@ -1,5 +1,8 @@
+import type { EpochMs } from "../types/common.js";
 import { CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS } from "./claims.js";
+import { hostClock, hostNow } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
+import { Wakes } from "./wakes.js";
 
 /** Past the run a runner-part call may wait for, what the call itself may take: a recreate's start included. */
 export const RUNNER_PART_MARGIN_MS = 60_000;
@@ -22,10 +25,13 @@ export function runnerPartBoundMs(timeoutMs: number | null): number {
  * `runnerPartBoundMs` of the policy's run timeout.
  */
 export function runnerPartBound(
-  context: Pick<SchedulerContext, "runnerPartMs" | "policy">,
+  context: Pick<SchedulerContext, "runnerPartMs" | "policy"> &
+    Partial<Pick<SchedulerContext, "now" | "wakes">>,
 ): RunnerPartBound {
   return new RunnerPartBound(
     context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
+    context.wakes,
+    context.now,
   );
 }
 
@@ -39,23 +45,39 @@ export function runnerPartBound(
  */
 export class RunnerPartBound {
   #abandoned: string | null = null;
+  #wakes: Wakes | undefined;
+  readonly #now: () => EpochMs;
 
-  constructor(private readonly ms: number) {}
+  /**
+   * `wakes` is the scheduler's loop, whose wake ends a call past its bound
+   * (row 011-352), read on `now`, its clock; absent, a loop of the bound's
+   * own over `now`, by default the host's.
+   */
+  constructor(
+    private readonly ms: number,
+    wakes?: Wakes,
+    now: () => EpochMs = hostNow,
+  ) {
+    this.#wakes = wakes;
+    this.#now = now;
+  }
 
   call<T>(call: () => Promise<T>): Promise<T> {
     if (this.#abandoned !== null) return Promise.reject(new Error(this.#abandoned));
     const answer = call();
     // An answer after the bound is dropped, a rejection included.
     answer.catch(() => {});
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const abandoned = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
-        reject(new Error(this.#abandoned));
-      }, this.ms);
-      timer.unref?.();
+    this.#wakes ??= new Wakes(hostClock(this.#now));
+    let reject: (error: Error) => void = () => {};
+    const abandoned = new Promise<never>((_, rejected) => {
+      reject = rejected;
     });
-    return Promise.race([answer, abandoned]).finally(() => clearTimeout(timer));
+    const wake = this.#wakes.slot("runner-part-bound", () => {
+      this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
+      reject(new Error(this.#abandoned));
+    });
+    wake.at((this.#now() + this.ms) as EpochMs);
+    return Promise.race([answer, abandoned]).finally(() => wake.drop());
   }
 }
 

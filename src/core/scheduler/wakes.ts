@@ -1,6 +1,6 @@
 import type { EpochMs } from "../types/common.js";
 import type { Rest, RestWake } from "../types/scheduler.js";
-import { type Clock, type Disarm, hostClock, hostNow, MAX_TIMER_MS } from "./clock.js";
+import { type Clock, type Disarm, MAX_TIMER_MS } from "./clock.js";
 import { type WakeReason, wakeRank } from "./step-events.js";
 
 /*
@@ -281,17 +281,4 @@ export class Wakes {
   #poke(): void {
     for (const resolve of this.#waiters.splice(0)) resolve();
   }
-}
-
-/**
- * A slot on a loop of its own over the host clock: for an owner built
- * outside a scheduler, as tests build them; in the scheduler every owner
- * takes a slot of its one loop.
- */
-export function ownSlot(
-  reason: WakeReason,
-  fire: WakeFire,
-  now: () => EpochMs = hostNow,
-): WakeSlot {
-  return new Wakes(hostClock(now)).slot(reason, fire);
 }

@@ -156,7 +156,7 @@ class TierScheduler implements Scheduler {
    * Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51);
    * a tier past its estimate is checked again at its bound (row 011-107).
    */
-  readonly #yields = new TierYields(() => this.#recheckTiers());
+  readonly #yields: TierYields;
   /**
    * The lanes that wait for quiet after a backlog tier's cancel, or before an
    * edit's catch-up (C4 step 5, rows 011-82 and 011-153).
@@ -259,6 +259,7 @@ class TierScheduler implements Scheduler {
     this.#wakes = new Wakes(this.#clock);
     this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
     this.#claimsWake = this.#wakes.slot("claims", (at) => this.#claimPoll(at));
+    this.#yields = new TierYields(() => this.#recheckTiers(), this.#wakes);
     this.#install = new InstallStamps(options.root);
     this.#storedKeys = new StoredKeys(this.#now());
     this.#hold = new MergeHold({
@@ -277,6 +278,7 @@ class TierScheduler implements Scheduler {
       now: this.#now,
       note: (message) => this.#note(message),
       merging: () => this.#hold.holding,
+      wakes: this.#wakes,
       due: () =>
         void this.#wakes.track(
           this.commandHold().catch((error: unknown) =>
@@ -400,6 +402,7 @@ class TierScheduler implements Scheduler {
         ...(options.predecessor === undefined ? {} : { predecessor: options.predecessor }),
         ...(this.#capacity === null ? {} : { capacity: this.#capacity }),
         quiet: this.#quiet,
+        wakes: this.#wakes,
       };
       const ledger = new Ledger(context);
       // Spec 019 D5 step 1 (row 019-22): a commit asks the `commit` groups' lanes for its files.

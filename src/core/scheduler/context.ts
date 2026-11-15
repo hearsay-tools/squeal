@@ -11,6 +11,7 @@ import type { TierCapacity } from "./capacity.js";
 import type { WorktreeKeys } from "./keying.js";
 import type { BacklogQuiet } from "./quiet.js";
 import type { FailureDescriber } from "./records.js";
+import type { Wakes } from "./wakes.js";
 
 /** What every part of the scheduler reads. One per worktree. */
 export interface SchedulerContext {
@@ -47,6 +48,8 @@ export interface SchedulerContext {
   readonly capacity?: TierCapacity;
   /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82); absent, none waits. */
   readonly quiet?: BacklogQuiet;
+  /** The scheduler's wake loop (row 011-352): a runner-part call's bound arms through it; absent, a loop of the bound's own. */
+  readonly wakes?: Wakes;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

@@ -7,12 +7,14 @@ import type { LastYield, TierYield } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import { cancelsBacklog } from "./backlog.js";
 import { CLAIM_RECHECK_MS, peekClaim } from "./claims.js";
+import { hostClock } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import { focusedWaiting } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 import { YieldHistory } from "./yield-history.js";
 import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
 import { type RankedFile, startsSooner } from "./yield-view.js";
@@ -104,8 +106,8 @@ export class TierYields implements CutFiles {
    * by run id.
    */
   readonly #bounds = new Map<string, EpochMs>();
-  /** The one timer that checks the tiers again at the earliest of `#bounds`. */
-  #timer: ReturnType<typeof setTimeout> | null = null;
+  /** The wake that checks the tiers again at the earliest of `#bounds` (row 011-352). */
+  #wake: WakeSlot | null = null;
   /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
   readonly #history = new YieldHistory();
 
@@ -115,7 +117,11 @@ export class TierYields implements CutFiles {
    * or a claim may have ended with none (row 011-123); it takes stored
    * results first.
    */
-  constructor(private readonly recheck: () => void = () => {}) {}
+  constructor(
+    private readonly recheck: () => void = () => {},
+    /** The scheduler's wake loop (row 011-352); absent, a loop of its own over the context's clock. */
+    private readonly wakes?: Wakes,
+  ) {}
 
   /**
    * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
@@ -284,21 +290,17 @@ export class TierYields implements CutFiles {
     return byRemainder(context, tier);
   }
 
-  /** Sets the one timer at the earliest bound, none without a bound; unref'd, it never holds the process. */
+  /** States the wake at the earliest bound, none without a bound. */
   #arm(context: SchedulerContext): void {
-    this.#disarm();
-    if (this.#bounds.size === 0) return;
-    const ms = Math.max(0, Math.min(...this.#bounds.values()) - context.now());
-    this.#timer = setTimeout(() => {
-      this.#timer = null;
-      this.recheck();
-    }, ms);
-    this.#timer.unref();
+    this.#wake ??= (this.wakes ?? new Wakes(hostClock(context.now))).slot("yield-bound", () =>
+      this.recheck(),
+    );
+    if (this.#bounds.size === 0) this.#wake.clear();
+    else this.#wake.at(Math.min(...this.#bounds.values()) as EpochMs);
   }
 
   #disarm(): void {
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    this.#wake?.clear();
   }
 
   /** Drops the marks that no longer hold. */

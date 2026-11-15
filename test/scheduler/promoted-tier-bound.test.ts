@@ -1,20 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { publishedYieldRow, TierYields } from "../../src/core/scheduler/yields.js";
 import type { RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { freshStore } from "../state/helpers.js";
 
 /*
- * Review `reviews/0.1.377.md` B1 and S1 (row 011-265), with fake timers as
+ * Review `reviews/0.1.377.md` B1 and S1 (row 011-265), on the virtual clock
+ * (row 011-352; fake timers before) as
  * `tier-yields-bound.test.ts`: a tier of promoted files only has its rank
  * to beat from its start (coordinator, reply to request 8b69856d), so
  * before 30 s a later wait's file does not cut it. Row 011-268 (C15 as
@@ -29,12 +32,15 @@ const WT = "wt-0.1.377-b1" as WorktreeId;
 const OPEN_MS = 10_000;
 const stores: Store[] = [];
 
+let clock = virtualClock();
+let wakes = new Wakes(clock);
+
 beforeEach(() => {
-  vi.useFakeTimers();
+  clock = virtualClock(Date.now());
+  wakes = new Wakes(clock);
 });
 
 afterEach(() => {
-  vi.useRealTimers();
   for (const store of stores.splice(0)) store.close();
 });
 
@@ -58,7 +64,7 @@ function setup({ ms, qFirst, qEdit, promoted, pWaits = true }: Setup) {
     store,
     worktreeId: WT,
     policy: DEFAULT_POLICY,
-    now: () => Date.now(),
+    now: () => clock.now(),
     runner: { traits: NO_TRAITS },
     keys: { cache: new StatCache(), isEnvironmentInput: () => false, runnerOf: () => undefined },
   } as unknown as SchedulerContext;
@@ -74,9 +80,9 @@ function setup({ ms, qFirst, qEdit, promoted, pWaits = true }: Setup) {
   const q = fileOf("test/q.test.ts");
   ledger.enqueue(q, qEdit ? Priority.edited : Priority.transitive, false, qEdit, false, 2);
   const promoteP = () => {
-    if (pWaits) ledger.queue.promote([p.ref], Date.now() + OPEN_MS);
+    if (pWaits) ledger.queue.promote([p.ref], clock.now() + OPEN_MS);
   };
-  const promoteQ = () => ledger.queue.promote([q.ref], Date.now() + 600_000);
+  const promoteQ = () => ledger.queue.promote([q.ref], clock.now() + 600_000);
   if (qFirst) promoteQ();
   promoteP();
   if (!qFirst) promoteQ();
@@ -96,10 +102,10 @@ function setup({ ms, qFirst, qEdit, promoted, pWaits = true }: Setup) {
     ],
     changes: new Set(),
     revision: { number: 1 },
-    startedAt: Date.now(),
+    startedAt: clock.now(),
     cancel: new AbortController(),
   } as unknown as Tier;
-  const yields = new TierYields(() => yields.check(context, ledger, [tier], null));
+  const yields = new TierYields(() => yields.check(context, ledger, [tier], null), wakes);
   const standing = () => [...publishedYieldRow(store, WT, 0).tiers.values()];
   return { check: () => yields.check(context, ledger, [tier], null), standing, tier };
 }
@@ -115,11 +121,11 @@ describe("a promoted-only tier, its files' open promotion and the waits beside i
     });
     check();
     expect(standing()).toEqual([{ kind: "remainder", remainderMs: 20_000 }]);
-    vi.advanceTimersByTime(OPEN_MS - 1);
+    clock.advance(OPEN_MS - 1);
     expect(tier.cancel?.signal.aborted).toBe(false);
 
     // On main, review B1's rule 3 cancelled it here: P's promotion ended. Its batch does not.
-    vi.advanceTimersByTime(1);
+    clock.advance(1);
     check();
     expect(tier.cancel?.signal.aborted).toBe(false);
     expect(standing()).toEqual([{ kind: "remainder", remainderMs: 20_000 - OPEN_MS }]);
@@ -136,11 +142,11 @@ describe("a promoted-only tier, its files' open promotion and the waits beside i
     // On 43e456cd9: the cut took Q in P's next tier, so it yielded with a 45 s remainder.
     expect(tier.cancel?.signal.aborted).toBe(false);
     expect(standing()).toEqual([{ kind: "named" }]);
-    vi.advanceTimersByTime(OPEN_MS - 1);
+    clock.advance(OPEN_MS - 1);
     expect(tier.cancel?.signal.aborted).toBe(false);
 
     // On main it yielded here: P's promotion ended and Q ranked first. Q's batch is the later.
-    vi.advanceTimersByTime(1);
+    clock.advance(1);
     check();
     expect(tier.cancel?.signal.aborted).toBe(false);
     expect(standing()).toEqual([{ kind: "named" }]);
