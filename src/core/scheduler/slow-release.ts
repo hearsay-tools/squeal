@@ -69,23 +69,24 @@ export function decideRelease(
 /**
  * Row 011-211 (004 D2, 013 V1; gh-78): a slow lane's runner instance closes
  * when its pass drains (`release`), and also while its slow files are still
- * queued: at once when a hold begins (`idle`), and once `afterMs` passed
+ * queued: at once when a hold begins (the step's `close-lanes`, over
+ * `idleLanes`), and once `afterMs` passed
  * since that lane's last slow run ended with no tier of it started since.
  * Each lane counts from its own end (spec 019 D3, review 0.1.396 S4): a
  * lane that ends tiers keeps no other lane's instance. Closing it runs each
  * project's `globalSetup` teardown, so what the setup holds (a test
  * environment, a lease, a port) is free while no slow file runs. A slow
- * selection in progress keeps every instance, and a lane whose files wait
- * for the load guard (004 D3) keeps its own (`SlowReleaseHost.lanes`). The
- * next slow tier makes a new instance, as the first of a pass does, and
- * runs the setup again.
+ * selection is one synchronous piece of the step's lock turn (row 011-357),
+ * so no close lands inside it; a lane whose files wait for the load guard
+ * (004 D3) keeps its own (`SlowReleaseHost.lanes`). The next slow tier
+ * makes a new instance, as the first of a pass does, and runs the setup
+ * again.
  */
 export class SlowRelease {
   /** The slow lanes whose instance a slow tier opened and no release closed since. */
   readonly #open = new Set<string>();
   /** When each lane's last slow run ended (`ended`). */
   readonly #endedAt = new Map<string, EpochMs>();
-  #selecting = false;
   readonly #wakes: Wakes;
   /** The close's wake (row 011-352): an earlier bound replaces a later one. */
   readonly #wake: WakeSlot;
@@ -115,31 +116,14 @@ export class SlowRelease {
     await this.host.release(lane);
   }
 
-  /** Closes the instance of each open lane no tier runs in, unless a slow selection is in progress. */
-  async idle(): Promise<void> {
-    await this.closeIdle(this.idleLanes());
-  }
-
   /** The open lanes no tier runs in now (`decideRelease`'s `idle`): a step's decision (row 011-356). */
   idleLanes(): readonly string[] {
     return this.#decide().idle;
   }
 
-  /** Closes `lanes`, a step decided idle, unless a slow selection is in progress. */
+  /** Closes `lanes`, a step decided idle on a hold. */
   async closeIdle(lanes: readonly string[]): Promise<void> {
-    if (this.#selecting) return;
     await Promise.all(lanes.map((lane) => this.release(lane)));
-  }
-
-  /** `select`, a slow selection: no instance closes during it; the count goes on after it. */
-  async selecting<T>(select: () => Promise<T>): Promise<T> {
-    this.#selecting = true;
-    try {
-      return await select();
-    } finally {
-      this.#selecting = false;
-      this.arm();
-    }
   }
 
   /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
@@ -166,12 +150,11 @@ export class SlowRelease {
   }
 
   /**
-   * Closes each idle lane past its own bound and arms the next. During a
-   * selection nothing closes: its end arms again. A lane whose tier is in
-   * flight re-arms at its end.
+   * Closes each idle lane past its own bound and arms the next. A lane
+   * whose tier is in flight re-arms at its end.
    */
   async #due(): Promise<void> {
-    if (this.host.closed() || this.#selecting) return;
+    if (this.host.closed()) return;
     await Promise.all(this.#decide().close.map((lane) => this.release(lane)));
     this.arm();
   }

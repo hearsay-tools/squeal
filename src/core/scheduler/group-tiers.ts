@@ -1,8 +1,9 @@
 import type { EpochMs } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
+import type { Ledger } from "./ledger.js";
 import { groupView } from "./slow.js";
-import type { SlowTier } from "./slow-tier.js";
+import type { LaneEnd, SlowTier } from "./slow-tier.js";
 
 /*
  * Spec 019 D3 (row 019-10): one lane object (`SlowTier`) per group other
@@ -24,9 +25,8 @@ export class GroupTiers {
 
   /**
    * Each lane under `policy`, in the policy's order, the default `slow`
-   * group's last. A lane that waits for the load returns at once and holds
-   * back none after it (D3: "a long group never holds back another group's
-   * results"; review 0.1.396 B1). A group `policy` no longer has is retired.
+   * group's last: admission's `lanes`, whose `ask` is the order the step
+   * asks them in (row 011-357). A group `policy` no longer has is retired.
    */
   lanes(policy: Policy): readonly SlowTier[] {
     if (this.#policy !== policy) this.#sync(policy);
@@ -90,13 +90,13 @@ export class GroupTiers {
     for (const lane of this.#all()) lane.preempt();
   }
 
-  nudge(): void {
-    for (const lane of this.#all()) lane.nudge();
+  nudge(ledger: Ledger): void {
+    for (const lane of this.#all()) lane.nudge(ledger);
   }
 
   /** A lane's tier was recorded or put back: that lane publishes what its files wait for. */
-  endedOnce(): void {
-    for (const lane of this.#all()) lane.endedOnce();
+  endedOnce(end: LaneEnd): void {
+    for (const lane of this.#all()) lane.endedOnce(end);
   }
 
   close(): void {

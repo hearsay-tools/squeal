@@ -92,12 +92,22 @@ export type DecisionPlace = "turn" | "after";
 
 /**
  * What a scheduler step returns for the loop to carry out (`GLOSSARY.md`,
- * "Scheduler decision"). `T` is the tier and `I` the fast plan's idle
- * answer: the step names them only through its ports.
+ * "Scheduler decision"). `T` is the tier and `S` a slow lane's run (its
+ * slot): the step names them only through its ports.
  */
-export type StepDecision<T = unknown, I = unknown> =
-  /** Fly `tier`, started on the admission of lock turn `turn` with the install stamp `stamp`. */
-  | { readonly kind: "start-tier"; readonly tier: T; readonly stamp: string; readonly turn: number }
+export type StepDecision<T = unknown, S = unknown> =
+  /**
+   * Fly `tier`, started on the admission of lock turn `turn` with the
+   * install stamp `stamp`; `slow`, the slow lane's run it is, with its slot
+   * (row 011-357).
+   */
+  | {
+      readonly kind: "start-tier";
+      readonly tier: T;
+      readonly stamp: string;
+      readonly turn: number;
+      readonly slow?: S;
+    }
   /**
    * The yield check after `trigger` (`TierYields.check`: `decideYields`,
    * then its cancels, marks, bounds and `yields` row), taking the results
@@ -120,12 +130,6 @@ export type StepDecision<T = unknown, I = unknown> =
   | { readonly kind: "reconcile" }
   /** Close the runner instance of each of `lanes`, idle on a hold (row 011-211). */
   | { readonly kind: "close-lanes"; readonly lanes: readonly string[] }
-  /**
-   * Until row 011-357, the temporary async decision: ask each slow lane in
-   * order with the install stamp `stamp`; the answer, with the fast plan's
-   * `idle` answer (`null`: no plan ran), is the next step's `reads.lanes`.
-   */
-  | { readonly kind: "ask-lanes"; readonly stamp: string; readonly idle: I | null }
   /** Queue the import re-walk's next chunk (row 015-117): the next step's `reads.rewalk`. */
   | { readonly kind: "queue-rewalk" };
 
@@ -144,7 +148,6 @@ export const DECISION_PLACE = {
   "refresh-install": "after",
   reconcile: "after",
   "close-lanes": "after",
-  "ask-lanes": "after",
   "queue-rewalk": "after",
 } as const satisfies Record<StepDecisionKind, DecisionPlace>;
 

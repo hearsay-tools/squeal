@@ -83,7 +83,7 @@ import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { groupView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
-import { type SlowHost, type SlowRun, SlowTier } from "./slow-tier.js";
+import { type LaneEnd, type LaneLoop, type SlowRun, SlowTier } from "./slow-tier.js";
 import {
   type Decision,
   type NextWake,
@@ -332,18 +332,15 @@ class TierScheduler implements Scheduler {
             (message) => this.#note(message),
             waits,
           );
-    const host: SlowHost = {
-      lock: this.#lock,
-      started: () => this.#started(),
-      ready: () => this.#context !== null,
-      closed: () => this.#closed,
-      pump: () => this.#pump(),
-      probe: () => this.#probe(),
-      admit: () => this.#admit(),
-      now: this.#now,
+    // Row 011-357: a lane reads the scheduler only through what the step passes it.
+    const loop: LaneLoop = {
       wakes: this.#wakes,
+      now: this.#now,
+      pump: () => this.#pump(),
+      store: options.store,
+      worktreeId: options.worktreeId,
     };
-    this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
+    this.#groups = new GroupTiers((group) => new SlowTier(loop, options.slow, group));
     this.#slowRelease = new SlowRelease(
       {
         release: (lane) => this.#releaseLane(lane),
@@ -370,7 +367,7 @@ class TierScheduler implements Scheduler {
       reinstalled: () => this.#reinstalled,
       runtimeMissing: () => this.#runtimeMissing(),
       // A record names no lane: the lane whose tier it recorded publishes (row 019-10).
-      slowEnded: () => this.#groups.endedOnce(),
+      slowEnded: () => this.#groups.endedOnce(this.#laneEnd()),
       wakes: this.#wakes,
     });
   }
@@ -636,24 +633,15 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 011-340: the start facts on disk and in Git, read again before a
-   * tier, by the pump and the slow lanes after their waits. The runtime
-   * folder first (row 011-106), then the merge hold, the index read when it
-   * moved (row 011-72). A hold that ended released its paths: an abort
-   * restored their bytes, and their revision comes before any tier, so no
-   * tier runs at the keys of the conflicted bytes. What it finds stays in
-   * memory for `#facts`.
-   */
-  async #probe(): Promise<ProbeRead> {
-    const probe = await this.#probeRead();
-    if (probe === "released") await this.#reconcileReleased();
-    return probe;
-  }
-
-  /**
-   * `#probe`'s reads, for the step (row 011-356): the paths a hold released
-   * wait in `#released` for the step's `reconcile`, so a step that ends
-   * before it loses none.
+   * Row 011-340: the start facts on disk and in Git, read after the step
+   * that asked for them and before the step that starts a tier, fast or
+   * slow (row 011-357). The runtime folder first (row 011-106), then the
+   * merge hold, the index read when it moved (row 011-72). A hold that
+   * ended released its paths: an abort restored their bytes, and their
+   * revision comes before any tier, so no tier runs at the keys of the
+   * conflicted bytes. They wait in `#released` for the step's `reconcile`
+   * (row 011-356), so a step that ends before it loses none. What it finds
+   * stays in memory for `#facts`.
    */
   async #probeRead(): Promise<ProbeRead> {
     if (await this.#runtimeMissing()) return "gone";
@@ -708,7 +696,10 @@ class TierScheduler implements Scheduler {
       queued: (name) => ledger?.queue.hasGroup(name) ?? false,
       holdsFollowers: (name) => {
         const lane = this.#groups.get(name);
-        return lane === undefined ? (ledger?.queue.hasGroup(name) ?? false) : lane.holdsFollowers();
+        if (context === null || ledger === null) return false;
+        return lane === undefined
+          ? ledger.queue.hasGroup(name)
+          : lane.holdsFollowers({ context, ledger });
       },
       slowWaiting: () => context !== null && this.#laneWaiting(context),
     };
@@ -735,10 +726,11 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return false;
     const was = this.#commandHold.holding;
     if (this.#commandHold.check()) {
-      // A slow selection waiting for the load guard plans again, and stops on the hold (review 0.1.269, B1).
+      // A lane waiting for the load guard gives way: its instance is idle (review 0.1.269, B1).
       this.#groups.preempt();
       await this.#cancelHeld();
-      await this.#slowRelease.idle();
+      // Row 011-357: the step closes the idle slow lanes on the hold, as for a merge hold.
+      this.#pump();
       return true;
     }
     if (was) this.#pump();
@@ -846,8 +838,8 @@ class TierScheduler implements Scheduler {
 
   nudge(): void {
     // Before `start` has set the context nothing is planned; the start pumps when it ends (review wave-13ak, B1).
-    if (this.#closed || !this.#context) return;
-    this.#groups.nudge();
+    if (this.#closed || !this.#ledger) return;
+    this.#groups.nudge(this.#ledger);
   }
 
   lintRecorded(): Promise<void> {
@@ -1254,6 +1246,15 @@ class TierScheduler implements Scheduler {
       });
       return { idle: "tier" in next ? null : next.idle };
     },
+    askLane: (group, at, fly) => {
+      const { context, ledger } = this.#started();
+      const lane = this.#groups.get(group);
+      const view = { at, context, ledger, admit: () => this.#admit() };
+      const decided = lane === undefined ? "none" : lane.decide(view, fly);
+      // A lane its decision left idle (a load guard's wait that ended) counts toward its close.
+      this.#slowRelease.arm();
+      return decided;
+    },
     idleNow: () => this.#idleNow(),
     idleLanes: () => this.#slowRelease.idleLanes(),
     claimsWaiting: () => this.#started().ledger.claims.waiting,
@@ -1279,7 +1280,7 @@ class TierScheduler implements Scheduler {
   #carry(decision: Decision): void {
     switch (decision.kind) {
       case "start-tier":
-        this.#fly(decision.tier, decision.stamp, null, decision);
+        this.#fly(decision.tier, decision.stamp, decision.slow ?? null, decision);
         return;
       case "check-yields":
         this.#checkYields(decision.trigger, decision.adopt);
@@ -1299,7 +1300,6 @@ class TierScheduler implements Scheduler {
       case "refresh-install":
       case "reconcile":
       case "close-lanes":
-      case "ask-lanes":
       case "queue-rewalk":
         throw new Error(`squeal scheduler: ${decision.kind} is carried out after the turn`);
       default:
@@ -1340,10 +1340,6 @@ class TierScheduler implements Scheduler {
       case "close-lanes":
         await this.#slowRelease.closeIdle(decision.lanes);
         return {};
-      case "ask-lanes": {
-        const started = await this.#groupLanesNext(decision.stamp);
-        return { lanes: { started, idle: decision.idle } };
-      }
       case "queue-rewalk":
         return { rewalk: await this.#queueRewalk() };
       default:
@@ -1644,25 +1640,9 @@ class TierScheduler implements Scheduler {
     return context !== null && ledger !== null && focusedWaiting(context, ledger);
   }
 
-  /**
-   * Asks each group's lane that may start, in `GroupTiers.lanes` order;
-   * `true` when one started a run or wants the pump to plan again. A lane
-   * its load guard holds answers at once, so the next lane is asked (spec
-   * 019 D3, review 0.1.396 B1); its recheck pumps again.
-   */
-  async #groupLanesNext(stamp: string): Promise<boolean> {
-    const { context } = this.#started();
-    for (const lane of this.#groups.lanes(context.policy)) {
-      // Read again for each lane: the lane before it may have waited.
-      const admitted = this.#admit();
-      if (admitted.halted) return false;
-      if (admitted.asked(lane.group) !== null) continue;
-      const after = await this.#slowRelease.selecting(() =>
-        lane.next((run) => this.#fly(run.tier, stamp, run, run)),
-      );
-      if (after !== null) return true;
-    }
-    return false;
+  /** A slow run's end as its lane publishes it (`SlowTier.ended`): the state and admission now. */
+  #laneEnd(): LaneEnd {
+    return { ...this.#started(), admit: () => this.#admit() };
   }
 
   #retireSlow(): void {
@@ -1701,7 +1681,7 @@ class TierScheduler implements Scheduler {
       }
       try {
         ledger.commit();
-        if (slow) this.#groups.endedOnce();
+        if (slow) this.#groups.endedOnce(this.#laneEnd());
       } catch (error) {
         // On a busy store the ledger still owes the queue: the resumed pump's commit writes it.
         if (this.#busy === null || !isBusy(error)) {
