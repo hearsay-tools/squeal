@@ -15,13 +15,13 @@ import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { isSlowLane, type RunOptions, type RunReport } from "../../src/core/types/runner.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { CrossingClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { ModelClock, realSetTimeout, realSleep, watchWork } from "./model-clock.js";
 import { ALL, E2E, type Ev, P, type Plan, Q, SLOWS } from "./model-plans.js";
 
 /*
@@ -32,6 +32,8 @@ import { ALL, E2E, type Ev, P, type Plan, Q, SLOWS } from "./model-plans.js";
  * until an event moves it. The events and plans are `model-plans.ts`'s, the
  * invariants `model-checks.ts`'s. Row 011-221: a plan with `slowLane` adds
  * slow files of spec 004 D1 in their own lane and command holds (011 C9).
+ * Row 011-353: the scheduler runs on a virtual clock (`CrossingClock`), and a
+ * quiet point is `Scheduler.rest()`.
  */
 
 /**
@@ -57,10 +59,27 @@ export interface Flight {
   resolve(report: RunReport): void;
 }
 
-/** No work of the scheduler open or begun for this long is a quiet point. */
-const QUIET_MS = 4;
 /** A settle that finds no quiet point in this long fails the sequence. */
 const SETTLE_LIMIT_MS = 20_000;
+
+/** `work`, or after `ms` on the host's clock `onLate`'s answer, whichever comes first. */
+async function within<T>(work: Promise<T>, ms: number, onLate: () => T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<T>((resolve, reject) => {
+    timer = setTimeout(() => {
+      try {
+        resolve(onLate());
+      } catch (error) {
+        reject(error);
+      }
+    }, ms);
+  });
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * One sequence's scheduler, runner and clock. It starts as the probe's
@@ -85,8 +104,7 @@ export class Model {
   private constructor(
     readonly plan: Plan,
     readonly side: CatchUpSide,
-    readonly clock: ModelClock,
-    private readonly work: ReturnType<typeof watchWork>,
+    readonly clock: CrossingClock,
     private readonly dirs: readonly string[],
     private readonly msOf: ReadonlyMap<string, number>,
   ) {
@@ -106,9 +124,7 @@ export class Model {
         imports: ["src/x.ts"],
       })),
     ];
-    const clock = new ModelClock();
-    const work = watchWork();
-    clock.install();
+    const clock = new CrossingClock();
     const repo = catchUpRepo(files);
     const node = p.kind === "node" ? { cancels: false, besideBacklog: () => true } : {};
     const dirs = [dirname(repo.main), dirname(repo.poolDir)];
@@ -121,9 +137,9 @@ export class Model {
       return { policy: { ...RUN_MISSING, slow: SLOW_POLICY }, scheduler: { slow }, ...slots };
     };
     const lane = p.slowLane === true ? laned() : { policy: RUN_MISSING };
-    const options = { files, hostSlots: 8, now: clock.now, ...lane, ...node };
+    const options = { files, hostSlots: 8, clock, ...lane, ...node };
     const side = catchUpSide(repo, repo.main, options);
-    const model = new Model(p, side, clock, work, dirs, new Map(files.map((f) => [f.path, f.ms])));
+    const model = new Model(p, side, clock, dirs, new Map(files.map((f) => [f.path, f.ms])));
     try {
       await side.scheduler.start();
       if (!(await model.drain())) throw new Error("the baseline never went idle");
@@ -207,11 +223,8 @@ export class Model {
     else if (ev.e === "end" && f !== undefined) this.#end(f, ev.file);
     else if (ev.e === "finish" && f !== undefined)
       this.#complete(f, ev.crash && this.plan.kind === "node");
-    else if (ev.e === "step") {
-      this.clock.advance(ev.ms);
-      // The pump looks again each second on the host's clock; this one stood still.
-      await scheduler.requestRetries();
-    } else if (ev.e === "runAll")
+    else if (ev.e === "step") this.clock.advance(ev.ms);
+    else if (ev.e === "runAll")
       void scheduler.requestFullSuite({ force: ev.force }).catch(() => {});
     else if (ev.e === "hold") await this.#hold(ev.ms);
     else if (ev.e === "unhold") await this.unhold();
@@ -238,15 +251,14 @@ export class Model {
     this.#drain = true;
     if (this.#holds.length > 0) await this.unhold();
     let idle = false;
-    const done = this.side.scheduler.idle().then(() => {
+    void this.side.scheduler.idle().then(() => {
       idle = true;
     });
     for (let i = 0; i < 300 && !idle; i++) {
       for (const f of this.live()) this.#complete(f, false);
-      await Promise.race([done, realSleep(20)]);
+      await this.#settle();
       if (idle) break;
       this.clock.advance(60_000);
-      await this.side.scheduler.requestRetries();
     }
     return idle;
   }
@@ -263,9 +275,7 @@ export class Model {
   async close(): Promise<void> {
     this.#drain = true;
     for (const f of this.live()) this.#complete(f, false);
-    await Promise.race([this.side.scheduler.close(), realSleep(20_000)]);
-    this.work.restore();
-    this.clock.uninstall();
+    await within(this.side.scheduler.close(), 20_000, () => {});
     this.side.stopBeat();
     this.side.store.close();
     for (const dir of this.dirs) rmSync(dir, { recursive: true, force: true });
@@ -327,7 +337,7 @@ export class Model {
       };
       if (this.plan.kind === "vitest") listen(options.signal, true);
       listen(options.stop, false);
-      if (this.#drain) realSetTimeout(() => this.#complete(f, false), 0);
+      if (this.#drain) setImmediate(() => this.#complete(f, false));
     });
   }
 
@@ -360,22 +370,13 @@ export class Model {
 
   /**
    * Waits until the scheduler has done what the last event set off
-   * (recommendation 4): nothing of `watchWork` in flight or begun for
-   * `QUIET_MS`. The store changes only inside its lock's tasks.
+   * (recommendation 4): its timers due fired and nothing of its own left
+   * (`Scheduler.rest()`). The store changes only inside its lock's tasks.
    */
   async #settle(): Promise<void> {
-    const began = performance.now();
-    let since = began;
-    let mark = -1;
-    for (;;) {
-      await realSleep(1);
-      const at = performance.now();
-      if (this.work.open() > 0 || this.work.started() !== mark) {
-        mark = this.work.started();
-        since = at;
-      } else if (at - since >= QUIET_MS) return;
-      if (at - began > SETTLE_LIMIT_MS) throw new Error(`no quiet point in ${SETTLE_LIMIT_MS} ms`);
-    }
+    await within(this.side.rest(), SETTLE_LIMIT_MS, () => {
+      throw new Error(`no quiet point in ${SETTLE_LIMIT_MS} ms`);
+    });
   }
 }
 

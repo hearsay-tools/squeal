@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { ModelClock } from "./model-clock.js";
 import { heldRun, holdRuns, order, pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
 
 /*

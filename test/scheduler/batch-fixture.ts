@@ -6,6 +6,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
 import type { BatchPlace } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpRun,
@@ -13,7 +14,6 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { ModelClock } from "./model-clock.js";
 import { heldRun, ref, START_WITHIN_MS } from "./tier-yields-fixture.js";
 
 /*

@@ -2,6 +2,7 @@ import { expect } from "vitest";
 import { publishedYieldRow } from "../../src/core/scheduler/yields.js";
 import type { TierYield } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpRun,
@@ -9,7 +10,6 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { ModelClock } from "./model-clock.js";
 import { heldRun, holdRuns, ref } from "./tier-yields-fixture.js";
 
 /*
