@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GroupTiers } from "../../src/core/scheduler/group-tiers.js";
-import { type SlowHost, SlowTier } from "../../src/core/scheduler/slow-tier.js";
+import { type LaneLoop, SlowTier } from "../../src/core/scheduler/slow-tier.js";
 import { type WakeSlot, Wakes } from "../../src/core/scheduler/wakes.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { EpochMs } from "../../src/core/types/common.js";
@@ -46,7 +46,7 @@ function lanes() {
       pump: () => fired.push(name),
       now: () => clock.now(),
       wakes,
-    } as unknown as SlowHost;
+    } as unknown as LaneLoop;
     return new SlowTier(host, {}, name);
   });
   /** Every lane's wake at `at`, then time moves there. */
