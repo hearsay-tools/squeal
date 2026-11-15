@@ -1,3 +1,5 @@
+import type { Revision } from "../types/revision.js";
+
 /*
  * Row 011-352 (card 7, `research/scheduler-step.md`, decision 2 and "The wake
  * loop"): the scheduler's closed lists. A new event or wake reason is one
@@ -52,7 +54,21 @@ export type SchedulerEvent =
   /** The scheduler began its close. */
   | { readonly kind: "closing" }
   /** A wake came. */
-  | { readonly kind: "wake"; readonly reason: WakeReason };
+  | { readonly kind: "wake"; readonly reason: WakeReason }
+  /*
+   * Row 011-354: the events the yield check reads (`yieldReach`). Their
+   * sites pass them to the check; none is posted to the pump yet.
+   */
+  /** A reconciliation pass stored `revision`. */
+  | { readonly kind: "revision"; readonly revision: Revision }
+  /** A runner part was applied (`RunnerWork`'s `applied`). */
+  | { readonly kind: "runner-work-applied" }
+  /** A promotion or a focus request was taken (`RequestIntake`'s `cutTiers` wake). */
+  | { readonly kind: "request-taken" }
+  /** A fast tier started; `beside` when it went beside the batch's tier (row 011-269). */
+  | { readonly kind: "tier-started"; readonly runId: string; readonly beside: boolean }
+  /** The runner named a file of the tier in flight `runId` ended (row 011-54). */
+  | { readonly kind: "file-ended"; readonly runId: string };
 
 /** One entry of `SchedulerEvent`'s kinds. */
 export type SchedulerEventKind = SchedulerEvent["kind"];

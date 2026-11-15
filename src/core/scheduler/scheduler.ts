@@ -92,7 +92,7 @@ import { startNext } from "./tier-start.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
-import { TierYields } from "./yields.js";
+import { TierYields, yieldReach } from "./yields.js";
 
 /** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
@@ -133,7 +133,7 @@ class TierScheduler implements Scheduler {
     closed: () => this.#closed,
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
-    applied: () => this.#cutTiers(null),
+    applied: () => this.#cutTiers({ kind: "runner-work-applied" }),
     // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
     busy: () => {
       const waits = this.options.busyWaits;
@@ -198,7 +198,7 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(this.#started().context.policy);
       this.#groups.get(group)?.preempt();
     },
-    cutTiers: () => this.#cutTiers(null),
+    cutTiers: () => this.#cutTiers({ kind: "request-taken" }),
     pump: () => this.#pump(),
   });
   /** The records of the runs that ended (row 011-131). */
@@ -259,7 +259,10 @@ class TierScheduler implements Scheduler {
     this.#wakes = new Wakes(this.#clock);
     this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
     this.#claimsWake = this.#wakes.slot("claims", (at) => this.#claimPoll(at));
-    this.#yields = new TierYields(() => this.#recheckTiers(), this.#wakes);
+    this.#yields = new TierYields(
+      () => this.#cutTiers({ kind: "wake", reason: "yield-bound" }),
+      this.#wakes,
+    );
     this.#install = new InstallStamps(options.root);
     this.#storedKeys = new StoredKeys(this.#now());
     this.#hold = new MergeHold({
@@ -512,7 +515,7 @@ class TierScheduler implements Scheduler {
     }
     this.#groups.preempt();
     // The runner part waits for the runner: a tier in flight may yield first (C4 step 5, row 011-51).
-    this.#cutTiers(applied.revision);
+    this.#cutTiers({ kind: "revision", revision: applied.revision });
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
   }
 
@@ -528,31 +531,36 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Cancels each tier in flight that `revision`, or with `null` the runner
-   * part just applied or a promotion, cuts (`TierYields`, C4 step 5 as
-   * amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`, task
-   * 001-364).
+   * Cancels each tier in flight that `event` cuts (`TierYields`, C4 step 5
+   * as amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`,
+   * task 001-364). Which events reach the check, and how, is `yieldReach`'s
+   * (row 011-354): in the event's own lock turn, or queued under the lock.
    */
-  #cutTiers(revision: Revision | null): void {
-    // Row 011-72: a tier in flight when a hold begins runs to its end; nothing would start instead.
-    if (this.#admit().halts.has("held")) return;
+  #cutTiers(event: SchedulerEvent): void {
+    const reach = yieldReach(event, {
+      tier: (runId) => this.#inFlight.get(runId)?.tier,
+      standsNamed: (tier) => this.#yields.standsNamed(tier),
+    });
+    if (reach.reach === "check") this.#checkTiers(reach.trigger);
+    else if (reach.reach === "adopt-then-check") this.#recheckTiers();
+  }
+
+  /** The yield check in this lock turn, after `trigger`; a hold reaches nothing (row 011-72). */
+  #checkTiers(trigger: Revision | null): void {
+    const held = this.#admit().halts.has("held");
     const { context, ledger } = this.#started();
     const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
-    this.#yields.check(context, ledger, tiers, revision);
+    this.#yields.check(context, ledger, tiers, trigger, held);
   }
 
   /**
-   * A file of `tier` ended during its run (row 011-54): once a revision has
-   * changed an input of the tier, every file left may now be re-keyed, and
-   * once it runs on for a promoted file that ranks with or after its files,
-   * the ended file may have ranked first (`named`, review
-   * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
+   * A file of `tier` ended during its run (row 011-54): the count status
+   * reads, then the check, as `yieldReach` places a file end.
    */
   #fileEnded(tier: Tier): void {
     // Row 011-209 (F4; agreed by the coordinator, request dd6ee382): the count status reads.
     this.#yields.fileEnded(this.#started().context, tier);
-    if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
-    this.#recheckTiers();
+    this.#cutTiers({ kind: "file-ended", runId: tier.runId });
   }
 
   /**
@@ -573,7 +581,7 @@ class TierScheduler implements Scheduler {
           // Row 011-123: a claimant's record is taken first, so its file needs no yield.
           const { context, ledger } = this.#started();
           this.#adopt(context, ledger);
-          this.#cutTiers(null);
+          this.#checkTiers(null);
         }, "checking the tiers in flight")
         .catch((error: unknown) =>
           this.#backgroundError("could not check the tiers in flight", error),
@@ -1160,7 +1168,8 @@ class TierScheduler implements Scheduler {
               fly: (tier) => {
                 this.#fly(tier, install.stamp, null, admitted);
                 // The batch's tier no longer stands for the work that went beside it (row 011-269).
-                if (tier.beside === true) this.#cutTiers(null);
+                const beside = tier.beside === true;
+                this.#cutTiers({ kind: "tier-started", runId: tier.runId, beside });
               },
             });
             return "tier" in next ? ("flown" as const) : next.idle;

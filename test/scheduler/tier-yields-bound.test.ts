@@ -3,7 +3,6 @@ import { StatCache } from "../../src/core/hash/stat-cache.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
-import { SHARE_FLOOR_MS } from "../../src/core/scheduler/sharing.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
 import { Wakes } from "../../src/core/scheduler/wakes.js";
 import {
@@ -25,8 +24,10 @@ import { freshStore } from "../state/helpers.js";
  * estimate yields at estimate + `YIELD_REMAINDER_MS` with no event after the
  * check, through the one unref'd timer `TierYields` arms and the re-check it
  * calls, as the scheduler's `#recheckTiers` does under its lock. The timer
- * goes when its tier ends and when the yields close. Row 011-112: files
- * under `SHARE_FLOOR_MS` or of no known duration yield so too.
+ * goes when its tier ends and when the yields close. Row 011-354: the
+ * bounds themselves, a stale estimate's, files under `SHARE_FLOOR_MS` or of
+ * no known duration, and a tier whose files all ended, are rows of
+ * `decide-yields.test.ts`; these cases keep what `TierYields` applies.
  */
 
 const WT = "wt-011-107" as WorktreeId;
@@ -119,41 +120,6 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     expect(clock.armed).toBe(0);
   });
 
-  it("within its estimate the bound is estimate + 30 s too, so a stale estimate yields there", () => {
-    const { context, ledger } = setup();
-    const tier = tierOf(ledger, "run-a", ["test/a.test.ts"], 20_000);
-    const yields = new TierYields(() => yields.check(context, ledger, [tier], null), wakes);
-
-    yields.check(context, ledger, [tier], null);
-    expect(tier.cancel?.signal.aborted).toBe(false);
-
-    clock.advance(20_000 + YIELD_REMAINDER_MS - 1);
-    expect(tier.cancel?.signal.aborted).toBe(false);
-    clock.advance(1);
-    expect(tier.cancel?.signal.reason).toBe("yield");
-  });
-
-  it("files under SHARE_FLOOR_MS or of no known duration yield at the timer, 30 s past their estimate (row 011-112)", () => {
-    const { context, ledger } = setup();
-    const unknown = tierOf(ledger, "run-a", ["test/a.test.ts"], null);
-    const short = tierOf(ledger, "run-b", ["test/b.test.ts"], SHARE_FLOOR_MS - 1);
-    const yields = new TierYields(
-      () => yields.check(context, ledger, [unknown, short], null),
-      wakes,
-    );
-
-    yields.check(context, ledger, [unknown, short], null);
-    expect(clock.armed).toBe(1);
-    clock.advance(YIELD_REMAINDER_MS - 1);
-    expect(unknown.cancel?.signal.aborted).toBe(false);
-    clock.advance(1);
-    expect(unknown.cancel?.signal.reason).toBe("yield");
-    expect(short.cancel?.signal.aborted).toBe(false);
-    clock.advance(SHARE_FLOOR_MS - 1);
-    expect(short.cancel?.signal.reason).toBe("yield");
-    expect(clock.armed).toBe(0);
-  });
-
   it("the files an overrun yield cut read as cut past their estimate until their key moves; a remainder yield's do not (row 011-112)", () => {
     const { context, ledger } = setup();
     const overrun = tierOf(ledger, "run-a", ["test/a.test.ts"], 5_000);
@@ -172,20 +138,6 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
 
     a.key = "moved".padEnd(64, "0") as CheckKey;
     expect(yields.cutPastEstimate(a)).toBe(false);
-  });
-
-  it("a tier whose files have all ended arms no timer and never yields past its estimate", () => {
-    const { context, ledger } = setup();
-    const tier = tierOf(ledger, "run-a", ["test/a.test.ts"], 5_000);
-    const ended = { ...tier, ended: new Set(tier.files.map(({ file }) => file.id)) } as Tier;
-    const yields = new TierYields(() => yields.check(context, ledger, [ended], null), wakes);
-
-    yields.check(context, ledger, [ended], null);
-    clock.advance(10 * YIELD_REMAINDER_MS);
-    yields.check(context, ledger, [ended], null);
-
-    expect(clock.armed).toBe(0);
-    expect(ended.cancel?.signal.aborted).toBe(false);
   });
 
   it("one timer at the earliest bound; it goes when its tiers end and when the yields close", () => {
