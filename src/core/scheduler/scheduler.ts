@@ -530,7 +530,10 @@ class TierScheduler implements Scheduler {
       const { missing } = await this.#install.check();
       // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
       // Row 011-366: the step decides the reinstall.
-      if (missing !== null) return void this.#stepOutside([INSTALL_MISSING]);
+      if (missing !== null) {
+        this.#stepOutside([INSTALL_MISSING]);
+        return;
+      }
     }
     // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
     if (applied === null) {
