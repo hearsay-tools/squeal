@@ -3,7 +3,7 @@ import type { Revision } from "../types/revision.js";
 import type { Admission } from "./admission.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
 import type { LaneDecision, SlowRun } from "./slow-tier.js";
-import { placeOf, type SchedulerEvent, type StepDecision } from "./step-events.js";
+import { type DecisionAt, inTurn, type SchedulerEvent, type StepDecision } from "./step-events.js";
 import type { Idle } from "./tier-plan.js";
 import type { Tier } from "./tiers.js";
 import { type ReachView, yieldReach } from "./yields.js";
@@ -20,6 +20,12 @@ import { type ReachView, yieldReach } from "./yields.js";
 
 /** A decision of this scheduler's step. */
 export type Decision = StepDecision<Tier, SlowRun>;
+
+/** A decision carried out in the step's lock turn, as the step makes it (`DECISION_PLACE`). */
+export type TurnDecision = DecisionAt<"turn", Tier, SlowRun>;
+
+/** A decision carried out after the step's lock turn (`DECISION_PLACE`). */
+export type AfterDecision = DecisionAt<"after", Tier, SlowRun>;
 
 /** The install stamp read after the last step (`InstallStamps.check`). */
 export interface InstallRead {
@@ -79,7 +85,7 @@ export interface StepPorts {
   /** The number of tiers in flight. */
   inFlight(): number;
   /** Carries out a decision placed in the lock turn, as the step makes it. */
-  carry(decision: Decision): void;
+  carry(decision: TurnDecision): void;
 }
 
 /** One step's input (`GLOSSARY.md`, "Scheduler step"). */
@@ -110,6 +116,12 @@ export interface Step {
   readonly wake: NextWake;
   /** The fast start rule ran in this turn: its writes landed (`BusyResume.landed`). */
   readonly selected: boolean;
+  /**
+   * Row 011-365: a slow lane answered in this turn. The slow release's wake
+   * follows: a lane its answer left idle (a load guard's wait that ended)
+   * counts toward its close (row 011-211).
+   */
+  readonly laneAnswered: boolean;
   /** A port's error: the decisions before it stand, and the loop stalls after carrying them out. */
   readonly error: unknown;
 }
@@ -127,12 +139,14 @@ class Out {
   /** The fast plan ran: its idle answer, `null` when it started none and no plan ran. */
   idle: Idle | null = null;
   selected = false;
+  /** A slow lane answered (`Step.laneAnswered`). */
+  laneAnswered = false;
 
   constructor(private readonly ports: StepPorts) {}
 
   decide(decision: Decision): void {
     this.decisions.push(decision);
-    if (placeOf(decision) === "turn") this.ports.carry(decision);
+    if (inTurn(decision)) this.ports.carry(decision);
   }
 }
 
@@ -269,6 +283,7 @@ const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
     const decided = ports.askLane(group, at, (run) => {
       out.decide({ kind: "start-tier", tier: run.tier, stamp, turn: run.turn, slow: run });
     });
+    out.laneAnswered = true;
     if (decided === "started" || decided === "again") return AGAIN;
   }
   return undefined;
@@ -314,14 +329,17 @@ const RULES: readonly Rule[] = [
 /** One scheduler step: the rules in order until one names the next wake. Never throws. */
 export function step(turn: Turn): Step {
   const out = new Out(turn.ports);
+  const answer = (wake: NextWake, error: unknown): Step => {
+    const { decisions, selected, laneAnswered } = out;
+    return { decisions, wake, selected, laneAnswered, error };
+  };
   try {
     for (const rule of RULES) {
       const wake = rule(turn, out);
-      if (wake !== undefined)
-        return { decisions: out.decisions, wake, selected: out.selected, error: null };
+      if (wake !== undefined) return answer(wake, null);
     }
     throw new Error("squeal scheduler: a step ended without a wake");
   } catch (error) {
-    return { decisions: out.decisions, wake: END, selected: out.selected, error };
+    return answer(END, error);
   }
 }
