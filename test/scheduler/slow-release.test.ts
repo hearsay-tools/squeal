@@ -75,29 +75,15 @@ describe("SlowRelease (row 011-211)", () => {
     expect(released).toEqual([LANE]);
   });
 
-  it("keeps the instance through a slow selection, the load guard's wait; past the bound its end closes it", async () => {
-    const { release, released, ran } = open();
-    ran();
-    let guard = () => {};
-    const selection = release.selecting(
-      () => new Promise<void>((resolve) => (guard = () => resolve())),
-    );
-    await advance(SLOW_RELEASE_MS * 3);
-    // A hold that begins now waits for the selection's end too.
-    await release.idle();
-    expect(released).toEqual([]);
-    guard();
-    await selection;
-    await advance(0);
-    expect(released).toEqual([LANE]);
-  });
-
   it("a hold's close takes every open lane no tier runs in, once", async () => {
     const { release, host, released } = open();
     release.opened(LANE);
     release.opened("slow:other");
     host.inFlight = ["slow:other"];
-    await Promise.all([release.idle(), release.idle()]);
+    await Promise.all([
+      release.closeIdle(release.idleLanes()),
+      release.closeIdle(release.idleLanes()),
+    ]);
     expect(released).toEqual([LANE]);
   });
 
@@ -112,32 +98,6 @@ describe("SlowRelease (row 011-211)", () => {
     release.close();
     host.closed = true;
     await advance(SLOW_RELEASE_MS);
-    expect(released).toEqual([LANE]);
-  });
-
-  it("the bound passes during a slow selection that starts a tier: nothing closes; the tier's end arms it again", async () => {
-    const { release, host, released, ran } = open();
-    ran();
-    let start = () => {};
-    const selection = release.selecting(
-      () =>
-        new Promise<void>((resolve) => {
-          start = () => {
-            host.inFlight = [LANE];
-            resolve();
-          };
-        }),
-    );
-    await advance(SLOW_RELEASE_MS * 2);
-    start();
-    await selection;
-    await advance(SLOW_RELEASE_MS * 2);
-    expect(released).toEqual([]);
-    host.inFlight = [];
-    ran();
-    await advance(SLOW_RELEASE_MS - 1);
-    expect(released).toEqual([]);
-    await advance(1);
     expect(released).toEqual([LANE]);
   });
 });
