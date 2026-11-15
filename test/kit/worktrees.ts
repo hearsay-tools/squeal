@@ -88,6 +88,7 @@ export class OpenWorktree {
         squealVersion: "0.0.0-kit",
         env: {},
         onExtraFiles: () => {},
+        now: () => Date.now(),
       });
       await keys.bootstrap(() => readHead(root));
       await keys.setEnvironments(await adapter.environment());

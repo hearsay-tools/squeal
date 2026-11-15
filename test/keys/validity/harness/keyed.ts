@@ -58,6 +58,7 @@ export async function keyedOver(
       squealVersion: "0.0.0-validity",
       env: {},
       onExtraFiles: () => {},
+      now: () => Date.now(),
     });
     await keys.bootstrap(() => readHead(root));
     await keys.setEnvironments([ENVIRONMENT]);

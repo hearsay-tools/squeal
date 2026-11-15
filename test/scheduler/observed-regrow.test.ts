@@ -60,6 +60,7 @@ async function keyed(worktreeId: WorktreeId): Promise<WorktreeKeys> {
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(head);
   await keys.setEnvironments([ENVIRONMENT]);

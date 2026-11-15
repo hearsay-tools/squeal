@@ -351,7 +351,7 @@ describe("admission: the lock turn stamp (row 011-340)", () => {
   });
 
   it("acts on an answer in the turn it was read in", async () => {
-    const lock = new Mutex();
+    const lock = new Mutex(() => Date.now());
     await lock.run(() => {
       const answer = admit(facts({ turn: lock.turn }));
       expect(() => checkTurn(answer, lock.turn, "vitest")).not.toThrow();
@@ -359,7 +359,7 @@ describe("admission: the lock turn stamp (row 011-340)", () => {
   });
 
   it("throws on an answer read in one lock turn and acted on in the next", async () => {
-    const lock = new Mutex();
+    const lock = new Mutex(() => Date.now());
     const answer = await lock.run(() => admit(facts({ turn: lock.turn })));
     await lock.run(() => {
       expect(() => checkTurn(answer, lock.turn, "slow:vitest")).toThrow(
@@ -369,7 +369,7 @@ describe("admission: the lock turn stamp (row 011-340)", () => {
   });
 
   it("counts one turn per task, also for a task that fails", async () => {
-    const lock = new Mutex();
+    const lock = new Mutex(() => Date.now());
     expect(lock.turn).toBe(0);
     await lock.run(() => {});
     await lock.run(() => Promise.reject(new Error("no"))).catch(() => {});

@@ -121,7 +121,7 @@ export function probeHost(
   });
   const log: string[] = [];
   const notes: string[] = [];
-  const lock = new Mutex();
+  const lock = new Mutex(() => Date.now());
   const state = {
     open: true,
     stopping: false,

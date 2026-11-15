@@ -86,6 +86,7 @@ async function lookup(root: string): Promise<Lookup> {
     squealVersion: "0.0.0-keep-grown",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(() => readHead(root));
   await keys.setEnvironments([

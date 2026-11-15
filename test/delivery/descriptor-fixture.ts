@@ -86,6 +86,7 @@ export function keysOn(
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
     note,
     ignored: (paths) => marks.among(paths),
   });

@@ -43,6 +43,7 @@ async function keys(env: NodeJS.ProcessEnv): Promise<WorktreeKeys> {
     squealVersion: "0.0.0-test",
     env,
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(() => readHead(root));
   return keys;

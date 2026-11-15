@@ -63,6 +63,7 @@ async function keyed(worktreeId: WorktreeId): Promise<WorktreeKeys> {
     squealVersion: "0.0.0-test",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
     note: (text) => appendNote(store, worktreeId, { at: 0, revision: null, text }),
   });
   await keys.bootstrap(head);
