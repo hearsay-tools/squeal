@@ -13,13 +13,13 @@ const names = (refs: readonly TestFileRef[]) =>
 
 /** A queue on a clock the test moves, with the running files it names. */
 function queueAt() {
-  const clock = { now: 1_000 };
+  // `read`, when a case sets it, replaces the plain reading of `now`.
+  const clock: { now: number; read?: () => number } = { now: 1_000 };
   const running = new Set<string>();
-  const queue = new RunQueue();
-  queue.setPromotionClock(
-    () => clock.now,
-    (r) => running.has(testFileId(r)),
-  );
+  const queue = new RunQueue({
+    now: () => clock.read?.() ?? clock.now,
+    isRunning: (r) => running.has(testFileId(r)),
+  });
   return { queue, clock, running };
 }
 
@@ -100,10 +100,7 @@ describe("RunQueue promotion (spec 011 C15)", () => {
     // Each reading of the clock is 1 ms later: the first is the wait's last open moment.
     clock.now = until - 1;
     let reads = 0;
-    queue.setPromotionClock(
-      () => clock.now + reads++,
-      () => false,
-    );
+    clock.read = () => clock.now + reads++;
     // One reading, the first: Z is still the batch's, and the edited Z leads it.
     expect(names(queue.ordered())).toEqual(["z", "y", "b"]);
     expect(reads).toBe(1);

@@ -7,13 +7,14 @@ import {
   RunQueue,
 } from "../../src/core/scheduler/queue.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
+import { HOST_PROMOTIONS } from "./promotion-clock.js";
 
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
 
 describe("RunQueue", () => {
   it("bounds starvation: after four recent-only tiers the backlog gets one (review wave 11, N3)", () => {
     expect(RECENT_TIERS_PER_BACKLOG_TIER).toBe(4);
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     for (let i = 0; i < 6; i++) queue.add(ref(`test/backlog${i}.test.ts`), Priority.failing);
     let edit = 0;
     const tiers: string[][] = [];
@@ -44,7 +45,7 @@ describe("RunQueue", () => {
   });
 
   it("orders by priority, then by first queued, then by project and path", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/d.test.ts"), Priority.neverRun);
     queue.add(ref("test/c.test.ts"), Priority.transitive);
     queue.add(ref("test/b.test.ts"), Priority.transitive);
@@ -58,7 +59,7 @@ describe("RunQueue", () => {
   });
 
   it("keeps one entry per test file with the most urgent priority and its first position", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/a.test.ts"), Priority.transitive);
     queue.add(ref("test/b.test.ts"), Priority.transitive);
     queue.add(ref("test/a.test.ts"), Priority.neverRun);
@@ -69,7 +70,7 @@ describe("RunQueue", () => {
   });
 
   it("runs the shortest last known duration first within a class, unknown durations last", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     const durations = new Map<string, number>([
       ["test/slow.test.ts", 47_000],
       ["test/fast.test.ts", 12],
@@ -100,7 +101,7 @@ describe("RunQueue", () => {
   });
 
   it("runs recent work ahead of a backlog, each group in D5's order (task 001-100, defect 19)", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     const durations = new Map<string, number>([
       ["test/edited-slow.test.ts", 5_000],
       ["test/edited-fast.test.ts", 10],
@@ -125,7 +126,7 @@ describe("RunQueue", () => {
   });
 
   it("tells projects apart and remembers a forced entry", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/a.test.ts", "unit"), Priority.transitive);
     queue.add(ref("test/a.test.ts", "e2e"), Priority.transitive, true);
     queue.add(ref("test/a.test.ts", "e2e"), Priority.transitive);
@@ -218,7 +219,7 @@ describe("RunQueue's slow class (spec 004 D2)", () => {
   const isSlow = (r: TestFileRef) => r.path.startsWith("test/e2e/");
 
   it("keeps slow files out of the fast order and holds them in their own", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.setSlow(isSlow);
     queue.add(ref("test/e2e/b.test.ts"), Priority.direct, false, true);
     queue.add(ref("test/unit.test.ts"), Priority.neverRun);
@@ -235,7 +236,7 @@ describe("RunQueue's slow class (spec 004 D2)", () => {
   });
 
   it("does not count a recent slow file as an edit's fast work", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.setSlow(isSlow);
     queue.add(ref("test/e2e/a.test.ts"), Priority.direct, false, true);
     expect(queue.hasRecent()).toBe(false);
@@ -244,7 +245,7 @@ describe("RunQueue's slow class (spec 004 D2)", () => {
   });
 
   it("reads the predicate at query time, so a policy reload moves files between classes", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/e2e/a.test.ts"), Priority.direct);
     expect(queue.fastSize).toBe(1);
     queue.setSlow(isSlow);

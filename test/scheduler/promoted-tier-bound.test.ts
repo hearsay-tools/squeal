@@ -105,9 +105,9 @@ function setup({ ms, qFirst, qEdit, promoted, pWaits = true }: Setup) {
     startedAt: clock.now(),
     cancel: new AbortController(),
   } as unknown as Tier;
-  const yields = new TierYields(() => yields.check(context, ledger, [tier], null), wakes);
+  const yields = new TierYields(() => yields.check(context, ledger, [tier], null, false), wakes);
   const standing = () => [...publishedYieldRow(store, WT, 0).tiers.values()];
-  return { check: () => yields.check(context, ledger, [tier], null), standing, tier };
+  return { check: () => yields.check(context, ledger, [tier], null, false), standing, tier };
 }
 
 describe("a promoted-only tier, its files' open promotion and the waits beside it (review 0.1.377 B1, S1)", () => {

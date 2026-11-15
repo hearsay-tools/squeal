@@ -48,8 +48,8 @@ export interface SchedulerContext {
   readonly capacity?: TierCapacity;
   /** The lanes that wait for quiet after a backlog tier's cancel (C4 step 5, row 011-82); absent, none waits. */
   readonly quiet?: BacklogQuiet;
-  /** The scheduler's wake loop (row 011-352): a runner-part call's bound arms through it; absent, a loop of the bound's own. */
-  readonly wakes?: Wakes;
+  /** The scheduler's wake loop (row 011-352): a runner-part call's bound arms through it. */
+  readonly wakes: Wakes;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

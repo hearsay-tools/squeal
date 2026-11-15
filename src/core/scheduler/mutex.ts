@@ -1,5 +1,4 @@
 import type { LockHolder } from "../types/scheduler.js";
-import { hostNow } from "./clock.js";
 
 type Watcher = {
   readonly listener: (holder: LockHolder | null) => void;
@@ -31,7 +30,7 @@ export class Mutex {
   };
 
   /** `counted` hears how many tasks are queued or running at each change (row 011-352). */
-  constructor(now: () => number = hostNow, counted?: (count: number) => void) {
+  constructor(now: () => number, counted?: (count: number) => void) {
     this.#now = now;
     this.#counted = counted;
   }

@@ -90,7 +90,7 @@ export interface RecordHost {
   /** A slow tier recorded (spec 004 D8). */
   slowEnded(): void;
   /** The scheduler's wake loop, which ends a slot record's gather (row 011-352). */
-  readonly wakes?: Wakes;
+  readonly wakes: Wakes;
 }
 
 /**
@@ -140,7 +140,7 @@ export class TierRecords {
     if (tier.slot === true) {
       // Row 011-352, repair 3: these reads run beside the gather, a piece of their own.
       const read = () => this.#ended(tier, ran, installStamp, slow, held);
-      const ended = this.#host.wakes?.track(read) ?? read();
+      const ended = this.#host.wakes.track(read);
       return this.#landed(tier, () => {
         this.#slotsBusy = null;
         return this.#slots.record(ended);

@@ -1,6 +1,8 @@
 import { describe, expect, it, onTestFinished } from "vitest";
+import { hostClock } from "../../src/core/scheduler/clock.js";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
 import { SlotRecords } from "../../src/core/scheduler/slot-records.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 
 /*
  * Task 011-21 slice 2: the records of backlog slots that end together share
@@ -10,7 +12,7 @@ function records(options: { failCommit?: boolean } = {}) {
   const commits: string[][] = [];
   let open: string[] = [];
   const slots = new SlotRecords<string, string>({
-    lock: new Mutex(),
+    lock: new Mutex(() => Date.now()),
     record: async (ended) => {
       if (ended === "bad") throw new Error("record failed");
       open.push(ended);
@@ -21,6 +23,9 @@ function records(options: { failCommit?: boolean } = {}) {
       commits.push(open);
       open = [];
     },
+    now: () => Date.now(),
+    // A gather waits in real time for slots that end in real time: the loop is on the host's clock.
+    wakes: new Wakes(hostClock()),
   });
   return { slots, commits };
 }

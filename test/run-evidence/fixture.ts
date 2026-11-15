@@ -30,6 +30,7 @@ import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { NOTHING_OBSERVED } from "../../src/core/scheduler/observed.js";
 import { Withholds } from "../../src/core/scheduler/stability.js";
 import type { Tier, TierFile } from "../../src/core/scheduler/tiers.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -41,6 +42,7 @@ import type { Policy } from "../../src/core/types/policy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { git, scratchStore, writeTree } from "../keys/validity/harness/shared.js";
 
 /*
@@ -243,6 +245,7 @@ async function daemonColumn(
     revision: () => tier.revision.number,
     resumed: () => {},
     note: () => {},
+    wakes: new Wakes(virtualClock()),
   });
   try {
     await hold.check();
@@ -299,6 +302,7 @@ async function keyed(
     squealVersion: "0.0.0-run-evidence",
     env: {},
     onExtraFiles: () => {},
+    now: () => Date.now(),
   });
   await keys.bootstrap(() => readHead(root));
   await keys.setEnvironments([ENVIRONMENT]);

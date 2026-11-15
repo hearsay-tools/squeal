@@ -99,11 +99,11 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     let rechecks = 0;
     const yields = new TierYields(() => {
       rechecks += 1;
-      yields.check(context, ledger, [tier], null);
+      yields.check(context, ledger, [tier], null, false);
     }, wakes);
 
     clock.advance(5_000 + 20_000);
-    yields.check(context, ledger, [tier], null);
+    yields.check(context, ledger, [tier], null, false);
     expect([...publishedYieldRow(store, WT, 0).tiers.values()]).toEqual([
       { kind: "overrun", yieldsAt: (tier.startedAt ?? 0) + 5_000 + YIELD_REMAINDER_MS },
     ]);
@@ -124,13 +124,13 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     const { context, ledger } = setup();
     const overrun = tierOf(ledger, "run-a", ["test/a.test.ts"], 5_000);
     const remainder = tierOf(ledger, "run-b", ["test/b.test.ts"], 100_000);
-    const yields = new TierYields(undefined, wakes);
+    const yields = new TierYields(() => {}, wakes);
     const [a, b] = [overrun, remainder].map((tier) => tier.files[0]?.file);
     if (a === undefined || b === undefined) throw new Error("no files");
     expect(yields.cutPastEstimate(a)).toBe(false);
 
     clock.advance(5_000 + YIELD_REMAINDER_MS);
-    yields.check(context, ledger, [overrun, remainder], null);
+    yields.check(context, ledger, [overrun, remainder], null, false);
     expect(overrun.cancel?.signal.reason).toBe("yield");
     expect(remainder.cancel?.signal.reason).toBe("yield");
     expect(yields.cutPastEstimate(a)).toBe(true);
@@ -149,7 +149,7 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
       rechecks += 1;
     }, wakes);
 
-    yields.check(context, ledger, [early, late], null);
+    yields.check(context, ledger, [early, late], null, false);
     expect(clock.armed).toBe(1);
     yields.ended(context, early);
     expect(clock.armed).toBe(1);
@@ -159,7 +159,13 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     yields.ended(context, late);
     expect(clock.armed).toBe(0);
 
-    yields.check(context, ledger, [tierOf(ledger, "run-c", ["test/c.test.ts"], 5_000)], null);
+    yields.check(
+      context,
+      ledger,
+      [tierOf(ledger, "run-c", ["test/c.test.ts"], 5_000)],
+      null,
+      false,
+    );
     expect(clock.armed).toBe(1);
     yields.close();
     expect(clock.armed).toBe(0);

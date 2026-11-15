@@ -5,11 +5,12 @@ import { RunQueue } from "../../src/core/scheduler/queue.js";
 import { failsAfterTestsPassed, queueReruns, RERUN_CAP } from "../../src/core/scheduler/rerun.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import type { ResultRecord } from "../../src/core/types/store-records.js";
+import { HOST_PROMOTIONS } from "./promotion-clock.js";
 import { ref } from "./repo.js";
 
 /** The ledger surface `queueReruns` uses, its queue and `enqueue`, and the notes it writes. */
 function fake(rerunCap = RERUN_CAP, slow: readonly string[] = []) {
-  const queue = new RunQueue();
+  const queue = new RunQueue(HOST_PROMOTIONS);
   queue.setSlow((r) => slow.includes(r.path));
   const ledger = {
     queue,

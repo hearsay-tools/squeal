@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { appendNote, readDaemonNotes } from "../../src/core/notes.js";
 import { CommandHold } from "../../src/core/scheduler/command-hold.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { Store } from "../../src/core/types/store.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldFiles, hold, liveProcess, notes, tokens } from "./command-hold-fixture.js";
@@ -40,6 +42,7 @@ function commandHold(
     merging: () => false,
     due: () => {},
     gone,
+    wakes: new Wakes(virtualClock()),
   });
 }
 

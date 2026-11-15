@@ -227,12 +227,11 @@ const B = ref("test/b.test.ts");
 /** A queue that held Z, promoted, and took it off; Z runs nowhere. Each list of files it published. */
 function leftZ() {
   const published: (readonly string[])[][] = [];
-  const queue = new RunQueue();
-  queue.setPromotionClock(
-    () => 1_000,
-    () => false,
-    (live) => published.push(live.map((p) => p.files)),
-  );
+  const queue = new RunQueue({
+    now: () => 1_000,
+    isRunning: () => false,
+    publish: (live) => published.push(live.map((p) => p.files)),
+  });
   queue.add(Z, Priority.neverRun);
   queue.promote([Z], 61_000);
   queue.remove(Z);

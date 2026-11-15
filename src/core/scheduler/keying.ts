@@ -54,7 +54,6 @@ import type { Store } from "../types/store.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
-import { hostNow } from "./clock.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
 import { RefusedObserved } from "./refused-observed.js";
@@ -75,8 +74,8 @@ export interface KeyingOptions {
   readonly note?: (text: string) => void;
   /** The changed paths git ignores, for `FileChange.ignored` (`IgnoredMarks`, row 011-262); absent, none. */
   readonly ignored?: (paths: readonly RelativePath[]) => Promise<ReadonlySet<RelativePath>>;
-  /** When an environment record is stamped (row 011-351); default the host's clock. */
-  readonly now?: () => EpochMs;
+  /** When an environment record is stamped (row 011-351): the scheduler's clock, or the host's outside one. */
+  readonly now: () => EpochMs;
 }
 
 /** Bumped when the provisional encoding changes; never equal to a real environment hash. */
@@ -368,7 +367,7 @@ export class WorktreeKeys {
     const hashes = described.map((d) => d.hash).join("\n");
     if (hashes === this.#recordedEnvironments) return;
     const { store, worktreeId } = this.options;
-    recordWorktreeEnvironments(store, worktreeId, described, (this.options.now ?? hostNow)());
+    recordWorktreeEnvironments(store, worktreeId, described, this.options.now());
     this.#recordedEnvironments = hashes;
   }
 

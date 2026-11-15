@@ -1,7 +1,7 @@
 import type { EpochMs } from "../types/common.js";
-import { elapsed, hostClock, hostNow } from "./clock.js";
+import { elapsed } from "./clock.js";
 import type { Mutex } from "./mutex.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * How long a record of slots waits at least for the slots that end
@@ -30,10 +30,10 @@ export interface SlotRecordsOptions<E, R> {
   record(ended: E): Promise<R>;
   /** Commits what the records wrote. */
   commit(): void;
-  /** The clock a commit's time is read on (row 011-351); default the host's (`hostNow`). */
-  readonly now?: () => EpochMs;
-  /** The scheduler's wake loop, which ends a gather (row 011-352); absent, a loop of its own over `now`. */
-  readonly wakes?: Wakes | undefined;
+  /** The clock a commit's time is read on (row 011-351). */
+  readonly now: () => EpochMs;
+  /** The scheduler's wake loop, which ends a gather (row 011-352). */
+  readonly wakes: Wakes;
 }
 
 /**
@@ -58,17 +58,16 @@ export class SlotRecords<E, R> {
   /** Ends the open wait: the gather's wake (row 011-352). */
   #gathered: (() => void) | null = null;
   readonly #wake: WakeSlot;
-  /** The scheduler's loop, whose named wait the gather takes; none for a loop of its own. */
-  readonly #wakes: Wakes | undefined;
+  /** The scheduler's loop, whose named wait the gather takes. */
+  readonly #wakes: Wakes;
   readonly #now: () => EpochMs;
   #commitMs = 0;
 
   constructor(options: SlotRecordsOptions<E, R>) {
     this.#options = options;
-    this.#now = options.now ?? hostNow;
+    this.#now = options.now;
     this.#wakes = options.wakes;
-    const wakes = options.wakes ?? new Wakes(hostClock(options.now));
-    this.#wake = wakes.slot("slot-gather", () => this.#gathered?.());
+    this.#wake = options.wakes.slot("slot-gather", () => this.#gathered?.());
   }
 
   /** Records the slot whose run ended, `ended` its reads outside the lock. */
@@ -83,8 +82,7 @@ export class SlotRecords<E, R> {
     outcome.catch(() => {});
     this.#gathering ??= this.#gather();
     // The gather waits for its stated wake: a named wait, so a rest can come meanwhile (011-352).
-    await (this.#wakes?.waitFor({ for: "wake", reason: "slot-gather" }, this.#gathering) ??
-      this.#gathering);
+    await this.#wakes.waitFor({ for: "wake", reason: "slot-gather" }, this.#gathering);
     await this.#options.lock.run(async () => {
       const recorded: { slot: EndedSlot<E, R>; record: R }[] = [];
       for (let slot = this.#ended.shift(); slot; slot = this.#ended.shift()) {

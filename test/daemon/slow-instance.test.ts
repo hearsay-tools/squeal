@@ -4,7 +4,9 @@ import {
   vitestLaneGroup,
   withSlowInstance,
 } from "../../src/core/daemon/slow-instance.js";
+import { hostClock } from "../../src/core/scheduler/clock.js";
 import { SlowRelease } from "../../src/core/scheduler/slow-release.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -174,7 +176,6 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
       };
       const runner = withSlowInstance(fake("fast", log), () => slow);
       await runner.run([FILE], options("slow:vitest"));
-      const ended = Date.now() as EpochMs;
       let closed = false;
       const noted: unknown[] = [];
       // The scheduler's `#releaseLane`: the runner's release, its error noted.
@@ -184,9 +185,10 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
             runner.releaseLane?.(lane).catch((e: unknown) => void noted.push(e)) ??
             Promise.resolve(),
           lanes: () => [],
-          endedAt: () => ended,
           now: () => Date.now() as EpochMs,
           closed: () => closed,
+          // The runner's own runs take real time: the loop runs on the host's clock.
+          wakes: new Wakes(hostClock()),
         },
         10,
       );
@@ -302,15 +304,14 @@ describe("an instance per group lane (spec 019 D3, row 019-12)", () => {
     const { runner } = laned(log);
     await runner.run([FILE], options("slow:vitest"));
     await runner.run([FILE], options("group:e2e:vitest"));
-    const ended = Date.now() as EpochMs;
     // The scheduler's `SlowRelease`, its bound 10 ms instead of 60 s.
     const release = new SlowRelease(
       {
         release: (lane) => runner.releaseLane?.(lane) ?? Promise.resolve(),
         lanes: () => [],
-        endedAt: () => ended,
         now: () => Date.now() as EpochMs,
         closed: () => false,
+        wakes: new Wakes(hostClock()),
       },
       10,
     );

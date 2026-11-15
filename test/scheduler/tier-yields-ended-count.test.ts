@@ -3,12 +3,14 @@ import { classLines } from "../../src/cli/named-file-lines.js";
 import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { ENDED_WRITE_MS } from "../../src/core/scheduler/yield-history.js";
 import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
 import { TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldRun, holdRuns, ref } from "./tier-yields-fixture.js";
 
@@ -53,7 +55,7 @@ function tierOf(n: number) {
 describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 120_000 }, () => {
   it("many file ends inside the window make one write; one after it writes the new count", () => {
     const { context, writes, at } = recording();
-    const yields = new TierYields();
+    const yields = new TierYields(() => {}, new Wakes(virtualClock()));
     const { tier, end } = tierOf(1_000);
     for (let i = 0; i < 500; i += 1) {
       end(i);
@@ -69,7 +71,7 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
 
   it("row 011-274: the row names the files that ended, in the tier's order, as of its write", () => {
     const { context, writes, at } = recording();
-    const yields = new TierYields();
+    const yields = new TierYields(() => {}, new Wakes(virtualClock()));
     const { tier, end } = tierOf(4);
     end(2);
     yields.fileEnded(context, tier);
@@ -94,7 +96,7 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
 
   it("a busy store skips the write, and the next allowed one carries the count", () => {
     const { context, writes, at, store } = recording();
-    const yields = new TierYields();
+    const yields = new TierYields(() => {}, new Wakes(virtualClock()));
     const { tier, end } = tierOf(4);
     store.busy = true;
     end(0);
