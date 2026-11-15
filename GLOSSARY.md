@@ -104,6 +104,28 @@ _Avoid_: snapshot (it is read as the plan goes, not copied first)
 A running tier stops so queued work starts sooner, and its unfinished files go back to the queue. A yield happens only when the waiting file would start sooner, by the tier plan over the queue after the yield.
 _Avoid_: give way (the plain-language name in decision cards), cut (the files a yield puts back), cancel (also a stop, by `squeal stop` or a superseding revision)
 
+## Deciding what runs next
+
+**Scheduler step**:
+The one synchronous decision of what the scheduler does next, from the scheduler events since the last step, one clock reading and the start facts. Its rules are written in one fixed order, and it returns scheduler decisions and the next wake.
+_Avoid_: pump (the loop that carries the step out), tick, pass (a reconciliation pass is something else)
+
+**Scheduler event**:
+Something that happened that the scheduler step must see, from a closed list: a revision arrived, runner work was applied, a request was taken, a file or a tier ended, a wake came. An event reaches the step whole; which rules it touches is decided inside the step.
+_Avoid_: notify, signal
+
+**Scheduler decision**:
+What a scheduler step returns for the loop to carry out, from a closed list: start a tier, stop a tier, write the yield record, read the install stamp, close a lane's runner, and the like. Each kind is carried out either inside the step's lock turn or after it.
+_Avoid_: action, effect, command
+
+**Wake**:
+The time a part of the scheduler next needs to look, with its reason, stated as a value. The scheduler keeps one timer, at the earliest wake.
+_Avoid_: timer (the one mechanism behind every wake), recheck, poll
+
+**Rest**:
+The scheduler has nothing to do until a scheduler event or its next wake: no step runs, none of its own work is in flight, and the lock is free. A test run that is still running does not end a rest; only its end does.
+_Avoid_: idle (the scheduler's queue is empty and nothing runs), quiet (the backlog's wait after an edit), settled
+
 ## Waits
 
 **Wait**:
