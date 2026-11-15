@@ -16,10 +16,10 @@ import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RevisionTrigger } from "../../src/core/types/revision.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { declareTraits, type RunnerTraits } from "../../src/core/types/runner-traits.js";
-import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { claimRepo } from "./claims-fixture.js";
-import { movableClock } from "./quiet-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -248,6 +248,12 @@ export interface CatchUpOptions {
   readonly resumesRest?: boolean;
   /** `SchedulerOptions.now`: the scheduler's clock (row 011-94). */
   readonly now?: () => number;
+  /**
+   * Row 011-353: `"virtual"`, the scheduler's clock is a prompt virtual
+   * clock from the host's time now, or the virtual clock given; `now` is
+   * then not read. Absent, the host's clock over `now`.
+   */
+  readonly clock?: "virtual" | VirtualClock;
   /** Further `SchedulerOptions`: the runtime directory, the slow tier's (rows 011-106, 004). */
   readonly scheduler?: Pick<SchedulerOptions, "runtimeDir" | "onReinstall" | "slow">;
   /** The scheduler's runner made from the fake one, as the daemon wraps its own (row 019-18). */
@@ -303,8 +309,12 @@ export interface CatchUpSide {
   stopBeat(): void;
   /** The scheduler's clock: `CatchUpOptions.now`, or the host's, plus what `advance` added. */
   now(): number;
-  /** Moves the scheduler's clock `ms` ahead (row 011-153). */
+  /** Moves the scheduler's clock `ms` ahead (row 011-153); on a virtual clock, firing its timers due. */
   advance(ms: number): void;
+  /** Row 011-353: the virtual clock of `CatchUpOptions.clock`; `null` on the host's. */
+  readonly clock: VirtualClock | null;
+  /** Row 011-353: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
+  rest(): Promise<Rest>;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store, over the repository's pool. */
@@ -329,7 +339,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     },
   });
   const beat = setInterval(() => store.worktrees.heartbeat(worktreeId, Date.now()), 12_000);
-  const { now, advance } = movableClock(options.now);
+  const { now, advance, clock, scheduler: clocked } = harnessClock(options.clock, options.now);
   const { lane, tierWidth, besideBacklog, backlogSlot, cancels } = options;
   const runner = new CatchUpRunner(options.files, {
     ...(lane === undefined ? {} : { lane }),
@@ -362,7 +372,7 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     capacity: { dir: repo.poolDir, hostSlots: options.hostSlots, host: null },
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
-    now,
+    ...clocked,
     ...options.scheduler,
   });
   onTestFinished(async () => {
@@ -391,6 +401,11 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     stopBeat: () => clearInterval(beat),
     now,
     advance,
+    clock,
+    rest: () => {
+      clock?.advance(0);
+      return scheduler.rest();
+    },
     current: (path) => {
       const states = store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
       return states.length > 0 && states.every((s) => s.validity === "current");
