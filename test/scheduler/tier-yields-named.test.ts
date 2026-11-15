@@ -8,13 +8,13 @@ import { standingsOf } from "../../src/core/status/standing.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { ModelClock } from "./model-clock.js";
 import {
   CUT_WITHIN_MS,
   completions,
