@@ -91,6 +91,27 @@ describe("the scheduler's lock (row 011-302)", () => {
     expect(heard).toHaveLength(5);
   });
 
+  it("row 011-357: a relabel tells a watcher the running task's new text and start; none outside a task", async () => {
+    let now = 1_000;
+    const lock = new Mutex(() => now);
+    const heard: (LockHolder | null)[] = [];
+    lock.watch((holder) => heard.push(holder));
+    lock.relabel("between tasks");
+    await lock.run(() => {
+      now = 1_005;
+      lock.relabel("selecting a tier of group e2e");
+      now = 1_009;
+      lock.relabel("selecting the next tier");
+    }, "selecting the next tier");
+    expect(heard).toEqual([
+      null,
+      { operation: "selecting the next tier", since: 1_000 },
+      { operation: "selecting a tier of group e2e", since: 1_005 },
+      { operation: "selecting the next tier", since: 1_009 },
+      null,
+    ]);
+  });
+
   it("drops a watcher that throws, hands its error over, and runs the task", async () => {
     const lock = new Mutex();
     const errors: unknown[] = [];
