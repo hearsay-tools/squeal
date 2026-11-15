@@ -28,6 +28,8 @@ Before row 011-354 the decision's own `holds` call recorded what it read, so thi
 2. The same commits after the check: `recheck`. It passes before and after the fix; it is the serialization the fix must match.
 3. The first row: the decision read a's claim held, the claim ends before the apply. The apply records the decision's fact, so `waiting` is set; the next read sees the claim gone and drops the first sight; a later claim gets a new bound. Before the fix: `waiting` is `false` (FAIL).
 
+4. `Claims.record` over the fact a read took is `Claims.holds`: one script of claim facts (a claims, a ends, b claims, b at its waiter bound and 1 s past it, b ends), applied to two ledgers on two stores. One calls `holds`; the other takes the yield check's path, `readClaim` then `record` of its `claimed`. At each step the answers, the `waiting` flags and `peek` one millisecond on are equal, and the answers match the expected column (b's bound starts at its own first sight, `T + 300 s`, not a's).
+
 Rows 1 and 3 were red without the fix (`git checkout src`, then the test) and green with it.
 
 A real two-scheduler case was not added. The window is one synchronous turn, so two daemons can only meet in it by chance; the hook is the only way to place the commit there. The test uses the real shared store and the real query.
@@ -51,6 +53,10 @@ Each decision read now has one query, and its replay records that query's answer
 
 The `TierYields` constructor and `check`'s signature are unchanged (W1's).
 
+## The new write path
+
+`Claims.record(key, claimed, at)` is the one place that writes a claim's first sight (`#seen`) and the `waiting` flag. Two callers reach it: `Claims.holds` (tier selection, slow slots, `claimOf`), which reads the store's fact first, and `TierYields.check`'s replay, which passes the fact the decision read. `Claims.claimed` and `Claims.peek` write nothing.
+
 ## Decision the brief did not settle
 
-`Claims.record` is a method that writes, in `claims.ts`, where the brief gave this row read-only helpers only. I asked the coordinator (request `001d2218`, default: keep it there) and continued on the default.
+`Claims.record` is a method that writes, in `claims.ts`, where the brief gave this row read-only helpers only. I asked the coordinator (request `001d2218`). The coordinator answered: keep it in `claims.ts`, with `Claims.claimed` and `peek`'s optional parameter; `holds` keeps its behaviour through `record`; add a test that both paths give the same state for the same facts (test 4).
