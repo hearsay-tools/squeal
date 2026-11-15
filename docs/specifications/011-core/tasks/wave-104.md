@@ -31,3 +31,16 @@ Seam: a two-worktree test on a shared scratch store: worktree A's scheduler deci
 Owns: the body of `TierYields.check` and its apply in `yields.ts`, `decide-yields.ts`, `yield-waits.ts`, read-only helpers in `claims.ts`, new tests. Leave alone: everything W1 owns (the `TierYields` constructor and `check` signature included; if you need a signature change, message the coordinator).
 
 Done when: row 011-361's done-when holds; `tasks/011-361/notes.md` gives the verdict (proven, with the fix; or refuted, with the reason) and the test; `key-format` passes without a raise; lint, typecheck and `squeal status --wait 60000` on the changed paths pass.
+
+## R1 (W1 and W2): review of cand/0.1.517
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.517` at `12b18d6344265541413c8cbbd5ec5819a9cb8c9d`; candidate CI run 43770714637. Range `cd9f098d4..12b18d6344265541413c8cbbd5ec5819a9cb8c9d`: worker 35c1f661's five commits (rows 011-362, 011-364), worker a06177b0's two (row 011-361), cherry-picked without conflict, the 0.1.517 raise and bundles, then one coordinator integration fix (`12b18d634`: the new 011-361 test builds `TierYields` with the loop and passes `check`'s `held` flag, which 011-364 made required). Read: board rows 011-361, 011-362, 011-364; this file's W1 and W2; `tasks/011-362/notes.md`, `tasks/011-361/notes.md`; `../quality/2026-11-15-card-7.md` (S1, R1); `../reviews/0.1.514-r2.md` (the claims note).
+
+Check, each as proven, plausible or unverified:
+
+1. **011-362.** A revision's runner-part bound arms on the scheduler's wake loop and clock; the new test fails without the fix; `rest()` sees the bound.
+2. **011-364.** No owner under `src/core/scheduler/` can build a wake loop or default to the host clock (the grep in the notes); the new source test fails on a planted fallback; `daemon-keys.ts` is the one named exception with its reason; `Promotions` gets its clock at construction with no throw path (coordinator reply); no production caller relies on a removed default; behaviour preserved.
+3. **011-361.** The race is real as the notes describe it (a claim committed between `decideYields` and the apply gives a yield about 500 s early), the hook test reproduces it and fails without the fix, `Claims.record` with the decision's fact gives the same state as `Claims.holds` for the same facts, and nothing else in claim timing changes.
+4. **Behaviour preserved** apart from the 011-361 fix: no tier, order, width, status payload, note text, CLI output or key change.
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main`; direct runs of `key-format`, `version-sensitive`, `yield-replay-race`, `decide-yields` pass. `runner-part-bound.test.ts` failed once in a parallel run at load 96 and passed 3 of 3 alone (row 011-360's known flake). Squeal was starved by another project's load (about 100 on 24 CPUs); worker evidence: W1 34 related files direct, W2 31 files (165 tests) direct. Also seen at that load: `status-wait-paused` "after 0.7 s" instead of 0.6 s, `repository-inputs` setup past its 60 s limit (it also fails at base `cd9f098d4`). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; run the model test only below the CPU count. Write `reviews/0.1.517.md` and commit it on your branch.
