@@ -50,3 +50,15 @@ Check, each as proven, plausible or unverified:
 5. **No new break.** The repair adds no timing difference beyond the notes and changes nothing a user sees.
 
 The coordinator's tree passed lint, typecheck, `check:version origin/main` and `key-format` with `version-sensitive` (19 tests) at the candidate; the worker's tree had 932 affected files current at the repair (4 bundle-drift failures, fixed by the bundle commit) and a direct run of 18 files (123 tests, including the model test and the key tests). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/0.1.513-r2.md` and commit it on your branch.
+
+## W1 repair 3: one rule for "still working" (the human, 2026-11-15, "Rest signal: 1: one rule, third repair")
+
+Use /worker (worker 9b8a107e, resumed). Shape: repair. Effort high.
+
+Outcome: `rest()` follows one rule, written once in `wakes.ts`: every piece of scheduler work that runs on its own is counted on its own, and a piece stops counting only while it waits for a stated wake of the loop or for a held runner run. No other wait sets work aside.
+
+Why: four gaps in one mechanism (reviews `0.1.513.md` B1, `0.1.513-r2.md` B4, the slot-gather gap 011-353 found, the order of `track`), each patched by setting one more wait aside on a shared count (`docs/process.md` step 6, "a single owner of the rule").
+
+Lead: replace the general `Wakes.aside` with waits that name what they wait for, from a closed list (a wake reason, or a runner run), taken by the piece that waits; concurrent branches inside one flight (the ended reads beside the slot gather, the record, the drain) are tracked as their own pieces; nothing subtracts another piece's count. The promise check gains a rule: no set-aside outside those named waits.
+
+Done when: the review `0.1.513-r2.md` B4 reproduction passes as a test (rest stays pending while gated reads run; after release it reports the future gather; after `advance` it waits for the record and the pump); the B1, B2, B3, S1 and slot-gather tests still pass; `model-scheduler.test.ts` passes on the branch with worker 7a90f9aa's commits `44d77515d..e16f56e27` picked on top (run once, when the load is below 24); the notes' repair section states the rule and names what it replaced; no timing difference beyond the notes; lint, typecheck, `squeal status --wait 60000` on changed paths, `key-format` pass.
