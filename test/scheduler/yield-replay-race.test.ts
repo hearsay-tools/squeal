@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { readClaim } from "../../src/core/scheduler/claims.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { decideYields } from "../../src/core/scheduler/decide-yields.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
@@ -137,7 +138,7 @@ function world() {
       standing: new Map(),
       held: false,
     })?.tiers[0]?.decision;
-  return { a, b, check, decides, ledger, yields };
+  return { a, b, check, clock, context, decides, ledger, ref, yields };
 }
 
 describe("the yield check applies the claim facts its decision read (row 011-361)", () => {
@@ -185,5 +186,47 @@ describe("the yield check applies the claim facts its decision read (row 011-361
     raced.b("running");
     expect(raced.decides(T + BOUND + 1)).toEqual({ kind: "recheck" });
     raced.yields.close();
+  });
+});
+
+/** One step of the claim script: the time, then each other worktree's claim state then. */
+type Step = readonly [at: number, a: "running" | "queued", b: "running" | "queued", holds: boolean];
+
+/** Claim a, its end, claim b, b at its bound and past it, b's end. */
+const SCRIPT: readonly Step[] = [
+  [T, "running", "queued", true],
+  [T + 100 * S, "running", "queued", true],
+  [T + 200 * S, "queued", "queued", false],
+  [T + 300 * S, "queued", "running", true],
+  [T + 300 * S + BOUND, "queued", "running", true],
+  [T + 301 * S + BOUND, "queued", "running", false],
+  [T + 400 * S + BOUND, "queued", "queued", false],
+];
+
+describe("Claims.record over the fact a read took is Claims.holds (row 011-361)", () => {
+  it("the same facts give the same answers, waiting flags and first sights by either path", () => {
+    const direct = world();
+    const replay = world();
+    for (const [at, a, b, holds] of SCRIPT) {
+      for (const side of [direct, replay]) {
+        side.a(a);
+        side.b(b);
+        side.clock.now = at;
+        side.ledger.claims.begin();
+      }
+      const answer = direct.ledger.claims.holds(KEY, at as EpochMs);
+      // The yield check's path: the decision's read, then the apply's record of its fact.
+      const read = readClaim(replay.context, replay.ledger, replay.ref);
+      expect(read.asked).toBe(KEY);
+      const recorded = replay.ledger.claims.record(KEY, read.claimed, at as EpochMs);
+      expect([at - T, answer]).toEqual([at - T, holds]);
+      expect(recorded).toBe(answer);
+      expect(replay.ledger.claims.waiting).toBe(direct.ledger.claims.waiting);
+      // The first sight: the bound it starts ends at the same time on both.
+      const later = (at + 1) as EpochMs;
+      expect(replay.ledger.claims.peek(KEY, later)).toBe(direct.ledger.claims.peek(KEY, later));
+    }
+    direct.yields.close();
+    replay.yields.close();
   });
 });
