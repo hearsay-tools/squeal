@@ -103,13 +103,26 @@ for (const groups of [1, 3, 6]) {
     await expect.poll(current, { timeout: 60_000 }).toBe(true);
     await side.scheduler.idle();
 
+    // Each part of a turn under one text (a relabel starts a part), and each whole turn.
     const turns = new Map<string, number[]>();
+    const wholes = new Map<string, number[]>();
+    const add = (map: Map<string, number[]>, kind: string, ms: number) =>
+      map.set(kind, [...(map.get(kind) ?? []), ms]);
     let open: { operation: string | null; at: number; decided: string[] } | null = null;
+    let whole: { operation: string | null; at: number; decided: string[]; lane: boolean } | null =
+      null;
     const stop = side.scheduler.watchLock?.((holder) => {
       const now = performance.now();
-      if (open !== null) {
-        const kind = kindOf(open.operation, open.decided);
-        turns.set(kind, [...(turns.get(kind) ?? []), now - open.at]);
+      if (open !== null) add(turns, kindOf(open.operation, open.decided), now - open.at);
+      if (holder === null && whole !== null) {
+        const kind = `${kindOf(whole.operation, whole.decided)}${whole.lane ? " +lane" : ""}`;
+        add(wholes, kind, now - whole.at);
+        whole = null;
+      } else if (holder !== null && whole === null) {
+        whole = { operation: holder.operation, at: now, decided: [], lane: false };
+      } else if (holder !== null && whole !== null && holder.operation !== whole.operation) {
+        // A relabel inside the step's turn (row 011-357): a lane decided in it.
+        whole.lane = true;
       }
       open = holder === null ? null : { operation: holder.operation, at: now, decided: [] };
     });
@@ -118,6 +131,7 @@ for (const groups of [1, 3, 6]) {
       const tags = seen.decisions.filter((kind) => kind !== "read-install" && kind !== "read-probe");
       if (seen.inTurn) tags.push("in-turn");
       open?.decided.push(...tags);
+      whole?.decided.push(...tags);
     });
     const loadBefore = loadavg()[0];
     const started = performance.now();
@@ -136,9 +150,13 @@ for (const groups of [1, 3, 6]) {
     stop?.();
     unstep?.();
     const loadAfter = loadavg()[0];
-    const byKind = Object.fromEntries(
-      [...turns].sort(([a], [b]) => a.localeCompare(b)).map(([kind, ms]) => [kind, stats(ms)]),
-    );
+    const table = (map: Map<string, number[]>) =>
+      Object.fromEntries(
+        [...map].sort(([a], [b]) => a.localeCompare(b)).map(([kind, ms]) => [kind, stats(ms)]),
+      );
+    const byKind = table(turns);
+    const byTurn = table(wholes);
+    const turnMs = [...wholes.values()].flat();
     console.log(
       JSON.stringify({
         probe: "011-357 lock turns",
@@ -148,6 +166,9 @@ for (const groups of [1, 3, 6]) {
         loadBefore,
         loadAfter,
         wallMs: Math.round(wallMs),
+        lockTotalMs: stats(turnMs).totalMs,
+        longestTurnMs: stats(turnMs).maxMs,
+        byTurn,
         byKind,
       }),
     );

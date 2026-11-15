@@ -1,0 +1,2 @@
+{"probe":"011-357 slot","load":8.49,"want 1":{"medianMs":2.463,"p95Ms":2.762,"maxMs":3.753},"want 2":{"medianMs":4.755,"p95Ms":5.403,"maxMs":5.654}}
+      Tests  1 passed (1)
