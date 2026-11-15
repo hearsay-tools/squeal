@@ -138,7 +138,9 @@ export class TierRecords {
     if (tier.kind === "focused")
       return this.#landed(tier, () => this.#focused(tier, ran, installStamp, held));
     if (tier.slot === true) {
-      const ended = this.#ended(tier, ran, installStamp, slow, held);
+      // Row 011-352, repair 3: these reads run beside the gather, a piece of their own.
+      const read = () => this.#ended(tier, ran, installStamp, slow, held);
+      const ended = this.#host.wakes?.track(read) ?? read();
       return this.#landed(tier, () => {
         this.#slotsBusy = null;
         return this.#slots.record(ended);

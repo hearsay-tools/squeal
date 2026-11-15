@@ -58,7 +58,7 @@ export class SlotRecords<E, R> {
   /** Ends the open wait: the gather's wake (row 011-352). */
   #gathered: (() => void) | null = null;
   readonly #wake: WakeSlot;
-  /** The scheduler's loop, which sets a record's gather aside; none for a loop of its own. */
+  /** The scheduler's loop, whose named wait the gather takes; none for a loop of its own. */
   readonly #wakes: Wakes | undefined;
   readonly #now: () => EpochMs;
   #commitMs = 0;
@@ -82,8 +82,9 @@ export class SlotRecords<E, R> {
     // returns `outcome`: handled here, so Node does not exit on it (review wave-4 slice 2, B1).
     outcome.catch(() => {});
     this.#gathering ??= this.#gather();
-    // The gather waits for its wake, not for work: set aside, so a rest can come meanwhile (011-352).
-    await (this.#wakes?.aside(this.#gathering) ?? this.#gathering);
+    // The gather waits for its stated wake: a named wait, so a rest can come meanwhile (011-352).
+    await (this.#wakes?.waitFor({ for: "wake", reason: "slot-gather" }, this.#gathering) ??
+      this.#gathering);
     await this.#options.lock.run(async () => {
       const recorded: { slot: EndedSlot<E, R>; record: R }[] = [];
       for (let slot = this.#ended.shift(); slot; slot = this.#ended.shift()) {

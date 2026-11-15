@@ -280,7 +280,7 @@ class TierScheduler implements Scheduler {
       merging: () => this.#hold.holding,
       wakes: this.#wakes,
       due: () =>
-        void this.#wakes.track(
+        void this.#wakes.track(() =>
           this.commandHold().catch((error: unknown) =>
             this.#backgroundError("could not end a command hold", error),
           ),
@@ -565,18 +565,19 @@ class TierScheduler implements Scheduler {
   #recheckTiers(): void {
     if (this.#recheck) return;
     this.#recheck = true;
-    const check = this.#lock
-      .run(() => {
-        this.#recheck = false;
-        if (this.#closed) return;
-        // Row 011-123: a claimant's record is taken first, so its file needs no yield.
-        const { context, ledger } = this.#started();
-        this.#adopt(context, ledger);
-        this.#cutTiers(null);
-      }, "checking the tiers in flight")
-      .catch((error: unknown) =>
-        this.#backgroundError("could not check the tiers in flight", error),
-      );
+    const check = () =>
+      this.#lock
+        .run(() => {
+          this.#recheck = false;
+          if (this.#closed) return;
+          // Row 011-123: a claimant's record is taken first, so its file needs no yield.
+          const { context, ledger } = this.#started();
+          this.#adopt(context, ledger);
+          this.#cutTiers(null);
+        }, "checking the tiers in flight")
+        .catch((error: unknown) =>
+          this.#backgroundError("could not check the tiers in flight", error),
+        );
     void this.#wakes.track(check);
   }
 
@@ -1191,11 +1192,12 @@ class TierScheduler implements Scheduler {
       } catch (error) {
         this.#stall(error);
       } finally {
-        // Each flight and the drain count on their own (a flight's run set aside); the pump's wait does not.
-        await this.#wakes.aside(
+        // Each flight and the drain are pieces of their own; the pump waits for them as for pieces.
+        await this.#wakes.waitFor(
+          { for: "pieces" },
           Promise.all([...this.#inFlight.values()].map((flight) => flight.done)),
         );
-        await this.#wakes.aside(this.#draining ?? Promise.resolve());
+        await this.#wakes.waitFor({ for: "pieces" }, this.#draining ?? Promise.resolve());
         this.#pumping = null;
         const ended = this.#admit();
         if (ended.halts.has("reinstalled")) this.#tellReinstall();
@@ -1242,8 +1244,9 @@ class TierScheduler implements Scheduler {
     flight.done = this.#wakes.track(async () => {
       let recorded = false;
       try {
-        // Row 011-352: the runner's run is set aside; what follows it is the scheduler's own work.
-        const ran = await this.#wakes.aside(
+        // Row 011-352: while the runner's run goes on the flight does not count; what follows does.
+        const ran = await this.#wakes.waitFor(
+          { for: "run" },
           executeTier(context, tier, this.#warmUp.observes(tier), stop, () =>
             this.#fileEnded(tier),
           ),
@@ -1378,7 +1381,7 @@ class TierScheduler implements Scheduler {
   #besideEnded(lane: string): void {
     const { context, ledger } = this.#started();
     if (!besideDone(context, ledger, this.#running(), lane)) return;
-    void this.#wakes.track(this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`));
+    void this.#wakes.track(() => this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`));
   }
 
   /** The lanes no tier may start in now. */
@@ -1400,7 +1403,7 @@ class TierScheduler implements Scheduler {
   /** Applies the queued runner work beside the tiers in flight, unless it is already being applied. */
   #drain(): void {
     if (this.#draining || this.#runnerWork.size === 0) return;
-    this.#draining = this.#wakes.track(
+    this.#draining = this.#wakes.track(() =>
       this.#runnerWork
         .drain()
         .catch((error: unknown) => this.#backgroundError("could not apply runner work", error))
@@ -1479,13 +1482,14 @@ class TierScheduler implements Scheduler {
   /**
    * Settles on the next event; at once when one came since the pump's pass
    * began. The pump counts as the scheduler's work only while it has work it
-   * can do now: its wait is set aside, so a rest can come while it waits,
+   * can do now: it waits in the named wait for an event, so a rest can come while it waits,
    * and its count is back before it acts on the event (review 0.1.513 B1).
    */
   #nextEvent(): Promise<void> {
     if (this.#events.length > 0) return Promise.resolve();
-    return this.#wakes.aside(
-      new Promise((resolve) => {
+    return this.#wakes.waitFor(
+      { for: "event" },
+      new Promise<void>((resolve) => {
         this.#wake = resolve;
       }),
     );

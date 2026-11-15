@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import { WarmUp } from "../../src/core/scheduler/warm-up.js";
 import type { Rest } from "../../src/core/types/scheduler.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { virtualClock } from "../helpers/virtual-clock.js";
@@ -84,5 +85,59 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
     await side.scheduler.rest();
     expect(idle).toBe(true);
     expect(side.runner.active).toBe(0);
+  });
+
+  it("counts a record's reads beside its pending gather (review 0.1.513-r2 B4)", async () => {
+    const files = [{ path: "test/a.test.ts", ms: 1, imports: ["src/a.ts"] }];
+    const repo = catchUpRepo(files);
+    const clock = virtualClock(Date.now());
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 2,
+      policy: RUN_MISSING,
+      backlogSlot: () => 1,
+      scheduler: { clock } as never,
+    });
+    // One read of the record in progress, held by a gate: scheduler work, not a wake or a run.
+    const original = WarmUp.prototype.read;
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let entered = false;
+    WarmUp.prototype.read = async function (this: WarmUp, ...args: Parameters<WarmUp["read"]>) {
+      entered = true;
+      await gate;
+      return original.apply(this, args);
+    };
+    let idle = false;
+    try {
+      await side.scheduler.start();
+      void side.scheduler.idle().then(() => {
+        idle = true;
+      });
+      await expect.poll(() => entered, { timeout: 10_000 }).toBe(true);
+      let rested: Rest | null = null;
+      const first = side.scheduler.rest().then((rest) => {
+        rested = rest;
+      });
+      expect(await settles(first, 200)).toBe(false);
+      expect(rested).toBeNull();
+
+      release();
+      await first;
+      // The reads ended; the record waits for its gather, still ahead.
+      expect((rested as Rest | null)?.next?.reason).toBe("slot-gather");
+      expect(idle).toBe(false);
+
+      clock.advance(25);
+      await side.scheduler.rest();
+      // The record and the pump's last pass came before this rest.
+      expect(idle).toBe(true);
+    } finally {
+      release();
+      WarmUp.prototype.read = original;
+      clock.advance(25);
+    }
   });
 });

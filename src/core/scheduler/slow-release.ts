@@ -55,7 +55,7 @@ export class SlowRelease {
     private readonly afterMs: number = SLOW_RELEASE_MS,
   ) {
     this.#wakes = host.wakes ?? new Wakes(hostClock(() => host.now()));
-    this.#wake = this.#wakes.slot("slow-release", () => void this.#wakes.track(this.#due()));
+    this.#wake = this.#wakes.slot("slow-release", () => void this.#wakes.track(() => this.#due()));
   }
 
   /** A slow tier starts in `lane`: its instance is open, or opens. */
