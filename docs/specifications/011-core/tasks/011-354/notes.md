@@ -54,9 +54,11 @@ Worker 9e1d33bb, wave 100 W1, 2026-11-15. Base: `52232b673` (011-351 on main, 01
 - Kept in `tier-yields-bound.test.ts`, because they test what `TierYields` applies: the bound's wake firing the re-check that yields (case 1), the stored marks `cutPastEstimate` reads (case 4), one wake at the earliest bound cleared on end and close (case 6).
 - `tier-yields-clock.test.ts`: no case deleted. All three drive a real scheduler (`catchUpSide`) and pin the published standings and the reading count of `check` (2: the decision's and the row's), which the apply keeps. The table's throwing clock pins the decision's side. Deleting them is a coordinator call; I left them as tests that drive a scheduler.
 
-## Checks
+## Checks (2026-11-15, revision 13 = `0c5aa64f6`)
 
-See the final report for commands and results.
+- `squeal status --wait 60000` on the seven changed source and test paths: 934 affected test files current, 930 pass, 4 fail. The 4 are the bundle-drift checks (`test/harness/plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: "cli/squeal.mjs differs from the build"). Expected: the brief forbids `pnpm run build`, and `plugins/*/dist` is the coordinator's.
+- Among the passes: `model-scheduler.test.ts` (run by Squeal at one-minute load 6 to 9 on 24 CPUs), `test/keys/key-format.test.ts` (no version raise), every `tier-yields-*.test.ts`, `promoted-tier-bound.test.ts`, `decide-yields.test.ts` (30 cases).
+- `pnpm run lint`: 3,513 files, no fixes. `pnpm run typecheck`: exit 0.
 
 ## For the next worker (011-356)
 
