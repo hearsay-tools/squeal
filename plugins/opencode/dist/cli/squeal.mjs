@@ -60410,7 +60410,10 @@ var init_scheduler2 = __esm({
         const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
         if (install || batch.trigger === "interval") {
           const { missing: missing2 } = await this.#install.check();
-          if (missing2 !== null) return void this.#stepOutside([INSTALL_MISSING]);
+          if (missing2 !== null) {
+            this.#stepOutside([INSTALL_MISSING]);
+            return;
+          }
         }
         if (applied === null) {
           if (touched2.length > 0) this.#runnerWork.queueTouched(touched2);
