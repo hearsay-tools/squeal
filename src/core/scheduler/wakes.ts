@@ -254,14 +254,18 @@ export class Wakes {
       }
     } finally {
       this.#pass = null;
-      this.#rearm(pass);
+      this.#rearm();
       this.#poke();
     }
     if (errors.length > 0) throw errors[0];
   }
 
-  /** Arms the one timer at the earliest due wake, measured from `from`, the pass's reading or one taken now. */
-  #rearm(from?: Reading): void {
+  /**
+   * Arms the one timer at the earliest due wake. Its delay is measured from
+   * the steady time now, read after a pass's owners ran (review 0.1.513 B2):
+   * the time they took is not added to the next wake.
+   */
+  #rearm(): void {
     if (this.#pass !== null || this.#closed) return;
     let next: number | null = null;
     for (const slot of this.#slots)
@@ -271,7 +275,7 @@ export class Wakes {
     this.#disarm = null;
     this.#armed = null;
     if (next === null) return;
-    const steady = (from ?? this.#reading()).steady;
+    const steady = this.#steadyNow();
     const ms = next - steady;
     // A delay past a timer's range fires early, at the range's end, and arms again.
     this.#armed = { due: next, until: steady + Math.min(ms, MAX_TIMER_MS) };
