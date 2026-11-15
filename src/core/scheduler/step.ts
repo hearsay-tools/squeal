@@ -41,9 +41,11 @@ export type ProbeRead = "gone" | "held" | "released" | "free";
 
 /**
  * What the step reads that costs I/O, read after the turn that asked for it
- * and kept for the steps of one iteration. `null`: a step inside another
- * lock turn (a revision's pass, applied runner work, a request), which
- * decides the yield check only and never starts a tier.
+ * and kept for the steps of one iteration. `null`: a step outside the
+ * pump's iteration, inside another lock turn (a revision's pass, applied
+ * runner work, a request) or at a site's event (a hold's start, a flight's
+ * end; row 011-366): it runs the rules of `OUTSIDE` only and never starts a
+ * tier.
  */
 export interface Reads {
   readonly install?: InstallRead;
@@ -66,26 +68,37 @@ export interface StepPorts {
   runnerWork(): { readonly queued: number; readonly draining: boolean };
   /** Which tier in flight an event names, and whether it stands `named` (`yieldReach`). */
   readonly yields: ReachView;
-  /** Card 6: adopts stored results, plans the fast lanes and starts; `fly` for each tier started. */
-  startNext(admitted: Admission, fly: (tier: Tier) => void): { readonly idle: Idle | null };
+  /**
+   * Card 6: adopts stored results, plans the fast lanes at `at` and starts;
+   * `fly` for each tier started.
+   */
+  startNext(
+    admitted: Admission,
+    at: EpochMs,
+    fly: (tier: Tier) => void,
+  ): { readonly idle: Idle | null };
   /**
    * Row 011-357: the slow lane of `group` decides in this lock turn at
    * `at`: its listing, load guard, slot and pick (`SlowTier.decide`); `fly`
    * for the run it starts.
    */
   askLane(group: string, at: EpochMs, fly: (run: SlowRun) => void): LaneDecision;
-  /** Why no fast tier starts, read now: the plan's idle answer when no plan ran. */
-  idleNow(): Idle;
+  /** Why no fast tier starts at `at`: the plan's idle answer when no plan ran. */
+  idleNow(at: EpochMs): Idle;
   /** The open slow lanes no tier keeps (`decideRelease`'s `idle`, row 011-355). */
   idleLanes(): readonly string[];
+  /** A slow file of `lane` is queued (spec 004 D2). */
+  slowQueued(lane: string): boolean;
+  /** No batch's tier is left in `lane`, in flight and running (`besideDone`, row 011-269). */
+  besideDone(lane: string): boolean;
   /** Queued files wait on other worktrees' claims (task 001-205). */
   claimsWaiting(): boolean;
   /** The pool refused a tier since the last look; the look clears it (row 011-96). */
   refused(): boolean;
   /** The number of tiers in flight. */
   inFlight(): number;
-  /** Carries out a decision placed in the lock turn, as the step makes it. */
-  carry(decision: TurnDecision): void;
+  /** Carries out a decision placed in the lock turn, as the step makes it, at the step's reading `at`. */
+  carry(decision: TurnDecision, at: EpochMs): void;
 }
 
 /** One step's input (`GLOSSARY.md`, "Scheduler step"). */
@@ -102,7 +115,7 @@ export interface Turn {
  * When the loop steps next: `reads`, at once with the reads it asked for;
  * `again`, at once with none; on an `event`; at `at` or on an event; when
  * the claims window ends or on an event; `end`, the pump ends. `turn`: a
- * step inside another lock turn, whose caller goes on.
+ * step outside the pump's iteration, whose caller goes on.
  */
 export type NextWake =
   | { readonly kind: "reads" | "again" | "event" | "end" | "turn" }
@@ -130,6 +143,7 @@ const END: NextWake = { kind: "end" };
 const EVENT: NextWake = { kind: "event" };
 const AGAIN: NextWake = { kind: "again" };
 const READS: NextWake = { kind: "reads" };
+const TURN: NextWake = { kind: "turn" };
 
 /** What the rules of one step share: the decisions so far and the answers of earlier rules. */
 class Out {
@@ -142,11 +156,15 @@ class Out {
   /** A slow lane answered (`Step.laneAnswered`). */
   laneAnswered = false;
 
-  constructor(private readonly ports: StepPorts) {}
+  constructor(
+    private readonly ports: StepPorts,
+    private readonly at: EpochMs,
+  ) {}
 
+  /** Row 011-366 (S7): a decision of the turn is carried out at the step's one reading. */
   decide(decision: Decision): void {
     this.decisions.push(decision);
-    if (inTurn(decision)) this.ports.carry(decision);
+    if (inTurn(decision)) this.ports.carry(decision, this.at);
   }
 }
 
@@ -168,6 +186,18 @@ const pumpEnded: Rule = ({ events, ports }, out) => {
   return !rearm.halted && (!ports.stalled() || ports.asked()) && work ? AGAIN : END;
 };
 
+/**
+ * Row 011-366: a command hold began (row 011-74). The tiers in flight whose
+ * runner cancels are cancelled, the lanes waiting for a load guard give
+ * way, then the pump runs: its step closes the idle slow lanes
+ * (`closeSlowLanes`).
+ */
+const holdBegan: Rule = ({ events }, out) => {
+  if (!events.some((event) => event.kind === "hold-began")) return undefined;
+  out.decide({ kind: "cancel-held" });
+  return AGAIN;
+};
+
 /** Whether `events` reach the yield check, and how (row 011-354's `yieldReach`): one check. */
 function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
   let check = false;
@@ -184,8 +214,8 @@ function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
   return undefined;
 }
 
-/** A step inside another lock turn decides the yield check only: its caller's turn goes on. */
-const inTurnEnds: Rule = (turn) => (turn.reads === null ? { kind: "turn" } : undefined);
+/** A step outside the pump's iteration decided its events' rules: its caller goes on. */
+const inTurnEnds: Rule = (turn) => (turn.reads === null ? TURN : undefined);
 
 /** A tier's error stopped the pump, or the daemon stops or its runtime went. */
 const stallHolds: Rule = ({ ports }) => (ports.stalled() || ports.admit().halted ? END : undefined);
@@ -240,21 +270,39 @@ const probeDiskFacts: Rule = ({ reads }, out) => {
  */
 const rewalkRead = (reads: Reads | null) => reads?.rewalk !== undefined;
 
+/**
+ * Row 011-366: the one place a missing install is decided (task 001-113):
+ * the install went under the scheduler, which stores nothing more. A
+ * revision pass's install check found it missing (`install-missing`), or,
+ * in the pump's iteration, admission answers it after the holds: the pump
+ * ends.
+ */
+const reinstallMissing: Rule = ({ events, ports, reads }, out) => {
+  if (events.some((event) => event.kind === "install-missing")) {
+    out.decide({ kind: "reinstall" });
+    return TURN;
+  }
+  if (reads === null || out.held || rewalkRead(reads)) return undefined;
+  if (ports.admit().fast !== "install-missing") return undefined;
+  // The fast start rule's admission: its writes landed, as when it starts a tier.
+  out.selected = true;
+  out.decide({ kind: "reinstall" });
+  return END;
+};
+
 /** Admission, then the tier plan and its act step, in this lock turn (rows 011-340, 011-346). */
 const startFastTier: Rule = (turn, out) => {
-  const { ports, reads } = turn;
+  const { at, ports, reads } = turn;
   if (out.held || rewalkRead(reads)) return undefined;
   out.selected = true;
   const admitted = ports.admit();
   const fast = admitted.fast;
   if (fast === "held") out.held = true;
-  else if (fast === "install-missing") out.decide({ kind: "reinstall" });
   else if (fast === "runner-work") return AGAIN;
-  if (fast === "install-missing") return END;
   if (fast !== null) return undefined;
   const stamp = reads?.install?.stamp ?? "";
   let started = false;
-  const next = ports.startNext(admitted, (tier) => {
+  const next = ports.startNext(admitted, at, (tier) => {
     started = true;
     out.decide({ kind: "start-tier", tier, stamp, turn: admitted.turn });
     // The batch's tier no longer stands for the work that went beside it (row 011-269).
@@ -289,17 +337,36 @@ const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
   return undefined;
 };
 
-/** On a hold the idle slow lanes close (row 011-211), and the pump ends. */
-const closeSlowLanes: Rule = ({ ports }, out) => {
+/**
+ * The slow lanes' one close rule (row 011-211, spec 004 D2; row 011-366):
+ * a slow run's end closes its lane, still in flight, when a hold stands or
+ * no file of it is queued; on a hold the idle lanes close and the pump
+ * ends. The close at a lane's bound is its wake owner's (`SlowRelease`).
+ */
+const closeSlowLanes: Rule = ({ events, ports }, out) => {
+  const ended = events.flatMap((event) => (event.kind === "slow-ended" ? [event.lane] : []));
+  if (ended.length > 0) {
+    const held = ports.admit().halts.has("held");
+    const lanes = ended.filter((lane) => held || !ports.slowQueued(lane));
+    if (lanes.length > 0) out.decide({ kind: "close-lanes", lanes });
+  }
   if (!out.held) return undefined;
   out.decide({ kind: "close-lanes", lanes: ports.idleLanes() });
   return END;
 };
 
+/** Row 011-366: a batch's tier or one beside it ended; with no batch left in its lane, its second instance closes (row 011-269). */
+const closeBesideLane: Rule = ({ events, ports }, out) => {
+  for (const event of events)
+    if (event.kind === "beside-ended" && ports.besideDone(event.lane))
+      out.decide({ kind: "close-beside", lane: event.lane });
+  return undefined;
+};
+
 /** Why nothing starts: claims, quiet, the pool, the re-walk, or the next event (row 011-346). */
 const idleAnswer: Rule = ({ at, events, reads, ports }, out) => {
   if (reads?.rewalk !== undefined) return reads.rewalk ? AGAIN : END;
-  const idle = out.idle ?? ports.idleNow();
+  const idle = out.idle ?? ports.idleNow(at);
   if (idle.idle === "claims" || ports.claimsWaiting()) return { kind: "claims", at };
   if (idle.idle === "quiet" && idle.wakeAt !== null) return { kind: "at", at: idle.wakeAt };
   if (ports.refused() || idle.idle === "pool")
@@ -312,29 +379,47 @@ const idleAnswer: Rule = ({ at, events, reads, ports }, out) => {
 /** The rules, in the written order (`research/scheduler-step.md`, "The step's interface"). */
 const RULES: readonly Rule[] = [
   pumpEnded,
+  holdBegan,
   yieldCheck,
-  inTurnEnds,
   stallHolds,
   drainRunnerWork,
   installWait,
   nothingMayStart,
   readInstallStamp,
   probeDiskFacts,
+  reinstallMissing,
   startFastTier,
   askSlowLanes,
   closeSlowLanes,
+  closeBesideLane,
   idleAnswer,
+  inTurnEnds,
 ];
+
+/**
+ * Row 011-366: the rules a step outside the pump's iteration runs (`reads`
+ * `null`), in `RULES`' order: its events' own rules, and its caller goes on.
+ */
+const OUTSIDE: ReadonlySet<Rule> = new Set([
+  holdBegan,
+  yieldCheck,
+  reinstallMissing,
+  closeSlowLanes,
+  closeBesideLane,
+  inTurnEnds,
+]);
 
 /** One scheduler step: the rules in order until one names the next wake. Never throws. */
 export function step(turn: Turn): Step {
-  const out = new Out(turn.ports);
+  const out = new Out(turn.ports, turn.at);
+  const outside = turn.reads === null;
   const answer = (wake: NextWake, error: unknown): Step => {
     const { decisions, selected, laneAnswered } = out;
     return { decisions, wake, selected, laneAnswered, error };
   };
   try {
     for (const rule of RULES) {
+      if (outside && !OUTSIDE.has(rule)) continue;
       const wake = rule(turn, out);
       if (wake !== undefined) return answer(wake, null);
     }

@@ -14,7 +14,6 @@ import { plural } from "../text.js";
 import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
-import { BESIDE_LANE_PREFIX, type CancelCause } from "../types/runner.js";
 import {
   type ClosureIndex,
   type FullSuiteCheckpoint,
@@ -34,7 +33,7 @@ import {
 import type { CandidateBatch } from "../types/watcher.js";
 import { type Admission, admit, checkTurn, type StartFacts } from "./admission.js";
 import { reconcileBatch } from "./batch.js";
-import { besideDone, besideFiles } from "./beside.js";
+import { besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
 import { TierCapacity } from "./capacity.js";
@@ -131,7 +130,7 @@ class TierScheduler implements Scheduler {
     closed: () => this.#closed,
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
-    applied: () => this.#stepInTurn([{ kind: "runner-work-applied" }]),
+    applied: () => this.#stepOutside([{ kind: "runner-work-applied" }]),
     // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
     busy: () => {
       const waits = this.options.busyWaits;
@@ -196,7 +195,7 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(this.#started().context.policy);
       this.#groups.get(group)?.preempt();
     },
-    cutTiers: () => this.#stepInTurn([{ kind: "request-taken" }]),
+    cutTiers: () => this.#stepOutside([{ kind: "request-taken" }]),
     pump: () => this.#pump(),
   });
   /** The records of the runs that ended (row 011-131). */
@@ -368,10 +367,8 @@ class TierScheduler implements Scheduler {
       refused: () => this.#capacity?.refused() === true,
       adopt: (context, ledger) => this.#adopt(context, ledger),
       busyLanes: () => this.#busyLanes(),
-      beside: () => {
-        const { context, ledger } = this.#started();
-        return besideFiles(context, ledger, this.#running());
-      },
+      running: () => this.#running(),
+      releaseLane: (lane) => this.#releaseLane(lane),
       fly: (tier, stamp, slow, admitted) => this.#fly(tier, stamp, slow, admitted),
       reinstall: (ledger) => this.#reinstall(ledger),
       tellReinstall: (note) => this.#tellReinstall(note),
@@ -532,7 +529,8 @@ class TierScheduler implements Scheduler {
     if (install || batch.trigger === "interval") {
       const { missing } = await this.#install.check();
       // The revision stays unrefined, so the next daemon's `scan` reads its paths as edits.
-      if (missing !== null) return this.#reinstall(ledger);
+      // Row 011-366: the step decides the reinstall.
+      if (missing !== null) return void this.#stepOutside([INSTALL_MISSING]);
     }
     // Task 001-159: the runner hears of a touched-unchanged file before the next tier.
     if (applied === null) {
@@ -543,7 +541,7 @@ class TierScheduler implements Scheduler {
     }
     this.#groups.preempt();
     // The runner part waits for the runner: a tier in flight may yield first (C4 step 5, row 011-51).
-    this.#stepInTurn([{ kind: "revision", revision: applied.revision }]);
+    this.#stepOutside([{ kind: "revision", revision: applied.revision }]);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
   }
 
@@ -559,14 +557,18 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 011-356: the step inside this lock turn, after `event`, with no
-   * reads: it decides the yield check there (C4 step 5 as amended
-   * 2026-10-21, row 011-51) and never starts a tier. A revision's pass,
-   * applied runner work, a request taken, and the queued check.
+   * Row 011-356: the step outside the pump's iteration, after `events`,
+   * with no reads; its turn's decisions were carried out, an error is
+   * thrown. Inside a lock turn it decides the yield check there (C4 step 5
+   * as amended 2026-10-21, row 011-51): a revision's pass, applied runner
+   * work, a request taken, and the queued check. Row 011-366: also a pass's
+   * missing install, a hold's start and a flight's end; the decisions
+   * after its turn are its caller's to carry out (`StepLive.after`).
    */
-  #stepInTurn(events: readonly SchedulerEvent[]): void {
+  #stepOutside(events: readonly SchedulerEvent[]): Step {
     const decided = this.#live.step(events, null);
     if (decided.error !== null) throw decided.error;
+    return decided;
   }
 
   /**
@@ -594,7 +596,7 @@ class TierScheduler implements Scheduler {
       this.#lock
         .run(() => {
           const events = this.#queued.splice(0);
-          if (!this.#closed) this.#stepInTurn(events);
+          if (!this.#closed) this.#stepOutside(events);
         }, "checking the tiers in flight")
         .catch((error: unknown) =>
           this.#backgroundError("could not check the tiers in flight", error),
@@ -734,26 +736,14 @@ class TierScheduler implements Scheduler {
     if (this.#closed) return false;
     const was = this.#commandHold.holding;
     if (this.#commandHold.check()) {
-      // A lane waiting for the load guard gives way: its instance is idle (review 0.1.269, B1).
-      this.#groups.preempt();
-      await this.#cancelHeld();
-      // Row 011-357: the step closes the idle slow lanes on the hold, as for a merge hold.
-      this.#pump();
+      // Row 011-366: the step decides the hold's start; the pump's step closes the idle slow lanes.
+      const began = this.#stepOutside([HOLD_BEGAN]);
+      await this.#live.after(began);
+      if (began.wake.kind === "again") this.#pump();
       return true;
     }
     if (was) this.#pump();
     return false;
-  }
-
-  /**
-   * Row 011-74 (011 C9, *Hold command*): cancels each tier in flight whose
-   * runner cancels, as the supersession cancel does (C4 step 5); a node:test
-   * or pytest slot runs its file to its end. Resolves once those tiers ended.
-   */
-  async #cancelHeld(): Promise<void> {
-    const flights = [...this.#inFlight.values()].filter((flight) => flight.held !== null);
-    for (const { held } of flights) held?.abort("hold" satisfies CancelCause);
-    await Promise.all(flights.map((flight) => flight.done));
   }
 
   /**
@@ -1258,7 +1248,9 @@ class TierScheduler implements Scheduler {
         slow?.slot.release();
         // The watcher may not have reported these yet; reconciling twice is harmless.
         if (record.moved.length > 0) await this.#reconcilePaths(record.moved);
-        if (slow !== null) await this.#slowEnded(tier.lane);
+        // Row 011-366: the step decides the lane's close at its run's end, while still in flight.
+        if (slow !== null)
+          await this.#live.after(this.#stepOutside([{ kind: "slow-ended", lane: tier.lane }]));
       } catch (error) {
         this.#stall(error, `${plural(tier.files.length, "file")} of a tier queued again`);
         if (!recorded) await this.#requeue(tier, slow !== null);
@@ -1266,7 +1258,7 @@ class TierScheduler implements Scheduler {
         slow?.slot.release();
         tier.lease?.release();
         this.#inFlight.delete(tier.runId);
-        // Row 011-269: the lane's second instance closes once no batch is left there.
+        // Row 011-269: the lane's second instance closes once no batch is left there (row 011-366: the step's).
         if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#groups.preempt();
@@ -1309,18 +1301,6 @@ class TierScheduler implements Scheduler {
     return this.#sliced(() => this.#lock.run(task, operation));
   }
 
-  /**
-   * A slow tier of `lane` ended. Its runner instance closes when the pass
-   * drained, no file of it queued (spec 004 D2), or at once on hold (row
-   * 011-211); otherwise `SlowRelease` closes it once it waited its bound.
-   * While still in flight, so the lane's next tier waits for the close.
-   */
-  async #slowEnded(lane: string): Promise<void> {
-    const { context, ledger } = this.#started();
-    const queued = ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane);
-    if (!queued || this.#admit().halts.has("held")) await this.#slowRelease.release(lane);
-  }
-
   /** The runner's `releaseLane` of `lane`: its instance closes. */
   async #releaseLane(lane: string): Promise<void> {
     const { context } = this.#started();
@@ -1345,11 +1325,13 @@ class TierScheduler implements Scheduler {
     return [...this.#inFlight.values()].filter(({ ran }) => !ran).map(({ tier }) => tier);
   }
 
-  /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
+  /**
+   * A batch's tier or one beside it in `lane` ended: the step decides its
+   * second instance's close, carried out beside the flight's end.
+   */
   #besideEnded(lane: string): void {
-    const { context, ledger } = this.#started();
-    if (!besideDone(context, ledger, this.#running(), lane)) return;
-    void this.#wakes.track(() => this.#releaseLane(`${BESIDE_LANE_PREFIX}${lane}`));
+    const ended = this.#stepOutside([{ kind: "beside-ended", lane }]);
+    if (ended.decisions.length > 0) void this.#wakes.track(() => this.#live.after(ended));
   }
 
   /** The lanes no tier may start in now. */
@@ -1582,3 +1564,7 @@ class TierScheduler implements Scheduler {
 
 /** The event of the pump's end step (row 011-356). */
 const PUMP_ENDED: SchedulerEvent = { kind: "pump-ended" };
+
+/** The events of a hold's start and of a pass's missing install (row 011-366). */
+const HOLD_BEGAN: SchedulerEvent = { kind: "hold-began" };
+const INSTALL_MISSING: SchedulerEvent = { kind: "install-missing" };

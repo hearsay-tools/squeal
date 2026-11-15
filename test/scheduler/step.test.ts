@@ -99,6 +99,9 @@ interface Table {
   inFlight?: number;
   /** Each slow lane's decision by group (absent: `none`); `start` flies a run of the tier given. */
   lanes?: Record<string, LaneDecision | { start: Tier }>;
+  /** The slow lanes with a file queued, and the lanes no batch is left in (row 011-366). */
+  slowQueued?: string[];
+  besideDone?: string[];
   throws?: keyof StepPorts;
 }
 
@@ -111,7 +114,7 @@ function groups(...names: string[]): Partial<StartFacts> {
   };
 }
 
-function ports(t: Table, log: string[]): StepPorts {
+function ports(t: Table, log: string[], readings: string[] = []): StepPorts {
   const thrown = (name: keyof StepPorts) => {
     if (t.throws === name) throw new Error(`${name} failed`);
   };
@@ -128,8 +131,9 @@ function ports(t: Table, log: string[]): StepPorts {
         return t.named?.includes(x.runId) === true;
       },
     },
-    startNext: (_admitted, fly) => {
+    startNext: (_admitted, at, fly) => {
       thrown("startNext");
+      readings.push(`plan at ${at - AT}`);
       for (const x of t.starts ?? []) fly(x);
       const answer = t.idle === undefined ? idle("nothing-queued") : t.idle;
       return { idle: (t.starts ?? []).length > 0 ? null : answer };
@@ -142,12 +146,20 @@ function ports(t: Table, log: string[]): StepPorts {
       fly({ tier: answer.start, slot: {}, turn: 7 } as unknown as SlowRun);
       return "started";
     },
-    idleNow: () => t.idleNow ?? idle("nothing-queued"),
+    idleNow: (at) => {
+      readings.push(`idle at ${at - AT}`);
+      return t.idleNow ?? idle("nothing-queued");
+    },
     idleLanes: () => t.idleLanes ?? [],
+    slowQueued: (lane) => t.slowQueued?.includes(lane) === true,
+    besideDone: (lane) => t.besideDone?.includes(lane) === true,
     claimsWaiting: () => t.claims === true,
     refused: () => t.refused === true,
     inFlight: () => t.inFlight ?? 0,
-    carry: (d) => log.push(`carry ${d.kind}`),
+    carry: (d, at) => {
+      log.push(`carry ${d.kind}`);
+      readings.push(`${d.kind} at ${at - AT}`);
+    },
   };
 }
 
@@ -156,9 +168,10 @@ const ALL: Reads = { install: INSTALL, probe: "free" };
 
 function run(t: Table, reads: Reads | null = ALL, events: SchedulerEvent[] = []) {
   const log: string[] = [];
-  const turn: Turn = { at: AT, events, reads, ports: ports(t, log) };
+  const readings: string[] = [];
+  const turn: Turn = { at: AT, events, reads, ports: ports(t, log, readings) };
   const s = step(turn);
-  return { ...s, kinds: s.decisions.map((d) => d.kind), log };
+  return { ...s, kinds: s.decisions.map((d) => d.kind), log, readings };
 }
 
 describe("the scheduler step (row 011-356)", () => {
@@ -495,6 +508,72 @@ describe("the scheduler step (row 011-356)", () => {
     });
   });
 
+  describe("row 011-366: the decisions of a step outside the pump's iteration", () => {
+    const lane = (kind: "slow-ended" | "beside-ended", name: string): SchedulerEvent => ({
+      kind,
+      lane: name,
+    });
+
+    it("a command hold's start cancels the held tiers after its turn, then the pump runs", () => {
+      const s = run({}, null, [{ kind: "hold-began" }]);
+      expect([s.kinds, s.log, s.wake]).toEqual([["cancel-held"], [], { kind: "again" }]);
+    });
+
+    it("a slow run's end closes its lane when no file of it is queued, after the turn", () => {
+      const s = run({ slowQueued: ["other"] }, null, [lane("slow-ended", "slow")]);
+      expect([s.decisions, s.log, s.wake]).toEqual([
+        [{ kind: "close-lanes", lanes: ["slow"] }],
+        [],
+        { kind: "turn" },
+      ]);
+    });
+
+    it("a slow run's end with a file of its lane queued: the lane stays open, unless a hold stands", () => {
+      const ended = [lane("slow-ended", "slow")];
+      expect(run({ slowQueued: ["slow"] }, null, ended).decisions).toEqual([]);
+      const held = run({ slowQueued: ["slow"], facts: { held: true } }, null, ended);
+      expect(held.decisions).toEqual([{ kind: "close-lanes", lanes: ["slow"] }]);
+    });
+
+    it("a revision pass's missing install: the step reinstalls in its turn", () => {
+      const s = run({}, null, [{ kind: "install-missing" }]);
+      expect([s.kinds, s.log, s.wake]).toEqual([
+        ["reinstall"],
+        ["carry reinstall"],
+        { kind: "turn" },
+      ]);
+    });
+
+    it("a batch's flight end closes the lane's second instance once no batch is left there", () => {
+      const ended = [lane("beside-ended", "fast")];
+      expect(run({ besideDone: ["fast"] }, null, ended).decisions).toEqual([
+        { kind: "close-beside", lane: "fast" },
+      ]);
+      expect(run({ besideDone: [] }, null, ended).decisions).toEqual([]);
+    });
+
+    it("no pump rule runs: a stall, queued runner work and a hold decide nothing there", () => {
+      const t: Table = { stalled: true, queued: 2, facts: { held: true }, idleLanes: ["g"] };
+      const s = run(t, null, [{ kind: "request-taken" }, lane("beside-ended", "fast")]);
+      expect([s.kinds, s.wake]).toEqual([["check-yields"], { kind: "turn" }]);
+    });
+  });
+
+  describe("row 011-366 (S7): the step's one reading", () => {
+    it("reaches the fast plan, each tier's start and the yield check of a tier beside the batch's", () => {
+      const s = run({ starts: [tier("b", { beside: true })] });
+      expect(s.readings).toEqual(["plan at 0", "start-tier at 0", "check-yields at 0"]);
+    });
+
+    it("reaches the idle answer read when no plan ran, and a revision's yield check in its pass", () => {
+      expect(run({ idle: null }).readings).toEqual(["plan at 0", "idle at 0"]);
+      const revision = { number: 3 } as unknown as Revision;
+      expect(run({}, null, [{ kind: "revision", revision }]).readings).toEqual([
+        "check-yields at 0",
+      ]);
+    });
+  });
+
   describe("a port that throws", () => {
     it("ends the step with its error; the decisions made before it stand", () => {
       const s = run({ throws: "startNext" }, ALL, [{ kind: "request-taken" }]);
@@ -528,7 +607,7 @@ describe("the scheduler step (row 011-356)", () => {
       // @ts-expect-error: an event kind `yieldReach` does not place is no event
       expect(() => yieldReach({ kind: "rumour" }, reach)).toThrow(/does not place/);
       const table: Record<StepDecisionKind, DecisionPlace> = DECISION_PLACE;
-      expect(Object.keys(table)).toHaveLength(11);
+      expect(Object.keys(table)).toHaveLength(13);
     });
   });
 });
