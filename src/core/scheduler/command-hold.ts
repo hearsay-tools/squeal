@@ -69,6 +69,67 @@ export function endedNote({ entry, reason }: EndedCommandHold, last: boolean): s
   return `the hold for ${holdName(entry)} ${why}${last ? "; validating again" : ""}`;
 }
 
+/** What one read of the command-hold row decides (row 011-355). */
+export interface HoldDecision {
+  /** The entries that end now, each with its cause, in the row's order. */
+  readonly ended: readonly EndedCommandHold[];
+  /** The entries that stay. */
+  readonly left: readonly CommandHoldEntry[];
+  /** The earliest `until` of `left`: the next read; `null` without an entry left. */
+  readonly wakeAt: EpochMs | null;
+  /**
+   * What the owners do: `prune` removes `ended` with their notes in one
+   * transaction; while `left` holds, the scheduler cancels its held tiers and
+   * closes its idle slow lanes (`hold`); once none holds, it pumps if the
+   * previous read held (`free`).
+   */
+  readonly prune: boolean;
+  readonly next: "hold" | "free";
+}
+
+/** Why `entry` ends at `at`: its `until` passed, or its holder is `gone`; `null` while it holds. */
+export function holdEnd(
+  entry: CommandHoldEntry,
+  at: EpochMs,
+  gone: (entry: CommandHoldEntry) => boolean,
+): EndedCommandHold["reason"] | null {
+  return entry.until <= at ? "until" : gone(entry) ? "gone" : null;
+}
+
+/**
+ * Row 011-355: which of `entries` end at `at`, which stay with the next
+ * read at their earliest `until`, and what to do. Pure over its arguments;
+ * `gone` is asked only of an entry whose `until` is still ahead.
+ */
+export function decideHolds(
+  entries: readonly CommandHoldEntry[],
+  at: EpochMs,
+  gone: (entry: CommandHoldEntry) => boolean,
+): HoldDecision {
+  const ended: EndedCommandHold[] = [];
+  const left: CommandHoldEntry[] = [];
+  for (const entry of entries) {
+    const reason = holdEnd(entry, at, gone);
+    if (reason === null) left.push(entry);
+    else ended.push({ entry, reason });
+  }
+  return holdDecision(ended, left);
+}
+
+/** The decision of `ended` and `left`: the wake at the earliest `until` left, and what to do. */
+function holdDecision(
+  ended: readonly EndedCommandHold[],
+  left: readonly CommandHoldEntry[],
+): HoldDecision {
+  const wakeAt = left.length === 0 ? null : (Math.min(...left.map((e) => e.until)) as EpochMs);
+  return { ended, left, wakeAt, prune: ended.length > 0, next: left.length > 0 ? "hold" : "free" };
+}
+
+/** The notes of `ended`, one each; the last says "validating again" when no hold is left, of either cause. */
+export function endedNotes(ended: readonly EndedCommandHold[], last: boolean): string[] {
+  return ended.map((one, i) => endedNote(one, last && i === ended.length - 1));
+}
+
 export interface CommandHoldOptions {
   readonly store: Store;
   readonly worktreeId: WorktreeId;
@@ -120,20 +181,18 @@ export class CommandHold {
     const at = now();
     const namespace = this.options.gone === undefined ? pidNamespace() : null;
     const gone = this.options.gone ?? ((entry: CommandHoldEntry) => holderGone(entry, namespace));
-    const ends = (entry: CommandHoldEntry) =>
-      entry.until <= at ? "until" : gone(entry) ? "gone" : null;
-    let read: ReturnType<typeof pruneCommandHolds>;
+    let read: HoldDecision;
     try {
-      const entries = readCommandHolds(store, worktreeId);
-      read = entries.some((entry) => ends(entry) !== null)
-        ? store.transaction(() => {
-            const pruned = pruneCommandHolds(store, worktreeId, ends);
-            const last = pruned.left.length === 0 && !this.options.merging();
-            for (const [i, ended] of pruned.ended.entries())
-              note(endedNote(ended, last && i === pruned.ended.length - 1));
-            return pruned;
-          })
-        : { ended: [], left: entries };
+      read = decideHolds(readCommandHolds(store, worktreeId), at, gone);
+      if (read.prune) {
+        // The removal reads the row again in its transaction and decides by the same rule.
+        read = store.transaction(() => {
+          const pruned = pruneCommandHolds(store, worktreeId, (entry) => holdEnd(entry, at, gone));
+          const last = pruned.left.length === 0 && !this.options.merging();
+          for (const text of endedNotes(pruned.ended, last)) note(text);
+          return holdDecision(pruned.ended, pruned.left);
+        });
+      }
       this.#failed = null;
     } catch (error) {
       if (isBusy(error)) return this.holding;
@@ -143,7 +202,7 @@ export class CommandHold {
       return this.holding;
     }
     this.#entries = read.left;
-    this.#arm();
+    this.#arm(read.wakeAt);
     return this.holding;
   }
 
@@ -152,9 +211,9 @@ export class CommandHold {
     this.#wake.clear();
   }
 
-  /** The wake at the earliest `until`, none without an entry; the loop clamps a far one and reads again. */
-  #arm(): void {
-    if (this.#entries.length === 0 || this.#closed) this.#wake.clear();
-    else this.#wake.at(Math.min(...this.#entries.map((e) => e.until)) as EpochMs);
+  /** The wake at the read's earliest `until`, none without an entry; the loop clamps a far one and reads again. */
+  #arm(wakeAt: EpochMs | null): void {
+    if (wakeAt === null || this.#closed) this.#wake.clear();
+    else this.#wake.at(wakeAt);
   }
 }

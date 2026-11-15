@@ -26,6 +26,46 @@ export interface SlowReleaseHost {
   readonly wakes?: Wakes;
 }
 
+/** One open slow lane as `decideRelease` reads it. */
+export interface ReleaseLane {
+  readonly lane: string;
+  /** A tier of it is in flight, or its files wait for the load guard: its instance stays. */
+  readonly busy: boolean;
+  /** When its last slow run ended; `null` counts from the reading. */
+  readonly endedAt: EpochMs | null;
+}
+
+/** What `decideRelease` decides at one reading (row 011-355). */
+export interface ReleaseDecision {
+  /** The open lanes no tier keeps: a hold closes them all at once. */
+  readonly idle: readonly string[];
+  /** The idle lanes past their bound: they close now. */
+  readonly close: readonly string[];
+  /**
+   * The earliest bound of an idle lane, a passed one too (a wake at a past
+   * time fires next); `null` without an idle lane.
+   */
+  readonly wakeAt: EpochMs | null;
+}
+
+/**
+ * Row 011-355: which open lanes are idle, which close at `at` (`afterMs`
+ * after their last slow run ended), and when the next one is due. Pure.
+ */
+export function decideRelease(
+  lanes: readonly ReleaseLane[],
+  at: EpochMs,
+  afterMs: number = SLOW_RELEASE_MS,
+): ReleaseDecision {
+  const idle = lanes.filter((lane) => !lane.busy);
+  const dueAt = (lane: ReleaseLane) => (lane.endedAt ?? at) + afterMs;
+  return {
+    idle: idle.map((lane) => lane.lane),
+    close: idle.filter((lane) => dueAt(lane) <= at).map((lane) => lane.lane),
+    wakeAt: idle.length === 0 ? null : (Math.min(...idle.map(dueAt)) as EpochMs),
+  };
+}
+
 /**
  * Row 011-211 (004 D2, 013 V1; gh-78): a slow lane's runner instance closes
  * when its pass drains (`release`), and also while its slow files are still
@@ -78,7 +118,7 @@ export class SlowRelease {
   /** Closes the instance of each open lane no tier runs in, unless a slow selection is in progress. */
   async idle(): Promise<void> {
     if (this.#selecting) return;
-    await Promise.all(this.#idleLanes().map((lane) => this.release(lane)));
+    await Promise.all(this.#decide().idle.map((lane) => this.release(lane)));
   }
 
   /** `select`, a slow selection: no instance closes during it; the count goes on after it. */
@@ -95,25 +135,24 @@ export class SlowRelease {
   /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
   arm(): void {
     if (this.host.closed()) return;
-    const dues = this.#idleLanes().map((lane) => this.#dueAt(lane));
-    if (dues.length === 0) return;
-    this.#wake.atMost(Math.min(...dues) as EpochMs);
+    const { wakeAt } = this.#decide();
+    if (wakeAt !== null) this.#wake.atMost(wakeAt);
   }
 
   close(): void {
     this.#wake.clear();
   }
 
-  /** The open lanes the host keeps no instance for (`SlowReleaseHost.lanes`). */
-  #idleLanes(): string[] {
+  /** `decideRelease` over the open lanes now, each counting from its own end, else the host's. */
+  #decide(): ReleaseDecision {
     const busy = new Set(this.host.lanes());
-    return [...this.#open].filter((lane) => !busy.has(lane));
-  }
-
-  /** When `lane`'s instance closes: `afterMs` after its last slow run ended. */
-  #dueAt(lane: string): number {
-    const ended = this.#endedAt.get(lane) ?? this.host.endedAt?.() ?? this.host.now();
-    return ended + this.afterMs;
+    const fallback = this.host.endedAt?.() ?? null;
+    const lanes = [...this.#open].map((lane) => ({
+      lane,
+      busy: busy.has(lane),
+      endedAt: this.#endedAt.get(lane) ?? fallback,
+    }));
+    return decideRelease(lanes, this.host.now(), this.afterMs);
   }
 
   /**
@@ -123,9 +162,7 @@ export class SlowRelease {
    */
   async #due(): Promise<void> {
     if (this.host.closed() || this.#selecting) return;
-    const now = this.host.now();
-    const due = this.#idleLanes().filter((lane) => this.#dueAt(lane) <= now);
-    await Promise.all(due.map((lane) => this.release(lane)));
+    await Promise.all(this.#decide().close.map((lane) => this.release(lane)));
     this.arm();
   }
 }
