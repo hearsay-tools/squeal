@@ -2,7 +2,6 @@ import type { EpochMs } from "../types/common.js";
 import type { Revision } from "../types/revision.js";
 import type { Admission } from "./admission.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
-import type { YieldDecisions } from "./decide-yields.js";
 import { placeOf, type SchedulerEvent, type StepDecision } from "./step-events.js";
 import type { Idle } from "./tier-plan.js";
 import type { Tier } from "./tiers.js";
@@ -19,7 +18,7 @@ import { type ReachView, yieldReach } from "./yields.js";
  */
 
 /** A decision of this scheduler's step. */
-export type Decision = StepDecision<Tier, YieldDecisions, Idle>;
+export type Decision = StepDecision<Tier, Idle>;
 
 /** The install stamp read after the last step (`InstallStamps.check`). */
 export interface InstallRead {
@@ -61,13 +60,8 @@ export interface StepPorts {
   stalled(): boolean;
   /** Runner work queued, and whether it is being applied. */
   runnerWork(): { readonly queued: number; readonly draining: boolean };
-  /** The yield state: which tier an event names, and the check over the tiers in flight. */
-  readonly yields: ReachView & {
-    /** Takes the results other worktrees stored first (row 011-123). */
-    adopt(): void;
-    /** `decideYields` over the tiers in flight at `at`, after `trigger`; `null` decides nothing. */
-    decide(at: EpochMs, trigger: Revision | null): YieldDecisions | null;
-  };
+  /** Which tier in flight an event names, and whether it stands `named` (`yieldReach`). */
+  readonly yields: ReachView;
   /** Card 6: adopts stored results, plans the fast lanes and starts; `fly` for each tier started. */
   startNext(admitted: Admission, fly: (tier: Tier) => void): { readonly idle: Idle | null };
   /** Why no fast tier starts, read now: the plan's idle answer when no plan ran. */
@@ -141,27 +135,19 @@ class Out {
 /** A rule: the next wake when it ends the step, else `undefined` and the next rule goes on. */
 type Rule = (turn: Turn, out: Out) => NextWake | undefined;
 
-/** The yield check after `events` (row 011-354's `yieldReach`): stops, then the row. */
+/** Whether `events` reach the yield check, and how (row 011-354's `yieldReach`): one check. */
 function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
-  const { yields } = turn.ports;
   let check = false;
   let adopt = false;
   let trigger: Revision | null = null;
   for (const event of events) {
-    const reach = yieldReach(event, yields);
+    const reach = yieldReach(event, turn.ports.yields);
     if (reach.reach === "none") continue;
     check = true;
     if (reach.reach === "adopt-then-check") adopt = true;
     else trigger = reach.trigger ?? trigger;
   }
-  if (!check) return undefined;
-  if (adopt) yields.adopt();
-  const decided = yields.decide(turn.at, trigger);
-  if (decided === null) return undefined;
-  for (const { tier, decision } of decided.tiers)
-    if (typeof decision === "string")
-      out.decide({ kind: "stop-tier", tier, cause: decision, at: turn.at });
-  out.decide({ kind: "write-yield-row", at: turn.at, decided });
+  if (check) out.decide({ kind: "check-yields", trigger, adopt });
   return undefined;
 }
 
