@@ -24,6 +24,8 @@ function loop(start = 0) {
       readings += 1;
       return clock.now();
     },
+    // The steady time the timer counts in, read apart from the readings owners get.
+    ticks: () => clock.now(),
     arm: (ms, fire) => {
       arms += 1;
       return clock.arm(ms, fire);
@@ -103,7 +105,7 @@ describe("the wake loop (row 011-352)", () => {
     ]);
   });
 
-  it("a pass takes one reading, which each due owner gets, and arms the next from it", () => {
+  it("a pass takes one reading, which each due owner gets", () => {
     const { clock, slot, fired, readings, wakes } = loop();
     slot("merge-hold").at(at(50));
     slot("claims").at(at(40));
@@ -114,7 +116,7 @@ describe("the wake loop (row 011-352)", () => {
     hold.at(at(30));
     const before = readings();
     clock.advance(60);
-    // Three passes (30, 40, 50): one reading each, none to arm.
+    // Three passes (30, 40, 50): one reading each; the arms read only the steady time.
     expect(readings() - before).toBe(3);
     expect(fired).toEqual(["hold@30", "claims@40", "merge-hold@50"]);
     expect(clock.armed).toBe(1);
@@ -183,6 +185,67 @@ describe("the wake loop (row 011-352)", () => {
     expect(() => clock.advance(10)).toThrow("boom");
     expect(fired).toEqual(["pump@10"]);
     expect(clock.armed).toBe(1);
+  });
+});
+
+/**
+ * A clock whose time a test moves by hand, reading and ticks alike; each arm
+ * records when it would fire (review 0.1.513 B2's probe).
+ */
+function handClock(start = 0) {
+  let time = start;
+  const arms: { at: number; fire: () => void }[] = [];
+  const clock: Clock = {
+    now: () => time as EpochMs,
+    ticks: () => time,
+    arm: (ms, fire) => {
+      const armed = { at: time + Math.max(0, ms), fire };
+      arms.push(armed);
+      return () => {
+        const i = arms.indexOf(armed);
+        if (i >= 0) arms.splice(i, 1);
+      };
+    },
+  };
+  return {
+    clock,
+    arms,
+    set: (ms: number) => {
+      time = ms;
+    },
+  };
+}
+
+describe("the timer after a pass (review 0.1.513 B2)", () => {
+  it("arms the next wake from the time the pass ended: one already due fires at once", () => {
+    const { clock, arms, set } = handClock();
+    const wakes = new Wakes(clock);
+    const fired: string[] = [];
+    wakes
+      .slot("command-hold", (reading) => {
+        fired.push(`hold@${reading}`);
+        // The owner's work takes 100 ms.
+        set(150);
+      })
+      .at(at(50));
+    wakes.slot("claims", (reading) => fired.push(`claims@${reading}`)).at(at(100));
+    expect(arms.map((a) => a.at)).toEqual([50]);
+    set(50);
+    arms.splice(0)[0]?.fire();
+    expect(fired).toEqual(["hold@50"]);
+    expect(arms.map((a) => a.at)).toEqual([150]);
+    arms.splice(0)[0]?.fire();
+    expect(fired).toEqual(["hold@50", "claims@150"]);
+  });
+
+  it("a deadline still ahead after the pass keeps its own time", () => {
+    const { clock, arms, set } = handClock();
+    const wakes = new Wakes(clock);
+    wakes.slot("command-hold", () => set(150)).at(at(50));
+    wakes.slot("claims", () => {}).at(at(300));
+    set(50);
+    arms.splice(0)[0]?.fire();
+    expect(arms.map((a) => a.at)).toEqual([300]);
   });
 });
 
