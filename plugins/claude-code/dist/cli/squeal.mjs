@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.510";
+  if (true) return "0.1.511";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -91652,71 +91652,13 @@ init_observed();
 init_reverse_index();
 
 // src/core/code/gate/keep-write.ts
-init_compare();
 init_files();
 init_records3();
 init_fingerprint();
 init_busy();
-import { setTimeout as sleep12 } from "node:timers/promises";
 init_paths();
 init_open2();
-var KEEP_BUSY_BOUND_MS = 3e4;
-var NAMED3 = 5;
-var StoreWait = class {
-  #options;
-  #since = null;
-  #database = null;
-  constructor(options) {
-    this.#options = options;
-  }
-  /** Whether a busy store refused a write: from then on, each file's inputs are read again before its writes. */
-  get waited() {
-    return this.#since !== null;
-  }
-  /**
-   * Asked after each try that `database` refused as busy: whether the
-   * bound is spent. The first names the files of `left` and the lock's
-   * holder before the wait.
-   */
-  giveUp(database, left) {
-    const { now, boundMs, tell } = this.#options;
-    this.#database = database;
-    if (this.#since === null) {
-      this.#since = now();
-      const { keptEarly = 0 } = this.#options;
-      const early = keptEarly === 0 ? "" : ` (${keptEarly} kept while the runs went on)`;
-      const wait = `waiting up to ${seconds3(boundMs)} s to keep ${completed(left.length)}${early}`;
-      tell(`the store is busy (${holderOf3(database)}); ${wait}: ${names3(left)}`);
-    }
-    return now() - this.#since >= boundMs;
-  }
-  /**
-   * The note once every file was written or left out, after a wait only:
-   * how long it took when a write landed after it (`freed`), how many
-   * files were kept, and how many were not because their inputs moved
-   * during it, which the next run runs again.
-   */
-  done(counts) {
-    const { now, tell } = this.#options;
-    const { written: written2, changed: changed2, freed } = counts;
-    if (this.#since === null) return;
-    const moved4 = changed2 === 0 ? null : `${changed2} changed during the wait, so ${again(changed2)}`;
-    if (freed) {
-      const free = `the store was free after ${seconds3(now() - this.#since)} s: ${completed(written2)} kept`;
-      tell(moved4 === null ? free : `${free}; ${moved4}`);
-    } else if (changed2 > 0) {
-      tell(
-        `${notKept(changed2)}: ${changed2 === 1 ? "it" : "they"} changed during the wait; ${again(changed2)}`
-      );
-    }
-  }
-  /** The note when the bound ran out with `left` files not written, `changed` of them because their inputs moved. */
-  spent(left, changed2) {
-    const busy2 = this.#database === null ? "" : ` (${holderOf3(this.#database)})`;
-    const moved4 = changed2 === 0 ? "" : `, and ${changed2} of them changed during the wait`;
-    return `${notKept(left)}: the store stayed busy for ${seconds3(this.#options.boundMs)} s${busy2}${moved4}; ${again(left)}`;
-  }
-};
+import { setTimeout as sleep12 } from "node:timers/promises";
 function databasesOf(commonDir) {
   return { main: storePaths(commonDir).database, code: codeStorePath(commonDir) };
 }
@@ -91754,6 +91696,7 @@ async function keepFile(stores, at2) {
   if (!await steady()) return "changed";
   const coded = await sliced(() => writer.coverage(file), paused(databases.code));
   if (coded !== "kept") return coded;
+  at2.landed?.();
   const previous = new Map(
     store.results.newestForTestFile(file.ref).map((r) => [checkId(r.check), r.check])
   );
@@ -91766,7 +91709,9 @@ async function keepFile(stores, at2) {
     describe: describeFailure
   });
   if (!await steady()) return "changed";
-  return sliced(() => writer.results(file, records, keys), paused(databases.main));
+  const stored3 = await sliced(() => writer.results(file, records, keys), paused(databases.main));
+  if (stored3 === "kept") at2.landed?.();
+  return stored3;
 }
 async function sliced(attempt, paused) {
   let lost = 0;
@@ -91795,22 +91740,31 @@ function changedAfterLoss(count4) {
   const they = count4 === 1 ? "it" : "they";
   return `${notKept(count4)}: ${they} changed after a write the daemon never received; ${again(count4)}`;
 }
+function keptCount(counts) {
+  const { completed: all2, early } = counts;
+  const kept6 = Math.min(counts.kept, all2);
+  const unknown = Math.min(counts.unknown ?? 0, all2 - kept6);
+  const during = early === 0 ? "" : ` (${early} while the runs went on)`;
+  if (unknown > 0) {
+    const are2 = kept6 === 1 ? "is" : "are";
+    const them = `${unknown} of them`;
+    return `${kept6} of ${all2} completed test files ${are2} kept in the stores${during}, and whether the daemon kept ${them} is not known; the next run on the same bytes reads what was kept and runs the rest`;
+  }
+  if (kept6 === all2) {
+    const these = all2 === 1 ? "the 1 completed test file is" : `all ${all2} completed test files are`;
+    const reads2 = `reads ${all2 === 1 ? "it" : "them"} from the stores`;
+    return `${these} kept in the stores${during}; the next run on the same bytes ${reads2}`;
+  }
+  const rest2 = all2 - kept6;
+  const runs = kept6 === 0 ? rest2 === 1 ? "runs it" : `runs all ${rest2}` : `runs the other ${rest2}`;
+  const are = kept6 === 1 ? "is" : "are";
+  return `${kept6} of ${all2} completed test files ${are} kept in the stores${during}; the next run on the same bytes ${runs}`;
+}
 function completed(count4) {
   return `${count4} completed test ${count4 === 1 ? "file" : "files"}`;
 }
 function again(count4) {
   return `the next run will run ${count4 === 1 ? "it" : "them"} again`;
-}
-function holderOf3(database) {
-  return describeHolders(refusedLockHolders(database));
-}
-function names3(files5) {
-  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED3);
-  const more2 = files5.length - shown.length;
-  return more2 > 0 ? `${shown.join(", ")} and ${more2} more` : shown.join(", ");
-}
-function seconds3(ms2) {
-  return Number((ms2 / 1e3).toFixed(1));
 }
 
 // src/core/code/gate/keep-seen.ts
@@ -91878,7 +91832,7 @@ async function keepSeen(writer, seen, at2) {
   if (merge4 === void 0 || seen.length === 0) return "kept";
   try {
     const outcome2 = await sliced(
-      () => merge4(seen),
+      () => merge4(seen, at2.landed),
       async (busy2) => {
         at2.check.owe(busy2);
         return busy2 && at2.giveUp(at2.database) ? "spent" : null;
@@ -91958,10 +91912,11 @@ function writeThroughDaemon(target) {
     return outcome2.kept ? "kept" : "busy";
   };
   return {
-    seen: async (seen) => {
+    seen: async (seen, landed) => {
       for (const part2 of partsOf(seen)) {
         const tried = await tryOnce({ kind: "seen", seen: part2 });
         if (tried !== "kept") return tried;
+        landed?.();
       }
       return "kept";
     },
@@ -92076,7 +92031,11 @@ function writeHere(stores, worktreeId, now, sliceMs = BUSY_SLICE_MS) {
     results: async (file, records, keys) => tried(
       () => storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths))
     ),
-    seen: async (seen) => tried(() => mergeSeen(store, seen))
+    seen: async (seen, landed) => {
+      const merged3 = await tried(() => mergeSeen(store, seen));
+      if (merged3 === "kept") landed?.();
+      return merged3;
+    }
   };
 }
 var EARLY_SLICE_MS = 20;
@@ -92104,6 +92063,128 @@ function writerFor(store, locked, at2) {
   return sent === null ? null : { writer: sent, code: null };
 }
 
+// src/core/code/gate/keep-wait.ts
+init_compare();
+init_reverse_index();
+var KEEP_BUSY_BOUND_MS = 3e4;
+var NAMED3 = 5;
+var StoreWait = class {
+  #options;
+  /** When the first write was refused. */
+  #since = null;
+  /** When the last write landed, or the first was refused: the bound counts from it. */
+  #quiet = null;
+  #ceilingMs = 0;
+  #stop = null;
+  #database = null;
+  constructor(options) {
+    this.#options = options;
+  }
+  /** Whether a busy store refused a write: from then on, each file's inputs are read again before its writes. */
+  get waited() {
+    return this.#since !== null;
+  }
+  /** Which limit stopped the wait, once `giveUp` said so. */
+  get stop() {
+    return this.#stop;
+  }
+  /**
+   * Asked after each try that `database` refused as busy: whether the
+   * wait is over. The first names the files of `left` and the lock's
+   * holder before the wait, and sets the ceiling from `left`'s run time.
+   */
+  giveUp(database, left) {
+    const { now, boundMs } = this.#options;
+    this.#database = database;
+    if (this.#since === null) this.#start(database, left);
+    const at2 = now();
+    if (at2 - (this.#quiet ?? at2) >= boundMs) this.#stop = "quiet";
+    else if (at2 - (this.#since ?? at2) >= this.#ceilingMs) this.#stop = "ceiling";
+    return this.#stop !== null;
+  }
+  /** A write landed: after a refusal, the bound counts again from now (row 020-67). */
+  landed() {
+    if (this.#since !== null) this.#quiet = this.#options.now();
+  }
+  /**
+   * The note once every file was written or left out, after a wait only:
+   * how long it took when a write landed after it (`freed`), how many
+   * files were kept, and how many were not because their inputs moved
+   * during it, which the next run runs again.
+   */
+  done(counts) {
+    const { now, tell } = this.#options;
+    const { written: written2, changed: changed2, freed } = counts;
+    if (this.#since === null) return;
+    const moved4 = changed2 === 0 ? null : `${changed2} changed during the wait, so ${again(changed2)}`;
+    if (freed) {
+      const free = `the store was free after ${seconds3(now() - this.#since)} s: ${completed(written2)} kept`;
+      tell(moved4 === null ? free : `${free}; ${moved4}`);
+    } else if (changed2 > 0) {
+      tell(
+        `${notKept(changed2)}: ${changed2 === 1 ? "it" : "they"} changed during the wait; ${again(changed2)}`
+      );
+    }
+  }
+  /**
+   * The note when the wait stopped with `left` files not written,
+   * `changed` of them because their inputs moved: which limit stopped it.
+   */
+  spent(left, changed2) {
+    const busy2 = this.#database === null ? "" : ` (${holderOf3(this.#database)})`;
+    const moved4 = changed2 === 0 ? "" : `, and ${changed2} of them changed during the wait`;
+    const why2 = this.#stop === "ceiling" ? `the store was still busy after ${seconds3(this.#ceilingMs)} s${busy2}, and waiting longer would cost more than running ${left === 1 ? "it" : "them"} again` : `no write landed for ${seconds3(this.#options.boundMs)} s${busy2}`;
+    return `${notKept(left)}: ${why2}${moved4}; ${again(left)}`;
+  }
+  #start(database, left) {
+    const { now, boundMs, tell, runMs } = this.#options;
+    this.#since = now();
+    this.#quiet = this.#since;
+    this.#ceilingMs = Math.max(boundMs, runMs?.(left) ?? 0);
+    const { keptEarly = 0 } = this.#options;
+    const early = keptEarly === 0 ? "" : ` (${keptEarly} kept while the runs went on)`;
+    const limits2 = `until no write lands for ${seconds3(boundMs)} s, at most ${seconds3(this.#ceilingMs)} s in all`;
+    const wait = `waiting to keep ${completed(left.length)}${early} ${limits2}`;
+    tell(`the store is busy (${holderOf3(database)}); ${wait}: ${names3(left)}`);
+  }
+};
+function runTime(runs) {
+  const runOf3 = /* @__PURE__ */ new Map();
+  for (const run7 of runs) for (const file of run7.files) runOf3.set(file, run7);
+  return (files5) => {
+    const byRun = /* @__PURE__ */ new Map();
+    for (const file of files5) {
+      const run7 = runOf3.get(file);
+      if (run7 !== void 0) byRun.set(run7, [...byRun.get(run7) ?? [], file]);
+    }
+    let total = 0;
+    for (const [run7, left] of byRun) total += runShare(run7, left);
+    return total;
+  };
+}
+function runShare(run7, left) {
+  const { durationMs: durationMs2, fileDurations = [] } = run7.report;
+  const own = new Map(fileDurations.map((d) => [testFileId(d.testFile), d.durationMs]));
+  let sum2 = 0;
+  for (const file of left) {
+    const ms2 = own.get(testFileId(file.ref));
+    if (ms2 === void 0) return durationMs2;
+    sum2 += ms2;
+  }
+  return Math.min(sum2, durationMs2);
+}
+function holderOf3(database) {
+  return describeHolders(refusedLockHolders(database));
+}
+function names3(files5) {
+  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED3);
+  const more2 = files5.length - shown.length;
+  return more2 > 0 ? `${shown.join(", ")} and ${more2} more` : shown.join(", ");
+}
+function seconds3(ms2) {
+  return Number((ms2 / 1e3).toFixed(1));
+}
+
 // src/core/code/gate/keep-pass.ts
 async function writePass(runs, at2) {
   const { root, commonDir } = at2.options;
@@ -92127,16 +92208,24 @@ async function writePass(runs, at2) {
     code = chosen.code;
     return await writeQueued(state, { store, writer: chosen.writer, head: head2 }, at2);
   } catch (error) {
-    const written2 = state?.written ?? 0;
-    if (at2.early) return { written: written2, left: unchecked(state === null ? runs : state.left()) };
-    const all2 = state?.all.length ?? runs.flatMap((q) => q.files).length;
-    at2.tell(failed3(all2 - written2, error));
-    return { written: written2, left: [] };
+    return afterFailure(error, state, runs, at2);
   } finally {
     code?.close();
     store?.close();
     lock2?.release();
   }
+}
+function afterFailure(error, state, runs, at2) {
+  const written2 = state?.written ?? 0;
+  const kept6 = state?.kept ?? [];
+  const inFlight = state?.inFlight ?? null;
+  const unknown = error instanceof KeepUnknown && inFlight !== null ? [inFlight] : [];
+  if (at2.early) {
+    return { written: written2, kept: kept6, unknown, left: unchecked(state === null ? runs : state.left()) };
+  }
+  const all2 = state?.all.length ?? runs.flatMap((q) => q.files).length;
+  at2.tell(failed3(all2 - written2, error, unknown.length > 0));
+  return { written: written2, kept: kept6, unknown, left: [] };
 }
 function unchecked(runs) {
   return runs.map(({ checked: _, ...q }) => q);
@@ -92145,6 +92234,10 @@ var PassState = class {
   queued;
   all;
   written = 0;
+  /** The files written, results and all (review 0.1.508 B1). */
+  kept = [];
+  /** The file whose writes are being tried, while they are. */
+  inFlight = null;
   changed = 0;
   merged = false;
   /** The files a merge held by their write: among `changed`. */
@@ -92192,16 +92285,19 @@ async function writeQueued(state, opened3, at2) {
   const boundMs = at2.early ? 0 : at2.options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
   const quiet = at2.early ? () => {
   } : tell;
-  const wait = new StoreWait({ now, boundMs, tell: quiet, keptEarly: at2.keptEarly });
+  const runMs = runTime(state.queued);
+  const wait = new StoreWait({ now, boundMs, tell: quiet, keptEarly: at2.keptEarly, runMs });
   const databases = databasesOf(commonDir);
   const giveUp2 = (database) => at2.early || state.all.length === 0 || wait.giveUp(database, state.all.slice(state.written + state.changed));
+  const landed = () => wait.landed();
   const spent = () => {
-    if (at2.early) return { written: state.written, left: state.left() };
-    if (state.all.length > 0) tell(wait.spent(state.all.length - state.written, state.changed));
-    return { written: state.written, left: [] };
+    const { written: written3, kept: kept6 } = state;
+    if (at2.early) return { written: written3, kept: kept6, left: state.left() };
+    if (state.all.length > 0) tell(wait.spent(state.all.length - written3, state.changed));
+    return { written: written3, kept: kept6, left: [] };
   };
   const seen = state.queued.flatMap((q) => q.seen);
-  const merged3 = await keepSeen(writer, seen, { database: databases.main, giveUp: giveUp2, check: check3 });
+  const merged3 = await keepSeen(writer, seen, { database: databases.main, giveUp: giveUp2, landed, check: check3 });
   if (merged3 === "spent") return spent();
   state.merged = true;
   if (merged3 === "older") state.withoutGrown(at2.notKept);
@@ -92220,12 +92316,15 @@ async function writeQueued(state, opened3, at2) {
         if (!free) state.held.push(file);
         return free;
       };
-      const one = { file, report: report4, provenance, databases, giveUp: giveUp2, check: check3, steady, unheld };
+      const one = { file, report: report4, provenance, databases, giveUp: giveUp2, landed, check: check3, steady, unheld };
+      state.inFlight = file;
       const outcome2 = await keepFile(stores, one);
+      state.inFlight = null;
       if (outcome2 === "spent") return spent();
       if (outcome2 === "changed") state.changed += 1;
       else {
         state.written += 1;
+        state.kept.push(file);
         freed ||= wait.waited;
       }
     }
@@ -92234,7 +92333,7 @@ async function writeQueued(state, opened3, at2) {
   const { written: written2, changed: changed2, held: held3 } = state;
   wait.done({ written: written2, changed: changed2, freed });
   if (!wait.waited) tellUnwaited(changed2, held3, at2);
-  return { written: written2, left: [] };
+  return { written: written2, kept: state.kept, left: [] };
 }
 async function openingCheck(runs, at2) {
   const steady = [];
@@ -92266,8 +92365,8 @@ var HELD = {
   cause: { kind: "held", paths: [] },
   reason: "a merge holds a path its key names"
 };
-function failed3(left, error) {
-  if (error instanceof KeepUnknown) return perhapsKept(left, error.message);
+function failed3(left, error, perhaps) {
+  if (perhaps) return perhapsKept(left, messageOf3(error));
   return `${notKept(left)}: ${messageOf3(error)}`;
 }
 function messageOf3(error) {
@@ -92428,6 +92527,10 @@ var Keeper = class {
   #deferred = [];
   /** How many files the early passes wrote. */
   #keptEarly = 0;
+  /** Row 020-68: how many files the runs completed, each counted by the run that decides it. */
+  #completed = 0;
+  /** Row 020-68, review 0.1.508 B1: the files kept, and those a daemon may have kept. */
+  #tally = new KeptTally();
   constructor(options) {
     this.#options = options;
     this.#hold = mergeHoldOf(options.root);
@@ -92453,18 +92556,22 @@ var Keeper = class {
   /**
    * D17.5, once the report is out: ends the passes while the runs went on,
    * waiting only for the one writing, which gives up at its next busy
-   * refusal; then writes what is still queued, waiting for a busy store up
-   * to the bound, counted from the first write it refused, and tells what
-   * was not kept; a failure only costs the files not yet written, told
-   * once, and never throws.
+   * refusal; then writes what is still queued, waiting for a busy store
+   * while writes land (row 020-67), and tells what was not kept; a failure
+   * only costs the files not yet written, told once, and never throws.
+   * Last, when a run completed a file, how many of them are kept (row
+   * 020-68).
    */
   async flush() {
     await this.#early.stop();
     this.#tellNotKept(this.#notKept);
     for (const text3 of this.#deferred.splice(0)) this.#tell(text3);
     const queued = this.#queued.splice(0);
-    if (queued.length > 0) await writePass(queued, this.#pass(false));
+    if (queued.length > 0) this.#tally.heard(await writePass(queued, this.#pass(false)));
     this.#tellNotKept(this.#passNotKept);
+    if (this.#completed === 0) return;
+    const counts = { completed: this.#completed, early: this.#keptEarly };
+    this.#tell(keptCount({ ...counts, kept: this.#tally.kept, unknown: this.#tally.unknown }));
   }
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close() {
@@ -92476,8 +92583,10 @@ var Keeper = class {
   async #earlyPass() {
     const queued = this.#queued.splice(0);
     if (queued.length === 0) return "done";
-    const { written: written2, left } = await writePass(queued, this.#pass(true));
+    const pass2 = await writePass(queued, this.#pass(true));
+    const { written: written2, left } = pass2;
     this.#keptEarly += written2;
+    this.#tally.heard(pass2);
     if (left.length === 0) return "done";
     this.#queued.unshift(...left);
     return "left";
@@ -92533,6 +92642,7 @@ var Keeper = class {
   async #keepable(pending, run7) {
     const { report: report4 } = run7;
     const completed2 = new Set(report4.completedFiles.map(testFileId));
+    for (const id of pending.files.keys()) if (completed2.has(id)) this.#completed += 1;
     const candidates = [];
     for (const [id, file] of pending.files) {
       const record2 = run7.records.get(testFileId(file.ref))?.record ?? null;
@@ -92571,6 +92681,28 @@ var Keeper = class {
     this.#options.note?.(text3);
   }
 };
+var KeptTally = class {
+  #kept = /* @__PURE__ */ new Set();
+  #unknown = /* @__PURE__ */ new Set();
+  get kept() {
+    return this.#kept.size;
+  }
+  get unknown() {
+    return this.#unknown.size;
+  }
+  heard(pass2) {
+    for (const file of pass2.kept ?? []) {
+      this.#kept.add(fileOf2(file));
+      this.#unknown.delete(fileOf2(file));
+    }
+    for (const file of pass2.unknown ?? []) {
+      if (!this.#kept.has(fileOf2(file))) this.#unknown.add(fileOf2(file));
+    }
+  }
+};
+function fileOf2(file) {
+  return `${testFileId(file.ref)}\0${file.key}`;
+}
 
 // src/core/code/gate/stored.ts
 function openStored(options) {
@@ -97805,7 +97937,7 @@ function startWrite(db) {
     const ms2 = performance.now() - at2;
     if (sink === null || ms2 <= LONG_WRITE_MS) return;
     sink({
-      database: basename20(fileOf2(db)),
+      database: basename20(fileOf3(db)),
       operation: operationOf(new Error().stack ?? ""),
       ms: Math.round(ms2),
       rows: totalChanges(db) - changes
@@ -97831,7 +97963,7 @@ function frameName(line) {
   return place2 === null ? name3 : `${place2[1]}:${place2[2]}`;
 }
 var files4 = /* @__PURE__ */ new WeakMap();
-function fileOf2(db) {
+function fileOf3(db) {
   let file = files4.get(db);
   if (file === void 0) {
     const rows = db.prepare("PRAGMA database_list").all();
