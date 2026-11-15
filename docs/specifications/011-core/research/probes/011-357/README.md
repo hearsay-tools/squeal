@@ -8,4 +8,10 @@ Run from the repository root, one run at a time, with the one-minute load below 
 
     PROBE_ROUNDS=30 env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run --config docs/specifications/011-core/research/probes/011-357/vitest.config.ts --silent=false
 
-`before.txt`: commit `82309c087` (cand/0.1.515 plus the wave-102 brief), 2026-11-15 18:39 UTC, one-minute load 6.9 to 7.0 on 24 CPUs. `after.txt`: the row's last commit; its notes give both tables.
+A relabel of the step's turn (row 011-357) starts a new part under the new text; `byKind` times each part, `byTurn` each whole turn (`+lane`: a lane decided in it), `lockTotalMs` and `longestTurnMs` all turns.
+
+- `before.txt`: commit `82309c087` (cand/0.1.515 plus the wave-102 brief), before any edit, 2026-11-15 18:39 UTC, one-minute load 6.9 to 7.0 on 24 CPUs; the probe then had no `byTurn` (a turn had one part).
+- `after.txt` and `paired-after-{1,2}.txt`: this branch at `da601c447`; `paired-before-{1,2}.txt`: a detached tree at `37c830c2c` with this probe. Run alternately (before 1, after 1, before 2, after 2), 19:08 UTC, load 7.0 to 11.1. `after.txt` is `paired-after-1.txt`.
+- `slot.test.ts` / `slot.txt`: `acquireSlowSlot` alone, 100 takes of 1 and of 2 permits, a private directory, load 8.5.
+
+`tasks/011-357/notes.md` gives the tables.
