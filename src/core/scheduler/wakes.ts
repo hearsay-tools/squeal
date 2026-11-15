@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { EpochMs } from "../types/common.js";
 import type { Rest, RestWake } from "../types/scheduler.js";
 import { type Clock, type Disarm, MAX_TIMER_MS } from "./clock.js";
@@ -80,6 +81,26 @@ function inOrder(a: Slot, b: Slot): number {
   return wakeRank(a.reason) - wakeRank(b.reason) || a.rank - b.rank || a.seq - b.seq;
 }
 
+/**
+ * What a piece of work may wait for while it does not count toward `rest`,
+ * a closed list (row 011-352, repair 3): its stated wake, which the loop
+ * fires; a runner's run, which a test may hold; the pump's next event, each
+ * of whose sources counts on its own or comes from outside; other pieces,
+ * which count on their own. No other wait sets work aside.
+ */
+export type Waiting =
+  | { readonly for: "wake"; readonly reason: WakeReason }
+  | { readonly for: "run" }
+  | { readonly for: "event" }
+  | { readonly for: "pieces" };
+
+/** A piece of work that runs on its own (`Wakes.track`); it counts unless it waits in a named wait. */
+interface Piece {
+  waiting: number;
+  /** The last named wait it took, for a reader of the loop. */
+  for?: Waiting;
+}
+
 /** One pass's readings: the clock's, which owners get, and the loop's steady time. */
 interface Reading {
   readonly at: EpochMs;
@@ -87,9 +108,12 @@ interface Reading {
 }
 
 /**
- * The wake loop. Besides the wakes it counts the scheduler's own async work
- * (`track`), a runner's run set aside (`aside`) and the lock's queued tasks
- * (`locked`, the `Mutex` count hook), so `rest` can say when nothing is left.
+ * The wake loop. Besides the wakes it keeps the rest signal's one rule (row
+ * 011-352, repair 3): every piece of scheduler work that runs on its own is
+ * counted on its own (`track`), and a piece stops counting only while it
+ * waits in a named wait (`waitFor`, `Waiting`): for a stated wake of this
+ * loop, a runner's run, the pump's next event, or other pieces. The lock's
+ * queued and running tasks count too (`locked`, the `Mutex` count hook).
  *
  * A wake is stated on the scheduler's clock and kept as a delay from the
  * reading it was stated at, on the loop's steady time: the largest of the
@@ -110,7 +134,10 @@ export class Wakes {
   /** The reading of the pass that runs, while one runs. */
   #pass: Reading | null = null;
   #closed = false;
-  #tracked = 0;
+  /** The pieces of work open (`track`), each counted on its own. */
+  readonly #pieces = new Set<Piece>();
+  /** The piece the running code belongs to. */
+  readonly #piece = new AsyncLocalStorage<Piece>();
   #locked = 0;
   readonly #waiters: (() => void)[] = [];
 
@@ -128,20 +155,23 @@ export class Wakes {
   }
 
   /**
-   * Counts `work` as the scheduler's own until it settles; returns it. Given
-   * a function, counts first and then calls it, so an `aside` in its
-   * synchronous start is inside the count (an `async` body runs to its first
-   * `await` before a promise it returns could be handed over).
+   * Starts `work` as a piece of the scheduler's work, counted on its own
+   * until it settles; returns its promise. The piece is counted before
+   * `work` is called, and `work` runs in the piece's context, so its named
+   * waits (`waitFor`) suspend this piece and no other. Work started inside
+   * it that runs beside it (a record's reads beside its gather) is a piece
+   * of its own: start it with `track` too.
    */
-  track<T>(work: Promise<T> | (() => Promise<T>)): Promise<T> {
-    this.#tracked += 1;
+  track<T>(work: () => Promise<T>): Promise<T> {
+    const piece: Piece = { waiting: 0 };
+    this.#pieces.add(piece);
     const done = () => {
-      this.#tracked -= 1;
+      this.#pieces.delete(piece);
       this.#poke();
     };
     let promise: Promise<T>;
     try {
-      promise = typeof work === "function" ? work() : work;
+      promise = this.#piece.run(piece, work);
     } catch (error) {
       promise = Promise.reject(error);
     }
@@ -150,21 +180,22 @@ export class Wakes {
   }
 
   /**
-   * Sets `run`, a runner's run or a wait awaited inside tracked work, aside
-   * until it settles: a run a test holds counts as rest; its end, and what
-   * follows it, does not. Returns `run`. Called outside tracked work it sets
-   * nothing aside, so the count never goes below what tracked work holds
-   * (its caller must be inside tracked work when any is open).
+   * The one way a piece stops counting (`Waiting`): it waits for `promise`,
+   * which settles at what `waiting` names. The piece whose context this runs
+   * in stops counting until `promise` settles and counts again before its
+   * continuation runs. Outside any piece it suspends nothing.
    */
-  aside<T>(run: Promise<T>): Promise<T> {
-    if (this.#tracked <= 0) return run;
-    this.#tracked -= 1;
+  waitFor<T>(waiting: Waiting, promise: Promise<T>): Promise<T> {
+    const piece = this.#piece.getStore();
+    if (piece === undefined || !this.#pieces.has(piece)) return promise;
+    piece.waiting += 1;
+    piece.for = waiting;
     this.#poke();
     const back = () => {
-      this.#tracked += 1;
+      piece.waiting -= 1;
     };
-    run.then(back, back);
-    return run;
+    promise.then(back, back);
+    return promise;
   }
 
   /** The `Mutex` count hook: how many of its tasks are queued or running. */
@@ -206,7 +237,8 @@ export class Wakes {
   }
 
   #atRest(): boolean {
-    if (this.#pass !== null || this.#tracked > 0 || this.#locked > 0) return false;
+    if (this.#pass !== null || this.#locked > 0) return false;
+    for (const piece of this.#pieces) if (piece.waiting === 0) return false;
     if (this.#closed) return true;
     const steady = this.#steadyNow();
     for (const slot of this.#slots) if (slot.due !== null && slot.due <= steady) return false;
@@ -298,7 +330,8 @@ export class Wakes {
     const ms = next - steady;
     // A delay past a timer's range fires early, at the range's end, and arms again.
     this.#armed = { due: next, until: steady + Math.min(ms, MAX_TIMER_MS) };
-    this.#disarm = this.#clock.arm(ms, () => this.#run());
+    // A pass belongs to no piece: the timer would run it in the context of whoever armed it.
+    this.#disarm = this.#clock.arm(ms, () => this.#piece.exit(() => this.#run()));
   }
 
   #poke(): void {

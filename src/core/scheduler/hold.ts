@@ -211,7 +211,7 @@ export class MergeHold {
   /** The poll's wake: one check, counted as the scheduler's work; the next wake once it ended. */
   #polled(): void {
     this.#polling = true;
-    void this.#wakes.track(
+    void this.#wakes.track(() =>
       this.check()
         .then(() => {
           if (!this.holding && !this.#closed) this.options.resumed();

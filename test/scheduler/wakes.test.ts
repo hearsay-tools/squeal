@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Clock } from "../../src/core/scheduler/clock.js";
+import { type Clock, hostClock } from "../../src/core/scheduler/clock.js";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
 import { WAKE_ORDER, type WakeReason } from "../../src/core/scheduler/step-events.js";
 import { Wakes } from "../../src/core/scheduler/wakes.js";
@@ -276,17 +276,18 @@ describe("the rest signal (row 011-352)", () => {
   it("does not rest under tracked work, nor under the work it starts as it ends", async () => {
     const { wakes } = loop();
     let end = () => {};
-    const work = wakes.track(new Promise<void>((resolve) => (end = resolve)));
+    const work = wakes.track(() => new Promise<void>((resolve) => (end = resolve)));
     let followed = false;
     void work.then(() => {
       // Work started in the reaction to the first: within one setImmediate of its end.
       void wakes.track(
-        new Promise<void>((resolve) =>
-          setImmediate(() => {
-            followed = true;
-            resolve();
-          }),
-        ),
+        () =>
+          new Promise<void>((resolve) =>
+            setImmediate(() => {
+              followed = true;
+              resolve();
+            }),
+          ),
       );
     });
     expect(await rests(wakes)).toBe(false);
@@ -307,14 +308,14 @@ describe("the rest signal (row 011-352)", () => {
     await Promise.all([held, queued]);
   });
 
-  it("a runner's run set aside counts as rest; its end does not", async () => {
+  it("a runner's run waited for counts as rest; its end does not", async () => {
     const { wakes } = loop();
     let end = () => {};
     const run = new Promise<string>((resolve) => (end = () => resolve("ran")));
     let recorded = false;
     let finish = () => {};
     void wakes.track(async () => {
-      await wakes.aside(run);
+      await wakes.waitFor({ for: "run" }, run);
       // What follows the run, a record, is the scheduler's own work again.
       await new Promise<void>((resolve) => (finish = resolve));
       recorded = true;
@@ -327,21 +328,74 @@ describe("the rest signal (row 011-352)", () => {
     expect(recorded).toBe(true);
   });
 
-  it("an aside outside tracked work sets nothing aside: work tracked after it still holds the rest", async () => {
+  it("a named wait suspends only its own piece: reads started beside it as a piece still hold the rest", async () => {
+    const { wakes, clock } = loop();
+    let endReads = () => {};
+    let readsEnded = false;
+    let recorded = false;
+    void wakes.track(async () => {
+      // A record: its reads run beside its gather, a piece of their own (review 0.1.513-r2 B4).
+      const reads = wakes.track(
+        () =>
+          new Promise<void>((resolve) => {
+            endReads = () => {
+              readsEnded = true;
+              resolve();
+            };
+          }),
+      );
+      const gathered = new Promise<void>((resolve) => {
+        wakes.slot("slot-gather", () => resolve()).at(at(25));
+      });
+      await wakes.waitFor({ for: "wake", reason: "slot-gather" }, gathered);
+      await reads;
+      recorded = true;
+    });
+    expect(await rests(wakes)).toBe(false);
+    endReads();
+    const rest = await wakes.rest();
+    expect(readsEnded).toBe(true);
+    expect(rest.next).toEqual({ reason: "slot-gather", at: 25 });
+    clock.advance(25);
+    await wakes.rest();
+    expect(recorded).toBe(true);
+  });
+
+  it("a named wait outside any piece suspends nothing: a piece open meanwhile still holds the rest", async () => {
     const { wakes } = loop();
     let endWait = () => {};
-    // A slot record on a loop that tracks nothing, as a test builds one.
-    const wait = wakes.aside(new Promise<void>((resolve) => (endWait = resolve)));
+    const wait = wakes.waitFor({ for: "run" }, new Promise<void>((resolve) => (endWait = resolve)));
     let end = () => {};
-    const work = wakes.track(new Promise<void>((resolve) => (end = resolve)));
+    const work = wakes.track(() => new Promise<void>((resolve) => (end = resolve)));
     expect(await rests(wakes)).toBe(false);
     end();
     await work;
     await wakes.rest();
     endWait();
     await wait;
-    // Its end gives no count back either.
     await expect(rests(wakes)).resolves.toBe(true);
+  });
+
+  it("a pass runs in no piece: a named wait in an owner's wake suspends no piece that armed it", async () => {
+    // The host clock: its timer runs the pass in the context of whoever armed it.
+    const wakes = new Wakes(hostClock());
+    let endWork = () => {};
+    let endWait = () => {};
+    let fired = false;
+    void wakes.track(async () => {
+      wakes
+        .slot("claims", () => {
+          fired = true;
+          void wakes.waitFor({ for: "run" }, new Promise<void>((resolve) => (endWait = resolve)));
+        })
+        .at((Date.now() + 10) as EpochMs);
+      await new Promise<void>((resolve) => (endWork = resolve));
+    });
+    await expect.poll(() => fired).toBe(true);
+    expect(await rests(wakes)).toBe(false);
+    endWork();
+    endWait();
+    await wakes.rest();
   });
 
   it("a closed loop rests once its tracked work ends, past wakes or not", async () => {

@@ -12,7 +12,9 @@ import { describe, expect, it } from "vitest";
  * work no one counts; so is work started into a local whose only uses are
  * such handler statements, or none (review 0.1.513 S1). The guarantee is
  * syntactic: any other use of the local (an await, a return, an argument)
- * counts as its consumer; the check does not follow it further. Types are
+ * counts as its consumer; the check does not follow it further. Work is set
+ * aside only through a named wait (`waitFor` with a kind of `Waiting`, repair 3);
+ * any other set-aside fails the check. Types are
  * stripped with esbuild and the code parsed with acorn, so comments,
  * strings and type positions are not read.
  */
@@ -151,12 +153,36 @@ function detached(node: Node): string | null {
   return HANDLERS.has(path(callee.property)) && started ? path(callee) : null;
 }
 
+/** The named waits (`Waiting` in `wakes.ts`): the only way work stops counting toward rest. */
+const WAITINGS = new Set(["wake", "run", "event", "pieces"]);
+
+/**
+ * Row 011-352, repair 3: work is set aside only through a named wait. A call
+ * named `aside`, or a `waitFor` whose first argument does not name a kind of
+ * the closed list in place, is a set-aside outside the rule.
+ */
+function setAside(node: Node): string | null {
+  if (node.type !== "CallExpression") return null;
+  const callee = unchain(node.callee);
+  if (!isNode(callee) || callee.type !== "MemberExpression") return null;
+  const name = path(callee.property);
+  if (name === "aside") return `${path(callee)}()`;
+  if (name !== "waitFor") return null;
+  const [first] = node.arguments as unknown[];
+  const kind =
+    isNode(first) && first.type === "ObjectExpression"
+      ? (first.properties as Node[]).find((p) => isNode(p.key) && path(p.key) === "for")?.value
+      : undefined;
+  const named = isNode(kind) && kind.type === "Literal" && WAITINGS.has(String(kind.value));
+  return named ? null : `${path(callee)}() with no named wait`;
+}
+
 /** The untracked work in `source`: each as the call it voids, detaches or leaves unconsumed. */
 function untracked(source: string): string[] {
   const { code } = transformSync(source, { loader: "ts", target: "esnext" });
   const found: string[] = [];
   walk(parse(code, { ecmaVersion: "latest", sourceType: "module" }), (node, parents) => {
-    for (const hit of [unconsumed(node, parents), voided(node), detached(node)])
+    for (const hit of [unconsumed(node, parents), voided(node), detached(node), setAside(node)])
       if (hit !== null) found.push(hit);
   });
   return found;
@@ -166,9 +192,9 @@ describe("no untracked background promise in the scheduler (row 011-352)", () =>
   it("finds a bare void and a detached catch, and passes tracked work and a handled mark", () => {
     const source = `
       class A {
-        #wakes: { track<T>(p: Promise<T>): Promise<T> } = { track: (p) => p };
+        #wakes = { track: <T>(p: T) => p, aside: <T>(p: T) => p, waitFor: <T>(_: unknown, p: T) => p };
         async #release(lane: string): Promise<void> {}
-        go(ended: Promise<void>): void {
+        async go(ended: Promise<void>, kind: { for: "run" }): Promise<void> {
           void this.#release("a");
           this.#release("b").catch((error: unknown) => {});
           void this.#wakes.track(this.#release("c"));
@@ -179,6 +205,10 @@ describe("no untracked background promise in the scheduler (row 011-352)", () =>
           const counted = this.#release("f");
           counted.catch(() => {});
           void this.#wakes.track(counted);
+          await this.#wakes.aside(counted);
+          await this.#wakes.waitFor({ for: "sleep" }, counted);
+          await this.#wakes.waitFor(kind, counted);
+          await this.#wakes.waitFor({ for: "run" }, counted);
           // void this.#release("in a comment");
           const text = "void this.#release()";
           const f = (): void => {};
@@ -189,6 +219,9 @@ describe("no untracked background promise in the scheduler (row 011-352)", () =>
       "this.#release().catch",
       "const kept = this.#release().catch()",
       "const started = this.#release()",
+      "this.#wakes.aside()",
+      "this.#wakes.waitFor() with no named wait",
+      "this.#wakes.waitFor() with no named wait",
     ]);
   });
 
