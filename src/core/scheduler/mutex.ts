@@ -1,4 +1,5 @@
 import type { LockHolder } from "../types/scheduler.js";
+import { hostNow } from "./clock.js";
 
 type Watcher = {
   readonly listener: (holder: LockHolder | null) => void;
@@ -22,7 +23,7 @@ export class Mutex {
   readonly #now: () => number;
   readonly #free = () => this.#hold(null);
 
-  constructor(now: () => number = Date.now) {
+  constructor(now: () => number = hostNow) {
     this.#now = now;
   }
 

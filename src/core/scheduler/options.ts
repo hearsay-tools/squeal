@@ -11,6 +11,7 @@ import type { RunnerAdapter } from "../types/runner.js";
 import type { StateSink } from "../types/state.js";
 import type { Store } from "../types/store.js";
 import type { FeedPasses } from "../types/watcher.js";
+import type { Clock } from "./clock.js";
 import type { FailureDescriber } from "./records.js";
 
 export interface SchedulerOptions {
@@ -140,7 +141,10 @@ export interface SchedulerOptions {
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
   readonly env?: NodeJS.ProcessEnv;
+  /** Shorthand for `clock`: the host adapter over this reading (`hostClock`). Ignored when `clock` is given. */
   readonly now?: () => EpochMs;
+  /** Row 011-351: the one clock every scheduler module reads; default `hostClock(now)`. */
+  readonly clock?: Clock;
   /** How the slow tier waits (spec 004 D2, D3); defaults suit a daemon. */
   readonly slow?: SlowTierOptions;
   /**
