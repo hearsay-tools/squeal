@@ -306,6 +306,20 @@ export interface RestWake {
   readonly at: EpochMs;
 }
 
+/** Row 011-356: one scheduler step as `Scheduler.onStep` tells it. */
+export interface StepSeen {
+  /** It ran inside another lock turn (a revision's pass, applied runner work, a request, a queued check): no reads. */
+  readonly inTurn: boolean;
+  /** The reads it had from its iteration, by name (`install`, `probe`, `lanes`, `rewalk`). */
+  readonly reads: readonly string[];
+  /** Its decisions' kinds, in the order made. */
+  readonly decisions: readonly string[];
+  /** Runner work queued, not applied yet, when it decided. */
+  readonly runnerWork: number;
+  /** The wakes it stated: its next wake's kind; none for a step inside another turn. */
+  readonly wakes: readonly string[];
+}
+
 /** Row 011-352: what `Scheduler.rest` reports: the next wake and each owner's, earliest first. */
 export interface Rest {
   readonly next: RestWake | null;
@@ -364,6 +378,12 @@ export interface Scheduler {
    * Absent: the scheduler does not say what holds it.
    */
   watchLock?(listener: (holder: LockHolder | null) => void): () => void;
+  /**
+   * Row 011-356: tells `listener` each scheduler step as it ends, until the
+   * returned function is called (the model test's per-step checks).
+   * Absent: the scheduler tells no step.
+   */
+  onStep?(listener: (seen: StepSeen) => void): () => void;
   /**
    * `squeal retry` (spec 001 D6, 001-368): claims and queues the pending
    * retry requests at this worktree's keys that may run now. A `load`

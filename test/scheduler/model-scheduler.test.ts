@@ -19,6 +19,8 @@ interface Played {
   /** Each `cross` moved the clock. */
   readonly crossed: boolean;
   readonly closed: ReadonlySet<Closed>;
+  /** S: the steps that started a tier. */
+  readonly starts: number;
 }
 
 /** One sequence, every invariant checked; it stops at the first violation. */
@@ -43,7 +45,7 @@ async function play(p: Plan): Promise<Played> {
   } finally {
     await m.close();
   }
-  return { found: checks.found, crossed, closed: checks.closed };
+  return { found: checks.found, crossed, closed: checks.closed, starts: checks.starts };
 }
 
 /** The first violation of `inv` in `p` with a shorter sequence that still shows it, at most 30 deletions tried. */
@@ -185,13 +187,14 @@ interface Outcome {
   readonly plan: Plan;
   readonly found: Violation[];
   readonly closed: ReadonlySet<Closed>;
+  readonly starts: number;
 }
 
 async function playAll(): Promise<Outcome[]> {
   const out: Outcome[] = [];
   const add = async (name: string, p: Plan) => {
-    const { found, crossed, closed } = await play(p);
-    out.push({ name, plan: p, found, closed });
+    const { found, crossed, closed, starts } = await play(p);
+    out.push({ name, plan: p, found, closed, starts });
     return crossed;
   };
   for (const [name, p] of Object.entries(DIRECTED)) await add(name, p);
@@ -232,6 +235,12 @@ async function closes(): Promise<Closed[]> {
   return [...new Set((await outcomes).flatMap((o) => [...o.closed]))].sort();
 }
 
+/** S: how many steps started a tier over every sequence, so an S that never meets its case is seen. */
+async function starts(): Promise<number> {
+  outcomes ??= playAll();
+  return (await outcomes).reduce((sum, o) => sum + o.starts, 0);
+}
+
 describe("a model of the scheduler holds spec 011 C4 step 5 and C15 over seeded sequences (row 011-195)", {
   timeout: 240_000,
 }, () => {
@@ -257,6 +266,11 @@ describe("a model of the scheduler holds spec 011 C4 step 5 and C15 over seeded 
 
   it("F: a promotion lasts while a file of its open wait is queued or running (F's reproduction)", async () => {
     expect(await broken("F")).toEqual([]);
+  });
+
+  it("S: each step starts a tier only on current reads, with no runner work queued, and states at most one wake (row 011-356)", async () => {
+    expect(await broken("S")).toEqual([]);
+    expect(await starts()).toBeGreaterThan(0);
   });
 
   it("G: a slow lane's instance closes under a hold and 60 s after its last run, never under its run (row 011-211)", async () => {

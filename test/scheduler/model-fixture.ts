@@ -13,6 +13,7 @@ import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { isSlowLane, type RunOptions, type RunReport } from "../../src/core/types/runner.js";
+import type { StepSeen } from "../../src/core/types/scheduler.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { CrossingClock } from "../helpers/virtual-clock.js";
@@ -97,6 +98,8 @@ export class Model {
   readonly closedUnderRun: string[] = [];
   /** The test files of the plan: `ALL`, and `E2E` with `slowLane`. */
   readonly paths: readonly string[];
+  /** Row 011-356: each scheduler step since the checks last read them (`Scheduler.onStep`). */
+  readonly steps: StepSeen[] = [];
   #edits = 0;
   #drain = true;
   readonly #holds: CommandHoldEntry[] = [];
@@ -111,6 +114,7 @@ export class Model {
     side.runner.run = (files, options) => this.#run(files, options);
     Object.assign(side.runner, { releaseLane: async (lane: string) => this.#releaseLane(lane) });
     this.paths = plan.slowLane === true ? [...ALL, ...E2E] : ALL;
+    side.scheduler.onStep?.((seen) => this.steps.push(seen));
   }
 
   static async start(p: Plan): Promise<Model> {

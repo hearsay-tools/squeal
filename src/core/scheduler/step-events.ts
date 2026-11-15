@@ -90,16 +90,18 @@ export type DecisionPlace = "turn" | "after";
 
 /**
  * What a scheduler step returns for the loop to carry out (`GLOSSARY.md`,
- * "Scheduler decision"). `T` is the tier, `Y` the yield check's answer, `I`
- * the fast plan's idle answer: the step names them only through its ports.
+ * "Scheduler decision"). `T` is the tier and `I` the fast plan's idle
+ * answer: the step names them only through its ports.
  */
-export type StepDecision<T = unknown, Y = unknown, I = unknown> =
+export type StepDecision<T = unknown, I = unknown> =
   /** Fly `tier`, started on the admission of lock turn `turn` with the install stamp `stamp`. */
   | { readonly kind: "start-tier"; readonly tier: T; readonly stamp: string; readonly turn: number }
-  /** Cancel `tier` for `cause`, decided at `at` (C4 step 5, row 011-56). */
-  | { readonly kind: "stop-tier"; readonly tier: T; readonly cause: string; readonly at: number }
-  /** Apply the yield check's answer at `at`: marks, standings, history, bounds, the `yields` row. */
-  | { readonly kind: "write-yield-row"; readonly at: number; readonly decided: Y }
+  /**
+   * The yield check after `trigger` (`TierYields.check`: `decideYields`,
+   * then its cancels, marks, bounds and `yields` row), taking the results
+   * other worktrees stored first when `adopt` (rows 011-51, 011-123, 011-354).
+   */
+  | { readonly kind: "check-yields"; readonly trigger: Revision | null; readonly adopt: boolean }
   /** The install went under this scheduler (task 001-113): it stores nothing more. */
   | { readonly kind: "reinstall" }
   /** Apply the queued runner work beside the tiers in flight: it starts in the turn, its tasks take the lock after it. */
@@ -129,8 +131,7 @@ export type StepDecisionKind = StepDecision["kind"];
 /** Where each decision kind is carried out. */
 export const DECISION_PLACE = {
   "start-tier": "turn",
-  "stop-tier": "turn",
-  "write-yield-row": "turn",
+  "check-yields": "turn",
   reinstall: "turn",
   drain: "turn",
   "read-install": "after",

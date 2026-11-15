@@ -30,6 +30,7 @@ import {
   SLOW_GROUP,
   type SlowSuiteRequest,
   type SlowWaiting,
+  type StepSeen,
 } from "../types/scheduler.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { type Admission, admit, checkTurn, type StartFacts } from "./admission.js";
@@ -91,6 +92,7 @@ import {
   type Step,
   type StepPorts,
   step,
+  type Turn,
 } from "./step.js";
 import { placeOf, type SchedulerEvent } from "./step-events.js";
 import { supersededIn } from "./store-decision.js";
@@ -101,7 +103,7 @@ import { startNext } from "./tier-start.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
-import { stopTier, TierYields, yieldReach } from "./yields.js";
+import { TierYields } from "./yields.js";
 
 /** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
@@ -142,7 +144,7 @@ class TierScheduler implements Scheduler {
     closed: () => this.#closed,
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
-    applied: () => this.#cutTiers({ kind: "runner-work-applied" }),
+    applied: () => this.#stepInTurn([{ kind: "runner-work-applied" }]),
     // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
     busy: () => {
       const waits = this.options.busyWaits;
@@ -173,8 +175,10 @@ class TierScheduler implements Scheduler {
   readonly #quiet = new BacklogQuiet((ends, at, catchUp) =>
     publishQuiet(this.options.store, this.options.worktreeId, ends, at, catchUp),
   );
-  /** A check of the tiers in flight queued under the lock, not run yet (rows 011-54, 011-107). */
-  #recheck = false;
+  /** The events of the step queued under the lock, not run yet (rows 011-54, 011-107, 011-356). */
+  readonly #queued: SchedulerEvent[] = [];
+  /** Row 011-356: who hears each step (`onStep`). */
+  readonly #stepListeners = new Set<(seen: StepSeen) => void>();
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
   /** Row 018-12: the files explicit requests queued, whose ends are activity. */
@@ -207,7 +211,7 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(this.#started().context.policy);
       this.#groups.get(group)?.preempt();
     },
-    cutTiers: () => this.#cutTiers({ kind: "request-taken" }),
+    cutTiers: () => this.#stepInTurn([{ kind: "request-taken" }]),
     pump: () => this.#pump(),
   });
   /** The records of the runs that ended (row 011-131). */
@@ -271,7 +275,7 @@ class TierScheduler implements Scheduler {
     this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
     this.#claimsWake = this.#wakes.slot("claims", (at) => this.#claimPoll(at));
     this.#yields = new TierYields(
-      () => this.#cutTiers({ kind: "wake", reason: "yield-bound" }),
+      () => this.#stepQueued({ kind: "wake", reason: "yield-bound" }),
       this.#wakes,
     );
     this.#install = new InstallStamps(options.root);
@@ -526,7 +530,7 @@ class TierScheduler implements Scheduler {
     }
     this.#groups.preempt();
     // The runner part waits for the runner: a tier in flight may yield first (C4 step 5, row 011-51).
-    this.#cutTiers({ kind: "revision", revision: applied.revision });
+    this.#stepInTurn([{ kind: "revision", revision: applied.revision }]);
     this.#runnerWork.queueRefine(applied.revision, applied.content, touched);
   }
 
@@ -542,57 +546,44 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Cancels each tier in flight that `event` cuts (`TierYields`, C4 step 5
-   * as amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`,
-   * task 001-364). Which events reach the check, and how, is `yieldReach`'s
-   * (row 011-354): in the event's own lock turn, or queued under the lock.
+   * Row 011-356: the step inside this lock turn, after `event`, with no
+   * reads: it decides the yield check there (C4 step 5 as amended
+   * 2026-10-21, row 011-51) and never starts a tier. A revision's pass,
+   * applied runner work, a request taken, and the queued check.
    */
-  #cutTiers(event: SchedulerEvent): void {
-    const reach = yieldReach(event, {
-      tier: (runId) => this.#inFlight.get(runId)?.tier,
-      standsNamed: (tier) => this.#yields.standsNamed(tier),
-    });
-    if (reach.reach === "check") this.#checkTiers(reach.trigger);
-    else if (reach.reach === "adopt-then-check") this.#recheckTiers();
-  }
-
-  /** The yield check in this lock turn, after `trigger`; a hold reaches nothing (row 011-72). */
-  #checkTiers(trigger: Revision | null): void {
-    const held = this.#admit().halts.has("held");
-    const { context, ledger } = this.#started();
-    const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
-    this.#yields.check(context, ledger, tiers, trigger, held);
+  #stepInTurn(events: readonly SchedulerEvent[]): void {
+    const turn = { at: this.#now(), events, reads: null, ports: this.#ports };
+    const decided = step(turn);
+    this.#told(turn, decided);
+    if (decided.error !== null) throw decided.error;
   }
 
   /**
    * A file of `tier` ended during its run (row 011-54): the count status
-   * reads, then the check, as `yieldReach` places a file end.
+   * reads, then the queued step, whose yield check places the file end.
    */
   #fileEnded(tier: Tier): void {
     // Row 011-209 (F4; agreed by the coordinator, request dd6ee382): the count status reads.
     this.#yields.fileEnded(this.#started().context, tier);
-    this.#cutTiers({ kind: "file-ended", runId: tier.runId });
+    this.#stepQueued({ kind: "file-ended", runId: tier.runId });
   }
 
   /**
-   * Checks the tiers in flight again under the lock, one check queued at a
-   * time: after a file's end, at the bound of a tier past its estimate
-   * (`TierYields`, row 011-107), or while promoted files wait on claims (row
-   * 011-123). Results other worktrees stored are taken first (`#adopt`), as
-   * a reconciliation pass does, so a claimant's record cuts nothing.
+   * Row 011-356: the step in a lock turn of its own, one queued at a time,
+   * after the events posted since it was queued: a file's end (row 011-54)
+   * and the bound of a tier past its estimate or of one whose promoted
+   * files wait on claims (`TierYields`, rows 011-107, 011-123). Its yield
+   * check takes the results other worktrees stored first, so a claimant's
+   * record cuts nothing.
    */
-  #recheckTiers(): void {
-    if (this.#recheck) return;
-    this.#recheck = true;
+  #stepQueued(event: SchedulerEvent): void {
+    this.#queued.push(event);
+    if (this.#queued.length > 1) return;
     const check = () =>
       this.#lock
         .run(() => {
-          this.#recheck = false;
-          if (this.#closed) return;
-          // Row 011-123: a claimant's record is taken first, so its file needs no yield.
-          const { context, ledger } = this.#started();
-          this.#adopt(context, ledger);
-          this.#checkTiers(null);
+          const events = this.#queued.splice(0);
+          if (!this.#closed) this.#stepInTurn(events);
         }, "checking the tiers in flight")
         .catch((error: unknown) =>
           this.#backgroundError("could not check the tiers in flight", error),
@@ -781,6 +772,14 @@ class TierScheduler implements Scheduler {
     return this.#intake.take(
       fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp }),
     );
+  }
+
+  /** Row 011-356: each scheduler step, as it ends, until the returned function is called. */
+  onStep(listener: (seen: StepSeen) => void): () => void {
+    this.#stepListeners.add(listener);
+    return () => {
+      this.#stepListeners.delete(listener);
+    };
   }
 
   /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
@@ -1207,8 +1206,24 @@ class TierScheduler implements Scheduler {
 
   /** One step of the pump with `reads` (row 011-356), in this lock turn: the events since the last. */
   #step(reads: Reads): Step {
-    const events = this.#events.splice(0);
-    return step({ at: this.#now(), events, reads, ports: this.#ports });
+    const turn = { at: this.#now(), events: this.#events.splice(0), reads, ports: this.#ports };
+    const decided = step(turn);
+    this.#told(turn, decided);
+    return decided;
+  }
+
+  /** Tells each `onStep` listener the step `decided` after `turn`. */
+  #told(turn: Turn, decided: Step): void {
+    if (this.#stepListeners.size === 0) return;
+    const { wake } = decided;
+    const seen: StepSeen = {
+      inTurn: turn.reads === null,
+      reads: Object.keys(turn.reads ?? {}),
+      decisions: decided.decisions.map((decision) => decision.kind),
+      runnerWork: this.#runnerWork.size,
+      wakes: wake.kind === "turn" ? [] : [wake.kind],
+    };
+    for (const listener of this.#stepListeners) listener(seen);
   }
 
   /** The step's live adapter: the scheduler's memory and store (row 011-356). */
@@ -1219,17 +1234,6 @@ class TierScheduler implements Scheduler {
     yields: {
       tier: (runId) => this.#inFlight.get(runId)?.tier,
       standsNamed: (tier) => this.#yields.standsNamed(tier),
-      adopt: () => {
-        const { context, ledger } = this.#started();
-        this.#adopt(context, ledger);
-      },
-      decide: (at, trigger) => {
-        // A hold reaches nothing (row 011-72): the check reads it in its own lock turn.
-        const held = this.#admit().halts.has("held");
-        const { context, ledger } = this.#started();
-        const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
-        return this.#yields.decide(context, ledger, tiers, trigger, held, at);
-      },
     },
     startNext: (admitted, fly) => {
       const { context, ledger } = this.#started();
@@ -1249,17 +1253,27 @@ class TierScheduler implements Scheduler {
     carry: (decision) => this.#carry(decision),
   };
 
+  /**
+   * The yield check in this lock turn, after `trigger`, taking stored
+   * results first when `adopt` (row 011-123); a hold reaches nothing (row
+   * 011-72): the check reads it in its own lock turn.
+   */
+  #checkYields(trigger: Revision | null, adopt: boolean): void {
+    const { context, ledger } = this.#started();
+    if (adopt) this.#adopt(context, ledger);
+    const held = this.#admit().halts.has("held");
+    const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
+    this.#yields.check(context, ledger, tiers, trigger, held);
+  }
+
   /** Carries out a decision placed in the step's lock turn, as the step makes it. */
   #carry(decision: Decision): void {
     switch (decision.kind) {
       case "start-tier":
         this.#fly(decision.tier, decision.stamp, null, decision);
         return;
-      case "stop-tier":
-        stopTier(this.#started().context, decision.at as EpochMs, decision.tier, decision.cause);
-        return;
-      case "write-yield-row":
-        this.#yields.apply(this.#started().context, decision.at as EpochMs, decision.decided);
+      case "check-yields":
+        this.#checkYields(decision.trigger, decision.adopt);
         return;
       case "reinstall":
         this.#reinstall(this.#started().ledger);
@@ -1284,8 +1298,7 @@ class TierScheduler implements Scheduler {
   async #carryAfter(decision: Decision): Promise<Reads> {
     switch (decision.kind) {
       case "start-tier":
-      case "stop-tier":
-      case "write-yield-row":
+      case "check-yields":
       case "reinstall":
       case "drain":
         return {};

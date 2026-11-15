@@ -5,7 +5,8 @@ import { ALL, type Plan } from "./model-plans.js";
 
 /*
  * The invariants A to G of `model-scheduler.test.ts`, checked over one
- * sequence the model plays (row 011-195; row 011-221 adds G).
+ * sequence the model plays (row 011-195; row 011-221 adds G). Row 011-356
+ * adds S, over each scheduler step (`Scheduler.onStep`).
  */
 
 export interface Violation {
@@ -36,6 +37,8 @@ export class Checks {
   #open = new Set<string>();
   /** G: the closes the sequence reached, so a G that never meets its case is seen. */
   readonly closed = new Set<Closed>();
+  /** S: the steps that started a tier, so an S that never meets its case is seen. */
+  starts = 0;
 
   constructor(
     readonly m: Model,
@@ -106,6 +109,7 @@ export class Checks {
 
   /** At each quiet point. */
   steady(): void {
+    this.#steps();
     for (const path of this.m.paths) this.#validity(path);
     this.#lifetime();
     this.#named();
@@ -134,6 +138,27 @@ export class Checks {
       if (m.held()) this.#add("G", `${lane} open under a hold, no run of it live`);
       else if (since !== null && since >= SLOW_RELEASE_MS)
         this.#add("G", `${lane} open ${since / 1000} s after the last slow run, none live`);
+    }
+  }
+
+  /**
+   * S: row 011-356, each step since the last quiet point: a tier starts
+   * only on the install stamp and the probe read in its own iteration, never
+   * in a step inside another lock turn, and never while runner work is
+   * queued; a step states at most one wake.
+   */
+  #steps(): void {
+    for (const seen of this.m.steps.splice(0)) {
+      const what = `${seen.decisions.join(",") || "nothing"} after ${seen.reads.join(",") || "no reads"}`;
+      if (seen.wakes.length > 1)
+        this.#add("S", `a step stated ${seen.wakes.length} wakes: ${what}`);
+      if (!seen.decisions.includes("start-tier")) continue;
+      this.starts += 1;
+      const current =
+        !seen.inTurn && seen.reads.includes("install") && seen.reads.includes("probe");
+      if (!current) this.#add("S", `a tier started without current reads: ${what}`);
+      if (seen.runnerWork > 0)
+        this.#add("S", `a tier started with ${seen.runnerWork} runner work queued: ${what}`);
     }
   }
 
@@ -196,6 +221,7 @@ export class Checks {
   async released(): Promise<void> {
     const { m } = this;
     if (!(await m.drain())) return this.#add("E", "never idle after every run was released");
+    this.#steps();
     const rows = m.rows();
     const crashedAt = (x: string) => {
       const last = m.flights.findLast((f) => f.files.some((y) => y.path === x));

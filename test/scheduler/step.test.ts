@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { admit, type StartFacts } from "../../src/core/scheduler/admission.js";
 import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
-import type { YieldDecisions } from "../../src/core/scheduler/decide-yields.js";
 import {
   type Decision,
   type Reads,
@@ -84,7 +83,6 @@ interface Table {
   draining?: boolean;
   tiers?: Tier[];
   named?: string[];
-  decided?: YieldDecisions | null;
   /** The tiers `startNext` flies, then its idle answer. */
   starts?: Tier[];
   idle?: Idle;
@@ -106,12 +104,9 @@ function ports(t: Table, log: string[]): StepPorts {
     runnerWork: () => ({ queued: t.queued ?? 0, draining: t.draining === true }),
     yields: {
       tier: (runId) => t.tiers?.find((x) => x.runId === runId),
-      standsNamed: (x) => t.named?.includes(x.runId) === true,
-      adopt: () => log.push("adopt"),
-      decide: (_at: EpochMs, trigger: Revision | null) => {
-        log.push(`decide ${trigger === null ? "null" : trigger.number}`);
+      standsNamed: (x) => {
         thrown("yields");
-        return t.decided ?? null;
+        return t.named?.includes(x.runId) === true;
       },
     },
     startNext: (_admitted, fly) => {
@@ -137,18 +132,6 @@ function run(t: Table, reads: Reads | null = ALL, events: SchedulerEvent[] = [])
   const s = step(turn);
   return { ...s, kinds: s.decisions.map((d) => d.kind), log };
 }
-
-const decided = (cancels: [Tier, string | null][]): YieldDecisions => ({
-  tiers: cancels.map(([x, decision]) => ({
-    tier: x,
-    decision: decision as never,
-    bound: null,
-    yielded: null,
-  })),
-  marks: new Map(),
-  standing: new Map(),
-  changed: true,
-});
 
 describe("the scheduler step (row 011-356)", () => {
   describe("an iteration: reads first, then a start", () => {
@@ -323,85 +306,87 @@ describe("the scheduler step (row 011-356)", () => {
   describe("the yield check", () => {
     const r1 = tier("r1");
     const revision = { number: 4 } as Revision;
+    const check = (trigger: Revision | null, adopt: boolean) => ({
+      kind: "check-yields",
+      trigger,
+      adopt,
+    });
 
-    it("a revision's step decides the check in its turn: stops, then the row", () => {
-      const s = run({ tiers: [r1], decided: decided([[r1, "supersession"]]) }, null, [
-        { kind: "revision", revision },
-      ]);
-      expect(s.decisions[0]).toEqual({
-        kind: "stop-tier",
-        tier: r1,
-        cause: "supersession",
-        at: AT,
-      });
-      expect([s.kinds, s.wake, s.log]).toEqual([
-        ["stop-tier", "write-yield-row"],
+    it("a revision's step decides the check in its turn, after the revision", () => {
+      const s = run({ tiers: [r1] }, null, [{ kind: "revision", revision }]);
+      expect([s.decisions, s.wake, s.log]).toEqual([
+        [check(revision, false)],
         { kind: "turn" },
-        ["decide 4", "carry stop-tier", "carry write-yield-row"],
+        ["carry check-yields"],
       ]);
+    });
+
+    it("applied runner work and a request taken: a check in their turn", () => {
+      for (const kind of ["runner-work-applied", "request-taken"] as const)
+        expect(run({}, null, [{ kind }]).decisions).toEqual([check(null, false)]);
     });
 
     it("a tier started beside the batch's reaches the check; another start does not", () => {
       const beside = tier("r2", { beside: true });
-      const s = run({ starts: [beside], decided: decided([]) });
-      expect(s.kinds).toEqual(["start-tier", "write-yield-row"]);
-      expect(run({ starts: [r1], decided: decided([]) }).kinds).toEqual(["start-tier"]);
+      expect(run({ starts: [beside] }).decisions.map((d) => d.kind)).toEqual([
+        "start-tier",
+        "check-yields",
+      ]);
+      expect(run({ starts: [r1] }).kinds).toEqual(["start-tier"]);
     });
 
     it("R398: a file end of a tier that stands named is checked, stored results first", () => {
-      const s = run({ tiers: [r1], named: ["r1"], decided: null }, null, [
-        { kind: "file-ended", runId: "r1" },
-      ]);
-      expect(s.log).toEqual(["adopt", "decide null"]);
+      const s = run({ tiers: [r1], named: ["r1"] }, null, [{ kind: "file-ended", runId: "r1" }]);
+      expect(s.decisions).toEqual([check(null, true)]);
     });
 
-    it("a file end of a tier with no changed input that stands for nothing is not", () => {
-      const s = run({ tiers: [r1] }, null, [{ kind: "file-ended", runId: "r1" }]);
-      expect(s.log).toEqual([]);
+    it("a file end of a tier whose inputs changed is checked; one of neither is not", () => {
+      const changed = tier("r3", { changes: new Map([["f", 2]]) as never });
+      const ended = (runId: string) => [{ kind: "file-ended" as const, runId }];
+      expect(run({ tiers: [changed] }, null, ended("r3")).decisions).toEqual([check(null, true)]);
+      expect(run({ tiers: [r1] }, null, ended("r1")).decisions).toEqual([]);
+      expect(run({ tiers: [r1] }, null, ended("gone")).decisions).toEqual([]);
     });
 
-    it("the yield bound's wake adopts first; other wakes reach nothing", () => {
-      expect(run({}, null, [{ kind: "wake", reason: "yield-bound" }]).log).toEqual([
-        "adopt",
-        "decide null",
-      ]);
-      expect(run({}, null, [{ kind: "wake", reason: "claims" }]).log).toEqual([]);
+    it("the yield bound's wake adopts first; other wakes and events reach nothing", () => {
+      const bound = run({}, null, [{ kind: "wake", reason: "yield-bound" }]);
+      expect(bound.decisions).toEqual([check(null, true)]);
+      const none: SchedulerEvent[] = [
+        { kind: "wake", reason: "claims" },
+        { kind: "asked" },
+        { kind: "tier-ended", runId: "r1" },
+        { kind: "runner-work-drained" },
+      ];
+      expect(run({}, null, none).decisions).toEqual([]);
     });
 
     it("several events: one check, adopting first, after the last revision", () => {
-      const s = run({ tiers: [r1], decided: null }, null, [
+      const s = run({ tiers: [r1] }, null, [
         { kind: "revision", revision },
         { kind: "wake", reason: "yield-bound" },
       ]);
-      expect(s.log).toEqual(["adopt", "decide 4"]);
+      expect(s.decisions).toEqual([check(revision, true)]);
     });
   });
 
   describe("a port that throws", () => {
     it("ends the step with its error; the decisions made before it stand", () => {
-      const r1 = tier("r1");
-      const s = run({ tiers: [r1], decided: decided([[r1, "yield"]]), throws: "startNext" }, ALL, [
-        { kind: "revision", revision: { number: 2 } as Revision },
-      ]);
-      expect(s.kinds).toEqual(["stop-tier", "write-yield-row"]);
+      const s = run({ throws: "startNext" }, ALL, [{ kind: "request-taken" }]);
+      expect(s.kinds).toEqual(["check-yields"]);
       expect([s.wake, String(s.error)]).toEqual([{ kind: "end" }, "Error: startNext failed"]);
     });
 
-    it("a failing check: no decision, the error", () => {
-      const s = run({ throws: "yields" }, null, [{ kind: "request-taken" }]);
+    it("a failing read of the tiers in flight: no decision, the error", () => {
+      const s = run({ tiers: [tier("r1")], throws: "yields" }, null, [
+        { kind: "file-ended", runId: "r1" },
+      ]);
       expect([s.kinds, String(s.error)]).toEqual([[], "Error: yields failed"]);
     });
   });
 
   describe("closed lists", () => {
     it("each decision kind is placed in the turn or after it", () => {
-      const turn: StepDecisionKind[] = [
-        "start-tier",
-        "stop-tier",
-        "write-yield-row",
-        "reinstall",
-        "drain",
-      ];
+      const turn: StepDecisionKind[] = ["start-tier", "check-yields", "reinstall", "drain"];
       for (const [kind, place] of Object.entries(DECISION_PLACE))
         expect([kind, place]).toEqual([
           kind,
@@ -417,7 +402,7 @@ describe("the scheduler step (row 011-356)", () => {
       // @ts-expect-error: an event kind `yieldReach` does not place is no event
       expect(() => yieldReach({ kind: "rumour" }, reach)).toThrow(/does not place/);
       const table: Record<StepDecisionKind, DecisionPlace> = DECISION_PLACE;
-      expect(Object.keys(table)).toHaveLength(12);
+      expect(Object.keys(table)).toHaveLength(11);
     });
   });
 });
