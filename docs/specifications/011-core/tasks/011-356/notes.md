@@ -93,3 +93,29 @@ See the final section, "Checks run", written at the end of the row.
 - The slow lanes' host still calls `#probe()`, which reconciles released paths itself. The step's probe goes through `#probeRead` and `#released`.
 - `close-lanes` is the one place the step closes idle lanes on a hold. `commandHold()` and `SlowRelease`'s due close still close lanes on their own.
 - `scheduler.ts` grew from 1,666 to about 1,760 lines (the ports and the two carry-out switches). The ports could move to a `step-live.ts` beside it if the file should shrink.
+
+## Repair after review 0.1.515
+
+Worker 3f053805, 2026-11-15, on the coordinator's repair request (`reviews/0.1.515.md`, FAIL, B1).
+
+**B1: an install change was lost when runner work came first.** The step's `read-install` carry-out took the change (`InstallStamps.takeChange` advances its remembered stamp) into the reads of one iteration. A source batch queued before the next step made it drain first (`drainRunnerWork` comes before `readInstallStamp`); the `event` wake cleared the reads, and the next check found the stamp already taken. The refresh of task 001-109 never ran.
+
+**Fix.** A change taken is an obligation in scheduler memory, `#refreshOwed`, as `#released` is for a merge hold's paths. `read-install` sets it when `takeChange` says the stamp moved and reports `changed` from it; only the `refresh-install` carry-out clears it, after `refreshInstall` returned. If the refresh throws, the obligation stays and the next iteration refreshes again (the baseline lost it then too). No rule of the step changed: fresh reads before a start, the runner-work guard and the busy-store retry are as before.
+
+**Test, written first.** `test/scheduler/step-install-refresh.test.ts`: the review's probe on the real Vitest harness and 001-109 S2's fixture. A package folder is added with no lockfile rewrite; the first `takeChange` that returns true queues a source batch at once; an empty interval batch wakes the pump. It asserts the change was taken once, the batch ran, the side-loaded test's key moved and the test ran again. Before the fix it failed (`expected '3275b208…' not to be '3275b208…'`: no re-key); after it passes.
+
+**Other reads the step consumes before its decision**, checked for the same loss:
+
+- The install change: fixed above.
+- Released merge-hold paths (`MergeHold.takeReleased`): kept in `#released` until `reconcile`; no loss.
+- The pool's refusal flag (`TierCapacity.refused()`, cleared when looked at): looked at only inside `idleAnswer`, whose wake it decides in the same step; no later rule can drop it.
+- The slow lanes' answer (`reads.lanes`): a lane that started has its tier in flight; a dropped `idle` answer is planned again at the next iteration. No obligation.
+- The re-walk's answer (`reads.rewalk`): a chunk queued is runner work, drained by the next step. No obligation.
+- `#installMissing` and the hold state: facts in memory, not cleared by a reset.
+
+**Checks of the repair** (vitest runs each in its own process group with a deadline, the group killed after; no run left behind):
+
+- `pnpm run lint`: `Checked 3518 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- Direct, at load 9.2: `step.test.ts`, `step-install-refresh.test.ts`, `test/keys/install-refresh.test.ts`, `install-wait.test.ts`, `reinstall.test.ts`, `runner-work.test.ts`, `test/keys/key-format.test.ts`: 7 files, 74 tests passed (no key-format raise). `admission-runner-work.test.ts`, `runner-part-bound.test.ts`: 2 files, 4 tests passed.
+- Model test once, at load 9.6 to 10.3 on 24 CPUs: 8 of 8 passed; duration 17.7 s, wall 18.1 s.
+- `squeal status --wait 60000 src/core/scheduler/scheduler.ts test/scheduler/step-install-refresh.test.ts` at revision 50 (`424bbea79`): 598 test files selected, each with a current result; 4 known failures, the committed bundles differing from the build (`plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`), as before: no build in this repair. The new test went FAIL to PASS in Squeal's runs at revisions 46 and 50.
