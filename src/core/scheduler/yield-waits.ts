@@ -17,12 +17,13 @@ import { type RankedFile, startsSooner } from "./yield-view.js";
 /**
  * What reading what waits for a tier would have written, in the order it
  * read it, for `TierYields` to write (review 0.1.514 B1): a claim of `key`
- * read at the decision's reading (`Claims.holds`: its first sight, the
- * waiting flag, or its end), and the focused entries read (`FocusedEntries.
- * waiting`: the waiting ones past their deadline go).
+ * read at the decision's reading, with the store's fact then, `claimed`
+ * (`Claims.record`, row 011-361: its first sight, the waiting flag, or its
+ * end), and the focused entries read (`FocusedEntries.waiting`: the
+ * waiting ones past their deadline go).
  */
 export type Bookkeeping =
-  | { readonly kind: "claim"; readonly key: CheckKey }
+  | { readonly kind: "claim"; readonly key: CheckKey; readonly claimed: boolean }
   | { readonly kind: "focused" };
 
 /**
@@ -107,8 +108,8 @@ export function waitedFor(
       named = true;
       return false;
     }
-    const { claim, asked } = readClaim(context, ledger, ref);
-    if (asked !== null) notes.push({ kind: "claim", key: asked });
+    const { claim, asked, claimed } = readClaim(context, ledger, ref);
+    if (asked !== null) notes.push({ kind: "claim", key: asked, claimed });
     later ||= claim !== "free";
     return claim === "free";
   };
