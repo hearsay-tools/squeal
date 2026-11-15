@@ -171,7 +171,7 @@ describe("one clock reading decides a tier's yield (spec 011 C4 step 5, row 011-
     const decided = nextCheck(side, clock);
     await side.scheduler.promote([p], 60_000);
     expect(decided.standings).toEqual([{ kind: "named" }]);
-    // The decisions' one reading, and the row's own `at`.
-    expect(decided.readsBeforeRow).toBe(2);
+    // Row 011-366: the decisions and the row's `at` take the step's one reading, read before the check.
+    expect(decided.readsBeforeRow).toBe(0);
   });
 });
