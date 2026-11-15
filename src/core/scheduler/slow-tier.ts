@@ -183,10 +183,18 @@ export class SlowTier {
     readonly group: string = SLOW_GROUP,
   ) {
     const wakes = host.wakes ?? new Wakes(hostClock(host.now));
-    // The configured lanes in the order they were made, the policy's; the default `slow` last.
+    // The default `slow` lane last; `GroupTiers` ranks the configured ones in the policy's order.
     this.#wake = wakes.slot("slow-lane", () => host.pump(), {
-      rank: group === SLOW_GROUP ? 1 : 0,
+      rank: group === SLOW_GROUP ? Number.MAX_SAFE_INTEGER : 0,
     });
+  }
+
+  /**
+   * This lane's place among the configured lanes in a wake pass: its
+   * group's index in the policy in force (review 0.1.513 B3). Its wake stays.
+   */
+  ranked(index: number): void {
+    if (this.group !== SLOW_GROUP) this.#wake.rank = index;
   }
 
   /** The group under the policy in force; `null` once a reload dropped it. */

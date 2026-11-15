@@ -58,6 +58,10 @@ export class GroupTiers {
     for (const name of names) {
       if (!this.#configured.has(name)) this.#configured.set(name, this.make(name));
     }
+    // Review 0.1.513 B3: lanes due at one time wake in this policy's order, kept and new alike.
+    [...names].forEach((name, index) => {
+      this.#configured.get(name)?.ranked(index);
+    });
   }
 
   /** Some lane has an open request. */
