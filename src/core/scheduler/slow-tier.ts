@@ -76,6 +76,8 @@ export interface LaneEnd extends LaneState {
 export interface LaneView extends LaneEnd {
   /** The step's one clock reading. */
   readonly at: EpochMs;
+  /** Names the part of the turn the lane is in, for a lock watcher (`Mutex.relabel`). */
+  doing(operation: string): void;
 }
 
 /**
@@ -305,6 +307,8 @@ export class SlowTier {
    */
   decide(view: LaneView, fly: (run: SlowRun) => void): LaneDecision {
     this.#endDeferral(view.at);
+    // The texts of the lane's two lock turns before row 011-357, which `squeal run <group>` prints.
+    view.doing(`listing the queued files of group ${this.group}`);
     const refs = this.#candidates(view);
     const dir = this.#slotDir();
     const group = this.#resolved(view.context);
@@ -312,6 +316,7 @@ export class SlowTier {
       this.#unmark(dir, view.context.worktreeId);
       return "none";
     }
+    view.doing(`selecting a tier of group ${this.group}`);
     const guard = this.#guardOf(view, dir, group, refs);
     if (guard === DEFERRED) return DEFERRED;
     if (guard === "held") return this.#waitAtSlot(view, dir, false);

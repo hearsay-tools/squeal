@@ -1143,7 +1143,7 @@ class TierScheduler implements Scheduler {
         let reads: Reads = {};
         for (;;) {
           // Row 011-126: the step's lookups and a tier's start wait a slice on a busy store.
-          const decided = await this.#runSliced(() => this.#step(reads), "selecting the next tier");
+          const decided = await this.#runSliced(() => this.#step(reads), STEP_OPERATION);
           if (decided.selected && decided.error === null) this.#busy?.landed();
           for (const decision of decided.decisions)
             if (placeOf(decision) === "after")
@@ -1249,8 +1249,11 @@ class TierScheduler implements Scheduler {
     askLane: (group, at, fly) => {
       const { context, ledger } = this.#started();
       const lane = this.#groups.get(group);
-      const view = { at, context, ledger, admit: () => this.#admit() };
+      const doing = (operation: string) => this.#lock.relabel(operation);
+      const view = { at, context, ledger, admit: () => this.#admit(), doing };
       const decided = lane === undefined ? "none" : lane.decide(view, fly);
+      // Row 011-357: the step's turn goes on after the lane under its own text.
+      this.#lock.relabel(STEP_OPERATION);
       // A lane its decision left idle (a load guard's wait that ended) counts toward its close.
       this.#slowRelease.arm();
       return decided;
@@ -1747,6 +1750,9 @@ class TierScheduler implements Scheduler {
 
 /** The event of the pump's end step (row 011-356). */
 const PUMP_ENDED: SchedulerEvent = { kind: "pump-ended" };
+
+/** What the pump's step does in its lock turn, for a lock watcher (row 011-302). */
+const STEP_OPERATION = "selecting the next tier";
 
 /** The end of a carry-out switch: a decision kind no case places does not compile. */
 function unplaced(decision: never): never {
