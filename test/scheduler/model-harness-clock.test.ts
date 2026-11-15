@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { CrossingClock, virtualClock } from "../helpers/virtual-clock.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
@@ -64,6 +65,53 @@ describe("the virtual clock of the model test and the harnesses (row 011-353)", 
     clock.cross(0, 1_000);
     clock.uncross();
     expect(clock.now()).toBe(start + 60_000);
+  });
+
+  it("a jump inside a timer an advance fires stays; the timers it passes fire once the host turns (review 011-353 B1)", async () => {
+    const clock = virtualClock(0, { prompt: true });
+    const fired: [string, number][] = [];
+    clock.arm(10, () => {
+      fired.push(["a", clock.now()]);
+      clock.jump(60_000);
+    });
+    clock.arm(30, () => fired.push(["b", clock.now()]));
+    clock.advance(10);
+    expect(clock.now()).toBe(60_010);
+    expect(fired).toEqual([["a", 10]]);
+    await turn();
+    expect(fired).toEqual([
+      ["a", 10],
+      ["b", 60_010],
+    ]);
+    expect(clock.now()).toBe(60_010);
+  });
+
+  it("a crossing read inside a wake stays, the wake it makes due fires, and the loop rests (review 011-353 B1)", async () => {
+    const clock = new CrossingClock();
+    const start = clock.raw();
+    const loop = new Wakes(clock);
+    const fired: [string, number, number][] = [];
+    loop
+      .slot("yield-bound", (at) => {
+        fired.push(["first", at - start, clock.now() - start]);
+      })
+      .at(start + 10);
+    loop
+      .slot("slot-gather", (at) => {
+        fired.push(["second", at - start, clock.raw() - start]);
+      })
+      .at(start + 30);
+    clock.cross(1, 60_000);
+    clock.advance(10);
+    const rest = await loop.rest();
+    expect(fired).toEqual([
+      ["first", 10, 60_010],
+      ["second", 60_010, 60_010],
+    ]);
+    expect(clock.raw() - start).toBe(60_010);
+    expect(rest.next).toBeNull();
+    expect(clock.armed).toBe(0);
+    loop.close();
   });
 
   it('a catch-up side with clock: "virtual" reads the virtual clock and rests after its baseline', async () => {

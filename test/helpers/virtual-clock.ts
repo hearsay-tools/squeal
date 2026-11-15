@@ -17,7 +17,10 @@ interface Armed {
 }
 
 export interface VirtualClock extends Clock {
-  /** Moves time `ms` forward (at least 0), firing each timer due on the way, at its own time. */
+  /**
+   * Moves time `ms` forward (at least 0), firing each timer due on the way,
+   * at its own time. A `jump` a timer makes stays: time ends at the later.
+   */
   advance(ms: number): void;
   /**
    * Row 011-353: moves time `ms` forward (at least 0) and fires nothing now,
@@ -57,7 +60,8 @@ export function virtualClock(start: EpochMs = 0, options: VirtualClockOptions = 
       now = Math.max(now, due.at);
       due.fire();
     }
-    now = until;
+    // A `jump` inside a timer stays (review 011-353 B1); the timers it passed fire once the host turns.
+    now = Math.max(now, until);
   };
   /** With `prompt`, fires what is due once the host turns. */
   const soon = (): void => {
