@@ -220,10 +220,16 @@ const probeDiskFacts: Rule = ({ reads }, out) => {
   return undefined;
 };
 
+/**
+ * The step that reads the re-walk's answer: its iteration planned and asked
+ * the lanes before it asked for the re-walk, so it plans nothing again.
+ */
+const rewalkRead = (reads: Reads | null) => reads?.rewalk !== undefined;
+
 /** Admission, then the tier plan and its act step, in this lock turn (rows 011-340, 011-346). */
 const startFastTier: Rule = (turn, out) => {
   const { ports, reads } = turn;
-  if (out.held) return undefined;
+  if (out.held || rewalkRead(reads)) return undefined;
   out.selected = true;
   const admitted = ports.admit();
   const fast = admitted.fast;
@@ -257,7 +263,7 @@ const startFastTier: Rule = (turn, out) => {
  * D3, review 0.1.396 B1).
  */
 const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
-  if (out.held) return undefined;
+  if (out.held || rewalkRead(reads)) return undefined;
   const stamp = reads?.install?.stamp ?? "";
   for (const group of ports.admit().ask) {
     const decided = ports.askLane(group, at, (run) => {

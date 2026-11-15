@@ -333,6 +333,14 @@ describe("the scheduler step (row 011-356)", () => {
       }
     });
 
+    it("the step that reads the re-walk's answer plans nothing and asks no lane again", () => {
+      const t = { facts: groups("a"), starts: [tier("r1")] };
+      for (const rewalk of [true, false]) {
+        const s = run(t, { ...ALL, rewalk });
+        expect([s.kinds, s.log]).toEqual([[], []]);
+      }
+    });
+
     it("a lane's decision that throws ends the step with its error", () => {
       const s = run({ facts: groups("a"), throws: "askLane" });
       expect([s.kinds, s.wake, String(s.error)]).toEqual([
