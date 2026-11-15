@@ -20,7 +20,7 @@ import {
   storeClosures,
   toInvalidatedPath,
 } from "./revision.js";
-import { RunnerPartBound, runnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
+import { runnerPartBound } from "./runner-work-bound.js";
 import { affectedAsk, askAffected } from "./stored-affected.js";
 
 /**
@@ -96,9 +96,7 @@ export async function fetchRunnerPart(
   rechecked?: readonly ProjectName[],
 ): Promise<RunnerPart> {
   const { keys, runner } = context;
-  const bound = new RunnerPartBound(
-    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
-  );
+  const bound = runnerPartBound(context);
   const changes = revision.changes;
   const paths = changes.map((c) => c.path);
   const structural = changes.some((c) => c.oldHash === null || c.newHash === null);

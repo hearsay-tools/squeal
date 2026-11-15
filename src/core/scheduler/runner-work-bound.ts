@@ -77,7 +77,12 @@ export class RunnerPartBound {
       reject(new Error(this.#abandoned));
     });
     wake.at((this.#now() + this.ms) as EpochMs);
-    return Promise.race([answer, abandoned]).finally(() => wake.drop());
+    // The runner works on its own meanwhile; the scheduler waits for the answer or this wake (row 011-362).
+    const waited = this.#wakes.waitFor(
+      { for: "wake", reason: "runner-part-bound" },
+      Promise.race([answer, abandoned]),
+    );
+    return waited.finally(() => wake.drop());
   }
 }
 

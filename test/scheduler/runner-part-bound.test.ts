@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { CLAIM_UNBOUNDED_MS } from "../../src/core/scheduler/claims.js";
 import {
@@ -10,6 +11,7 @@ import type { DaemonNote } from "../../src/core/types/scheduler.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { virtualClock } from "../helpers/virtual-clock.js";
+import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
@@ -120,4 +122,60 @@ describe("RunnerPartBound (task 001-228)", () => {
     late(new Error("vitest adapter: closed"));
     await Promise.resolve();
   });
+});
+
+/** Whether `promise` settles within `ms` of real time. */
+async function settles<T>(promise: Promise<T>, ms: number): Promise<T | "unsettled"> {
+  return Promise.race([promise, delay(ms).then(() => "unsettled" as const)]);
+}
+
+describe("a revision's runner part arms its bound on the scheduler's loop (row 011-362)", () => {
+  it(
+    "on the virtual clock, rest reports the bound's wake and advancing past it abandons the call",
+    SLOW,
+    async () => {
+      const files = [{ path: "test/a.test.ts", ms: 1, imports: ["src/a.ts"] }];
+      const repo = catchUpRepo(files);
+      // A bound of a minute: on the host clock it cannot fire while the test runs.
+      const side = catchUpSide(repo, repo.main, {
+        files,
+        hostSlots: 2,
+        policy: RUN_MISSING,
+        clock: "virtual",
+        runnerPartMs: 60_000,
+      });
+      await side.scheduler.start();
+      await side.rest();
+
+      let release = () => {};
+      onTestFinished(() => release());
+      const invalidate = side.runner.invalidate;
+      side.runner.invalidate = async () => {
+        side.runner.invalidate = invalidate;
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return invalidate();
+      };
+      await side.edit("watch", "src/a.ts");
+      const stated = side.now() + 60_000;
+
+      // The stalled call waits for the loop's wake, so the scheduler rests and names it.
+      const rest = await settles(side.rest(), 5_000);
+      expect(rest).not.toBe("unsettled");
+      expect(rest === "unsettled" ? [] : rest.wakes).toContainEqual({
+        reason: "runner-part-bound",
+        at: stated,
+      });
+
+      side.advance(60_000);
+      const after = await side.rest();
+      expect(after.wakes.map((wake) => wake.reason)).not.toContain("runner-part-bound");
+      const raw = side.store.meta.get(worktreeMetaKey("notes", side.worktreeId));
+      const texts = raw === null ? [] : (JSON.parse(raw) as DaemonNote[]).map((n) => n.text);
+      expect(texts).toContainEqual(
+        expect.stringMatching(/^runner invalidate \(src\/a\.ts\) failed: no answer within 60 s;/),
+      );
+    },
+  );
 });
