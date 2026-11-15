@@ -77,3 +77,72 @@ export type SchedulerEventKind = SchedulerEvent["kind"];
 export function wakeRank(reason: WakeReason): number {
   return WAKE_ORDER.indexOf(reason);
 }
+
+/*
+ * Row 011-356 (card 7, decision 3, "The step's interface"): what a step
+ * decides, from a closed list. `DECISION_PLACE` places each kind in the
+ * step's lock turn or after it: a kind with no place does not compile, and
+ * the carry-out switches end in an exhaustive check.
+ */
+
+/** Where a decision is carried out: in the step's lock turn, as the step makes it, or after the turn. */
+export type DecisionPlace = "turn" | "after";
+
+/**
+ * What a scheduler step returns for the loop to carry out (`GLOSSARY.md`,
+ * "Scheduler decision"). `T` is the tier, `Y` the yield check's answer, `I`
+ * the fast plan's idle answer: the step names them only through its ports.
+ */
+export type StepDecision<T = unknown, Y = unknown, I = unknown> =
+  /** Fly `tier`, started on the admission of lock turn `turn` with the install stamp `stamp`. */
+  | { readonly kind: "start-tier"; readonly tier: T; readonly stamp: string; readonly turn: number }
+  /** Cancel `tier` for `cause` (C4 step 5, row 011-56). */
+  | { readonly kind: "stop-tier"; readonly tier: T; readonly cause: string }
+  /** Apply the yield check's answer at `at`: marks, standings, history, bounds, the `yields` row. */
+  | { readonly kind: "write-yield-row"; readonly at: number; readonly decided: Y }
+  /** The install went under this scheduler (task 001-113): it stores nothing more. */
+  | { readonly kind: "reinstall" }
+  /** Apply the queued runner work beside the tiers in flight. */
+  | { readonly kind: "drain" }
+  /** Read the install stamp: the next step's `reads.install`. */
+  | { readonly kind: "read-install" }
+  /** Read the start facts on disk (runtime folder, merge hold): the next step's `reads.probe`. */
+  | { readonly kind: "read-probe" }
+  /** The install changed under the scheduler: refresh the keys it moved (task 001-109). */
+  | { readonly kind: "refresh-install" }
+  /** A merge hold ended: reconcile the paths it released before any tier (row 011-72). */
+  | { readonly kind: "reconcile" }
+  /** Close the runner instance of each of `lanes`, idle on a hold (row 011-211). */
+  | { readonly kind: "close-lanes"; readonly lanes: readonly string[] }
+  /**
+   * Until row 011-357, the temporary async decision: ask each slow lane in
+   * order with the install stamp `stamp`; the answer, with the fast plan's
+   * `idle` answer (`null`: no plan ran), is the next step's `reads.lanes`.
+   */
+  | { readonly kind: "ask-lanes"; readonly stamp: string; readonly idle: I | null }
+  /** Queue the import re-walk's next chunk (row 015-117): the next step's `reads.rewalk`. */
+  | { readonly kind: "queue-rewalk" };
+
+/** One entry of `StepDecision`'s kinds. */
+export type StepDecisionKind = StepDecision["kind"];
+
+/** Where each decision kind is carried out. */
+export const DECISION_PLACE = {
+  "start-tier": "turn",
+  "stop-tier": "turn",
+  "write-yield-row": "turn",
+  reinstall: "turn",
+  drain: "after",
+  "read-install": "after",
+  "read-probe": "after",
+  "refresh-install": "after",
+  reconcile: "after",
+  "close-lanes": "after",
+  "ask-lanes": "after",
+  "queue-rewalk": "after",
+} as const satisfies Record<StepDecisionKind, DecisionPlace>;
+
+/** Where `decision` is carried out. */
+export function placeOf(decision: StepDecision): DecisionPlace {
+  return DECISION_PLACE[decision.kind];
+}
