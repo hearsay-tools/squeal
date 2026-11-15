@@ -129,13 +129,18 @@ export function harnessClock(
 
 /**
  * Row 011-353 (the model test's clock, row 011-195): a prompt virtual clock
- * from the host's time now. `cross` moves it after `reads` more readings
+ * from the host's time at its first reading. `cross` moves it after `reads` more readings
  * of `now`, as a host's clock that passes a deadline inside one decision
  * does; the timers that passes fire once the host turns. As a scheduler's
  * `now` alone it stands still but for `advance` and `cross`.
  */
 export class CrossingClock implements VirtualClock {
-  readonly #clock = virtualClock(Date.now(), { prompt: true });
+  #made: VirtualClock | null = null;
+  /** Made at the first use: a fixture's setup before it is no time on the clock. */
+  get #clock(): VirtualClock {
+    this.#made ??= virtualClock(Date.now(), { prompt: true });
+    return this.#made;
+  }
   #left = Number.POSITIVE_INFINITY;
   #jump = 0;
   /** The armed jump came. */
