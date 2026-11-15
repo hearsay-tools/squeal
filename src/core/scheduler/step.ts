@@ -58,6 +58,10 @@ export interface StepPorts {
   admit(): Admission;
   /** A tier's error stopped the pump until the next batch or request. */
   stalled(): boolean;
+  /** The pump was asked for while it ran (`#asked`): a stalled pump runs again. */
+  asked(): boolean;
+  /** A write gave up on a busy store and none of the pump's landed since (`BusyResume.waiting`). */
+  busyWaiting(): boolean;
   /** Runner work queued, and whether it is being applied. */
   runnerWork(): { readonly queued: number; readonly draining: boolean };
   /** Which tier in flight an event names, and whether it stands `named` (`yieldReach`). */
@@ -134,6 +138,21 @@ class Out {
 
 /** A rule: the next wake when it ends the step, else `undefined` and the next rule goes on. */
 type Rule = (turn: Turn, out: Out) => NextWake | undefined;
+
+/**
+ * The pump's loop ended (its flights and drain too): its note, then, read
+ * after it (a daemon may close on it), whether it runs again: not halted,
+ * asked or not stalled, and work left or a busy store's wait to end.
+ */
+const pumpEnded: Rule = ({ events, ports }, out) => {
+  if (!events.some((event) => event.kind === "pump-ended")) return undefined;
+  const { halts } = ports.admit();
+  if (halts.has("reinstalled")) out.decide({ kind: "tell", note: "reinstalled" });
+  else if (halts.has("runtime-gone")) out.decide({ kind: "tell", note: "runtime-gone" });
+  const rearm = ports.admit();
+  const work = rearm.hasWork || ports.busyWaiting();
+  return !rearm.halted && (!ports.stalled() || ports.asked()) && work ? AGAIN : END;
+};
 
 /** Whether `events` reach the yield check, and how (row 011-354's `yieldReach`): one check. */
 function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
@@ -264,6 +283,7 @@ const idleAnswer: Rule = ({ at, events, reads, ports }, out) => {
 
 /** The rules, in the written order (`research/scheduler-step.md`, "The step's interface"). */
 const RULES: readonly Rule[] = [
+  pumpEnded,
   yieldCheck,
   inTurnEnds,
   stallHolds,
