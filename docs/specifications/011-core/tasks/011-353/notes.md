@@ -55,3 +55,15 @@ What the virtual clock changes in meaning:
 
 - Other test files can move to `clock: "virtual"` with `await h.rest()` in place of polls and real sleeps. Keep `prompt` on: without it, `rest()` can hang on a due wake.
 - `rest()` counts a held run as rest only once the repair lands. Until then, a test that holds a run cannot settle with it.
+
+## Repair after review 011-353
+
+Review `reviews/011-353.md` (0554666) found B1. `virtualClock.advance` captured its end time before it fired timers and then set the time back to it. A `jump` made inside a fired timer, such as a `CrossingClock` crossing read in a wake, was lost: time went back, the wake that the crossing made due could not fire on the prompt turn, and `rest()` stayed pending.
+
+- Fix (`test/helpers/virtual-clock.ts`): `advance` ends at `max(now, until)`, so a jump inside a timer stays. A timer the jump passes still fires only once the host turns, not inside the `advance`.
+- Regression cases (`model-harness-clock.test.ts`), each first seen failing on 562a5cb6e:
+  - A plain prompt clock with a jump inside a timer. It ended at +10 instead of +60010.
+  - The review's reproduction with `Wakes`: the first wake at +10 crosses +60000, and the second wake at +30 becomes due. It timed out in 5 s. Now the second wake fires at +60010, `rest()` resolves with no next wake, and no timer stays armed.
+- Checks on 59393ef97:
+  - `model-harness-clock.test.ts`, `clock-port.test.ts` and `wakes.test.ts` (direct run): 37 of 37 pass.
+  - Model test: 7 of 7 pass. Vitest duration 15.6 s; wall time 16.2 s; one-minute load 11.3 at the start and 10.6 at the end, on 24 CPUs. The plans, seeds, sweeps and checks A to G are unchanged.
