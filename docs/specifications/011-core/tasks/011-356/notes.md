@@ -85,7 +85,15 @@ Line 2 is the guard of `#pump()`'s entry: a halted or unstarted scheduler starts
 
 ## Checks
 
-See the final section, "Checks run", written at the end of the row.
+On `8bf7a3b3d` (rebased onto origin/main `8b6a9465d`, 0.1.514 landed; no code change from the rebase, `git diff ORIG_HEAD HEAD -- src test` empty). No `pnpm run build`, no full suite, no `squeal run --all`.
+
+- `pnpm run lint`: `Checked 3523 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- Direct, `env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run test/scheduler test/keys/key-format.test.ts test/keys/validity --maxWorkers=6` after the rebase onto the candidate, at one-minute load 43 rising to 50 on 24 CPUs: 316 of 318 files passed. The 2 failures (`clock-port.test.ts` "a clock that went back gives none back", 10.7 s; `tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key") passed alone right after (21 of 21) and in Squeal's run. Earlier runs of `test/scheduler` at load 6 to 11: 307 of 307 files twice.
+- `test/keys/key-format.test.ts`, `validity/compare`, `validity/reach`: pass, no `KEY_FORMAT_VERSION` raise.
+- Model test, `/usr/bin/time ... vitest run test/scheduler/model-scheduler.test.ts`: 8 of 8 passed (A to G and S). Vitest duration 14.9 s, wall 15.3 s, one-minute load 6.9 at the start and 6.7 at the end. 011-353's last figure: 15.6 s duration, 16.2 s wall at load 11; before 011-353, 18 to 30 s.
+- `squeal status --wait 60000` over the 10 changed `src/` and `test/` paths at revision 44: 1304 test files selected, each with a current result. 4 known failures, all the committed bundles differing from the build (`test/harness/plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: `cli/squeal.mjs differs from the build`). Expected: the brief forbids `pnpm run build`. 7 test files of the worktree are unknown, outside the selection.
+- `runner-part-bound.test.ts` "abandons a stalled invalidate past its bound" failed once in Squeal's run at load 1.68 per CPU (`expected 0 to be greater than 0`, line 71: no file unknown after the abandoned call). It passed 3 of 3 alone at load about 10, passed in the direct folder runs, and Squeal's retry (reason load) passed. Squeal lists an earlier flake of this test at another key (2026-11-04, the opposite count). Named here because it is timing-sensitive and this row adds lock turns.
+- Not run: `test/e2e/**` (excluded by `squeal.config.json`; it runs the committed bundles, which this row does not rebuild).
 
 ## For 011-357
 
