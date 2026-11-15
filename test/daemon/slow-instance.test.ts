@@ -193,7 +193,8 @@ describe("withSlowInstance (spec 004 D2, task 004-18)", () => {
         10,
       );
       release.opened("slow:vitest");
-      release.arm();
+      // The slow run ended now: the lane counts from it, as the scheduler tells it.
+      release.ended("slow:vitest");
       await expect.poll(() => entered).toBe(true);
 
       // The daemon's order: the scheduler's close, then the runner's.
@@ -317,7 +318,8 @@ describe("an instance per group lane (spec 019 D3, row 019-12)", () => {
     );
     release.opened("slow:vitest");
     release.opened("group:e2e:vitest");
-    release.arm();
+    release.ended("slow:vitest");
+    release.ended("group:e2e:vitest");
     await expect
       .poll(() => log.filter((line) => line.endsWith(" close")).sort())
       .toEqual(["group:e2e:vitest#1 close", "slow:vitest#1 close"]);
