@@ -1,7 +1,7 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import type { EpochMs } from "../types/common.js";
-import { elapsed, hostNow } from "./clock.js";
+import { elapsed, hostClock, hostNow } from "./clock.js";
 import type { Mutex } from "./mutex.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * How long a record of slots waits at least for the slots that end
@@ -32,6 +32,8 @@ export interface SlotRecordsOptions<E, R> {
   commit(): void;
   /** The clock a commit's time is read on (row 011-351); default the host's (`hostNow`). */
   readonly now?: () => EpochMs;
+  /** The scheduler's wake loop, which ends a gather (row 011-352); absent, a loop of its own over `now`. */
+  readonly wakes?: Wakes | undefined;
 }
 
 /**
@@ -53,10 +55,17 @@ export class SlotRecords<E, R> {
   readonly #ended: EndedSlot<E, R>[] = [];
   /** The wait of the next record, while one is open. */
   #gathering: Promise<void> | null = null;
+  /** Ends the open wait: the gather's wake (row 011-352). */
+  #gathered: (() => void) | null = null;
+  readonly #wake: WakeSlot;
+  readonly #now: () => EpochMs;
   #commitMs = 0;
 
   constructor(options: SlotRecordsOptions<E, R>) {
     this.#options = options;
+    this.#now = options.now ?? hostNow;
+    const wakes = options.wakes ?? new Wakes(hostClock(options.now));
+    this.#wake = wakes.slot("slot-gather", () => this.#gathered?.());
   }
 
   /** Records the slot whose run ended, `ended` its reads outside the lock. */
@@ -69,10 +78,7 @@ export class SlotRecords<E, R> {
     // A record may fail this slot while it still awaits a later slot's reads, before this call
     // returns `outcome`: handled here, so Node does not exit on it (review wave-4 slice 2, B1).
     outcome.catch(() => {});
-    const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-    this.#gathering ??= sleep(gather).then(() => {
-      this.#gathering = null;
-    });
+    this.#gathering ??= this.#gather();
     await this.#gathering;
     await this.#options.lock.run(async () => {
       const recorded: { slot: EndedSlot<E, R>; record: R }[] = [];
@@ -84,7 +90,7 @@ export class SlotRecords<E, R> {
         }
       }
       if (recorded.length === 0) return;
-      const now = this.#options.now ?? hostNow;
+      const now = this.#now;
       const started = now();
       try {
         this.#options.commit();
@@ -96,5 +102,18 @@ export class SlotRecords<E, R> {
       for (const { slot, record } of recorded) slot.resolve(record);
     }, "recording the results of backlog slots");
     return outcome;
+  }
+
+  /** The record's wait: `SLOT_GATHER_COMMITS` times the last commit, at least `SLOT_GATHER_MS`. */
+  #gather(): Promise<void> {
+    const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
+    return new Promise<void>((resolve) => {
+      this.#gathered = () => {
+        this.#gathering = null;
+        this.#gathered = null;
+        resolve();
+      };
+      this.#wake.at((this.#now() + gather) as EpochMs);
+    });
   }
 }

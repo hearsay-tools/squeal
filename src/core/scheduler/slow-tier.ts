@@ -17,7 +17,7 @@ import type { SlowTierActivity } from "../types/status.js";
 import type { Admission, LaneAnswer } from "./admission.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
-import { elapsed, hostNow } from "./clock.js";
+import { elapsed, hostClock, hostNow } from "./clock.js";
 import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -35,6 +35,7 @@ import type { SlowTierOptions } from "./options.js";
 import { groupView } from "./slow.js";
 import { momentHolds, quietLeftMs } from "./slow-trigger.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * Spec 004 D2, D3: the longest a pending slow file waits for the slot, or for
@@ -67,6 +68,8 @@ export interface SlowHost {
   admit(): Admission;
   /** The scheduler's clock (row 011-351); absent, the host's (`hostNow`). */
   readonly now?: () => EpochMs;
+  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
+  readonly wakes?: Wakes;
 }
 
 /**
@@ -157,9 +160,8 @@ export class SlowTier {
   /** When a slow run last ended (`ended`): a drain's wait counts from it (row 011-163). */
   #endedAt: EpochMs | null = null;
   #slotNoted = false;
-  #timer: NodeJS.Timeout | null = null;
-  /** When `#timer` fires, so an earlier deadline replaces it. */
-  #timerAt = 0;
+  /** Row 011-352: this lane's wake in the scheduler's loop; an earlier deadline replaces a later one. */
+  readonly #wake: WakeSlot;
   /**
    * While the load guard holds the lane: when its wait began (the
    * scheduler's clock, `#now`), and the runner lane its files run in. The next
@@ -179,7 +181,13 @@ export class SlowTier {
     private readonly options: SlowTierOptions = {},
     /** The group this lane runs (spec 019 D3); default the default `slow` group. */
     readonly group: string = SLOW_GROUP,
-  ) {}
+  ) {
+    const wakes = host.wakes ?? new Wakes(hostClock(host.now));
+    // The configured lanes in the order they were made, the policy's; the default `slow` last.
+    this.#wake = wakes.slot("slow-lane", () => host.pump(), {
+      rank: group === SLOW_GROUP ? 1 : 0,
+    });
+  }
 
   /** The group under the policy in force; `null` once a reload dropped it. */
   #resolved(context: SchedulerContext): ResolvedGroup | null {
@@ -260,8 +268,7 @@ export class SlowTier {
   }
 
   close(): void {
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    this.#wake.drop();
     this.preempt();
   }
 
@@ -809,17 +816,7 @@ export class SlowTier {
    */
   #arm(ms: number = this.#recheckMs()): void {
     if (this.host.closed()) return;
-    const at = this.#now() + ms;
-    if (this.#timer !== null) {
-      if (this.#timerAt <= at) return;
-      clearTimeout(this.#timer);
-    }
-    this.#timerAt = at;
-    this.#timer = setTimeout(() => {
-      this.#timer = null;
-      this.host.pump();
-    }, ms);
-    this.#timer.unref();
+    this.#wake.atMost((this.#now() + ms) as EpochMs);
   }
 
   #now(): EpochMs {

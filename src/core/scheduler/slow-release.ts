@@ -1,4 +1,6 @@
 import type { EpochMs } from "../types/common.js";
+import { hostClock } from "./clock.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * Row 011-211: how long a slow lane's runner instance stays open while its
@@ -20,6 +22,8 @@ export interface SlowReleaseHost {
   endedAt?(): EpochMs | null;
   now(): EpochMs;
   closed(): boolean;
+  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
+  readonly wakes?: Wakes;
 }
 
 /**
@@ -42,14 +46,17 @@ export class SlowRelease {
   /** When each lane's last slow run ended (`ended`). */
   readonly #endedAt = new Map<string, EpochMs>();
   #selecting = false;
-  #timer: NodeJS.Timeout | null = null;
-  /** When `#timer` fires, so an earlier bound replaces it. */
-  #timerAt = 0;
+  readonly #wakes: Wakes;
+  /** The close's wake (row 011-352): an earlier bound replaces a later one. */
+  readonly #wake: WakeSlot;
 
   constructor(
     private readonly host: SlowReleaseHost,
     private readonly afterMs: number = SLOW_RELEASE_MS,
-  ) {}
+  ) {
+    this.#wakes = host.wakes ?? new Wakes(hostClock(() => host.now()));
+    this.#wake = this.#wakes.slot("slow-release", () => void this.#wakes.track(this.#due()));
+  }
 
   /** A slow tier starts in `lane`: its instance is open, or opens. */
   opened(lane: string): void {
@@ -90,25 +97,11 @@ export class SlowRelease {
     if (this.host.closed()) return;
     const dues = this.#idleLanes().map((lane) => this.#dueAt(lane));
     if (dues.length === 0) return;
-    const due = Math.min(...dues);
-    if (this.#timer !== null) {
-      if (this.#timerAt <= due) return;
-      clearTimeout(this.#timer);
-    }
-    this.#timerAt = due;
-    this.#timer = setTimeout(
-      () => {
-        this.#timer = null;
-        void this.#due();
-      },
-      Math.max(0, due - this.host.now()),
-    );
-    this.#timer.unref();
+    this.#wake.atMost(Math.min(...dues) as EpochMs);
   }
 
   close(): void {
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    this.#wake.clear();
   }
 
   /** The open lanes the host keeps no instance for (`SlowReleaseHost.lanes`). */

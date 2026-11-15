@@ -23,6 +23,7 @@ import { SlotRecords } from "./slot-records.js";
 import type { SlowRun } from "./slow-tier.js";
 import { type Moved, Withholds, withholdNote } from "./stability.js";
 import { recordTier, type Tier, type TierFile, unfinishedFiles } from "./tiers.js";
+import type { Wakes } from "./wakes.js";
 import type { WarmUp } from "./warm-up.js";
 import type { TierYields } from "./yields.js";
 
@@ -88,6 +89,8 @@ export interface RecordHost {
   runtimeMissing(): Promise<boolean>;
   /** A slow tier recorded (spec 004 D8). */
   slowEnded(): void;
+  /** The scheduler's wake loop, which ends a slot record's gather (row 011-352). */
+  readonly wakes?: Wakes;
 }
 
 /**
@@ -116,6 +119,7 @@ export class TierRecords {
       record: (ended) => this.#recordSlot(ended),
       commit: () => host.started().ledger.commit(),
       now: () => host.started().context.now(),
+      wakes: host.wakes,
     });
   }
 
