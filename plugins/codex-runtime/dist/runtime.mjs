@@ -8334,7 +8334,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.511";
+  if (true) return "0.1.512";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13632,6 +13632,9 @@ function groupLanesOf(tiers, ownerOf) {
   const byName = new Map((tiers ?? []).map((tier) => [tier.name, tier]));
   return (ref2) => byName.get(ownerOf(ref2)) ?? null;
 }
+
+// src/core/scheduler/clock.ts
+var MAX_TIMER_MS = 2 ** 31 - 1;
 
 // src/core/scheduler/claims.ts
 var CLAIM_GRACE_MS = 6e3;

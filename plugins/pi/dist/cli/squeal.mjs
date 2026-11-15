@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.511";
+  if (true) return "0.1.512";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14884,6 +14884,32 @@ var init_checkpoints = __esm({
   }
 });
 
+// src/core/scheduler/clock.ts
+function hostClock(now = hostNow) {
+  return {
+    now,
+    arm(ms2, fire) {
+      const timer = globalThis.setTimeout(fire, Math.min(Math.max(0, ms2), MAX_TIMER_MS));
+      timer.unref?.();
+      return () => globalThis.clearTimeout(timer);
+    }
+  };
+}
+function clockOf(options) {
+  return options.clock ?? hostClock(options.now);
+}
+function elapsed(earlier, later) {
+  return Math.max(0, later - earlier);
+}
+var MAX_TIMER_MS, hostNow;
+var init_clock = __esm({
+  "src/core/scheduler/clock.ts"() {
+    "use strict";
+    MAX_TIMER_MS = 2 ** 31 - 1;
+    hostNow = () => Date.now();
+  }
+});
+
 // src/core/scheduler/claims.ts
 import { setTimeout as delay } from "node:timers/promises";
 function claimBoundMs(timeoutMs) {
@@ -14915,14 +14941,14 @@ function stands(context, hits) {
   if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return true;
   return heldFailure(store, worktreeId, hits) === void 0;
 }
-async function claimWake(store, signal2) {
+async function claimWake(store, signal2, now = hostNow) {
   const before4 = changeMarker(store);
-  const until = performance.now() + CLAIM_RECHECK_MS;
+  const until = now() + CLAIM_RECHECK_MS;
   try {
-    while (performance.now() < until) {
+    while (now() < until) {
       await delay(CLAIM_POLL_MS, void 0, { signal: signal2 });
-      const now = changeMarker(store);
-      if (now?.others !== before4?.others || now?.own !== before4?.own) return;
+      const now2 = changeMarker(store);
+      if (now2?.others !== before4?.others || now2?.own !== before4?.own) return;
     }
   } catch (error) {
     if (!signal2.aborted) throw error;
@@ -14935,6 +14961,7 @@ var init_claims = __esm({
     init_heartbeat();
     init_inherited();
     init_store3();
+    init_clock();
     CLAIM_GRACE_MS = 6e3;
     CLAIM_UNBOUNDED_MS = 6e5;
     CLAIM_RECHECK_MS = 1e3;
@@ -15611,13 +15638,14 @@ var init_promotions = __esm({
   "src/core/scheduler/promotions.ts"() {
     "use strict";
     init_reverse_index();
+    init_clock();
     NO_FACTS = () => ({ key: null, answered: false });
     NO_KEYS = /* @__PURE__ */ new Map();
     NOT_RUNNING = () => false;
     Promotions = class {
       #promotions = [];
       #seq = 0;
-      #now = Date.now;
+      #now = hostNow;
       #isRunning = NOT_RUNNING;
       #publish = null;
       /**
@@ -25849,6 +25877,7 @@ var init_keying = __esm({
     init_environments();
     init_git2();
     init_linked_files();
+    init_clock();
     init_lockfiles();
     init_notes2();
     init_refused_observed();
@@ -26102,7 +26131,7 @@ var init_keying = __esm({
         const hashes = described.map((d) => d.hash).join("\n");
         if (hashes === this.#recordedEnvironments) return;
         const { store, worktreeId } = this.options;
-        recordWorktreeEnvironments(store, worktreeId, described, Date.now());
+        recordWorktreeEnvironments(store, worktreeId, described, (this.options.now ?? hostNow)());
         this.#recordedEnvironments = hashes;
       }
       /**
@@ -56604,6 +56633,7 @@ var Mutex;
 var init_mutex = __esm({
   "src/core/scheduler/mutex.ts"() {
     "use strict";
+    init_clock();
     Mutex = class {
       #tail = Promise.resolve();
       #holder = null;
@@ -56611,7 +56641,7 @@ var init_mutex = __esm({
       #watchers = /* @__PURE__ */ new Set();
       #now;
       #free = () => this.#hold(null);
-      constructor(now = Date.now) {
+      constructor(now = hostNow) {
         this.#now = now;
       }
       /** `task` once the tasks before it settled; `operation` says what it does, for a watcher. */
@@ -56908,6 +56938,7 @@ var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
 var init_slot_records = __esm({
   "src/core/scheduler/slot-records.ts"() {
     "use strict";
+    init_clock();
     SLOT_GATHER_MS = 25;
     SLOT_GATHER_COMMITS = 3;
     SlotRecords = class {
@@ -56943,10 +56974,11 @@ var init_slot_records = __esm({
             }
           }
           if (recorded2.length === 0) return;
-          const started2 = performance.now();
+          const now = this.#options.now ?? hostNow;
+          const started2 = now();
           try {
             this.#options.commit();
-            this.#commitMs = performance.now() - started2;
+            this.#commitMs = elapsed(started2, now());
           } catch (error) {
             for (const { slot: slot2 } of recorded2) slot2.reject(error);
             return;
@@ -56989,7 +57021,8 @@ var init_record2 = __esm({
         this.#slots = new SlotRecords({
           lock: host.lock,
           record: (ended2) => this.#recordSlot(ended2),
-          commit: () => host.started().ledger.commit()
+          commit: () => host.started().ledger.commit(),
+          now: () => host.started().context.now()
         });
       }
       /**
@@ -57584,6 +57617,7 @@ var init_slow_tier = __esm({
     init_scheduler();
     init_capacity();
     init_claims();
+    init_clock();
     init_commit_asks();
     init_context();
     init_files();
@@ -57634,8 +57668,8 @@ var init_slow_tier = __esm({
       /** When `#timer` fires, so an earlier deadline replaces it. */
       #timerAt = 0;
       /**
-       * While the load guard holds the lane: when its wait began
-       * (`performance.now`), and the runner lane its files run in. The next
+       * While the load guard holds the lane: when its wait began (the
+       * scheduler's clock, `#now`), and the runner lane its files run in. The next
        * `next` or a `preempt` ends the wait and takes its time off the budget.
        */
       #deferred = null;
@@ -57712,7 +57746,7 @@ var init_slow_tier = __esm({
         if (deferred === null) return;
         this.#deferred = null;
         if (this.#budgetMs === null) return;
-        this.#budgetMs = Math.max(0, this.#budgetMs - (performance.now() - deferred.from));
+        this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, this.#now()));
       }
       close() {
         if (this.#timer !== null) clearTimeout(this.#timer);
@@ -57983,7 +58017,7 @@ var init_slow_tier = __esm({
         if (budget2 <= 0) return { ranUnderLoad: load, idle: false };
         const permits = group.limits.maxParallel;
         if (permits !== null && slowSlotHeld({ dir: dir2, permits, group: this.group })) return "held";
-        this.#deferred = { from: performance.now(), lane };
+        this.#deferred = { from: this.#now(), lane };
         this.#publish({ kind: "waiting", for: "load" });
         this.#arm(Math.min(this.#recheckMs(), budget2));
         return DEFERRED2;
@@ -58161,7 +58195,7 @@ var init_slow_tier = __esm({
        */
       #arm(ms2 = this.#recheckMs()) {
         if (this.host.closed()) return;
-        const at2 = performance.now() + ms2;
+        const at2 = this.#now() + ms2;
         if (this.#timer !== null) {
           if (this.#timerAt <= at2) return;
           clearTimeout(this.#timer);
@@ -58172,6 +58206,9 @@ var init_slow_tier = __esm({
           this.host.pump();
         }, ms2);
         this.#timer.unref();
+      }
+      #now() {
+        return (this.host.now ?? hostNow)();
       }
       #recheckMs() {
         return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
@@ -59046,6 +59083,7 @@ var init_scheduler2 = __esm({
     init_capacity();
     init_checkpoint_requests();
     init_claims();
+    init_clock();
     init_command_hold();
     init_commit_moment();
     init_context();
@@ -59088,13 +59126,14 @@ var init_scheduler2 = __esm({
     TierScheduler = class {
       constructor(options) {
         this.options = options;
+        this.#clock = clockOf(options);
         this.#install = new InstallStamps(options.root);
-        this.#storedKeys = new StoredKeys((options.now ?? Date.now)());
+        this.#storedKeys = new StoredKeys(this.#now());
         this.#hold = new MergeHold({
           root: options.root,
           store: options.store,
           worktreeId: options.worktreeId,
-          now: options.now ?? Date.now,
+          now: this.#now,
           revision: () => this.#ledger?.revision.number ?? 0,
           resumed: () => this.#pump(),
           note: (message3) => this.#note(message3)
@@ -59102,7 +59141,7 @@ var init_scheduler2 = __esm({
         this.#commandHold = new CommandHold({
           store: options.store,
           worktreeId: options.worktreeId,
-          now: options.now ?? Date.now,
+          now: this.#now,
           note: (message3) => this.#note(message3),
           merging: () => this.#hold.holding,
           due: () => void this.commandHold().catch(
@@ -59113,7 +59152,7 @@ var init_scheduler2 = __esm({
           if (this.#stalled && !this.#failed) this.#pump();
         });
         const waits2 = new PoolWaits({
-          now: options.now ?? Date.now,
+          now: this.#now,
           log: options.log ?? (() => {
           }),
           publish: (lanes, at2) => publishPoolWaits(options.store, options.worktreeId, lanes, at2)
@@ -59131,7 +59170,8 @@ var init_scheduler2 = __esm({
           closed: () => this.#closed,
           pump: () => this.#pump(),
           probe: () => this.#probe(),
-          admit: () => this.#admit()
+          admit: () => this.#admit(),
+          now: this.#now
         };
         this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
         this.#slowRelease = new SlowRelease(
@@ -59139,7 +59179,7 @@ var init_scheduler2 = __esm({
             release: (lane) => this.#releaseLane(lane),
             // A lane whose files wait for its load guard keeps its instance too (row 011-211).
             lanes: () => [...this.#lanes(), ...this.#groups.deferring()],
-            now: () => (options.now ?? Date.now)(),
+            now: this.#now,
             closed: () => this.#closed
           },
           options.slow?.releaseMs
@@ -59163,7 +59203,10 @@ var init_scheduler2 = __esm({
         });
       }
       options;
-      #lock = new Mutex();
+      /** Row 011-351: the one clock, `SchedulerOptions.clock` or the host adapter over `now`. */
+      #clock;
+      #now = () => this.#clock.now();
+      #lock = new Mutex(this.#now);
       #idle = [];
       /** Row 015-117: the once-after-upgrade re-walk, made at its first chunk. */
       #rewalk = null;
@@ -59307,6 +59350,7 @@ var init_scheduler2 = __esm({
             onExtraFiles: (paths) => options.onExtraFiles?.(paths),
             note: (message3) => this.#note(message3),
             ignored: (paths) => marks.among(paths),
+            now: this.#now,
             ...options.env === void 0 ? {} : { env: options.env }
           });
           const context = {
@@ -59324,7 +59368,7 @@ var init_scheduler2 = __esm({
             // Each revision's `git status` gives the unmerged paths too (row 011-72).
             head: () => this.#hold.head(options.head),
             // Read at each call: a commit stamps the store's re-key moves with it (`recordMoves`).
-            now: options.now ?? (() => Date.now()),
+            now: this.#now,
             note: (message3) => this.#note(message3),
             rerunCap: options.rerunCap ?? RERUN_CAP,
             hostLoad: options.hostLoad ?? hostLoad,
@@ -60190,7 +60234,7 @@ var init_scheduler2 = __esm({
         const { context } = this.#started();
         const stop2 = new AbortController();
         try {
-          await Promise.race([this.#nextEvent(), claimWake(context.store, stop2.signal)]);
+          await Promise.race([this.#nextEvent(), claimWake(context.store, stop2.signal, this.#now)]);
         } finally {
           stop2.abort();
         }
@@ -60366,10 +60410,10 @@ var init_scheduler2 = __esm({
       }
       /** Persists a note for `squeal status` (D7, review S6). */
       #note(message3) {
-        const { store, worktreeId, now } = this.options;
+        const { store, worktreeId } = this.options;
         const revision = this.#ledger?.revision.number ?? null;
         try {
-          appendNote(store, worktreeId, { at: (now ?? Date.now)(), revision, text: message3 });
+          appendNote(store, worktreeId, { at: this.#now(), revision, text: message3 });
         } catch (error) {
           this.options.onError?.(
             new Error(`squeal scheduler: could not persist a note (${message3}): ${String(error)}`)
@@ -86076,7 +86120,7 @@ function namedPoll(cwd, paths, options) {
     name: "named",
     sync: () => sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed) => {
+    read: ({ store, root, commonDir }, final, elapsed2) => {
       const id = worktreeIdFor(root);
       const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
       sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
@@ -86084,7 +86128,7 @@ function namedPoll(cwd, paths, options) {
       const readers = syncedReaders(current2);
       const selection = selectNamedFiles(store, id, root, cwd, paths, readers, stored3);
       const all2 = readClasses(store, id, selection.files);
-      const settled2 = final || elapsed() >= options.settleMs;
+      const settled2 = final || elapsed2() >= options.settleMs;
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, worktree, at: readAt2 } = judgeWait(watch2, store, id, options.now);
       const record2 = worktree?.daemon ?? null;
@@ -86437,7 +86481,7 @@ import { setTimeout as sleep11 } from "node:timers/promises";
 var ROW2 = STATUS_WAITS.snapshot;
 async function namedSnapshot(cwd, paths, options) {
   const started2 = performance.now();
-  const elapsed = () => performance.now() - started2;
+  const elapsed2 = () => performance.now() - started2;
   const settleMs = options.settleMs ?? SETTLE_MS;
   const pollMs = options.pollMs ?? SYNC_POLL_MS;
   let sync;
@@ -86445,7 +86489,7 @@ async function namedSnapshot(cwd, paths, options) {
     const step = decideStatusWait(ROW2, { store: "unread" });
     if (step.kind !== "end")
       throw new Error("snapshot: a read that did not read the store ends it");
-    return { outcome: "unavailable", waitedMs: elapsed(), result };
+    return { outcome: "unavailable", waitedMs: elapsed2(), result };
   };
   try {
     const found3 = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) => {
@@ -86462,7 +86506,7 @@ async function namedSnapshot(cwd, paths, options) {
     if ("available" in found3) return unread(found3);
     for (; ; ) {
       const state = sync?.current().state;
-      const left = settleMs - elapsed();
+      const left = settleMs - elapsed2();
       if (state === "synced" || left <= 0) break;
       await (state === "unsupported" ? sleep11(left) : pollPause(Math.min(pollMs, left), sync));
     }
@@ -86473,7 +86517,7 @@ async function namedSnapshot(cwd, paths, options) {
     );
     if ("usage" in read5) throw new CheckUsageError(read5.usage);
     if ("available" in read5) return unread(read5);
-    return { ...read5, waitedMs: elapsed() };
+    return { ...read5, waitedMs: elapsed2() };
   } finally {
     sync?.stop();
   }
@@ -86868,7 +86912,7 @@ function editPoll(options) {
     first: () => start2 === null,
     sync: () => syncing.sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed) => {
+    read: ({ store, root, commonDir }, final, elapsed2) => {
       const id = worktreeIdFor(root);
       if (start2 === null) {
         const states = store.knownStates.list(id);
@@ -86892,7 +86936,7 @@ function editPoll(options) {
       const window2 = syncing.window;
       const held3 = syncing.slow;
       const heldFiles2 = held3 === void 0 ? [] : [...held3.values()];
-      const settled2 = final || elapsed() >= options.settleMs;
+      const settled2 = final || elapsed2() >= options.settleMs;
       const fallback2 = fallbackOf(ROW3, settled2);
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, at: at2 } = judgeWait(watch2, store, id, now);
@@ -87058,30 +87102,30 @@ async function statusWait(ask2) {
 }
 async function pollStatus(cwd, timeoutMs, pollMs, poll) {
   const started2 = performance.now();
-  const elapsed = () => performance.now() - started2;
+  const elapsed2 = () => performance.now() - started2;
   const row2 = STATUS_WAITS[poll.name];
   let wentOn = false;
   try {
     for (; ; ) {
-      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed);
+      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed2);
       const read5 = withStatusStore(
         cwd,
         { busyTimeoutMs },
-        (context) => poll.read(context, final, elapsed)
+        (context) => poll.read(context, final, elapsed2)
       );
       if (read5 !== null && "available" in read5) {
         const first2 = poll.first?.() ?? !wentOn;
         const step = decideStatusWait(row2, { store: "unread", first: first2, late: final });
         if (step.kind === "end")
-          return { outcome: "unavailable", waitedMs: elapsed(), result: read5 };
+          return { outcome: "unavailable", waitedMs: elapsed2(), result: read5 };
       } else if (read5 !== null && "act" in read5) {
         await read5.act();
         continue;
       } else if (read5 !== null) {
-        return { end: read5.end, waitedMs: elapsed() };
+        return { end: read5.end, waitedMs: elapsed2() };
       }
       wentOn = true;
-      const remaining = timeoutMs - elapsed();
+      const remaining = timeoutMs - elapsed2();
       if (remaining > 0) await pollPause(Math.min(pollMs, remaining), poll.sync());
     }
   } finally {
