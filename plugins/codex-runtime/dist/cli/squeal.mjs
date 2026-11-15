@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.515";
+  if (true) return "0.1.516";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -15419,7 +15419,6 @@ var init_step_events = __esm({
       "refresh-install": "after",
       reconcile: "after",
       "close-lanes": "after",
-      "ask-lanes": "after",
       "queue-rewalk": "after"
     };
   }
@@ -56413,9 +56412,8 @@ var init_group_tiers = __esm({
       #policy = null;
       /**
        * Each lane under `policy`, in the policy's order, the default `slow`
-       * group's last. A lane that waits for the load returns at once and holds
-       * back none after it (D3: "a long group never holds back another group's
-       * results"; review 0.1.396 B1). A group `policy` no longer has is retired.
+       * group's last: admission's `lanes`, whose `ask` is the order the step
+       * asks them in (row 011-357). A group `policy` no longer has is retired.
        */
       lanes(policy) {
         if (this.#policy !== policy) this.#sync(policy);
@@ -56465,12 +56463,12 @@ var init_group_tiers = __esm({
       preempt() {
         for (const lane of this.#all()) lane.preempt();
       }
-      nudge() {
-        for (const lane of this.#all()) lane.nudge();
+      nudge(ledger) {
+        for (const lane of this.#all()) lane.nudge(ledger);
       }
       /** A lane's tier was recorded or put back: that lane publishes what its files wait for. */
-      endedOnce() {
-        for (const lane of this.#all()) lane.endedOnce();
+      endedOnce(end) {
+        for (const lane of this.#all()) lane.endedOnce(end);
       }
       close() {
         for (const lane of this.#all()) lane.close();
@@ -57116,6 +57114,15 @@ var init_mutex = __esm({
         });
         this.#tail = next.then(this.#free, this.#free);
         return next;
+      }
+      /**
+       * Row 011-357: the running task now does `operation`, from now on: a
+       * watcher hears the holder's new text at once. One lock turn that does
+       * what several did (the step asking a slow lane) names the part it is in.
+       * Nothing when no task runs.
+       */
+      relabel(operation) {
+        if (this.#holder !== null) this.#hold({ operation, since: this.#now() });
       }
       /**
        * Row 011-340: how many tasks have started; during a task, its own turn.
@@ -58109,21 +58116,19 @@ var init_slow_tier = __esm({
     init_slow();
     init_slow_trigger();
     init_tiers();
-    init_wakes();
     SLOW_RECHECK_MS = 15e3;
     SLOT_HELD_NOTE_MS = 6e4;
     DEFERRED2 = "deferred";
     SlowTier = class {
-      constructor(host, options = {}, group = SLOW_GROUP) {
-        this.host = host;
+      constructor(loop, options = {}, group = SLOW_GROUP) {
+        this.loop = loop;
         this.options = options;
         this.group = group;
-        const wakes = host.wakes ?? new Wakes(hostClock(host.now));
-        this.#wake = wakes.slot("slow-lane", () => host.pump(), {
+        this.#wake = loop.wakes.slot("slow-lane", () => loop.pump(), {
           rank: group === SLOW_GROUP ? Number.MAX_SAFE_INTEGER : 0
         });
       }
-      host;
+      loop;
       options;
       group;
       /** A `run --slow` request is open until no slow file is pending. */
@@ -58157,12 +58162,10 @@ var init_slow_tier = __esm({
       #wake;
       /**
        * While the load guard holds the lane: when its wait began (the
-       * scheduler's clock, `#now`), and the runner lane its files run in. The next
-       * `next` or a `preempt` ends the wait and takes its time off the budget.
+       * scheduler's clock), and the runner lane its files run in. The next
+       * `decide` or a `preempt` ends the wait and takes its time off the budget.
        */
       #deferred = null;
-      /** Counts `preempt` calls, so one between selection and the guard is not lost. */
-      #preemptions = 0;
       /** What this tier last published, as stored, so `close` clears only its own. */
       #published = null;
       /** The tier this lane runs, until its record ends it (`endedOnce`). */
@@ -58223,142 +58226,121 @@ var init_slow_tier = __esm({
       /**
        * A consumer may have gone idle (task 001-281): with slow files queued the
        * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
-       * trigger does not allow; `next` decides as on the timer. Before the
-       * scheduler has started it does nothing: the start pumps as it ends.
+       * trigger does not allow; `decide` decides as on the timer. The scheduler
+       * calls it once started: the start pumps as it ends.
        */
-      nudge() {
-        if (this.host.closed() || !this.host.ready()) return;
-        if (this.#queued(this.host.started().ledger).length > 0) this.host.pump();
+      nudge(ledger) {
+        if (this.#queued(ledger).length > 0) this.loop.pump();
       }
-      /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
+      /** Fast work may be coming (a revision, `run --all`), or a hold: a load guard wait gives way to it. */
       preempt() {
-        this.#preemptions += 1;
-        this.#endDeferral();
+        this.#endDeferral(this.loop.now());
       }
-      /** The load guard's wait ends: the pass's budget keeps what it did not take. */
-      #endDeferral() {
+      /** The load guard's wait ends at `at`: the pass's budget keeps what it did not take. */
+      #endDeferral(at2) {
         const deferred = this.#deferred;
         if (deferred === null) return;
         this.#deferred = null;
         if (this.#budgetMs === null) return;
-        this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, this.#now()));
+        this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, at2));
       }
       close() {
         this.#wake.drop();
         this.preempt();
       }
       /**
-       * Called by the pump when no fast tier is left to select. The load guard
-       * waits before the slot is taken, so a wait never holds it, and the slot is
-       * handed over between files (D2, lessons defect 2): a worktree that misses
-       * it leaves a waiter's mark, and one that finds another's mark skips one turn.
-       * The guard decides whether the slow lane runs, never which worktree runs
-       * it (D3 as amended, task 004-84): it waits only while the slot is free,
-       * and a marked waiter takes the slot at a handover without a new wait.
-       * The guard's wait holds this lane only (spec 019 D3, review 0.1.396 B1):
-       * it publishes the wait, arms a recheck and returns `null`, so the pump
-       * asks the other lanes; the recheck's `next` reads the load again with
-       * what is left of the budget. `launch` starts the run under the lock, in
-       * the block whose check found no hold, so no run starts once a hold began
-       * (011 C9; review 0.1.269, B1).
+       * Row 011-357: the lane's decision in the step's lock turn, on the disk
+       * facts the step read just before it: the listing, the load guard, the
+       * slot and the pick, in one synchronous piece. The load guard reads before
+       * the slot is taken, so a wait never holds it, and the slot is handed over
+       * between files (D2, lessons defect 2): a worktree that misses it leaves a
+       * waiter's mark, and one that finds another's mark skips one turn. The
+       * guard decides whether the slow lane runs, never which worktree runs it
+       * (D3 as amended, task 004-84): it defers only while the slot is free, and
+       * a marked waiter takes the slot at a handover without a new wait. A
+       * deferral holds this lane only (spec 019 D3, review 0.1.396 B1): it
+       * publishes the wait, arms this lane's recheck and answers `deferred`, so
+       * the step asks the other lanes; the recheck's step reads the load again
+       * with what is left of the budget. `fly` starts the run in this turn, so
+       * no run starts once a hold began (011 C9; review 0.1.269, B1).
        */
-      async next(launch) {
-        this.#endDeferral();
-        if (this.host.closed()) return "again";
-        const preemptions = this.#preemptions;
-        const refs2 = await this.host.lock.run(
-          () => this.#candidates(),
-          `listing the queued files of group ${this.group}`
-        );
-        const { context } = this.host.started();
+      decide(view, fly) {
+        this.#endDeferral(view.at);
+        view.doing(`listing the queued files of group ${this.group}`);
+        const refs2 = this.#candidates(view);
         const dir2 = this.#slotDir();
-        const group = this.#resolved(context);
+        const group = this.#resolved(view.context);
         if (refs2.length === 0 || group === null) {
-          this.#unmark(dir2, context.worktreeId);
-          return null;
+          this.#unmark(dir2, view.context.worktreeId);
+          return "none";
         }
-        if (preemptions !== this.#preemptions) return "again";
-        const guard = this.#guardOf(context, dir2, group, refs2);
-        if (guard === DEFERRED2) return null;
-        if (!await this.#mayStart(preemptions)) return "again";
-        if (guard === "held") return this.#waitAtSlot(context, dir2, false);
-        const want = this.#want(context, group, guard, refs2.length);
-        const slot2 = this.#takeSlot(context, dir2, group, want);
-        if (slot2 === null) return null;
-        return this.#launch(refs2, guard, slot2, group, launch);
+        view.doing(`selecting a tier of group ${this.group}`);
+        const guard = this.#guardOf(view, dir2, group, refs2);
+        if (guard === DEFERRED2) return DEFERRED2;
+        if (guard === "held") return this.#waitAtSlot(view, dir2, false);
+        const want = this.#want(view, group, guard, refs2.length);
+        const slot2 = this.#takeSlot(view, dir2, group, want);
+        if (slot2 === null) return "none";
+        return this.#launch(view, refs2, guard, slot2, group, fly);
       }
       /**
        * The load guard for the lane whose first file is `first`, or none: an
        * open request or a marked waiter skips it, as does a group without
        * `deferUnderLoad` (`#skipGuard`).
        */
-      #guardOf(context, dir2, group, refs2) {
+      #guardOf(view, dir2, group, refs2) {
         const defer = group.limits.deferUnderLoad;
-        return this.#explicit(refs2) || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(dir2, group, defer, laneOf(context, refs2[0]));
+        return this.#explicit(view.ledger, refs2) || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(view, dir2, group, defer, laneOf(view.context, refs2[0]));
       }
       /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
-      #explicit(refs2) {
+      #explicit(ledger, refs2) {
         if (this.#requested) return true;
         if (this.narrow.size === 0) return false;
-        const { ledger } = this.host.started();
         return refs2.some((ref3) => this.narrow.has(ledger, ref3));
-      }
-      /**
-       * After the guard's wait: the daemon's runtime still there and no hold
-       * begun (`probe`), and no preemption since `preemptions` was read; else
-       * the pump plans again. A runtime gone since the pump read it starts no
-       * tier, and its files take no slot (review 0.1.262, B3); so is a hold that
-       * began meanwhile, a merge's included, which no preemption tells (011 C9;
-       * review 0.1.269, B1): the pump plans again and stops on it.
-       */
-      async #mayStart(preemptions) {
-        return await this.host.probe() === "free" && preemptions === this.#preemptions;
       }
       /**
        * How many of `count` files the tier may take: up to its full width when
        * the admission's width is wide, else one (spec 019 D3).
        */
-      #want(context, group, guard, count4) {
-        const wide = this.#admitted(group, guard.idle).width === "wide";
-        return wide ? Math.min(fullWidth(group, context.policy), count4) : 1;
+      #want(view, group, guard, count4) {
+        const wide = this.#admitted(view, group, guard.idle).width === "wide";
+        return wide ? Math.min(fullWidth(group, view.context.policy), count4) : 1;
       }
       /**
        * The group's slot for `want` files; a group without `maxParallel` takes
        * no shared slot (D3). `null` when the files wait at the slot: another
        * worktree holds it, or this one yields its turn (`#waitAtSlot`).
        */
-      #takeSlot(context, dir2, group, want) {
+      #takeSlot(view, dir2, group, want) {
+        const { worktreeId } = view.context;
         const permits = group.limits.maxParallel;
-        const yieldTurn = permits !== null && (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, context.worktreeId, void 0, this.group);
-        const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
+        const yieldTurn = permits !== null && (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, worktreeId, void 0, this.group);
+        const owner2 = { pid: process.pid, worktreeId };
         const slot2 = yieldTurn ? null : permits === null ? noSlot(want) : acquireSlowSlot({ dir: dir2, owner: owner2, permits, want, group: this.group });
-        if (slot2 === null) return this.#waitAtSlot(context, dir2, yieldTurn);
+        if (slot2 === null) {
+          this.#waitAtSlot(view, dir2, yieldTurn);
+          return null;
+        }
         this.#tookLast = true;
-        this.#unmark(dir2, context.worktreeId);
+        this.#unmark(dir2, worktreeId);
         this.#slotMissedSince = null;
         this.#slotNoted = false;
         return slot2;
       }
-      /**
-       * Selects the tier under the lock and launches it with `slot`, whose
-       * permits go back when no tier flies.
-       */
-      async #launch(refs2, guard, slot2, group, launch) {
+      /** Selects the tier and starts it with `slot` (`fly`), whose permits go back when no tier flies. */
+      #launch(view, refs2, guard, slot2, group, fly) {
         let flown = false;
         try {
-          const selected2 = await this.host.lock.run(() => {
-            const picked = this.#select(refs2, guard, slot2, group);
-            if (picked === null || typeof picked !== "object") return picked;
-            launch({ tier: picked.tier, slot: slot2, turn: picked.admitted.turn });
-            flown = true;
-            return "flown";
-          }, `selecting a tier of group ${this.group}`);
-          if (selected2 === "claimed") return null;
-          if (selected2 === WAIT_FOR_CAPACITY) {
+          const picked = this.#select(view, refs2, guard, slot2, group);
+          if (picked === "claimed") return "none";
+          if (picked === WAIT_FOR_CAPACITY) {
             this.#publish({ kind: "waiting", for: "pool" });
-            return null;
+            return "none";
           }
-          return selected2 === null ? "again" : selected2;
+          if (picked === null) return "again";
+          fly({ tier: picked.tier, slot: slot2, turn: picked.admitted.turn });
+          flown = true;
+          return "started";
         } finally {
           if (!flown) slot2.release();
         }
@@ -58372,8 +58354,8 @@ var init_slow_tier = __esm({
        * so a warm-up's slow files never contend with its fast ones. During a
        * departure drain only the drain's fast work counts (row 011-93).
        */
-      #admitted(group, idle2) {
-        return this.host.admit().lane(group.name, { requested: this.#requested, idle: idle2 });
+      #admitted(view, group, idle2) {
+        return view.admit().lane(group.name, { requested: this.#requested, idle: idle2 });
       }
       /**
        * Under the lock: a queued file of this group holds the groups that name
@@ -58384,8 +58366,7 @@ var init_slow_tier = __esm({
        * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
        * moment every queued file holds.
        */
-      holdsFollowers() {
-        const { context, ledger } = this.host.started();
+      holdsFollowers({ context, ledger }) {
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
         if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
@@ -58396,7 +58377,7 @@ var init_slow_tier = __esm({
        * wait at the slot, marked as a waiter unless draining, and retry at
        * `SLOW_RECHECK_MS`.
        */
-      #waitAtSlot(context, dir2, yielded) {
+      #waitAtSlot({ at: at2, context }, dir2, yielded) {
         this.#tookLast = false;
         if (this.draining) {
           this.#unmark(dir2, context.worktreeId);
@@ -58405,9 +58386,9 @@ var init_slow_tier = __esm({
           this.#marked = true;
         }
         this.#publish({ kind: "waiting", for: "slot" });
-        if (!yielded) this.#slotMissed(context, dir2);
-        this.#arm();
-        return null;
+        if (!yielded) this.#slotMissed(context, dir2, at2);
+        this.#arm(at2);
+        return "none";
       }
       #unmark(dir2, worktreeId) {
         if (!this.#marked) return;
@@ -58415,14 +58396,14 @@ var init_slow_tier = __esm({
         clearSlotWaiter(dir2, worktreeId, this.group);
       }
       /**
-       * Under the lock: the slow files a trigger lets run now, in order, all of
+       * The listing: the slow files a trigger lets run now, in order, all of
        * the first one's lane and runner (`runnerOf`); none when none may. A file
        * whose key another worktree runs is none (`claimOf`, task 001-205): the
        * pump waits on the claim without taking the slot, and a result that
        * landed is applied here, so a drain before exit (004-29) ends with it.
        */
-      #candidates() {
-        const { context, ledger } = this.host.started();
+      #candidates(view) {
+        const { at: at2, context, ledger } = view;
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
         this.asks.prune(ledger);
@@ -58433,7 +58414,7 @@ var init_slow_tier = __esm({
           this.#publish(null);
           return [];
         }
-        if (this.#admitted(group, false).waits !== null) {
+        if (this.#admitted(view, group, false).waits !== null) {
           this.#publish({ kind: "waiting", for: "fast" });
           return [];
         }
@@ -58445,15 +58426,15 @@ var init_slow_tier = __esm({
           const runner = runnerOf2(context, first2);
           return free.filter((ref3) => runnerOf2(context, ref3) === runner);
         }
-        if ([...claims2.values()].includes("settled")) return this.#candidates();
+        if ([...claims2.values()].includes("settled")) return this.#candidates(view);
         if ([...claims2.values()].includes("waits")) return [];
         this.#publishUntriggered(group);
         const quiet = quietLeftMs(context, group);
-        this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
+        this.#arm(at2, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
         return [];
       }
       /**
-       * Under the lock: whether a trigger lets a file of the group run now. Its
+       * Whether a trigger lets a file of the group run now. Its
        * moment (`momentHolds`; for the default `slow` group trigger (a) by
        * `slow.trigger`), an open request, a commit's ask at the file's key (019
        * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
@@ -58503,7 +58484,7 @@ var init_slow_tier = __esm({
        * slot. Else `DEFERRED`: the lane publishes that it waits for the load and
        * arms its recheck, at most the budget left; its `lane` is `deferring`.
        */
-      #guard(dir2, group, defer, lane) {
+      #guard({ at: at2 }, dir2, group, defer, lane) {
         const budget2 = this.#budgetMs ?? defer.maxDeferMs;
         this.#budgetMs = budget2;
         const load = this.#load();
@@ -58511,13 +58492,13 @@ var init_slow_tier = __esm({
         if (budget2 <= 0) return { ranUnderLoad: load, idle: false };
         const permits = group.limits.maxParallel;
         if (permits !== null && slowSlotHeld({ dir: dir2, permits, group: this.group })) return "held";
-        this.#deferred = { from: this.#now(), lane };
+        this.#deferred = { from: at2, lane };
         this.#publish({ kind: "waiting", for: "load" });
-        this.#arm(Math.min(this.#recheckMs(), budget2));
+        this.#arm(at2, Math.min(this.#recheckMs(), budget2));
         return DEFERRED2;
       }
       /**
-       * Under the lock, after the guard and the slot: the tier, of `refs` in
+       * After the guard and the slot, in the same turn: the tier, of `refs` in
        * order, as many as `slot` has permits while the machine is still idle,
        * else one, and only as many as one run starts at once
        * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
@@ -58537,10 +58518,10 @@ var init_slow_tier = __esm({
        * grant it waits (`WAIT_FOR_CAPACITY`), unless a `run --slow` request is
        * open: that runs now, without a grant, as an edit's tier does.
        */
-      #select(refs2, { ranUnderLoad, idle: idle2 }, slot2, group) {
-        const admitted = this.#admitted(group, idle2);
+      #select(view, refs2, { ranUnderLoad, idle: idle2 }, slot2, group) {
+        const admitted = this.#admitted(view, group, idle2);
         if (admitted.refusal !== null) return null;
-        const { context, ledger } = this.host.started();
+        const { context, ledger } = view;
         const width = admitted.width === "wide" ? slot2.permits : 1;
         const triggered = this.#trigger(context, ledger, group);
         const picked = [];
@@ -58555,7 +58536,10 @@ var init_slow_tier = __esm({
         picked.splice(context.runner.traits.slowWidth(picked.map(({ file }) => file.ref)));
         const perFile = workersPerFile(group);
         const taken3 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
-        if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
+        if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(
+          ledger,
+          picked.map(({ file }) => file.ref)
+        )) {
           ledger.commit();
           return WAIT_FOR_CAPACITY;
         }
@@ -58602,7 +58586,7 @@ var init_slow_tier = __esm({
         });
       }
       /**
-       * Under the lock: `ref` as a file of the tier, or `null` when it has no key
+       * `ref` as a file of the tier, or `null` when it has no key
        * or is blocked (it leaves the queue), when another worktree's result
        * stands for it (applied), or when another worktree runs its key and its
        * result could stand for it (it stays queued, task 001-205).
@@ -58635,16 +58619,15 @@ var init_slow_tier = __esm({
        * "running" activity goes in favour of what the remaining slow files wait
        * for, without starting one (review wave 2, B1). An edit's fast work in
        * flight or pending, or the agent not pausing; when a trigger already
-       * holds, nothing until `next` decides.
+       * holds, nothing until `decide` decides. `admit` is the admission now.
        */
-      ended() {
-        const { context, ledger } = this.host.started();
+      ended({ context, ledger, admit: admit3 }) {
         this.#flying = null;
         this.#endedAt = context.now();
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
         if (queued.length === 0 || group === null) this.#publish(null);
-        else if (this.#admitted(group, false).waits !== null)
+        else if (this.#admitted({ admit: admit3 }, group, false).waits !== null)
           this.#publish({ kind: "waiting", for: "fast" });
         else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
         else this.#publishUntriggered(group);
@@ -58654,27 +58637,25 @@ var init_slow_tier = __esm({
        * of `Ledger.tierChanges`); nothing for a lane whose tier still runs or
        * that runs none. A record names no lane, so each lane asks (row 019-10).
        */
-      endedOnce() {
+      endedOnce(end) {
         const tier = this.#flying;
-        if (tier === null || this.host.started().ledger.tierChanges.has(tier.changes)) return;
-        this.ended();
+        if (tier === null || end.ledger.tierChanges.has(tier.changes)) return;
+        this.ended(end);
       }
       /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
       retire() {
-        const { context } = this.host.started();
-        this.#unmark(this.#slotDir(), context.worktreeId);
-        const now = readGroupActivity(context.store, context.worktreeId, this.group);
+        const { store, worktreeId } = this.loop;
+        this.#unmark(this.#slotDir(), worktreeId);
+        const now = readGroupActivity(store, worktreeId, this.group);
         if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
       }
       /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
       #publish(activity) {
-        const { context } = this.host.started();
-        publishGroupActivity(context.store, context.worktreeId, this.group, activity);
+        publishGroupActivity(this.loop.store, this.loop.worktreeId, this.group, activity);
         this.#published = activity === null ? null : JSON.stringify(activity);
         return null;
       }
-      #slotMissed(context, dir2) {
-        const now = context.now();
+      #slotMissed(context, dir2, now) {
         this.#slotMissedSince ??= now;
         if (this.#slotNoted || now - this.#slotMissedSince < SLOT_HELD_NOTE_MS) return;
         this.#slotNoted = true;
@@ -58684,15 +58665,11 @@ var init_slow_tier = __esm({
         );
       }
       /**
-       * Pumps again after `ms`, once; an armed timer that fires later gives way.
-       * The pump re-arms while slow work still waits.
+       * Pumps again `ms` after `at`, once; a wake stated later gives way. The
+       * step re-arms while slow work still waits; a closed lane's wake is dropped.
        */
-      #arm(ms2 = this.#recheckMs()) {
-        if (this.host.closed()) return;
-        this.#wake.atMost(this.#now() + ms2);
-      }
-      #now() {
-        return (this.host.now ?? hostNow)();
+      #arm(at2, ms2 = this.#recheckMs()) {
+        this.#wake.atMost(at2 + ms2);
       }
       #recheckMs() {
         return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
@@ -59122,7 +59099,6 @@ var init_slow_release = __esm({
       #open = /* @__PURE__ */ new Set();
       /** When each lane's last slow run ended (`ended`). */
       #endedAt = /* @__PURE__ */ new Map();
-      #selecting = false;
       #wakes;
       /** The close's wake (row 011-352): an earlier bound replaces a later one. */
       #wake;
@@ -59140,28 +59116,13 @@ var init_slow_release = __esm({
         this.#open.delete(lane);
         await this.host.release(lane);
       }
-      /** Closes the instance of each open lane no tier runs in, unless a slow selection is in progress. */
-      async idle() {
-        await this.closeIdle(this.idleLanes());
-      }
       /** The open lanes no tier runs in now (`decideRelease`'s `idle`): a step's decision (row 011-356). */
       idleLanes() {
         return this.#decide().idle;
       }
-      /** Closes `lanes`, a step decided idle, unless a slow selection is in progress. */
+      /** Closes `lanes`, a step decided idle on a hold. */
       async closeIdle(lanes) {
-        if (this.#selecting) return;
         await Promise.all(lanes.map((lane) => this.release(lane)));
-      }
-      /** `select`, a slow selection: no instance closes during it; the count goes on after it. */
-      async selecting(select2) {
-        this.#selecting = true;
-        try {
-          return await select2();
-        } finally {
-          this.#selecting = false;
-          this.arm();
-        }
       }
       /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
       arm() {
@@ -59184,12 +59145,11 @@ var init_slow_release = __esm({
         return decideRelease(lanes, this.host.now(), this.afterMs);
       }
       /**
-       * Closes each idle lane past its own bound and arms the next. During a
-       * selection nothing closes: its end arms again. A lane whose tier is in
-       * flight re-arms at its end.
+       * Closes each idle lane past its own bound and arms the next. A lane
+       * whose tier is in flight re-arms at its end.
        */
       async #due() {
-        if (this.host.closed() || this.#selecting) return;
+        if (this.host.closed()) return;
         await Promise.all(this.#decide().close.map((lane) => this.release(lane)));
         this.arm();
       }
@@ -59225,7 +59185,7 @@ function step(turn) {
     return { decisions: out2.decisions, wake: END, selected: out2.selected, error };
   }
 }
-var END, EVENT, AGAIN, READS, Out, pumpEnded, inTurnEnds, stallHolds, drainRunnerWork, installWait2, nothingMayStart, readInstallStamp, probeDiskFacts, startFastTier, askSlowLanes, closeSlowLanes, idleAnswer, RULES;
+var END, EVENT, AGAIN, READS, Out, pumpEnded, inTurnEnds, stallHolds, drainRunnerWork, installWait2, nothingMayStart, readInstallStamp, probeDiskFacts, rewalkRead, startFastTier, askSlowLanes, closeSlowLanes, idleAnswer, RULES;
 var init_step = __esm({
   "src/core/scheduler/step.ts"() {
     "use strict";
@@ -59296,9 +59256,10 @@ var init_step = __esm({
       out2.held = probe2 === "held";
       return void 0;
     };
+    rewalkRead = (reads2) => reads2?.rewalk !== void 0;
     startFastTier = (turn, out2) => {
       const { ports, reads: reads2 } = turn;
-      if (out2.held || reads2?.lanes !== void 0) return void 0;
+      if (out2.held || rewalkRead(reads2)) return void 0;
       out2.selected = true;
       const admitted = ports.admit();
       const fast = admitted.fast;
@@ -59323,14 +59284,16 @@ var init_step = __esm({
       out2.idle = next.idle;
       return void 0;
     };
-    askSlowLanes = ({ reads: reads2 }, out2) => {
-      if (out2.held) return void 0;
-      const lanes = reads2?.lanes;
-      if (lanes === void 0) {
-        out2.decide({ kind: "ask-lanes", stamp: reads2?.install?.stamp ?? "", idle: out2.idle });
-        return READS;
+    askSlowLanes = ({ at: at2, ports, reads: reads2 }, out2) => {
+      if (out2.held || rewalkRead(reads2)) return void 0;
+      const stamp2 = reads2?.install?.stamp ?? "";
+      for (const group of ports.admit().ask) {
+        const decided = ports.askLane(group, at2, (run7) => {
+          out2.decide({ kind: "start-tier", tier: run7.tier, stamp: stamp2, turn: run7.turn, slow: run7 });
+        });
+        if (decided === "started" || decided === "again") return AGAIN;
       }
-      return lanes.started ? AGAIN : void 0;
+      return void 0;
     };
     closeSlowLanes = ({ ports }, out2) => {
       if (!out2.held) return void 0;
@@ -59339,7 +59302,7 @@ var init_step = __esm({
     };
     idleAnswer = ({ at: at2, events, reads: reads2, ports }, out2) => {
       if (reads2?.rewalk !== void 0) return reads2.rewalk ? AGAIN : END;
-      const idle2 = reads2?.lanes?.idle ?? out2.idle ?? ports.idleNow();
+      const idle2 = out2.idle ?? ports.idleNow();
       if (idle2.idle === "claims" || ports.claimsWaiting()) return { kind: "claims", at: at2 };
       if (idle2.idle === "quiet" && idle2.wakeAt !== null) return { kind: "at", at: idle2.wakeAt };
       if (ports.refused() || idle2.idle === "pool")
@@ -59717,7 +59680,7 @@ function createScheduler(options) {
 function unplaced(decision) {
   throw new Error(`squeal scheduler: a decision no carry-out places: ${String(decision)}`);
 }
-var TierScheduler, PUMP_ENDED;
+var TierScheduler, PUMP_ENDED, STEP_OPERATION;
 var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
@@ -59837,18 +59800,14 @@ var init_scheduler2 = __esm({
           (message3) => this.#note(message3),
           waits2
         );
-        const host = {
-          lock: this.#lock,
-          started: () => this.#started(),
-          ready: () => this.#context !== null,
-          closed: () => this.#closed,
-          pump: () => this.#pump(),
-          probe: () => this.#probe(),
-          admit: () => this.#admit(),
+        const loop = {
+          wakes: this.#wakes,
           now: this.#now,
-          wakes: this.#wakes
+          pump: () => this.#pump(),
+          store: options.store,
+          worktreeId: options.worktreeId
         };
-        this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
+        this.#groups = new GroupTiers((group) => new SlowTier(loop, options.slow, group));
         this.#slowRelease = new SlowRelease(
           {
             release: (lane) => this.#releaseLane(lane),
@@ -59875,7 +59834,7 @@ var init_scheduler2 = __esm({
           reinstalled: () => this.#reinstalled,
           runtimeMissing: () => this.#runtimeMissing(),
           // A record names no lane: the lane whose tier it recorded publishes (row 019-10).
-          slowEnded: () => this.#groups.endedOnce(),
+          slowEnded: () => this.#groups.endedOnce(this.#laneEnd()),
           wakes: this.#wakes
         });
       }
@@ -60248,23 +60207,15 @@ var init_scheduler2 = __esm({
         else this.#note(note);
       }
       /**
-       * Row 011-340: the start facts on disk and in Git, read again before a
-       * tier, by the pump and the slow lanes after their waits. The runtime
-       * folder first (row 011-106), then the merge hold, the index read when it
-       * moved (row 011-72). A hold that ended released its paths: an abort
-       * restored their bytes, and their revision comes before any tier, so no
-       * tier runs at the keys of the conflicted bytes. What it finds stays in
-       * memory for `#facts`.
-       */
-      async #probe() {
-        const probe2 = await this.#probeRead();
-        if (probe2 === "released") await this.#reconcileReleased();
-        return probe2;
-      }
-      /**
-       * `#probe`'s reads, for the step (row 011-356): the paths a hold released
-       * wait in `#released` for the step's `reconcile`, so a step that ends
-       * before it loses none.
+       * Row 011-340: the start facts on disk and in Git, read after the step
+       * that asked for them and before the step that starts a tier, fast or
+       * slow (row 011-357). The runtime folder first (row 011-106), then the
+       * merge hold, the index read when it moved (row 011-72). A hold that
+       * ended released its paths: an abort restored their bytes, and their
+       * revision comes before any tier, so no tier runs at the keys of the
+       * conflicted bytes. They wait in `#released` for the step's `reconcile`
+       * (row 011-356), so a step that ends before it loses none. What it finds
+       * stays in memory for `#facts`.
        */
       async #probeRead() {
         if (await this.#runtimeMissing()) return "gone";
@@ -60312,7 +60263,8 @@ var init_scheduler2 = __esm({
           queued: (name3) => ledger?.queue.hasGroup(name3) ?? false,
           holdsFollowers: (name3) => {
             const lane = this.#groups.get(name3);
-            return lane === void 0 ? ledger?.queue.hasGroup(name3) ?? false : lane.holdsFollowers();
+            if (context === null || ledger === null) return false;
+            return lane === void 0 ? ledger.queue.hasGroup(name3) : lane.holdsFollowers({ context, ledger });
           },
           slowWaiting: () => context !== null && this.#laneWaiting(context)
         };
@@ -60336,7 +60288,7 @@ var init_scheduler2 = __esm({
         if (this.#commandHold.check()) {
           this.#groups.preempt();
           await this.#cancelHeld();
-          await this.#slowRelease.idle();
+          this.#pump();
           return true;
         }
         if (was) this.#pump();
@@ -60424,8 +60376,8 @@ var init_scheduler2 = __esm({
         return this.#intake.take(focusRequest(testFiles3, texts2, withinMs));
       }
       nudge() {
-        if (this.#closed || !this.#context) return;
-        this.#groups.nudge();
+        if (this.#closed || !this.#ledger) return;
+        this.#groups.nudge(this.#ledger);
       }
       lintRecorded() {
         if (this.#closed || !this.#context) return Promise.resolve();
@@ -60693,7 +60645,7 @@ var init_scheduler2 = __esm({
           try {
             let reads2 = {};
             for (; ; ) {
-              const decided = await this.#runSliced(() => this.#step(reads2), "selecting the next tier");
+              const decided = await this.#runSliced(() => this.#step(reads2), STEP_OPERATION);
               if (decided.selected && decided.error === null) this.#busy?.landed();
               for (const decision of decided.decisions)
                 if (placeOf(decision) === "after")
@@ -60787,6 +60739,16 @@ var init_scheduler2 = __esm({
           });
           return { idle: "tier" in next ? null : next.idle };
         },
+        askLane: (group, at2, fly) => {
+          const { context, ledger } = this.#started();
+          const lane = this.#groups.get(group);
+          const doing = (operation) => this.#lock.relabel(operation);
+          const view = { at: at2, context, ledger, admit: () => this.#admit(), doing };
+          const decided = lane === void 0 ? "none" : lane.decide(view, fly);
+          this.#lock.relabel(STEP_OPERATION);
+          this.#slowRelease.arm();
+          return decided;
+        },
         idleNow: () => this.#idleNow(),
         idleLanes: () => this.#slowRelease.idleLanes(),
         claimsWaiting: () => this.#started().ledger.claims.waiting,
@@ -60810,7 +60772,7 @@ var init_scheduler2 = __esm({
       #carry(decision) {
         switch (decision.kind) {
           case "start-tier":
-            this.#fly(decision.tier, decision.stamp, null, decision);
+            this.#fly(decision.tier, decision.stamp, decision.slow ?? null, decision);
             return;
           case "check-yields":
             this.#checkYields(decision.trigger, decision.adopt);
@@ -60830,7 +60792,6 @@ var init_scheduler2 = __esm({
           case "refresh-install":
           case "reconcile":
           case "close-lanes":
-          case "ask-lanes":
           case "queue-rewalk":
             throw new Error(`squeal scheduler: ${decision.kind} is carried out after the turn`);
           default:
@@ -60868,10 +60829,6 @@ var init_scheduler2 = __esm({
           case "close-lanes":
             await this.#slowRelease.closeIdle(decision.lanes);
             return {};
-          case "ask-lanes": {
-            const started2 = await this.#groupLanesNext(decision.stamp);
-            return { lanes: { started: started2, idle: decision.idle } };
-          }
           case "queue-rewalk":
             return { rewalk: await this.#queueRewalk() };
           default:
@@ -61136,24 +61093,9 @@ var init_scheduler2 = __esm({
         const ledger = this.#ledger;
         return context !== null && ledger !== null && focusedWaiting(context, ledger);
       }
-      /**
-       * Asks each group's lane that may start, in `GroupTiers.lanes` order;
-       * `true` when one started a run or wants the pump to plan again. A lane
-       * its load guard holds answers at once, so the next lane is asked (spec
-       * 019 D3, review 0.1.396 B1); its recheck pumps again.
-       */
-      async #groupLanesNext(stamp2) {
-        const { context } = this.#started();
-        for (const lane of this.#groups.lanes(context.policy)) {
-          const admitted = this.#admit();
-          if (admitted.halted) return false;
-          if (admitted.asked(lane.group) !== null) continue;
-          const after3 = await this.#slowRelease.selecting(
-            () => lane.next((run7) => this.#fly(run7.tier, stamp2, run7, run7))
-          );
-          if (after3 !== null) return true;
-        }
-        return false;
+      /** A slow run's end as its lane publishes it (`SlowTier.ended`): the state and admission now. */
+      #laneEnd() {
+        return { ...this.#started(), admit: () => this.#admit() };
       }
       #retireSlow() {
         try {
@@ -61188,7 +61130,7 @@ var init_scheduler2 = __esm({
           }
           try {
             ledger.commit();
-            if (slow) this.#groups.endedOnce();
+            if (slow) this.#groups.endedOnce(this.#laneEnd());
           } catch (error) {
             if (this.#busy === null || !isBusy(error)) {
               this.#note(`could not record the re-queued tier: ${String(error)}`);
@@ -61246,6 +61188,7 @@ var init_scheduler2 = __esm({
       }
     };
     PUMP_ENDED = { kind: "pump-ended" };
+    STEP_OPERATION = "selecting the next tier";
   }
 });
 
