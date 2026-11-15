@@ -1,0 +1,10 @@
+A slots6 busy17 alone (floor): granted 1; status would say: 17 of 24 cores in use; Squeal's daemons hold 0 of 6 test slots
+B slots6 busy17 another daemon runs 1 background permit: REFUSED; status would say: 17 of 24 cores in use; Squeal's daemons hold 1 of 6 test slots
+C slots6 busy17 an older fast waiter, 0 grants: REFUSED; status would say: 17 of 24 cores in use; Squeal's daemons hold 0 of 6 test slots
+D slots6 busy5.5 another daemon runs 1 background permit: granted 1; status would say: 6 of 24 cores in use; Squeal's daemons hold 1 of 6 test slots
+E slots23 busy17 another daemon runs 1 background permit: granted 1; status would say: 17 of 24 cores in use; Squeal's daemons hold 1 of 23 test slots
+F slots23 busy18 another daemon runs 1 background permit: REFUSED; status would say: 18 of 24 cores in use; Squeal's daemons hold 1 of 23 test slots
+G slots6 busy23 checkpoint kind, other runs 1: granted 1; status would say: 1 of 24 cores in use; Squeal's daemons hold 1 of 6 test slots
+retry load gate, load 17 / 24 CPUs: eligible=true
+retry load gate, load 23.9 / 24 CPUs: eligible=true
+retry load gate, load 24 / 24 CPUs: eligible=false

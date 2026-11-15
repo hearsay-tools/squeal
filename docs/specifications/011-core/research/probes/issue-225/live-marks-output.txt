@@ -1,0 +1,9 @@
+{"dir":"/run/user/1001/squeal","at":"2026-11-15T13:27:33.989Z","marks":3}
+{"id":"5446ad27","want":63,"grant":0,"since":1794749023603,"cores":0,"background":0,"waitingS":230}
+{"id":"204bb7cb","want":57,"grant":2,"since":null,"cores":2.86,"background":2,"waitingS":null}
+{"id":"b7555ac0","want":4,"grant":1,"since":1794749223680,"cores":1.18,"background":1,"waitingS":30}
+{"at":"2026-11-15T13:27:47.306Z","busyCores":7.34,"cpus":24,"load":[7.23,7.16,6.72]}
+{"dir":"/run/user/1001/squeal","at":"2026-11-15T13:27:47.577Z","marks":3}
+{"id":"5446ad27","want":63,"grant":0,"since":1794749023603,"cores":0,"background":0,"waitingS":244}
+{"id":"204bb7cb","want":46,"grant":2,"since":null,"cores":3.41,"background":2,"waitingS":null}
+{"id":"b7555ac0","want":3,"grant":1,"since":1794749223680,"cores":1.05,"background":1,"waitingS":44}
