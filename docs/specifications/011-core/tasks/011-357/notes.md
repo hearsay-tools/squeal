@@ -95,7 +95,13 @@ Not changed: `KEY_FORMAT_VERSION`, any key, tier width, status payload, note tex
 
 ## Checks
 
-To be completed at the end of the row.
+On `29d1cdbb3`. No `pnpm run build`, no full suite, no `squeal run --all`.
+
+- `pnpm run lint`: `Checked 3517 files ... No fixes applied.` `pnpm run typecheck` (`tsc --noEmit -p .`): exit 0.
+- `squeal status --wait` over the 13 changed `src/` and `test/` paths at revision 46: 940 test files selected, each with a current result, after 1279 s. 4 known failures, all the committed bundles differing from the build (`test/harness/plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: `cli/squeal.mjs differs from the build`). Expected: the brief forbids `pnpm run build`. 7 test files of the worktree are unknown, outside the selection.
+- Among them, passing at revision 46: the model test (`model-scheduler.test.ts`, once), `test/keys/key-format.test.ts` (no `KEY_FORMAT_VERSION` raise), and the scheduler tests that drive a real scheduler, unchanged: `group-lanes-*` (13 files), `slots*`, `install-wait*`, `reinstall*`, `runtime-gone-*`, `command-hold-slow`, `slow-release-setup`, `slow-slot-fair`, `slow-tier`, `backlog-slots*`.
+- Direct runs (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run ...`), load 7 to 11 on 24 CPUs: `step`, `mutex`, `admission-runner-work`, `retry-slow-lane` (56 of 56); `slow-slot-fair`, `slow-tier`, `runtime-gone-slow` after the re-walk fix; the two rewrites 3 of 3 times each.
+- Not run: `test/e2e/**` (excluded by `squeal.config.json`; it runs the committed bundles, which this row does not rebuild).
 
 ## For the next worker
 
