@@ -31,3 +31,17 @@ Seam: `command-hold.ts` first. Lead: `decideHolds` returns which holds ended, wh
 Owns: `src/core/scheduler/command-hold.ts`, `slow-release.ts`, the `commandHold()` lines of `scheduler.ts` only if the apply needs them, new `test/scheduler/decide-holds.test.ts` and `decide-release.test.ts`, `command-hold.test.ts` and `slow-release.test.ts` (their timer cases go once a table covers them). Leave alone: `yields.ts` and the `#cutTiers` lines (W1), every other test file.
 
 Done when: the row's done-when holds: both tables pass; `command-hold-slow`, `merge-hold*` and the slow-release scheduler tests pass unchanged; the deleted timer cases are named in `tasks/011-355/notes.md`; the model test passes; `key-format` without a raise; lint, typecheck and `squeal status --wait 60000` on the changed paths pass.
+
+## R1 (W1 and W2): review of cand/0.1.514
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.514` at `353927ab5daa48625382f16b5e32808be76de0a0`; candidate CI run see `gh run list --workflow ci.yml --commit 353927ab5daa48625382f16b5e32808be76de0a0`. Range `8b04ac964..353927ab5daa48625382f16b5e32808be76de0a0`: worker a32a803e's two commits (row 011-355), worker 9e1d33bb's four (row 011-354), cherry-picked onto main without conflict, then the 0.1.514 raise and bundles. Read: board rows 011-354 and 011-355, this file's W1 and W2, `tasks/011-354/notes.md`, `tasks/011-355/notes.md`, `../research/scheduler-step.md` ("The yield split"), review blocker R398 (0.1.296 B1).
+
+Check, each as proven, plausible or unverified:
+
+1. **`decideYields` is today's check.** Pure over one reading; folds cut marks tier by tier; same decisions, marks, bounds, history entries and row as `#decide`, `waitedFor`, `boundOf`, `rankToBeat` did. The worker moved every decision before every abort (notes decision 4): prove or refute that no abort changes what a later tier reads.
+2. **The event switch.** `yieldReach` is exhaustive over `SchedulerEvent` and holds today's filter (`file-ended` only when inputs changed or the tier stands `named`; R398 a named table row); the call sites filter nothing. The hold read in the check's own lock turn (`YieldView.held`, notes decision 1) keeps today's timing.
+3. **`decideHolds` and `decideRelease`.** Pure; `CommandHold` and `SlowRelease` apply them in today's order; the transaction's second read keeps catching a writer between reads; no wake time moves (`wakeAt` keeps a past bound, notes decision 4).
+4. **Behaviour preserved.** No tier, order, width, status payload, note text, CLI output or key change; no timing change.
+5. **Tests.** The tables pin what the deleted cases pinned (each named in the notes); the kept scheduler-driving tests (`tier-yields-*`, `command-hold-slow`, `merge-hold*`, slow-release scheduler tests) are unchanged.
+
+The coordinator's tree passed lint, typecheck, `check:version origin/main`, and a direct run of `key-format`, `version-sensitive`, the model test, the three new tables, `tier-yields-bound`, `command-hold`, `command-hold-slow`, `slow-release` (10 files, 96 tests, 16.9 s at load 2) at the candidate. Worker trees: 011-354 had 934 affected files current (930 pass, 4 bundle drift); 011-355 had its named files current, about 600 wider files unread. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/0.1.514.md` and commit it on your branch.
