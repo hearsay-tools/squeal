@@ -1,6 +1,6 @@
 # Row 011-357: the slow lanes decide inside the step
 
-Worker 5403a8d0, wave 102 (`tasks/wave-102.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 4, "011-357 drops", the lock watcher paragraph of "The step's interface", row 7. Baseline: cand/0.1.515 (`8c0a6c91e`, row 011-356) plus the wave-102 brief (`82309c087`).
+Worker 5403a8d0, wave 102 (`tasks/wave-102.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 4, "011-357 drops", the lock watcher paragraph of "The step's interface", row 7. Baseline: cand/0.1.515 (`8c0a6c91e`, row 011-356) plus the wave-102 brief (`82309c087`); rebased onto origin/main `270f1a0e0` (0.1.515 landed with its repair, `#refreshOwed`) with no conflict. The commit names below are from before the rebase; the measurement ran before it.
 
 ## What changed
 
@@ -101,6 +101,7 @@ On `29d1cdbb3`. No `pnpm run build`, no full suite, no `squeal run --all`.
 - `squeal status --wait` over the 13 changed `src/` and `test/` paths at revision 46: 940 test files selected, each with a current result, after 1279 s. 4 known failures, all the committed bundles differing from the build (`test/harness/plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: `cli/squeal.mjs differs from the build`). Expected: the brief forbids `pnpm run build`. 7 test files of the worktree are unknown, outside the selection.
 - Among them, passing at revision 46: the model test (`model-scheduler.test.ts`, once), `test/keys/key-format.test.ts` (no `KEY_FORMAT_VERSION` raise), and the scheduler tests that drive a real scheduler, unchanged: `group-lanes-*` (13 files), `slots*`, `install-wait*`, `reinstall*`, `runtime-gone-*`, `command-hold-slow`, `slow-release-setup`, `slow-slot-fair`, `slow-tier`, `backlog-slots*`.
 - Direct runs (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run ...`), load 7 to 11 on 24 CPUs: `step`, `mutex`, `admission-runner-work`, `retry-slow-lane` (56 of 56); `slow-slot-fair`, `slow-tier`, `runtime-gone-slow` after the re-walk fix; the two rewrites 3 of 3 times each.
+- After the rebase onto `270f1a0e0` (no conflict; main changed only `scheduler.ts`'s install refresh and added `step-install-refresh.test.ts`): `pnpm run lint` no fixes, typecheck exit 0; direct `vitest run --maxWorkers=4` at load 1.7 to 2.4: `step`, `step-install-refresh`, `key-format`, `group-lanes*` (7 files), `slots-backlog-turn`, `backlog-slots*`, `pytest-slots`, `slow-slot-fair`, `slow-tier`, `slow-release*`, `admission-runner-work`, `retry-slow-lane`, `mutex`: 22 files, 129 tests passed.
 - Not run: `test/e2e/**` (excluded by `squeal.config.json`; it runs the committed bundles, which this row does not rebuild).
 
 ## For the next worker
