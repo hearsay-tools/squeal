@@ -96,13 +96,13 @@ export type DecisionPlace = "turn" | "after";
 export type StepDecision<T = unknown, Y = unknown, I = unknown> =
   /** Fly `tier`, started on the admission of lock turn `turn` with the install stamp `stamp`. */
   | { readonly kind: "start-tier"; readonly tier: T; readonly stamp: string; readonly turn: number }
-  /** Cancel `tier` for `cause` (C4 step 5, row 011-56). */
-  | { readonly kind: "stop-tier"; readonly tier: T; readonly cause: string }
+  /** Cancel `tier` for `cause`, decided at `at` (C4 step 5, row 011-56). */
+  | { readonly kind: "stop-tier"; readonly tier: T; readonly cause: string; readonly at: number }
   /** Apply the yield check's answer at `at`: marks, standings, history, bounds, the `yields` row. */
   | { readonly kind: "write-yield-row"; readonly at: number; readonly decided: Y }
   /** The install went under this scheduler (task 001-113): it stores nothing more. */
   | { readonly kind: "reinstall" }
-  /** Apply the queued runner work beside the tiers in flight. */
+  /** Apply the queued runner work beside the tiers in flight: it starts in the turn, its tasks take the lock after it. */
   | { readonly kind: "drain" }
   /** Read the install stamp: the next step's `reads.install`. */
   | { readonly kind: "read-install" }
@@ -132,7 +132,7 @@ export const DECISION_PLACE = {
   "stop-tier": "turn",
   "write-yield-row": "turn",
   reinstall: "turn",
-  drain: "after",
+  drain: "turn",
   "read-install": "after",
   "read-probe": "after",
   "refresh-install": "after",

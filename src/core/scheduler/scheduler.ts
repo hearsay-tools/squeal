@@ -37,7 +37,7 @@ import { reconcileBatch } from "./batch.js";
 import { besideDone, besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
-import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
+import { TierCapacity } from "./capacity.js";
 import { fullSuiteRequest } from "./checkpoint-requests.js";
 import { CLAIM_POLL_MS, type ClaimWindow, claimPoll, claimWindow } from "./claims.js";
 import { type Clock, clockOf } from "./clock.js";
@@ -83,7 +83,16 @@ import { busyLanes } from "./slots.js";
 import { groupView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
 import { type SlowHost, type SlowRun, SlowTier } from "./slow-tier.js";
-import type { SchedulerEvent } from "./step-events.js";
+import {
+  type Decision,
+  type NextWake,
+  type ProbeRead,
+  type Reads,
+  type Step,
+  type StepPorts,
+  step,
+} from "./step.js";
+import { placeOf, type SchedulerEvent } from "./step-events.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
 import { liveAsks, liveView } from "./tier-live.js";
@@ -92,7 +101,7 @@ import { startNext } from "./tier-start.js";
 import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
 import { type WakeSlot, Wakes } from "./wakes.js";
 import { WarmUp } from "./warm-up.js";
-import { TierYields, yieldReach } from "./yields.js";
+import { stopTier, TierYields, yieldReach } from "./yields.js";
 
 /** A tier in flight: its lane is busy until `done` (`busyLanes`), which never rejects. */
 interface InFlight {
@@ -253,6 +262,8 @@ class TierScheduler implements Scheduler {
   readonly #slowRelease: SlowRelease;
   /** Spec 021 D2: each retried pass or request waits under a key of its own. */
   #retries = 0;
+  /** Paths a merge hold released, read by the step's probe and reconciled by its `reconcile` (row 011-356). */
+  readonly #released: RelativePath[] = [];
 
   constructor(private readonly options: SchedulerOptions) {
     this.#clock = clockOf(options);
@@ -636,15 +647,29 @@ class TierScheduler implements Scheduler {
    * tier runs at the keys of the conflicted bytes. What it finds stays in
    * memory for `#facts`.
    */
-  async #probe(): Promise<"gone" | "held" | "released" | "free"> {
+  async #probe(): Promise<ProbeRead> {
+    const probe = await this.#probeRead();
+    if (probe === "released") await this.#reconcileReleased();
+    return probe;
+  }
+
+  /**
+   * `#probe`'s reads, for the step (row 011-356): the paths a hold released
+   * wait in `#released` for the step's `reconcile`, so a step that ends
+   * before it loses none.
+   */
+  async #probeRead(): Promise<ProbeRead> {
     if (await this.#runtimeMissing()) return "gone";
     await this.#hold.check();
-    const released = this.#hold.takeReleased();
-    if (released.length > 0) {
-      await this.#reconcilePaths(released);
-      return "released";
-    }
+    this.#released.push(...this.#hold.takeReleased());
+    if (this.#released.length > 0) return "released";
     return this.#hold.holding || this.#commandHold.holding ? "held" : "free";
+  }
+
+  /** Reconciles the paths a hold released (row 011-72). */
+  async #reconcileReleased(): Promise<void> {
+    const released = this.#released.splice(0);
+    if (released.length > 0) await this.#reconcilePaths(released);
   }
 
   /**
@@ -1116,87 +1141,21 @@ class TierScheduler implements Scheduler {
     this.#asked = false;
     this.#pumping = this.#wakes.track(async () => {
       try {
-        while (!this.#admit().halted && !this.#stalled) {
-          this.#events.length = 0;
-          this.#drain();
-          if (this.#draining) {
-            await this.#nextEvent();
-            continue;
-          }
-          const before = this.#admit();
-          if (before.halts.has("install-wait") || before.halts.has("reinstalled")) break;
-          // The check before a tier, never during one: only when a free lane has a file to take.
-          if (!before.any) {
-            await this.#nextEvent();
-            continue;
-          }
-          const install = await this.#install.check();
-          this.#installMissing = install.missing !== null;
-          if (install.missing === null && this.#install.takeChange(install)) {
-            // Task 001-109 (review wave-11b S2, agreed with the coordinator).
-            await this.#lock.run(() => {
-              const { context, ledger } = this.#started();
-              return refreshInstall(context, ledger);
-            }, "refreshing the install");
-            continue;
-          }
-          // Row 011-106: a daemon whose own runtime went starts no tier; its files stay queued.
-          // Row 011-72: the check before a tier; a hold that ended first reconciles what it released.
-          const probe = await this.#probe();
-          if (probe === "gone") break;
-          if (probe === "held") {
-            await this.#slowRelease.idle();
-            break;
-          }
-          if (probe === "released") continue;
-          // Row 011-126: the selection's lookups and the tier's start wait a slice on a busy store.
-          const next = await this.#runSliced(() => {
-            // Row 011-340: the answer read in this lock turn; `#fly` throws on one from another.
-            const admitted = this.#admit();
-            if (admitted.fast === "held") return "held" as const;
-            if (admitted.fast === "install-missing") {
-              this.#reinstall(this.#started().ledger);
-              return null;
-            }
-            if (admitted.fast === "runner-work") return "runner-work" as const;
-            if (admitted.fast !== null) return null;
-            const { context, ledger } = this.#started();
-            this.#adopt(context, ledger);
-            // Row 011-346: the tier plan, then its act step, in this lock turn.
-            const next = startNext(context, ledger, this.#plan(context, ledger), {
-              check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
-              fly: (tier) => {
-                this.#fly(tier, install.stamp, null, admitted);
-                // The batch's tier no longer stands for the work that went beside it (row 011-269).
-                const beside = tier.beside === true;
-                this.#cutTiers({ kind: "tier-started", runId: tier.runId, beside });
-              },
-            });
-            return "tier" in next ? ("flown" as const) : next.idle;
-          }, "selecting the next tier");
-          this.#busy?.landed();
-          if (next === "held") {
-            await this.#slowRelease.idle();
-            break;
-          }
-          if (next === "flown" || next === "runner-work") continue;
-          if (this.#admit().halts.has("reinstalled")) break;
-          // Spec 004 D2, 019 D3: each group's lane that may start decides the rest.
-          if (await this.#groupLanesNext(install.stamp)) continue;
-          // Row 011-346: the plan's idle answer, or, when no plan ran, the same answer read now.
-          const idle = next ?? this.#idleNow();
-          if (idle.idle === "claims" || this.#started().ledger.claims.waiting) {
-            await this.#claimWake();
-            continue;
-          }
-          if (await this.#quietWake(idle)) continue;
-          if (await this.#capacityWake(idle)) continue;
-          if (this.#inFlight.size === 0 && this.#events.length === 0) {
-            // Row 015-117: with nothing else to do, the once-after-upgrade re-walk takes a chunk.
-            if (await this.#queueRewalk()) continue;
-            break;
-          }
-          await this.#nextEvent();
+        // Row 011-356: the step decides under the lock; the pump carries out and waits.
+        let reads: Reads = {};
+        for (;;) {
+          // Row 011-126: the step's lookups and a tier's start wait a slice on a busy store.
+          const decided = await this.#runSliced(() => this.#step(reads), "selecting the next tier");
+          if (decided.selected && decided.error === null) this.#busy?.landed();
+          for (const decision of decided.decisions)
+            if (placeOf(decision) === "after")
+              reads = { ...reads, ...(await this.#carryAfter(decision)) };
+          if (decided.error !== null) throw decided.error;
+          if (decided.wake.kind === "end") break;
+          // The reads stay for the next step only when this one asked for them.
+          if (decided.wake.kind !== "reads") reads = {};
+          const waiting = this.#waitFor(decided.wake);
+          if (waiting !== null) await waiting;
         }
       } catch (error) {
         this.#stall(error);
@@ -1221,6 +1180,145 @@ class TierScheduler implements Scheduler {
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     });
+  }
+
+  /**
+   * The wait the step's next wake names: an event, a time or the claims
+   * window; `null` to step again at once, with no wait in between.
+   */
+  #waitFor(wake: NextWake): Promise<void> | null {
+    switch (wake.kind) {
+      case "reads":
+      case "again":
+      case "end":
+        return null;
+      case "event":
+        return this.#nextEvent();
+      case "at":
+        return this.#eventOrAt(wake.at);
+      case "claims":
+        return this.#claimWake(wake.at);
+      case "turn":
+        throw new Error("squeal scheduler: a pump step ended as one inside another turn");
+      default:
+        return unplaced(wake);
+    }
+  }
+
+  /** One step of the pump with `reads` (row 011-356), in this lock turn: the events since the last. */
+  #step(reads: Reads): Step {
+    const events = this.#events.splice(0);
+    return step({ at: this.#now(), events, reads, ports: this.#ports });
+  }
+
+  /** The step's live adapter: the scheduler's memory and store (row 011-356). */
+  readonly #ports: StepPorts = {
+    admit: () => this.#admit(),
+    stalled: () => this.#stalled,
+    runnerWork: () => ({ queued: this.#runnerWork.size, draining: this.#draining !== null }),
+    yields: {
+      tier: (runId) => this.#inFlight.get(runId)?.tier,
+      standsNamed: (tier) => this.#yields.standsNamed(tier),
+      adopt: () => {
+        const { context, ledger } = this.#started();
+        this.#adopt(context, ledger);
+      },
+      decide: (at, trigger) => {
+        // A hold reaches nothing (row 011-72): the check reads it in its own lock turn.
+        const held = this.#admit().halts.has("held");
+        const { context, ledger } = this.#started();
+        const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
+        return this.#yields.decide(context, ledger, tiers, trigger, held, at);
+      },
+    },
+    startNext: (admitted, fly) => {
+      const { context, ledger } = this.#started();
+      this.#adopt(context, ledger);
+      // Row 011-346: the tier plan, then its act step; `#fly` throws on an answer of another turn.
+      const next = startNext(context, ledger, this.#plan(context, ledger), {
+        check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
+        fly,
+      });
+      return { idle: "tier" in next ? null : next.idle };
+    },
+    idleNow: () => this.#idleNow(),
+    idleLanes: () => this.#slowRelease.idleLanes(),
+    claimsWaiting: () => this.#started().ledger.claims.waiting,
+    refused: () => this.#capacity?.refused() === true,
+    inFlight: () => this.#inFlight.size,
+    carry: (decision) => this.#carry(decision),
+  };
+
+  /** Carries out a decision placed in the step's lock turn, as the step makes it. */
+  #carry(decision: Decision): void {
+    switch (decision.kind) {
+      case "start-tier":
+        this.#fly(decision.tier, decision.stamp, null, decision);
+        return;
+      case "stop-tier":
+        stopTier(this.#started().context, decision.at as EpochMs, decision.tier, decision.cause);
+        return;
+      case "write-yield-row":
+        this.#yields.apply(this.#started().context, decision.at as EpochMs, decision.decided);
+        return;
+      case "reinstall":
+        this.#reinstall(this.#started().ledger);
+        return;
+      case "drain":
+        this.#drain();
+        return;
+      case "read-install":
+      case "read-probe":
+      case "refresh-install":
+      case "reconcile":
+      case "close-lanes":
+      case "ask-lanes":
+      case "queue-rewalk":
+        throw new Error(`squeal scheduler: ${decision.kind} is carried out after the turn`);
+      default:
+        unplaced(decision);
+    }
+  }
+
+  /** Carries out a decision placed after the step's turn; a read's answer goes to the next step. */
+  async #carryAfter(decision: Decision): Promise<Reads> {
+    switch (decision.kind) {
+      case "start-tier":
+      case "stop-tier":
+      case "write-yield-row":
+      case "reinstall":
+      case "drain":
+        return {};
+      case "read-install": {
+        const install = await this.#install.check();
+        this.#installMissing = install.missing !== null;
+        // Task 001-109 (review wave-11b S2, agreed with the coordinator).
+        const changed = install.missing === null && this.#install.takeChange(install);
+        return { install: { stamp: install.stamp, missing: install.missing !== null, changed } };
+      }
+      case "read-probe":
+        return { probe: await this.#probeRead() };
+      case "refresh-install":
+        await this.#lock.run(() => {
+          const { context, ledger } = this.#started();
+          return refreshInstall(context, ledger);
+        }, "refreshing the install");
+        return {};
+      case "reconcile":
+        await this.#reconcileReleased();
+        return {};
+      case "close-lanes":
+        await this.#slowRelease.closeIdle(decision.lanes);
+        return {};
+      case "ask-lanes": {
+        const started = await this.#groupLanesNext(decision.stamp);
+        return { lanes: { started, idle: decision.idle } };
+      }
+      case "queue-rewalk":
+        return { rewalk: await this.#queueRewalk() };
+      default:
+        return unplaced(decision);
+    }
   }
 
   /**
@@ -1429,9 +1527,8 @@ class TierScheduler implements Scheduler {
    * `CLAIM_RECHECK_MS`, never in a tight loop. The claims owner polls the
    * store's marker at its wake (row 011-352).
    */
-  async #claimWake(): Promise<void> {
+  async #claimWake(at: EpochMs): Promise<void> {
     const { context } = this.#started();
-    const at = this.#now();
     this.#claimWindow = claimWindow(context.store, at);
     this.#claimsWake.at((at + CLAIM_POLL_MS) as EpochMs);
     try {
@@ -1451,36 +1548,9 @@ class TierScheduler implements Scheduler {
     else this.#claimsWake.at(next);
   }
 
-  /**
-   * A lane with a fast file queued waits for quiet (C4 step 5 as amended
-   * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
-   * `QUIET_RECHECK_MS` on, or on an event. The wait is the plan's, from its
-   * clock reading (row 011-346), and stays relative to it until the step
-   * (row 011-356). False when no such lane waits.
-   */
-  async #quietWake(idle: Idle): Promise<boolean> {
-    if (idle.idle !== "quiet" || idle.wakeAt === null) return false;
-    await this.#eventOrAfter(idle.wakeAt - idle.at);
-    return true;
-  }
-
-  /**
-   * A tier the pool refused waits as a waiter (011 C10 as amended
-   * 2026-10-21, row 011-96): the pump looks again when a tier of this daemon
-   * ends, on an event, or after `CAPACITY_RECHECK_MS`. False when the pool
-   * refused none since the last look: the plan's tier, a slow lane's or a
-   * lint part's (`TierCapacity.refused`, which this look clears).
-   */
-  async #capacityWake(idle: Idle): Promise<boolean> {
-    const refused = this.#capacity?.refused() === true;
-    if (!refused && idle.idle !== "pool") return false;
-    await this.#eventOrAfter(CAPACITY_RECHECK_MS);
-    return true;
-  }
-
-  /** The pump's one wait (row 011-352): an event, or its wake `ms` from now, whichever comes first. */
-  async #eventOrAfter(ms: number): Promise<void> {
-    this.#pumpWake.at((this.#now() + Math.max(0, ms)) as EpochMs);
+  /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
+  async #eventOrAt(at: EpochMs): Promise<void> {
+    this.#pumpWake.at(at);
     try {
       await this.#nextEvent();
     } finally {
@@ -1663,4 +1733,9 @@ class TierScheduler implements Scheduler {
       );
     }
   }
+}
+
+/** The end of a carry-out switch: a decision kind no case places does not compile. */
+function unplaced(decision: never): never {
+  throw new Error(`squeal scheduler: a decision no carry-out places: ${String(decision)}`);
 }

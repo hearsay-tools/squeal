@@ -117,8 +117,18 @@ export class SlowRelease {
 
   /** Closes the instance of each open lane no tier runs in, unless a slow selection is in progress. */
   async idle(): Promise<void> {
+    await this.closeIdle(this.idleLanes());
+  }
+
+  /** The open lanes no tier runs in now (`decideRelease`'s `idle`): a step's decision (row 011-356). */
+  idleLanes(): readonly string[] {
+    return this.#decide().idle;
+  }
+
+  /** Closes `lanes`, a step decided idle, unless a slow selection is in progress. */
+  async closeIdle(lanes: readonly string[]): Promise<void> {
     if (this.#selecting) return;
-    await Promise.all(this.#decide().idle.map((lane) => this.release(lane)));
+    await Promise.all(lanes.map((lane) => this.release(lane)));
   }
 
   /** `select`, a slow selection: no instance closes during it; the count goes on after it. */
