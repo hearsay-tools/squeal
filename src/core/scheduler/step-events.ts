@@ -84,7 +84,8 @@ export function wakeRank(reason: WakeReason): number {
  * Row 011-356 (card 7, decision 3, "The step's interface"): what a step
  * decides, from a closed list. `DECISION_PLACE` places each kind in the
  * step's lock turn or after it: a kind with no place does not compile, and
- * the carry-out switches end in an exhaustive check.
+ * each carry-out switch takes its own place's kinds (`DecisionAt`) and ends
+ * in an exhaustive check.
  */
 
 /** Where a decision is carried out: in the step's lock turn, as the step makes it, or after the turn. */
@@ -154,4 +155,23 @@ export const DECISION_PLACE = {
 /** Where `decision` is carried out. */
 export function placeOf(decision: StepDecision): DecisionPlace {
   return DECISION_PLACE[decision.kind];
+}
+
+/** The decision kinds `DECISION_PLACE` places at `place`. */
+type KindAt<P extends DecisionPlace> = {
+  [K in StepDecisionKind]: (typeof DECISION_PLACE)[K] extends P ? K : never;
+}[StepDecisionKind];
+
+/**
+ * Row 011-365: the decisions carried out at `place`, as `DECISION_PLACE`
+ * states it; each carry-out switch is typed over its own kinds.
+ */
+export type DecisionAt<P extends DecisionPlace, T = unknown, S = unknown> = Extract<
+  StepDecision<T, S>,
+  { readonly kind: KindAt<P> }
+>;
+
+/** `decision` is carried out in the step's lock turn; otherwise after it. */
+export function inTurn<T, S>(decision: StepDecision<T, S>): decision is DecisionAt<"turn", T, S> {
+  return DECISION_PLACE[decision.kind] === "turn";
 }
