@@ -30,6 +30,10 @@ $ grep -rln "model-clock" test src
 
 The 011-352 review found the same blocker: `Scheduler.rest()` stays pending while a runner run is held. Every model plan holds a run: `Model.start` leaves four slow files of an edit's tier in flight. So all 7 cases failed with "no quiet point in 20000 ms" at the start's settle (22 s, load 6.2 on 24 CPUs, before the repair). A minimal case is in the progress message to the coordinator: a held `catchUpSide` runner, an edit, then `rest()`.
 
+## Second gap: the slot gather
+
+On d77d1f9d8 (the held-run repair), all 7 cases still failed. A temporary debug line (reverted) showed the drain's settle with no live run, 6 tracked works, and the only stated wake slot-gather 25 ms ahead. The cause: a flight's record awaits `SlotRecords`' gather wait (`slot-records.ts`, `await this.#gathering`) inside tracked work, and that wait is not set aside. On a virtual clock it fires only on `advance`, so `rest()` never comes. The old `ModelClock` hid this: it also fired every timer at its real delay. Proposed to the coordinator: `await this.#wakes.aside(this.#gathering)`. Locally, with it, the model test passed 7/7 in 14.3 s at load 6.6.
+
 ## Model test run
 
 (after the repair: wall time, the one-minute load, plans and seeds)
