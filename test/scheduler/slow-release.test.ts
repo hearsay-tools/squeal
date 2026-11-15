@@ -19,10 +19,11 @@ import { heldFiles, hold, liveProcess, settle } from "./command-hold-fixture.js"
  * selection, and a hold beginning while a slow tier runs. A real instance
  * and its `globalSetup` are `slow-release-setup.test.ts`. The cases alone run
  * on the virtual clock and the wake loop (row 011-352), each step to rest.
+ * Row 011-355: the bound's rule cases are the `decideRelease` table
+ * (`decide-release.test.ts`); these cases are the apply.
  */
 
 const LANE = "slow:vitest";
-const GROUP = "group:e2e:vitest";
 
 /**
  * A `SlowRelease` over a host whose kept lanes the test sets: each tier's
@@ -74,29 +75,6 @@ describe("SlowRelease (row 011-211)", () => {
     expect(released).toEqual([LANE]);
   });
 
-  it("counts from the latest slow run's end", async () => {
-    const { released, ran } = open();
-    ran();
-    await advance(SLOW_RELEASE_MS / 2);
-    ran();
-    await advance(SLOW_RELEASE_MS / 2);
-    expect(released).toEqual([]);
-    await advance(SLOW_RELEASE_MS / 2);
-    expect(released).toEqual([LANE]);
-  });
-
-  it("keeps a lane whose tier is in flight; its end arms the count again", async () => {
-    const { host, released, ran } = open();
-    ran();
-    host.inFlight = [LANE];
-    await advance(SLOW_RELEASE_MS * 2);
-    expect(released).toEqual([]);
-    host.inFlight = [];
-    ran();
-    await advance(SLOW_RELEASE_MS);
-    expect(released).toEqual([LANE]);
-  });
-
   it("keeps the instance through a slow selection, the load guard's wait; past the bound its end closes it", async () => {
     const { release, released, ran } = open();
     ran();
@@ -112,37 +90,6 @@ describe("SlowRelease (row 011-211)", () => {
     await selection;
     await advance(0);
     expect(released).toEqual([LANE]);
-  });
-
-  it("closes a lane at its own bound while another lane keeps ending tiers (review 0.1.396 S4)", async () => {
-    const { released, ran } = open();
-    ran(LANE);
-    await advance(SLOW_RELEASE_MS / 2);
-    ran(GROUP);
-    await advance(SLOW_RELEASE_MS / 2 - 1);
-    expect(released).toEqual([]);
-    await advance(1);
-    expect(released).toEqual([LANE]);
-    ran(GROUP);
-    await advance(SLOW_RELEASE_MS - 1);
-    expect(released).toEqual([LANE]);
-    await advance(1);
-    expect(released).toEqual([LANE, GROUP]);
-  });
-
-  it("keeps the instance of a lane waiting for its load guard, not another lane's past its bound", async () => {
-    const { release, host, released, ran } = open();
-    ran(LANE);
-    ran(GROUP);
-    // The scheduler keeps a lane whose files wait for the load guard (`SlowTier.deferring`).
-    host.inFlight = [GROUP];
-    await advance(SLOW_RELEASE_MS * 2);
-    expect(released).toEqual([LANE]);
-    // The wait ends without a tier: the selection's end closes it, past its bound.
-    host.inFlight = [];
-    await release.selecting(async () => {});
-    await advance(0);
-    expect(released).toEqual([LANE, GROUP]);
   });
 
   it("a hold's close takes every open lane no tier runs in, once", async () => {

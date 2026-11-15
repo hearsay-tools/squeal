@@ -7,7 +7,8 @@ import { rows } from "./merge-hold-fixture.js";
 
 /*
  * Row 011-74 (011 C9 as amended 2026-10-21, "Holds", *Hold command*;
- * `tasks/011-61/design.md` R3, tests 1 to 4, 6 and 7 at the scheduler): while
+ * `tasks/011-61/design.md` R3, tests 1 to 3 and 7 at the scheduler; row 011-355 moved 4 and 6
+ * to the `decideHolds` table, `decide-holds.test.ts`): while
  * an entry of the worktree's command-hold row holds, the scheduler cancels
  * the tiers in flight whose runner cancels and starts none; edits are
  * recorded and queued. The removal of the last entry, its holder's death or
@@ -141,57 +142,6 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     await expect
       .poll(() => paths.every((path) => next.current(path)), { timeout: 10_000 })
       .toBe(true);
-  });
-
-  it("4: an entry past its `until` ends at its bound with one note; its later removal changes nothing", async () => {
-    const files = heldFiles(2, 0);
-    const paths = files.map((f) => f.path);
-    const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
-    await side.scheduler.start();
-    await side.scheduler.idle();
-    const command = await liveProcess();
-    const entry = hold(side, command.identity, { ms: 2_000 });
-    expect(await side.scheduler.commandHold()).toBe(true);
-    await side.edit("watch", "src/held.ts");
-    await settle();
-    expect(side.runner.runs).toHaveLength(1);
-
-    await expect.poll(() => tokens(side), { timeout: 5_000, interval: 20 }).toEqual([]);
-    const ended = Date.now() - entry.since;
-    expect(ended).toBeGreaterThanOrEqual(2_000);
-    expect(ended).toBeLessThan(3_000);
-    await expect
-      .poll(() => paths.every((path) => side.current(path)), { timeout: 10_000 })
-      .toBe(true);
-    const note = `the hold for \`npm run gate\` (pid ${command.identity.pid}) passed its 2 s bound; validating again`;
-    expect(notes(side).filter((n) => n.startsWith("the hold for"))).toEqual([note]);
-
-    expect(removeCommandHold(side.store, side.worktreeId, entry.token)).toBeNull();
-    expect(await side.scheduler.commandHold()).toBe(false);
-    expect(notes(side).filter((n) => n.startsWith("the hold for"))).toEqual([note]);
-    expect(side.runner.runs).toHaveLength(2);
-  });
-
-  it("6: with two entries the hold ends when the second goes", async () => {
-    const files = heldFiles(2, 0);
-    const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
-    await side.scheduler.start();
-    await side.scheduler.idle();
-    const one = hold(side, (await liveProcess()).identity, { command: "npm run lint" });
-    const two = hold(side, (await liveProcess()).identity, { command: "npm test" });
-    expect(await side.scheduler.commandHold()).toBe(true);
-    await side.edit("watch", "src/held.ts");
-
-    removeCommandHold(side.store, side.worktreeId, one.token);
-    expect(await side.scheduler.commandHold()).toBe(true);
-    await settle();
-    expect(side.runner.runs).toHaveLength(1);
-
-    removeCommandHold(side.store, side.worktreeId, two.token);
-    expect(await side.scheduler.commandHold()).toBe(false);
-    await expect.poll(() => side.runner.runs.length, { timeout: 10_000 }).toBe(2);
   });
 
   it("7: a holder whose PID names a process of another start time is removed at the next check", async () => {
