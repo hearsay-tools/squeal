@@ -54,6 +54,14 @@ export class FocusedEntries {
     return this.#entries.filter((entry) => entry.runId === null);
   }
 
+  /**
+   * `waiting` by reads only (row 011-354, review 0.1.514 B1): the same
+   * entries, and none past its deadline goes; `waiting` at `now` drops them.
+   */
+  peekWaiting(now: number): readonly FocusEntry[] {
+    return this.#entries.filter((entry) => entry.runId === null && entry.until > now);
+  }
+
   /** Whether an entry of `ref` waits or runs: the file has a focused run to come. */
   has(ref: TestFileRef): boolean {
     const id = testFileId(ref);
