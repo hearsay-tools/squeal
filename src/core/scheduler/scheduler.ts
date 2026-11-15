@@ -40,6 +40,7 @@ import { BusyResume } from "./busy-resume.js";
 import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { fullSuiteRequest } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
+import { type Clock, clockOf } from "./clock.js";
 import { CommandHold } from "./command-hold.js";
 import { attachCommitLanes } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
@@ -110,7 +111,10 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 }
 
 class TierScheduler implements Scheduler {
-  readonly #lock = new Mutex();
+  /** Row 011-351: the one clock, `SchedulerOptions.clock` or the host adapter over `now`. */
+  readonly #clock: Clock;
+  readonly #now = (): EpochMs => this.#clock.now();
+  readonly #lock = new Mutex(this.#now);
   readonly #idle: (() => void)[] = [];
   /** Row 015-117: the once-after-upgrade re-walk, made at its first chunk. */
   #rewalk: ImportRewalk | null = null;
@@ -238,13 +242,14 @@ class TierScheduler implements Scheduler {
   #retries = 0;
 
   constructor(private readonly options: SchedulerOptions) {
+    this.#clock = clockOf(options);
     this.#install = new InstallStamps(options.root);
-    this.#storedKeys = new StoredKeys((options.now ?? Date.now)());
+    this.#storedKeys = new StoredKeys(this.#now());
     this.#hold = new MergeHold({
       root: options.root,
       store: options.store,
       worktreeId: options.worktreeId,
-      now: options.now ?? Date.now,
+      now: this.#now,
       revision: () => this.#ledger?.revision.number ?? 0,
       resumed: () => this.#pump(),
       note: (message) => this.#note(message),
@@ -252,7 +257,7 @@ class TierScheduler implements Scheduler {
     this.#commandHold = new CommandHold({
       store: options.store,
       worktreeId: options.worktreeId,
-      now: options.now ?? Date.now,
+      now: this.#now,
       note: (message) => this.#note(message),
       merging: () => this.#hold.holding,
       due: () =>
@@ -269,7 +274,7 @@ class TierScheduler implements Scheduler {
           });
     // Row 011-309: a lane the pool refuses waits for CPU, in the daemon's log and for status.
     const waits = new PoolWaits({
-      now: options.now ?? Date.now,
+      now: this.#now,
       log: options.log ?? (() => {}),
       publish: (lanes, at) => publishPoolWaits(options.store, options.worktreeId, lanes, at),
     });
@@ -290,6 +295,7 @@ class TierScheduler implements Scheduler {
       pump: () => this.#pump(),
       probe: () => this.#probe(),
       admit: () => this.#admit(),
+      now: this.#now,
     };
     this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
     this.#slowRelease = new SlowRelease(
@@ -297,7 +303,7 @@ class TierScheduler implements Scheduler {
         release: (lane) => this.#releaseLane(lane),
         // A lane whose files wait for its load guard keeps its instance too (row 011-211).
         lanes: () => [...this.#lanes(), ...this.#groups.deferring()],
-        now: () => (options.now ?? Date.now)(),
+        now: this.#now,
         closed: () => this.#closed,
       },
       options.slow?.releaseMs,
@@ -345,6 +351,7 @@ class TierScheduler implements Scheduler {
         onExtraFiles: (paths) => options.onExtraFiles?.(paths),
         note: (message) => this.#note(message),
         ignored: (paths) => marks.among(paths),
+        now: this.#now,
         ...(options.env === undefined ? {} : { env: options.env }),
       });
       const context: SchedulerContext = {
@@ -362,7 +369,7 @@ class TierScheduler implements Scheduler {
         // Each revision's `git status` gives the unmerged paths too (row 011-72).
         head: () => this.#hold.head(options.head),
         // Read at each call: a commit stamps the store's re-key moves with it (`recordMoves`).
-        now: options.now ?? (() => Date.now()),
+        now: this.#now,
         note: (message) => this.#note(message),
         rerunCap: options.rerunCap ?? RERUN_CAP,
         hostLoad: options.hostLoad ?? hostLoad,
@@ -1367,7 +1374,7 @@ class TierScheduler implements Scheduler {
     const { context } = this.#started();
     const stop = new AbortController();
     try {
-      await Promise.race([this.#nextEvent(), claimWake(context.store, stop.signal)]);
+      await Promise.race([this.#nextEvent(), claimWake(context.store, stop.signal, this.#now)]);
     } finally {
       stop.abort();
     }
@@ -1565,10 +1572,10 @@ class TierScheduler implements Scheduler {
 
   /** Persists a note for `squeal status` (D7, review S6). */
   #note(message: string): void {
-    const { store, worktreeId, now } = this.options;
+    const { store, worktreeId } = this.options;
     const revision = this.#ledger?.revision.number ?? null;
     try {
-      appendNote(store, worktreeId, { at: (now ?? Date.now)(), revision, text: message });
+      appendNote(store, worktreeId, { at: this.#now(), revision, text: message });
     } catch (error) {
       this.options.onError?.(
         new Error(`squeal scheduler: could not persist a note (${message}): ${String(error)}`),

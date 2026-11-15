@@ -6,6 +6,7 @@ import type { EpochMs } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Liveness, Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
+import { hostNow } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
@@ -162,11 +163,15 @@ function stands(context: SchedulerContext, hits: readonly ResultRecord[]): boole
  * `CLAIM_RECHECK_MS` at most, or when `signal` aborts: a claimant's record
  * lands as a commit; a claimant that died writes nothing.
  */
-export async function claimWake(store: Store, signal: AbortSignal): Promise<void> {
+export async function claimWake(
+  store: Store,
+  signal: AbortSignal,
+  now: () => EpochMs = hostNow,
+): Promise<void> {
   const before = changeMarker(store);
-  const until = performance.now() + CLAIM_RECHECK_MS;
+  const until = now() + CLAIM_RECHECK_MS;
   try {
-    while (performance.now() < until) {
+    while (now() < until) {
       await delay(CLAIM_POLL_MS, undefined, { signal });
       const now = changeMarker(store);
       if (now?.others !== before?.others || now?.own !== before?.own) return;

@@ -17,6 +17,7 @@ import type { SlowTierActivity } from "../types/status.js";
 import type { Admission, LaneAnswer } from "./admission.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
+import { elapsed, hostNow } from "./clock.js";
 import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -64,6 +65,8 @@ export interface SlowHost {
   probe(): Promise<"gone" | "held" | "released" | "free">;
   /** The admission now, read from the start facts in memory. */
   admit(): Admission;
+  /** The scheduler's clock (row 011-351); absent, the host's (`hostNow`). */
+  readonly now?: () => EpochMs;
 }
 
 /**
@@ -158,8 +161,8 @@ export class SlowTier {
   /** When `#timer` fires, so an earlier deadline replaces it. */
   #timerAt = 0;
   /**
-   * While the load guard holds the lane: when its wait began
-   * (`performance.now`), and the runner lane its files run in. The next
+   * While the load guard holds the lane: when its wait began (the
+   * scheduler's clock, `#now`), and the runner lane its files run in. The next
    * `next` or a `preempt` ends the wait and takes its time off the budget.
    */
   #deferred: { readonly from: number; readonly lane: string } | null = null;
@@ -253,7 +256,7 @@ export class SlowTier {
     if (deferred === null) return;
     this.#deferred = null;
     if (this.#budgetMs === null) return;
-    this.#budgetMs = Math.max(0, this.#budgetMs - (performance.now() - deferred.from));
+    this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, this.#now()));
   }
 
   close(): void {
@@ -587,7 +590,7 @@ export class SlowTier {
     if (budget <= 0) return { ranUnderLoad: load, idle: false };
     const permits = group.limits.maxParallel;
     if (permits !== null && slowSlotHeld({ dir, permits, group: this.group })) return "held";
-    this.#deferred = { from: performance.now(), lane };
+    this.#deferred = { from: this.#now(), lane };
     this.#publish({ kind: "waiting", for: "load" });
     this.#arm(Math.min(this.#recheckMs(), budget));
     return DEFERRED;
@@ -806,7 +809,7 @@ export class SlowTier {
    */
   #arm(ms: number = this.#recheckMs()): void {
     if (this.host.closed()) return;
-    const at = performance.now() + ms;
+    const at = this.#now() + ms;
     if (this.#timer !== null) {
       if (this.#timerAt <= at) return;
       clearTimeout(this.#timer);
@@ -817,6 +820,10 @@ export class SlowTier {
       this.host.pump();
     }, ms);
     this.#timer.unref();
+  }
+
+  #now(): EpochMs {
+    return (this.host.now ?? hostNow)();
   }
 
   #recheckMs(): number {

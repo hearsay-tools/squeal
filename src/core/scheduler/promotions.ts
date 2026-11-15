@@ -1,6 +1,7 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
+import { hostNow } from "./clock.js";
 import type { PublishedPromotion } from "./promotions-row.js";
 
 /**
@@ -85,7 +86,7 @@ const NOT_RUNNING = (): boolean => false;
 export class Promotions {
   #promotions: Promotion[] = [];
   #seq = 0;
-  #now: () => number = Date.now;
+  #now: () => number = hostNow;
   #isRunning: (ref: TestFileRef) => boolean = NOT_RUNNING;
   #publish: ((live: readonly PublishedPromotion[]) => void) | null = null;
 

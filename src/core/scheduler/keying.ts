@@ -39,7 +39,13 @@ import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { StartupSets } from "../keys/startup.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/reconcile.js";
 import { recordWorktreeEnvironments } from "../store/environments.js";
-import type { AbsolutePath, ProjectName, RelativePath, WorktreeId } from "../types/common.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  ProjectName,
+  RelativePath,
+  WorktreeId,
+} from "../types/common.js";
 import type { EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
 import type { Policy, RuntimeFileApplication } from "../types/policy.js";
 import type { FileChange, Revision } from "../types/revision.js";
@@ -48,6 +54,7 @@ import type { Store } from "../types/store.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
+import { hostNow } from "./clock.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
 import { RefusedObserved } from "./refused-observed.js";
@@ -68,6 +75,8 @@ export interface KeyingOptions {
   readonly note?: (text: string) => void;
   /** The changed paths git ignores, for `FileChange.ignored` (`IgnoredMarks`, row 011-262); absent, none. */
   readonly ignored?: (paths: readonly RelativePath[]) => Promise<ReadonlySet<RelativePath>>;
+  /** When an environment record is stamped (row 011-351); default the host's clock. */
+  readonly now?: () => EpochMs;
 }
 
 /** Bumped when the provisional encoding changes; never equal to a real environment hash. */
@@ -359,7 +368,7 @@ export class WorktreeKeys {
     const hashes = described.map((d) => d.hash).join("\n");
     if (hashes === this.#recordedEnvironments) return;
     const { store, worktreeId } = this.options;
-    recordWorktreeEnvironments(store, worktreeId, described, Date.now());
+    recordWorktreeEnvironments(store, worktreeId, described, (this.options.now ?? hostNow)());
     this.#recordedEnvironments = hashes;
   }
 

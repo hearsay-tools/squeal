@@ -1,4 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import type { EpochMs } from "../types/common.js";
+import { elapsed, hostNow } from "./clock.js";
 import type { Mutex } from "./mutex.js";
 
 /**
@@ -28,6 +30,8 @@ export interface SlotRecordsOptions<E, R> {
   record(ended: E): Promise<R>;
   /** Commits what the records wrote. */
   commit(): void;
+  /** The clock a commit's time is read on (row 011-351); default the host's (`hostNow`). */
+  readonly now?: () => EpochMs;
 }
 
 /**
@@ -80,10 +84,11 @@ export class SlotRecords<E, R> {
         }
       }
       if (recorded.length === 0) return;
-      const started = performance.now();
+      const now = this.#options.now ?? hostNow;
+      const started = now();
       try {
         this.#options.commit();
-        this.#commitMs = performance.now() - started;
+        this.#commitMs = elapsed(started, now());
       } catch (error) {
         for (const { slot } of recorded) slot.reject(error);
         return;
