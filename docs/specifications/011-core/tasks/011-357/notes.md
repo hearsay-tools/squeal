@@ -45,7 +45,9 @@ Turns that start no lane tier did not change: a fast tier's start turn 2.2 to 2.
 
 The cause is the slot: `slot.txt` times `acquireSlowSlot` alone (a private directory, 100 times, load 8.5): one permit 2.5 ms median (p95 2.8), two permits 4.8 ms (p95 5.4). Each permit is a SQLite file written with a full commit. So the step's turn grows by about 2.5 ms for each permit a lane takes when it starts a tier. The default `slow` group has `maxParallel` 4: on an idle machine with 4 or more slow files queued it would add about 10 ms (estimated from that rate, not measured). A group without `maxParallel` takes no slot and does not grow.
 
-The growth is more than a few milliseconds. It went to the coordinator for the human's decision before landing (request of 2026-11-15, 19:12 UTC; options: land as is; make a permit cheaper first in `src/core/slow/slot.ts`, a new row; or take the slot after the turn, which brings back a gap the design rejected). **Decision: pending.**
+The growth is more than a few milliseconds. It went to the coordinator for the human's decision before landing (request of 2026-11-15, 19:12 UTC; options: land as is; make a permit cheaper first in `src/core/slow/slot.ts`, a new row; or take the slot after the turn, which brings back a gap the design rejected).
+
+**Decision (the human, 2026-11-15): "Slow turn: 1: land as is".** The slot stays inside the step's turn; the growth is the one in the table above (about 2.5 ms per permit a lane takes when it starts a tier; turns that start no lane tier unchanged).
 
 ## Timing differences
 
@@ -102,6 +104,7 @@ On `29d1cdbb3`. No `pnpm run build`, no full suite, no `squeal run --all`.
 - Among them, passing at revision 46: the model test (`model-scheduler.test.ts`, once), `test/keys/key-format.test.ts` (no `KEY_FORMAT_VERSION` raise), and the scheduler tests that drive a real scheduler, unchanged: `group-lanes-*` (13 files), `slots*`, `install-wait*`, `reinstall*`, `runtime-gone-*`, `command-hold-slow`, `slow-release-setup`, `slow-slot-fair`, `slow-tier`, `backlog-slots*`.
 - Direct runs (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run ...`), load 7 to 11 on 24 CPUs: `step`, `mutex`, `admission-runner-work`, `retry-slow-lane` (56 of 56); `slow-slot-fair`, `slow-tier`, `runtime-gone-slow` after the re-walk fix; the two rewrites 3 of 3 times each.
 - After the rebase onto `270f1a0e0` (no conflict; main changed only `scheduler.ts`'s install refresh and added `step-install-refresh.test.ts`): `pnpm run lint` no fixes, typecheck exit 0; direct `vitest run --maxWorkers=4` at load 1.7 to 2.4: `step`, `step-install-refresh`, `key-format`, `group-lanes*` (7 files), `slots-backlog-turn`, `backlog-slots*`, `pytest-slots`, `slow-slot-fair`, `slow-tier`, `slow-release*`, `admission-runner-work`, `retry-slow-lane`, `mutex`: 22 files, 129 tests passed.
+- After the rebase, `squeal status --wait 60000` over the changed `src/` and `test/` paths at revision 51: 941 test files, each with a current result; the same 4 bundle checks fail (no build), nothing else.
 - Not run: `test/e2e/**` (excluded by `squeal.config.json`; it runs the committed bundles, which this row does not rebuild).
 
 ## For the next worker
