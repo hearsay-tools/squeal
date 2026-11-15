@@ -20,16 +20,16 @@ import { type Consumer, type HarnessDelivery, MAIN_AGENT } from "../../src/core/
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
-import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { StatusHeader } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { loadVitest } from "../../src/runners/vitest/load.js";
+import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { withVitestTraits } from "../runners/vitest/helpers.js";
 import { onCleanUp } from "./cleanup.js";
 import type { PhaseTrace } from "./phase-trace.js";
-import { movableClock } from "./quiet-clock.js";
 import {
   type FailingCall,
   type RecordedRun,
@@ -68,8 +68,12 @@ export interface Harness {
   consumer(sessionId?: string): Promise<{ delivery: HarnessDelivery; consumer: Consumer }>;
   /** The scheduler's clock: `HarnessOptions.now`, or the host's, plus what `advance` added. */
   now(): number;
-  /** Moves the scheduler's clock `ms` ahead (row 011-153). */
+  /** Moves the scheduler's clock `ms` ahead (row 011-153); on a virtual clock, firing its timers due. */
   advance(ms: number): void;
+  /** Row 011-353: the virtual clock of `HarnessOptions.clock`; `null` on the host's. */
+  readonly clock: VirtualClock | null;
+  /** Row 011-353: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
+  rest(): Promise<Rest>;
 }
 
 /** What a runner part beside Vitest is built with: the harness's note, and the policy as last reloaded. */
@@ -134,6 +138,12 @@ export interface HarnessOptions {
   readonly busySliceMs?: number;
   /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
   readonly now?: () => number;
+  /**
+   * Row 011-353: `"virtual"`, the scheduler's clock is a prompt virtual
+   * clock from the host's time now, or the virtual clock given; `now` is
+   * then not read. Absent, the host's clock over `now`.
+   */
+  readonly clock?: "virtual" | VirtualClock;
   /** `SchedulerOptions.incarnation`; default `HARNESS_INCARNATION`, the daemon `liveDaemon` registers. */
   readonly incarnation?: string;
   /** `SchedulerOptions.predecessor`; default not known, so the first commit takes in what was left. */
@@ -242,7 +252,7 @@ export async function openHarness(
   const policy = harnessPolicy(options);
   current = policy;
   const reload = options.reloadPolicy;
-  const clock = movableClock(options.now);
+  const clock = harnessClock(options.clock, options.now);
   scheduler = createScheduler({
     root,
     worktreeId,
@@ -265,7 +275,7 @@ export async function openHarness(
           },
         }),
     ...passedThrough(options),
-    now: clock.now,
+    ...clock.scheduler,
   });
   onCleanUp(async () => {
     if (trace === undefined) {
@@ -287,6 +297,11 @@ export async function openHarness(
     scheduler,
     now: clock.now,
     advance: clock.advance,
+    clock: clock.clock,
+    rest: () => {
+      clock.clock?.advance(0);
+      return scheduler.rest();
+    },
     extraFiles,
     errors,
     write(path, content) {
