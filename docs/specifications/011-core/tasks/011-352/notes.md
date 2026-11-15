@@ -89,3 +89,9 @@ Worker 9b8a107e, 2026-11-15, on the coordinator's repair request (`reviews/0.1.5
 New timing differences: none. B2 removes one: a wake no longer fires late by the length of the pass before it. B1 changes only what `rest()` counts; B3 changes only the order of slow-lane wakes due at one time, and those wakes only pump.
 
 Type change (additive): `WakeSlot.rank` is now writable (`rank: number`); `SlowTier.ranked(index)` is new.
+
+Checks of the repair:
+
+- `pnpm run lint`: `Checked 3510 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- Direct run (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run --maxWorkers=4`): `key-format`, `validity/compare`, `validity/reach`, `wakes`, `wake-lane-order`, `scheduler-rest`, `untracked-promises`, `model-scheduler`, `slow-release`, `clock-port`, `group-lanes*` and `slow-tier*`: 18 files, 123 tests passed. No key-format version raise.
+- `squeal status --wait 60000` over the changed `src/` and `test/` paths at revision 62 (`9d9d1706d`): 932 test files selected, each with a current result; 928 pass, and the 4 failures are the committed bundles differing from the build (`plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`). As in the first round, that is expected: the brief forbids `pnpm run build`.
