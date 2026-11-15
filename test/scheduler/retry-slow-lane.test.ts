@@ -15,14 +15,13 @@ import {
 
 /*
  * Row 011-323 (spec 011 `research/request-intake.md`, difference 2):
- * `squeal retry` was the only request that queued work and woke no lane. A
- * slow lane's selection lists its queued files under the scheduler's lock,
- * then checks the runtime and the holds before it starts a tier of them
- * (`slow-tier.ts`, `next`); only a preemption since the listing makes it
- * plan again. A retry whose stage runs in that window queues a slow file
- * the tier leaves out, so it waits for the lane's next planning: once the
- * tier ends, minutes for a slow one. Here the second retry's stage runs
- * right after the listing, as the lock's next task.
+ * `squeal retry` was the only request that queued work and woke no lane.
+ * Row 011-357: a slow lane lists, guards and picks inside the step's one
+ * lock turn, so no retry's stage runs between its listing and its pick. A
+ * retry staged before that turn (here while the step before it reads the
+ * probe) queues a slow file the lane's tier takes; one staged during it
+ * (here at the lane's listing) runs in the lane's next tier, once the
+ * first tier ended.
  */
 
 const S1: TestFileRef = { project: "", path: "test/e2e/s1.test.ts" };
@@ -32,8 +31,10 @@ const FILES: readonly CatchUpFile[] = [
   { path: S1.path, ms: 10, imports: ["src/core.ts"] },
   { path: S2.path, ms: 10, imports: ["src/other.ts"] },
 ];
-/** What the slow lane's selection holds the lock for while it lists its queued files. */
+/** What the step's turn says while the slow lane lists its queued files (row 011-357). */
 const LISTING = "listing the queued files of group slow";
+/** The first retry's turn: the second is staged after it. */
+const TAKING = "taking squeal retry requests";
 
 /** A started, idle scheduler whose two slow files may run in one tier, on an idle machine. */
 async function slowSide(): Promise<CatchUpSide> {
@@ -71,30 +72,63 @@ function ask(side: CatchUpSide, ref: TestFileRef): void {
   });
 }
 
-describe("a retried slow-lane file (row 011-323, difference 2)", () => {
-  it("joins the tier a slow selection in flight starts, not the lane's next planning", async () => {
-    const side = await slowSide();
-    const from = side.runner.runs.length;
-    let first = false;
-    let second: Promise<void> | null = null;
-    const unwatch = side.scheduler.watchLock?.((holder) => {
-      // The first retry queued S1; the lane now lists it, and S2's retry takes the lock next.
-      if (holder?.operation === "taking squeal retry requests") first = true;
-      if (!first || second !== null || holder?.operation !== LISTING) return;
-      ask(side, S2);
-      second = side.scheduler.requestRetries();
-    });
-    try {
-      ask(side, S1);
-      await side.scheduler.requestRetries();
-      await expect.poll(() => second).not.toBeNull();
-      await second;
-      await side.scheduler.idle();
-    } finally {
-      unwatch?.();
-    }
+/** The second retry's stage, from the first retry on: before the lane's step, or during it. */
+type Stage = (side: CatchUpSide, stage: () => void) => () => void;
 
-    const tiers = side.runner.runs.slice(from).map((run) => run.files.map((f) => f.path).sort());
-    expect(tiers).toEqual([[S1.path, S2.path]]);
+/** At the step that reads the probe for the lane's step, after the first retry was taken. */
+const beforeTheTurn: Stage = (side, stage) => {
+  let first = false;
+  const unwatch = side.scheduler.watchLock?.((holder) => {
+    if (holder?.operation === TAKING) first = true;
+  });
+  const unstep = side.scheduler.onStep?.((seen) => {
+    if (first && seen.decisions.includes("read-probe")) stage();
+  });
+  return () => {
+    unwatch?.();
+    unstep?.();
+  };
+};
+
+/** At the lane's listing, inside the step's turn that starts its tier. */
+const duringTheTurn: Stage = (side, stage) => {
+  let first = false;
+  const unwatch = side.scheduler.watchLock?.((holder) => {
+    if (holder?.operation === TAKING) first = true;
+    if (first && holder?.operation === LISTING) stage();
+  });
+  return () => unwatch?.();
+};
+
+/** The tiers that ran after a retry of S1, then of S2 staged by `at`. */
+async function retried(at: Stage): Promise<string[][]> {
+  const side = await slowSide();
+  const from = side.runner.runs.length;
+  let second: Promise<void> | null = null;
+  const stop = at(side, () => {
+    if (second !== null) return;
+    ask(side, S2);
+    second = side.scheduler.requestRetries();
+  });
+  try {
+    ask(side, S1);
+    await side.scheduler.requestRetries();
+    await expect.poll(() => second).not.toBeNull();
+    await second;
+    await expect.poll(() => side.current(S1.path) && side.current(S2.path)).toBe(true);
+    await side.scheduler.idle();
+  } finally {
+    stop();
+  }
+  return side.runner.runs.slice(from).map((run) => run.files.map((f) => f.path).sort());
+}
+
+describe("a retried slow-lane file (row 011-323, difference 2)", () => {
+  it("joins the tier of the step after its stage", async () => {
+    expect(await retried(beforeTheTurn)).toEqual([[S1.path, S2.path]]);
+  });
+
+  it("staged during the step's turn that starts the lane's tier, it runs in the lane's next tier", async () => {
+    expect(await retried(duringTheTurn)).toEqual([[S1.path], [S2.path]]);
   });
 });
