@@ -1,9 +1,9 @@
-import type { TestFileRef } from "../types/keys.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { LastYield } from "../types/standing.js";
-import { peekClaim } from "./claims.js";
+import { readClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
-import { focusedWaiting } from "./focused.js";
+import { readFocused } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
@@ -13,6 +13,17 @@ import { type RankedFile, startsSooner } from "./yield-view.js";
  * Row 011-354: what waits for a tier in flight, as `decideYields` reads it
  * over one reading (the reading context's `now`).
  */
+
+/**
+ * What reading what waits for a tier would have written, in the order it
+ * read it, for `TierYields` to write (review 0.1.514 B1): a claim of `key`
+ * read at the decision's reading (`Claims.holds`: its first sight, the
+ * waiting flag, or its end), and the focused entries read (`FocusedEntries.
+ * waiting`: the waiting ones past their deadline go).
+ */
+export type Bookkeeping =
+  | { readonly kind: "claim"; readonly key: CheckKey }
+  | { readonly kind: "focused" };
 
 /**
  * What waits for a tier in its lane (`waitedFor`): work a yield runs sooner,
@@ -58,6 +69,8 @@ export function unfinished(tier: Tier): TierFile[] {
  * file of it has an open promotion (`selected`, row 011-265), an edit's work
  * is not `"edit"`: the other checks run as for any tier, and it is
  * `"named"` when none counts (review `reviews/0.1.377.md` B1).
+ * It writes nothing: what its claim and focused reads would have recorded
+ * goes to `notes` (review 0.1.514 B1).
  */
 export function waitedFor(
   context: SchedulerContext,
@@ -66,6 +79,7 @@ export function waitedFor(
   revision: Revision | null,
   beat: Beat,
   marks: CutFiles,
+  notes: Bookkeeping[],
 ): Waiting {
   const inLane = (ref: TestFileRef) => laneOf(context, ref) === tier.lane;
   const { queue } = ledger;
@@ -93,13 +107,16 @@ export function waitedFor(
       named = true;
       return false;
     }
-    const claim = peekClaim(context, ledger, ref);
+    const { claim, asked } = readClaim(context, ledger, ref);
+    if (asked !== null) notes.push({ kind: "claim", key: asked });
     later ||= claim !== "free";
     return claim === "free";
   };
   if (queue.hasPromoted(runsSooner, now)) return "promoted";
   // Row 011-145 (C4 as amended 2026-10-23): a focused entry, as a promoted file; no claim holds it.
-  if (focusedWaiting(context, ledger, inLane)) return "promoted";
+  const focused = readFocused(context, ledger, inLane);
+  if (focused.read) notes.push({ kind: "focused" });
+  if (focused.waits) return "promoted";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
   return later ? "recheck" : named || forWait ? "named" : null;
 }

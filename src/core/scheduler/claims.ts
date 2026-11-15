@@ -64,6 +64,16 @@ export class Claims {
     return true;
   }
 
+  /**
+   * `holds` by reads only (row 011-354, review 0.1.514 B1): what it answers
+   * at `at`, with nothing recorded. `holds` at the same `at` records it.
+   */
+  peek(key: CheckKey, at: EpochMs): boolean {
+    const { store, worktreeId } = this.context;
+    if (!store.testFileKeys.claimed(worktreeId, key, this.#live(at))) return false;
+    return at - (this.#seen.get(key) ?? at) <= this.#boundMs();
+  }
+
   /** `key` runs here: a later claim on it starts a new bound. */
   taken(key: CheckKey): void {
     this.#seen.delete(key);
@@ -144,6 +154,26 @@ export function peekClaim(
   const hits = context.store.results.byKey(key, 0);
   if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
   return !queue.isRecent(ref) && claims.holds(key, context.now()) ? "waits" : "free";
+}
+
+/**
+ * `peekClaim` by reads only (row 011-354, review 0.1.514 B1): its answer at
+ * the context's reading, and `asked`, the key whose claim `peekClaim` would
+ * have recorded with `Claims.holds`, or `null`; the caller records it.
+ */
+export function readClaim(
+  context: SchedulerContext,
+  ledger: Ledger,
+  ref: TestFileRef,
+): { readonly claim: "waits" | "stored" | "free"; readonly asked: CheckKey | null } {
+  const { queue, claims } = ledger;
+  const key = ledger.file(ref)?.key ?? null;
+  if (key === null || queue.isForced(ref)) return { claim: "free", asked: null };
+  // `usedAt` 0: a read, not a lookup hit.
+  const hits = context.store.results.byKey(key, 0);
+  if (hits.length > 0) return { claim: stands(context, hits) ? "stored" : "free", asked: null };
+  if (queue.isRecent(ref)) return { claim: "free", asked: null };
+  return { claim: claims.peek(key, context.now()) ? "waits" : "free", asked: key };
 }
 
 /**

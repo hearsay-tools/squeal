@@ -104,8 +104,10 @@ export class TierYields implements CutFiles {
    * `reviews/0.1.296-r2.md` B2): `decideYields` reads only `at`, so a
    * deadline or a bound the clock passes during the check is still the one
    * the decision stood on. The timer and the published row read their own.
-   * Row 011-354: `decideYields` decides; this applies its answer, tier by
-   * tier in its order, and does nothing while `held` (row 011-72).
+   * Row 011-354: `decideYields` decides; this applies its answer: the
+   * claim and focused bookkeeping its reads would have written (review
+   * 0.1.514 B1), then tier by tier in its order. Nothing while `held` (row
+   * 011-72).
    */
   check(
     context: SchedulerContext,
@@ -118,6 +120,11 @@ export class TierYields implements CutFiles {
     const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
     const decided = decideYields(at, revision, view);
     if (decided === null) return;
+    // Review 0.1.514 B1: what the decision's reads would have recorded, in their order, first.
+    for (const note of decided.bookkeeping) {
+      if (note.kind === "claim") ledger.claims.holds(note.key, at);
+      else ledger.queue.focused.waiting(at);
+    }
     this.#cut = new Map(decided.marks);
     this.#standing = new Map(decided.standing);
     for (const { tier, decision, bound, yielded } of decided.tiers) {

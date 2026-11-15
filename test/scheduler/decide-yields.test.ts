@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import {
@@ -12,7 +12,7 @@ import { Priority } from "../../src/core/scheduler/queue.js";
 import { SHARE_FLOOR_MS } from "../../src/core/scheduler/sharing.js";
 import type { SchedulerEvent } from "../../src/core/scheduler/step-events.js";
 import type { Tier, TierKind } from "../../src/core/scheduler/tiers.js";
-import { type YieldReach, yieldReach } from "../../src/core/scheduler/yields.js";
+import { TierYields, type YieldReach, yieldReach } from "../../src/core/scheduler/yields.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
@@ -241,6 +241,66 @@ describe("decideYields: one reading, one answer per tier in flight (row 011-354)
     expect(decided?.changed).toBe(true);
     const again = decideYields(T, null, view(context, ledger, [tier]));
     expect(again?.changed).toBe(false);
+  });
+});
+
+/**
+ * A ledger whose one queued file, promoted, is not an edit's work and
+ * another live worktree claims its key: `Claims.holds` stays real.
+ */
+function claimed() {
+  const { context, ledger } = setup(false);
+  const ref = { project: "", path: "test/claimed.test.ts" };
+  const file = ledger.addFile(ref);
+  file.key = "c".padEnd(64, "0") as CheckKey;
+  ledger.enqueue(file, Priority.edited, false, false);
+  ledger.queue.promote([ref], T + 2_000_000);
+  vi.spyOn(context.store.testFileKeys, "claimed").mockReturnValue(true);
+  const tier = tierOf(ledger, "run-a", ["test/a.test.ts"], { ms: 5 * S });
+  return { context, ledger, tier };
+}
+
+describe("decideYields writes nothing; TierYields applies its bookkeeping (review 0.1.514 B1)", () => {
+  it("a discarded decision leaves the claims' waiting flag unset", () => {
+    const { context, ledger, tier } = claimed();
+    expect(ledger.claims.waiting).toBe(false);
+    const decided = decideYields(T, null, view(context, ledger, [tier]));
+    expect(decided?.tiers[0]?.decision).toEqual({ kind: "recheck" });
+    expect(ledger.claims.waiting).toBe(false);
+  });
+
+  it("a discarded decision starts no claim bound: 606,001 ms on, both ledgers decide alike", () => {
+    const one = claimed();
+    const two = claimed();
+    decideYields(T, null, view(one.context, one.ledger, [one.tier]));
+    const at = (T + 606_001) as EpochMs;
+    const first = decideYields(at, null, view(one.context, one.ledger, [one.tier]));
+    const second = decideYields(at, null, view(two.context, two.ledger, [two.tier]));
+    expect(second?.tiers[0]?.decision).toEqual({ kind: "recheck" });
+    expect(first?.tiers[0]?.decision).toEqual(second?.tiers[0]?.decision);
+  });
+
+  it("a discarded decision prunes no focused entry past its deadline", () => {
+    const { context, ledger } = setup(false);
+    ledger.queue.focused.add({ project: "", path: "test/f.test.ts" }, ["f"], T - 1);
+    const tier = tierOf(ledger, "run-a", ["test/a.test.ts"], { ms: 5 * S });
+    expect(ledger.queue.focused.size).toBe(1);
+    decideYields(T, null, view(context, ledger, [tier]));
+    expect(ledger.queue.focused.size).toBe(1);
+  });
+
+  it("the check applies it: the claim's first sight and waiting flag, and the focused pruning", () => {
+    const { context, ledger, tier } = claimed();
+    ledger.queue.focused.add({ project: "", path: "test/f.test.ts" }, ["f"], T - 1);
+    const yields = new TierYields();
+    yields.check({ ...context, now: () => T }, ledger, [tier], null);
+    expect(ledger.claims.waiting).toBe(true);
+    expect(ledger.queue.focused.size).toBe(0);
+    yields.close();
+    // The bound started at T: past it, the claim no longer holds the file.
+    expect(ledger.claims.holds("c".padEnd(64, "0") as CheckKey, (T + 606_001) as EpochMs)).toBe(
+      false,
+    );
   });
 });
 

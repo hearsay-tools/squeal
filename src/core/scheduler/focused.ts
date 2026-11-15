@@ -60,6 +60,24 @@ export function focusedWaiting(
 }
 
 /**
+ * `focusedWaiting` by reads only (row 011-354, review 0.1.514 B1): its
+ * answer, and `read`, whether it would have read the entries and so dropped
+ * the ones past their deadline (`FocusedEntries.waiting`); the caller does.
+ */
+export function readFocused(
+  context: SchedulerContext,
+  ledger: Ledger,
+  where: (ref: TestFileRef) => boolean,
+): { readonly waits: boolean; readonly read: boolean } {
+  const { focused } = ledger.queue;
+  if (focused.size === 0) return { waits: false, read: false };
+  const waits = focused
+    .peekWaiting(context.now())
+    .some((entry) => where(entry.ref) && runnable(context, ledger, entry) !== null);
+  return { waits, read: true };
+}
+
+/**
  * Starts the focused tier of `picked`, whose files are `files` in the same
  * order (the plan's `focused` candidate, `focusedCandidate`, row 011-346):
  * it claims no key, leaves its files queued as they were, writes each

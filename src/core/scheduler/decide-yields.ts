@@ -12,6 +12,7 @@ import type { CutFiles } from "./sharing.js";
 import type { Tier, TierFile } from "./tiers.js";
 import {
   type Beat,
+  type Bookkeeping,
   rankToBeat,
   remainder,
   selected,
@@ -116,6 +117,12 @@ export interface YieldDecisions {
   readonly standing: ReadonlyMap<string, TierYield>;
   /** The published row changes: a standing changed or the history took a yield. */
   readonly changed: boolean;
+  /**
+   * What its claim and focused reads would have written, in the order it
+   * read them, for `TierYields` to write before it applies the tiers'
+   * decisions (review 0.1.514 B1).
+   */
+  readonly bookkeeping: readonly Bookkeeping[];
 }
 
 /**
@@ -124,7 +131,9 @@ export interface YieldDecisions {
  * `trigger`, the revision just stored, or `null` for runner work applied, a
  * request taken, a tier started beside, a file end or a bound (`yieldReach`).
  * The rules are `TierYields.check`'s. It writes nothing and reads no clock:
- * every lookup it makes reads `at`. `null` while a hold stands: the check
+ * every lookup it makes reads `at`, and what the claim and focused reads
+ * would have recorded is returned as `bookkeeping` (review 0.1.514 B1), so
+ * a decision can be discarded or replayed. `null` while a hold stands: the check
  * does nothing, not even drop a mark (row 011-72).
  */
 export function decideYields(
@@ -145,10 +154,11 @@ export function decideYields(
   };
   const standing = new Map(view.standing);
   const tiers: TierDecision[] = [];
+  const bookkeeping: Bookkeeping[] = [];
   let changed = false;
   for (const tier of view.tiers) {
     const beat = rankToBeat(reading, ledger, tier);
-    const decision = decide(reading, ledger, tier, trigger, beat, marks, cuts);
+    const decision = decide(reading, ledger, tier, trigger, beat, marks, cuts, bookkeeping);
     let yielded: Yielded | null = null;
     if (decision === "yield") {
       const left = remainder(reading, tier);
@@ -156,7 +166,7 @@ export function decideYields(
       for (const { file, key } of cut)
         marks.set(file.id, { key, applied: file.resultsApplied, past: left < 0 });
       // Row 011-209: what the yield ran sooner, as `decide` read it, with its own cut marked.
-      const to = waitedFor(reading, ledger, tier, trigger, beat, cuts);
+      const to = waitedFor(reading, ledger, tier, trigger, beat, cuts, bookkeeping);
       if (to === "edit" || to === "promoted" || to === "runner") {
         yielded = { to, remainderMs: left, cut };
         changed = true;
@@ -172,7 +182,7 @@ export function decideYields(
     const bound = typeof decision === "string" ? null : boundOf(at, tier, decision);
     tiers.push({ tier, decision, bound, yielded });
   }
-  return { tiers, marks, standing, changed };
+  return { tiers, marks, standing, changed, bookkeeping };
 }
 
 /** Records `next` for `runId` in `standing`; whether it changed. */
@@ -196,6 +206,7 @@ function decide(
   beat: Beat,
   marks: ReadonlyMap<string, Cut>,
   cuts: CutFiles,
+  bookkeeping: Bookkeeping[],
 ): YieldDecision {
   const { cancel } = tier;
   if (tier.kind === "slow") return null;
@@ -206,7 +217,7 @@ function decide(
   if (tier.kind === "backlog" && cancel !== null) {
     if (cancelsBacklog(context, ledger, revision, tier, selected(beat))) return "backlog";
   }
-  const waiting = waitedFor(context, ledger, tier, revision, beat, cuts);
+  const waiting = waitedFor(context, ledger, tier, revision, beat, cuts, bookkeeping);
   if (waiting === null) return null;
   if (cancel === null || tier.slot === true)
     return waiting === "recheck" ? null : { kind: "runner" };
