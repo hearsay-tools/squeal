@@ -17,3 +17,17 @@ Seam: `model-fixture.ts`. Lead: build the scheduler with `clock: virtualClock(..
 Owns: `test/scheduler/model-*.ts`, `test/scheduler/catch-up-fixture.ts`, `test/scheduler/vitest-harness.ts`, `test/helpers/virtual-clock.ts`. Leave alone: everything under `src/` (a gap in `rest()` or the virtual clock that the model test exposes is a message to the coordinator with a failing case, not a fix here), every other test file.
 
 Done when: the row's done-when holds: `grep -n "realSleep\|realSetTimeout\|watchWork\|requestRetries\|model-clock" test/scheduler/` prints nothing (paste it in the notes); the same directed sequences, seeds and properties pass (name them, with any a virtual clock changed in meaning); the harnesses offer `clock: "virtual"` and `rest()`; `tasks/011-353/notes.md` records the model test's wall time against today's 18 to 30 s, with the one-minute load at the run. Lint, typecheck and `squeal status --wait 60000` on the changed paths pass; report pending or unknown checks as such. A real bug found on the way is a proposed row with a failing test, not a fix here.
+
+## R1 (W1): review of cand/011-353
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `562a5cb6e8a3dd18840753b71ecd23948bdcb4b7`; candidate CI run 43726276467. Test files and notes only, so no version raise and no bundle change (`check:version` passes at 0.1.513). Range `3b782912b..562a5cb6e`: seven commits of worker 7a90f9aa, cherry-picked onto main after 0.1.513 (row 011-352) landed. Read: board row 011-353, this file's W1, `tasks/011-353/notes.md`, `../research/scheduler-step.md` (the model-test paragraph of "Tests: replace, don't layer"), research 016 `model-scheduler.md`.
+
+Check, each as proven, plausible or unverified:
+
+1. **Same model test.** The same directed sequences, seeds, sweeps and properties run and pass; none was dropped, weakened or made vacuous by the virtual clock. Judge the notes' "meaning changes" (a step fires each timer due on the way at its own time; a slot's record lands at the drain's next step): is any property now checked at a point where it can no longer fail?
+2. **Workarounds gone.** No global `setTimeout` swap, prototype wraps, real-sleep settle or `requestRetries()` nudge remains in the model files or harnesses; nothing imports `model-clock`.
+3. **The virtual clock.** `prompt` (a due timer fires on the host's next turn) and `jump` cannot let `rest()` resolve while a due wake waits, and do not hide a race the old real-time settle would have shown; `CrossingClock`'s lazy start matches `ModelClock`.
+4. **Harnesses.** `catch-up-fixture.ts` and `vitest-harness.ts` keep their default; `clock: "virtual"` with `rest()` works.
+5. **Scope.** Only test files changed, plus the four import-line edits the coordinator granted (`batch-fixture.ts`, `promoted-tier-fixture.ts`, `tier-yields-named.test.ts`, `tier-yields-next-tier.test.ts`).
+
+The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, and the model test with five related files (33 tests, 20.4 s at load 6.7) at 0.1.513 plus these commits. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/011-353.md` and commit it on your branch.
