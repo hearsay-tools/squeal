@@ -96,3 +96,38 @@ Checks of the repair:
 - `pnpm run lint`: `Checked 3510 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
 - Direct run (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run --maxWorkers=4`): `key-format`, `validity/compare`, `validity/reach`, `wakes`, `wake-lane-order`, `scheduler-rest`, `untracked-promises`, `model-scheduler`, `slow-release`, `clock-port`, `group-lanes*` and `slow-tier*`: 18 files, 123 tests passed. No key-format version raise.
 - `squeal status --wait 60000` over the changed `src/` and `test/` paths at revision 62 (`9d9d1706d`): 932 test files selected, each with a current result; 928 pass, and the 4 failures are the committed bundles differing from the build (`plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`). As in the first round, that is expected: the brief forbids `pnpm run build`.
+
+## Repair 3: one rule for "still working" (review 0.1.513-r2 B4)
+
+The human chose one rule over another narrow fix (`tasks/wave-98.md`, "W1 repair 3"). Commit `009d9e13e`.
+
+**The rule** (written once, in `wakes.ts`): every piece of scheduler work that runs on its own is counted on its own, and a piece stops counting only while it waits in a named wait: for a stated wake of the loop, a runner's run, the pump's next event, or other pieces that count on their own. No other wait sets work aside.
+
+**What it replaced.** `Wakes.aside`, which subtracted one from a count shared by all tracked work. Each gap was patched by setting one more wait aside on that count: the held run (B1), the pump's waits (B1), the slot gather (second repair), and the order of `track` (second repair). B4 showed the flaw: the gather's set-aside subtracted the flight's count while the record's reads (`record.ts`, `#ended`), started before the gather, still ran. `rest()` came while they were open.
+
+**How.**
+- `Wakes.track(work)` takes only a function. It counts a new piece first, then runs `work` in that piece's async context (`AsyncLocalStorage`). The pieces are the pump, each flight, the drain, the recheck of the tiers in flight, a command hold's end, a merge-hold poll, a slow-release close, the beside lane's release, and a slot record's reads.
+- `Wakes.waitFor(waiting, promise)`, with `Waiting` a closed list: `{ for: "wake", reason }`, `{ for: "run" }`, `{ for: "event" }`, `{ for: "pieces" }`. It suspends only the piece whose context it runs in, until `promise` settles; the piece counts again before its continuation runs. Outside any piece it suspends nothing, so it can never hide another piece.
+- A pass runs outside any piece (`AsyncLocalStorage.exit`). Otherwise a host timer would run it in the context of whoever armed it.
+- The named waits: the flight's runner run (`run`); the pump's wait for an event (`event`); the pump's last wait for its flights and its drain (`pieces`); a slot record's gather (`wake`, `slot-gather`).
+- Concurrent work inside a flight is its own piece: `record.ts` starts the slot record's reads (`#ended`) with `track` (one line, as the brief names).
+- The promise check fails any call named `aside`, and any `waitFor` whose first argument does not name a kind of `Waiting` in place.
+
+**Decision the brief did not settle.** The closed list has two kinds beyond the brief's "a stated wake or a held runner run". `event` is the pump waiting for its next event: each event comes from a piece that counts on its own (a flight's end, the drain) or from outside (a revision, a request), so the wait hides no work. `pieces` is the pump waiting for its flights and its drain, each a piece of its own. Without them the pump would count while it waits, and a held run could never give a rest (B1).
+
+**Tests.**
+- `scheduler-rest.test.ts`: the B4 reproduction from the review, extended as the brief asks. A gated warm-up read keeps rest pending. After its release, rest reports the gather still ahead (`slot-gather`). After `advance(25)`, the next rest comes only after the record and the pump's last pass. It failed before the fix (`expected true to be false`).
+- `wakes.test.ts`, new cases:
+  - a named wait suspends only its own piece: reads started beside it as a piece hold the rest;
+  - a named wait outside any piece suspends nothing;
+  - a pass runs in no piece, on the host clock with a real 10 ms timer. Without the `exit` this case fails (checked by a temporary edit, then reverted).
+- The B1, B2, B3, S1 and slot-gather tests pass unchanged in meaning: the run case now uses `waitFor({ for: "run" })`; the `aside`-outside-work case became the "outside any piece" case.
+
+**Timing differences:** none. The rule changes only what `rest()` counts. The order and time of every wake, run and record are unchanged.
+
+**Type changes:** `Wakes.aside` removed (added by this row, never on main); `Wakes.track` takes only a function; `Wakes.waitFor` and `Waiting` are new.
+
+**Checks of repair 3.**
+- `pnpm run lint`: `Checked 3511 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- Direct run (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run --maxWorkers=4`) of 57 files: `key-format`, `wakes`, `scheduler-rest`, `untracked-promises`, `wake-lane-order`, `clock-port`, `slot-records`, and the scheduler tests of merge holds, claims, group lanes, slots, slow tier, quiet, slow release, command holds, tier yields, the runner-part bound and catch-up. 265 tests passed.
+- `model-scheduler.test.ts`, run once on a scratch branch (this head with worker 7a90f9aa's `44d77515d..e16f56e27` picked on top, in a temporary worktree, with a private `HOME`; branch and worktree dropped after): 7 tests passed in 15.95 s, one-minute load 8.87 at the start.
