@@ -1,4 +1,5 @@
 import { defaultHostSlots } from "../capacity/pool.js";
+import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
@@ -21,6 +22,8 @@ export interface LiveViewOptions {
   readonly beside?: () => ((ref: TestFileRef) => boolean) | null;
   /** A started backlog slot is followed by the next selection (the pump). */
   readonly slots?: boolean;
+  /** The one clock reading: the step's (row 011-366); the clock's now by default. */
+  readonly now?: EpochMs;
 }
 
 /**
@@ -37,7 +40,7 @@ export function liveView(
   const { queue } = ledger;
   const { traits } = context.runner;
   const { runner } = context.policy;
-  const now = context.now();
+  const now = options.now ?? context.now();
   return {
     now,
     runner: {

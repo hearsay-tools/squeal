@@ -1,8 +1,9 @@
 import type { EpochMs } from "../types/common.js";
-import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
+import { BESIDE_LANE_PREFIX, type CancelCause } from "../types/runner.js";
 import type { StepSeen } from "../types/scheduler.js";
 import { type Admission, checkTurn } from "./admission.js";
+import { besideDone, besideFiles } from "./beside.js";
 import type { SchedulerContext } from "./context.js";
 import type { GroupTiers } from "./group-tiers.js";
 import { runtimeGoneNote } from "./install.js";
@@ -25,7 +26,7 @@ import { inTurn, type SchedulerEvent } from "./step-events.js";
 import { liveAsks, liveView } from "./tier-live.js";
 import { type Idle, idleOf, planTiers, type TierPlan } from "./tier-plan.js";
 import { startNext } from "./tier-start.js";
-import type { Tier } from "./tiers.js";
+import { laneOf, type Tier } from "./tiers.js";
 import type { TierYields } from "./yields.js";
 
 /*
@@ -47,7 +48,7 @@ export interface StepHost {
   readonly slowRelease: SlowRelease;
   readonly runnerWork: RunnerWork;
   /** The tiers in flight, by run id. */
-  readonly inFlight: ReadonlyMap<string, { readonly tier: Tier }>;
+  readonly inFlight: ReadonlyMap<string, LiveFlight>;
   /** The daemon's runtime folder (row 011-106), named by the note of its loss. */
   readonly runtimeDir: string | undefined;
   now(): EpochMs;
@@ -65,8 +66,10 @@ export interface StepHost {
   adopt(context: SchedulerContext, ledger: Ledger): void;
   /** The lanes no tier may start in now. */
   busyLanes(): Set<string>;
-  /** The files a tier beside a running batch's takes (row 011-269); `null` for none. */
-  beside(): ((ref: TestFileRef) => boolean) | null;
+  /** The tiers in flight whose runs have not ended. */
+  running(): Tier[];
+  /** The runner's `releaseLane` of `lane`, its error noted. */
+  releaseLane(lane: string): Promise<void>;
   /** Flies `tier` (`start-tier`). */
   fly(tier: Tier, stamp: string, slow: SlowRun | null, admitted: { readonly turn: number }): void;
   /** The install went under the scheduler (task 001-113). */
@@ -81,6 +84,15 @@ export interface StepHost {
   reconcileReleased(): Promise<void>;
   /** Queues the import re-walk's next chunk; whether it queued one. */
   queueRewalk(): Promise<boolean>;
+}
+
+/** A tier in flight as the adapter reads it. */
+export interface LiveFlight {
+  readonly tier: Tier;
+  /** Ends once the tier recorded, or was put back; never rejects. */
+  readonly done: Promise<void>;
+  /** Aborted when a command hold begins (row 011-74); `null` for a tier that runs to its end. */
+  readonly held: AbortController | null;
 }
 
 /** What the pump's step does in its lock turn, for a lock watcher (row 011-302). */
@@ -133,14 +145,6 @@ export class StepLive {
     return reads;
   }
 
-  /** Why no fast tier starts, read now: what the plan answers when it ends idle. */
-  idleNow(): Idle {
-    const { context, ledger } = this.host.started();
-    const busy = () => this.host.busyLanes();
-    const view = liveView(context, ledger, { busy, cut: this.host.yields });
-    return idleOf(view, liveAsks(context, ledger));
-  }
-
   /** Tells each listener the step `decided` with `reads`. */
   #told(reads: Reads | null, decided: Step): void {
     if (this.#listeners.size === 0) return;
@@ -167,11 +171,11 @@ export class StepLive {
       tier: (runId) => this.host.inFlight.get(runId)?.tier,
       standsNamed: (tier) => this.host.yields.standsNamed(tier),
     },
-    startNext: (admitted, fly) => {
+    startNext: (admitted, at, fly) => {
       const { context, ledger } = this.host.started();
       this.host.adopt(context, ledger);
       // Row 011-346: the tier plan, then its act step; `fly` throws on an answer of another turn.
-      const next = startNext(context, ledger, this.#plan(context, ledger), {
+      const next = startNext(context, ledger, this.#plan(context, ledger, at), {
         check: (lane) => checkTurn(admitted, this.host.lock.turn, lane),
         fly,
       });
@@ -187,12 +191,20 @@ export class StepLive {
       this.host.lock.relabel(STEP_OPERATION);
       return decided;
     },
-    idleNow: () => this.idleNow(),
+    idleNow: (at) => this.#idleNow(at),
     idleLanes: () => this.host.slowRelease.idleLanes(),
+    slowQueued: (lane) => {
+      const { context, ledger } = this.host.started();
+      return ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane);
+    },
+    besideDone: (lane) => {
+      const { context, ledger } = this.host.started();
+      return besideDone(context, ledger, this.host.running(), lane);
+    },
     claimsWaiting: () => this.host.started().ledger.claims.waiting,
     refused: () => this.host.refused(),
     inFlight: () => this.host.inFlight.size,
-    carry: (decision) => this.#carry(decision),
+    carry: (decision, at) => this.#carry(decision, at),
   };
 
   /**
@@ -204,37 +216,47 @@ export class StepLive {
    * free slot in this hold and its slots end, and record, together (task
    * 011-21 slice 2).
    */
-  #plan(context: SchedulerContext, ledger: Ledger): TierPlan {
+  #plan(context: SchedulerContext, ledger: Ledger, now: EpochMs): TierPlan {
     const view = liveView(context, ledger, {
       busy: () => this.host.busyLanes(),
       cut: this.host.yields,
-      beside: () => this.host.beside(),
+      beside: () => besideFiles(context, ledger, this.host.running()),
       slots: true,
+      now,
     });
     return planTiers(view, liveAsks(context, ledger));
+  }
+
+  /** Why no fast tier starts at the step's reading `now`: what the plan answers when it ends idle. */
+  #idleNow(now: EpochMs): Idle {
+    const { context, ledger } = this.host.started();
+    const busy = () => this.host.busyLanes();
+    const view = liveView(context, ledger, { busy, cut: this.host.yields, now });
+    return idleOf(view, liveAsks(context, ledger));
   }
 
   /**
    * The yield check in this lock turn, after `trigger`, taking stored
    * results first when `adopt` (row 011-123); a hold reaches nothing (row
-   * 011-72): the check reads it in its own lock turn.
+   * 011-72): the check reads it in its own lock turn. `at` is the step's
+   * one reading (row 011-366).
    */
-  #checkYields(trigger: Revision | null, adopt: boolean): void {
+  #checkYields(trigger: Revision | null, adopt: boolean, at: EpochMs): void {
     const { context, ledger } = this.host.started();
     if (adopt) this.host.adopt(context, ledger);
     const held = this.host.admit().halts.has("held");
     const tiers = [...this.host.inFlight.values()].map(({ tier }) => tier);
-    this.host.yields.check(context, ledger, tiers, trigger, held);
+    this.host.yields.check(context, ledger, tiers, trigger, held, at);
   }
 
   /** Carries out a decision placed in the step's lock turn, as the step makes it. */
-  #carry(decision: TurnDecision): void {
+  #carry(decision: TurnDecision, at: EpochMs): void {
     switch (decision.kind) {
       case "start-tier":
         this.host.fly(decision.tier, decision.stamp, decision.slow ?? null, decision);
         return;
       case "check-yields":
-        this.#checkYields(decision.trigger, decision.adopt);
+        this.#checkYields(decision.trigger, decision.adopt, at);
         return;
       case "reinstall":
         this.host.reinstall(this.host.started().ledger);
@@ -281,9 +303,29 @@ export class StepLive {
         return {};
       case "queue-rewalk":
         return { rewalk: await this.host.queueRewalk() };
+      case "cancel-held":
+        await this.#cancelHeld();
+        return {};
+      case "close-beside":
+        await this.host.releaseLane(`${BESIDE_LANE_PREFIX}${decision.lane}`);
+        return {};
       default:
         return unplaced(decision);
     }
+  }
+
+  /**
+   * Row 011-74 (011 C9, *Hold command*): a lane waiting for the load guard
+   * gives way, its instance idle (review 0.1.269, B1); each tier in flight
+   * whose runner cancels is cancelled, as the supersession cancel does (C4
+   * step 5); a node:test or pytest slot runs its file to its end. Resolves
+   * once those tiers ended.
+   */
+  async #cancelHeld(): Promise<void> {
+    this.host.groups.preempt();
+    const flights = [...this.host.inFlight.values()].filter((flight) => flight.held !== null);
+    for (const { held } of flights) held?.abort("hold" satisfies CancelCause);
+    await Promise.all(flights.map((flight) => flight.done));
   }
 }
 

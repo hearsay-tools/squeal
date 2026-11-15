@@ -70,7 +70,19 @@ export type SchedulerEvent =
   /** A fast tier started; `beside` when it went beside the batch's tier (row 011-269). */
   | { readonly kind: "tier-started"; readonly runId: string; readonly beside: boolean }
   /** The runner named a file of the tier in flight `runId` ended (row 011-54). */
-  | { readonly kind: "file-ended"; readonly runId: string };
+  | { readonly kind: "file-ended"; readonly runId: string }
+  /*
+   * Row 011-366: the events of a step outside the pump's iteration
+   * (`Turn.reads` `null`); their sites step on them, none is posted to the pump.
+   */
+  /** A command hold began (row 011-74, 011 C9 *Hold command*). */
+  | { readonly kind: "hold-began" }
+  /** A slow run of `lane` ended; its tier is still in flight, recorded (spec 004 D2, row 011-211). */
+  | { readonly kind: "slow-ended"; readonly lane: string }
+  /** A batch's tier or one beside it in `lane` ended (row 011-269). */
+  | { readonly kind: "beside-ended"; readonly lane: string }
+  /** A revision pass's install check found the install missing (task 001-113). */
+  | { readonly kind: "install-missing" };
 
 /** One entry of `SchedulerEvent`'s kinds. */
 export type SchedulerEventKind = SchedulerEvent["kind"];
@@ -129,8 +141,19 @@ export type StepDecision<T = unknown, S = unknown> =
   | { readonly kind: "refresh-install" }
   /** A merge hold ended: reconcile the paths it released before any tier (row 011-72). */
   | { readonly kind: "reconcile" }
-  /** Close the runner instance of each of `lanes`, idle on a hold (row 011-211). */
+  /**
+   * Close the runner instance of each slow lane of `lanes`: idle on a hold,
+   * or at its run's end (row 011-211, spec 004 D2).
+   */
   | { readonly kind: "close-lanes"; readonly lanes: readonly string[] }
+  /**
+   * Row 011-366: a command hold began: the lanes waiting for a load guard
+   * give way, and each tier in flight whose runner cancels is cancelled;
+   * carried out once those tiers ended (row 011-74).
+   */
+  | { readonly kind: "cancel-held" }
+  /** Row 011-366: close the second instance of `lane`, no batch left there (row 011-269). */
+  | { readonly kind: "close-beside"; readonly lane: string }
   /** Queue the import re-walk's next chunk (row 015-117): the next step's `reads.rewalk`. */
   | { readonly kind: "queue-rewalk" };
 
@@ -150,6 +173,8 @@ export const DECISION_PLACE = {
   reconcile: "after",
   "close-lanes": "after",
   "queue-rewalk": "after",
+  "cancel-held": "after",
+  "close-beside": "after",
 } as const satisfies Record<StepDecisionKind, DecisionPlace>;
 
 /** Where `decision` is carried out. */

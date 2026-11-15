@@ -102,11 +102,12 @@ export class TierYields implements CutFiles {
    * One reading of the clock decides every tier (row 011-194, review
    * `reviews/0.1.296-r2.md` B2): `decideYields` reads only `at`, so a
    * deadline or a bound the clock passes during the check is still the one
-   * the decision stood on. The timer and the published row read their own.
-   * Row 011-354: `decideYields` decides; this applies its answer: the
-   * claim and focused bookkeeping its reads would have written (review
-   * 0.1.514 B1), then tier by tier in its order. Nothing while `held` (row
-   * 011-72).
+   * the decision stood on. Row 011-354: `decideYields` decides; this
+   * applies its answer: the claim and focused bookkeeping its reads would
+   * have written (review 0.1.514 B1), then tier by tier in its order.
+   * Nothing while `held` (row 011-72). `at` is the one reading, the step's
+   * (row 011-366), else the clock's now: the published row is stamped with
+   * it too, and only the timer reads its own.
    */
   check(
     context: SchedulerContext,
@@ -114,8 +115,8 @@ export class TierYields implements CutFiles {
     tiers: readonly Tier[],
     revision: Revision | null,
     held: boolean,
+    at: EpochMs = context.now(),
   ): void {
-    const at = context.now();
     const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
     const decided = decideYields(at, revision, view);
     if (decided === null) return;
@@ -139,7 +140,7 @@ export class TierYields implements CutFiles {
       if (bound === null) this.#bounds.delete(tier.runId);
       else this.#bounds.set(tier.runId, bound);
     }
-    if (decided.changed) this.#publish(context);
+    if (decided.changed) this.#publish(context, at);
     this.#arm(context);
   }
 
@@ -207,9 +208,10 @@ export class TierYields implements CutFiles {
     this.#wake?.clear();
   }
 
-  #publish(context: SchedulerContext): void {
+  /** Writes the yield row, stamped `at`: a check's reading, else now. */
+  #publish(context: SchedulerContext, at: EpochMs = context.now()): void {
     const { store, worktreeId } = context;
-    writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
+    writeYieldRow(store, worktreeId, at, this.#history.row(this.#standing));
   }
 }
 
@@ -277,6 +279,10 @@ export function yieldReach(event: SchedulerEvent, view: ReachView): YieldReach {
     case "stalled":
     case "closing":
     case "pump-ended":
+    case "hold-began":
+    case "slow-ended":
+    case "beside-ended":
+    case "install-missing":
       return NONE;
     default: {
       const unknown: never = event;
