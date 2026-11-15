@@ -1062,13 +1062,13 @@ function vitestFiles(command, listing) {
   const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
   if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
-  const selected = /* @__PURE__ */ new Set();
+  const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
     const hits = vitest.filter((ref2) => matchesFilter(join5(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
-    for (const ref2 of hits) selected.add(ref2);
+    for (const ref2 of hits) selected2.add(ref2);
   }
-  return vitest.filter((ref2) => selected.has(ref2));
+  return vitest.filter((ref2) => selected2.has(ref2));
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute5(filter) && file.startsWith(filter)) return true;

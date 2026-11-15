@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.513";
+  if (true) return "0.1.514";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14083,6 +14083,33 @@ var init_pool_wait = __esm({
   }
 });
 
+// src/core/scheduler/clock.ts
+function hostClock(now = hostNow) {
+  return {
+    now,
+    ticks: () => performance.now(),
+    arm(ms2, fire) {
+      const timer = globalThis.setTimeout(fire, Math.min(Math.max(0, ms2), MAX_TIMER_MS));
+      timer.unref?.();
+      return () => globalThis.clearTimeout(timer);
+    }
+  };
+}
+function clockOf(options) {
+  return options.clock ?? hostClock(options.now);
+}
+function elapsed(earlier, later) {
+  return Math.max(0, later - earlier);
+}
+var MAX_TIMER_MS, hostNow;
+var init_clock = __esm({
+  "src/core/scheduler/clock.ts"() {
+    "use strict";
+    MAX_TIMER_MS = 2 ** 31 - 1;
+    hostNow = () => Date.now();
+  }
+});
+
 // src/core/scheduler/editor-scratch.ts
 function isEditorScratch(path) {
   const name3 = path.slice(path.lastIndexOf("/") + 1);
@@ -14909,6 +14936,15 @@ function peekClaim(context, ledger, ref3) {
   if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
   return !queue.isRecent(ref3) && claims2.holds(key3, context.now()) ? "waits" : "free";
 }
+function readClaim(context, ledger, ref3) {
+  const { queue, claims: claims2 } = ledger;
+  const key3 = ledger.file(ref3)?.key ?? null;
+  if (key3 === null || queue.isForced(ref3)) return { claim: "free", asked: null };
+  const hits = context.store.results.byKey(key3, 0);
+  if (hits.length > 0) return { claim: stands(context, hits) ? "stored" : "free", asked: null };
+  if (queue.isRecent(ref3)) return { claim: "free", asked: null };
+  return { claim: claims2.peek(key3, context.now()) ? "waits" : "free", asked: key3 };
+}
 function stands(context, hits) {
   const { store, worktreeId } = context;
   if (hits.every((hit) => hit.provenance.worktreeId === worktreeId)) return true;
@@ -14966,6 +15002,15 @@ var init_claims = __esm({
         if (at2 - since > this.#boundMs()) return false;
         this.#waiting = true;
         return true;
+      }
+      /**
+       * `holds` by reads only (row 011-354, review 0.1.514 B1): what it answers
+       * at `at`, with nothing recorded. `holds` at the same `at` records it.
+       */
+      peek(key3, at2) {
+        const { store, worktreeId } = this.context;
+        if (!store.testFileKeys.claimed(worktreeId, key3, this.#live(at2))) return false;
+        return at2 - (this.#seen.get(key3) ?? at2) <= this.#boundMs();
       }
       /** `key` runs here: a later claim on it starts a new bound. */
       taken(key3) {
@@ -15329,33 +15374,6 @@ var init_sink = __esm({
     init_inherited();
     init_producers();
     init_transitions3();
-  }
-});
-
-// src/core/scheduler/clock.ts
-function hostClock(now = hostNow) {
-  return {
-    now,
-    ticks: () => performance.now(),
-    arm(ms2, fire) {
-      const timer = globalThis.setTimeout(fire, Math.min(Math.max(0, ms2), MAX_TIMER_MS));
-      timer.unref?.();
-      return () => globalThis.clearTimeout(timer);
-    }
-  };
-}
-function clockOf(options) {
-  return options.clock ?? hostClock(options.now);
-}
-function elapsed(earlier, later) {
-  return Math.max(0, later - earlier);
-}
-var MAX_TIMER_MS, hostNow;
-var init_clock = __esm({
-  "src/core/scheduler/clock.ts"() {
-    "use strict";
-    MAX_TIMER_MS = 2 ** 31 - 1;
-    hostNow = () => Date.now();
   }
 });
 
@@ -15877,6 +15895,13 @@ var init_focused_entries = __esm({
       waiting(now) {
         this.#entries = this.#entries.filter((entry4) => entry4.runId !== null || entry4.until > now);
         return this.#entries.filter((entry4) => entry4.runId === null);
+      }
+      /**
+       * `waiting` by reads only (row 011-354, review 0.1.514 B1): the same
+       * entries, and none past its deadline goes; `waiting` at `now` drops them.
+       */
+      peekWaiting(now) {
+        return this.#entries.filter((entry4) => entry4.runId === null && entry4.until > now);
       }
       /** Whether an entry of `ref` waits or runs: the file has a focused run to come. */
       has(ref3) {
@@ -19872,6 +19897,12 @@ function focusedWaiting(context, ledger, where3 = () => true) {
   if (focused.size === 0) return false;
   return focused.waiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
 }
+function readFocused2(context, ledger, where3) {
+  const { focused } = ledger.queue;
+  if (focused.size === 0) return { waits: false, read: false };
+  const waits2 = focused.peekWaiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
+  return { waits: waits2, read: true };
+}
 function startFocusedTier(context, ledger, picked, files5) {
   const { store, worktreeId } = context;
   const first2 = files5[0];
@@ -21018,174 +21049,6 @@ var init_backlog = __esm({
   }
 });
 
-// src/core/scheduler/yield-history.ts
-var ENDED_WRITE_MS, YieldHistory;
-var init_yield_history = __esm({
-  "src/core/scheduler/yield-history.ts"() {
-    "use strict";
-    init_reverse_index();
-    ENDED_WRITE_MS = 2e3;
-    YieldHistory = class {
-      /** The last yield, until a later tier that holds a file it cut ends (F2). */
-      #last = null;
-      /** A file of the first tier that ended in each lane of this daemon, by lane: status words lanes by its own rule. */
-      #lanes = /* @__PURE__ */ new Map();
-      /**
-       * The several-file tiers in flight whose runner named a file ended, by run
-       * id (F4): each write of the row reads their ended files as they are then.
-       */
-      #ended = /* @__PURE__ */ new Map();
-      /** When a file end last wrote the row; `null` before one did. */
-      #endedAt = null;
-      /**
-       * `tier` yielded at `at` for `to`, its estimated remainder then
-       * `remainderMs`, cutting `cut`: the remainder rule's when that exceeds
-       * `bound`, else the overrun rule's (`byRemainder`).
-       */
-      yielded(at2, tier, to, remainderMs, cut, bound) {
-        this.#last = {
-          at: at2,
-          runId: tier.runId,
-          to,
-          rule: remainderMs > bound ? "remainder" : "overrun",
-          remainderMs,
-          lane: tier.lane,
-          files: cut.map(({ file }) => file.ref),
-          runStartedAt: tier.startedAt ?? at2,
-          runEndedAt: null
-        };
-      }
-      /**
-       * The runner named a file of `tier` ended at `now`: whether the row is due
-       * a write of the count, at most once per `ENDED_WRITE_MS`. One inside that
-       * window waits for the next write of the row, with no timer.
-       */
-      fileEnded(now, tier) {
-        if ((tier.ended?.size ?? 0) === 0 || tier.files.length < 2) return false;
-        this.#ended.set(tier.runId, tier);
-        if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return false;
-        this.#endedAt = now;
-        return true;
-      }
-      /**
-       * `tier` ended at `now`: its count goes, its lane has had a tier end, and
-       * the last yield gets its cut run's end when `tier` is that run, or goes
-       * when `tier` held a file it cut. Whether what status reads changed: a
-       * count alone is not, as status reads the counts of open runs only, so
-       * the next write drops it.
-       */
-      ended(now, tier) {
-        this.#ended.delete(tier.runId);
-        let changed2 = false;
-        const [first2] = tier.files;
-        if (!this.#lanes.has(tier.lane) && first2 !== void 0) {
-          this.#lanes.set(tier.lane, first2.file.ref);
-          changed2 = true;
-        }
-        const last = this.#last;
-        if (last === null) return changed2;
-        if (last.runId === tier.runId) {
-          if (last.runEndedAt !== null) return changed2;
-          this.#last = { ...last, runEndedAt: now };
-          return true;
-        }
-        const cut = new Set(last.files.map(testFileId));
-        if (!tier.files.some(({ file }) => cut.has(file.id))) return changed2;
-        this.#last = null;
-        return true;
-      }
-      /**
-       * The row to publish, with `tiers`, the standings of the tiers in flight:
-       * each tier's ended files in its order and their count (row 011-274).
-       */
-      row(tiers) {
-        const endedFiles = /* @__PURE__ */ new Map();
-        for (const [runId, { files: files5, ended: ended3 }] of this.#ended) {
-          const named4 = files5.filter(({ file }) => ended3?.has(file.id) === true).map((f) => f.file.ref);
-          endedFiles.set(runId, named4);
-        }
-        const ended2 = new Map([...endedFiles].map(([runId, files5]) => [runId, files5.length]));
-        return { tiers, ended: ended2, endedFiles, last: this.#last, lanes: this.#lanes };
-      }
-    };
-  }
-});
-
-// src/core/scheduler/yield-row.ts
-function yieldRowText(at2, row2) {
-  const { tiers, ended: ended2, endedFiles, last, lanes } = row2;
-  if (tiers.size === 0 && ended2.size === 0 && last === null && lanes.size === 0) return null;
-  return JSON.stringify({
-    at: at2,
-    tiers: Object.fromEntries(tiers),
-    ...ended2.size === 0 ? {} : { ended: Object.fromEntries(ended2) },
-    ...endedFiles.size === 0 ? {} : { endedFiles: Object.fromEntries(endedFiles) },
-    ...last === null ? {} : { last },
-    ...lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }
-  });
-}
-function readYieldRow(raw, daemonStartedAt) {
-  if (raw === null) return NO_YIELD_ROW;
-  try {
-    const row2 = JSON.parse(raw);
-    if (typeof row2.at !== "number" || row2.at < daemonStartedAt) return NO_YIELD_ROW;
-    if (typeof row2.tiers !== "object" || row2.tiers === null) return NO_YIELD_ROW;
-    return {
-      tiers: new Map(
-        Object.entries(row2.tiers).filter((e) => isYield(e[1]))
-      ),
-      ended: new Map(entriesOf2(row2.ended).filter((e) => isCount3(e[1]))),
-      endedFiles: new Map(
-        entriesOf2(row2.endedFiles).filter((e) => isRefs(e[1]))
-      ),
-      last: isLastYield(row2.last) ? row2.last : null,
-      lanes: new Map(entriesOf2(row2.lanes).filter((e) => isRef(e[1]))),
-      at: row2.at
-    };
-  } catch {
-    return NO_YIELD_ROW;
-  }
-}
-function entriesOf2(value) {
-  return typeof value === "object" && value !== null ? Object.entries(value) : [];
-}
-function isCount3(value) {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
-}
-function isYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs, yieldsAt } = value;
-  if (kind === "remainder") return typeof remainderMs === "number";
-  if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
-}
-function isLastYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value;
-  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
-}
-function isRefs(value) {
-  return Array.isArray(value) && value.every(isRef);
-}
-function isRef(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { project, path } = value;
-  return typeof project === "string" && typeof path === "string";
-}
-var NO_YIELD_ROW;
-var init_yield_row = __esm({
-  "src/core/scheduler/yield-row.ts"() {
-    "use strict";
-    NO_YIELD_ROW = {
-      tiers: /* @__PURE__ */ new Map(),
-      ended: /* @__PURE__ */ new Map(),
-      endedFiles: /* @__PURE__ */ new Map(),
-      last: null,
-      lanes: /* @__PURE__ */ new Map()
-    };
-  }
-});
-
 // src/core/scheduler/tier-focus.ts
 function focusedCandidate(view, asks, busy2, turnDue) {
   if (view.focusedSize() === 0 || turnFirst(view, asks, busy2, turnDue)) return null;
@@ -21685,22 +21548,13 @@ var init_yield_view = __esm({
   }
 });
 
-// src/core/scheduler/yields.ts
-function holds(file, cut) {
-  if (file === void 0 || file.key !== cut.key) return false;
-  return file.resultKey !== cut.key || file.resultsApplied <= cut.applied;
-}
+// src/core/scheduler/yield-waits.ts
 function unfinished(tier) {
   const { ended: ended2 } = tier;
   if (ended2 === void 0 || ended2.size === 0) return [...tier.files];
   return tier.files.filter(({ file }) => !ended2.has(file.id));
 }
-function superseded(tier) {
-  if (tier.changes.size === 0) return false;
-  const left = unfinished(tier);
-  return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
-}
-function waitedFor(context, ledger, tier, revision, beat2, marks) {
+function waitedFor(context, ledger, tier, revision, beat2, marks, notes) {
   const inLane = (ref3) => laneOf(context, ref3) === tier.lane;
   const { queue } = ledger;
   const now = context.now();
@@ -21725,12 +21579,15 @@ function waitedFor(context, ledger, tier, revision, beat2, marks) {
       named4 = true;
       return false;
     }
-    const claim = peekClaim(context, ledger, ref3);
+    const { claim, asked } = readClaim(context, ledger, ref3);
+    if (asked !== null) notes.push({ kind: "claim", key: asked });
     later ||= claim !== "free";
     return claim === "free";
   };
   if (queue.hasPromoted(runsSooner, now)) return "promoted";
-  if (focusedWaiting(context, ledger, inLane)) return "promoted";
+  const focused = readFocused2(context, ledger, inLane);
+  if (focused.read) notes.push({ kind: "focused" });
+  if (focused.waits) return "promoted";
   if (revision !== null && recreates(context, ledger, revision, tier.lane)) return "runner";
   return later ? "recheck" : named4 || forWait ? "named" : null;
 }
@@ -21765,6 +21622,91 @@ function remainder(context, tier) {
   const now = context.now();
   return longest2 - (now - (tier.startedAt ?? now));
 }
+var init_yield_waits = __esm({
+  "src/core/scheduler/yield-waits.ts"() {
+    "use strict";
+    init_claims();
+    init_focused();
+    init_tiers();
+    init_yield_view();
+  }
+});
+
+// src/core/scheduler/decide-yields.ts
+function decideYields(at2, trigger, view) {
+  if (view.held) return null;
+  const { ledger } = view;
+  const reading = { ...view.context, now: () => at2 };
+  const marks = /* @__PURE__ */ new Map();
+  for (const [id, cut] of view.marks) if (holds(ledger.files.get(id), cut)) marks.set(id, cut);
+  const cuts = {
+    cutPastEstimate: (file) => {
+      const cut = marks.get(file.id);
+      return cut?.past === true && holds(file, cut);
+    }
+  };
+  const standing4 = new Map(view.standing);
+  const tiers = [];
+  const bookkeeping = [];
+  let changed2 = false;
+  for (const tier of view.tiers) {
+    const beat2 = rankToBeat(reading, ledger, tier);
+    const decision = decide(reading, ledger, tier, trigger, beat2, marks, cuts, bookkeeping);
+    let yielded = null;
+    if (decision === "yield") {
+      const left = remainder(reading, tier);
+      const cut = unfinished(tier);
+      for (const { file, key: key3 } of cut)
+        marks.set(file.id, { key: key3, applied: file.resultsApplied, past: left < 0 });
+      const to = waitedFor(reading, ledger, tier, trigger, beat2, cuts, bookkeeping);
+      if (to === "edit" || to === "promoted" || to === "runner") {
+        yielded = { to, remainderMs: left, cut };
+        changed2 = true;
+      }
+    }
+    const next = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
+    changed2 = setStanding(standing4, tier.runId, next) || changed2;
+    const bound = typeof decision === "string" ? null : boundOf(at2, tier, decision);
+    tiers.push({ tier, decision, bound, yielded });
+  }
+  return { tiers, marks, standing: standing4, changed: changed2, bookkeeping };
+}
+function setStanding(standing4, runId, next) {
+  const was = standing4.get(runId);
+  if (next === null) return standing4.delete(runId);
+  if (was !== void 0 && JSON.stringify(was) === JSON.stringify(next)) return false;
+  standing4.set(runId, next);
+  return true;
+}
+function decide(context, ledger, tier, revision, beat2, marks, cuts, bookkeeping) {
+  const { cancel: cancel2 } = tier;
+  if (tier.kind === "slow") return null;
+  if (cancel2?.signal.aborted === true) return { kind: "yields" };
+  if (cancel2 !== null && superseded(tier)) return "supersession";
+  if (tier.kind === "focused") return null;
+  if (tier.kind === "backlog" && cancel2 !== null) {
+    if (cancelsBacklog(context, ledger, revision, tier, selected(beat2))) return "backlog";
+  }
+  const waiting2 = waitedFor(context, ledger, tier, revision, beat2, cuts, bookkeeping);
+  if (waiting2 === null) return null;
+  if (cancel2 === null || tier.slot === true)
+    return waiting2 === "recheck" ? null : { kind: "runner" };
+  if (waiting2 === "recheck") return RECHECK;
+  if (tier.kind === "turn") return { kind: "turn" };
+  if (unfinished(tier).some(({ file, key: key3 }) => marks.get(file.id)?.key === key3))
+    return { kind: "cut" };
+  if (waiting2 === "named") return { kind: "named" };
+  return byRemainder(context, tier);
+}
+function holds(file, cut) {
+  if (file === void 0 || file.key !== cut.key) return false;
+  return file.resultKey !== cut.key || file.resultsApplied <= cut.applied;
+}
+function superseded(tier) {
+  if (tier.changes.size === 0) return false;
+  const left = unfinished(tier);
+  return left.length > 0 && left.every((f) => f.inputs.some((path) => tier.changes.has(path)));
+}
 function byRemainder(context, tier) {
   const remainderMs = remainder(context, tier);
   if (remainderMs > YIELD_REMAINDER_MS) return "yield";
@@ -21775,11 +21717,223 @@ function byRemainder(context, tier) {
 function overruns(tier) {
   return unfinished(tier).length > 0;
 }
-function boundOf(context, tier, decision) {
-  if (decision?.kind === "recheck") return context.now() + CLAIM_RECHECK_MS;
+function boundOf(at2, tier, decision) {
+  if (decision?.kind === "recheck") return at2 + CLAIM_RECHECK_MS;
   if (decision?.kind === "overrun") return decision.yieldsAt;
   if (decision?.kind !== "remainder" || !overruns(tier)) return null;
-  return context.now() + decision.remainderMs + YIELD_REMAINDER_MS;
+  return at2 + decision.remainderMs + YIELD_REMAINDER_MS;
+}
+var YIELD_REMAINDER_MS, RECHECK;
+var init_decide_yields = __esm({
+  "src/core/scheduler/decide-yields.ts"() {
+    "use strict";
+    init_backlog();
+    init_claims();
+    init_yield_waits();
+    YIELD_REMAINDER_MS = 3e4;
+    RECHECK = { kind: "recheck" };
+  }
+});
+
+// src/core/scheduler/yield-history.ts
+var ENDED_WRITE_MS, YieldHistory;
+var init_yield_history = __esm({
+  "src/core/scheduler/yield-history.ts"() {
+    "use strict";
+    init_reverse_index();
+    ENDED_WRITE_MS = 2e3;
+    YieldHistory = class {
+      /** The last yield, until a later tier that holds a file it cut ends (F2). */
+      #last = null;
+      /** A file of the first tier that ended in each lane of this daemon, by lane: status words lanes by its own rule. */
+      #lanes = /* @__PURE__ */ new Map();
+      /**
+       * The several-file tiers in flight whose runner named a file ended, by run
+       * id (F4): each write of the row reads their ended files as they are then.
+       */
+      #ended = /* @__PURE__ */ new Map();
+      /** When a file end last wrote the row; `null` before one did. */
+      #endedAt = null;
+      /**
+       * `tier` yielded at `at` for `to`, its estimated remainder then
+       * `remainderMs`, cutting `cut`: the remainder rule's when that exceeds
+       * `bound`, else the overrun rule's (`byRemainder`).
+       */
+      yielded(at2, tier, to, remainderMs, cut, bound) {
+        this.#last = {
+          at: at2,
+          runId: tier.runId,
+          to,
+          rule: remainderMs > bound ? "remainder" : "overrun",
+          remainderMs,
+          lane: tier.lane,
+          files: cut.map(({ file }) => file.ref),
+          runStartedAt: tier.startedAt ?? at2,
+          runEndedAt: null
+        };
+      }
+      /**
+       * The runner named a file of `tier` ended at `now`: whether the row is due
+       * a write of the count, at most once per `ENDED_WRITE_MS`. One inside that
+       * window waits for the next write of the row, with no timer.
+       */
+      fileEnded(now, tier) {
+        if ((tier.ended?.size ?? 0) === 0 || tier.files.length < 2) return false;
+        this.#ended.set(tier.runId, tier);
+        if (this.#endedAt !== null && now - this.#endedAt < ENDED_WRITE_MS) return false;
+        this.#endedAt = now;
+        return true;
+      }
+      /**
+       * `tier` ended at `now`: its count goes, its lane has had a tier end, and
+       * the last yield gets its cut run's end when `tier` is that run, or goes
+       * when `tier` held a file it cut. Whether what status reads changed: a
+       * count alone is not, as status reads the counts of open runs only, so
+       * the next write drops it.
+       */
+      ended(now, tier) {
+        this.#ended.delete(tier.runId);
+        let changed2 = false;
+        const [first2] = tier.files;
+        if (!this.#lanes.has(tier.lane) && first2 !== void 0) {
+          this.#lanes.set(tier.lane, first2.file.ref);
+          changed2 = true;
+        }
+        const last = this.#last;
+        if (last === null) return changed2;
+        if (last.runId === tier.runId) {
+          if (last.runEndedAt !== null) return changed2;
+          this.#last = { ...last, runEndedAt: now };
+          return true;
+        }
+        const cut = new Set(last.files.map(testFileId));
+        if (!tier.files.some(({ file }) => cut.has(file.id))) return changed2;
+        this.#last = null;
+        return true;
+      }
+      /**
+       * The row to publish, with `tiers`, the standings of the tiers in flight:
+       * each tier's ended files in its order and their count (row 011-274).
+       */
+      row(tiers) {
+        const endedFiles = /* @__PURE__ */ new Map();
+        for (const [runId, { files: files5, ended: ended3 }] of this.#ended) {
+          const named4 = files5.filter(({ file }) => ended3?.has(file.id) === true).map((f) => f.file.ref);
+          endedFiles.set(runId, named4);
+        }
+        const ended2 = new Map([...endedFiles].map(([runId, files5]) => [runId, files5.length]));
+        return { tiers, ended: ended2, endedFiles, last: this.#last, lanes: this.#lanes };
+      }
+    };
+  }
+});
+
+// src/core/scheduler/yield-row.ts
+function yieldRowText(at2, row2) {
+  const { tiers, ended: ended2, endedFiles, last, lanes } = row2;
+  if (tiers.size === 0 && ended2.size === 0 && last === null && lanes.size === 0) return null;
+  return JSON.stringify({
+    at: at2,
+    tiers: Object.fromEntries(tiers),
+    ...ended2.size === 0 ? {} : { ended: Object.fromEntries(ended2) },
+    ...endedFiles.size === 0 ? {} : { endedFiles: Object.fromEntries(endedFiles) },
+    ...last === null ? {} : { last },
+    ...lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }
+  });
+}
+function readYieldRow(raw, daemonStartedAt) {
+  if (raw === null) return NO_YIELD_ROW;
+  try {
+    const row2 = JSON.parse(raw);
+    if (typeof row2.at !== "number" || row2.at < daemonStartedAt) return NO_YIELD_ROW;
+    if (typeof row2.tiers !== "object" || row2.tiers === null) return NO_YIELD_ROW;
+    return {
+      tiers: new Map(
+        Object.entries(row2.tiers).filter((e) => isYield(e[1]))
+      ),
+      ended: new Map(entriesOf2(row2.ended).filter((e) => isCount3(e[1]))),
+      endedFiles: new Map(
+        entriesOf2(row2.endedFiles).filter((e) => isRefs(e[1]))
+      ),
+      last: isLastYield(row2.last) ? row2.last : null,
+      lanes: new Map(entriesOf2(row2.lanes).filter((e) => isRef(e[1]))),
+      at: row2.at
+    };
+  } catch {
+    return NO_YIELD_ROW;
+  }
+}
+function entriesOf2(value) {
+  return typeof value === "object" && value !== null ? Object.entries(value) : [];
+}
+function isCount3(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+function isYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, remainderMs, yieldsAt } = value;
+  if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
+}
+function isLastYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
+}
+function isRefs(value) {
+  return Array.isArray(value) && value.every(isRef);
+}
+function isRef(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value;
+  return typeof project === "string" && typeof path === "string";
+}
+var NO_YIELD_ROW;
+var init_yield_row = __esm({
+  "src/core/scheduler/yield-row.ts"() {
+    "use strict";
+    NO_YIELD_ROW = {
+      tiers: /* @__PURE__ */ new Map(),
+      ended: /* @__PURE__ */ new Map(),
+      endedFiles: /* @__PURE__ */ new Map(),
+      last: null,
+      lanes: /* @__PURE__ */ new Map()
+    };
+  }
+});
+
+// src/core/scheduler/yields.ts
+function yieldReach(event2, view) {
+  switch (event2.kind) {
+    case "revision":
+      return { reach: "check", trigger: event2.revision };
+    case "runner-work-applied":
+    case "request-taken":
+      return CHECK;
+    case "tier-started":
+      return event2.beside ? CHECK : NONE2;
+    case "file-ended": {
+      const tier = view.tier(event2.runId);
+      if (tier === void 0) return NONE2;
+      return tier.changes.size > 0 || view.standsNamed(tier) ? ADOPT : NONE2;
+    }
+    case "wake":
+      return event2.reason === "yield-bound" ? ADOPT : NONE2;
+    case "asked":
+    case "slot-ran":
+    case "tier-ended":
+    case "runner-work-drained":
+    case "stalled":
+    case "closing":
+      return NONE2;
+    default: {
+      const unknown = event2;
+      throw new Error(
+        `squeal scheduler: an event the yield check does not place: ${String(unknown)}`
+      );
+    }
+  }
 }
 function yieldsMetaKey(worktreeId) {
   return worktreeMetaKey("yields", worktreeId);
@@ -21792,23 +21946,17 @@ function writeYieldRow(store, worktreeId, at2, row2) {
 function publishedYieldRow(store, worktreeId, daemonStartedAt) {
   return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
 }
-var YIELD_REMAINDER_MS, RECHECK, TierYields;
+var TierYields, NONE2, CHECK, ADOPT;
 var init_yields = __esm({
   "src/core/scheduler/yields.ts"() {
     "use strict";
     init_connection();
     init_store();
-    init_backlog();
-    init_claims();
     init_clock();
-    init_focused();
-    init_tiers();
+    init_decide_yields();
     init_wakes();
     init_yield_history();
     init_yield_row();
-    init_yield_view();
-    YIELD_REMAINDER_MS = 3e4;
-    RECHECK = { kind: "recheck" };
     TierYields = class {
       /**
        * `recheck` checks the tiers in flight again under the scheduler's lock,
@@ -21885,41 +22033,39 @@ var init_yields = __esm({
        * open, it is a backlog tier as any (review `reviews/0.1.377.md` B1).
        *
        * One reading of the clock decides every tier (row 011-194, review
-       * `reviews/0.1.296-r2.md` B2): the decision reads `now` of a context that
-       * returns it, so a deadline or a bound the clock passes during the check
-       * is still the one the decision stood on. The timer and the published row
-       * read their own.
+       * `reviews/0.1.296-r2.md` B2): `decideYields` reads only `at`, so a
+       * deadline or a bound the clock passes during the check is still the one
+       * the decision stood on. The timer and the published row read their own.
+       * Row 011-354: `decideYields` decides; this applies its answer: the
+       * claim and focused bookkeeping its reads would have written (review
+       * 0.1.514 B1), then tier by tier in its order. Nothing while `held` (row
+       * 011-72).
        */
-      check(context, ledger, tiers, revision) {
-        this.#forget(ledger);
+      check(context, ledger, tiers, revision, held3 = false) {
         const at2 = context.now();
-        const reading = { ...context, now: () => at2 };
-        let changed2 = false;
-        for (const tier of tiers) {
-          const beat2 = rankToBeat(reading, ledger, tier);
-          const decision = this.#decide(reading, ledger, tier, revision, beat2);
+        const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held: held3 };
+        const decided = decideYields(at2, revision, view);
+        if (decided === null) return;
+        for (const note of decided.bookkeeping) {
+          if (note.kind === "claim") ledger.claims.holds(note.key, at2);
+          else ledger.queue.focused.waiting(at2);
+        }
+        this.#cut = new Map(decided.marks);
+        this.#standing = new Map(decided.standing);
+        for (const { tier, decision, bound, yielded } of decided.tiers) {
+          if (yielded !== null) {
+            const { to, remainderMs, cut } = yielded;
+            this.#history.yielded(at2, tier, to, remainderMs, cut, YIELD_REMAINDER_MS);
+          }
           if (typeof decision === "string") {
-            if (decision === "yield") {
-              const left = remainder(reading, tier);
-              const cut = unfinished(tier);
-              for (const { file, key: key3 } of cut)
-                this.#cut.set(file.id, { key: key3, applied: file.resultsApplied, past: left < 0 });
-              const to = waitedFor(reading, ledger, tier, revision, beat2, this);
-              if (to === "edit" || to === "promoted" || to === "runner") {
-                this.#history.yielded(at2, tier, to, left, cut, YIELD_REMAINDER_MS);
-                changed2 = true;
-              }
-            } else if (tier.kind === "backlog" && tier.slot !== true)
+            if (decision !== "yield" && tier.kind === "backlog" && tier.slot !== true)
               context.quiet?.cancelled(tier.lane, at2);
             tier.cancel?.abort(decision);
           }
-          const standing4 = typeof decision === "string" ? { kind: "yields" } : decision?.kind === "recheck" ? null : decision;
-          changed2 = this.#set(tier.runId, standing4) || changed2;
-          const bound = typeof decision === "string" ? null : boundOf(reading, tier, decision);
           if (bound === null) this.#bounds.delete(tier.runId);
           else this.#bounds.set(tier.runId, bound);
         }
-        if (changed2) this.#publish(context);
+        if (decided.changed) this.#publish(context);
         this.#arm(context);
       }
       /**
@@ -21966,26 +22112,6 @@ var init_yields = __esm({
         this.#bounds.clear();
         this.#disarm();
       }
-      #decide(context, ledger, tier, revision, beat2) {
-        const { cancel: cancel2 } = tier;
-        if (tier.kind === "slow") return null;
-        if (cancel2?.signal.aborted === true) return { kind: "yields" };
-        if (cancel2 !== null && superseded(tier)) return "supersession";
-        if (tier.kind === "focused") return null;
-        if (tier.kind === "backlog" && cancel2 !== null) {
-          if (cancelsBacklog(context, ledger, revision, tier, selected(beat2))) return "backlog";
-        }
-        const waiting2 = waitedFor(context, ledger, tier, revision, beat2, this);
-        if (waiting2 === null) return null;
-        if (cancel2 === null || tier.slot === true)
-          return waiting2 === "recheck" ? null : { kind: "runner" };
-        if (waiting2 === "recheck") return RECHECK;
-        if (tier.kind === "turn") return { kind: "turn" };
-        if (unfinished(tier).some(({ file, key: key3 }) => this.#cut.get(file.id)?.key === key3))
-          return { kind: "cut" };
-        if (waiting2 === "named") return { kind: "named" };
-        return byRemainder(context, tier);
-      }
       /** States the wake at the earliest bound, none without a bound. */
       #arm(context) {
         this.#wake ??= (this.wakes ?? new Wakes(hostClock(context.now))).slot(
@@ -21998,23 +22124,14 @@ var init_yields = __esm({
       #disarm() {
         this.#wake?.clear();
       }
-      /** Drops the marks that no longer hold. */
-      #forget(ledger) {
-        for (const [id, cut] of this.#cut) if (!holds(ledger.files.get(id), cut)) this.#cut.delete(id);
-      }
-      /** Records `standing` for `runId`; whether it changed. */
-      #set(runId, standing4) {
-        const was = this.#standing.get(runId);
-        if (standing4 === null) return this.#standing.delete(runId);
-        if (was !== void 0 && JSON.stringify(was) === JSON.stringify(standing4)) return false;
-        this.#standing.set(runId, standing4);
-        return true;
-      }
       #publish(context) {
         const { store, worktreeId } = context;
         writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
       }
     };
+    NONE2 = { reach: "none" };
+    CHECK = { reach: "check", trigger: null };
+    ADOPT = { reach: "adopt-then-check" };
   }
 });
 
@@ -29288,9 +29405,9 @@ var init_teardown = __esm({
 // src/runners/vitest/touched.ts
 import { basename as basename12 } from "node:path";
 async function sortTouched(vitest, touched2, lockfiles, paths) {
-  if (touched2.length === 0) return NONE2;
+  if (touched2.length === 0) return NONE3;
   if (vitest.projects.some((project) => project.isBrowserEnabled())) {
-    return { ...NONE2, inputs: [...touched2] };
+    return { ...NONE3, inputs: [...touched2] };
   }
   const once4 = /* @__PURE__ */ new Set([...await recreateTriggers(vitest), ...lockfiles]);
   const byName = (file) => paths.toRelative(file) !== null && READ_BY_NAME.test(basename12(file));
@@ -29303,7 +29420,7 @@ async function sortTouched(vitest, touched2, lockfiles, paths) {
   }
   return { inputs: inputs2, modules, index };
 }
-var READ_BY_NAME, ModuleIndex, NONE2, Touches;
+var READ_BY_NAME, ModuleIndex, NONE3, Touches;
 var init_touched = __esm({
   "src/runners/vitest/touched.ts"() {
     "use strict";
@@ -29337,7 +29454,7 @@ var init_touched = __esm({
         return [...this.#byEnvironment.get(environment)?.get(file) ?? []];
       }
     };
-    NONE2 = { inputs: [], modules: [], index: null };
+    NONE3 = { inputs: [], modules: [], index: null };
     Touches = class {
       #heard = [];
       #serial = 0;
@@ -56062,6 +56179,26 @@ function endedNote({ entry: entry4, reason: reason2 }, last) {
   const why2 = reason2 === "until" ? `passed its ${boundText2(entry4.until - entry4.since)} bound` : "ended: its command is gone";
   return `the hold for ${holdName(entry4)} ${why2}${last ? "; validating again" : ""}`;
 }
+function holdEnd(entry4, at2, gone4) {
+  return entry4.until <= at2 ? "until" : gone4(entry4) ? "gone" : null;
+}
+function decideHolds(entries3, at2, gone4) {
+  const ended2 = [];
+  const left = [];
+  for (const entry4 of entries3) {
+    const reason2 = holdEnd(entry4, at2, gone4);
+    if (reason2 === null) left.push(entry4);
+    else ended2.push({ entry: entry4, reason: reason2 });
+  }
+  return holdDecision(ended2, left);
+}
+function holdDecision(ended2, left) {
+  const wakeAt = left.length === 0 ? null : Math.min(...left.map((e) => e.until));
+  return { ended: ended2, left, wakeAt, prune: ended2.length > 0, next: left.length > 0 ? "hold" : "free" };
+}
+function endedNotes(ended2, last) {
+  return ended2.map((one, i3) => endedNote(one, last && i3 === ended2.length - 1));
+}
 var COMMAND_HOLD_MAX_MS, CommandHold;
 var init_command_hold = __esm({
   "src/core/scheduler/command-hold.ts"() {
@@ -56104,17 +56241,17 @@ var init_command_hold = __esm({
         const at2 = now();
         const namespace2 = this.options.gone === void 0 ? pidNamespace() : null;
         const gone4 = this.options.gone ?? ((entry4) => holderGone(entry4, namespace2));
-        const ends = (entry4) => entry4.until <= at2 ? "until" : gone4(entry4) ? "gone" : null;
         let read5;
         try {
-          const entries3 = readCommandHolds(store, worktreeId);
-          read5 = entries3.some((entry4) => ends(entry4) !== null) ? store.transaction(() => {
-            const pruned = pruneCommandHolds(store, worktreeId, ends);
-            const last = pruned.left.length === 0 && !this.options.merging();
-            for (const [i3, ended2] of pruned.ended.entries())
-              note(endedNote(ended2, last && i3 === pruned.ended.length - 1));
-            return pruned;
-          }) : { ended: [], left: entries3 };
+          read5 = decideHolds(readCommandHolds(store, worktreeId), at2, gone4);
+          if (read5.prune) {
+            read5 = store.transaction(() => {
+              const pruned = pruneCommandHolds(store, worktreeId, (entry4) => holdEnd(entry4, at2, gone4));
+              const last = pruned.left.length === 0 && !this.options.merging();
+              for (const text3 of endedNotes(pruned.ended, last)) note(text3);
+              return holdDecision(pruned.ended, pruned.left);
+            });
+          }
           this.#failed = null;
         } catch (error) {
           if (isBusy(error)) return this.holding;
@@ -56124,17 +56261,17 @@ var init_command_hold = __esm({
           return this.holding;
         }
         this.#entries = read5.left;
-        this.#arm();
+        this.#arm(read5.wakeAt);
         return this.holding;
       }
       close() {
         this.#closed = true;
         this.#wake.clear();
       }
-      /** The wake at the earliest `until`, none without an entry; the loop clamps a far one and reads again. */
-      #arm() {
-        if (this.#entries.length === 0 || this.#closed) this.#wake.clear();
-        else this.#wake.at(Math.min(...this.#entries.map((e) => e.until)));
+      /** The wake at the read's earliest `until`, none without an entry; the loop clamps a far one and reads again. */
+      #arm(wakeAt) {
+        if (wakeAt === null || this.#closed) this.#wake.clear();
+        else this.#wake.at(wakeAt);
       }
     };
   }
@@ -58938,6 +59075,15 @@ var init_runner_work = __esm({
 });
 
 // src/core/scheduler/slow-release.ts
+function decideRelease(lanes, at2, afterMs = SLOW_RELEASE_MS) {
+  const idle2 = lanes.filter((lane) => !lane.busy);
+  const dueAt = (lane) => (lane.endedAt ?? at2) + afterMs;
+  return {
+    idle: idle2.map((lane) => lane.lane),
+    close: idle2.filter((lane) => dueAt(lane) <= at2).map((lane) => lane.lane),
+    wakeAt: idle2.length === 0 ? null : Math.min(...idle2.map(dueAt))
+  };
+}
 var SLOW_RELEASE_MS, SlowRelease;
 var init_slow_release = __esm({
   "src/core/scheduler/slow-release.ts"() {
@@ -58979,7 +59125,7 @@ var init_slow_release = __esm({
       /** Closes the instance of each open lane no tier runs in, unless a slow selection is in progress. */
       async idle() {
         if (this.#selecting) return;
-        await Promise.all(this.#idleLanes().map((lane) => this.release(lane)));
+        await Promise.all(this.#decide().idle.map((lane) => this.release(lane)));
       }
       /** `select`, a slow selection: no instance closes during it; the count goes on after it. */
       async selecting(select2) {
@@ -58994,22 +59140,22 @@ var init_slow_release = __esm({
       /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
       arm() {
         if (this.host.closed()) return;
-        const dues = this.#idleLanes().map((lane) => this.#dueAt(lane));
-        if (dues.length === 0) return;
-        this.#wake.atMost(Math.min(...dues));
+        const { wakeAt } = this.#decide();
+        if (wakeAt !== null) this.#wake.atMost(wakeAt);
       }
       close() {
         this.#wake.clear();
       }
-      /** The open lanes the host keeps no instance for (`SlowReleaseHost.lanes`). */
-      #idleLanes() {
+      /** `decideRelease` over the open lanes now, each counting from its own end, else the host's. */
+      #decide() {
         const busy2 = new Set(this.host.lanes());
-        return [...this.#open].filter((lane) => !busy2.has(lane));
-      }
-      /** When `lane`'s instance closes: `afterMs` after its last slow run ended. */
-      #dueAt(lane) {
-        const ended2 = this.#endedAt.get(lane) ?? this.host.endedAt?.() ?? this.host.now();
-        return ended2 + this.afterMs;
+        const fallback2 = this.host.endedAt?.() ?? null;
+        const lanes = [...this.#open].map((lane) => ({
+          lane,
+          busy: busy2.has(lane),
+          endedAt: this.#endedAt.get(lane) ?? fallback2
+        }));
+        return decideRelease(lanes, this.host.now(), this.afterMs);
       }
       /**
        * Closes each idle lane past its own bound and arms the next. During a
@@ -59018,9 +59164,7 @@ var init_slow_release = __esm({
        */
       async #due() {
         if (this.host.closed() || this.#selecting) return;
-        const now = this.host.now();
-        const due = this.#idleLanes().filter((lane) => this.#dueAt(lane) <= now);
-        await Promise.all(due.map((lane) => this.release(lane)));
+        await Promise.all(this.#decide().close.map((lane) => this.release(lane)));
         this.arm();
       }
     };
@@ -59449,7 +59593,10 @@ var init_scheduler2 = __esm({
         this.#wakes = new Wakes(this.#clock);
         this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
         this.#claimsWake = this.#wakes.slot("claims", (at2) => this.#claimPoll(at2));
-        this.#yields = new TierYields(() => this.#recheckTiers(), this.#wakes);
+        this.#yields = new TierYields(
+          () => this.#cutTiers({ kind: "wake", reason: "yield-bound" }),
+          this.#wakes
+        );
         this.#install = new InstallStamps(options.root);
         this.#storedKeys = new StoredKeys(this.#now());
         this.#hold = new MergeHold({
@@ -59553,7 +59700,7 @@ var init_scheduler2 = __esm({
         closed: () => this.#closed,
         pump: () => this.#pump(),
         backgroundError: (subject, error) => this.#backgroundError(subject, error),
-        applied: () => this.#cutTiers(null),
+        applied: () => this.#cutTiers({ kind: "runner-work-applied" }),
         // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
         busy: () => {
           const waits2 = this.options.busyWaits;
@@ -59613,7 +59760,7 @@ var init_scheduler2 = __esm({
           this.#groups.lanes(this.#started().context.policy);
           this.#groups.get(group)?.preempt();
         },
-        cutTiers: () => this.#cutTiers(null),
+        cutTiers: () => this.#cutTiers({ kind: "request-taken" }),
         pump: () => this.#pump()
       });
       /** The records of the runs that ended (row 011-131). */
@@ -59807,7 +59954,7 @@ var init_scheduler2 = __esm({
           return;
         }
         this.#groups.preempt();
-        this.#cutTiers(applied.revision);
+        this.#cutTiers({ kind: "revision", revision: applied.revision });
         this.#runnerWork.queueRefine(applied.revision, applied.content, touched2);
       }
       /**
@@ -59821,28 +59968,33 @@ var init_scheduler2 = __esm({
         this.#storedKeys.adopt(context, ledger);
       }
       /**
-       * Cancels each tier in flight that `revision`, or with `null` the runner
-       * part just applied or a promotion, cuts (`TierYields`, C4 step 5 as
-       * amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`, task
-       * 001-364).
+       * Cancels each tier in flight that `event` cuts (`TierYields`, C4 step 5
+       * as amended 2026-10-21, row 011-51; a backlog tier's `cancelsBacklog`,
+       * task 001-364). Which events reach the check, and how, is `yieldReach`'s
+       * (row 011-354): in the event's own lock turn, or queued under the lock.
        */
-      #cutTiers(revision) {
-        if (this.#admit().halts.has("held")) return;
+      #cutTiers(event2) {
+        const reach2 = yieldReach(event2, {
+          tier: (runId) => this.#inFlight.get(runId)?.tier,
+          standsNamed: (tier) => this.#yields.standsNamed(tier)
+        });
+        if (reach2.reach === "check") this.#checkTiers(reach2.trigger);
+        else if (reach2.reach === "adopt-then-check") this.#recheckTiers();
+      }
+      /** The yield check in this lock turn, after `trigger`; a hold reaches nothing (row 011-72). */
+      #checkTiers(trigger) {
+        const held3 = this.#admit().halts.has("held");
         const { context, ledger } = this.#started();
         const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
-        this.#yields.check(context, ledger, tiers, revision);
+        this.#yields.check(context, ledger, tiers, trigger, held3);
       }
       /**
-       * A file of `tier` ended during its run (row 011-54): once a revision has
-       * changed an input of the tier, every file left may now be re-keyed, and
-       * once it runs on for a promoted file that ranks with or after its files,
-       * the ended file may have ranked first (`named`, review
-       * `reviews/0.1.296.md` B1), so the tiers in flight are checked again.
+       * A file of `tier` ended during its run (row 011-54): the count status
+       * reads, then the check, as `yieldReach` places a file end.
        */
       #fileEnded(tier) {
         this.#yields.fileEnded(this.#started().context, tier);
-        if (tier.changes.size === 0 && !this.#yields.standsNamed(tier)) return;
-        this.#recheckTiers();
+        this.#cutTiers({ kind: "file-ended", runId: tier.runId });
       }
       /**
        * Checks the tiers in flight again under the lock, one check queued at a
@@ -59859,7 +60011,7 @@ var init_scheduler2 = __esm({
           if (this.#closed) return;
           const { context, ledger } = this.#started();
           this.#adopt(context, ledger);
-          this.#cutTiers(null);
+          this.#checkTiers(null);
         }, "checking the tiers in flight").catch(
           (error) => this.#backgroundError("could not check the tiers in flight", error)
         );
@@ -60364,7 +60516,8 @@ var init_scheduler2 = __esm({
                   check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
                   fly: (tier) => {
                     this.#fly(tier, install.stamp, null, admitted);
-                    if (tier.beside === true) this.#cutTiers(null);
+                    const beside = tier.beside === true;
+                    this.#cutTiers({ kind: "tier-started", runId: tier.runId, beside });
                   }
                 });
                 return "tier" in next2 ? "flown" : next2.idle;
@@ -71927,7 +72080,7 @@ async function lintFiles(ctx, keyer, files5, judged2, quiet) {
   const call2 = files5.filter((f) => ctx.feed.has(f.path) || misses.includes(f));
   const asked = call2.length === 0 ? null : await ask(ctx, keyer, call2, misses);
   for (const file of call2) ctx.feed.delete(file.path);
-  if (asked !== null && "off" in asked) return { ...NONE3, off: asked.off };
+  if (asked !== null && "off" in asked) return { ...NONE4, off: asked.off };
   const moved4 = (f) => asked?.grew.closure === true || asked?.grew.program === true && f.wholeProgram;
   const bad2 = asked?.spoiled ?? CLEAN;
   const answers2 = judged2 && asked !== null ? kept5(asked, misses, moved4) : /* @__PURE__ */ new Map();
@@ -72038,16 +72191,16 @@ function unknownPart(ctx, paths, reason2) {
   const states = store.states.list(worktreeId, { paths, tool }).filter((s) => (s.outcome === "pending" || s.stale) && ctx.held?.(s.check.path) !== true).map((s) => unknownState2(s, s.check.path, at2, reason2));
   store.states.upsertMany(states);
   for (const path of paths) ctx.feed.delete(path);
-  return NONE3;
+  return NONE4;
 }
-var NONE3, CLEAN;
+var NONE4, CLEAN;
 var init_lint_part = __esm({
   "src/core/lint/pass/lint-part.ts"() {
     "use strict";
     init_held2();
     init_judge3();
     init_segment_disk();
-    NONE3 = {
+    NONE4 = {
       linted: 0,
       hits: 0,
       transitions: 0,
