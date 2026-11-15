@@ -2358,7 +2358,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.513";
+  if (true) return "0.1.514";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3336,13 +3336,13 @@ function vitestFiles(command, listing) {
   const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
   if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
-  const selected = /* @__PURE__ */ new Set();
+  const selected2 = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
     const hits = vitest.filter((ref2) => matchesFilter(join10(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
-    for (const ref2 of hits) selected.add(ref2);
+    for (const ref2 of hits) selected2.add(ref2);
   }
-  return vitest.filter((ref2) => selected.has(ref2));
+  return vitest.filter((ref2) => selected2.has(ref2));
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute6(filter) && file.startsWith(filter)) return true;
@@ -7528,9 +7528,9 @@ function withCode2(source, fn) {
 function codeLockFree(source) {
   withCode2(source, (access) => access.store.transaction(() => void 0));
 }
-function heldWrite(access, fn, holds) {
-  const held = holds === void 0 ? null : access.connection?.hold() ?? null;
-  if (held === null || holds === void 0) return access.store.transaction(fn);
+function heldWrite(access, fn, holds2) {
+  const held = holds2 === void 0 ? null : access.connection?.hold() ?? null;
+  if (held === null || holds2 === void 0) return access.store.transaction(fn);
   let result;
   try {
     result = fn();
@@ -7539,7 +7539,7 @@ function heldWrite(access, fn, holds) {
     throw error;
   }
   const close = () => access.store.close();
-  holds.push({
+  holds2.push({
     commit: () => {
       try {
         held.commit();
@@ -10482,7 +10482,7 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
   const coverage = plan.entries.some(isCoverage) ? { coverage: true } : {};
   return { news: { v: 1, entries, more, ...big, ...coverage }, writes };
 }
-function tellCode(source, consumer, at, since, { changes = true, toldOver: toldOver2 = false, loaders, holds } = {}) {
+function tellCode(source, consumer, at, since, { changes = true, toldOver: toldOver2 = false, loaders, holds: holds2 } = {}) {
   if (!changes && !toldOver2) return null;
   const told = withCode2(source, (access) => {
     const { store, complexity } = access;
@@ -10496,12 +10496,12 @@ function tellCode(source, consumer, at, since, { changes = true, toldOver: toldO
           () => over(
             withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders)
           ),
-          holds
+          holds2
         );
       }
     }
     if (!toldOver2) return null;
-    return store.read(() => summaryChanged(store, consumer, complexity, seen)) ? heldWrite(access, () => over(null), holds) : null;
+    return store.read(() => summaryChanged(store, consumer, complexity, seen)) ? heldWrite(access, () => over(null), holds2) : null;
   });
   return told === "missing" ? null : told;
 }
@@ -10899,8 +10899,8 @@ function heldNow(store, worktreeId, at) {
   const worktree = store.worktrees.get(worktreeId);
   return readKeyedHolds(store, worktree, worktreeLiveness(worktree, at), at);
 }
-function tellHolds(store, consumer, holds) {
-  const told = (holds ?? []).map(({ id, hold }) => ({ id, ended: endedOf(hold) }));
+function tellHolds(store, consumer, holds2) {
+  const told = (holds2 ?? []).map(({ id, hold }) => ({ id, ended: endedOf(hold) }));
   writeSlot(store, holdToldMetaKey(consumer.worktreeId), consumer, told.length === 0 ? null : told);
 }
 function holdsChange(store, consumer, at) {
@@ -10916,15 +10916,15 @@ function holdsChange(store, consumer, at) {
   return ended.length === 0 && started.length === 0 ? null : { now, ended, started };
 }
 function holdChanges(change2, header) {
-  const holds = change2.now.map((k) => k.hold);
-  const last = holds.length === 0 ? change2.ended.length - 1 : -1;
+  const holds2 = change2.now.map((k) => k.hold);
+  const last = holds2.length === 0 ? change2.ended.length - 1 : -1;
   const ends = change2.ended.map(
     (ended, i) => i === last ? {
       kind: "resumed",
       ended,
       queued: header.testFilesByPhase?.queued ?? 0,
       running: header.testFilesByPhase?.running ?? 0
-    } : { kind: "ended", ended, holds }
+    } : { kind: "ended", ended, holds: holds2 }
   );
   return [...ends, ...change2.started.map((hold) => ({ kind: "on-hold", hold }))];
 }
@@ -10956,10 +10956,10 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
   const ignored = [...changes.values()].filter((c) => c.ignored === true).map((c) => c.path);
-  const holds = readHolds(store, worktree, presence.heartbeat, now);
+  const holds2 = readHolds(store, worktree, presence.heartbeat, now);
   return {
     ...header,
-    ...holds.length === 0 ? {} : { holds },
+    ...holds2.length === 0 ? {} : { holds: holds2 },
     daemon: headerView(presence),
     changedPaths: [...changes.keys()],
     ...ignored.length === 0 ? {} : { ignoredPaths: ignored },
@@ -11075,8 +11075,8 @@ function writeTurn(store, consumer, state) {
 }
 function readStopHolds(store, consumer) {
   const value = readSlot(store, turnMetaKey(consumer.worktreeId), consumer);
-  const holds = isRecord(value) ? value.stopHolds : void 0;
-  return typeof holds === "number" && Number.isInteger(holds) && holds > 0 ? holds : 0;
+  const holds2 = isRecord(value) ? value.stopHolds : void 0;
+  return typeof holds2 === "number" && Number.isInteger(holds2) && holds2 > 0 ? holds2 : 0;
 }
 function promptTurn(store, consumer) {
   if (readStopHolds(store, consumer) === 0) return;
@@ -11265,11 +11265,11 @@ function abandonAll(reports) {
     }
   }
 }
-function commitHolds(holds) {
-  endInOrder(holds, (held) => held.commit(), rollbackHolds);
+function commitHolds(holds2) {
+  endInOrder(holds2, (held) => held.commit(), rollbackHolds);
 }
-function rollbackHolds(holds) {
-  for (const held of [...holds].reverse()) {
+function rollbackHolds(holds2) {
+  for (const held of [...holds2].reverse()) {
     try {
       held.rollback();
     } catch {
@@ -11421,7 +11421,7 @@ function createDelivery(store, options) {
       const delta2 = plan(consumer, states, at, selection.only);
       store.views.removeMany(consumer, delta2.removals);
       store.views.writeMany(consumer, delta2.writes);
-      const { live: changed, held: holds } = toldAtStop(
+      const { live: changed, held: holds2 } = toldAtStop(
         { stop, transitions: delta2.entries.length > 0 },
         {
           live: liveness ? livenessChange(store, consumer, at) : null,
@@ -11429,8 +11429,8 @@ function createDelivery(store, options) {
         }
       );
       if (changed !== null) tellLiveness(store, consumer, toldOf(changed));
-      if (holds !== null) tellHolds(store, consumer, holds.now);
-      const tests2 = delta2.entries.length > 0 || changed !== null || holds !== null;
+      if (holds2 !== null) tellHolds(store, consumer, holds2.now);
+      const tests2 = delta2.entries.length > 0 || changed !== null || holds2 !== null;
       const seen = () => codeSeenUpTo(store, consumer);
       lintRead.read = liveness ? readLintNews(options.lint, consumer, at, seen) : null;
       const lint2 = lintRead.read?.news ?? null;
@@ -11484,7 +11484,7 @@ function createDelivery(store, options) {
         entries,
         stillFailing,
         ...changed === null ? {} : { liveness: changed },
-        ...holds === null ? {} : { holds: holdChanges(holds, header) },
+        ...holds2 === null ? {} : { holds: holdChanges(holds2, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
         ...groupsChanged ? { groupTiersChanged: true } : {},
         ...commit === void 0 ? {} : { commitChanged: true },
@@ -13077,8 +13077,8 @@ function retryWaitOf(ref2, reads) {
   }
   return fast === null ? UNKNOWN : { kind: "fast", since: fast };
 }
-function earliest2(runs, holds) {
-  const starts = runs.filter((run2) => run2.testFiles.some(holds)).map((run2) => run2.startedAt);
+function earliest2(runs, holds2) {
+  const starts = runs.filter((run2) => run2.testFiles.some(holds2)).map((run2) => run2.startedAt);
   return starts.length === 0 ? null : Math.min(...starts);
 }
 function groupWaitOf({ name: name2, at, after, activity }) {
@@ -14288,7 +14288,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   const daemon = statusView(readPresence(store, worktreeId, now, worktree));
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
-  const holds = readHolds(store, worktree, daemon, now);
+  const holds2 = readHolds(store, worktree, daemon, now);
   const header = readHeader(store, worktreeId, states, keys, void 0, held);
   const knownFailures = withTestFileFrames(
     store,
@@ -14312,7 +14312,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
       header,
       runs,
       daemon,
-      holds,
+      holds: holds2,
       slowSlot: slowSlot ?? null,
       ...retries,
       ...checkpoint
@@ -14328,7 +14328,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     ...header,
     ...statusIdentity(root, revision, header.commit, daemon),
     daemon,
-    ...holds.length === 0 ? {} : { holds },
+    ...holds2.length === 0 ? {} : { holds: holds2 },
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
