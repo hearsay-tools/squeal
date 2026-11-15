@@ -19,3 +19,17 @@ Virtual adapter: `test/helpers/virtual-clock.ts` (`now`, `advance(ms)`, runs due
 Owns: `src/core/scheduler/{clock,claims,slot-records,slow-tier,mutex,promotions,keying,scheduler,options}.ts` (only the clock lines of the last three), `test/helpers/virtual-clock.ts`, new tests under `test/scheduler/`. Leave alone: `busy-resume.ts`, `src/core/store/busy.ts`, `local-permits.ts`, `src/core/capacity/` (cards 9 and 10), `record-tier.ts` (card 1), every existing scheduler test file.
 
 Done when: the row's done-when holds: `grep -rn "performance\.now\|Date\.now" src/core/scheduler/` lists only `clock.ts` (paste it in the notes); a virtual-clock table pins the slow lane's load budget and the claims window; existing scheduler tests pass unchanged; `test/keys/key-format.test.ts` passes without a raise, and `compare.test.ts`, `reach.test.ts` pass. `tasks/011-351/notes.md` names the three owners that moved off the steady clock (the accepted timing difference) and any decision the record did not settle. Lint, typecheck and `squeal status --wait 60000` on the changed paths pass; report pending or unknown checks as such. A real bug found on the way is a proposed row with a failing test, not a fix here.
+
+## R1 (W1): review of cand/0.1.512
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.512` at `dc62e4289ab5b814f75238da9f1599689c9a1f2c`; candidate CI run 43708305969. Range `c5f975a58..dc62e4289`: two commits of worker af2e296a (fast-forwarded), then the 0.1.512 raise and bundles. Read: board row 011-351, this file's W1, `tasks/011-351/notes.md`, `../research/scheduler-step.md` ("The clock port", "Timing differences", "Key format").
+
+Check, each as proven, plausible or unverified:
+
+1. **One clock.** No module under `src/core/scheduler/` reads `performance.now` or `Date.now` except `clock.ts`; every owner the notes list reads the scheduler's one clock, and `SchedulerOptions.now` still works as shorthand (ignored when `clock` is given).
+2. **Behaviour preserved.** In the daemon (no injected clock) nothing a user sees changes: no tier, order, width, status payload, note text, CLI output or key. The three owners moved off the steady clock (load budget, claims window, slot gather commit time) are the only timing differences, and a clock that goes back gives nothing back where a difference is taken.
+3. **Host adapter.** `hostClock` looks `setTimeout` up per arm, clamps to 0..2^31-1 ms and unrefs; nothing in `src/` arms it yet. `hostNow` reading `Date.now` per call (not the function captured at construction) breaks no test that installs fake timers.
+4. **Scope.** `record.ts` got one clock line outside the brief's list; `record-tier.ts`, `busy-resume.ts`, `store/busy.ts`, `local-permits.ts`, `src/core/capacity/` are untouched; no existing test file changed.
+5. **Tests.** `clock-port.test.ts`'s load-budget and claims-window tables pin what they claim and are not host-tuned; the clamp row fails without the clamp.
+
+The coordinator's tree passed lint, typecheck, `check:version origin/main` and `key-format` with `version-sensitive` (19 tests) at the candidate; the worker's tree passed 835 affected files in Squeal (4 bundle-drift failures, fixed by the bundle commit; 114 CLI files left queued on a busy host). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/0.1.512.md` and commit it on your branch.
