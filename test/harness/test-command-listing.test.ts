@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { testCommandDenied } from "../../src/core/delivery/test-command-denied.js";
 import { listTestFilesOf } from "../../src/core/scheduler/omitted-test-files.js";
 import { RunnerPartBound } from "../../src/core/scheduler/runner-work-bound.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { openFixture, SLOW, TYPECHECKED } from "../runners/vitest/helpers.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { codexRecorded, sessionOf } from "./codex/helpers.js";
@@ -28,7 +30,7 @@ const deps: HookDeps = {
 async function listedFrom(extra: Readonly<Record<string, string>>): Promise<SquealRepo> {
   const fx = await openFixture("basic", extra);
   const r = squealRepo();
-  const bound = new RunnerPartBound(60_000);
+  const bound = new RunnerPartBound(60_000, new Wakes(virtualClock()), () => 0);
   const listing = await listTestFilesOf({ ...r, runner: fx.adapter }, bound);
   r.store.testFileKeys.remove(r.worktreeId, [FILE]);
   for (const [i, file] of listing.entries())

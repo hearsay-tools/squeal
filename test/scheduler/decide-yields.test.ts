@@ -12,6 +12,7 @@ import { Priority } from "../../src/core/scheduler/queue.js";
 import { SHARE_FLOOR_MS } from "../../src/core/scheduler/sharing.js";
 import type { SchedulerEvent } from "../../src/core/scheduler/step-events.js";
 import type { Tier, TierKind } from "../../src/core/scheduler/tiers.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { TierYields, type YieldReach, yieldReach } from "../../src/core/scheduler/yields.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
@@ -19,6 +20,7 @@ import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { Revision } from "../../src/core/types/revision.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { freshStore } from "../state/helpers.js";
 
 /*
@@ -292,8 +294,8 @@ describe("decideYields writes nothing; TierYields applies its bookkeeping (revie
   it("the check applies it: the claim's first sight and waiting flag, and the focused pruning", () => {
     const { context, ledger, tier } = claimed();
     ledger.queue.focused.add({ project: "", path: "test/f.test.ts" }, ["f"], T - 1);
-    const yields = new TierYields();
-    yields.check({ ...context, now: () => T }, ledger, [tier], null);
+    const yields = new TierYields(() => {}, new Wakes(virtualClock(T)));
+    yields.check({ ...context, now: () => T }, ledger, [tier], null, false);
     expect(ledger.claims.waiting).toBe(true);
     expect(ledger.queue.focused.size).toBe(0);
     yields.close();

@@ -1,6 +1,5 @@
 import type { EpochMs } from "../types/common.js";
-import { hostClock } from "./clock.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * Row 011-211: how long a slow lane's runner instance stays open while its
@@ -15,15 +14,10 @@ export interface SlowReleaseHost {
   release(lane: string): Promise<void>;
   /** The lanes whose instance stays: each tier's in flight, and each whose files wait for a load guard. */
   lanes(): readonly string[];
-  /**
-   * When a slow run last ended, for a lane whose end `ended` did not
-   * record; absent, such a lane counts from now.
-   */
-  endedAt?(): EpochMs | null;
   now(): EpochMs;
   closed(): boolean;
-  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
-  readonly wakes?: Wakes;
+  /** The scheduler's wake loop (row 011-352). */
+  readonly wakes: Wakes;
 }
 
 /** One open slow lane as `decideRelease` reads it. */
@@ -95,7 +89,7 @@ export class SlowRelease {
     private readonly host: SlowReleaseHost,
     private readonly afterMs: number = SLOW_RELEASE_MS,
   ) {
-    this.#wakes = host.wakes ?? new Wakes(hostClock(() => host.now()));
+    this.#wakes = host.wakes;
     this.#wake = this.#wakes.slot("slow-release", () => void this.#wakes.track(() => this.#due()));
   }
 
@@ -137,14 +131,13 @@ export class SlowRelease {
     this.#wake.clear();
   }
 
-  /** `decideRelease` over the open lanes now, each counting from its own end, else the host's. */
+  /** `decideRelease` over the open lanes now, each counting from its own end, else from now. */
   #decide(): ReleaseDecision {
     const busy = new Set(this.host.lanes());
-    const fallback = this.host.endedAt?.() ?? null;
     const lanes = [...this.#open].map((lane) => ({
       lane,
       busy: busy.has(lane),
-      endedAt: this.#endedAt.get(lane) ?? fallback,
+      endedAt: this.#endedAt.get(lane) ?? null,
     }));
     return decideRelease(lanes, this.host.now(), this.afterMs);
   }

@@ -1,7 +1,6 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import { hostNow } from "./clock.js";
 import type { PublishedPromotion } from "./promotions-row.js";
 
 /**
@@ -66,7 +65,16 @@ export interface InheritedBatch {
   readonly until: number;
 }
 
-const NOT_RUNNING = (): boolean => false;
+/**
+ * The clock promotions' deadlines are on (the scheduler's), whether a test
+ * file's run is in flight, and where each change of the live batches is
+ * told (`publishPromotions`; C15, task 011-13).
+ */
+export interface PromotionClock {
+  readonly now: () => number;
+  readonly isRunning: (ref: TestFileRef) => boolean;
+  readonly publish?: (live: readonly PublishedPromotion[]) => void;
+}
 
 /**
  * The named waits' batches of a `RunQueue` (spec 011 C15 as amended
@@ -86,22 +94,14 @@ const NOT_RUNNING = (): boolean => false;
 export class Promotions {
   #promotions: Promotion[] = [];
   #seq = 0;
-  #now: () => number = hostNow;
-  #isRunning: (ref: TestFileRef) => boolean = NOT_RUNNING;
-  #publish: ((live: readonly PublishedPromotion[]) => void) | null = null;
+  readonly #now: () => number;
+  readonly #isRunning: (ref: TestFileRef) => boolean;
+  readonly #publish: ((live: readonly PublishedPromotion[]) => void) | null;
 
-  /**
-   * The clock deadlines are on, whether a test file's run is in flight, and
-   * where each change of the live batches is told (`publishPromotions`).
-   */
-  setClock(
-    now: () => number,
-    isRunning: (ref: TestFileRef) => boolean,
-    publish?: (live: readonly PublishedPromotion[]) => void,
-  ): void {
-    this.#now = now;
-    this.#isRunning = isRunning;
-    this.#publish = publish ?? null;
+  constructor(clock: PromotionClock) {
+    this.#now = clock.now;
+    this.#isRunning = clock.isRunning;
+    this.#publish = clock.publish ?? null;
   }
 
   /**

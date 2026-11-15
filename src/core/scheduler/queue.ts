@@ -7,11 +7,11 @@ import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
 import {
   type InheritedBatch,
+  type PromotionClock,
   type PromotionRank,
   Promotions,
   type SelectedFacts,
 } from "./promotions.js";
-import type { PublishedPromotion } from "./promotions-row.js";
 
 /**
  * Run order of queued test files, most urgent first.
@@ -107,12 +107,17 @@ export class RunQueue {
    */
   #batchTurn = false;
   #checkGroup: (ref: TestFileRef) => string = ALL_TESTS;
-  readonly #promotions = new Promotions();
+  readonly #promotions: Promotions;
   /** Named waits' focused checks (spec 011 C15, row 011-145): they go before every entry. */
   readonly focused = new FocusedEntries();
   readonly #queued = (id: string) => this.#entries.has(id);
   /** Open `settlingOnce` calls: while any is, `add` leaves the promotions as they are. */
   #settleHeld = 0;
+
+  /** `clock`: promotions' deadlines, whether a file's run is in flight, where their changes go (C15). */
+  constructor(clock: PromotionClock) {
+    this.#promotions = new Promotions(clock);
+  }
 
   /** Every entry, fast and slow. */
   get size(): number {
@@ -151,18 +156,6 @@ export class RunQueue {
   }
 
   readonly #isSlow = (ref: TestFileRef): boolean => this.#checkGroup(ref) !== TESTS_GROUP;
-
-  /**
-   * The clock promotions' deadlines are on, whether a test file's run is in
-   * flight, and where their changes are published (C15, task 011-13).
-   */
-  setPromotionClock(
-    now: () => number,
-    isRunning: (ref: TestFileRef) => boolean,
-    publish?: (live: readonly PublishedPromotion[]) => void,
-  ): void {
-    this.#promotions.setClock(now, isRunning, publish);
-  }
 
   /**
    * Spec 011 C15 as amended 2026-10-29 (row 011-268): the test files a

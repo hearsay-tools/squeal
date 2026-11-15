@@ -8,14 +8,13 @@ import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/c
 import type { CheckKey } from "../types/keys.js";
 import type { StateSink } from "../types/state.js";
 import type { ResultRepo, Store } from "../types/store.js";
-import { hostClock } from "./clock.js";
 import {
   MERGE_HOLD_PATHS,
   type MergeHoldRow,
   mergeHoldMetaKey,
   readMergeHold,
 } from "./hold-rows.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 
 /*
  * Row 011-72 (spec 011 C9 as amended 2026-10-21, "Holds"; `tasks/011-61/design.md`
@@ -60,8 +59,8 @@ export interface MergeHoldOptions {
   readonly resumed: () => void;
   readonly note: (message: string) => void;
   readonly pollMs?: number;
-  /** The scheduler's wake loop, which runs the poll and counts its check (row 011-352); absent, a loop of its own over `now`. */
-  readonly wakes?: Wakes;
+  /** The scheduler's wake loop, which runs the poll and counts its check (row 011-352). */
+  readonly wakes: Wakes;
 }
 
 /**
@@ -92,7 +91,7 @@ export class MergeHold {
   #closed = false;
 
   constructor(private readonly options: MergeHoldOptions) {
-    this.#wakes = options.wakes ?? new Wakes(hostClock(options.now));
+    this.#wakes = options.wakes;
     this.#wake = this.#wakes.slot("merge-hold", () => this.#polled());
   }
 

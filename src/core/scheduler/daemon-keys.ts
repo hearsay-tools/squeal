@@ -1,6 +1,7 @@
 import { readHead } from "../daemon-loop/head.js";
 import { readObjectFormat } from "../hash/git-index.js";
 import { createFsHasher, type Hasher } from "../hash/hasher.js";
+import { hostNow } from "./clock.js";
 import { type KeyingOptions, WorktreeKeys } from "./keying.js";
 
 /**
@@ -28,6 +29,8 @@ export async function openDaemonKeys(
     squealVersion,
     env,
     onExtraFiles: () => {},
+    // No scheduler on this path (`ci export`, the gate's lookup): environment records stamp the host's time.
+    now: hostNow,
   });
   await keys.bootstrap(() => readHead(root));
   return { keys, hasher };

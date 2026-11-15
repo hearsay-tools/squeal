@@ -27,12 +27,11 @@ const id = (name: string) => testFileId(ref(name));
 function queueAt() {
   const clock = { now: 1_000 };
   const told: (readonly PublishedPromotion[])[] = [];
-  const queue = new RunQueue();
-  queue.setPromotionClock(
-    () => clock.now,
-    () => false,
-    (live) => told.push(live),
-  );
+  const queue = new RunQueue({
+    now: () => clock.now,
+    isRunning: () => false,
+    publish: (live) => told.push(live),
+  });
   return { queue, clock, told };
 }
 

@@ -131,7 +131,7 @@ export interface FileEnds {
  */
 export class Ledger {
   readonly files = new Map<string, FileState>();
-  readonly queue = new RunQueue();
+  readonly queue: RunQueue;
   readonly checkpoints: Checkpoints;
   /** Other worktrees' claims this worktree's queued files wait on (task 001-205). */
   readonly claims: Claims;
@@ -194,13 +194,13 @@ export class Ledger {
   constructor(private readonly context: SchedulerContext) {
     this.checkpoints = new Checkpoints(context.store, context.worktreeId, context.now);
     this.claims = new Claims(context);
+    this.queue = new RunQueue({
+      now: context.now,
+      isRunning: (ref) => (this.file(ref)?.runningKey ?? null) !== null,
+      publish: (live) => publishPromotions(context.store, context.worktreeId, live, context.now()),
+    });
     // Read at every query: a reload replaces `context.policy` (spec 019 D3: a file's class is its group).
     this.queue.setGroups((ref) => groupView(context.policy).of(ref).name);
-    this.queue.setPromotionClock(
-      context.now,
-      (ref) => (this.file(ref)?.runningKey ?? null) !== null,
-      (live) => publishPromotions(context.store, context.worktreeId, live, context.now()),
-    );
     this.#ranker = new SlowRanker(
       fsRankSource(context.root, (path) => context.keys.cache.hashOf(path)),
       metaTokenRecords(context.store),

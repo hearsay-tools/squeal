@@ -3,7 +3,6 @@ import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Revision } from "../types/revision.js";
 import type { TierYield } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
-import { hostClock } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
 import { type Cut, decideYields, holds, YIELD_REMAINDER_MS } from "./decide-yields.js";
 import type { FileState } from "./files.js";
@@ -11,7 +10,7 @@ import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
 import type { SchedulerEvent } from "./step-events.js";
 import type { Tier } from "./tiers.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 import { YieldHistory } from "./yield-history.js";
 import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
 
@@ -55,9 +54,9 @@ export class TierYields implements CutFiles {
    * results first.
    */
   constructor(
-    private readonly recheck: () => void = () => {},
-    /** The scheduler's wake loop (row 011-352); absent, a loop of its own over the context's clock. */
-    private readonly wakes?: Wakes,
+    private readonly recheck: () => void,
+    /** The scheduler's wake loop (row 011-352). */
+    private readonly wakes: Wakes,
   ) {}
 
   /**
@@ -114,7 +113,7 @@ export class TierYields implements CutFiles {
     ledger: Ledger,
     tiers: readonly Tier[],
     revision: Revision | null,
-    held = false,
+    held: boolean,
   ): void {
     const at = context.now();
     const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
@@ -193,11 +192,13 @@ export class TierYields implements CutFiles {
     this.#disarm();
   }
 
-  /** States the wake at the earliest bound, none without a bound. */
-  #arm(context: SchedulerContext): void {
-    this.#wake ??= (this.wakes ?? new Wakes(hostClock(context.now))).slot("yield-bound", () =>
-      this.recheck(),
-    );
+  /**
+   * States the wake at the earliest bound, none without a bound. `_context`
+   * chose the fallback loop's clock until row 011-364; dropping it touches
+   * `check`'s body (row 011-361's), so it goes after that row lands.
+   */
+  #arm(_context: SchedulerContext): void {
+    this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
     if (this.#bounds.size === 0) this.#wake.clear();
     else this.#wake.at(Math.min(...this.#bounds.values()) as EpochMs);
   }

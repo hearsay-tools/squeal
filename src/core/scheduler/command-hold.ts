@@ -3,14 +3,13 @@ import { isBusy } from "../store/connection.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Store } from "../types/store.js";
 import type { HarnessProcess } from "../types/store-records.js";
-import { hostClock } from "./clock.js";
 import {
   type CommandHoldEntry,
   type EndedCommandHold,
   pruneCommandHolds,
   readCommandHolds,
 } from "./hold-rows.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 
 /*
  * Row 011-74 (spec 011 C9 as amended 2026-10-21, "Holds", *Hold command*;
@@ -142,8 +141,8 @@ export interface CommandHoldOptions {
   readonly due: () => void;
   /** Whether an entry's holder is gone; default `holderGone` in this process's PID namespace. */
   readonly gone?: (entry: CommandHoldEntry) => boolean;
-  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
-  readonly wakes?: Wakes;
+  /** The scheduler's wake loop (row 011-352). */
+  readonly wakes: Wakes;
 }
 
 /** The command holds of one worktree, as the daemon last read them. */
@@ -155,8 +154,7 @@ export class CommandHold {
   #closed = false;
 
   constructor(private readonly options: CommandHoldOptions) {
-    const wakes = options.wakes ?? new Wakes(hostClock(options.now));
-    this.#wake = wakes.slot("command-hold", () => this.options.due());
+    this.#wake = options.wakes.slot("command-hold", () => this.options.due());
   }
 
   get holding(): boolean {

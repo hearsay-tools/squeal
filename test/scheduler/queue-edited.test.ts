@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
+import { HOST_PROMOTIONS } from "./promotion-clock.js";
 
 const ref = (path: string): TestFileRef => ({ project: "", path });
 
@@ -22,7 +23,7 @@ describe("RunQueue: an edited test file before broad dependent suites (gh-31)", 
   const paths = (queue: RunQueue) => queue.ordered(durationOf).map((r) => r.path);
 
   it("runs an edited file of unknown duration before a long direct importer (scenario F)", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/monitoring-turn.test.ts"), Priority.direct, false, true);
     queue.add(ref("src/workflows/worker-wait-durability.test.ts"), Priority.edited, false, true);
     expect(paths(queue)).toEqual([
@@ -32,7 +33,7 @@ describe("RunQueue: an edited test file before broad dependent suites (gh-31)", 
   });
 
   it("keeps failures first and every queued file in the order", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/short-importer.test.ts"), Priority.direct, false, true);
     queue.add(ref("test/monitoring-turn.test.ts"), Priority.direct, false, true);
     queue.add(ref("test/edited-known.test.ts"), Priority.edited, false, true);
@@ -50,14 +51,14 @@ describe("RunQueue: an edited test file before broad dependent suites (gh-31)", 
   });
 
   it("leaves an unknown duration last in the other classes", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/unknown-importer.test.ts"), Priority.direct, false, true);
     queue.add(ref("test/monitoring-turn.test.ts"), Priority.direct, false, true);
     expect(paths(queue)).toEqual(["test/monitoring-turn.test.ts", "test/unknown-importer.test.ts"]);
   });
 
   it("keeps an edited file's rank while it waits, whatever re-queues it", () => {
-    const queue = new RunQueue();
+    const queue = new RunQueue(HOST_PROMOTIONS);
     queue.add(ref("test/monitoring-turn.test.ts"), Priority.direct, false, true);
     queue.add(ref("test/edited.test.ts"), Priority.edited, false, true);
     queue.add(ref("test/edited.test.ts"), Priority.neverRun);
