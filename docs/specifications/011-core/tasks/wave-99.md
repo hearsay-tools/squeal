@@ -31,3 +31,9 @@ Check, each as proven, plausible or unverified:
 5. **Scope.** Only test files changed, plus the four import-line edits the coordinator granted (`batch-fixture.ts`, `promoted-tier-fixture.ts`, `tier-yields-named.test.ts`, `tier-yields-next-tier.test.ts`).
 
 The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, and the model test with five related files (33 tests, 20.4 s at load 6.7) at 0.1.513 plus these commits. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/011-353.md` and commit it on your branch.
+
+## R2 (W1 repair): re-review of cand/011-353 after `reviews/011-353.md`
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `76d86d4db2ad8c27b7eed49842f307baa6f820b0`; candidate CI run 43727557797. Narrow: the repair `562a5cb6e..76d86d4db` (worker 7a90f9aa `59393ef97`, `8e9f10193`, cherry-picked): `advance` ends at the later of the reached time and `until`, so a jump made inside a timer stays; two regression cases in `model-harness-clock.test.ts`. Read `reviews/011-353.md` and the notes' "Repair after review 011-353".
+
+Check, each as proven, plausible or unverified: B1's reproduction passes; `advance` still fires due timers in time order and never moves time backwards or skips a timer due before the reached time; nothing else in the helper or the model test changed. Worker evidence: the two cases failed before the fix; `model-harness-clock`, `clock-port`, `wakes` 37/37; the model test 7/7 in 16.2 s at load 11; coordinator: lint, typecheck, `model-harness-clock` with `clock-port` 18/18. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/011-353-r2.md` and commit it on your branch.
