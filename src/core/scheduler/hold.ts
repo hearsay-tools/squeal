@@ -8,12 +8,14 @@ import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/c
 import type { CheckKey } from "../types/keys.js";
 import type { StateSink } from "../types/state.js";
 import type { ResultRepo, Store } from "../types/store.js";
+import { hostClock } from "./clock.js";
 import {
   MERGE_HOLD_PATHS,
   type MergeHoldRow,
   mergeHoldMetaKey,
   readMergeHold,
 } from "./hold-rows.js";
+import { type WakeSlot, Wakes } from "./wakes.js";
 
 /*
  * Row 011-72 (spec 011 C9 as amended 2026-10-21, "Holds"; `tasks/011-61/design.md`
@@ -58,6 +60,8 @@ export interface MergeHoldOptions {
   readonly resumed: () => void;
   readonly note: (message: string) => void;
   readonly pollMs?: number;
+  /** The scheduler's wake loop, which runs the poll and counts its check (row 011-352); absent, a loop of its own over `now`. */
+  readonly wakes?: Wakes;
 }
 
 /**
@@ -81,11 +85,16 @@ export class MergeHold {
   /** The row may differ from what was read: written at the next apply even when nothing moved. */
   #unpublished = true;
   #failed: string | null = null;
-  #timer: NodeJS.Timeout | null = null;
+  readonly #wakes: Wakes;
+  /** The poll's wake while on hold (row 011-352). */
+  readonly #wake: WakeSlot;
   #polling = false;
   #closed = false;
 
-  constructor(private readonly options: MergeHoldOptions) {}
+  constructor(private readonly options: MergeHoldOptions) {
+    this.#wakes = options.wakes ?? new Wakes(hostClock(options.now));
+    this.#wake = this.#wakes.slot("merge-hold", () => this.#polled());
+  }
 
   get holding(): boolean {
     return this.#paths.length > 0;
@@ -189,26 +198,33 @@ export class MergeHold {
     }
   }
 
-  /** Stats the index every `pollMs` while on hold; tells `resumed` when a poll ends it. */
-  #poll(): void {
-    if (this.#timer !== null || this.#closed) return;
-    this.#timer = setInterval(() => {
-      if (this.#polling) return;
-      this.#polling = true;
+  /**
+   * Stats the index `pollMs` after the last poll ended while on hold (row
+   * 011-352: a fixed delay after each check, where a fixed rate skipped a
+   * tick while a check ran); tells `resumed` when a poll ends it.
+   */
+  #poll(at: EpochMs = this.options.now()): void {
+    if (this.#polling || this.#closed || this.#wake.wake !== null) return;
+    this.#wake.at((at + (this.options.pollMs ?? MERGE_HOLD_POLL_MS)) as EpochMs);
+  }
+
+  /** The poll's wake: one check, counted as the scheduler's work; the next wake once it ended. */
+  #polled(): void {
+    this.#polling = true;
+    void this.#wakes.track(
       this.check()
         .then(() => {
           if (!this.holding && !this.#closed) this.options.resumed();
         })
         .finally(() => {
           this.#polling = false;
-        });
-    }, this.options.pollMs ?? MERGE_HOLD_POLL_MS);
-    this.#timer.unref();
+          if (this.holding) this.#poll();
+        }),
+    );
   }
 
   #stopPolling(): void {
-    if (this.#timer !== null) clearInterval(this.#timer);
-    this.#timer = null;
+    this.#wake.clear();
   }
 
   /** The index file's stat; `null` when there is none. Its path is read once. */

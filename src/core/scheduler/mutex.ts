@@ -21,14 +21,25 @@ export class Mutex {
   #turn = 0;
   readonly #watchers = new Set<Watcher>();
   readonly #now: () => number;
-  readonly #free = () => this.#hold(null);
+  /** Row 011-352: tasks queued or running, for the count hook (`Wakes.locked`). */
+  #count = 0;
+  readonly #counted: ((count: number) => void) | undefined;
+  readonly #free = () => {
+    this.#hold(null);
+    this.#count -= 1;
+    this.#counted?.(this.#count);
+  };
 
-  constructor(now: () => number = hostNow) {
+  /** `counted` hears how many tasks are queued or running at each change (row 011-352). */
+  constructor(now: () => number = hostNow, counted?: (count: number) => void) {
     this.#now = now;
+    this.#counted = counted;
   }
 
   /** `task` once the tasks before it settled; `operation` says what it does, for a watcher. */
   run<T>(task: () => T | Promise<T>, operation: string | null = null): Promise<T> {
+    this.#count += 1;
+    this.#counted?.(this.#count);
     const next = this.#tail.then(() => {
       this.#turn += 1;
       // Kept with no watcher too: a request that starts watching mid-task hears this holder.

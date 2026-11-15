@@ -1,13 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import { removeCommandHold } from "../../src/core/scheduler/hold-rows.js";
 import { SLOW_RELEASE_MS, SlowRelease } from "../../src/core/scheduler/slow-release.js";
-import type { EpochMs } from "../../src/core/types/common.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldFiles, hold, liveProcess, settle } from "./command-hold-fixture.js";
 
@@ -16,7 +17,8 @@ import { heldFiles, hold, liveProcess, settle } from "./command-hold-fixture.js"
  * files are still queued, alone and in the scheduler's two orders where an
  * interleaving would close it under a run: the bound passing during a slow
  * selection, and a hold beginning while a slow tier runs. A real instance
- * and its `globalSetup` are `slow-release-setup.test.ts`.
+ * and its `globalSetup` are `slow-release-setup.test.ts`. The cases alone run
+ * on the virtual clock and the wake loop (row 011-352), each step to rest.
  */
 
 const LANE = "slow:vitest";
@@ -26,6 +28,15 @@ const GROUP = "group:e2e:vitest";
  * A `SlowRelease` over a host whose kept lanes the test sets: each tier's
  * in flight and each waiting for its load guard, as the scheduler gives.
  */
+let clock = virtualClock();
+let wakes = new Wakes(clock);
+
+/** Row 011-352: moves the virtual clock `ms` on, then waits for the close's work to rest. */
+async function advance(ms: number): Promise<void> {
+  clock.advance(ms);
+  await wakes.rest();
+}
+
 function open() {
   const released: string[] = [];
   const host = { inFlight: [] as string[], closed: false };
@@ -34,8 +45,9 @@ function open() {
       released.push(lane);
     },
     lanes: () => host.inFlight,
-    now: () => Date.now() as EpochMs,
+    now: () => clock.now(),
     closed: () => host.closed,
+    wakes,
   });
   /** A slow tier of `lane` ran and ended now, its lane left open. */
   const ran = (lane = LANE) => {
@@ -47,31 +59,29 @@ function open() {
 
 describe("SlowRelease (row 011-211)", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
+    clock = virtualClock(1_000_000);
+    wakes = new Wakes(clock);
   });
 
   it("closes an open lane once no slow tier started for the bound after the last run", async () => {
     const { released, ran } = open();
     ran();
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS - 1);
+    await advance(SLOW_RELEASE_MS - 1);
     expect(released).toEqual([]);
-    await vi.advanceTimersByTimeAsync(1);
+    await advance(1);
     expect(released).toEqual([LANE]);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS);
+    await advance(SLOW_RELEASE_MS);
     expect(released).toEqual([LANE]);
   });
 
   it("counts from the latest slow run's end", async () => {
     const { released, ran } = open();
     ran();
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2);
+    await advance(SLOW_RELEASE_MS / 2);
     ran();
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2);
+    await advance(SLOW_RELEASE_MS / 2);
     expect(released).toEqual([]);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2);
+    await advance(SLOW_RELEASE_MS / 2);
     expect(released).toEqual([LANE]);
   });
 
@@ -79,11 +89,11 @@ describe("SlowRelease (row 011-211)", () => {
     const { host, released, ran } = open();
     ran();
     host.inFlight = [LANE];
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 2);
+    await advance(SLOW_RELEASE_MS * 2);
     expect(released).toEqual([]);
     host.inFlight = [];
     ran();
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS);
+    await advance(SLOW_RELEASE_MS);
     expect(released).toEqual([LANE]);
   });
 
@@ -94,29 +104,29 @@ describe("SlowRelease (row 011-211)", () => {
     const selection = release.selecting(
       () => new Promise<void>((resolve) => (guard = () => resolve())),
     );
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 3);
+    await advance(SLOW_RELEASE_MS * 3);
     // A hold that begins now waits for the selection's end too.
     await release.idle();
     expect(released).toEqual([]);
     guard();
     await selection;
-    await vi.advanceTimersByTimeAsync(0);
+    await advance(0);
     expect(released).toEqual([LANE]);
   });
 
   it("closes a lane at its own bound while another lane keeps ending tiers (review 0.1.396 S4)", async () => {
     const { released, ran } = open();
     ran(LANE);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2);
+    await advance(SLOW_RELEASE_MS / 2);
     ran(GROUP);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS / 2 - 1);
+    await advance(SLOW_RELEASE_MS / 2 - 1);
     expect(released).toEqual([]);
-    await vi.advanceTimersByTimeAsync(1);
+    await advance(1);
     expect(released).toEqual([LANE]);
     ran(GROUP);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS - 1);
+    await advance(SLOW_RELEASE_MS - 1);
     expect(released).toEqual([LANE]);
-    await vi.advanceTimersByTimeAsync(1);
+    await advance(1);
     expect(released).toEqual([LANE, GROUP]);
   });
 
@@ -126,12 +136,12 @@ describe("SlowRelease (row 011-211)", () => {
     ran(GROUP);
     // The scheduler keeps a lane whose files wait for the load guard (`SlowTier.deferring`).
     host.inFlight = [GROUP];
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 2);
+    await advance(SLOW_RELEASE_MS * 2);
     expect(released).toEqual([LANE]);
     // The wait ends without a tier: the selection's end closes it, past its bound.
     host.inFlight = [];
     await release.selecting(async () => {});
-    await vi.advanceTimersByTimeAsync(0);
+    await advance(0);
     expect(released).toEqual([LANE, GROUP]);
   });
 
@@ -148,13 +158,13 @@ describe("SlowRelease (row 011-211)", () => {
     const { release, host, released, ran } = open();
     ran();
     await release.release(LANE);
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS);
+    await advance(SLOW_RELEASE_MS);
     expect(released).toEqual([LANE]);
 
     ran();
     release.close();
     host.closed = true;
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS);
+    await advance(SLOW_RELEASE_MS);
     expect(released).toEqual([LANE]);
   });
 
@@ -171,16 +181,16 @@ describe("SlowRelease (row 011-211)", () => {
           };
         }),
     );
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 2);
+    await advance(SLOW_RELEASE_MS * 2);
     start();
     await selection;
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS * 2);
+    await advance(SLOW_RELEASE_MS * 2);
     expect(released).toEqual([]);
     host.inFlight = [];
     ran();
-    await vi.advanceTimersByTimeAsync(SLOW_RELEASE_MS - 1);
+    await advance(SLOW_RELEASE_MS - 1);
     expect(released).toEqual([]);
-    await vi.advanceTimersByTimeAsync(1);
+    await advance(1);
     expect(released).toEqual([LANE]);
   });
 });

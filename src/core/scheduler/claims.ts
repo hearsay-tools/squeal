@@ -1,12 +1,10 @@
-import { setTimeout as delay } from "node:timers/promises";
 import { claimLiveness } from "../presence/heartbeat.js";
 import { heldFailure } from "../state/inherited.js";
-import { changeMarker } from "../store/store.js";
+import { type ChangeMarker, changeMarker } from "../store/store.js";
 import type { EpochMs } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Liveness, Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
-import { hostNow } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 
@@ -38,7 +36,7 @@ export class Claims {
 
   constructor(private readonly context: SchedulerContext) {}
 
-  /** Some queued file waited on a claim since `begin`: the pump looks again (`claimWake`). */
+  /** Some queued file waited on a claim since `begin`: the pump looks again (`claimPoll`). */
   get waiting(): boolean {
     return this.#waiting;
   }
@@ -158,25 +156,27 @@ function stands(context: SchedulerContext, hits: readonly ResultRecord[]): boole
   return heldFailure(store, worktreeId, hits) === undefined;
 }
 
+/** Row 011-352: a wait on claims, opened at one reading: the store's marker then and the window's end. */
+export interface ClaimWindow {
+  readonly before: ChangeMarker | null;
+  readonly until: EpochMs;
+}
+
+/** Opens a wait on claims at `at`, the pump's reading; its first poll is `CLAIM_POLL_MS` on. */
+export function claimWindow(store: Store, at: EpochMs): ClaimWindow {
+  return { before: changeMarker(store), until: at + CLAIM_RECHECK_MS };
+}
+
 /**
- * Settles when the store moves (`changeMarker`, task 001-178), after
- * `CLAIM_RECHECK_MS` at most, or when `signal` aborts: a claimant's record
- * lands as a commit; a claimant that died writes nothing.
+ * A poll of the wait at `at`, the claims owner's wake (row 011-352):
+ * `"ends"` when the store moved since it opened (`changeMarker`, task
+ * 001-178) or its window passed, so `CLAIM_RECHECK_MS` at most; else when
+ * to poll next. A claimant's record lands as a commit; a claimant that died
+ * writes nothing.
  */
-export async function claimWake(
-  store: Store,
-  signal: AbortSignal,
-  now: () => EpochMs = hostNow,
-): Promise<void> {
-  const before = changeMarker(store);
-  const until = now() + CLAIM_RECHECK_MS;
-  try {
-    while (now() < until) {
-      await delay(CLAIM_POLL_MS, undefined, { signal });
-      const now = changeMarker(store);
-      if (now?.others !== before?.others || now?.own !== before?.own) return;
-    }
-  } catch (error) {
-    if (!signal.aborted) throw error;
-  }
+export function claimPoll(store: Store, window: ClaimWindow, at: EpochMs): "ends" | EpochMs {
+  const now = changeMarker(store);
+  const { before } = window;
+  if (now?.others !== before?.others || now?.own !== before?.own) return "ends";
+  return at < window.until ? ((at + CLAIM_POLL_MS) as EpochMs) : "ends";
 }

@@ -299,6 +299,21 @@ export interface LockHolder {
   readonly since: EpochMs;
 }
 
+/** Row 011-352: a wake an owner of the scheduler states, as `Scheduler.rest` reports it. */
+export interface RestWake {
+  /** The owner's wake reason (`WakeReason` in `src/core/scheduler/step-events.ts`). */
+  readonly reason: string;
+  readonly at: EpochMs;
+}
+
+/** Row 011-352: what `Scheduler.rest` reports: the next wake and each owner's, earliest first. */
+export interface Rest {
+  readonly next: RestWake | null;
+  readonly wakes: readonly RestWake[];
+  /** A busy store's resume is pending: it keeps its own timer (card 9), so a rest does not wait for it. */
+  readonly busyResume: boolean;
+}
+
 export interface Scheduler {
   /**
    * Seeds the stat cache, keys every test file, and starts the baseline
@@ -424,6 +439,15 @@ export interface Scheduler {
    * D2) do not count; a slow file running or waiting for load does.
    */
   idle(): Promise<void>;
+  /**
+   * Row 011-352: resolves once the scheduler rests (`GLOSSARY.md`, "Rest"):
+   * no wake pass runs, none of its own async work is open, its lock has
+   * nothing queued or running, no wake is due, and this still holds after
+   * one `setImmediate`. A runner's run is set aside: a run that is held
+   * counts as rest; its end does not. On a virtual clock a wake already due
+   * fires only when time advances, so a test advances by 0 first.
+   */
+  rest(): Promise<Rest>;
   /**
    * A slow file (spec 004 D2) is queued or running. A daemon whose last
    * session left drains them before it exits (001 D10 as amended, task

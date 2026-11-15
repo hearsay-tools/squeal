@@ -1,9 +1,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import { CLAIM_RECHECK_MS, claimWake } from "../../src/core/scheduler/claims.js";
+import {
+  CLAIM_POLL_MS,
+  CLAIM_RECHECK_MS,
+  claimPoll,
+  claimWindow,
+} from "../../src/core/scheduler/claims.js";
 import { clockOf, elapsed, hostClock, MAX_TIMER_MS } from "../../src/core/scheduler/clock.js";
 import { readGroupActivity } from "../../src/core/slow/state.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
@@ -18,17 +22,21 @@ import { allCurrent, FILES, groupPolicy, runnerLane, tierLog } from "./group-lan
  * clock, the slow lane's load budget and the claims window, are read on the
  * scheduler's clock now: rows of clock moves pin what each does, a frozen
  * clock spends nothing and a clock that goes back gives nothing back.
- * Timers stay real until row 011-352, so each row waits for real rechecks.
+ * The load budget's rows run a real scheduler, so they wait for real rechecks;
+ * the claims window is a table over its poll (row 011-352).
  */
 
 describe("the clock port's adapters (row 011-351)", () => {
   it("clamps a difference at 0 and the host timer's delay to a 32-bit range", () => {
     expect([elapsed(10, 25), elapsed(25, 10), elapsed(7, 7)]).toEqual([15, 0, 0]);
+    // Review 0.1.512 S1: made before the fake timers, so only a lookup per reading and per arm sees them.
+    const clock = hostClock();
+    const shorthand = hostClock(() => 5);
     vi.useFakeTimers();
     try {
-      // Looked up per arm: the fake timers installed after the clock was made are the ones used.
-      const clock = hostClock(() => 5);
-      expect(clock.now()).toBe(5);
+      vi.setSystemTime(1_234_000);
+      expect(clock.now()).toBe(1_234_000);
+      expect(shorthand.now()).toBe(5);
       const fired: string[] = [];
       const disarm = clock.arm(MAX_TIMER_MS * 4, () => fired.push("far"));
       clock.arm(-10, () => fired.push("past"));
@@ -72,31 +80,22 @@ describe("the clock port's adapters (row 011-351)", () => {
   });
 });
 
-describe("the claims window on the scheduler's clock (row 011-351)", () => {
-  // A store with no connection never moves (`changeMarker` null): only the window ends a wake.
+describe("the claims window on the scheduler's clock (rows 011-351, 011-352)", () => {
+  // A store with no connection never moves (`changeMarker` null): only the window ends a wait.
   const still = {} as Store;
-
-  /** Whether `claimWake` settled within `ms` of real time. */
-  const settledWithin = async (wake: Promise<void>, ms: number) =>
-    Promise.race([wake.then(() => true), delay(ms).then(() => false)]);
 
   it.each([
     { moves: [] as number[], ends: false, row: "a frozen clock never ends it" },
     { moves: [CLAIM_RECHECK_MS - 1], ends: false, row: "1 ms short of the window" },
     { moves: [CLAIM_RECHECK_MS], ends: true, row: "the window passed" },
     { moves: [-60_000, CLAIM_RECHECK_MS], ends: false, row: "a clock that went back first" },
-  ])("$row", async ({ moves, ends }) => {
-    const virtual = virtualClock(Date.now());
-    let offset = 0;
-    const stop = new AbortController();
-    onTestFinished(() => stop.abort());
-    const wake = claimWake(still, stop.signal, () => virtual.now() + offset);
-    for (const ms of moves) {
-      if (ms < 0) offset += ms;
-      else virtual.advance(ms);
-    }
-    // Two polls of 250 ms: a window that passed is seen at the first.
-    expect(await settledWithin(wake, 700)).toBe(ends);
+  ])("$row", ({ moves, ends }) => {
+    const start = 1_000_000;
+    const window = claimWindow(still, start);
+    const at = moves.reduce((now, ms) => now + ms, start);
+    const poll = claimPoll(still, window, at);
+    // Row 011-352: the claims owner polls at its wake; a wait that goes on polls again 250 ms on.
+    expect(poll).toEqual(ends ? "ends" : at + CLAIM_POLL_MS);
   });
 });
 
