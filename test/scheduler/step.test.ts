@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { admit, type StartFacts } from "../../src/core/scheduler/admission.js";
 import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
+import type { LaneDecision, SlowRun } from "../../src/core/scheduler/slow-tier.js";
 import {
   type Decision,
   type Reads,
@@ -27,6 +28,9 @@ import type { Revision } from "../../src/core/types/revision.js";
  * adapter. Each row is "these events at this time, these reads, then these
  * decisions and this wake". The live adapter (the scheduler's memory and
  * store) is driven by every scheduler test that runs a real scheduler.
+ * Row 011-357: the slow lanes decide in the step's turn, in admission's
+ * `ask` order; a lane's own rules are `SlowTier.decide`'s, over a real
+ * scheduler (`group-lanes-*`, `slow-*`).
  */
 
 const AT = 1_000_000 as EpochMs;
@@ -85,15 +89,26 @@ interface Table {
   draining?: boolean;
   tiers?: Tier[];
   named?: string[];
-  /** The tiers `startNext` flies, then its idle answer. */
+  /** The tiers `startNext` flies, then its idle answer (`null`: the plan gave none). */
   starts?: Tier[];
-  idle?: Idle;
+  idle?: Idle | null;
   idleNow?: Idle;
   idleLanes?: string[];
   claims?: boolean;
   refused?: boolean;
   inFlight?: number;
+  /** Each slow lane's decision by group (absent: `none`); `start` flies a run of the tier given. */
+  lanes?: Record<string, LaneDecision | { start: Tier }>;
   throws?: keyof StepPorts;
+}
+
+/** The configured groups `ask` lists, in order: each has a file queued and none in flight. */
+function groups(...names: string[]): Partial<StartFacts> {
+  return {
+    groups: names.map((name) => ({ name, after: [], limits: { priority: "normal" } })),
+    lanes: () => names.map((group) => ({ kind: "local", group })),
+    queued: () => true,
+  };
 }
 
 function ports(t: Table, log: string[]): StepPorts {
@@ -116,7 +131,16 @@ function ports(t: Table, log: string[]): StepPorts {
     startNext: (_admitted, fly) => {
       thrown("startNext");
       for (const x of t.starts ?? []) fly(x);
-      return { idle: (t.starts ?? []).length > 0 ? null : (t.idle ?? idle("nothing-queued")) };
+      const answer = t.idle === undefined ? idle("nothing-queued") : t.idle;
+      return { idle: (t.starts ?? []).length > 0 ? null : answer };
+    },
+    askLane: (group, at, fly) => {
+      thrown("askLane");
+      log.push(`ask ${group} at ${at - AT}`);
+      const answer = t.lanes?.[group] ?? "none";
+      if (typeof answer !== "object") return answer;
+      fly({ tier: answer.start, slot: {}, turn: 7 } as unknown as SlowRun);
+      return "started";
     },
     idleNow: () => t.idleNow ?? idle("nothing-queued"),
     idleLanes: () => t.idleLanes ?? [],
@@ -219,14 +243,16 @@ describe("the scheduler step (row 011-356)", () => {
     });
 
     it("a hold on disk closes the idle slow lanes and ends the pump, no lane asked", () => {
-      const s = run({ idleLanes: ["slow"], starts: [tier("r1")] }, { ...ALL, probe: "held" });
+      const t = { facts: groups("a"), idleLanes: ["slow"], starts: [tier("r1")] };
+      const s = run(t, { ...ALL, probe: "held" });
       expect(s.decisions).toEqual([{ kind: "close-lanes", lanes: ["slow"] }]);
-      expect(s.wake).toEqual({ kind: "end" });
+      expect([s.wake, s.log]).toEqual([{ kind: "end" }, []]);
     });
 
     it("a hold read in the turn: the same", () => {
-      const s = run({ facts: { held: true }, idleLanes: ["slow"] });
+      const s = run({ facts: { ...groups("a"), held: true }, idleLanes: ["slow"] });
       expect([s.kinds, s.wake, s.selected]).toEqual([["close-lanes"], { kind: "end" }, true]);
+      expect(s.log).toEqual([]);
     });
 
     it("an install found missing reinstalls in this turn and ends the pump", () => {
@@ -242,16 +268,78 @@ describe("the scheduler step (row 011-356)", () => {
       const s = run({ facts: { runnerWork: 1 }, starts: [tier("r1")] });
       expect([s.kinds, s.wake]).toEqual([[], { kind: "again" }]);
     });
+  });
 
-    it("no fast tier starts: the slow lanes are asked with the stamp and the plan's idle answer", () => {
-      const s = run({ idle: idle("lane-busy") });
-      expect(s.decisions).toEqual([{ kind: "ask-lanes", stamp: "s1", idle: idle("lane-busy") }]);
-      expect(s.wake).toEqual({ kind: "reads" });
+  describe("the slow lanes decide in the step's turn (row 011-357)", () => {
+    it("no fast tier starts: each lane is asked in admission's order, at the step's reading", () => {
+      const s = run({ facts: groups("a", "b", "slow"), idle: idle("lane-busy"), inFlight: 1 });
+      expect(s.log).toEqual(["ask a at 0", "ask b at 0", "ask slow at 0"]);
+      // None started: the plan's idle answer stands.
+      expect([s.kinds, s.wake]).toEqual([[], { kind: "event" }]);
     });
 
-    it("a lane that started a run begins the next iteration", () => {
-      const s = run({}, { ...ALL, lanes: { started: true, idle: null } });
-      expect([s.kinds, s.wake]).toEqual([[], { kind: "again" }]);
+    it("a lane's run starts in this turn with the iteration's stamp, and the next iteration follows", () => {
+      const r2 = tier("r2", { lane: "group:b:vitest" });
+      const s = run({ facts: groups("a", "b", "c"), lanes: { b: { start: r2 } } });
+      expect(s.decisions).toEqual([
+        {
+          kind: "start-tier",
+          tier: r2,
+          stamp: "s1",
+          turn: 7,
+          slow: { tier: r2, slot: {}, turn: 7 },
+        },
+      ]);
+      // Carried as the lane decided it, before the step returns; the lane after it waits.
+      expect([s.log, s.wake]).toEqual([
+        ["ask a at 0", "ask b at 0", "carry start-tier"],
+        { kind: "again" },
+      ]);
+    });
+
+    it("a deferred lane does not hold back the next", () => {
+      const r2 = tier("r2", { lane: "group:b:vitest" });
+      const s = run({ facts: groups("a", "b"), lanes: { a: "deferred", b: { start: r2 } } });
+      expect([s.kinds, s.log]).toEqual([
+        ["start-tier"],
+        ["ask a at 0", "ask b at 0", "carry start-tier"],
+      ]);
+    });
+
+    it("every lane deferred or waiting: the idle answer, no lane asked twice", () => {
+      const lanes = { a: "deferred", b: "none" } as const;
+      const s = run({ facts: groups("a", "b"), lanes, idle: idle("quiet", AT + 900) });
+      expect([s.log, s.wake]).toEqual([["ask a at 0", "ask b at 0"], { kind: "at", at: AT + 900 }]);
+    });
+
+    it("a lane whose queue moved under its pick plans again; the lanes after it wait", () => {
+      const s = run({ facts: groups("a", "b"), lanes: { a: "again" } });
+      expect([s.kinds, s.log, s.wake]).toEqual([[], ["ask a at 0"], { kind: "again" }]);
+    });
+
+    it("admission's `ask` leaves out a lane whose tier is in flight", () => {
+      const busy = { ...groups("a", "b"), inFlight: [{ lane: "group:a:vitest", edit: false }] };
+      expect(run({ facts: busy, inFlight: 1 }).log).toEqual(["ask b at 0"]);
+    });
+
+    it("a fast tier that starts asks no lane in its turn", () => {
+      expect(run({ facts: groups("a"), starts: [tier("r1")] }).log).toEqual(["carry start-tier"]);
+    });
+
+    it("no lane is asked without reads from the current iteration, nor in another lock turn", () => {
+      for (const reads of [{}, { install: INSTALL }, null]) {
+        const s = run({ facts: { ...groups("a"), fastQueued: () => true } }, reads);
+        expect(s.log).toEqual([]);
+      }
+    });
+
+    it("a lane's decision that throws ends the step with its error", () => {
+      const s = run({ facts: groups("a"), throws: "askLane" });
+      expect([s.kinds, s.wake, String(s.error)]).toEqual([
+        [],
+        { kind: "end" },
+        "Error: askLane failed",
+      ]);
     });
   });
 
@@ -283,8 +371,8 @@ describe("the scheduler step (row 011-356)", () => {
   });
 
   describe("each idle wake, once the lanes started nothing", () => {
-    const lanesIdle = (plan: Idle | null, t: Table = {}) =>
-      run(t, { ...ALL, lanes: { started: false, idle: plan } });
+    /** `plan`: the fast plan's idle answer; `null`, it gave none. */
+    const lanesIdle = (plan: Idle | null, t: Table = {}) => run({ ...t, idle: plan });
 
     it("claims: the claims window", () => {
       expect(lanesIdle(idle("claims")).wake).toEqual({ kind: "claims", at: AT });
@@ -309,7 +397,7 @@ describe("the scheduler step (row 011-356)", () => {
     });
 
     it("an event since the last step: the next iteration at once", () => {
-      const s = run({ inFlight: 1 }, { ...ALL, lanes: { started: false, idle: null } }, [
+      const s = run({ inFlight: 1, idle: idle("lane-busy") }, ALL, [
         { kind: "tier-ended", runId: "r0" },
       ]);
       expect(s.wake).toEqual({ kind: "again" });
@@ -328,9 +416,8 @@ describe("the scheduler step (row 011-356)", () => {
     });
 
     it("the re-walk's answer: a chunk queued begins the next iteration, none ends the pump", () => {
-      const lanes = { started: false, idle: idle("nothing-queued") };
-      expect(run({}, { ...ALL, lanes, rewalk: true }).wake).toEqual({ kind: "again" });
-      expect(run({}, { ...ALL, lanes, rewalk: false }).wake).toEqual({ kind: "end" });
+      expect(run({}, { ...ALL, rewalk: true }).wake).toEqual({ kind: "again" });
+      expect(run({}, { ...ALL, rewalk: false }).wake).toEqual({ kind: "end" });
     });
   });
 
@@ -433,7 +520,7 @@ describe("the scheduler step (row 011-356)", () => {
       // @ts-expect-error: an event kind `yieldReach` does not place is no event
       expect(() => yieldReach({ kind: "rumour" }, reach)).toThrow(/does not place/);
       const table: Record<StepDecisionKind, DecisionPlace> = DECISION_PLACE;
-      expect(Object.keys(table)).toHaveLength(12);
+      expect(Object.keys(table)).toHaveLength(11);
     });
   });
 });

@@ -2,6 +2,7 @@ import type { EpochMs } from "../types/common.js";
 import type { Revision } from "../types/revision.js";
 import type { Admission } from "./admission.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
+import type { LaneDecision, SlowRun } from "./slow-tier.js";
 import { placeOf, type SchedulerEvent, type StepDecision } from "./step-events.js";
 import type { Idle } from "./tier-plan.js";
 import type { Tier } from "./tiers.js";
@@ -18,7 +19,7 @@ import { type ReachView, yieldReach } from "./yields.js";
  */
 
 /** A decision of this scheduler's step. */
-export type Decision = StepDecision<Tier, Idle>;
+export type Decision = StepDecision<Tier, SlowRun>;
 
 /** The install stamp read after the last step (`InstallStamps.check`). */
 export interface InstallRead {
@@ -32,11 +33,6 @@ export interface InstallRead {
 /** The start facts on disk read after the last step (row 011-340). */
 export type ProbeRead = "gone" | "held" | "released" | "free";
 
-/** The slow lanes' answer to `ask-lanes`: one started a run or asks to plan again. */
-export interface LanesRead {
-  readonly started: boolean;
-}
-
 /**
  * What the step reads that costs I/O, read after the turn that asked for it
  * and kept for the steps of one iteration. `null`: a step inside another
@@ -46,8 +42,6 @@ export interface LanesRead {
 export interface Reads {
   readonly install?: InstallRead;
   readonly probe?: ProbeRead;
-  /** Until row 011-357: the slow lanes were asked, and the fast plan's idle answer then. */
-  readonly lanes?: LanesRead & { readonly idle: Idle | null };
   /** The re-walk was asked for a chunk: whether it queued one. */
   readonly rewalk?: boolean;
 }
@@ -68,6 +62,12 @@ export interface StepPorts {
   readonly yields: ReachView;
   /** Card 6: adopts stored results, plans the fast lanes and starts; `fly` for each tier started. */
   startNext(admitted: Admission, fly: (tier: Tier) => void): { readonly idle: Idle | null };
+  /**
+   * Row 011-357: the slow lane of `group` decides in this lock turn at
+   * `at`: its listing, load guard, slot and pick (`SlowTier.decide`); `fly`
+   * for the run it starts.
+   */
+  askLane(group: string, at: EpochMs, fly: (run: SlowRun) => void): LaneDecision;
   /** Why no fast tier starts, read now: the plan's idle answer when no plan ran. */
   idleNow(): Idle;
   /** The open slow lanes no tier keeps (`decideRelease`'s `idle`, row 011-355). */
@@ -223,7 +223,7 @@ const probeDiskFacts: Rule = ({ reads }, out) => {
 /** Admission, then the tier plan and its act step, in this lock turn (rows 011-340, 011-346). */
 const startFastTier: Rule = (turn, out) => {
   const { ports, reads } = turn;
-  if (out.held || reads?.lanes !== undefined) return undefined;
+  if (out.held) return undefined;
   out.selected = true;
   const admitted = ports.admit();
   const fast = admitted.fast;
@@ -250,15 +250,22 @@ const startFastTier: Rule = (turn, out) => {
   return undefined;
 };
 
-/** Until row 011-357: each slow lane that may start, in order, asked after the turn. */
-const askSlowLanes: Rule = ({ reads }, out) => {
+/**
+ * Row 011-357: each slow lane admission asks, in its `ask` order, decides
+ * in this turn; one that started a run, or whose queue moved under its
+ * pick, plans again. A deferred lane holds back none after it (spec 019
+ * D3, review 0.1.396 B1).
+ */
+const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
   if (out.held) return undefined;
-  const lanes = reads?.lanes;
-  if (lanes === undefined) {
-    out.decide({ kind: "ask-lanes", stamp: reads?.install?.stamp ?? "", idle: out.idle });
-    return READS;
+  const stamp = reads?.install?.stamp ?? "";
+  for (const group of ports.admit().ask) {
+    const decided = ports.askLane(group, at, (run) => {
+      out.decide({ kind: "start-tier", tier: run.tier, stamp, turn: run.turn, slow: run });
+    });
+    if (decided === "started" || decided === "again") return AGAIN;
   }
-  return lanes.started ? AGAIN : undefined;
+  return undefined;
 };
 
 /** On a hold the idle slow lanes close (row 011-211), and the pump ends. */
@@ -271,7 +278,7 @@ const closeSlowLanes: Rule = ({ ports }, out) => {
 /** Why nothing starts: claims, quiet, the pool, the re-walk, or the next event (row 011-346). */
 const idleAnswer: Rule = ({ at, events, reads, ports }, out) => {
   if (reads?.rewalk !== undefined) return reads.rewalk ? AGAIN : END;
-  const idle = reads?.lanes?.idle ?? out.idle ?? ports.idleNow();
+  const idle = out.idle ?? ports.idleNow();
   if (idle.idle === "claims" || ports.claimsWaiting()) return { kind: "claims", at };
   if (idle.idle === "quiet" && idle.wakeAt !== null) return { kind: "at", at: idle.wakeAt };
   if (ports.refused() || idle.idle === "pool")

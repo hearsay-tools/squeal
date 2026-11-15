@@ -14,10 +14,11 @@ import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SlowTierActivity } from "../types/status.js";
+import type { Store } from "../types/store.js";
 import type { Admission, LaneAnswer } from "./admission.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
-import { elapsed, hostClock, hostNow } from "./clock.js";
+import { elapsed } from "./clock.js";
 import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -30,12 +31,11 @@ import {
   workersPerFile,
 } from "./group-limits.js";
 import type { Ledger } from "./ledger.js";
-import type { Mutex } from "./mutex.js";
 import type { SlowTierOptions } from "./options.js";
 import { groupView } from "./slow.js";
 import { momentHolds, quietLeftMs } from "./slow-trigger.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
-import { type WakeSlot, Wakes } from "./wakes.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 
 /**
  * Spec 004 D2, D3: the longest a pending slow file waits for the slot, or for
@@ -48,28 +48,34 @@ export const SLOW_RECHECK_MS = 15_000;
 export const SLOT_HELD_NOTE_MS = 60_000;
 
 /**
- * What the slow tier needs from its scheduler. It reads the start facts
- * only through `probe` and `admit` (row 011-340).
+ * What a lane is made with (row 011-357): its wake in the scheduler's loop
+ * (row 011-352), which pumps; the scheduler's clock (row 011-351), for a
+ * wait that ends outside a step; and where it publishes its activity. It
+ * reads the scheduler's state only through what a call passes it.
  */
-export interface SlowHost {
-  readonly lock: Mutex;
-  started(): { context: SchedulerContext; ledger: Ledger };
-  /** `start` has ended: `started` no longer throws. */
-  ready(): boolean;
-  closed(): boolean;
+export interface LaneLoop {
+  readonly wakes: Wakes;
+  readonly now: () => EpochMs;
   pump(): void;
-  /**
-   * The start facts on disk and in Git, read again after a wait: the
-   * daemon's own runtime (row 011-106), then the hold check (row 011-72);
-   * a merge hold that ended reconciles what it released, `"released"`.
-   */
-  probe(): Promise<"gone" | "held" | "released" | "free">;
-  /** The admission now, read from the start facts in memory. */
+  readonly store: Store;
+  readonly worktreeId: WorktreeId;
+}
+
+/** What a lane reads of its scheduler, passed with each call that needs it. */
+export interface LaneState {
+  readonly context: SchedulerContext;
+  readonly ledger: Ledger;
+}
+
+/** A slow run's end, as the lane publishes it: the scheduler's state and its admission now. */
+export interface LaneEnd extends LaneState {
   admit(): Admission;
-  /** The scheduler's clock (row 011-351); absent, the host's (`hostNow`). */
-  readonly now?: () => EpochMs;
-  /** The scheduler's wake loop (row 011-352); absent, a loop of its own over `now`. */
-  readonly wakes?: Wakes;
+}
+
+/** What a lane decides on in the step's lock turn (row 011-357). */
+export interface LaneView extends LaneEnd {
+  /** The step's one clock reading. */
+  readonly at: EpochMs;
 }
 
 /**
@@ -96,12 +102,17 @@ interface Guarded {
 
 /**
  * The load guard holds the lane (spec 019 D3, review 0.1.396 B1): it waits
- * for its recheck, and the pump asks the other lanes meanwhile.
+ * for its recheck, and the step asks the other lanes meanwhile.
  */
 const DEFERRED = "deferred";
 
-/** `next`: `"flown"` when a slow run started, `"again"` when the pump should plan again, `null` when nothing slow starts now. */
-export type SlowNext = "flown" | "again" | null;
+/**
+ * A lane's decision in the step's lock turn (row 011-357): it `started` a
+ * run; `again`, the step plans again (the queue moved under its pick); its
+ * load guard `deferred` it; or `none` of its files starts now. Only
+ * `started` and `again` hold back the lanes after it.
+ */
+export type LaneDecision = "started" | "again" | typeof DEFERRED | "none";
 
 /**
  * Spec 004 D2 to D5: the slow tier of one worktree. Slow files wait in the
@@ -112,17 +123,18 @@ export type SlowNext = "flown" | "again" | null;
  * `slow.trigger: "continuous"` (`quietLeftMs`, D2 as amended 2026-10-18,
  * row 004-80), every registered consumer is idle or none is under `"idle"`
  * (`consumersIdle`), a `run --slow` request is open (`request`), or a
- * `run --all` checkpoint requested the file. Then `next` waits for the load guard with what is left
- * of the pass's `slow.maxDeferMs`, unless a `run --slow` request is open (D3
- * as amended 2026-10-14, task 004-59), takes the per-user slot, and selects a
- * tier, its workers from the per-user pool (001 D11 Capacity, task 001-386): one file, or up to `slow.maxParallel` files of one lane when the
- * machine is idle (no fast work at all and the load below the guard's
- * threshold), holding a permit per file. The pump runs and records it as any
- * tier (D4: the stability check discards and re-queues). A pass ends when no
- * slow file is pending. Waiting for the quiet window arms a timer for its
- * end; waiting for an idle consumer or the slot arms one at
- * `SLOW_RECHECK_MS`; a silent Stop's nudge pumps at once (`nudge`, task
- * 001-281). A fast tier that ends pumps as any tier's end does.
+ * `run --all` checkpoint requested the file. Then `decide` reads the load
+ * guard with what is left of the pass's `slow.maxDeferMs`, unless a `run
+ * --slow` request is open (D3 as amended 2026-10-14, task 004-59), takes the
+ * per-user slot, and selects a tier, its workers from the per-user pool (001
+ * D11 Capacity, task 001-386): one file, or up to `slow.maxParallel` files
+ * of one lane when the machine is idle (no fast work at all and the load
+ * below the guard's threshold), holding a permit per file. The pump runs and
+ * records it as any tier (D4: the stability check discards and re-queues). A
+ * pass ends when no slow file is pending. Waiting for the quiet window arms
+ * this lane's wake for its end; waiting for the load, an idle consumer or
+ * the slot arms it at `SLOW_RECHECK_MS`; a silent Stop's nudge pumps at once
+ * (`nudge`, task 001-281). A fast tier that ends pumps as any tier's end does.
  *
  * Spec 019 D3 (row 019-10): one such lane per group other than `tests`,
  * `group` its name; the default `slow` group's is the slow tier above. Each
@@ -164,12 +176,10 @@ export class SlowTier {
   readonly #wake: WakeSlot;
   /**
    * While the load guard holds the lane: when its wait began (the
-   * scheduler's clock, `#now`), and the runner lane its files run in. The next
-   * `next` or a `preempt` ends the wait and takes its time off the budget.
+   * scheduler's clock), and the runner lane its files run in. The next
+   * `decide` or a `preempt` ends the wait and takes its time off the budget.
    */
   #deferred: { readonly from: number; readonly lane: string } | null = null;
-  /** Counts `preempt` calls, so one between selection and the guard is not lost. */
-  #preemptions = 0;
   /** What this tier last published, as stored, so `close` clears only its own. */
   #published: string | null = null;
   /** The tier this lane runs, until its record ends it (`endedOnce`). */
@@ -177,14 +187,13 @@ export class SlowTier {
   #dir: AbsolutePath | null = null;
 
   constructor(
-    private readonly host: SlowHost,
+    private readonly loop: LaneLoop,
     private readonly options: SlowTierOptions = {},
     /** The group this lane runs (spec 019 D3); default the default `slow` group. */
     readonly group: string = SLOW_GROUP,
   ) {
-    const wakes = host.wakes ?? new Wakes(hostClock(host.now));
     // The default `slow` lane last; `GroupTiers` ranks the configured ones in the policy's order.
-    this.#wake = wakes.slot("slow-lane", () => host.pump(), {
+    this.#wake = loop.wakes.slot("slow-lane", () => loop.pump(), {
       rank: group === SLOW_GROUP ? Number.MAX_SAFE_INTEGER : 0,
     });
   }
@@ -252,27 +261,25 @@ export class SlowTier {
   /**
    * A consumer may have gone idle (task 001-281): with slow files queued the
    * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
-   * trigger does not allow; `next` decides as on the timer. Before the
-   * scheduler has started it does nothing: the start pumps as it ends.
+   * trigger does not allow; `decide` decides as on the timer. The scheduler
+   * calls it once started: the start pumps as it ends.
    */
-  nudge(): void {
-    if (this.host.closed() || !this.host.ready()) return;
-    if (this.#queued(this.host.started().ledger).length > 0) this.host.pump();
+  nudge(ledger: Ledger): void {
+    if (this.#queued(ledger).length > 0) this.loop.pump();
   }
 
-  /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
+  /** Fast work may be coming (a revision, `run --all`), or a hold: a load guard wait gives way to it. */
   preempt(): void {
-    this.#preemptions += 1;
-    this.#endDeferral();
+    this.#endDeferral(this.loop.now());
   }
 
-  /** The load guard's wait ends: the pass's budget keeps what it did not take. */
-  #endDeferral(): void {
+  /** The load guard's wait ends at `at`: the pass's budget keeps what it did not take. */
+  #endDeferral(at: EpochMs): void {
     const deferred = this.#deferred;
     if (deferred === null) return;
     this.#deferred = null;
     if (this.#budgetMs === null) return;
-    this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, this.#now()));
+    this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, at));
   }
 
   close(): void {
@@ -281,45 +288,37 @@ export class SlowTier {
   }
 
   /**
-   * Called by the pump when no fast tier is left to select. The load guard
-   * waits before the slot is taken, so a wait never holds it, and the slot is
-   * handed over between files (D2, lessons defect 2): a worktree that misses
-   * it leaves a waiter's mark, and one that finds another's mark skips one turn.
-   * The guard decides whether the slow lane runs, never which worktree runs
-   * it (D3 as amended, task 004-84): it waits only while the slot is free,
-   * and a marked waiter takes the slot at a handover without a new wait.
-   * The guard's wait holds this lane only (spec 019 D3, review 0.1.396 B1):
-   * it publishes the wait, arms a recheck and returns `null`, so the pump
-   * asks the other lanes; the recheck's `next` reads the load again with
-   * what is left of the budget. `launch` starts the run under the lock, in
-   * the block whose check found no hold, so no run starts once a hold began
-   * (011 C9; review 0.1.269, B1).
+   * Row 011-357: the lane's decision in the step's lock turn, on the disk
+   * facts the step read just before it: the listing, the load guard, the
+   * slot and the pick, in one synchronous piece. The load guard reads before
+   * the slot is taken, so a wait never holds it, and the slot is handed over
+   * between files (D2, lessons defect 2): a worktree that misses it leaves a
+   * waiter's mark, and one that finds another's mark skips one turn. The
+   * guard decides whether the slow lane runs, never which worktree runs it
+   * (D3 as amended, task 004-84): it defers only while the slot is free, and
+   * a marked waiter takes the slot at a handover without a new wait. A
+   * deferral holds this lane only (spec 019 D3, review 0.1.396 B1): it
+   * publishes the wait, arms this lane's recheck and answers `deferred`, so
+   * the step asks the other lanes; the recheck's step reads the load again
+   * with what is left of the budget. `fly` starts the run in this turn, so
+   * no run starts once a hold began (011 C9; review 0.1.269, B1).
    */
-  async next(launch: (run: SlowRun) => void): Promise<SlowNext> {
-    this.#endDeferral();
-    // A close before this call is seen here, and the count below would miss it (row 011-99).
-    if (this.host.closed()) return "again";
-    const preemptions = this.#preemptions;
-    const refs = await this.host.lock.run(
-      () => this.#candidates(),
-      `listing the queued files of group ${this.group}`,
-    );
-    const { context } = this.host.started();
+  decide(view: LaneView, fly: (run: SlowRun) => void): LaneDecision {
+    this.#endDeferral(view.at);
+    const refs = this.#candidates(view);
     const dir = this.#slotDir();
-    const group = this.#resolved(context);
+    const group = this.#resolved(view.context);
     if (refs.length === 0 || group === null) {
-      this.#unmark(dir, context.worktreeId);
-      return null;
+      this.#unmark(dir, view.context.worktreeId);
+      return "none";
     }
-    if (preemptions !== this.#preemptions) return "again";
-    const guard = this.#guardOf(context, dir, group, refs);
-    if (guard === DEFERRED) return null;
-    if (!(await this.#mayStart(preemptions))) return "again";
-    if (guard === "held") return this.#waitAtSlot(context, dir, false);
-    const want = this.#want(context, group, guard, refs.length);
-    const slot = this.#takeSlot(context, dir, group, want);
-    if (slot === null) return null;
-    return this.#launch(refs, guard, slot, group, launch);
+    const guard = this.#guardOf(view, dir, group, refs);
+    if (guard === DEFERRED) return DEFERRED;
+    if (guard === "held") return this.#waitAtSlot(view, dir, false);
+    const want = this.#want(view, group, guard, refs.length);
+    const slot = this.#takeSlot(view, dir, group, want);
+    if (slot === null) return "none";
+    return this.#launch(view, refs, guard, slot, group, fly);
   }
 
   /**
@@ -328,44 +327,31 @@ export class SlowTier {
    * `deferUnderLoad` (`#skipGuard`).
    */
   #guardOf(
-    context: SchedulerContext,
+    view: LaneView,
     dir: AbsolutePath,
     group: ResolvedGroup,
     refs: readonly TestFileRef[],
   ): Guarded | "held" | typeof DEFERRED {
     const defer = group.limits.deferUnderLoad;
-    return this.#explicit(refs) || this.#marked || defer === null
+    return this.#explicit(view.ledger, refs) || this.#marked || defer === null
       ? this.#skipGuard(defer)
-      : this.#guard(dir, group, defer, laneOf(context, refs[0] as TestFileRef));
+      : this.#guard(view, dir, group, defer, laneOf(view.context, refs[0] as TestFileRef));
   }
 
   /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
-  #explicit(refs: readonly TestFileRef[]): boolean {
+  #explicit(ledger: Ledger, refs: readonly TestFileRef[]): boolean {
     if (this.#requested) return true;
     if (this.narrow.size === 0) return false;
-    const { ledger } = this.host.started();
     return refs.some((ref) => this.narrow.has(ledger, ref));
-  }
-
-  /**
-   * After the guard's wait: the daemon's runtime still there and no hold
-   * begun (`probe`), and no preemption since `preemptions` was read; else
-   * the pump plans again. A runtime gone since the pump read it starts no
-   * tier, and its files take no slot (review 0.1.262, B3); so is a hold that
-   * began meanwhile, a merge's included, which no preemption tells (011 C9;
-   * review 0.1.269, B1): the pump plans again and stops on it.
-   */
-  async #mayStart(preemptions: number): Promise<boolean> {
-    return (await this.host.probe()) === "free" && preemptions === this.#preemptions;
   }
 
   /**
    * How many of `count` files the tier may take: up to its full width when
    * the admission's width is wide, else one (spec 019 D3).
    */
-  #want(context: SchedulerContext, group: ResolvedGroup, guard: Guarded, count: number): number {
-    const wide = this.#admitted(group, guard.idle).width === "wide";
-    return wide ? Math.min(fullWidth(group, context.policy), count) : 1;
+  #want(view: LaneView, group: ResolvedGroup, guard: Guarded, count: number): number {
+    const wide = this.#admitted(view, group, guard.idle).width === "wide";
+    return wide ? Math.min(fullWidth(group, view.context.policy), count) : 1;
   }
 
   /**
@@ -374,59 +360,58 @@ export class SlowTier {
    * worktree holds it, or this one yields its turn (`#waitAtSlot`).
    */
   #takeSlot(
-    context: SchedulerContext,
+    view: LaneView,
     dir: AbsolutePath,
     group: ResolvedGroup,
     want: number,
   ): SlowSlot | null {
+    const { worktreeId } = view.context;
     const permits = group.limits.maxParallel;
     const yieldTurn =
       permits !== null &&
       (this.#tookLast || this.draining) &&
-      othersWaitingForSlot(dir, context.worktreeId, undefined, this.group);
-    const owner = { pid: process.pid, worktreeId: context.worktreeId };
+      othersWaitingForSlot(dir, worktreeId, undefined, this.group);
+    const owner = { pid: process.pid, worktreeId };
     const slot = yieldTurn
       ? null
       : permits === null
         ? noSlot(want)
         : acquireSlowSlot({ dir, owner, permits, want, group: this.group });
-    if (slot === null) return this.#waitAtSlot(context, dir, yieldTurn);
+    if (slot === null) {
+      this.#waitAtSlot(view, dir, yieldTurn);
+      return null;
+    }
     this.#tookLast = true;
-    this.#unmark(dir, context.worktreeId);
+    this.#unmark(dir, worktreeId);
     this.#slotMissedSince = null;
     this.#slotNoted = false;
     return slot;
   }
 
-  /**
-   * Selects the tier under the lock and launches it with `slot`, whose
-   * permits go back when no tier flies.
-   */
-  async #launch(
+  /** Selects the tier and starts it with `slot` (`fly`), whose permits go back when no tier flies. */
+  #launch(
+    view: LaneView,
     refs: readonly TestFileRef[],
     guard: Guarded,
     slot: SlowSlot,
     group: ResolvedGroup,
-    launch: (run: SlowRun) => void,
-  ): Promise<SlowNext> {
+    fly: (run: SlowRun) => void,
+  ): LaneDecision {
     let flown = false;
     try {
-      const selected = await this.host.lock.run(() => {
-        const picked = this.#select(refs, guard, slot, group);
-        if (picked === null || typeof picked !== "object") return picked;
-        launch({ tier: picked.tier, slot, turn: picked.admitted.turn });
-        flown = true;
-        return "flown" as const;
-      }, `selecting a tier of group ${this.group}`);
+      const picked = this.#select(view, refs, guard, slot, group);
       // Every file another worktree runs: the pump waits on the claims, not the slot (task 001-205).
-      if (selected === "claimed") return null;
-      if (selected === WAIT_FOR_CAPACITY) {
+      if (picked === "claimed") return "none";
+      if (picked === WAIT_FOR_CAPACITY) {
         // No pool permit it may take is free: the pump looks again within CAPACITY_RECHECK_MS (011-96).
         // It holds the slow slot, so the wait is the pool's (row 011-291).
         this.#publish({ kind: "waiting", for: "pool" });
-        return null;
+        return "none";
       }
-      return selected === null ? "again" : selected;
+      if (picked === null) return "again";
+      fly({ tier: picked.tier, slot, turn: picked.admitted.turn });
+      flown = true;
+      return "started";
     } finally {
       if (!flown) slot.release();
     }
@@ -441,8 +426,8 @@ export class SlowTier {
    * so a warm-up's slow files never contend with its fast ones. During a
    * departure drain only the drain's fast work counts (row 011-93).
    */
-  #admitted(group: ResolvedGroup, idle: boolean): LaneAnswer {
-    return this.host.admit().lane(group.name, { requested: this.#requested, idle });
+  #admitted(view: Pick<LaneView, "admit">, group: ResolvedGroup, idle: boolean): LaneAnswer {
+    return view.admit().lane(group.name, { requested: this.#requested, idle });
   }
 
   /**
@@ -454,8 +439,7 @@ export class SlowTier {
    * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
    * moment every queued file holds.
    */
-  holdsFollowers(): boolean {
-    const { context, ledger } = this.host.started();
+  holdsFollowers({ context, ledger }: LaneState): boolean {
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
     if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
@@ -467,7 +451,7 @@ export class SlowTier {
    * wait at the slot, marked as a waiter unless draining, and retry at
    * `SLOW_RECHECK_MS`.
    */
-  #waitAtSlot(context: SchedulerContext, dir: AbsolutePath, yielded: boolean): null {
+  #waitAtSlot({ at, context }: LaneView, dir: AbsolutePath, yielded: boolean): "none" {
     this.#tookLast = false;
     if (this.draining) {
       this.#unmark(dir, context.worktreeId);
@@ -476,9 +460,9 @@ export class SlowTier {
       this.#marked = true;
     }
     this.#publish({ kind: "waiting", for: "slot" });
-    if (!yielded) this.#slotMissed(context, dir);
-    this.#arm();
-    return null;
+    if (!yielded) this.#slotMissed(context, dir, at);
+    this.#arm(at);
+    return "none";
   }
 
   #unmark(dir: AbsolutePath, worktreeId: WorktreeId): void {
@@ -488,14 +472,14 @@ export class SlowTier {
   }
 
   /**
-   * Under the lock: the slow files a trigger lets run now, in order, all of
+   * The listing: the slow files a trigger lets run now, in order, all of
    * the first one's lane and runner (`runnerOf`); none when none may. A file
    * whose key another worktree runs is none (`claimOf`, task 001-205): the
    * pump waits on the claim without taking the slot, and a result that
    * landed is applied here, so a drain before exit (004-29) ends with it.
    */
-  #candidates(): TestFileRef[] {
-    const { context, ledger } = this.host.started();
+  #candidates(view: LaneView): TestFileRef[] {
+    const { at, context, ledger } = view;
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
     this.asks.prune(ledger);
@@ -507,7 +491,7 @@ export class SlowTier {
       return [];
     }
     // No width is read here: the load guard has not run.
-    if (this.#admitted(group, false).waits !== null) {
+    if (this.#admitted(view, group, false).waits !== null) {
       this.#publish({ kind: "waiting", for: "fast" });
       return [];
     }
@@ -520,16 +504,16 @@ export class SlowTier {
       return free.filter((ref) => runnerOf(context, ref) === runner);
     }
     // A result applied left the queue: what is left decides.
-    if ([...claims.values()].includes("settled")) return this.#candidates();
+    if ([...claims.values()].includes("settled")) return this.#candidates(view);
     if ([...claims.values()].includes("waits")) return [];
     this.#publishUntriggered(group);
     const quiet = quietLeftMs(context, group);
-    this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
+    this.#arm(at, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
     return [];
   }
 
   /**
-   * Under the lock: whether a trigger lets a file of the group run now. Its
+   * Whether a trigger lets a file of the group run now. Its
    * moment (`momentHolds`; for the default `slow` group trigger (a) by
    * `slow.trigger`), an open request, a commit's ask at the file's key (019
    * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
@@ -593,6 +577,7 @@ export class SlowTier {
    * arms its recheck, at most the budget left; its `lane` is `deferring`.
    */
   #guard(
+    { at }: LaneView,
     dir: AbsolutePath,
     group: ResolvedGroup,
     defer: DeferUnderLoad,
@@ -605,14 +590,14 @@ export class SlowTier {
     if (budget <= 0) return { ranUnderLoad: load, idle: false };
     const permits = group.limits.maxParallel;
     if (permits !== null && slowSlotHeld({ dir, permits, group: this.group })) return "held";
-    this.#deferred = { from: this.#now(), lane };
+    this.#deferred = { from: at, lane };
     this.#publish({ kind: "waiting", for: "load" });
-    this.#arm(Math.min(this.#recheckMs(), budget));
+    this.#arm(at, Math.min(this.#recheckMs(), budget));
     return DEFERRED;
   }
 
   /**
-   * Under the lock, after the guard and the slot: the tier, of `refs` in
+   * After the guard and the slot, in the same turn: the tier, of `refs` in
    * order, as many as `slot` has permits while the machine is still idle,
    * else one, and only as many as one run starts at once
    * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
@@ -633,17 +618,18 @@ export class SlowTier {
    * open: that runs now, without a grant, as an edit's tier does.
    */
   #select(
+    view: LaneView,
     refs: readonly TestFileRef[],
     { ranUnderLoad, idle }: Guarded,
     slot: SlowSlot,
     group: ResolvedGroup,
   ): { tier: Tier; admitted: LaneAnswer } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
-    // Read in this lock turn (row 011-340). A close since the guard or the slot: a daemon that
-    // accepted a stop starts no tier (001-367), nor one whose runtime another tier's end found
-    // gone (011-106), nor one on hold (011 C9), nor one whose `after` groups hold.
-    const admitted = this.#admitted(group, idle);
+    // Read in this lock turn (row 011-340): a daemon that accepted a stop starts no tier
+    // (001-367), nor one whose runtime went (011-106), nor one on hold (011 C9), nor one whose
+    // `after` groups hold.
+    const admitted = this.#admitted(view, group, idle);
     if (admitted.refusal !== null) return null;
-    const { context, ledger } = this.host.started();
+    const { context, ledger } = view;
     // The slot's permits carry `#want`'s width already; the width is read again here.
     const width = admitted.width === "wide" ? slot.permits : 1;
     const triggered = this.#trigger(context, ledger, group);
@@ -663,7 +649,13 @@ export class SlowTier {
     const taken = ungated(group)
       ? null
       : (context.capacity?.take(picked.length * perFile, poolLaneOf(group)) ?? null);
-    if (taken === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
+    if (
+      taken === WAIT_FOR_CAPACITY &&
+      !this.#explicit(
+        ledger,
+        picked.map(({ file }) => file.ref),
+      )
+    ) {
       ledger.commit();
       return WAIT_FOR_CAPACITY;
     }
@@ -729,7 +721,7 @@ export class SlowTier {
   }
 
   /**
-   * Under the lock: `ref` as a file of the tier, or `null` when it has no key
+   * `ref` as a file of the tier, or `null` when it has no key
    * or is blocked (it leaves the queue), when another worktree's result
    * stands for it (applied), or when another worktree runs its key and its
    * result could stand for it (it stays queued, task 001-205).
@@ -763,16 +755,15 @@ export class SlowTier {
    * "running" activity goes in favour of what the remaining slow files wait
    * for, without starting one (review wave 2, B1). An edit's fast work in
    * flight or pending, or the agent not pausing; when a trigger already
-   * holds, nothing until `next` decides.
+   * holds, nothing until `decide` decides. `admit` is the admission now.
    */
-  ended(): void {
-    const { context, ledger } = this.host.started();
+  ended({ context, ledger, admit }: LaneEnd): void {
     this.#flying = null;
     this.#endedAt = context.now();
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
     if (queued.length === 0 || group === null) this.#publish(null);
-    else if (this.#admitted(group, false).waits !== null)
+    else if (this.#admitted({ admit }, group, false).waits !== null)
       this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
     else this.#publishUntriggered(group);
@@ -783,30 +774,28 @@ export class SlowTier {
    * of `Ledger.tierChanges`); nothing for a lane whose tier still runs or
    * that runs none. A record names no lane, so each lane asks (row 019-10).
    */
-  endedOnce(): void {
+  endedOnce(end: LaneEnd): void {
     const tier = this.#flying;
-    if (tier === null || this.host.started().ledger.tierChanges.has(tier.changes)) return;
-    this.ended();
+    if (tier === null || end.ledger.tierChanges.has(tier.changes)) return;
+    this.ended(end);
   }
 
   /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
   retire(): void {
-    const { context } = this.host.started();
-    this.#unmark(this.#slotDir(), context.worktreeId);
-    const now = readGroupActivity(context.store, context.worktreeId, this.group);
+    const { store, worktreeId } = this.loop;
+    this.#unmark(this.#slotDir(), worktreeId);
+    const now = readGroupActivity(store, worktreeId, this.group);
     if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
   }
 
   /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
   #publish(activity: SlowTierActivity | null): null {
-    const { context } = this.host.started();
-    publishGroupActivity(context.store, context.worktreeId, this.group, activity);
+    publishGroupActivity(this.loop.store, this.loop.worktreeId, this.group, activity);
     this.#published = activity === null ? null : JSON.stringify(activity);
     return null;
   }
 
-  #slotMissed(context: SchedulerContext, dir: string): void {
-    const now = context.now();
+  #slotMissed(context: SchedulerContext, dir: string, now: EpochMs): void {
     this.#slotMissedSince ??= now;
     if (this.#slotNoted || now - this.#slotMissedSince < SLOT_HELD_NOTE_MS) return;
     this.#slotNoted = true;
@@ -819,16 +808,11 @@ export class SlowTier {
   }
 
   /**
-   * Pumps again after `ms`, once; an armed timer that fires later gives way.
-   * The pump re-arms while slow work still waits.
+   * Pumps again `ms` after `at`, once; a wake stated later gives way. The
+   * step re-arms while slow work still waits; a closed lane's wake is dropped.
    */
-  #arm(ms: number = this.#recheckMs()): void {
-    if (this.host.closed()) return;
-    this.#wake.atMost((this.#now() + ms) as EpochMs);
-  }
-
-  #now(): EpochMs {
-    return (this.host.now ?? hostNow)();
+  #arm(at: EpochMs, ms: number = this.#recheckMs()): void {
+    this.#wake.atMost((at + ms) as EpochMs);
   }
 
   #recheckMs(): number {
