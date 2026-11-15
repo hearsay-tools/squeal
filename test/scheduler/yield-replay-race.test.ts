@@ -6,12 +6,14 @@ import { decideYields } from "../../src/core/scheduler/decide-yields.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
+import { Wakes } from "../../src/core/scheduler/wakes.js";
 import { TierYields } from "../../src/core/scheduler/yields.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
+import { virtualClock } from "../helpers/virtual-clock.js";
 import { freshStore } from "../state/helpers.js";
 
 /*
@@ -121,12 +123,12 @@ function world() {
     startedAt: T,
     cancel: new AbortController(),
   } as unknown as Tier;
-  const yields = new TierYields();
+  const yields = new TierYields(() => {}, new Wakes(virtualClock(T)));
   /** One check at `at`; `between` commits between the decision and the apply. */
   const check = (at: number, between?: () => void) => {
     clock.now = at;
     if (between !== undefined) afterDecide = between;
-    yields.check(context, ledger, [tier], null);
+    yields.check(context, ledger, [tier], null, false);
   };
   /** What a decision at `at` decides for the tier, not cancelled, the store as it is. */
   const decides = (at: number) =>
