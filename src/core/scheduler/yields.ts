@@ -5,7 +5,13 @@ import type { TierYield } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import { hostClock } from "./clock.js";
 import type { SchedulerContext } from "./context.js";
-import { type Cut, decideYields, holds, YIELD_REMAINDER_MS } from "./decide-yields.js";
+import {
+  type Cut,
+  decideYields,
+  holds,
+  YIELD_REMAINDER_MS,
+  type YieldDecisions,
+} from "./decide-yields.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import type { CutFiles } from "./sharing.js";
@@ -117,25 +123,43 @@ export class TierYields implements CutFiles {
     held = false,
   ): void {
     const at = context.now();
-    const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
-    const decided = decideYields(at, revision, view);
+    const decided = this.decide(context, ledger, tiers, revision, held, at);
     if (decided === null) return;
     // Review 0.1.514 B1: what the decision's reads would have recorded, in their order, first.
     for (const note of decided.bookkeeping) {
       if (note.kind === "claim") ledger.claims.holds(note.key, at);
       else ledger.queue.focused.waiting(at);
     }
+    for (const { tier, decision } of decided.tiers)
+      if (typeof decision === "string") stopTier(context, at, tier, decision);
+    this.apply(context, at, decided);
+  }
+
+  /** `decideYields` over `tiers` at `at`, with this state's marks and standings (row 011-356). */
+  decide(
+    context: SchedulerContext,
+    ledger: Ledger,
+    tiers: readonly Tier[],
+    revision: Revision | null,
+    held: boolean,
+    at: EpochMs,
+  ): YieldDecisions | null {
+    const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
+    return decideYields(at, revision, view);
+  }
+
+  /**
+   * Applies what the check `decided` at `at`, all but its cancels
+   * (`stopTier`, which come first): the marks, the standings, the history,
+   * the bounds and their wake, and the row when it changed.
+   */
+  apply(context: SchedulerContext, at: EpochMs, decided: YieldDecisions): void {
     this.#cut = new Map(decided.marks);
     this.#standing = new Map(decided.standing);
-    for (const { tier, decision, bound, yielded } of decided.tiers) {
+    for (const { tier, bound, yielded } of decided.tiers) {
       if (yielded !== null) {
         const { to, remainderMs, cut } = yielded;
         this.#history.yielded(at, tier, to, remainderMs, cut, YIELD_REMAINDER_MS);
-      }
-      if (typeof decision === "string") {
-        if (decision !== "yield" && tier.kind === "backlog" && tier.slot !== true)
-          context.quiet?.cancelled(tier.lane, at);
-        tier.cancel?.abort(decision);
       }
       if (bound === null) this.#bounds.delete(tier.runId);
       else this.#bounds.set(tier.runId, bound);
@@ -210,6 +234,17 @@ export class TierYields implements CutFiles {
     const { store, worktreeId } = context;
     writeYieldRow(store, worktreeId, context.now(), this.#history.row(this.#standing));
   }
+}
+
+/**
+ * Cancels `tier` for `cause` at `at` (C4 step 5, row 011-56): a backlog
+ * tier cancelled for any cause but a yield starts its lane's wait for quiet
+ * (row 011-82); a backlog slot, whose runner cannot cancel, starts none.
+ */
+export function stopTier(context: SchedulerContext, at: EpochMs, tier: Tier, cause: string): void {
+  if (cause !== "yield" && tier.kind === "backlog" && tier.slot !== true)
+    context.quiet?.cancelled(tier.lane, at);
+  tier.cancel?.abort(cause);
 }
 
 /**

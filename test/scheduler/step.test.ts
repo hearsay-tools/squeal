@@ -197,8 +197,11 @@ describe("the scheduler step (row 011-356)", () => {
       expect(run({ stalled: true, queued: 1 }).wake).toEqual({ kind: "end" });
     });
 
-    it("a stopping daemon ends the pump", () => {
-      expect(run({ facts: { stopping: true } }).wake).toEqual({ kind: "end" });
+    it("a stopping daemon or a runtime gone ends the pump, runner work queued or not", () => {
+      expect(run({ facts: { stopping: true }, queued: 1 }).kinds).toEqual([]);
+      expect(run({ facts: { runtimeGone: true }, starts: [tier("r1")] }).wake).toEqual({
+        kind: "end",
+      });
     });
 
     it("queued runner work drains, and the pump waits for its end", () => {
@@ -325,7 +328,12 @@ describe("the scheduler step (row 011-356)", () => {
       const s = run({ tiers: [r1], decided: decided([[r1, "supersession"]]) }, null, [
         { kind: "revision", revision },
       ]);
-      expect(s.decisions[0]).toEqual({ kind: "stop-tier", tier: r1, cause: "supersession" });
+      expect(s.decisions[0]).toEqual({
+        kind: "stop-tier",
+        tier: r1,
+        cause: "supersession",
+        at: AT,
+      });
       expect([s.kinds, s.wake, s.log]).toEqual([
         ["stop-tier", "write-yield-row"],
         { kind: "turn" },
@@ -387,7 +395,13 @@ describe("the scheduler step (row 011-356)", () => {
 
   describe("closed lists", () => {
     it("each decision kind is placed in the turn or after it", () => {
-      const turn: StepDecisionKind[] = ["start-tier", "stop-tier", "write-yield-row", "reinstall"];
+      const turn: StepDecisionKind[] = [
+        "start-tier",
+        "stop-tier",
+        "write-yield-row",
+        "reinstall",
+        "drain",
+      ];
       for (const [kind, place] of Object.entries(DECISION_PLACE))
         expect([kind, place]).toEqual([
           kind,

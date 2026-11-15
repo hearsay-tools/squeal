@@ -159,7 +159,8 @@ function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
   const decided = yields.decide(turn.at, trigger);
   if (decided === null) return undefined;
   for (const { tier, decision } of decided.tiers)
-    if (typeof decision === "string") out.decide({ kind: "stop-tier", tier, cause: decision });
+    if (typeof decision === "string")
+      out.decide({ kind: "stop-tier", tier, cause: decision, at: turn.at });
   out.decide({ kind: "write-yield-row", at: turn.at, decided });
   return undefined;
 }
