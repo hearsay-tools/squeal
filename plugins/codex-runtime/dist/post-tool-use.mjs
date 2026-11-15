@@ -8251,7 +8251,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.512";
+  if (true) return "0.1.513";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13459,15 +13459,15 @@ function groupLanesOf(tiers, ownerOf) {
   return (ref2) => byName.get(ownerOf(ref2)) ?? null;
 }
 
-// src/core/scheduler/clock.ts
-var MAX_TIMER_MS = 2 ** 31 - 1;
-
 // src/core/scheduler/claims.ts
 var CLAIM_GRACE_MS = 6e3;
 var CLAIM_UNBOUNDED_MS = 6e5;
 function claimBoundMs(timeoutMs) {
   return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
 }
+
+// src/core/scheduler/clock.ts
+var MAX_TIMER_MS = 2 ** 31 - 1;
 
 // src/core/scheduler/runner-work-bound.ts
 var RUNNER_PART_MARGIN_MS = 6e4;
