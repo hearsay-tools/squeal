@@ -51,6 +51,16 @@ export class Mutex {
   }
 
   /**
+   * Row 011-357: the running task now does `operation`, from now on: a
+   * watcher hears the holder's new text at once. One lock turn that does
+   * what several did (the step asking a slow lane) names the part it is in.
+   * Nothing when no task runs.
+   */
+  relabel(operation: string): void {
+    if (this.#holder !== null) this.#hold({ operation, since: this.#now() });
+  }
+
+  /**
    * Row 011-340: how many tasks have started; during a task, its own turn.
    * An admission carries the turn it was read in (`checkTurn`).
    */
