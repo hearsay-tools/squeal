@@ -27,6 +27,11 @@ export interface WakeSlot {
   clear(): void;
   /** Leaves the loop for good: an owner that ended (a runner-part call, a retired lane). */
   drop(): void;
+  /**
+   * Orders this slot among those of its reason, lowest first (`SlotOptions.rank`);
+   * its wake stays. A policy reload reorders slow lanes so (review 0.1.513 B3).
+   */
+  rank: number;
 }
 
 export interface SlotOptions {
@@ -46,7 +51,7 @@ class Slot implements WakeSlot {
   constructor(
     readonly reason: WakeReason,
     readonly fire: WakeFire,
-    readonly rank: number,
+    public rank: number,
     readonly seq: number,
     private readonly state: (slot: Slot, at: EpochMs | null) => void,
   ) {}
