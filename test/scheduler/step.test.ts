@@ -79,6 +79,8 @@ const idle = (reason: Idle["idle"], wakeAt: number | null = null): Idle => ({
 interface Table {
   facts?: Partial<StartFacts>;
   stalled?: boolean;
+  asked?: boolean;
+  busyWaiting?: boolean;
   queued?: number;
   draining?: boolean;
   tiers?: Tier[];
@@ -101,6 +103,8 @@ function ports(t: Table, log: string[]): StepPorts {
   return {
     admit: () => admit(facts(t.facts)),
     stalled: () => t.stalled === true,
+    asked: () => t.asked === true,
+    busyWaiting: () => t.busyWaiting === true,
     runnerWork: () => ({ queued: t.queued ?? 0, draining: t.draining === true }),
     yields: {
       tier: (runId) => t.tiers?.find((x) => x.runId === runId),
@@ -251,6 +255,33 @@ describe("the scheduler step (row 011-356)", () => {
     });
   });
 
+  describe("the pump's end", () => {
+    const ended = (t: Table) => run(t, {}, [{ kind: "pump-ended" }]);
+
+    it("with work left it runs again; with none it rests", () => {
+      expect(ended({ facts: { fastQueued: () => true } }).wake).toEqual({ kind: "again" });
+      expect(ended({}).wake).toEqual({ kind: "end" });
+    });
+
+    it("a stall rests until asked; a busy store's wait runs it once with nothing queued", () => {
+      const work = { facts: { runnerWork: 1 }, stalled: true };
+      expect(ended(work).wake).toEqual({ kind: "end" });
+      expect(ended({ ...work, asked: true }).wake).toEqual({ kind: "again" });
+      expect(ended({ busyWaiting: true }).wake).toEqual({ kind: "again" });
+    });
+
+    it("a reinstall or a runtime gone tells its note in this turn and rests", () => {
+      const reinstalled = ended({ facts: { reinstalled: true, fastQueued: () => true } });
+      expect([reinstalled.decisions, reinstalled.wake, reinstalled.log]).toEqual([
+        [{ kind: "tell", note: "reinstalled" }],
+        { kind: "end" },
+        ["carry tell"],
+      ]);
+      const gone = ended({ facts: { runtimeGone: true } });
+      expect(gone.decisions).toEqual([{ kind: "tell", note: "runtime-gone" }]);
+    });
+  });
+
   describe("each idle wake, once the lanes started nothing", () => {
     const lanesIdle = (plan: Idle | null, t: Table = {}) =>
       run(t, { ...ALL, lanes: { started: false, idle: plan } });
@@ -386,7 +417,7 @@ describe("the scheduler step (row 011-356)", () => {
 
   describe("closed lists", () => {
     it("each decision kind is placed in the turn or after it", () => {
-      const turn: StepDecisionKind[] = ["start-tier", "check-yields", "reinstall", "drain"];
+      const turn: StepDecisionKind[] = ["start-tier", "check-yields", "tell", "reinstall", "drain"];
       for (const [kind, place] of Object.entries(DECISION_PLACE))
         expect([kind, place]).toEqual([
           kind,
@@ -402,7 +433,7 @@ describe("the scheduler step (row 011-356)", () => {
       // @ts-expect-error: an event kind `yieldReach` does not place is no event
       expect(() => yieldReach({ kind: "rumour" }, reach)).toThrow(/does not place/);
       const table: Record<StepDecisionKind, DecisionPlace> = DECISION_PLACE;
-      expect(Object.keys(table)).toHaveLength(11);
+      expect(Object.keys(table)).toHaveLength(12);
     });
   });
 });

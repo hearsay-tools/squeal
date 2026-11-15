@@ -53,6 +53,8 @@ export type SchedulerEvent =
   | { readonly kind: "stalled" }
   /** The scheduler began its close. */
   | { readonly kind: "closing" }
+  /** Row 011-356: the pump's loop ended, and its flights and drain with it. */
+  | { readonly kind: "pump-ended" }
   /** A wake came. */
   | { readonly kind: "wake"; readonly reason: WakeReason }
   /*
@@ -102,6 +104,8 @@ export type StepDecision<T = unknown, I = unknown> =
    * other worktrees stored first when `adopt` (rows 011-51, 011-123, 011-354).
    */
   | { readonly kind: "check-yields"; readonly trigger: Revision | null; readonly adopt: boolean }
+  /** Tell the note of the pump's end: the install went (task 001-113), or the runtime (row 011-106). */
+  | { readonly kind: "tell"; readonly note: "reinstalled" | "runtime-gone" }
   /** The install went under this scheduler (task 001-113): it stores nothing more. */
   | { readonly kind: "reinstall" }
   /** Apply the queued runner work beside the tiers in flight: it starts in the turn, its tasks take the lock after it. */
@@ -132,6 +136,7 @@ export type StepDecisionKind = StepDecision["kind"];
 export const DECISION_PLACE = {
   "start-tier": "turn",
   "check-yields": "turn",
+  tell: "turn",
   reinstall: "turn",
   drain: "turn",
   "read-install": "after",

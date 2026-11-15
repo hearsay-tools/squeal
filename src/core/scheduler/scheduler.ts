@@ -1166,16 +1166,12 @@ class TierScheduler implements Scheduler {
         );
         await this.#wakes.waitFor({ for: "pieces" }, this.#draining ?? Promise.resolve());
         this.#pumping = null;
-        const ended = this.#admit();
-        if (ended.halts.has("reinstalled")) this.#tellReinstall();
-        else if (ended.halts.has("runtime-gone"))
-          this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
-        const again = !this.#stalled || this.#asked;
-        // Read after the note: a daemon may close on it. A resume after a busy store runs once
-        // with nothing queued too: its writes end the wait.
-        const rearm = this.#admit();
-        const work = rearm.hasWork || this.#busy?.waiting === true;
-        if (!rearm.halted && again && work) this.#pump();
+        // Row 011-356: the step of the pump's end, outside the lock as the end was: its note, and again or rest.
+        const turn = { at: this.#now(), events: [PUMP_ENDED], reads: {}, ports: this.#ports };
+        const ended = step(turn);
+        this.#told(turn, ended);
+        if (ended.error !== null) throw ended.error;
+        if (ended.wake.kind === "again") this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     });
@@ -1230,6 +1226,9 @@ class TierScheduler implements Scheduler {
   readonly #ports: StepPorts = {
     admit: () => this.#admit(),
     stalled: () => this.#stalled,
+    asked: () => this.#asked,
+    // A resume after a busy store runs once with nothing queued too: its writes end the wait.
+    busyWaiting: () => this.#busy?.waiting === true,
     runnerWork: () => ({ queued: this.#runnerWork.size, draining: this.#draining !== null }),
     yields: {
       tier: (runId) => this.#inFlight.get(runId)?.tier,
@@ -1278,6 +1277,10 @@ class TierScheduler implements Scheduler {
       case "reinstall":
         this.#reinstall(this.#started().ledger);
         return;
+      case "tell":
+        if (decision.note === "reinstalled") this.#tellReinstall();
+        else this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
+        return;
       case "drain":
         this.#drain();
         return;
@@ -1299,6 +1302,7 @@ class TierScheduler implements Scheduler {
     switch (decision.kind) {
       case "start-tier":
       case "check-yields":
+      case "tell":
       case "reinstall":
       case "drain":
         return {};
@@ -1747,6 +1751,9 @@ class TierScheduler implements Scheduler {
     }
   }
 }
+
+/** The event of the pump's end step (row 011-356). */
+const PUMP_ENDED: SchedulerEvent = { kind: "pump-ended" };
 
 /** The end of a carry-out switch: a decision kind no case places does not compile. */
 function unplaced(decision: never): never {

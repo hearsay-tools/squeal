@@ -275,6 +275,7 @@ export function yieldReach(event: SchedulerEvent, view: ReachView): YieldReach {
     case "runner-work-drained":
     case "stalled":
     case "closing":
+    case "pump-ended":
       return NONE;
     default: {
       const unknown: never = event;
