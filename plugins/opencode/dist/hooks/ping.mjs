@@ -1586,6 +1586,9 @@ function digest(text) {
 var ONLY_REJECTED = configFieldHash(false);
 var ONLY_ALLOWED = configFieldHash(true);
 
+// src/core/scheduler/clock.ts
+var MAX_TIMER_MS = 2 ** 31 - 1;
+
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
 

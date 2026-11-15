@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "0.1.511",
+  "version": "0.1.512",
   "nodeFloor": "22.19.0",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "ae3e2b4c5bbffb63ef0b00a4dc40d503b9ad9ab738d963db142ea7ee87a9825f",
+      "sha256": "fafae7f0a7ccd77fa246e7e6e442d5ded935e5a4eb496c5800bc388ddbde370a",
       "mode": 420
     },
     "bin/squeal-launcher": {
@@ -76,7 +76,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "4b7ead6bbeaeca4c075872be611d0ac3d4b3fd4b71ac8d4e5a7e9ef113cd6839",
+      "sha256": "6d395dbbf386f5c348fc9333a2101016aa2dd12b08e01c32f3eb046cd193e590",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {
@@ -88,7 +88,7 @@
       "mode": 420
     },
     "dist/interrupt.mjs": {
-      "sha256": "bafe370eb55bbb8ac7999c65e6dc798d1e99967ce3db7778b4925a4d48cc9be9",
+      "sha256": "19a45928aaa4a6f5c22cd639ea522173ab267adb0655df0f194fbf7036dedab0",
       "mode": 420
     },
     "dist/node-test/recorder.cjs": {
@@ -116,11 +116,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "29596f06630f1cd454a9b6548821e4ff9b57433c71535930b7168aef9af8594e",
+      "sha256": "54f67b8a9e252f5271147fa8c78e46ffb5d6047973924d4416f7590243a55584",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "fff14e9b3d7963c05b7c06cbcc58c0daeb63135fbae8f553a16fd781cbf3fd4b",
+      "sha256": "e4448f8cfae5ba9e77886826cc8fa0383da9152ee92312f0246ac5f8b17fbc4f",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -140,35 +140,35 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "046660db6c1dd47306a587675e89249e4087de236860cae4c294d467fd338171",
+      "sha256": "68fd24fd2ee540c790512ff3e625e0dfe9ea60370fee28ebbf57a9e44b1f29ac",
       "mode": 420
     },
     "dist/session-end.mjs": {
-      "sha256": "04af7e4f6a98237ef4971923789933aae1b1de52a0c38c86f36fdc4e56374e7e",
+      "sha256": "ffc758ed3e20b6b887a01aff4703811f33a2d17096f4fe9884616f388a242dd5",
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "a8bdfd0c60706d27830ff3bc1b694325719da8917e1ef00e2f282893c63befd6",
+      "sha256": "01ea73cc4a1a6ccde3a1781fae2e3aca6803dadd636211c4f8c3c3260c8ee505",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "b8cdd73bec58f514fdae255c324c4bc0932d7670af4c370968fddc4d044dccc5",
+      "sha256": "c37c95cbc2b32799bd69028f254d72f41a81ae07a302cb35776a610b9e9a8f63",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "b44870c8dd3c4408c986558673d797863aea221be2e2db061859d77ec5a6c122",
+      "sha256": "23f2958734ff194a2599f135b6a88bed4cfbf06500c918ce3ee965e8fae40849",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "f4082967579f09c25f0f411f4530b855e16b9f7de442475c756c48abead143e4",
+      "sha256": "2761b4a5e89313baa1e863bc457d6aa3281d5c35657cc3e053e3be74a1be16f9",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "8e73d107fa67d7086995a0414dcbb04fbae0e8053b3f7511a229c2e5acb8aae9",
+      "sha256": "43ad324aa9cecf77c25cdfdb6b65645e548c02b208838956b5b498e804b0c33e",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "47f0b52513bdc1c2971c4d6b94416bd2d97f9ef347174c4fa6e338f1560320e8",
+      "sha256": "e4f9b4d841deb52af2e6e13e7f3c03acdad193762545a04b9bd194dfc612bcaf",
       "mode": 420
     },
     "skills/setup/SKILL.md": {
