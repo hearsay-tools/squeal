@@ -268,6 +268,12 @@ class TierScheduler implements Scheduler {
   #retries = 0;
   /** Paths a merge hold released, read by the step's probe and reconciled by its `reconcile` (row 011-356). */
   readonly #released: RelativePath[] = [];
+  /**
+   * An install change the step's read took (`InstallStamps.takeChange`) and
+   * no `refresh-install` has carried out yet: it outlives the reads of its
+   * iteration (row 011-356, review 0.1.515 B1).
+   */
+  #refreshOwed = false;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#clock = clockOf(options);
@@ -1313,8 +1319,10 @@ class TierScheduler implements Scheduler {
       case "read-install": {
         const install = await this.#install.check();
         this.#installMissing = install.missing !== null;
-        // Task 001-109 (review wave-11b S2, agreed with the coordinator).
-        const changed = install.missing === null && this.#install.takeChange(install);
+        // Task 001-109 (review wave-11b S2, agreed with the coordinator). A change taken is owed
+        // until its refresh is carried out, so a step that ends first loses none (review 0.1.515 B1).
+        if (install.missing === null && this.#install.takeChange(install)) this.#refreshOwed = true;
+        const changed = install.missing === null && this.#refreshOwed;
         return { install: { stamp: install.stamp, missing: install.missing !== null, changed } };
       }
       case "read-probe":
@@ -1324,6 +1332,7 @@ class TierScheduler implements Scheduler {
           const { context, ledger } = this.#started();
           return refreshInstall(context, ledger);
         }, "refreshing the install");
+        this.#refreshOwed = false;
         return {};
       case "reconcile":
         await this.#reconcileReleased();
