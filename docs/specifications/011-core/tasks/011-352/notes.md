@@ -67,7 +67,9 @@ Smaller differences, not in the record:
 
 ## Checks
 
-See the final report of this row for the commands and their output.
+- `pnpm run lint`: `Checked 3508 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- Direct runs (`env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run`), while Squeal waited for quiet: after the wake-only owners, 50 scheduler files (merge hold, claims, group lanes, slots, slow tier, quiet, slow release, command hold, tier yields, runner-part bound, capacity, install wait, reinstall, runtime gone), 213 tests passed; after all owners, 60 files including `model-scheduler.test.ts`, `test/run-evidence` and `test/daemon/slow-instance.test.ts`, 331 tests passed; `test/keys/key-format.test.ts`, `test/keys/validity/compare.test.ts`, `reach.test.ts`, `wakes.test.ts`, `untracked-promises.test.ts`, `clock-port.test.ts`: 62 tests passed (no key-format raise).
+- `squeal status --wait 60000` over the changed `src/` and `test/` paths at revision 45 (`dd1b8b901`): 1298 test files selected, each with a current result; 4 known failures, all the committed bundles differing from the build (`test/harness/plugin.test.ts`, `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: `cli/squeal.mjs differs from the build`). Expected: the brief forbids `pnpm run build`; the coordinator rebuilds the bundles for the candidate. The 7 not-current files of the worktree are outside the selection (unknown).
 
 ## For 011-353
 
