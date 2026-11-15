@@ -1139,6 +1139,7 @@ class TierScheduler implements Scheduler {
     this.#failed = false;
     this.#asked = false;
     this.#pumping = this.#wakes.track(async () => {
+      let failed: unknown = null;
       try {
         // Row 011-356: the step decides under the lock; the pump carries out and waits.
         let reads: Reads = {};
@@ -1170,10 +1171,13 @@ class TierScheduler implements Scheduler {
         const turn = { at: this.#now(), events: [PUMP_ENDED], reads: {}, ports: this.#ports };
         const ended = step(turn);
         this.#told(turn, ended);
-        if (ended.error !== null) throw ended.error;
-        if (ended.wake.kind === "again") this.#pump();
-        else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
+        // An error of the pump's end is thrown past this block, as it was.
+        failed = ended.error;
+        if (failed === null && ended.wake.kind === "again") this.#pump();
+        else if (failed === null && this.#isIdle())
+          for (const resolve of this.#idle.splice(0)) resolve();
       }
+      if (failed !== null) throw failed;
     });
   }
 
