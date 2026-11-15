@@ -36,3 +36,17 @@ Check, each as proven, plausible or unverified:
 6. **Scope and tests.** Out-of-scope owners (`busy-resume.ts`, `store/busy.ts`, `local-permits.ts`, `src/core/capacity/`, `record-tier.ts`, `model-*.ts`) untouched; the files outside the brief (`types/scheduler.ts`, `record.ts`, `context.ts`) were granted; the four moved fake-timer tests keep their cases' meaning on the virtual clock; review 0.1.512 S1 is done in `clock-port.test.ts`.
 
 The coordinator's tree passed lint, typecheck, `check:version origin/main` and `key-format` with `version-sensitive` (19 tests) at the candidate; the worker's tree had all 1298 affected files current (4 bundle-drift failures, fixed by the bundle commit). CI is the full suite. Main's push CI 43709724871 (0.1.512) failed one 5 s timeout in `test/status/why-unknown-standing.test.ts` on Node 26; its rerun is pending; say if you see a link to this range. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/0.1.513.md` and commit it on your branch.
+
+## R2 (W1 repair): re-review of cand/0.1.513 after `reviews/0.1.513.md`
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.513` at `d77d1f9d89699972800f1acfade3de9096cb9c74`; candidate CI run 43718202283. The branch was rebuilt on main `c440f8cf1`: the three first-round commits of worker 9b8a107e (unchanged), then its six repair commits (picked from `e6d3a470a..46877b326`), then the 0.1.513 raise and bundles. Narrow re-review: the repair range `aa2718f76..f3c2fcd87` and how it meets `reviews/0.1.513.md`. Read that review, `tasks/011-352/notes.md` "Repair after review 0.1.513".
+
+Check, each as proven, plausible or unverified:
+
+1. **B1.** `rest()` resolves while a runner's run is held (`scheduler-rest.test.ts`, the review's reproduction), and a rest asked when the run returns resolves only after its record and the pump's last pass. The pump's set-aside waits cannot hide runnable work: no false rest while the pump can act.
+2. **B2.** The next arm is measured from the steady time at arming; the review's probe (wakes at 50 and 100, first done at 150) arms at 150; owners still get one reading per pass.
+3. **B3.** Slow-lane wakes due together run in the current policy order after a reorder or an insertion, the default `slow` last, each lane keeping its state and pending wake (`wake-lane-order.test.ts`, real `GroupTiers` and `SlowTier`); the `group-tiers.ts` edit (granted) changes nothing else.
+4. **S1.** The promise check rejects an assigned-but-unconsumed promise and states its syntax-only guarantee; no product file newly flagged.
+5. **No new break.** The repair adds no timing difference beyond the notes and changes nothing a user sees.
+
+The coordinator's tree passed lint, typecheck, `check:version origin/main` and `key-format` with `version-sensitive` (19 tests) at the candidate; the worker's tree had 932 affected files current at the repair (4 bundle-drift failures, fixed by the bundle commit) and a direct run of 18 files (123 tests, including the model test and the key tests). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; a `/tmp` copy calls `node_modules/.bin/vitest` directly, never `pnpm exec`. Write `reviews/0.1.513-r2.md` and commit it on your branch.
