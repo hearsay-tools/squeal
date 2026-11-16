@@ -3287,7 +3287,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.529";
+  if (true) return "0.1.531";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15434,6 +15434,10 @@ function hash(text2) {
   return createHash11("sha256").update(text2).digest("hex").slice(0, 16);
 }
 var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/scheduler/calendar-steps.ts
+var CALENDAR_STEP_MS = 100;
+var SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
 
 // src/core/slow/slot.ts
 import { existsSync as existsSync10 } from "node:fs";
