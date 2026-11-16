@@ -2,6 +2,7 @@ import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { PoolGate, PoolWait } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { CalendarSteps } from "./calendar-steps.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
 
 /*
@@ -37,6 +38,20 @@ export function publishPoolWaits(
   const key = poolWaitMetaKey(worktreeId);
   if (lanes.size === 0) store.meta.delete(key);
   else store.meta.set(key, JSON.stringify({ at, lanes: Object.fromEntries(lanes) }));
+}
+
+/**
+ * `PoolWaitsOptions.publish` for the daemon whose calendar steps are
+ * `steps`: `publishPoolWaits`, stamped no earlier than the daemon's start
+ * (`CalendarSteps.stamp`, row 011-386), so a write after a set-back past it
+ * still reads as the live daemon's. Without `steps`, the reading.
+ */
+export function poolWaitsPublish(
+  store: Store,
+  worktreeId: WorktreeId,
+  steps?: Pick<CalendarSteps, "stamp">,
+): PoolWaitsOptions["publish"] {
+  return (lanes, at) => publishPoolWaits(store, worktreeId, lanes, steps?.stamp(at) ?? at);
 }
 
 const NO_WAITS: ReadonlyMap<string, PoolWait> = new Map();

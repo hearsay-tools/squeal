@@ -223,10 +223,15 @@ export class TierYields implements CutFiles {
     this.#wake?.clear();
   }
 
-  /** Writes the yield row, stamped `at`: a check's reading, else now. */
+  /**
+   * Writes the yield row, stamped `at` (a check's reading, else now), never
+   * before the daemon's start (`CalendarSteps.stamp`, row 011-386): a write
+   * after a set-back past it still reads as the live daemon's.
+   */
   #publish(context: SchedulerContext, at: EpochMs = context.now()): void {
     const { store, worktreeId } = context;
-    writeYieldRow(store, worktreeId, at, this.#history.row(this.#standing));
+    const stamp = context.steps?.stamp(at) ?? at;
+    writeYieldRow(store, worktreeId, stamp, this.#history.row(this.#standing));
   }
 }
 
