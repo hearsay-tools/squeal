@@ -31,3 +31,7 @@ Check, each as proven, plausible or unverified:
 5. **The change in `fresh-worktree-durations.test.ts`** (a row 011-379 file) is only its builder.
 
 Coordinator at the candidate: lint and typecheck pass; `quiet-point.test.ts`, three pilot files and the model test pass (22 tests, load 17). Worker: 70 files 3 of 3 (319 tests), Squeal 278 current, no failure. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-378.md` and commit it on your branch.
+
+## W1 repair: after review 011-378 (FAIL)
+
+Use /worker (worker 312a691f, resumed). Shape: repair. Effort high. Read `reviews/011-378.md`. B1: `quiet()` waits only for a counted call to end (`nextEnd`), so a call the scheduler abandons after `quiet()` began (a runner-part bound at 400 ms) holds it until its guard while `idle()` has returned. Repair: re-sample the scheduler's rest while calls are open, so an abandonment during the wait is seen; keep waiting for a live run the test depends on; move no virtual time to a bound. Test first: a real scheduler with an `invalidate` held open and `runner-part-bound` armed when `quiet()` starts; it returns once the scheduler abandons the call, on the host clock and on a virtual clock. Fold the review's other items as it says. Done when: the new case failed before; the 70 files of your earlier run still pass (one round is enough unless one fails; state the load); lint, typecheck, `squeal status --wait 60000` on the changed paths; notes gain "Repair after review 011-378".
