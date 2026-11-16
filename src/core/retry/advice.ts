@@ -16,6 +16,14 @@ import { busyLoad, recordedWhereText, retryStateText } from "./text.js";
 const FILES_NAMED = 5;
 
 /**
+ * The most characters the named test files take in the command (review
+ * 0.1.525, B1): the advice follows the blocks and is never cut, so five long
+ * paths took the whole message cap and left no room for the header or a
+ * block. Past it the command names them by the placeholder.
+ */
+const FILES_NAMED_MAX_CHARS = 400;
+
+/**
  * A known failure's facts in one line: when, where, the revision and the
  * load per CPU, that no pass is on record before it, and its retry.
  */
@@ -46,7 +54,9 @@ export function retryAdviceText(failures: readonly Advised[], command: string): 
   }
   if (busy.length > 0) {
     const files = [...new Set(busy.map((f) => f.path))];
-    const named = files.length > FILES_NAMED ? "<test file>..." : files.map(shellWord).join(" ");
+    const words = files.map(shellWord).join(" ");
+    const named =
+      files.length > FILES_NAMED || words.length > FILES_NAMED_MAX_CHARS ? "<test file>..." : words;
     const when = busy.every((f) => f.facts.noEarlierPass === true)
       ? "if the changed files are not the cause, "
       : "";

@@ -143,6 +143,24 @@ describe("a registration's retry advice (row 005-92)", () => {
     );
   });
 
+  it("names long test files by the placeholder, so the header and the blocks keep their room (review 0.1.525, B1)", () => {
+    const long = (i: number) => `${"deep/".repeat(470)}f${i}`;
+    const failures = [0, 1, 2, 3, 4].map((i) => known(long(i), { noEarlierPass: true }));
+    const text = registered(failures);
+    expect(text.length).toBeLessThanOrEqual(10_000);
+    expect(text.startsWith("SQUEAL · registered at revision 9\n")).toBe(true);
+    expect(text).toContain("\n\nFAIL  ");
+    expect(text).toContain(`\`squeal retry <test file>... --reason load\` runs them ${BELOW}`);
+  });
+
+  it("cuts a shared changed-imports line of long paths (review 0.1.525, B1)", () => {
+    const paths = [0, 1, 2].map((i) => `${"deep/".repeat(470)}s${i}.ts`);
+    const text = registered([known("a", {}, paths), known("b", {}, paths), known("c", {}, paths)]);
+    const line = text.split("\n").find((l) => l.startsWith("All 3 failing tests import")) ?? "";
+    expect(line.length).toBe(1_000);
+    expect(text.startsWith("SQUEAL · registered at revision 9\n")).toBe(true);
+  });
+
   it("names only the failures recorded busy with no retry asked, and no changed-files clause for one with an earlier pass", () => {
     const text = registered([
       known("a", { loadPerCpu: 0.4 }),

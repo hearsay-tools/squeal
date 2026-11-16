@@ -2434,6 +2434,7 @@ function loadRetryText(loadPerCpu, words, fresh2) {
 
 // src/core/retry/advice.ts
 var FILES_NAMED = 5;
+var FILES_NAMED_MAX_CHARS = 400;
 function recordedShortText(facts, here, now) {
   const fresh2 = facts.noEarlierPass === true ? `; ${NO_EARLIER_PASS_TEXT} it` : "";
   return `${recordedWhereText(facts, here, now)}${fresh2}; ${retryStateText(facts)}`;
@@ -2447,7 +2448,8 @@ function retryAdviceText(failures, command) {
   }
   if (busy2.length > 0) {
     const files2 = [...new Set(busy2.map((f) => f.path))];
-    const named3 = files2.length > FILES_NAMED ? "<test file>..." : files2.map(shellWord).join(" ");
+    const words = files2.map(shellWord).join(" ");
+    const named3 = files2.length > FILES_NAMED || words.length > FILES_NAMED_MAX_CHARS ? "<test file>..." : words;
     const when = busy2.every((f) => f.facts.noEarlierPass === true) ? "if the changed files are not the cause, " : "";
     const them = files2.length === 1 ? "it" : "them";
     parts.push(
@@ -5016,6 +5018,7 @@ var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
+var SHARED_LINE_MAX_CHARS = 1e3;
 var OVERFLOW_RESERVE = 400;
 var INDENT = "      ";
 var SQUEAL_COMMAND = "squeal";
@@ -5104,7 +5107,11 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     head,
     blocks,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
-    [closure.line, advice, first === void 0 ? null : whyLine(first.check, command)].filter((l) => l !== null).join("\n\n") || null,
+    [
+      closure.line === null ? null : cap(closure.line, SHARED_LINE_MAX_CHARS),
+      advice,
+      first === void 0 ? null : whyLine(first.check, command)
+    ].filter((l) => l !== null).join("\n\n") || null,
     max
   );
 }

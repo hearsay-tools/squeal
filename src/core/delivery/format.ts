@@ -57,6 +57,13 @@ import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 /** Spec 001 D6: "The message is capped at 10,000 characters". */
 export const MESSAGE_CAP_CHARS = 10_000;
 
+/**
+ * The most characters of the line that says changed imports once, after the blocks (row
+ * 005-92; review 0.1.525, B1): what follows the blocks is never cut by `assemble`, so three
+ * long paths there must not take the room of the header and the blocks.
+ */
+const SHARED_LINE_MAX_CHARS = 1_000;
+
 /** Room kept for the overflow line, its counts split (spec 005 D1), while blocks are added. */
 const OVERFLOW_RESERVE = 400;
 const INDENT = "      ";
@@ -346,7 +353,7 @@ export function formatDelta(
   const lint = delta.lint === undefined ? [] : lintLines(delta.lint, command);
   const tail =
     [
-      ...(closure.line === null ? [] : [closure.line]),
+      ...(closure.line === null ? [] : [cap(closure.line, SHARED_LINE_MAX_CHARS)]),
       ...(failed === undefined ? [] : [whyLine(failed.check, command)]),
       ...(code.length === 0 ? [] : [code.join("\n")]),
       ...(lint.length === 0 ? [] : [lint.join("\n")]),
@@ -608,7 +615,11 @@ export function formatRegistration(
     head,
     blocks,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
-    [closure.line, advice, first === undefined ? null : whyLine(first.check, command)]
+    [
+      closure.line === null ? null : cap(closure.line, SHARED_LINE_MAX_CHARS),
+      advice,
+      first === undefined ? null : whyLine(first.check, command),
+    ]
       .filter((l) => l !== null)
       .join("\n\n") || null,
     max,

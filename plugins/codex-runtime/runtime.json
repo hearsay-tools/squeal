@@ -116,11 +116,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "04aaa899cb314367f4225c52b5175256f07f784903ecfaacbfab80171510a8d5",
+      "sha256": "5f2a41d9af9f615b84b19d1fa5ab080e28efa5e0f0680addf19fe3eee49abd0a",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "cd854bf6351d92bd7332d6a7b27dba2a51ea2174c59f98ca9aae59205f19246e",
+      "sha256": "2fdb6cc6e5dfd9c3a259e75084925130f4a5706c3b201b5fc6c85450979799c0",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -140,7 +140,7 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "ac797ddb3ede250b005d9303e071e64d125da43540a05b05c1f23d5a23441ccb",
+      "sha256": "96bd993581ee8e511527efb98f1feb1e81708005115d9ae35d32f777ba7cbc6f",
       "mode": 420
     },
     "dist/session-end.mjs": {
@@ -148,27 +148,27 @@
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "96fdb84c0b4ee8f85c174adf018a2e603cddab8944003515e8c3ca96bc17e792",
+      "sha256": "316aacc41c1dfe6f8db25cf3b5eb0a949c61309445a76089a64f9577b984f956",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "0e0f3a8997cdc983654a4742684dda7bfeeeccb15bd8c9c978c08b97bf723c28",
+      "sha256": "2da062d11e852c3124d7f700306bbd872c6cd8dab159962d96fab015d781832b",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "e2480cc518940a9ed9e745f05c9be11fd2f7de62265700516b9d9d3bc09baedc",
+      "sha256": "8439e30ff6cf41e8546671c1d73194bf8171980b8b32a1ad142b76bf60efc715",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "41de2c49f86e6fc0dbfe43c34261b9165b31a044e4b9f0b97105210311eda59f",
+      "sha256": "3c1ce9fbc3f9e3fc93b8bdc430ce3589e2bc2abdd48e012b9e88f68badc6852a",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "de029955eb6c381dbd3d18827718703d54778f2c20f95eaafdebc66f116104c0",
+      "sha256": "0c9c14d7e62587da53ca48e7c2dd12b39fee8e4a17585dd24228b564d12e5ef2",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "dc2bd939ad3cf3f8c114692bd50eb2ed910d070e108f1a63945eebab529c8bdd",
+      "sha256": "ae8db66168b9996265badb544916a29d223e9d48b6800081e743aa5594bf0369",
       "mode": 420
     },
     "skills/setup/SKILL.md": {

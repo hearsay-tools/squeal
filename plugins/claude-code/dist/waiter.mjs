@@ -5232,6 +5232,7 @@ var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
+var SHARED_LINE_MAX_CHARS = 1e3;
 var OVERFLOW_RESERVE = 400;
 var INDENT = "      ";
 var SQUEAL_COMMAND = "squeal";
@@ -5383,7 +5384,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const code = delta.code === void 0 ? [] : codeLines(delta.code, command);
   const lint2 = delta.lint === void 0 ? [] : lintLines(delta.lint, command);
   const tail = [
-    ...closure.line === null ? [] : [closure.line],
+    ...closure.line === null ? [] : [cap(closure.line, SHARED_LINE_MAX_CHARS)],
     ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
     ...code.length === 0 ? [] : [code.join("\n")],
     ...lint2.length === 0 ? [] : [lint2.join("\n")],
