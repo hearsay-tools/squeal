@@ -180,7 +180,27 @@ function loadNamed(text: string): string {
  * said "dirty not known" until its idle pass, up to 30 s later.
  */
 const accepted = (text: string | null) =>
-  text?.replace(/ \+ 0, dirty not known\n/, " + 0\n") ?? null;
+  text === null ? null : sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"));
+
+/** A failure block's line on its changed imports, as 0.1.393 printed it in every block. */
+const CLOSURE = /^ {6}its closure reads (files changed here since this session started: .*)$/;
+
+/**
+ * Row 005-92: failure blocks that state the same changed imports say them
+ * once, after the blocks and before `Full output:`, where 0.1.393 said them
+ * in each block. A text with one such line, or with lines that differ, is
+ * unchanged, as the product leaves it.
+ */
+function sharedImports(text: string): string {
+  const lines = text.split("\n");
+  const stated = lines.flatMap((l) => CLOSURE.exec(l)?.[1] ?? []);
+  if (stated.length < 2 || stated.some((s) => s !== stated[0])) return text;
+  const once = `All ${stated.length} failing tests import ${stated[0]}`;
+  return lines
+    .filter((l) => !CLOSURE.test(l))
+    .join("\n")
+    .replace("\n\nFull output:", `\n\n${once}\n\nFull output:`);
+}
 
 describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (plugin) => {
   it("tells the agent what 0.1.393 told it, and Stop decides as it did", async (ctx) => {
@@ -195,7 +215,7 @@ describe.each(PLUGINS)("a repository with no checks key, $name (019 Goal 2)", (p
     ]);
     expect(now.ran).toEqual(before.ran);
     expect(now.decisions).toEqual(before.decisions);
-    expect(now.delivered).toEqual(before.delivered);
+    expect(now.delivered).toEqual(before.delivered.map(accepted));
     expect(now.texts).toEqual(before.texts.map(accepted));
   }, 600_000);
 });
