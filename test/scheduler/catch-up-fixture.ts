@@ -92,6 +92,11 @@ export class CatchUpRunner implements RunnerAdapter {
   beforeRun: ((files: readonly TestFileRef[]) => void) | null = null;
   /** A run's own hold, before the shared one: it waits for the promise, or its cancel (row 011-269). */
   holdOf: ((run: CatchUpRun) => Promise<void> | undefined) | null = null;
+  /**
+   * Row 011-368: a run's own early end. Its files complete when the promise
+   * resolves, before their `realMs`; a cancel still ends it first.
+   */
+  finishOf: ((run: CatchUpRun) => Promise<void> | undefined) | null = null;
   readonly traits: RunnerTraits;
   #gate: { shut: Promise<void>; open: () => void } | null = null;
   readonly #byPath: ReadonlyMap<string, CatchUpFile>;
@@ -186,7 +191,16 @@ export class CatchUpRunner implements RunnerAdapter {
       });
       const began = performance.now();
       if (!signal?.aborted) {
-        await until(new Promise((r) => setTimeout(r, Math.max(0, ...free))), signal);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const slept = new Promise((r) => {
+          timer = setTimeout(r, Math.max(0, ...free));
+        });
+        const early = this.finishOf?.(run);
+        try {
+          await until(early === undefined ? slept : Promise.race([slept, early]), signal);
+        } finally {
+          clearTimeout(timer);
+        }
       }
       run.cancelled = signal?.aborted === true;
       const elapsed = run.cancelled ? performance.now() - began : Number.POSITIVE_INFINITY;
