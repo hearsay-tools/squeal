@@ -66,6 +66,8 @@ Passing tests are not news. Neither is a failure that is still failing. Squeal s
 
 Squeal groups events from one change for a short window. A broken import that takes down forty tests is one update, not forty interruptions.
 
+**Silence has to stay readable.** Quiet means two things at once: nothing changed, and Squeal is keeping up with the agent's edits. When the second stops being true, that is a change, and Squeal says so once: the results for your edits are late. When it catches up, it says so once, with the result. Squeal does not announce a clean result for an edit it never reported as late; the agent pulls that when it needs it.
+
 ### 2. Results are tied to code state
 
 An old result never gets to pose as the current truth. Squeal tags every change, every run and every emitted event with a specific workspace revision or generation.

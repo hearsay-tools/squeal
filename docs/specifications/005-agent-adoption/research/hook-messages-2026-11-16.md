@@ -57,7 +57,7 @@ PostToolBatch messages by title (recounted, both projects, 2,098):
 ### Not present
 
 - No message says when results are expected.
-- No message says, in plain words, that an edit's tests all ran with no new failure.
+- No message says, in plain words, that an edit's tests all ran with no new failure. Decided 2026-11-16 (the human): not pushed after each edit; pushed once after a late notice, and pulled otherwise (`../status.md`, row 005-93).
 
 ## The test for each sentence (the human, 2026-11-16)
 
