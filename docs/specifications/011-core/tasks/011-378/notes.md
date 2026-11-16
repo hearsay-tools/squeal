@@ -72,4 +72,34 @@ Five class-B files across four builders:
 | `test/scheduler/tier-yields-ended.test.ts` | catch-up | 3 | |
 | `test/scheduler/claims-split.test.ts` | claims | 2 | needed `through: ["claims"]` |
 
-RUNS_PLACEHOLDER
+## Runs
+
+The 70 test files that import a moved fixture or builder file, plus the pilot, `quiet-point.test.ts` and `tier-yields-settle.test.ts` (the list: every `*.test.ts` importing one of the 14 fixtures, sorted). One `vitest run` per round, `env -u PLUGIN_ROOT -u PLUGIN_DATA timeout 1500 node_modules/.bin/vitest run --maxWorkers=3 <70 files>`, 24 CPUs, at `df33b31dc`. Load is the one-minute load average at the start and end.
+
+| Round | UTC | Files | Tests | Vitest duration | Load |
+|---|---|---|---|---|---|
+| 1 | 14:49:59 to 14:53:10 | 70 passed | 319 passed, 8 skipped | 189.6 s | 19.4 → 29.2 |
+| 2 | 14:53:10 to 14:55:57 | 70 passed | 319 passed, 8 skipped | 165.6 s | 29.2 → 21.7 |
+| 3 | 14:55:57 to 14:58:48 | 70 passed | 319 passed, 8 skipped | 170.2 s | 21.7 → 20.4 |
+
+The 8 skipped are `runs.test.ts`'s forced stalls, as in the survey. Each file passed 3 of 3. This list does not include every user of the three builders: the counting wrapper and `settle`'s new mark reach about 200 more files (`tier-yields-fixture.ts` users, every harness user). Squeal's daemon ran those as affected checks (below).
+
+## The probe
+
+The survey's probe (its appendix) moved into the quiet point, in a private detached worktree (`t/312a691f/probe`, removed after): at each return of `quiet()`, it checks whether `Scheduler.idle()` resolves within 3 `setImmediate` turns (`same`), else logs the real time `idle()` still took (`aside`, or `hang` past 15 s), with the wakes left.
+
+- First run, over the 70 files at `885363dac`, load 16.8 → 20.0: 419 calls, `same` 372, `aside` 23, `hang` 24. All 47 non-`same` calls were inside the loops of `idleAfterQuiet` (`quiet-clock.ts`) and the model's `drain` (`model-fixture.ts`), before they skip the catch-up wait or move the clock: not where these helpers return. The probe's own 15 s waits there made `edit-cut.test.ts` case 7 time out.
+- Second run, with the probe at those helpers' returns instead, over the 15 files that reach them (the 12 importers of `quiet-clock.ts` and `model-fixture.ts`, and `edit-cut.test.ts`, `edit-cut-new-source.test.ts`, `observed-direct.test.ts`), load 19.0 → 21.7: 204 calls, all `same`. No call was left `aside`. `edit-cut.test.ts` case 7 still timed out: its runner-part call is held open for good. The rule for abandoned calls (contract, step 2) fixed it; the 3 rounds above include it.
+
+Limits: the probe ran before the abandoned-call rule, which waits for less, not more. One probe run per file at load 17 to 22.
+
+## Checks
+
+CHECKS_PLACEHOLDER
+
+## For the next worker (rows 011-379 to 011-381)
+
+- A B file: `x.scheduler.idle()` → `h.quiet()` / `side.quiet()` / `s.quiet()`. If it fails where `idle()` passed, read the wakes left: a host-clock file whose queued files wait on another worktree's claim needs `quiet({ through: ["claims"] })`; a pump wait needs `["pump"]`. A file that holds a run open past the call needs `rest()` or `settle`.
+- One passing run is not evidence (the survey's screen, method 2): run each file 3 times.
+- Row 011-371 D (drop `idle()`): `drive-fixture.ts` no longer names `Pick<Scheduler, "idle">`.
+- `idleOn` and `idleAfterQuiet` keep their names: "idle" there is the glossary's (the queue is empty and nothing runs), not the method.
