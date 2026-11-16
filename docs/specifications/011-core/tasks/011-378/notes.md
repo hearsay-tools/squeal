@@ -95,7 +95,9 @@ Limits: the probe ran before the abandoned-call rule, which waits for less, not 
 
 ## Checks
 
-CHECKS_PLACEHOLDER
+- `pnpm run lint` (biome, 3536 files): clean. `pnpm exec tsc --noEmit -p .` and `pnpm run typecheck`: clean.
+- `squeal status --wait` on every changed test path, at revision 26 (`6b20ed3df`): "278 test files, each with a current result; no known failures" at 16:05 UTC. The checks drained over about 65 minutes while the host was busy (load 12 to 29; Squeal held 1 to 3 of 6 test slots). They include every user of the three builders and of `settle`.
+- No local full suite and no `squeal run --all` (host policy). No `pnpm run build`: no bundle changed.
 
 ## For the next worker (rows 011-379 to 011-381)
 
