@@ -31,7 +31,7 @@ export class RunnerCalls {
   #started = 0;
   #ended = 0;
   readonly #open = new Map<string, number>();
-  #ends: (() => void)[] = [];
+  readonly #ends = new Set<() => void>();
 
   /** Calls started and not yet ended. */
   get open(): number {
@@ -54,9 +54,20 @@ export class RunnerCalls {
     return this.#open.get("run") ?? 0;
   }
 
-  /** Resolves at the next call's end. */
-  nextEnd(): Promise<void> {
-    return new Promise((resolve) => this.#ends.push(resolve));
+  /**
+   * Resolves at the next call's end, or after `ms` of real time, whichever
+   * comes first; it leaves no subscriber behind.
+   */
+  nextEnd(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.#ends.delete(done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      this.#ends.add(done);
+    });
   }
 
   /** Counts `result` open until it settles; returns it as it is. */
@@ -66,7 +77,7 @@ export class RunnerCalls {
     const end = () => {
       this.#ended += 1;
       this.#open.set(name, (this.#open.get(name) ?? 1) - 1);
-      for (const resolve of this.#ends.splice(0)) resolve();
+      for (const done of [...this.#ends]) done();
     };
     // The caller gets `result` itself, so its rejection reaches the caller and no one else.
     result.then(end, end);
@@ -107,8 +118,12 @@ export interface QuietSide {
 /** A quiet point not found in this long fails the test: a guard on the host's clock only. */
 export const QUIET_LIMIT_MS = 120_000;
 
-/** How often a quiet point on the host's clock looks again while a wake it waits through is left. */
-const THROUGH_POLL_MS = 20;
+/**
+ * How often a quiet point rests again while a call it waits for is open
+ * (review 011-378 B1: the scheduler can abandon it meanwhile), or, on the
+ * host's clock, while a wake it waits through is left.
+ */
+const POLL_MS = 20;
 
 export interface QuietOptions {
   /**
@@ -124,10 +139,12 @@ export interface QuietOptions {
 }
 
 /**
- * Row 011-378: the quiet point of `side`. It rests; while a runner call is
- * open (`waitedCalls`) it waits for a call to end and rests again; it
- * returns the rest once none is open and no call started or ended from
- * before the rest to one real timer turn after it. A record's gather is bookkeeping: on a
+ * Row 011-378: the quiet point of `side`. It rests; while a runner call it
+ * waits for is open (`waitedCalls`) it rests again at the next call's end
+ * or after `POLL_MS`, so a call the scheduler abandons meanwhile stops
+ * holding it (review 011-378 B1); it returns the rest once none is open and
+ * no call started or ended from before the rest to one real timer turn
+ * after it. A record's gather is bookkeeping: on a
  * virtual clock time moves to the first gather no other wake comes at or
  * before (`gatherAt`, as `settle` does), and on the host's clock the quiet
  * point waits for it. Any other wake fires only when the test moves time,
@@ -145,7 +162,9 @@ export async function quiet(side: QuietSide, options: QuietOptions = {}): Promis
     const before = side.calls.mark();
     const rest = await within(side.rest(), limit, () => late("no rest"));
     if (waitedCalls(side.calls, rest) > 0) {
-      await within(side.calls.nextEnd(), limit, () => late("a runner call stayed open"));
+      // A call that ends, or a fresh rest: the scheduler may abandon a call it waited for (review 011-378 B1).
+      if (performance.now() > limit) throw late("a runner call stayed open");
+      await side.calls.nextEnd(POLL_MS);
       continue;
     }
     const at = side.clock === null ? null : gatherAt(rest);
@@ -154,7 +173,7 @@ export async function quiet(side: QuietSide, options: QuietOptions = {}): Promis
       continue;
     }
     const waits = side.clock === null && rest.wakes.some((wake) => through.has(wake.reason));
-    await turn(waits ? THROUGH_POLL_MS : 1);
+    await turn(waits ? POLL_MS : 1);
     if (!waits && waitedCalls(side.calls, rest) === 0 && side.calls.mark() === before) return rest;
     if (performance.now() > limit) {
       const left = rest.wakes.map((wake) => wake.reason).join(", ");
