@@ -127,7 +127,7 @@ The clock reading that answers "what time is it": milliseconds since the epoch, 
 _Avoid_: wall time, now (the method that reads it), timestamp
 
 **Elapsed time**:
-The clock reading that answers "how long has it been": milliseconds from an origin of the daemon's own, which never goes back and which a change of calendar time does not move. Every wake and every wait or safety limit kept inside one daemon is measured on it, so a calendar change moves none of them.
+The clock reading that answers "how long has it been": milliseconds from an origin of the daemon's own, which never goes back and which a change of calendar time does not move. Every wake is stated as a delay and kept on it, so a calendar change moves no wake. Waits that compare a stored calendar time (a group's quiet after an edit, a named wait's deadline, the claims window, a hold's end, the idle and yield bounds, the drain time) still move with a calendar change; board row 011-377 holds them.
 _Avoid_: steady time, ticks, monotonic time, duration (a span, measured on either)
 
 **Rest**:

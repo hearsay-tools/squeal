@@ -153,3 +153,12 @@ The two commits were rebased onto cand/0.1.521 at `42acd3b9c`, which holds row 0
 - `test/scheduler/step-reading.test.ts`: a text conflict. Row 011-372 replaced the hand-made `tickingClock`, to which this row had added `elapsed` and `shiftCalendar`, with a spy on the virtual clock's `now`. I took row 011-372's version. The virtual clock has `elapsed` itself, so nothing else is needed.
 
 After the rebase, the clock reads in the list above keep their kinds. Row 011-372 routes more decisions through the step's reading; those reads are calendar time, as the list says for `step-live.ts`.
+
+## After review 0.1.523 (coordinator, 2026-11-16)
+
+Review `reviews/0.1.523.md` N1: the list above is not complete, and some line references are from before the rebase onto 0.1.521. Two reads it misses, both calendar time and unchanged by this row:
+
+- `checkpoint-requests.ts:167`, `host.quiet.end(context.now())`: ending a quiet window publishes its state at that time.
+- `scheduler.ts:1328`, `at ?? this.#now()` for the beside-file decision: a fallback for callers outside a step; a step passes its own reading (row 011-372).
+
+`beside.ts:36` no longer reads a clock: since row 011-372 it receives the step's reading. Line numbers in the lists above are as of commit `92012f773`; read them with `git grep -n "now()\|elapsed()" src/core/scheduler/` on the current tree.
