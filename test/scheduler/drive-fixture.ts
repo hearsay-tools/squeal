@@ -16,7 +16,11 @@ export interface Driven {
   rest(): Promise<Rest>;
 }
 
-/** The wakes `until` moves the clock to by default: a backlog record's gather and the pump's own wait. */
+/**
+ * The wakes `until` moves the clock to by default: a backlog record's
+ * gather and the pump's own wait, a pool's capacity recheck included (a
+ * refused grant waits as a pump wake; review `reviews/011-363-367.md` N1).
+ */
 export const DRIVEN: readonly string[] = ["slot-gather", "pump"];
 
 /** Rests once no runner-part call is open: those are the runner's real work. */
@@ -31,8 +35,9 @@ export async function settle(side: Driven): Promise<Rest> {
 /**
  * Until `done`, at most `steps` rests: at each, the clock moves to the next
  * wake if `driven` names it, else the runner's real work goes on for 10 ms.
- * No other wake (a yield bound, a pool recheck) is passed. The caller
- * asserts `done` after.
+ * No other wake (a yield bound, a claim recheck) is passed. A test that
+ * must stay before a pool's recheck moves the clock itself or leaves
+ * `pump` out of `driven`. The caller asserts `done` after.
  */
 export async function until(
   side: Driven,
