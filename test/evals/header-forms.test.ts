@@ -314,6 +314,15 @@ const withoutChecks = (pending: number, unknown: number): StatusSnapshot => ({
   testFilesByPhase: { running: 0, queued: pending },
   breakdown: { ...settled.breakdown, testFilesWithoutChecks: pending + unknown },
 });
+/** Row 005-93 (c): an own count whose owed files are those `s` holds pending or unknown. */
+function ownOf(s: StatusSnapshot) {
+  const owed =
+    s.counts.pending +
+    s.counts.unknown +
+    s.testFilesWithoutChecks.pending +
+    s.testFilesWithoutChecks.unknown;
+  return { files: owed + 1, owed };
+}
 /** Each form's steps; a news header names no known failure, so the ledger's recovery comes first. */
 const formatted: [string, (s: StatusSnapshot) => Step[]][] = [
   ["a status", (s) => [{ cmd: "squeal status", out: formatStatus(s, 2_000 as never) }]],
@@ -323,7 +332,11 @@ const formatted: [string, (s: StatusSnapshot) => Step[]][] = [
   ],
   [
     "a news header",
-    (s) => [{ squeal: RECOVERY(3) }, { squeal: formatDelta({ header: s, entries: [] } as never) }],
+    // Row 005-93 (c): the news header counts the session's own files, here those not current.
+    (s) => [
+      { squeal: RECOVERY(3) },
+      { squeal: formatDelta({ header: s, entries: [], ownEdits: ownOf(s) } as never) },
+    ],
   ],
 ];
 

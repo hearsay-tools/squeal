@@ -52,13 +52,24 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     );
   });
 
-  it("names the edits' test files once they are settled", () => {
-    const settled = { since: 3, files: 2, unknown: 0 };
-    expect(titleOf({ editsSettled: settled })).toBe(
-      "SQUEAL · your edits' test files are current at revision 5",
+  // Row 005-93: the late and caught-up notices, in place of 001-223's settled line.
+  it("names late results and catching up", () => {
+    const late = {
+      kind: "owed" as const,
+      revision: 5,
+      owed: 1,
+      files: 2,
+      editRevision: 4,
+      ageMs: 9_000,
+    };
+    expect(titleOf({ editsLate: late })).toBe(
+      "SQUEAL · results for your edits are late at revision 5",
     );
-    expect(titleOf({ sawEdit: { queued: 2 }, editsSettled: { ...settled, unknown: 1 } })).toBe(
-      "SQUEAL · your edits' test files finished at revision 5",
+    expect(titleOf({ caughtUp: { revision: 5, files: 2, unknown: 0 } })).toBe(
+      "SQUEAL · caught up at revision 5",
+    );
+    expect(titleOf({ sawEdit: { queued: 2 }, editsLate: late })).toBe(
+      "SQUEAL · results for your edits are late; your edit queued 2 test files at revision 5",
     );
   });
 
@@ -80,7 +91,7 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     const groups = { ...header, groupTiers: [browser(0, 1)] };
     for (const parts of [
       { sawEdit: { queued: 2 } },
-      { editsSettled: { since: 1, files: 1, unknown: 0 } },
+      { caughtUp: { revision: 5, files: 1, unknown: 0 } },
       { sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] },
     ]) {
       expect(titleOf(parts, groups)).not.toBe("SQUEAL · revision 5");

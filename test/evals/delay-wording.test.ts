@@ -49,7 +49,9 @@ const status = (s: StatusSnapshot) => formatStatus(s, 2_000 as never);
 const header = (s: StatusSnapshot) =>
   formatRegistration({ header: s, knownFailures: s.knownFailures } as never);
 const stop = (s: StatusSnapshot) => statusText(s, s.knownFailures);
-const news = (s: StatusSnapshot) => formatDelta({ header: s, entries: [] } as never);
+/** Row 005-93 (c): news to a session whose edits affect 1 test file, which has run. */
+const news = (s: StatusSnapshot) =>
+  formatDelta({ header: s, entries: [], ownEdits: { files: 1, owed: 0 } } as never);
 /** A timed-out `status --wait`: the status, then its verdict line last (011-10). */
 const timedOut = (s: StatusSnapshot) =>
   waitText(

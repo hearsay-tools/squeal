@@ -215,8 +215,8 @@ interface Own extends OwnRead {
 /**
  * The consumer's edits after `since` at the latest revision; `null` with none. Until the latest
  * revision's runner part is applied (`isRefined`), the files it adds have no key, so none is
- * counted. A file is owed while pending for any reason, a confirmation of its edit's result
- * among them (review wave 13v, B1); its edit is its earliest unresolved re-key after `since`.
+ * counted. A file is owed while its earliest unresolved re-key has no result at its key; its
+ * edit is that re-key, or the first revision after `since` for one made before it.
  */
 function readOwn(
   store: Store,
@@ -241,8 +241,10 @@ function readOwn(
     // An unkeyed file has no result to come.
     if (row === undefined || row.key === null) continue;
     rekeyed.push(row);
-    const from = entry.open !== null && entry.open > since ? entry.open : entry.last;
-    if (row.pending !== null) owed.push({ file: row.testFile, from });
+    // Owed while its re-key has no result at its key (row 005-93): a confirmation run at the same
+    // key after the edit's result (001-171) owes nothing.
+    if (entry.open !== null)
+      owed.push({ file: row.testFile, from: Math.max(entry.open, since + 1) });
   }
   return {
     since,
@@ -268,7 +270,7 @@ export function carriesEditResult(
   checks: readonly CheckId[],
   header: StatusHeader,
 ): boolean {
-  if (notes.sawEdit === undefined || notes.own?.owed === 0) return false;
+  if (notes.sawEdit === undefined) return false;
   const pending =
     header.counts.pending > 0 ||
     header.testFilesWithoutChecks.pending > 0 ||

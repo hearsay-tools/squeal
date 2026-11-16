@@ -67,7 +67,7 @@ describe("PostToolUse (goal 2)", () => {
     r.confirm();
     const { stdout } = await hook(r, "post-tool-use", "post-tool-use");
     expect(stdout).toContain("PASS -> FAIL");
-    expect(stdout).toContain("no check pending, stale or unknown.");
+    expect(stdout).toContain("your edits affect has run.");
     expect(stdout).not.toContain("Squeal saw your edit");
   });
 });

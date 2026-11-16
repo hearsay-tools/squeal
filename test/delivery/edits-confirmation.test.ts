@@ -38,7 +38,8 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const OTHER_FILE: TestFileRef = { project: "", path: "src/b.test.ts" };
 const A = check("a");
 const B = check("b", OTHER_FILE);
-const SETTLED = /your edits since revision \d+ re-keyed is current\./;
+/** Row 005-93 (c): the own count once the edit's file ran, in place of 001-223's settled line. */
+const SETTLED = /the 1 test file your edits affect has run\./;
 const key = (c: string) => c.repeat(64) as CheckKey;
 
 let store: Store;
@@ -114,7 +115,8 @@ function edit(refs: readonly TestFileRef[] = [FILE], to: CheckKey = key("b")): v
   const latest = store.revisions.latest(WT)?.number ?? 0;
   const revision = store.revisions.append({
     worktreeId: WT,
-    createdAt: latest + 1,
+    // Recorded now: no result is late (row 005-93).
+    createdAt: Date.now(),
     head: null,
     dirty: true,
     trigger: "watch",
@@ -131,8 +133,14 @@ async function text(stop = false): Promise<string | null> {
   return delta === null ? null : formatDelta(delta);
 }
 
-describe("the settled line over an edited file's confirmation run (review wave 13v, B1)", () => {
-  it("waits while the confirmation is queued or running, then is said once on later news", async () => {
+/*
+ * Row 005-93: a file the edits affect is owed while it has no result at its key. The edit's
+ * first result is one, so a confirmation run at the same key (001-171), or a run forced there,
+ * owes nothing: the own count says it ran, once, and later news counts from there. Before row
+ * 005-93 the settled line waited for such a run (review wave 13v, B1).
+ */
+describe("the own count over an edited file's confirmation run (row 005-93)", () => {
+  it("counts the file as run once the edit's result lands, while its confirmation is queued", async () => {
     await baseline();
     edit();
     expect(await text()).toContain("Squeal saw your edit and queued 1 test file");
@@ -145,23 +153,16 @@ describe("the settled line over an edited file's confirmation run (review wave 1
     );
     const queued = await text();
     expect(queued).toContain("PASS -> FAIL");
-    expect(queued).not.toMatch(SETTLED);
+    expect(queued).toMatch(SETTLED);
 
     start(FILE);
     land(OTHER_FILE, key("o"), [result(B, "fail", { key: key("o"), message: "b1" })], true);
     const running = await text();
     expect(running).toContain("src/b.test.ts");
-    expect(running).not.toMatch(SETTLED);
-
-    land(FILE, key("b"), [result(A, "fail", { key: key("b") })], true);
-    expect(await text()).toBeNull();
-    land(OTHER_FILE, key("o"), [result(B, "fail", { key: key("o"), message: "b2" })], true);
-    expect(await text()).toMatch(SETTLED);
-    land(OTHER_FILE, key("o"), [result(B, "fail", { key: key("o"), message: "b3" })], true);
-    expect(await text()).not.toMatch(SETTLED);
+    expect(running).not.toMatch(/your edits affect/);
   });
 
-  it("waits for a forced run at the same key after the edit's result", async () => {
+  it("owes nothing for a forced run at the same key after the edit's result", async () => {
     await baseline();
     edit();
     await text();
@@ -170,11 +171,6 @@ describe("the settled line over an edited file's confirmation run (review wave 1
     ledger.enqueue(fileOf(FILE), priorityOf(fileOf(FILE), NOTHING_CHANGED), true);
     ledger.commit();
     land(OTHER_FILE, key("o"), [result(B, "fail", { key: key("o"), message: "b1" })], true);
-    expect(await text()).not.toMatch(SETTLED);
-
-    start(FILE);
-    land(FILE, key("b"), [result(A, "pass", { key: key("b") })], true);
-    land(OTHER_FILE, key("o"), [result(B, "fail", { key: key("o"), message: "b2" })], true);
     expect(await text()).toMatch(SETTLED);
   });
 
@@ -196,8 +192,8 @@ describe("the settled line over an edited file's confirmation run (review wave 1
 
 /*
  * Task 001-396 (008 lessons, defect 4(b)): the edit's first result fails
- * anew, so its confirmation keeps the file's row pending and the settled line
- * held, while the header says nothing is pending. The message that delivers that
+ * anew, so its confirmation keeps the file's row pending, while the worktree
+ * has nothing pending. The message that delivers that
  * result does not also say "results arrive with later tool calls".
  */
 describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
@@ -211,7 +207,7 @@ describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
     expect(delta?.sawEdit).toBeUndefined();
     const first = delta === null ? "" : formatDelta(delta);
     expect(first).toContain(
-      "\nRevision 1 (changed src/a.ts): no check pending, stale or unknown.\n",
+      "\nRevision 1 (changed src/a.ts): the 1 test file your edits affect has run.\n",
     );
     expect(first).toContain("PASS -> FAIL");
     expect(first).not.toContain(SAW);
@@ -226,7 +222,7 @@ describe("the 001-224 line beside the edit's own result (task 001-396)", () => {
     land(FILE, key("b"), [result(A, "fail", { key: key("b") })]);
     const kept = await text();
     expect(kept).toContain("PASS -> FAIL");
-    expect(kept).toMatch(/[1-9]\d* pending/);
+    expect(kept).toContain("1 of the 2 test files your edits affect has not run.");
     expect(kept).toContain(`${SAW} and queued 2 test files; results arrive with later tool calls`);
   });
 });

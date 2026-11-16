@@ -82,7 +82,7 @@ describe("a late heartbeat (row 011-276)", () => {
 
       expect(hook).toBe(
         "SQUEAL · the daemon's heartbeat is late at revision 1\n" +
-          "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
+          "Revision 1 (changed src/math.ts). " +
           `The daemon's heartbeat is late: ${DETAIL}; results are as of revision 1.\n` +
           `Not validated: the daemon's heartbeat is late: ${DETAIL}; any change this call made has no result until it validates again.`,
       );
@@ -117,7 +117,7 @@ describe("a late heartbeat (row 011-276)", () => {
 
       expect(hook).toBe(
         "SQUEAL · a daemon is validating again at revision 1: its heartbeat is current\n" +
-          "Revision 1 (changed src/math.ts): no check pending, stale or unknown.",
+          "Revision 1 (changed src/math.ts).",
       );
       expect(json).toEqual({ state: "alive", lastHeartbeatAt: expect.any(Number) });
       expect(text).toMatch(/^Daemon: running, last heartbeat \d+ s ago$/m);
@@ -237,7 +237,7 @@ describe("a recorded stop or exit is not a late heartbeat (row 011-276)", () => 
 
     expect(hook).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
-        "Revision 1 (changed src/math.ts): no check pending, stale or unknown. " +
+        "Revision 1 (changed src/math.ts). " +
         `No daemon has validated since ${ISO}; results are as of revision 1.\n` +
         `Not validated: no daemon has validated since ${ISO}; any change this call made has no result.`,
     );

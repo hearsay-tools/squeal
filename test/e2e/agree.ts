@@ -21,19 +21,14 @@ const HEADER = new RegExp(
 );
 
 /**
- * 001-407: a change delivery's news header names only the non-zero pending, stale and unknown
- * counts, or "no check pending, stale or unknown", and no checkpoint. Row 011-205: with no such
- * check, the test files without checks alone, which count no check. Row 011-262: the revision
- * names its changed paths as the full form does.
+ * 001-407: a change delivery's news header has no checkpoint. Row 011-262: the revision names
+ * its changed paths as the full form does. Row 005-93 (c): it counts the test files the
+ * consumer's edits affect, `3 of the 9 test files your edits affect have not run.`, or none:
+ * the line ends after the changed paths. The worktree's counts stay in status.
  */
 const NEWS = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}${CHANGED}: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))`,
+  String.raw`Revision (\d+)${COMMIT}${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run))?\.`,
 );
-
-/** `validity`'s count in a news header's counts, 0 when it is not named. */
-function newsCount(counts: string, validity: string): number {
-  return Number(new RegExp(String.raw`(\d+) ${validity}\b`).exec(counts)?.[1] ?? 0);
-}
 
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
 export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
@@ -60,17 +55,10 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
       ...status.counts,
     });
   } else {
-    const counts = news?.[5] ?? "";
-    const { pending, stale, unknown } = status.counts;
-    expect(
-      {
-        revision: Number(revision),
-        pending: newsCount(counts, "pending"),
-        stale: newsCount(counts, "stale"),
-        unknown: newsCount(counts, "unknown"),
-      },
-      text,
-    ).toEqual({ revision: status.revision, pending, stale, unknown });
+    expect(Number(revision), text).toBe(status.revision);
+    // At a quiet point nothing is pending, so no file the consumer's edits affect is owed.
+    const owed = (news?.[5] ?? "").includes("not run");
+    expect(owed, text).toBe(status.counts.pending + status.testFilesWithoutChecks.pending > 0);
   }
   const commit = status.commit;
   expect(

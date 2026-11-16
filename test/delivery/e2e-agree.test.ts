@@ -14,6 +14,9 @@ const completed: StatusSnapshot = {
 const full = (s: StatusSnapshot) =>
   formatRegistration({ header: s, knownFailures: s.knownFailures } as never);
 const news = (s: StatusSnapshot) => formatDelta({ header: s, entries: [] } as never);
+/** Row 005-93 (c): news to a consumer whose edits affect 2 test files, all run. */
+const ownNews = (s: StatusSnapshot) =>
+  formatDelta({ header: s, entries: [], ownEdits: { files: 2, owed: 0 } } as never);
 const owedNews = (s: StatusSnapshot) =>
   formatDelta({ header: s, entries: [], countsOwed: { lookupOnly: false } } as never);
 
@@ -27,6 +30,14 @@ describe("e2e agreement: the header forms beside a completed checkpoint", () => 
 
   it("accepts ordinary news and a full header with the checkpoint", () => {
     expect(() => expectAgrees(news(completed), completed)).not.toThrow();
+    expect(ownNews(completed)).toContain("the 2 test files your edits affect have all run.");
+    expect(() => expectAgrees(ownNews(completed), completed)).not.toThrow();
+    const owing = formatDelta({
+      header: completed,
+      entries: [],
+      ownEdits: { files: 2, owed: 1 },
+    } as never);
+    expect(() => expectAgrees(owing, completed)).toThrow();
     expect(full(completed)).toContain(`Full-suite checkpoint: completed at revision 3.`);
     expect(() => expectAgrees(full(completed), completed)).not.toThrow();
   });
@@ -58,8 +69,8 @@ describe("e2e agreement: news that names the changed paths", () => {
   it("reads past a path that holds a closing parenthesis, in either form", () => {
     const routed = { ...settled, changedPaths: ["src/app/(auth)/page.tsx"] };
     for (const s of [routed, { ...routed, commit: committed.commit }])
-      for (const text of [news(s), full(s)]) {
-        expect(text).toContain(" (changed src/app/(auth)/page.tsx): ");
+      for (const text of [news(s), ownNews(s), full(s)]) {
+        expect(text).toMatch(/ \(changed src\/app\/\(auth\)\/page\.tsx\)[:.]/);
         expect(() => expectAgrees(text, s)).not.toThrow();
         expect(headerRevision(text)).toBe(settled.revision);
       }

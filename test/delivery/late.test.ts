@@ -122,6 +122,7 @@ describe("late, once (row 005-93, part 2)", () => {
       [],
     );
     key(FILE, `k-${FILE.path}`);
+    recordRekeyed(store, WT, [{ id: testFileId(FILE), open: null, moved: null }], []);
     expect(await text()).toContain("Squeal saw your edit");
     clock += 130_000;
     const said = await text();

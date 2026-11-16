@@ -66,7 +66,12 @@ const FORMS = [
   ],
   [
     "news header",
-    (s: StatusSnapshot) => formatDelta({ header: s, entries: [], slowTierChanged: true } as never),
+    // Row 005-93 (c): the news header counts the session's own files, here every pending one.
+    (s: StatusSnapshot) => {
+      const owed = s.counts.pending + s.testFilesWithoutChecks.pending;
+      const ownEdits = { files: owed + 1, owed };
+      return formatDelta({ header: s, entries: [], slowTierChanged: true, ownEdits } as never);
+    },
     "push",
   ],
 ] as const;

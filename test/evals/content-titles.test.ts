@@ -23,7 +23,11 @@ const delta = (parts: Partial<Delta>): string =>
 
 const NEW = [
   delta({ sawEdit: { queued: 2 } }),
-  delta({ editsSettled: { since: 2, files: 2, unknown: 0 } }),
+  // Row 005-93: the late and caught-up notices.
+  delta({ caughtUp: { revision: 4, files: 2, unknown: 0 } }),
+  delta({
+    editsLate: { kind: "owed", revision: 4, owed: 1, files: 2, editRevision: 3, ageMs: 9_000 },
+  }),
   delta({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } }),
   // Review 0.1.527, B2: code lines that count no function change.
   delta({
@@ -43,7 +47,11 @@ const NEW = [
     },
   }),
 ];
-const OLD = "SQUEAL · revision 4\nRevision 4: no check pending, stale or unknown.";
+const OLD = [
+  "SQUEAL · revision 4\nRevision 4: no check pending, stale or unknown.",
+  // 0.1.527's settled line (001-223), which row 005-93 removed.
+  "SQUEAL · your edits' test files are current at revision 4\nRevision 4: no check pending, stale or unknown.\nAll 2 test files your edits since revision 2 re-keyed are current.",
+];
 
 const hook = (t: number, output: string): Event => ({
   t,
@@ -59,7 +67,7 @@ describe("content titles in the grader's delivery count (row 005-91 c)", () => {
   });
 
   it("count as results, as the old title did, never as other", () => {
-    const events = [...NEW, OLD].map((text, i) => hook(100 * (i + 1), text));
+    const events = [...NEW, ...OLD].map((text, i) => hook(100 * (i + 1), text));
     const g = gradeCell({ timeline: claudeTimeline(events), statusEnd: settled });
     expect(g.deliveries).toMatchObject({ registration: 0, fail: 0, other: 0 });
   });
