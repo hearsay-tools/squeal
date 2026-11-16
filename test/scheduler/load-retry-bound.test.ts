@@ -65,7 +65,7 @@ describe("a load retry's bounded wait", SLOW, () => {
     h.advance(LOAD_RETRY_WAIT_MS);
     const before = h.now();
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(1);
     expect(readRetries(store)[0]?.gateClosedAt).toBeGreaterThanOrEqual(before);
   });

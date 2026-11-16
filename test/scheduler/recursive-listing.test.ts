@@ -85,7 +85,7 @@ describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
     });
     h.write("tree/sub/a.txt", "a\n");
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const keys = (paths: string[]) => paths.map((path) => keysOf(h, path));
     const outcomes = (paths: string[]) => paths.map((path) => outcomesOf(h, path));
     const runs = (from: number) => RECURSIVE.map((path) => ran(h, path, from));
@@ -107,7 +107,7 @@ describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
     let from = h.runner.runs.length;
     h.write("tree/sub/b.txt", "b\n");
     await h.batch("tree/sub/b.txt");
-    await h.scheduler.idle();
+    await h.quiet();
     const added = keys(RECURSIVE);
     for (const [f, file] of added.entries()) {
       for (const [p, key] of file.entries()) expect(key).not.toBe(listed[f]?.[p]);
@@ -122,7 +122,7 @@ describe("scheduler: a recursive listing (review wave 12e B5)", SLOW, () => {
     from = h.runner.runs.length;
     h.remove("tree/sub/a.txt");
     await h.batch("tree/sub/a.txt");
-    await h.scheduler.idle();
+    await h.quiet();
     const removed = keys(RECURSIVE);
     for (const [f, file] of removed.entries()) {
       for (const [p, key] of file.entries()) {

@@ -52,7 +52,7 @@ async function observing(fixture = createRepo("observed"), policy: Partial<Polic
     policy: { ...RUN_MISSING, ...policy },
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return { h, store, repo: fixture };
 }
 
@@ -103,7 +103,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     const from = h.runner.runs.length;
     touch(h, path);
     await h.batch(path);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(ranProjects(h, RUNTIME, from)).toEqual(["forks", "threads"]);
     expect(ranProjects(h, PLAIN, from)).toEqual([]);
   });
@@ -115,7 +115,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     h.write("data/listed/b.txt", "b\n");
     await h.batch("data/listed/b.txt");
     expect(POOLS.map((pool) => keyOf(h, at(RUNTIME, pool)))).not.toEqual(before);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(ranProjects(h, RUNTIME, from)).toEqual(["forks", "threads"]);
     expect(ranProjects(h, PLAIN, from)).toEqual([]);
   });
@@ -125,7 +125,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     const same = addWorktree(repo.main, repo.dir, "same");
     const second = await openHarness(same, store, repo.commonDir, { observe: true });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(ranProjects(second, RUNTIME, 0)).toEqual([]);
 
     const changed = addWorktree(repo.main, repo.dir, "changed");
@@ -135,7 +135,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     });
     touch(third, "scripts/grandchild.mjs");
     await third.scheduler.start();
-    await third.scheduler.idle();
+    await third.quiet();
     // Its gitignored build output is absent here: the new fail is re-run once (task 001-171).
     expect(ranProjects(third, RUNTIME, 0)).toEqual(["forks", "forks", "threads", "threads"]);
     expect(ranProjects(third, PLAIN, 0)).toEqual([]);
@@ -172,7 +172,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
         },
       );
       await harness.scheduler.start();
-      await harness.scheduler.idle();
+      await harness.quiet();
       return harness;
     };
     const first = await linked("first");
@@ -195,7 +195,7 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
         changes.some((c) => c.path === "squeal.config.json") ? state.next : null,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const keys = () => POOLS.map((pool) => keyOf(h, at(RUNTIME, pool)));
     const today = keys();
     expect(store.testFiles.get(at(RUNTIME, "forks"))?.closure.paths).not.toContain(
@@ -205,14 +205,14 @@ describe("scheduler: observed runtime inputs (task 001-132)", SLOW, () => {
     state.next = on;
     h.write("squeal.config.json", "{}\n");
     await h.batch("squeal.config.json");
-    await h.scheduler.idle();
+    await h.quiet();
     const observed = keys();
     for (const [i, key] of observed.entries()) expect(key).not.toBe(today[i]);
 
     state.next = off;
     h.write("squeal.config.json", '{"observe": {"runtimeInputs": false}}\n');
     await h.batch("squeal.config.json");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(keys()).toEqual(today);
   });
 });

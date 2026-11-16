@@ -51,7 +51,7 @@ describe("the store's re-key moves hold nothing per wait (review wave-13r B2)", 
         now: clock,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       const raw = () => h.store.meta.get(rekeyedMovesMetaKey(h.worktreeId));
       const commit = () =>
@@ -63,7 +63,7 @@ describe("the store's re-key moves hold nothing per wait (review wave-13r B2)", 
       // A math edit that resolves, then a strings edit whose runner part stalls.
       h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
       await h.batch("src/math.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       const release = stallRefinement(h, "src/strings.ts");
       h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // 2\n");
       await h.batch("src/strings.ts");
@@ -83,7 +83,7 @@ describe("the store's re-key moves hold nothing per wait (review wave-13r B2)", 
 
       // Released, the runner part lands and the strings run resolves; caught up after it.
       release();
-      await h.scheduler.idle();
+      await h.quiet();
       commit();
       expect(JSON.parse(raw() ?? "{}").caughtUpAt).toEqual(expect.any(Number));
       // Within the grace nothing goes; an hour and the grace past the catch-up, everything resolved does.
@@ -113,7 +113,7 @@ describe("a wait behind an unbounded run --all retry (spec 001 D5, task 001-228)
         runnerPartMs: 2_000,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       // From now on `environment` never answers: a wedged runner.
       h.runner.failing.clear();
@@ -153,7 +153,7 @@ describe("a wait behind an unbounded run --all retry (spec 001 D5, task 001-228)
       // Over: the hung calls fail, the queued run --all drains, and the scheduler can close.
       h.runner.environment = () => Promise.reject(new Error("test over"));
       for (const reject of hung) reject(new Error("test over"));
-      await h.scheduler.idle();
+      await h.quiet();
     },
   );
 });

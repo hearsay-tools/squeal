@@ -101,7 +101,7 @@ async function started(options: Teardown) {
   const store = openRepoStore(repo.commonDir);
   const h = await openHarness(repo.main, store, repo.commonDir, slowOptions());
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return { store, h };
 }
 
@@ -138,7 +138,7 @@ describe("a slow file's failure after its tests passed is re-run once (task 011-
       "first-seen-fail",
     ]);
     await h.scheduler.requestFullSuite();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(SLOW_FILE)).toHaveLength(2);
     const why = formatWhy(readWhy(h.root, SLOW_FILE, {}));
     // The re-run failed the same way: its first error is the summary, said once.

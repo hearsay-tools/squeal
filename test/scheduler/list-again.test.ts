@@ -20,7 +20,7 @@ async function started(): Promise<Harness> {
   const store = openRepoStore(repo.commonDir);
   const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1, allowErrors: true });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return h;
 }
 
@@ -50,7 +50,7 @@ describe("scheduler: a listing a runner part did not apply (row 015-52)", SLOW, 
     };
     h.write("test/added.test.ts", ADDED);
     await h.batch("test/added.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.errors.map((e) => e.message)).toEqual([
       expect.stringContaining("Invalid path '/outside'"),
     ]);
@@ -59,7 +59,7 @@ describe("scheduler: a listing a runner part did not apply (row 015-52)", SLOW, 
     const before = lists;
     h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase() + '';\n");
     await h.batch("src/strings.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(lists).toBe(before + 1);
     expect(h.keyOf("test/added.test.ts")).not.toBeNull();
   });

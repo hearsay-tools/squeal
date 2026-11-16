@@ -48,7 +48,7 @@ async function movedByRaise(options: HarnessOptions): Promise<string[]> {
   writeInstall(repo.main, {}, "1.4.0");
   const h = await openHarness(repo.main, store, repo.commonDir, options);
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   const paths = [...ALL_TEST_FILES, ...Object.keys(FILES)];
   const before = new Map(paths.map((path) => [path, h.keyOf(path)]));
   expect([...before.values()]).not.toContain(null);

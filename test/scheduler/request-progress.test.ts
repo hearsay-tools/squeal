@@ -90,7 +90,7 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     const { h, release } = await heldBaseline();
     expect(h.scheduler.requestProgress?.()).toBe(0);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     await waitFor(() => !h.scheduler.slowPending(), 60_000);
     expect(h.scheduler.requestProgress?.()).toBe(0);
   });
@@ -105,7 +105,7 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     expect(h.scheduler.requestProgress?.()).toBe(3);
     releaseSlow();
     await waitFor(() => !h.scheduler.slowPending(), 60_000);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.requestProgress?.()).toBe(3);
   });
 
@@ -117,7 +117,7 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     expect(record.testFiles).toEqual([]);
     releaseSlow();
     await waitFor(() => !h.scheduler.slowPending(), 60_000);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.requestProgress?.()).toBe(0);
   });
 
@@ -127,9 +127,9 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     await h.scheduler.requestGroupPaths?.(TESTS_GROUP, [MATH]);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(MATH)).toHaveLength(1);
     const edit = gate();
     h.runner.beforeRun = async (files: readonly TestFileRef[]) => {
@@ -142,7 +142,7 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     await waitFor(() => edit.reached, 60_000);
     expect(h.scheduler.requestProgress?.()).toBe(1);
     edit.open();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(MATH)).toHaveLength(2);
     expect(h.scheduler.requestProgress?.()).toBe(1);
   });

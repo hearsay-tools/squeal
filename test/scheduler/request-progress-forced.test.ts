@@ -68,7 +68,7 @@ describe("Scheduler.requestProgress: a forced run --all (row 018-12)", SLOW, () 
     expect(h.scheduler.requestProgress?.()).toBe(0);
 
     forced.open();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(MATH)).toHaveLength(2);
     expect(h.store.checkpoints.get(record.id)?.end).toBe("completed");
     expect(h.scheduler.requestProgress?.()).toBe(1);

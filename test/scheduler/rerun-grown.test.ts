@@ -71,7 +71,7 @@ describe("a new failure stored through observed growth is re-run once", SLOW, ()
     };
     await h.scheduler.start();
     // Without the re-run the scheduler goes idle instead.
-    const idle = h.scheduler.idle().then(() => "idle");
+    const idle = h.quiet().then(() => "idle");
     expect(await Promise.race([atRerun.then(() => "re-run"), idle])).toBe("re-run");
 
     // The first run grew the closure: the fail is stored under the key with `src/math.ts`.
@@ -85,7 +85,7 @@ describe("a new failure stored through observed growth is re-run once", SLOW, ()
 
     rmSync(marker);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(GROWN)).toHaveLength(2);
     expect(h.keyOf(GROWN)).toBe(key);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });

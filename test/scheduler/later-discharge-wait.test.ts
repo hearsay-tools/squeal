@@ -71,7 +71,7 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
       now: clock,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
     // As `Ledger.commit` records the moves when nothing else changed.
     const commit = () =>
@@ -85,10 +85,10 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
     // Revisions 1 and 2: math's failure under CACHED is stored, then it passes again.
     h.write(MATH, CACHED);
     await h.batch(MATH);
-    await h.scheduler.idle();
+    await h.quiet();
     h.write(MATH, PASSING);
     await h.batch(MATH);
-    await h.scheduler.idle();
+    await h.quiet();
     const mathFails = () =>
       h.store.knownStates
         .list(h.worktreeId)
@@ -163,7 +163,7 @@ describe("status --wait over later discharges of its file (tasks 001-202, 001-25
         if (c.prune === true) {
           const refined = () => readRefined(h.store, h.worktreeId) ?? 0;
           await expect.poll(refined, { timeout: 60_000 }).toBeGreaterThanOrEqual(upTo);
-          await h.scheduler.idle();
+          await h.quiet();
           commit();
           shift = MOVES_RETENTION_MS + MOVES_GRACE_MS + 1;
           commit();

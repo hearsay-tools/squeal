@@ -31,7 +31,7 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     const { h, state } = await reloading(seen);
     h.write("fixtures/data.json", '{"n": 1}\n');
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = keysOf(h);
     const runs = h.runner.runs.length;
 
@@ -41,7 +41,7 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     expect(seen.at(-1)?.map((c) => c.path)).toEqual(["squeal.config.json"]);
     const reloaded = keysOf(h);
     for (const [i, key] of reloaded.entries()) expect(key, ALL_TEST_FILES[i]).not.toBe(before[i]);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.length).toBeGreaterThan(runs);
 
     h.write("fixtures/data.json", '{"n": 2}\n');
@@ -61,7 +61,7 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     const seen: (readonly FileChange[])[] = [];
     const { h, state } = await reloading(seen);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = keysOf(h);
     const environments = h.store.revisions.latest(h.worktreeId)?.number;
 
@@ -74,7 +74,7 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     for (const [i, key] of provisional.entries()) {
       expect(key, ALL_TEST_FILES[i]).not.toBe(before[i]);
     }
-    await h.scheduler.idle();
+    await h.quiet();
     // The runner part read the environment again: the real hash replaced the provisional one.
     const after = keysOf(h);
     for (const [i, key] of after.entries()) {
@@ -89,10 +89,10 @@ describe("scheduler: policy reload on a squeal.config.json revision (D11, review
     const seen: (readonly FileChange[])[] = [];
     const { h } = await reloading(seen);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 0;\n");
     await h.batch("src/math.ts");
     expect(seen.map((changes) => changes.map((c) => c.path))).toEqual([["src/math.ts"]]);
-    await h.scheduler.idle();
+    await h.quiet();
   });
 });

@@ -135,7 +135,7 @@ describe.each(PYTHONS)(
         });
         const first = await open(root);
         await first.h.scheduler.start();
-        await first.h.scheduler.idle();
+        await first.h.quiet();
         const observed = first.meta(observedMetaKey(PROJECT.name));
         expect(observed[KEPT]).toEqual(["dist/built_x.py"]);
         expect(observed[SCRATCH]).toBeUndefined();
@@ -151,7 +151,7 @@ describe.each(PYTHONS)(
         // A restart: the kept path keys the file, which inherits its own pass; nothing grew.
         const again = await open(root);
         await again.h.scheduler.start();
-        await again.h.scheduler.idle();
+        await again.h.quiet();
         expect(again.runs).toEqual([]);
         expect(again.meta(observedMetaKey(PROJECT.name))).toEqual(observed);
       },

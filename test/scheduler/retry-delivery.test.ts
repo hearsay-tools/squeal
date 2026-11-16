@@ -87,11 +87,11 @@ describe("a retry as the agent reads it", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, options(load));
     rmSync(repo.marker);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass" });
     writeFileSync(repo.marker, "");
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
     const runs = h.runsOf(FLAKY).length;
 
@@ -125,24 +125,24 @@ describe("a retry as the agent reads it", SLOW, () => {
     rmSync(repo.marker);
     ask(store, h, "s1", "environment");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     const retried = formatDelta(
       (await delivery.onToolBoundary(consumer)) ?? expect.fail("no delta"),
     );
     expect(retried).toContain("Retry asked (environment) at these inputs: it passed");
     writeFileSync(repo.marker, "");
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
     ask(store, h, "s2", "environment");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail" });
     await delivery.onToolBoundary(consumer);
 
     // An ordinary forced run recovers it: no retry produced this pass.
     rmSync(repo.marker);
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
     const recovered = formatDelta(
       (await delivery.onToolBoundary(consumer)) ?? expect.fail("no delta"),
     );
@@ -160,7 +160,7 @@ describe("a retry as the agent reads it", SLOW, () => {
     await failing(h);
     ask(store, h, "s1", "environment");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     const later = await registered(store, h, "s2");
     expect(later.text).toMatch(
       /; recorded just now in this worktree at revision \d+, load 0\.13 per CPU when it ran; retry asked \(environment\) at these inputs: it failed again/,

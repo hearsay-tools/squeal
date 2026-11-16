@@ -137,13 +137,13 @@ describe("scheduler: an install replaced under a running daemon (review wave 11,
   it("stores no failure from a tier during which node_modules was removed and restored", async () => {
     const h = await installedRepo();
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(failuresStored(h)).toBe(0);
 
     // `npm ci` in the middle of a tier: the packages vanish, then the same install comes back.
     aroundNextRun(h, () => uninstall(h));
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
 
     const depRuns = h.runsOf(DEP);
     // The overlapped run saw the package missing, and its result was never stored.
@@ -160,21 +160,21 @@ describe("scheduler: a reinstall under a running daemon exits it (task 001-113)"
     const told: string[] = [];
     const h = await installedRepo({ onReinstall: (note) => told.push(note) });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const runs = h.runner.runs.length;
 
     // `npm ci` removes node_modules; the agent edits meanwhile, and the watcher reports both.
     uninstall(h);
     h.write("src/math.ts", SUBTRACTS);
     await h.batch("node_modules/.package-lock.json", "src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(told).toEqual([REINSTALL_NOTE]);
     const revision = h.store.revisions.latest(h.worktreeId)?.number;
 
     // B1: another edit neither spins the pump nor queues, records nor runs anything.
     h.write("src/math.ts", `${SUBTRACTS}// again\n`);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const record = await h.scheduler.requestFullSuite();
     expect(h.store.checkpoints.get(record.id)?.end).toBe("abandoned");
     expect(h.store.revisions.latest(h.worktreeId)?.number).toBe(revision);
@@ -189,7 +189,7 @@ describe("scheduler: a reinstall under a running daemon exits it (task 001-113)"
     install(h.root, "", "1.0.1");
     const next = await openHarness(h.root, h.store, h.commonDir, { tierSize: 1 });
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     // B2: a fresh Vitest instance runs the edited module's test first, against the new code.
     expect(next.runner.runs[0]?.files.map((f) => f.path)).toEqual([MATH]);
     expect(next.runsOf(PKG)).toHaveLength(1);
@@ -201,7 +201,7 @@ describe("scheduler: a reinstall under a running daemon exits it (task 001-113)"
     const told: string[] = [];
     const h = await installedRepo({ onReinstall: (note) => told.push(note) });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const runs = h.runner.runs.length;
 
     // No batch reports it: the next tier's check finds the install gone.
@@ -210,7 +210,7 @@ describe("scheduler: a reinstall under a running daemon exits it (task 001-113)"
       return () => {};
     });
     const record = await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(told).toEqual([REINSTALL_NOTE]);
     const after = h.runner.runs.slice(runs);
@@ -222,10 +222,10 @@ describe("scheduler: a reinstall under a running daemon exits it (task 001-113)"
   it("persists the note itself when no daemon listens", async () => {
     const h = await installedRepo();
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     uninstall(h);
     await h.batch("node_modules/.package-lock.json");
-    await h.scheduler.idle();
+    await h.quiet();
     const notes = JSON.parse(h.store.meta.get(`notes.${h.worktreeId}`) ?? "[]") as {
       text: string;
     }[];
@@ -273,18 +273,18 @@ describe(
       const told: string[] = [];
       const h = await workspaceRepo({ onReinstall: (note) => told.push(note) });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.header().awaitingInstall).toBeUndefined();
       const runs = h.runner.runs.length;
 
       // `node_modules` is not watched below the root: the interval pass finds it.
       rmSync(join(h.root, "packages/a/node_modules"), { recursive: true, force: true });
       await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-      await h.scheduler.idle();
+      await h.quiet();
       expect(told).toEqual([REINSTALL_NOTE]);
 
       await h.scheduler.requestFullSuite({ force: true });
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.runner.runs).toHaveLength(runs);
     });
   },

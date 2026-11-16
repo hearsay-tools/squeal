@@ -43,7 +43,7 @@ async function started(observe: boolean): Promise<Harness> {
     policy: { ...RUN_MISSING, observe: { ...DEFAULT_POLICY.observe, runtimeInputs: observe } },
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return h;
 }
 
@@ -87,7 +87,7 @@ describe("scheduler: loaded modules (spec 022, row 022-03)", SLOW, () => {
     const plainRuns = h.runsOf(PLAIN).length;
     h.write(LAZY, "export const value = 1;\n// edited\n");
     await h.batch(LAZY);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.keyOf(RUNTIME)).not.toBe(before);
     expect(h.runsOf(RUNTIME).length).toBe(runtimeRuns + 1);
     expect(h.runsOf(PLAIN).length).toBe(plainRuns);
