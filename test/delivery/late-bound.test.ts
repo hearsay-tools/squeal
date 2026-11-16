@@ -38,9 +38,9 @@ describe("the late bound (row 005-93, design section 1)", () => {
   });
 
   it("counts unknown durations as 0 when none is known, so start and overhead remain", () => {
-    expect(lateBoundMs({ durations: [null, null], tierSize: 4, startMs: 500, overheadMs: 250 })).toBe(
-      1_500,
-    );
+    expect(
+      lateBoundMs({ durations: [null, null], tierSize: 4, startMs: 500, overheadMs: 250 }),
+    ).toBe(1_500);
   });
 
   it("with no file, is twice the start", () => {
