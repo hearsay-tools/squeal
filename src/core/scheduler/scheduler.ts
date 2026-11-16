@@ -305,6 +305,7 @@ class TierScheduler implements Scheduler {
     // Row 011-309: a lane the pool refuses waits for CPU, in the daemon's log and for status.
     const waits = new PoolWaits({
       now: this.#now,
+      elapsed: this.#clock.elapsed,
       log: options.log ?? (() => {}),
       publish: poolWaitsPublish(options.store, options.worktreeId, this.#steps),
     });
