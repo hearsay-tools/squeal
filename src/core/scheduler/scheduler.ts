@@ -68,7 +68,7 @@ import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { narrowRequest, REINSTALLED_REASON } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
-import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
+import { PoolWaits, poolWaitsPublish } from "./pool-wait.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet } from "./quiet.js";
 import { TierRecords } from "./record.js";
@@ -306,7 +306,7 @@ class TierScheduler implements Scheduler {
     const waits = new PoolWaits({
       now: this.#now,
       log: options.log ?? (() => {}),
-      publish: (lanes, at) => publishPoolWaits(options.store, options.worktreeId, lanes, at),
+      publish: poolWaitsPublish(options.store, options.worktreeId, this.#steps),
     });
     this.#capacity =
       options.capacity === undefined
