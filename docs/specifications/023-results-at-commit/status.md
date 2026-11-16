@@ -1,6 +1,6 @@
 # 023 Results at a commit: status
 
-Stage: research (wave 0)
+Stage: spec draft, waiting for the human (wave 0 research done 2026-11-16)
 Started: 2026-11-16
 
 ## Decisions so far
@@ -10,3 +10,4 @@ Started: 2026-11-16
 - 2026-11-16, the human on the card: "Spec with auto-run" (one slice: the lookup and Squeal itself making a temporary checkout, installing and running the missing test files within a budget); retention "Keep 7 days" (the prune rule does not change; results at a commit are a recent-commits feature).
 - 2026-11-16, the coordinator: a new spec, not an amendment of 018 (shared results) or 020 (the gate): the question is a commit argument, its lookup and its run. Wave 0 researches the auto-run half and the environment-differs case before the spec is written.
 - 2026-11-16, the human through coordinator 5a80b2e0: add red proofs as a use case. In cezar, agents ran 39 tests by hand for red proofs (the new test against the code before the fix, required by cezar's review rules); they restored the old files in the watched worktree, and Squeal reported failures for that state (`../011-core/research/hand-runs-2026-11-16.md` item 4, main `7f78bddeb`). The coordinator's reading: this is a mixed tree, the current test files over the source at X, not X as it was; the auto-run checkout must accept "test files from HEAD" so a red proof runs outside the user's tree. The spec carries it as a goal with its own example.
+- 2026-11-16, the coordinator: wave 0 landed (`research/temp-checkout.md`, `research/environment-at-commit.md`); `spec.md` drafted from the three findings with four open questions (name, checkout location, single stored environment match, overlay import missing at the commit).
