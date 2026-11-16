@@ -55,6 +55,8 @@ interface Run {
   readonly output: string;
   /** From the first output byte, the outcome's, to the exit. */
   readonly tailMs: number;
+  /** From the spawn to the first output byte: the longest the CLI's wait can have run. */
+  readonly beforeMs: number;
   /** Each connection's close, from the first output byte. */
   readonly closesMs: readonly number[];
 }
@@ -75,6 +77,7 @@ async function statusAgainstPaused(args: readonly string[]): Promise<Run> {
   await pausedDaemon(socket, closes);
 
   const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
+  const spawnedAt = performance.now();
   const child = spawn(process.execPath, [...flags, "status", ...args], {
     cwd: repo.main,
     env,
@@ -99,11 +102,27 @@ async function statusAgainstPaused(args: readonly string[]): Promise<Run> {
       code: end.code,
       output,
       tailMs: end.at - from,
+      beforeMs: from - spawnedAt,
       closesMs: closes.map((at) => at - from),
     };
   } finally {
     child.kill("SIGKILL");
   }
+}
+
+/**
+ * The seconds `prefix` names in the output ("after N.N s"), checked against
+ * two measured ends, not an exact tenth (row 011-374): the deadline passed,
+ * so the wait ran at least the `askedMs` the test asked for (less 1 ms of
+ * timer clock, `wait-clock.ts`), and it ran inside the child's life before
+ * its first output byte. Each end allows the half tenth the line rounds.
+ */
+function expectElapsed(run: Run, prefix: string, askedMs: number): void {
+  const found = new RegExp(`^${prefix} after (\\d+\\.\\d) s`, "m").exec(run.output);
+  expect(found, run.output).not.toBeNull();
+  const shownMs = Number(found?.[1]) * 1_000;
+  expect(shownMs, run.output).toBeGreaterThanOrEqual(askedMs - 1 - 50);
+  expect(shownMs, run.output).toBeLessThanOrEqual(run.beforeMs + 50);
 }
 
 describe("a wait against a paused daemon ends with its outcome (row 011-344)", () => {
@@ -112,8 +131,9 @@ describe("a wait against a paused daemon ends with its outcome (row 011-344)", (
 
     expect(run.code, run.output).toBe(3);
     expect(run.output).toMatch(
-      /^Named test files have no verdict: the deadline passed after 0\.6 s/m,
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s/m,
     );
+    expectElapsed(run, "Named test files have no verdict: the deadline passed", 600);
     // Before the row the process ended at the 2 s socket timeout, about 1.4 s after this line.
     expect(run.tailMs, run.output).toBeLessThan(300);
     // The sync's ping and the liveness watch's ping both reached the socket and closed with the wait.
@@ -125,7 +145,10 @@ describe("a wait against a paused daemon ends with its outcome (row 011-344)", (
     const run = await statusAgainstPaused(["--wait", "600"]);
 
     expect(run.code, run.output).toBe(0);
-    expect(run.output).toMatch(/^Returned on timeout after 0\.6 s: 2 checks \(2 tests\) pending/m);
+    expect(run.output).toMatch(
+      /^Returned on timeout after \d+\.\d s: 2 checks \(2 tests\) pending/m,
+    );
+    expectElapsed(run, "Returned on timeout", 600);
     expect(run.tailMs, run.output).toBeLessThan(300);
     expect(run.closesMs.length, run.output).toBeGreaterThanOrEqual(2);
     for (const close of run.closesMs) expect(close, run.output).toBeLessThan(300);
