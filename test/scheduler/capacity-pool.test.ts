@@ -11,11 +11,13 @@ import type { WorktreeId } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { NodeTestProject } from "../../src/core/types/policy.js";
 import type { RunOptions } from "../../src/core/types/runner.js";
+import type { Rest } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { openHarness } from "./node-test-harness.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import type { Harness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): backlog and checkpoint tiers take a
@@ -27,7 +29,47 @@ import { createRepo, openRepoStore } from "./repo.js";
  * Vitest backlog tier; an edit to a node:test file, another lane, must run
  * beside it. Were the edit's tier to ask the pool it would find no permit
  * free, and wait for the held tier.
+ *
+ * Row 011-367: both schedulers are on a virtual clock, so the pool's
+ * recheck is a wake (`advance`, then `rest`). The runners' work stays real:
+ * a re-key, a Vitest run and a node:test run are waited for in real time.
  */
+
+/** Rests once no runner-part call is open: those are the runner's real work, set aside by `rest`. */
+async function settle(h: Harness): Promise<Rest> {
+  for (;;) {
+    const rest = await h.rest();
+    if (!rest.wakes.some((wake) => wake.reason === "runner-part-bound")) return rest;
+    await delay(10);
+  }
+}
+
+/** The wakes `until` moves the clock to: a backlog record's gather and the pump's own wait. */
+const DRIVEN: readonly string[] = ["slot-gather", "pump"];
+
+/**
+ * Until `done`: at each rest the clock moves to the next wake if `DRIVEN`
+ * names it, else the runner's real work goes on for 10 ms. No other wake
+ * (a yield bound, a pool recheck) is passed.
+ */
+async function until(h: Harness, done: () => boolean, steps = 3_000): Promise<void> {
+  for (let i = 0; i < steps && !done(); i++) {
+    const rest = await settle(h);
+    if (done()) return;
+    if (rest.next !== null && DRIVEN.includes(rest.next.reason))
+      h.advance(Math.max(0, rest.next.at - h.now()));
+    else await delay(10);
+  }
+}
+
+/** `Scheduler.idle` on the virtual clock: `until` it resolves. */
+async function idleOn(h: Harness): Promise<void> {
+  let idle = false;
+  void h.scheduler.idle().then(() => {
+    idle = true;
+  });
+  await until(h, () => idle);
+}
 
 const NT: NodeTestProject = {
   name: "nt",
@@ -75,13 +117,14 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
       runnerPartBesideRun: true,
       capacity: { dir, hostSlots: 2 },
       policy: RUN_MISSING,
+      clock: "virtual",
     });
     const runs: { files: readonly TestFileRef[]; options: RunOptions }[] = [];
     h.gate.before = (files, options) => {
       runs.push({ files, options });
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await idleOn(h);
     expect(ntOutcome(store, h.worktreeId)).toBe("pass");
     // The baseline's tiers are the backlog's: each carried a grant, at most the host's 2.
     expect(runs.length).toBeGreaterThan(0);
@@ -112,15 +155,17 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
       runs.length = 0;
       appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
       await h.batch("vitest.config.ts");
-      // It waits for the batch's re-key and a permit: on a loaded host, past the 1 s default.
-      await expect.poll(() => held, { timeout: 30_000 }).toBe(true);
+      // It waits for the batch's re-key (the runner's real work) and a permit.
+      await until(h, () => held);
+      expect(held).toBe(true);
       const backlog = runs.find((r) => r.files.some((f) => f.path.startsWith("test/")));
       expect(backlog?.options.workers).toBe(1);
 
       // The edit's tier starts beside it, without a grant.
       h.write("nt/src/a.mjs", "export const a = 2;\n");
       await h.batch("nt/src/a.mjs");
-      await expect.poll(() => ntOutcome(store, h.worktreeId), { timeout: 30_000 }).toBe("fail");
+      await until(h, () => ntOutcome(store, h.worktreeId) === "fail");
+      expect(ntOutcome(store, h.worktreeId)).toBe("fail");
       const edit = runs.find((r) => r.files.some((f) => f.path === NT_TEST));
       expect(edit).toBeDefined();
       expect(edit?.options.workers).toBeUndefined();
@@ -128,7 +173,7 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
     } finally {
       release();
     }
-    await h.scheduler.idle();
+    await idleOn(h);
   });
 
   it("a backlog tier that finds no permit holds no claim, looks again every few seconds, and starts after a release", async () => {
@@ -150,39 +195,42 @@ describe("scheduler: the per-user pool (001 D11 Capacity, task 001-376)", SLOW, 
       backlogTierSize: 50,
       capacity: { dir, hostSlots: 2 },
       policy: RUN_MISSING,
+      clock: "virtual",
     });
-    const runs: { at: number; options: RunOptions }[] = [];
+    const runs: { options: RunOptions }[] = [];
     h.gate.before = (_files, options) => {
-      runs.push({ at: performance.now(), options });
+      runs.push({ options });
     };
     await h.scheduler.start();
 
     // The baseline is the backlog's: it waits, marked, with no run and no key claimed.
+    await settle(h);
     const own = () => readMarks(dir, "reader", Date.now()).find((m) => m.id === h.worktreeId);
-    await expect.poll(() => own()?.since ?? null, { timeout: 30_000 }).not.toBeNull();
+    expect(own()?.since ?? null).not.toBeNull();
     expect(own()?.grant).toBe(0);
-    // Each look rewrites the mark: a pump that looked in a loop would rewrite it constantly.
+    // Each look rewrites the mark: one look per recheck, none between.
     const mark = markFile(dir, h.worktreeId);
-    const looks = new Set<number>();
-    const until = performance.now() + CAPACITY_RECHECK_MS + 500;
-    while (performance.now() < until) {
-      looks.add(statSync(mark).mtimeMs);
-      await delay(25);
-    }
-    expect(looks.size).toBeLessThanOrEqual(3);
+    const looked = () => statSync(mark, { bigint: true }).mtimeNs;
+    const first = looked();
+    h.advance(CAPACITY_RECHECK_MS - 1);
+    await h.rest();
+    expect(looked()).toBe(first);
+    h.advance(1);
+    await h.rest();
+    expect(looked()).not.toBe(first);
     expect(runs).toEqual([]);
     const running = store.testFileKeys.list(h.worktreeId).filter((r) => r.pending === "running");
     expect(running).toEqual([]);
 
     // The holder's tier ends: no event of this daemon's, so its next look starts the baseline.
-    const releasedAt = performance.now();
     held?.release();
-    await expect.poll(() => runs.length, { timeout: 30_000 }).toBeGreaterThan(0);
-    expect(runs[0]?.at ?? Number.POSITIVE_INFINITY).toBeLessThan(
-      releasedAt + CAPACITY_RECHECK_MS + 4_000,
-    );
+    await h.rest();
+    expect(runs).toEqual([]);
+    h.advance(CAPACITY_RECHECK_MS);
+    await h.rest();
+    expect(runs.length).toBeGreaterThan(0);
     expect(runs[0]?.options.workers).toBe(2);
-    await h.scheduler.idle();
+    await idleOn(h);
   });
 });
 
