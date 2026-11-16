@@ -23,3 +23,16 @@ Files: `claims-fixture.ts` gains `clock: "virtual"` and `rest()` as `catch-up-fi
 Done when: row 011-367's done-when holds; row 011-360's cause is named in `tasks/011-367/notes.md` (fixed by the move, or a proven product cause filed as a proposed row with a failing test); each moved file passes 3 of 3, load stated; wall time before and after.
 
 Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; report pending checks as such.
+
+## R1 (W1 and W2): review of cand/011-363-367
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-363-367` at `f15bc27e798f66e0ab335a004fb4ea5174b66f23`; candidate CI run 43783086882. Test files and notes only: no `src/` change, no version raise (`check:version` passes at 0.1.518). Range `6ca645f2a..f15bc27e798f66e0ab335a004fb4ea5174b66f23`: worker 39096e36's six commits (row 011-363) and worker 1fb3ba32's seven (rows 011-367, 011-360), cherry-picked without conflict. Read: board rows 011-360, 011-363, 011-367; this file's W1 and W2; `tasks/011-363/notes.md`, `tasks/011-367/notes.md`; `../quality/2026-11-15-card-7.md` section 4.
+
+Check, each as proven, plausible or unverified:
+
+1. **Same cases, no weaker checks.** Every case in the eleven moved files keeps its meaning or is stricter (the notes name four stricter ones); no case is dropped or made vacuous by the virtual clock; a "nothing happened" check after `rest()` can still fail.
+2. **The helpers.** `settle(...sides)` (`tier-yields-fixture.ts`) and `drive-fixture.ts` (`settle`, `until`, `idleOn`) move the clock only to named wakes and cannot pass a bound or recheck a test means to stay before; the claims fixture's default (no `clock`) behaves as before for its other 20 files.
+3. **Flake causes.** Row 011-301 (`tier-yields-kept`): the notes' likely cause (the first daemon stopped before it stored the fast files) and the new check that catches it. Row 011-360 (`runner-part-bound`): fixed by the move with 011-362's loop, cause not proven. `fresh-worktree-durations` failed once during the work and could not be reproduced; its 5 s Vitest default became the 120 s `SLOW` timeout because 5.2 s of 6.4 s is git and file setup: judge whether that hides a real slowdown.
+4. **Board row ci-43589305691** (`handover-batches` case 4): the move removes its real-time waits; cause not proven.
+
+Coordinator at the candidate: lint, typecheck, `check:version`; the eleven files run directly pass (41 tests) at load 24; the model test passes (8 tests, 23.3 s, load 22). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/011-363-367.md` and commit it on your branch.
