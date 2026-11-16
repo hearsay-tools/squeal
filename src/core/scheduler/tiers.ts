@@ -151,7 +151,8 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * settled or stayed queued; what settled is committed. `kind` says which
  * rules of C4 step 5 may cancel it (`TierKind`, `newTier`). `lease` is a
  * backlog tier's grant, kept for as many files as start. `marks` sets
- * `Tier.promoted` and `Tier.beside`.
+ * `Tier.promoted` and `Tier.beside`; its `at`, the step's reading (row
+ * 011-372), is when a claim holds, else now.
  */
 export function startTier(
   context: SchedulerContext,
@@ -159,11 +160,15 @@ export function startTier(
   picked: readonly TierFile[],
   kind: TierKind,
   lease?: PoolLease,
-  { promoted = false, beside = false }: { promoted?: boolean; beside?: boolean } = {},
+  {
+    promoted = false,
+    beside = false,
+    at,
+  }: { promoted?: boolean; beside?: boolean; at?: EpochMs | undefined } = {},
 ): Tier | null {
   const { store } = context;
   return store.transaction(() => {
-    const files = picked.flatMap((p) => startable(ledger, p));
+    const files = picked.flatMap((p) => startable(ledger, p, at));
     const first = files[0];
     if (first === undefined) {
       ledger.commit();
@@ -252,9 +257,10 @@ export function cancels(context: SchedulerContext, ref: TestFileRef): boolean {
  * In `startTier`'s transaction: `[p]` when it starts, with whether it still
  * waits; `[]` when a result now stands for it (applied) or another
  * worktree's claim holds its key. A forced file always starts; a file only
- * waits when it did at selection and nothing is withheld now.
+ * waits when it did at selection and nothing is withheld now; a claim
+ * holds at `at`, else now.
  */
-function startable(ledger: Ledger, p: TierFile): TierFile[] {
+function startable(ledger: Ledger, p: TierFile, at: EpochMs | undefined): TierFile[] {
   if (p.forced) return [p];
   const { hits, mayWait } = ledger.probe(p.key);
   if (hits.length > 0) {
@@ -262,7 +268,7 @@ function startable(ledger: Ledger, p: TierFile): TierFile[] {
     return [];
   }
   const waits = p.waits === true && mayWait;
-  if (waits && ledger.claims.holds(p.key)) return [];
+  if (waits && ledger.claims.holds(p.key, at)) return [];
   return [{ ...p, waits }];
 }
 
