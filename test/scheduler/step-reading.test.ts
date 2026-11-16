@@ -63,11 +63,15 @@ function takers(stack: string): string[] {
   return names;
 }
 
-/** One step's readings by what took them, and whether a yield check and a plan's order ran in it. */
+/**
+ * One step's readings by what took them; its own reading's value; the
+ * readings its yield checks and its plans' queue orders were given.
+ */
 interface Counted {
   readonly reads: string[];
-  checks: number;
-  plans: number;
+  at: number | null;
+  readonly checks: (number | undefined)[];
+  readonly plans: (number | undefined)[];
 }
 
 /** Each step from now on: `"step"` for the step's own reading, an `OWN_READS` name, else the frames. */
@@ -82,12 +86,14 @@ function countSteps(clock: VirtualClock): Counted[] {
     const frames = `${first} < ${second}`;
     const own = Object.entries(OWN_READS).find(([, site]) => site.test(frames));
     step.reads.push(first === "StepLive.step" ? "step" : (own?.[0] ?? frames));
-    return read();
+    const at = read();
+    step.at ??= at;
+    return at;
   });
   const live = StepLive.prototype.step;
   vi.spyOn(StepLive.prototype, "step").mockImplementation(function (this: StepLive, ...args) {
     if (step !== null) return live.apply(this, args);
-    const counted: Counted = { reads: [], checks: 0, plans: 0 };
+    const counted: Counted = { reads: [], at: null, checks: [], plans: [] };
     step = counted;
     try {
       return live.apply(this, args);
@@ -98,12 +104,12 @@ function countSteps(clock: VirtualClock): Counted[] {
   });
   const check = TierYields.prototype.check;
   vi.spyOn(TierYields.prototype, "check").mockImplementation(function (this: TierYields, ...a) {
-    if (step !== null) step.checks += 1;
+    step?.checks.push(a[5]);
     check.apply(this, a);
   });
   const ordered = Ledger.prototype.ordered;
   vi.spyOn(Ledger.prototype, "ordered").mockImplementation(function (this: Ledger, ...a) {
-    if (step !== null) step.plans += 1;
+    step?.plans.push(a[1]);
     return ordered.apply(this, a);
   });
   return steps;
@@ -112,6 +118,19 @@ function countSteps(clock: VirtualClock): Counted[] {
 /** The readings of `steps` past each step's first that no named site takes. */
 const decisionReads = (steps: readonly Counted[]) =>
   steps.flatMap(({ reads }) => reads.filter((name, i) => i > 0 && !(name in OWN_READS)));
+
+/**
+ * Each step's own reading first, no decision read after it, and each yield
+ * check and plan given that reading's value (review 0.1.520 S1: a count
+ * alone misses a constant passed on).
+ */
+function expectOneReading(steps: readonly Counted[]): void {
+  expect(steps.length).toBeGreaterThan(0);
+  expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
+  expect(decisionReads(steps)).toEqual([]);
+  const given = steps.flatMap((s) => [...s.checks, ...s.plans].map((at) => [at, s.at]));
+  expect(given.filter(([at, own]) => at !== own)).toEqual([]);
+}
 
 describe("every decision in a step's turn reads the step's one reading (rows 011-366, 011-372)", {
   timeout: 60_000,
@@ -135,13 +154,16 @@ describe("every decision in a step's turn reads the step's one reading (rows 011
 
     expect(side.runner.runs.length).toBeGreaterThan(base);
     // The revision's check in its pass, and the pump's plan that starts the edit's tier.
-    expect([steps.some((s) => s.checks > 0), steps.some((s) => s.plans > 0)]).toEqual([true, true]);
-    expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
-    expect(decisionReads(steps)).toEqual([]);
+    expect([steps.some((s) => s.checks.length > 0), steps.some((s) => s.plans.length > 0)]).toEqual(
+      [true, true],
+    );
+    expectOneReading(steps);
   });
 
-  it("beside a running batch's tier: beside selection, the batch order and the batch rank read the step's", async () => {
+  /** Steps beside a held batch's tier and after its end; `paused`, the backlog paused (a departure drain). */
+  async function besideSteps(paused: boolean): Promise<Counted[]> {
     const { side, gate } = await heldBatch({ clock: "virtual" });
+    if (paused) side.scheduler.pauseBacklog(true);
 
     const steps = countSteps(side.clock as VirtualClock);
     await side.edit("watch", "src/e.ts");
@@ -150,10 +172,19 @@ describe("every decision in a step's turn reads the step's one reading (rows 011
     gate.stop();
     await settle(side);
     vi.restoreAllMocks();
+    return steps;
+  }
 
-    expect(steps.some((s) => s.plans > 0)).toBe(true);
-    expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
-    expect(decisionReads(steps)).toEqual([]);
+  it("beside a running batch's tier: beside selection, the batch order and the batch rank read the step's", async () => {
+    const steps = await besideSteps(false);
+    expect(steps.some((s) => s.plans.length > 0)).toBe(true);
+    expectOneReading(steps);
+  });
+
+  it("with the backlog paused: the drain's filter of the plan's order reads the step's (review 0.1.520 B1)", async () => {
+    const steps = await besideSteps(true);
+    expect(steps.some((s) => s.plans.length > 0)).toBe(true);
+    expectOneReading(steps);
   });
 
   it("a slow lane's steps: its listing, guard and pick read the step's", async () => {
@@ -184,7 +215,6 @@ describe("every decision in a step's turn reads the step's one reading (rows 011
 
     const ran = side.runner.runs.slice(base).flatMap((run) => run.files.map((f) => f.path));
     expect(ran.toSorted()).toEqual(files.map((f) => f.path).toSorted());
-    expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
-    expect(decisionReads(steps)).toEqual([]);
+    expectOneReading(steps);
   });
 });
