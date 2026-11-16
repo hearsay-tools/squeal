@@ -139,6 +139,24 @@ export function worktreeEnvironment(
   return row === null ? null : stored(row);
 }
 
+/**
+ * Every stored environment of `project` with a descriptor this release
+ * reads, by hash, any worktree's or import's (spec 023 D2 step 2). The
+ * table is never pruned, so it holds older lockfiles' environments too.
+ */
+export function projectEnvironments(store: Store, project: ProjectName): StoredEnvironment[] {
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables(conn)) return [];
+  return conn
+    .all(
+      `SELECT json_extract(descriptor, '$.project') AS project, hash, recorded_at, descriptor
+       FROM environments WHERE json_extract(descriptor, '$.project') = ? ORDER BY hash`,
+      project,
+    )
+    .map(stored)
+    .filter((environment) => environment.descriptor !== null);
+}
+
 function stored(row: Row): StoredEnvironment {
   return {
     project: String(row.project),
