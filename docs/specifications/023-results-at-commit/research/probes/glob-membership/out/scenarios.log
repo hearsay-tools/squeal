@@ -1,0 +1,148 @@
+2026-11-16T22:38:24Z
+18.86 22.58 28.79 25/2358 334776
+node v26.13.0, vitest 5.0.3, squeal 0.1.527
+
+=== S1 control: the daemon runs, a matching file is added (spec 001 D4 invalidate rule 3)
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Checkpoint f6e7e62d-cef2-419a-998d-331c7174dfe4 completed at revision 0: no known failures; 1 test file, 0 already current, 1 run now
+Revision: 0
+Known failures: 0; all 1 test file current
+Revision: 1 · 469e02b2 + 1, dirty
+Known failures: 1 (1 test); not current: 1 of 1 test file (1 queued)
+  FAIL  test/a.test.ts > counts
+        expected 2 to be 1 // Object.is equality; diff (- Expected, + Received): - 1 | + 2
+
+=== S2 restart: the file is removed (daemon runs), the daemon stops, the file is added again (untracked), the daemon starts
+Revision: 2 · 469e02b2 + 2
+Known failures: 0; all 1 test file current
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 2 · 469e02b2 + 2
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 2 to be 1 // Object.is equality
+          Tests  1 failed (1)
+
+=== S3 restart: the daemon stops, the add is committed (A'), the daemon starts
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 2 · be308ab9 + 0
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 2 to be 1 // Object.is equality
+          Tests  1 failed (1)
+
+=== S4 another worktree: main removes new.ts (B2); a second worktree at A' (with new.ts) starts its first daemon
+Revision: 3 · bf7519e0 + 0
+Known failures: 0; all 1 test file current
+kept.ts new.ts 
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/w2
+Revision: 0
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 2 to be 1 // Object.is equality
+          Tests  1 failed (1)
+
+=== S5 CI import (spec 018): CI records and exports at B2; a fresh clone at A' imports
+squeal ci record: Squeal's recording took 0.09 s in 3 processes and threads, 69.7% of the test time (0.13 s); 0.03 s more after the command
+Exported 1 test file, 2 results, to ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/export.json.
+-- S5a: import first, daemon started with CI unset
+Imported 2 results of 1 test file from local export at bf7519e0.
+Added where the store had none: 1 closure lists.
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/local
+Revision: 0
+Known failures: 0; not current: 1 of 1 test file (1 unknown)
+Imported 2 results of 1 test file from local export at bf7519e0.
+Re-keyed 1 of 1 test file to this worktree's closure lists and environment at bf7519e0.
+Environment: equal to this worktree's for imported passes; config fields allowOnly, browser differ (the export ran with CI set)
+Imported: 0 of 1 test file current from local export at bf7519e0 (0 current results)
+  Not current: 1 content differs
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 2 to be 1 // Object.is equality
+          Tests  1 failed (1)
+-- S5b: import first, daemon started with CI=true (equal environment)
+Imported 2 results of 1 test file from local export at bf7519e0.
+Added where the store had none: 1 closure lists.
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/local4
+Revision: 0
+Known failures: 0; all 1 test file current
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Imported: 1 of 1 test file current from local export at bf7519e0 (2 current results)
+  Imported files have no coverage record until they run here
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 2 to be 1 // Object.is equality
+          Tests  1 failed (1)
+
+=== S6 fix A emulated: a listing entry src/plugins/ in the shared observed set, as fix A would record it
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/w2; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 3 · bf7519e0 + 0
+Known failures: 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale)
+Checkpoint 858b40b7-9324-4107-b383-a3489360ca09 completed at revision 3: no known failures; 1 test file, 0 already current, 1 run now
+Revision: 3 · bf7519e0 + 0
+Known failures: 0; all 1 test file current
+-- restart with an added file
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 3 · bf7519e0 + 0
+Known failures: 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale)
+-- restart with the file removed again
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 4 · bf7519e0 + 1
+Known failures: 0; all 1 test file current
+-- the worktree at A' (with new.ts) starts again
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/w2
+Revision: 0
+Known failures: 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale)
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/w2; `squeal stop --until-start` keeps it stopped through edits and Git operations
+
+=== S7 other resolution inputs, restart: a shadowing src/registry.js; package.json imports retargeted
+Checkpoint d6492b19-8803-4250-ad04-2a050251facc completed at revision 5: no known failures; 2 test files, 2 already current, 0 run now
+Revision: 5 · 06c047ee + 0
+Known failures: 0; all 2 test files current
+-- shadowing file added while stopped
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 5 · 06c047ee + 0
+Known failures: 0; all 2 test files current
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 99 to be 1 // Object.is equality
+          Tests  1 failed | 1 passed (2)
+Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations
+-- package.json imports retargeted while stopped
+Squeal daemon spawned for ~/projects/squeal/.ai/squawk/t/2d536246/glob-membership/repo
+Revision: 6 · 06c047ee + 1, dirty
+Known failures: 0; all 2 test files current
+  truth (vitest run):
+    ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+    AssertionError: expected 'b' to be 'a' // Object.is equality
+          Tests  1 failed | 1 passed (2)
+-- live controls: retarget back and forth, then add the shadowing file, with the daemon running
+Revision: 7 · 06c047ee + 2
+Known failures: 0; all 2 test files current
+Revision: 8 · 06c047ee + 3, dirty
+Known failures: 1 (1 test); not current: 1 of 2 test files (1 queued)
+  FAIL  test/b.test.ts > reads a
+Revision: 10 · 06c047ee + 5, dirty
+Known failures: 1 (1 test); all 2 test files current
+  FAIL  test/a.test.ts > counts
+
+=== S8 a template-literal import() enters the closure as its matched files, with no listing
+Revision: 12 · 06c047ee + 7, dirty
+Known failures: 0; all 3 test files current
+  test/a.test.ts ["src/plugins/","src/plugins/kept.ts","src/registry.ts","test/__snapshots__/a.test.ts.snap","test/a.test.ts"]
+  test/b.test.ts ["src/reg-a.ts","test/__snapshots__/b.test.ts.snap","test/b.test.ts"]
+  test/c.test.ts ["src/plugins/kept.ts","test/__snapshots__/c.test.ts.snap","test/c.test.ts"]
+
+=== done; daemons stopped at exit

@@ -1,0 +1,12 @@
+{
+ "commits": 2078,
+ "anyAddDelete": 865,
+ "inClosureDir": 341,
+ "shadowing": 0,
+ "shadowExamples": [],
+ "share": {
+  "anyAddDelete": 41.6,
+  "inClosureDir": 16.4,
+  "shadowing": 0
+ }
+}
