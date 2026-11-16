@@ -36,9 +36,9 @@ import { reconcileBatch } from "./batch.js";
 import { besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
+import { CalendarSteps, steppedClock } from "./calendar-steps.js";
 import { TierCapacity } from "./capacity.js";
 import { fullSuiteRequest } from "./checkpoint-requests.js";
-import { CalendarSteps, steppedClock } from "./calendar-steps.js";
 import { CLAIM_POLL_MS, type ClaimWindow, claimPoll, claimWindow } from "./claims.js";
 import { type Clock, clockOf } from "./clock.js";
 import { CommandHold } from "./command-hold.js";
@@ -1411,7 +1411,10 @@ class TierScheduler implements Scheduler {
   #shift(ms: number, at: EpochMs): void {
     this.#quiet.shift(ms, at);
     if (this.#claimWindow !== null)
-      this.#claimWindow = { ...this.#claimWindow, until: (this.#claimWindow.until + ms) as EpochMs };
+      this.#claimWindow = {
+        ...this.#claimWindow,
+        until: (this.#claimWindow.until + ms) as EpochMs,
+      };
     if (this.#drainBusyAt !== null) this.#drainBusyAt = (this.#drainBusyAt + ms) as EpochMs;
     this.#ledger?.queue.shift(ms);
     this.#ledger?.claims.shift(ms);
