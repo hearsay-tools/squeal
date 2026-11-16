@@ -117,6 +117,7 @@ Started: 2026-10-31
 - 2026-11-12, the human: "squawk pin: Yes, open the PR": hearsay-tools/squawk#3460 moves the pinned Action to v0.1.460 (6a7b41c08), before Dependabot's weekly update; its first merge group gives the measured export count for row 018-43. "Focus gap: Leave it": the `allowOnly` gap of row 018-44 stays (it loses reuse only, never gives a wrong result); no row.
 - 2026-11-13, hearsay-tools/squawk#3460 merged (1949c6815; the human: "Yes, you merge it"). Its merge-group run 43389121989 (Squeal 0.1.460, Node 26.13.0) exported 1,628 test files and 27,204 results (was 1,484 and 24,272 on 0.1.443) and left out 47 files whose inputs differ, none for repeated names (was 150 + 31). Row 018-43's measured gain: +144 files, above the modelled 1,568.
 - 2026-11-16, hearsay-tools/squeal#228 (row 018-46): since 2026-11-13 squawk's merge-queue `ci export` wrote nothing, because one test that sets `process.platform` to win32 observed `C:\Users\dev\repo` and D2's guard refused the whole bundle. D2 amended: such a file is left out, named and counted; a project's shared entries still refuse. Candidate 0.1.522 (9ea3a8ff6), reviewer af21364d. The Action's exit 0 with a warning on an empty export is unchanged.
+- 2026-11-16, released 0.1.522 (tag squeal--v0.1.522 at 9ea3a8ff6, hub 70640fc; tags v0.1.522 and v0 moved). Review PASS (`reviews/0.1.522.md`), exact-commit CI 43868645746 green. Row 018-46 done; #228 closed; squawk#3701 told to move its pin to 9ea3a8ff6 and keep its no-file guards.
 
 ## Open questions
 
