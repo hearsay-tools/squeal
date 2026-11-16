@@ -4,11 +4,17 @@ import { loadBasePolicy } from "../core/code/gate/policy.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, FailedTest, TestFileEvidence } from "../core/code/gate/types.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
 import type { HostLoad } from "../core/retry/load.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { ADAPTERS } from "./code-gate.js";
 import { storedDurations } from "./code-gate-durations.js";
+import {
+  conditionsOutsideKey,
+  effectiveEnvironment,
+  withEnvironment,
+} from "./code-gate-files-env.js";
 import { collectWithStores } from "./code-gate-stored.js";
 
 /*
@@ -18,7 +24,9 @@ import { collectWithStores } from "./code-gate-stored.js";
  * widens the selection (`temp-checkout.md` 5.2). It answers each file's
  * outcome with its failed tests and their errors, with no CC or CRAP
  * verdict (5.3). It runs in the caller's process, so no relaunch child
- * outlives it (5.1). `HOME` stays as the caller has it; `TMPDIR` may be
+ * outlives it (5.1). Review wave 1 B2: one environment per call, the
+ * stores' keys and every run under it (`code-gate-files-env.ts`); by
+ * default the process's, `HOME` as the caller has it, and `TMPDIR` may be
  * given per call.
  */
 
@@ -30,20 +38,27 @@ export interface GateFilesOptions {
   readonly files: readonly RelativePath[];
   /** The one budget over the call, the runners' start included (D3.4). */
   readonly budgetSeconds: number;
-  /** The environment the stores key with. Default `process.env`; its `TMPDIR` is `tempDir` when given. */
+  /**
+   * The call's whole environment: the stores key with it, and the runners'
+   * config, a node:test `prepare`, Vitest and node:test run under it; a
+   * variable it leaves out is unset. Held in `process.env` for the call
+   * and restored after it, so no other call runs meanwhile. Default
+   * `process.env`, `HOME` with it (D4.4).
+   */
   readonly env?: NodeJS.ProcessEnv;
   /**
    * Whether the call reads each file from the shared stores at its key
    * first and keeps each file it completes there (020 D11.7, D17.3).
-   * `false` for a run under conditions the key does not hold (D5.3).
-   * Default `true`.
+   * Default `true`. D5.3: a call whose `env` sets a variable otherwise
+   * than `process.env`, outside the key's `env.allowlist` (`TMPDIR`
+   * aside), runs under a condition its key does not hold; it must give
+   * `false`, or it rejects before it runs.
    */
   readonly store?: boolean;
   /**
-   * `TMPDIR` for the call: the gate's folders, Vitest's and the tests'
-   * workers' go under it. Set in `process.env` for the call and restored
-   * after it, so one call with a `tempDir` runs at a time. Absent, as the
-   * process has it.
+   * `TMPDIR` for the call, over `env`'s: the gate's folders, Vitest's and
+   * the tests' workers' go under it. Held in `process.env` as `env` is.
+   * Absent, as `env` has it.
    */
   readonly tempDir?: AbsolutePath;
   /** The gate's notes, one line each; dropped when absent. */
@@ -96,17 +111,25 @@ export interface GateFilesResult {
  * provider), as the gate exits 2.
  */
 export async function runGateFiles(options: GateFilesOptions): Promise<GateFilesResult> {
-  const { tempDir } = options;
-  if (tempDir === undefined) return await gateFiles(options);
-  return await withTempDir(tempDir, () => gateFiles(options));
+  const effective = effectiveEnvironment(options);
+  if (effective !== null && options.store !== false) {
+    const allowlist = readPolicy(options.root).env.allowlist;
+    const outside = conditionsOutsideKey(effective, process.env, allowlist);
+    if (outside.length > 0) {
+      throw new Error(
+        `runGateFiles: env sets ${outside.join(", ")} otherwise than this process, outside the key's env.allowlist; a run under it must not store (store: false)`,
+      );
+    }
+  }
+  // B2: from here `process.env` is the call's environment, which every step reads.
+  return await withEnvironment(effective, () => gateFiles(options, process.env));
 }
 
-async function gateFiles(options: GateFilesOptions): Promise<GateFilesResult> {
+async function gateFiles(
+  options: GateFilesOptions,
+  env: NodeJS.ProcessEnv,
+): Promise<GateFilesResult> {
   const { root, budgetSeconds } = options;
-  const env = {
-    ...(options.env ?? process.env),
-    ...(options.tempDir === undefined ? {} : { TMPDIR: options.tempDir }),
-  };
   const note = options.note ?? (() => {});
   const head = await mergeBase(root, "HEAD");
   // The checkout's own policy, read at its commit as the gate reads the base's (020 D6).
@@ -178,24 +201,4 @@ export function fileRun(file: TestFileEvidence): GateFileRun {
     return { ...base, outcome: "not-run", failed: [], reason: "budget" };
   }
   return { ...base, outcome: "not-finished", failed: [] };
-}
-
-/** The `TMPDIR` the running call set; a second call with another is refused. */
-let heldTempDir: AbsolutePath | null = null;
-
-/** `run` with `process.env.TMPDIR` at `dir`, restored after it. */
-async function withTempDir<T>(dir: AbsolutePath, run: () => Promise<T>): Promise<T> {
-  if (heldTempDir !== null) {
-    throw new Error(`runGateFiles: another call runs with TMPDIR ${heldTempDir}`);
-  }
-  const saved = process.env.TMPDIR;
-  heldTempDir = dir;
-  process.env.TMPDIR = dir;
-  try {
-    return await run();
-  } finally {
-    heldTempDir = null;
-    if (saved === undefined) delete process.env.TMPDIR;
-    else process.env.TMPDIR = saved;
-  }
 }
