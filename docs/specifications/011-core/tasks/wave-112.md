@@ -57,3 +57,16 @@ Use /worker (worker 2249b18f, resumed). Shape: repair. Effort high. Read `review
 4. **N2.** `GLOSSARY.md`: narrow "the one wait" to scheduler waits and name the lint edit-quiet copy (`src/core/lint/pass/idle.ts:49`), which row 011-382 holds. Not yours: that lint file.
 
 Keep row 011-372 (one decision reading), the command-hold exception and unchanged behaviour without a step. Done when: each blocker's test failed before its fix; notes gain "Repair after review 0.1.524"; lint, typecheck, `key-format`, the model test once, and the changed tests pass; `squeal status --wait 60000` on the changed paths (report pending as pending).
+
+## R2 (W1 repair): narrow re-review of cand/0.1.524
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.524` at `3ad54439e46971ba87588bf02a0b8d2d70585c6d`; candidate CI run 43907398762. Rebuilt on main `f87f8c365`: worker 2249b18f's seven first-round commits (unchanged), its repair (`5480be5eb` fix and tests, `319b33ecd` notes and glossary), the 011-371 pilot commit, then the 0.1.524 raise and bundles. Narrow: the repair, against `reviews/0.1.524.md` B1, B2, S1 and N2. Read that review and `tasks/011-377/notes.md` "Repair after review 0.1.524".
+
+Check, each as proven, plausible or unverified:
+
+1. **B1.** Quiet and promotion rows are stamped `max(reading, this daemon's stored start)`, the start matched by the scheduler's incarnation to the worktree's daemon record; status keeps showing a live row across a set-back and set-forward; a predecessor's late row keeps its own earlier start and stays rejected; no row shape or reader changed. `calendar-steps-seams.test.ts` goes owner to public reader with a real daemon record.
+2. **B2.** `SlowRelease.arm` and `TierYields.#arm` derive the delay from one reading; `Step.mark` moves the pump's wake in `#eventOrAt` and `#claimWake`; the review's wrapper stepping the clock between reads holds no 60 s close for an hour, in both directions.
+3. **S1.** The stepped clock reads elapsed, calendar, elapsed, uses the midpoint and leaves out a sample wider than 50 ms; a delayed sample with no calendar change reports no step; the NTP limits are stated, not tuned to this host.
+4. **N2 and scope.** The glossary names the scheduler's one calendar wait and the lint copy (row 011-382); the yields and pool-wait rows' same exposure is named for a later row; row 011-372's one decision reading holds (`step-reading.test.ts`: only a frame renamed).
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main`; `key-format` 12/12 alone; `version-sensitive`, the four calendar-step files, `clock-port`, `step-reading`, `one-loop-source` 56/56 at load 18. Worker: 85 files 484/484 at load 13 to 18; model test 15/15; Squeal 230 pass, 4 bundle drift (fixed by the bundle commit), 5 pending. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/0.1.524-r2.md` and commit it on your branch.
