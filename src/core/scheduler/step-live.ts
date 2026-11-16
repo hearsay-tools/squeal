@@ -179,6 +179,7 @@ export class StepLive {
       const next = startNext(context, ledger, this.#plan(context, ledger, at), {
         check: (lane) => checkTurn(admitted, this.host.lock.turn, lane),
         fly,
+        at,
       });
       return { idle: "tier" in next ? null : next.idle };
     },

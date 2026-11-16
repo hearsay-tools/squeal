@@ -198,10 +198,11 @@ export class RunQueue {
 
   /**
    * The batch of `ref` started a tier estimated to end at `estimatedEnd`,
-   * which status names (row 011-268); nothing when it is in no batch.
+   * which status names (row 011-268); nothing when it is in no batch at
+   * `now`, the decision's reading (row 011-372).
    */
-  batchStarted(ref: TestFileRef, estimatedEnd: EpochMs): void {
-    const rank = this.#promotions.rankOf(testFileId(ref));
+  batchStarted(ref: TestFileRef, estimatedEnd: EpochMs, now?: number): void {
+    const rank = this.#promotions.rankOf(testFileId(ref), now);
     if (rank !== null) this.#promotions.started(rank, estimatedEnd);
   }
 
@@ -418,10 +419,10 @@ export class RunQueue {
    * is told to `batchSelected` instead (row 011-268). Only a tier that took
    * an entry of the second group discharges the turn after a batch's tier,
    * not an edit's tier (review `reviews/0.1.378.md` B1); with none waiting,
-   * no turn is due.
+   * no turn is due. `now`: the decision's reading (row 011-372).
    */
-  tierSelected(tookBacklog: boolean): void {
-    const waiting = this.#fast().some((entry) => !this.#firstGroup(entry));
+  tierSelected(tookBacklog: boolean, now?: number): void {
+    const waiting = this.#fast().some((entry) => !this.#firstGroup(entry, now));
     this.#recentTiers = tookBacklog || !waiting ? 0 : this.#recentTiers + 1;
     if (tookBacklog || !waiting) this.#batchTurn = false;
   }
@@ -431,10 +432,10 @@ export class RunQueue {
    * Recommendation 4): while an entry of the second group is queued, the
    * backlog's turn is due (`batchTurn`), so a stream of waits moves the
    * backlog by one tier after each batch tier, edits queued or not. It does
-   * not count toward the four first-group tiers.
+   * not count toward the four first-group tiers. `now` as `tierSelected`'s.
    */
-  batchSelected(): void {
-    this.#batchTurn = this.#fast().some((entry) => !this.#firstGroup(entry));
+  batchSelected(now?: number): void {
+    this.#batchTurn = this.#fast().some((entry) => !this.#firstGroup(entry, now));
   }
 
   /**
@@ -442,11 +443,12 @@ export class RunQueue {
    * `reviews/0.1.378-r2.md` N1): one of a named wait's group, a file of it
    * selected by an open wait or in a batch, is that group's tier
    * (`batchSelected`); any other counts as a tier of the first group
-   * (`tierSelected`, row 011-145).
+   * (`tierSelected`, row 011-145). `now` as `tierSelected`'s.
    */
-  focusedSelected(refs: readonly TestFileRef[]): void {
-    if (refs.some((ref) => this.#promotions.rankOf(testFileId(ref)) !== null)) this.batchSelected();
-    else this.tierSelected(false);
+  focusedSelected(refs: readonly TestFileRef[], now?: number): void {
+    if (refs.some((ref) => this.#promotions.rankOf(testFileId(ref), now) !== null))
+      this.batchSelected(now);
+    else this.tierSelected(false, now);
   }
 
   /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */

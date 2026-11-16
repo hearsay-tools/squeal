@@ -17,6 +17,8 @@ export interface StartOptions {
    * Without it, `startNext` returns at the first start.
    */
   readonly fly?: (tier: Tier) => void;
+  /** The step's one reading (row 011-372): the started tier's count toward a batch or the turn reads it. */
+  readonly at?: EpochMs;
 }
 
 /** What starting one candidate did. */
@@ -56,7 +58,7 @@ export function startNext(
       };
     }
     options.check?.(step.lane);
-    const done = act(context, ledger, step);
+    const done = act(context, ledger, step, options.at);
     if ("tier" in done) {
       first ??= done.tier;
       if (options.fly === undefined) return { tier: first };
@@ -74,10 +76,15 @@ function waitsFirst(idle: Idle): boolean {
   return idle.idle === "claims" || idle.idle === "quiet";
 }
 
-/** Starts `candidate`, or says why it did not start. */
-function act(context: SchedulerContext, ledger: Ledger, candidate: Candidate): Act {
+/** Starts `candidate`, or says why it did not start; its count reads `at` (row 011-372). */
+function act(
+  context: SchedulerContext,
+  ledger: Ledger,
+  candidate: Candidate,
+  at: EpochMs | undefined,
+): Act {
   if (candidate.focus !== null) {
-    const tier = startFocusedTier(context, ledger, candidate.focus, candidate.files);
+    const tier = startFocusedTier(context, ledger, candidate.focus, candidate.files, at);
     return tier === null ? { unstarted: [] } : { tier };
   }
   const ask = candidate.width;
@@ -104,6 +111,7 @@ function act(context: SchedulerContext, ledger: Ledger, candidate: Candidate): A
         : startTier(context, ledger, files, candidate.kind, lease ?? undefined, {
             promoted: candidate.promoted,
             beside: candidate.beside,
+            at,
           });
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
@@ -114,8 +122,8 @@ function act(context: SchedulerContext, ledger: Ledger, candidate: Candidate): A
   // A tier beside it counts toward neither (row 011-269).
   // An edit's tier of the batch runs as wide as its files, under the runner's own width.
   const grant = lease?.grant ?? (ask === null ? tier.files.length : ask.offer);
-  if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant);
-  else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog);
+  if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at);
+  else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at);
   return { tier };
 }
 
@@ -123,11 +131,19 @@ function act(context: SchedulerContext, ledger: Ledger, candidate: Candidate): A
  * A batch's `tier` started at `grant` workers (row 011-268): the queue gives
  * the files in no batch the next tier, and the batch's estimated end, its
  * files' wall estimate at the tier's width from its start, goes to status.
+ * Its batch ranks read `at`, the step's reading (row 011-372).
  */
-function batchStarted(context: SchedulerContext, ledger: Ledger, tier: Tier, grant: number): void {
+function batchStarted(
+  context: SchedulerContext,
+  ledger: Ledger,
+  tier: Tier,
+  grant: number,
+  at: EpochMs | undefined,
+): void {
   const first = tier.files[0]?.file.ref;
   if (first === undefined) return;
   const estimate = estimateMs(context.runner.traits, tier.files, grant);
-  ledger.queue.batchSelected();
-  ledger.queue.batchStarted(first, ((tier.startedAt ?? context.now()) + estimate) as EpochMs);
+  ledger.queue.batchSelected(at);
+  const end = ((tier.startedAt ?? context.now()) + estimate) as EpochMs;
+  ledger.queue.batchStarted(first, end, at);
 }

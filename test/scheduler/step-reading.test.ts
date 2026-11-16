@@ -35,8 +35,8 @@ const TICK_MS = 7;
 const OWN_READS: Readonly<Record<string, RegExp>> = {
   // A tier's start: its row's and its run's start time, a slow tier's too.
   "tier start": /^(newTier|executeTier|startTier|SlowTier\.#select)\b/,
-  // A row's write: the ledger's commit, a result's last-used time.
-  "row write": /^(Ledger\.#write|acceptedAt)\b/,
+  // A row's write: the ledger's commit, a result's last-used time, the pool wait's end.
+  "row write": /^(Ledger\.#write|acceptedAt|PoolWaits\.(granted|refused))\b/,
   // The lock's label for a lock watcher: when the turn's operation began.
   "lock label": /^Mutex\.relabel\b/,
   // The wake loop's bookkeeping: a wake's arm, the runner part's bound, the slow release's arm.
@@ -146,8 +146,10 @@ describe("every decision in a step's turn reads the step's one reading (rows 011
     const steps = countSteps(side.clock as VirtualClock);
     await side.edit("watch", "src/e.ts");
     await expect.poll(() => side.current(E), { timeout: 20_000 }).toBe(true);
-    vi.restoreAllMocks();
+    // The batch's tier ends: the beside lane's close, then the backlog's tiers, ranked at each step.
     gate.stop();
+    await settle(side);
+    vi.restoreAllMocks();
 
     expect(steps.some((s) => s.plans > 0)).toBe(true);
     expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
