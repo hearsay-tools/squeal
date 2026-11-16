@@ -1,5 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { Rest } from "../../src/core/types/scheduler.js";
+import type { QuietOptions } from "../helpers/quiet-point.js";
 
 /*
  * Row 011-367: a scheduler on a virtual clock whose runner works in real
@@ -14,7 +15,7 @@ export interface Driven {
   advance(ms: number): void;
   rest(): Promise<Rest>;
   /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
-  quiet(): Promise<Rest>;
+  quiet(options?: QuietOptions): Promise<Rest>;
 }
 
 /**

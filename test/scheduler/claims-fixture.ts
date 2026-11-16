@@ -19,7 +19,7 @@ import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
-import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
+import { countCalls, type QuietOptions, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 
@@ -207,7 +207,7 @@ export interface Side {
   /** Row 011-378: the runner calls the scheduler has open. */
   readonly calls: RunnerCalls;
   /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
-  quiet(): Promise<Rest>;
+  quiet(options?: QuietOptions): Promise<Rest>;
 }
 
 export interface SideOptions {
@@ -331,7 +331,7 @@ export function side(root: string, options: SideOptions): Side {
     clock: clocked.clock,
     rest,
     calls,
-    quiet: () => quiet({ rest, calls, clock: clocked.clock }),
+    quiet: (options) => quiet({ rest, calls, clock: clocked.clock }, options),
   };
 }
 

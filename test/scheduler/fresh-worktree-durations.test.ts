@@ -12,7 +12,12 @@ import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { countCalls, quiet as quietPoint, RunnerCalls } from "../helpers/quiet-point.js";
+import {
+  countCalls,
+  type QuietOptions,
+  quiet as quietPoint,
+  RunnerCalls,
+} from "../helpers/quiet-point.js";
 import { harnessClock } from "../helpers/virtual-clock.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
 import { SLOW } from "./cleanup.js";
@@ -90,7 +95,8 @@ function daemonAt(root: string, store: Store, commonDir: string) {
     clock.clock?.advance(0);
     return scheduler.rest();
   };
-  const quiet = () => quietPoint({ rest, calls, clock: clock.clock });
+  const quiet = (options?: QuietOptions) =>
+    quietPoint({ rest, calls, clock: clock.clock }, options);
   return { runner, scheduler, worktreeId, now: clock.now, advance: clock.advance, rest, quiet };
 }
 
