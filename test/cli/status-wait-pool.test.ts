@@ -57,17 +57,33 @@ function refused(store: Store, worktreeId: WorktreeId, at = NOW - 1_000, wait: u
   publishPoolWaits(store, worktreeId, new Map([["vitest", wait as PoolWait]]), at as EpochMs);
 }
 
+const ASKED_MS = 60;
+
+/**
+ * The named wait's text at its deadline, its elapsed tenth checked and then masked
+ * (row 011-388, as row 011-374 does for `status-wait-paused`): load moves the tenth,
+ * so the text holds "after N s" and each call's own bounds check the time.
+ */
 async function timedOut(root: string) {
+  const called = performance.now();
   const wait = await waitForNamed(root, [SOURCE], {
-    timeoutMs: 60,
+    timeoutMs: ASKED_MS,
     pollMs: 20,
     settleMs: 0,
     now: () => NOW,
     sync: sync(),
     ask: async () => [],
   });
+  const ranMs = performance.now() - called;
   if (wait.outcome === "unavailable") throw new Error("unavailable");
-  return namedText(wait, NOW);
+  const text = namedText(wait, NOW);
+  // The deadline passed (less 1 ms of timer clock, `wait-clock.ts`), inside the call.
+  expect(wait.waitedMs, text).toBeGreaterThanOrEqual(ASKED_MS - 1);
+  expect(wait.waitedMs, text).toBeLessThanOrEqual(ranMs + 1);
+  const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
+  expect(text).toMatch(/the deadline passed after \d+\.\d s/);
+  expect(text).toContain(`the deadline passed ${after}`);
+  return text.replaceAll(after, "after N s");
 }
 
 describe("a named wait says when its files wait for CPU (row 011-309)", () => {
