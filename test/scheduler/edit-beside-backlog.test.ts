@@ -131,6 +131,7 @@ async function harness(
     backlogTierSize: 8,
     adapters: [timed],
     capacity: { dir, hostSlots: 4 },
+    clock: "virtual",
     policy: RUN_MISSING,
   });
   return { h, runs };
@@ -210,7 +211,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       true,
     );
 
-    await h.scheduler.idle();
+    await h.quiet();
     for (const path of BACKLOG) {
       // Each ran once, in a slot of its own: nothing went back to the queue.
       const ran = runs.filter((run) => holds(run, path));
@@ -234,7 +235,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
       await h.batch("nt/src/b.mjs");
       return at;
     });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(backlog.report?.end).toBe("completed");
     // The edit's run of the re-keyed file started beside the backlog's run of it, not after it.
@@ -293,7 +294,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     ).toBe(false);
     release();
 
-    await h.scheduler.idle();
+    await h.quiet();
     expect(storedBy(h, REKEYED, edit)).toBe(true);
     expect(outcome(h, REKEYED)).toBe("pass");
     expect(runs.filter((run) => holds(run, REKEYED))).toHaveLength(2);
@@ -322,7 +323,7 @@ describe("scheduler: an edit's node:test tier beside the backlog tier (task 011-
     await expect.poll(() => outcome(h, REKEYED), { timeout: 60_000, interval: 25 }).toBe("pass");
     expect(backlog.end).toBeNull();
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(backlog.report?.end).toBe("crashed");
     const edit = again();
     if (edit === undefined) throw new Error("the re-keyed file did not run beside the backlog");

@@ -20,7 +20,9 @@ import { openHarness } from "./vitest-harness.js";
  * a forced queued file forced, in the backlog.) Only the tier the edit
  * cancels runs 5 s files: 60 runs of them, the baseline's, the edits' and
  * the last backlog's too, took 125 s against the 120 s timeout at Vitest's
- * three workers on 4 CPUs (CI run 39695184172).
+ * three workers on 4 CPUs (CI run 39695184172). Row 011-381: on the
+ * virtual clock, the 5 s and the quiet's 20 s are clock moves, and each
+ * check after them reads at the quiet point.
  */
 const TIER_SIZE = 4;
 const F0 = "test/f000.test.ts";
@@ -31,16 +33,15 @@ describe("a lane waits for quiet on a real Vitest adapter (row 011-94)", SLOW, (
     const slow = join(tmpdir(), `squeal-011-94-${process.pid}-${Date.now()}.slow`);
     onTestFinished(() => rmSync(slow, { force: true }));
     const repo = suite(30, 5_000, undefined, slow);
-    let offset = 0;
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       tierSize: TIER_SIZE,
       backlogTierSize: 200,
       runnerPartBesideRun: true,
-      now: () => Date.now() + offset,
+      clock: "virtual",
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const base = h.runner.runs.length;
     const started: string[][] = [];
     h.gate.before = (files) => {
@@ -56,22 +57,24 @@ describe("a lane waits for quiet on a real Vitest adapter (row 011-94)", SLOW, (
     await expect.poll(() => started.length, { timeout: 60_000 }).toBe(1);
     await edit(F0);
     rmSync(slow);
-    await expect.poll(() => h.runsOf(F0).length, { timeout: 60_000 }).toBe(3);
+    await h.quiet();
+    expect(h.runsOf(F0)).toHaveLength(3);
     const backlog = h.runner.runs.slice(base).find((run) => run.files.length === 30);
     expect(backlog?.report.failure).toBe(cancelled("backlog"));
 
     // A file the first edit's tier left queued.
     const second = started[0]?.find((path) => !started[1]?.includes(path)) ?? "";
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    h.advance(5_000);
     await edit(second);
-    await expect.poll(() => h.runsOf(second).length, { timeout: 60_000 }).toBe(3);
+    await h.quiet();
+    expect(h.runsOf(second)).toHaveLength(3);
     // The backlog's tier, then the two edits' tiers: red before row 011-94, the backlog's between them.
     expect(started.map((files) => files.length > TIER_SIZE)).toEqual([true, false, false]);
     expect(started[1]).toContain(F0);
     expect(started[2]).toContain(second);
 
-    offset += BACKLOG_QUIET_MS;
-    await h.scheduler.idle();
+    h.advance(BACKLOG_QUIET_MS);
+    await h.quiet();
     expect(started.slice(3).some((files) => files.length > TIER_SIZE)).toBe(true);
     expect(h.header().counts).toMatchObject({ pending: 0, stale: 0, unknown: 0 });
   });

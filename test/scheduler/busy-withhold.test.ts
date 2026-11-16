@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { rekeyEnvironments } from "../../src/core/scheduler/environment-growth.js";
+import { MERGE_HOLD_POLL_MS } from "../../src/core/scheduler/hold.js";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import { prepareObserved } from "../../src/core/scheduler/observed.js";
 import type { TestCheckId } from "../../src/core/types/check.js";
@@ -55,10 +56,11 @@ async function harness(tierSize: number): Promise<Harness> {
     busyWaits: busyWaits(),
     busySliceMs: 50,
     tierSize,
+    clock: "virtual",
     policy: RUN_MISSING,
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return h;
 }
 
@@ -86,21 +88,23 @@ async function holdDuringBusyWrite(
     await edit();
     await expect.poll(() => held, { timeout: 30_000 }).not.toBeNull();
     await held;
-    await h.scheduler.idle();
+    await h.quiet();
     expect(readMergeHold(h.store, h.worktreeId, 0)?.paths).toEqual([path]);
   } finally {
     restore();
   }
 }
 
-/** `git add` ends the hold; the held file runs once it does. */
+/**
+ * `git add` ends the hold at its next poll, which the virtual clock moves
+ * to (row 011-381); the held file runs once it does.
+ */
 async function endHold(h: Harness, path: string): Promise<void> {
   git(h.root, ["add", path]);
-  await expect
-    .poll(() => readMergeHold(h.store, h.worktreeId, 0)?.paths ?? null, { timeout: 10_000 })
-    .toBeNull();
-  await expect.poll(() => pendingOf(h, MATH), { timeout: 30_000 }).toBeNull();
-  await h.scheduler.idle();
+  h.advance(MERGE_HOLD_POLL_MS);
+  await h.quiet();
+  expect(readMergeHold(h.store, h.worktreeId, 0)).toBeNull();
+  expect(pendingOf(h, MATH)).toBeNull();
 }
 
 const pendingOf = (h: Harness, path: string) =>
