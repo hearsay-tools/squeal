@@ -8,12 +8,14 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { holds } from "./tier-yields-fixture.js";
+import { holds, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-55 (spec 011 C15 and C7): what the tests of a promoted file under
  * another worktree's claim share. Two worktrees on one store; the other runs
- * F's key, held, while this one runs four slow files.
+ * F's key, held, while this one runs four slow files. Row 011-363: each
+ * worktree's scheduler is on its own virtual clock, so a claim's recheck
+ * comes only when a test moves this one's clock.
  */
 export const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 export const isSlow = (path: string) => SLOW.includes(path);
@@ -30,21 +32,22 @@ export function filesOf(slowMs: number, fMs: number): CatchUpFile[] {
 }
 
 /**
- * Both worktrees started and idle. `options` are this worktree's: its
- * policy's timeout, its clock, and a `policy` set over the defaults; under
+ * Both worktrees started and at rest, each on a virtual clock. `options`
+ * are this worktree's: its policy's timeout and a `policy` set over the
+ * defaults; under
  * `RUN_MISSING` its start runs every file and the other inherits the results.
  */
 export async function sides(
   files: CatchUpFile[],
-  options: Pick<CatchUpOptions, "timeoutMs" | "now" | "policy"> = {},
+  options: Pick<CatchUpOptions, "timeoutMs" | "policy"> = {},
 ): Promise<{ main: CatchUpSide; other: CatchUpSide }> {
   const repo = catchUpRepo(files);
-  const main = catchUpSide(repo, repo.main, { files, hostSlots: 8, ...options });
+  const main = catchUpSide(repo, repo.main, { files, hostSlots: 8, clock: "virtual", ...options });
   await main.scheduler.start();
-  await main.scheduler.idle();
-  const other = catchUpSide(repo, repo.other, { files, hostSlots: 8 });
+  await settle(main);
+  const other = catchUpSide(repo, repo.other, { files, hostSlots: 8, clock: "virtual" });
   await other.scheduler.start();
-  await other.scheduler.idle();
+  await settle(other);
   return { main, other };
 }
 
