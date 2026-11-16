@@ -127,7 +127,7 @@ The clock reading that answers "what time is it": milliseconds since the epoch, 
 _Avoid_: wall time, now (the method that reads it), timestamp
 
 **Elapsed time**:
-The clock reading that answers "how long has it been": milliseconds from an origin of the daemon's own, which never goes back and which a change of calendar time does not move. Every wake is stated as a delay and kept on it, so a calendar change moves no wake. A wait that compares a calendar time counts on it too: when the calendar is set back or forward, the daemon moves the calendar times it keeps for its waits by the same amount, and counts a stored time from when it first saw it (row 011-377). Among the scheduler's waits, one still moves with a calendar change: a command hold's end, which `squeal hold` stores and status reads on the calendar. Outside the scheduler, the lint pass's copy of the quiet after an edit (`src/core/lint/pass/idle.ts`) still compares the stored revision time; board row 011-382 holds it.
+The clock reading that answers "how long has it been": milliseconds from an origin of the daemon's own, which never goes back and which a change of calendar time does not move. Every wake is stated as a delay and kept on it, so a calendar change moves no wake. A wait that compares a calendar time counts on it too: when the calendar is set back or forward, the daemon moves the calendar times it keeps for its waits by the same amount, and counts a stored time from when it first saw it (row 011-377). Among the scheduler's waits, one still moves with a calendar change: a command hold's end, which `squeal hold` stores and status reads on the calendar.
 _Avoid_: steady time, ticks, monotonic time, duration (a span, measured on either)
 
 **Rest**:
