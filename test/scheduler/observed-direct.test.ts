@@ -60,7 +60,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     const repo = catchUpRepo(FILES, [CHILD]);
     const first = open(repo, repo.main, FILES, WHAT);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(JSON.parse(first.store.meta.get(observedDirectMetaKey("")) ?? "{}")).toEqual({
       [X.path]: [CHILD],
     });
@@ -68,7 +68,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
 
     const restarted = open(repo, repo.main, FILES, WHAT);
     await restarted.scheduler.start();
-    await restarted.scheduler.idle();
+    await restarted.quiet();
     const cut = await editAndRun(restarted, CHILD);
     expect(cut.edits[0]?.files.map((f) => f.path)).toEqual([X.path]);
     expect(cut.catchUpPaths).toEqual([Y.path]);
@@ -78,11 +78,11 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     const repo = catchUpRepo(FILES, [CHILD]);
     const a = open(repo, repo.main, FILES, WHAT);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
 
     const b = open(repo, repo.other, FILES, WHAT);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     // B inherits A's results: its keys hold the paths A observed.
     expect(b.runner.runs).toEqual([]);
     const cut = await editAndRun(b, CHILD);
@@ -108,7 +108,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     const repo = catchUpRepo(files, ["src/a.ts", CHILD]);
     const first = open(repo, repo.main, files, what);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     // The path is in X's closure, so nothing grew: the mark alone is stored.
     expect(first.store.meta.get(observedMetaKey(""))).toBeNull();
     expect(JSON.parse(first.store.meta.get(observedDirectMetaKey("")) ?? "{}")).toEqual({
@@ -118,7 +118,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
 
     const restarted = open(repo, repo.main, files, what);
     await restarted.scheduler.start();
-    await restarted.scheduler.idle();
+    await restarted.quiet();
     const cut = await editAndRun(restarted, CHILD);
     expect(cut.edits[0]?.files.map((f) => f.path)).toEqual([x.path]);
     expect(cut.catchUpPaths).toEqual([z.path]);
@@ -139,7 +139,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     // B's runs mark nothing; it starts first and keeps the store's marks as they were.
     const b = open(repo, repo.other, files, { loads: true });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.store.meta.get(observedDirectMetaKey(""))).toBeNull();
 
     // A's copy of CHILD differs, so A runs both files, and its run of X marks CHILD.
@@ -150,7 +150,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     };
     const a = open(repo, repo.main, files, what);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(JSON.parse(b.store.meta.get(observedDirectMetaKey("")) ?? "{}")).toEqual({
       [x.path]: [CHILD],
     });
@@ -172,7 +172,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     });
     observing(side, reads(marked, []));
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const cut = await editAndRun(side, CHILD);
     expect(cut.editPaths).toEqual(pathsOf(marked.slice(0, 2)));
     expect(cut.catchUpPaths).toEqual(pathsOf(marked.slice(2)));
@@ -192,7 +192,7 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
     });
     observing(side, reads(marked, []));
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const cut = await editAndRun(side, CHILD);
     // R by the fallback, and the K = 1 shortest marked file; the other two are catch-up.
     expect(cut.editPaths).toEqual(pathsOf([R, marked[0] as CatchUpFile]));
@@ -234,10 +234,12 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
       RUN_MISSING,
     );
     await side.scheduler.start();
-    await side.scheduler.idle();
-    expect(JSON.parse(store.meta.get(observedDirectMetaKey(NT.name)) ?? "{}")).toEqual({
-      "nt/test/t.test.mjs": ["nt/bin/child.mjs", "nt/lib/b.mjs"],
-    });
+    // `preload-worktrees.ts` has no quiet point yet (row 011-380 B7): poll the mark the run stores.
+    await expect
+      .poll(() => JSON.parse(store.meta.get(observedDirectMetaKey(NT.name)) ?? "{}"), {
+        timeout: 30_000,
+      })
+      .toEqual({ "nt/test/t.test.mjs": ["nt/bin/child.mjs", "nt/lib/b.mjs"] });
     // b is in the static closure: only the child's entry grew the observed set.
     expect(JSON.parse(store.meta.get(observedMetaKey(NT.name)) ?? "{}")).toEqual({
       "nt/test/t.test.mjs": ["nt/bin/child.mjs"],

@@ -70,12 +70,12 @@ async function heldTier(files: readonly CatchUpFile[], edited: string) {
   const repo = catchUpRepo(files);
   const first = sideOf(repo, files, RUN_MISSING);
   await first.scheduler.start();
-  await first.scheduler.idle();
+  await first.quiet();
   await first.scheduler.close();
   const side = sideOf(repo, files, LOOKUP_ONLY);
   const crashing = crashes(side);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   side.runner.hold();
   await side.edit("watch", edited);
   await expect.poll(() => side.runner.active).toBe(1);
@@ -104,7 +104,7 @@ describe("scheduler: a tier that crashes while its daemon stops (row 011-66)", {
 
     const next = sideOf(repo, files, LOOKUP_ONLY);
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     expect(next.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual(crashed);
     for (const path of crashed) expect(next.current(path)).toBe(true);
   });
@@ -126,7 +126,7 @@ describe("scheduler: a tier that crashes while its daemon stops (row 011-66)", {
 
     const third = sideOf(repo, files, LOOKUP_ONLY);
     await third.scheduler.start();
-    await third.scheduler.idle();
+    await third.quiet();
     expect(third.runner.runs).toEqual([]);
   });
 
@@ -136,7 +136,7 @@ describe("scheduler: a tier that crashes while its daemon stops (row 011-66)", {
     const { side, crashing } = await heldTier(files, source);
     crashing.on = true;
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
     for (const path of importers(files, source)) {
       expect(rowOf(side, path)).toEqual({ pending: null, unknown: true });
     }

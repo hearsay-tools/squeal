@@ -51,7 +51,7 @@ describe("an import into a running daemon (row 018-28)", SLOW, () => {
     await reader.run();
     expect(reader.commits()).toEqual([commit]);
     expect(reader.notes).toEqual([]);
-    await b.scheduler.idle();
+    await b.quiet();
 
     expect(b.runner.runs).toEqual([]);
     expect(importedPasses(b)).toBe(COUNT);
@@ -88,7 +88,7 @@ describe("an import into a running daemon (row 018-28)", SLOW, () => {
     expect(importsWaiting(b.store, b.worktreeId)).toHaveLength(1);
 
     release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(importsWaiting(b.store, b.worktreeId)).toEqual([]);
     expect(b.runner.runs).toEqual([]);
     expect(readStatus(dev)).toMatchObject({

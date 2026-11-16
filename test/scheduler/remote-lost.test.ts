@@ -91,7 +91,7 @@ describe("a background tier lost on its remote (spec 021 D13, review 0.1.442 B4)
     });
     await until(() => statuses.some((s) => s.includes("go there")));
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(remoteRuns).toHaveLength(1);
     expect(statuses.at(-1)).toMatch(/^remote box unreachable since .*; running here$/);
     const ranHere = side.runner.runs.flatMap((run) => run.files.map((f) => f.path));

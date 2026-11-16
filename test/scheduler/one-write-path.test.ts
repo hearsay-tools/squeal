@@ -49,14 +49,14 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
       },
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(stored(side, observedMetaKey(""))).toEqual({ [A]: ["dist/x.json"] });
     expect(side.current(A)).toBe(true);
 
     // The kept path keys the file: its edit runs it again.
     const before = side.runner.runsOf(A).length;
     await side.edit("watch", "dist/x.json");
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runsOf(A).length).toBe(before + 1);
     expect(side.current(A)).toBe(true);
   });
@@ -70,17 +70,17 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
       off,
     );
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(stored(a, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
     const before = a.runner.runsOf(A).length;
     await a.edit("watch", "lib/x.mjs");
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A).length).toBe(before + 1);
 
     const reads = catchUpRepo(FILES, ["lib/x.mjs"]);
     const b = open(reads, { observed: { [A]: { paths: ["lib/x.mjs"], directories: [] } } }, off);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(stored(b, observedMetaKey(""))).toBeNull();
   });
 
@@ -89,7 +89,7 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
     const what = { startup: { "": [BOOT] }, loads: true };
     const first = open(repo, what);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(stored(first, observedStartupMetaKey(""))).toEqual([BOOT]);
     // Its key lacked the path the run loaded: it ran again under the key that holds it (003-43).
     expect(first.runner.runsOf(A)).toHaveLength(2);
@@ -97,11 +97,11 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
 
     const restarted = open(repo, what);
     await restarted.scheduler.start();
-    await restarted.scheduler.idle();
+    await restarted.quiet();
     expect(restarted.runner.runs).toEqual([]);
     expect(restarted.current(A)).toBe(true);
     await restarted.edit("watch", BOOT);
-    await restarted.scheduler.idle();
+    await restarted.quiet();
     expect(restarted.runner.runsOf(A)).toHaveLength(1);
   });
 
@@ -111,7 +111,7 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
     const b = catchUpSide(repo, repo.other, { files: FILES, hostSlots: 4, policy: RUN_MISSING });
     observing(b, { loads: true });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runsOf(A)).toHaveLength(1);
 
     // A runs its edited copy, whose run loads lib/x.mjs, and stores the path.
@@ -120,22 +120,22 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
       loads: true,
     });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     await a.edit("watch", A);
-    await a.scheduler.idle();
+    await a.quiet();
     expect(stored(a, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
 
     // B's next revision, whatever it changed, re-keys the file with the path, which runs it.
     await b.edit("watch", "notes.md");
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runsOf(A)).toHaveLength(2);
     // Once: the next revision finds nothing new.
     await b.edit("watch", "notes.md");
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runsOf(A)).toHaveLength(2);
     // From then on B's edits of the path run the file.
     await b.edit("watch", "lib/x.mjs");
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runsOf(A)).toHaveLength(3);
   });
 
@@ -153,19 +153,19 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
       set(key, value);
     };
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(thrown).toBe(1);
     // The transaction rolled back: the store holds no row, while this worktree's view keys the path.
     expect(side.store.meta.get(observedStartupMetaKey(""))).toBeNull();
 
     // The next batch resumes the pump; the next record stores what the view holds.
     await side.edit("watch", A);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(stored(side, observedStartupMetaKey(""))).toEqual([BOOT]);
     expect(side.current(A)).toBe(true);
     const before = side.runner.runsOf(A).length;
     await side.edit("watch", BOOT);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runsOf(A).length).toBe(before + 1);
   });
 
@@ -187,7 +187,7 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
         set(key, value);
       };
       await side.scheduler.start();
-      await side.scheduler.idle();
+      await side.quiet();
       expect(thrown).toBe(1);
       expect(side.store.meta.get(observedMetaKey(""))).toBeNull();
       // The invariant in the window: no result is stored at a key with the path the store lacks.
@@ -201,18 +201,18 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
 
       // The next record stores what this worktree's view keys, though its run adds nothing new.
       await side.edit("watch", A);
-      await side.scheduler.idle();
+      await side.quiet();
       expect(stored(side, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
       expect(side.current(A)).toBe(true);
       // The invariant after it: a daemon that keys from the store alone finds the stored result.
       await side.scheduler.close();
       const restarted = open(repo, what);
       await restarted.scheduler.start();
-      await restarted.scheduler.idle();
+      await restarted.quiet();
       expect(restarted.runner.runs).toEqual([]);
       expect(restarted.current(A)).toBe(true);
       await restarted.edit("watch", "lib/x.mjs");
-      await restarted.scheduler.idle();
+      await restarted.quiet();
       expect(restarted.runner.runsOf(A)).toHaveLength(1);
     });
 
@@ -225,7 +225,7 @@ describe("scheduler: one write path for observed paths (016 D4)", SLOW, () => {
       const restarted = open(repo, what);
       expect(new ObservedSets(restarted.store).of(REF_A)).toEqual([]);
       await restarted.scheduler.start();
-      await restarted.scheduler.idle();
+      await restarted.quiet();
       expect(restarted.runner.runsOf(A).length).toBeGreaterThan(0);
       expect(stored(restarted, observedMetaKey(""))).toEqual({ [A]: ["lib/x.mjs"] });
       expect(restarted.current(A)).toBe(true);

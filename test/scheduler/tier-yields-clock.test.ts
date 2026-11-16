@@ -123,7 +123,7 @@ async function heldTier(ms: number, clock: Clock, beside = false) {
     ...(beside ? { lane: (f) => (f.project === "g" ? "g" : "vitest") } : {}),
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   holdRuns(side.runner, (path) => SLOW.includes(path) || path === q.path);
   await side.edit("watch", "src/s.ts", "f.config.json", ...(beside ? ["src/q.ts"] : []));

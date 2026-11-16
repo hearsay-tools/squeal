@@ -37,7 +37,7 @@ async function sideOf(files: readonly CatchUpFile[], held: readonly string[]) {
   const options = { files, hostSlots: 8, policy: RUN_MISSING, now: () => start };
   const side = catchUpSide(repo, repo.main, options);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, (path) => held.includes(path));
   return { side, gate, base };
@@ -116,7 +116,7 @@ describe("a record keeps the promotions of the files it queues again (spec 011 C
     await heldRun(side, S4, waitAt);
     expect(promotions(side)).toContainEqual([testFileId(ref(S4))]);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(SLOW.every((path) => side.current(path))).toBe(true);
   });
 

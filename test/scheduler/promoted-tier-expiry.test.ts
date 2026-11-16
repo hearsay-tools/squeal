@@ -64,7 +64,7 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
 
       gate.stop();
       side.advance(BACKLOG_QUIET_MS);
-      await side.scheduler.idle();
+      await side.quiet();
       expect(wide.completed.map((f) => f.path).toSorted()).toEqual(P);
       expect([...P, ...B, E].every((path) => side.current(path))).toBe(true);
     },
@@ -89,7 +89,7 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
     expect(past.reason).toContain(BATCH);
 
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect([...P, ...B, E].every((path) => side.current(path))).toBe(true);
     expect(paths(runsAfter(side, wide)[0] as CatchUpRun)).toContain(E);
   });
@@ -111,7 +111,7 @@ describe("a batch's tier runs on past its wait's deadline (review 0.1.377 B1, ro
     expect(wide.cancelled).toBe(false);
     expect(wide.endedAt).toBeNull();
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     const later = runsAfter(side, wide);
     expect(later.some((run) => run.cancelled)).toBe(false);

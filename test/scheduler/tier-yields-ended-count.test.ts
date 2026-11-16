@@ -115,7 +115,7 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     // The runner names the first file ended as the run starts, as Vitest's `onTestModuleEnd` would.
     const run = side.runner.run.bind(side.runner);
     side.runner.run = async (refs, options) => {
@@ -150,6 +150,6 @@ describe("a running tier's ended files (row 011-209, issue-91 F4)", { timeout: 1
       ),
     ]);
     hold.stop();
-    await side.scheduler.idle();
+    await side.quiet();
   });
 });

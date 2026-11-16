@@ -61,7 +61,7 @@ async function busyDaemon() {
     busy: { busyWaits, busySliceMs: SLICE_MS },
   });
   await b.scheduler.start();
-  await b.scheduler.idle();
+  await b.quiet();
   expect(b.passing()).toBe(0);
   const seen = new ImportsSeen(b.store);
   const retry = async () => {
@@ -104,7 +104,7 @@ describe("an import into a running daemon on a busy store (row 011-323)", SLOW, 
     expect(notes.join("\n")).toContain("ran once it was free: the observed reads of an import");
 
     release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(importsWaiting(b.store, b.worktreeId)).toEqual([]);
     expect(b.runner.runs).toEqual([]);
     expect(importedPasses(b)).toBe(COUNT);

@@ -126,7 +126,7 @@ describe("the virtual clock of the model test and the harnesses (row 011-353)", 
     expect(side.clock).not.toBeNull();
     const start = side.now();
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const rest = await side.rest();
     expect(rest.busyResume).toBe(false);
     expect(side.now()).toBe(start);

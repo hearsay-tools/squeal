@@ -56,7 +56,7 @@ async function started() {
   });
   onTestFinished(() => lint.close());
   const settle = async () => {
-    await side.scheduler.idle();
+    await side.quiet();
     lint.nudge();
     await lint.idle();
   };

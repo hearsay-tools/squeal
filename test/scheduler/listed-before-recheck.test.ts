@@ -61,7 +61,7 @@ async function stored(policy: Pick<Policy, "baseline">) {
   a.runner.testFiles = async () => [F0, F1, F2, F4].map(ref);
   a.runner.failing.add(F4);
   await a.scheduler.start();
-  await a.scheduler.idle();
+  await a.quiet();
   expect(ran(a).sort()).toEqual([F0, F1, F2, F4]);
 
   // Another branch resolved them last, with a module their own closures here do not import.
@@ -76,7 +76,7 @@ async function stored(policy: Pick<Policy, "baseline">) {
   c.runner.closure = async (testFile) => ({ testFile, paths: [SHARED, testFile.path] });
   c.runner.failing.add(F1);
   await c.scheduler.start();
-  await c.scheduler.idle();
+  await c.quiet();
   expect(stateOf(c, F1)).toMatchObject({ outcome: "fail", validity: "current" });
 
   const b = side(other, { count: COUNT, policy, rerunCap: 0 });
@@ -117,7 +117,7 @@ describe(
     it("after the second commit, counts, queue and held failures equal a single commit's", async () => {
       const { a, b } = await stored(LOOKUP_ONLY);
       await b.scheduler.start();
-      await b.scheduler.idle();
+      await b.quiet();
 
       // Only the held fail ran, once, and confirmed; F3 stays a miss no policy queued.
       expect(ran(b)).toEqual([F4]);
@@ -138,7 +138,7 @@ describe(
     it("a file the recheck finds current is not queued and gets no failure notice", async () => {
       const { b, recheck } = await stored(LOOKUP_ONLY);
       await b.scheduler.start();
-      await b.scheduler.idle();
+      await b.quiet();
 
       // F1's shared-list key holds another worktree's unconfirmed fail: held, never shown.
       expect(recheck.length).toBeGreaterThan(0);
@@ -157,7 +157,7 @@ describe(
     it("a start under lookup-then-run-missing commits once, after the recheck", async () => {
       const { b, recheck } = await stored(RUN_MISSING);
       await b.scheduler.start();
-      await b.scheduler.idle();
+      await b.quiet();
 
       expect(recheck.map((call) => call.path).sort()).toEqual([F0, F1, F3, F4]);
       for (const call of recheck) expect(call.rows).toBe(0);

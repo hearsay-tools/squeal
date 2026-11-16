@@ -36,7 +36,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
     const repo = mergeRepo();
     const side = holdSide(repo);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const before = rows(side);
     const revision = side.scheduler.status().revision;
     const runs = side.runner.runs.length;
@@ -44,7 +44,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
 
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     await settle();
 
     expect(side.scheduler.status().revision).toBe(revision + 1);
@@ -62,14 +62,14 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
     const repo = mergeRepo();
     const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
     const runs = side.runner.runs.length;
 
     writeFileSync(join(repo.main, HELPER), helperReturning(4));
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     await settle();
     expect(side.runner.runs.length).toBe(runs);
     expect(heldPaths(side)).toEqual([HELPER]);
@@ -82,7 +82,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
       .toEqual([2, 2]);
     const started = Math.max(...side.runner.runsOf(A).map((r) => r.startedAt));
     expect(started - added).toBeLessThan(2_000);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(heldPaths(side)).toBeNull();
     expect(side.scheduler.status().revision).toBe(revision);
     expect([outcomes(side, A), outcomes(side, B)]).toEqual([["pass"], ["pass"]]);
@@ -91,7 +91,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
 
     const fresh = holdSide(repo);
     await fresh.scheduler.start();
-    await fresh.scheduler.idle();
+    await fresh.quiet();
     for (const path of [A, B]) expect(rows(fresh).get(path)?.key).toBe(held.get(path)?.key);
     expect(fresh.runner.runs).toEqual([]);
   });
@@ -100,7 +100,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
     const repo = mergeRepo();
     const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
     expect(readFileSync(join(repo.main, HELPER), "utf8")).toContain("<<<<<<<");
@@ -117,7 +117,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
     const repo = mergeRepo();
     const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const before = rows(side);
     const runs = side.runner.runs.length;
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
@@ -130,7 +130,7 @@ describe("scheduler: the merge hold (row 011-72)", { timeout: 60_000 }, () => {
     await expect
       .poll(() => side.scheduler.status().revision, { timeout: 5_000 })
       .toBe(revision + 1);
-    await side.scheduler.idle();
+    await side.quiet();
     await settle();
     expect(side.runner.runs.length).toBe(runs);
     for (const path of [A, B]) {

@@ -134,6 +134,6 @@ describe("the published promotions in `meta` (task 011-13)", () => {
     const held = publishedBatches(a.store, a.worktreeId, 0 as EpochMs, Date.now() as EpochMs);
     expect([...held.keys()]).toEqual([testFileId({ project: "", path: Z })]);
     a.runner.release();
-    await a.scheduler.idle();
+    await a.quiet();
   });
 });

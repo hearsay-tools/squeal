@@ -30,7 +30,7 @@ const settle = () => new Promise((r) => setTimeout(r, 300));
 
 /** `side` is on hold for the helper, with no run since `runs`. */
 async function expectHeld(side: CatchUpSide, runs: number): Promise<void> {
-  await side.scheduler.idle();
+  await side.quiet();
   await settle();
   expect(heldPaths(side)).toEqual([HELPER]);
   expect(side.runner.runs.length).toBe(runs);
@@ -41,7 +41,7 @@ async function started(): Promise<{ root: string; side: CatchUpSide }> {
   const repo = mergeRepo();
   const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return { root: repo.main, side };
 }
 
@@ -56,7 +56,7 @@ describe("scheduler: the merge hold's operations (row 011-72)", { timeout: 60_00
     git(root, ["rebase", "--abort"]);
     await batch(side, HELPER);
     await expect.poll(() => heldPaths(side), { timeout: 2_000 }).toBeNull();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runs.length).toBe(runs);
     for (const path of [A, B]) expect(outcomes(side, path)).toEqual(["pass"]);
   });
@@ -71,7 +71,7 @@ describe("scheduler: the merge hold's operations (row 011-72)", { timeout: 60_00
     git(root, ["cherry-pick", "--abort"]);
     await batch(side, HELPER);
     await expect.poll(() => heldPaths(side), { timeout: 2_000 }).toBeNull();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runs.length).toBe(runs);
   });
 
@@ -82,7 +82,7 @@ describe("scheduler: the merge hold's operations (row 011-72)", { timeout: 60_00
     writeFileSync(join(root, HELPER), helperReturning(6));
     git(root, ["commit", "-qam", "six"]);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = side.runner.runs.length;
     const [a, b] = [runsOf(side, A), runsOf(side, B)];
 
@@ -97,7 +97,7 @@ describe("scheduler: the merge hold's operations (row 011-72)", { timeout: 60_00
       .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 10_000 })
       .toEqual([["fail"], ["fail"]]);
     // A new failure runs once more (C5): its re-run may still be in flight when the poll sees FAIL.
-    await side.scheduler.idle();
+    await side.quiet();
     expect([runsOf(side, A), runsOf(side, B)]).toEqual([a + 2, b + 2]);
   });
 });
