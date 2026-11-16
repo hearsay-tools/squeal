@@ -56,8 +56,7 @@ export interface Rekeyed {
   readonly observed: ObservedEntries;
 }
 
-/** The key parts of a file whose environment hash holds its dependencies and that has no runtime segment. */
-export const NO_PARTS: KeyParts = { dependencies: "", runtime: "" };
+const NO_PARTS: KeyParts = { dependencies: "", runtime: "" };
 
 const MAP_KEY = {
   observed: observedMetaKey,
@@ -156,8 +155,8 @@ export function rekeyedHash(
   return importDifferences(exported.descriptor, here.descriptor).length === 0 ? here.hash : null;
 }
 
-/** The check key over `paths`, each `at` the commit (`checkKey`'s encoding). Spec 023 D2 keys at a commit with it. */
-export function keyOver(
+/** The check key over `paths`, each `at` the commit (`checkKey`'s encoding). */
+function keyOver(
   environment: EnvironmentHash,
   testFile: TestFileRef,
   paths: readonly RelativePath[],
@@ -172,10 +171,9 @@ export function keyOver(
  * Each path's key segment as a daemon at the commit's content encodes it
  * (`encodeSegment`), once per path: a file by its blob id, none when the
  * commit holds no file there; a listing by the entry names of the commit's
- * tree, `ABSENT_LISTING` for a directory it does not hold. Spec 023 D2 keys
- * at a commit with it.
+ * tree, `ABSENT_LISTING` for a directory it does not hold.
  */
-export function commitSegments(
+function commitSegments(
   blobs: ReadonlyMap<RelativePath, FileHash>,
 ): (path: RelativePath) => string {
   let names: Map<RelativePath, Set<string>> | null = null;

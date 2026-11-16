@@ -12,7 +12,7 @@ import { pnpmReading } from "./pnpm-install.js";
 import { PNPM_LOCKFILE } from "./pnpm-lockfile.js";
 
 /** The whole fingerprint's encoding of a trusted hidden lockfile and of pnpm's (task 011-85). */
-export const INSTALLED_ENCODING = "squeal-installed/2";
+const INSTALLED_ENCODING = "squeal-installed/2";
 
 export interface CoreEnvironmentOptions {
   /** The daemon's version; never hashed (task 001-199), so a release alone keeps every key. */
