@@ -10,7 +10,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { heldRun, pause, SETTLE_MS } from "./tier-yields-fixture.js";
+import { heldRun, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-117, review `reviews/0.1.268.md` B1 (spec 011 C4 step 5 as
@@ -20,7 +20,9 @@ import { heldRun, pause, SETTLE_MS } from "./tier-yields-fixture.js";
  * `expected` there, and waits at a gate. A scratch file's add or delete
  * puts no listing in `Tier.changes`, so before the repair the run's result
  * was stored under the grown key, with `lib/` as it stood at the end, and
- * was current: a false PASS no second run corrected.
+ * was current: a false PASS no second run corrected. Row 011-368: the
+ * scheduler's clock is virtual; each check reads at the side's quiet point
+ * (`settle`).
  */
 
 const OBSERVES: CatchUpFile = { path: "test/observes.test.ts", ms: 100, imports: [] };
@@ -45,6 +47,7 @@ async function observer(expected: readonly string[], before: readonly string[] =
     files: [OBSERVES],
     hostSlots: 8,
     policy: RUN_MISSING,
+    clock: "virtual",
   });
   for (const path of before) writeFileSync(join(side.root, path), "scratch\n");
   const run = side.runner.run.bind(side.runner);
@@ -91,9 +94,9 @@ async function observer(expected: readonly string[], before: readonly string[] =
 async function addDuringRun(o: Observer, path: string): Promise<void> {
   writeFileSync(join(o.side.root, path), "new\n");
   await o.batch(path);
-  await pause(SETTLE_MS);
+  await settle(o.side);
   o.release();
-  await o.side.scheduler.idle();
+  await settle(o.side);
 }
 
 describe("a listing a run observes first is judged at its end (row 011-117, review 0.1.268 B1)", {
@@ -125,9 +128,9 @@ describe("a listing a run observes first is judged at its end (row 011-117, revi
     await o.batch(SWAP);
     rmSync(join(o.side.root, SWAP));
     await o.batch(SWAP);
-    await pause(SETTLE_MS);
+    await settle(o.side);
     o.release();
-    await o.side.scheduler.idle();
+    await settle(o.side);
     expect(first.cancelled).toBe(false);
     expect(o.runs()).toBe(1);
     expect(o.states()).toEqual(["pass/current"]);
@@ -137,9 +140,9 @@ describe("a listing a run observes first is judged at its end (row 011-117, revi
     const { o } = await observer([".a.txt.swp", "a.txt"], [SWAP]);
     rmSync(join(o.side.root, SWAP));
     await o.batch(SWAP);
-    await pause(SETTLE_MS);
+    await settle(o.side);
     o.release();
-    await o.side.scheduler.idle();
+    await settle(o.side);
     // Red before the repair: its PASS, from a listing with the swap file, current without it.
     expect(o.runs()).toBeGreaterThan(1);
     expect(o.states()).toEqual(["fail/current"]);

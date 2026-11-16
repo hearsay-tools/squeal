@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
-import {
-  CUT_WITHIN_MS,
-  completions,
-  heldRun,
-  holdRuns,
-  pause,
-  ref,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+import { completions, heldRun, holdRuns, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-51, tests 5 and 6 of `research/running-tier-yields.md` (spec 011
@@ -19,6 +11,8 @@ import {
  * whose results it would discard. Review `reviews/0.1.237.md` B1: a file
  * `run --all --force` queued already has a result at its key, which is no
  * result after the cut; a mark ends only at one, or when the key moves.
+ * Row 011-368: the scheduler's clock is virtual; each check reads at the
+ * side's quiet point (`settle`).
  */
 const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 const isSlow = (path: string) => SLOW.includes(path);
@@ -45,10 +39,11 @@ async function forcedAndCut() {
     tierSize: 1,
     backlogTierSize: 1,
     policy: RUN_MISSING,
+    clock: "virtual",
   });
   side.runner.failing.add(H);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await settle(side);
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, (path) => path === H);
   const checkpoint = await side.scheduler.requestFullSuite({ force: true });
@@ -57,7 +52,8 @@ async function forcedAndCut() {
   expect(side.current(H)).toBe(true);
 
   await side.scheduler.promote([ref(Q1)], 60_000);
-  await expect.poll(() => first.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+  await settle(side);
+  expect(first.cancelled).toBe(true);
   const again = await heldRun(side, H, side.runner.runs.indexOf(first) + 1);
   expect(completions(side, Q1, base)).toBe(1);
   // The second short file is still queued behind it.
@@ -78,9 +74,14 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     const repo = catchUpRepo(files);
     // The start runs every file, so the estimate reads the 100 s each run stored. With none, a tier
     // yields only 30 s after its start, and the no-yield check proved nothing (row 011-174).
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      policy: RUN_MISSING,
+      clock: "virtual",
+    });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await settle(side);
     const base = side.runner.runs.length;
     const gate = holdRuns(side.runner, isSlow);
     const s1 = SLOW[0] ?? "";
@@ -89,21 +90,23 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
 
     // An edit elsewhere: its own check makes the tier yield; its files run again after the edit's.
     await side.edit("watch", "src/g1.ts");
-    await expect.poll(() => first.cancelled, { timeout: SETTLE_MS }).toBe(true);
+    await settle(side);
+    expect(first.cancelled).toBe(true);
     const again = await heldRun(side, s1, side.runner.runs.indexOf(first) + 1);
 
     // A second edit and a second named wait: the files a yield cut at these keys run on.
     await side.edit("watch", "src/g2.ts");
     await side.scheduler.promote([ref(G2)], 60_000);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(again.cancelled).toBe(false);
     expect(again.endedAt).toBeNull();
 
     // A third save re-keys all of it: its results would be discarded, so it is cancelled.
     await side.edit("watch", "src/s.ts");
-    await expect.poll(() => again.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(again.cancelled).toBe(true);
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
 
     for (const path of SLOW) {
       // Twice at the first key, both cut; once at the third save's, to its end.
@@ -124,9 +127,14 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     ];
     const repo = catchUpRepo(files);
     // Tiers of one file: four of the edit's, then the backlog's turn takes the re-keyed file.
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1 });
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      tierSize: 1,
+      clock: "virtual",
+    });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await settle(side);
     const base = side.runner.runs.length;
     const gate = holdRuns(side.runner, (path) => path === B);
     await side.edit("watch", "src/e.ts", "b.config.json");
@@ -136,14 +144,15 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
 
     await side.edit("watch", "src/g.ts");
     await side.scheduler.promote([ref(G)], 60_000);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(turn.cancelled).toBe(false);
     expect(turn.endedAt).toBeNull();
 
     await side.edit("watch", "b.config.json");
-    await expect.poll(() => turn.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(turn.cancelled).toBe(true);
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
     expect(files.every((f) => side.current(f.path))).toBe(true);
   });
 
@@ -152,13 +161,13 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
 
     // A second named wait: before review 0.1.237 B1 it cut the file again, at the same key.
     await side.scheduler.promote([ref(Q2)], 60_000);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(again.cancelled).toBe(false);
     expect(again.endedAt).toBeNull();
     expect(side.current(H)).toBe(true);
 
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
     expect(completions(side, H, base)).toBe(1);
     expect(side.store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
     expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
@@ -168,7 +177,7 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     const { side, base, gate, again } = await forcedAndCut();
     // The run at the key cut ends and stores; the runs after it are held again.
     side.runner.release();
-    await side.scheduler.idle();
+    await settle(side);
     expect(again.completed.map((f) => f.path)).toEqual([H]);
     expect(completions(side, H, base)).toBe(1);
 
@@ -176,10 +185,11 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     const checkpoint = await side.scheduler.requestFullSuite({ force: true });
     const third = await heldRun(side, H, next);
     await side.scheduler.promote([ref(Q1)], 60_000);
-    await expect.poll(() => third.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(third.cancelled).toBe(true);
 
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
     expect(side.store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
     expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
   });
@@ -188,14 +198,16 @@ describe("a running tier yields once per file and key (spec 011 C4 step 5 as ame
     const { side, gate, again } = await forcedAndCut();
     // An edit re-keys all of the run at the key cut: the supersession cancels it.
     await side.edit("watch", "src/h.ts");
-    await expect.poll(() => again.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(again.cancelled).toBe(true);
     const moved = await heldRun(side, H, side.runner.runs.indexOf(again) + 1);
 
     await side.scheduler.promote([ref(Q2)], 60_000);
-    await expect.poll(() => moved.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(moved.cancelled).toBe(true);
 
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
     expect([H, Q1, Q2].every((path) => side.current(path))).toBe(true);
   });
 });
