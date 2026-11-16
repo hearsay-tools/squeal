@@ -104,6 +104,25 @@ describe("privateReport", () => {
     ]);
   });
 
+  it("names a path git quotes in its patch as it is", () => {
+    const { root, base } = repo();
+    commit(root, { 'src/we"ird\tnäme\\.ts': "const p = '/home/alice/x';\n" });
+    expect(problems(root, base)).toEqual(['src/we"ird\tnäme\\.ts:1: holds an absolute home path']);
+  });
+
+  it("takes the merge-base with origin/main when no base is given", () => {
+    const { root, base } = repo();
+    commit(root, { "src/b.ts": "const p = '/Users/bob/x';\n" });
+    expect(() => privateReport(root, undefined, DENY_ENV)).toThrow(
+      /no merge-base with origin\/main/,
+    );
+    git(root, ["update-ref", "refs/remotes/origin/main", base]);
+    expect(privateReport(root, undefined, DENY_ENV)).toMatchObject({
+      base,
+      problems: ["src/b.ts:1: holds an absolute home path"],
+    });
+  });
+
   it("skips binary files", () => {
     const { root, base } = repo();
     commit(root, { "a.bin": Buffer.from("\0\0/home/alice/x\0 secret-client-repo\n") });
@@ -136,7 +155,8 @@ describe("privateReport", () => {
   });
 });
 
-describe("scripts/check-private.ts as CI runs it", () => {
+// Each test starts Node and several git commands; at host load over 100 that passed 5 s.
+describe("scripts/check-private.ts as CI runs it", { timeout: 30_000 }, () => {
   const run = (root: string, args: string[], extra: Record<string, string> = {}) => {
     const env: NodeJS.ProcessEnv = { ...process.env, ...extra };
     for (const name of ["GITHUB_REF", "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) {
