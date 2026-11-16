@@ -2,7 +2,7 @@ import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { PoolGate, PoolWait } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
-import type { CalendarSteps } from "./calendar-steps.js";
+import { CALENDAR_STEP_MS, type CalendarSteps } from "./calendar-steps.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
 
 /*
@@ -18,6 +18,13 @@ import { CAPACITY_RECHECK_MS } from "./capacity.js";
  * `POOL_WAIT_REFRESH_MS` while one goes on, with the `quiet` row's liveness
  * rules: one older than the live daemon is a predecessor's, and one older
  * than the freshness is a daemon's that stopped looking.
+ *
+ * Row 011-389 (review 0.1.529): the wait counts its refresh, its freshness
+ * and its grant's seconds on elapsed time (`PoolWaitsOptions.elapsed`), so a
+ * calendar step neither keeps an old gate in the row, nor starts a new wait,
+ * nor logs negative seconds. `since` and the row's `at` stay calendar times
+ * for status, as row 011-377's owners keep stored stamps; a refusal after a
+ * step writes the row again, so its `at` is fresh in today's calendar.
  */
 
 /** How often a wait that goes on writes its row again, with the pool's latest reading. */
@@ -98,6 +105,11 @@ function isPoolWait(value: unknown): value is PoolWait {
 
 export interface PoolWaitsOptions {
   readonly now: () => number;
+  /**
+   * Row 011-389: elapsed time, which a calendar step does not move
+   * (`Clock.elapsed`); without it, `now`.
+   */
+  readonly elapsed?: () => number;
   /** The daemon's log: one line at a wait's start and one at its grant. */
   readonly log: (line: string) => void;
   /** Writes the waits for status (`publishPoolWaits`); a throw is left to the next write. */
@@ -107,65 +119,82 @@ export interface PoolWaitsOptions {
 /** The waits of one daemon's lanes for the pool, kept by `TierCapacity` (row 011-309). */
 export class PoolWaits {
   readonly #options: PoolWaitsOptions;
-  readonly #lanes = new Map<string, { readonly wait: PoolWait; readonly last: number }>();
-  /** When the row was last written; `null` before, or after a write that failed. */
+  /** Each lane's wait, with its start (`began`) and its last refusal (`last`) in elapsed time. */
+  readonly #lanes = new Map<
+    string,
+    { readonly wait: PoolWait; readonly began: number; readonly last: number }
+  >();
+  /** When the row was last written, in elapsed time; `null` before, or after a write that failed. */
   #publishedAt: number | null = null;
+  /** `calendar - elapsed` at the last write: a change of it is a calendar step since. */
+  #publishedOffset = 0;
   /** The row may hold a wait: the last write had one, or failed. */
   #written = false;
 
+  readonly #elapsed: () => number;
+
   constructor(options: PoolWaitsOptions) {
     this.#options = options;
+    this.#elapsed = options.elapsed ?? options.now;
   }
 
   /** The pool refused `lane`'s tier at a look that read `gate`. */
   refused(lane: string, gate: PoolGate): void {
     const now = this.#options.now();
-    const live = this.#live(lane, now);
+    const elapsed = this.#elapsed();
+    const live = this.#live(lane, elapsed);
     const wait: PoolWait = { ...gate, since: (live?.wait.since ?? now) as EpochMs };
-    this.#lanes.set(lane, { wait, last: now });
+    this.#lanes.set(lane, { wait, began: live?.began ?? elapsed, last: elapsed });
     if (live === undefined) {
       this.#options.log(
         `the pool refused the ${laneName(lane)} lane's tier: it waits for CPU (${gateText(gate)}); ${ASKS_AGAIN}`,
       );
-      this.#publish(now);
-    } else if (this.#publishedAt === null || now - this.#publishedAt >= POOL_WAIT_REFRESH_MS) {
-      this.#publish(now);
+      this.#publish(now, elapsed);
+    } else if (
+      this.#publishedAt === null ||
+      elapsed - this.#publishedAt >= POOL_WAIT_REFRESH_MS ||
+      Math.abs(now - elapsed - this.#publishedOffset) >= CALENDAR_STEP_MS
+    ) {
+      this.#publish(now, elapsed);
     }
   }
 
   /** The pool granted `lane`'s tier: its wait ends, logged with its seconds while it was live. */
   granted(lane: string): void {
     const now = this.#options.now();
-    const live = this.#live(lane, now);
+    const elapsed = this.#elapsed();
+    const live = this.#live(lane, elapsed);
     if (!this.#lanes.delete(lane)) return;
     if (live !== undefined) {
-      const seconds = Math.round((now - live.wait.since) / 1_000);
+      const seconds = Math.round((elapsed - live.began) / 1_000);
       this.#options.log(
         `the pool granted the ${laneName(lane)} lane's tier after ${seconds} s of waiting for CPU`,
       );
     }
-    this.#publish(now);
+    this.#publish(now, elapsed);
   }
 
   /** The daemon's scheduler closes: its lanes wait no more, and the row goes. */
   close(): void {
     this.#lanes.clear();
-    if (this.#written) this.#publish(this.#options.now());
+    if (this.#written) this.#publish(this.#options.now(), this.#elapsed());
   }
 
-  #live(lane: string, now: number) {
+  /** `lane`'s wait, if its last refusal is within the freshness at `elapsed`. */
+  #live(lane: string, elapsed: number) {
     const entry = this.#lanes.get(lane);
-    return entry !== undefined && now - entry.last <= SLOT_WAITER_FRESH_MS ? entry : undefined;
+    return entry !== undefined && elapsed - entry.last <= SLOT_WAITER_FRESH_MS ? entry : undefined;
   }
 
-  /** Writes the live waits; one whose daemon stopped looking leaves them. */
-  #publish(now: number): void {
+  /** Writes the live waits as of calendar `now`; one whose daemon stopped looking leaves them. */
+  #publish(now: number, elapsed: number): void {
     for (const lane of [...this.#lanes.keys()])
-      if (this.#live(lane, now) === undefined) this.#lanes.delete(lane);
+      if (this.#live(lane, elapsed) === undefined) this.#lanes.delete(lane);
     const waits = new Map([...this.#lanes].map(([lane, { wait }]) => [lane, wait]));
     try {
       this.#options.publish(waits, now as EpochMs);
-      this.#publishedAt = now;
+      this.#publishedAt = elapsed;
+      this.#publishedOffset = now - elapsed;
       this.#written = waits.size > 0;
     } catch {
       // A status row only: the next refusal or grant writes it again.

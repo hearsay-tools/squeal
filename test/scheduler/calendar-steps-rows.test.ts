@@ -197,16 +197,18 @@ describe("row 011-389: the pool's wait keeps its times on elapsed time", () => {
     const { start, store, clock, lines, waits } = refusedOnce(virtual);
     virtual.advance(1_000);
     virtual.shiftCalendar(-HOUR);
+    // The first refusal after the step writes the row; the refresh 10 s of elapsed time later.
+    const later: PoolGate = { ...NEXT, grants: 10 };
     for (let s = 2; s <= 12; s += 2) {
       virtual.advance(2_000);
-      waits.refused("", NEXT);
+      waits.refused("", s === 2 ? NEXT : later);
     }
     const row = JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}");
     expect(Object.keys(row).sort()).toEqual(["at", "lanes"]);
-    // Written again 10 s of elapsed time after the first write, stamped no earlier than the start.
+    // Stamped no earlier than the daemon's start (row 011-386).
     expect(row.at).toBe(start);
     expect(publishedPoolWaits(store, WT as never, start, clock.now()).get("")).toEqual({
-      ...NEXT,
+      ...later,
       since: start,
     });
     virtual.advance(1_000);
