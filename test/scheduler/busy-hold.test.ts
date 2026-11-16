@@ -67,7 +67,7 @@ describe("a tier that records while another connection holds the write lock (011
         busySliceMs: BUSY_SLICE_MS,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.rest();
 
       const runs: string[][] = [];
       let stalls: { stop(): number } | null = null;
@@ -86,7 +86,7 @@ describe("a tier that records while another connection holds the write lock (011
       const revision = h.scheduler.status().revision;
       await expect.poll(() => freed, { timeout: 60_000 }).not.toBeNull();
       await freed;
-      await h.scheduler.idle();
+      await h.rest();
       const longest = (stalls as { stop(): number } | null)?.stop() ?? 0;
 
       const seen = JSON.stringify({ runs, notes });

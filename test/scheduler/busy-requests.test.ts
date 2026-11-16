@@ -60,7 +60,7 @@ describe("a socket request's write on a busy store (review 0.1.434 B2)", SLOW, (
       busySliceMs: SLICE_MS,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.rest();
     const database = storePaths(commonDir).database;
     const before = runAlls(database, h.worktreeId);
     const errors = h.errors.length;

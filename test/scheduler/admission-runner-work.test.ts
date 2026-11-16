@@ -80,7 +80,7 @@ describe("a group after no `tests` and pending runner work (row 011-341)", {
         })
         .toEqual([`run ${B}`]);
       await batch;
-      await side.scheduler.idle();
+      await side.rest();
     } finally {
       unwatch?.();
       unstep?.();

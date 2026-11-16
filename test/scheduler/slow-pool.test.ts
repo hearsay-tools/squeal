@@ -59,7 +59,7 @@ describe("slow tiers take their workers from the per-user pool (task 001-386)", 
     const h = await open(poolDir);
     await h.scheduler.start();
     await waitFor(() => slowRuns(h).flatMap((r) => r.files).length === 3, 60_000);
-    await h.scheduler.idle();
+    await h.rest();
     for (const run of slowRuns(h)) expect(run.options.workers).toBe(2 * run.files.length);
   });
 
@@ -78,7 +78,7 @@ describe("slow tiers take their workers from the per-user pool (task 001-386)", 
     const h = await open(poolDir);
     await h.scheduler.start();
     await waitFor(() => slowRuns(h).flatMap((r) => r.files).length === 3, 60_000);
-    await h.scheduler.idle();
+    await h.rest();
     // Without the pool the idle tier would take all three files at once (slow.maxParallel 4).
     expect(slowRuns(h).map((r) => [r.files.length, r.options.workers])).toEqual([
       [1, 1],

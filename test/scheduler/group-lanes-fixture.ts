@@ -227,5 +227,5 @@ export async function allCurrent(side: CatchUpSide, timeout = 20_000): Promise<v
   await expect
     .poll(() => FILES.filter((f) => !side.current(f.path)).map((f) => f.path), { timeout })
     .toEqual([]);
-  await side.scheduler.idle();
+  await side.rest();
 }

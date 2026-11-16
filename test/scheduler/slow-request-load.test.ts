@@ -72,7 +72,7 @@ describe("run --slow under load (spec 004 D3 as amended, task 004-59)", SLOW, ()
     await waitFor(() => slowRuns(h) === 2, 30_000);
     // Far below the default slow.maxDeferMs the guard would have spent.
     expect(performance.now() - asked).toBeLessThan(30_000);
-    await h.scheduler.idle();
+    await h.rest();
     // Under load D2's idle width does not hold: one file at a time, within the permits.
     expect(widths).toEqual([1, 1]);
     expect(
@@ -84,7 +84,7 @@ describe("run --slow under load (spec 004 D3 as amended, task 004-59)", SLOW, ()
     const { h, store, reads } = await loaded();
     await h.scheduler.requestSlowSuite();
     await waitFor(() => slowRuns(h) === 2, 30_000);
-    await h.scheduler.idle();
+    await h.rest();
 
     // An edit re-queues both slow files with no request open.
     h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // edited\n");

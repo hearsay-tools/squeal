@@ -106,7 +106,7 @@ describe("a partly started slow tier (review wave 13o, B2)", { timeout: 30_000 }
       expect(b.runner.active).toBe(1);
       b.runner.release();
       if (takes === "records") {
-        await b.scheduler.idle();
+        await b.scheduler.rest();
         expect(b.runner.ran(F1)).toBe(0);
         expect(b.passing()).toBe(2);
       }

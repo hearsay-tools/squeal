@@ -51,7 +51,7 @@ describe("a low group's width beside a normal commit group (019-27)", { timeout:
     await expect
       .poll(() => [B, C].every((path) => side.current(path)), { timeout: 20_000 })
       .toBe(true);
-    await side.scheduler.idle();
+    await side.rest();
     expect(side.current(A), "no commit asked for it").toBe(false);
     expect(side.runner.runsOf(A)).toEqual([]);
     expect(lowTiers(side)).toEqual([[B, C]]);

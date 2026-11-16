@@ -40,7 +40,7 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
   it("trims a tier granted less than offered to the prefix that fits at the grant", async () => {
     const side = wallSide({ durations: heavy, hostSlots: 23 });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.scheduler.rest();
     // A racing daemon took 18 permits and has not marked: the offer is 23, the grant 5.
     const owner = { pid: process.pid, worktreeId: "racing-daemon" };
     for (let i = 0; i < 18; i++) {
@@ -72,7 +72,7 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
       );
     expect(marks).toEqual([expect.objectContaining({ grant: 5, want: keep })]);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.scheduler.rest();
     const later = side.runner.runs.slice(before + 1).flatMap((t) => t.files);
     expect(later.map((f) => f.path)).toEqual(expected.slice(keep));
   });
@@ -89,7 +89,7 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
       tierWidth: (f, grant) => (inNodeLane(f.path) ? 4 : grant),
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.scheduler.rest();
     side.runner.hold();
     const before = side.runner.runs.length;
     await side.scheduler.requestFullSuite({ force: true });
@@ -102,7 +102,7 @@ describe("scheduler: a backlog tier is budgeted by its wall time (C4 step 5, tas
     expect(vt?.files).toHaveLength(16);
     expect(vt?.workers).toBe(16);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.scheduler.rest();
   });
 
   it("sums the estimates of parts that run one after another (review wave-3 B1)", async () => {

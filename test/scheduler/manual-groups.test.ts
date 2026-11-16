@@ -36,12 +36,12 @@ const D = "nt/test/d.test.mjs";
 /** The idle reconciliation pass (spec 001 D2), which looks at `HEAD`. */
 async function pass(side: CatchUpSide): Promise<void> {
   await side.scheduler.handleBatch({ trigger: "interval", paths: [] });
-  await side.scheduler.idle();
+  await side.rest();
 }
 
 /** Lets every lane run what it may; none of `paths` ran. */
 async function noneRan(side: CatchUpSide, ...paths: string[]): Promise<void> {
-  await side.scheduler.idle();
+  await side.rest();
   await delay(300);
   expect(ranPaths(side).filter((path) => paths.includes(path))).toEqual([]);
 }

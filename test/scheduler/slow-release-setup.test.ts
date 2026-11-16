@@ -139,7 +139,7 @@ describe("the slow instance frees its environment when its lane stops (row 011-2
     const { h, marks } = await open(1_000);
     await h.scheduler.start();
     await expect.poll(marks, { timeout: 60_000 }).toEqual(PAIR);
-    await h.scheduler.idle();
+    await h.rest();
     expect(slowRuns(h)).toBe(2);
     expect(marks()).toEqual(PAIR);
   });
