@@ -26,7 +26,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { loadVitest } from "../../src/runners/vitest/load.js";
-import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
+import { countCalls, type QuietOptions, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { withVitestTraits } from "../runners/vitest/helpers.js";
 import { onCleanUp } from "./cleanup.js";
@@ -78,7 +78,7 @@ export interface Harness {
   /** Row 011-378: the runner calls the scheduler has open, every part's included. */
   readonly calls: RunnerCalls;
   /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
-  quiet(): Promise<Rest>;
+  quiet(options?: QuietOptions): Promise<Rest>;
 }
 
 /** What a runner part beside Vitest is built with: the harness's note, and the policy as last reloaded. */
@@ -310,7 +310,7 @@ export async function openHarness(
     clock: clock.clock,
     rest,
     calls,
-    quiet: () => quiet({ rest, calls, clock: clock.clock }),
+    quiet: (options) => quiet({ rest, calls, clock: clock.clock }, options),
     extraFiles,
     errors,
     write(path, content) {

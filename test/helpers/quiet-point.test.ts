@@ -133,6 +133,23 @@ describe("the quiet point (row 011-378)", () => {
     expect(clock.now()).toBe(start + 100);
   });
 
+  it("on the host's clock, waits through a gather, and a named wake only when told", async () => {
+    // Each wake is left for the first two rests.
+    const leftFor = (reason: string) => {
+      let rests = 0;
+      return () => (rests++ < 2 ? [wake(reason, Date.now() + 1_000)] : []);
+    };
+    const gather = sideOf(new RunnerCalls(), leftFor("slot-gather"));
+    expect((await quiet(gather)).wakes).toEqual([]);
+    expect(gather.rests).toBe(3);
+
+    const claims = sideOf(new RunnerCalls(), leftFor("claims"));
+    expect((await quiet(claims)).next?.reason).toBe("claims");
+    expect(claims.rests).toBe(1);
+    expect((await quiet(claims, { through: ["claims"] })).wakes).toEqual([]);
+    expect(claims.rests).toBe(3);
+  });
+
   it("on a scheduler, waits for the run its rest sets aside", { timeout: 60_000 }, async () => {
     const file = { path: "test/a.test.ts", ms: 1, realMs: 0, imports: ["src/a.ts"] };
     const repo = catchUpRepo([file]);
