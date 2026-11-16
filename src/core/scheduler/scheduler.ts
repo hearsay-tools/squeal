@@ -38,6 +38,7 @@ import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
 import { TierCapacity } from "./capacity.js";
 import { fullSuiteRequest } from "./checkpoint-requests.js";
+import { CalendarSteps, steppedClock } from "./calendar-steps.js";
 import { CLAIM_POLL_MS, type ClaimWindow, claimPoll, claimWindow } from "./claims.js";
 import { type Clock, clockOf } from "./clock.js";
 import { CommandHold } from "./command-hold.js";
@@ -110,8 +111,13 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 }
 
 class TierScheduler implements Scheduler {
-  /** Row 011-351: the one clock, `SchedulerOptions.clock` or the host adapter over `now`. */
+  /**
+   * Row 011-351: the one clock, `SchedulerOptions.clock` or the host
+   * adapter over `now`. Row 011-377: each calendar reading tells `#steps`.
+   */
   readonly #clock: Clock;
+  /** Row 011-377: the calendar steps `#clock` saw; each is told to `#shift`. */
+  readonly #steps = new CalendarSteps();
   readonly #now = (): EpochMs => this.#clock.now();
   /** Row 011-352: the one timer, at the earliest wake an owner states; the rest signal's counts. */
   readonly #wakes: Wakes;
@@ -254,7 +260,7 @@ class TierScheduler implements Scheduler {
   readonly #live: StepLive;
 
   constructor(private readonly options: SchedulerOptions) {
-    this.#clock = clockOf(options);
+    this.#clock = steppedClock(clockOf(options), this.#steps);
     this.#wakes = new Wakes(this.#clock);
     this.#pumpWake = this.#wakes.slot("pump", () => this.#post({ kind: "wake", reason: "pump" }));
     this.#claimsWake = this.#wakes.slot("claims", (at) => this.#claimPoll(at));
@@ -377,6 +383,8 @@ class TierScheduler implements Scheduler {
       reconcileReleased: () => this.#reconcileReleased(),
       queueRewalk: () => this.#queueRewalk(),
     });
+    // Row 011-377: told once every owner above exists.
+    this.#steps.onStep((ms, at) => this.#shift(ms, at));
   }
 
   async start(): Promise<void> {
@@ -431,6 +439,7 @@ class TierScheduler implements Scheduler {
         ...(this.#capacity === null ? {} : { capacity: this.#capacity }),
         quiet: this.#quiet,
         wakes: this.#wakes,
+        steps: this.#steps,
       };
       const ledger = new Ledger(context);
       // Spec 019 D5 step 1 (row 019-22): a commit asks the `commit` groups' lanes for its files.
@@ -982,12 +991,14 @@ class TierScheduler implements Scheduler {
    */
   slowWaiting(): SlowWaiting | null {
     if (!this.#ledger || !this.#context || !this.#backlogPaused) return null;
+    // Row 011-377: a reading first, so a calendar step moves `since` before the caller compares it.
+    const now = this.#now();
     const admitted = this.#admit();
     if (admitted.quiet) return null;
     const queued = this.#drainable();
     const busy = this.#lanes().some(isGroupLane) || admitted.editPending || !admitted.fastIdle;
     if (busy || queued.length === 0 || this.#drainBusyAt === null) {
-      this.#drainBusyAt = this.#context.now();
+      this.#drainBusyAt = now;
       return null;
     }
     const since = Math.max(this.#drainBusyAt, this.#groups.endedAt ?? 0);
@@ -1389,6 +1400,24 @@ class TierScheduler implements Scheduler {
       this.#claimWindow = null;
       this.#claimsWake.clear();
     }
+  }
+
+  /**
+   * Row 011-377 (`tasks/011-377/notes.md`, "Design"): the calendar stepped
+   * `ms` at `at`. Each owner of a wait that compares a calendar time moves
+   * the times it keeps by `ms`, so each wait keeps its elapsed time left; an
+   * owner that publishes its ends writes them again. Stored stamps stay.
+   */
+  #shift(ms: number, at: EpochMs): void {
+    this.#quiet.shift(ms, at);
+    if (this.#claimWindow !== null)
+      this.#claimWindow = { ...this.#claimWindow, until: (this.#claimWindow.until + ms) as EpochMs };
+    if (this.#drainBusyAt !== null) this.#drainBusyAt = (this.#drainBusyAt + ms) as EpochMs;
+    this.#ledger?.queue.shift(ms);
+    this.#ledger?.claims.shift(ms);
+    this.#groups.shift(ms);
+    this.#slowRelease.shift(ms);
+    this.#yields.shift(ms);
   }
 
   /** The claims owner's wake: an event when the store moved or the window passed; else the next poll. */

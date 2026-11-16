@@ -48,6 +48,11 @@ export class FocusedEntries {
     });
   }
 
+  /** Row 011-377: the calendar stepped `ms`: each deadline moves with it (`CalendarSteps`). */
+  shift(ms: number): void {
+    for (const entry of this.#entries) entry.until += ms;
+  }
+
   /** The entries that wait for a run at `now`, in request order; one past its deadline goes. */
   waiting(now: number): readonly FocusEntry[] {
     this.#entries = this.#entries.filter((entry) => entry.runId !== null || entry.until > now);

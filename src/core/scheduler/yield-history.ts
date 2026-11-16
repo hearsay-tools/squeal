@@ -61,6 +61,11 @@ export class YieldHistory {
     };
   }
 
+  /** Row 011-377: the calendar stepped `ms`: the count's last write moves with it (`CalendarSteps`). */
+  shift(ms: number): void {
+    if (this.#endedAt !== null) this.#endedAt = (this.#endedAt + ms) as EpochMs;
+  }
+
   /**
    * The runner named a file of `tier` ended at `now`: whether the row is due
    * a write of the count, at most once per `ENDED_WRITE_MS`. One inside that

@@ -104,6 +104,14 @@ export class SlowRelease {
     this.arm();
   }
 
+  /**
+   * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each lane's
+   * end moves with it, so its bound keeps its elapsed time left.
+   */
+  shift(ms: number): void {
+    for (const [lane, at] of this.#endedAt) this.#endedAt.set(lane, (at + ms) as EpochMs);
+  }
+
   /** Closes `lane`'s instance now; a tier of it may still be in flight, ending. */
   async release(lane: string): Promise<void> {
     this.#open.delete(lane);

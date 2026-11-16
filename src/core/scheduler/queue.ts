@@ -322,6 +322,15 @@ export class RunQueue {
     };
   }
 
+  /**
+   * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): the named
+   * waits' deadlines move with it, so each keeps its elapsed time left.
+   */
+  shift(ms: number): void {
+    this.#promotions.shift(ms);
+    this.focused.shift(ms);
+  }
+
   /** Empties the queue; promotions and focused entries go with it. */
   clear(): void {
     this.#entries.clear();

@@ -82,6 +82,11 @@ export class GroupTiers {
     return ends.length === 0 ? null : (Math.max(...ends) as EpochMs);
   }
 
+  /** Row 011-377: the calendar stepped `ms`: each lane's last end moves with it. */
+  shift(ms: number): void {
+    for (const lane of this.#all()) lane.shift(ms);
+  }
+
   set draining(on: boolean) {
     for (const lane of this.#all()) lane.draining = on;
   }

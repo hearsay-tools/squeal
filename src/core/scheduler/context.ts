@@ -7,6 +7,7 @@ import type { FileChange } from "../types/revision.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import type { StateSink } from "../types/state.js";
 import type { Store } from "../types/store.js";
+import type { CalendarSteps } from "./calendar-steps.js";
 import type { TierCapacity } from "./capacity.js";
 import type { WorktreeKeys } from "./keying.js";
 import type { BacklogQuiet } from "./quiet.js";
@@ -50,6 +51,12 @@ export interface SchedulerContext {
   readonly quiet?: BacklogQuiet;
   /** The scheduler's wake loop (row 011-352): a runner-part call's bound arms through it. */
   readonly wakes: Wakes;
+  /**
+   * Row 011-377: the calendar steps the scheduler's clock saw; a stored
+   * stamp a wait compares counts from when this daemon first saw it
+   * (`CalendarSteps.local`). Absent, a clock with no step.
+   */
+  readonly steps?: CalendarSteps;
 }
 
 /** Paths that changed at no revision: for baseline and `run --all` ordering. */

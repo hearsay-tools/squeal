@@ -243,6 +243,11 @@ export class SlowTier {
     return this.#endedAt;
   }
 
+  /** Row 011-377: the calendar stepped `ms`: the last end moves with it (`CalendarSteps`). */
+  shift(ms: number): void {
+    if (this.#endedAt !== null) this.#endedAt = (this.#endedAt + ms) as EpochMs;
+  }
+
   /**
    * The runner lane whose files wait for the load guard now, `null` when
    * none: its instance stays open through the wait (row 011-211).

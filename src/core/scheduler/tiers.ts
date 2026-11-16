@@ -62,6 +62,11 @@ export interface Tier {
   /** When it started, on the scheduler's clock: its estimated remainder runs from here (`TierYields`). */
   readonly startedAt?: number;
   /**
+   * Row 011-377: the calendar steps' total when it started
+   * (`CalendarSteps.since`): its remainder counts on elapsed time. Absent, 0.
+   */
+  readonly startedStep?: number;
+  /**
    * The ids of its files whose module ended during the run, as the runner
    * names them (`RunOptions.fileEnded`, row 011-54): `TierYields` reads the
    * others as unfinished. Results still wait for the report. Absent or
@@ -236,6 +241,8 @@ export function newTier(
     ),
     kind,
     startedAt: context.now(),
+    // Read after `startedAt`: that reading told the steps first.
+    startedStep: context.steps?.total ?? 0,
     ended: new Set(),
     cancel: cancellable ? new AbortController() : null,
     loadPerCpu: tierLoad(context),

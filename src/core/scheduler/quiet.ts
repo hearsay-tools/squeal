@@ -96,6 +96,18 @@ export class BacklogQuiet {
     this.#told(now);
   }
 
+  /**
+   * Row 011-377: the calendar stepped `ms` (`CalendarSteps`) at `at`: each
+   * end moves with it, so each wait keeps its elapsed time left, and status
+   * reads the ends again.
+   */
+  shift(ms: number, at: EpochMs): void {
+    if (this.#until.size === 0 && this.#catchUp.size === 0) return;
+    for (const until of [this.#until, this.#catchUp])
+      for (const [lane, end] of until) until.set(lane, (end + ms) as EpochMs);
+    this.#told(at);
+  }
+
   /** Whether `lane` waits for quiet at `now`. */
   waits(lane: string, now: EpochMs): boolean {
     return waiting(this.#until, lane, now);
