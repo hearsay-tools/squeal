@@ -10,7 +10,7 @@ import {
   sources,
   testFiles,
 } from "./catch-up-fixture.js";
-import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS } from "./tier-yields-fixture.js";
+import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-94 (spec 011 C4 step 5 as amended 2026-10-21, `tasks/011-82/design.md`
@@ -19,7 +19,10 @@ import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS } from "./tier-yields-fixture.j
  * project of its own, the catch-up fixture's fake runner, and a scheduler
  * clock that runs at a tenth of the host's speed plus what `advance` adds:
  * a 20 s wait ends at once on `advance` (the pump looks again each
- * `QUIET_RECHECK_MS`), and never by itself within a check's poll.
+ * `QUIET_RECHECK_MS`), and never by itself within a check's poll. Row
+ * 011-368: with `clock: "virtual"` the scheduler's clock is a virtual one
+ * that moves only on `advance`, and each check reads at the side's quiet
+ * point (`settle`), with no poll.
  */
 
 /** The 12 sources the backlog files import: editing all of them is a pull's catch-up (12 keyed paths). */
@@ -52,6 +55,12 @@ export async function quietSide(
 ): Promise<QuietSide> {
   const files = [...BACKLOG, EDITED, ...extra];
   const repo = catchUpRepo(files, [DOCS]);
+  if (options.clock !== undefined) {
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, ...options });
+    await side.scheduler.start();
+    await settle(side);
+    return { side, advance: side.advance, now: side.now };
+  }
   const start = Date.now();
   let offset = 0;
   const now = () => start + Math.floor((Date.now() - start) / 10) + offset;
@@ -101,18 +110,34 @@ export async function cancelBacklog({ side }: QuietSide): Promise<number> {
   await side.edit("watch", "config.json");
   const cut = await heldRun(side, backlogPath(0), base);
   await side.edit("watch", "src/e.ts");
-  await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+  if (side.clock !== null) {
+    await settle(side);
+    expect(cut.cancelled).toBe(true);
+  } else await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
   await editedCurrent(side);
   return side.runner.runs.indexOf(cut) + 1;
 }
 
-/** `E` is current: its edit's tier ran. */
+/** `E` is current: its edit's tier ran. On a virtual clock, read at the quiet point. */
 export async function editedCurrent(side: CatchUpSide): Promise<void> {
+  if (side.clock !== null) {
+    await settle(side);
+    expect(side.current(EDITED.path)).toBe(true);
+    return;
+  }
   await expect.poll(() => side.current(EDITED.path), { timeout: START_WITHIN_MS }).toBe(true);
 }
 
-/** A backlog tier starts after the first `after` runs, with no further clock move. */
+/**
+ * A backlog tier starts after the first `after` runs, with no further clock
+ * move. On a virtual clock, read at the quiet point.
+ */
 export async function backlogStarts(side: CatchUpSide, after: number): Promise<void> {
+  if (side.clock !== null) {
+    await settle(side);
+    expect(backlogRuns(side, after).length).toBeGreaterThan(0);
+    return;
+  }
   await expect
     .poll(() => backlogRuns(side, after).length, { timeout: START_WITHIN_MS })
     .toBeGreaterThan(0);
