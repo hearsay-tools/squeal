@@ -47,7 +47,7 @@ async function ranOnce(files: readonly CatchUpFile[]): Promise<CatchUpRepo> {
     policy: RUN_MISSING,
   });
   await first.scheduler.start();
-  await first.scheduler.idle();
+  await first.quiet();
   await first.scheduler.close();
   return repo;
 }
@@ -66,7 +66,7 @@ async function next(
     resumesRest,
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return side;
 }
 

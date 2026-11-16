@@ -44,7 +44,7 @@ async function tierOfBoth(
   const repo = catchUpRepo(FILES);
   const side = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 8, policy: RUN_MISSING });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const run: Run = side.runner.run.bind(side.runner);
   side.runner.run = async (refs, options) => {
     if (refs.length < 2) return run(refs, options);
@@ -119,7 +119,7 @@ describe("a named wait on a file that ended while its tier runs (row 011-274, gh
     expect(verdict).toContain(`1 ${reason}`);
     expect([...lines, verdict].join("\n")).not.toMatch(/current|passed|pass\b/);
     stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(read(side).map((f) => [f.state, f.verdict])).toEqual([
       ["current", "pass"],
       ["current", "pass"],
@@ -138,7 +138,7 @@ describe("a named wait on a file that ended while its tier runs (row 011-274, gh
     await expect.poll(() => entryOf(side, FAST).fileEnd, { timeout: 10_000 }).toBeDefined();
     expect(entryOf(side, FAST).state).toBe("pending");
     stop();
-    await side.scheduler.idle();
+    await side.quiet();
     const fast = entryOf(side, FAST);
     expect(fast.state).not.toBe("current");
     expect(fast.verdict).not.toBe("pass");
@@ -156,7 +156,7 @@ describe("a named wait on a file that ended while its tier runs (row 011-274, gh
     expect(entryOf(side, FAST)).toMatchObject({ state: "pending" });
     expect(entryOf(side, FAST).verdict).toBeUndefined();
     stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(completions(side, FAST, 0)).toBeGreaterThan(ran);
     expect(side.current(FAST)).toBe(true);
   });
@@ -180,6 +180,6 @@ describe("a named wait on a file that ended while its tier runs (row 011-274, gh
     expect(slow).toMatchObject({ state: "pending", ended: 1 });
     expect(slow.fileEnd).toBeUndefined();
     stop();
-    await side.scheduler.idle();
+    await side.quiet();
   });
 });

@@ -138,7 +138,7 @@ async function heldTier(ms: number, now?: () => number) {
   const options = { files, hostSlots: 8, policy: RUN_MISSING };
   const side = catchUpSide(repo, repo.main, now === undefined ? options : { ...options, now });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, isSlow);
   const end = reportsEnds(side);
@@ -166,7 +166,7 @@ async function yieldsToP(
   await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
   await expect.poll(() => side.current(P), { timeout: CUT_WITHIN_MS }).toBe(true);
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(order(side, waitAt)).toEqual([[P], ...after]);
   expect(tier.completed).toEqual([]);
   expect(SLOW.every((path) => side.current(path))).toBe(true);
@@ -181,7 +181,7 @@ async function cutIntoBatch(heldTierOf: Awaited<ReturnType<typeof heldTier>>) {
   const { side, gate, tier, waitAt } = heldTierOf;
   await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(order(side, waitAt)).toEqual([[A, P], SLOW.slice(1)]);
   expect(tier.completed).toEqual([]);
   expect([P, ...SLOW].every((path) => side.current(path))).toBe(true);
@@ -192,7 +192,7 @@ async function endsThenP(heldTierOf: Awaited<ReturnType<typeof heldTier>>) {
   const { side, gate, tier, base, waitAt } = heldTierOf;
   await notCut(side, tier);
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(tier.completed.map((f) => f.path)).toEqual(SLOW);
   expect(order(side, waitAt)).toEqual([[P]]);
   expect(completions(side, A, base)).toBe(1);
@@ -217,7 +217,7 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     await side.scheduler.promote([ref(A), p], 60_000);
     await notCut(side, tier);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     // On main, A was cut and ran twice: `[[P], SLOW]`.
     expect(tier.completed.map((f) => f.path)).toEqual(SLOW);
@@ -256,7 +256,7 @@ describe("a wait's promoted file does not cut a file the same or an earlier wait
     await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
     await expect.poll(() => side.current(P), { timeout: CUT_WITHIN_MS }).toBe(true);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     const [first, ...rest] = order(side, waitAt);
     expect(first).toEqual([P]);
     expect(rest.flat().toSorted()).toEqual(SLOW);

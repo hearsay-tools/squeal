@@ -46,7 +46,7 @@ async function heldTier(running: readonly string[], ms: number, qMs: number) {
   const now = new ModelClock().now;
   const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING, now });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, (path) => running.includes(path));
   await side.edit("watch", "src/s.ts", "f.config.json");
@@ -74,7 +74,7 @@ async function notCut(held: Awaited<ReturnType<typeof heldTier>>) {
 async function endsThenQ(held: Awaited<ReturnType<typeof heldTier>>, running: readonly string[]) {
   const { side, gate, tier, waitAt } = held;
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(tier.completed.map((f) => f.path)).toEqual(running);
   expect(order(side, waitAt)).toEqual([[Q]]);
   expect([...running, Q].every((path) => side.current(path))).toBe(true);

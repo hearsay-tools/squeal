@@ -46,7 +46,7 @@ async function exported(failing: readonly string[] = []) {
   for (const path of failing) a.runner.failing.add(path);
   await a.scheduler.start();
   await a.scheduler.requestFullSuite();
-  await a.scheduler.idle();
+  await a.quiet();
   return { a, ...exportResults(a.store, a.worktreeId, HEADER) };
 }
 
@@ -73,7 +73,7 @@ describe("squeal export and import between two stores (018 D2, D3)", SLOW, () =>
 
     const s = side(b.root, { count: COUNT, policy: LOOKUP_ONLY });
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     expect(s.runner.runs).toEqual([]);
     expect(s.passing()).toBe(COUNT);
     for (const state of tests(s)) {
@@ -86,13 +86,13 @@ describe("squeal export and import between two stores (018 D2, D3)", SLOW, () =>
     const b = other();
     const s = side(b.root, { count: COUNT, policy: LOOKUP_ONLY });
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     expect(s.passing()).toBe(0);
 
     importResults(b.store, bundle, { ...options, now: Date.now() });
     b.store.close();
     await s.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await s.scheduler.idle();
+    await s.quiet();
     expect(s.runner.runs).toEqual([]);
     expect(s.passing()).toBe(COUNT);
   });
@@ -121,7 +121,7 @@ describe("squeal export and import between two stores (018 D2, D3)", SLOW, () =>
 
     const s = side(b.root, { count: COUNT, policy: LOOKUP_ONLY });
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     expect(s.runner.runs).toEqual([]);
     const current = tests(s).filter((t) => t.validity === "current");
     expect(current.map((t) => t.check.testPath).sort()).toEqual(

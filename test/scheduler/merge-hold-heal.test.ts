@@ -51,17 +51,17 @@ describe("scheduler: the merge hold and another worktree's heal (review 0.1.266 
       if (files.some((f) => f.path === OTHER)) main.runner.failing.add(OTHER);
     };
     await main.scheduler.start();
-    await main.scheduler.idle();
+    await main.quiet();
     expect(outcomes(main, OTHER)).toEqual(["fail"]);
     main.runner.beforeRun = marked;
 
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(main, HELPER);
-    await main.scheduler.idle();
+    await main.quiet();
     // Resolved bytes, not staged: the index still lists the helper unmerged.
     writeFileSync(join(repo.main, HELPER), helperReturning(7));
     await batch(main, HELPER);
-    await main.scheduler.idle();
+    await main.quiet();
     expect(heldPaths(main)).toEqual([HELPER]);
     for (const path of [A, B]) {
       expect(rows(main).get(path)?.pending).toBe("queued");
@@ -73,10 +73,10 @@ describe("scheduler: the merge hold and another worktree's heal (review 0.1.266 
     const fails = new Set([A, B, OTHER]);
     failing(other, fails);
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     writeFileSync(join(repo.other, HELPER), readFileSync(join(repo.main, HELPER)));
     await batch(other, HELPER);
-    await other.scheduler.idle();
+    await other.quiet();
     for (const path of [A, B, OTHER]) {
       expect(rows(other).get(path)?.key).toBe(rows(main).get(path)?.key);
       expect(outcomes(other, path)).toEqual(["fail"]);
@@ -85,7 +85,7 @@ describe("scheduler: the merge hold and another worktree's heal (review 0.1.266 
     // A flaky failure's recovery at the same keys: no marker in these bytes.
     fails.clear();
     await other.scheduler.requestFullSuite({ force: true });
-    await other.scheduler.idle();
+    await other.quiet();
     for (const path of [A, B, OTHER]) expect(outcomes(other, path)).toEqual(["pass"]);
 
     // Read before any further batch of main's.

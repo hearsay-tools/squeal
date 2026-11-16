@@ -122,7 +122,7 @@ describe("a background tier on a remote holds no local permit (spec 021 D18, row
     });
     await until(() => statuses.some((s) => s.includes("go there")));
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     // Every free permit of this machine stays free while the tier waits there and runs there.
     expect(seen).toEqual([`look ${SLOTS}`, `look ${SLOTS}`, `look ${SLOTS}`, `run ${SLOTS}`]);
     for (const { path } of FILES) expect(side.current(path)).toBe(true);

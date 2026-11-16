@@ -65,7 +65,7 @@ it("a slow retry is queued behind fast work, then the slot, then runs, and says 
   h.runner.failing.add(SLOW);
   await h.scheduler.start();
   await expect.poll(() => h.runner.ran(SLOW), POLL).toBe(1);
-  await h.scheduler.idle();
+  await h.quiet();
 
   // Another daemon's permit holds the slot; an edit's fast run is held open.
   const slot = acquireSlowSlot({
@@ -175,7 +175,7 @@ it("a slow retry the full worker pool holds, beside a free slow slot, names the 
   h.runner.failing.add(SLOW);
   await h.scheduler.start();
   await expect.poll(() => h.runner.ran(SLOW), POLL).toBe(1);
-  await h.scheduler.idle();
+  await h.quiet();
 
   // Another daemon takes the pool's one permit; nobody holds the slow slot.
   const other = createPermitPool({

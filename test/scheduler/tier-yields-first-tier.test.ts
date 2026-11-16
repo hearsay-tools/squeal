@@ -46,7 +46,7 @@ describe("the restart note shows on a daemon's first tier in a lane only (row 01
     expect(line(side)).toMatch(NOTE);
     first.stop();
     await started;
-    await side.scheduler.idle();
+    await side.quiet();
 
     const base = side.runner.runs.length;
     const next = holdRuns(side.runner, (path) => SLOW.includes(path));
@@ -55,6 +55,6 @@ describe("the restart note shows on a daemon's first tier in a lane only (row 01
     expect(line(side)).toMatch(/^ {2}4 in the vitest tier of 4 test files running since \S+: /);
     expect(line(side)).not.toMatch(/no yield kept/);
     next.stop();
-    await side.scheduler.idle();
+    await side.quiet();
   });
 });

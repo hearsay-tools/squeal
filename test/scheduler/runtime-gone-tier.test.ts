@@ -124,7 +124,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     mkdirSync(runtime);
     const next = sideOf(repo, files, runtime, [], { policy: LOOKUP_ONLY });
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     expect(next.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual(paths);
     for (const path of paths) expect(next.current(path)).toBe(true);
     expect(stored(next).states).toEqual([]);
@@ -136,7 +136,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const side = sideOf(catchUpRepo(files), files, runtimeDir(), told, { policy: RUN_MISSING });
     failsToStart(side, null);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(told).toEqual([]);
     expect(stored(side)).toEqual({
       rows: files.map((f) => ({ path: f.path, pending: null })),
@@ -151,7 +151,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const failing = sideOf(repo, files, runtime, [], { policy: RUN_MISSING });
     failsToStart(failing, null);
     await failing.scheduler.start();
-    await failing.scheduler.idle();
+    await failing.quiet();
     await failing.scheduler.close();
 
     const told: string[] = [];
@@ -204,7 +204,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const runtime = runtimeDir();
     const passed = sideOf(repo, files, runtime, [], { policy: RUN_MISSING });
     await passed.scheduler.start();
-    await passed.scheduler.idle();
+    await passed.quiet();
     await passed.scheduler.close();
 
     // An edit of s00 queues f000 alone; its run takes the runtime, and it is queued again.
@@ -212,7 +212,7 @@ describe("scheduler: a tier during which its runtime went (review 0.1.262)", {
     const first = sideOf(repo, files, runtime, toldFirst, { policy: LOOKUP_ONLY });
     const ran = failsToStart(first, runtime);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.edit("watch", "src/s00.ts");
     await expect.poll(() => toldFirst.length).toBe(1);
     await first.scheduler.close();

@@ -24,26 +24,23 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 2, policy: RUN_MISSING });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
 
     side.runner.hold();
     // A rest asked for as the run returns, before the scheduler's continuation runs.
-    let idle = false;
     let afterRun: Promise<boolean> | null = null;
     const run = side.runner.run.bind(side.runner);
     side.runner.run = async (refs, options) => {
       const report = await run(refs, options);
-      afterRun = side.scheduler.rest().then(() => idle);
+      afterRun = side.scheduler.rest().then(() => side.current("test/a.test.ts"));
       return report;
     };
     await side.edit("watch", "src/a.ts");
     await expect.poll(() => side.runner.active, { timeout: 10_000 }).toBe(1);
     expect(await settles(side.scheduler.rest(), 5_000)).toBe(true);
     expect(side.runner.active).toBe(1);
+    expect(side.current("test/a.test.ts")).toBe(false);
 
-    void side.scheduler.idle().then(() => {
-      idle = true;
-    });
     side.runner.release();
     await expect.poll(() => afterRun, { timeout: 10_000 }).not.toBeNull();
     // The run's end does not count as rest: its record and the pump's last pass come first.
@@ -65,11 +62,7 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
       // The fixture spreads these into the scheduler's options; `clock` is not in its type yet (011-353).
       scheduler: { clock } as never,
     });
-    let idle = false;
     await side.scheduler.start();
-    void side.scheduler.idle().then(() => {
-      idle = true;
-    });
     // The runs take real time, set aside; a rest comes at once and again until a record gathers.
     let gathering: Rest | null = null;
     for (let tries = 0; gathering === null && tries < 200; tries++) {
@@ -78,12 +71,12 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
       else await delay(10);
     }
     expect(gathering?.next).toEqual({ reason: "slot-gather", at: clock.now() + 25 });
-    expect(idle).toBe(false);
+    expect(side.current("test/a.test.ts") && side.current("test/b.test.ts")).toBe(false);
 
     clock.advance(25);
     // The gather's end, the records and the pump's last pass come before the next rest.
     await side.scheduler.rest();
-    expect(idle).toBe(true);
+    expect(side.current("test/a.test.ts") && side.current("test/b.test.ts")).toBe(true);
     expect(side.runner.active).toBe(0);
   });
 
@@ -110,12 +103,8 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
       await gate;
       return original.apply(this, args);
     };
-    let idle = false;
     try {
       await side.scheduler.start();
-      void side.scheduler.idle().then(() => {
-        idle = true;
-      });
       await expect.poll(() => entered, { timeout: 10_000 }).toBe(true);
       let rested: Rest | null = null;
       const first = side.scheduler.rest().then((rest) => {
@@ -128,12 +117,12 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
       await first;
       // The reads ended; the record waits for its gather, still ahead.
       expect((rested as Rest | null)?.next?.reason).toBe("slot-gather");
-      expect(idle).toBe(false);
+      expect(side.current("test/a.test.ts")).toBe(false);
 
       clock.advance(25);
       await side.scheduler.rest();
       // The record and the pump's last pass came before this rest.
-      expect(idle).toBe(true);
+      expect(side.current("test/a.test.ts")).toBe(true);
     } finally {
       release();
       WarmUp.prototype.read = original;

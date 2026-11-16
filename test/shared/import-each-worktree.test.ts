@@ -48,14 +48,14 @@ describe("an export another worktree of the store imported (row 018-44)", SLOW, 
     // X's environment differs from CI's: its import stores the results at CI's keys.
     const first = x.reader();
     await first.run();
-    await x.d.scheduler.idle();
+    await x.d.quiet();
     expect(first.commits()).toEqual([commit]);
     expect(importedPasses(x.d)).toBe(0);
 
     // Y's matches: it imports that export for itself, at its own keys, and runs nothing.
     const later = y.reader();
     await later.run();
-    await y.d.scheduler.idle();
+    await y.d.quiet();
     expect(later.notes).toEqual([]);
     expect(importedPasses(y.d)).toBe(COUNT);
     expect(y.d.runner.runs).toEqual([]);

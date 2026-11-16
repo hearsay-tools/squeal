@@ -113,13 +113,13 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     const repo = mergeRepo();
     const side = holdSide(repo);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const left = setupRaces(side, repo.main, { setupFile: HELPER, unmerged: HELPER }, 2);
 
     writeFileSync(join(repo.main, HELPER), helperReturning(7));
     await batch(side, HELPER);
     await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([HELPER]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(left()).toBe(1);
     expectHeld(side, [A, B]);
     expect(setupStates(side)).toEqual([]);
@@ -129,7 +129,7 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     git(repo.main, ["add", HELPER]);
     await expect.poll(left, { timeout: 5_000 }).toBe(0);
     await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([HELPER]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(rows(side)).toEqual(held);
     expectHeld(side, [A, B]);
     expect(setupStates(side)).toEqual([]);
@@ -138,7 +138,7 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     await expect
       .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 10_000 })
       .toEqual([["pass"], ["pass"]]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(rows(side).get(A)?.pending).toBeNull();
     expect(setupStates(side)).toEqual([]);
   });
@@ -154,14 +154,14 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     side.runner.environment = async () =>
       (await environment()).map((e) => ({ ...e, files: [...e.files, SETUP, SETUP_DEP] }));
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     // The setup file itself is not unmerged: only the environment inputs name the conflict.
     const left = setupRaces(side, repo.main, { setupFile: SETUP, unmerged: SETUP_DEP }, 1);
 
     writeFileSync(join(repo.main, SETUP_DEP), "export const db = 2;\n");
     await batch(side, SETUP_DEP);
     await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([SETUP_DEP]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(left()).toBe(0);
     expectHeld(side, [A, B, OTHER]);
     expect(setupStates(side)).toEqual([]);
@@ -178,7 +178,7 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     const repo = mergeRepo(files);
     const side = holdSide(repo, repo.main, files, RUN_MISSING);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const race = { project: "p", setupFile: "p/global-setup.ts", unmerged: HELPER };
     const left = setupRaces(side, repo.main, race, 1);
     const tiers: string[][] = [];
@@ -192,7 +192,7 @@ describe("scheduler: setup outcomes under the merge hold (review 0.1.266 B2)", {
     side.touch(P_FILE);
     await batch(side, HELPER, P_FILE);
     await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([HELPER]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(left()).toBe(0);
     expect(tiers).toEqual([[P_FILE, A, B]]);
     expectHeld(side, [A, B]);
