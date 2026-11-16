@@ -23,3 +23,16 @@ Use /worker. Shape: slice. Effort medium.
 The quality file's slices S2, S3, S5, S6, S8, S9, S10, S11 (S7 moved to row 011-366 and is done): dead exports (`tierKeys`, `fileKeys`, `queueSlowSuite`, `SchedulerEventKind`); six comments that name removed code; the intake's `cutTiers` hook name; `#notify` to `#post`; `GLOSSARY.md` text for Scheduler decision and Scheduler event to match `step-events.ts`; two needless `export`s; the five `step.test.ts` rows that repeat `decide-yields.test.ts`; `tier-yields-running` merged into `tier-yields-text`; the repeated `tier-yields-bound` case and an unused test clock. Re-check each against main first: earlier rows may have done some. Behaviour preserved; `key-format` without a raise. Owns: the named `src/core/scheduler/` lines, `GLOSSARY.md` (that section only), `step.test.ts`, `tier-yields-running.test.ts`, `tier-yields-text.test.ts`, `tier-yields-bound.test.ts`. Leave alone: W1's and W2's files. Done when: row 011-370's done-when; `tasks/011-370/notes.md` lists each item as done or dropped with the reason. This changes `src/`, so the candidate gets a version raise.
 
 All: lint, typecheck and `squeal status --wait 60000` on the changed paths; report pending checks as such.
+
+## R1 (W1 and W2): review of cand/011-368-358
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-368-358` at `93e435f8cb47a82cbe1a95ee87b14a435368fb1b`; candidate CI run 43786229992. Test files and notes only: no `src/` change, no version raise. Range `8fbe8355a..93e435f8cb47a82cbe1a95ee87b14a435368fb1b`: worker c7bf1fcf's three commits (rows 011-358, 011-359) and worker f67dd95b's seven (row 011-368, with review `011-363-367.md` S1 and N1), cherry-picked without conflict. Read: board rows 011-358, 011-359, 011-368; this file's W1 and W2; `tasks/011-358/notes.md`, `tasks/011-368/notes.md`; `reviews/011-363-367.md` (S1, N1).
+
+Check, each as proven, plausible or unverified:
+
+1. **011-358.** The cause is the test's own quadratic check loop, not the product (`why` reads the records once per call); the new loop still checks every check through the real `unknownRunOf`; no bound changed.
+2. **011-359.** The replacement is now held to a cold start spawned beside it; the case still fails when something the dead daemon left holds the replacement up; the factor 3 is not host-tuned.
+3. **011-368.** The eight files keep every case's meaning or are stricter (the notes name the changed ones: tier-ended-files case 3 ends a run with `finishOf`, editor-scratch case 5 moves the clock 1 s, group-lanes-guards case 1 checks both sides of 5 s); the six fixture options keep their old default for every other user; `edit-cut-fixture`'s `started` uses `settle` on a virtual clock.
+4. **Review S1 and N1.** `settle` now stops at the first wake that is not a gather (`tier-yields-settle.test.ts`); the drive-fixture comment names pool rechecks.
+
+Coordinator at the candidate: lint and typecheck pass; 14 files run directly pass (74 tests, model test included) at load 42 to 58. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/011-368-358.md` and commit it on your branch.
