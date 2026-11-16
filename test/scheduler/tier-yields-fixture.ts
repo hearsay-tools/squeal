@@ -67,9 +67,10 @@ const runsMark = (side: CatchUpSide) =>
  * rests (`CatchUpSide.rest`); a rest sets a runner's run aside, so a run
  * that is not held, 0 ms of real time here, can end after it, and its
  * record follows. So the sides rest again until no run started or ended
- * from before their rests to one real timer turn after them. A record's gather (`slot-gather`) is bookkeeping: time
- * moves to it; no other wake fires unless the test moves time. Returns the
- * first side's last rest.
+ * from before their rests to one real timer turn after them. A record's
+ * gather (`slot-gather`) is bookkeeping: time moves to it while no other
+ * wake is due at or before it (row 011-368, review S1); no other wake fires
+ * unless the test moves time. Returns the first side's last rest.
  */
 export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
   const limit = performance.now() + SETTLE_LIMIT_MS;
@@ -78,11 +79,10 @@ export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
     const before = sides.map(runsMark).join(" ");
     const rests: Rest[] = [];
     for (const side of sides) rests.push(await restOf(side, limit));
-    const gathers = sides.flatMap((side, i) =>
-      (rests[i]?.wakes ?? [])
-        .filter((wake) => wake.reason === "slot-gather")
-        .map((wake) => () => side.advance(Math.max(0, wake.at - side.now()))),
-    );
+    const gathers = sides.flatMap((side, i) => {
+      const at = gatherAt(rests[i]);
+      return at === null ? [] : [() => side.advance(Math.max(0, at - side.now()))];
+    });
     if (gathers.length > 0) {
       for (const gather of gathers) gather();
       continue;
@@ -92,6 +92,22 @@ export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
     if (sides.map(runsMark).join(" ") === before && first !== undefined) return first;
     if (performance.now() > limit) throw new Error(`no quiet point in ${SETTLE_LIMIT_MS} ms`);
   }
+}
+
+/**
+ * The first gather of `rest` that no other wake comes at or before (review
+ * `reviews/011-363-367.md` S1): moving the clock to it fires nothing but
+ * gathers. `null` when there is none.
+ */
+function gatherAt(rest: Rest | undefined): number | null {
+  const wakes = rest?.wakes ?? [];
+  const other = Math.min(
+    ...wakes.filter((wake) => wake.reason !== "slot-gather").map((wake) => wake.at),
+  );
+  const gathers = wakes
+    .filter((wake) => wake.reason === "slot-gather" && wake.at < other)
+    .map((wake) => wake.at);
+  return gathers.length > 0 ? Math.min(...gathers) : null;
 }
 
 async function restOf(side: CatchUpSide, limit: number): Promise<Rest> {
