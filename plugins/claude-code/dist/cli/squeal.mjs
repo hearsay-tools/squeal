@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.524";
+  if (true) return "0.1.525";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -1285,15 +1285,24 @@ function loadPerCpuText(loadPerCpu2) {
   return loadPerCpu2 === null ? "load per CPU then not recorded" : `load ${loadPerCpu2.toFixed(2)} per CPU when it ran`;
 }
 function recordedText(facts, here, now, words) {
+  const fresh = facts.noEarlierPass === true;
+  const retry2 = facts.retry === void 0 ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh)}` : retryStateText(facts);
+  const lead = fresh ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
+  return `${lead}${recordedWhereText(facts, here, now)}; ${retry2}`;
+}
+function recordedWhereText(facts, here, now) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  const fresh = facts.noEarlierPass === true;
-  const retry2 = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words, fresh)}` : retryText(facts.retry);
-  const lead = fresh ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
-  return `${lead}recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry2}`;
+  return `recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+}
+function retryStateText(facts) {
+  return facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+}
+function busyLoad(loadPerCpu2) {
+  return loadPerCpu2 !== null && !loadAllows({ oneMinute: loadPerCpu2, cpus: 1 });
 }
 function loadRetryText(loadPerCpu2, words, fresh) {
-  if (loadPerCpu2 === null || loadAllows({ oneMinute: loadPerCpu2, cpus: 1 })) return "";
+  if (!busyLoad(loadPerCpu2)) return "";
   const when = fresh ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
@@ -79233,9 +79242,9 @@ function checkpointText(s, now, command) {
 }
 function retryText2(standing4, files5, s, now, command) {
   const asked = standing4.noResult ? "no result at its inputs" : standing4.reason;
-  return `${plural(files5.length, "test file")} with a pending retry (${asked}): ${shownText(files5)}; ${retryStateText(standing4, files5, s, now, command)}`;
+  return `${plural(files5.length, "test file")} with a pending retry (${asked}): ${shownText(files5)}; ${retryStateText2(standing4, files5, s, now, command)}`;
 }
-function retryStateText(standing4, files5, s, now, command) {
+function retryStateText2(standing4, files5, s, now, command) {
   const { waits: waits2 } = standing4;
   const runningSince = waits2?.kind === "running" ? waits2.since : standing4.runningSince;
   if (runningSince !== null) return `running since ${timeText(runningSince)}`;
@@ -79519,9 +79528,11 @@ var CHANGED_HERE = "files changed here since this session started";
 function closureLine(paths) {
   if (paths === void 0) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+function closurePaths(paths) {
   const more2 = paths.length - TOUCHED_SHOWN;
-  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `its closure reads ${CHANGED_HERE}: ${shown}${more2 > 0 ? ` and ${more2} more` : ""}`;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more2 > 0 ? ` and ${more2} more` : ""}`;
 }
 
 // src/core/status/format-why.ts
@@ -84358,6 +84369,11 @@ function heldByPaths(result) {
 
 // src/cli/status-command.ts
 import { fileURLToPath as fileURLToPath9 } from "node:url";
+
+// src/core/retry/advice.ts
+init_flaky();
+init_text();
+init_text2();
 
 // src/core/delivery/format.ts
 init_text2();

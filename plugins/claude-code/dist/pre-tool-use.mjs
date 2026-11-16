@@ -2712,7 +2712,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.524";
+  if (true) return "0.1.525";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4137,11 +4137,12 @@ function importedFrom(entry3) {
   if (entry3.origin.kind !== "imported") return null;
   return entry3.originSource ?? `import ${entry3.origin.importId} at ${commitText(entry3.origin.commit)}`;
 }
+var NO_EARLIER_RESULT_TEXT = "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it";
 function beforeEditsText(before) {
   switch (before?.outcome) {
     case "none": {
       const settle = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
-      return `no baseline result, may predate your edits${settle}`;
+      return `${NO_EARLIER_RESULT_TEXT}${settle}`;
     }
     case "fail": {
       const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
@@ -4184,15 +4185,14 @@ function recoveryProvenance(entry3, revision) {
   return parts.length === 0 ? null : parts.join("; ");
 }
 var CHANGED_HERE = "files changed here since this session started";
-function touchesLine(entry3) {
-  return closureLine(entry3.changesInClosure);
-}
 function closureLine(paths) {
   if (paths === void 0) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+function closurePaths(paths) {
   const more = paths.length - TOUCHED_SHOWN;
-  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function loadLine(entry3) {
   return entry3.loadAverage === void 0 ? null : `load average ${entry3.loadAverage.toFixed(2)} when it ran`;
@@ -4275,7 +4275,7 @@ function failuresCommand(group, command) {
     ...first.origin.kind === "inherited" ? ["--all-worktrees"] : []
   ].join(" ");
 }
-function groupLines(group, revision, command, flaky) {
+function groupLines(group, revision, command, flaky, closure) {
   const first = group[0];
   const checks = group.map((e) => e.check);
   const at = (e) => e.location === null ? null : atText(e.location, e.testFileFrame);
@@ -4283,7 +4283,7 @@ function groupLines(group, revision, command, flaky) {
     seenLine(first, revision),
     cap(first.summary ?? "", SUMMARY_MAX_CHARS),
     first.location === null ? null : shared(group, at) ?? atText(first.location, void 0),
-    shared(group, touchesLine),
+    shared(group, (e) => closure(e.changesInClosure)),
     loadsLine(group),
     ...flaky(first.flaky),
     first.retry === void 0 ? null : capitalize(retryText(first.retry)),
@@ -5224,6 +5224,32 @@ function livenessSentence(daemon, revision, command) {
   return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 
+// src/core/delivery/shared-closure.ts
+var keyOf = (paths) => JSON.stringify(paths);
+function sharedClosure(blocks2) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const block3 of blocks2) {
+    const key = blockKey(block3);
+    if (key !== null) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const [shared2] = [...counts].reduce(
+    (best, [key, count2]) => count2 >= 2 && count2 > best[1] ? [key, count2] : best,
+    [null, 0]
+  );
+  if (shared2 === null) return { own: closureLine, line: null };
+  const all = blocks2.flat();
+  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
+  const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
+  const paths = JSON.parse(shared2);
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
+}
+function blockKey(block3) {
+  const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
+  return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
+}
+var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 400;
@@ -5241,7 +5267,7 @@ function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), counted };
 }
-function entryBlock(entry3, revision, flaky) {
+function entryBlock(entry3, revision, flaky, closure = () => null) {
   const failed2 = entry3.to === "fail";
   return block(
     `${upper2(entry3.to)}  ${checkName(entry3.check)}`,
@@ -5249,7 +5275,7 @@ function entryBlock(entry3, revision, flaky) {
       failed2 ? seenLine(entry3, revision) : change(entry3),
       entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
-      ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
+      ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
       entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
     ],
@@ -5270,11 +5296,13 @@ function collapsedBlock({ head, lines }, shown, checks) {
     checks.map((check) => ({ check, shown }))
   );
 }
-function failureBlocks(entries, revision, command, flaky) {
-  return failureGroups(entries, revision).map((group) => {
+function failureBlocks(groups2, revision, command, flaky, closure) {
+  return groups2.map((group) => {
     const [first] = group;
-    if (group.length === 1 && first !== void 0) return entryBlock(first, revision, flaky);
-    const lines = groupLines(group, revision, command, flaky);
+    if (group.length === 1 && first !== void 0) {
+      return entryBlock(first, revision, flaky, closure);
+    }
+    const lines = groupLines(group, revision, command, flaky, closure);
     return collapsedBlock(
       lines,
       "fail",
@@ -5350,13 +5378,11 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds2[0] : void 0;
   const title = titleOf(delta, holdTitle, command);
   const flaky = flakyLines();
+  const failures = changed.filter((e) => e.to === "fail");
+  const groups2 = failureGroups(failures, header.revision);
+  const closure = sharedClosure(groups2.map((g) => g.map((e) => e.changesInClosure)));
   const blocks2 = [
-    ...failureBlocks(
-      changed.filter((e) => e.to === "fail"),
-      header.revision,
-      command,
-      flaky
-    ),
+    ...failureBlocks(groups2, header.revision, command, flaky, closure.own),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
       command
@@ -5368,7 +5394,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
     ),
     ...retiredBlocks(retired, delta)
   ];
-  const failed2 = changed.find((e) => e.to === "fail");
+  const [failed2] = failures;
   const overflow = (left) => {
     const counted = left.flatMap((b) => b.counted);
     const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText(checks, fileLevelWord(o))}`);
@@ -5377,6 +5403,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const code = delta.code === void 0 ? [] : codeLines(delta.code, command);
   const lint2 = delta.lint === void 0 ? [] : lintLines(delta.lint, command);
   const tail = [
+    ...closure.line === null ? [] : [closure.line],
     ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
     ...code.length === 0 ? [] : [code.join("\n")],
     ...lint2.length === 0 ? [] : [lint2.join("\n")],
@@ -11425,7 +11452,7 @@ function beforeEditsFor(store, worktreeId, slot2, since) {
 // src/core/delivery/closure.ts
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf = (id, ref2) => {
+  const keyOf2 = (id, ref2) => {
     let byFile2 = keys.get(id);
     if (byFile2 === void 0) {
       byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
@@ -11435,8 +11462,8 @@ function closureTrust(store, worktreeId) {
   };
   return (record) => {
     if (record.updatedBy === worktreeId) return true;
-    const key = keyOf(worktreeId, record.testFile);
-    return key !== null && key === keyOf(record.updatedBy, record.testFile);
+    const key = keyOf2(worktreeId, record.testFile);
+    return key !== null && key === keyOf2(record.updatedBy, record.testFile);
   };
 }
 function closureFor(store, worktreeId) {

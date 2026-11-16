@@ -2536,17 +2536,53 @@ function loadPerCpuText(loadPerCpu) {
   return loadPerCpu === null ? "load per CPU then not recorded" : `load ${loadPerCpu.toFixed(2)} per CPU when it ran`;
 }
 function recordedText(facts, here, now, words) {
+  const fresh2 = facts.noEarlierPass === true;
+  const retry = facts.retry === void 0 ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh2)}` : retryStateText(facts);
+  const lead = fresh2 ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
+  return `${lead}${recordedWhereText(facts, here, now)}; ${retry}`;
+}
+function recordedWhereText(facts, here, now) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  const fresh2 = facts.noEarlierPass === true;
-  const retry = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words, fresh2)}` : retryText(facts.retry);
-  const lead = fresh2 ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
-  return `${lead}recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
+  return `recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+}
+function retryStateText(facts) {
+  return facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+}
+function busyLoad(loadPerCpu) {
+  return loadPerCpu !== null && !loadAllows({ oneMinute: loadPerCpu, cpus: 1 });
 }
 function loadRetryText(loadPerCpu, words, fresh2) {
-  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  if (!busyLoad(loadPerCpu)) return "";
   const when = fresh2 ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
+}
+
+// src/core/retry/advice.ts
+var FILES_NAMED = 5;
+function recordedShortText(facts, here, now) {
+  const fresh2 = facts.noEarlierPass === true ? `; ${NO_EARLIER_PASS_TEXT} it` : "";
+  return `${recordedWhereText(facts, here, now)}${fresh2}; ${retryStateText(facts)}`;
+}
+function retryAdviceText(failures, command) {
+  const fresh2 = failures.some((f) => f.facts.noEarlierPass === true);
+  const busy2 = failures.filter((f) => f.facts.retry === void 0 && busyLoad(f.facts.loadPerCpu));
+  const parts = [];
+  if (fresh2) {
+    parts.push(`Where ${NO_EARLIER_PASS_TEXT} a failure, look first at the changed files it reads`);
+  }
+  if (busy2.length > 0) {
+    const files2 = [...new Set(busy2.map((f) => f.path))];
+    const named2 = files2.length > FILES_NAMED ? "<test file>..." : files2.map(shellWord).join(" ");
+    const when = busy2.every((f) => f.facts.noEarlierPass === true) ? "if the changed files are not the cause, " : "";
+    const them = files2.length === 1 ? "it" : "them";
+    parts.push(
+      `${when}\`${command} retry ${named2} --reason load\` runs ${them} once more when the one-minute load average is below the CPU count`
+    );
+  }
+  if (parts.length === 0) return null;
+  const text2 = parts.join("; ");
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 }
 
 // src/core/status/checks.ts
@@ -2907,7 +2943,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.524";
+  if (true) return "0.1.525";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4418,11 +4454,12 @@ function importedFrom(entry3) {
   if (entry3.origin.kind !== "imported") return null;
   return entry3.originSource ?? `import ${entry3.origin.importId} at ${commitText(entry3.origin.commit)}`;
 }
+var NO_EARLIER_RESULT_TEXT = "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it";
 function beforeEditsText(before) {
   switch (before?.outcome) {
     case "none": {
       const settle = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
-      return `no baseline result, may predate your edits${settle}`;
+      return `${NO_EARLIER_RESULT_TEXT}${settle}`;
     }
     case "fail": {
       const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
@@ -4465,15 +4502,14 @@ function recoveryProvenance(entry3, revision) {
   return parts.length === 0 ? null : parts.join("; ");
 }
 var CHANGED_HERE = "files changed here since this session started";
-function touchesLine(entry3) {
-  return closureLine(entry3.changesInClosure);
-}
 function closureLine(paths) {
   if (paths === void 0) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+function closurePaths(paths) {
   const more = paths.length - TOUCHED_SHOWN;
-  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function loadLine(entry3) {
   return entry3.loadAverage === void 0 ? null : `load average ${entry3.loadAverage.toFixed(2)} when it ran`;
@@ -4487,7 +4523,7 @@ function installSentences(header) {
 }
 
 // src/core/delivery/failure-groups.ts
-var FILES_NAMED = 3;
+var FILES_NAMED2 = 3;
 var ERROR_CHARS = 120;
 var capitalize = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function flakyLines() {
@@ -4546,7 +4582,7 @@ function commonDirectory(paths) {
 function failuresCommand(group, command) {
   const first = group[0];
   const files2 = [...new Set(group.map((e) => e.check.testPath))];
-  const selected2 = files2.includes("") ? [] : files2.length <= FILES_NAMED ? files2 : [commonDirectory(files2)].filter((d) => d !== "");
+  const selected2 = files2.includes("") ? [] : files2.length <= FILES_NAMED2 ? files2 : [commonDirectory(files2)].filter((d) => d !== "");
   const error = Array.from((first.summary ?? "").split("\n")[0] ?? "").slice(0, ERROR_CHARS).join("");
   return [
     `${command} failures`,
@@ -4556,7 +4592,7 @@ function failuresCommand(group, command) {
     ...first.origin.kind === "inherited" ? ["--all-worktrees"] : []
   ].join(" ");
 }
-function groupLines(group, revision, command, flaky) {
+function groupLines(group, revision, command, flaky, closure) {
   const first = group[0];
   const checks = group.map((e) => e.check);
   const at = (e) => e.location === null ? null : atText(e.location, e.testFileFrame);
@@ -4564,7 +4600,7 @@ function groupLines(group, revision, command, flaky) {
     seenLine(first, revision),
     cap(first.summary ?? "", SUMMARY_MAX_CHARS),
     first.location === null ? null : shared(group, at) ?? atText(first.location, void 0),
-    shared(group, touchesLine),
+    shared(group, (e) => closure(e.changesInClosure)),
     loadsLine(group),
     ...flaky(first.flaky),
     first.retry === void 0 ? null : capitalize(retryText(first.retry)),
@@ -5446,6 +5482,32 @@ function livenessSentence(daemon, revision, command) {
   return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 
+// src/core/delivery/shared-closure.ts
+var keyOf = (paths) => JSON.stringify(paths);
+function sharedClosure(blocks2) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const block3 of blocks2) {
+    const key = blockKey(block3);
+    if (key !== null) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const [shared2] = [...counts].reduce(
+    (best, [key, count2]) => count2 >= 2 && count2 > best[1] ? [key, count2] : best,
+    [null, 0]
+  );
+  if (shared2 === null) return { own: closureLine, line: null };
+  const all = blocks2.flat();
+  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
+  const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
+  const paths = JSON.parse(shared2);
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
+}
+function blockKey(block3) {
+  const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
+  return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
+}
+var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 400;
@@ -5463,7 +5525,7 @@ function block(head, lines, counted) {
   const body = lines.filter((l) => l !== null).map((l) => `${INDENT}${l}`);
   return { text: [head, ...body].join("\n"), counted };
 }
-function entryBlock(entry3, revision, flaky) {
+function entryBlock(entry3, revision, flaky, closure = () => null) {
   const failed2 = entry3.to === "fail";
   return block(
     `${upper2(entry3.to)}  ${checkName(entry3.check)}`,
@@ -5471,7 +5533,7 @@ function entryBlock(entry3, revision, flaky) {
       failed2 ? seenLine(entry3, revision) : change(entry3),
       entry3.summary === null ? null : cap(entry3.summary, SUMMARY_MAX_CHARS),
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
-      ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
+      ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
       entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
     ],
@@ -5492,11 +5554,13 @@ function collapsedBlock({ head, lines }, shown, checks) {
     checks.map((check) => ({ check, shown }))
   );
 }
-function failureBlocks(entries, revision, command, flaky) {
-  return failureGroups(entries, revision).map((group) => {
+function failureBlocks(groups2, revision, command, flaky, closure) {
+  return groups2.map((group) => {
     const [first] = group;
-    if (group.length === 1 && first !== void 0) return entryBlock(first, revision, flaky);
-    const lines = groupLines(group, revision, command, flaky);
+    if (group.length === 1 && first !== void 0) {
+      return entryBlock(first, revision, flaky, closure);
+    }
+    const lines = groupLines(group, revision, command, flaky, closure);
     return collapsedBlock(
       lines,
       "fail",
@@ -5572,13 +5636,11 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const holdTitle = entries.length === 0 && delta.liveness === void 0 ? holds2[0] : void 0;
   const title = titleOf(delta, holdTitle, command);
   const flaky = flakyLines();
+  const failures = changed.filter((e) => e.to === "fail");
+  const groups2 = failureGroups(failures, header.revision);
+  const closure = sharedClosure(groups2.map((g) => g.map((e) => e.changesInClosure)));
   const blocks2 = [
-    ...failureBlocks(
-      changed.filter((e) => e.to === "fail"),
-      header.revision,
-      command,
-      flaky
-    ),
+    ...failureBlocks(groups2, header.revision, command, flaky, closure.own),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
       command
@@ -5590,7 +5652,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
     ),
     ...retiredBlocks(retired, delta)
   ];
-  const failed2 = changed.find((e) => e.to === "fail");
+  const [failed2] = failures;
   const overflow = (left) => {
     const counted = left.flatMap((b) => b.counted);
     const by = ["fail", "pass", "unknown", "resolved"].map((o) => [o, counted.filter((c) => c.shown === o).map((c) => c.check)]).filter(([, checks]) => checks.length > 0).map(([o, checks]) => `${checks.length} ${upper2(o)}: ${partsText2(checks, fileLevelWord(o))}`);
@@ -5599,6 +5661,7 @@ function formatDelta(delta, command = SQUEAL_COMMAND, max = MESSAGE_CAP_CHARS, f
   const code = delta.code === void 0 ? [] : codeLines(delta.code, command);
   const lint2 = delta.lint === void 0 ? [] : lintLines(delta.lint, command);
   const tail = [
+    ...closure.line === null ? [] : [closure.line],
     ...failed2 === void 0 ? [] : [whyLine(failed2.check, command)],
     ...code.length === 0 ? [] : [code.join("\n")],
     ...lint2.length === 0 ? [] : [lint2.join("\n")],
@@ -5717,6 +5780,21 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
     ...ignoredConfigLines(registration2, command)
   ].join("\n");
+  const closure = sharedClosure(knownFailures.map((f) => [f.changesInClosure]));
+  const advised = knownFailures.filter((f) => f.recorded !== void 0).length >= 2;
+  const recorded = (f, facts) => advised ? recordedShortText(facts, registration2.consumer.worktreeId, now) : (
+    // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+    recordedText(facts, registration2.consumer.worktreeId, now, {
+      command,
+      path: f.check.testPath
+    })
+  );
+  const advice = advised ? retryAdviceText(
+    knownFailures.flatMap(
+      (f) => f.recorded === void 0 ? [] : [{ facts: f.recorded, path: f.check.testPath }]
+    ),
+    command
+  ) : null;
   const blocks2 = knownFailures.map(
     (f) => block(
       `FAIL  ${checkName(f.check)}`,
@@ -5724,16 +5802,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : (
-          // Row 011-67 (gh-52): a failure recorded under load names its load retry.
-          capitalize2(
-            recordedText(f.recorded, registration2.consumer.worktreeId, now, {
-              command,
-              path: f.check.testPath
-            })
-          )
-        ),
-        closureLine(f.changesInClosure)
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : capitalize2(recorded(f, f.recorded)),
+        closure.own(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
     )
@@ -5748,7 +5818,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     head,
     blocks2,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
-    first === void 0 ? null : whyLine(first.check, command),
+    [closure.line, advice, first === void 0 ? null : whyLine(first.check, command)].filter((l) => l !== null).join("\n\n") || null,
     max
   );
 }
@@ -12179,7 +12249,7 @@ function beforeEditsFor(store, worktreeId, slot2, since) {
 // src/core/delivery/closure.ts
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf = (id, ref2) => {
+  const keyOf2 = (id, ref2) => {
     let byFile2 = keys.get(id);
     if (byFile2 === void 0) {
       byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
@@ -12189,8 +12259,8 @@ function closureTrust(store, worktreeId) {
   };
   return (record) => {
     if (record.updatedBy === worktreeId) return true;
-    const key = keyOf(worktreeId, record.testFile);
-    return key !== null && key === keyOf(record.updatedBy, record.testFile);
+    const key = keyOf2(worktreeId, record.testFile);
+    return key !== null && key === keyOf2(record.updatedBy, record.testFile);
   };
 }
 function closureFor(store, worktreeId) {

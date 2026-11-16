@@ -1907,23 +1907,47 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     0,
     ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
   );
+  const sentences = (arrival, dropped) => (covers2, naming, wait) => [
+    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${arrival} do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
+    ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
+    waitSentence(command, naming, wait, quiet),
+    ...coverage.slow === null || dropped.includes("slow") ? [] : slowSentences(command, naming, coverage.slow).slice(
+      0,
+      dropped.includes("slow arrival") ? 1 : 2
+    ),
+    ...dropped.includes("run yourself") ? [] : [RUN_YOURSELF],
+    ...dropped.includes("retry") ? [] : [retrySentence(command, naming)],
+    ...dropped.includes("revision") ? [] : [REVISION],
+    covers2,
+    notCovered(coverage)
+  ].join(" ");
   let text = "";
   for (const arrival of arrivals) {
-    const sentences = (covers2, naming, wait) => [
-      `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${arrival} do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
-      ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
-      waitSentence(command, naming, wait, quiet),
-      ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
-      "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-      retrySentence(command, naming),
-      REVISION,
-      covers2,
-      notCovered(coverage)
-    ].join(" ");
-    text = folded(sentences, coverage, most);
+    text = folded(sentences(arrival, []), coverage, most);
     if (text.length <= PRIMER_CAP_CHARS) return text;
   }
+  for (const dropped of droppable(coverage)) {
+    for (const arrival of arrivals) {
+      const kept2 = withPathWait(sentences(arrival, dropped), coverage, most);
+      if (kept2 !== null) return kept2;
+    }
+  }
   return text;
+}
+var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+function droppable(coverage) {
+  const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
+  const order = [...first, "retry", "run yourself", "revision"];
+  return order.map((_, at) => order.slice(0, at + 1));
+}
+function withPathWait(sentences, coverage, most) {
+  for (const naming of ["every", "first"]) {
+    for (let node2 = most; node2 >= 0; node2--) {
+      const text = sentences(coversSentence(coverage, node2), naming, "paths");
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
+  }
+  return null;
 }
 function folded(sentences, coverage, most) {
   let text = "";

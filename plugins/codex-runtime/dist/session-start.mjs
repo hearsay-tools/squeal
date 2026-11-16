@@ -8253,7 +8253,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.524";
+  if (true) return "0.1.525";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9503,7 +9503,7 @@ function atText(location2, frame) {
 // src/core/delivery/closure.ts
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf = (id, ref2) => {
+  const keyOf2 = (id, ref2) => {
     let byFile = keys.get(id);
     if (byFile === void 0) {
       byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
@@ -9513,8 +9513,8 @@ function closureTrust(store, worktreeId) {
   };
   return (record) => {
     if (record.updatedBy === worktreeId) return true;
-    const key = keyOf(worktreeId, record.testFile);
-    return key !== null && key === keyOf(record.updatedBy, record.testFile);
+    const key = keyOf2(worktreeId, record.testFile);
+    return key !== null && key === keyOf2(record.updatedBy, record.testFile);
   };
 }
 function closureFor(store, worktreeId) {
@@ -13889,15 +13889,24 @@ function loadPerCpuText(loadPerCpu) {
   return loadPerCpu === null ? "load per CPU then not recorded" : `load ${loadPerCpu.toFixed(2)} per CPU when it ran`;
 }
 function recordedText(facts, here, now, words) {
+  const fresh2 = facts.noEarlierPass === true;
+  const retry = facts.retry === void 0 ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh2)}` : retryStateText(facts);
+  const lead = fresh2 ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
+  return `${lead}${recordedWhereText(facts, here, now)}; ${retry}`;
+}
+function recordedWhereText(facts, here, now) {
   const where3 = facts.worktreeId === here ? "this worktree" : facts.worktreeRoot ?? `worktree ${facts.worktreeId}`;
   const ago = facts.recordedAt === void 0 ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  const fresh2 = facts.noEarlierPass === true;
-  const retry = facts.retry === void 0 ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words, fresh2)}` : retryText(facts.retry);
-  const lead = fresh2 ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
-  return `${lead}recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
+  return `recorded${ago} in ${where3} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+}
+function retryStateText(facts) {
+  return facts.retry === void 0 ? "no retry asked at these inputs" : retryText(facts.retry);
+}
+function busyLoad(loadPerCpu) {
+  return loadPerCpu !== null && !loadAllows({ oneMinute: loadPerCpu, cpus: 1 });
 }
 function loadRetryText(loadPerCpu, words, fresh2) {
-  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  if (!busyLoad(loadPerCpu)) return "";
   const when = fresh2 ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
@@ -15132,6 +15141,33 @@ function open(location2, worktreeId, options, busyTimeoutMs, now) {
   return "reason" in sent ? null : sent;
 }
 
+// src/core/retry/advice.ts
+var FILES_NAMED = 5;
+function recordedShortText(facts, here, now) {
+  const fresh2 = facts.noEarlierPass === true ? `; ${NO_EARLIER_PASS_TEXT} it` : "";
+  return `${recordedWhereText(facts, here, now)}${fresh2}; ${retryStateText(facts)}`;
+}
+function retryAdviceText(failures, command) {
+  const fresh2 = failures.some((f) => f.facts.noEarlierPass === true);
+  const busy2 = failures.filter((f) => f.facts.retry === void 0 && busyLoad(f.facts.loadPerCpu));
+  const parts = [];
+  if (fresh2) {
+    parts.push(`Where ${NO_EARLIER_PASS_TEXT} a failure, look first at the changed files it reads`);
+  }
+  if (busy2.length > 0) {
+    const files2 = [...new Set(busy2.map((f) => f.path))];
+    const named3 = files2.length > FILES_NAMED ? "<test file>..." : files2.map(shellWord).join(" ");
+    const when = busy2.every((f) => f.facts.noEarlierPass === true) ? "if the changed files are not the cause, " : "";
+    const them = files2.length === 1 ? "it" : "them";
+    parts.push(
+      `${when}\`${command} retry ${named3} --reason load\` runs ${them} once more when the one-minute load average is below the CPU count`
+    );
+  }
+  if (parts.length === 0) return null;
+  const text2 = parts.join("; ");
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+}
+
 // src/core/run-log.ts
 function testFileLabel(project, path) {
   return project ? `[${project}] ${path}` : path;
@@ -15214,9 +15250,11 @@ var CHANGED_HERE = "files changed here since this session started";
 function closureLine(paths) {
   if (paths === void 0) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+function closurePaths(paths) {
   const more = paths.length - TOUCHED_SHOWN;
-  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 function installSentences(header) {
   if (header.dependenciesInstalled === false) {
@@ -15336,6 +15374,32 @@ function livenessSentence(daemon, revision, command) {
   return ` ${since}; results are as of revision ${revision}.${died}`;
 }
 
+// src/core/delivery/shared-closure.ts
+var keyOf = (paths) => JSON.stringify(paths);
+function sharedClosure(blocks2) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const block4 of blocks2) {
+    const key = blockKey(block4);
+    if (key !== null) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const [shared] = [...counts].reduce(
+    (best, [key, count2]) => count2 >= 2 && count2 > best[1] ? [key, count2] : best,
+    [null, 0]
+  );
+  if (shared === null) return { own: closureLine, line: null };
+  const all = blocks2.flat();
+  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared).length;
+  const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
+  const paths = JSON.parse(shared);
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  return { own: (p) => p !== void 0 && keyOf(p) === shared ? null : closureLine(p), line };
+}
+function blockKey(block4) {
+  const keys = block4.map((p) => p === void 0 ? null : keyOf(p));
+  return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
+}
+var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
 var OVERFLOW_RESERVE = 400;
@@ -15388,6 +15452,21 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
     ...ignoredConfigLines(registration2, command)
   ].join("\n");
+  const closure = sharedClosure(knownFailures.map((f) => [f.changesInClosure]));
+  const advised = knownFailures.filter((f) => f.recorded !== void 0).length >= 2;
+  const recorded = (f, facts) => advised ? recordedShortText(facts, registration2.consumer.worktreeId, now) : (
+    // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+    recordedText(facts, registration2.consumer.worktreeId, now, {
+      command,
+      path: f.check.testPath
+    })
+  );
+  const advice = advised ? retryAdviceText(
+    knownFailures.flatMap(
+      (f) => f.recorded === void 0 ? [] : [{ facts: f.recorded, path: f.check.testPath }]
+    ),
+    command
+  ) : null;
   const blocks2 = knownFailures.map(
     (f) => block2(
       `FAIL  ${checkName(f.check)}`,
@@ -15395,16 +15474,8 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize(RECORDED_UNKNOWN_TEXT) : null : (
-          // Row 011-67 (gh-52): a failure recorded under load names its load retry.
-          capitalize(
-            recordedText(f.recorded, registration2.consumer.worktreeId, now, {
-              command,
-              path: f.check.testPath
-            })
-          )
-        ),
-        closureLine(f.changesInClosure)
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize(RECORDED_UNKNOWN_TEXT) : null : capitalize(recorded(f, f.recorded)),
+        closure.own(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
     )
@@ -15419,7 +15490,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     head,
     blocks2,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
-    first === void 0 ? null : whyLine(first.check, command),
+    [closure.line, advice, first === void 0 ? null : whyLine(first.check, command)].filter((l) => l !== null).join("\n\n") || null,
     max
   );
 }
@@ -15951,23 +16022,47 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     0,
     ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
   );
+  const sentences = (arrival, dropped) => (covers2, naming, wait) => [
+    `${PRIMER_OPENING}${listed3(names2, "and")} tests in the background${arrival} do not run ${listed3(names2, "or")} to learn whether your edits broke something.`,
+    ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
+    waitSentence(command, naming, wait, quiet),
+    ...coverage.slow === null || dropped.includes("slow") ? [] : slowSentences(command, naming, coverage.slow).slice(
+      0,
+      dropped.includes("slow arrival") ? 1 : 2
+    ),
+    ...dropped.includes("run yourself") ? [] : [RUN_YOURSELF],
+    ...dropped.includes("retry") ? [] : [retrySentence(command, naming)],
+    ...dropped.includes("revision") ? [] : [REVISION],
+    covers2,
+    notCovered(coverage)
+  ].join(" ");
   let text2 = "";
   for (const arrival of arrivals) {
-    const sentences = (covers2, naming, wait) => [
-      `${PRIMER_OPENING}${listed3(names2, "and")} tests in the background${arrival} do not run ${listed3(names2, "or")} to learn whether your edits broke something.`,
-      ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
-      waitSentence(command, naming, wait, quiet),
-      ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
-      "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-      retrySentence(command, naming),
-      REVISION,
-      covers2,
-      notCovered(coverage)
-    ].join(" ");
-    text2 = folded(sentences, coverage, most);
+    text2 = folded(sentences(arrival, []), coverage, most);
     if (text2.length <= PRIMER_CAP_CHARS) return text2;
   }
+  for (const dropped of droppable(coverage)) {
+    for (const arrival of arrivals) {
+      const kept3 = withPathWait(sentences(arrival, dropped), coverage, most);
+      if (kept3 !== null) return kept3;
+    }
+  }
   return text2;
+}
+var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+function droppable(coverage) {
+  const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
+  const order = [...first, "retry", "run yourself", "revision"];
+  return order.map((_, at) => order.slice(0, at + 1));
+}
+function withPathWait(sentences, coverage, most) {
+  for (const naming of ["every", "first"]) {
+    for (let node2 = most; node2 >= 0; node2--) {
+      const text2 = sentences(coversSentence(coverage, node2), naming, "paths");
+      if (text2.length <= PRIMER_CAP_CHARS) return text2;
+    }
+  }
+  return null;
 }
 function folded(sentences, coverage, most) {
   let text2 = "";
