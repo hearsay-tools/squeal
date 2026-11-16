@@ -36,3 +36,11 @@ Check, each as proven, plausible or unverified:
 4. **Review S1 and N1.** `settle` now stops at the first wake that is not a gather (`tier-yields-settle.test.ts`); the drive-fixture comment names pool rechecks.
 
 Coordinator at the candidate: lint and typecheck pass; 14 files run directly pass (74 tests, model test included) at load 42 to 58. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/011-368-358.md` and commit it on your branch.
+
+## R2 (W3): review of cand/0.1.519
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.519` at `5e972cd7fb5598fa3dad2829e6ad9d91e74c1a17`; candidate CI run 43792523395. Range `50c8a39c7..5e972cd7fb5598fa3dad2829e6ad9d91e74c1a17`: worker e042ffdf's two commits (row 011-370), cherry-picked without conflict, then the 0.1.519 raise and bundles. Read: board row 011-370; this file's W3; `tasks/011-370/notes.md`; `../quality/2026-11-15-card-7.md` (S2, S3, S5, S6, S8 to S11).
+
+Check, each as proven, plausible or unverified: the removed exports have no user (in `src/`, `test/`, `evals/`, `scripts/` and the bundle entry points); the `#notify` to `#post` rename and the intake's `checkYields` hook change no behaviour; the comments describe the code as it is; the `GLOSSARY.md` entries match `step-events.ts` (the worker's wording for "Scheduler event" in particular); the five deleted `step.test.ts` rows and two `tier-yields-bound` checks are really covered by `decide-yields.test.ts`; the `tier-yields-running` to `tier-yields-text` merge keeps every check; `movableClock` (in `quiet-clock.ts`, outside the brief's list) had no user; nothing a user sees changes.
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main`; direct runs of `key-format`, `version-sensitive`, `step`, `tier-yields-text`, `tier-yields-bound`, `untracked-promises`, `one-loop-source`, the model test and `busy-merge` pass (92 tests, load 1.4). Worker: Squeal 628 of 632 affected files pass, 4 bundle drift (fixed by the bundle commit). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/0.1.519.md` and commit it on your branch.
