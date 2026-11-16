@@ -63,10 +63,7 @@ describe("the re-walk's admission under the lock (011-340)", SLOW, () => {
     });
 
     await h.scheduler.start();
-    const idle = await Promise.race([
-      h.quiet().then(() => true),
-      delay(15_000).then(() => false),
-    ]);
+    const idle = await Promise.race([h.quiet().then(() => true), delay(15_000).then(() => false)]);
     expect(blocks).toHaveLength(1);
     expect(idle, "a chunk queued as runner work would keep it busy").toBe(true);
     expect(walked).toEqual([]);
