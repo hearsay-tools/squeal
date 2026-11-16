@@ -149,7 +149,11 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
     await side.rest();
     expect(heldPaths(side)).toBeNull();
     await side.scheduler.idle();
-    expect([A, B, OTHER].map((path) => outcomes(side, path))).toEqual([["pass"], ["pass"], ["pass"]]);
+    expect([A, B, OTHER].map((path) => outcomes(side, path))).toEqual([
+      ["pass"],
+      ["pass"],
+      ["pass"],
+    ]);
     expect(setupStates(side)).toEqual([]);
   });
 });
