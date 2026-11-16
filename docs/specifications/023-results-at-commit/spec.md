@@ -1,6 +1,6 @@
 # 023 Results at a commit: before/after and red proofs without touching the user's tree
 
-Stage: draft (2026-11-16), waiting for the human's approval. Research: `../018-ci-and-shared-results/research/results-at-commit.md`, `research/temp-checkout.md`, `research/environment-at-commit.md`.
+Stage: approved by the human 2026-11-16 (names `squeal status --at` and `squeal proof`; checkout in the user cache folder with a git-folder fallback; refuse uncertain environment matches and missing source imports). Research: `../018-ci-and-shared-results/research/results-at-commit.md`, `research/temp-checkout.md`, `research/environment-at-commit.md`.
 
 ## Problem
 
@@ -10,7 +10,7 @@ Squeal labels each result with a commit, but the label does not answer the quest
 
 ## Goals
 
-1. `squeal status --at <commit>` (name: open question 1) prints, per test file, the result at that commit's key with its origin, or `no result`, or `not determined` with the reason. It runs nothing, writes nothing and needs no checkout (D1 to D3).
+1. `squeal status --at <commit>` prints, per test file, the result at that commit's key with its origin, or `no result`, or `not determined` with the reason. It runs nothing, writes nothing and needs no checkout (D1 to D3).
 2. The same command compares each file with the current tree: pass to fail, fail to pass, unchanged, unknown on either side (D3).
 3. With `--run`, Squeal makes a temporary checkout of the commit outside the user's tree, installs it, runs the missing test files within one budget (600 s by default, install included), writes them to the shared store at the commit's keys, removes the checkout, and prints the comparison (D4).
 4. `squeal proof` gives a red proof for each of the three cases in squawk's `docs/sdlc/regression-proof.md`: a source fix (new test over the old code), a test-only change that removes a hidden dependency (old and new test under a named condition), and a test-only fix (old test over the current code, repeated). Each side is read from the store first and runs only when no usable result exists, normally one test file. The report shows the red side's failure text and tells a failure for the right reason (an assertion) apart from an import or setup error (D5).
@@ -36,7 +36,7 @@ squeal proof <test file>... --base <commit> [--case source|dependency|test] [--e
 
 - `<commit>` is any commit-ish. Paths narrow the test files.
 - Without `--run` it is read-only: no daemon call that changes state, no run, no checkout.
-- `squeal proof` is D5. The names are drafts (open question 1).
+- `squeal proof` is D5. The human chose both names on 2026-11-16.
 - Exit codes as 020 D1: `0` every selected file is known on both sides, `3` some file is unknown, not determined or not comparable, `2` usage or setup error. A changed outcome is not an error: it is the answer.
 - The JSON report is versioned and carries the commit, `HEAD`, dirty flag, each file's state at both sides with its origin, and the run's budget use.
 
@@ -50,7 +50,7 @@ Keys are computed, never looked up by label (first finding, recommendation).
    2. Compute the installed-dependency part from the commit's committed `pnpm-lock.yaml` (pnpm 12, whole-fingerprint mode), then select the stored `environments` descriptors with this machine's Node, platform, arch, key format, adapter and runner version, equal runner-file hashes and that installed part. Exactly one: use it. More than one: `not determined (environment)`.
    3. Only the lockfile differs: this worktree's inputs with the computed installed part.
    4. Otherwise `not determined (environment)`; `--run`'s install gives the exact hash.
-   A project whose descriptors already show equal git-held inputs under more than one hash (squawk `web`, a config that reads files outside its runner files) skips step 2 (open question 3).
+   A project whose descriptors already show equal git-held inputs under more than one hash (squawk `web`, a config that reads files outside its runner files) skips step 2 (human, 2026-11-16: refuse).
 3. Other lockfiles (npm, Yarn) stop at step 1 in this slice.
 4. Untracked or ignored closure paths: `not determined (untracked input <path>)`.
 
@@ -66,7 +66,7 @@ Keys are computed, never looked up by label (first finding, recommendation).
 Flow (`temp-checkout.md`, recommendation 1):
 
 1. Take the repository's worktree lock; `git worktree prune`.
-2. `git worktree add --detach --lock --reason squeal` at the commit, in the checkout folder (open question 2), with a marker file naming the owner pid and start time.
+2. `git worktree add --detach --lock --reason squeal` at the commit, in the checkout folder: `$XDG_CACHE_HOME/squeal/checkouts/` (or the platform's cache folder) when it is on the same filesystem as the package store; otherwise `<git common dir>/squeal/checkouts/` with one warning line that packages from parent folders can load (human, 2026-11-16), with a marker file naming the owner pid and start time.
 3. Frozen install with the project's package manager, on the same filesystem as the user's package store (another filesystem made pnpm download 121 MB again). Warm: about 1 s; cold: 5 to 8 s on this host.
 4. Run 020's gate in-process (no relaunch child), in a new files-only mode with a results-only verdict, with `TMPDIR` pointed at a per-run folder. `HOME` and every other variable stay as the daemon has them: these results are stored at the commit's keys, and a variable outside the key must not differ from the conditions those keys stand for. Isolation by a changed `HOME` belongs to D5's conditions, whose results are never stored.
 5. Selection: the files the diff `<commit>..HEAD` selects at the commit (020 D3.1) that have no result at their key. `--all-missing` runs every file with no result; it prints 020 D17.1's estimate first (all missing files took 5 to 12 minutes at width 12 here).
@@ -86,7 +86,7 @@ A red proof is two sides, red and green, run under identical conditions. A side 
 | `test` (default when `<commit>..HEAD` changes only test-side files of the named test) | the test at `--base` over the code at HEAD | the test and code at HEAD | optional; `--repeat` |
 
 1. **Store first.** Each side's key is computed as D2 does over the side's blobs. A side with a stored result at its key and no condition is read, not run: the green side normally is today's state. A stored failure on a `test` red side is the proof. A stored pass on a red side proves nothing for a flaky test, so a `test` red side with `--repeat` runs anyway. Normally one side of one file runs.
-2. **Running a side.** In D4's temporary checkout at the side's code version, with the side's test version copied in. Test-side files the test imports that the code version lacks (helpers, fixtures, files under the project's test include globs) are copied with it. A source file it imports that the code version lacks: the side reads `not comparable (imports <path>, absent at <commit>)` and does not run (open question 4).
+2. **Running a side.** In D4's temporary checkout at the side's code version, with the side's test version copied in. Test-side files the test imports that the code version lacks (helpers, fixtures, files under the project's test include globs) are copied with it. A source file it imports that the code version lacks: the side reads `not comparable (imports <path>, absent at <commit>)` and does not run (human, 2026-11-16: refuse).
 3. **Conditions.** `--env NAME=` unsets or sets a variable; `--without <path>` hides a file or folder (a path under `HOME` is hidden by giving the run its own `HOME` holding everything else the test reads there). The same conditions apply to both sides. A side under a condition always runs, and its result is never written to the store: the key does not record the condition.
 4. **Repeat.** `--repeat <n>` runs the red side up to n times and stops at the first failure. The green side runs n times and must pass every time. Default 1. Reproducing an original host load is out of scope.
 5. **Verdict per test file:** `proven` (red failed on an assertion, green passed), `not red` (red passed every time), `red for another reason` (import, setup, collection or timeout failure, with its text), `not green`, `not comparable`. The report carries the red side's failed tests and their failure text (as `squeal why` shows it), the commits, the conditions and the run count, so an agent can paste it into a pull request.
@@ -124,10 +124,7 @@ Wave 1: 023-03, 023-04, 023-05 in parallel. Wave 2: 023-06. Wave 3: 023-07. Wave
 
 ## Open questions
 
-1. Names: `squeal status --at <commit>` or `squeal compare <commit>`; `squeal proof`. Owner: the human.
-2. Where the checkout lives. Inside the git folder it shares the filesystem, but Node can load the main checkout's packages through parent folders. Proposed: the user cache folder when it is on the package store's filesystem, else the git folder with a warning. Owner: the human.
-3. A single stored environment match in a project whose config reads more than its files: proposed refuse (send to the install). Owner: the human.
-4. A proof side whose test imports a source file its code version lacks: proposed `not comparable`, not run. Owner: the human.
+None open. Decided by the human on 2026-11-16: names; checkout location; refuse a single stored environment match in a project with a config-only difference; refuse a proof side whose test imports a source file its code version lacks.
 
 ## References
 

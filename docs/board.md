@@ -2501,7 +2501,7 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 ## Feature 023: results at a commit
 
-Spec folder `specifications/023-results-at-commit/` (stage: spec draft, waiting for the human; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
+Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16, wave 1 running; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
 
 ### Wave 0: research (parallel; brief `specifications/023-results-at-commit/research/README.md`)
 
@@ -2509,6 +2509,25 @@ Spec folder `specifications/023-results-at-commit/` (stage: spec draft, waiting 
 |---|---|---|---|
 | 023-01 research: running missing test files in a temporary checkout at a commit | done (researcher ec454b4a, `research/temp-checkout.md`: worktree add + warm pnpm install 1 to 2 s, cold 7 to 8 s; 020's gate runs unchanged in the checkout and writes to the shared store at X's keys; all missing files at X take 5 to 12 min at width 12, so default to the diff's selection in 600 s; SIGKILL orphans the gate's relaunch child and `squeal ps` misses it; red-proof overlay works, 22 to 27% of new test files import a file the parent lacks) | topic temp-checkout | `research/temp-checkout.md` committed |
 | 023-02 research: computing keys when the commit's environment differs | done (researcher 087110d8, `research/environment-at-commit.md`: installed part derives exactly from X's committed pnpm lockfile; a lookup in the never-pruned `environments` table recovers 100% (Squeal) and 78% (squawk) of not-determined files; record-by-commit only 3 to 9%, rejected; the checkout's install gives the exact hash for the rest) | topic environment-at-commit | `research/environment-at-commit.md` committed |
+
+### Wave 1: foundations (approved by the human 2026-11-16; brief `specifications/023-results-at-commit/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 023-03 keys at a commit, with the environment steps | running | D2; `src/core/commit/at-*.ts` | brief's tests (a) to (d) |
+| 023-04 the gate as a library: named files only, per-file outcomes, in-process, no orphan child | running | D4.4, D6; `src/core/code/gate/**`, `src/cli/code-gate*.ts` | brief's tests; gate tests green |
+| 023-05 the temporary checkout's life cycle and `squeal ps` listing | running | D4.1 to D4.3, D4.8, D6; `src/core/checkout/**`, `src/core/ps/**` | brief's tests |
+
+### Later waves (approved 2026-11-16)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 023-06 `squeal status --at`: lookup, report, comparison, JSON | approved; wave 2 | D1, D3 | after 023-03 |
+| 023-07 `squeal status --at --run` | approved; wave 3 | D4 | after 023-04, 023-05, 023-06 |
+| 023-08 `squeal proof`: sides, store reuse, test-file copy, verdicts | approved; wave 4 | D5.1, D5.2, D5.5, D5.6 | after 023-07 |
+| 023-11 `squeal proof` conditions and repeat | approved; wave 5 | D5.3, D5.4 | after 023-08 |
+| 023-09 end-to-end suite, one proof per case on real squawk fixes | approved; wave 6 | Testing | after 023-11 |
+| 023-10 dogfood: red proof and before/after in agent sessions | approved; wave 6 | Proof | after 023-09 |
 
 ## Later
 

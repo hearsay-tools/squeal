@@ -1,6 +1,6 @@
 # 023 Results at a commit: status
 
-Stage: spec draft, waiting for the human (wave 0 research done 2026-11-16)
+Stage: approved (2026-11-16); wave 1 running
 Started: 2026-11-16
 
 ## Decisions so far
@@ -12,3 +12,4 @@ Started: 2026-11-16
 - 2026-11-16, the human through coordinator 5a80b2e0: add red proofs as a use case. In cezar, agents ran 39 tests by hand for red proofs (the new test against the code before the fix, required by cezar's review rules); they restored the old files in the watched worktree, and Squeal reported failures for that state (`../011-core/research/hand-runs-2026-11-16.md` item 4, main `7f78bddeb`). The coordinator's reading: this is a mixed tree, the current test files over the source at X, not X as it was; the auto-run checkout must accept "test files from HEAD" so a red proof runs outside the user's tree. The spec carries it as a goal with its own example.
 - 2026-11-16, the coordinator: wave 0 landed (`research/temp-checkout.md`, `research/environment-at-commit.md`); `spec.md` drafted from the three findings with four open questions (name, checkout location, single stored environment match, overlay import missing at the commit).
 - 2026-11-16, the human asked to check the draft against squawk's three red-proof cases (`docs/sdlc/regression-proof.md` in the cezar repository: source fix, test-only change that removes a hidden dependency, test-only fix). The coordinator found case 1 covered and cases 2 and 3 only in part, and a flaw: D4 gave the checkout its own `HOME`, outside the key, while storing its results. The human chose "Proof mode: yes, all three". D5 is now `squeal proof` (sides as test version × code version, store first, named conditions never stored, repeat, verdicts with failure text); D4 keeps the daemon's `HOME`; new row 023-11.
+- 2026-11-16, the human on the approval card: "Approve, start wave 1"; names `squeal status --at` and `squeal proof`; checkout "Cache folder, fallback"; safety "Refuse both". Folded into `spec.md` D1, D2, D4, D5 and Open questions.
