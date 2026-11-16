@@ -4,7 +4,6 @@ import type { Revision } from "../types/revision.js";
  * Row 011-352 (card 7, `research/scheduler-step.md`, decision 2 and "The wake
  * loop"): the scheduler's closed lists. A new event or wake reason is one
  * line here, and the compiler names every `switch` that must handle it.
- * Until the step (row 011-356) the pump reads only "an event came".
  */
 
 /**
@@ -36,9 +35,9 @@ export const WAKE_ORDER = [
 export type WakeReason = (typeof WAKE_ORDER)[number];
 
 /**
- * Something the pump must see (`GLOSSARY.md`, "Scheduler event"). Each
- * `#notify` site posts one; until row 011-356 the pump reads only that one
- * came, so the payload is for the step and for tests.
+ * Something the scheduler step must see (`GLOSSARY.md`, "Scheduler event").
+ * Each `#post` site posts one to the pump, whose step reads them all
+ * (row 011-356); the sites outside the pump's iteration step on theirs.
  */
 export type SchedulerEvent =
   /** The pump was asked for while it ran: a revision, a request, applied runner work, a resume. */
@@ -59,13 +58,13 @@ export type SchedulerEvent =
   | { readonly kind: "wake"; readonly reason: WakeReason }
   /*
    * Row 011-354: the events the yield check reads (`yieldReach`). Their
-   * sites pass them to the check; none is posted to the pump yet.
+   * sites step on them in turn; none is posted to the pump.
    */
   /** A reconciliation pass stored `revision`. */
   | { readonly kind: "revision"; readonly revision: Revision }
   /** A runner part was applied (`RunnerWork`'s `applied`). */
   | { readonly kind: "runner-work-applied" }
-  /** A promotion or a focus request was taken (`RequestIntake`'s `cutTiers` wake). */
+  /** A promotion or a focus request was taken (`RequestIntake`'s `checkYields` wake). */
   | { readonly kind: "request-taken" }
   /** A fast tier started; `beside` when it went beside the batch's tier (row 011-269). */
   | { readonly kind: "tier-started"; readonly runId: string; readonly beside: boolean }
@@ -83,9 +82,6 @@ export type SchedulerEvent =
   | { readonly kind: "beside-ended"; readonly lane: string }
   /** A revision pass's install check found the install missing (task 001-113). */
   | { readonly kind: "install-missing" };
-
-/** One entry of `SchedulerEvent`'s kinds. */
-export type SchedulerEventKind = SchedulerEvent["kind"];
 
 /** The rank of `reason` in a pass: its index in `WAKE_ORDER`. */
 export function wakeRank(reason: WakeReason): number {

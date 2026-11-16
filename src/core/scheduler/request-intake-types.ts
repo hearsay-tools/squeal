@@ -138,7 +138,7 @@ export type WakeRule =
    */
   | { readonly coveredLanes: string }
   /** The tiers in flight are checked, after its change. */
-  | { readonly cutTiers: true }
+  | { readonly checkYields: true }
   | Skip;
 
 export interface Request<A, P = undefined> {

@@ -11,7 +11,7 @@ import {
 import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
 import type { DeferUnderLoad, ResolvedGroup } from "../types/check-groups.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
-import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { TestFileRef } from "../types/keys.js";
 import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SlowTierActivity } from "../types/status.js";
 import type { Store } from "../types/store.js";
@@ -45,7 +45,7 @@ import type { WakeSlot, Wakes } from "./wakes.js";
 export const SLOW_RECHECK_MS = 15_000;
 
 /** After this long without the slot, a note says another daemon holds it. */
-export const SLOT_HELD_NOTE_MS = 60_000;
+const SLOT_HELD_NOTE_MS = 60_000;
 
 /**
  * What a lane is made with (row 011-357): its wake in the scheduler's loop
@@ -862,32 +862,10 @@ function longest(durations: readonly (number | null)[]): number | null {
 }
 
 /**
- * The keys `tier`'s results may be stored under: each file's run key and,
- * after recording, its current key (a run whose observed growth re-keyed the
- * file stores under that).
- */
-export function tierKeys(tier: Tier, ledger: Ledger): CheckKey[] {
-  return [...new Set(tier.files.flatMap((tierFile) => fileKeys(tierFile, ledger)))];
-}
-
-/** `tierKeys` of one file of a tier. */
-function fileKeys({ file, key }: TierFile, ledger: Ledger): CheckKey[] {
-  const current = ledger.files.get(file.id)?.key ?? null;
-  return current === null || current === key ? [key] : [key, current];
-}
-
-/**
- * Spec 004 D2 `run --slow`: every slow file that is not current is queued,
- * as `run --all` queues every file (`queueFullSuite`), under no checkpoint.
- * Returns how many slow files are queued or running for it.
- */
-export function queueSlowSuite(context: SchedulerContext, ledger: Ledger): number {
-  return queueGroup(context, ledger, SLOW_GROUP);
-}
-
-/**
- * Spec 019 D6 `squeal run <group>`: `queueSlowSuite` for every file group
- * `group` owns. Returns how many are queued or running for it.
+ * Spec 019 D6 `squeal run <group>`: every file of the group `group` that is
+ * not current is queued, as `run --all` queues every file
+ * (`queueFullSuite`), under no checkpoint. Returns how many are queued or
+ * running for it.
  */
 export function queueGroup(context: SchedulerContext, ledger: Ledger, group: string): number {
   const { of } = groupView(context.policy);

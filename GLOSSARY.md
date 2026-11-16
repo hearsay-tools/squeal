@@ -111,11 +111,11 @@ The one synchronous decision of what the scheduler does next, from the scheduler
 _Avoid_: pump (the loop that carries the step out), tick, pass (a reconciliation pass is something else)
 
 **Scheduler event**:
-Something that happened that the scheduler step must see, from a closed list: a revision arrived, runner work was applied, a request was taken, a file or a tier ended, a wake came. An event reaches the step whole; which rules it touches is decided inside the step.
+Something that happened that the scheduler step must see, from a closed list: a revision arrived, runner work was applied, a request was taken, a file or a tier ended, a wake came. An event reaches the step whole; which rules it touches is decided inside the step. A step outside the pump's loop sees the revision, the applied runner work and the request as they are; the pump's own step sees each of them only as "asked", because the step that saw it whole has already run.
 _Avoid_: notify, signal
 
 **Scheduler decision**:
-What a scheduler step returns for the loop to carry out, from a closed list: start a tier, stop a tier, write the yield record, read the install stamp, close a lane's runner, and the like. Each kind is carried out either inside the step's lock turn or after it.
+What a scheduler step returns for the loop to carry out, from a closed list: start a tier, check the tiers in flight for yields (one decision: it stops the tiers that yield and writes the yield record), read the install stamp, close a lane's runner, and the like. Each kind is carried out either inside the step's lock turn or after it. A rule's own answer, such as a slow lane's, a yield rule's, a hold's or a slow release's, is not a scheduler decision: the step reads it and returns decisions from it.
 _Avoid_: action, effect, command
 
 **Wake**:

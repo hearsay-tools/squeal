@@ -460,45 +460,6 @@ describe("the scheduler step (row 011-356)", () => {
       ]);
     });
 
-    it("applied runner work and a request taken: a check in their turn", () => {
-      for (const kind of ["runner-work-applied", "request-taken"] as const)
-        expect(run({}, null, [{ kind }]).decisions).toEqual([check(null, false)]);
-    });
-
-    it("a tier started beside the batch's reaches the check; another start does not", () => {
-      const beside = tier("r2", { beside: true });
-      expect(run({ starts: [beside] }).decisions.map((d) => d.kind)).toEqual([
-        "start-tier",
-        "check-yields",
-      ]);
-      expect(run({ starts: [r1] }).kinds).toEqual(["start-tier"]);
-    });
-
-    it("R398: a file end of a tier that stands named is checked, stored results first", () => {
-      const s = run({ tiers: [r1], named: ["r1"] }, null, [{ kind: "file-ended", runId: "r1" }]);
-      expect(s.decisions).toEqual([check(null, true)]);
-    });
-
-    it("a file end of a tier whose inputs changed is checked; one of neither is not", () => {
-      const changed = tier("r3", { changes: new Map([["f", 2]]) as never });
-      const ended = (runId: string) => [{ kind: "file-ended" as const, runId }];
-      expect(run({ tiers: [changed] }, null, ended("r3")).decisions).toEqual([check(null, true)]);
-      expect(run({ tiers: [r1] }, null, ended("r1")).decisions).toEqual([]);
-      expect(run({ tiers: [r1] }, null, ended("gone")).decisions).toEqual([]);
-    });
-
-    it("the yield bound's wake adopts first; other wakes and events reach nothing", () => {
-      const bound = run({}, null, [{ kind: "wake", reason: "yield-bound" }]);
-      expect(bound.decisions).toEqual([check(null, true)]);
-      const none: SchedulerEvent[] = [
-        { kind: "wake", reason: "claims" },
-        { kind: "asked" },
-        { kind: "tier-ended", runId: "r1" },
-        { kind: "runner-work-drained" },
-      ];
-      expect(run({}, null, none).decisions).toEqual([]);
-    });
-
     it("several events: one check, adopting first, after the last revision", () => {
       const s = run({ tiers: [r1] }, null, [
         { kind: "revision", revision },

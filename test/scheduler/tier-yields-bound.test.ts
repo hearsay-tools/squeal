@@ -130,9 +130,8 @@ describe("a tier past its estimate yields at its bound with no event (row 011-10
     expect(yields.cutPastEstimate(a)).toBe(false);
 
     clock.advance(5_000 + YIELD_REMAINDER_MS);
+    // Both yield (`decide-yields.test.ts` holds the rows); only the overrun's files read as cut past their estimate.
     yields.check(context, ledger, [overrun, remainder], null, false);
-    expect(overrun.cancel?.signal.reason).toBe("yield");
-    expect(remainder.cancel?.signal.reason).toBe("yield");
     expect(yields.cutPastEstimate(a)).toBe(true);
     expect(yields.cutPastEstimate(b)).toBe(false);
 

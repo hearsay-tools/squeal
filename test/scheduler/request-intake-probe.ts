@@ -195,7 +195,7 @@ export function probeHost(
     },
     wakeAll: () => log.push("wake all lanes"),
     wakeLane: (group) => log.push(`wake lane ${group}`),
-    cutTiers: () => log.push("cut tiers"),
+    checkYields: () => log.push("check yields"),
     pump: () => log.push("pump"),
   };
   const committed = () => {

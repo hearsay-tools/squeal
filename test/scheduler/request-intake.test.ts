@@ -319,10 +319,10 @@ describe("request intake: the order", () => {
         covers: { skip: "the probe queues no file" },
         apply: () => `applied ${p.log.push("apply")}`,
       },
-      wake: { cutTiers: true },
+      wake: { checkYields: true },
     });
     expect(await p.intake.take(request)).toBe("applied 1");
-    expect(p.log).toEqual(["apply", "cut tiers", "pump"]);
+    expect(p.log).toEqual(["apply", "check yields", "pump"]);
   });
 
   it("takes a release outside the store first, or the stage when it declines", async () => {
