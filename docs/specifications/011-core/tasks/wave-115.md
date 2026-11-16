@@ -45,3 +45,18 @@ Check, each as proven, plausible or unverified:
 3. **Slower hosts.** Name any file in this range whose wait could still read a result before the run that writes it ends.
 
 Coordinator at the candidate: lint and typecheck pass; the four exception files pass (25 tests, 8 skipped opt-in probes, load 13); 49 test files still call `scheduler.idle()` (B7 and row 011-381). Workers: each slice's files 3 of 3 (B4 29 files at load 6 to 15; B5 31 at load 8 to 12; B6 30 at load 7 to 10). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-380-b4-b6.md` and commit it on your branch.
+
+## R3 (B7, C1 to C4): review of cand/011-380-381
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-381` at `871cc22c0943e5bc0f323eb7a3dfd54fe632e1b2`; candidate CI run 43933339988. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b4-b6 (`861c9da47`, review PASS, landing after main's CI). Range `861c9da47..871cc22c0943e5bc0f323eb7a3dfd54fe632e1b2`: workers 9d5a16b9 (B7), a9d6d872 (C1), e635c69e (C2), cc1cbc68 (C3) and 04d9e9e1 (C4), cherry-picked without conflict. After this range no test calls `Scheduler.idle()`. Read: board rows 011-371, 011-378, 011-380, 011-381; this file; `tasks/011-378/notes.md`; `tasks/011-380/B7.md`; `tasks/011-381/C1.md` to `C4.md`; `reviews/011-380-b4-b6.md` (N1).
+
+Check, each as proven, plausible or unverified:
+
+1. **New shared helpers and fixture options:** `test/scheduler/counted-loop.ts` (the daemon loop with counted calls and `quiet()`), `quiet()` in `preload-worktrees.ts`, `test/scheduler/slow-drive.ts` (`SLOW_DRIVEN`, `idleSlow`, `looks`), the optional virtual clock in `promoted-tier-fixture.ts` and `merge-hold-fixture.ts` (default unchanged for every other user), `warm-up-repo.ts` on the virtual clock. Each keeps its other users' meaning.
+2. **Waits through a named wake:** the `run --all --force` cases in `forced-requeue` and `strict-lookup` (`pump`: the checkpoint ends on the pump's next pass), C3's host-clock files (`pump`, `claims`), `backlog-slots` (`pump`). Does any named wake hide a run a case depends on?
+3. **Clock choices:** C3 keeps four files and C4 keeps `backlog-slots` on the host clock (real-time limits, two daemons, real durations); C2 uses `idleOn` instead of `idleSlow` where the slow lane would run a case's slow tier early. Is each choice right, and is any case's meaning lost?
+4. **Changed checks:** C1's "nothing started" checks now run at the quiet point; C4's `tier-yields` case 2 sets the 60 s run time after the start; C2's `slow-activity` reads `h.now()`. None is weaker.
+5. **The two follow-ups** from B5 and B6 (`adoption`, `observed-direct`) now wait at `quiet()`.
+6. **Slower hosts.** Name any file in this range whose wait could still read a result before the run that writes it ends.
+
+Coordinator at the candidate: lint and typecheck pass; ten files across the five slices, the model test included, pass (49 tests, load 7); `git grep -nE "scheduler\??\.idle\("` over `test/` finds nothing. Workers: each slice's files 3 of 3 (load 7 to 26). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-380-381.md` and commit it on your branch.
