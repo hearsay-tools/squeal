@@ -1,3 +1,4 @@
+import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
@@ -25,15 +26,16 @@ export const BESIDE_BATCH_MS = 30_000;
  * lane's second instance (`BESIDE_LANE_PREFIX`), so it takes at most
  * `runner.tierSize` workers above the batch's grant. It does not cancel the
  * batch's tier: an edited file of it runs beside at its new key, and the
- * batch's run of it at the old key is superseded (`supersededIn`).
+ * batch's run of it at the old key is superseded (`supersededIn`). Every
+ * batch rank reads `at`, the decision's one reading (row 011-372).
  */
 export function besideFiles(
   context: SchedulerContext,
   ledger: Ledger,
   inFlight: readonly Tier[],
+  at: EpochMs,
 ): ((ref: TestFileRef) => boolean) | null {
   const { queue } = ledger;
-  const at = context.now();
   const rankOf = (ref: TestFileRef) => queue.rankAt(ref, at)?.rank ?? null;
   const lanes = new Set<string>();
   /** The batches a running tier holds: their queued files wait for the batch's next tier. */
@@ -48,7 +50,7 @@ export function besideFiles(
   if (lanes.size === 0) return null;
   const inLanes = (ref: TestFileRef) => lanes.has(laneOf(context, ref));
   const sums = new Map<number, number>();
-  for (const ref of ledger.orderedBatches()) {
+  for (const ref of ledger.orderedBatches(at)) {
     const rank = rankOf(ref);
     if (rank === null || running.has(rank) || !inLanes(ref)) continue;
     const ms = ledger.file(ref)?.durationMs ?? Number.POSITIVE_INFINITY;
@@ -66,19 +68,21 @@ export function besideFiles(
 /**
  * Whether `lane` has no batch left for its second instance (row 011-269): no
  * batch's tier and no tier beside one in flight there, and no file of a
- * batch queued in it. The scheduler then closes that instance.
+ * batch queued in it at `at`, the step's reading (row 011-372). The
+ * scheduler then closes that instance.
  */
 export function besideDone(
   context: SchedulerContext,
   ledger: Ledger,
   inFlight: readonly Tier[],
   lane: string,
+  at: EpochMs,
 ): boolean {
   const busy = inFlight.some(
     (tier) => tier.lane === lane && (tier.promoted === true || tier.beside === true),
   );
   if (busy) return false;
   return !ledger.queue.hasFast(
-    (ref) => ledger.queue.isPromoted(ref) && laneOf(context, ref) === lane,
+    (ref) => ledger.queue.isPromoted(ref, at) && laneOf(context, ref) === lane,
   );
 }

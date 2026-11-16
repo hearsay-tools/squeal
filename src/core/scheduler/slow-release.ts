@@ -110,9 +110,12 @@ export class SlowRelease {
     await this.host.release(lane);
   }
 
-  /** The open lanes no tier runs in now (`decideRelease`'s `idle`): a step's decision (row 011-356). */
-  idleLanes(): readonly string[] {
-    return this.#decide().idle;
+  /**
+   * The open lanes no tier runs in at `at`, the step's reading (row
+   * 011-372), else now (`decideRelease`'s `idle`): a step's decision (row 011-356).
+   */
+  idleLanes(at?: EpochMs): readonly string[] {
+    return this.#decide(at).idle;
   }
 
   /** Closes `lanes`, a step decided idle on a hold. */
@@ -131,15 +134,15 @@ export class SlowRelease {
     this.#wake.clear();
   }
 
-  /** `decideRelease` over the open lanes now, each counting from its own end, else from now. */
-  #decide(): ReleaseDecision {
+  /** `decideRelease` over the open lanes at `at`, each counting from its own end, else from `at`. */
+  #decide(at: EpochMs = this.host.now()): ReleaseDecision {
     const busy = new Set(this.host.lanes());
     const lanes = [...this.#open].map((lane) => ({
       lane,
       busy: busy.has(lane),
       endedAt: this.#endedAt.get(lane) ?? null,
     }));
-    return decideRelease(lanes, this.host.now(), this.afterMs);
+    return decideRelease(lanes, at, this.afterMs);
   }
 
   /**
