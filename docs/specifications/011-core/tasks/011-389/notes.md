@@ -24,5 +24,5 @@ All three failed on the base code (red commit, then the fix stashed and the file
 
 ## Limits
 
-- `since` after a set-back is ahead of today's calendar, as the brief keeps it a stored calendar fact; status text that subtracts it from `now` shows a short or negative age until the calendar passes it. Not changed here; the grant line no longer uses it.
+- `since` stays the calendar time of the first refusal, as the brief keeps it a stored fact. Status prints it as a clock time ("waiting for CPU since <time>", `next-step.ts:350`), so after a step it names the time on the old calendar. Not changed here; the grant line no longer uses it.
 - The row's `at` after a set-back past the daemon's start is the start (row 011-386 stamp), unchanged.
