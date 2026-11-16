@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
+import { META_FULL_CHECK_HOLDER } from "../../src/core/daemon/full-check-claim.js";
 import { META_FULL_CHECK } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import {
@@ -13,6 +14,7 @@ import {
   stopProcess,
   waitFor,
   waitReady,
+  withStore,
 } from "./helpers.js";
 
 const suite = daemonSuite();
@@ -169,6 +171,59 @@ describe.runIf(process.platform === "linux")(
       expect(held.filter((file) => file.includes("/locks/"))).toEqual([]);
       process.kill(check, "SIGKILL");
       await waitFor(() => !alive(check), 10_000, "the check to end");
+    });
+
+    /*
+     * Row 011-375: the killed daemon took the day's claim on the full check
+     * and never answered it. The claim names its holder, so the replacement
+     * sees it dead, takes the claim over and runs the check at its start.
+     */
+    it("its claim on the day's full check ends with it: the replacement runs the check", async () => {
+      const repo = suite.fixture();
+      const first = scratchDaemon(repo);
+      await waitReady(repo, first);
+      await stopProcess(first);
+      growStore(repo);
+
+      const killed = scratchDaemon(repo);
+      const killedPid = killed.child.pid ?? 0;
+      await waitReady(repo, killed);
+      const isCheck = (pid: number) => / check -e /.test(cmdline(pid));
+      const check = await waitFor(
+        () => childrenOf(killedPid).find(isCheck) ?? null,
+        30_000,
+        "the full check's process",
+      );
+      const claimOf = () => withStore(repo, (store) => store.meta.get(META_FULL_CHECK));
+      const killedClaim = claimOf();
+      expect(killedClaim).not.toBeNull();
+      killed.child.kill("SIGKILL");
+      await killed.exited;
+      // The orphaned check's answer goes nowhere: end it, so only the replacement checks.
+      process.kill(check, "SIGKILL");
+      await waitFor(() => !alive(check), 10_000, "the orphaned check to end");
+
+      const replacement = scratchDaemon(repo);
+      const replacementPid = replacement.child.pid ?? 0;
+      await waitReady(repo, replacement);
+      const claimed = await waitFor(
+        () => {
+          const claim = claimOf();
+          return claim !== killedClaim ? claim : null;
+        },
+        60_000,
+        "the replacement's claim",
+      );
+      expect(Number(claimed)).toBeGreaterThan(Number(killedClaim));
+      // Its check answers and keeps the claim, as row 011-235 has it.
+      await waitFor(
+        () => withStore(repo, (store) => store.meta.get(META_FULL_CHECK_HOLDER) === null) || null,
+        60_000,
+        "the replacement's check to answer",
+      );
+      expect(claimOf()).toBe(claimed);
+      expect(childrenOf(replacementPid).filter(isCheck)).toEqual([]);
+      await stopProcess(replacement);
     });
   },
 );

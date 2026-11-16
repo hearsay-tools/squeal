@@ -1,20 +1,14 @@
 import { spawn } from "node:child_process";
 import { setPriority } from "node:os";
 import { argv0For, storeCheckLabel } from "../process-label.js";
-import { isCorruption, META_FULL_CHECK, markStore, type StoreMark } from "../store/open.js";
+import { isCorruption, markStore, type StoreMark } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
 import { slicedWrite } from "../store/sliced-write.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { Store } from "../types/store.js";
+import { type Claim, claimFullCheck, keepClaim, releaseClaim } from "./full-check-claim.js";
 import { TEST_NICE } from "./low-priority.js";
 import { DAEMON_START_BUSY_TIMEOUT_MS } from "./open.js";
-
-/**
- * Spec 011, store failures as amended 2026-10-25 (row 011-226): a daemon
- * start runs `quick_check`; the full `integrity_check` runs after a daemon
- * serves, at most once per store in this period.
- */
-export const FULL_CHECK_EVERY_MS = 24 * 60 * 60_000;
 
 /** The check stops at this many problems: a store that has them is moved aside anyway. */
 const MAX_PROBLEMS = 10;
@@ -102,36 +96,6 @@ function outcomeOf(out: string, code: number | null, signal: string | null): Ful
   return { unrun: `the check's process ended with ${signal ?? `code ${code}`}` };
 }
 
-/** The claim a daemon took: the start it wrote and the row's value before it. */
-interface Claim {
-  readonly at: EpochMs;
-  readonly before: string | null;
-}
-
-/**
- * Takes the full check's claim in a write transaction: when no full check
- * started in the last `FULL_CHECK_EVERY_MS`, writes `at` as the last one's
- * start. A start recorded after `at` (a clock set back) is no claim held.
- */
-export function claimFullCheck(store: Store, at: EpochMs): Claim | null {
-  return store.transaction(() => {
-    const before = store.meta.get(META_FULL_CHECK);
-    const last = before === null ? Number.NaN : Number(before);
-    if (last <= at && at - last < FULL_CHECK_EVERY_MS) return null;
-    store.meta.set(META_FULL_CHECK, String(at));
-    return { at, before };
-  });
-}
-
-/** Gives a claim back while the row still holds it, so the next daemon's start runs the check. */
-function releaseClaim(store: Store, claim: Claim): void {
-  store.transaction(() => {
-    if (store.meta.get(META_FULL_CHECK) !== String(claim.at)) return;
-    if (claim.before === null) store.meta.delete(META_FULL_CHECK);
-    else store.meta.set(META_FULL_CHECK, claim.before);
-  });
-}
-
 export interface FullCheckContext {
   readonly store: Store;
   readonly commonDir: AbsolutePath;
@@ -158,7 +122,9 @@ export const RELEASE_WITHIN_MS = DAEMON_START_BUSY_TIMEOUT_MS;
  * aside. Row 011-235: the claim stays only once the check answered (passed,
  * or a fault marked). A check that could not run, one the returned function
  * stops before it ended and a start that throws give it back at once, so the
- * next start runs the check.
+ * next start runs the check. Row 011-375: while the check runs, the claim
+ * names this process (`META_FULL_CHECK_HOLDER`); a daemon killed before the
+ * answer leaves a claim the next daemon's start takes over.
  *
  * Review 0.1.329, B1 and S1: the claim and its return are C8's sliced
  * writes, each try waiting at most `BUSY_SLICE_MS` for a busy store and
@@ -222,29 +188,38 @@ class FullCheckOwner {
         log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
       }
     } finally {
-      if (!answered) await this.#giveBack(claim);
+      if (answered) await this.#settle(claim, keepClaim, "kept");
+      else await this.#settle(claim, releaseClaim, "given back");
     }
   }
 
-  /** Gives `claim` back, waiting at most `RELEASE_WITHIN_MS` for a busy store; never throws. */
-  async #giveBack(claim: Claim): Promise<void> {
+  /**
+   * Writes `claim`'s end with `write`, waiting at most `RELEASE_WITHIN_MS`
+   * for a busy store; never throws. A claim kept whose holder row stays is
+   * taken over once this daemon is gone: one more check, never a missed one.
+   */
+  async #settle(
+    claim: Claim,
+    write: (store: Store, claim: Claim) => void,
+    what: string,
+  ): Promise<void> {
     const { store, log } = this.#context;
     const deadline = performance.now() + RELEASE_WITHIN_MS;
     try {
       const done = await slicedWrite(
         () => {
-          releaseClaim(store, claim);
+          write(store, claim);
           return true;
         },
         () => performance.now() >= deadline,
       );
       if (done !== true) {
         log(
-          `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
+          `full integrity check claim not ${what}: the store stayed busy for ${RELEASE_WITHIN_MS} ms`,
         );
       }
     } catch (error) {
-      log(`full integrity check claim not given back: ${String(error)}`);
+      log(`full integrity check claim not ${what}: ${String(error)}`);
     }
   }
 }
