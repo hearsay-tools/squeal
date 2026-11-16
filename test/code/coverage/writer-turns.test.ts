@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { commonDir, ON } from "../helpers.js";
 import { type PayloadSet, payloads, TS_WORKER } from "./payloads.js";
-import { threadCpuMs, watchTurns } from "./turns.js";
+import { type Turns, threadCpuMs, watchTurns } from "./turns.js";
 
 /*
  * Row 015-42 (011-197): the records' writer parses and maps a payload off
@@ -51,16 +51,22 @@ describe("the records' writer's turns (row 015-42)", () => {
       worker: TS_WORKER,
     });
     const turns = watchTurns();
-    // The probe times a turn from its tick before it.
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    const began = performance.now();
-    writer.collected({ runId: "run-1", files: [own.file("test/a.test.ts")] });
-    await writer.idle();
-    const took = Math.round(performance.now() - began);
-    // The probe counts a turn once it ticks after it.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const longest = turns.stop();
-    await writer.close();
+    let longest: ReturnType<Turns["stop"]>;
+    let took: number;
+    try {
+      // The probe times a turn from its tick before it.
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const began = performance.now();
+      writer.collected({ runId: "run-1", files: [own.file("test/a.test.ts")] });
+      await writer.idle();
+      took = Math.round(performance.now() - began);
+      // The probe counts a turn once it ticks after it.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    } finally {
+      // An early error leaves no probe interval or writer behind (review 011-376 S1).
+      longest = turns.stop();
+      await writer.close();
+    }
     expect(stored).toBe(1);
 
     const load = loadavg()[0] ?? 0;
