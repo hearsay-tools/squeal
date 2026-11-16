@@ -1,0 +1,112 @@
+{
+ "tip": "2cab1e991",
+ "commits": 318,
+ "projects": {
+  "root:test:unit": {
+   "files": 135,
+   "runnerFiles": 10,
+   "shapeStart": "2026-11-12T17:09:32.636Z",
+   "currentDescriptors": 8
+  },
+  "test:unit": {
+   "files": 11,
+   "runnerFiles": 11,
+   "shapeStart": "2026-11-12T17:09:32.636Z",
+   "currentDescriptors": 14
+  },
+  "e2e": {
+   "files": 97,
+   "runnerFiles": 126,
+   "shapeStart": "2026-11-11T18:48:35.488Z",
+   "currentDescriptors": 52
+  },
+  "web": {
+   "files": 384,
+   "runnerFiles": 17,
+   "shapeStart": "2026-11-11T18:48:35.488Z",
+   "currentDescriptors": 19
+  },
+  "api-client": {
+   "files": 2,
+   "runnerFiles": 7,
+   "shapeStart": "2026-11-11T18:48:35.488Z",
+   "currentDescriptors": 7
+  },
+  "contract": {
+   "files": 32,
+   "runnerFiles": 7,
+   "shapeStart": "2026-11-11T18:48:35.488Z",
+   "currentDescriptors": 7
+  },
+  "server": {
+   "files": 1251,
+   "runnerFiles": 62,
+   "shapeStart": "2026-11-11T18:48:35.488Z",
+   "currentDescriptors": 39
+  },
+  "f2:package": {
+   "files": 0,
+   "runnerFiles": 9,
+   "shapeStart": "2026-11-10T15:43:06.359Z",
+   "currentDescriptors": 2
+  }
+ },
+ "fileCommitPairs": 608016,
+ "counts": {
+  "files": 608016,
+  "same environment as the tip": 92592,
+  "not determined": 515424,
+  "nd: runner files differ": 515424,
+  "nd: runner files and lockfile differ": 388136,
+  "resolved: record by inputs, one hash": 362644,
+  "resolved: record by inputs (existing table)": 403592,
+  "resolved: derive or record by inputs": 403592,
+  "resolved: any of the three": 403592,
+  "resolved: record by commit": 46965,
+  "resolved: record by commit, any shape": 99319,
+  "pin differs (not a key input)": 36328,
+  "record by inputs: ambiguous (more than one hash)": 40948
+ },
+ "shareOfAll": {
+  "files": "100.0%",
+  "same environment as the tip": "15.2%",
+  "not determined": "84.8%",
+  "nd: runner files differ": "84.8%",
+  "nd: runner files and lockfile differ": "63.8%",
+  "resolved: record by inputs, one hash": "59.6%",
+  "resolved: record by inputs (existing table)": "66.4%",
+  "resolved: derive or record by inputs": "66.4%",
+  "resolved: any of the three": "66.4%",
+  "resolved: record by commit": "7.7%",
+  "resolved: record by commit, any shape": "16.3%",
+  "pin differs (not a key input)": "6.0%",
+  "record by inputs: ambiguous (more than one hash)": "6.7%"
+ },
+ "shareOfNotDetermined": {
+  "nd: runner files differ": "100.0%",
+  "nd: runner files and lockfile differ": "75.3%",
+  "resolved: record by inputs, one hash": "70.4%",
+  "resolved: record by inputs (existing table)": "78.3%",
+  "resolved: derive or record by inputs": "78.3%",
+  "resolved: any of the three": "78.3%",
+  "resolved: record by commit": "9.1%",
+  "resolved: record by commit, any shape": "19.3%"
+ },
+ "runnerPathsDiffering": {
+  "server:packages/cezar/src/runs/run-exits.ts": "61.1%",
+  "server:packages/cezar/src/test-launch-guard.testkit.ts": "59.7%",
+  "server:packages/cezar/vitest.setup.ts": "59.7%",
+  "server:.github/scripts/vitest-coverage-tests.mjs": "41.8%",
+  "server:.github/scripts/vitest-file-duration.mjs": "38.9%",
+  "server:packages/contract/src/usage-limit-hold.ts": "33.7%",
+  "server:scripts/test-install-marker.mjs": "33.7%",
+  "server:scripts/test-sandbox.mjs": "33.7%",
+  "server:scripts/test-home-setup.mjs": "32.7%",
+  "server:.github/scripts/ci-test-sequencer.mjs": "23.5%",
+  "web:.github/scripts/vitest-coverage-tests.mjs": "12.8%",
+  "web:.github/scripts/vitest-file-duration.mjs": "11.9%",
+  "web:scripts/test-install-marker.mjs": "10.4%",
+  "web:scripts/test-sandbox.mjs": "10.4%",
+  "web:scripts/test-home-setup.mjs": "10.0%"
+ }
+}

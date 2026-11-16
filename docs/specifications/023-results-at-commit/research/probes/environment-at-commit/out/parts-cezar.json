@@ -1,0 +1,105 @@
+{
+ "root:test:unit": {
+  "hashes": 35,
+  "sameNodePairs": 33,
+  "partDiffers": {
+   "runner file": 29,
+   "installedDependencies": 5,
+   "resolved config": 7,
+   "adapterVersion": 2
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "test:unit": {
+  "hashes": 48,
+  "sameNodePairs": 46,
+  "partDiffers": {
+   "runner file": 41,
+   "installedDependencies": 6,
+   "resolved config": 7,
+   "adapterVersion": 2
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "e2e": {
+  "hashes": 90,
+  "sameNodePairs": 88,
+  "partDiffers": {
+   "runner file": 85,
+   "installedDependencies": 13,
+   "resolved config": 18
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "web": {
+  "hashes": 51,
+  "sameNodePairs": 41,
+  "partDiffers": {
+   "resolved config": 27,
+   "installedDependencies": 6,
+   "runner file": 27
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "api-client": {
+  "hashes": 16,
+  "sameNodePairs": 12,
+  "partDiffers": {
+   "installedDependencies": 4,
+   "runner file": 6,
+   "resolved config": 5
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "contract": {
+  "hashes": 16,
+  "sameNodePairs": 12,
+  "partDiffers": {
+   "installedDependencies": 4,
+   "runner file": 6,
+   "resolved config": 5
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "server": {
+  "hashes": 73,
+  "sameNodePairs": 65,
+  "partDiffers": {
+   "installedDependencies": 8,
+   "runner file": 59,
+   "resolved config": 13
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ },
+ "f2:package": {
+  "hashes": 2,
+  "sameNodePairs": 1,
+  "partDiffers": {
+   "runner file": 1
+  },
+  "nodes": [
+   "v24.22.1"
+  ]
+ }
+}

@@ -1,0 +1,50 @@
+{
+ "tip": "d2678e570",
+ "commits": 1997,
+ "projects": {
+  "": {
+   "files": 1870,
+   "runnerFiles": 3,
+   "shapeStart": "2026-11-11T18:45:53.800Z",
+   "currentDescriptors": 3
+  }
+ },
+ "fileCommitPairs": 3734390,
+ "counts": {
+  "files": 3734390,
+  "same environment as the tip": 2427260,
+  "not determined": 1307130,
+  "nd: lockfile only": 1307130,
+  "resolved: record by inputs, one hash": 1307130,
+  "resolved: derive": 1307130,
+  "resolved: record by commit": 33660,
+  "resolved: record by commit, any shape": 95370,
+  "resolved: record by inputs (existing table)": 1307130,
+  "resolved: derive or record by inputs": 1307130,
+  "resolved: any of the three": 1307130
+ },
+ "shareOfAll": {
+  "files": "100.0%",
+  "same environment as the tip": "65.0%",
+  "not determined": "35.0%",
+  "nd: lockfile only": "35.0%",
+  "resolved: record by inputs, one hash": "35.0%",
+  "resolved: derive": "35.0%",
+  "resolved: record by commit": "0.9%",
+  "resolved: record by commit, any shape": "2.6%",
+  "resolved: record by inputs (existing table)": "35.0%",
+  "resolved: derive or record by inputs": "35.0%",
+  "resolved: any of the three": "35.0%"
+ },
+ "shareOfNotDetermined": {
+  "nd: lockfile only": "100.0%",
+  "resolved: record by inputs, one hash": "100.0%",
+  "resolved: derive": "100.0%",
+  "resolved: record by commit": "2.6%",
+  "resolved: record by commit, any shape": "7.3%",
+  "resolved: record by inputs (existing table)": "100.0%",
+  "resolved: derive or record by inputs": "100.0%",
+  "resolved: any of the three": "100.0%"
+ },
+ "runnerPathsDiffering": {}
+}

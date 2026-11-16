@@ -1,0 +1,109 @@
+{
+ "hashes": 331,
+ "groupsWithEqualInputs": 285,
+ "groupsHoldingMoreThanOneHash": 36,
+ "configFieldsDiffering": {
+  "web:allowOnly": 9,
+  "web:browser": 9,
+  "web:serializedDefines": 17,
+  "web:watch": 9,
+  "server:allowOnly": 8,
+  "server:browser": 8,
+  "server:watch": 8,
+  "test:unit:execPath": 4,
+  "test:unit:nodeBuild": 4,
+  "api-client:allowOnly": 4,
+  "api-client:browser": 4,
+  "api-client:watch": 4,
+  "contract:allowOnly": 4,
+  "contract:browser": 4,
+  "contract:watch": 4,
+  "root:test:unit:execPath": 3,
+  "root:test:unit:nodeBuild": 3,
+  "e2e:allowOnly": 1,
+  "e2e:browser": 1,
+  "e2e:watch": 1
+ },
+ "examples": [
+  [
+   [
+    "02df2a52",
+    "2026-11-11T16:53:34.252Z"
+   ],
+   [
+    "086db796",
+    "2026-11-11T20:37:16.917Z"
+   ],
+   [
+    "57a3bbe1",
+    "2026-11-11T00:14:32.497Z"
+   ],
+   [
+    "a0fc0ed4",
+    "2026-11-11T18:48:35.742Z"
+   ],
+   [
+    "c1d12b8c",
+    "2026-11-11T18:48:35.488Z"
+   ],
+   [
+    "e1c807ed",
+    "2026-11-11T12:02:02.594Z"
+   ]
+  ],
+  [
+   [
+    "05c5a434",
+    "2026-11-13T21:26:04.594Z"
+   ],
+   [
+    "30b12377",
+    "2026-11-16T14:06:18.137Z"
+   ],
+   [
+    "6fe26902",
+    "2026-11-13T22:59:32.533Z"
+   ]
+  ],
+  [
+   [
+    "07c04ee6",
+    "2026-11-11T18:48:35.488Z"
+   ],
+   [
+    "831541ab",
+    "2026-11-11T09:26:32.414Z"
+   ]
+  ],
+  [
+   [
+    "07f2613e",
+    "2026-11-11T13:46:14.074Z"
+   ],
+   [
+    "3f7123e4",
+    "2026-11-10T23:27:18.157Z"
+   ],
+   [
+    "805624e8",
+    "2026-11-11T00:17:12.057Z"
+   ],
+   [
+    "8cbdc230",
+    "2026-11-11T18:25:33.124Z"
+   ]
+  ],
+  [
+   [
+    "082ec938",
+    "2026-11-08T09:21:30.022Z"
+   ],
+   [
+    "c002384c",
+    "2026-11-10T23:20:31.115Z"
+   ]
+  ]
+ ],
+ "filesTuples": 260,
+ "filesTuplesWithMoreThanOneInstall": 18
+}

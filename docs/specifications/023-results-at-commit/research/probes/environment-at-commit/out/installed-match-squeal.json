@@ -1,0 +1,11 @@
+{
+ "lockfileBlobs": 5,
+ "tally": {
+  "|local": {
+   "hashes": 5,
+   "wholeFromSomeLockfile": 3,
+   "other": 2,
+   "distinctOther": 2
+  }
+ }
+}

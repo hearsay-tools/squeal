@@ -1,0 +1,44 @@
+[
+ {
+  "project": "api-client",
+  "hash": "9fa31ea4e78c",
+  "recordedByLiveDaemon": "2026-11-13T21:26:04.594Z",
+  "liveWorktreesKeyingWithIt": 326
+ },
+ {
+  "project": "contract",
+  "hash": "5ac60c5480ec",
+  "recordedByLiveDaemon": "2026-11-13T21:26:04.594Z",
+  "liveWorktreesKeyingWithIt": 326
+ },
+ {
+  "project": "e2e",
+  "hash": "2b15813ee214",
+  "recordedByLiveDaemon": "2026-11-15T23:40:18.991Z",
+  "liveWorktreesKeyingWithIt": 82
+ },
+ {
+  "project": "root:test:unit",
+  "hash": "1c6b09592127",
+  "recordedByLiveDaemon": "2026-11-13T21:26:04.594Z",
+  "liveWorktreesKeyingWithIt": 318
+ },
+ {
+  "project": "server",
+  "hash": "ece75d7abd82",
+  "recordedByLiveDaemon": "2026-11-16T08:48:09.975Z",
+  "liveWorktreesKeyingWithIt": 90
+ },
+ {
+  "project": "test:unit",
+  "hash": "d9f209efdadf",
+  "recordedByLiveDaemon": "2026-11-15T20:46:21.029Z",
+  "liveWorktreesKeyingWithIt": 146
+ },
+ {
+  "project": "web",
+  "hash": "6fe2690218c0",
+  "recordedByLiveDaemon": "2026-11-13T22:59:32.533Z",
+  "liveWorktreesKeyingWithIt": 313
+ }
+]

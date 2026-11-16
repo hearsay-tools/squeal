@@ -1,0 +1,9 @@
+{
+ "hashes": 5,
+ "groupsWithEqualInputs": 5,
+ "groupsHoldingMoreThanOneHash": 0,
+ "configFieldsDiffering": {},
+ "examples": [],
+ "filesTuples": 2,
+ "filesTuplesWithMoreThanOneInstall": 2
+}

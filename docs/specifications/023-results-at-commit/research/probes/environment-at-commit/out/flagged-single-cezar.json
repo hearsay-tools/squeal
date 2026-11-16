@@ -1,0 +1,1 @@
+{"note":"share.mjs rows (squawk, asker 2cab1e991): single-hash lookups in projects whose descriptors show a config-only difference (web, test:unit, root:test:unit), as a share of not-determined file-commit pairs","notDetermined":515424,"singleHash":"70.4%","singleHashInFlaggedProjects":"8.9%"}

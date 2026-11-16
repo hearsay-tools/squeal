@@ -1,0 +1,13 @@
+{
+ "": {
+  "hashes": 5,
+  "sameNodePairs": 3,
+  "partDiffers": {
+   "installedDependencies": 3
+  },
+  "nodes": [
+   "v24.22.1",
+   "v26.13.0"
+  ]
+ }
+}

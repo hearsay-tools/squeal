@@ -1,0 +1,23 @@
+{
+ "under 1 day": {
+  "notDeterminedFileCommits": 33517,
+  "derive": "0.0%",
+  "recordByCommit": "8.1%",
+  "recordByInputs": "100.0%",
+  "anyOfThree": "100.0%"
+ },
+ "1 to 3 days": {
+  "notDeterminedFileCommits": 122451,
+  "derive": "0.0%",
+  "recordByCommit": "14.9%",
+  "recordByInputs": "100.0%",
+  "anyOfThree": "100.0%"
+ },
+ "3 to 7 days": {
+  "notDeterminedFileCommits": 359456,
+  "derive": "0.0%",
+  "recordByCommit": "7.2%",
+  "recordByInputs": "68.9%",
+  "anyOfThree": "68.9%"
+ }
+}

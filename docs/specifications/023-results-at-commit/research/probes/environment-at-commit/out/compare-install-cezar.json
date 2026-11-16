@@ -1,0 +1,65 @@
+[
+ {
+  "project": "api-client",
+  "scratch": "9fa31ea4e78c",
+  "live": "3758ecb2e7ce",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "contract",
+  "scratch": "5ac60c5480ec",
+  "live": "0083a8163853",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "e2e",
+  "scratch": "2b15813ee214",
+  "live": "2a0fa5dde24b",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "root:test:unit",
+  "scratch": "1c6b09592127",
+  "live": "4eb7cc392a2f",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "server",
+  "scratch": "ece75d7abd82",
+  "live": "a384fc5d758e",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "test:unit",
+  "scratch": "d9f209efdadf",
+  "live": "7e80564023dc",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ },
+ {
+  "project": "web",
+  "scratch": "6fe2690218c0",
+  "live": "9770dfd2f1bb",
+  "equal": false,
+  "differingParts": [
+   "installedDependencies"
+  ]
+ }
+]

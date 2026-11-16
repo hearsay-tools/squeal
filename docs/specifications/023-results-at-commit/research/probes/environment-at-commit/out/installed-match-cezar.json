@@ -1,0 +1,83 @@
+{
+ "lockfileBlobs": 11,
+ "tally": {
+  "contract|local": {
+   "hashes": 12,
+   "wholeFromSomeLockfile": 10,
+   "other": 2,
+   "distinctOther": 2
+  },
+  "e2e|local": {
+   "hashes": 89,
+   "wholeFromSomeLockfile": 87,
+   "other": 2,
+   "distinctOther": 2
+  },
+  "test:unit|local": {
+   "hashes": 48,
+   "wholeFromSomeLockfile": 45,
+   "other": 3,
+   "distinctOther": 2
+  },
+  "server|local": {
+   "hashes": 62,
+   "wholeFromSomeLockfile": 59,
+   "other": 3,
+   "distinctOther": 2
+  },
+  "web|ci": {
+   "hashes": 11,
+   "wholeFromSomeLockfile": 11,
+   "other": 0,
+   "distinctOther": 0
+  },
+  "web|local": {
+   "hashes": 40,
+   "wholeFromSomeLockfile": 38,
+   "other": 2,
+   "distinctOther": 2
+  },
+  "api-client|ci": {
+   "hashes": 4,
+   "wholeFromSomeLockfile": 4,
+   "other": 0,
+   "distinctOther": 0
+  },
+  "root:test:unit|local": {
+   "hashes": 35,
+   "wholeFromSomeLockfile": 33,
+   "other": 2,
+   "distinctOther": 2
+  },
+  "api-client|local": {
+   "hashes": 12,
+   "wholeFromSomeLockfile": 10,
+   "other": 2,
+   "distinctOther": 2
+  },
+  "server|ci": {
+   "hashes": 11,
+   "wholeFromSomeLockfile": 11,
+   "other": 0,
+   "distinctOther": 0
+  },
+  "contract|ci": {
+   "hashes": 4,
+   "wholeFromSomeLockfile": 4,
+   "other": 0,
+   "distinctOther": 0
+  },
+  "e2e|ci": {
+   "hashes": 1,
+   "wholeFromSomeLockfile": 1,
+   "other": 0,
+   "distinctOther": 0
+  },
+  "f2:package|local": {
+   "hashes": 2,
+   "wholeFromSomeLockfile": 2,
+   "other": 0,
+   "distinctOther": 0
+  }
+ }
+}
