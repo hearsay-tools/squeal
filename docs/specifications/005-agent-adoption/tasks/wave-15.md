@@ -23,3 +23,25 @@ Owns: the files above, their tests, `evals/` parsers these texts move (round-tri
 Done when: a test per part, red first; no late without owed files; no caught-up without a late; one of each per late state; the same-call edit of design section 2 is not claimed by caught-up; complexity of the functions you touch does not rise over the threshold (`squeal code <file>`); lint, typecheck, affected tests current; the four e2e files pass.
 
 Final message: each text before and after; the bound's formula as built and three worked examples from its tests; what the eval parsers needed; every e2e file you ran with its result; anything in the design you could not build as written.
+
+## Review of cand/0.1.530
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.530` SHA named in the spawn; the range is from the base named there to that SHA. It holds row 005-93: seven commits of worker 3501dac2 (cherry-picked with `-x`) and one coordinator commit (the release 0.1.530 with bundles and this section). Read row 005-93, this file, `tasks/005-93/design.md` ("Decided", sections 1, 2, 4, 5), `tasks/005-93/worker-notes.md` (the choices the design did not settle), `docs/vision.md` principle 1, `status.md` 2026-11-16.
+
+Judge:
+- The bound: built as the design's formula with factor 2; from this worktree's stored runs and the files' durations, no host-tuned number. Judge the stand-in when nothing is measured (`FEED_LATE_MS`, 60 s) and the tier width a hook assumes (4) as accepted deviations or findings.
+- Late: only at a tool boundary, never at Stop or to the idle waiter; never without an owed file (or an unread or unlisted edit); once per late state; none while the daemon is stopped, stopping or absent, while a hold is on, or with no test group at `edit`.
+- Caught up: never without a late message before it; names the revision; not sent while an owed file is left or the latest revision is not the one named and refined; a failure during the delay ends the late state and no caught-up follows; the same-call edit of design section 2 is not claimed.
+- Owed means no result at the file's key: a confirmation run at the same key owes nothing (the worker changed review wave 13v B1's tests in `edits-confirmation.test.ts`: judge that no agent is told its files ran while a result it needs is outstanding).
+- The own count: the news header counts the consumer's own files and nothing of the worktree's queue; a consumer with no edit gets no count and nothing that reads as a pass; registration, Stop and `squeal status` unchanged. The settled line is gone from every harness's texts; no parser or skill text still promises it.
+- Store: `RunRepo.recentTimings` is a read only, bounded (20 runs), on the hook path: judge its cost against the hook's time budget.
+- Parsers: `evals/lib/squeal-text.mjs` and `grade.mjs` round-trip the real formatters, old and new headers; a header with no count never reads as a pass.
+- Every new sentence against the human's test: it is for the agent in the session, and it names a next step.
+
+No full suite and no full-suite checkpoint; candidate CI is the full suite: name its run and result. `test/e2e/**` is outside Squeal's coverage: say which e2e files you ran directly (control, lifecycle, transitions, run-triggers). Write `reviews/0.1.530.md` and commit it on your branch.
+
+## Re-review of cand/0.1.530 (the one round)
+
+Use /reviewer. Pinned to the new `cand/0.1.530` SHA named in the message; the candidate was rebuilt on main at 0.1.529, so the range is from the base named there. On top of what you reviewed: five worker commits that answer `reviews/0.1.530.md` B1 to B5 (the late state on every delivery path and no late form with no test group at edit; the bound reads the scheduler's own tier size, widths, parts and first edit starts; a file that ran with no result reads as unknown in the own count and in the evals parser), a path table in `tasks/005-93/worker-notes.md`, and a new release commit with rebuilt bundles.
+
+Judge only: each of B1 to B5 is closed for your own proofs; the path table is true to the code for the cells you probe (Stop quick and waiting, peek, the idle waiter, an unrefined revision, a hold, a daemon down); the repair introduces no new defect; any new line under `src/core/store/**` has its validity case and `test/keys/key-format.test.ts` passes with no raise; the bundles match. Write `reviews/0.1.530-r2.md` with PASS or FAIL and commit it on your branch. No full suite, no build. Name the candidate CI run and its state. This is the last round: on FAIL say plainly what remains and whether one owner module for the late state would replace what the repairs patched.
