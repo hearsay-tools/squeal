@@ -82,10 +82,10 @@ describe("whether the agent's changes reach a failure (task 001-91)", () => {
       changesInClosure: ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts"],
     };
     expect(lines(delta([touched]))).toContain(
-      "      its closure reads files changed here since this session started: src/a.ts, src/b.ts, src/c.ts and 2 more",
+      "      its imports include files changed here since this session started: src/a.ts, src/b.ts, src/c.ts and 2 more",
     );
     expect(lines(delta([{ ...failure, changesInClosure: ["src/x.ts"] }]))).toContain(
-      "      its closure reads files changed here since this session started: src/x.ts",
+      "      its imports include files changed here since this session started: src/x.ts",
     );
   });
 

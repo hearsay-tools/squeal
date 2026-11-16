@@ -1,5 +1,6 @@
 import { lintLines, lintRegistrationLine, lintTitleWords } from "../lint/surface/format.js";
 import { stopOf } from "../presence/views.js";
+import { recordedShortText, retryAdviceText } from "../retry/advice.js";
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/text.js";
 import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import {
@@ -30,7 +31,7 @@ import type {
 } from "../types/delivery.js";
 import type { HoldChange } from "../types/standing.js";
 import type { KnownOutcome } from "../types/state.js";
-import type { DaemonLiveness, KnownFailure, StatusHeader } from "../types/status.js";
+import type { DaemonLiveness, KnownFailure, RecordedFacts, StatusHeader } from "../types/status.js";
 import {
   codeLines,
   codeRegistrationLine,
@@ -41,14 +42,8 @@ import {
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
-import {
-  change,
-  closureLine,
-  loadLine,
-  recoveryProvenance,
-  seenLine,
-  touchesLine,
-} from "./provenance.js";
+import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
+import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 
 /*
  * Human rendering of deltas and registrations, a separate layer over the
@@ -146,9 +141,15 @@ function block(head: string, lines: readonly (string | null)[], counted: Counted
 /**
  * Task 001-91: a failure says who saw it, whether the changes reach it, and a
  * timeout's load; a slow failure reads as any file's (spec 004 D8 as amended
- * 2026-10-18, task 004-81).
+ * 2026-10-18, task 004-81). Row 005-92: `closure` gives its changed-imports
+ * line, `null` when the report says it once for several failures.
  */
-function entryBlock(entry: TransitionEntry, revision: number, flaky: FlakyLines): Block {
+function entryBlock(
+  entry: TransitionEntry,
+  revision: number,
+  flaky: FlakyLines,
+  closure: SharedClosure["own"] = () => null,
+): Block {
   const failed = entry.to === "fail";
   return block(
     `${upper(entry.to)}  ${checkName(entry.check)}`,
@@ -156,7 +157,9 @@ function entryBlock(entry: TransitionEntry, revision: number, flaky: FlakyLines)
       failed ? seenLine(entry, revision) : change(entry),
       entry.summary === null ? null : cap(entry.summary, SUMMARY_MAX_CHARS),
       entry.location === null ? null : atText(entry.location, entry.testFileFrame),
-      ...(failed ? [touchesLine(entry), loadLine(entry)] : [recoveryProvenance(entry, revision)]),
+      ...(failed
+        ? [closure(entry.changesInClosure), loadLine(entry)]
+        : [recoveryProvenance(entry, revision)]),
       ...flaky(entry.flaky),
       entry.retry === undefined ? null : capitalize(retryText(entry.retry)),
     ],
@@ -187,15 +190,18 @@ function collapsedBlock({ head, lines }: Collapsed, shown: Shown, checks: CheckI
  * error and location (row 011-109, `failure-groups.ts`).
  */
 function failureBlocks(
-  entries: readonly TransitionEntry[],
+  groups: readonly TransitionEntry[][],
   revision: number,
   command: string,
   flaky: FlakyLines,
+  closure: SharedClosure["own"],
 ): Block[] {
-  return failureGroups(entries, revision).map((group) => {
+  return groups.map((group) => {
     const [first] = group;
-    if (group.length === 1 && first !== undefined) return entryBlock(first, revision, flaky);
-    const lines = groupLines(group, revision, command, flaky);
+    if (group.length === 1 && first !== undefined) {
+      return entryBlock(first, revision, flaky, closure);
+    }
+    const lines = groupLines(group, revision, command, flaky, closure);
     return collapsedBlock(
       lines,
       "fail",
@@ -308,13 +314,12 @@ export function formatDelta(
   const title = titleOf(delta, holdTitle, command);
   // Row 011-244: the first block that names a flaky note points to `inputs`, once.
   const flaky = flakyLines();
+  const failures = changed.filter((e) => e.to === "fail");
+  const groups = failureGroups(failures, header.revision);
+  // Row 005-92: changed paths several failure blocks state, said once after the blocks.
+  const closure = sharedClosure(groups.map((g) => g.map((e) => e.changesInClosure)));
   const blocks = [
-    ...failureBlocks(
-      changed.filter((e) => e.to === "fail"),
-      header.revision,
-      command,
-      flaky,
-    ),
+    ...failureBlocks(groups, header.revision, command, flaky, closure.own),
     ...unknownBlocks(
       changed.filter((e) => e.to === "unknown"),
       command,
@@ -326,7 +331,7 @@ export function formatDelta(
     ),
     ...retiredBlocks(retired, delta),
   ];
-  const failed = changed.find((e) => e.to === "fail");
+  const [failed] = failures;
   const overflow = (left: Block[]) => {
     const counted = left.flatMap((b) => b.counted);
     const by = (["fail", "pass", "unknown", "resolved"] as const)
@@ -341,6 +346,7 @@ export function formatDelta(
   const lint = delta.lint === undefined ? [] : lintLines(delta.lint, command);
   const tail =
     [
+      ...(closure.line === null ? [] : [closure.line]),
       ...(failed === undefined ? [] : [whyLine(failed.check, command)]),
       ...(code.length === 0 ? [] : [code.join("\n")]),
       ...(lint.length === 0 ? [] : [lint.join("\n")]),
@@ -554,6 +560,26 @@ export function formatRegistration(
     // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
     ...ignoredConfigLines(registration, command),
   ].join("\n");
+  // Row 005-92: changed imports several failures share, said once after the blocks.
+  const closure = sharedClosure(knownFailures.map((f) => [f.changesInClosure]));
+  // Row 005-92: with two recorded failures or more, each states its facts and the advice comes once.
+  const advised = knownFailures.filter((f) => f.recorded !== undefined).length >= 2;
+  const recorded = (f: KnownFailure, facts: RecordedFacts) =>
+    advised
+      ? recordedShortText(facts, registration.consumer.worktreeId, now)
+      : // Row 011-67 (gh-52): a failure recorded under load names its load retry.
+        recordedText(facts, registration.consumer.worktreeId, now, {
+          command,
+          path: f.check.testPath,
+        });
+  const advice = advised
+    ? retryAdviceText(
+        knownFailures.flatMap((f) =>
+          f.recorded === undefined ? [] : [{ facts: f.recorded, path: f.check.testPath }],
+        ),
+        command,
+      )
+    : null;
   const blocks = knownFailures.map((f: KnownFailure) =>
     block(
       `FAIL  ${checkName(f.check)}`,
@@ -565,14 +591,8 @@ export function formatRegistration(
           ? f.recordedUnknown === true
             ? capitalize(RECORDED_UNKNOWN_TEXT)
             : null
-          : // Row 011-67 (gh-52): a failure recorded under load names its load retry.
-            capitalize(
-              recordedText(f.recorded, registration.consumer.worktreeId, now, {
-                command,
-                path: f.check.testPath,
-              }),
-            ),
-        closureLine(f.changesInClosure),
+          : capitalize(recorded(f, f.recorded)),
+        closure.own(f.changesInClosure),
       ],
       [{ check: f.check, shown: "fail" }],
     ),
@@ -588,7 +608,9 @@ export function formatRegistration(
     head,
     blocks,
     (left) => `Not shown: ${notShown(left)}. ${statusPointer(command)}`,
-    first === undefined ? null : whyLine(first.check, command),
+    [closure.line, advice, first === undefined ? null : whyLine(first.check, command)]
+      .filter((l) => l !== null)
+      .join("\n\n") || null,
     max,
   );
 }

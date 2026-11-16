@@ -104,7 +104,8 @@ async function provenanceLine(): Promise<string | undefined> {
 }
 
 /** Registered before the file had a key: no baseline (011-18). */
-const SEEN = "first observed: FAIL; no baseline result, may predate your edits;";
+const SEEN =
+  "first observed: FAIL; Squeal has no earlier result for this test, so it cannot tell whether your edits caused it;";
 
 describe("an inherited slow failure reads as any file's (004-81)", () => {
   beforeEach(async () => {

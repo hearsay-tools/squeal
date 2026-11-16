@@ -42,6 +42,10 @@ function importedFrom(entry: TransitionEntry): string | null {
   );
 }
 
+/** Row 005-92: a first-seen failure with no baseline result, as the agent can use it. */
+export const NO_EARLIER_RESULT_TEXT =
+  "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it";
+
 /**
  * 011 C5 as amended (gh-32, task 011-18): what a first-seen failure's
  * baseline says, `null` when it says nothing more. A pass baseline is told
@@ -54,7 +58,8 @@ function beforeEditsText(before: BeforeEdits | undefined): string | null {
         before.commit === null
           ? ""
           : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
-      return `no baseline result, may predate your edits${settle}`;
+      // Row 005-92: what the agent can conclude, in place of "no baseline result, may predate your edits".
+      return `${NO_EARLIER_RESULT_TEXT}${settle}`;
     }
     case "fail": {
       const where = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
@@ -121,25 +126,26 @@ export function recoveryProvenance(entry: TransitionEntry, revision: number): st
 }
 
 /** What the attribution lines count: changes in the worktree, anyone's (review wave 10d, N1). */
-const CHANGED_HERE = "files changed here since this session started";
+export const CHANGED_HERE = "files changed here since this session started";
 
 /**
  * Whether the failure's imports hold a file changed since registration;
  * `null` when not known. A fact, never a cause (011 C5 as amended, gh-32):
  * kept when the failure's message names other files, since a diagnostic's
- * location need not name every input that caused it.
+ * location need not name every input that caused it. For a delivery, a
+ * registration and `why`. Row 005-92: "imports" in place of "closure", which
+ * the agent need not know.
  */
-export function touchesLine(entry: TransitionEntry): string | null {
-  return closureLine(entry.changesInClosure);
-}
-
-/** `touchesLine` over the changed closure paths themselves, for a registration and `why`. */
 export function closureLine(paths: readonly string[] | undefined): string | null {
   if (paths === undefined) return null;
   if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+
+/** The first changed paths and a count of the rest. */
+export function closurePaths(paths: readonly string[]): string {
   const more = paths.length - TOUCHED_SHOWN;
-  const shown = paths.slice(0, TOUCHED_SHOWN).join(", ");
-  return `its closure reads ${CHANGED_HERE}: ${shown}${more > 0 ? ` and ${more} more` : ""}`;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
 }
 
 /** The load a timed-out test ran under; `null` for any other failure. */

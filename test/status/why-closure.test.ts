@@ -63,7 +63,7 @@ describe("squeal why, the closure line", () => {
     const why = reportOf(readWhy(repo.main, NAME, { session: { session: "s1", agent: null } }));
     expect(why.changesInClosure).toEqual(["src/auth.ts"]);
     expect(formatWhy(why)).toContain(
-      "  Its closure reads files changed here since this session started: src/auth.ts",
+      "  Its imports include files changed here since this session started: src/auth.ts",
     );
   });
 
@@ -92,7 +92,7 @@ describe("squeal why in a harness shell (011-18)", () => {
     ["Pi", { PI_SESSION_ID: "s1" }],
   ])("reads the session from a %s shell", (_harness, env) => {
     const repo = seed();
-    expect(why(repo.main, env)).toContain("  Its closure reads files changed here");
+    expect(why(repo.main, env)).toContain("  Its imports include files changed here");
     expect(why(repo.main, {})).not.toContain("Its closure");
   });
 });

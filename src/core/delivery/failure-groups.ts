@@ -7,7 +7,8 @@ import { cap, plural, shellWord } from "../text.js";
 import type { TransitionEntry } from "../types/delivery.js";
 import type { FlakyNote } from "../types/state.js";
 import { type Collapsed, nameLines } from "./collapse.js";
-import { seenLine, touchesLine } from "./provenance.js";
+import { seenLine } from "./provenance.js";
+import type { SharedClosure } from "./shared-closure.js";
 
 /*
  * Row 011-109 (gh-71, digest 2026-10-22 group D): 91 checks that failed with
@@ -138,6 +139,7 @@ export function groupLines(
   revision: number,
   command: string,
   flaky: FlakyLines,
+  closure: SharedClosure["own"],
 ): Collapsed {
   const first = group[0] as TransitionEntry;
   const checks = group.map((e) => e.check);
@@ -147,7 +149,7 @@ export function groupLines(
     seenLine(first, revision),
     cap(first.summary ?? "", SUMMARY_MAX_CHARS),
     first.location === null ? null : (shared(group, at) ?? atText(first.location, undefined)),
-    shared(group, touchesLine),
+    shared(group, (e) => closure(e.changesInClosure)),
     loadsLine(group),
     ...flaky(first.flaky),
     first.retry === undefined ? null : capitalize(retryText(first.retry)),

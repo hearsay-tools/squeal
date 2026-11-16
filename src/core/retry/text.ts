@@ -252,20 +252,35 @@ export function recordedText(
   now: EpochMs,
   words: RetryCommandWords,
 ): string {
+  const fresh = facts.noEarlierPass === true;
+  const retry =
+    facts.retry === undefined
+      ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh)}`
+      : retryStateText(facts);
+  const lead = fresh
+    ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; `
+    : "";
+  return `${lead}${recordedWhereText(facts, here, now)}; ${retry}`;
+}
+
+/** "recorded 3 min ago in this worktree at revision 4, load 2.00 per CPU when it ran". */
+export function recordedWhereText(facts: RecordedFacts, here: WorktreeId, now: EpochMs): string {
   const where =
     facts.worktreeId === here
       ? "this worktree"
       : (facts.worktreeRoot ?? `worktree ${facts.worktreeId}`);
   const ago = facts.recordedAt === undefined ? "" : ` ${agoText(now - facts.recordedAt)}`;
-  const fresh = facts.noEarlierPass === true;
-  const retry =
-    facts.retry === undefined
-      ? `no retry asked at these inputs${loadRetryText(facts.loadPerCpu, words, fresh)}`
-      : retryText(facts.retry);
-  const lead = fresh
-    ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; `
-    : "";
-  return `${lead}recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}; ${retry}`;
+  return `recorded${ago} in ${where} at revision ${facts.revision}, ${loadPerCpuText(facts.loadPerCpu)}`;
+}
+
+/** The retry asked at a failure's inputs, or that none was. */
+export function retryStateText(facts: RecordedFacts): string {
+  return facts.retry === undefined ? "no retry asked at these inputs" : retryText(facts.retry);
+}
+
+/** Whether a load retry would wait out the load a run had: one CPU's share or more. */
+export function busyLoad(loadPerCpu: number | null): loadPerCpu is number {
+  return loadPerCpu !== null && !loadAllows({ oneMinute: loadPerCpu, cpus: 1 });
 }
 
 /**
@@ -281,7 +296,7 @@ function loadRetryText(
   words: RetryCommandWords,
   fresh: boolean,
 ): string {
-  if (loadPerCpu === null || loadAllows({ oneMinute: loadPerCpu, cpus: 1 })) return "";
+  if (!busyLoad(loadPerCpu)) return "";
   const when = fresh ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }

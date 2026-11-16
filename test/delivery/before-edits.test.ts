@@ -91,7 +91,7 @@ describe("a first-seen failure's baseline (011-18)", () => {
     const { entry, text } = await failAfterEdit();
     expect(entry.beforeEdits).toEqual({ outcome: "none", commit: BASE });
     expect(text).toContain(
-      `first observed: FAIL; no baseline result, may predate your edits; to settle it, run it in a checkout of ${BASE.slice(0, 12)}: its result is shared with this worktree; seen by Squeal's run at revision 2`,
+      `first observed: FAIL; Squeal has no earlier result for this test, so it cannot tell whether your edits caused it; to settle it, run it in a checkout of ${BASE.slice(0, 12)}: its result is shared with this worktree; seen by Squeal's run at revision 2`,
     );
   });
 
@@ -115,7 +115,9 @@ describe("a first-seen failure's baseline (011-18)", () => {
   it("looks a result at the current key up only when it is the registration key", async () => {
     store.results.putMany([result(A, "fail", { key: "k-edit", worktreeId: OTHER })]);
     const { text } = await failAfterEdit();
-    expect(text).toContain("no baseline result, may predate your edits");
+    expect(text).toContain(
+      "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it",
+    );
   });
 
   it("runs nothing for a baseline: no run, no file queued", async () => {
@@ -154,7 +156,11 @@ describe("a broad scan test whose diagnostics name other files (011-18, gh-32)",
   });
 
   it.each([
-    ["no baseline", undefined, "no baseline result, may predate your edits"],
+    [
+      "no baseline",
+      undefined,
+      "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it",
+    ],
     ["a failing baseline", "fail", "it also failed before your edits (/repo/base at commit"],
     ["a passing baseline", "pass", "PASS -> FAIL, seen by Squeal's run at revision 2"],
   ] as const)("keeps the closure line with %s", async (_name, outcome, said) => {
@@ -166,7 +172,7 @@ describe("a broad scan test whose diagnostics name other files (011-18, gh-32)",
     expect(text).toContain("server/forge/github-filters.test.ts");
     expect(text).toContain(said);
     expect(text).toContain(
-      "its closure reads files changed here since this session started: src/x.ts",
+      "its imports include files changed here since this session started: src/x.ts",
     );
     expect(text).not.toContain("touches files changed here");
   });
@@ -178,7 +184,7 @@ describe("the closure line on registration (011-18)", () => {
     const resumed = await delivery.register(C1, { atStart: true });
     expect(resumed.knownFailures[0]?.changesInClosure).toEqual(["src/x.ts"]);
     expect(formatRegistration(resumed)).toContain(
-      "      its closure reads files changed here since this session started: src/x.ts",
+      "      its imports include files changed here since this session started: src/x.ts",
     );
   });
 

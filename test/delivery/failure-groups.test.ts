@@ -136,7 +136,7 @@ describe("a regression notice groups checks with one error and location (row 011
     );
     expect(same).toContain(
       "      at src/components/chart.tsx:12:5, called from tests/a.test.ts:20:3\n" +
-        "      its closure reads files changed here since this session started: src/components/chart.tsx\n",
+        "      its imports include files changed here since this session started: src/components/chart.tsx\n",
     );
     const differ = formatDelta(
       delta([
