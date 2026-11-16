@@ -31,7 +31,7 @@ export class RunnerCalls {
   #started = 0;
   #ended = 0;
   readonly #open = new Map<string, number>();
-  #drained: (() => void)[] = [];
+  #ends: (() => void)[] = [];
 
   /** Calls started and not yet ended. */
   get open(): number {
@@ -49,10 +49,14 @@ export class RunnerCalls {
     return open.length === 0 ? "none" : open.join(", ");
   }
 
-  /** Resolves once no call is open: at once when none is. */
-  drained(): Promise<void> {
-    if (this.open === 0) return Promise.resolve();
-    return new Promise((resolve) => this.#drained.push(resolve));
+  /** Runs open: a run is never abandoned, so a quiet point always waits for one. */
+  get runs(): number {
+    return this.#open.get("run") ?? 0;
+  }
+
+  /** Resolves at the next call's end. */
+  nextEnd(): Promise<void> {
+    return new Promise((resolve) => this.#ends.push(resolve));
   }
 
   /** Counts `result` open until it settles; returns it as it is. */
@@ -62,7 +66,7 @@ export class RunnerCalls {
     const end = () => {
       this.#ended += 1;
       this.#open.set(name, (this.#open.get(name) ?? 1) - 1);
-      if (this.open === 0) for (const resolve of this.#drained.splice(0)) resolve();
+      for (const resolve of this.#ends.splice(0)) resolve();
     };
     // The caller gets `result` itself, so its rejection reaches the caller and no one else.
     result.then(end, end);
@@ -121,9 +125,9 @@ export interface QuietOptions {
 
 /**
  * Row 011-378: the quiet point of `side`. It rests; while a runner call is
- * open it waits for the calls to end and rests again; it returns the rest
- * once no call is open and no call started or ended from before the rest
- * to one real timer turn after it. A record's gather is bookkeeping: on a
+ * open (`waitedCalls`) it waits for a call to end and rests again; it
+ * returns the rest once none is open and no call started or ended from
+ * before the rest to one real timer turn after it. A record's gather is bookkeeping: on a
  * virtual clock time moves to the first gather no other wake comes at or
  * before (`gatherAt`, as `settle` does), and on the host's clock the quiet
  * point waits for it. Any other wake fires only when the test moves time,
@@ -140,8 +144,8 @@ export async function quiet(side: QuietSide, options: QuietOptions = {}): Promis
   for (;;) {
     const before = side.calls.mark();
     const rest = await within(side.rest(), limit, () => late("no rest"));
-    if (side.calls.open > 0) {
-      await within(side.calls.drained(), limit, () => late("a runner call stayed open"));
+    if (waitedCalls(side.calls, rest) > 0) {
+      await within(side.calls.nextEnd(), limit, () => late("a runner call stayed open"));
       continue;
     }
     const at = side.clock === null ? null : gatherAt(rest);
@@ -151,12 +155,24 @@ export async function quiet(side: QuietSide, options: QuietOptions = {}): Promis
     }
     const waits = side.clock === null && rest.wakes.some((wake) => through.has(wake.reason));
     await turn(waits ? THROUGH_POLL_MS : 1);
-    if (!waits && side.calls.open === 0 && side.calls.mark() === before) return rest;
+    if (!waits && waitedCalls(side.calls, rest) === 0 && side.calls.mark() === before) return rest;
     if (performance.now() > limit) {
       const left = rest.wakes.map((wake) => wake.reason).join(", ");
       throw late(waits ? `wakes left: ${left}` : "runner calls kept starting");
     }
   }
+}
+
+/**
+ * The open calls a quiet point waits for: every run, and the runner part's
+ * calls while the scheduler still waits for one (a `runner-part-bound`
+ * wake is armed for each, `RunnerPartBound`). A runner-part call open with
+ * no such wake left is past its bound: the scheduler abandoned it, as
+ * `Scheduler.idle()` did, and a test may hold it open for good.
+ */
+function waitedCalls(calls: RunnerCalls, rest: Rest): number {
+  const bounded = rest.wakes.some((wake) => wake.reason === "runner-part-bound");
+  return bounded ? calls.open : calls.runs;
 }
 
 /**
