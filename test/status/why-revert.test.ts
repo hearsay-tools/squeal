@@ -33,21 +33,21 @@ describe("squeal why after a revert", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     h.write(PLAIN, plain("K0 OUTPUT"));
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const k0 = h.keyOf(PLAIN);
     const k0RunId = store.results.byKey(k0, 0).find((r) => r.check.testPath === PLAIN)
       ?.provenance.runId;
 
     h.write(PLAIN, plain("K1 OUTPUT"));
     await h.batch(PLAIN);
-    await h.scheduler.idle();
+    await h.quiet();
     const k1 = h.keyOf(PLAIN);
     expect(k1).not.toBe(k0);
     expect(h.runsOf(PLAIN)).toHaveLength(2);
 
     h.write(PLAIN, plain("K0 OUTPUT"));
     await h.batch(PLAIN);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.keyOf(PLAIN)).toBe(k0);
     expect(h.runsOf(PLAIN)).toHaveLength(2);
 

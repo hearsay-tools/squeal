@@ -71,7 +71,7 @@ describe(
         policy: RUN_MISSING,
       });
       await a.scheduler.start();
-      await a.scheduler.idle();
+      await a.quiet();
       expect(a.sink.stateOf(serve)).toMatchObject({ outcome: "fail", validity: "current" });
       expect(a.sink.stateOf(heals)).toMatchObject({ outcome: "fail", validity: "current" });
       const told = await a.consumer();
@@ -80,7 +80,7 @@ describe(
       rmSync(repo.marker);
       const b = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
       await b.scheduler.start();
-      await b.scheduler.idle();
+      await b.quiet();
       expect(b.keyOf(FILE)).toBe(a.keyOf(FILE));
 
       // B's run wrote the rows and healed A from them; `serve`'s raw text differs, its fingerprint not.

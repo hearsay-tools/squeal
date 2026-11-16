@@ -98,7 +98,7 @@ describe.each(PYTHONS)(
       async (ctx) => {
         const { root, pytest, h, outcome, key, meta } = await open(ctx, "main", PROJECT);
         await h.scheduler.start();
-        await h.scheduler.idle();
+        await h.quiet();
         expect([outcome(MODULE_TEST), outcome(SCRIPT_TEST)]).toEqual(["pass", "pass"]);
 
         // Each file holds what its own child found: only `python -m app` runs `__main__.py`.
@@ -122,7 +122,7 @@ describe.each(PYTHONS)(
         try {
           h.write(CLI, `${text}\nraise SystemExit(3)\n`);
           await h.batch(CLI);
-          await h.scheduler.idle();
+          await h.quiet();
           const after = keys();
           expect(after[0]).not.toBe(before[0]);
           expect(after[1]).not.toBe(before[1]);
@@ -131,7 +131,7 @@ describe.each(PYTHONS)(
           h.write(CLI, text);
         }
         await h.batch(CLI);
-        await h.scheduler.idle();
+        await h.quiet();
         expect([outcome(MODULE_TEST), outcome(SCRIPT_TEST)]).toEqual(["pass", "pass"]);
       },
     );
@@ -143,7 +143,7 @@ describe.each(PYTHONS)(
         const project = { ...PROJECT, include: [TOOL_TEST] };
         const { root, h, outcome, key, meta } = await open(ctx, "tool", project);
         await h.scheduler.start();
-        await h.scheduler.idle();
+        await h.quiet();
         expect(outcome(TOOL_TEST)).toBe("pass");
         expect(meta(observedMetaKey(PROJECT.name))[TOOL_TEST]).toContain(TOOL);
         expect(meta(observedDirectMetaKey(PROJECT.name))[TOOL_TEST]).toContain(TOOL);
@@ -154,7 +154,7 @@ describe.each(PYTHONS)(
         try {
           h.write(TOOL, 'print("broken")\n');
           await h.batch(TOOL);
-          await h.scheduler.idle();
+          await h.quiet();
           expect(key(TOOL_TEST)).not.toBe(before);
           expect(outcome(TOOL_TEST)).toBe("fail");
         } finally {

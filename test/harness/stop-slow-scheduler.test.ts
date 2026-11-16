@@ -99,7 +99,7 @@ describe.each(HARNESSES)("Stop runs the slow tier it waits for, $name (019 D4.1)
     async () => {
       const { h, root, ran, turn } = await fixture(harness, "lookup-only", 0);
       await turn();
-      await h.scheduler.idle();
+      await h.quiet();
       // Not run and not queued: no pause runs it (`slow-off-line.test.ts`).
       expect(ran()).toBe(0);
 
@@ -129,7 +129,7 @@ describe.each(HARNESSES)("Stop runs the slow tier it waits for, $name (019 D4.1)
     expect(out).toEqual({ quick: {}, waiting: {} });
     expect(ran()).toBe(1);
     expect(performance.now() - started).toBeLessThan(PROMPT_MS);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(underLoad()).toBe(false);
   });
 });

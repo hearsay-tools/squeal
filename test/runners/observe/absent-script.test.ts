@@ -45,7 +45,7 @@ describe("scheduler: a child's missing script (task 011-60)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const states = () =>
       h.store.knownStates
         .list(h.worktreeId)
@@ -67,7 +67,7 @@ describe("scheduler: a child's missing script (task 011-60)", SLOW, () => {
     const from = h.runner.runs.length;
     h.write(SCRIPT, "export default 42;\n");
     await h.batch(SCRIPT);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(ran(from)).toEqual(["forks", "threads"]);
     expect(
       states().every(([, outcome, validity]) => outcome === "pass" && validity === "current"),

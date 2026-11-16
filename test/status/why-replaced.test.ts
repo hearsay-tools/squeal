@@ -57,7 +57,7 @@ describe("squeal why after a same-key replacement", SLOW, () => {
 
     const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const first = store.results.byKey(a.keyOf(PLAIN), 0).find((r) => r.check.testPath === PLAIN);
     expect(first?.outcome).toBe("pass");
 
@@ -72,7 +72,7 @@ describe("squeal why after a same-key replacement", SLOW, () => {
       daemon: null,
     });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runsOf(PLAIN)).toHaveLength(0);
     const inherited = b.sink.stateOf(plain);
     expect(inherited).toMatchObject({ outcome: "pass", origin: { kind: "inherited" } });
@@ -82,7 +82,7 @@ describe("squeal why after a same-key replacement", SLOW, () => {
 
     writeFileSync(marker, "SECOND OUTPUT");
     await a.scheduler.requestFullSuite({ force: true });
-    await a.scheduler.idle();
+    await a.quiet();
     const replaced = store.results.byKey(a.keyOf(PLAIN), 0).find((r) => r.check.testPath === PLAIN);
     expect(replaced?.provenance.runId).not.toBe(first?.provenance.runId);
     expect(replaced?.provenance).toMatchObject({

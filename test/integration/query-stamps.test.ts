@@ -73,7 +73,7 @@ async function probe(h: Harness, after: readonly TestFileRef[] = []): Promise<vo
     return run(files, options);
   };
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(planted).toBe(true);
 }
 
@@ -137,7 +137,7 @@ describe("a query-suffixed import (review wave-13c B1)", () => {
       const lanes = withSlowLanes(h, repo.main, slotDir, (adapter) => plant(h, adapter, [PLAIN]));
       const runs = scheduledRuns(h);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(lanes.made()).toBeGreaterThan(0);
       expect(stored(h)).toEqual([

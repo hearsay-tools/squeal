@@ -98,11 +98,11 @@ describe("a separately configured project's optimizer across a restart (review w
         policy: RUN_MISSING,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(stored(h)).toEqual([["p", "test/optimized.test.ts", "current", "fail"]]);
       const before = h.runsOf("test/optimized.test.ts").length;
       await h.scheduler.requestFullSuite({ force: true });
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.runsOf("test/optimized.test.ts").length).toBeGreaterThan(before);
       expect(stored(h)).toEqual([["p", "test/optimized.test.ts", "current", "fail"]]);
     },
@@ -130,7 +130,7 @@ describe("a separately configured project's optimizer across a restart (review w
       expect(bundles(repo.main)).toEqual({ new: true, old: false });
       const lanes = withSlowLanes(h, repo.main, slotDir, async () => {});
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(lanes.made()).toBeGreaterThan(0);
       expect(stored(h)).toEqual([["p", "test/optimized.test.ts", "current", "fail"]]);
     },
@@ -155,12 +155,12 @@ describe("an ordinary edit of a source the optimizer bundled (review wave-13f S1
         policy: RUN_MISSING,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(stored(h)).toEqual([["", "test/optimized.test.ts", "current", "pass"]]);
 
       h.write("src/mod.js", OLD);
       await h.batch("src/mod.js");
-      await h.scheduler.idle();
+      await h.quiet();
       expect(stored(h)).toEqual([["", "test/optimized.test.ts", "current", "fail"]]);
     },
   );
@@ -171,7 +171,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
     const repo = createRepo(OPTIMIZED);
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     // A recreate starts another instance; the note is not repeated.
     await h.runner.invalidate([{ path: "vitest.config.ts", kind: "change" }]);
     const once = (text: string) => text.split(OPTIMIZER_OFF_NOTE).length - 1;
@@ -191,7 +191,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
       const repo = createRepo(OPTIMIZED);
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const first = await h.consumer("first");
       expect(formatRegistration(await first.delivery.register(first.consumer))).toContain(
         optimizerOffNote([""]),
@@ -201,7 +201,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
       const config = OPTIMIZED["vitest.config.ts"] ?? "";
       h.write("vitest.config.ts", config.replaceAll("enabled: true", "enabled: false"));
       await h.batch("vitest.config.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       // The recreated instance ran the test under the new config.
       expect(h.runsOf("test/optimized.test.ts").length).toBeGreaterThan(before);
 
@@ -217,7 +217,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
       // Turned on again, the header tells it again.
       h.write("vitest.config.ts", config);
       await h.batch("vitest.config.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       const again = await h.consumer("again");
       expect(formatRegistration(await again.delivery.register(again.consumer))).toContain(
         optimizerOffNote([""]),
@@ -229,7 +229,7 @@ describe("a config that turns the optimizer on (001-176)", () => {
     const repo = createRepo({ ...OPTIMIZED, "vitest.config.ts": BASE["vitest.config.ts"] ?? "" });
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
     expect(formatRegistration(await delivery.register(consumer))).not.toContain(OPTIMIZER_OFF_NOTE);
   });

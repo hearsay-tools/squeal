@@ -77,7 +77,7 @@ async function probe(h: Harness): Promise<void> {
     }
   };
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(transient).toBe(false);
 }
 
@@ -154,7 +154,7 @@ describe("two projects with config files of their own (review wave-13b B2)", () 
       });
       const runs = scheduledRuns(h);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(lanes.made()).toBeGreaterThan(0);
       expect(stored(h)).toEqual([

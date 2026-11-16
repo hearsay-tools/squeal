@@ -68,7 +68,7 @@ describe("a setup file two projects share, only the later one in the run (B3)", 
       if (h.runner.runs.length >= allowed) throw new Error("a failed start was retried at once");
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(count()).toBe(1);
     expect(h.runner.runs.map((r) => r.report.startupFailure?.projects)).toEqual([["b"]]);
@@ -77,7 +77,7 @@ describe("a setup file two projects share, only the later one in the run (B3)", 
 
     allowed = 2;
     await h.scheduler.requestFullSuite({});
-    await h.scheduler.idle();
+    await h.quiet();
     expect(count()).toBe(2);
     expect(h.runner.runs).toHaveLength(2);
     expect(failing(h).map((s) => s.check)).toEqual([check]);
@@ -107,12 +107,12 @@ describe("a recovered setup whose test then times out (B4)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const check = { kind: "setup", project: "", testPath: "setup.ts" } as const;
     expect(failing(h).map((s) => s.check)).toEqual([check]);
 
     await h.scheduler.requestFullSuite({});
-    await h.scheduler.idle();
+    await h.quiet();
     expect(count()).toBeGreaterThanOrEqual(2);
     const retry = h.runner.runs[1]?.report;
     expect(retry?.end).toBe("timed-out");

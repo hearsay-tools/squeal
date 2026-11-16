@@ -125,7 +125,7 @@ describe.each([true, false])("a touched restore after a stamped probe (observe %
     heard = touchHeard(h);
     const runs = scheduledRuns(h);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The slow instance is made, and planted, after its tier was selected: the touch is over the
     // run's interval, so the completion barrier withholds it (task 001-168) and it runs once
