@@ -205,10 +205,13 @@ export class RunQueue {
     if (rank !== null) this.#promotions.started(rank, estimatedEnd);
   }
 
-  /** Whether `ref`'s entry is queued and promoted now (C15). */
-  isPromoted(ref: TestFileRef): boolean {
+  /**
+   * Whether `ref`'s entry is queued and promoted at `now`, the decision's
+   * reading (row 011-372), or a fresh one (C15).
+   */
+  isPromoted(ref: TestFileRef, now?: number): boolean {
     const id = testFileId(ref);
-    return this.#entries.has(id) && this.#promotions.rankOf(id) !== null;
+    return this.#entries.has(id) && this.#promotions.rankOf(id, now) !== null;
   }
 
   /**
@@ -222,15 +225,18 @@ export class RunQueue {
     return this.#promotions.rankAt(testFileId(ref), now);
   }
 
-  /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
-  isFirstGroup(ref: TestFileRef): boolean {
-    return this.isRecent(ref) || this.isPromoted(ref);
+  /** `isRecent` or `isPromoted` at `now`: work of C4 step 4's first group (C15). */
+  isFirstGroup(ref: TestFileRef, now?: number): boolean {
+    return this.isRecent(ref) || this.isPromoted(ref, now);
   }
 
-  /** Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and not of the first group. */
-  isCatchUp(ref: TestFileRef): boolean {
+  /**
+   * Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and
+   * not of the first group at `now`.
+   */
+  isCatchUp(ref: TestFileRef, now?: number): boolean {
     const entry = this.#entries.get(testFileId(ref));
-    return entry !== undefined && this.#groupOf(entry) === Group.catchUp;
+    return entry !== undefined && this.#groupOf(entry, now) === Group.catchUp;
   }
 
   has(ref: TestFileRef): boolean {
@@ -368,9 +374,10 @@ export class RunQueue {
    * unless the promoted entries alone make it the backlog's
    * (`batchFiles`, rows 011-265, 011-268). Not what cancels a backlog tier
    * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
+   * `now`: the decision's reading (row 011-372).
    */
-  hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true): boolean {
-    return this.#fast().some((entry) => this.#firstGroup(entry) && where(entry.ref));
+  hasFirstGroup(where: (ref: TestFileRef) => boolean = () => true, now?: number): boolean {
+    return this.#fast().some((entry) => this.#firstGroup(entry, now) && where(entry.ref));
   }
 
   /**
@@ -507,14 +514,15 @@ export class RunQueue {
    * (spec 004 D2): `ordered`'s, where recent work comes first too and a
    * promoted file leads (C15), which does not make the slow tier eligible.
    * `ranked` (`slow.rank` `"tokens"`, D2 as amended 2026-10-18): within a
-   * class, more evidence first, then the duration order.
+   * class, more evidence first, then the duration order. `now` as
+   * `ordered`'s.
    */
-  orderedSlow(durationOf: DurationOf = () => null, ranked = false): TestFileRef[] {
+  orderedSlow(durationOf: DurationOf = () => null, ranked = false, now?: number): TestFileRef[] {
     return sorted(
       [...this.#entries.values()].filter((entry) => this.#isSlow(entry.ref)),
       durationOf,
       false,
-      this.#ranks(),
+      this.#ranks(now),
       ranked,
     );
   }
@@ -544,12 +552,12 @@ export class RunQueue {
     return [...this.#entries.values()].filter((entry) => !this.#isSlow(entry.ref));
   }
 
-  #firstGroup(entry: Entry): boolean {
-    return entry.recent || this.#promotions.rankOf(testFileId(entry.ref)) !== null;
+  #firstGroup(entry: Entry, now?: number): boolean {
+    return entry.recent || this.#promotions.rankOf(testFileId(entry.ref), now) !== null;
   }
 
-  #groupOf(entry: Entry): Group {
-    return groupOf(entry, this.#promotions.rankOf(testFileId(entry.ref)) !== null);
+  #groupOf(entry: Entry, now?: number): Group {
+    return groupOf(entry, this.#promotions.rankOf(testFileId(entry.ref), now) !== null);
   }
 
   /**

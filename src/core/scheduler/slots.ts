@@ -1,3 +1,4 @@
+import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import { isGroupLane } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
@@ -32,12 +33,14 @@ export function backlogSlot(context: SchedulerContext, ref: TestFileRef): number
  *   work of it is queued, beside an edit's tier too; the pool's grant bounds
  *   the slots further, one permit each (slice 2).
  *
- * A slow lane runs one slow tier at a time (spec 004 D2).
+ * A slow lane runs one slow tier at a time (spec 004 D2). Its queue reads
+ * `at`, a step's reading (row 011-372), else the clock as it did.
  */
 export function busyLanes(
   context: SchedulerContext,
   ledger: Ledger,
   inFlight: readonly Tier[],
+  at?: EpochMs,
 ): Set<string> {
   const held = new Map<string, Tier[]>();
   for (const tier of inFlight) held.set(tier.lane, [...(held.get(tier.lane) ?? []), tier]);
@@ -47,7 +50,8 @@ export function busyLanes(
     const edit = backlog.length < tiers.length;
     const inLane = (ref: TestFileRef) => laneOf(context, ref) === lane;
     // Row 011-145: a focused entry is an edit's work here, so its tier starts beside the backlog's.
-    const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
+    const queued =
+      ledger.queue.hasFirstGroup(inLane, at) || focusedWaiting(context, ledger, inLane, at);
     const lead = backlog[0]?.files[0]?.file.ref;
     const beside =
       queued && !edit && lead !== undefined && context.runner.traits.besideBacklog(lead);

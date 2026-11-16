@@ -1,3 +1,4 @@
+import type { EpochMs } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
@@ -46,16 +47,21 @@ export function runnable(
   return { file, key: file.key };
 }
 
-/** Whether an entry `where` holds waits for a focused tier that may run: work of its lane. */
+/**
+ * Whether an entry `where` holds waits for a focused tier that may run: work
+ * of its lane, its deadline read at `at`, a step's reading (row 011-372),
+ * else now.
+ */
 export function focusedWaiting(
   context: SchedulerContext,
   ledger: Ledger,
   where: (ref: TestFileRef) => boolean = () => true,
+  at?: EpochMs,
 ): boolean {
   const { focused } = ledger.queue;
   if (focused.size === 0) return false;
   return focused
-    .waiting(context.now())
+    .waiting(at ?? context.now())
     .some((entry) => where(entry.ref) && runnable(context, ledger, entry) !== null);
 }
 

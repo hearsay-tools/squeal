@@ -53,7 +53,8 @@ export interface StepHost {
   readonly runtimeDir: string | undefined;
   now(): EpochMs;
   started(): { context: SchedulerContext; ledger: Ledger };
-  admit(): Admission;
+  /** The admission of the start facts now; its queue and beside answers read `at` (row 011-372). */
+  admit(at: EpochMs): Admission;
   stalled(): boolean;
   asked(): boolean;
   /** A write gave up on a busy store and none of the pump's landed since. */
@@ -62,10 +63,10 @@ export interface StepHost {
   draining(): boolean;
   /** The pool refused a tier since the last look. */
   refused(): boolean;
-  /** Spec 011 C4 step 3 as amended (task 011-23): stored results first. */
-  adopt(context: SchedulerContext, ledger: Ledger): void;
-  /** The lanes no tier may start in now. */
-  busyLanes(): Set<string>;
+  /** Spec 011 C4 step 3 as amended (task 011-23): stored results first, read from `at`. */
+  adopt(context: SchedulerContext, ledger: Ledger, at: EpochMs): void;
+  /** The lanes no tier may start in at `at` (row 011-372). */
+  busyLanes(at: EpochMs): Set<string>;
   /** The tiers in flight whose runs have not ended. */
   running(): Tier[];
   /** The runner's `releaseLane` of `lane`, its error noted. */
@@ -161,7 +162,7 @@ export class StepLive {
 
   /** The step's ports: the scheduler's memory and store (row 011-356). */
   readonly #ports: StepPorts = {
-    admit: () => this.host.admit(),
+    admit: (at) => this.host.admit(at),
     stalled: () => this.host.stalled(),
     asked: () => this.host.asked(),
     // A resume after a busy store runs once with nothing queued too: its writes end the wait.
@@ -173,7 +174,7 @@ export class StepLive {
     },
     startNext: (admitted, at, fly) => {
       const { context, ledger } = this.host.started();
-      this.host.adopt(context, ledger);
+      this.host.adopt(context, ledger, at);
       // Row 011-346: the tier plan, then its act step; `fly` throws on an answer of another turn.
       const next = startNext(context, ledger, this.#plan(context, ledger, at), {
         check: (lane) => checkTurn(admitted, this.host.lock.turn, lane),
@@ -185,21 +186,21 @@ export class StepLive {
       const { context, ledger } = this.host.started();
       const lane = this.host.groups.get(group);
       const doing = (operation: string) => this.host.lock.relabel(operation);
-      const view = { at, context, ledger, admit: () => this.host.admit(), doing };
+      const view = { at, context, ledger, admit: () => this.host.admit(at), doing };
       const decided = lane === undefined ? "none" : lane.decide(view, fly);
       // Row 011-357: the step's turn goes on after the lane under its own text.
       this.host.lock.relabel(STEP_OPERATION);
       return decided;
     },
     idleNow: (at) => this.#idleNow(at),
-    idleLanes: () => this.host.slowRelease.idleLanes(),
-    slowQueued: (lane) => {
+    idleLanes: (at) => this.host.slowRelease.idleLanes(at),
+    slowQueued: (lane, at) => {
       const { context, ledger } = this.host.started();
-      return ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane);
+      return ledger.orderedSlow(at).some((ref) => laneOf(context, ref) === lane);
     },
-    besideDone: (lane) => {
+    besideDone: (lane, at) => {
       const { context, ledger } = this.host.started();
-      return besideDone(context, ledger, this.host.running(), lane);
+      return besideDone(context, ledger, this.host.running(), lane, at);
     },
     claimsWaiting: () => this.host.started().ledger.claims.waiting,
     refused: () => this.host.refused(),
@@ -218,21 +219,21 @@ export class StepLive {
    */
   #plan(context: SchedulerContext, ledger: Ledger, now: EpochMs): TierPlan {
     const view = liveView(context, ledger, {
-      busy: () => this.host.busyLanes(),
+      busy: () => this.host.busyLanes(now),
       cut: this.host.yields,
-      beside: () => besideFiles(context, ledger, this.host.running()),
+      beside: () => besideFiles(context, ledger, this.host.running(), now),
       slots: true,
       now,
     });
-    return planTiers(view, liveAsks(context, ledger));
+    return planTiers(view, liveAsks(context, ledger, now));
   }
 
   /** Why no fast tier starts at the step's reading `now`: what the plan answers when it ends idle. */
   #idleNow(now: EpochMs): Idle {
     const { context, ledger } = this.host.started();
-    const busy = () => this.host.busyLanes();
+    const busy = () => this.host.busyLanes(now);
     const view = liveView(context, ledger, { busy, cut: this.host.yields, now });
-    return idleOf(view, liveAsks(context, ledger));
+    return idleOf(view, liveAsks(context, ledger, now));
   }
 
   /**
@@ -243,8 +244,8 @@ export class StepLive {
    */
   #checkYields(trigger: Revision | null, adopt: boolean, at: EpochMs): void {
     const { context, ledger } = this.host.started();
-    if (adopt) this.host.adopt(context, ledger);
-    const held = this.host.admit().halts.has("held");
+    if (adopt) this.host.adopt(context, ledger, at);
+    const held = this.host.admit(at).halts.has("held");
     const tiers = [...this.host.inFlight.values()].map(({ tier }) => tier);
     this.host.yields.check(context, ledger, tiers, trigger, held, at);
   }

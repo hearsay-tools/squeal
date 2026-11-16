@@ -97,12 +97,12 @@ export class Claims {
    * daemons have this worktree's queued keys pending too. The queued files
    * divided by those daemons and this one, rounded up, at least
    * `runner.tierSize` and at most `runner.backlogTierSize`; with none, the
-   * latter.
+   * latter. The claims' liveness reads `at`, a plan's reading (row 011-372).
    */
-  backlogSize(queued: number): number {
+  backlogSize(queued: number, at?: EpochMs): number {
     const { store, worktreeId, policy } = this.context;
     const { tierSize, backlogTierSize } = policy.runner;
-    const sharers = store.testFileKeys.sharers(worktreeId, this.#live());
+    const sharers = store.testFileKeys.sharers(worktreeId, this.#live(at));
     if (sharers === 0) return backlogTierSize;
     return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
   }
@@ -153,12 +153,14 @@ export function claimOf(ledger: Ledger, ref: TestFileRef): "waits" | "settled" |
  * result stored at its key stands for it, which it takes with no run
  * (`StoredKeys`); `"free"` when it runs here. Nothing is applied and no
  * lookup hit is recorded; a format read as one is not read. `Claims.holds`
- * starts the waiter's bound at its first sight here, as selection's does.
+ * starts the waiter's bound at its first sight here, as selection's does,
+ * at `at`, the plan's reading (row 011-372), else now.
  */
 export function peekClaim(
   context: SchedulerContext,
   ledger: Ledger,
   ref: TestFileRef,
+  at?: EpochMs,
 ): "waits" | "stored" | "free" {
   const { queue, claims } = ledger;
   const key = ledger.file(ref)?.key ?? null;
@@ -166,7 +168,7 @@ export function peekClaim(
   // `usedAt` 0: a read, not a lookup hit.
   const hits = context.store.results.byKey(key, 0);
   if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
-  return !queue.isRecent(ref) && claims.holds(key, context.now()) ? "waits" : "free";
+  return !queue.isRecent(ref) && claims.holds(key, at ?? context.now()) ? "waits" : "free";
 }
 
 /**

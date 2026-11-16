@@ -56,8 +56,11 @@ export interface Reads {
 
 /** What the step asks of the scheduler: its memory and store (live) or a table (tests). */
 export interface StepPorts {
-  /** Card 5: the admission of the start facts now, stamped with this lock turn. */
-  admit(): Admission;
+  /**
+   * Card 5: the admission of the start facts now, stamped with this lock
+   * turn; its queue and beside answers read `at`, the step's (row 011-372).
+   */
+  admit(at: EpochMs): Admission;
   /** A tier's error stopped the pump until the next batch or request. */
   stalled(): boolean;
   /** The pump was asked for while it ran (`#asked`): a stalled pump runs again. */
@@ -85,12 +88,12 @@ export interface StepPorts {
   askLane(group: string, at: EpochMs, fly: (run: SlowRun) => void): LaneDecision;
   /** Why no fast tier starts at `at`: the plan's idle answer when no plan ran. */
   idleNow(at: EpochMs): Idle;
-  /** The open slow lanes no tier keeps (`decideRelease`'s `idle`, row 011-355). */
-  idleLanes(): readonly string[];
-  /** A slow file of `lane` is queued (spec 004 D2). */
-  slowQueued(lane: string): boolean;
-  /** No batch's tier is left in `lane`, in flight and running (`besideDone`, row 011-269). */
-  besideDone(lane: string): boolean;
+  /** The open slow lanes no tier keeps at `at` (`decideRelease`'s `idle`, row 011-355). */
+  idleLanes(at: EpochMs): readonly string[];
+  /** A slow file of `lane` is queued (spec 004 D2); its order reads `at`. */
+  slowQueued(lane: string, at: EpochMs): boolean;
+  /** No batch's tier is left in `lane` at `at`, in flight and running (`besideDone`, row 011-269). */
+  besideDone(lane: string, at: EpochMs): boolean;
   /** Queued files wait on other worktrees' claims (task 001-205). */
   claimsWaiting(): boolean;
   /** The pool refused a tier since the last look; the look clears it (row 011-96). */
@@ -176,12 +179,12 @@ type Rule = (turn: Turn, out: Out) => NextWake | undefined;
  * after it (a daemon may close on it), whether it runs again: not halted,
  * asked or not stalled, and work left or a busy store's wait to end.
  */
-const pumpEnded: Rule = ({ events, ports }, out) => {
+const pumpEnded: Rule = ({ at, events, ports }, out) => {
   if (!events.some((event) => event.kind === "pump-ended")) return undefined;
-  const { halts } = ports.admit();
+  const { halts } = ports.admit(at);
   if (halts.has("reinstalled")) out.decide({ kind: "tell", note: "reinstalled" });
   else if (halts.has("runtime-gone")) out.decide({ kind: "tell", note: "runtime-gone" });
-  const rearm = ports.admit();
+  const rearm = ports.admit(at);
   const work = rearm.hasWork || ports.busyWaiting();
   return !rearm.halted && (!ports.stalled() || ports.asked()) && work ? AGAIN : END;
 };
@@ -218,7 +221,8 @@ function yieldCheck(turn: Turn, out: Out, events = turn.events): undefined {
 const inTurnEnds: Rule = (turn) => (turn.reads === null ? TURN : undefined);
 
 /** A tier's error stopped the pump, or the daemon stops or its runtime went. */
-const stallHolds: Rule = ({ ports }) => (ports.stalled() || ports.admit().halted ? END : undefined);
+const stallHolds: Rule = ({ at, ports }) =>
+  ports.stalled() || ports.admit(at).halted ? END : undefined;
 
 /** Queued runner work is applied beside the tiers in flight; nothing starts until it is (task 001-140). */
 const drainRunnerWork: Rule = ({ ports }, out) => {
@@ -228,14 +232,14 @@ const drainRunnerWork: Rule = ({ ports }, out) => {
 };
 
 /** No runner call until an install, or none after it went (tasks 001-100, 001-113): the pump ends. */
-const installWait: Rule = ({ ports }) => {
-  const { halts } = ports.admit();
+const installWait: Rule = ({ at, ports }) => {
+  const { halts } = ports.admit(at);
   return halts.has("install-wait") || halts.has("reinstalled") ? END : undefined;
 };
 
 /** At an iteration's first step: no free lane has a file and no lane may be asked. */
-const nothingMayStart: Rule = ({ ports, reads }) =>
-  reads !== null && Object.keys(reads).length === 0 && !ports.admit().any ? EVENT : undefined;
+const nothingMayStart: Rule = ({ at, ports, reads }) =>
+  reads !== null && Object.keys(reads).length === 0 && !ports.admit(at).any ? EVENT : undefined;
 
 /** The install stamp before a tier; one that moved refreshes the keys first. */
 const readInstallStamp: Rule = ({ reads }, out) => {
@@ -277,13 +281,13 @@ const rewalkRead = (reads: Reads | null) => reads?.rewalk !== undefined;
  * in the pump's iteration, admission answers it after the holds: the pump
  * ends.
  */
-const reinstallMissing: Rule = ({ events, ports, reads }, out) => {
+const reinstallMissing: Rule = ({ at, events, ports, reads }, out) => {
   if (events.some((event) => event.kind === "install-missing")) {
     out.decide({ kind: "reinstall" });
     return TURN;
   }
   if (reads === null || out.held || rewalkRead(reads)) return undefined;
-  if (ports.admit().fast !== "install-missing") return undefined;
+  if (ports.admit(at).fast !== "install-missing") return undefined;
   // The fast start rule's admission: its writes landed, as when it starts a tier.
   out.selected = true;
   out.decide({ kind: "reinstall" });
@@ -295,7 +299,7 @@ const startFastTier: Rule = (turn, out) => {
   const { at, ports, reads } = turn;
   if (out.held || rewalkRead(reads)) return undefined;
   out.selected = true;
-  const admitted = ports.admit();
+  const admitted = ports.admit(at);
   const fast = admitted.fast;
   if (fast === "held") out.held = true;
   else if (fast === "runner-work") return AGAIN;
@@ -327,7 +331,7 @@ const startFastTier: Rule = (turn, out) => {
 const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
   if (out.held || rewalkRead(reads)) return undefined;
   const stamp = reads?.install?.stamp ?? "";
-  for (const group of ports.admit().ask) {
+  for (const group of ports.admit(at).ask) {
     const decided = ports.askLane(group, at, (run) => {
       out.decide({ kind: "start-tier", tier: run.tier, stamp, turn: run.turn, slow: run });
     });
@@ -343,22 +347,22 @@ const askSlowLanes: Rule = ({ at, ports, reads }, out) => {
  * no file of it is queued; on a hold the idle lanes close and the pump
  * ends. The close at a lane's bound is its wake owner's (`SlowRelease`).
  */
-const closeSlowLanes: Rule = ({ events, ports }, out) => {
+const closeSlowLanes: Rule = ({ at, events, ports }, out) => {
   const ended = events.flatMap((event) => (event.kind === "slow-ended" ? [event.lane] : []));
   if (ended.length > 0) {
-    const held = ports.admit().halts.has("held");
-    const lanes = ended.filter((lane) => held || !ports.slowQueued(lane));
+    const held = ports.admit(at).halts.has("held");
+    const lanes = ended.filter((lane) => held || !ports.slowQueued(lane, at));
     if (lanes.length > 0) out.decide({ kind: "close-lanes", lanes });
   }
   if (!out.held) return undefined;
-  out.decide({ kind: "close-lanes", lanes: ports.idleLanes() });
+  out.decide({ kind: "close-lanes", lanes: ports.idleLanes(at) });
   return END;
 };
 
 /** Row 011-366: a batch's tier or one beside it ended; with no batch left in its lane, its second instance closes (row 011-269). */
-const closeBesideLane: Rule = ({ events, ports }, out) => {
+const closeBesideLane: Rule = ({ at, events, ports }, out) => {
   for (const event of events)
-    if (event.kind === "beside-ended" && ports.besideDone(event.lane))
+    if (event.kind === "beside-ended" && ports.besideDone(event.lane, at))
       out.decide({ kind: "close-beside", lane: event.lane });
   return undefined;
 };
