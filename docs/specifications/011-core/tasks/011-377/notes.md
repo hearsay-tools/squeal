@@ -104,3 +104,10 @@ Each keeps its meaning:
 - A wait owner that keeps a calendar time for its own wait adds a `shift(ms)` and a line in the scheduler's `#shift`. One that compares a stored stamp uses `context.steps.local(kind, id, stamp)` (one id per kind) or keeps the steps' `total` beside its stamp and uses `since`.
 - A fixture that freezes `now` or runs it at another speed, with the host's elapsed time, now reads as calendar steps: its waits count on the host's elapsed time. Use the virtual clock, or `advance` on the harness, to say time passed; use `shiftCalendar` to say the clock was set.
 - Known limit: a step inside one step's turn, after its reading, can move one decision of that turn (Design).
+
+## Checks run (2026-11-16, on `fb0dc2e3c`)
+
+- `pnpm run lint`: clean. `pnpm run typecheck`: clean.
+- `key-format.test.ts`, `model-scheduler.test.ts`, `model-harness-clock.test.ts`: 27 of 27 pass, load 20.8 to 23.8 on 24 CPUs (below the CPU count at the start).
+- Direct runs, `--maxWorkers=4`: 77 wait-related scheduler files (4 failures, all fixtures that moved the calendar alone, fixed above); 9 files with calendar skews: pass; the 136 `test/daemon/` and `test/scheduler/` files Squeal had not reached: 136 of 136 pass, 559 tests, load 15 at start, 31.7 at end, 651 s.
+- Squeal, `squeal status --wait` on the changed paths, two waits (57 min and 30 min) on a busy host: 690 test files current and passing. 4 known failures, all bundle drift (`cli/squeal.mjs differs from the build` in `plugin.test.ts`, the Codex, OpenCode and Pi package tests): `plugins/*/dist` is not this row's; the landing rebuilds it. 232 test files still queued, 7 unknown when the daemon was stopped: mostly `test/cli/`, `test/harness/`, `test/integration/`. They are not verified here.
