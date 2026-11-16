@@ -56,3 +56,14 @@ Answer, each with evidence or "not determined, because":
 5. Which existing notices these replace (heartbeat late, feed late, the queue counts), and what stays in `squeal status`.
 
 Owns: `tasks/005-93/`. No product code. Final message: the open choices for the human, as options.
+
+## Review of cand/0.1.525
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.525` SHA named in the spawn; the range is from the base named there to that SHA. It holds 005-89 (one commit of worker bc2f6f2a), 005-92 (two commits of worker c40bae5d), both cherry-picked with `-x`, and the release commit (0.1.525 and the bundles). Read rows 005-89 and 005-92, this file, `research/hook-messages-2026-11-16.md` findings 1 and 12, `status.md` 2026-11-16.
+
+Judge:
+- 005-89: a primer that fits `PRIMER_CAP_CHARS` today is byte-identical; one over the cap names `squeal` and the path wait within the cap under Claude Code; the drop order (slow sentences at 0 slow files, the second slow sentence, the retry sentence, "Run tests yourself only when…", the revision definition) loses no fact an agent needs that nothing else says; Codex's long CLI path keeps 004-78's behaviour; `trailingPrimer` still finds every primer.
+- 005-92: each failure's facts are still stated once at least (no path, age, load or retry state lost when lines merge); the shared line is true for every block it counts; a registration with one recorded failure is byte-identical; the retry command names only failures a load retry applies to; `squeal why`'s moved line; block order, grouping, overflow counts and `Full output:` unchanged; the evals parsers round-trip the real formatters, old and new text.
+- Every changed sentence against the human's test: it is for the agent in the session.
+
+No full suite and no full-suite checkpoint (`docs/process.md`); candidate CI is the full suite: name its run and result. Affected results through `squeal status --wait 60000 <path>...`. Write `reviews/0.1.525.md` and commit it on your branch.
