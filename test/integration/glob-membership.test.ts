@@ -20,26 +20,99 @@ const TEST = "test/registry.test.ts";
 const COUNTS: CheckId = { kind: "test", project: "", testPath: TEST, fullName: "counts one" };
 const PLUGIN = "src/plugins/new.ts";
 
-const FILES: Record<string, string> = {
-  "src/plugins/kept.ts": 'export const name = "kept";\n',
-  "src/registry.ts": [
-    "// import.meta.glob('./decoy/*.ts') in a comment lists nothing",
-    'const plugins = import.meta.glob("./plugins/*.ts", { eager: true });',
-    "export const count = Object.keys(plugins).length;",
-    "",
-  ].join("\n"),
-  [TEST]: [
+const testOf = (module: string) =>
+  [
     'import { expect, it } from "vitest";',
-    'import { count } from "../src/registry.ts";',
+    `import { count } from "../${module}";`,
     'it("counts one", () => expect(count).toBe(1));',
     "",
-  ].join("\n"),
+  ].join("\n");
+
+/** A module that globs, the file its pattern matches, one more it would match, and the stored listings. */
+interface Variant {
+  readonly name: string;
+  readonly module: string;
+  readonly source: string;
+  readonly kept: string;
+  readonly added: string;
+  /** What to delete to undo the add, when it made a folder. */
+  readonly removes?: string;
+  readonly listings: (stored: readonly string[]) => void;
+}
+
+const counts = (glob: string) =>
+  `const plugins = import.meta.glob(${JSON.stringify(glob)}, { eager: true });\nexport const count = Object.keys(plugins).length;\n`;
+
+/** Reviews/wave-2.md B1 and B2: the root, a sibling folder from an enum's module, and one from TSX. */
+const VARIANTS: readonly Variant[] = [
+  {
+    name: "a relative folder",
+    module: "src/registry.ts",
+    source: `// import.meta.glob('./decoy/*.ts') in a comment lists nothing\n${counts("./plugins/*.ts")}`,
+    kept: "src/plugins/kept.ts",
+    added: PLUGIN,
+    listings: (stored) => expect(stored).toEqual(["src/plugins/"]),
+  },
+  {
+    name: "the root",
+    module: "src/registry.ts",
+    source: counts("/plugin-*.ts"),
+    kept: "plugin-kept.ts",
+    added: "plugin-new.ts",
+    listings: (stored) => expect(stored).toEqual(["./"]),
+  },
+  {
+    name: "the root, recursively",
+    module: "src/registry.ts",
+    source: counts("/**/plugin-*.ts"),
+    kept: "plugin-kept.ts",
+    added: "deep/er/plugin-new.ts",
+    removes: "deep",
+    listings: (stored) => expect(stored).toEqual(expect.arrayContaining(["./", "src/", "test/"])),
+  },
+  {
+    name: "a sibling folder from a module with an enum",
+    module: "src/sub/registry.ts",
+    source: `export enum Kind { A }\n${counts("../plugins/*.ts")}`,
+    kept: "src/plugins/kept.ts",
+    added: PLUGIN,
+    listings: (stored) => expect(stored).toEqual(["src/plugins/"]),
+  },
+  {
+    name: "a sibling folder from TSX",
+    module: "src/view/registry.tsx",
+    source: [
+      "/** @jsxRuntime classic */",
+      "/** @jsx h */",
+      "const h = (tag: string, _props: unknown, ...children: unknown[]) => ({ tag, children });",
+      counts("../plugins/*.ts"),
+      "export const view = <p>{count}</p>;",
+      "",
+    ].join("\n"),
+    kept: "src/plugins/kept.ts",
+    added: PLUGIN,
+    listings: (stored) => expect(stored).toEqual(["src/plugins/"]),
+  },
+];
+
+const FILES: Record<string, string> = {
+  "src/plugins/kept.ts": 'export const name = "kept";\n',
+  "src/registry.ts": counts("./plugins/*.ts"),
+  [TEST]: testOf("src/registry.ts"),
 };
 
 /** The `basic` fixture with the glob module, committed. */
-function globRepo() {
+function globRepo(variant?: Variant) {
   const repo = createRepo();
-  for (const [path, text] of Object.entries(FILES)) write(repo.main, path, text);
+  const files =
+    variant === undefined
+      ? FILES
+      : {
+          [variant.kept]: 'export const name = "kept";\n',
+          [variant.module]: variant.source,
+          [TEST]: testOf(variant.module),
+        };
+  for (const [path, text] of Object.entries(files)) write(repo.main, path, text);
   git(repo.main, ["add", "-A"]);
   git(repo.main, ["commit", "-qm", "glob"]);
   return repo;
@@ -75,28 +148,31 @@ const passes = (h: Harness) => h.sink.stateOf(COUNTS);
 
 describe("a glob's folder membership in keys (row 023-13)", SLOW, () => {
   // The listings key a closure whatever policy `observe.runtimeInputs` says.
-  it.each([true, false])(
-    "a restart reads an added matching file as stale, and its removal reuses the pass (observe %s)",
-    async (observe) => {
-      const repo = globRepo();
+  it.each(
+    VARIANTS.flatMap((variant) =>
+      [true, false].map((observe) => [variant.name, observe, variant] as const),
+    ),
+  )(
+    "a restart reads a file added to %s as stale, and its removal reuses the pass (observe %s)",
+    async (_, observe, variant) => {
+      const repo = globRepo(variant);
       const store = openRepoStore(repo.commonDir);
       const start = (root: string, runMissing = false) =>
         startIn(root, store, repo.commonDir, runMissing, observe);
       const first = await start(repo.main, true);
       expect(passes(first)).toMatchObject({ outcome: "pass", validity: "current" });
-      expect(JSON.parse(store.meta.get(globListingsMetaKey("")) ?? "{}")).toEqual({
-        "src/registry.ts": ["src/plugins/"],
-      });
+      const stored = JSON.parse(store.meta.get(globListingsMetaKey("")) ?? "{}");
+      variant.listings(stored[variant.module] ?? []);
       await stop(first);
 
       // S2: added while no daemon ran.
-      write(repo.main, PLUGIN, 'export const name = "new";\n');
+      write(repo.main, variant.added, 'export const name = "new";\n');
       const second = await start(repo.main);
       expect(passes(second)?.validity).toBe("stale");
       await stop(second);
 
       // Removed again: the stored pass is the one at this content, reused with no run.
-      rmSync(join(repo.main, PLUGIN));
+      rmSync(join(repo.main, variant.removes ?? variant.added), { recursive: true });
       const third = await start(repo.main);
       expect(passes(third)).toMatchObject({ outcome: "pass", validity: "current" });
       expect(third.runsOf(TEST)).toEqual([]);

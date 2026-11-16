@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { parseAst } from "vitest/node";
 import { folderListings, globPatterns } from "../../../src/runners/vitest/glob-listing.js";
 
 /*
  * Row 023-13 (fix A): the folders a module's real globs list, read from its
- * syntax tree and resolved as Vite 8 does (`toAbsoluteGlob`, `getCommonBase`,
- * `dynamicImportToGlob`). Glob text in a comment or a string lists nothing.
+ * syntax tree by the project's own Vite parser and resolved as Vite 8 does
+ * (`toAbsoluteGlob`, `getCommonBase`, `dynamicImportToGlob`). Glob text in a
+ * comment or a string lists nothing; a module the parser cannot read gives
+ * `null`, which the adapter reports as the whole worktree (reviews/wave-2.md B2).
  */
 
 const ROOT = "/repo";
@@ -12,7 +15,7 @@ const FILE = "/repo/src/registry.ts";
 const noResolve = async (_pattern: string): Promise<string | null> => null;
 
 const listings = (source: string, file = FILE, resolve = noResolve) =>
-  folderListings(file, source, ROOT, resolve);
+  folderListings(file, source, ROOT, resolve, parseAst);
 
 describe("glob listings of a module (row 023-13)", () => {
   it("lists the base folder of a relative glob, flat when the rest has no slash", async () => {
@@ -90,16 +93,39 @@ describe("glob listings of a module (row 023-13)", () => {
       "export const DYNAMIC = /import\\.meta\\.glob|\\bimport\\s*\\(\\s*`[^`]*\\$\\{/;",
       'export const doc = "import.meta.glob(\\"./plugins/*.ts\\")";',
     ].join("\n");
-    expect(globPatterns(FILE, source)).toEqual([]);
+    expect(await globPatterns(FILE, source, parseAst)).toEqual([]);
     expect(await listings(source)).toEqual([]);
   });
 
+  it("lists nothing for glob text only in a TSX comment, string or JSX text", async () => {
+    const source = [
+      '// import.meta.glob("./decoy/*.ts")',
+      "export const doc = \"import.meta.glob('./decoy/*.ts')\";",
+      "export const App = () => <p title=\"import.meta.glob('./x/*.ts')\">import.meta.glob it's</p>;",
+    ].join("\n");
+    expect(await listings(source, "/repo/src/App.tsx")).toEqual([]);
+  });
+
   it.each([
-    ["JSX", "/repo/src/App.tsx", "export const App = () => <div />;"],
-    ["an enum, which strip mode refuses", FILE, "enum Kind { A, B }"],
-  ])("falls back to the module's own folder, recursively, for %s", async (_, file, rest) => {
-    const source = `const p = import.meta.glob("./pages/*.ts");\n${rest}\n`;
-    expect(globPatterns(file, source)).toBeNull();
-    expect(await listings(source, file)).toEqual([{ directory: "/repo/src", recursive: true }]);
+    ["TSX", "/repo/src/App.tsx", "export const App = () => <div>{Object.keys(p).length}</div>;"],
+    ["an enum and a decorator", FILE, "export enum Kind { A }\n@sealed class Box {}"],
+  ])("reads %s and lists the glob's own folder, a sibling here", async (_, file, rest) => {
+    const source = `const p = import.meta.glob("../plugins/*.ts", { eager: true });\n${rest}\n`;
+    expect(await listings(source, file)).toEqual([
+      { directory: "/repo/plugins", recursive: false },
+    ]);
+  });
+
+  it.each([
+    ["a file that is not a script", "/repo/src/view.vue", 'import.meta.glob("./x/*.ts")'],
+    ["a parse error", FILE, 'import.meta.glob("./x/*.ts") +;'],
+    [
+      "a JSX file Vite reads as JS by config",
+      "/repo/src/a.js",
+      'import.meta.glob("./x/*.ts");\nexport const A = <a />;',
+    ],
+  ])("gives null for %s, so the adapter lists every folder", async (_, file, source) => {
+    expect(await globPatterns(file, source, parseAst)).toBeNull();
+    expect(await listings(source, file)).toBeNull();
   });
 });

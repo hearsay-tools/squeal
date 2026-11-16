@@ -561,7 +561,7 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
         this.#sources.readHash(project.vite.environments.ssr, file);
       const imports = fileImports(graph, this.paths, read, this.#imports);
       // Row 023-13: the folders its modules' globs list, which the core keys it with.
-      const globs = await moduleGlobs(project, graph, this.paths);
+      const globs = await moduleGlobs(project, graph, this.paths, this.#node.parseAst);
       return { testFile, paths, packages, imports, ...(globs.length > 0 ? { globs } : {}) };
     });
   }

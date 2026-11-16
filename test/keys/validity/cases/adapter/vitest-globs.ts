@@ -17,11 +17,19 @@ export const GLOB_TEST = "test/globs.test.ts";
 
 /** The fixture, which the adapter test `closure-globs.test.ts` walks too. */
 export const GLOB_FILES: Readonly<Record<string, string>> = {
-  "package.json": '{ "name": "validity-vitest-globs", "private": true, "type": "module" }\n',
+  "package.json":
+    '{ "name": "validity-vitest-globs", "private": true, "type": "module", "imports": { "#plugins/*": "./src/plugins/*" } }\n',
   "vitest.config.ts": [
     'import { fileURLToPath } from "node:url";',
     "export default {",
     '  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },',
+    // A file that is no script, which a plugin turns into one: the adapter cannot read its globs.
+    "  plugins: [{",
+    '    name: "globs-text",',
+    '    enforce: "pre",',
+    "    transform: (_code: string, id: string) =>",
+    '      id.endsWith(".globs") ? "export const counted = Object.keys(import.meta.glob(\'./plugins/*.ts\')).length;" : undefined,',
+    "  }],",
     '  test: { include: ["test/**/*.test.ts"], testTimeout: 60_000 },',
     "};",
     "",
@@ -37,6 +45,19 @@ export const GLOB_FILES: Readonly<Record<string, string>> = {
   // biome-ignore lint/suspicious/noTemplateCurlyInString: the module's own template literal.
   "src/locale.ts": "export const load = (n: string) => import(`./plugins/${n}.ts`);\n",
   "src/decoy.ts": '// import.meta.glob("./plugins/*.ts") in a comment\nexport const decoy = 1;\n',
+  "plugin-kept.ts": 'export const name = "root";\n',
+  "src/top.ts": 'export const top = import.meta.glob("/plugin-*.ts");\n',
+  "src/subpath.ts": 'export const subpath = import.meta.glob("#plugins/*.ts");\n',
+  "src/count.globs": "import.meta.glob of the plugins, in a file a plugin turns into a module\n",
+  "src/view/list.tsx": [
+    "/** @jsxRuntime classic */",
+    "/** @jsx h */",
+    "const h = (tag: string, _props: unknown, ...children: unknown[]) => ({ tag, children });",
+    '// import.meta.glob("./decoy/*.ts") in a comment',
+    'const listed = import.meta.glob("../plugins/*.ts", { eager: true });',
+    "export const view = <p title=\"import.meta.glob('./x/*.ts')\">{Object.keys(listed).length}</p>;",
+    "",
+  ].join("\n"),
   "src/enumed.ts":
     'export enum Kind { A }\nexport const kinds = import.meta.glob("./plugins/*.ts");\n',
   [GLOB_TEST]: [
@@ -51,6 +72,10 @@ export const GLOB_FILES: Readonly<Record<string, string>> = {
     'import { all } from "../src/registry.ts";',
     'import { rooted } from "../src/rooted.ts";',
     'import { up } from "../src/sub/up.ts";',
+    'import { counted } from "../src/count.globs";',
+    'import { subpath } from "../src/subpath.ts";',
+    'import { top } from "../src/top.ts";',
+    'import { view } from "../src/view/list.tsx";',
     'it("holds", async () => {',
     '  writeFileSync($STARTED, "");',
     "  while (existsSync($HOLD)) await delay(20);",
@@ -59,6 +84,9 @@ export const GLOB_FILES: Readonly<Record<string, string>> = {
     "  expect(Object.keys({ ...aliased, ...rooted, ...up, ...kinds })).not.toHaveLength(0);",
     '  expect((await load("kept")).name).toBe("kept");',
     "  expect(decoy).toBe(1);",
+    "  expect(counted).toBe(2);",
+    "  expect(Object.keys({ ...subpath, ...top })).not.toHaveLength(0);",
+    "  expect(view.children).toEqual([2]);",
     "}, 120_000);",
     "",
   ].join("\n"),

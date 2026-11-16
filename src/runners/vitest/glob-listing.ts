@@ -1,20 +1,9 @@
-import { stripTypeScriptTypes } from "node:module";
-import { dirname, posix } from "node:path";
-import {
-  type ArrayExpression,
-  type Literal,
-  type Node,
-  type ObjectExpression,
-  type Program,
-  parse,
-  type TemplateLiteral,
-} from "acorn";
+import { dirname, extname, posix } from "node:path";
 import type { TestProject } from "vitest/node";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { ModuleGlobs } from "../../core/types/runner.js";
-import { quietly } from "../node-test/enumerate.js";
 import { mayExpandFromDisk, readSource } from "./dynamic.js";
 import type { ImportClosure } from "./graph.js";
 
@@ -39,27 +28,55 @@ export interface GlobPattern {
 /** Resolves a non-relative glob as Vite's `resolveId` does (aliases, `#` subpaths); `null`: nothing does. */
 export type GlobResolver = (pattern: string, importer: AbsolutePath) => Promise<string | null>;
 
+/**
+ * The project's own Vite parser, `parseAst` of `vitest/node` (reviews/wave-2.md
+ * B2): Vite 8's reads TypeScript, enums, decorators, JSX and TSX by `lang`;
+ * an older Vite's reads JavaScript and throws on the rest.
+ */
+export type ParseAst = (source: string, options: { lang: Lang }, file: string) => unknown;
+
+type Lang = "js" | "jsx" | "ts" | "tsx";
+
+/** A syntax node as the parser gives it: ESTree, read field by field. */
+type Node = { readonly type?: unknown } & Readonly<Record<string, unknown>>;
+
+/** The languages Vite parses a script in, by extension; any other file is not read. */
+const LANGS: Readonly<Record<string, Lang>> = {
+  ".js": "js",
+  ".mjs": "js",
+  ".cjs": "js",
+  ".jsx": "jsx",
+  ".ts": "ts",
+  ".mts": "ts",
+  ".cts": "ts",
+  ".tsx": "tsx",
+};
+
 /** Characters that make a path segment a pattern (picomatch's `scan`). */
 const MAGIC = /[*?[\]{}()!+@]/;
 
-/** Source files acorn reads, TypeScript after Node strips its types; others fall back. */
-const PARSED = /\.[mc]?[jt]s$/;
-
 /**
  * The literal globs of `source`, read from its syntax tree: glob text in a
- * comment or a string gives none. `null` when the file does not parse here
- * (JSX, a framework file, TypeScript that strip mode refuses).
+ * comment or a string gives none. `null` when the module cannot be read
+ * here: not a script by its extension, or a parse error.
  */
-export function globPatterns(file: string, source: string): GlobPattern[] | null {
+export async function globPatterns(
+  file: string,
+  source: string,
+  parse: ParseAst,
+): Promise<GlobPattern[] | null> {
   if (!mayExpandFromDisk(source)) return [];
-  const program = PARSED.test(file) ? parseModule(source, /\.[mc]?ts$/.test(file)) : null;
+  const lang = LANGS[extname(file)];
+  const parsing = Promise.resolve(lang).then((l) =>
+    l === undefined ? null : parse(source, { lang: l }, file),
+  );
+  const program = await parsing.catch(() => null);
   if (program === null) return null;
   const out: GlobPattern[] = [];
   walk(program, (node) => {
-    if (isGlobCall(node)) out.push(...globCall(node.arguments));
-    const imported = node.type === "ImportExpression" ? (node as { source?: Node }).source : null;
-    const pattern =
-      imported?.type === "TemplateLiteral" ? templateGlob(imported as TemplateLiteral) : null;
+    if (isGlobCall(node)) out.push(...globCall(node.arguments as Node[]));
+    const imported = node.type === "ImportExpression" ? (node.source as Node) : null;
+    const pattern = imported?.type === "TemplateLiteral" ? templateGlob(imported) : null;
     if (pattern !== null) out.push({ pattern });
   });
   return out;
@@ -69,17 +86,18 @@ export function globPatterns(file: string, source: string): GlobPattern[] | null
  * The folders `file`'s globs list, each resolved as Vite does
  * (`toAbsoluteGlob`, then `getCommonBase` of that pattern): `./` and `../`
  * from the importer or a `base`, `/` from the Vite `root`, others through
- * `resolve`. A file that does not parse here lists its own folder,
- * recursively: an over-run, never a miss.
+ * `resolve`. `null` when the module cannot be read here: the caller then
+ * lists every folder, so no key that lacks a matching file is reused.
  */
 export async function folderListings(
   file: AbsolutePath,
   source: string,
   root: AbsolutePath,
   resolve: GlobResolver,
-): Promise<FolderListing[]> {
-  const patterns = globPatterns(file, source);
-  if (patterns === null) return [{ directory: dirname(file), recursive: true }];
+  parse: ParseAst,
+): Promise<FolderListing[] | null> {
+  const patterns = await globPatterns(file, source, parse);
+  if (patterns === null) return null;
   const out: FolderListing[] = [];
   for (const glob of patterns.filter((g) => !g.pattern.startsWith("!"))) {
     const absolute = await absoluteGlob(glob, file, root, resolve);
@@ -89,18 +107,20 @@ export async function folderListings(
 }
 
 /** Listings per transform object: a re-transform reads the source again. */
-const listed = new WeakMap<object, Promise<FolderListing[]>>();
+const listed = new WeakMap<object, Promise<FolderListing[] | null>>();
 
 /**
  * The adapter's report (`RunnerClosure.globs`): each walked project file of
- * `graph` with a transform, and the project folders its globs list. Read
- * once per transform; a module with no source on disk, or a folder outside
- * the worktree or in `node_modules`, gives none.
+ * `graph` with a transform, and the project folders its globs list; the
+ * worktree root is `""`. A module it cannot read lists the root recursively.
+ * Read once per transform; a module with no source on disk, or a folder
+ * outside the worktree or in `node_modules`, gives none.
  */
 export async function moduleGlobs(
   project: TestProject,
   graph: ImportClosure,
   paths: WorktreePaths,
+  parse: ParseAst,
 ): Promise<ModuleGlobs[]> {
   const environment = project.vite.environments.ssr;
   const root = project.config.root;
@@ -110,19 +130,18 @@ export async function moduleGlobs(
       (await environment?.pluginContainer.resolveId(pattern, importer, { custom }))?.id ?? null
     );
   };
+  const everything = [{ directory: paths.root, recursive: true }];
   const out: ModuleGlobs[] = [];
   for (const file of graph.edges?.keys() ?? []) {
     const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
     const transform = environment?.moduleGraph.getModuleById(file)?.transformResult;
     if (path === null || !transform) continue;
-    const listings = listed.get(transform) ?? listingsOnDisk(file, root, resolve);
+    const listings = listed.get(transform) ?? listingsOnDisk(file, root, resolve, parse);
     listed.set(transform, listings);
     const directories = new Set<RelativePath>();
     const recursive = new Set<RelativePath>();
-    for (const listing of await listings) {
-      const at = paths.isProjectFile(listing.directory)
-        ? paths.toRelative(listing.directory)
-        : null;
+    for (const listing of (await listings) ?? everything) {
+      const at = folderOf(listing.directory, paths);
       if (at !== null) directories.add(at);
       if (at !== null && listing.recursive) recursive.add(at);
     }
@@ -133,9 +152,20 @@ export async function moduleGlobs(
   return out;
 }
 
-function listingsOnDisk(file: AbsolutePath, root: AbsolutePath, resolve: GlobResolver) {
+/** A project folder's path, `""` for the worktree root (review B1); `null` outside it or in `node_modules`. */
+function folderOf(directory: AbsolutePath, paths: WorktreePaths): RelativePath | null {
+  if (directory === paths.root) return "";
+  return paths.isProjectFile(directory) ? paths.toRelative(directory) : null;
+}
+
+function listingsOnDisk(
+  file: AbsolutePath,
+  root: AbsolutePath,
+  resolve: GlobResolver,
+  parse: ParseAst,
+): Promise<FolderListing[] | null> {
   const source = readSource(file);
-  return source === null ? Promise.resolve([]) : folderListings(file, source, root, resolve);
+  return source === null ? Promise.resolve([]) : folderListings(file, source, root, resolve, parse);
 }
 
 async function absoluteGlob(
@@ -164,28 +194,26 @@ function listingOf(glob: string): FolderListing {
   return { directory, recursive: rest.includes("/") || rest.includes("**") };
 }
 
-function isGlobCall(node: Node): node is Node & { arguments: Node[] } {
-  const callee = (node as { callee?: Node & { object?: Node; property?: Node } }).callee;
-  const meta = callee?.object as (Node & { meta?: { name: string } }) | undefined;
-  const property = callee?.property as (Node & { name?: string }) | undefined;
+function isGlobCall(node: Node): boolean {
+  const callee = node.callee as Node | undefined;
+  const meta = callee?.object as Node | undefined;
+  const property = callee?.property as Node | undefined;
   return (
     node.type === "CallExpression" &&
     callee?.type === "MemberExpression" &&
-    (callee as { computed?: boolean }).computed !== true &&
+    callee.computed !== true &&
     property?.name === "glob" &&
     meta?.type === "MetaProperty" &&
-    meta.meta?.name === "import"
+    (meta.meta as Node | undefined)?.name === "import"
   );
 }
 
 /** The literal patterns of one `import.meta.glob` call, with its `base`: Vite accepts nothing else. */
 function globCall([first, options]: Node[]): GlobPattern[] {
-  const elements =
-    first?.type === "ArrayExpression" ? (first as ArrayExpression).elements : [first];
-  const properties =
-    options?.type === "ObjectExpression" ? (options as ObjectExpression).properties : [];
-  const named = properties.find((p) => keyName(p) === "base") as { value?: Node } | undefined;
-  const base = literalText(named?.value);
+  const elements = first?.type === "ArrayExpression" ? (first.elements as Node[]) : [first];
+  const properties = options?.type === "ObjectExpression" ? (options.properties as Node[]) : [];
+  const named = properties.find((p) => keyName(p) === "base");
+  const base = literalText(named?.value as Node | undefined);
   return elements.flatMap((element) => {
     const pattern = literalText(element);
     return pattern === null ? [] : [base === null ? { pattern } : { pattern, base }];
@@ -193,16 +221,21 @@ function globCall([first, options]: Node[]): GlobPattern[] {
 }
 
 function keyName(property: Node): unknown {
-  const key = (property as { key?: Node & { name?: string; value?: unknown } }).key;
+  const key = property.key as Node | undefined;
   return key?.type === "Identifier" ? key.name : key?.value;
 }
 
 /** A string literal, or a template with no substitution; `null` for anything else. */
 function literalText(node: Node | null | undefined): string | null {
-  const value = node?.type === "Literal" ? (node as Literal).value : null;
-  const template = node?.type === "TemplateLiteral" ? (node as TemplateLiteral) : null;
-  const raw = template?.expressions.length === 0 ? template.quasis[0]?.value.raw : value;
+  const value = node?.type === "Literal" ? node.value : null;
+  const quasis = node?.type === "TemplateLiteral" ? (node.quasis as Node[]) : [];
+  const expressions = node?.type === "TemplateLiteral" ? (node.expressions as Node[]) : [];
+  const raw = quasis.length === 1 && expressions.length === 0 ? rawOf(quasis[0]) : value;
   return typeof raw === "string" ? raw : null;
+}
+
+function rawOf(quasi: Node | undefined): unknown {
+  return (quasi?.value as Node | undefined)?.raw;
 }
 
 /**
@@ -211,30 +244,20 @@ function literalText(node: Node | null | undefined): string | null {
  * substitution, a `data:` or `http:` URL) or rejects it (no extension, a `*`
  * start).
  */
-function templateGlob(node: TemplateLiteral): string | null {
-  const glob = node.quasis
-    .map((q) => q.value.raw)
+function templateGlob(node: Node): string | null {
+  const quasis = node.quasis as Node[];
+  const glob = quasis
+    .map((q) => String(rawOf(q)))
     .join("*")
     .replace(/\*\*+/g, "*");
-  const kept = node.expressions.length > 0 && !/^(?:data|https?):/.test(glob);
+  const kept = (node.expressions as Node[]).length > 0 && !/^(?:data|https?):/.test(glob);
   return kept && !glob.startsWith("*") && posix.extname(glob) !== "" ? glob : null;
 }
 
-function parseModule(source: string, typescript: boolean): Program | null {
-  try {
-    const code = typescript
-      ? quietly(() => stripTypeScriptTypes(source, { mode: "strip" }))
-      : source;
-    return parse(code, { ecmaVersion: "latest", sourceType: "module", allowHashBang: true });
-  } catch {
-    return null;
-  }
-}
-
-function walk(node: unknown, visit: (node: Node & { arguments: Node[] }) => void): void {
+function walk(node: unknown, visit: (node: Node) => void): void {
   if (Array.isArray(node)) for (const item of node) walk(item, visit);
   if (node === null || typeof node !== "object" || Array.isArray(node)) return;
-  const record = node as Record<string, unknown>;
-  if (typeof record.type === "string") visit(node as Node & { arguments: Node[] });
+  const record = node as Node;
+  if (typeof record.type === "string") visit(record);
   for (const [key, value] of Object.entries(record)) if (key !== "type") walk(value, visit);
 }

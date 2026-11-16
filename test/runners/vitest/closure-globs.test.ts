@@ -5,9 +5,9 @@ import { openFixture, ref, SLOW } from "./helpers.js";
 /*
  * Row 023-13 (fix A): what the adapter reports beside a closure on real
  * Vite, for the validity case's modules: each module's glob folders,
- * resolved as Vite resolves the pattern. A comment that holds glob text
- * reports none; a module strip mode refuses (an enum) reports its own
- * folder, recursively.
+ * resolved as Vite resolves the pattern, TSX and an enum's module included.
+ * A comment that holds glob text reports none; a module the parser cannot
+ * read reports the whole worktree (reviews/wave-2.md B1, B2, N1).
  */
 
 describe("vitest adapter: a closure's glob folders (row 023-13)", SLOW, () => {
@@ -20,11 +20,17 @@ describe("vitest adapter: a closure's glob folders (row 023-13)", SLOW, () => {
     expect(globs).toEqual([
       { path: "src/aliased.ts", directories: ["src/plugins"], recursive: [] },
       { path: "src/based.ts", directories: ["src/plugins"], recursive: [] },
-      { path: "src/enumed.ts", directories: ["src"], recursive: ["src"] },
+      // Not a script: every folder, so no key that lacks a matching file is reused (review B2).
+      { path: "src/count.globs", directories: [""], recursive: [""] },
+      { path: "src/enumed.ts", directories: ["src/plugins"], recursive: [] },
       { path: "src/locale.ts", directories: ["src/plugins"], recursive: [] },
       { path: "src/registry.ts", directories: ["src/plugins"], recursive: [] },
       { path: "src/rooted.ts", directories: ["src/plugins"], recursive: [] },
       { path: "src/sub/up.ts", directories: ["src/plugins"], recursive: [] },
+      { path: "src/subpath.ts", directories: ["src/plugins"], recursive: [] },
+      // The worktree root (review B1).
+      { path: "src/top.ts", directories: [""], recursive: [] },
+      { path: "src/view/list.tsx", directories: ["src/plugins"], recursive: [] },
     ]);
   });
 });
