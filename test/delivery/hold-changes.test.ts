@@ -73,7 +73,7 @@ async function live() {
   const repo = mergeRepo();
   const side = holdSide(repo);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.rest();
   const delivery = createDelivery(side.store, { status: fixedStatus() });
   const consumer = async (sessionId: string): Promise<Consumer> => {
     const c: Consumer = { worktreeId: side.worktreeId, sessionId, agentId: "main" };
@@ -179,7 +179,7 @@ describe("delivery: overlapping holds (review 0.1.269, B2)", { timeout: 60_000 }
     const self = processOf(process.pid);
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.rest();
     expect(heldPaths(side)).toEqual([HELPER]);
     expect(await told(c)).toEqual([expect.stringMatching(MERGE_STARTED)]);
 

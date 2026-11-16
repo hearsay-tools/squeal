@@ -58,7 +58,7 @@ async function start(repo: ReturnType<typeof createRepo>) {
   };
   try {
     await loop.start();
-    await loop.scheduler.idle();
+    await loop.scheduler.rest();
     code.nudge();
     await code.idle();
   } catch (error) {

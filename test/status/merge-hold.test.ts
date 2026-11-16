@@ -45,10 +45,10 @@ async function heldSide(more = 0) {
   const extra = more === 0 ? [] : conflictMore(repo.main, more);
   const side = holdSide(repo, repo.main, FILES);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.rest();
   expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
   await batch(side, HELPER, ...extra);
-  await side.scheduler.idle();
+  await side.rest();
   await expect.poll(() => heldPaths(side)?.length ?? 0).toBe(Math.min(50, 1 + more));
   return { repo, side, extra };
 }

@@ -93,7 +93,7 @@ describe("a named wait on a source names a narrow run of every reader it leaves 
     });
     await inTurn(side);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.rest();
     // The CLI resolves each word against its directory, here the worktree's top level.
     const root = side.root as AbsolutePath;
     const rel = given.map((path) => worktreePath(root, root, path) as RelativePath);
