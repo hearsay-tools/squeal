@@ -130,3 +130,16 @@ The human, 2026-11-12: "2: why 150 files are left out". squawk's merge-group run
 4. Recommend a row or none.
 
 Findings to `research/left-out-files.md`; probes under `research/probes/left-out-files/`. Read-only on GitHub; no runs, no comments.
+
+## Topic: results-at-commit (2026-11-16, no row yet)
+
+The human, 2026-11-16: an agent wants to compare test results before and after a change by asking Squeal for the results at a commit, to learn which checks have no result there, and maybe to have Squeal run those. Results are stored by content key (`results`, PRIMARY KEY `(check_id, key)`); `commit_sha` and `dirty` are labels only, and an unchanged test is reused across commits without a new row. The human asked: "do we need the checkout if we already have the hash stored?"
+
+1. With the stores of this host (read-only, as live-saving does), measure what `WHERE commit_sha = X` returns for recent main commits against the test files that exist at X. Name each reason the two differ: reused rows, overwritten rows, dirty rows, pruning.
+2. Can the keys at a commit be computed from git objects alone (`git cat-file`, no files written), including closures and the environment hash? Name each key input that needs files on disk or a run.
+3. Alternative: record each clean revision's test-file keys by commit (`test_file_keys` keeps only the current one). The cost in rows and bytes per commit, and what it answers for commits no daemon saw.
+4. Reuse rate: for pairs of commits 1, 10 and 50 main commits apart, the share of test-file keys that match. Lockfile and Node changes are the expected breaks; count them.
+5. Where `squeal code --base` (spec 020 D3, D11.7) and CI's `refs/squeal/<sha>` already cover this, and the smallest command shape that answers "results at X, missing at X, run the missing".
+6. Recommend: lookup by label, computed keys, a key history, or none; with the numbers.
+
+Findings to `research/results-at-commit.md`; probes under `research/probes/results-at-commit/`. Nothing written outside your `$TMPDIR` and this folder; no daemon started in another checkout; no product code.
