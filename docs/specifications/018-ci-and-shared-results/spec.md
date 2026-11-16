@@ -59,7 +59,7 @@ One gzipped JSON file, `format: "squeal-results/1"`:
 
 What is exported: for each test file whose key in this worktree is computed and not pending, the results at exactly that key, when every check of the file at that key passed or was skipped. A file with any failure at its key is left out whole. A file without a current key is left out and counted.
 
-Never in the file: failure text, run logs, environment values, absolute paths, the worktree id, the user, HOME. Export checks every path it writes is relative and refuses otherwise. The export reads the store only and needs no daemon, but it needs keys the daemon has computed; with none it says so and writes nothing.
+Never in the file: failure text, run logs, environment values, absolute paths, the worktree id, the user, HOME. Export checks every path it writes is relative. A test file whose own entries (its path, closure, observed entries or result locations) hold an absolute path is left out, named with that path and counted; an absolute path in a project's shared entries (start-up paths, environment files) refuses the export (2026-11-16, #228, row 018-46). The export reads the store only and needs no daemon, but it needs keys the daemon has computed; with none it says so and writes nothing.
 
 `squeal export [--out <file>]` (default `squeal-results-<commit8>.json.gz` in the working directory) prints the counts: test files exported, results, files left out by reason (no current key, a failure at the key).
 
