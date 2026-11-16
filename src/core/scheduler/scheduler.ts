@@ -12,7 +12,7 @@ import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
 import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
-import type { SyncAnswer } from "../types/daemon.js";
+import { daemonIncarnation, type SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
   type ClosureIndex,
@@ -117,7 +117,9 @@ class TierScheduler implements Scheduler {
    */
   readonly #clock: Clock;
   /** Row 011-377: the calendar steps `#clock` saw; each is told to `#shift`. */
-  readonly #steps = new CalendarSteps();
+  readonly #steps = new CalendarSteps(() => this.#daemonStartedAt());
+  /** The start this scheduler's daemon stored on the worktree, once found (`#daemonStartedAt`). */
+  #startedAt: EpochMs | null = null;
   readonly #now = (): EpochMs => this.#clock.now();
   /** Row 011-352: the one timer, at the earliest wake an owner states; the rest signal's counts. */
   readonly #wakes: Wakes;
@@ -165,7 +167,7 @@ class TierScheduler implements Scheduler {
    * edit's catch-up (C4 step 5, rows 011-82 and 011-153).
    */
   readonly #quiet = new BacklogQuiet((ends, at, catchUp) =>
-    publishQuiet(this.options.store, this.options.worktreeId, ends, at, catchUp),
+    publishQuiet(this.options.store, this.options.worktreeId, ends, this.#steps.stamp(at), catchUp),
   );
   /** The events of the step queued under the lock, not run yet (rows 011-54, 011-107, 011-356). */
   readonly #queued: SchedulerEvent[] = [];
@@ -364,6 +366,7 @@ class TierScheduler implements Scheduler {
       inFlight: this.#inFlight,
       runtimeDir: options.runtimeDir,
       now: this.#now,
+      stepsTotal: () => this.#steps.total,
       started: () => this.#started(),
       admit: (at) => this.#admit(at),
       stalled: () => this.#stalled,
@@ -1161,7 +1164,7 @@ class TierScheduler implements Scheduler {
           if (decided.wake.kind === "end") break;
           // The reads stay for the next step only when this one asked for them.
           if (decided.wake.kind !== "reads") reads = {};
-          const waiting = this.#waitFor(decided.wake);
+          const waiting = this.#waitFor(decided.wake, decided.mark ?? this.#steps.total);
           if (waiting !== null) await waiting;
         }
       } catch (error) {
@@ -1190,7 +1193,7 @@ class TierScheduler implements Scheduler {
    * The wait the step's next wake names: an event, a time or the claims
    * window; `null` to step again at once, with no wait in between.
    */
-  #waitFor(wake: NextWake): Promise<void> | null {
+  #waitFor(wake: NextWake, mark: number): Promise<void> | null {
     switch (wake.kind) {
       case "reads":
       case "again":
@@ -1199,9 +1202,9 @@ class TierScheduler implements Scheduler {
       case "event":
         return this.#nextEvent();
       case "at":
-        return this.#eventOrAt(wake.at);
+        return this.#eventOrAt(wake.at, mark);
       case "claims":
-        return this.#claimWake(wake.at);
+        return this.#claimWake(wake.at, mark);
       case "turn":
         throw new Error("squeal scheduler: a pump step ended as one inside another turn");
       default:
@@ -1390,9 +1393,11 @@ class TierScheduler implements Scheduler {
    * `CLAIM_RECHECK_MS`, never in a tight loop. The claims owner polls the
    * store's marker at its wake (row 011-352).
    */
-  async #claimWake(at: EpochMs): Promise<void> {
+  async #claimWake(at: EpochMs, mark: number): Promise<void> {
     const { context } = this.#started();
-    this.#claimWindow = claimWindow(context.store, at);
+    // Review 0.1.524 B2: a reading first, then the step's `at` moved by the steps since the step read it.
+    this.#now();
+    this.#claimWindow = claimWindow(context.store, this.#steps.since(at, mark));
     this.#claimsWake.after(CLAIM_POLL_MS);
     try {
       await this.#nextEvent();
@@ -1423,6 +1428,20 @@ class TierScheduler implements Scheduler {
     this.#yields.shift(ms);
   }
 
+  /**
+   * Review 0.1.524 B1: the start this scheduler's daemon stored on the
+   * worktree, found by its incarnation, so a predecessor's or a successor's
+   * record is never taken for it; `null` while none matches, or with no
+   * incarnation (a scheduler outside a daemon).
+   */
+  #daemonStartedAt(): EpochMs | null {
+    if (this.#startedAt !== null || this.options.incarnation === undefined) return this.#startedAt;
+    const record = this.options.store.worktrees.get(this.options.worktreeId)?.daemon ?? null;
+    if (record !== null && daemonIncarnation(record) === this.options.incarnation)
+      this.#startedAt = record.startedAt;
+    return this.#startedAt;
+  }
+
   /** The claims owner's wake: an event when the store moved or the window passed; else the next poll. */
   #claimPoll(at: EpochMs): void {
     const window = this.#claimWindow;
@@ -1434,9 +1453,12 @@ class TierScheduler implements Scheduler {
   }
 
   /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
-  async #eventOrAt(at: EpochMs): Promise<void> {
+  async #eventOrAt(at: EpochMs, mark: number): Promise<void> {
     // Row 011-369: `at` is a calendar time (a quiet end, a deadline): the wake is the delay to it.
-    this.#pumpWake.after(at - this.#now());
+    // Review 0.1.524 B2: the reading first; `at` is moved by the steps since the step read it (`mark`),
+    // so a step between the decision and here adds nothing to the delay.
+    const now = this.#now();
+    this.#pumpWake.after(this.#steps.since(at, mark) - now);
     try {
       await this.#nextEvent();
     } finally {

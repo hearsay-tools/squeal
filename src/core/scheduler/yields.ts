@@ -210,8 +210,13 @@ export class TierYields implements CutFiles {
    */
   #arm(context: SchedulerContext): void {
     this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
-    if (this.#bounds.size === 0) this.#wake.clear();
-    else this.#wake.after(Math.min(...this.#bounds.values()) - context.now());
+    if (this.#bounds.size === 0) {
+      this.#wake.clear();
+      return;
+    }
+    // Review 0.1.524 B2: the reading first: a calendar step it sees moves the bounds before they are read.
+    const now = context.now();
+    this.#wake.after(Math.min(...this.#bounds.values()) - now);
   }
 
   #disarm(): void {

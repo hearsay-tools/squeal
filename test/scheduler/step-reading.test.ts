@@ -40,7 +40,8 @@ const OWN_READS: Readonly<Record<string, RegExp>> = {
   // The lock's label for a lock watcher: when the turn's operation began.
   "lock label": /^Mutex\.relabel\b/,
   // The wake loop's bookkeeping: a wake's arm, the runner part's bound, the slow release's arm.
-  "wake bookkeeping": /^(Wakes\.|RunnerPartBound\.|SlowRelease\.#decide < SlowRelease\.arm\b)/,
+  // Review 0.1.524 B2: the slow release's arm reads once, itself, for its decision and its delay.
+  "wake bookkeeping": /^(Wakes\.|RunnerPartBound\.|SlowRelease\.arm < StepLive\.step\b)/,
 };
 
 /**

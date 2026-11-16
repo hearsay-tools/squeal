@@ -134,9 +134,12 @@ export class SlowRelease {
   /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
   arm(): void {
     if (this.host.closed()) return;
-    const { wakeAt } = this.#decide();
     // Row 011-369: the bound is a calendar time (a lane's stamped end): the wake is the delay to it.
-    if (wakeAt !== null) this.#wake.within(wakeAt - this.host.now());
+    // Review 0.1.524 B2: one reading, taken before the ends are read, decides and gives the delay,
+    // so a calendar step it sees has moved the ends first and adds nothing to the delay.
+    const at = this.host.now();
+    const { wakeAt } = this.#decide(at);
+    if (wakeAt !== null) this.#wake.within(wakeAt - at);
   }
 
   close(): void {

@@ -20,6 +20,15 @@ import type { Clock, Disarm, ElapsedMs } from "./clock.js";
  */
 export const CALENDAR_STEP_MS = 100;
 
+/**
+ * Review 0.1.524 S1: the widest span of elapsed time around a calendar
+ * reading that still gives a sure sample. A thread descheduled between the
+ * readings moves elapsed time and the calendar together; with the calendar
+ * read between two elapsed readings, the offset is known to half the span,
+ * so two sure samples differ by less than `CALENDAR_STEP_MS` without a step.
+ */
+export const SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
+
 /** The calendar steps one scheduler's clock saw, and the owners it tells. */
 export class CalendarSteps {
   /** `calendar - elapsed` as of the last step; `null` before the first reading. */
@@ -28,6 +37,12 @@ export class CalendarSteps {
   readonly #listeners = new Set<(ms: number, at: EpochMs) => void>();
   /** What `local` saw first, by kind: the stamp's id and `total` then. */
   readonly #seen = new Map<string, { readonly id: string; readonly mark: number }>();
+
+  /**
+   * `startedAt`: the start this daemon stored on its worktree, `null` while
+   * it is not known (review 0.1.524 B1, `stamp`).
+   */
+  constructor(private readonly startedAt: () => EpochMs | null = () => null) {}
 
   /** The sum of the steps seen: a stamp kept from before a step is behind by the steps after it. */
   get total(): number {
@@ -43,9 +58,15 @@ export class CalendarSteps {
     return () => this.#listeners.delete(shift);
   }
 
-  /** A pair of readings: a step since the last one is told to each listener before this returns. */
-  observe(calendar: EpochMs, elapsed: number): void {
-    const offset = calendar - elapsed;
+  /**
+   * A calendar reading taken between the elapsed readings `before` and
+   * `after`: a step since the last sample is told to each listener before
+   * this returns. A sample whose span is wider than `SURE_SAMPLE_MS` is
+   * not sure and is left out (review 0.1.524 S1).
+   */
+  observe(calendar: EpochMs, before: number, after: number = before): void {
+    if (after - before > SURE_SAMPLE_MS) return;
+    const offset = calendar - (before + after) / 2;
     if (this.#offset === null) {
       this.#offset = offset;
       return;
@@ -71,6 +92,18 @@ export class CalendarSteps {
     return (stamp + this.#total - seen.mark) as EpochMs;
   }
 
+  /**
+   * Review 0.1.524 B1: the time to stamp a row this daemon publishes for
+   * status, read at `at`: `at`, but never before this daemon's stored start.
+   * A reader takes a row stamped before the live daemon's start as a
+   * predecessor's (`publishedWaits`, `publishedBatches`); after a set-back
+   * past its start, the live daemon's rows show its start instead.
+   */
+  stamp(at: EpochMs): EpochMs {
+    const startedAt = this.startedAt();
+    return startedAt === null ? at : (Math.max(at, startedAt) as EpochMs);
+  }
+
   /** `stamp`, taken when `total` was `mark`, in today's calendar. */
   since(stamp: EpochMs, mark: number): EpochMs {
     return (stamp + this.#total - mark) as EpochMs;
@@ -94,8 +127,10 @@ class SteppedClock implements Clock {
   ) {}
 
   readonly now = (): EpochMs => {
+    // The calendar between two elapsed readings: their span bounds a pause (review 0.1.524 S1).
+    const before = this.clock.elapsed();
     const at = this.clock.now();
-    this.steps.observe(at, this.clock.elapsed());
+    this.steps.observe(at, before, this.clock.elapsed());
     return at;
   };
 

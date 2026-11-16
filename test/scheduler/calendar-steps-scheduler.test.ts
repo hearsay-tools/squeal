@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
+import { type VirtualClock, virtualClock } from "../helpers/virtual-clock.js";
 import {
   backlogRuns,
   backlogStarts,
@@ -44,4 +45,61 @@ describe("a calendar step during a lane's quiet (row 011-377)", { timeout: 120_0
       await settle(side);
     },
   );
+});
+
+/**
+ * Review 0.1.524 B2: a prompt virtual clock whose calendar steps `shift`
+ * once, on the first reading taken inside a frame named `frame` after
+ * `trigger()`: a step between the pump's decision and its wake's delay.
+ */
+function stepInside(frame: string, shift: number) {
+  const inner = virtualClock(Date.now(), { prompt: true });
+  let waiting = false;
+  const clock: VirtualClock = {
+    now: () => {
+      if (waiting && (new Error().stack ?? "").includes(frame)) {
+        waiting = false;
+        inner.shiftCalendar(shift);
+      }
+      return inner.now();
+    },
+    elapsed: () => inner.elapsed(),
+    arm: (ms, fire) => inner.arm(ms, fire),
+    advance: (ms) => inner.advance(ms),
+    jump: (ms) => inner.jump(ms),
+    shiftCalendar: (ms) => inner.shiftCalendar(ms),
+    get armed() {
+      return inner.armed;
+    },
+  };
+  return {
+    clock,
+    trigger: () => {
+      waiting = true;
+    },
+    stepped: () => !waiting,
+  };
+}
+
+describe("a calendar step between the pump's decision and its wake (review 0.1.524 B2)", {
+  timeout: 120_000,
+}, () => {
+  it("a set-back 1 h inside the pump's wait adds nothing: the backlog starts 20 s after the cancel", async () => {
+    const stepping = stepInside("#eventOrAt", -HOUR);
+    const quiet = await quietSide([], { clock: stepping.clock });
+    const { side } = quiet;
+    const gate = holdBacklog(side.runner);
+    const after = await cancelBacklog(quiet);
+    stepping.trigger();
+    quiet.advance(1_000);
+    await settle(side);
+    expect(stepping.stepped()).toBe(true);
+    quiet.advance(BACKLOG_QUIET_MS - 2_000);
+    await settle(side);
+    expect(backlogRuns(side, after)).toEqual([]);
+    quiet.advance(1_000);
+    await backlogStarts(side, after);
+    gate.stop();
+    await settle(side);
+  });
 });
