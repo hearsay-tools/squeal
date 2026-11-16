@@ -50,7 +50,7 @@ describe("a path only another branch has (011-158)", SLOW, () => {
     const a = side(first, { count: 1, policy: RUN_MISSING });
     const aResolved = resolving(a);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.ran(F0)).toBe(1);
     const key = a.keyOf(F0);
     expect(key).toEqual(expect.any(String));
@@ -62,7 +62,7 @@ describe("a path only another branch has (011-158)", SLOW, () => {
     const c = side(third, { count: 1, policy: RUN_MISSING });
     resolving(c);
     await c.scheduler.start();
-    await c.scheduler.idle();
+    await c.quiet();
     expect(c.runner.ran(F0)).toBe(1);
     expect(c.keyOf(F0)).not.toBe(key);
     new ObservedSets(c.store).add(REF, [FOCUS]);
@@ -72,7 +72,7 @@ describe("a path only another branch has (011-158)", SLOW, () => {
     const b = side(second, { count: 1 });
     const bResolved = resolving(b);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs).toEqual([]);
     expect(b.keyOf(F0)).toBe(key);
     expect(b.passing()).toBe(1);
@@ -81,7 +81,7 @@ describe("a path only another branch has (011-158)", SLOW, () => {
     // Added where the closure names it: the reverse index re-keys F0, and it runs.
     add(second);
     await b.batch(FOCUS);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.keyOf(F0)).not.toBe(key);
     expect(b.runner.ran(F0)).toBe(1);
 
@@ -89,7 +89,7 @@ describe("a path only another branch has (011-158)", SLOW, () => {
     const asked = aResolved();
     add(first);
     await a.batch(FOCUS);
-    await a.scheduler.idle();
+    await a.quiet();
     expect(aResolved()).toBeGreaterThan(asked);
     expect(a.keyOf(F0)).not.toBe(key);
     // At b's content again: the pass b's run stored stands here.

@@ -56,14 +56,14 @@ async function started(
     policy: { ...RUN_MISSING, ...policy },
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return { root: repo.main, other: repo.other, side };
 }
 
 /** Edits `paths` as a watch batch and waits for their runs. */
 async function edit(side: CatchUpSide, ...paths: string[]): Promise<void> {
   await side.edit("watch", ...paths);
-  await side.scheduler.idle();
+  await side.quiet();
 }
 
 /** Hands the scheduler one watch batch of `paths`, as the change feed would, with no edit. */
@@ -247,7 +247,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     rmSync(join(root, B));
     side.runner.testFiles = async () => [{ project: "", path: A }];
     await watch(side, B);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.store.testFileKeys.list(side.worktreeId).map((r) => r.testFile.path)).toEqual([A]);
     git(root, ["commit", "-qm", "b deleted here only", "--allow-empty"]);
     const report = await reportedOnce(side, head(root));
@@ -275,7 +275,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     expect(git(root, ["status", "--porcelain"])).toBe("");
     await edit(side, "src/a.ts");
     await watch(side, bat, ".gitattributes");
-    await side.scheduler.idle();
+    await side.quiet();
     git(root, ["commit", "-qam", "a"]);
     const report = await reportedOnce(side, head(root));
     expect(counts(report)).toEqual(clean());
@@ -284,7 +284,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     // An edit of the converted file left unstaged still makes its reader not determined.
     appendFileSync(join(root, bat), "rem\r\n");
     await watch(side, bat);
-    await side.scheduler.idle();
+    await side.quiet();
     git(root, ["commit", "-qm", "bat unstaged", "--allow-empty"]);
     expect(counts(await reportedOnce(side, head(root)))).toMatchObject({
       notDetermined: 1,
@@ -374,7 +374,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     expect(counts(reports(side)[0])).toEqual(clean());
     expect(side.runner.runs.length).toBe(runs);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
   });
 
   it("a commit under core.hooksPath, or with --no-verify, is reported; Squeal installs no hook", async () => {

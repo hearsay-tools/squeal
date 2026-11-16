@@ -58,14 +58,14 @@ describe("the handover after the first lookup's commit (011-227)", SLOW, () => {
     const p = side(other, { count: 3, policy: RUN_MISSING, rerunCap: 0 });
     wire(p);
     await p.scheduler.start();
-    await p.scheduler.idle();
+    await p.quiet();
     edit(other, S, M);
     await p.batch(S, M);
-    await p.scheduler.idle();
+    await p.quiet();
     const r1 = latest(p);
     edit(other, T, U);
     await p.batch(T, U);
-    await p.scheduler.idle();
+    await p.quiet();
     const r2 = latest(p);
     expect(r2).toBeGreaterThan(r1);
     p.stopBeat();
@@ -95,13 +95,13 @@ describe("the handover after the first lookup's commit (011-227)", SLOW, () => {
     wire(c, "2");
     c.runner.testFiles = async () => [{ project: "", path: H }];
     await c.scheduler.start();
-    await c.scheduler.idle();
+    await c.quiet();
     expect(c.runner.ran(H)).toBe(1);
 
     const b = side(other, { count: 3, policy: LOOKUP_ONLY, rerunCap: 0, tierSize: 1 });
     wire(b, "2");
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
 
     expect(b.keyOf(H)).toBe(c.keyOf(H));
     expect(b.runner.ran(H)).toBe(0);

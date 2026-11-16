@@ -85,7 +85,7 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     const race = racing(() => a, new Set(all));
     const b = side(other, { count: COUNT, wrap: race.wrap, policy: RUN_MISSING });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(race.recorded).toEqual(all);
     expect(b.runner.runs).toEqual([]);
     expect(race.counts.starts).toBe(0);
@@ -101,7 +101,7 @@ describe("claims: a key recorded between selection and start (review wave 13o, B
     const race = racing(() => a, finishing);
     const b = side(other, { count: COUNT, wrap: race.wrap, policy: RUN_MISSING });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(race.recorded).toEqual([...finishing]);
     expect(b.runner.runs.map((files) => files.map((f) => f.path))).toEqual([all.slice(2)]);
     expect(race.counts.starts).toBe(1);

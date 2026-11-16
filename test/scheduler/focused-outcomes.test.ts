@@ -49,10 +49,10 @@ describe("a focused run of more than 50 selected checks (review 0.1.286 B2)", {
       },
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
 
     await focus(side, [FILE], ["runs"], 60_000);
-    await side.scheduler.idle();
+    await side.quiet();
 
     const [row] = focusedRows(side);
     expect(row).toMatchObject({ end: "completed", matched: 51, more: 1 });

@@ -56,7 +56,7 @@ async function reading(
     return { ...report, observed };
   };
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return { repo, side };
 }
 

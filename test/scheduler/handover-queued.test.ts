@@ -47,11 +47,11 @@ async function heldThenStopped(
     policy: RUN_MISSING,
   });
   await first.scheduler.start();
-  await first.scheduler.idle();
+  await first.quiet();
   await first.scheduler.close();
   const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, backlogTierSize: 4, policy });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   side.runner.hold();
   for (const paths of edits) await side.edit("watch", ...paths);
   await expect.poll(() => side.runner.active).toBeGreaterThan(0);
@@ -73,7 +73,7 @@ async function successor(
   next.runner.environment = async () =>
     (await environment()).map((env) => ({ ...env, adapterVersion }));
   await next.scheduler.start();
-  await next.scheduler.idle();
+  await next.quiet();
   return next;
 }
 

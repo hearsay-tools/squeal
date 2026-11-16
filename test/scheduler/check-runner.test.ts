@@ -43,7 +43,7 @@ describe("scheduler: each worktree's project runners (spec 016 D3)", { timeout: 
     const side = sideOf(files);
     side.runner.failing.add(files[1]?.path ?? "");
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     await side.scheduler.close();
     expect(side.store.checks.runnersOf(side.worktreeId)).toEqual(new Map([["", "catch-up"]]));
   });
@@ -66,7 +66,7 @@ describe("scheduler: each worktree's project runners (spec 016 D3)", { timeout: 
       },
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     await side.scheduler.close();
     const setup: SetupCheckId = { kind: "setup", project: "", testPath: "setup.ts" };
     expect(side.store.knownStates.list(side.worktreeId).map((s) => s.check)).toContainEqual(setup);
@@ -80,7 +80,7 @@ describe("scheduler: each worktree's project runners (spec 016 D3)", { timeout: 
     const other = catchUpSide(repo, repo.other, { files, hostSlots: 4 });
     main.runner.failing.add(files[1]?.path ?? "");
     await main.scheduler.start();
-    await main.scheduler.idle();
+    await main.quiet();
     // Its one run confirming the inherited failure (001 D6, 011 C4 step 3) never ends.
     other.runner.hold();
     await other.scheduler.start();
@@ -105,14 +105,14 @@ describe("scheduler: each worktree's project runners (spec 016 D3)", { timeout: 
     asVitest(older);
     older.runner.failing.add(failing);
     await older.scheduler.start();
-    await older.scheduler.idle();
+    await older.quiet();
     await older.scheduler.close();
     older.store.meta.delete(worktreeMetaKey("runners", older.worktreeId));
 
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     asVitest(side);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runs).toHaveLength(0);
     expect(side.store.checks.runnersOf(side.worktreeId)).toEqual(new Map([["", "vitest"]]));
 

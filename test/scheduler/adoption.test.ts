@@ -52,7 +52,7 @@ async function twoWorktrees() {
   const a = side(main, { count: COUNT, policy: LOOKUP_ONLY, rerunCap: 0 });
   const b = side(other, { count: COUNT, policy: LOOKUP_ONLY });
   await Promise.all([a.scheduler.start(), b.scheduler.start()]);
-  await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
+  await Promise.all([a.quiet(), b.quiet()]);
   expect(current(a)).toEqual([]);
   expect(current(b)).toEqual([]);
   for (const path of all) expect(b.keyOf(path)).toBe(a.keyOf(path));
@@ -63,11 +63,11 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
   it("1. after the first's run --all, the second's files are current within one pass, inherited, with no run", async () => {
     const { a, b } = await twoWorktrees();
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.passing()).toBe(COUNT);
 
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs).toEqual([]);
     expect(b.passing()).toBe(COUNT);
     const head = git(a.root, ["rev-parse", "HEAD"]).trim();
@@ -81,7 +81,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     const { main, other } = claimRepo(COUNT);
     const a = side(main, { count: COUNT, policy: LOOKUP_ONLY });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const store = a.store;
     const worktreeId = worktreeIdFor(other);
     const runner = new FakeRunner(all.map((path) => ({ project: "", path })));
@@ -100,7 +100,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     });
     try {
       await loop.start();
-      await loop.scheduler.idle();
+      await loop.scheduler.rest();
       const passing = () =>
         store.knownStates
           .list(worktreeId)
@@ -110,7 +110,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
       expect(passing()).toBe(0);
 
       await a.scheduler.requestFullSuite();
-      await a.scheduler.idle();
+      await a.quiet();
       await expect.poll(passing, { timeout: 10_000 }).toBe(COUNT);
       expect(runner.runs).toEqual([]);
       expect(errors).toEqual([]);
@@ -123,7 +123,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     const { a, b } = await twoWorktrees();
     a.runner.failing.add(F0);
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
 
     // Row 011-159: lookup-only queues no miss but this one, which only a local run confirms or clears.
     b.runner.failing.add(F0);
@@ -142,14 +142,14 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     expect(formatWhy(why)).toContain("being confirmed");
 
     b.runner.release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
     const own = current(b).find((state) => state.check.testPath === F0);
     expect(own).toMatchObject({ outcome: "fail", origin: { kind: "own" } });
 
     // Confirmed: passes later run it no more.
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.ran(F0)).toBe(1);
     expect(b.phase(F0)).toBeNull();
   });
@@ -159,7 +159,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     const last = fileName(COUNT - 1);
     const a = side(main, { count: COUNT, policy: LOOKUP_ONLY, rerunCap: 0 });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     // b runs one file at a time and holds its first, edited here so no claim joins a's run to it:
     // the other five wait queued.
     appendFileSync(join(other, F0), "// b's edit\n");
@@ -171,7 +171,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
 
     a.runner.failing.add(last);
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
     await pass(b);
     // While b's first tier still runs: the passes are current, the held fail queued.
     expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
@@ -179,7 +179,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     expect(b.phase(last)).toBe("queued");
 
     b.runner.release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.ran(last)).toBe(1);
     expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0, last]);
   });
@@ -189,9 +189,9 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     a.runner.failing.add(F0);
     b.runner.failing.add(F0);
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.passing()).toBe(COUNT - 1);
     // The held fail ran once and b's own fail confirmed it (row 011-159).
     expect(b.runner.runs.flat().map((f) => f.path)).toEqual([F0]);
@@ -200,7 +200,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     appendFileSync(join(a.root, fileName(1)), "// a's edit\n");
     await a.batch(fileName(1));
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.keyOf(fileName(1))).not.toBe(b.keyOf(fileName(1)));
 
     setBusyTimeout(b.store, 50);
@@ -208,7 +208,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     try {
       // Within the overlap: the keys read before, the confirmed fail's among them, and a's new one.
       await pass(b);
-      await b.scheduler.idle();
+      await b.quiet();
     } finally {
       release();
     }
@@ -220,14 +220,14 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     const { a, b } = await twoWorktrees();
     const before = Date.now();
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     const key = b.keyOf(F0) ?? null;
     expect(key).not.toBeNull();
 
     // Its transaction took its time before b's read and committed after it.
     storedAt(a.store, a.worktreeId, F0, key as CheckKey, before - STORED_KEYS_OVERLAP_MS / 2);
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs).toEqual([]);
     expect(current(b).map((state) => state.check.testPath)).toEqual([F0]);
   });
@@ -238,7 +238,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
   ])("5. a pass a busy store stopped at %s adopts on the next (001-422)", async (_, at) => {
     const { a, b } = await twoWorktrees();
     await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
 
     if (at === "lookup") {
       setBusyTimeout(b.store, 50);
@@ -265,7 +265,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     expect(b.passing()).toBe(0);
 
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs).toEqual([]);
     expect(b.passing()).toBe(COUNT);
   });

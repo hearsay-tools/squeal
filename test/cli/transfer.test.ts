@@ -52,7 +52,7 @@ async function exported(): Promise<{ file: string; commit: string; text: string 
   const a = side(main, { count: COUNT, policy: LOOKUP_ONLY });
   await a.scheduler.start();
   await a.scheduler.requestFullSuite();
-  await a.scheduler.idle();
+  await a.quiet();
   const run = io(main);
   expect(await exportCommand(["--out", "results.json.gz"], run)).toBe(0);
   return {
@@ -77,7 +77,7 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
 
     const b = side(main, { count: COUNT, policy: LOOKUP_ONLY });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runner.runs).toEqual([]);
     const status = formatStatus(readStatus(main), Date.now(), "squeal", { full: true });
     expect(status).toContain(
@@ -98,12 +98,12 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     const { main } = claimRepo(COUNT);
     const b = side(main, { count: COUNT, policy: LOOKUP_ONLY });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     const run = io(main);
     expect(await importCommand([file], run)).toBe(0);
     expect(run.out.join("")).toContain("\nEnvironment: equal to this worktree's\n");
     await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.passing()).toBe(COUNT);
   });
 
@@ -114,10 +114,10 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     b.runner.failing.add(fileName(0));
     await b.scheduler.start();
     await b.scheduler.requestFullSuite();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(await importCommand([file], io(main))).toBe(0);
     await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await b.scheduler.idle();
+    await b.quiet();
     const snapshot = readStatus(main);
     expect(snapshot).toMatchObject({
       imports: [

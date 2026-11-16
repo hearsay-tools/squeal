@@ -122,10 +122,10 @@ async function onHold(checkpoint = false) {
   const repo = mergeRepo();
   const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
   await batch(side, HELPER);
-  await side.scheduler.idle();
+  await side.quiet();
   expect(heldPaths(side)).toEqual([HELPER]);
   const answer = checkpoint ? await checkpointAnswer(side) : null;
   await standIn(side, answer === null ? {} : { "run-all": [answer], "run-all-status": [answer] });
@@ -190,7 +190,7 @@ describe("waits on hold (row 011-73)", { timeout: 60_000 }, () => {
     // The resolved write holds too (R1); `git add` alone ends the hold, with no revision.
     writeFileSync(join(repo.main, HELPER), helperReturning(4));
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(heldPaths(side)).toEqual([HELPER]);
     const revision = side.scheduler.status().revision as RevisionNumber;
     git(repo.main, ["add", HELPER]);

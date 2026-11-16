@@ -35,7 +35,7 @@ async function started(files: CatchUpFile[], tierSize?: number) {
   const repo = catchUpRepo(files);
   const side = catchUpSide(repo, repo.main, options(files, tierSize));
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return { repo, side };
 }
 
@@ -66,7 +66,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     // The runner lists them from the next listing on.
     files.push(...more);
     await side.edit("watch", ...more.map((f) => f.path));
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, before);
     expect(runs.flatMap((r) => r.paths).sort()).toEqual(more.map((f) => f.path));
     expect(runs.every((r) => r.granted)).toBe(true);
@@ -79,7 +79,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     const more = added(6);
     files.push(...more);
     await side.edit("watch", ...files.map((f) => f.path));
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, before);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(12);
     expect(runs.every((r) => r.granted)).toBe(true);
@@ -90,7 +90,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     const { side } = await started(files);
     const before = side.runner.runs.length;
     await side.edit("watch", ...TWELVE.slice(0, 9), "a.md", "b.md", "c.md");
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, before);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(18);
     expect(runs.every((r) => !r.granted && r.paths.length <= 4)).toBe(true);
@@ -107,11 +107,11 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
       throw new Error("no environment");
     };
     await side.edit("watch", "config.json");
-    await side.scheduler.idle();
+    await side.quiet();
     side.runner.environment = environment;
     const before = side.runner.runs.length;
     await side.edit("watch", ...edited);
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, before);
     // Every file was blocked: all 24 run, those the revision reached in its group.
     expect(runs.flatMap((r) => r.paths)).toHaveLength(24);
@@ -142,7 +142,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     }
     const next = catchUpSide(repo, repo.main, options(files));
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     const reached = (sourcesOf: readonly string[]) =>
       new Set(files.filter((f) => sourcesOf.includes(f.imports[0] ?? "")).map((f) => f.path));
     return { runs: runsAfter(next.runner.runs, 0), reached };
@@ -180,7 +180,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     expect(side.runner.runs).toHaveLength(0);
     mkdirSync(join(repo.main, "node_modules"));
     await side.edit("watch", "node_modules/.package-lock.json");
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, 0);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(24);
     expect(runs.every((r) => !r.granted && r.paths.length <= 4)).toBe(true);
@@ -216,7 +216,7 @@ describe("scheduler: catch-up counts one revision's keyed paths (review wave 5)"
     files.push(...more);
     await side.edit("watch", target.path, ...more.map((f) => f.path));
     release();
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = runsAfter(side.runner.runs, before);
     expect(runs.flatMap((r) => r.paths)).toHaveLength(12);
     const ran = (path: string) => runs.find((r) => r.paths.includes(path));

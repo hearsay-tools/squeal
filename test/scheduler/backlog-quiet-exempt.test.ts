@@ -46,12 +46,12 @@ describe("what the wait for quiet leaves alone (row 011-94)", { timeout: 120_000
         timeout: START_WITHIN_MS,
       })
       .toBe(true);
-    await side.scheduler.idle();
+    await side.quiet();
 
     base = side.runner.runs.length;
     await side.edit("watch", ...BACKLOG_SOURCES);
     await backlogStarts(side, base);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(BACKLOG.every((f) => side.current(f.path))).toBe(true);
     expect(noWait(quiet)).toBe(true);
   });

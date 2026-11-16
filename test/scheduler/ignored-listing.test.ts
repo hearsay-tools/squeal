@@ -73,7 +73,7 @@ async function settle(repo: CatchUpRepo, root: string, failing = false, writes =
   const side = open(repo, root, { writes });
   if (failing) side.runner.failing.add(A);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const runs = side.runner.runsOf(A).length;
   const current = side.current(A);
   await side.scheduler.close();
@@ -123,15 +123,15 @@ describe("scheduler: a git-ignored directory's listing (row 016-23)", SLOW, () =
     // file, reads the names again, and the file runs once, with no restart.
     const a = open(repo, repo.main);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A)).toHaveLength(0);
     list(repo.main, "b.json");
     await a.edit("watch", NOTES);
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A)).toHaveLength(1);
     expect(a.current(A)).toBe(true);
     await a.edit("watch", NOTES);
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A)).toHaveLength(1);
     await a.scheduler.close();
 
@@ -147,12 +147,12 @@ describe("scheduler: a git-ignored directory's listing (row 016-23)", SLOW, () =
     // name is not a change a revision finds.
     const a = open(repo, repo.main, { writes: true });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A)).toHaveLength(2);
     expect(a.current(A)).toBe(true);
     for (let i = 0; i < 3; i++) {
       await a.edit("watch", NOTES);
-      await a.scheduler.idle();
+      await a.quiet();
     }
     expect(a.runner.runsOf(A)).toHaveLength(2);
     expect(a.current(A)).toBe(true);
@@ -170,13 +170,13 @@ describe("scheduler: a git-ignored directory's listing (row 016-23)", SLOW, () =
       files: [...FILES, { path: B, ms: 100, imports: [] }],
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const before = { a: side.runner.runsOf(A).length, b: side.runner.runsOf(B).length };
 
     // A's names are B's input: they are A's own only while A alone lists the
     // directory, so the next revision runs B, and A, whose key they move too.
     await side.edit("watch", NOTES);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.runner.runsOf(B).length).toBe(before.b + 1);
     expect(side.runner.runsOf(A).length).toBe(before.a + 1);
     expect(side.current(B)).toBe(true);
@@ -191,12 +191,12 @@ describe("scheduler: a git-ignored directory's listing (row 016-23)", SLOW, () =
     // the written-directory bound drops the listing as the run's own scratch.
     const a = open(repo, repo.main, { writes: true, written: ["ignored"] });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runsOf(A)).toHaveLength(1);
     expect(a.store.meta.get(observedMetaKey(""))).toBeNull();
     for (let i = 0; i < 3; i++) {
       await a.edit("watch", NOTES);
-      await a.scheduler.idle();
+      await a.quiet();
     }
     expect(a.runner.runsOf(A)).toHaveLength(1);
     await a.scheduler.close();
