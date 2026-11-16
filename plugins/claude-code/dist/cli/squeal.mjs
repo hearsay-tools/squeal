@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.529";
+  if (true) return "0.1.530";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -221,6 +221,8 @@ var init_store = __esm({
       runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
       turn: { prefix: "turn:", owner: "delivery/turn" },
       edits: { prefix: "edits:", owner: "delivery/edits" },
+      editsLate: { prefix: "edits-late:", owner: "delivery/late" },
+      editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
       harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
       departed: { prefix: "departed:", owner: "delivery/expiry" },
       consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
@@ -53786,6 +53788,81 @@ var init_transfer_import = __esm({
   }
 });
 
+// src/core/scheduler/edit-timings.ts
+function editTimingsMetaKey(worktreeId) {
+  return worktreeMetaKey("editTimings", worktreeId);
+}
+function readEditTimings(store, worktreeId) {
+  const raw = store.meta.get(editTimingsMetaKey(worktreeId));
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || !isNumber4(value.tierSize) || !isRecord(value.widths)) return null;
+  const widths = {};
+  for (const [project, w2] of Object.entries(value.widths)) {
+    if (isRecord(w2) && isNumber4(w2.width) && typeof w2.part === "string") {
+      widths[project] = { width: w2.width, part: w2.part };
+    }
+  }
+  const list2 = (v) => Array.isArray(v) ? v.filter(isRecord) : [];
+  return {
+    tierSize: value.tierSize,
+    widths,
+    firsts: list2(value.firsts).flatMap(
+      (f) => isNumber4(f.revision) && isNumber4(f.delayMs) ? [{ revision: f.revision, delayMs: f.delayMs }] : []
+    ),
+    tiers: list2(value.tiers).flatMap(
+      (t) => typeof t.runId === "string" && isNumber4(t.estimateMs) ? [{ runId: t.runId, estimateMs: t.estimateMs }] : []
+    )
+  };
+}
+function recordEditTier(context, tier, grant) {
+  if (tier.kind !== "edit") return;
+  const { store, worktreeId } = context;
+  const traits = context.runner.traits;
+  const tierSize = context.policy.runner.tierSize;
+  store.transaction(() => {
+    const was = readEditTimings(store, worktreeId);
+    const widths = { ...was?.widths };
+    for (const { file } of tier.files) {
+      widths[file.ref.project] = {
+        width: traits.tierWidth(file.ref, tierSize),
+        part: traits.tierPart(file.ref)
+      };
+    }
+    const revision = tier.revision.number;
+    const startedAt = tier.startedAt ?? context.now();
+    const createdAt = store.revisions.get(worktreeId, revision)?.createdAt;
+    const firsts = was?.firsts ?? [];
+    const first2 = createdAt === void 0 || firsts.some((f) => f.revision === revision) ? [] : [{ revision, delayMs: Math.max(0, startedAt - createdAt) }];
+    const estimate = estimateMs(traits, tier.files, grant);
+    const next = {
+      tierSize,
+      widths,
+      firsts: [...first2, ...firsts].slice(0, TIMINGS_KEPT),
+      tiers: [{ runId: tier.runId, estimateMs: estimate }, ...was?.tiers ?? []].slice(
+        0,
+        TIMINGS_KEPT
+      )
+    };
+    store.meta.set(editTimingsMetaKey(worktreeId), JSON.stringify(next));
+  });
+}
+var TIMINGS_KEPT, isNumber4;
+var init_edit_timings = __esm({
+  "src/core/scheduler/edit-timings.ts"() {
+    "use strict";
+    init_json();
+    init_store();
+    init_tier_width();
+    TIMINGS_KEPT = 20;
+    isNumber4 = (v) => typeof v === "number" && Number.isFinite(v);
+  }
+});
+
 // src/core/delivery/leaving.ts
 function leavingMetaKey(worktreeId) {
   return worktreeMetaKey("leaving", worktreeId);
@@ -59512,6 +59589,7 @@ function act(context, ledger, candidate, at2) {
   }
   if (tier === null) return { unstarted: files5 };
   const grant = lease?.grant ?? (ask2 === null ? tier.files.length : ask2.offer);
+  recordEditTier(context, tier, grant);
   if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at2);
   else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at2);
   return { tier };
@@ -59528,6 +59606,7 @@ var init_tier_start = __esm({
   "src/core/scheduler/tier-start.ts"() {
     "use strict";
     init_capacity();
+    init_edit_timings();
     init_focused();
     init_tier_plan();
     init_tier_width();
@@ -77111,6 +77190,9 @@ function foldedText(what, list2, command) {
   return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
 
+// src/core/delivery/late-format.ts
+init_text();
+
 // src/core/delivery/provenance.ts
 var TOUCHED_SHOWN = 3;
 var CHANGED_HERE = "files changed here since this session started";
@@ -90118,10 +90200,10 @@ function chunksFor(pick, files5, at2) {
   const stored3 = files5.map((ref3) => at2.durations?.(ref3) ?? null);
   const known3 = stored3.filter((s) => s !== null).sort((a, b) => a - b);
   if (known3.length === 0) return [[...files5]];
-  const median2 = known3[Math.floor(known3.length / 2)] ?? 0;
+  const median3 = known3[Math.floor(known3.length / 2)] ?? 0;
   const grant = pick.kind === "vitest" ? vitestWidth() : at2.tierSize;
   const width = Math.max(1, ...files5.map((ref3) => pick.adapter.traits.tierWidth(ref3, grant)));
-  const work = stored3.map((s) => (s ?? median2) / width);
+  const work = stored3.map((s) => (s ?? median3) / width);
   if (work.reduce((sum2, w2) => sum2 + w2, 0) < 2 * bound) return [[...files5]];
   const chunks2 = [];
   let chunk = [];
@@ -99144,6 +99226,31 @@ init_refined();
 init_rekeyed_record();
 init_derive();
 init_store();
+
+// src/core/delivery/late.ts
+init_store();
+
+// src/core/delivery/late-timings.ts
+init_edit_timings();
+init_files();
+init_policy();
+
+// src/core/delivery/late-bound.ts
+init_backlog();
+
+// src/core/delivery/late.ts
+init_slots();
+function lateMetaKey(worktreeId) {
+  return worktreeMetaKey("editsLate", worktreeId);
+}
+function writeLate(store, consumer, revision) {
+  writeSlot(store, lateMetaKey(consumer.worktreeId), consumer, revision);
+}
+function forgetLate(store, consumer) {
+  writeLate(store, consumer, null);
+}
+
+// src/core/delivery/edits.ts
 init_slots();
 function editsMetaKey(worktreeId) {
   return worktreeMetaKey("edits", worktreeId);
@@ -99161,6 +99268,7 @@ function editsSaid(store, consumer) {
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
+  forgetLate(store, consumer);
   prune4(store, consumer.worktreeId);
 }
 function prune4(store, worktreeId) {

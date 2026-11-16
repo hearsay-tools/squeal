@@ -38,6 +38,8 @@ var WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
+  editsLate: { prefix: "edits-late:", owner: "delivery/late" },
+  editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
   departed: { prefix: "departed:", owner: "delivery/expiry" },
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
@@ -1073,10 +1075,10 @@ var SHAPE = {
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  const settled3 = settleChecks(loaded.value);
+  const settled2 = settleChecks(loaded.value);
   return {
-    policy: settled3.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled3.checks },
-    problems: [...loaded.problems, ...settled3.problems],
+    policy: settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks },
+    problems: [...loaded.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -2796,7 +2798,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.529";
+  if (true) return "0.1.530";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4400,10 +4402,10 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
     }
     const socket = createConnection(socketPath);
     let buffer = "";
-    let settled3 = false;
+    let settled2 = false;
     const settle2 = (error, response) => {
-      if (settled3) return;
-      settled3 = true;
+      if (settled2) return;
+      settled2 = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", aborted);
       socket.destroy();
@@ -4946,6 +4948,19 @@ function toKnownFailure(state, revision) {
   };
 }
 
+// src/core/delivery/late-format.ts
+function affected(files2) {
+  return `the ${plural(files2, "test file")} your edits affect`;
+}
+function notRun(owed2, files2) {
+  const verb = owed2 === 1 ? "has" : "have";
+  return owed2 === files2 ? `${affected(files2)} ${verb} not run` : `${owed2} of ${affected(files2)} ${verb} not run`;
+}
+function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
+  const count2 = owed2 > 0 ? notRun(owed2, files2) : files2 === 1 ? `${affected(files2)} has run` : `${affected(files2)} have all run`;
+  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
+}
+
 // src/core/delivery/header.ts
 function noResultsText(command) {
   return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
@@ -4998,26 +5013,23 @@ function holdsText2(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
-function newsLine(header, command, owed2) {
+function newsLine(header, command, told) {
   const unlisted3 = unlistedLine(header, command);
   if (unlisted3 !== null) return unlisted3;
-  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const revision = revisionPrefix(header);
-  if (owed2 !== void 0) {
-    return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
+  if (told.countsOwed !== void 0) {
+    return `${revision}${fullCounts(header, told.countsOwed)}${incompleteText(header)}${daemonText(header, command)}`;
   }
-  const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map(
-    (v) => countedText(counts[v], v, fileLevel?.[v])
-  );
-  const without = ["pending", "unknown"].filter((v) => files2[v] > 0).map((v) => `${files2[v]} ${v}`).join(", ");
-  const news = actionable.length > 0 ? `${actionable.join(", ")}.${without === "" ? "" : ` Test files without checks: ${without}.`}` : without === "" ? "no check pending, stale or unknown." : `test files without checks: ${without}.`;
-  return `${revision}${news}${incompleteText(header)}${daemonText(header, command)}`;
+  const own = told.ownEdits;
+  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
+  const delays = own !== void 0 && own.owed > 0 ? "" : incompleteText(header);
+  return `${line}${delays}${daemonText(header, command)}`;
 }
 function countsText(counts, fileLevel) {
   return ["current", ...ACTIONABLE].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
 }
 function headerLines(header, command, form = "full", told = {}) {
-  const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
+  const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
   const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
@@ -11710,6 +11722,679 @@ function pruneRekeyed(store, worktreeId, upTo) {
   if (entries.size !== before) write(store, worktreeId, entries);
 }
 
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/scheduler/files.ts
+function durationOf(results) {
+  if (results.length === 0) return null;
+  let fileMs = 0;
+  let testsMs = 0;
+  for (const result of results) {
+    if (result.check.kind === "file") fileMs = Math.max(fileMs, result.durationMs);
+    else testsMs += result.durationMs;
+  }
+  return Math.max(fileMs, testsMs);
+}
+
+// src/core/scheduler/checkpoint-progress.ts
+function checkpointMetaKey(worktreeId) {
+  return worktreeMetaKey("checkpoint", worktreeId);
+}
+function readCheckpointProgress(store, worktreeId) {
+  const raw = store.meta.get(checkpointMetaKey(worktreeId));
+  if (raw === null || !raw.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(raw);
+    const numbers = [value.revision, value.startedAt, value.done, value.total];
+    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
+    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
+    const owed2 = value.owed;
+    const lists = owed2 === void 0 ? [] : [owed2.ids, owed2.remaining, owed2.strict];
+    if (!lists.every(Array.isArray)) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+// src/core/scheduler/claims.ts
+var CLAIM_GRACE_MS = 6e3;
+var CLAIM_UNBOUNDED_MS = 6e5;
+function claimBoundMs(timeoutMs) {
+  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
+}
+
+// src/core/scheduler/promotions-row.ts
+function promotionsMetaKey(worktreeId) {
+  return worktreeMetaKey("promotions", worktreeId);
+}
+function publishedBatches(store, worktreeId, daemonStartedAt, now) {
+  const places = /* @__PURE__ */ new Map();
+  const row = readRow(store, worktreeId);
+  if (row === null || row.at < daemonStartedAt) return places;
+  const batches = row.entries.filter(isBatch);
+  for (const p of row.entries) {
+    const position = batches.indexOf(p) + 1;
+    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
+    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
+    const end = p.batch?.estimatedEnd;
+    const place = position === 0 ? null : {
+      position,
+      of: batches.length,
+      files: files2.length,
+      estimatedEnd: typeof end === "number" ? end : null
+    };
+    for (const f of files2) if (!places.has(f)) places.set(f, place);
+  }
+  return places;
+}
+function readRow(store, worktreeId) {
+  const raw = store.meta.get(promotionsMetaKey(worktreeId));
+  if (raw === null) return null;
+  try {
+    const { at, promotions } = JSON.parse(raw);
+    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
+    const entries = promotions.filter(
+      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
+    );
+    return { at, entries };
+  } catch {
+    return null;
+  }
+}
+function isBatch(p) {
+  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
+}
+function strings4(value) {
+  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
+}
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync5 } from "node:fs";
+import { dirname as dirname6, isAbsolute as isAbsolute8, join as join20 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+var MAX_SOCKET_PATH_BYTES = 103;
+function socketPathFor(worktreeId, env = process.env) {
+  const name2 = socketNameFor(worktreeId);
+  const path = join20(runtimeDir(env), name2);
+  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join20(userTmpDir(), name2);
+}
+function socketNameFor(worktreeId) {
+  return `squeal-${worktreeId}.sock`;
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const stat = lstatSync4(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat.mode & 63) !== 0) {
+    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join20("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/slow/slot.ts
+import { existsSync as existsSync9 } from "node:fs";
+import { dirname as dirname8, isAbsolute as isAbsolute9, join as join23 } from "node:path";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
+
+// src/core/slow/slot-files.ts
+import { createHash as createHash8 } from "node:crypto";
+import { basename as basename4, join as join22 } from "node:path";
+
+// src/core/daemon/scratch.ts
+import { createHash as createHash7, randomBytes } from "node:crypto";
+import {
+  linkSync,
+  lstatSync as lstatSync5,
+  mkdirSync as mkdirSync6,
+  mkdtempSync,
+  readdirSync as readdirSync8,
+  readFileSync as readFileSync15,
+  renameSync as renameSync2,
+  rmSync as rmSync3,
+  unlinkSync,
+  writeFileSync as writeFileSync2
+} from "node:fs";
+import { basename as basename3, dirname as dirname7, join as join21 } from "node:path";
+function repositoryId(commonDir) {
+  const dir = storePaths(commonDir).dir;
+  const file = join21(dir, "repository-id");
+  mkdirSync6(dir, { recursive: true });
+  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
+  writeFileSync2(draft, `${randomBytes(16).toString("hex")}
+`);
+  try {
+    linkSync(draft, file);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  } finally {
+    unlinkSync(draft);
+  }
+  return readFileSync15(file, "utf8").trim();
+}
+
+// src/core/slow/slot-files.ts
+var SLOW_LOCK_FILE = "slow.lock";
+var SLOW_GROUP2 = "slow";
+var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+var GROUP_SLOT_SCOPES = ["user", "repository"];
+var DEFAULT_GROUP_SLOT_SCOPE = "repository";
+function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
+  const dir = (base, commonDir) => scope === "user" ? base : join22(base, `repo.${hash(repositoryId(commonDir))}`);
+  if (group === SLOW_GROUP2) {
+    return {
+      dir,
+      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
+      waiterPrefix: "slow.wait."
+    };
+  }
+  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
+  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
+}
+function hash(text2) {
+  return createHash8("sha256").update(text2).digest("hex").slice(0, 16);
+}
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/slow/slot.ts
+function slowSlotDir(env = process.env, userDir = userTmpDir()) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join23(xdg, "squeal") : userDir;
+}
+function heldPermits(request) {
+  const { dir } = request;
+  const files2 = slotFiles(request.group);
+  if (!existsSync9(dir)) return [];
+  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
+  const held = [];
+  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
+    const file = files2.permit(i);
+    const path = join23(dir, file);
+    if (!existsSync9(path)) continue;
+    let free;
+    try {
+      free = permitFree(path);
+    } catch {
+      held.push({ file, record: { kind: "unreadable" } });
+      continue;
+    }
+    if (!free) held.push({ file, record: permitRecord(path) });
+  }
+  return held;
+}
+function permitRecord(path) {
+  let db;
+  try {
+    db = new DatabaseSync5(immutableUrl(path), { readOnly: true });
+  } catch {
+    return { kind: "unreadable" };
+  }
+  try {
+    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
+    if (row === void 0) return { kind: "missing" };
+    const { pid, worktree_id: worktreeId, since } = row;
+    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
+    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
+    return {
+      kind: "holder",
+      pid,
+      worktreeId,
+      since
+    };
+  } catch (error) {
+    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
+  } finally {
+    db.close();
+  }
+}
+function immutableUrl(path) {
+  const url = pathToFileURL(path);
+  url.search = "immutable=1";
+  return url;
+}
+function permitFree(path) {
+  const db = new DatabaseSync5(path);
+  try {
+    db.exec("PRAGMA busy_timeout = 0");
+    db.exec("BEGIN EXCLUSIVE");
+    db.exec("ROLLBACK");
+    return true;
+  } catch (error) {
+    if (isBusy(error)) return false;
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+// src/core/daemon/outlived.ts
+import { execFile } from "node:child_process";
+import { readdirSync as readdirSync9, readFileSync as readFileSync16 } from "node:fs";
+import { readFile as readFile2 } from "node:fs/promises";
+import { promisify } from "node:util";
+
+// src/runners/process/recorders.ts
+var UNOBSERVED = JSON.stringify({ out: "" });
+
+// src/core/daemon/outlived.ts
+var PF_EXITING2 = 4;
+var CHUNK = 64;
+function procRow(pid) {
+  let text2;
+  try {
+    text2 = readFileSync16(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
+  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING2) !== 0) return null;
+  return {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    session: Number(fields[3]),
+    start: Number(fields[19])
+  };
+}
+var PROC = {
+  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
+  async list() {
+    const names2 = readdirSync9("/proc").filter((name2) => /^\d+$/.test(name2));
+    const rows = [];
+    for (let at = 0; at < names2.length; at += CHUNK) {
+      if (at > 0) await new Promise((done) => setImmediate(done));
+      for (const name2 of names2.slice(at, at + CHUNK)) {
+        const row = procRow(Number(name2));
+        if (row !== null) rows.push(row);
+      }
+    }
+    return rows;
+  },
+  async variable(pid, variable) {
+    let environ;
+    try {
+      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+    } catch {
+      return null;
+    }
+    const needle = `\0${variable}=`;
+    const at = environ.indexOf(needle);
+    if (at < 0) return null;
+    const end = environ.indexOf("\0", at + needle.length);
+    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
+  },
+  running: async (found2) => found2.flatMap(({ pid, start }) => {
+    const row = procRow(pid);
+    return row?.start === start ? [row] : [];
+  }),
+  command: commandLine
+};
+var run = promisify(execFile);
+var COMMAND_CHARS2 = 120;
+var PS_TIMEOUT_MS = 2e3;
+var PS_MAX_BYTES = 16 * 1024 * 1024;
+var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
+function psLines(text2) {
+  return text2.split("\n").flatMap((line) => {
+    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
+    if (state === void 0 || state.startsWith("Z")) return [];
+    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
+    if (!Number.isInteger(start)) return [];
+    const row = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
+    return [{ row, shown: shown ?? "" }];
+  });
+}
+function shownValue(shown, name2) {
+  const needle = ` ${name2}=`;
+  const at = shown.indexOf(needle);
+  if (at < 0 || shown.includes(needle, at + 1)) return null;
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
+}
+function psTable(calls) {
+  let shown = /* @__PURE__ */ new Map();
+  async function list() {
+    let lines;
+    try {
+      lines = psLines(await calls.listing());
+    } catch (error) {
+      shown = /* @__PURE__ */ new Map();
+      throw error;
+    }
+    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
+    return lines.map(({ row }) => row);
+  }
+  return {
+    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
+    list,
+    variable: async (pid, name2) => {
+      const line = shown.get(pid);
+      return line === void 0 ? null : shownValue(line, name2);
+    },
+    running: async (found2) => (await list()).filter(
+      (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
+    ),
+    command: calls.command
+  };
+}
+var PS = psTable({
+  async listing() {
+    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
+    const { stdout } = await run("ps", args, {
+      env: { ...process.env, LC_ALL: "C" },
+      timeout: PS_TIMEOUT_MS,
+      maxBuffer: PS_MAX_BYTES
+    });
+    return stdout;
+  },
+  async command(pid) {
+    try {
+      const args = ["-ww", "-o", "command=", "-p", String(pid)];
+      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
+      const text2 = stdout.trim();
+      return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
+    } catch {
+      return "";
+    }
+  }
+});
+var NONE = {
+  mark: () => 0,
+  list: async () => [],
+  variable: async () => null,
+  running: async () => [],
+  command: async () => ""
+};
+var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS : NONE;
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
+
+// src/core/capacity/pool.ts
+var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+// src/core/scheduler/capacity.ts
+var CAPACITY_RECHECK_MS = 2e3;
+
+// src/core/scheduler/focused-row.ts
+function focusedMetaKey(worktreeId) {
+  return worktreeMetaKey("focused", worktreeId);
+}
+function readFocused(store, worktreeId) {
+  const raw = store.meta.get(focusedMetaKey(worktreeId));
+  if (raw === null) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
+  } catch {
+    return [];
+  }
+}
+function isFocusedRun(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const run2 = value;
+  const file = run2.testFile;
+  return typeof file?.project === "string" && typeof file.path === "string" && typeof run2.key === "string" && typeof run2.revision === "number" && typeof run2.runId === "string" && Array.isArray(run2.texts) && Array.isArray(run2.checks);
+}
+
+// src/core/scheduler/quiet.ts
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
+}
+var NO_ENDS = /* @__PURE__ */ new Map();
+function publishedWaits(store, worktreeId, daemonStartedAt, now) {
+  const none3 = { backlog: NO_ENDS, catchUp: NO_ENDS };
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return none3;
+  try {
+    const { at, lanes, catchUp } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt) return none3;
+    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
+  } catch {
+    return none3;
+  }
+}
+function endsAfter(lanes, now) {
+  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
+  return new Map(
+    Object.entries(lanes).filter(
+      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
+    )
+  );
+}
+
+// src/core/scheduler/runner-work-bound.ts
+var RUNNER_PART_MARGIN_MS = 6e4;
+function runnerPartBoundMs(timeoutMs) {
+  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
+}
+
+// src/core/scheduler/backlog.ts
+function wallEstimate(sum, longest, width) {
+  return sum / width + (1 - 1 / width) * longest;
+}
+
+// src/core/scheduler/edit-timings.ts
+function editTimingsMetaKey(worktreeId) {
+  return worktreeMetaKey("editTimings", worktreeId);
+}
+var isNumber4 = (v) => typeof v === "number" && Number.isFinite(v);
+function readEditTimings(store, worktreeId) {
+  const raw = store.meta.get(editTimingsMetaKey(worktreeId));
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || !isNumber4(value.tierSize) || !isRecord(value.widths)) return null;
+  const widths = {};
+  for (const [project, w] of Object.entries(value.widths)) {
+    if (isRecord(w) && isNumber4(w.width) && typeof w.part === "string") {
+      widths[project] = { width: w.width, part: w.part };
+    }
+  }
+  const list = (v) => Array.isArray(v) ? v.filter(isRecord) : [];
+  return {
+    tierSize: value.tierSize,
+    widths,
+    firsts: list(value.firsts).flatMap(
+      (f) => isNumber4(f.revision) && isNumber4(f.delayMs) ? [{ revision: f.revision, delayMs: f.delayMs }] : []
+    ),
+    tiers: list(value.tiers).flatMap(
+      (t) => typeof t.runId === "string" && isNumber4(t.estimateMs) ? [{ runId: t.runId, estimateMs: t.estimateMs }] : []
+    )
+  };
+}
+
+// src/core/delivery/late-bound.ts
+var LATE_FACTOR = 2;
+function median(values) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function tierEstimate(tier) {
+  const parts = /* @__PURE__ */ new Map();
+  for (const f of tier) {
+    const was = parts.get(f.part) ?? { sum: 0, longest: 0, count: 0, width: Infinity };
+    parts.set(f.part, {
+      sum: was.sum + f.ms,
+      longest: Math.max(was.longest, f.ms),
+      count: was.count + 1,
+      width: Math.min(was.width, Math.max(1, Math.floor(f.width)))
+    });
+  }
+  let total = 0;
+  for (const p of parts.values())
+    total += wallEstimate(p.sum, p.longest, Math.min(p.count, p.width));
+  return total;
+}
+function lateBoundMs({ files: files2, tierSize, startMs, overheadMs }) {
+  const fallback2 = median(files2.flatMap((f) => f.ms === null ? [] : [f.ms]));
+  const ordered = files2.map((f) => ({ ...f, ms: f.ms ?? fallback2 })).sort((a, b) => a.ms - b.ms);
+  const size = Math.max(1, tierSize);
+  let tiers = 0;
+  for (let i = 0; i < ordered.length; i += size) {
+    tiers += overheadMs + tierEstimate(ordered.slice(i, i + size));
+  }
+  return LATE_FACTOR * (startMs + tiers);
+}
+
+// src/core/delivery/late-timings.ts
+function worktreeMedians(store, worktreeId) {
+  const timings = readEditTimings(store, worktreeId);
+  if (timings === null) return { startMs: 0, overheadMs: 0 };
+  const overheads = timings.tiers.flatMap(({ runId, estimateMs: estimateMs2 }) => {
+    const run2 = store.runs.get(runId);
+    return run2?.end === "completed" && run2.endedAt !== null ? [run2.endedAt - run2.startedAt - estimateMs2] : [];
+  });
+  return {
+    startMs: Math.max(0, median(timings.firsts.map((f) => f.delayMs))),
+    overheadMs: Math.max(0, median(overheads))
+  };
+}
+function pastBound(store, worktreeId, files2, ageMs) {
+  const timings = readEditTimings(store, worktreeId);
+  const tierSize = timings?.tierSize ?? DEFAULT_POLICY.runner.tierSize;
+  const bound = files2.map((file) => {
+    const known = timings?.widths[file.project];
+    return {
+      ms: durationOf(store.results.newestForTestFile(file)),
+      width: known?.width ?? 1,
+      part: known?.part ?? ""
+    };
+  });
+  const floor2 = lateBoundMs({ files: bound, tierSize, startMs: 0, overheadMs: 0 });
+  if (ageMs <= floor2) return false;
+  const medians = worktreeMedians(store, worktreeId);
+  const measured = lateBoundMs({ files: bound, tierSize, ...medians });
+  return ageMs > (measured === 0 ? FEED_LATE_MS : measured);
+}
+
+// src/core/delivery/late.ts
+function lateMetaKey(worktreeId) {
+  return worktreeMetaKey("editsLate", worktreeId);
+}
+function readLate(store, consumer) {
+  const value = readSlot(store, lateMetaKey(consumer.worktreeId), consumer);
+  return typeof value === "number" ? value : null;
+}
+function writeLate(store, consumer, revision) {
+  writeSlot(store, lateMetaKey(consumer.worktreeId), consumer, revision);
+}
+function forgetLate(store, consumer) {
+  writeLate(store, consumer, null);
+}
+function lateIsOpen(store, consumer) {
+  return readLate(store, consumer) !== null;
+}
+function endLate(store, consumer) {
+  if (lateIsOpen(store, consumer)) writeLate(store, consumer, null);
+}
+var NAMED_MAX = 3;
+function lateNotes(store, consumer, own, at, header) {
+  const open2 = readLate(store, consumer);
+  if (open2 === null && own.revision <= own.since) return null;
+  const daemon = headerView(readPresence(store, consumer.worktreeId, at));
+  if (open2 === null) {
+    if (daemon.state !== "alive" || daemon.stopping !== void 0) return null;
+    const late = lateNow(store, consumer.worktreeId, own, at, lateOf(daemon)?.since);
+    if (late === null || quietFor(header())) return null;
+    return {
+      open: false,
+      late: late.kind === "unlisted" ? withRunners(late, header()) : late,
+      tell: () => writeLate(store, consumer, late.revision)
+    };
+  }
+  const done = own.refined && own.owed.length === 0 && lateOf(daemon) === void 0;
+  if (done && own.files === 0) {
+    writeLate(store, consumer, null);
+    return null;
+  }
+  const caughtUp = done ? { revision: own.revision, files: own.files, unknown: own.unknown } : void 0;
+  return {
+    open: true,
+    ...caughtUp === void 0 ? {} : { caughtUp },
+    tell: () => {
+      if (caughtUp !== void 0) writeLate(store, consumer, null);
+    }
+  };
+}
+function lateNow(store, worktreeId, own, at, unreadSince) {
+  const { revision } = own;
+  if (unreadSince !== void 0) return { kind: "unread", revision, since: unreadSince };
+  if (!own.refined) {
+    const age = at - (store.revisions.get(worktreeId, revision)?.createdAt ?? at);
+    return age > FEED_LATE_MS && pastBound(store, worktreeId, [], age) ? { kind: "unlisted", revision } : null;
+  }
+  const oldest = oldestOwed(store, worktreeId, own.owed);
+  if (oldest === null) return null;
+  const ageMs = at - oldest.createdAt;
+  const files2 = own.owed.map((o) => o.file);
+  if (!pastBound(store, worktreeId, files2, ageMs)) return null;
+  return {
+    kind: "owed",
+    revision,
+    owed: own.owed.length,
+    files: own.files,
+    editRevision: oldest.from,
+    ageMs,
+    ...files2.length <= NAMED_MAX ? { named: files2.map((f) => f.path) } : {}
+  };
+}
+function quietFor(header) {
+  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true;
+}
+function withRunners(late, header) {
+  const runners = header.listingRunners;
+  return runners === void 0 ? late : { ...late, runners };
+}
+function oldestOwed(store, worktreeId, owed2) {
+  if (owed2.length === 0) return null;
+  const from = Math.min(...owed2.map((o) => o.from));
+  const createdAt = store.revisions.get(worktreeId, from)?.createdAt;
+  return createdAt === void 0 ? null : { from, createdAt };
+}
+
 // src/core/delivery/edits.ts
 function editsMetaKey(worktreeId) {
   return worktreeMetaKey("edits", worktreeId);
@@ -11730,6 +12415,7 @@ function editsSaid(store, consumer) {
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
+  forgetLate(store, consumer);
   prune2(store, consumer.worktreeId);
 }
 function prune2(store, worktreeId) {
@@ -11742,65 +12428,110 @@ function prune2(store, worktreeId) {
     sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces)
   );
 }
-function editNotes(store, consumer, states, delivering) {
+function editNotes(store, consumer, states, delivering, boundary = null) {
   const state = readState(store, consumer);
-  if (state === null || state.said && !delivering) return null;
-  const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  if (revision <= state.since || !isRefined(store, consumer.worktreeId, revision)) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  const { changed } = changedAfter(
-    store,
-    consumer.worktreeId,
-    { since: state.since, gaps },
-    revision
-  );
-  if (changed.size === 0) return null;
-  const rows = new Map(
-    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
-  );
-  const rekeyed = [];
-  let owed2 = false;
-  for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
-    const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
-    rekeyed.push(row);
-    owed2 ||= row.pending !== null;
-  }
-  const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
-  const editsSettled = owed2 ? void 0 : settled2(state.since, rekeyed, states);
-  if (sawEdit === void 0 && editsSettled === void 0) return null;
+  if (state === null || state.said && !delivering && boundary === null) return null;
+  const own = readOwn(store, consumer, state.since, states);
+  if (own === null) return null;
+  const { lateness, lateOpen } = lateOf3(store, consumer, own, boundary);
+  const sawEdit = state.said || own.files === 0 ? void 0 : { queued: own.files };
+  const counted = own.refined && own.files > 0;
+  const said = sawEdit !== void 0 || lateness?.late !== void 0 || lateness?.caughtUp;
+  if (!said && !(delivering && counted)) return null;
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
-    ...editsSettled === void 0 ? {} : { editsSettled },
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
-    tell: () => {
-      writeState(store, consumer, {
-        since: editsSettled === void 0 ? state.since : revision,
-        said: true
-      });
-      if (editsSettled !== void 0) prune2(store, consumer.worktreeId);
+    ...counted ? { own: ownCount(own) } : {},
+    ...lateParts(lateness),
+    rekeyed: own.rekeyed,
+    tell: (failed2) => {
+      if (!failed2) lateness?.tell();
+      const ended = !lateOpen || lateness?.caughtUp !== void 0 || failed2;
+      const moved = counted && own.owed.length === 0 && ended;
+      if (!moved && sawEdit === void 0) return;
+      writeState(store, consumer, { since: moved ? own.revision : state.since, said: true });
+      if (moved) prune2(store, consumer.worktreeId);
     }
   };
 }
+function editTold(notes, entries, alone) {
+  const failed2 = entries.some((e) => e.kind !== "fail-retired" && e.to === "fail");
+  const late = failed2 ? void 0 : notes?.late;
+  const caughtUp = failed2 ? void 0 : notes?.caughtUp;
+  return {
+    failed: failed2,
+    speaks: alone && notes?.sawEdit !== void 0 || late !== void 0 || caughtUp !== void 0,
+    parts: (sawEdit) => ({
+      ...sawEdit === void 0 ? {} : { sawEdit },
+      ...notes?.own === void 0 ? {} : { ownEdits: notes.own },
+      ...late === void 0 ? {} : { editsLate: late },
+      ...caughtUp === void 0 ? {} : { caughtUp }
+    })
+  };
+}
+function lateOf3(store, consumer, own, boundary) {
+  if (boundary === null) return { lateness: null, lateOpen: lateIsOpen(store, consumer) };
+  const lateness = lateNotes(store, consumer, own, boundary.at, boundary.header);
+  return { lateness, lateOpen: lateness?.open ?? false };
+}
+function tellEdits(store, consumer, notes, failed2) {
+  notes?.tell(failed2);
+  if (failed2) endLate(store, consumer);
+}
+function lateParts(lateness) {
+  if (lateness === null) return {};
+  return {
+    ...lateness.late === void 0 ? {} : { late: lateness.late },
+    ...lateness.caughtUp === void 0 ? {} : { caughtUp: lateness.caughtUp }
+  };
+}
+function ownCount(own) {
+  const count2 = { files: own.files, owed: own.owed.length };
+  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
+}
+function readOwn(store, consumer, since, states) {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const none3 = { since, revision, files: 0, owed: [], unknown: 0, rekeyed: /* @__PURE__ */ new Set() };
+  if (!isRefined(store, worktreeId, revision)) return { ...none3, refined: false };
+  const entries = [...readRekeyed(store, worktreeId)].filter(([, e]) => e.last > since);
+  if (entries.length === 0) return { ...none3, refined: true };
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed = [];
+  const owed2 = [];
+  for (const [id, entry3] of entries) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null) continue;
+    rekeyed.push(row);
+    if (entry3.open !== null)
+      owed2.push({ file: row.testFile, from: Math.max(entry3.open, since + 1) });
+  }
+  return {
+    since,
+    revision,
+    refined: true,
+    files: rekeyed.length,
+    owed: owed2,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
+  };
+}
 function carriesEditResult(notes, checks, header) {
-  if (notes.sawEdit === void 0 || notes.editsSettled !== void 0) return false;
+  if (notes.sawEdit === void 0) return false;
   const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
   return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
-function settled2(since, rekeyed, states) {
-  if (rekeyed.length === 0) return void 0;
+function unknownFiles(rekeyed, states) {
   const unknown = new Set(
     states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
   );
-  return {
-    since,
-    files: rekeyed.length,
-    unknown: rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length
-  };
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/delivery/hold-told.ts
 function holdToldMetaKey(worktreeId) {
@@ -11900,7 +12631,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const runs = openRuns(store, worktree, presence.heartbeat);
   const open2 = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
   const header = readHeader(store, worktreeId, states, keys, void 0, open2);
-  const changes = changedSince(store, worktreeId, header.revision, since);
+  const changes = changedSince2(store, worktreeId, header.revision, since);
   const installed2 = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
   );
@@ -11915,7 +12646,7 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
     ...installed2 === void 0 ? {} : { installedLockfile: installed2.path }
   };
 }
-function changedSince(store, worktreeId, revision, since) {
+function changedSince2(store, worktreeId, revision, since) {
   const after = since === null || since >= revision ? revision - 1 : Math.max(since, 0);
   const changes = /* @__PURE__ */ new Map();
   for (const r of store.revisions.range(worktreeId, after, revision)) {
@@ -12219,16 +12950,16 @@ function startHold(prepare2) {
   const commit = () => {
     if (ended) return;
     ended = true;
-    const settled3 = acknowledge;
+    const settled2 = acknowledge;
     try {
       held?.commit();
     } catch (error) {
       rollbackHolds(code);
       throw error;
     }
-    if (settled3 === null) return rollbackHolds(code);
+    if (settled2 === null) return rollbackHolds(code);
     commitHolds(code);
-    settled3();
+    settled2();
   };
   prepare2.reports.add({
     commit,
@@ -12264,6 +12995,13 @@ function toldAtStop({ stop, transitions }, changes) {
 
 // src/core/delivery/delivery.ts
 var DEFAULT_POLL_INTERVAL_MS = 250;
+function once2(read4) {
+  let value = null;
+  return () => {
+    value ??= { v: read4() };
+    return value.v;
+  };
+}
 var sameMarker = (a, b) => a.others === b.others && a.own === b.own;
 var currentFailures = (states) => splitByValidity(states.filter((s) => s.outcome === "fail")).current.length;
 function sideParts(code, lint2, states) {
@@ -12302,7 +13040,8 @@ function createDelivery(store, options) {
     liveness = false,
     idle = false,
     stop = false,
-    atRevision
+    atRevision,
+    boundary = false
   }) {
     const select = (states, keys = null) => {
       if (!idle) return { only: keep, trim: null };
@@ -12363,26 +13102,32 @@ function createDelivery(store, options) {
       });
       const commit = liveness ? commitNews(store, consumer) : void 0;
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
-      const notes = liveness || idle && news ? editNotes(store, consumer, states, news) : null;
-      const delivered = news || liveness && !stop && notes?.sawEdit !== void 0;
+      const liveHeader = once2(
+        () => withTold(
+          readLiveHeader(store, consumer.worktreeId, at, states, toldRevision(store, consumer)),
+          toldLiveness(store, consumer),
+          at
+        )
+      );
+      const notes = liveness || idle && news ? editNotes(store, consumer, states, news, boundary ? { at, header: liveHeader } : null) : null;
+      const told = editTold(notes, delta2.entries, liveness && !stop);
+      const delivered = news || told.speaks;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
         if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
         return null;
       }
       if (idle) startTurn(store, consumer);
-      const told = toldRevision(store, consumer);
-      const read4 = readLiveHeader(store, consumer.worktreeId, at, states, told);
-      const live = withTold(read4, toldLiveness(store, consumer), at);
-      tellRevision(store, consumer, live.revision);
+      const read4 = liveHeader();
+      tellRevision(store, consumer, read4.revision);
       const { entries, header, stillFailing } = annotate(
         store,
         consumer,
         delta2.entries,
-        live,
+        read4,
         states
       );
-      notes?.tell();
+      tellEdits(store, consumer, notes, told.failed);
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       const groupsChanged = changedGroups(store, consumer, header.groupTiers);
@@ -12408,8 +13153,7 @@ function createDelivery(store, options) {
         ...groupsChanged.length > 0 ? { groupTiersChanged: groupsChanged } : {},
         ...commit === void 0 ? {} : { commitChanged: true },
         ...countsOwed,
-        ...sawEdit === void 0 ? {} : { sawEdit },
-        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
+        ...told.parts(sawEdit),
         ...sideParts(code, lint2, states)
       };
     });
@@ -12449,6 +13193,7 @@ function createDelivery(store, options) {
         heardFrom: true,
         liveness: true,
         stop,
+        boundary: !stop,
         ...atRevision === void 0 ? {} : { atRevision }
       })
     ),
@@ -13048,9 +13793,9 @@ var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
 // src/core/node-pin.ts
 import { execFileSync } from "node:child_process";
-import { readFileSync as readFileSync15, realpathSync as realpathSync4, statSync as statSync4 } from "node:fs";
+import { readFileSync as readFileSync17, realpathSync as realpathSync4, statSync as statSync4 } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname as dirname6, isAbsolute as isAbsolute8, join as join20 } from "node:path";
+import { delimiter, dirname as dirname9, isAbsolute as isAbsolute10, join as join24 } from "node:path";
 
 // src/harness/opencode/host.ts
 var floor;
@@ -13099,14 +13844,14 @@ function runsSqueal(version) {
   }
 }
 function pathFirst(binary, path) {
-  const dir = dirname6(binary);
+  const dir = dirname9(binary);
   return path === void 0 || path === "" ? dir : `${dir}${delimiter}${path}`;
 }
 function readPin(root) {
   for (const name2 of PIN_FILES) {
     let text2;
     try {
-      text2 = readFileSync15(join20(root, name2), "utf8");
+      text2 = readFileSync17(join24(root, name2), "utf8");
     } catch {
       continue;
     }
@@ -13118,21 +13863,21 @@ function readPin(root) {
   return null;
 }
 function nodeSetting(root) {
-  return loadConfigFile(join20(root, "squeal.config.json"), NODE_SHAPE, {
+  return loadConfigFile(join24(root, "squeal.config.json"), NODE_SHAPE, {
     node: "project"
   }).value.node;
 }
 function managerCandidates(version, env) {
   const home = env.HOME ?? homedir();
-  const data = env.XDG_DATA_HOME ?? join20(home, ".local", "share");
-  const fnm = env.FNM_DIR === void 0 ? [join20(data, "fnm"), join20(home, ".fnm"), join20(home, "Library", "Application Support", "fnm")] : [env.FNM_DIR];
+  const data = env.XDG_DATA_HOME ?? join24(home, ".local", "share");
+  const fnm = env.FNM_DIR === void 0 ? [join24(data, "fnm"), join24(home, ".fnm"), join24(home, "Library", "Application Support", "fnm")] : [env.FNM_DIR];
   return [
-    join20(env.NVM_DIR ?? join20(home, ".nvm"), "versions", "node", `v${version}`, "bin", "node"),
-    ...fnm.map((dir) => join20(dir, "node-versions", `v${version}`, "installation", "bin", "node")),
-    join20(env.VOLTA_HOME ?? join20(home, ".volta"), "tools", "image", "node", version, "bin", "node"),
-    join20(env.ASDF_DATA_DIR ?? join20(home, ".asdf"), "installs", "nodejs", version, "bin", "node"),
-    join20(env.MISE_DATA_DIR ?? join20(data, "mise"), "installs", "node", version, "bin", "node"),
-    join20(env.N_PREFIX ?? "/usr/local", "n", "versions", "node", version, "bin", "node")
+    join24(env.NVM_DIR ?? join24(home, ".nvm"), "versions", "node", `v${version}`, "bin", "node"),
+    ...fnm.map((dir) => join24(dir, "node-versions", `v${version}`, "installation", "bin", "node")),
+    join24(env.VOLTA_HOME ?? join24(home, ".volta"), "tools", "image", "node", version, "bin", "node"),
+    join24(env.ASDF_DATA_DIR ?? join24(home, ".asdf"), "installs", "nodejs", version, "bin", "node"),
+    join24(env.MISE_DATA_DIR ?? join24(data, "mise"), "installs", "node", version, "bin", "node"),
+    join24(env.N_PREFIX ?? "/usr/local", "n", "versions", "node", version, "bin", "node")
   ];
 }
 function installed(version, env) {
@@ -13146,14 +13891,14 @@ function onPath(version, root, env) {
   const own = real(process.execPath);
   const seen = /* @__PURE__ */ new Set();
   for (const dir of (env.PATH ?? "").split(delimiter)) {
-    if (!isAbsolute8(dir)) continue;
-    const candidate = join20(dir, "node");
+    if (!isAbsolute10(dir)) continue;
+    const candidate = join24(dir, "node");
     const resolved = real(candidate);
     if (resolved === null || resolved === own || seen.has(resolved)) continue;
     seen.add(resolved);
     const said = probe(candidate, ["-p", SELF], { env, cwd: root })?.split("\n");
     const binary = said?.[1]?.trim();
-    if (said?.[0]?.trim() === `v${version}` && binary !== void 0 && isAbsolute8(binary)) {
+    if (said?.[0]?.trim() === `v${version}` && binary !== void 0 && isAbsolute10(binary)) {
       return binary;
     }
   }
@@ -13236,30 +13981,9 @@ function entry2(records) {
   };
 }
 
-// src/core/scheduler/checkpoint-progress.ts
-function checkpointMetaKey(worktreeId) {
-  return worktreeMetaKey("checkpoint", worktreeId);
-}
-function readCheckpointProgress(store, worktreeId) {
-  const raw = store.meta.get(checkpointMetaKey(worktreeId));
-  if (raw === null || !raw.startsWith("{")) return null;
-  try {
-    const value = JSON.parse(raw);
-    const numbers = [value.revision, value.startedAt, value.done, value.total];
-    if (typeof value.id !== "string" || numbers.some((n) => typeof n !== "number")) return null;
-    if (value.kind !== "run-all" && value.kind !== "baseline") return null;
-    const owed2 = value.owed;
-    const lists = owed2 === void 0 ? [] : [owed2.ids, owed2.remaining, owed2.strict];
-    if (!lists.every(Array.isArray)) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-
 // src/core/status/code-status.ts
-import { readFileSync as readFileSync16 } from "node:fs";
-import { join as join21 } from "node:path";
+import { readFileSync as readFileSync18 } from "node:fs";
+import { join as join25 } from "node:path";
 
 // src/core/code/crap/checks.ts
 function coverageChecks(policy) {
@@ -13360,7 +14084,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync16(join21(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync18(join25(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -13375,72 +14099,6 @@ function setWithoutCoverage(root) {
 function configProblemsOf(root) {
   const { problems } = loadPolicy(root);
   return problems.length === 0 ? {} : { configProblems: problems };
-}
-
-// src/core/scheduler/promotions-row.ts
-function promotionsMetaKey(worktreeId) {
-  return worktreeMetaKey("promotions", worktreeId);
-}
-function publishedBatches(store, worktreeId, daemonStartedAt, now) {
-  const places = /* @__PURE__ */ new Map();
-  const row = readRow(store, worktreeId);
-  if (row === null || row.at < daemonStartedAt) return places;
-  const batches = row.entries.filter(isBatch);
-  for (const p of row.entries) {
-    const position = batches.indexOf(p) + 1;
-    if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
-    const end = p.batch?.estimatedEnd;
-    const place = position === 0 ? null : {
-      position,
-      of: batches.length,
-      files: files2.length,
-      estimatedEnd: typeof end === "number" ? end : null
-    };
-    for (const f of files2) if (!places.has(f)) places.set(f, place);
-  }
-  return places;
-}
-function readRow(store, worktreeId) {
-  const raw = store.meta.get(promotionsMetaKey(worktreeId));
-  if (raw === null) return null;
-  try {
-    const { at, promotions } = JSON.parse(raw);
-    if (typeof at !== "number" || !Array.isArray(promotions)) return null;
-    const entries = promotions.filter(
-      (p) => typeof p === "object" && p !== null && typeof p.until === "number" && Array.isArray(p.files)
-    );
-    return { at, entries };
-  } catch {
-    return null;
-  }
-}
-function isBatch(p) {
-  return typeof p.batch === "object" && p.batch !== null && (p.batch.files?.length ?? 0) > 0;
-}
-function strings4(value) {
-  return Array.isArray(value) ? value.filter((f) => typeof f === "string") : [];
-}
-
-// src/core/scheduler/focused-row.ts
-function focusedMetaKey(worktreeId) {
-  return worktreeMetaKey("focused", worktreeId);
-}
-function readFocused(store, worktreeId) {
-  const raw = store.meta.get(focusedMetaKey(worktreeId));
-  if (raw === null) return [];
-  try {
-    const value = JSON.parse(raw);
-    return Array.isArray(value) ? value.filter(isFocusedRun) : [];
-  } catch {
-    return [];
-  }
-}
-function isFocusedRun(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const run2 = value;
-  const file = run2.testFile;
-  return typeof file?.project === "string" && typeof file.path === "string" && typeof run2.key === "string" && typeof run2.revision === "number" && typeof run2.runId === "string" && Array.isArray(run2.texts) && Array.isArray(run2.checks);
 }
 
 // src/core/status/focused.ts
@@ -13608,11 +14266,11 @@ function hasTables2(conn) {
 }
 
 // src/core/store/transfer-bundle.ts
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 var OBSERVED_MAPS = ["observed", "observedDirect", "observedModules"];
 function listHash(paths) {
   const sorted = [...new Set(paths)].sort(compare);
-  return createHash7("sha256").update(JSON.stringify(sorted)).digest("hex").slice(0, 32);
+  return createHash9("sha256").update(JSON.stringify(sorted)).digest("hex").slice(0, 32);
 }
 var STATIC_LIST = "static:";
 function staticListHash(paths, observed = []) {
@@ -13624,12 +14282,12 @@ function observedHash(observed) {
 }
 
 // src/core/keys/environment-descriptor.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 function configFieldHash(value) {
   return digest(JSON.stringify(value));
 }
 function digest(text2) {
-  return createHash8("sha256").update(text2).digest("hex");
+  return createHash10("sha256").update(text2).digest("hex");
 }
 var PLAIN = [
   ["keyFormat", "key format"],
@@ -13774,7 +14432,7 @@ function readImports(store, worktreeId, keys, states) {
     let currentFiles = 0;
     let currentResults = 0;
     for (const file of files2) {
-      const reason = reasonOf(file, here);
+      const reason = reasonOf2(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
       const current2 = here.current.get(testFileId(file)) ?? [];
@@ -13795,7 +14453,7 @@ function readImports(store, worktreeId, keys, states) {
     ];
   });
 }
-function reasonOf(file, here) {
+function reasonOf2(file, here) {
   const key = here.keys.get(testFileId(file));
   if (key?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
@@ -14013,352 +14671,6 @@ function groupLanesOf(tiers, ownerOf) {
   return (ref2) => byName.get(ownerOf(ref2)) ?? null;
 }
 
-// src/core/scheduler/claims.ts
-var CLAIM_GRACE_MS = 6e3;
-var CLAIM_UNBOUNDED_MS = 6e5;
-function claimBoundMs(timeoutMs) {
-  return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
-}
-
-// src/core/scheduler/runner-work-bound.ts
-var RUNNER_PART_MARGIN_MS = 6e4;
-function runnerPartBoundMs(timeoutMs) {
-  return (timeoutMs ?? CLAIM_UNBOUNDED_MS) + CLAIM_GRACE_MS + RUNNER_PART_MARGIN_MS;
-}
-
-// src/core/slow/slot-files.ts
-import { createHash as createHash10 } from "node:crypto";
-import { basename as basename4, join as join24 } from "node:path";
-
-// src/core/daemon/scratch.ts
-import { createHash as createHash9, randomBytes } from "node:crypto";
-import {
-  linkSync,
-  lstatSync as lstatSync5,
-  mkdirSync as mkdirSync6,
-  mkdtempSync,
-  readdirSync as readdirSync8,
-  readFileSync as readFileSync17,
-  renameSync as renameSync2,
-  rmSync as rmSync3,
-  unlinkSync,
-  writeFileSync as writeFileSync2
-} from "node:fs";
-import { basename as basename3, dirname as dirname8, join as join23 } from "node:path";
-
-// src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync5 } from "node:fs";
-import { dirname as dirname7, isAbsolute as isAbsolute9, join as join22 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? userTmpDir();
-}
-var MAX_SOCKET_PATH_BYTES = 103;
-function socketPathFor(worktreeId, env = process.env) {
-  const name2 = socketNameFor(worktreeId);
-  const path = join22(runtimeDir(env), name2);
-  return Buffer.byteLength(path) <= MAX_SOCKET_PATH_BYTES ? path : join22(userTmpDir(), name2);
-}
-function socketNameFor(worktreeId) {
-  return `squeal-${worktreeId}.sock`;
-}
-function checkPrivateDir(dir, uid, role = "socket directory") {
-  const stat = lstatSync4(dir);
-  if (!stat.isDirectory()) {
-    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
-  }
-  if (stat.uid !== uid) {
-    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
-  }
-  if ((stat.mode & 63) !== 0) {
-    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
-  }
-}
-function userTmpDir(uid = currentUid()) {
-  return join22("/tmp", `squeal-${uid}`);
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? xdg : null;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
-}
-
-// src/core/daemon/scratch.ts
-function repositoryId(commonDir) {
-  const dir = storePaths(commonDir).dir;
-  const file = join23(dir, "repository-id");
-  mkdirSync6(dir, { recursive: true });
-  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
-  writeFileSync2(draft, `${randomBytes(16).toString("hex")}
-`);
-  try {
-    linkSync(draft, file);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  } finally {
-    unlinkSync(draft);
-  }
-  return readFileSync17(file, "utf8").trim();
-}
-
-// src/core/slow/slot-files.ts
-var SLOW_LOCK_FILE = "slow.lock";
-var SLOW_GROUP2 = "slow";
-var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-var GROUP_SLOT_SCOPES = ["user", "repository"];
-var DEFAULT_GROUP_SLOT_SCOPE = "repository";
-function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
-  const dir = (base, commonDir) => scope === "user" ? base : join24(base, `repo.${hash(repositoryId(commonDir))}`);
-  if (group === SLOW_GROUP2) {
-    return {
-      dir,
-      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
-      waiterPrefix: "slow.wait."
-    };
-  }
-  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
-  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
-}
-function hash(text2) {
-  return createHash10("sha256").update(text2).digest("hex").slice(0, 16);
-}
-var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/slow/slot.ts
-import { existsSync as existsSync9 } from "node:fs";
-import { dirname as dirname9, isAbsolute as isAbsolute10, join as join25 } from "node:path";
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-import { pathToFileURL } from "node:url";
-function slowSlotDir(env = process.env, userDir = userTmpDir()) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute10(xdg) ? join25(xdg, "squeal") : userDir;
-}
-function heldPermits(request) {
-  const { dir } = request;
-  const files2 = slotFiles(request.group);
-  if (!existsSync9(dir)) return [];
-  checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
-  const held = [];
-  for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
-    const file = files2.permit(i);
-    const path = join25(dir, file);
-    if (!existsSync9(path)) continue;
-    let free;
-    try {
-      free = permitFree(path);
-    } catch {
-      held.push({ file, record: { kind: "unreadable" } });
-      continue;
-    }
-    if (!free) held.push({ file, record: permitRecord(path) });
-  }
-  return held;
-}
-function permitRecord(path) {
-  let db;
-  try {
-    db = new DatabaseSync6(immutableUrl(path), { readOnly: true });
-  } catch {
-    return { kind: "unreadable" };
-  }
-  try {
-    const row = db.prepare("SELECT pid, worktree_id, since FROM holder LIMIT 1").get();
-    if (row === void 0) return { kind: "missing" };
-    const { pid, worktree_id: worktreeId, since } = row;
-    if (!Number.isSafeInteger(pid) || typeof worktreeId !== "string") return { kind: "unreadable" };
-    if (!Number.isSafeInteger(since)) return { kind: "unreadable" };
-    return {
-      kind: "holder",
-      pid,
-      worktreeId,
-      since
-    };
-  } catch (error) {
-    return { kind: String(error).includes("no such table") ? "missing" : "unreadable" };
-  } finally {
-    db.close();
-  }
-}
-function immutableUrl(path) {
-  const url = pathToFileURL(path);
-  url.search = "immutable=1";
-  return url;
-}
-function permitFree(path) {
-  const db = new DatabaseSync6(path);
-  try {
-    db.exec("PRAGMA busy_timeout = 0");
-    db.exec("BEGIN EXCLUSIVE");
-    db.exec("ROLLBACK");
-    return true;
-  } catch (error) {
-    if (isBusy(error)) return false;
-    throw error;
-  } finally {
-    db.close();
-  }
-}
-
-// src/core/capacity/background.ts
-var DEFAULT_BACKGROUND_SHARE = 0.75;
-function isBackgroundShare(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
-}
-
-// src/core/daemon/outlived.ts
-import { execFile } from "node:child_process";
-import { readdirSync as readdirSync9, readFileSync as readFileSync18 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { promisify } from "node:util";
-
-// src/runners/process/recorders.ts
-var UNOBSERVED = JSON.stringify({ out: "" });
-
-// src/core/daemon/outlived.ts
-var PF_EXITING2 = 4;
-var CHUNK = 64;
-function procRow(pid) {
-  let text2;
-  try {
-    text2 = readFileSync18(`/proc/${pid}/stat`, "latin1");
-  } catch {
-    return null;
-  }
-  const fields = text2.slice(text2.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING2) !== 0) return null;
-  return {
-    pid,
-    ppid: Number(fields[1]),
-    pgrp: Number(fields[2]),
-    session: Number(fields[3]),
-    start: Number(fields[19])
-  };
-}
-var PROC = {
-  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
-  async list() {
-    const names2 = readdirSync9("/proc").filter((name2) => /^\d+$/.test(name2));
-    const rows = [];
-    for (let at = 0; at < names2.length; at += CHUNK) {
-      if (at > 0) await new Promise((done) => setImmediate(done));
-      for (const name2 of names2.slice(at, at + CHUNK)) {
-        const row = procRow(Number(name2));
-        if (row !== null) rows.push(row);
-      }
-    }
-    return rows;
-  },
-  async variable(pid, variable) {
-    let environ;
-    try {
-      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
-    } catch {
-      return null;
-    }
-    const needle = `\0${variable}=`;
-    const at = environ.indexOf(needle);
-    if (at < 0) return null;
-    const end = environ.indexOf("\0", at + needle.length);
-    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
-  },
-  running: async (found2) => found2.flatMap(({ pid, start }) => {
-    const row = procRow(pid);
-    return row?.start === start ? [row] : [];
-  }),
-  command: commandLine
-};
-var run = promisify(execFile);
-var COMMAND_CHARS2 = 120;
-var PS_TIMEOUT_MS = 2e3;
-var PS_MAX_BYTES = 16 * 1024 * 1024;
-var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
-function psLines(text2) {
-  return text2.split("\n").flatMap((line) => {
-    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
-    if (state === void 0 || state.startsWith("Z")) return [];
-    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
-    if (!Number.isInteger(start)) return [];
-    const row = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
-    return [{ row, shown: shown ?? "" }];
-  });
-}
-function shownValue(shown, name2) {
-  const needle = ` ${name2}=`;
-  const at = shown.indexOf(needle);
-  if (at < 0 || shown.includes(needle, at + 1)) return null;
-  const end = shown.indexOf(" ", at + needle.length);
-  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
-}
-function psTable(calls) {
-  let shown = /* @__PURE__ */ new Map();
-  async function list() {
-    let lines;
-    try {
-      lines = psLines(await calls.listing());
-    } catch (error) {
-      shown = /* @__PURE__ */ new Map();
-      throw error;
-    }
-    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
-    return lines.map(({ row }) => row);
-  }
-  return {
-    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
-    list,
-    variable: async (pid, name2) => {
-      const line = shown.get(pid);
-      return line === void 0 ? null : shownValue(line, name2);
-    },
-    running: async (found2) => (await list()).filter(
-      (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
-    ),
-    command: calls.command
-  };
-}
-var PS = psTable({
-  async listing() {
-    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
-    const { stdout } = await run("ps", args, {
-      env: { ...process.env, LC_ALL: "C" },
-      timeout: PS_TIMEOUT_MS,
-      maxBuffer: PS_MAX_BYTES
-    });
-    return stdout;
-  },
-  async command(pid) {
-    try {
-      const args = ["-ww", "-o", "command=", "-p", String(pid)];
-      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
-      const text2 = stdout.trim();
-      return text2.length > COMMAND_CHARS2 ? `${text2.slice(0, COMMAND_CHARS2 - 3)}...` : text2;
-    } catch {
-      return "";
-    }
-  }
-});
-var NONE = {
-  mark: () => 0,
-  list: async () => [],
-  variable: async () => null,
-  running: async () => [],
-  command: async () => ""
-};
-var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS : NONE;
-
-// src/core/daemon/escaped.ts
-var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
-
-// src/core/ps/proc.ts
-var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
-
-// src/core/capacity/pool.ts
-var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
-
-// src/core/scheduler/capacity.ts
-var CAPACITY_RECHECK_MS = 2e3;
-
 // src/core/scheduler/pool-wait.ts
 function poolWaitMetaKey(worktreeId) {
   return worktreeMetaKey("poolWait", worktreeId);
@@ -14386,45 +14698,6 @@ function isPoolWait(value) {
   return typeof w.since === "number" && (busy2 === null || typeof busy2 === "number") && typeof w.cpus === "number" && typeof w.hostSlots === "number" && typeof w.grants === "number";
 }
 var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
-
-// src/core/slow/rank.ts
-var MAX_READ_BYTES = 1024 * 1024;
-
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/scheduler/rekeyed-moves.ts
-var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/scheduler/quiet.ts
-function quietMetaKey(worktreeId) {
-  return worktreeMetaKey("quiet", worktreeId);
-}
-var NO_ENDS = /* @__PURE__ */ new Map();
-function publishedWaits(store, worktreeId, daemonStartedAt, now) {
-  const none3 = { backlog: NO_ENDS, catchUp: NO_ENDS };
-  const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return none3;
-  try {
-    const { at, lanes, catchUp } = JSON.parse(raw);
-    if (typeof at !== "number" || at < daemonStartedAt) return none3;
-    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
-  } catch {
-    return none3;
-  }
-}
-function endsAfter(lanes, now) {
-  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
-  return new Map(
-    Object.entries(lanes).filter(
-      (entry3) => typeof entry3[1] === "number" && entry3[1] > now
-    )
-  );
-}
 
 // src/core/status/retried.ts
 function retriedRuns(store, worktreeId) {
@@ -14620,7 +14893,7 @@ function setupsOf(states) {
   }
   return setups;
 }
-function once2(read4) {
+function once3(read4) {
   let value;
   return () => {
     value ??= { v: read4() };
@@ -14778,7 +15051,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const retried = retriedRuns(store, worktreeId);
   const alive = daemon.state === "alive";
   const hold = (reads?.holds ?? readHolds(store, worktree, daemon, now))[0];
-  const slot2 = once2(
+  const slot2 = once3(
     () => reads?.slowSlot === void 0 ? slowSlotOf(store, worktreeId, root, header, alive, now) : reads.slowSlot ?? void 0
   );
   const yieldReads = {
@@ -14794,9 +15067,9 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const facts = {
     lookupOnly: policy.baseline.onStart === "lookup-only",
     installCommand: header.installCommand ?? null,
-    load: once2(load),
+    load: once3(load),
     // What `run --all --wait` runs, from the rows and states read above: no further read.
-    notCurrent: once2(
+    notCurrent: once3(
       () => keys.filter(
         (row2) => fileClassOf(row2, checks.get(testFileId(row2.testFile)) ?? []) !== "current"
       ).length
@@ -15231,7 +15504,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     worktreeId,
     withRecorded(store, worktreeId, states, header.revision)
   );
-  const load = once2(hostLoadNow);
+  const load = once3(hostLoadNow);
   const retries = pendingRetriesOf(store, keys, load, runs);
   const checkpoint = openCheckpoint(store, worktreeId, daemon);
   const at = worktree?.root ?? root;

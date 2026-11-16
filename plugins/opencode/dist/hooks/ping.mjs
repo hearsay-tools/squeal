@@ -1557,40 +1557,24 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
-// src/core/waiter-lock/waiter-lock.ts
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
-
-// src/core/delivery/prepared.ts
-function endInOrder(items, end, undo) {
-  for (const [i, item] of items.entries()) {
-    try {
-      end(item);
-    } catch (error) {
-      undo(items.slice(i + 1));
-      throw error;
-    }
-  }
-}
-
-// src/core/status/open.ts
-var SLEEP = new Int32Array(new SharedArrayBuffer(4));
-
-// src/core/keys/environment-descriptor.ts
-import { createHash as createHash2 } from "node:crypto";
-function configFieldHash(value) {
-  return digest(JSON.stringify(value));
-}
-function digest(text) {
-  return createHash2("sha256").update(text).digest("hex");
-}
-var ONLY_REJECTED = configFieldHash(false);
-var ONLY_ALLOWED = configFieldHash(true);
 
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
@@ -1744,21 +1728,37 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 // src/core/scheduler/capacity.ts
 var CAPACITY_RECHECK_MS = 2e3;
 
+// src/core/waiter-lock/waiter-lock.ts
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
+
+// src/core/delivery/prepared.ts
+function endInOrder(items, end, undo) {
+  for (const [i, item] of items.entries()) {
+    try {
+      end(item);
+    } catch (error) {
+      undo(items.slice(i + 1));
+      throw error;
+    }
+  }
+}
+
+// src/core/status/open.ts
+var SLEEP = new Int32Array(new SharedArrayBuffer(4));
+
+// src/core/keys/environment-descriptor.ts
+import { createHash as createHash2 } from "node:crypto";
+function configFieldHash(value) {
+  return digest(JSON.stringify(value));
+}
+function digest(text) {
+  return createHash2("sha256").update(text).digest("hex");
+}
+var ONLY_REJECTED = configFieldHash(false);
+var ONLY_ALLOWED = configFieldHash(true);
+
 // src/core/scheduler/pool-wait.ts
 var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
-
-// src/core/slow/rank.ts
-var MAX_READ_BYTES = 1024 * 1024;
-
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/scheduler/rekeyed-moves.ts
-var MOVES_RETENTION_MS = 60 * 6e4;
 
 // src/harness/shared/coverage.ts
 var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
