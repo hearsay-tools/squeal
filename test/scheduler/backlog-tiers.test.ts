@@ -108,7 +108,8 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       await h.batch("vitest.config.ts");
       await waitFor(() => edit !== null, 60_000);
       await edit;
-      await h.quiet();
+      // The cancelled tier's other files come back after the pump's own wait.
+      await h.quiet({ through: ["pump"] });
 
       const [cancelled, next, ...rest] = h.runner.runs.slice(baselineTiers);
       if (!cancelled || !next) throw new Error("expected a cancelled tier and the edit's tier");
