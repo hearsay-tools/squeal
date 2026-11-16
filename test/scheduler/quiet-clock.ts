@@ -1,8 +1,10 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { expect } from "vitest";
 import { publishedWaits } from "../../src/core/scheduler/quiet.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
-import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import type { VirtualClock } from "../helpers/virtual-clock.js";
 
 /*
  * Row 011-153 (spec 011 C4 step 5 as amended 2026-10-23): an edit's
@@ -19,9 +21,13 @@ export interface Clocked {
   now(): number;
   /** Moves the scheduler's clock `ms` ahead. */
   advance(ms: number): void;
+  /** The scheduler's virtual clock; `null` on the host's. */
+  readonly clock: VirtualClock | null;
+  /** Row 011-378: the quiet point: a rest with no runner call open. */
+  quiet(): Promise<Rest>;
 }
 
-/** How often `idleAfterQuiet` looks whether only a wait before catch-up is left. */
+/** How often `pastCatchUpQuiet` looks whether only a wait before catch-up is left, and `idleAfterQuiet` at the pump's wait. */
 const QUIET_POLL_MS = 100;
 
 /**
@@ -44,14 +50,19 @@ export async function pastCatchUpQuiet(side: Clocked): Promise<void> {
   await expect.poll(skipped, { interval: QUIET_POLL_MS, timeout: 30_000 }).toBe(true);
 }
 
-/** `scheduler.idle()`, moving `side`'s clock past each wait before catch-up on the way. */
+/**
+ * Row 011-378: the quiet point (`quiet-point.ts`) with nothing left but
+ * wakes the test moves, moving `side`'s clock past each wait before
+ * catch-up on the way. On the host's clock the pump's own wait comes in
+ * real time, as `Scheduler.idle()` waited for it; on a virtual clock it
+ * fires only when the test moves time.
+ */
 export async function idleAfterQuiet(side: Clocked): Promise<void> {
-  let idle = false;
-  const done = side.scheduler.idle().then(() => {
-    idle = true;
-  });
-  while (!idle) {
-    await Promise.race([done, new Promise((resolve) => setTimeout(resolve, QUIET_POLL_MS))]);
-    if (!idle) skipCatchUpQuiet(side);
+  for (;;) {
+    const rest = await side.quiet();
+    if (skipCatchUpQuiet(side)) continue;
+    const pump = rest.wakes.find((wake) => wake.reason === "pump");
+    if (pump === undefined || side.clock !== null) return;
+    await delay(Math.min(QUIET_POLL_MS, Math.max(1, pump.at - side.now())));
   }
 }

@@ -76,7 +76,7 @@ export async function started(
   await side.scheduler.start();
   // Row 011-368: on a virtual clock a wake waits for the test to move time, so read the quiet point.
   if (side.clock !== null) await settle(side);
-  else await side.scheduler.idle();
+  else await side.quiet();
   return { repo, side };
 }
 

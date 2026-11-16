@@ -95,7 +95,7 @@ export async function heldBatch({
   });
   await side.scheduler.start();
   if (side.clock !== null) await settle(side);
-  else await side.scheduler.idle();
+  else await side.quiet();
   const base = side.runner.runs.length;
   const gate = new Gate();
   const beside = new Gate(false);

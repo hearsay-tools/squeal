@@ -74,7 +74,7 @@ export async function publishedRun(
   readsInput(a);
   await a.scheduler.start();
   await a.scheduler.requestFullSuite();
-  await a.scheduler.idle();
+  await a.quiet();
   const commit = git(ci, ["rev-parse", "HEAD"]);
   const { bundle } = exportResults(a.store, a.worktreeId, {
     squealVersion: "0.0.0-test",
@@ -95,7 +95,7 @@ export async function publishedRun(
 
 /**
  * A lookup-only daemon of the worktree at `root`, in `environment` when
- * given, started and idle, and a reader of it, made anew at each call as a
+ * given, started and at its quiet point, and a reader of it, made anew at each call as a
  * restart makes one. `retry` is the daemon's retry request, which the
  * reader's callback makes.
  */
@@ -108,7 +108,7 @@ export async function daemonOf(root: string, environment?: Environment) {
     await d.scheduler.requestRetries();
   };
   await d.scheduler.start();
-  await d.scheduler.idle();
+  await d.quiet();
   const reader = () => readerOf(root, { store: d.store, imported: () => void retry() });
   return { d, retry, reader };
 }
