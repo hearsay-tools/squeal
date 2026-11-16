@@ -25,6 +25,14 @@ import {
 const suite = daemonSuite();
 const { fixture, daemon } = suite;
 
+/** Spawns a daemon in `repo` and waits until it answers: its answer and how long after its spawn. */
+async function servesAfter(repo: FixtureRepo, what: string) {
+  const started = performance.now();
+  const spawned = daemon(repo);
+  const answer = await waitFor(() => ping(repo.socketPath, 100), 30_000, what);
+  return { spawned, pid: answer.pid, elapsed: performance.now() - started };
+}
+
 describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
   it("five concurrent starts yield exactly one serving daemon; the others exit", async () => {
     const repo = fixture();
@@ -48,8 +56,6 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
 
   it("after SIGKILL a replacement serves soon after its spawn (D10 target 200 ms)", async () => {
     const repo = fixture();
-    // The cold start, paired with the replacement under the same load: it
-    // creates the store the replacement finds, so it does more work.
     const coldAt = performance.now();
     const first = daemon(repo);
     await waitFor(() => ping(repo.socketPath, 100), 30_000, "first daemon");
@@ -68,19 +74,27 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
       else process.env.XDG_RUNTIME_DIR = saved;
     }
 
-    const started = performance.now();
-    const second = daemon(repo);
-    const answer = await waitFor(() => ping(repo.socketPath, 100), 30_000, "replacement");
-    const elapsed = performance.now() - started;
-    expect(answer.pid).toBe(second.child.pid);
+    // Row 011-359: the cold start it is held to is spawned beside it, in a
+    // fresh fixture, so a load burst on a shared runner slows both. A cold
+    // start measured seconds before is another moment's load: on CI one read
+    // 306 ms and the replacement after it 2365 ms, while 66 earlier CI pairs
+    // read at most 1.49 times. The cold start creates its store, so it does
+    // more work than the replacement, which finds one.
+    const fresh = fixture();
+    const [answer, besideCold] = await Promise.all([
+      servesAfter(repo, "replacement"),
+      servesAfter(fresh, "cold start beside it"),
+    ]);
+    const { elapsed } = answer;
     // The 200 ms target is reported, not asserted: a shared CI runner measured
     // 213 ms, and one at load measured 5.5 s against a 1 s bound (task 001-309).
     console.log(
-      `replacement serving ${elapsed.toFixed(0)} ms after spawn, cold start ${cold.toFixed(0)} ms (target 200 ms: ${elapsed < 200 ? "met" : "missed"})`,
+      `replacement serving ${elapsed.toFixed(0)} ms after spawn, cold start beside it ${besideCold.elapsed.toFixed(0)} ms, first cold start ${cold.toFixed(0)} ms (target 200 ms: ${elapsed < 200 ? "met" : "missed"})`,
     );
+    expect(answer.pid).toBe(answer.spawned.child.pid);
     // Nothing the dead daemon left, its socket file or its lock, holds the
-    // replacement up: it serves about as soon as a cold start, whatever the load.
-    expect(elapsed).toBeLessThan(3 * cold);
+    // replacement up: it serves about as soon as a cold start under the same load.
+    expect(elapsed).toBeLessThan(3 * besideCold.elapsed);
   });
 
   it("exits after the idle period with no registered consumers, leaving a note", async () => {
