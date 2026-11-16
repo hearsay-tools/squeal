@@ -43,10 +43,11 @@ async function promotedBehind(ms: number): Promise<CatchUpSide> {
     files,
     hostSlots: 8,
     cancels: false,
+    clock: "virtual",
     policy: RUN_MISSING,
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   holdRuns(side.runner, (path) => SLOW.includes(path));
   await side.edit("watch", "src/s.ts", "f.config.json");
@@ -128,7 +129,7 @@ describe("the wait says whether the tier yields (spec 011 C15 as amended 2026-10
     expect([...publishedYieldRow(store, worktreeId, startedAt).tiers.values()]).toHaveLength(1);
     expect(publishedYieldRow(store, worktreeId, Date.now() + 60_000).tiers.size).toBe(0);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(publishedYieldRow(store, worktreeId, startedAt).tiers.size).toBe(0);
   });
 

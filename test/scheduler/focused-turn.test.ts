@@ -2,12 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { declareTraits } from "../../src/core/types/runner-traits.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { focus, focusedRows, focusing, runsSince } from "./focused-fixture.js";
-import { heldRun, ref } from "./tier-yields-fixture.js";
+import { heldRun, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-145 (spec 011 C4 step 4 and C15 as amended 2026-10-23): a focused
@@ -32,14 +33,20 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     ];
     const repo = catchUpRepo(files);
     // Tiers of one file: each focused entry is a tier of its own.
-    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1, policy: BASELINE });
+    const s = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      tierSize: 1,
+      clock: "virtual",
+      policy: BASELINE,
+    });
     const record = focusing(s);
     let holding = false;
     s.runner.beforeRun = (run) => {
       if (holding && run.some((f) => f.path === S)) s.runner.hold();
     };
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     holding = true;
     await s.edit("watch", "src/s.ts");
@@ -54,7 +61,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     );
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     const [f1, f2, f3, f4, f5] = edited.map((path) => `${path} focused`);
     expect(runsSince(s, record, base)).toEqual([S, f1, f2, f3, f4, B, f5, ...edited]);
@@ -73,14 +80,20 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
       { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1, policy: BASELINE });
+    const s = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      tierSize: 1,
+      clock: "virtual",
+      policy: BASELINE,
+    });
     const record = focusing(s);
     let holding = false;
     s.runner.beforeRun = (run) => {
       if (holding && run.some((f) => f.path === S)) s.runner.hold();
     };
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     holding = true;
     await s.edit("watch", "src/s.ts");
@@ -96,7 +109,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     s.scheduler.pauseBacklog(true);
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     const focusedRuns = edited.map((path) => `${path} focused`);
     expect(runsSince(s, record, base)).toEqual([S, ...focusedRuns, ...edited]);
@@ -115,12 +128,23 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
       { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 1, policy: BASELINE });
+    const s = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      tierSize: 1,
+      clock: "virtual",
+      policy: BASELINE,
+    });
     await s.scheduler.start();
-    await s.scheduler.idle();
-    const other = catchUpSide(repo, repo.other, { files, hostSlots: 8, policy: BASELINE });
+    await s.quiet();
+    const other = catchUpSide(repo, repo.other, {
+      files,
+      hostSlots: 8,
+      clock: "virtual",
+      policy: BASELINE,
+    });
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     // The other worktree runs B at the key this one's edit will reach (the same bytes: its
     // second edit), held, so its claim stands while this worktree's focused entries wait.
     let otherHolding = true;
@@ -150,19 +174,20 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     );
     holding = false;
     s.runner.release();
-    await expect
-      .poll(() => edited.every((path) => s.current(path)), { timeout: 60_000 })
-      .toBe(true);
+    await settle(s, other);
+    expect(edited.every((path) => s.current(path))).toBe(true);
 
     const focusedRuns = edited.map((path) => `${path} focused`);
     expect(runsSince(s, record, base)).toEqual([S, ...focusedRuns, ...edited]);
     expect(s.current(B)).toBe(false);
     otherHolding = false;
     other.runner.release();
-    await other.scheduler.idle();
-    // This worktree adopts the other's result for B and never runs it.
-    await expect.poll(() => s.current(B), { timeout: 60_000 }).toBe(true);
-    await s.scheduler.idle();
+    await other.quiet();
+    // This worktree adopts the other's result for B at its next claim recheck, and never runs it.
+    s.advance(CLAIM_RECHECK_MS);
+    await settle(s, other);
+    expect(s.current(B)).toBe(true);
+    await s.quiet();
     const ranB = s.runner.runs.slice(base).filter((run) => run.files.some((f) => f.path === B));
     expect(ranB).toHaveLength(0);
   });
@@ -176,14 +201,20 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
       { project: "b", path: B, ms: 1, imports: ["src/b.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const s = catchUpSide(repo, repo.main, { files, hostSlots: 8, tierSize: 2, policy: BASELINE });
+    const s = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      tierSize: 2,
+      clock: "virtual",
+      policy: BASELINE,
+    });
     const record = focusing(s);
     let holding = false;
     s.runner.beforeRun = (run) => {
       if (holding && run.some((f) => f.path === S)) s.runner.hold();
     };
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     holding = true;
     await s.edit("watch", "src/s.ts");
@@ -197,7 +228,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     );
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
     // Tiers of two: four focused tiers, then the turn's tier, which leaves f1 to its waiting
     // focus and takes f2 whole beside B.
     const [f1, f2, f3, f4, f5, f6, f7, f8, f9] = edited;
@@ -235,6 +266,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     const s = catchUpSide(repo, repo.main, {
       files,
       hostSlots: 8,
+      clock: "virtual",
       policy: { ...BASELINE, slow },
       scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
     });
@@ -251,7 +283,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
       if (holding && run.some((f) => f.path === S)) s.runner.hold();
     };
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     holding = true;
     await s.edit("watch", "src/s.ts");
@@ -260,7 +292,7 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     await focus(s, [ref(L), ref(F, "f"), ref(G)], ["runs"], 60_000);
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     // Only G ran focused; each of the three ran whole once, at its new key.
     expect(record.checks.flatMap((checks) => checks ?? []).map((c) => c.testFile.path)).toEqual([
