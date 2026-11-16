@@ -1,12 +1,7 @@
 import type { WorktreeId } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import { type CheckpointRepo, type RunRepo, worktreeMetaKey } from "../../types/store.js";
-import type {
-  CheckpointLane,
-  CheckpointRecord,
-  RunRecord,
-  RunTiming,
-} from "../../types/store-records.js";
+import type { CheckpointLane, CheckpointRecord, RunRecord } from "../../types/store-records.js";
 import { json, num, numOrNull, oneOf, oneOfOrNull, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 
@@ -46,35 +41,7 @@ export function createRunRepo(conn: Connection): RunRepo {
           startedSince,
         )
         .map(toRun),
-    recentTimings: (worktreeId, limit) => recentTimings(conn, worktreeId, limit),
   };
-}
-
-/**
- * Row 005-93: per test file of each run, the file-level check's duration or the sum of its
- * tests', the greater (`durationOf`), from the run's own results (`results_by_run`).
- */
-const RUN_FILE_DURATIONS = `
-  SELECT MAX(COALESCE(MAX(CASE WHEN c.kind = 'file' THEN r.duration_ms END), 0),
-             COALESCE(SUM(CASE WHEN c.kind <> 'file' THEN r.duration_ms END), 0)) AS ms
-  FROM results r JOIN checks c ON c.id = r.check_id
-  WHERE r.run_id = ?
-  GROUP BY c.project, c.test_path`;
-
-function recentTimings(conn: Connection, worktreeId: WorktreeId, limit: number): RunTiming[] {
-  const runs = conn.all(
-    `SELECT id, revision, started_at, ended_at FROM runs
-     WHERE worktree_id = ? AND checkpoint_id IS NULL AND end_state = 'completed'
-     ORDER BY started_at DESC, rowid DESC LIMIT ?`,
-    worktreeId,
-    limit,
-  );
-  return runs.map((row) => ({
-    revision: num(row, "revision"),
-    startedAt: num(row, "started_at"),
-    endedAt: num(row, "ended_at"),
-    durations: conn.all(RUN_FILE_DURATIONS, str(row, "id")).map((d) => num(d, "ms")),
-  }));
 }
 
 function toRun(row: Row): RunRecord {

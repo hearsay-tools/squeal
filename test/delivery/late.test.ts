@@ -3,6 +3,7 @@ import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { feedDeliveredMetaKey } from "../../src/core/presence/stored.js";
+import { editTimingsMetaKey } from "../../src/core/scheduler/edit-timings.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/sink.js";
@@ -156,28 +157,17 @@ describe("late, once (row 005-93, part 2)", () => {
     expect(await text()).toBeNull();
   });
 
-  it("reads the start delay from this worktree's stored runs", async () => {
-    // A stored edit run started 10 s after its revision: the bound is 2 × (10 s + the files).
-    const zero = store.revisions.append({
-      worktreeId: WT,
-      createdAt: clock - 20_000,
-      head: null,
-      dirty: true,
-      trigger: "watch",
-      changes: [{ path: "src/z.ts", oldHash: null, newHash: "z" }],
-    });
-    store.runs.start({
-      id: "r1",
-      worktreeId: WT,
-      revision: zero.number,
-      testFiles: [],
-      checkpointId: null,
-      logDir: "/tmp/r1",
-      startedAt: clock - 10_000,
-    });
-    store.runs.finish("r1", "completed", clock - 9_000);
-    revision = zero.number;
-    recordRefinedApplied(store, WT, revision);
+  it("reads the start delay the scheduler recorded for this worktree's edit revisions", async () => {
+    // An edit tier started 10 s after its revision: the bound is 2 × (10 s + the files).
+    store.meta.set(
+      editTimingsMetaKey(WT),
+      JSON.stringify({
+        tierSize: 4,
+        widths: {},
+        firsts: [{ revision: 0, delayMs: 10_000 }],
+        tiers: [],
+      }),
+    );
     await edited();
     clock += 15_000;
     expect(await text()).toBeNull();

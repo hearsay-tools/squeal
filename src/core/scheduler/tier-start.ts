@@ -1,6 +1,7 @@
 import type { EpochMs } from "../types/common.js";
 import { CAPACITY_RECHECK_MS, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import type { SchedulerContext } from "./context.js";
+import { recordEditTier } from "./edit-timings.js";
 import { startFocusedTier } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import { type Candidate, type Idle, isIdle, type TierPlan } from "./tier-plan.js";
@@ -122,6 +123,8 @@ function act(
   // A tier beside it counts toward neither (row 011-269).
   // An edit's tier of the batch runs as wide as its files, under the runner's own width.
   const grant = lease?.grant ?? (ask === null ? tier.files.length : ask.offer);
+  // Row 005-93: the facts the late bound reads (review 0.1.530 B2, B3).
+  recordEditTier(context, tier, grant);
   if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at);
   else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at);
   return { tier };

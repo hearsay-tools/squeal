@@ -232,17 +232,6 @@ export interface RunRecord {
   readonly end: RunEnd | null;
 }
 
-/**
- * Row 005-93: one completed run's times and the duration of each test file it ran, as its own
- * results give it (`durationOf`: the file-level check, or the sum of its tests when greater).
- */
-export interface RunTiming {
-  readonly revision: RevisionNumber;
-  readonly startedAt: EpochMs;
-  readonly endedAt: EpochMs;
-  readonly durations: readonly number[];
-}
-
 /** Spec 001 D7: "A checkpoint is one `run --all` or baseline request". */
 export type CheckpointKind = "run-all" | "baseline";
 
