@@ -2495,8 +2495,8 @@ Spec folder `specifications/023-results-at-commit/` (stage: research; the human,
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 023-01 research: running missing test files in a temporary checkout at a commit | running | topic temp-checkout | `research/temp-checkout.md` committed |
-| 023-02 research: computing keys when the commit's environment differs | running | topic environment-at-commit | `research/environment-at-commit.md` committed |
+| 023-01 research: running missing test files in a temporary checkout at a commit | done (researcher ec454b4a, `research/temp-checkout.md`: worktree add + warm pnpm install 1 to 2 s, cold 7 to 8 s; 020's gate runs unchanged in the checkout and writes to the shared store at X's keys; all missing files at X take 5 to 12 min at width 12, so default to the diff's selection in 600 s; SIGKILL orphans the gate's relaunch child and `squeal ps` misses it; red-proof overlay works, 22 to 27% of new test files import a file the parent lacks) | topic temp-checkout | `research/temp-checkout.md` committed |
+| 023-02 research: computing keys when the commit's environment differs | done (researcher 087110d8, `research/environment-at-commit.md`: installed part derives exactly from X's committed pnpm lockfile; a lookup in the never-pruned `environments` table recovers 100% (Squeal) and 78% (squawk) of not-determined files; record-by-commit only 3 to 9%, rejected; the checkout's install gives the exact hash for the rest) | topic environment-at-commit | `research/environment-at-commit.md` committed |
 
 ## Later
 
