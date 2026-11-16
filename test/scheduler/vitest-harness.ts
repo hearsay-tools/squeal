@@ -26,6 +26,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { loadVitest } from "../../src/runners/vitest/load.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { withVitestTraits } from "../runners/vitest/helpers.js";
 import { onCleanUp } from "./cleanup.js";
@@ -74,6 +75,10 @@ export interface Harness {
   readonly clock: VirtualClock | null;
   /** Row 011-353: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
   rest(): Promise<Rest>;
+  /** Row 011-378: the runner calls the scheduler has open, every part's included. */
+  readonly calls: RunnerCalls;
+  /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
+  quiet(): Promise<Rest>;
 }
 
 /** What a runner part beside Vitest is built with: the harness's note, and the policy as last reloaded. */
@@ -246,6 +251,7 @@ export async function openHarness(
       },
     },
   });
+  const calls = new RunnerCalls();
   const sink = new RecordingSink(store, worktreeId);
   const extraFiles: string[][] = [];
   const errors: Error[] = [];
@@ -257,7 +263,7 @@ export async function openHarness(
     root,
     worktreeId,
     store,
-    runner: schedulerRunner,
+    runner: countCalls(schedulerRunner, calls),
     sink,
     policy,
     squealVersion: "0.0.0-test",
@@ -287,6 +293,10 @@ export async function openHarness(
   trace?.watch({ scheduler, store, worktreeId, runs: runner.runs, errors });
   const hasher = createFsHasher(root, "sha1");
   const at = (path: string) => join(root, path);
+  const rest = () => {
+    clock.clock?.advance(0);
+    return scheduler.rest();
+  };
   return {
     root,
     store,
@@ -298,10 +308,9 @@ export async function openHarness(
     now: clock.now,
     advance: clock.advance,
     clock: clock.clock,
-    rest: () => {
-      clock.clock?.advance(0);
-      return scheduler.rest();
-    },
+    rest,
+    calls,
+    quiet: () => quiet({ rest, calls, clock: clock.clock }),
     extraFiles,
     errors,
     write(path, content) {
