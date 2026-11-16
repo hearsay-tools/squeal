@@ -29,3 +29,16 @@ Lead: test first. Extend or copy the SIGKILL fixture: kill the daemon mid-check,
 Owns: `src/core/daemon/full-check.ts`, the claim's meta row format if it must change (say how an older row reads), `test/daemon/` new tests. Done when: row 011-375's done-when; the new test failed before the fix; `tasks/011-375/notes.md` gives the mechanism and why two live daemons cannot both check. This changes `src/`, so the candidate gets a version raise.
 
 Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; report pending checks as such.
+
+## R1 (W1): review of cand/011-376
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-376` at `22e60ddafc9ccc571d2737eeda7f359203f223f9`; candidate CI run 43854707406. Test files and notes only: no `src/` change, no version raise. Range `d5f73b118..22e60ddafc9ccc571d2737eeda7f359203f223f9`: worker ffae9bc4's one commit (`3ba3200c9`), cherry-picked without conflict. Read: board rows 011-376 and 015-42; this file's W1; `tasks/011-376/notes.md`.
+
+Check, each as proven, plausible or unverified:
+
+1. **Still guards row 015-42.** The case fails when the payload's parse, or its whole map, runs on the main thread (the notes give both proofs and how to repeat them); judging a turn by the main thread's CPU time (`process.threadCpuUsage`, also on Node 22.19, CI's oldest) cannot miss a long turn of the writer's own work.
+2. **The bound fits the work.** Half of this run's main-thread parse of the same payload follows the machine's speed; nothing is host-tuned; a cold parse (first `JSON.parse`, JIT) does not shrink the budget below the writer's own turns on a slow or fast machine; dropping the load skip is safe.
+3. **The probe.** `watchTurns` (5 ms interval) records every turn, counts GC and Vitest's own work only as the notes say, and leaves no timer behind on a failure.
+4. **The side finding** (the store write runs on the main thread, about 240 ms by the clock and 10 ms of CPU on a slow disk; D8 design): is it a defect a user sees, or the design as written?
+
+Coordinator at the candidate: lint and typecheck pass; the case passes at load 89. Worker: three Node 26 runs and one Node 22.19 run pass at load 69 to 82; both regressions fail. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/011-376.md` and commit it on your branch.
