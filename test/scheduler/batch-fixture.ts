@@ -14,7 +14,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { heldRun, ref, START_WITHIN_MS } from "./tier-yields-fixture.js";
+import { heldRun, ref, START_WITHIN_MS, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-268 (spec 011 C4 step 5 and C15 as amended 2026-10-29,
@@ -64,6 +64,12 @@ export interface BatchSetup {
   readonly hostSlots?: number;
   /** Whether B is in the repository, queued as the backlog. */
   readonly backlog?: boolean;
+  /**
+   * Row 011-368: `"virtual"`, the scheduler's clock is a prompt virtual
+   * clock (`CatchUpOptions.clock`) and the setup reads at the side's quiet
+   * point (`settle`); absent, a `ModelClock`.
+   */
+  readonly clock?: "virtual";
 }
 
 /**
@@ -78,17 +84,18 @@ export async function heldBatch({
   waitMs = 600_000,
   hostSlots = 24,
   backlog = true,
+  clock,
 }: BatchSetup = {}) {
   const repo = catchUpRepo(files(backlog));
-  const clock = new ModelClock();
   const side = catchUpSide(repo, repo.main, {
     files: files(backlog),
     hostSlots,
     policy: RUN_MISSING,
-    now: clock.now,
+    ...(clock === undefined ? { now: new ModelClock().now } : { clock }),
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  if (side.clock !== null) await settle(side);
+  else await side.scheduler.idle();
   const base = side.runner.runs.length;
   const gate = new Gate();
   const beside = new Gate(false);
@@ -151,7 +158,8 @@ export class Gate {
 async function firstOf(side: CatchUpSide, of: readonly string[], after: number) {
   const first = () =>
     side.runner.runs.slice(after).find((run) => paths(run).some((path) => of.includes(path)));
-  await expect.poll(() => first() !== undefined, { timeout: START_WITHIN_MS }).toBe(true);
+  if (side.clock !== null) await settle(side);
+  else await expect.poll(() => first() !== undefined, { timeout: START_WITHIN_MS }).toBe(true);
   const run = first();
   if (run === undefined) throw new Error("no run of the batch");
   return run;
