@@ -80,7 +80,7 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     // Half of 20 s is the wall budget a tier of these files would be cut at (001-366).
     const { h, runs, spans } = await slotHarness({ files, hostSlots: 4, timeoutMs: 20_000 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The baseline taught the durations; the forced pass is the backlog measured.
     const from = Date.now();
@@ -93,7 +93,8 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
       }
     })();
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    // A slot the pool refuses waits for its next look (a pump wake), as `idle()` waited.
+    await h.quiet({ through: ["pump"] });
     polling = false;
     await poll;
 
@@ -208,7 +209,8 @@ describe("scheduler: a node:test backlog in one-file slots (task 011-21 slice 2)
     expect(grantedAt - released).toBeLessThanOrEqual(REACT_MS);
 
     other.close();
-    await h.scheduler.idle();
+    // The holder takes the waiter's permits back at its pool's next look (a pump wake).
+    await h.quiet({ through: ["pump"] });
     const ran = runs.flatMap((r) => r.files.map((f) => f.path));
     expect(ran.sort()).toEqual(files.map((f) => testPath(f.name)));
   });
