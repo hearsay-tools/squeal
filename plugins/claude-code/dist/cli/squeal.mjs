@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.525";
+  if (true) return "0.1.526";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -60389,7 +60389,6 @@ var init_scheduler2 = __esm({
       #claimsWake;
       #claimWindow = null;
       #lock = new Mutex(this.#now, (count4) => this.#wakes.locked(count4));
-      #idle = [];
       /** Row 015-117: the once-after-upgrade re-walk, made at its first chunk. */
       #rewalk = null;
       #runnerWork = new RunnerWork({
@@ -60938,10 +60937,6 @@ var init_scheduler2 = __esm({
           };
         }, "finding the test files that read the paths of a named wait");
       }
-      idle() {
-        if (this.#isIdle()) return Promise.resolve();
-        return new Promise((resolve45) => this.#idle.push(resolve45));
-      }
       /**
        * Use is the work an edit, a request or a wait caused (011 C9 as amended
        * 2026-10-21, row 011-92): an edit's work and a promoted file
@@ -61099,7 +61094,6 @@ var init_scheduler2 = __esm({
           if (this.#context) this.#retireSlow();
           if (this.#awaitingInstall) stopWaiting(this.options);
         }, "closing the scheduler");
-        for (const resolve45 of this.#idle.splice(0)) resolve45();
       }
       /** The close began, or the daemon's stop, which precedes it: no tier starts (row 011-66). */
       #stopping() {
@@ -61193,8 +61187,6 @@ var init_scheduler2 = __esm({
             const ended2 = this.#live.step([PUMP_ENDED], {});
             failed7 = ended2.error;
             if (failed7 === null && ended2.wake.kind === "again") this.#pump();
-            else if (failed7 === null && this.#isIdle())
-              for (const resolve45 of this.#idle.splice(0)) resolve45();
           }
           if (failed7 !== null) throw failed7;
         });
@@ -61556,11 +61548,6 @@ var init_scheduler2 = __esm({
           what: `a pass over ${plural(paths.length, "path")}`,
           stopped: () => this.#closed
         });
-      }
-      #isIdle() {
-        if (this.#closed) return true;
-        if (this.#busy?.pending === true) return false;
-        return this.#pumping === null && (this.#stalled || !this.#admit().hasWork);
       }
       #started() {
         if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
