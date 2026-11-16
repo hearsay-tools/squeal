@@ -21,3 +21,15 @@ Done when: every listed file passes 3 of 3 (load stated); `git grep -nE "schedul
 - **B5, B6** (row 011-380): the survey's lists (the catch-up family).
 - **B7** (row 011-380): the survey's list; also give each other builder it names a call counter and `quiet()`, as `tasks/011-378/notes.md` "For the next rows" says (about five lines each).
 - **C1 to C4** (row 011-381): the survey's lists; virtual clock as above.
+
+## R1 (B1 to B3): review of cand/011-380-b1-b3
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b1-b3` at `fb87ff5822a5356b21c58cb75bee67f61da03034`; candidate CI run 43925583116. Test files and notes only: no `src/` change, no version raise. Range `999390321..fb87ff5822a5356b21c58cb75bee67f61da03034`: workers 53963056 (B1, two commits), 59182a73 (B2, four) and e5d56a10 (B3, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md` (the quiet point's contract); `tasks/011-380/B1.md`, `B2.md`, `B3.md`; `reviews/011-378-379.md` (R2, N1).
+
+Check, each as proven, plausible or unverified:
+
+1. Each listed file's change is `scheduler.idle()` to the builder's `quiet()` and nothing else, apart from the named exceptions; each case keeps its meaning; no file of another slice changed.
+2. **The named exceptions:** `backlog-tiers` "cancels a backlog tier for an edit" waits with `quiet({ through: ["pump"] })` (failed every time without it: does the named wake hide a run the case depends on, or is it the run the case waits for?); `busy-hold` now waits at the quiet point after the lock frees (review N1); `busy-merge`'s side uses `quiet()` without `settle`.
+3. **Slower hosts.** CI showed with `claims-slow-slot` that a wait that ends at the same point here can end early on a slower runner. Name any file in this range whose wait could still read a result before the run that writes it ends.
+
+Coordinator at the candidate: lint and typecheck pass; six files from the three slices pass (29 tests, load 14); 135 test files still call `scheduler.idle()` (rows 011-380 B4 to B7 and 011-381). Workers: each slice's files 3 of 3 (B1 25 files at load 5 to 22; B2 30 files at load 9 to 20; B3 28 files at load 13 to 25). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-380-b1-b3.md` and commit it on your branch.
