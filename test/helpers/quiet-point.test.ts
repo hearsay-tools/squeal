@@ -101,10 +101,32 @@ describe("the quiet point (row 011-378)", () => {
     void counted.testFiles();
     expect(calls.describe()).toBe("testFiles ×1");
     replaced.resolve([]);
-    await calls.drained();
+    await calls.nextEnd();
     expect(calls.open).toBe(0);
     expect(counted.recheck).toBeUndefined();
     expect(counted.name).toBe("held");
+  });
+
+  it("waits for a runner-part call while its bound is armed, not after it was abandoned", async () => {
+    const calls = new RunnerCalls();
+    const { counted, runner } = heldRunner(calls);
+    const answer = deferred<never[]>();
+    Object.assign(runner, { testFiles: () => answer.promise });
+    void counted.testFiles();
+    let bounded = true;
+    const side = sideOf(calls, () =>
+      bounded ? [wake("runner-part-bound", Date.now() + 60_000)] : [],
+    );
+    expect(await settledSoon(quiet(side))).toBe(false);
+    answer.resolve([]);
+    expect(await settledSoon(quiet(side))).toBe(true);
+
+    // A call that never answers, once its bound came: the scheduler went on without it.
+    Object.assign(runner, { testFiles: () => new Promise(() => {}) });
+    void counted.testFiles();
+    bounded = false;
+    expect(calls.open).toBe(1);
+    expect(await settledSoon(quiet(side))).toBe(true);
   });
 
   it("never moves a virtual clock to a wake but a record's gather", async () => {
