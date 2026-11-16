@@ -1,0 +1,8 @@
+{"age":"1-3d","rows":418042,"keys":50245,"dirty":217046,"nocommit":0}
+{"age":"3-7d","rows":835259,"keys":99133,"dirty":446652,"nocommit":0}
+{"age":"<1d","rows":165716,"keys":21351,"dirty":62898,"nocommit":0}
+{"age":">=7d","rows":14607,"keys":1592,"dirty":6797,"nocommit":0}
+{"age":"1-3d","rows":720789,"keys":45615,"dirty":216125,"nocommit":0}
+{"age":"3-7d","rows":2642015,"keys":174787,"dirty":774605,"nocommit":0}
+{"age":"<1d","rows":599502,"keys":41423,"dirty":262685,"nocommit":0}
+{"age":">=7d","rows":71975,"keys":3940,"dirty":67254,"nocommit":0}
