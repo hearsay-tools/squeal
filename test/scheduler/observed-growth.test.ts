@@ -51,11 +51,11 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const bStarted = b.scheduler.start();
     await expect.poll(() => b.closures()).toBeGreaterThan(0);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(outcome(store, repo.main)).toBe("pass");
     release();
     await bStarted;
-    await b.scheduler.idle();
+    await b.quiet();
     // The window S2 named stays shut: B ran its own copy, which fails.
     expect(b.runs.flat().map((f) => f.path)).toContain(HIDDEN_TEST);
     expect(outcome(store, rootB)).toBe("fail");
@@ -66,7 +66,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const runs = b.runs.length;
     const revision = store.revisions.latest(worktreeIdFor(rootB))?.number;
     b.scheduler.refreshObserved();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runs).toHaveLength(runs);
     expect(outcome(store, rootB)).toBe("fail");
     // The revision is untouched: a runner-only refinement stores no revision.
@@ -77,10 +77,10 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const { repo, store } = await twoWorktrees();
     const a = await open(repo.main, store, repo.commonDir);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runs).toHaveLength(1);
     a.scheduler.refreshObserved();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runs).toHaveLength(1);
     expect(outcome(store, repo.main)).toBe("pass");
   });
@@ -140,7 +140,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     else await bStarted;
     const revision = store.revisions.latest(worktreeIdFor(rootB))?.number;
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(outcome(store, repo.main)).toBe("pass");
     // The timer saw A's growth; while held, the scheduler could not take it.
     await expect.poll(() => calls).toBeGreaterThan(0);
@@ -153,7 +153,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     // (task 003-43): 6. Which one depends on whether the 003-26 timer re-keyed B before B's first
     // tier was selected, a race the test does not fix.
     await expect.poll(() => b.runs.flat().length, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
-    await b.scheduler.idle();
+    await b.quiet();
     const ran = b.runs.flat().map((f) => f.path);
     expect([4, 6]).toContain(ran.length);
     expect(ran.filter((path) => path === HIDDEN_TEST)).toHaveLength(ran.length / 2);
@@ -187,11 +187,11 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const aStarted = a.scheduler.start();
     await expect.poll(() => a.closures()).toBeGreaterThan(0);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(outcome(store, rootB)).toBe("fail");
     release();
     await aStarted;
-    await a.scheduler.idle();
+    await a.quiet();
 
     expect(outcome(store, repo.main)).toBe("pass");
     expect(outcome(store, rootB)).toBe("fail");
@@ -203,7 +203,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     const { repo, rootB, store } = await twoWorktrees(true);
     const b = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     await b.scheduler.close();
     expect(outcome(store, rootB)).toBe("fail");
     const runs = b.runs.length;
@@ -211,7 +211,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     // B reopened keys with the observed path, and finds its own fail there without a run.
     const again = await open(rootB, store, repo.commonDir, undefined, PRELOADED);
     await again.scheduler.start();
-    await again.scheduler.idle();
+    await again.quiet();
     expect(again.runs).toEqual([]);
     const keyB = keyOf(store, rootB);
     const stored = store.results
@@ -223,7 +223,7 @@ describe("scheduler: another worktree's observed growth (task 003-26)", SLOW, ()
     // A, keyed with its own copy of the path, gets a different key and runs.
     const a = await open(repo.main, store, repo.commonDir, undefined, PRELOADED);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(keyOf(store, repo.main)).not.toBe(keyB);
     expect(a.runs.flat().map((f) => f.path)).toContain(HIDDEN_TEST);
     expect(outcome(store, repo.main)).toBe("pass");

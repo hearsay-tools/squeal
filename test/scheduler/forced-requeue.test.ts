@@ -71,7 +71,7 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
     expect(h.store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
 
     // No further run of the file starts: only the edit's run and its cancelled re-run.
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(LISTS).slice(before)).toHaveLength(2);
     expect(h.keyOf(LISTS)).toBe(stored);
   });
@@ -103,7 +103,8 @@ describe("a cancelled forced run, queued again (row 011-120)", SLOW, () => {
     } finally {
       forced.release();
     }
-    await h.scheduler.idle();
+    // The checkpoint ends at the pump's next pass after the run: wait through it.
+    await h.quiet({ through: ["pump"] });
 
     // Its own run at the new key, forced past the stored pass, completes the checkpoint.
     const runs = h.runsOf(LISTS).slice(before);

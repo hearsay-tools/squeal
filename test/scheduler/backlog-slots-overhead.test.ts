@@ -27,7 +27,7 @@ async function forcedPass({ h, runs, applyCpuMs }: SlotHarness) {
   const cpu = process.cpuUsage();
   const started = performance.now();
   await h.scheduler.requestFullSuite({ force: true });
-  await h.scheduler.idle();
+  await h.quiet();
   const ms = performance.now() - started;
   const used = process.cpuUsage(cpu);
   const cpuMs = ((used.user + used.system) / 1000 - (applyCpuMs() - before.applyCpuMs)) / FILES;
@@ -55,7 +55,7 @@ describe("scheduler: a node:test backlog in one-file slots, per-file overhead (t
     });
     const { h } = harness;
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const tiers: Awaited<ReturnType<typeof forcedPass>>[] = [];
     const slots: typeof tiers = [];
     for (let round = 0; round < ROUNDS; round++) {

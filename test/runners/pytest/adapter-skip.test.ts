@@ -19,6 +19,7 @@ import type { Store } from "../../../src/core/types/store.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { findPython, pythonEnv } from "../../helpers/pytest-env.js";
+import { countCalls, quiet, RunnerCalls } from "../../helpers/quiet-point.js";
 import { RecordingSink } from "../../scheduler/recording-sink.js";
 import { HARNESS_INCARNATION } from "../../scheduler/store-wait.js";
 
@@ -111,11 +112,12 @@ async function openDaemon(
   });
   const sink = new RecordingSink(store, worktreeId);
   const errors: Error[] = [];
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store,
-    runner,
+    runner: countCalls(runner, calls),
     sink,
     policy: { ...DEFAULT_POLICY, pytest: [PROJECT], ...policy },
     squealVersion: "0.0.0-test",
@@ -131,8 +133,9 @@ async function openDaemon(
     if (errors.length > 0) throw errors[0];
   });
   const hasher = createFsHasher(root, "sha1");
+  const side = { rest: () => scheduler.rest(), calls, clock: null };
   await scheduler.start();
-  await scheduler.idle();
+  await quiet(side);
   return {
     root,
     scheduler,
@@ -144,7 +147,7 @@ async function openDaemon(
         trigger: "watch",
         paths: await statCandidates([path], hasher),
       });
-      await scheduler.idle();
+      await quiet(side);
     },
     states: (path) =>
       sink

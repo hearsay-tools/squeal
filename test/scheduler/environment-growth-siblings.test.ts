@@ -13,6 +13,7 @@ import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/polic
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { SLOW } from "./cleanup.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -101,11 +102,12 @@ describe(
           return adapter.run(files, options);
         },
       };
+      const calls = new RunnerCalls();
       const scheduler = createScheduler({
         root,
         worktreeId,
         store,
-        runner,
+        runner: countCalls(runner, calls),
         sink: new RecordingSink(store, worktreeId),
         // One file per tier: b's re-run lands while a sibling's is held.
         policy: {
@@ -123,6 +125,7 @@ describe(
         await adapter.close();
       });
       const hasher = createFsHasher(root, "sha1");
+      const side = { rest: () => scheduler.rest(), calls, clock: null };
       const edit = async (path: string) => {
         appendFileSync(join(root, path), "// edited\n");
         await scheduler.handleBatch({
@@ -135,9 +138,9 @@ describe(
 
       // The baseline, its own growth included, then a's edit at revision 1 and its result.
       await scheduler.start();
-      await scheduler.idle();
+      await quiet(side);
       await edit(A);
-      await scheduler.idle();
+      await quiet(side);
       expect(scheduler.status().revision).toBe(1);
       expect([A, B, C].map((path) => outcome(store, root, path))).toEqual(["pass", "pass", "pass"]);
 

@@ -3,7 +3,6 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { STORED_KEYS_OVERLAP_MS } from "../../src/core/scheduler/stored-keys.js";
 import { formatWhy } from "../../src/core/status/format-why.js";
@@ -18,6 +17,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixture.js";
+import { countedLoop } from "./counted-loop.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -86,7 +86,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     const worktreeId = worktreeIdFor(other);
     const runner = new FakeRunner(all.map((path) => ({ project: "", path })));
     const errors: Error[] = [];
-    const loop = createDaemonLoop({
+    const loop = countedLoop({
       root: other,
       worktreeId,
       store,
@@ -100,7 +100,7 @@ describe("a stale file adopts a result another worktree stored at its key (011-2
     });
     try {
       await loop.start();
-      await loop.scheduler.rest();
+      await loop.quiet();
       const passing = () =>
         store.knownStates
           .list(worktreeId)

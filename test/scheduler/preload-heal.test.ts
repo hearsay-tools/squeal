@@ -12,6 +12,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
 import { addWorktree, createRepo, openRepoStore } from "./repo.js";
@@ -79,11 +80,12 @@ async function open(root: string, store: Store, commonDir: string, hold?: Promis
     },
   };
   const worktreeId = worktreeIdFor(root);
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store,
-    runner,
+    runner: countCalls(runner, calls),
     sink: new RecordingSink(store, worktreeId),
     policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
     squealVersion: "0.0.0-test",
@@ -96,7 +98,14 @@ async function open(root: string, store: Store, commonDir: string, hold?: Promis
   });
   const keyOf = () =>
     store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === TEST)?.key ?? null;
-  return { scheduler, keyOf, closures: () => closures, runs: () => runs };
+  const side = { rest: () => scheduler.rest(), calls, clock: null };
+  return {
+    scheduler,
+    keyOf,
+    closures: () => closures,
+    runs: () => runs,
+    quiet: () => quiet(side),
+  };
 }
 
 describe("no heal under a preload path the environment key lacks", SLOW, () => {
@@ -120,12 +129,12 @@ describe("no heal under a preload path the environment key lacks", SLOW, () => {
     await expect.poll(() => a.closures()).toBeGreaterThan(0);
     const b = await open(rootB, store, repo.commonDir);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(stateOf(store, rootB)).toMatchObject({ outcome: "fail", origin: { kind: "own" } });
 
     release();
     await aStarted;
-    await a.scheduler.idle();
+    await a.quiet();
     // A's run loaded `src/hidden.cjs`, which its key lacked: it ran again under a key with it (task 003-43).
     expect(a.runs()).toBeGreaterThan(1);
     expect(a.keyOf()).not.toBe(b.keyOf());

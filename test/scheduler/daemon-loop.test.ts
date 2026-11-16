@@ -1,7 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
@@ -12,6 +11,7 @@ import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { countedLoop } from "./counted-loop.js";
 import { RecordingSink } from "./recording-sink.js";
 import { createRepo, openRepoStore } from "./repo.js";
 
@@ -23,7 +23,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
     const worktreeId = worktreeIdFor(root);
     const runner = await createVitestAdapter({ root });
     const errors: Error[] = [];
-    const loop = createDaemonLoop({
+    const loop = countedLoop({
       root,
       worktreeId,
       store,
@@ -39,7 +39,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === "test/gen.test.ts");
     try {
       await loop.start();
-      await loop.scheduler.idle();
+      await loop.quiet();
       expect(loop.scheduler.extraFiles()).toEqual(["src/gen/client.ts"]);
       expect([...loop.scheduler.trackedPaths()]).toContain("src/gen/client.ts");
       const first = keyOf();
@@ -55,7 +55,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       writeFileSync(join(root, "src/gen/client.ts"), 'export const client = () => "changed";\n');
       await waitFor(() => keyOf()?.key !== first?.key, 10_000);
       await waitFor(() => keyOf()?.pending === null, 30_000);
-      await loop.scheduler.idle();
+      await loop.quiet();
 
       const second = keyOf();
       expect(second?.key).not.toBe(first?.key);
@@ -79,7 +79,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
         () => (store.revisions.latest(worktreeId)?.number ?? 0) > (marked?.number ?? 0),
         10_000,
       );
-      await loop.scheduler.idle();
+      await loop.quiet();
       expect(loop.scheduler.extraFiles()).toEqual([]);
       expect(store.revisions.latest(worktreeId)?.changes).toEqual([
         expect.not.objectContaining({ ignored: true }),
@@ -112,7 +112,7 @@ describe("daemon loop: change feed into scheduler", SLOW, () => {
       },
     };
     const errors: Error[] = [];
-    const loop = createDaemonLoop({
+    const loop = countedLoop({
       root,
       worktreeId,
       store,
