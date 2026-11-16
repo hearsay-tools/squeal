@@ -86,7 +86,7 @@ describe("a global setup that throws once", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     const { delivery, consumer } = await h.consumer();
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // One run, rejected in the setup; no other file ran on an instance whose setup threw.
     expect(count()).toBe(1);
@@ -132,7 +132,7 @@ describe("a global setup that throws once", SLOW, () => {
     const math = join(repo.main, "src/math.ts");
     writeFileSync(math, `${readFileSync(math, "utf8")}\n// touched\n`);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(count()).toBe(2);
     expect(failing(h)).toEqual([]);
@@ -151,11 +151,11 @@ describe("a global setup that throws once", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(failing(h).map((s) => s.check)).toEqual([SETUP_CHECK]);
 
     await h.scheduler.requestFullSuite({});
-    await h.scheduler.idle();
+    await h.quiet();
     expect(count()).toBe(2);
     expect(failing(h)).toEqual([]);
     expect(verdictCode(readVerdict(store, h.worktreeId))).toBe(0);
@@ -166,7 +166,7 @@ describe("a global setup that throws once", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(failing(first).map((s) => s.check)).toEqual([SETUP_CHECK]);
     await first.scheduler.close();
 
@@ -174,7 +174,7 @@ describe("a global setup that throws once", SLOW, () => {
     expect(readVerdict(store, first.worktreeId).failures.setups).toBe(1);
     const second = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(count()).toBe(2);
     expect(failing(second)).toEqual([]);
     expect(store.knownStates.get(second.worktreeId, SETUP_CHECK)?.outcome).toBe("pass");
