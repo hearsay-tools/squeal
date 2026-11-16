@@ -29,3 +29,21 @@ Scan (2026-11-16, script in the worker's scratch directory, not kept): Claude Co
 No boundary registration that followed an earlier one had a SessionStart `resume` between them, and in each of those 105 the transcript had a record less than one minute before: the same process went on.
 
 Proposal for a later row (not done here, since it is not a resume): when a consumer that was registered earlier in the same session registers again at a tool boundary, send the registration with no primer, unless a compaction came between. 105 of 177 (59%) are of this kind. It needs a record that the session already heard the primer that survives expiry (the parked view, `park` in `registered.ts`, is a candidate). The 17 under 10 minutes need their cause before that row.
+
+## Texts before and after (wave 14)
+
+**005-90, registration while the test files are not listed** (also Stop's header, which shares `headerLines`):
+
+- Before: `Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. The daemon has not listed this worktree's test files yet; these counts are not complete. Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one). A daemon is starting; results are as of revision 0.` then `Known failures: 0; the daemon has not listed this worktree's test files yet`.
+- After: `Revision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change. A daemon is starting; results are as of revision 0.` No `Known failures:` line for zero failures; a failure the store holds keeps its line (`Known failures: 1 (1 test); the daemon has not listed this worktree's test files yet`). The checkpoint sentence and the delay sentence are left out while unlisted, since both speak of counts. Install sentences and holds stay.
+- News header: `Revision 2 (changed src/a.ts): no check pending, stale or unknown. The daemon has not listed …` becomes `Revision 2 (changed src/a.ts): Squeal is still starting … waits for the files you change.` and the daemon sentence.
+- `squeal status`: the `Known failures: 0; …` and `Affected checks: none counted; …` lines become the one sentence, after `Revision:`. The checkpoint line stays (status is read on request). The outstanding line `the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it` is unchanged.
+- Not changed: Stop's own `Known failures:` line.
+
+**005-91 (d), SessionStart `resume`**: registration and primer before; registration alone after.
+
+**005-91 (a), heartbeat**: `SQUEAL · the daemon's heartbeat is late at revision N` and `SQUEAL · a daemon is validating again at revision N: its heartbeat is current` are no longer sent alone while the heartbeat is under 60 s old. The header sentence `The daemon's heartbeat is late: the last one was 20 s ago, …` stays in any other delivery. Threshold: `LATE_HEARTBEAT_NEWS_MS = 60_000` in `src/core/delivery/liveness.ts`, a fixed time, not a factor of the daemon interval (5 s on every machine; only tests set another). It is the age of the last heartbeat, the number the header prints. The `Not validated:` line after an edit with no daemon reachable is unchanged (`deliver.ts`).
+
+**005-91 (b), group lines**: before, `browser: 4 test files; …` came whenever a count moved; after, the first time for a consumer and when the group's kind changes (all current, waiting, not run). A failure adds no group line (coordinator 4d2ecbfc, option B). The slow-tier line keeps its old rule. The told value stored per consumer changes format, so a consumer registered before the upgrade gets its group lines once more.
+
+**005-91 (c), titles** (`src/core/delivery/content-title.ts`): `SQUEAL · revision 5` becomes, by content, `SQUEAL · your edit queued 2 test files at revision 5`, `… your edit re-keyed 1 test file …` (no group at `edit`), `… your edits' test files are current …` or `… finished …`, `… the counts after the listing …`, `… browser group waiting …`, `… slow tier waiting …`, `… lint config changed …` / `lint summary` / `lint unknown` / `lint off`, `… commit abc1234 …`, joined by `; `. The bare title remains only for a delivery none of these covers (code lines with no change to count).
