@@ -85,11 +85,11 @@ async function forcedPass(ctx: TestContext, slots: boolean) {
     policy: RUN_MISSING,
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   const from = runs.length;
   const started = performance.now();
   await h.scheduler.requestFullSuite({ force: true });
-  await h.scheduler.idle();
+  await h.quiet();
   const ms = performance.now() - started;
   const pass = runs.slice(from).map((run) => run.files.map((f) => f.path.replace(/^py\//, "")));
   const passed = h.store.knownStates

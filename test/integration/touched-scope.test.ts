@@ -147,7 +147,7 @@ describe(
       const r = await rig(true);
       await r.h.scheduler.start();
       await touchDuring(r, "dist/unrelated.js", 1);
-      await r.h.scheduler.idle();
+      await r.h.quiet();
       expect(runs(r.h)).toEqual([1, 1, 1]);
       expect(storedSlow(r.h)).toEqual(current);
 
@@ -155,7 +155,7 @@ describe(
       await editLib(r.h);
       await touchDuring(r, "dist/unrelated.js", 2);
       releaseAll(r.h);
-      await r.h.scheduler.idle();
+      await r.h.quiet();
       expect(runs(r.h)).toEqual([2, 2, 2]);
       expect(storedSlow(r.h)).toEqual(current);
       expect(r.h.header()).toMatchObject({ counts: { pending: 0, unknown: 0 } });
@@ -167,7 +167,7 @@ describe(
       await touchDuring(r, "dist/gen.js", 1);
       await touchDuring(r, "dist/gen.js", 2);
       releaseAll(r.h);
-      await r.h.scheduler.idle();
+      await r.h.quiet();
 
       // D2: the barrier withholds only the file whose key names the path, as the runner does.
       expect(runs(r.h)).toEqual([2, 1, 1]);

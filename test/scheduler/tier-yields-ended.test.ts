@@ -34,7 +34,7 @@ async function oneEnded(ms: number) {
   const repo = catchUpRepo([a, b]);
   const side = catchUpSide(repo, repo.main, { files: [a, b], hostSlots: 8, policy: RUN_MISSING });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   b.realMs = 60_000;
   await side.edit("watch", "src/ab.ts");
@@ -59,7 +59,7 @@ describe("a tier whose re-keyed files are not all of it (review 0.1.237 B2, spec
     // A save that re-keys A as well: every file of the tier, so the first rule cancels it.
     await side.edit("watch", "src/ab.ts");
     await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(tier.completed.map((f) => f.path)).toEqual([A]);
     expect([A, B].every((path) => side.current(path))).toBe(true);
   });
@@ -70,7 +70,7 @@ describe("a tier whose re-keyed files are not all of it (review 0.1.237 B2, spec
 
     await side.edit("watch", B);
     await expect.poll(() => tier.cancelled, { timeout: SETTLE_MS }).toBe(true);
-    await side.scheduler.idle();
+    await side.quiet();
 
     expect(tier.completed.map((f) => f.path)).toEqual([A]);
     expect(order(side, editAt)).toEqual([[B]]);
