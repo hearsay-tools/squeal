@@ -59,6 +59,21 @@ PostToolBatch messages by title (recounted, both projects, 2,098):
 - No message says when results are expected.
 - No message says, in plain words, that an edit's tests all ran with no new failure.
 
+## The test for each sentence (the human, 2026-11-16)
+
+A hook message is for the agent in the session. A sentence stays in a hook when the agent can act on it; a sentence that explains Squeal to the person who runs it is debugging information and moves to a place read on request (`squeal status --full`, a log).
+
+| For the agent | For the person, on request |
+|---|---|
+| A failure, its error and location, the command for its output | Inherited and imported counts |
+| Whether the tests its own edits affect have run, and the result | The full-suite checkpoint's history |
+| That Squeal has no results yet, or does not validate, and the next step | The whole worktree's queue and its split into tests and test files |
+| What Squeal does not cover | Heartbeat times, a short delay and its recovery |
+| The one wait command, the retry command | "lookup-only" baseline, "test files without checks", commit and "+ N, dirty" detail |
+| A group that the agent must start itself, once | Complexity and lint counting progress |
+
+Not decided here: whether a log beside `status --full` is needed; no row adds one.
+
 ## Left without a row
 
 | Finding | Reason |
