@@ -113,7 +113,15 @@ A consumer with no edit since it registered: no count; the header ends after the
 
 Stays as it is: the 001-224 first-edit line, failure reports, the "Not validated" line when no daemon could start, the registration and Stop full header (005-94 decides).
 
-## Open choices for the human
+## Decided (the human, 2026-11-16)
+
+1. Files: **1A**, every test file the edits affect.
+2. Factor: **2**.
+3. Same-call edit: name the revision and accept the 300 ms window.
+4. Caught up says "no new failure" only.
+5. A consumer with no edit gets no count.
+
+## Open choices for the human (as asked; answers above)
 
 1. Which files count: **1A** every file the edits affect (recommended; about one late and one caught-up per editing streak) or **1B** only the files Squeal runs right after the edit (late on 11 to 36% of edits by factor; needs a new stored fact).
 2. The factor in the bound: **2** (recommended), **3** or **4**. Measured above for 1B.
