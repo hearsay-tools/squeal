@@ -26,7 +26,7 @@ describe("edit notes over the scheduler's re-key record (task 001-238)", () => {
       liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       const { delivery, consumer } = await h.consumer();
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(readRekeyed(h.store, h.worktreeId).size).toBe(0);
       expect((await delivery.onToolBoundary(consumer))?.sawEdit).toBeUndefined();
 
@@ -39,7 +39,7 @@ describe("edit notes over the scheduler's re-key record (task 001-238)", () => {
       const delta = await delivery.onToolBoundary(consumer);
       expect(delta?.sawEdit).toEqual({ queued: 1 });
 
-      await h.scheduler.idle();
+      await h.quiet();
       expect(readRekeyed(h.store, h.worktreeId).get(testFileId(ref(MATH)))?.open).toBeNull();
     },
   );

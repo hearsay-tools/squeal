@@ -25,7 +25,7 @@ describe("Scheduler.requestProgress: a retry's run (row 018-12)", SLOW, () => {
     rmSync(repo.marker);
     ask(store, h, "review-load-retry", "load");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(1);
     expect(h.scheduler.requestProgress?.()).toBe(0);
     load.set(1);
@@ -48,7 +48,7 @@ describe("Scheduler.requestProgress: a retry's run (row 018-12)", SLOW, () => {
 
     const second = await openHarness(repo.main, store, repo.commonDir, options(load));
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(readRetries(store)[0]?.end?.outcome).toBe("passed");
     expect(second.scheduler.requestProgress?.()).toBe(1);
   });

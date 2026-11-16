@@ -113,7 +113,7 @@ async function openMixed(runnerPartBesideRun: boolean, files: Record<string, str
     policy: RUN_MISSING,
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(ntOutcome(store, h.worktreeId)).toBe("pass");
   return { h, store };
 }
@@ -140,7 +140,7 @@ describe("scheduler: lanes (001 D5 as amended, task 001-140)", SLOW, () => {
     expect(h.header()).toMatchObject({ refinedRevision: newer, runnerPartPending: false });
 
     vitest.release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/math.test.ts")).toHaveLength(2);
     expect(h.header()).toMatchObject({
       revision: newer,
@@ -175,7 +175,7 @@ describe("scheduler: lanes (001 D5 as amended, task 001-140)", SLOW, () => {
     expect(h.runsOf(HELD)).toHaveLength(1);
 
     rmSync(hold);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(HELD)).toHaveLength(2);
     expect(h.header()).toMatchObject({
       revision: newer,
@@ -196,7 +196,7 @@ describe("scheduler: lanes (001 D5 as amended, task 001-140)", SLOW, () => {
     expect(h.runsOf("test/math.test.ts")).toHaveLength(1);
 
     vitest.release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/math.test.ts")).toHaveLength(2);
     expect(h.header().counts).toMatchObject({ pending: 0, stale: 0, unknown: 0 });
   });

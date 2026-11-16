@@ -20,7 +20,7 @@ describe("scheduler: revisions during a refinement (D2, review wave 4.5 S3)", SL
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The next refinement's `invalidate` takes 2 s, as a full invalidation after an add can.
     let slowed: () => void = () => {};
@@ -54,7 +54,7 @@ describe("scheduler: revisions during a refinement (D2, review wave 4.5 S3)", SL
       runnerPartPending: true,
     });
 
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.header()).toMatchObject({
       revision: added + 1,
       refinedRevision: added + 1,
@@ -70,7 +70,7 @@ describe("scheduler: revisions during a refinement (D2, review wave 4.5 S3)", SL
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let resolving: () => void = () => {};
     const inClosure = new Promise<void>((resolve) => {
@@ -105,7 +105,7 @@ describe("scheduler: revisions during a refinement (D2, review wave 4.5 S3)", SL
     await h.batch("test/added.test.ts");
     expect(performance.now() - before).toBeLessThan(500);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const row = store.testFiles.get({ project: "", path: "test/added.test.ts" });
     expect(row?.closure.paths).toContain("src/strings.ts");

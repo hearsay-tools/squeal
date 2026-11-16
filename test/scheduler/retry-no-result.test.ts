@@ -37,7 +37,7 @@ describe("squeal retry on a file with no result", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, options(load));
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     h.write(
       CRASH,
       [
@@ -52,7 +52,7 @@ describe("squeal retry on a file with no result", SLOW, () => {
       ].join("\n"),
     );
     await h.batch(CRASH);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(CRASH)).toHaveLength(1);
     expect(h.sink.stateOf(holds)?.outcome ?? "unknown").toBe("unknown");
     rmSync(marker);
@@ -64,7 +64,7 @@ describe("squeal retry on a file with no result", SLOW, () => {
     await h.scheduler.requestRetries();
     // Queued, not run: another session's request joins it.
     expect(askNoResultRun(store, { ...request, session: "s2" }).kind).toBe("joined");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runsOf(CRASH)).toHaveLength(2);
     expect(h.sink.stateOf(holds)).toMatchObject({ outcome: "pass", validity: "current" });

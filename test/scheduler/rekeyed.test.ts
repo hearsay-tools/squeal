@@ -21,7 +21,7 @@ async function open(): Promise<Harness> {
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
   liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return h;
 }
 
@@ -105,7 +105,7 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
       ]);
 
       release();
-      await h.scheduler.idle();
+      await h.quiet();
       // Every result landed: no file holds any wait.
       expect(await movesOnceRefined(h, latest(h))).toEqual([]);
     },
@@ -121,7 +121,7 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
       await h.batch("src/math.ts");
       const edited = latest(h);
-      await h.scheduler.idle();
+      await h.quiet();
       const math = { project: "", path: "test/math.test.ts" };
 
       expect(await movesOnceRefined(h, edited)).toEqual([]);
@@ -147,7 +147,7 @@ describe("scheduler: the files an edit re-keyed (task 001-186)", () => {
         revision: latest(h),
       });
       release();
-      await h.scheduler.idle();
+      await h.quiet();
     },
   );
 });

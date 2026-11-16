@@ -32,13 +32,13 @@ describe("scheduler: the listing's left-out count (task 005-26)", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, { allowErrors: true });
     expect(readOmittedTestFiles(store, h.worktreeId)).toBeNull();
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(readOmittedTestFiles(store, h.worktreeId)).toBe(0);
 
     h.write("test/sum.test-d.ts", TYPE_TEST);
     h.write("vitest.config.ts", TYPECHECKED_CONFIG);
     await h.batch("test/sum.test-d.ts", "vitest.config.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(readOmittedTestFiles(store, h.worktreeId)).toBe(1);
     expect(h.store.testFileKeys.list(h.worktreeId).map((r) => r.testFile.path)).not.toContain(
       "test/sum.test-d.ts",
@@ -48,13 +48,13 @@ describe("scheduler: the listing's left-out count (task 005-26)", SLOW, () => {
     h.write("test/more.test-d.ts", TYPE_TEST);
     h.write("test/extra.test.ts", 'import { it } from "vitest";\nit("is extra", () => {});\n');
     await h.batch("test/more.test-d.ts", "test/extra.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(readOmittedTestFiles(store, h.worktreeId)).toBe(1);
 
     h.runner.failing.clear();
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(readOmittedTestFiles(store, h.worktreeId)).toBe(2);
   });
 });

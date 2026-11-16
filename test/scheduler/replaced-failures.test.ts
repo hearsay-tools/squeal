@@ -88,7 +88,7 @@ describe("a failure a passing retry replaced at its key (011-77)", SLOW, () => {
     await h.scheduler.close();
     const next = await openHarness(repo.main, store, repo.commonDir, { hostLoad: load.read });
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     store.prune({ now: Date.now() + 60 * 60 * 1000, retentionDays: 7, maxSizeMb: null });
     const kept = readFailures(cwd) as FailuresReport;
     expect(kept).toMatchObject({ total: 1, replaced: 1 });
@@ -115,7 +115,7 @@ describe("a failure a passing retry replaced at its key (011-77)", SLOW, () => {
     const b = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
     // A lookup hit takes A's failure, held until it runs here; it passes here at the same key.
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.keyOf(FLAKY)).toBe(key);
     const [passed] = store.results.listForCheck(flips, 1);
     expect(passed).toMatchObject({ outcome: "pass", provenance: { worktreeId: b.worktreeId } });

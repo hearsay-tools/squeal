@@ -83,7 +83,7 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
 
     const second = await openHarness(repo.main, store, repo.commonDir);
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.runsOf(FLAKY)).toHaveLength(1);
     expect(second.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
     expect(readFlakyNotes(store).get(checkIdentity(flips))).toMatchObject({
@@ -96,7 +96,7 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
     await second.scheduler.close();
     const third = await openHarness(repo.main, store, repo.commonDir);
     await third.scheduler.start();
-    await third.scheduler.idle();
+    await third.quiet();
     expect(third.runner.runs).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
       policy: { baseline: { onStart: "lookup-only" } },
     });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.runsOf(FLAKY)).toHaveLength(1);
     expect(second.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
   });
@@ -121,7 +121,7 @@ describe("a pending re-run survives a daemon restart", SLOW, () => {
 
     const second = await openHarness(repo.main, store, repo.commonDir);
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.keyOf(FLAKY)).not.toBe(before);
     // One run at the new key; its fail is no new failure (it was failing), so no re-run.
     expect(second.runsOf(FLAKY)).toHaveLength(1);
@@ -139,7 +139,7 @@ describe("a re-run is owed work the last session's departure drains (task 001-21
       if (files.some((f) => f.path === FLAKY)) seen.push(h.scheduler.owedWork());
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     // The baseline is no explicit checkpoint; its new failure's re-run is owed.
     expect(seen).toEqual([null, "a new failure's re-run"]);
     expect(h.scheduler.owedWork()).toBeNull();

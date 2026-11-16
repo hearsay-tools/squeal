@@ -36,12 +36,12 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baseline = h.runner.runs.length;
 
     h.write("src/math.ts", edit);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/math.test.ts"],
       ["test/barrel.test.ts"],
@@ -56,12 +56,12 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       policy: { baseline: { ...DEFAULT_POLICY.baseline, onStart: "lookup-only" } },
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs).toEqual([]);
 
     h.write("src/math.ts", edit);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/math.test.ts"],
       ["test/barrel.test.ts"],
@@ -82,13 +82,13 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       return { direct: [], transitive: [...direct, ...transitive] };
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     withoutWalks(store);
     const baseline = h.runner.runs.length;
 
     h.write("src/math.ts", edit);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/math.test.ts"],
       ["test/barrel.test.ts"],
@@ -117,7 +117,7 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       return result;
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     withoutWalks(store);
     const baseline = h.runner.runs.length;
     expect(h.runner.runs.map((run) => run.files.map((f) => f.path))).toEqual([
@@ -149,7 +149,7 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baseline = h.runner.runs.length;
 
     h.write(
@@ -161,7 +161,7 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
       'import { expect, it } from "vitest";\nimport { one } from "../src/index.ts";\n\nit("is one", () => {\n  expect(one).toBe(1);\n});\n',
     );
     await h.batch("src/index.ts", "test/added.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.slice(baseline).map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/added.test.ts"],
       ["test/barrel.test.ts"],

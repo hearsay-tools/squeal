@@ -103,7 +103,7 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
     expect(failed?.entries.map((e) => [e.check, e.kind])).toEqual([[flips, "first-seen-fail"]]);
 
     releaseRerun();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(2);
     const key = h.keyOf(FLAKY);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
@@ -124,7 +124,7 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
     const { store, h, told, releaseRerun } = await failFirst(false);
     const { delivery, consumer } = told;
     releaseRerun();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runsOf(FLAKY)).toHaveLength(2);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
@@ -138,10 +138,10 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
 
     // `run --all` finds the key current; a forced one runs it once and re-runs nothing.
     await h.scheduler.requestFullSuite();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(2);
     await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(3);
     expect(store.transitions.history(h.worktreeId, flips)).toHaveLength(1);
   });
@@ -149,13 +149,13 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
   it("never re-runs a test kept red across an edit: fail -> fail is no new failure", async () => {
     const { h, releaseRerun } = await failFirst(false);
     releaseRerun();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(2);
 
     const before = h.keyOf(FLAKY);
     h.write(FLAKY, `${readFileSync(join(h.root, FLAKY), "utf8")}// still red\n`);
     await h.batch(FLAKY);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.keyOf(FLAKY)).not.toBe(before);
     expect(h.runsOf(FLAKY)).toHaveLength(3);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
@@ -163,7 +163,7 @@ describe("a new failure is re-run once before it is trusted", SLOW, () => {
 
   it("re-runs none of a tier's new failures above the cap, and says why", async () => {
     const { store, h } = await failFirst(true, { rerunCap: 0 });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(1);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
     expect(readDaemonNotes(store, h.worktreeId).map((n) => n.text)).toContainEqual(
