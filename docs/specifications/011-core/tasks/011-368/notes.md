@@ -4,7 +4,7 @@ Worker f67dd95b, wave 107 W1, 2026-11-16. Base: `dd26ea2b8` (main with 0.1.518, 
 
 ## What changed
 
-- The eight files use `clock: "virtual"` and `settle` (`tier-yields-fixture.ts`): `tier-ended-files`, `editor-scratch`, `editor-scratch-observed`, `tier-yields-fairness`, `batch-tier`, `backlog-quiet`, `catch-up-quiet`, `group-lanes-guards`. `grep -nE "expect\.poll|pause\(|SETTLE_MS|\.idle\(\)|delay\(|Date\.now"` on the eight: no match. Each "nothing happened" pause is now an exact check at the quiet point; each poll is `settle` then the same `expect`.
+- The eight files use `clock: "virtual"` and `settle` (`tier-yields-fixture.ts`): `tier-ended-files`, `editor-scratch`, `editor-scratch-observed`, `tier-yields-fairness`, `batch-tier`, `backlog-quiet`, `catch-up-quiet`, `group-lanes-guards`. `grep -nE "expect\.poll|pause\(|SETTLE_MS|\.idle\(\)|delay\(|Date\.now"` on the eight: one match, `delay(f.path)` in `tier-ended-files`, the fake runner's per-file end delay (a parameter, no sleep of the test). Each "nothing happened" pause is now an exact check at the quiet point; each poll is `settle` then the same `expect`.
 - Fixtures, each change additive (the host-clock path is unchanged for their other users):
   - `group-lanes-fixture.ts`: `GroupSideOptions.clock`; `GROUP_RECHECK_MS` (the 50 ms recheck it already used); `allCurrent` settles on a virtual clock.
   - `backlog-quiet-fixture.ts`: `quietSide` takes `clock` (then no tenth-speed clock); `cancelBacklog`, `editedCurrent`, `backlogStarts` settle on a virtual clock.
