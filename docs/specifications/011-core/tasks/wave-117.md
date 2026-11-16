@@ -41,3 +41,14 @@ Outcome: `status-wait-pool` checks the line's shape and an elapsed time bounded 
 Read: board rows 011-388 and 011-374; `tasks/011-374/notes.md`; `test/cli/status-wait-pool.test.ts:141`. Owns: that file and its helpers. Done when: the product text unchanged; 3 of 3; notes name the bound and why it is not host-tuned.
 
 All: lint, typecheck, `key-format` without a raise for W1 and W2, and `squeal status --wait 60000` on the changed paths; notes under `tasks/011-38N/notes.md`.
+
+## R1 (W3, W4): review of cand/011-387-388
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-387-388` at `a96399becd55be2f8541ccb6deab1ac3dfb816e3`; candidate CI run 43961834724. Test files and notes only: no `src/` change, no version raise. Range `2ca6a943c..a96399becd55be2f8541ccb6deab1ac3dfb816e3`: worker 55f47307's commit (row 011-388) and worker bdd420d0's two (row 011-387), cherry-picked without conflict. Read: board rows 011-387, 011-388, 011-374; this file's W3 and W4; `tasks/011-387/notes.md`, `tasks/011-388/notes.md`; `tasks/011-374/notes.md`.
+
+Check, each as proven, plausible or unverified:
+
+1. **011-387.** The cancel case starts the edit after 20 files the runner reported as ended (`RunOptions.fileEnded`, through a wrapper of `h.runner.run`) and checks the cancelled report holds each of them by name; the trigger and the bound come from one source, so a slow runner cannot fail it by one file; the case still fails if a cancel loses a completed file (the notes' mutation); nothing is host-tuned.
+2. **011-388.** `status-wait-pool` checks the printed elapsed time between the requested wait less 1 ms and the call's own measured duration plus 1 ms, then compares every other word exactly; the product text is unchanged; nothing is host-tuned; the case still fails on a wrong word.
+
+Coordinator at the candidate: lint and typecheck pass; both files pass (7 tests, load 22). Workers: each case 3 of 3 at load 24 to 37. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-387-388.md` and commit it on your branch.
