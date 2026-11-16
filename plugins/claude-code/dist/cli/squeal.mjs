@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.528";
+  if (true) return "0.1.529";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14082,6 +14082,9 @@ function publishPoolWaits(store, worktreeId, lanes, at2) {
   if (lanes.size === 0) store.meta.delete(key3);
   else store.meta.set(key3, JSON.stringify({ at: at2, lanes: Object.fromEntries(lanes) }));
 }
+function poolWaitsPublish(store, worktreeId, steps) {
+  return (lanes, at2) => publishPoolWaits(store, worktreeId, lanes, steps?.stamp(at2) ?? at2);
+}
 function publishedPoolWaits(store, worktreeId, daemonStartedAt, now) {
   const raw = store.meta.get(poolWaitMetaKey(worktreeId));
   if (raw === null) return NO_WAITS;
@@ -21967,10 +21970,15 @@ var init_yields = __esm({
       #disarm() {
         this.#wake?.clear();
       }
-      /** Writes the yield row, stamped `at`: a check's reading, else now. */
+      /**
+       * Writes the yield row, stamped `at` (a check's reading, else now), never
+       * before the daemon's start (`CalendarSteps.stamp`, row 011-386): a write
+       * after a set-back past it still reads as the live daemon's.
+       */
       #publish(context, at2 = context.now()) {
         const { store, worktreeId } = context;
-        writeYieldRow(store, worktreeId, at2, this.#history.row(this.#standing));
+        const stamp2 = context.steps?.stamp(at2) ?? at2;
+        writeYieldRow(store, worktreeId, stamp2, this.#history.row(this.#standing));
       }
     };
     NONE2 = { reach: "none" };
@@ -60294,7 +60302,7 @@ var init_scheduler2 = __esm({
           now: this.#now,
           log: options.log ?? (() => {
           }),
-          publish: (lanes, at2) => publishPoolWaits(options.store, options.worktreeId, lanes, at2)
+          publish: poolWaitsPublish(options.store, options.worktreeId, this.#steps)
         });
         this.#capacity = options.capacity === void 0 ? null : new TierCapacity(
           options.capacity,
@@ -74055,13 +74063,16 @@ function lintPauseIn(options) {
   return () => consumersIdle(options.store, options.worktreeId, options.now()) ? 0 : SLOW_RECHECK_MS;
 }
 function lintIdleIn(options) {
+  const steps = new CalendarSteps();
+  const clock = steppedClock(options.clock, steps);
   return () => {
     const { store, worktreeId } = options;
     const { trigger, quietMs } = options.policy().slow;
-    const now = options.now();
+    const now = clock.now();
     if (trigger === "idle") return consumersIdle(store, worktreeId, now) ? 0 : SLOW_RECHECK_MS;
     const latest = store.revisions.latest(worktreeId);
-    const quietLeft = latest === null ? 0 : latest.createdAt + quietMs - now;
+    const created = latest === null ? null : steps.local("revision", String(latest.number), latest.createdAt);
+    const quietLeft = created === null ? 0 : created + quietMs - now;
     if (quietLeft > 0) return quietLeft;
     return options.inUse() ? SLOW_RECHECK_MS : 0;
   };
@@ -74069,6 +74080,7 @@ function lintIdleIn(options) {
 var init_idle = __esm({
   "src/core/lint/pass/idle.ts"() {
     "use strict";
+    init_calendar_steps();
     init_slow_tier();
     init_slow_trigger();
   }
@@ -100414,7 +100426,8 @@ var Daemon = class {
               store,
               worktreeId,
               policy: () => this.#policy,
-              now: this.#now,
+              // Row 011-382: its quiet counts on elapsed time across a calendar step.
+              clock: hostClock(this.#now),
               inUse: () => this.#loop?.scheduler.inUse() ?? false
             }),
             // Row 019-45: a lint group at `pause` or `stop` lints once the agent pauses.
