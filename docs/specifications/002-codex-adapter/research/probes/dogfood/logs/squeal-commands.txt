@@ -75,7 +75,7 @@ $ node plugins/codex/dist/cli/squeal.mjs status --json
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "b2baa0c8131a6dc2",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
   "revision": 3,
   "counts": {
     "current": 374,
@@ -167,7 +167,7 @@ $ node plugins/codex/dist/cli/squeal.mjs status --json
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "b2baa0c8131a6dc2",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/c7896f0e-662d-4172-adaf-81b907da8afe",
   "revision": 3,
   "counts": {
     "current": 522,

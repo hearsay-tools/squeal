@@ -71,7 +71,7 @@ Throwaway probes used the candidate's public plugin/bridge interfaces with bound
 Supplemental repository checkpoint, run after restoring the documentation branch while this report was untracked. This is **unverified as independent candidate evidence** because its checkout is `9971e323` plus the report and it includes inherited results. It satisfies the requested Squeal checkpoint attempt; it does not replace the independent reviewer run above. The first request exited 3 when a report edit advanced its revision. With the file held steady, the second completed and exited 1:
 
 ```text
-$ node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait
+$ node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait
 Checkpoint 351da8f1-8030-4ba8-84ae-68940998acde completed at revision 5: 1 known failure: 1 test; 563 test files, 361 already current, 202 run by the baseline checkpoint 9bd87ccd-1298-4ba1-83f9-e1d7742bbb19 it joined
 Revision: 5
 Known failures: 1 (1 test)

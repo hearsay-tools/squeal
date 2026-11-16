@@ -49,7 +49,7 @@ sh: 1: tsc: not found
 $ npm run build
 sh: 1: tsc: not found
 (exit 127)
-$ node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs" run --all --wait
+$ node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs" run --all --wait
 Checkpoint 7792434b-9f7e-4d77-a7e7-9b97e10d51d1 has no verdict: it was abandoned before every test file had a result
 Known failures: 0
 (exit 3; no dependencies installed, no test files listed)

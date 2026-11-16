@@ -13,7 +13,7 @@
   "commitFailedWithHookText": 2,
   "noVerifyAfterHookFailure": 0
 }
-== the client monorepo
+== client-monorepo
 {
   "sessions": 51,
   "commitCalls": 294,

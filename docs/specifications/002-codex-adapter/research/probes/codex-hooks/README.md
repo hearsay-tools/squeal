@@ -20,7 +20,7 @@ Run on 2026-10-07 against Codex CLI 0.160.1 (`codex-cli 0.160.1`), model `gpt-6.
 - `bin/as.mjs`: minimal `codex app-server` JSON-RPC client. `hooks-list <cwd>` prints `hooks/list`; `turn <cwd> <prompt> [threadStartJSON] [interruptMs]` runs one turn and logs every message to `$AS_LOG`.
 - `bin/gap.py`: from `RUST_LOG=debug` stderr and `--json` stdout, milliseconds from each `date +%s%N` tool output to the next `codex.websocket_request`.
 - `bin/reach.mjs`, `bin/sockserver.mjs`: Q7. Read a SQLite file under `<repo>/.git/squeal/`, ping unix sockets under `$XDG_RUNTIME_DIR/cxh-probe/` and `/tmp/cxh/squeal-1001-probe/` (stand-ins for Squeal's socket directories, so a real `/tmp/squeal-1001` was never touched), and spawn a detached and a same-group child.
-- `logs/`: trimmed evidence, named by question. Tool responses, prompts and the encrypted `spawn_agent` message are cut or redacted.
+- `logs/` (raw logs removed): trimmed evidence, named by question. Tool responses, prompts and the encrypted `spawn_agent` message are cut or redacted.
 
 ## Reproduce one
 

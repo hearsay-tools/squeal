@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 const O = "/tmp/dogfood-015-14/w-327524f0/out/";
 const summ = new Map(JSON.parse(readFileSync(O + "summaries.json", "utf8")).map((r) => [r.wt, JSON.parse(r.value)]));
-const db = new DatabaseSync("/home/user/projects/squeal/.git/squeal/code.sqlite", { readOnly: true });
+const db = new DatabaseSync("~/projects/squeal/.git/squeal/code.sqlite", { readOnly: true });
 const rows = db.prepare(`select s.worktree_id wt, c.path, c.qualified_name q, c.occurrence o from states s join checks c on c.id = s.check_id
   where s.measure = 'uncovered' and s.outcome = 'unknown'`).all();
 const meta = db.prepare("select value from meta where key = ?");

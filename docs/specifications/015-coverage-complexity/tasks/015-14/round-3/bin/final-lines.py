@@ -40,7 +40,7 @@ def codex_version_at(seen, ts):
 
 
 def repo_of(cwd):
-    return cwd.split('/')[4] if cwd and cwd.startswith('/home/user/projects/') else str(cwd)
+    return cwd.split('/')[4] if cwd and cwd.startswith('~/projects/') else str(cwd)
 
 
 def version_at(ts):
@@ -87,7 +87,7 @@ lines = []
 cc = json.load(open(O + 'cc.json'))
 for s in cc:
     starts = sorted(x['ts'] for x in s['starts'] if x['ts'])
-    where = 'main' if s['cwd'] == '/home/user/projects/squeal' else ('worktree' if s['cwd'] and '/worktrees/' in s['cwd'] else str(s['cwd']))
+    where = 'main' if s['cwd'] == '~/projects/squeal' else ('worktree' if s['cwd'] and '/worktrees/' in s['cwd'] else str(s['cwd']))
     sid = (s['cwd'] or '').split('/')[-1][:8] if where == 'worktree' else s['session'][:8]
     model = 'haiku' if any('haiku' in m for m in s['models']) else ('opus' if any('opus' in m for m in s['models']) else ','.join(s['models']))
     for i, d in enumerate(s['deliveries']):

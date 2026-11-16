@@ -2,7 +2,7 @@
 // file-level duration recorded before t0 in cezar's store (any worktree), read-only:
 // the "last-known duration" the scheduler orders by. Writes JSON to stdout.
 import { DatabaseSync } from 'node:sqlite';
-const db = new DatabaseSync(process.argv[2] ?? '/home/user/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
+const db = new DatabaseSync(process.argv[2] ?? '~/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
 const q = db.prepare(`
   select c.test_path p, r.duration_ms ms from results r join checks c on c.id = r.check_id
   where c.kind = 'file' and r.recorded_at < ? and r.recorded_at = (

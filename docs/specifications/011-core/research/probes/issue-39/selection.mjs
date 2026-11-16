@@ -16,7 +16,7 @@ if (load > cpuCount) {
   console.log(`NOT RUN: load ${load} exceeds ${cpuCount} CPUs; probe skipped.`);
   process.exit(0);
 }
-const cache = '/home/user/.claude/plugins/cache/hearsay/squeal';
+const cache = '~/.claude/plugins/cache/hearsay/squeal';
 const targets = [
   ['installed-0.1.222', `${cache}/0.1.222/dist/cli/squeal.mjs`],
   ['installed-0.1.199', `${cache}/0.1.199/dist/cli/squeal.mjs`],

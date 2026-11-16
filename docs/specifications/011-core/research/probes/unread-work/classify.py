@@ -58,7 +58,7 @@ def busy(t_ms):
 # roots
 roots = {}
 for p in ("squeal", "cezar", "client-monorepo"):
-    r = f"/home/user/projects/{p}"
+    r = f"~/projects/{p}"
     roots[wid(r)] = r
 rm = {}
 for line in open(REM):

@@ -1,8 +1,8 @@
 {
   "utc": "2026-11-04T19:09:07.464Z",
   "node": "v24.22.1",
-  "cli": "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
-  "scratch": "/home/user/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH",
+  "cli": "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+  "scratch": "~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH",
   "commit": "4204b3d479ec241424d1ba629f904caf95076c15",
   "vitest": "5.0.3",
   "cases": [
@@ -21,17 +21,17 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-149-separate-config\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
-        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"/home/user/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"/home/user/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/separate-config/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
       },
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -40,8 +40,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -53,8 +53,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
           ],
@@ -64,8 +64,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
             "--json"
@@ -76,8 +76,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,
@@ -104,7 +104,7 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-149-in-process\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
@@ -113,8 +113,8 @@
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -123,8 +123,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -136,8 +136,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
           ],
@@ -147,8 +147,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
             "--json"
@@ -159,8 +159,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,
@@ -187,17 +187,17 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-149-excluded\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
-        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"/home/user/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"/home/user/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
+        "test/parent.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { spawnSync } from 'node:child_process';\nimport { readFileSync } from 'node:fs';\n\ntest('parent proves fixture behavior', () => { const child = spawnSync(process.execPath, [\"~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/node_modules/vitest/vitest.mjs\",\"run\",\"--config\",\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs\",\"--root\",\"~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH/excluded/.ai/skills/check-code-quality/scripts/fixtures/expression-arrows\",\"--maxWorkers\",\"1\"], { encoding:'utf8', timeout:30000 });\n  assert.equal(child.status, 0, child.stdout + child.stderr);\n  assert.match(child.stdout, /1 passed/);\n  assert.match(child.stdout, /FIXTURE_EXECUTED/); });\n"
       },
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -206,8 +206,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -219,8 +219,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
           ],
@@ -230,8 +230,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
             "--json"
@@ -242,8 +242,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,
@@ -270,7 +270,7 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-149-snapshot-reader\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true,\"include\":[\".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts\"]},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts": "export const single = (): number => 42;\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.test.ts": "import { test, expect } from 'vitest';\nimport { single } from './source';\ntest('executes fixture', () => { expect(single()).toBe(42); console.log('FIXTURE_EXECUTED'); });\n",
         ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/vitest.config.mjs": "export default { test: { include:['source.test.ts'], maxWorkers:1 } };\n",
@@ -279,8 +279,8 @@
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -289,8 +289,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -302,8 +302,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts"
           ],
@@ -313,8 +313,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             ".ai/skills/check-code-quality/scripts/fixtures/expression-arrows/source.ts",
             "--json"
@@ -325,8 +325,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,

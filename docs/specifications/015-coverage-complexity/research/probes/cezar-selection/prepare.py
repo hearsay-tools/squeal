@@ -1,7 +1,7 @@
 """Throwaway: tracked-source copies, no installs or writes to the source checkout."""
 import argparse, gzip, hashlib, json, os, pathlib, shutil, subprocess, tarfile, time
 HERE = pathlib.Path(__file__).resolve().parent
-p = argparse.ArgumentParser(); p.add_argument('scratch'); p.add_argument('--repo', default='/home/user/projects/cezar'); a = p.parse_args()
+p = argparse.ArgumentParser(); p.add_argument('scratch'); p.add_argument('--repo', default='~/projects/cezar'); a = p.parse_args()
 root = pathlib.Path(a.scratch).resolve(); root.mkdir(parents=True, exist_ok=False)
 def git(*args): return subprocess.check_output(['git','-C',a.repo,*args])
 d = json.loads((HERE/'declaration.json').read_text())

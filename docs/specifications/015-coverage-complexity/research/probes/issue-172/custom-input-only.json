@@ -2,9 +2,9 @@
   "label": "custom-input-only",
   "load": 23.01,
   "command": [
-    "/home/user/.nvm/versions/node/v24.22.1/bin/node",
+    "~/.nvm/versions/node/v24.22.1/bin/node",
     "--disable-warning=ExperimentalWarning",
-    "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
+    "~/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
     "code",
     "--base",
     "HEAD",

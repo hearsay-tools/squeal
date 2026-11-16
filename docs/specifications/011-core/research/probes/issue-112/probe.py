@@ -9,7 +9,7 @@ import tempfile
 import time
 
 source = Path.cwd()
-cli = Path('/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs')
+cli = Path('~/.codex/plugins/data/squeal-hearsay/versions/0.1.368/dist/cli/squeal.mjs')
 command = ['node', '--disable-warning=ExperimentalWarning', str(cli)]
 print(json.dumps({'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'load': os.getloadavg(), 'cpus': os.cpu_count()}), flush=True)

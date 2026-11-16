@@ -33,7 +33,7 @@ The failed items, in order (seq, time, tool):
 - 162 and 163, 12:20:16.084Z, both Stop hooks failed, 66 and 62 ms
 
 Each carries only `"entries":[{"kind":"error","text":"hook exited with code 1"}]`, with
-`"source":"/home/user/.codex/plugins/cache/hearsay/squeal/0.1.341/hooks/hooks.json"`. Codex keeps no stderr, so the transcript does not show the Node error text.
+`"source":"~/.codex/plugins/cache/hearsay/squeal/0.1.341/hooks/hooks.json"`. Codex keeps no stderr, so the transcript does not show the Node error text.
 The PostToolUse command is the sh gate from `hooks.json` followed by
 `exec node --disable-warning=ExperimentalWarning "${PLUGIN_ROOT}/dist/post-tool-use.mjs"` (read in `0.1.342/hooks/hooks.json`; 0.1.341's copy is gone).
 

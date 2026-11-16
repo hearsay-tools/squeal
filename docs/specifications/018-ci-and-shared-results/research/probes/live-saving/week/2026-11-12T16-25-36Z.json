@@ -13,8 +13,8 @@
  },
  "stores": [
   {
-   "commonDir": "/home/user/projects/cezar/.git",
-   "store": "/home/user/projects/cezar/.git/squeal/store.sqlite",
+   "commonDir": "~/projects/cezar/.git",
+   "store": "~/projects/cezar/.git/squeal/store.sqlite",
    "readAt": "2026-11-12T16:25:36.779Z",
    "worktreesInStore": 40,
    "imports": [
@@ -958,7 +958,7 @@
    "importsGoneSincePreviousSnapshot": [],
    "worktrees": [
     {
-     "root": "/home/user/projects/cezar",
+     "root": "~/projects/cezar",
      "registered": true,
      "id": "b7555ac0d0f19f40",
      "isMain": true,
@@ -1078,7 +1078,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/00b197a7-72c1-43b7-8aaa-243340140773",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/00b197a7-72c1-43b7-8aaa-243340140773",
      "registered": true,
      "id": "8ee33ff04309c461",
      "isMain": false,
@@ -1173,7 +1173,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/01e9423c-30ab-4621-b648-2a0266c4fc93",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/01e9423c-30ab-4621-b648-2a0266c4fc93",
      "registered": true,
      "id": "d8d1f6108c91bd36",
      "isMain": false,
@@ -1222,11 +1222,11 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/0498344c-fbab-4546-99a0-d7d1473f625a",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/0498344c-fbab-4546-99a0-d7d1473f625a",
      "registered": false
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/06d646d2-8f43-4163-989a-f0f0bbb45338",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/06d646d2-8f43-4163-989a-f0f0bbb45338",
      "registered": true,
      "id": "b29e5e733d220014",
      "isMain": false,
@@ -1275,7 +1275,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/0ce567de-4081-4a95-8986-20ce3af61fb5",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/0ce567de-4081-4a95-8986-20ce3af61fb5",
      "registered": true,
      "id": "218bad807b8f7b6e",
      "isMain": false,
@@ -1322,7 +1322,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/101aee17-6e9d-4c77-a98d-077df8285243",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/101aee17-6e9d-4c77-a98d-077df8285243",
      "registered": true,
      "id": "52648a1e01c82efd",
      "isMain": false,
@@ -1369,7 +1369,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/1e0f62e4-9445-4f1f-b3d6-06c9da638b5d",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/1e0f62e4-9445-4f1f-b3d6-06c9da638b5d",
      "registered": true,
      "id": "5182a571181332b7",
      "isMain": false,
@@ -1416,7 +1416,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/2bea0a61-1f0d-48cf-9dff-7e3b0bf19cb9",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/2bea0a61-1f0d-48cf-9dff-7e3b0bf19cb9",
      "registered": true,
      "id": "d328afe4cd7542e4",
      "isMain": false,
@@ -1463,11 +1463,11 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/2e666efd-b429-40bb-b306-58176dd69885",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/2e666efd-b429-40bb-b306-58176dd69885",
      "registered": false
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/38182ab6-a29a-4dfb-a802-65ac45b71f61",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/38182ab6-a29a-4dfb-a802-65ac45b71f61",
      "registered": true,
      "id": "6ac78c9c85565467",
      "isMain": false,
@@ -1529,11 +1529,11 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/3ee27649-8a5f-4820-bbe6-1cd1ba897ac3",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/3ee27649-8a5f-4820-bbe6-1cd1ba897ac3",
      "registered": false
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/4bc0484d-5839-4a39-9102-f62a38629260",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/4bc0484d-5839-4a39-9102-f62a38629260",
      "registered": true,
      "id": "332df5eb2377e75c",
      "isMain": false,
@@ -1580,7 +1580,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/55b700ad-3b69-4d92-80d6-f6f4c29fc10c",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/55b700ad-3b69-4d92-80d6-f6f4c29fc10c",
      "registered": true,
      "id": "8a225f859a26f804",
      "isMain": false,
@@ -1668,7 +1668,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/5d9c542f-c7e2-4af5-9b47-dc76e43a8f72",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/5d9c542f-c7e2-4af5-9b47-dc76e43a8f72",
      "registered": true,
      "id": "488681ad1616bdb9",
      "isMain": false,
@@ -1715,7 +1715,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/5f9a8e86-7c8f-4562-8873-c11c7b5b196f",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/5f9a8e86-7c8f-4562-8873-c11c7b5b196f",
      "registered": true,
      "id": "dc20d96e456f4242",
      "isMain": false,
@@ -1805,7 +1805,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/733e90fb-89ee-446f-8dd5-c149aa051a6c",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/733e90fb-89ee-446f-8dd5-c149aa051a6c",
      "registered": true,
      "id": "a13cd09a68ff70b6",
      "isMain": false,
@@ -1858,7 +1858,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/883a9452-b4c0-4dbf-8971-fc688d50c4a6",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/883a9452-b4c0-4dbf-8971-fc688d50c4a6",
      "registered": true,
      "id": "b3a63fc4105bbca2",
      "isMain": false,
@@ -1968,7 +1968,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/8a4ee07c-3835-4941-82a1-6d7833a76f6a",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/8a4ee07c-3835-4941-82a1-6d7833a76f6a",
      "registered": true,
      "id": "e3d618fa97bb3095",
      "isMain": false,
@@ -2015,7 +2015,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/8bb1714d-5d21-45ea-aa2d-b0ff6c55a6c0",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/8bb1714d-5d21-45ea-aa2d-b0ff6c55a6c0",
      "registered": true,
      "id": "616bcf31cb27cc33",
      "isMain": false,
@@ -2110,7 +2110,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/8cf104a9-c8ee-4507-93f3-33b82092606b",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/8cf104a9-c8ee-4507-93f3-33b82092606b",
      "registered": true,
      "id": "0833baf3908c1341",
      "isMain": false,
@@ -2157,7 +2157,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/9986e564-0c52-4248-b973-6deb235c6294",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/9986e564-0c52-4248-b973-6deb235c6294",
      "registered": true,
      "id": "888db0a9b57fa7a2",
      "isMain": false,
@@ -2240,7 +2240,7 @@
      "runsInProgress": 1
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/b0ae04cd-bc9f-43d2-846e-731a4c0a781e",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/b0ae04cd-bc9f-43d2-846e-731a4c0a781e",
      "registered": true,
      "id": "c4aee88e430840ea",
      "isMain": false,
@@ -2287,11 +2287,11 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/b31044f5-11de-402d-a9f9-fb8e6e8fe772",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/b31044f5-11de-402d-a9f9-fb8e6e8fe772",
      "registered": false
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/bc74916d-e325-499c-93e9-01ebeeae20de",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/bc74916d-e325-499c-93e9-01ebeeae20de",
      "registered": true,
      "id": "587ad99de104fae8",
      "isMain": false,
@@ -2338,7 +2338,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/bd8b749e-d215-4df3-bd0a-77a60ae57fef",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/bd8b749e-d215-4df3-bd0a-77a60ae57fef",
      "registered": true,
      "id": "5319b4b5e54380cd",
      "isMain": false,
@@ -2385,7 +2385,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/be81eb38-2dc3-4c58-a76f-575c0a502fcf",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/be81eb38-2dc3-4c58-a76f-575c0a502fcf",
      "registered": true,
      "id": "864f1739b368307d",
      "isMain": false,
@@ -2432,7 +2432,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/c32ae733-9186-4f99-9012-da44a3e752bf",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/c32ae733-9186-4f99-9012-da44a3e752bf",
      "registered": true,
      "id": "f2913abba4b64866",
      "isMain": false,
@@ -2482,7 +2482,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/cd4cfd98-f8aa-4aeb-bdb8-50d06045b907",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/cd4cfd98-f8aa-4aeb-bdb8-50d06045b907",
      "registered": true,
      "id": "9b0f65e1b9630e0a",
      "isMain": false,
@@ -2533,7 +2533,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/dd1d0074-c71a-4f17-aac4-4a0ab7f4d496",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/dd1d0074-c71a-4f17-aac4-4a0ab7f4d496",
      "registered": true,
      "id": "6421a0703e84308c",
      "isMain": false,
@@ -2621,11 +2621,11 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/e040d496-9a10-4f9f-b001-f19320816fe9",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/e040d496-9a10-4f9f-b001-f19320816fe9",
      "registered": false
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/f1b647a5-bc03-4c84-bbe5-e43376275842",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/f1b647a5-bc03-4c84-bbe5-e43376275842",
      "registered": true,
      "id": "a895c679e7323596",
      "isMain": false,
@@ -2672,7 +2672,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.ai/cezar/worktrees/fedf8c0a-a20a-4fd3-80cf-f79d17ea2344",
+     "root": "~/projects/cezar/.ai/cezar/worktrees/fedf8c0a-a20a-4fd3-80cf-f79d17ea2344",
      "registered": true,
      "id": "ed8eb60f74e53d99",
      "isMain": false,
@@ -2719,7 +2719,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a057a91fc60935f6e",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a057a91fc60935f6e",
      "registered": true,
      "id": "fde08e7670c62827",
      "isMain": false,
@@ -2766,7 +2766,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a06e3c59f05774c4a",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a06e3c59f05774c4a",
      "registered": true,
      "id": "14f3cd0d0e29d9d0",
      "isMain": false,
@@ -2815,7 +2815,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a093b1364b09ce75f",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a093b1364b09ce75f",
      "registered": true,
      "id": "bccd1abcbff9f3c3",
      "isMain": false,
@@ -2864,7 +2864,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a16d2518c9e74f138",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a16d2518c9e74f138",
      "registered": true,
      "id": "f4451e5305ccac83",
      "isMain": false,
@@ -2913,7 +2913,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a3232b6032035fd18",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a3232b6032035fd18",
      "registered": true,
      "id": "6c9474d59dcd0a26",
      "isMain": false,
@@ -2964,7 +2964,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-a53122e43ca4b5937",
+     "root": "~/projects/cezar/.claude/worktrees/agent-a53122e43ca4b5937",
      "registered": true,
      "id": "66a59a96d221062f",
      "isMain": false,
@@ -3011,7 +3011,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-aa2a16753f6a94438",
+     "root": "~/projects/cezar/.claude/worktrees/agent-aa2a16753f6a94438",
      "registered": true,
      "id": "33032bc59ce26eb2",
      "isMain": false,
@@ -3058,7 +3058,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-aa4e225f859cc33c5",
+     "root": "~/projects/cezar/.claude/worktrees/agent-aa4e225f859cc33c5",
      "registered": true,
      "id": "0dff3a8741b0db18",
      "isMain": false,
@@ -3105,7 +3105,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-ad8974545d7f2f950",
+     "root": "~/projects/cezar/.claude/worktrees/agent-ad8974545d7f2f950",
      "registered": true,
      "id": "f54e49b17f1cc8ca",
      "isMain": false,
@@ -3152,7 +3152,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/agent-ae36f47254b9d5b33",
+     "root": "~/projects/cezar/.claude/worktrees/agent-ae36f47254b9d5b33",
      "registered": true,
      "id": "20f9e9bad475763f",
      "isMain": false,
@@ -3199,7 +3199,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/gate-902",
+     "root": "~/projects/cezar/.claude/worktrees/gate-902",
      "registered": true,
      "id": "729119b9b25c6779",
      "isMain": false,
@@ -3248,7 +3248,7 @@
      "runsInProgress": 0
     },
     {
-     "root": "/home/user/projects/cezar/.claude/worktrees/tfs-1056",
+     "root": "~/projects/cezar/.claude/worktrees/tfs-1056",
      "registered": true,
      "id": "f13e9a73ad4c584c",
      "isMain": false,

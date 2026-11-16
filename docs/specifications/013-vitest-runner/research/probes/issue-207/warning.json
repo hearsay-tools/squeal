@@ -3,7 +3,7 @@
   "load1": 9.4697265625,
   "cpus": 24,
   "command": [
-    "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
     "code",
     "--base",
     "HEAD",

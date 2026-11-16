@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 const repo = process.cwd();
 const base = resolve(import.meta.dirname, '.scratch', String(Date.now()));
 mkdirSync(base, {recursive:true});
-const cli = '/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs';
+const cli = '~/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs';
 const evidence = { timestamp: new Date().toISOString(), node:process.version, cli, cases:[] };
 const pause = ms => new Promise(r=>setTimeout(r,ms));
 function call(cwd, env, args) {

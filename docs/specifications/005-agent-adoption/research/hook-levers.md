@@ -32,7 +32,7 @@ Board 005-03, 2026-10-09. Squeal **0.1.67, `9848df0`**, Claude Code **2.1.295 / 
 
 ## 3. What an honest substitute needs
 
-**Verified by experiment**, `logs/substitute.json`: a deliberately failing test appended an external execution marker. A cached checkpoint added **0 executions**, exited **0**, and printed **Known failures: 1**. A forced checkpoint added **1 execution** and still exited **0**. Direct `npx vitest run` added **1 execution** and exited **1**. A per-file `run probe.test.js --wait` exited **2** (unsupported). With the daemon stopped, `run --all --wait` exited **1** and asked for a daemon.
+**Verified by experiment**, `logs/substitute.json` (raw logs removed): a deliberately failing test appended an external execution marker. A cached checkpoint added **0 executions**, exited **0**, and printed **Known failures: 1**. A forced checkpoint added **1 execution** and still exited **0**. Direct `npx vitest run` added **1 execution** and exited **1**. A per-file `run probe.test.js --wait` exited **2** (unsupported). With the daemon stopped, `run --all --wait` exited **1** and asked for a daemon.
 
 **Read in source code.** `src/cli/run.ts` treats “completed” as exit 0 regardless of failures; `--wait` has no deadline. D5 reuses current keys, and the checkpoint's file count counts queued work, so “0 test files” can coexist with full current coverage. Squeal's file-level check also makes its two passing checks differ from this fixture's one Vitest test. `--all` includes other configured adapters and slow files, which is broader than Vitest alone.
 
@@ -60,4 +60,4 @@ Board 005-03, 2026-10-09. Squeal **0.1.67, `9848df0`**, Claude Code **2.1.295 / 
 
 **Not determined, because** this small, exact-command fixture did not test editing tasks, adoption over subsequent turns, realistic long-suite timeout recovery, interactive prompts, adversarial command parsing, or semantic equivalence of arbitrary Vitest configurations. The prior dogfooding's independent runs caught false Squeal state; do not remove that cross-check by default.
 
-Sources: [official URLs and source locations](probes/hook-levers/sources.md); [session evidence and meters](probes/hook-levers/logs/sessions.json); [direct substitute evidence](probes/hook-levers/logs/substitute.json). Verification output and the two full-suite failures are in [the probe README](probes/hook-levers/README.md).
+Sources: [official URLs and source locations](probes/hook-levers/sources.md); session evidence and meters (raw logs removed); direct substitute evidence (raw logs removed). Verification output and the two full-suite failures are in [the probe README](probes/hook-levers/README.md).

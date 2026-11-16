@@ -16,8 +16,8 @@ No blocker for 002. Defect 1 is a core (001) defect that stops the daemon in a r
 | --- | --- |
 | Codex | CLI 0.160.1, model `gpt-6.1-sol` through the host's provider (key from the environment), `approval_policy = "never"`, `sandbox_mode = "danger-full-access"` |
 | Codex home | `CODEX_HOME=/tmp/p16/codex`, `HOME=/tmp/p16/home`; `config.toml` holds only the provider block. `~/.codex` untouched (its `config.toml` mtime 18:48, before the task); `~/.codex/auth.json` never read. |
-| Install | `codex plugin marketplace add <this checkout>`, then `codex plugin add squeal@squeal`: installed `0.1.21` into `/tmp/p16/codex/plugins/cache/squeal/squeal/0.1.21`; Codex wrote `[marketplaces.squeal]` and `[plugins."squeal@squeal"]` itself (`logs/install.txt`). |
-| Trust | The TUI, first launch in a scratch repository: "9 hooks are new or changed", `/hooks` table, `t` trusts all. Codex wrote nine `[hooks.state."squeal@squeal:hooks/hooks.json:<event>:0:0"]` entries (`logs/trust-tui-hooks-state.diff`). Each `currentHash` from `hooks/list` equals the pin in `test/plugins/codex/hooks-json.test.ts` (`logs/hooks-list-plugin.txt`). No bypass flag anywhere. |
+| Install | `codex plugin marketplace add <this checkout>`, then `codex plugin add squeal@squeal`: installed `0.1.21` into `/tmp/p16/codex/plugins/cache/squeal/squeal/0.1.21`; Codex wrote `[marketplaces.squeal]` and `[plugins."squeal@squeal"]` itself (`logs/install.txt` (raw logs removed)). |
+| Trust | The TUI, first launch in a scratch repository: "9 hooks are new or changed", `/hooks` table, `t` trusts all. Codex wrote nine `[hooks.state."squeal@squeal:hooks/hooks.json:<event>:0:0"]` entries (`logs/trust-tui-hooks-state.diff` (raw logs removed)). Each `currentHash` from `hooks/list` equals the pin in `test/plugins/codex/hooks-json.test.ts` (`logs/hooks-list-plugin.txt` (raw logs removed)). No bypass flag anywhere. |
 | Agent's `squeal` | A two-line wrapper on `PATH` for the installed plugin's `dist/cli/squeal.mjs` (D1: Codex does not put `bin/` on `PATH`). |
 | Repositories | `/tmp/p16/r<N>`: `src/math.js` (`add`, `mul`), `src/greet.js`, three Vitest 5.0.3 tests (five checks with the two file-level ones), `squeal init --harness codex`, committed. In r1 to r7 the daemon was started and its baseline finished before the session (`squeal start`, `squeal status --wait`), so SessionStart finds a store. |
 | Drivers | `exec`: `codex exec --json -s danger-full-access`, rollouts under the scratch `sessions/`. App-server: `bin/cz.mjs`, shaped on Cezar's `codex-app-server-runner` (`initialize`, `configRequirements/read`, `thread/start` with `cwd`, `sandbox`, `approvalPolicy`, `turn/start`, stdin EOF to end). `bin/watch.mjs` polled the store every 100 ms in every run. |
@@ -41,7 +41,7 @@ No blocker for 002. Defect 1 is a core (001) defect that stops the daemon in a r
 
 ### 1. SessionStart registers `(session_id, main)` and injects the header and primer: proven
 
-exec1 (`logs/exec1.store.jsonl`, `logs/exec1.main.timeline.txt`): the store held no consumer at +152 ms and `01a1183d-1c24-73b3-a9d2-c6100a82b808/main` at +352 ms; that id is the thread id `codex exec` printed. The model's context at +346 ms, before the user prompt:
+exec1 (`logs/exec1.store.jsonl`, `logs/exec1.main.timeline.txt` (raw logs removed)): the store held no consumer at +152 ms and `01a1183d-1c24-73b3-a9d2-c6100a82b808/main` at +352 ms; that id is the thread id `codex exec` printed. The model's context at +346 ms, before the user prompt:
 
 ```text
 +346ms developer:
@@ -52,7 +52,7 @@ Known failures: 0
 Squeal runs this repository's Vitest tests in the background after each edit, and its results arrive as SQUEAL messages after your tool calls; do not run Vitest to learn whether your edits broke something. [...]
 ```
 
-as1 (`logs/as1.hooks.jsonl`): `sessionStart completed 87ms`, one entry of kind `context` with the same text; consumer `01a11840-2dea-.../main` at +462 ms. as2, n4inline, nd-r5 and nd-r6 show the same. With no Squeal (nd-r9) SessionStart completed in 56 ms with no entry and no store.
+as1 (`logs/as1.hooks.jsonl` (raw logs removed)): `sessionStart completed 87ms`, one entry of kind `context` with the same text; consumer `01a11840-2dea-.../main` at +462 ms. as2, n4inline, nd-r5 and nd-r6 show the same. With no Squeal (nd-r9) SessionStart completed in 56 ms with no entry and no store.
 
 ### 2. A breaking edit yields `PASS -> FAIL` through PostToolUse in the same turn, the fix `FAIL -> PASS`: proven
 
@@ -68,7 +68,7 @@ Each report arrived at the PostToolUse of the first tool call that ended after t
 | as2 subagent | greet `PASS -> FAIL` | +124,617 | PostToolUse | +133,476 |
 | as2 subagent | greet `FAIL -> PASS` | +137,016 | PostToolUse | +147,678 |
 
-as1, the PostToolUse entry (`logs/as1.hooks.jsonl`, 74 ms):
+as1, the PostToolUse entry (`logs/as1.hooks.jsonl` (raw logs removed), 74 ms):
 
 ```text
 SQUEAL · 1 check changed at revision 1
@@ -87,7 +87,7 @@ In exec1 and as2 the main agent's `PASS -> FAIL` came through the deny of item 4
 
 ### 3. A subagent's calls deliver only to `(session_id, agent_id)`, and SubagentStart gives it the header and primer: proven
 
-exec1 (`logs/exec1.store.jsonl`): SubagentStart registered `01a1183d-1c24-.../01a1183d-bdae-7aa3-8df9-5e06ccd27097` at +41,738 ms; the subagent's rollout has, at +41,649 ms, before its first call:
+exec1 (`logs/exec1.store.jsonl` (raw logs removed)): SubagentStart registered `01a1183d-1c24-.../01a1183d-bdae-7aa3-8df9-5e06ccd27097` at +41,738 ms; the subagent's rollout has, at +41,649 ms, before its first call:
 
 ```text
 SQUEAL · registered at revision 3
@@ -101,11 +101,11 @@ The subagent's two deliveries moved only its own `last_delivered_at` (+60,116, +
 
 as1 is the case where both hear: the subagent's PostToolUse delivered mul `PASS -> FAIL` at +38,533 to the subagent only (main's view still `pass` for mul), and the parent heard it from its own view at its next PostToolUse, after `wait_agent`, at +45,461. The subagent's SubagentStart header named the parent's open failure: "registered at revision 1 [...] Known failures: 1 / FAIL test/greet.test.js > greet says hello".
 
-Seen, not a defect: a Codex subagent starts from a fork of its parent's history, so its context already holds the parent's SQUEAL messages, followed by its own registration and a second copy of the primer (`logs/exec1.subagent.timeline.txt`). The subagent in exec1 quoted the parent's two messages as its own in its report.
+Seen, not a defect: a Codex subagent starts from a fork of its parent's history, so its context already holds the parent's SQUEAL messages, followed by its own registration and a second copy of the primer (`logs/exec1.subagent.timeline.txt` (raw logs removed)). The subagent in exec1 quoted the parent's two messages as its own in its report.
 
 ### 4. The next `apply_patch` after an undelivered regression is denied once: proven
 
-exec1 (`logs/exec1.main.timeline.txt`): the breaking patch applied at +10,615 ms, the transition was recorded at +10,864, and the next call, an `apply_patch` to README at +13,695, came back:
+exec1 (`logs/exec1.main.timeline.txt` (raw logs removed)): the breaking patch applied at +10,615 ms, the transition was recorded at +10,864, and the next call, an `apply_patch` to README at +13,695, came back:
 
 ```text
 Command blocked by PreToolUse hook: SQUEAL · 1 check changed at revision 1
@@ -117,17 +117,17 @@ FAIL  test/math.test.js > add sums
 Squeal policy interrupt.onRegression denied this apply_patch call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.. Command: *** Begin Patch [...]
 ```
 
-The model re-issued the identical patch at +16,813 and it applied. as2 repeated this: transition +77,642, deny +82,940, which Codex reports as `status: "blocked"` with an entry of kind `feedback` (`logs/as2.hooks.jsonl`), then the re-issued patch applied. No `Bash` call was ever denied. The doubled period in "again.. Command:" is Codex appending ". Command:" to a reason that already ends in a period.
+The model re-issued the identical patch at +16,813 and it applied. as2 repeated this: transition +77,642, deny +82,940, which Codex reports as `status: "blocked"` with an entry of kind `feedback` (`logs/as2.hooks.jsonl` (raw logs removed)), then the re-issued patch applied. No `Bash` call was ever denied. The doubled period in "again.. Command:" is Codex appending ". Command:" to a reason that already ends in a period.
 
 ### 5. SessionEnd unregisters at `exec` end and at stdin EOF: proven
 
-- `exec` (`logs/exec1.store.jsonl`): the main consumer was present at +86,349 and gone at +113,000; `codex exec` returned at +113,046.
+- `exec` (`logs/exec1.store.jsonl` (raw logs removed)): the main consumer was present at +86,349 and gone at +113,000; `codex exec` returned at +113,046.
 - stdin EOF, as1: EOF at +90,529, app-server exit at +90,664, consumer gone at the next poll, +90,756. as2: EOF +184,522, gone by +184,745. n4inline: the logging hook saw `SessionEnd` with the thread's `session_id` at +31,763, 113 ms after EOF, and the store was empty after.
 - No run needed the SIGTERM grace. SessionEnd's duration is not reported: the app-server exits before its `hook/completed` reaches the client.
 
 ### 6. Every hook exits 0 within its budget with no daemon: proven
 
-Over the six app-server threads Codex reported 142 Squeal hook runs: 141 `completed`, 1 `blocked` (the deny), none `failed` or timed out (`logs/hook-durations-all.txt`). The slowest was 375 ms, SessionStart in nd-r6, which spawns a daemon. `exec --json` does not show hooks; the exec run exited 0 with every hook effect above present.
+Over the six app-server threads Codex reported 142 Squeal hook runs: 141 `completed`, 1 `blocked` (the deny), none `failed` or timed out (`logs/hook-durations-all.txt` (raw logs removed)). The slowest was 375 ms, SessionStart in nd-r6, which spawns a daemon. `exec --json` does not show hooks; the exec run exited 0 with every hook effect above present.
 
 | Run | Daemon | Hook runs | Max | What the model saw |
 | --- | --- | --- | --- | --- |
@@ -137,7 +137,7 @@ Over the six app-server threads Codex reported 142 Squeal hook runs: 141 `comple
 
 ## Review wave 1, N4: an internal review thread fires tool hooks as the main agent
 
-Confirmed twice, defect 2. In n4inline (r3) and again in n4inline2 (r3b) a silent logging hook in the scratch user layer recorded every hook's stdin. The first run's stdin log was overwritten by the detached attempt, so the fields below come from n4inline2 (`logs/n4inline2.stdin.jsonl`, `logs/n4inline2.session-meta.jsonl`, `logs/n4inline2.hooks.jsonl`). The first run's summary, printed before it was lost, matched it on event, `session_id`, `agent_id`, `agent_type`, `turn_id` and `transcript_path`.
+Confirmed twice, defect 2. In n4inline (r3) and again in n4inline2 (r3b) a silent logging hook in the scratch user layer recorded every hook's stdin. The first run's stdin log was overwritten by the detached attempt, so the fields below come from n4inline2 (`logs/n4inline2.stdin.jsonl`, `logs/n4inline2.session-meta.jsonl`, `logs/n4inline2.hooks.jsonl` (raw logs removed)). The first run's summary, printed before it was lost, matched it on event, `session_id`, `agent_id`, `agent_type`, `turn_id` and `transcript_path`.
 
 Both runs: turn 1 reads a file; an outside edit breaks `mul` and the daemon records `PASS -> FAIL` while no hook runs; `review/start` with `delivery: "inline"`; turn 2 asks whether a test is failing. The review ran in its own thread, but its UserPromptSubmit returned the main agent's undelivered delta and marked `(session_id, main)` told (n4inline at +14,084 ms, n4inline2 at +42,310 ms):
 
@@ -174,14 +174,14 @@ So the stdin fields that differ are `transcript_path`, whose file name ends in a
 
 Not measured at calm load. The host's 1-minute load average stayed between 7.4 and 41.3 for the whole task, never under the test's threshold of 4, and the coordinator called off the wait. For comparison, 002-14 measured Stop at 76 ms p95 at load 3.9. The best Stop numbers here:
 
-- `test/harness/codex/latency.test.ts` at load 17.18 (`logs/latency-1.txt`, best of up to 3 rounds of 20 cold runs): Stop p95 86 ms, Stop (silent) p95 103 ms, SubagentStart p95 129 ms; every other hook 67 to 81 ms. Above load 4 the test reports and does not assert.
-- Real sessions, Codex's own `durationMs`: the best is as1 at load about 9, Stop 74 and 78 ms (2 runs). Over all 9 Stop runs at load 9 to 34, p50 110 ms and p95 259 ms. PostToolUse p95 195 ms over 51 runs and PreToolUse p95 209 ms over 54 (`logs/hook-durations-all.txt`). In nd-r9, where the `sh` fast path exits before Node, PreToolUse and PostToolUse took 1 to 2 ms.
+- `test/harness/codex/latency.test.ts` at load 17.18 (`logs/latency-1.txt` (raw logs removed), best of up to 3 rounds of 20 cold runs): Stop p95 86 ms, Stop (silent) p95 103 ms, SubagentStart p95 129 ms; every other hook 67 to 81 ms. Above load 4 the test reports and does not assert.
+- Real sessions, Codex's own `durationMs`: the best is as1 at load about 9, Stop 74 and 78 ms (2 runs). Over all 9 Stop runs at load 9 to 34, p50 110 ms and p95 259 ms. PostToolUse p95 195 ms over 51 runs and PreToolUse p95 209 ms over 54 (`logs/hook-durations-all.txt` (raw logs removed)). In nd-r9, where the `sh` fast path exits before Node, PreToolUse and PostToolUse took 1 to 2 ms.
 
 Every run is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at calm load is still open.
 
 ## Defects
 
-1. **The daemon cannot start in a repository whose `node_modules` is a symlink.** Core (001), not the Codex adapter. `squeal start` in r1 with `node_modules -> /tmp/p16/nm/node_modules` printed "Daemon: running", then the daemon exited: "could not start: squeal: git check-ignore -z --stdin exited 128 [...] fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link" (`logs/symlink-node-modules.status.txt`). Every later hook spawns a daemon that dies the same way (nd-r6), so the repository is never validated. `git check-ignore` rejects the whole batch for one path under a symlinked directory. Repositories and worktrees that link a shared `node_modules` are common.
+1. **The daemon cannot start in a repository whose `node_modules` is a symlink.** Core (001), not the Codex adapter. `squeal start` in r1 with `node_modules -> /tmp/p16/nm/node_modules` printed "Daemon: running", then the daemon exited: "could not start: squeal: git check-ignore -z --stdin exited 128 [...] fatal: pathspec 'node_modules/.package-lock.json' is beyond a symbolic link" (`logs/symlink-node-modules.status.txt` (raw logs removed)). Every later hook spawns a daemon that dies the same way (nd-r6), so the repository is never validated. `git check-ignore` rejects the whole batch for one path under a symlinked directory. Repositories and worktrees that link a shared `node_modules` are common.
 2. **An inline `/review` thread takes the main agent's undelivered report.** Codex adapter, review N4 above. Its hooks carry the parent's `session_id` and no `agent_id`, so `(session_id, main)` is marked told while the main agent never sees the report. Stdin tells the threads apart only by `transcript_path`, whose file name ends in the review thread's id rather than `session_id`, and by `turn_id`; the N4 section lists every field.
 3. **A hung daemon leaves edits unannounced.** Core (001 D9 and D10), seen in nd-r5. With the daemon stopped, an edit got no report and no "no daemon is validating" line at PostToolUse, unlike nd-r6, where the daemon was dead. The only signal was a clause in the registration header, and the agent summarised the session's Squeal messages as "Known failures: 0". 001's lessons (D1) saw the same header and an agent that read it; this agent did not.
 
@@ -193,7 +193,7 @@ Every run is far inside the 2 s timeout. Whether Stop stays under 80 ms p95 at c
 
 ## After 002-22: the CLI command in a real session
 
-2026-10-08. 003-31 ran as a Cezar Codex worker (gpt-6.1-sol) with the installed plugin 0.1.30. Its SessionStart primer named `node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/squeal/squeal/0.1.30/dist/cli/squeal.mjs" status --wait 60000` (rollout `rollout-2026-10-08T09-15-36-01a11a5e-...`), so defect 4's text is right in a real session. The agent, a reviewer, ran no `squeal` command, so a real run of it is not shown there; `test/harness/codex/command.test.ts` runs both the primer's command and a FAIL report's `why` line from `bash -c` with no `squeal` on PATH, on Node 22 and 24.
+2026-10-08. 003-31 ran as a Cezar Codex worker (gpt-6.1-sol) with the installed plugin 0.1.30. Its SessionStart primer named `node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/squeal/squeal/0.1.30/dist/cli/squeal.mjs" status --wait 60000` (rollout `rollout-2026-10-08T09-15-36-01a11a5e-...`), so defect 4's text is right in a real session. The agent, a reviewer, ran no `squeal` command, so a real run of it is not shown there; `test/harness/codex/command.test.ts` runs both the primer's command and a FAIL report's `why` line from `bash -c` with no `squeal` on PATH, on Node 22 and 24.
 
 ## Dogfooding with a Cezar Codex worker
 

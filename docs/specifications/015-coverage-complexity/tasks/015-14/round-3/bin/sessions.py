@@ -41,7 +41,7 @@ def cc_version(starts, ts):
 
 def project(cwd):
     cwd = cwd or '?'
-    m = re.match(r'/home/user/projects/([^/]+)(/\.ai/cezar/worktrees/([0-9a-f]{8}))?', cwd)
+    m = re.match(r'~/projects/([^/]+)(/\.ai/cezar/worktrees/([0-9a-f]{8}))?', cwd)
     return (m.group(1), 'worktree ' + m.group(3) if m.group(3) else 'main checkout') if m else (cwd, '?')
 
 

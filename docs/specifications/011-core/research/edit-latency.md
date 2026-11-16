@@ -70,7 +70,7 @@ The fast reverts and edits are real lookups. Verified by experiment (E3, clone):
 2. **Editor swap files do not cancel** (011 C4 step 5, C2). A revision whose only changes are untracked editor scratch names (vim `.<name>.sw[a-p]` and `4913`, emacs `.#<name>`) re-keys as now, but cancels no tier in flight and starts no quiet. The completion barrier still discards a result whose listing differs at the end. Here it would have kept 138 s of discarded runs and about 57 s of quiet. Regression: create and remove `D/.x.swp` while a tier of a file that lists `D` runs; the tier completes and stores.
 3. **A checkpoint counts a file current through a lookup as done** (011 C4 Explicit checkpoints). Live, `a6b8463a` stayed in progress from 13:23:01.306 to 13:27:06.660; how much of that was this defect is not determined (section 1). Regression: E8's sequence as a scheduler test.
 4. **pytest observes imports in subprocesses** (007 D4, D6). The Python children a test starts record their import edges as `squeal_pytest` does, under the parent test file. Here it would re-run the two CLI test files in about 4 s and report the false PASS of E9. The edges must count as direct importers (row 1), or the result waits in catch-up. Regression: a fixture test runs `subprocess.run([sys.executable, "-m", "pkg"])`; an edit of `pkg/cli.py` re-keys and runs it.
-5. **the client monorepo, not Squeal**: `walkFiles` should skip ignored entries. That takes the run from 79 s to about 2 s and needs no Squeal change. File it as a client monorepo issue.
+5. **The client monorepo, not Squeal**: `walkFiles` should skip ignored entries. That takes the run from 79 s to about 2 s and needs no Squeal change. File it as a client monorepo issue.
 
 ## Open questions
 
@@ -79,8 +79,8 @@ The fast reverts and edits are real lookups. Verified by experiment (E3, clone):
 
 ## Sources
 
-- Live store copy (read with `node:sqlite`): tables `revisions`, `runs`, `checkpoints`, `transitions`, `results`, `test_files`, `meta` (`quiet:`, `reruns:`, `rekeyed-moves:`, `pytest.observed.pytest`). Extract: `probes/edit-latency/evidence/live-store-extract.txt`.
+- Live store copy (read with `node:sqlite`): tables `revisions`, `runs`, `checkpoints`, `transitions`, `results`, `test_files`, `meta` (`quiet:`, `reruns:`, `rekeyed-moves:`, `pytest.observed.pytest`). Extract: `probes/edit-latency/evidence/live-store-extract.txt` (raw logs removed).
 - Live run logs: `client-monorepo/.git/squeal/runs/<run id>/vitest.log`, read in place.
-- the client monorepo at `7f939fb9`: `tools/generator/src/lib/plugin-tools.ts` (`walkFiles`), `src/index.ts` (drift check), `plugin-tools/estimate-pricing/tests/*.py`, `.gitignore` lines 91 and 92.
+- The client monorepo at `7f939fb9`: `tools/generator/src/lib/plugin-tools.ts` (`walkFiles`), `src/index.ts` (drift check), `plugin-tools/estimate-pricing/tests/*.py`, `.gitignore` lines 91 and 92.
 - Squeal at `squeal--v0.1.263` (identical in `src/core` to HEAD `69ea6829`): `src/core/scheduler/edit-cut.ts`, `quiet.ts`, `src/runners/pytest/adapter-observed.ts`, `src/runners/observe/recorder.cjs`, `src/core/watcher/debounce.ts`; spec 011 C2, C4, C10; spec 007 D4 and D6.
-- Experiments: `probes/edit-latency/` (`edit-seq.sh`, `poll.sh`, `sq.sh`, `q.mjs`, `closure.mjs`; status changes `evidence/e*-status-changes.ndjson`; loads `evidence/loads-and-sequences.txt`). E3, E7 and E9 ran inline; their commands and outputs are summarised in the README.
+- Experiments: `probes/edit-latency/` (`edit-seq.sh`, `poll.sh`, `sq.sh`, `q.mjs`, `closure.mjs`; status changes `evidence/e*-status-changes.ndjson` (raw logs removed); loads `evidence/loads-and-sequences.txt`). E3, E7 and E9 ran inline; their commands and outputs are summarised in the README.

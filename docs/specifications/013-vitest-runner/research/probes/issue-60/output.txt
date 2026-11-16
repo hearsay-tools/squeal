@@ -1,4 +1,4 @@
-{"timestamp":"2026-10-20T23:20:27.856Z","node":"v24.21.0","cpus":24,"load":[18.66,11.04,12.4],"root":"/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"}
+{"timestamp":"2026-10-20T23:20:27.856Z","node":"v24.21.0","cpus":24,"load":[18.66,11.04,12.4],"root":"~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"}
 DAEMON_PID 1448592
 $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/squeal/0.1.233/dist/cli/squeal.mjs run --all --wait
 Checkpoint a59ecce0-a0d7-4620-a49c-952985a53c09 completed at revision 0: no known failures; 1 test file, 0 already current, 1 run now
@@ -46,7 +46,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "479b87fda5479404",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
   "revision": 1,
   "commit": {
     "head": "50d62f75a52c5f3c82854946b336278e53b6d89a",
@@ -119,7 +119,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
       },
       "recorded": {
         "worktreeId": "479b87fda5479404",
-        "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+        "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
         "revision": 1,
         "recordedAt": 1792538432260,
         "loadPerCpu": 0.7775
@@ -173,7 +173,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
   "available": true,
   "found": true,
   "worktreeId": "479b87fda5479404",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
   "revision": 1,
   "commit": {
     "head": "50d62f75a52c5f3c82854946b336278e53b6d89a",
@@ -187,7 +187,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
     "fullName": "prepared assets match declared source"
   },
   "worktreeRoots": {
-    "479b87fda5479404": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"
+    "479b87fda5479404": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856"
   },
   "knownState": {
     "worktreeId": "479b87fda5479404",
@@ -255,7 +255,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
           {
             "name": "AssertionError",
             "message": "expected 'Run activity' to be 'Session activity' // Object.is equality",
-            "stack": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality\n    at browser-check.test.ts:5:18\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:20",
+            "stack": "AssertionError: expected 'Run activity' to be 'Session activity' // Object.is equality\n    at browser-check.test.ts:5:18\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file://~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/node_modules/vitest/dist/chunks/run.BTlFXlnv.js:2783:20",
             "location": {
               "path": "browser-check.test.ts",
               "line": 5,
@@ -273,8 +273,8 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
           "recordedAt": 1792538432260
         }
       },
-      "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
-      "logDir": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d"
+      "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+      "logDir": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d"
     },
     {
       "result": {
@@ -304,8 +304,8 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
           "recordedAt": 1792538430805
         }
       },
-      "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
-      "logDir": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/15bb2fca-15e9-40fa-901a-a5e98feeeeb3"
+      "worktreeRoot": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856",
+      "logDir": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/15bb2fca-15e9-40fa-901a-a5e98feeeeb3"
     }
   ],
   "durations": {
@@ -321,7 +321,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/cache/hearsay/sque
   "runLog": {
     "runId": "0e566c08-0c77-4dea-9d3d-47853661621d",
     "worktreeId": "479b87fda5479404",
-    "path": "/home/user/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d/vitest.log",
+    "path": "~/projects/squeal/.ai/cezar/worktrees/0dddae76-9dd0-45ca-ba49-65fa735c85a3/docs/specifications/013-vitest-runner/research/probes/issue-60/.runtime/fixture-1792538427856/.git/squeal/runs/0e566c08-0c77-4dea-9d3d-47853661621d/vitest.log",
     "state": "present",
     "console": null
   }

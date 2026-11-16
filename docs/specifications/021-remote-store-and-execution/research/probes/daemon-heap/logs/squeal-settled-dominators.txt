@@ -76,7 +76,7 @@
     32.5 (0.0) context:C2 ← object system / Context | object Object
       32.0 (0.0) internal:buffer ← object Int8Array | object ArrayBuffer
         32.0 (32.0) internal:backing_store ← object ArrayBuffer | native system / JSArrayBufferData
-  7.8 (7.8) internal:source ← code file:///home/user/projects/squeal/.ai/cezar/t/2e3bd449/dh-squeal-yRQNUf/bundle/dist/cli/s | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
+  7.8 (7.8) internal:source ← code file://~/projects/squeal/.ai/cezar/t/2e3bd449/dh-squeal-yRQNUf/bundle/dist/cli/s | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
   5.8 (0.0) #code ← object Daemon | object Object
     5.8 (0.0) internal:context ← closure nudge | object system / Context
       5.8 (0.0) context:cache2 ← object system / Context | object StepCache

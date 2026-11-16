@@ -6,8 +6,8 @@
     "load": [7.21, 3.41, 2.16],
     "cpus": 24,
     "node": "v24.22.1",
-    "cli": "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.407/dist/cli/squeal.mjs",
-    "root": "/home/user/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2"
+    "cli": "~/.codex/plugins/data/squeal-hearsay/versions/0.1.407/dist/cli/squeal.mjs",
+    "root": "~/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2"
   },
   {
     "ms": 165,

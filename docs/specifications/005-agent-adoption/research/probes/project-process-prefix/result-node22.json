@@ -7,31 +7,31 @@
       "js": {
         "pid": 916031,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
-        "argv0": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "argv0": "~/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [],
-        "title": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "title": "~/.nvm/versions/node/v22.19.0/bin/node",
         "cmdline": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
         "comm": "node"
       },
-      "ps": "/home/user/.nvm/versions/node/v22.19.0/bin/node ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces --await-lock 60000",
+      "ps": "~/.nvm/versions/node/v22.19.0/bin/node ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces --await-lock 60000",
       "discovery": {
         "count": 1,
-        "root": "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+        "root": "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
         "worktreeId": "b26a63123afe91aa",
         "lockWaitMs": 60000
       }
@@ -41,22 +41,22 @@
       "js": {
         "pid": 916091,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
         "argv0": "squeal cezarion@work-1 daemon",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [],
         "title": "squeal cezarion@work-1 daemon",
         "cmdline": [
           "squeal cezarion@work-1 daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
@@ -65,7 +65,7 @@
       "ps": "squeal cezarion@work-1 daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces --await-lock 60000",
       "discovery": {
         "count": 1,
-        "root": "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+        "root": "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
         "worktreeId": "b26a63123afe91aa",
         "lockWaitMs": 60000
       }
@@ -75,15 +75,15 @@
       "js": {
         "pid": 916162,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
         "argv0": "squeal cezarion@work-1 daemon",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [
           "--disable-warning=ExperimentalWarning"
         ],
@@ -91,9 +91,9 @@
         "cmdline": [
           "squeal cezarion@work-1 daemon",
           "--disable-warning=ExperimentalWarning",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
@@ -102,7 +102,7 @@
       "ps": "squeal cezarion@work-1 daemon --disable-warning=ExperimentalWarning ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces --await-lock 60000",
       "discovery": {
         "count": 1,
-        "root": "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+        "root": "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
         "worktreeId": "b26a63123afe91aa",
         "lockWaitMs": 60000
       }
@@ -112,22 +112,22 @@
       "js": {
         "pid": 916240,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
           "--await-lock",
           "60000"
         ],
         "argv0": "squeal cezarion@work-1 daemon",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [],
         "title": "squeal cezarion@work-1 daemon",
         "cmdline": [
           "squeal cezarion@work-1 daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
           "--await-lock",
           "60000"
         ],
@@ -136,7 +136,7 @@
       "ps": "squeal cezarion@work-1 daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree --await-lock 60000",
       "discovery": {
         "count": 1,
-        "root": "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
+        "root": "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
         "worktreeId": "fd5ad6d74a62c6fc",
         "lockWaitMs": 60000
       }
@@ -146,22 +146,22 @@
       "js": {
         "pid": 916291,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
         "argv0": "squeal cezarion@work-1 daemon",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [],
         "title": "squeal cezarion@work-1 daemon",
         "cmdline": [
           "squeal cezarion@work-1 daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
           "daemon",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
           "--await-lock",
           "60000"
         ],
@@ -170,7 +170,7 @@
       "ps": "squeal cezarion@work-1 daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces --await-lock 60000",
       "discovery": {
         "count": 1,
-        "root": "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
+        "root": "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces",
         "worktreeId": "b26a63123afe91aa",
         "lockWaitMs": 60000
       }
@@ -182,9 +182,9 @@
       "mode": "actual ensureDaemonProcess with diagnostic argv0 option",
       "cmdline": [
         "squeal cezarion@linked daemon",
-        "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
+        "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/plugin data/versions/0.1.1/dist/cli/squeal.mjs",
         "daemon",
-        "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
+        "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/linked worktree",
         "--await-lock",
         "60000"
       ],
@@ -198,16 +198,16 @@
       "child": {
         "pid": 916691,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces/tiny.test.mjs"
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces/tiny.test.mjs"
         ],
-        "argv0": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "argv0": "~/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [],
-        "title": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "title": "~/.nvm/versions/node/v22.19.0/bin/node",
         "cmdline": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces/tiny.test.mjs"
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/t/3aec5f3d/squeal-prefix-ey2vgm/project with spaces/tiny.test.mjs"
         ],
         "comm": "node"
       },
@@ -218,31 +218,31 @@
       "child": {
         "pid": 916989,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
         ],
-        "argv0": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "argv0": "~/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [
           "--experimental-import-meta-resolve",
           "--require",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
           "--conditions",
           "node",
           "--conditions",
           "development"
         ],
-        "title": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "title": "~/.nvm/versions/node/v22.19.0/bin/node",
         "cmdline": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+          "~/.nvm/versions/node/v22.19.0/bin/node",
           "--experimental-import-meta-resolve",
           "--require",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
           "--conditions",
           "node",
           "--conditions",
           "development",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
         ],
         "comm": "node"
       },
@@ -253,15 +253,15 @@
       "child": {
         "pid": 917253,
         "argv": [
-          "/home/user/.nvm/versions/node/v22.19.0/bin/node",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+          "~/.nvm/versions/node/v22.19.0/bin/node",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
         ],
         "argv0": "squeal cezarion vitest-worker",
-        "execPath": "/home/user/.nvm/versions/node/v22.19.0/bin/node",
+        "execPath": "~/.nvm/versions/node/v22.19.0/bin/node",
         "execArgv": [
           "--experimental-import-meta-resolve",
           "--require",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
           "--conditions",
           "node",
           "--conditions",
@@ -272,12 +272,12 @@
           "squeal cezarion vitest-worker",
           "--experimental-import-meta-resolve",
           "--require",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/suppress-warnings.cjs",
           "--conditions",
           "node",
           "--conditions",
           "development",
-          "/home/user/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
+          "~/projects/squeal/.ai/cezar/worktrees/3aec5f3d-a43e-4488-8382-14e8b1d2ba84/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/workers/forks.js"
         ],
         "comm": "node"
       },

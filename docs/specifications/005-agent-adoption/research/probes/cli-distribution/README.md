@@ -8,7 +8,7 @@ Run on 2026-10-09 with Claude Code 2.1.295, Codex CLI 0.160.1, Node 24.21.0, npm
 
 - Everything ran under `/tmp/cli-dist`. Plugin installs and updates used a scratch `HOME` and `CODEX_HOME` (`/tmp/cli-dist/q1/home`, `/tmp/cli-dist/q1b/home`); the real `~/.claude` and `~/.codex` were only read. The hub is a local git repository served on 127.0.0.1 by `git-http.mjs` (copied from `001-core-loop/research/probes/release-hub/`).
 - Daemons ran with their own `XDG_RUNTIME_DIR`, so sockets and the slow slot were the probes' own; every daemon a probe started was stopped by it (`no probe daemon left` in `logs/q2.log`).
-- No agent subject session was used: hooks were run as Claude Code runs them, `node <bundle>` with a recorded input (`recorded/`, from `test/harness/recorded/`) on stdin. No test suite of this repository ran. Vitest 5.0.3 was copied into each fixture from `/tmp/r52/nm` (an install another probe left).
+- No agent subject session was used: hooks were run as Claude Code runs them, `node <bundle>` with a recorded input (`recorded/` (raw logs removed), from `test/harness/recorded/`) on stdin. No test suite of this repository ran. Vitest 5.0.3 was copied into each fixture from `/tmp/r52/nm` (an install another probe left).
 - No credential was used or written. The scratch homes hold none.
 
 ## Files

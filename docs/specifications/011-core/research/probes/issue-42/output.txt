@@ -353,7 +353,7 @@ Named test files have no verdict: no daemon has validated since 2026-10-19T16:41
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "a6b4acd940a004f5",
-  "worktreeRoot": "/home/user/projects/squeal",
+  "worktreeRoot": "~/projects/squeal",
   "revision": 837,
   "commit": {
     "head": "71e23f779368ec264336da2ef510ca3817c9082e",

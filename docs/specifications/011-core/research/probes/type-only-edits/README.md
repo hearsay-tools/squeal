@@ -37,7 +37,7 @@ S=/tmp/to149; P=<this folder>
 mkdir -p $S/{home,run,tmp,logs,an,probe} $S/stores/{squeal,cezar,toolkit} $S/xdg/{config,cache,data,state}; chmod 700 $S/run
 cp $P/*.py $P/*.mjs $P/env.sh $S/probe/ && mv $S/probe/env.sh $S/
 for r in squeal cezar client-monorepo; do git clone ~/projects/$r $S/$r; done      # then cp -a each installed node_modules
-cp ~/projects/squeal/.git/squeal/store.sqlite* $S/stores/squeal/               # likewise cezar and the client monorepo
+cp ~/projects/squeal/.git/squeal/store.sqlite* $S/stores/squeal/               # likewise cezar and client-monorepo
 cd $S
 # question 1: the corpus, the transforms, the comment-free reprint
 python3 -I probe/corpus.py stores/squeal/store.sqlite ~/projects/squeal/.git an/squeal-corpus.tsv

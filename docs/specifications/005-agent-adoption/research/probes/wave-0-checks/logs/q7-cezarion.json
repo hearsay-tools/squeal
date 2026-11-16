@@ -1,5 +1,5 @@
 {
- "repo": "/home/user/projects/checkout",
+ "repo": "~/projects/checkout",
  "testFiles": 674,
  "vitestFiles": 651,
  "nodeTestProjects": [

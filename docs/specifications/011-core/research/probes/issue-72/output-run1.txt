@@ -51,15 +51,15 @@ More: `squeal status --full` adds the worktree and daemon and 1 note
   new-cli| Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
   new-cli| Outstanding:
   new-cli|   4 test files without a result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
-  new-cli|     at EventEmitter.onTaskError (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  new-cli|     at EventEmitter.onTaskError (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
   new-cli|     at EventEmitter.emit (node:events:526:24)
-  new-cli|     at ChildProcess.emitUnexpectedExit (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  new-cli|     at ChildProcess.emitUnexpectedExit (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
   new-cli|     at ChildProcess.emit (node:events:514:28)
   new-cli|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12)
   new-cli| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
-  new-cli|     at EventEmitter.onTaskError (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  new-cli|     at EventEmitter.onTaskError (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
   new-cli|     at EventEmitter.emit (node:events:526:24)
-  new-cli|     at ChildProcess.emitUnexpectedExit (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  new-cli|     at ChildProcess.emitUnexpectedExit (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
   new-cli|     at ChildProcess.emit (node:events:514:28)
   new-cli|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12): test/h1.test.ts, test/h3.test.ts, test/h5.test.ts and 1 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 4 test files not current here
   new-cli| More: `squeal status --full` adds the worktree and daemon and the 4 test files without a result one by one
@@ -76,15 +76,15 @@ More: `squeal status --full` adds the worktree and daemon and 1 note
   wait|   2 fail: test/h2.test.ts, test/h4.test.ts
   wait| Unknown (4):
   wait|   4 no result: vitest: unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
-  wait|     at EventEmitter.onTaskError (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  wait|     at EventEmitter.onTaskError (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
   wait|     at EventEmitter.emit (node:events:526:24)
-  wait|     at ChildProcess.emitUnexpectedExit (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  wait|     at ChildProcess.emitUnexpectedExit (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
   wait|     at ChildProcess.emit (node:events:514:28)
   wait|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12)
   wait| unhandled error outside any test file: Error: [vitest-pool]: Worker forks emitted error.
-  wait|     at EventEmitter.onTaskError (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
+  wait|     at EventEmitter.onTaskError (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11532:21)
   wait|     at EventEmitter.emit (node:events:526:24)
-  wait|     at ChildProcess.emitUnexpectedExit (file:///home/user/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
+  wait|     at ChildProcess.emitUnexpectedExit (file://~/projects/squeal/.ai/cezar/worktrees/03d89750-75fd-4b48-a68e-5d54f8ca14d7/node_modules/vitest/dist/chunks/index.DpLw24bj.js:11007:22)
   wait|     at ChildProcess.emit (node:events:514:28)
   wait|     at Process.ChildProcess._handle.onexit (node:internal/child_process:295:12): test/h1.test.ts, test/h3.test.ts, test/h5.test.ts, test/h6.test.ts; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 4 test files not current here
   wait| Named test files have no verdict: 4 test files without a current result at revision 1 (4 unknown): 4 no result at its inputs: `squeal retry <test file>...`. Worktree: known failures 2 (2 tests); not current: 4 of 6 test files (4 unknown), 4 tests (4 unknown)

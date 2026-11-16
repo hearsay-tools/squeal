@@ -1,4 +1,4 @@
-{"timestamp":"2026-10-23T14:20:10.143Z","node":"v24.21.0","cpus":24,"load":[16.7,26.14,28.41],"layout":"single","runtime":".runtime-v4","versions":{"vitest":"4.1.10","vite":"8.1.4","jsdom":"29.1.1"},"root":"/home/user/projects/squeal/.ai/cezar/worktrees/a9c13f66-b530-4cce-bae6-ece1c0aef78b/docs/specifications/013-vitest-runner/research/probes/issue-80/.runtime-v4/fixture-single-1792765210143"}
+{"timestamp":"2026-10-23T14:20:10.143Z","node":"v24.21.0","cpus":24,"load":[16.7,26.14,28.41],"layout":"single","runtime":".runtime-v4","versions":{"vitest":"4.1.10","vite":"8.1.4","jsdom":"29.1.1"},"root":"~/projects/squeal/.ai/cezar/worktrees/a9c13f66-b530-4cce-bae6-ece1c0aef78b/docs/specifications/013-vitest-runner/research/probes/issue-80/.runtime-v4/fixture-single-1792765210143"}
 DAEMON_PID 235927
 $ node ~/.codex/plugins/cache/hearsay/squeal/0.1.276/dist/cli/squeal.mjs run --all --wait
 Checkpoint 3b0fa12c-ec0c-4039-82ed-82f4db46c590 completed at revision 0: no known failures; 5 test files, 0 already current, 5 run now

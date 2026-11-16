@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-const dir = "/home/user/projects/squeal/.git/squeal/";
+const dir = "~/projects/squeal/.git/squeal/";
 const s = new DatabaseSync(dir + "store.sqlite", { readOnly: true });
 const c = new DatabaseSync(dir + "code.sqlite", { readOnly: true });
 const run = process.argv[2];

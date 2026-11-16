@@ -40,7 +40,7 @@
       "repositoryLint": {
         "code": 1,
         "stdout": "{\"matches\":1,\"added\":[{\"file\":\"packages/cezar/src/workflows/issue-219.test.ts\",\"rule\":\"active-run-literal\",\"site\":\"const run: ActiveRun = { a: 1 };\",\"count\":1}]}",
-        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
+        "stderr": "$ '~/.nvm/versions/node/v26.13.0/bin/node' '--import' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '~/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
       }
     },
     {
@@ -56,7 +56,7 @@
       "repositoryLint": {
         "code": 1,
         "stdout": "{\"matches\":1,\"added\":[{\"file\":\"packages/cezar/src/workflows/issue-219.test.ts\",\"rule\":\"active-run-literal\",\"site\":\"const run: ActiveRun = { a: 1 };\",\"count\":1}]}",
-        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
+        "stderr": "$ '~/.nvm/versions/node/v26.13.0/bin/node' '--import' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '~/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
       }
     },
     {
@@ -72,7 +72,7 @@
       "repositoryLint": {
         "code": 0,
         "stdout": "{\"matches\":0,\"added\":[]}",
-        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'"
+        "stderr": "$ '~/.nvm/versions/node/v26.13.0/bin/node' '--import' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '~/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '~/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'"
       }
     }
   ]

@@ -15,7 +15,7 @@ $ node --disable-warning=ExperimentalWarning ~/projects/squeal/.ai/cezar/worktre
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "be887b2e77b77061",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-8f6ybule/repo",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/646abc7c/squeal-issue111-8f6ybule/repo",
   "revision": 0,
   "counts": {
     "current": 0,

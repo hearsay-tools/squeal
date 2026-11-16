@@ -4,7 +4,7 @@ Wave 14 W2b. Commits: `95ffe6a0` (subagent roots), `9195ac8c` (unused stop), and
 
 ## What Claude Code's subagent hooks carry
 
-- **SubagentStart** keys (probe log `research/probes/claude-code-integration/logs/subagent.hooks.trim.jsonl`): `agent_id`, `agent_type`, `cwd`, `hook_event_name`, `prompt_id`, `session_id`, `transcript_path`.
+- **SubagentStart** keys (probe log `research/probes/claude-code-integration/logs/subagent.hooks.trim.jsonl` (raw logs removed)): `agent_id`, `agent_type`, `cwd`, `hook_event_name`, `prompt_id`, `session_id`, `transcript_path`.
 - **SubagentStop** keys: those, plus `agent_transcript_path`, `background_tasks`, `effort`, `last_assistant_message`, `permission_mode`, `session_crons`, `stop_hook_active`.
 - `session_id` is the parent's. `agent_id` identifies the subagent: `a` plus 16 hex digits.
 - **Where `cwd` comes from:** read in the Claude Code 2.1.x bundle (`claude.exe` strings, no execution). The subagent runner fires SubagentStart (`hook_event_name:"SubagentStart",agent_id,agent_type`) from the shared hook input builder, which reads `cwd` at fire time.

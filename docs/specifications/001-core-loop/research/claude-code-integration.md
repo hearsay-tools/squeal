@@ -46,7 +46,7 @@ Hook config (`scenarios/pretooluse`):
 Config: `PostToolUse` (matcher `*`) and `PostToolBatch` (no matcher). Each returns `{"hookSpecificOutput":{"hookEventName":"<event>","additionalContext":"Squeal status note: nonce <event>-<random> ..."}}`.
 
 - Both nonces from every tool call appeared in the model's very next text, before its next tool call, within one turn. Example: `"Newest Squeal notes: PostToolUse-cc5e7401 and PostToolBatch-ff8e4c70."` *verified by experiment (2.1.286, `-p`)*
-- The hooks run in sequence: tool end, then PostToolUse, then PostToolBatch, then the API request. Timeline from `logs/posttool.timeline.txt`, three Bash calls:
+- The hooks run in sequence: tool end, then PostToolUse, then PostToolBatch, then the API request. Timeline from `logs/posttool.timeline.txt` (raw logs removed), three Bash calls:
 
 | | tool end to PostToolUse ctx | to PostToolBatch ctx | to next API request |
 |---|---|---|---|
@@ -72,13 +72,13 @@ Waiter script: sleep N seconds, print a note to stderr, exit 2 (`hooks/rewake.sh
 - **(b) Mid-turn, interactive:** the waiter exited at 19.598 while the model was generating. The message was queued at 19.600 (`queued_command` attachment). The model saw it after the next tool result (20.850), so 1.25 s later, still in the same turn. *verified by experiment (2.1.288)*
 - **(c) During a long Bash call, interactive:** the waiter exited at 30.604 during `sleep 20; echo slept` (29.637 to 49.984). The tool was not interrupted. The model saw the note only after the command finished, 19.4 s later. *verified by experiment (2.1.288)*
 - **In `-p` mode, `asyncRewake` is not asynchronous.** The hook blocked the loop until it exited ("Slow PostToolUse hooks: 3085ms") and its stderr was attached to that tool result. Plain `async: true` in `-p` did run in the background. Its output was polled at each tool boundary and attached at the first boundary after it exited (exit 15.166, delivered 15.575). *verified by experiment (2.1.286 and 2.1.288)*. Not documented.
-- **Re-arming:** nothing re-arms automatically. Each firing of the configured event spawns a new process, with no deduplication. A `Stop` waiter re-armed itself at the end of every woken turn and fired twice more (`logs/rewake-idle.*`). A waiter that blocks until a real transition therefore gives a loop of wake, turn, Stop, re-arm. *verified by experiment; read in official docs*
+- **Re-arming:** nothing re-arms automatically. Each firing of the configured event spawns a new process, with no deduplication. A `Stop` waiter re-armed itself at the end of every woken turn and fired twice more (`logs/rewake-idle.*` (raw logs removed)). A waiter that blocks until a real transition therefore gives a loop of wake, turn, Stop, re-arm. *verified by experiment; read in official docs*
 - **Timeout:** `timeout` is enforced on `asyncRewake` (default 600 s). A waiter with `timeout: 5` and a 15 s sleep was killed silently, with no wake and no log line. *verified by experiment (2.1.288)*
-- The hook environment tells the modes apart: `-p` has `CLAUDE_CODE_ENTRYPOINT=sdk-cli` and `CLAUDE_CODE_SESSION_ATTENDED=0`; interactive has `cli` and `1` (`logs/entrypoint.env.log`). *verified by experiment; undocumented, may change*
+- The hook environment tells the modes apart: `-p` has `CLAUDE_CODE_ENTRYPOINT=sdk-cli` and `CLAUDE_CODE_SESSION_ATTENDED=0`; interactive has `cli` and `1` (`logs/entrypoint.env.log` (raw logs removed)). *verified by experiment; undocumented, may change*
 
 ### 5. Identifiers and subagents
 
-- Every hook gets `session_id`, `transcript_path`, `cwd`, `hook_event_name`, and on turn events also `prompt_id`. Inside a subagent, `agent_id` (e.g. `a54374d4ee2bc54fb`) and `agent_type` are added. The subagent keeps the parent's `session_id`. *verified by experiment (`logs/subagent.hooks.trim.jsonl`)*
+- Every hook gets `session_id`, `transcript_path`, `cwd`, `hook_event_name`, and on turn events also `prompt_id`. Inside a subagent, `agent_id` (e.g. `a54374d4ee2bc54fb`) and `agent_type` are added. The subagent keeps the parent's `session_id`. *verified by experiment (`logs/subagent.hooks.trim.jsonl` (raw logs removed))*
 - SubagentStart and SubagentStop fire. PostToolUse and PostToolBatch also fire inside the subagent, carrying its `agent_id`.
 - Context is isolated in both directions. The subagent reported only its own nonces (SubagentStart, PostToolUse, PostToolBatch). The parent reported only its own nonces and none of the subagent's. *verified by experiment*
 - `cwd` follows `cd` and worktree entry, while `CLAUDE_PROJECT_DIR` stays at the session root. Hooks get no git or worktree identity, so Squeal must derive the worktree from `cwd`. *read in official docs; inferred*
@@ -128,4 +128,4 @@ Waiter script: sleep N seconds, print a note to stderr, exit 2 (`hooks/rewake.sh
 - https://developers.openai.com/codex/hooks (fetched 2026-10-03)
 - https://github.com/earendil-works/pi `packages/coding-agent/docs/extensions.md`, `docs/sdk.md`, `src/core/extensions/types.ts` @ a276dab
 - https://opencode.ai/docs/plugins, https://opencode.ai/docs/sdk, https://github.com/sst/opencode `packages/plugin/src/index.ts` @ 907b3bc
-- Probes: `probes/claude-code-integration/` (scenario configs in `scenarios/*/.claude/settings.json`, evidence in `logs/`)
+- Probes: `probes/claude-code-integration/` (scenario configs in `scenarios/*/.claude/settings.json`, evidence in `logs/` (raw logs removed))

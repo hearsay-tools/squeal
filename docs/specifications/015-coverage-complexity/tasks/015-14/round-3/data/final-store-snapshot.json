@@ -1,6 +1,6 @@
 {
  "readAt": "2026-10-28T06:32:34.629Z",
- "dir": "/home/user/projects/squeal/.git/squeal",
+ "dir": "~/projects/squeal/.git/squeal",
  "mark": "2026-10-27T08:23:46Z",
  "files": {
   "code.sqlite": {
@@ -206,7 +206,7 @@
   "worktrees": [
    {
     "id": "4403c14c19e09b16",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/05fecde6-12b3-4b82-a7a4-de871ee53819",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/05fecde6-12b3-4b82-a7a4-de871ee53819",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-28T06:31:37.369Z",
@@ -214,7 +214,7 @@
    },
    {
     "id": "6bd67f00c73288ff",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/a52cf0ea-7aa1-403e-8932-9af0f8d38bc0",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/a52cf0ea-7aa1-403e-8932-9af0f8d38bc0",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-28T06:30:05.721Z",
@@ -222,7 +222,7 @@
    },
    {
     "id": "a6b4acd940a004f5",
-    "root": "/home/user/projects/squeal",
+    "root": "~/projects/squeal",
     "is_main": 1,
     "daemon_version": "0.1.369",
     "daemon_started_at": "2026-10-28T06:32:30.257Z",
@@ -230,7 +230,7 @@
    },
    {
     "id": "79a7285e595a154b",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/5a05dafd-2794-430e-a023-dfbc25b85def",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/5a05dafd-2794-430e-a023-dfbc25b85def",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-28T01:23:41.735Z",
@@ -238,7 +238,7 @@
    },
    {
     "id": "15448a903e8757ad",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/b5981c18-f5f7-4977-8229-e31b37290314",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/b5981c18-f5f7-4977-8229-e31b37290314",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-28T00:01:56.808Z",
@@ -246,7 +246,7 @@
    },
    {
     "id": "3823695f8f44d0a0",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/13dbcff4-9229-4cfd-97e0-b4a944a38f05",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/13dbcff4-9229-4cfd-97e0-b4a944a38f05",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-27T22:41:22.473Z",
@@ -254,7 +254,7 @@
    },
    {
     "id": "d34d7bebf77d7aa5",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/023aeeb2-d9cf-4e2b-9713-3587192dc8b7",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/023aeeb2-d9cf-4e2b-9713-3587192dc8b7",
     "is_main": 0,
     "daemon_version": "0.1.368",
     "daemon_started_at": "2026-10-27T21:58:58.760Z",
@@ -262,7 +262,7 @@
    },
    {
     "id": "89a84eae1af1489c",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/6a7f8df3-fe5b-4b32-b820-03550cb93ea9",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/6a7f8df3-fe5b-4b32-b820-03550cb93ea9",
     "is_main": 0,
     "daemon_version": "0.1.367",
     "daemon_started_at": "2026-10-27T15:55:39.493Z",
@@ -270,7 +270,7 @@
    },
    {
     "id": "ff25519f9cd646d5",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/a1964cc6-33c3-49cc-819e-af0c09023d02",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/a1964cc6-33c3-49cc-819e-af0c09023d02",
     "is_main": 0,
     "daemon_version": "0.1.367",
     "daemon_started_at": "2026-10-27T15:46:49.014Z",
@@ -278,7 +278,7 @@
    },
    {
     "id": "311bd11dd1eb3098",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/395c869a-722f-40b4-b202-964dd33c212b",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/395c869a-722f-40b4-b202-964dd33c212b",
     "is_main": 0,
     "daemon_version": "0.1.367",
     "daemon_started_at": "2026-10-27T14:38:07.376Z",
@@ -286,7 +286,7 @@
    },
    {
     "id": "a7abb0f1c844b616",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/52adfef4-a887-49a7-a064-d0e859cb7091",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/52adfef4-a887-49a7-a064-d0e859cb7091",
     "is_main": 0,
     "daemon_version": "0.1.367",
     "daemon_started_at": "2026-10-27T14:53:04.727Z",
@@ -294,7 +294,7 @@
    },
    {
     "id": "401c7f97773fdcd8",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/0ac0429b-9ad1-47df-91b3-e3a955dc16a7",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/0ac0429b-9ad1-47df-91b3-e3a955dc16a7",
     "is_main": 0,
     "daemon_version": "0.1.367",
     "daemon_started_at": "2026-10-27T13:46:38.233Z",
@@ -302,7 +302,7 @@
    },
    {
     "id": "e5c447c1615e54ab",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/10635869-c535-4d1a-ac21-16c73d2e3429",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/10635869-c535-4d1a-ac21-16c73d2e3429",
     "is_main": 0,
     "daemon_version": "0.1.357",
     "daemon_started_at": "2026-10-26T22:59:29.054Z",
@@ -310,7 +310,7 @@
    },
    {
     "id": "56544519bc0a4b7f",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/4413f227-0110-4509-8330-c9febd0a7787",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/4413f227-0110-4509-8330-c9febd0a7787",
     "is_main": 0,
     "daemon_version": "0.1.131",
     "daemon_started_at": "2026-10-13T20:31:21.886Z",
@@ -318,7 +318,7 @@
    },
    {
     "id": "7d5b66b1347fb28c",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/98e819b2-4050-477f-b815-b310e6b751d0",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/98e819b2-4050-477f-b815-b310e6b751d0",
     "is_main": 0,
     "daemon_version": "0.1.131",
     "daemon_started_at": "2026-10-13T20:00:02.163Z",
@@ -326,7 +326,7 @@
    },
    {
     "id": "7fee1e85baaedcdd",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/9e208305-5d1b-4387-b5fe-1792dab6cf94",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/9e208305-5d1b-4387-b5fe-1792dab6cf94",
     "is_main": 0,
     "daemon_version": "0.1.131",
     "daemon_started_at": "2026-10-13T11:44:22.083Z",
@@ -334,7 +334,7 @@
    },
    {
     "id": "85b1b3f07ec5ae4a",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/203e4288-049b-416e-9b08-a1227975e1a3",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/203e4288-049b-416e-9b08-a1227975e1a3",
     "is_main": 0,
     "daemon_version": "0.1.131",
     "daemon_started_at": "2026-10-13T11:06:54.959Z",
@@ -342,7 +342,7 @@
    },
    {
     "id": "8ae86e16445f495c",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/bc9dbb62-868c-48e6-ac9c-41d3564b0a22",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/bc9dbb62-868c-48e6-ac9c-41d3564b0a22",
     "is_main": 0,
     "daemon_version": "0.1.124",
     "daemon_started_at": "2026-10-12T10:51:50.572Z",
@@ -350,7 +350,7 @@
    },
    {
     "id": "83cac2f12d11dfde",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/95c01a17-e049-4c7d-9305-f20f3062598f",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/95c01a17-e049-4c7d-9305-f20f3062598f",
     "is_main": 0,
     "daemon_version": "0.1.121",
     "daemon_started_at": "2026-10-11T19:46:31.320Z",
@@ -358,7 +358,7 @@
    },
    {
     "id": "f87240cdbff135f9",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/4c670899-aa9d-41d9-a611-4c2996e1cf44",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/4c670899-aa9d-41d9-a611-4c2996e1cf44",
     "is_main": 0,
     "daemon_version": null,
     "daemon_started_at": null,
@@ -366,7 +366,7 @@
    },
    {
     "id": "2ffdba4600edbe1f",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/a5b3f013-7fe0-46a9-bd54-d8d8d35ffb1e",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/a5b3f013-7fe0-46a9-bd54-d8d8d35ffb1e",
     "is_main": 0,
     "daemon_version": null,
     "daemon_started_at": null,
@@ -374,7 +374,7 @@
    },
    {
     "id": "fc990fe3b8dd3ad3",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/933bdf47-87c3-4682-9be7-e1c84e828057",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/933bdf47-87c3-4682-9be7-e1c84e828057",
     "is_main": 0,
     "daemon_version": null,
     "daemon_started_at": null,

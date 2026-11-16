@@ -9,8 +9,8 @@ The scripts expect the layout they ran in, under `/tmp/el115` (removed after the
 - `q.mjs`: one SQL query against the store copy, through `node:sqlite`. `closure.mjs`: a stored closure by top directory, with an optional path filter.
 - `edit-seq.sh edit|revert`: replays vim's sequence on `cli.py` (swap file created, changed 3 s later, then the write and the swap file's removal 10 s later).
 - `poll.sh <out>`: `squeal status --json` every 0.5 s, reduced to revision, refined revision, runner part, phases and `outstanding`.
-- `evidence/live-store-extract.txt`: the live revisions, runs, checkpoints, transitions, results and meta rows the findings cite, and the overlapping runs in the squeal and cezar store copies.
-- `evidence/e<N>-status-changes.ndjson`: the status changes of each experiment. `evidence/loads-and-sequences.txt`: `uptime` before each experiment and the times `edit-seq.sh` printed.
+- `evidence/live-store-extract.txt` (raw logs removed): the live revisions, runs, checkpoints, transitions, results and meta rows the findings cite, and the overlapping runs in the squeal and cezar store copies.
+- `evidence/e<N>-status-changes.ndjson` (raw logs removed): the status changes of each experiment. `evidence/loads-and-sequences.txt`: `uptime` before each experiment and the times `edit-seq.sh` printed.
 
 Experiments (clone, scratch daemon 0.1.263):
 

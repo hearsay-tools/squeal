@@ -10,7 +10,7 @@ Entries, built by 002-12 from `src/harness/codex/entries/<name>.ts` into `plugin
 
 Outcome: every Codex hook event has an entry on the shared hook code, and one build produces both plugins.
 
-Read: spec 002 D2 to D5; `src/harness/shared/` and `src/harness/claude-code/` as 002-10 left them; `research/codex-hooks.md` findings 2 to 6 and `research/probes/codex-hooks/logs/`; `research/codex-sessions-and-wake.md` findings 3 and 7.
+Read: spec 002 D2 to D5; `src/harness/shared/` and `src/harness/claude-code/` as 002-10 left them; `research/codex-hooks.md` findings 2 to 6 and `research/probes/codex-hooks/logs/` (raw logs removed); `research/codex-sessions-and-wake.md` findings 3 and 7.
 
 Shape: slice. Test first.
 

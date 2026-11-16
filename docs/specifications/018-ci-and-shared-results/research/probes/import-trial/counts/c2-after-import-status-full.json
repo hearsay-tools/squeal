@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "eabbd2a06edad63a",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2",
   "revision": 0,
   "counts": {
     "current": 29956,
@@ -94,7 +94,7 @@
       },
       "recorded": {
         "worktreeId": "eabbd2a06edad63a",
-        "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2",
+        "worktreeRoot": "~/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2",
         "revision": 0,
         "recordedAt": 1794224479576,
         "loadPerCpu": 0.11041666666666666,
@@ -116,14 +116,14 @@
     "sources": [
       {
         "worktreeId": "b7555ac0d0f19f40",
-        "worktreeRoot": "/home/user/projects/cezar",
+        "worktreeRoot": "~/projects/cezar",
         "commit": "00e0c8433f50f7fc16f12432da306432fdec8360",
         "count": 14634,
         "fileLevelCount": 866
       },
       {
         "worktreeId": "475a3fba8126a788",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
         "commit": "00e0c8433f50f7fc16f12432da306432fdec8360",
         "count": 4741,
         "fileLevelCount": 262
@@ -137,14 +137,14 @@
       },
       {
         "worktreeId": "475a3fba8126a788",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
         "commit": "2e8a90d622adc6daff1a1f2a0b7fe02a985a2415",
         "count": 2424,
         "fileLevelCount": 199
       },
       {
         "worktreeId": "475a3fba8126a788",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
         "commit": "f70d4988cefcd9cf2a286829dca67bf4a9c79b2e",
         "count": 833,
         "fileLevelCount": 47
@@ -158,7 +158,7 @@
       },
       {
         "worktreeId": "d33064edd449e22e",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/9436728b-6548-46ad-9d19-37165f7283c2",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/9436728b-6548-46ad-9d19-37165f7283c2",
         "commit": "00e0c8433f50f7fc16f12432da306432fdec8360",
         "count": 324,
         "fileLevelCount": 33
@@ -193,7 +193,7 @@
       },
       {
         "worktreeId": "712e6f1056e4a4d3",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/b5c07127-179f-4b32-8a27-9f32606db634",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/b5c07127-179f-4b32-8a27-9f32606db634",
         "commit": "2e8a90d622adc6daff1a1f2a0b7fe02a985a2415",
         "count": 170,
         "fileLevelCount": 9
@@ -221,7 +221,7 @@
       },
       {
         "worktreeId": "475a3fba8126a788",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757",
         "commit": "721c19b004d5f4453488d2b4e859fd6a6256f97b",
         "count": 89,
         "fileLevelCount": 8
@@ -263,7 +263,7 @@
       },
       {
         "worktreeId": "0033cb9bb31a004a",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8",
         "commit": "28541c87d86b862e2f9d9ed2df04dc3932be3f82",
         "count": 13,
         "fileLevelCount": 1
@@ -284,7 +284,7 @@
       },
       {
         "worktreeId": "0033cb9bb31a004a",
-        "worktreeRoot": "/home/user/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8",
+        "worktreeRoot": "~/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8",
         "commit": "0d0df2ddfff98a15a31c4829b2239a066971f696",
         "count": 8,
         "fileLevelCount": 2

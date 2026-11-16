@@ -93,5 +93,5 @@ The issue (filed 2026-10-16 by wjarka, labels `enhancement` and `friction`) name
 - Issue: https://github.com/hearsay-tools/squeal/issues/3 (read with `gh issue view 3 -R hearsay-tools/squeal`, 2026-10-16; no comments).
 - Shipped CLI 0.1.199: `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`.
 - Source, this worktree at `1a9eb308`: `src/core/slow/classify.ts`, `src/core/slow/inherit.ts`, `src/core/scheduler/slow-tier.ts:550-625`, `src/core/state/slow-text.ts:97`, `src/core/types/policy.ts:161` (`NodeTestProject`); node:test e2e shape `test/e2e/slow-node-test.test.ts`, `test/e2e/slow-shape.ts`.
-- cezarion: a `git clone --depth 1 file:///home/user/projects/cezar` copy under `/tmp` at `82f9757` (2026-10-16), deleted after reading: `squeal.config.json`, `packages/cezar/package.json:27,41`, `packages/cezar/test/e2e/*.test.ts`, `.github/workflows/ci.yml:255,258`.
+- cezarion: a `git clone --depth 1 file://~/projects/cezar` copy under `/tmp` at `82f9757` (2026-10-16), deleted after reading: `squeal.config.json`, `packages/cezar/package.json:27,41`, `packages/cezar/test/e2e/*.test.ts`, `.github/workflows/ci.yml:255,258`.
 - `docs/vision.md` principles 1, 2, 5, 8; `spec.md` goal 8, non-goals, D5, D6, D8.

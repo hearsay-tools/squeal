@@ -13,7 +13,7 @@ S=$(mktemp -d /tmp/vcl-c-XXXXXX)
 mkdir -p "$S"/{home,run,config/squeal,cache,tmp,log,ctl,snap}
 chmod 700 "$S/run"
 git clone --quiet --depth 1 "file://$LIVE" "$S/cezar"
-cp -r "/home/user/.claude/plugins/cache/hearsay/squeal/$VERSION" "$S/squeal"
+cp -r "~/.claude/plugins/cache/hearsay/squeal/$VERSION" "$S/squeal"
 echo '{ "capacity": { "hostSlots": 4 } }' >"$S/config/squeal/config.json"
 node -e '
 const f = process.argv[1], p = JSON.parse(require("fs").readFileSync(f, "utf8"));

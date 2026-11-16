@@ -12,7 +12,7 @@ Claude Code versions: 2.1.286 and 2.1.288 (the CLI auto-updated mid-session; eac
 - `scenarios/<name>/.claude/settings.json`: the exact hook config for each experiment. Each scenario is its own scratch project; this repo's `.claude` is never touched.
 - `hooks/*.sh`: hook scripts. `log.sh` records each hook's stdin with a ms timestamp. Others deny, inject a random nonce, sleep then exit 2, hang, etc.
 - `plugin-probe/`: a minimal plugin loaded with `--plugin-dir`.
-- `logs/`: sanitized output. `*.view.jsonl` (compact transcript), `*.timeline.txt` (debug-log lines for tool start/end, hook results, API requests), `*.nonces.log` (when a hook issued or delivered a nonce), `*.hooks.trim.jsonl` (hook input fields), `*.transcript-excerpt.jsonl` (interactive sessions). Raw debug and stream logs are gitignored because they carry account details.
+- `logs/` (raw logs removed): sanitized output. `*.view.jsonl` (raw logs removed) (compact transcript), `*.timeline.txt` (raw logs removed) (debug-log lines for tool start/end, hook results, API requests), `*.nonces.log` (raw logs removed) (when a hook issued or delivered a nonce), `*.hooks.trim.jsonl` (raw logs removed) (hook input fields), `*.transcript-excerpt.jsonl` (raw logs removed) (interactive sessions). Raw debug and stream logs are gitignored because they carry account details.
 
 ## Scenarios
 

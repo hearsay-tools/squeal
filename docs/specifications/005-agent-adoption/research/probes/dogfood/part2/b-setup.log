@@ -245,7 +245,7 @@
 07:18:17Z +15s @@ -331,3 +331,9 @@ row's value when the thing it names changes, rather than its label.
 07:18:17Z +15s  | Board | **Cezarion**, org `hearsay-tools`, project #1 |
 07:18:17Z +15s  | Task orchestrator | Cezar |
-07:18:17Z +15s  | SDLC feedback | `a private client monorepo` |
+07:18:17Z +15s  | SDLC feedback | `company/client-monorepo` |
 07:18:17Z +15s +
 07:18:17Z +15s +<!-- squeal:begin v1 (managed by Squeal setup; edits inside are replaced) -->
 07:18:17Z +15s +## Tests

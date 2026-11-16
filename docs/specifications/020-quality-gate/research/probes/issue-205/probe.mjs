@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 // Throwaway, bounded reproduction. No repository suite or daemon is started.
 const dir = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(dir, "../../../../../..");
-const cli = process.argv[2] ?? "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal";
+const cli = process.argv[2] ?? "~/.codex/plugins/data/squeal-hearsay/bin/squeal";
 const out = resolve(dir, "evidence");
 mkdirSync(out, { recursive: true });
 const samples = [];

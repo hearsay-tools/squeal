@@ -95,7 +95,7 @@ Location: `src/harness/shared/primer.ts:55-60`, `:115`; `src/harness/codex/outpu
 Probe, using the real `codexCommand`:
 
 ```ts
-const root = `/home/user/${"x".repeat(250)}/.codex/plugins/cache/hearsay/squeal/0.1.109`;
+const root = `~/${"x".repeat(250)}/.codex/plugins/cache/hearsay/squeal/0.1.109`;
 const command = codexCommand({ PLUGIN_ROOT: root }, "/unused.mjs");
 const coverage = { vitestConfig: null, vitestProjects: [], nodeTest: [], slow: { files: 3 } };
 const tail = primer(command, coverage);

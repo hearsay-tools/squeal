@@ -479,10 +479,10 @@ cezar-e: "edges": { "same": 1512 }, "edgeMismatches": [] }
 {"root":"/tmp/p162/layouts/isolated","bytes":1612,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
 {"root":"/tmp/p162/layouts/pnpm10","bytes":1612,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
 {"root":"/tmp/p162/layouts/patched","bytes":2100,"snapshots":4,"equal":true,"lineReaderMs":0,"yamlMs":0.6}
-{"root":"/home/user/projects/cezar","bytes":256559,"snapshots":638,"equal":true,"lineReaderMs":1.8,"yamlMs":113.4}
+{"root":"~/projects/cezar","bytes":256559,"snapshots":638,"equal":true,"lineReaderMs":1.8,"yamlMs":113.4}
 
 ## trust.mjs over cezar's live installs, read-only (load 28.00 27.82 29.38)
-{"root":"/home/user/projects/cezar","stale":null,"orphans":0,"readMs":345,"ruleMs":29}
+{"root":"~/projects/cezar","stale":null,"orphans":0,"readMs":345,"ruleMs":29}
 {"root":"worktree 027222d2","stale":null,"orphans":0,"readMs":269,"ruleMs":13}
 {"root":"worktree 0498344c","stale":"no install","orphans":null,"readMs":0,"ruleMs":0}
 {"root":"worktree 06d646d2","stale":null,"orphans":0,"readMs":204,"ruleMs":23}

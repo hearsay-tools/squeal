@@ -1,6 +1,6 @@
 == tiers, 2026-10-21T20:46:48Z, load 51.20 on 24 CPUs
 {
- "store": "/home/user/projects/cezar/.git/squeal/store.sqlite",
+ "store": "~/projects/cezar/.git/squeal/store.sqlite",
  "hours": 24,
  "at": "2026-10-21T20:46:48.253Z",
  "runs": 4181,
@@ -114,7 +114,7 @@
 }
 == order, 2026-10-21T20:46:52Z, load 50.22 on 24 CPUs
 {
- "store": "/home/user/projects/cezar/.git/squeal/store.sqlite",
+ "store": "~/projects/cezar/.git/squeal/store.sqlite",
  "storeW": 2,
  "storeS": 1,
  "cancelled": {
@@ -152,7 +152,7 @@
 }
 == gaps, 2026-10-21T20:46:56Z, load 50.21 on 24 CPUs
 {
- "store": "/home/user/projects/cezar/.git/squeal/store.sqlite",
+ "store": "~/projects/cezar/.git/squeal/store.sqlite",
  "cancelled": {
   "tiers": 63,
   "files": 4370,
@@ -327,7 +327,7 @@
  ]
 }
 == reversed, 2026-10-21T20:46:57Z, load 50.21 on 24 CPUs
-{"store":"/home/user/projects/cezar/.git/squeal/store.sqlite","reversed":{"tiers":13,"files":822,"ended":181,"stored":62,"shortestFirstFloor":374},"inOrder":{"tiers":33,"files":2478,"ended":979,"stored":570,"shortestFirstFloor":1220},"mixed":{"tiers":17,"files":1070,"ended":116,"stored":83,"shortestFirstFloor":208}}
+{"store":"~/projects/cezar/.git/squeal/store.sqlite","reversed":{"tiers":13,"files":822,"ended":181,"stored":62,"shortestFirstFloor":374},"inOrder":{"tiers":33,"files":2478,"ended":979,"stored":570,"shortestFirstFloor":1220},"mixed":{"tiers":17,"files":1070,"ended":116,"stored":83,"shortestFirstFloor":208}}
 == withheld, 2026-10-21T20:47:00Z, load 50.51 on 24 CPUs
 {
   runs: 3168,

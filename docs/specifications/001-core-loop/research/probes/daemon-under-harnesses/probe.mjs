@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const since = Date.now() - 1_000; // as Cezar's holdersSince: workerProcessCutoff(createdAt)
 const here = dirname(fileURLToPath(import.meta.url));
-const CEZ = "/home/user/.nvm/versions/node/v24.21.0/lib/node_modules/cezarion/node_modules/@wjarka/cezarion/dist/delegation/process-liveness.js";
+const CEZ = "~/.nvm/versions/node/v24.21.0/lib/node_modules/cezarion/node_modules/@wjarka/cezarion/dist/delegation/process-liveness.js";
 const { processesWithCwdUnder } = await import(CEZ);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };

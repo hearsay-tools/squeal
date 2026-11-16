@@ -1,4 +1,4 @@
-{"repo":"/home/user/projects/squeal","ref":"5150132e37d6","commits":200,"testFiles":134,"added":18,"addedMissing":4,"modified":116,"modifiedMissing":10,"withSourceChange":111,"withSourceChangeMissing":14}
+{"repo":"~/projects/squeal","ref":"5150132e37d6","commits":200,"testFiles":134,"added":18,"addedMissing":4,"modified":116,"modifiedMissing":10,"withSourceChange":111,"withSourceChangeMissing":14}
 {"missingKinds":{"onlyTestSide":7,"source":7}}
 {"commit":"4bb7f1d57","status":"A","path":"test/daemon/full-check-holder.test.ts","srcChanged":3,"relativeImports":8,"missingAtParent":["src/core/daemon/full-check-claim.js"]}
 {"commit":"4bb7f1d57","status":"M","path":"test/daemon/full-check.test.ts","srcChanged":3,"relativeImports":9,"missingAtParent":["src/core/daemon/full-check-claim.js"]}

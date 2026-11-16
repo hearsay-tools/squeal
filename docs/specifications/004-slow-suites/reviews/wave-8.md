@@ -65,9 +65,9 @@ Exact comparison matrix against 0.1.206's source at `a177145e`: five command for
 
 1. `squeal` (Claude Code).
 2. `node --disable-warning=ExperimentalWarning "/opt/squeal/dist/cli/squeal.mjs"` (Codex's actual command format, short installation path).
-3. `node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.207/dist/cli/squeal.mjs"` (Codex, cache path).
+3. `node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.207/dist/cli/squeal.mjs"` (Codex, cache path).
 4. `"/usr/bin/node" --disable-warning=ExperimentalWarning "/opt/squeal/dist/cli/squeal.mjs"` (Pi/OpenCode command format).
-5. `"/home/user/.nvm/versions/node/v24.21.0/bin/node" --disable-warning=ExperimentalWarning "/opt/squeal/dist/cli/squeal.mjs"` (Pi/OpenCode, full Node path).
+5. `"~/.nvm/versions/node/v24.21.0/bin/node" --disable-warning=ExperimentalWarning "/opt/squeal/dist/cli/squeal.mjs"` (Pi/OpenCode, full Node path).
 
 Exactly two cells lose project text, both command 2, Vitest on, zero node:test projects, seven required slow files:
 

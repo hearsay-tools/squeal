@@ -309,7 +309,7 @@
    "ussKb": 102720,
    "swapPssKb": 0,
    "smapsMs": 9.1,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 1326051,
@@ -332,7 +332,7 @@
    "ussKb": 96964,
    "swapPssKb": 0,
    "smapsMs": 10.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2091149,
@@ -355,7 +355,7 @@
    "ussKb": 107132,
    "swapPssKb": 0,
    "smapsMs": 8.3,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2091490,
@@ -378,7 +378,7 @@
    "ussKb": 663392,
    "swapPssKb": 0,
    "smapsMs": 29.2,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2128703,
@@ -401,7 +401,7 @@
    "ussKb": 1088292,
    "swapPssKb": 0,
    "smapsMs": 58.3,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/"
   },
   {
    "pid": 2144348,
@@ -424,7 +424,7 @@
    "ussKb": 82084,
    "swapPssKb": 0,
    "smapsMs": 8.4,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2145215,
@@ -447,7 +447,7 @@
    "ussKb": 92336,
    "swapPssKb": 0,
    "smapsMs": 9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2145899,
@@ -470,7 +470,7 @@
    "ussKb": 99112,
    "swapPssKb": 0,
    "smapsMs": 6.2,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/squeal"
   },
   {
    "pid": 2254287,
@@ -493,7 +493,7 @@
    "ussKb": 798848,
    "swapPssKb": 0,
    "smapsMs": 22.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2696595,
@@ -516,7 +516,7 @@
    "ussKb": 1085408,
    "swapPssKb": 128020,
    "smapsMs": 45.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2721938,
@@ -539,7 +539,7 @@
    "ussKb": 976232,
    "swapPssKb": 82596,
    "smapsMs": 50.4,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2741583,
@@ -562,7 +562,7 @@
    "ussKb": 777616,
    "swapPssKb": 68696,
    "smapsMs": 30.3,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2776538,
@@ -585,7 +585,7 @@
    "ussKb": 1333844,
    "swapPssKb": 54156,
    "smapsMs": 54.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2860458,
@@ -608,7 +608,7 @@
    "ussKb": 887760,
    "swapPssKb": 270228,
    "smapsMs": 57.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2974521,
@@ -631,7 +631,7 @@
    "ussKb": 1338144,
    "swapPssKb": 100156,
    "smapsMs": 53,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 3058908,
@@ -654,7 +654,7 @@
    "ussKb": 829208,
    "swapPssKb": 177996,
    "smapsMs": 34.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 3241641,
@@ -677,7 +677,7 @@
    "ussKb": 541376,
    "swapPssKb": 85820,
    "smapsMs": 20.6,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.234/dist/cli/squeal.mjs daemon ~/projects/cezar/"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.234/dist/cli/squeal.mjs daemon ~/projects/cezar/"
   },
   {
    "pid": 3546894,
@@ -700,7 +700,7 @@
    "ussKb": 505900,
    "swapPssKb": 54764,
    "smapsMs": 19.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 3699153,
@@ -723,7 +723,7 @@
    "ussKb": 524604,
    "swapPssKb": 788,
    "smapsMs": 16,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.claude/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar"
   },
   {
    "pid": 3704612,
@@ -746,7 +746,7 @@
    "ussKb": 2217656,
    "swapPssKb": 12560,
    "smapsMs": 114.6,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 4099030,
@@ -769,7 +769,7 @@
    "ussKb": 1119576,
    "swapPssKb": 2040,
    "smapsMs": 59.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 4102450,
@@ -792,7 +792,7 @@
    "ussKb": 1111340,
    "swapPssKb": 7272,
    "smapsMs": 50.6,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node ~/.codex/plugins/cache/hearsay/squeal/0.1.235/dist/cli/squeal.mjs daemon ~/projects/cezar/."
   },
   {
    "pid": 2353452,
@@ -815,7 +815,7 @@
    "ussKb": 150000,
    "swapPssKb": 0,
    "smapsMs": 10.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50"
   },
   {
    "pid": 2348322,
@@ -838,7 +838,7 @@
    "ussKb": 32440,
    "swapPssKb": 0,
    "smapsMs": 4.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50"
   },
   {
    "pid": 2348807,
@@ -861,7 +861,7 @@
    "ussKb": 399620,
    "swapPssKb": 0,
    "smapsMs": 23.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --import file:///home/user/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50-9bba-549bf0262a79/node_modul"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --import file://~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50-9bba-549bf0262a79/node_modul"
   },
   {
    "pid": 2349117,
@@ -884,7 +884,7 @@
    "ussKb": 18836,
    "swapPssKb": 0,
    "smapsMs": 1.1,
-   "cmd": "/home/user/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50-9bba-549bf0262a79/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping"
+   "cmd": "~/projects/squeal/.ai/cezar/worktrees/1da25396-2fe1-4f50-9bba-549bf0262a79/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.28.2 --ping"
   },
   {
    "pid": 2336352,
@@ -907,7 +907,7 @@
    "ussKb": 257720,
    "swapPssKb": 0,
    "smapsMs": 15.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
   },
   {
    "pid": 2336276,
@@ -930,7 +930,7 @@
    "ussKb": 227708,
    "swapPssKb": 0,
    "smapsMs": 14.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
   },
   {
    "pid": 2357090,
@@ -976,7 +976,7 @@
    "ussKb": 274760,
    "swapPssKb": 0,
    "smapsMs": 13.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/dcbd676a-fb9b-48eb-"
   },
   {
    "pid": 2357277,
@@ -1045,7 +1045,7 @@
    "ussKb": 216196,
    "swapPssKb": 0,
    "smapsMs": 9.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/5a8b81b6-81b0-4e05-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/5a8b81b6-81b0-4e05-"
   },
   {
    "pid": 2309741,
@@ -1068,7 +1068,7 @@
    "ussKb": 207048,
    "swapPssKb": 0,
    "smapsMs": 10,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/5a8b81b6-81b0-4e05-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/5a8b81b6-81b0-4e05-"
   },
   {
    "pid": 2357249,
@@ -1137,7 +1137,7 @@
    "ussKb": 329432,
    "swapPssKb": 0,
    "smapsMs": 26.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/7c144ff7-78b9-47e7-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/7c144ff7-78b9-47e7-"
   },
   {
    "pid": 2290853,
@@ -1183,7 +1183,7 @@
    "ussKb": 138884,
    "swapPssKb": 0,
    "smapsMs": 8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/0a8f1055-ee60-4d40-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/0a8f1055-ee60-4d40-"
   },
   {
    "pid": 2287550,
@@ -1206,7 +1206,7 @@
    "ussKb": 190896,
    "swapPssKb": 0,
    "smapsMs": 10.3,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
   },
   {
    "pid": 2287519,
@@ -1229,7 +1229,7 @@
    "ussKb": 151792,
    "swapPssKb": 0,
    "smapsMs": 8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
   },
   {
    "pid": 2287481,
@@ -1252,7 +1252,7 @@
    "ussKb": 264892,
    "swapPssKb": 0,
    "smapsMs": 16.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
   },
   {
    "pid": 2287458,
@@ -1275,7 +1275,7 @@
    "ussKb": 173832,
    "swapPssKb": 0,
    "smapsMs": 10.3,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/e10ce669-2c97-4c02-"
   },
   {
    "pid": 2160042,
@@ -1298,7 +1298,7 @@
    "ussKb": 297264,
    "swapPssKb": 0,
    "smapsMs": 16,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/14f4eac4-c407-4a84-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/14f4eac4-c407-4a84-"
   },
   {
    "pid": 2160004,
@@ -1321,7 +1321,7 @@
    "ussKb": 249764,
    "swapPssKb": 0,
    "smapsMs": 17.8,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/14f4eac4-c407-4a84-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/14f4eac4-c407-4a84-"
   },
   {
    "pid": 2258515,
@@ -1367,7 +1367,7 @@
    "ussKb": 186352,
    "swapPssKb": 0,
    "smapsMs": 15.5,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-"
   },
   {
    "pid": 2356379,
@@ -1390,7 +1390,7 @@
    "ussKb": 292888,
    "swapPssKb": 0,
    "smapsMs": 20,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/12bfdcf5-3199-46d0-"
   },
   {
    "pid": 2220322,
@@ -1413,7 +1413,7 @@
    "ussKb": 262780,
    "swapPssKb": 0,
    "smapsMs": 17.4,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/6562319e-c809-41bb-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/6562319e-c809-41bb-"
   },
   {
    "pid": 2349797,
@@ -1482,7 +1482,7 @@
    "ussKb": 245632,
    "swapPssKb": 0,
    "smapsMs": 16.9,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-"
   },
   {
    "pid": 2323500,
@@ -1505,7 +1505,7 @@
    "ussKb": 145304,
    "swapPssKb": 0,
    "smapsMs": 11.2,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-"
   },
   {
    "pid": 2357030,
@@ -1551,7 +1551,7 @@
    "ussKb": 168188,
    "swapPssKb": 0,
    "smapsMs": 8.4,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/25bebea2-6e4f-492b-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/25bebea2-6e4f-492b-"
   },
   {
    "pid": 2318361,
@@ -1574,7 +1574,7 @@
    "ussKb": 138736,
    "swapPssKb": 0,
    "smapsMs": 8.7,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-"
   },
   {
    "pid": 2175465,
@@ -1597,7 +1597,7 @@
    "ussKb": 197852,
    "swapPssKb": 0,
    "smapsMs": 10.4,
-   "cmd": "/home/user/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-"
+   "cmd": "~/.nvm/versions/node/v24.21.0/bin/node --experimental-import-meta-resolve --require ~/projects/cezar/.ai/cezar/worktrees/ee6ef330-de85-4fc6-"
   },
   {
    "pid": 2356517,

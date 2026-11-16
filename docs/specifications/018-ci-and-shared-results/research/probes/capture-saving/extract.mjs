@@ -93,7 +93,7 @@ function durations(text) {
   return out;
 }
 
-const ROOT_RE = /\/home\/user\/projects\/(squeal|cezar)(\/\.ai\/cezar\/worktrees\/[0-9a-f-]{36})?/;
+const ROOT_RE = /~\/projects\/(squeal|cezar)(\/\.ai\/cezar\/worktrees\/[0-9a-f-]{36})?/;
 /** The worktree root a path or cwd lies in, or null outside both repositories. */
 function rootOf(p) { const m = String(p ?? "").replace(/^file:\/\//, "").match(ROOT_RE); return m ? m[0] : null; }
 /** A leading `cd <dir>` in a command moves it to that worktree. */
@@ -108,7 +108,7 @@ function cdRoot(cmd) { const m = cmd.match(/^\s*cd\s+["']?([^\s"'&;|]+)/); retur
  * operands of sed -i, perl -i, cp, mv, rm, touch, truncate, patch, the path literals of a
  * heredoc script that writes (open(...,'w'), write_text, writeFileSync), apply_patch headers.
  */
-const PATH_RE = /(?:\/home\/user\/projects\/[^\s"';|&)<>]+|(?:\.\/)?[\w@.-]+\/[\w@./-]*\.\w+|[\w@.-]+\.(?:ts|tsx|mts|cts|js|mjs|cjs|json|snap|yaml|yml|md))/g;
+const PATH_RE = /(?:~\/projects\/[^\s"';|&)<>]+|(?:\.\/)?[\w@.-]+\/[\w@./-]*\.\w+|[\w@.-]+\.(?:ts|tsx|mts|cts|js|mjs|cjs|json|snap|yaml|yml|md))/g;
 const pathsIn = (text) => (text.match(PATH_RE) ?? []).filter((p) => !p.startsWith("/tmp/") && !/^\d/.test(p));
 function writes(cmd) {
   const paths = []; let global = null;

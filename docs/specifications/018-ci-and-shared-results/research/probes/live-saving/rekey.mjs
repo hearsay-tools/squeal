@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-const db = new DatabaseSync('/home/user/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
+const db = new DatabaseSync('~/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
 const ci = new Map(db.prepare("select hash, json_extract(descriptor,'$.ci') ci from environments").all().map(r => [r.hash, r.ci]));
 for (const i of db.prepare("select id, imported_at, json_extract(header,'$.commit') c, json_extract(header,'$.squealVersion') v from imports order by imported_at").all()) {
   let rek = 0, ex = 0, unk = 0;

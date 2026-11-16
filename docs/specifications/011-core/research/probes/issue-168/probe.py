@@ -2,8 +2,8 @@
 """Throwaway issue-168 probe. Uses only a private temporary Git repository."""
 import json, os, pathlib, shlex, subprocess, tempfile, time
 REPO = pathlib.Path(__file__).resolve().parents[6]
-RUNTIME = pathlib.Path('/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.422')
-NODE = '/home/user/.nvm/versions/node/v24.22.1/bin/node'
+RUNTIME = pathlib.Path('~/.codex/plugins/data/squeal-hearsay/versions/0.1.422')
+NODE = '~/.nvm/versions/node/v24.22.1/bin/node'
 slow_lint = os.environ.get('ISSUE168_SLOW_LINT') == '1'
 load = os.getloadavg()[0]
 cpus = int(subprocess.check_output(['nproc'], text=True))

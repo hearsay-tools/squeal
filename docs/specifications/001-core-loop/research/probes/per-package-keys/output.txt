@@ -155,12 +155,12 @@ tests 14593 failed 2
 ## cezar: soundness.mjs over the trace
 with a worktree package loaded outside their key: 9
 test files attributed: 632; with a package loaded outside their key: 30
-  21 files (in a child process): outside the worktree: @openai/codex   e.g. outside:- -> file:///home/user/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex/bin/codex.js   e.g. packages/cezar/src/core/pi-runner.test.ts
+  21 files (in a child process): outside the worktree: @openai/codex   e.g. outside:- -> file://~/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex/bin/codex.js   e.g. packages/cezar/src/core/pi-runner.test.ts
   21 files (in a child process): outside the worktree: @openai/codex-linux-x64   e.g. outside:~/.nvm/versions/node/v24.21.0/lib/node_modules/@openai/codex -> @openai/codex-linux-x64/package.json   e.g. packages/cezar/src/core/pi-runner.test.ts
   10 files (in a child process): outside the worktree: tree-sitter   e.g. outside:~/.local/share/cursor-agent/versions/2026.10.01-e373342/index.js -> tree-sitter   e.g. packages/cezar/src/core/pi-runner.test.ts
   10 files (in a child process): outside the worktree: node-gyp-build   e.g. outside:~/.local/share/cursor-agent/versions/2026.10.01-e373342/node_modules/tree-sitter -> node-gyp-build   e.g. packages/cezar/src/core/pi-runner.test.ts
   10 files (in a child process): outside the worktree: tree-sitter-bash   e.g. outside:~/.local/share/cursor-agent/versions/2026.10.01-e373342/index.js -> tree-sitter-bash   e.g. packages/cezar/src/core/pi-runner.test.ts
-  9 files (in a child process): outside the worktree: @earendil-works/pi-coding-agent   e.g. outside:- -> file:///home/user/.nvm/versions/node/v24.21.0/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js   e.g. packages/cezar/src/server/automa
+  9 files (in a child process): outside the worktree: @earendil-works/pi-coding-agent   e.g. outside:- -> file://~/.nvm/versions/node/v24.21.0/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js   e.g. packages/cezar/src/server/automa
   4 files (in a child process): node_modules/@hono/node-server   e.g. packages/cezar/src/delegation/transport.ts -> @hono/node-server   e.g. packages/cezar/src/artifacts/cli.test.ts
   4 files (in a child process): node_modules/ws   e.g. packages/cezar/src/preview/cdp.ts -> ws   e.g. packages/cezar/src/artifacts/cli.test.ts
   4 files (in a child process): node_modules/smol-toml   e.g. packages/cezar/src/agent-config/model-settings/shared.ts -> smol-toml   e.g. packages/cezar/src/artifacts/cli.test.ts
@@ -230,9 +230,9 @@ poppins entries in .package-lock.json: 0
 cjs+phantom-v1
 
 ## freshness.mjs: npm's rule for trusting the hidden lockfile, two runs each
-{"root":"/home/user/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":9.6}
+{"root":"~/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":9.6}
 {"root":"/tmp/ppk/cezar-origin","listed":559,"newer":[],"missing":0,"unlistedTopLevel":[],"ms":18.6}
-{"root":"/home/user/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":13.8}
+{"root":"~/projects/cezar","listed":470,"newer":[],"missing":0,"unlistedTopLevel":["@fontsource/poppins"],"ms":13.8}
 {"root":"/tmp/ppk/cezar-origin","listed":559,"newer":[],"missing":0,"unlistedTopLevel":[],"ms":13.8}
 
 ## fallback variants on cezar (files whose closure reaches the listed builtins key by the whole lockfile)

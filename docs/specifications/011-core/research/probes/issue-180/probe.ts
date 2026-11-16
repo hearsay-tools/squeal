@@ -13,7 +13,7 @@ const root = join(temp, 'fixture');
 const runtime = join(temp, 'runtime');
 for (const p of [source, root, runtime]) mkdirSync(p);
 const tag = 'squeal--v0.1.426';
-const cli = '/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs';
+const cli = '~/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs';
 const log = (what: string, data: unknown) => console.log(JSON.stringify({what, data}));
 log('environment', {date: new Date().toISOString(), node: process.version, load: loadavg(), cpus: cpus().length, tag, commit: execFileSync('git', ['rev-parse', tag], {encoding:'utf8'}).trim(), cli});
 if (loadavg()[0] > cpus().length) { log('skip', 'load exceeds CPU count'); rmSync(temp,{recursive:true,force:true}); process.exit(0); }

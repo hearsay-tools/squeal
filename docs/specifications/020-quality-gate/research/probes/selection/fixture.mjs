@@ -18,7 +18,7 @@ const here = import.meta.dirname;
 const repo = resolve(here, "../../../../../..");
 const runtime =
   process.argv[2] ??
-  "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.427/dist/cli/squeal.mjs";
+  "~/.codex/plugins/data/squeal-hearsay/versions/0.1.427/dist/cli/squeal.mjs";
 mkdirSync(join(here, ".scratch"), { recursive: true });
 
 /**

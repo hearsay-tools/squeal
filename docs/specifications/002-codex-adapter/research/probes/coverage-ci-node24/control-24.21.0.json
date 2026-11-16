@@ -1,6 +1,6 @@
 {
   "node": "v24.21.0",
-  "execPath": "/home/user/.nvm/versions/node/v24.21.0/bin/node",
+  "execPath": "~/.nvm/versions/node/v24.21.0/bin/node",
   "results": [
     {
       "hide": false,

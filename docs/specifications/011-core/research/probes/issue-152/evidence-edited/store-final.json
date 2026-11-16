@@ -83,7 +83,7 @@
       "revision": 0,
       "test_files": "[{\"project\":\"\",\"path\":\"fast.test.ts\"},{\"project\":\"\",\"path\":\"slow.test.ts\"}]",
       "checkpoint_id": null,
-      "log_dir": "/home/user/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/d01f3337-4635-4058-82f3-f8498700e272",
+      "log_dir": "~/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/d01f3337-4635-4058-82f3-f8498700e272",
       "started_at": 1793935826240,
       "ended_at": 1793935846516,
       "end_state": "completed"
@@ -94,7 +94,7 @@
       "revision": 1,
       "test_files": "[{\"project\":\"\",\"path\":\"later.test.ts\"}]",
       "checkpoint_id": null,
-      "log_dir": "/home/user/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/21adee07-d7bd-4ebc-a19d-fd76806cdf67",
+      "log_dir": "~/projects/squeal/.ai/cezar/t/659994d6/sq-152-c8EXV2/.git/squeal/runs/21adee07-d7bd-4ebc-a19d-fd76806cdf67",
       "started_at": 1793935829086,
       "ended_at": 1793935829467,
       "end_state": "completed"
