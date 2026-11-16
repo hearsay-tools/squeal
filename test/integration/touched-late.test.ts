@@ -67,7 +67,7 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
       };
       const runs = scheduledRuns(h);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(planted).toBe(true);
       // The warm-up, the withheld run, its run once more (task 007-30) and the re-run of its new
       // fail (task 001-171).
@@ -75,7 +75,7 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
 
       // The restore's batch, late.
       await h.batch("src/mod.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       expect(stored(h)).toEqual([
         ["", "test/plain.test.ts", "current", "fail"],
         ["", "test/virtual.test.ts", "current", "fail"],
@@ -95,7 +95,7 @@ describe("a touch whose batch arrives after the run ended (review wave-13e B2)",
       git(repo.main, ["worktree", "add", "-q", "-b", "other", other]);
       const second = await openHarness(realpathSync(other), store, repo.commonDir, options);
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
       expect(second.keyOf("test/virtual.test.ts")).toBe(key);
       expect(stored(second)).toEqual([
         ["", "test/plain.test.ts", "current", "fail"],

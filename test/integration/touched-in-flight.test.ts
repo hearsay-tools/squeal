@@ -91,7 +91,7 @@ async function touchDuringRun(h: Harness, path: string, rewrite: boolean, times 
     appendFileSync(flag("heard"), "x");
   }
   appendFileSync(flag("heard"), "x".repeat(1_000));
-  await h.scheduler.idle();
+  await h.quiet();
 }
 
 /**

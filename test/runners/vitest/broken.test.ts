@@ -197,12 +197,12 @@ describe("a broken runner environment in the shared store", SLOW, () => {
       openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING }),
     );
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const baseline = new Set(a.runner.runs.map((r) => r.options.runId));
 
     rmSync(tmp, { recursive: true, force: true });
     await a.scheduler.requestFullSuite({ force: true });
-    await a.scheduler.idle();
+    await a.quiet();
     const broken = a.runner.runs.filter((r) => !baseline.has(r.options.runId));
     expect(broken.length).toBeGreaterThan(0);
     expect(broken[0]?.report.end).toBe("crashed");
@@ -230,14 +230,14 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     const root = addWorktree(repo.main, repo.dir, "second");
     const b = await openHarness(root, store, repo.commonDir);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     const applied = b.sink.callsOf("applyResults").flatMap((c) => c.results);
     expect(applied.filter((r) => r.outcome === "fail")).toEqual([]);
     expect(applied.filter((r) => crashed.has(r.provenance.runId ?? ""))).toEqual([]);
 
     // The recreated instance runs the suite again and passes.
     await a.scheduler.requestFullSuite({ force: true });
-    await a.scheduler.idle();
+    await a.quiet();
     const last = a.runner.runs.at(-1)?.report;
     expect(last?.end).toBe("completed");
     expect(a.header().counts.unknown).toBe(0);
@@ -248,7 +248,7 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const recreated: string[][] = [];
     const invalidate = h.runner.invalidate;
     h.runner.invalidate = async (paths) => {
@@ -260,7 +260,7 @@ describe("a broken runner environment in the shared store", SLOW, () => {
     // A first install: an ignored file in an ignored directory, so no watch batch names it.
     h.write("node_modules/.package-lock.json", '{ "packages": {} }\n');
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(recreated).toEqual([[""]]);
     expect(h.header().counts.unknown).toBe(0);

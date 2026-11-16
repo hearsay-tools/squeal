@@ -63,7 +63,7 @@ describe("a slow e2e file behind an edit's fast tests (spec 004 D2, D9)", SLOW, 
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(ranE2e(h)).toBe(0);
     await delivery.onToolBoundary(consumer);
 
@@ -71,7 +71,7 @@ describe("a slow e2e file behind an edit's fast tests (spec 004 D2, D9)", SLOW, 
     write(repo.main, "src/strings.ts", BROKEN_UPPER);
     write(repo.main, ARTIFACT, REBUILT_BROKEN);
     await h.batch("src/strings.ts", ARTIFACT);
-    await h.scheduler.idle();
+    await h.quiet();
     const fast = await delivery.onToolBoundary(consumer);
     const failed = (fast?.entries ?? []).map((e) => e.check.testPath);
     expect(failed).toContain("test/upper.test.ts");

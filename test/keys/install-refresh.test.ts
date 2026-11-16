@@ -45,13 +45,13 @@ describe("installs under a running daemon (001-109)", SLOW, () => {
     sideload(repo.main);
     const first = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(staleNotes(store, first.worktreeId)).toHaveLength(1);
     await first.scheduler.close();
 
     const second = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(staleNotes(store, second.worktreeId)).toHaveLength(1);
   });
 
@@ -62,7 +62,7 @@ describe("installs under a running daemon (001-109)", SLOW, () => {
     writeInstall(repo.main, INSTALL);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.keyOf(SIDE);
     const runs = h.runsOf(SIDE).length;
     expect(before).not.toBeNull();
@@ -70,7 +70,7 @@ describe("installs under a running daemon (001-109)", SLOW, () => {
     sideload(repo.main);
     // Any batch starts the pump; the lockfile is unchanged, so this one creates no revision.
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.keyOf(SIDE)).not.toBe(before);
     expect(h.runsOf(SIDE).length).toBeGreaterThan(runs);

@@ -136,7 +136,7 @@ describe("a later worktree at equal content (row 011-160)", SLOW, () => {
     const a = await openHarness(aRoot, store, repo.commonDir, { policy: RUN_MISSING });
     register(store, a, repo.commonDir);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.sink.stateOf(adds)).toMatchObject({ outcome: "pass", origin: { kind: "own" } });
     const keys = ALL_TEST_FILES.map((path) => a.keyOf(path) ?? "");
     const aRuns = [
@@ -155,7 +155,7 @@ describe("a later worktree at equal content (row 011-160)", SLOW, () => {
     const b = await openHarness(bRoot, store, repo.commonDir);
     register(store, b, repo.commonDir);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     for (const path of ALL_TEST_FILES) expect(b.runsOf(path)).toEqual([]);
     expect(ALL_TEST_FILES.map((path) => b.keyOf(path))).toEqual(keys);
     expect(b.sink.stateOf(adds)).toMatchObject({

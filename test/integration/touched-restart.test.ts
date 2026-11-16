@@ -52,7 +52,7 @@ describe("optimizer output kept across a restart (review wave-13e B3)", () => {
         return closure(testFile);
       };
       await first.scheduler.start();
-      await first.scheduler.idle();
+      await first.quiet();
       expect(planted).toBe(true);
       // Shut down before the restore's batch came; the bundle stays on disk.
       await first.scheduler.close();
@@ -68,9 +68,9 @@ describe("optimizer output kept across a restart (review wave-13e B3)", () => {
       cpSync(stale, cache, { recursive: true });
       const second = await openHarness(repo.main, store, repo.commonDir, { observe });
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
       await second.scheduler.requestFullSuite({ force: true });
-      await second.scheduler.idle();
+      await second.quiet();
       expect(second.runsOf("test/optimized.test.ts").length).toBeGreaterThan(0);
       expect(stored(second)).toEqual([["", "test/optimized.test.ts", "current", "fail"]]);
     },

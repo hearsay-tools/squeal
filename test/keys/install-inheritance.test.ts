@@ -56,7 +56,7 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
         policy: RUN_MISSING,
       });
       await a.scheduler.start();
-      await a.scheduler.idle();
+      await a.quiet();
       const ran = a.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort();
       expect(ran).toEqual([...ALL_TEST_FILES, ...Object.keys(TESTS)].sort());
 
@@ -69,7 +69,7 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
         policy: RUN_MISSING,
       });
       await b.scheduler.start();
-      await b.scheduler.idle();
+      await b.quiet();
 
       expect(b.runner.runs.flatMap((r) => r.files.map((f) => f.path))).toEqual([
         "test/bumped.test.ts",
@@ -101,13 +101,13 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
 
     const root = addWorktree(repo.main, repo.dir, "second");
     writeInstall(root, FIRST, "1.5.0");
     const b = await openHarness(root, store, repo.commonDir, { tierSize: 10, policy: RUN_MISSING });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
 
     expect(b.runner.runs.flatMap((r) => r.files.map((f) => f.path))).toEqual([]);
     for (const path of [...ALL_TEST_FILES, ...Object.keys({ ...TESTS, ...SPAWNS })]) {
@@ -126,13 +126,13 @@ describe("per-package keys across worktrees (001-105, defect 20)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const runs = h.runner.runs.length;
     const before = new Map(ALL_TEST_FILES.map((path) => [path, h.keyOf(path)]));
 
     writeInstall(repo.main, SECOND);
     await h.batch("node_modules/.package-lock.json");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runner.runs.slice(runs).flatMap((r) => r.files.map((f) => f.path))).toEqual([
       "test/bumped.test.ts",

@@ -48,7 +48,7 @@ describe("squeal why after another worktree's run replaced the result at its key
 
     const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const key = a.keyOf(CURSOR) ?? expect.unreachable("A keyed no cursor test");
     const own = store.results.byKey(key, 0).find((r) => r.check.kind === "test");
     expect(own?.outcome).toBe("fail");
@@ -70,7 +70,7 @@ describe("squeal why after another worktree's run replaced the result at its key
       daemon: null,
     });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.keyOf(CURSOR)).toBe(key);
     const foreign = store.results.byKey(key, 0).find((r) => r.check.kind === "test");
     expect(foreign?.provenance.worktreeId).toBe(b.worktreeId);

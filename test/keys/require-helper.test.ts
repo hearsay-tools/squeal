@@ -28,7 +28,7 @@ describe("a relatively required helper (001-117)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.keyOf(TEST);
     const runs = h.runsOf(TEST).length;
     expect(before).not.toBeNull();
@@ -36,7 +36,7 @@ describe("a relatively required helper (001-117)", SLOW, () => {
 
     h.write(HELPER, 'exports.value = "two";\n');
     await h.batch(HELPER);
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.keyOf(TEST)).not.toBe(before);
     const after = h.runsOf(TEST);
