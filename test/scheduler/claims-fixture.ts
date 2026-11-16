@@ -16,9 +16,10 @@ import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RunEnd, RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
-import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
+import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 
 /*
@@ -87,6 +88,8 @@ export class FakeRunner implements RunnerAdapter {
   /** Called with a run's files while it is in flight. */
   during: ((files: readonly TestFileRef[]) => void | Promise<void>) | null = null;
   #gate: { shut: Promise<void>; open: () => void } | null = null;
+  /** The real `runMs` sleeps of the runs in flight (row 011-367). */
+  readonly #sleeps = new Set<Promise<unknown>>();
 
   constructor(
     private readonly files: readonly TestFileRef[],
@@ -101,6 +104,15 @@ export class FakeRunner implements RunnerAdapter {
   release(): void {
     this.#gate?.open();
     this.#gate = null;
+  }
+
+  /**
+   * Row 011-367: once each run in flight has slept its real `runMs`, so it
+   * has ended or waits at a held gate. The runner's own time stays real on
+   * a virtual clock, as `catch-up-fixture.ts`'s does.
+   */
+  async settled(): Promise<void> {
+    while (this.#sleeps.size > 0) await Promise.all([...this.#sleeps]);
   }
 
   /** How many runs ran `path`. */
@@ -133,7 +145,9 @@ export class FakeRunner implements RunnerAdapter {
     const gate = this.#gate;
     try {
       await this.during?.(files);
-      await new Promise((resolve) => setTimeout(resolve, this.runMs));
+      const sleep = new Promise((resolve) => setTimeout(resolve, this.runMs));
+      this.#sleeps.add(sleep);
+      await sleep.finally(() => this.#sleeps.delete(sleep));
       await gate?.shut;
     } finally {
       this.active -= 1;
@@ -181,6 +195,14 @@ export interface Side {
   keyOf(path: string): string | null | undefined;
   /** How many of its files have a passing current result. */
   passing(): number;
+  /** The scheduler's clock: `SideOptions.now`, or the host's, plus what `advance` added. */
+  now(): EpochMs;
+  /** Row 011-367: moves the scheduler's clock `ms` ahead; on a virtual clock, firing its timers due. */
+  advance(ms: number): void;
+  /** Row 011-367: the virtual clock of `SideOptions.clock`; `null` on the host's. */
+  readonly clock: VirtualClock | null;
+  /** Row 011-367: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
+  rest(): Promise<Rest>;
 }
 
 export interface SideOptions {
@@ -191,6 +213,13 @@ export interface SideOptions {
   readonly heartbeatMs?: number;
   readonly policy?: Partial<Policy>;
   readonly now?: () => EpochMs;
+  /**
+   * Row 011-367, as `catch-up-fixture.ts`'s: `"virtual"`, the scheduler's
+   * clock is a prompt virtual clock from the host's time now, or the
+   * virtual clock given; `now` then stamps only the heartbeat. Absent, the
+   * host's clock over `now`.
+   */
+  readonly clock?: "virtual" | VirtualClock;
   readonly runMs?: number;
   /** `SchedulerOptions.slow` (spec 004). */
   readonly slow?: SchedulerOptions["slow"];
@@ -233,6 +262,7 @@ export function side(root: string, options: SideOptions): Side {
     path: fileName(i),
   }));
   const runner = new FakeRunner(files, options.runMs);
+  const clocked = harnessClock(options.clock, now);
   const tierSize = options.tierSize ?? 4;
   const policy: Policy = {
     ...DEFAULT_POLICY,
@@ -254,7 +284,7 @@ export function side(root: string, options: SideOptions): Side {
     squealVersion: "0.0.0-test",
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
-    now,
+    ...clocked.scheduler,
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
@@ -286,6 +316,13 @@ export function side(root: string, options: SideOptions): Side {
         .list(worktreeId)
         .filter((s) => s.check.kind === "test" && s.outcome === "pass" && s.validity === "current")
         .length,
+    now: clocked.now,
+    advance: clocked.advance,
+    clock: clocked.clock,
+    rest: () => {
+      clocked.clock?.advance(0);
+      return scheduler.rest();
+    },
   };
 }
 
