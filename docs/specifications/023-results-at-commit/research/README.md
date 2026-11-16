@@ -32,3 +32,15 @@ When X's lockfile, runner config, setup files or Node pin differ from this workt
 3. After a temp-checkout install (topic 023-01), is the environment hash there equal to the one a daemon at X would compute? Verify on two commits with differing lockfiles.
 4. Machine inputs (Node version, platform): confirm they stay this machine's and that results under another Node are misses by design.
 5. Recommend: derive, record, install-to-know, or "not determined" only; with the share of files each recovers.
+
+## Topic: glob-membership (row 023-12, 2026-11-16)
+
+The wave 1 review failed twice on 023-03 (`../reviews/wave-1.md` B1, `../reviews/wave-1-rereview.md` B1). A module that uses `import.meta.glob` (or a template-literal `import()`) loads the files a pattern matches on disk. The closure lists the matched files, but nothing in the key says "depends on which files exist in that folder". At commit A `plugins/` holds `kept.ts` and `old.ts`; at B `old.ts` is removed and nothing else changes. B's closure omits `old.ts`, every listed file is byte-identical, so a key computed over B's list at A equals B's key, and B's pass would be reported for A. The daemon covers adds in memory (spec 001 D4 `invalidate` rule 3, `src/runners/vitest/dynamic.ts`, `stale.ts`), and spec 001 D3 already keys observed directory listings as `dir/` entries. The human, 2026-11-16: land what passed, research the cause. The 023-03 code waits on branch `cez/4a59bc1d` (`990b60650`).
+
+1. Does the same gap reach results outside 023: a result reused in another worktree, a CI import (018), or the daemon after a restart, when a file matching a glob was added or removed? Reproduce with the real Vitest adapter on a `$TMPDIR` fixture, or show from source why not.
+2. Fix A, the cause: the closure records a listing entry (`dir/`, recursive where the pattern is) for each glob a module expands, so the key changes when a matching file appears or goes. Where it would be recorded (Vitest adapter, closure), what it costs (re-keys only files with globs?), whether it needs a key-format raise and what that re-runs once (memory: a release must not re-key every check unless meaning changed; `test/keys/key-format.test.ts`).
+3. Fix B, the cheap rule for 023 only: keys at a commit read `not determined (closure)` for any test whose closure holds a module whose source at either commit matches `DYNAMIC_SPECIFIER`. Which other resolution inputs (aliases, `tsconfig` paths, `package.json` `exports`/`imports`, resolution candidates) can change a closure with no byte change in listed files, and does fix A or B cover them?
+4. Frequency: test files whose closure holds such a module, in this repository's and squawk's stores (read-only copies), and the share of main commits where a matching file was added or removed.
+5. Recommend A, B, both, or another single owner, with the numbers.
+
+Findings to `research/glob-membership.md`; probes under `research/probes/glob-membership/`. Read-only on stores and other checkouts; no full suite; `timeout 600` on direct runs; no daemon left running.

@@ -2517,15 +2517,16 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 023-03 keys at a commit, with the environment steps | running | D2; `src/core/commit/at-*.ts` | brief's tests (a) to (d) |
-| 023-04 the gate as a library: named files only, per-file outcomes, in-process, no orphan child | running | D4.4, D6; `src/core/code/gate/**`, `src/cli/code-gate*.ts` | brief's tests; gate tests green |
-| 023-05 the temporary checkout's life cycle and `squeal ps` listing | running | D4.1 to D4.3, D4.8, D6; `src/core/checkout/**`, `src/core/ps/**` | brief's tests |
+| 023-03 keys at a commit, with the environment steps | held (review FAIL twice, B1: a glob's folder membership is not in the closure; the human, 2026-11-16: land what passed, research the cause in 023-12; code on `cez/4a59bc1d` `990b60650`) | D2; `src/core/commit/at-*.ts` | brief's tests (a) to (d) |
+| 023-04 the gate as a library: named files only, per-file outcomes, in-process, no orphan child | in review (cand/0.1.528 `f7836934e`; B2 closed in re-review) | D4.4, D6; `src/core/code/gate/**`, `src/cli/code-gate*.ts` | brief's tests; gate tests green |
+| 023-05 the temporary checkout's life cycle and `squeal ps` listing | in review (cand/0.1.528 `f7836934e`; B3 closed in re-review) | D4.1 to D4.3, D4.8, D6; `src/core/checkout/**`, `src/core/ps/**` | brief's tests |
 
 ### Later waves (approved 2026-11-16)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 023-06 `squeal status --at`: lookup, report, comparison, JSON | approved; wave 2 | D1, D3 | after 023-03 |
+| 023-12 research: a glob's folder membership in keys (cause of 023-03 B1) | running | topic glob-membership | `research/glob-membership.md` committed |
+| 023-06 `squeal status --at`: lookup, report, comparison, JSON | approved; waits for 023-12 and 023-03 | D1, D3 | after 023-03 |
 | 023-07 `squeal status --at --run` | approved; wave 3 | D4 | after 023-04, 023-05, 023-06 |
 | 023-08 `squeal proof`: sides, store reuse, test-file copy, verdicts | approved; wave 4 | D5.1, D5.2, D5.5, D5.6 | after 023-07 |
 | 023-11 `squeal proof` conditions and repeat | approved; wave 5 | D5.3, D5.4 | after 023-08 |
