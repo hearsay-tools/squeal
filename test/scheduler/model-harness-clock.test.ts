@@ -95,12 +95,12 @@ describe("the virtual clock of the model test and the harnesses (row 011-353)", 
       .slot("yield-bound", (at) => {
         fired.push(["first", at - start, clock.now() - start]);
       })
-      .at(start + 10);
+      .after(10);
     loop
       .slot("slot-gather", (at) => {
         fired.push(["second", at - start, clock.raw() - start]);
       })
-      .at(start + 30);
+      .after(30);
     clock.cross(1, 60_000);
     clock.advance(10);
     const rest = await loop.rest();

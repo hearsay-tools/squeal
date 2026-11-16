@@ -8,27 +8,27 @@ import {
   claimPoll,
   claimWindow,
 } from "../../src/core/scheduler/claims.js";
-import { clockOf, elapsed, hostClock, MAX_TIMER_MS } from "../../src/core/scheduler/clock.js";
+import { clockOf, hostClock, MAX_TIMER_MS } from "../../src/core/scheduler/clock.js";
 import { readGroupActivity } from "../../src/core/slow/state.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { Store } from "../../src/core/types/store.js";
-import { virtualClock } from "../helpers/virtual-clock.js";
+import { type VirtualClock, virtualClock } from "../helpers/virtual-clock.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { allCurrent, FILES, groupPolicy, runnerLane, tierLog } from "./group-lanes-fixture.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-351 (card 7, `research/scheduler-step.md`, "The clock port"): the
- * scheduler's one clock. The two differences once measured on the steady
- * clock, the slow lane's load budget and the claims window, are read on the
- * scheduler's clock now: rows of clock moves pin what each does, a frozen
- * clock spends nothing and a clock that goes back gives nothing back.
- * The load budget's rows run a real scheduler, so they wait for real rechecks;
- * the claims window is a table over its poll (row 011-352).
+ * scheduler's one clock. Row 011-369: it reads calendar time and elapsed
+ * time. The slow lane's load budget is a wait inside one daemon, spent on
+ * elapsed time: its rows run a real scheduler on a virtual clock and pin
+ * that a calendar change, either way, spends none of it and gives none
+ * back. The claims window compares other worktrees' stamped claims, so it
+ * stays on calendar time: a table over its poll (row 011-352).
  */
 
 describe("the clock port's adapters (row 011-351)", () => {
-  it("clamps a difference at 0 and the host timer's delay to a 32-bit range", () => {
-    expect([elapsed(10, 25), elapsed(25, 10), elapsed(7, 7)]).toEqual([15, 0, 0]);
+  it("clamps the host timer's delay to a 32-bit range; reads elapsed time on `performance`", () => {
     // Review 0.1.512 S1: made before the fake timers, so only a lookup per reading and per arm sees them.
     const clock = hostClock();
     const shorthand = hostClock(() => 5);
@@ -37,6 +37,9 @@ describe("the clock port's adapters (row 011-351)", () => {
       vi.setSystemTime(1_234_000);
       expect(clock.now()).toBe(1_234_000);
       expect(shorthand.now()).toBe(5);
+      // Row 011-369: elapsed time is the host's monotonic reading, apart from the calendar.
+      const before = performance.now();
+      expect(clock.elapsed()).toBeGreaterThanOrEqual(before);
       const fired: string[] = [];
       const disarm = clock.arm(MAX_TIMER_MS * 4, () => fired.push("far"));
       clock.arm(-10, () => fired.push("past"));
@@ -52,10 +55,9 @@ describe("the clock port's adapters (row 011-351)", () => {
     }
   });
 
-  it("takes `clock` over `now`, and `now` as the host adapter's reading", () => {
+  it("takes `clock`, else the host adapter", () => {
     const virtual = virtualClock(100);
-    expect(clockOf({ clock: virtual, now: () => 1 })).toBe(virtual);
-    expect(clockOf({ now: () => 7 }).now()).toBe(7);
+    expect(clockOf({ clock: virtual })).toBe(virtual);
     const host = clockOf({}).now();
     expect(Math.abs(host - Date.now())).toBeLessThan(1_000);
   });
@@ -108,66 +110,70 @@ const STRICT: CheckGroup = {
   limits: { deferUnderLoad: { maxLoadPerCpu: 1, maxDeferMs: 5_000 } },
 };
 
-/** A worktree whose scheduler reads `now`, its load guard reading 0 until `setLoad`. */
-async function loadSide(now: () => number) {
+/** The lane's recheck: the load budget is spent in steps of it. */
+const RECHECK_MS = 25;
+
+/** A worktree on `clock` whose edit's group waits for the load: it reads 10 per CPU from the edit on. */
+async function loadSide(clock: VirtualClock) {
   const repo = catchUpRepo(FILES);
   const slotDir = mkdtempSync(join(tmpdir(), "squeal-011-351-slot-"));
   onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
   let load = 0;
-  let reads = 0;
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
     hostSlots: 8,
     lane: runnerLane,
     policy: groupPolicy({ checks: [STRICT] }),
-    now,
-    scheduler: {
-      slow: {
-        slotDir,
-        recheckMs: 25,
-        cpus: () => 1,
-        load: () => {
-          reads += 1;
-          return [load];
-        },
-      },
-    },
+    clock,
+    scheduler: { slow: { slotDir, recheckMs: RECHECK_MS, cpus: () => 1, load: () => [load] } },
   });
   await side.scheduler.start();
   await allCurrent(side);
   load = 10;
   const from = side.runner.runs.length;
   await side.edit("watch", "src/core.ts");
-  await expect
-    .poll(() => readGroupActivity(side.store, side.worktreeId, "strict"), { timeout: 20_000 })
-    .toEqual({ kind: "waiting", for: "load" });
-  /** Waits for two more rechecks of the load: each ends the wait and starts the next. */
-  const rechecks = async () => {
-    const before = reads;
-    await expect.poll(() => reads - before, { timeout: 10_000 }).toBeGreaterThanOrEqual(2);
-  };
+  await settle(side);
+  expect(readGroupActivity(side.store, side.worktreeId, "strict")).toEqual({
+    kind: "waiting",
+    for: "load",
+  });
   const ran = () => tierLog(side.runner.runs, from)["group:strict:vitest"] !== undefined;
-  return { side, rechecks, ran };
+  return { side, ran };
 }
 
-describe("the slow lane's load budget on the scheduler's clock (row 011-351)", () => {
+/** A move of the clock: elapsed time with its calendar, or the calendar alone. */
+type Move = { readonly advance: number } | { readonly calendar: number };
+
+describe("the slow lane's load budget on elapsed time (rows 011-351, 011-369)", () => {
   it.each([
-    { moves: [] as number[], runs: false, row: "a frozen clock spends none of it" },
-    { moves: [4_999], runs: false, row: "1 ms of it left" },
-    { moves: [2_500, 2_500], runs: true, row: "spent over two waits" },
-    // Never back past the edit, whose own waits would hold the lane: 3 s + 0 + 2 s, not 3 s.
-    { moves: [3_000, -2_000, 2_000], runs: true, row: "a clock that went back gives none back" },
+    { moves: [] as Move[], runs: false, row: "a frozen clock spends none of it" },
+    { moves: [{ advance: 4_999 }], runs: false, row: "1 ms of it left" },
+    { moves: [{ advance: 2_500 }, { advance: 2_500 }], runs: true, row: "spent over two waits" },
+    {
+      moves: [{ advance: 3_000 }, { calendar: -2_000 }, { advance: 2_000 }],
+      runs: true,
+      row: "a calendar set back gives none back",
+    },
+    // The `edit` trigger's quiet compares the stored revision time, calendar time: a set-back
+    // past the edit holds the group for it, as before row 011-369 (`slow-trigger.ts`).
+    {
+      moves: [{ advance: 3_000 }, { calendar: -3_600_000 }, { advance: 2_000 }],
+      runs: false,
+      row: "a calendar set back 1 h, past the edit, holds the group on its stored revision time",
+    },
+    {
+      moves: [{ advance: 3_000 }, { calendar: 3_600_000 }, { advance: 1_999 }],
+      runs: false,
+      row: "a calendar set forward 1 h spends none of it",
+    },
   ])("$row", { timeout: 60_000 }, async ({ moves, runs }) => {
-    const virtual = virtualClock(Date.now());
-    let offset = 0;
-    const { rechecks, ran } = await loadSide(() => virtual.now() + offset);
-    for (const ms of moves) {
-      if (ms < 0) offset += ms;
-      else virtual.advance(ms);
-      await rechecks();
+    const clock = virtualClock(Date.now(), { prompt: true });
+    const { side, ran } = await loadSide(clock);
+    for (const move of moves) {
+      if ("calendar" in move) clock.shiftCalendar(move.calendar);
+      else clock.advance(move.advance);
+      await settle(side);
     }
-    await rechecks();
-    if (runs) await expect.poll(ran, { timeout: 10_000 }).toBe(true);
-    else expect(ran()).toBe(false);
+    expect(ran()).toBe(runs);
   });
 });

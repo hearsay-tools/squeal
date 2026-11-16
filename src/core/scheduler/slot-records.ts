@@ -1,5 +1,3 @@
-import type { EpochMs } from "../types/common.js";
-import { elapsed } from "./clock.js";
 import type { Mutex } from "./mutex.js";
 import type { WakeSlot, Wakes } from "./wakes.js";
 
@@ -30,9 +28,7 @@ export interface SlotRecordsOptions<E, R> {
   record(ended: E): Promise<R>;
   /** Commits what the records wrote. */
   commit(): void;
-  /** The clock a commit's time is read on (row 011-351). */
-  readonly now: () => EpochMs;
-  /** The scheduler's wake loop, which ends a gather (row 011-352). */
+  /** The scheduler's wake loop, which ends a gather (row 011-352) and times a commit on elapsed time (row 011-369). */
   readonly wakes: Wakes;
 }
 
@@ -60,12 +56,10 @@ export class SlotRecords<E, R> {
   readonly #wake: WakeSlot;
   /** The scheduler's loop, whose named wait the gather takes. */
   readonly #wakes: Wakes;
-  readonly #now: () => EpochMs;
   #commitMs = 0;
 
   constructor(options: SlotRecordsOptions<E, R>) {
     this.#options = options;
-    this.#now = options.now;
     this.#wakes = options.wakes;
     this.#wake = options.wakes.slot("slot-gather", () => this.#gathered?.());
   }
@@ -93,11 +87,11 @@ export class SlotRecords<E, R> {
         }
       }
       if (recorded.length === 0) return;
-      const now = this.#now;
-      const started = now();
+      // Row 011-369: how long the commit took is elapsed time, which a calendar change does not move.
+      const started = this.#wakes.elapsed();
       try {
         this.#options.commit();
-        this.#commitMs = elapsed(started, now());
+        this.#commitMs = this.#wakes.elapsed() - started;
       } catch (error) {
         for (const { slot } of recorded) slot.reject(error);
         return;
@@ -116,7 +110,7 @@ export class SlotRecords<E, R> {
         this.#gathered = null;
         resolve();
       };
-      this.#wake.at((this.#now() + gather) as EpochMs);
+      this.#wake.after(gather);
     });
   }
 }

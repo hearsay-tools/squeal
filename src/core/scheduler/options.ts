@@ -4,7 +4,7 @@ import type { HostLoad } from "../retry/load.js";
 import type { HeadState } from "../revision/reconcile.js";
 import type { BusyWaits } from "../store/busy.js";
 import type { GroupSlotScope } from "../types/capacity.js";
-import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { FileChange } from "../types/revision.js";
 import type { RunnerAdapter } from "../types/runner.js";
@@ -141,9 +141,7 @@ export interface SchedulerOptions {
   readonly hasher?: Hasher;
   /** Allow-listed variables for the environment hash. Defaults to `process.env`. */
   readonly env?: NodeJS.ProcessEnv;
-  /** Shorthand for `clock`: the host adapter over this reading (`hostClock`). Ignored when `clock` is given. */
-  readonly now?: () => EpochMs;
-  /** Row 011-351: the one clock every scheduler module reads; default `hostClock(now)`. */
+  /** Row 011-351: the one clock every scheduler module reads; default `hostClock()`. */
   readonly clock?: Clock;
   /** How the slow tier waits (spec 004 D2, D3); defaults suit a daemon. */
   readonly slow?: SlowTierOptions;

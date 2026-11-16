@@ -11,7 +11,7 @@ import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 import { heldBatch, P, P_MS, Q, standingOf } from "./batch-fixture.js";
-import { pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
+import { ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-268 (spec 011 C15 as amended 2026-10-29, done-when test 7): a
@@ -25,12 +25,13 @@ describe("the wait's line names the batch (spec 011 C15, row 011-268)", {
   timeout: 120_000,
 }, () => {
   it("7. names the batch, its position and its estimated end; --json adds the place", async () => {
-    const { side, gate, batch } = await heldBatch();
+    // Row 011-369: on a virtual clock, so the batch's start and this check read one time.
+    const { side, gate, batch } = await heldBatch({ clock: "virtual" });
     await side.scheduler.promote(
       Q.map((path) => ref(path)),
       600_000,
     );
-    await pause(SETTLE_MS);
+    await settle(side);
 
     const durations = P.map((_, i) => P_MS(i));
     const sum = durations.reduce((total, ms) => total + ms, 0);
@@ -62,7 +63,7 @@ describe("the wait's line names the batch (spec 011 C15, row 011-268)", {
       expect(typeof entry.until).toBe("number");
     }
     gate.stop();
-    await side.scheduler.idle();
+    await settle(side);
   });
 
   it("a row of a daemon before row 011-268 reads as promotions until their deadlines, with no place", () => {

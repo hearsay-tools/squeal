@@ -1382,7 +1382,7 @@ class TierScheduler implements Scheduler {
   async #claimWake(at: EpochMs): Promise<void> {
     const { context } = this.#started();
     this.#claimWindow = claimWindow(context.store, at);
-    this.#claimsWake.at((at + CLAIM_POLL_MS) as EpochMs);
+    this.#claimsWake.after(CLAIM_POLL_MS);
     try {
       await this.#nextEvent();
     } finally {
@@ -1397,12 +1397,14 @@ class TierScheduler implements Scheduler {
     if (window === null) return;
     const next = claimPoll(this.#started().context.store, window, at);
     if (next === "ends") this.#post({ kind: "wake", reason: "claims" });
-    else this.#claimsWake.at(next);
+    // Row 011-369: the next poll is a calendar time from the pass's reading; the wake is the delay.
+    else this.#claimsWake.after(next - at);
   }
 
   /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
   async #eventOrAt(at: EpochMs): Promise<void> {
-    this.#pumpWake.at(at);
+    // Row 011-369: `at` is a calendar time (a quiet end, a deadline): the wake is the delay to it.
+    this.#pumpWake.after(at - this.#now());
     try {
       await this.#nextEvent();
     } finally {

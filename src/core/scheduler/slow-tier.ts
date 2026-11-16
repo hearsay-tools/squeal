@@ -18,7 +18,7 @@ import type { Store } from "../types/store.js";
 import type { Admission, LaneAnswer } from "./admission.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
-import { elapsed } from "./clock.js";
+import type { ElapsedMs } from "./clock.js";
 import { CommitAsks } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";
@@ -177,11 +177,12 @@ export class SlowTier {
   /** Row 011-352: this lane's wake in the scheduler's loop; an earlier deadline replaces a later one. */
   readonly #wake: WakeSlot;
   /**
-   * While the load guard holds the lane: when its wait began (the
-   * scheduler's clock), and the runner lane its files run in. The next
-   * `decide` or a `preempt` ends the wait and takes its time off the budget.
+   * While the load guard holds the lane: when its wait began, on elapsed
+   * time (row 011-369: a calendar change spends none of the budget and gives
+   * none back), and the runner lane its files run in. The next `decide` or a
+   * `preempt` ends the wait and takes its time off the budget.
    */
-  #deferred: { readonly from: number; readonly lane: string } | null = null;
+  #deferred: { readonly from: ElapsedMs; readonly lane: string } | null = null;
   /** What this tier last published, as stored, so `close` clears only its own. */
   #published: string | null = null;
   /** The tier this lane runs, until its record ends it (`endedOnce`). */
@@ -272,16 +273,16 @@ export class SlowTier {
 
   /** Fast work may be coming (a revision, `run --all`), or a hold: a load guard wait gives way to it. */
   preempt(): void {
-    this.#endDeferral(this.loop.now());
+    this.#endDeferral();
   }
 
-  /** The load guard's wait ends at `at`: the pass's budget keeps what it did not take. */
-  #endDeferral(at: EpochMs): void {
+  /** The load guard's wait ends now: the pass's budget keeps what it did not take. */
+  #endDeferral(): void {
     const deferred = this.#deferred;
     if (deferred === null) return;
     this.#deferred = null;
     if (this.#budgetMs === null) return;
-    this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, at));
+    this.#budgetMs = Math.max(0, this.#budgetMs - (this.loop.wakes.elapsed() - deferred.from));
   }
 
   close(): void {
@@ -306,7 +307,7 @@ export class SlowTier {
    * no run starts once a hold began (011 C9; review 0.1.269, B1).
    */
   decide(view: LaneView, fly: (run: SlowRun) => void): LaneDecision {
-    this.#endDeferral(view.at);
+    this.#endDeferral();
     // The texts of the lane's two lock turns before row 011-357, which `squeal run <group>` prints.
     view.doing(`listing the queued files of group ${this.group}`);
     const refs = this.#candidates(view);
@@ -466,7 +467,7 @@ export class SlowTier {
     }
     this.#publish({ kind: "waiting", for: "slot" });
     if (!yielded) this.#slotMissed(context, dir, at);
-    this.#arm(at);
+    this.#arm();
     return "none";
   }
 
@@ -513,7 +514,7 @@ export class SlowTier {
     if ([...claims.values()].includes("waits")) return [];
     this.#publishUntriggered(group);
     const quiet = quietLeftMs(context, group, at);
-    this.#arm(at, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
+    this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
     return [];
   }
 
@@ -584,7 +585,7 @@ export class SlowTier {
    * arms its recheck, at most the budget left; its `lane` is `deferring`.
    */
   #guard(
-    { at }: LaneView,
+    _view: LaneView,
     dir: AbsolutePath,
     group: ResolvedGroup,
     defer: DeferUnderLoad,
@@ -597,9 +598,9 @@ export class SlowTier {
     if (budget <= 0) return { ranUnderLoad: load, idle: false };
     const permits = group.limits.maxParallel;
     if (permits !== null && slowSlotHeld({ dir, permits, group: this.group })) return "held";
-    this.#deferred = { from: at, lane };
+    this.#deferred = { from: this.loop.wakes.elapsed(), lane };
     this.#publish({ kind: "waiting", for: "load" });
-    this.#arm(at, Math.min(this.#recheckMs(), budget));
+    this.#arm(Math.min(this.#recheckMs(), budget));
     return DEFERRED;
   }
 
@@ -816,11 +817,12 @@ export class SlowTier {
   }
 
   /**
-   * Pumps again `ms` after `at`, once; a wake stated later gives way. The
-   * step re-arms while slow work still waits; a closed lane's wake is dropped.
+   * Pumps again `ms` of elapsed time from now, once; a wake stated later
+   * gives way (row 011-369: from the step's arm, not its calendar reading).
+   * The step re-arms while slow work still waits; a closed lane's wake is dropped.
    */
-  #arm(at: EpochMs, ms: number = this.#recheckMs()): void {
-    this.#wake.atMost((at + ms) as EpochMs);
+  #arm(ms: number = this.#recheckMs()): void {
+    this.#wake.within(ms);
   }
 
   #recheckMs(): number {

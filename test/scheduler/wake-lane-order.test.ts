@@ -3,7 +3,6 @@ import { GroupTiers } from "../../src/core/scheduler/group-tiers.js";
 import { type LaneLoop, SlowTier } from "../../src/core/scheduler/slow-tier.js";
 import { type WakeSlot, Wakes } from "../../src/core/scheduler/wakes.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
-import type { EpochMs } from "../../src/core/types/common.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { virtualClock } from "../helpers/virtual-clock.js";
 
@@ -49,9 +48,9 @@ function lanes() {
     } as unknown as LaneLoop;
     return new SlowTier(host, {}, name);
   });
-  /** Every lane's wake at `at`, then time moves there. */
+  /** Every lane's wake at `at` (row 011-369: the delay to it), then time moves there. */
   const wakeAll = (at: number) => {
-    for (const s of slots.values()) s.at(at as EpochMs);
+    for (const s of slots.values()) s.after(at - clock.now());
   };
   return { clock, groups, slots, fired, wakeAll };
 }
@@ -74,7 +73,7 @@ describe("slow lanes' wake order follows the policy (review 0.1.513 B3)", () => 
     expect(names).toEqual(["beta", "alpha", "slow"]);
     // The same lanes, their wakes kept.
     expect(groups.get("alpha")).toBe(first.find((lane) => lane.group === "alpha"));
-    expect([...slots.values()].map((s) => s.wake)).toEqual([100, 100, 100]);
+    expect([...slots.values()].map((s) => s.due)).toEqual([100, 100, 100]);
     clock.advance(100);
     expect(fired).toEqual(names);
   });

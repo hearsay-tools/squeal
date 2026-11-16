@@ -105,7 +105,7 @@ describe("RunnerPartBound (task 001-228)", () => {
   it("answers within its bound, abandons past it and makes no later call of that part", async () => {
     // Row 011-352: the bound's wake is the loop's, here on the virtual clock.
     const clock = virtualClock(1_000);
-    const bound = new RunnerPartBound(5_000, new Wakes(clock), clock.now);
+    const bound = new RunnerPartBound(5_000, new Wakes(clock));
     await expect(bound.call(() => Promise.resolve("answered"))).resolves.toBe("answered");
     expect(clock.armed).toBe(0);
 

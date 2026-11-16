@@ -69,6 +69,7 @@ export interface DaemonLoop {
  */
 export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
   const { onDropped, backend, timings, afterBatch, ...rest } = options;
+  const clock = options.clock;
   let feed: ChangeFeed | null = null;
   let closing: Promise<void> | null = null;
   const deliveredRow = new FeedDeliveredRow(options.store, options.worktreeId, options.onError);
@@ -109,7 +110,7 @@ export function createDaemonLoop(options: DaemonLoopOptions): DaemonLoop {
         ...(timings === undefined ? {} : { timings }),
         trackedPaths: () => scheduler.trackedPaths(),
         extraFiles: scheduler.extraFiles(),
-        ...(options.now === undefined ? {} : { now: options.now }),
+        ...(clock === undefined ? {} : { now: () => clock.now() }),
         onDelivered: (startedAt) => {
           setImmediate(() => {
             if (closing === null) deliveredRow.record(startedAt);

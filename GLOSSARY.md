@@ -119,8 +119,16 @@ What a scheduler step returns for the loop to carry out, from a closed list: sta
 _Avoid_: action, effect, command
 
 **Wake**:
-The time a part of the scheduler next needs to look, with its reason, stated as a value. The scheduler keeps one timer, at the earliest wake.
+The time a part of the scheduler next needs to look, with its reason, stated as a value: a delay, kept on elapsed time. The scheduler keeps one timer, at the earliest wake.
 _Avoid_: timer (the one mechanism behind every wake), recheck, poll
+
+**Calendar time**:
+The clock reading that answers "what time is it": milliseconds since the epoch, the host's wall clock. Every time that is stored, or compared with another daemon's or process's, is calendar time: claims, holds, notes, revisions, status "since". A person or the system can set it back or forward.
+_Avoid_: wall time, now (the method that reads it), timestamp
+
+**Elapsed time**:
+The clock reading that answers "how long has it been": milliseconds from an origin of the daemon's own, which never goes back and which a change of calendar time does not move. Every wake and every wait or safety limit kept inside one daemon is measured on it, so a calendar change moves none of them.
+_Avoid_: steady time, ticks, monotonic time, duration (a span, measured on either)
 
 **Rest**:
 The scheduler has nothing to do until a scheduler event or its next wake: no step runs, none of its own work is in flight, and the lock is free. A test run that is still running does not end a rest; only its end does.

@@ -14,6 +14,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import type { RunnerHostLaunch } from "../runner-host/channel.js";
+import { hostClock } from "../scheduler/clock.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
@@ -906,7 +907,8 @@ class Daemon {
         ...(this.#resumesRest ? { resumesRest: true } : {}),
         runsDir: storePaths(commonDir).runsDir,
         describeFailure,
-        now: this.#now,
+        // Row 011-369: the scheduler's one clock, over the daemon's reading.
+        clock: hostClock(this.#now),
         // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
         onError: (error) =>
           isBusy(error)

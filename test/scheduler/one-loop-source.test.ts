@@ -26,6 +26,10 @@ const HOST_CLOCK_USERS: ReadonlyMap<string, string> = new Map([
     "core/scheduler/daemon-keys.ts",
     "no scheduler on the `ci export` and gate key path: environment records stamp the host's time",
   ],
+  [
+    "core/daemon/daemon.ts",
+    "row 011-369: the daemon hands its scheduler the one clock, the host's timer over its own reading",
+  ],
 ]);
 
 type Node = { type: string; [key: string]: unknown };
