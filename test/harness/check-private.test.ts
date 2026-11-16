@@ -39,11 +39,13 @@ const problems = (root: string, base: string, env: Record<string, string> = DENY
   privateReport(root, base, env).problems;
 
 describe("privateReport", () => {
-  it("fails an added home path under /home and /Users, and passes the fake name user", () => {
+  it("fails an added home path under /home and /Users, and passes the names user, runner and squeal-e2e", () => {
     const { root, base } = repo();
     commit(root, {
       "src/b.ts": "const a = 1;\nconst p = '/home/alice/project';\nconst q = '/Users/bob/x';\n",
-      "src/c.ts": "'/home/user/project' '/Users/user/x' https://example.com/home/carol/ ~/x\n",
+      "src/c.ts":
+        "'/home/user/project' '/Users/user/x' https://example.com/home/carol/ ~/x\n" +
+        "'/home/runner/work' '/home/squeal-e2e/fixture'\n",
     });
     expect(problems(root, base)).toEqual([
       "src/b.ts:2: holds an absolute home path",
