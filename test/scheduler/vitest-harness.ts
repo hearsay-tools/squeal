@@ -136,12 +136,12 @@ export interface HarnessOptions {
   readonly busyWaits?: SchedulerOptions["busyWaits"];
   /** `SchedulerOptions.busySliceMs`: how long a sliced write waits on a busy store (row 011-126). */
   readonly busySliceMs?: number;
-  /** `SchedulerOptions.now`: the clock the store's re-key moves are stamped with (task 001-258). */
+  /** The scheduler's calendar time on the host's clock: the store's re-key moves are stamped with it (task 001-258, row 011-369). */
   readonly now?: () => number;
   /**
    * Row 011-353: `"virtual"`, the scheduler's clock is a prompt virtual
    * clock from the host's time now, or the virtual clock given; `now` is
-   * then not read. Absent, the host's clock over `now`.
+   * then not read. Absent, the host's clock with `now` as its calendar time.
    */
   readonly clock?: "virtual" | VirtualClock;
   /** `SchedulerOptions.incarnation`; default `HARNESS_INCARNATION`, the daemon `liveDaemon` registers. */

@@ -127,7 +127,8 @@ export class SlowRelease {
   arm(): void {
     if (this.host.closed()) return;
     const { wakeAt } = this.#decide();
-    if (wakeAt !== null) this.#wake.atMost(wakeAt);
+    // Row 011-369: the bound is a calendar time (a lane's stamped end): the wake is the delay to it.
+    if (wakeAt !== null) this.#wake.within(wakeAt - this.host.now());
   }
 
   close(): void {

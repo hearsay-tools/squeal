@@ -6,7 +6,6 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
 import type { BatchPlace } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { CrossingClock as ModelClock } from "../helpers/virtual-clock.js";
 import {
   type CatchUpFile,
   type CatchUpRun,
@@ -22,9 +21,10 @@ import { heldRun, ref, START_WITHIN_MS, settle } from "./tier-yields-fixture.js"
  * The 55 files of P stand for cezar's parity gate, of 1 s to 217 s, so the
  * backlog's 120 s budget would cut them and the queue's order puts the
  * shortest first; Q is a later wait of 4 files of 60 s, S one file of 2 s,
- * E an edit's file, B the backlog beside them. The scheduler's clock is a
- * `ModelClock`, not installed: it stands still but for the side's
- * `advance`, so a wait's deadline passes only when a test moves it.
+ * E an edit's file, B the backlog beside them. The scheduler's clock is the
+ * host's (row 011-369: no calendar reading that stands still). The 600 s
+ * deadline remains open during these short cases; a test can advance the
+ * clock to end it.
  */
 export const X = "test/x.test.ts";
 export const E = "test/e.test.ts";
@@ -67,7 +67,7 @@ export interface BatchSetup {
   /**
    * Row 011-368: `"virtual"`, the scheduler's clock is a prompt virtual
    * clock (`CatchUpOptions.clock`) and the setup reads at the side's quiet
-   * point (`settle`); absent, a `ModelClock`.
+   * point (`settle`); absent, the host's clock.
    */
   readonly clock?: "virtual";
 }
@@ -91,7 +91,7 @@ export async function heldBatch({
     files: files(backlog),
     hostSlots,
     policy: RUN_MISSING,
-    ...(clock === undefined ? { now: new ModelClock().now } : { clock }),
+    ...(clock === undefined ? {} : { clock }),
   });
   await side.scheduler.start();
   if (side.clock !== null) await settle(side);

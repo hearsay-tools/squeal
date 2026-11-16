@@ -1,4 +1,3 @@
-import type { EpochMs } from "../types/common.js";
 import { CLAIM_GRACE_MS, CLAIM_UNBOUNDED_MS } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { Wakes } from "./wakes.js";
@@ -24,12 +23,11 @@ export function runnerPartBoundMs(timeoutMs: number | null): number {
  * `runnerPartBoundMs` of the policy's run timeout.
  */
 export function runnerPartBound(
-  context: Pick<SchedulerContext, "runnerPartMs" | "policy" | "now" | "wakes">,
+  context: Pick<SchedulerContext, "runnerPartMs" | "policy" | "wakes">,
 ): RunnerPartBound {
   return new RunnerPartBound(
     context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
     context.wakes,
-    context.now,
   );
 }
 
@@ -44,19 +42,16 @@ export function runnerPartBound(
 export class RunnerPartBound {
   #abandoned: string | null = null;
   readonly #wakes: Wakes;
-  readonly #now: () => EpochMs;
 
   /**
    * `wakes` is the scheduler's loop, whose wake ends a call past its bound
-   * (row 011-352), read on `now`, its clock.
+   * (row 011-352), `ms` of elapsed time after the call (row 011-369).
    */
   constructor(
     private readonly ms: number,
     wakes: Wakes,
-    now: () => EpochMs,
   ) {
     this.#wakes = wakes;
-    this.#now = now;
   }
 
   call<T>(call: () => Promise<T>): Promise<T> {
@@ -72,7 +67,7 @@ export class RunnerPartBound {
       this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
       reject(new Error(this.#abandoned));
     });
-    wake.at((this.#now() + this.ms) as EpochMs);
+    wake.after(this.ms);
     // The runner works on its own meanwhile; the scheduler waits for the answer or this wake (row 011-362).
     const waited = this.#wakes.waitFor(
       { for: "wake", reason: "runner-part-bound" },

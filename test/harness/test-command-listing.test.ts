@@ -30,7 +30,7 @@ const deps: HookDeps = {
 async function listedFrom(extra: Readonly<Record<string, string>>): Promise<SquealRepo> {
   const fx = await openFixture("basic", extra);
   const r = squealRepo();
-  const bound = new RunnerPartBound(60_000, new Wakes(virtualClock()), () => 0);
+  const bound = new RunnerPartBound(60_000, new Wakes(virtualClock()));
   const listing = await listTestFilesOf({ ...r, runner: fx.adapter }, bound);
   r.store.testFileKeys.remove(r.worktreeId, [FILE]);
   for (const [i, file] of listing.entries())

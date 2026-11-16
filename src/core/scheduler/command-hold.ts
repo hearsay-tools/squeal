@@ -209,9 +209,13 @@ export class CommandHold {
     this.#wake.clear();
   }
 
-  /** The wake at the read's earliest `until`, none without an entry; the loop clamps a far one and reads again. */
+  /**
+   * The wake at the read's earliest `until`, none without an entry; the loop
+   * clamps a far one and reads again. `until` is stored calendar time, which
+   * other processes compare: the wake is the delay to it (row 011-369).
+   */
   #arm(wakeAt: EpochMs | null): void {
     if (wakeAt === null || this.#closed) this.#wake.clear();
-    else this.#wake.at(wakeAt);
+    else this.#wake.after(wakeAt - this.options.now());
   }
 }

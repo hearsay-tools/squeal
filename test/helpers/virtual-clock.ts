@@ -1,4 +1,9 @@
-import type { Clock, Disarm } from "../../src/core/scheduler/clock.js";
+import {
+  type Clock,
+  type Disarm,
+  type ElapsedMs,
+  hostClock,
+} from "../../src/core/scheduler/clock.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 
 /*
@@ -7,7 +12,9 @@ import type { EpochMs } from "../../src/core/types/common.js";
  * timer fires when time reaches it, timers due together in the order they
  * were armed. Row 011-353: `prompt` fires a timer that is due once the host
  * turns, as a real 0 ms timer does, so `Scheduler.rest()` never waits on a
- * wake that is due and has no `advance` to fire it.
+ * wake that is due and has no `advance` to fire it. Row 011-369: `advance`
+ * and `jump` move calendar and elapsed time together; `shiftCalendar` moves
+ * the calendar reading alone, as a host's clock that is set, and fires nothing.
  */
 
 interface Armed {
@@ -28,6 +35,11 @@ export interface VirtualClock extends Clock {
    * due fire at the next `advance`, or once the host turns with `prompt`.
    */
   jump(ms: number): void;
+  /**
+   * Row 011-369: moves the calendar reading (`now`) `ms`, back when
+   * negative, and leaves elapsed time and every timer as they are.
+   */
+  shiftCalendar(ms: number): void;
   /** How many timers are armed and not yet fired. */
   readonly armed: number;
 }
@@ -39,7 +51,9 @@ export interface VirtualClockOptions {
 
 /** A virtual clock that starts at `start`. */
 export function virtualClock(start: EpochMs = 0, options: VirtualClockOptions = {}): VirtualClock {
+  // The time line timers fire on, which elapsed time reads; calendar time is it plus `calendar`.
   let now = start;
+  let calendar = 0;
   let seq = 0;
   let turn = false;
   const timers: Armed[] = [];
@@ -73,7 +87,8 @@ export function virtualClock(start: EpochMs = 0, options: VirtualClockOptions = 
     });
   };
   return {
-    now: () => now,
+    now: () => now + calendar,
+    elapsed: () => now as ElapsedMs,
     arm(ms: number, fire: () => void): Disarm {
       const timer = { at: now + Math.max(0, ms), seq: seq++, fire };
       timers.push(timer);
@@ -88,6 +103,9 @@ export function virtualClock(start: EpochMs = 0, options: VirtualClockOptions = 
       now += Math.max(0, ms);
       soon();
     },
+    shiftCalendar(ms: number): void {
+      calendar += ms;
+    },
     get armed() {
       return timers.length;
     },
@@ -101,14 +119,16 @@ export interface HarnessClock {
   now(): EpochMs;
   /** Moves the clock `ms` ahead; a virtual one fires its timers due on the way. */
   advance(ms: number): void;
-  /** `{ clock }`, or `{ now }` on the host's. */
-  readonly scheduler: { readonly clock: Clock } | { readonly now: () => EpochMs };
+  /** `{ clock }`: the virtual clock, or the host's timer over `now` (row 011-369). */
+  readonly scheduler: { readonly clock: Clock };
 }
 
 /**
  * Row 011-353: a harness's `clock` option. `"virtual"`, a prompt virtual
  * clock from the host's time now; a virtual clock, that one; absent, the
- * host's over `now` plus what `advance` added (row 011-153), as before.
+ * host's clock with `now` plus what `advance` added (row 011-153) as its
+ * calendar time. Row 011-369: its wakes are kept on the host's elapsed
+ * time, so `advance` moves the calendar alone, as before.
  */
 export function harnessClock(
   clock: "virtual" | VirtualClock | undefined,
@@ -120,7 +140,7 @@ export function harnessClock(
     const advance = (ms: number) => {
       offset += ms;
     };
-    return { clock: null, now: read, advance, scheduler: { now: read } };
+    return { clock: null, now: read, advance, scheduler: { clock: hostClock(read) } };
   }
   const virtual = clock === "virtual" ? virtualClock(Date.now(), { prompt: true }) : clock;
   return {
@@ -158,6 +178,7 @@ export class CrossingClock implements VirtualClock {
     }
     return this.#clock.now();
   };
+  elapsed = (): ElapsedMs => this.#clock.elapsed();
   arm = (ms: number, fire: () => void): Disarm => this.#clock.arm(ms, fire);
   get armed(): number {
     return this.#clock.armed;
@@ -175,5 +196,8 @@ export class CrossingClock implements VirtualClock {
   }
   jump(ms: number): void {
     this.#clock.jump(ms);
+  }
+  shiftCalendar(ms: number): void {
+    this.#clock.shiftCalendar(ms);
   }
 }

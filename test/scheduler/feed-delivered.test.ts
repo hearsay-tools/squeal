@@ -6,6 +6,7 @@ import { headerLines } from "../../src/core/delivery/header.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { feedDeliveredMetaKey, readFeedDelivered } from "../../src/core/presence/stored.js";
+import { hostClock } from "../../src/core/scheduler/clock.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { storePaths } from "../../src/core/store/paths.js";
@@ -60,7 +61,7 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
       onError: (error) => errors.push(error),
       backend,
       timings: { reconcileIntervalMs: 600_000 },
-      now: () => clock,
+      clock: hostClock(() => clock),
     });
     const writes: string[] = [];
     const set = store.meta.set.bind(store.meta);

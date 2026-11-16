@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { EpochMs } from "../types/common.js";
 import type { Rest, RestWake } from "../types/scheduler.js";
-import { type Clock, type Disarm, MAX_TIMER_MS } from "./clock.js";
+import { type Clock, type Disarm, type ElapsedMs, MAX_TIMER_MS } from "./clock.js";
 import { type WakeReason, wakeRank } from "./step-events.js";
 
 /*
@@ -10,6 +10,11 @@ import { type WakeReason, wakeRank } from "./step-events.js";
  * next wake through a slot; the loop arms one timer, through `Clock.arm`, at
  * the earliest. A pass takes one clock reading and runs every owner due at it
  * in the written order (`WAKE_ORDER`), then arms at the earliest wake left.
+ *
+ * Row 011-369: an owner states its wake as a delay, kept on elapsed time
+ * (`Clock.elapsed`), never as a calendar time; an owner whose deadline is a
+ * calendar time (a hold's stored end) states the delay to it. A change of
+ * the calendar clock moves no wake.
  */
 
 /** What the loop alone reports at rest: `Rest` without the scheduler's busy resume. */
@@ -18,12 +23,15 @@ export type WakesRest = Omit<Rest, "busyResume">;
 /** An owner's wake, stated as a value: `GLOSSARY.md`, "Wake". */
 export interface WakeSlot {
   readonly reason: WakeReason;
-  /** The stated wake; `null` when the owner needs none. */
-  readonly wake: EpochMs | null;
-  /** States the wake: `at`, or none with `null`. A wake in the past fires at the next pass. */
-  at(at: EpochMs | null): void;
-  /** The earlier of the stated wake and `at`. */
-  atMost(at: EpochMs): void;
+  /** The elapsed time the stated wake is due at; `null` when the owner needs none. */
+  readonly due: ElapsedMs | null;
+  /**
+   * States the wake `ms` of elapsed time from now: the pass's reading inside
+   * a pass, else the clock's. At most 0 fires at the next pass.
+   */
+  after(ms: number): void;
+  /** The earlier of the stated wake and one `ms` from now. */
+  within(ms: number): void;
   /** States no wake. */
   clear(): void;
   /** Leaves the loop for good: an owner that ended (a runner-part call, a retired lane). */
@@ -44,9 +52,7 @@ export interface SlotOptions {
 export type WakeFire = (at: EpochMs) => void;
 
 class Slot implements WakeSlot {
-  wake: EpochMs | null = null;
-  /** `wake` on the loop's steady time (`Wakes.#steady`): when it is due. */
-  due: number | null = null;
+  due: ElapsedMs | null = null;
   dropped = false;
 
   constructor(
@@ -54,19 +60,22 @@ class Slot implements WakeSlot {
     readonly fire: WakeFire,
     public rank: number,
     readonly seq: number,
-    private readonly state: (slot: Slot, at: EpochMs | null) => void,
+    private readonly state: (slot: Slot, due: ElapsedMs | null) => void,
+    private readonly from: () => ElapsedMs,
   ) {}
 
-  at(at: EpochMs | null): void {
-    if (!this.dropped) this.state(this, at);
+  after(ms: number): void {
+    if (!this.dropped) this.state(this, (this.from() + ms) as ElapsedMs);
   }
 
-  atMost(at: EpochMs): void {
-    if (this.wake === null || at < this.wake) this.at(at);
+  within(ms: number): void {
+    if (this.dropped) return;
+    const due = (this.from() + ms) as ElapsedMs;
+    if (this.due === null || due < this.due) this.state(this, due);
   }
 
   clear(): void {
-    this.at(null);
+    if (!this.dropped) this.state(this, null);
   }
 
   drop(): void {
@@ -101,10 +110,10 @@ interface Piece {
   for?: Waiting;
 }
 
-/** One pass's readings: the clock's, which owners get, and the loop's steady time. */
+/** One pass's readings: calendar time, which owners get, and elapsed time, which decides what is due. */
 interface Reading {
   readonly at: EpochMs;
-  readonly steady: number;
+  readonly elapsed: ElapsedMs;
 }
 
 /**
@@ -115,22 +124,18 @@ interface Reading {
  * loop, a runner's run, the pump's next event, or other pieces. The lock's
  * queued and running tasks count too (`locked`, the `Mutex` count hook).
  *
- * A wake is stated on the scheduler's clock and kept as a delay from the
- * reading it was stated at, on the loop's steady time: the largest of the
- * clock's `ticks` and the time each fired timer stood for. On the virtual
- * clock that is its reading; on the host's, `performance.now`; with a test's
- * fixed `now`, or fake timers that leave `performance` real, each wake still
- * fires after its delay, as each owner's own timer did before.
+ * Row 011-369: a wake is kept on elapsed time only and is due once
+ * `Clock.elapsed()` reaches it. A timer that fires before (elapsed time a
+ * little behind a host timer) runs a pass that fires nothing and arms
+ * again for the time left.
  */
 export class Wakes {
   readonly #clock: Clock;
   readonly #slots = new Set<Slot>();
   #seq = 0;
   #disarm: Disarm | null = null;
-  /** The due time the timer is armed for, and the steady time it stands for (at most `MAX_TIMER_MS` on). */
-  #armed: { readonly due: number; readonly until: number } | null = null;
-  /** The loop's steady time: never goes back. */
-  #steady = Number.NEGATIVE_INFINITY;
+  /** The elapsed time the timer is armed for. */
+  #armed: ElapsedMs | null = null;
   /** The reading of the pass that runs, while one runs. */
   #pass: Reading | null = null;
   #closed = false;
@@ -147,8 +152,13 @@ export class Wakes {
 
   /** A slot of `reason` whose wake runs `fire`. */
   slot(reason: WakeReason, fire: WakeFire, options: SlotOptions = {}): WakeSlot {
-    const slot = new Slot(reason, fire, options.rank ?? 0, this.#seq++, (s, at) =>
-      this.#state(s, at),
+    const slot = new Slot(
+      reason,
+      fire,
+      options.rank ?? 0,
+      this.#seq++,
+      (s, due) => this.#state(s, due),
+      () => this.elapsed(),
     );
     this.#slots.add(slot);
     return slot;
@@ -213,12 +223,22 @@ export class Wakes {
     this.#poke();
   }
 
-  /** Each owner's stated wake, earliest first, then in the written order. */
+  /** Elapsed time now: the pass's reading inside a pass, else the clock's. */
+  elapsed(): ElapsedMs {
+    return this.#pass?.elapsed ?? this.#clock.elapsed();
+  }
+
+  /**
+   * Each owner's stated wake, earliest first, then in the written order; its
+   * `at` is calendar time now plus the delay left, as a reader moves the clock.
+   */
   wakes(): RestWake[] {
+    const at = this.#clock.now();
+    const elapsed = this.#clock.elapsed();
     return [...this.#slots]
-      .filter((slot): slot is Slot & { wake: EpochMs; due: number } => slot.due !== null)
+      .filter((slot): slot is Slot & { due: ElapsedMs } => slot.due !== null)
       .sort((a, b) => a.due - b.due || inOrder(a, b))
-      .map(({ reason, wake }) => ({ reason, at: wake }));
+      .map(({ reason, due }) => ({ reason, at: (at + Math.max(0, due - elapsed)) as EpochMs }));
   }
 
   /** Resolves when the scheduler rests (`Scheduler.rest`), with the next wake and each owner's. */
@@ -240,36 +260,15 @@ export class Wakes {
     if (this.#pass !== null || this.#locked > 0) return false;
     for (const piece of this.#pieces) if (piece.waiting === 0) return false;
     if (this.#closed) return true;
-    const steady = this.#steadyNow();
-    for (const slot of this.#slots) if (slot.due !== null && slot.due <= steady) return false;
+    const elapsed = this.#clock.elapsed();
+    for (const slot of this.#slots) if (slot.due !== null && slot.due <= elapsed) return false;
     return true;
   }
 
-  /** The loop's steady time now: the clock's ticks, or `at` without them; never behind a timer that fired. */
-  #steadyNow(at?: EpochMs): number {
-    const ticks = this.#clock.ticks?.() ?? at ?? this.#clock.now();
-    if (ticks > this.#steady) this.#steady = ticks;
-    return this.#steady;
-  }
-
-  /** The reading a statement is measured from: the pass's, else one taken now. */
-  #reading(): Reading {
-    if (this.#pass !== null) return this.#pass;
-    const at = this.#clock.now();
-    return { at, steady: this.#steadyNow(at) };
-  }
-
-  #state(slot: Slot, at: EpochMs | null): void {
+  #state(slot: Slot, due: ElapsedMs | null): void {
     if (slot.dropped) this.#slots.delete(slot);
-    else if (slot.wake === at) return;
-    else {
-      slot.wake = at;
-      if (at === null) slot.due = null;
-      else {
-        const reading = this.#reading();
-        slot.due = reading.steady + (at - reading.at);
-      }
-    }
+    else if (slot.due === due) return;
+    else slot.due = due;
     this.#rearm();
     this.#poke();
   }
@@ -281,21 +280,16 @@ export class Wakes {
    * pass, as a timer's would be.
    */
   #run(): void {
-    const armed = this.#armed;
     this.#disarm = null;
     this.#armed = null;
     if (this.#closed) return;
-    // The timer fired: its time came, whatever the clock reads (a fixed `now`, fake timers).
-    if (armed !== null && armed.until > this.#steady) this.#steady = armed.until;
-    const at = this.#clock.now();
-    const pass: Reading = { at, steady: this.#steadyNow(at) };
+    const pass: Reading = { at: this.#clock.now(), elapsed: this.#clock.elapsed() };
     this.#pass = pass;
-    const due = [...this.#slots].filter((slot) => slot.due !== null && slot.due <= pass.steady);
+    const due = [...this.#slots].filter((slot) => slot.due !== null && slot.due <= pass.elapsed);
     const errors: unknown[] = [];
     try {
       for (const slot of due.sort(inOrder)) {
-        if (slot.dropped || slot.due === null || slot.due > pass.steady) continue;
-        slot.wake = null;
+        if (slot.dropped || slot.due === null || slot.due > pass.elapsed) continue;
         slot.due = null;
         try {
           slot.fire(pass.at);
@@ -313,23 +307,22 @@ export class Wakes {
 
   /**
    * Arms the one timer at the earliest due wake. Its delay is measured from
-   * the steady time now, read after a pass's owners ran (review 0.1.513 B2):
-   * the time they took is not added to the next wake.
+   * elapsed time now, read after a pass's owners ran (review 0.1.513 B2):
+   * the time they took is not added to the next wake. A delay past a
+   * timer's range fires early, at the range's end, and arms again.
    */
   #rearm(): void {
     if (this.#pass !== null || this.#closed) return;
-    let next: number | null = null;
+    let next: ElapsedMs | null = null;
     for (const slot of this.#slots)
       if (slot.due !== null && (next === null || slot.due < next)) next = slot.due;
-    if (next === (this.#armed?.due ?? null)) return;
+    if (next === this.#armed) return;
     this.#disarm?.();
     this.#disarm = null;
     this.#armed = null;
     if (next === null) return;
-    const steady = this.#steadyNow();
-    const ms = next - steady;
-    // A delay past a timer's range fires early, at the range's end, and arms again.
-    this.#armed = { due: next, until: steady + Math.min(ms, MAX_TIMER_MS) };
+    const ms = Math.min(Math.max(0, next - this.#clock.elapsed()), MAX_TIMER_MS);
+    this.#armed = next;
     // A pass belongs to no piece: the timer would run it in the context of whoever armed it.
     this.#disarm = this.#clock.arm(ms, () => this.#piece.exit(() => this.#run()));
   }

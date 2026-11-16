@@ -202,9 +202,9 @@ export class MergeHold {
    * 011-352: a fixed delay after each check, where a fixed rate skipped a
    * tick while a check ran); tells `resumed` when a poll ends it.
    */
-  #poll(at: EpochMs = this.options.now()): void {
-    if (this.#polling || this.#closed || this.#wake.wake !== null) return;
-    this.#wake.at((at + (this.options.pollMs ?? MERGE_HOLD_POLL_MS)) as EpochMs);
+  #poll(): void {
+    if (this.#polling || this.#closed || this.#wake.due !== null) return;
+    this.#wake.after(this.options.pollMs ?? MERGE_HOLD_POLL_MS);
   }
 
   /** The poll's wake: one check, counted as the scheduler's work; the next wake once it ended. */

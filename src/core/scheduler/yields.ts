@@ -194,14 +194,14 @@ export class TierYields implements CutFiles {
   }
 
   /**
-   * States the wake at the earliest bound, none without a bound. `_context`
-   * chose the fallback loop's clock until row 011-364; dropping it touches
-   * `check`'s body (row 011-361's), so it goes after that row lands.
+   * States the wake at the earliest bound, none without a bound. A bound is
+   * a calendar time (a tier's stamped start plus its estimate): the wake is
+   * the delay to it from `context`'s calendar now (row 011-369).
    */
-  #arm(_context: SchedulerContext): void {
+  #arm(context: SchedulerContext): void {
     this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
     if (this.#bounds.size === 0) this.#wake.clear();
-    else this.#wake.at(Math.min(...this.#bounds.values()) as EpochMs);
+    else this.#wake.after(Math.min(...this.#bounds.values()) - context.now());
   }
 
   #disarm(): void {

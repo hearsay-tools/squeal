@@ -260,12 +260,12 @@ export interface CatchUpOptions {
   readonly runnerPartMs?: number;
   /** `SchedulerOptions.resumesRest`: the start resumes a rest (row 011-91). */
   readonly resumesRest?: boolean;
-  /** `SchedulerOptions.now`: the scheduler's clock (row 011-94). */
+  /** The scheduler's calendar time on the host's clock (rows 011-94, 011-369); its wakes keep the host's elapsed time. */
   readonly now?: () => number;
   /**
    * Row 011-353: `"virtual"`, the scheduler's clock is a prompt virtual
    * clock from the host's time now, or the virtual clock given; `now` is
-   * then not read. Absent, the host's clock over `now`.
+   * then not read. Absent, the host's clock with `now` as its calendar time.
    */
   readonly clock?: "virtual" | VirtualClock;
   /** Further `SchedulerOptions`: the runtime directory, the slow tier's (rows 011-106, 004). */

@@ -118,7 +118,6 @@ export class TierRecords {
       lock: host.lock,
       record: (ended) => this.#recordSlot(ended),
       commit: () => host.started().ledger.commit(),
-      now: () => host.started().context.now(),
       wakes: host.wakes,
     });
   }

@@ -23,7 +23,6 @@ function records(options: { failCommit?: boolean } = {}) {
       commits.push(open);
       open = [];
     },
-    now: () => Date.now(),
     // A gather waits in real time for slots that end in real time: the loop is on the host's clock.
     wakes: new Wakes(hostClock()),
   });
