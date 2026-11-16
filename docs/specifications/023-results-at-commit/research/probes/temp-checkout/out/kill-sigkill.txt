@@ -1,0 +1,17 @@
+load=9.51 signal=KILL
+gate=1691734 children_after_s=5 before:
+1694419 1691811       2 74.4 ~/.nvm/versions/node/v26.13.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/squawk/t/ec454b
+1694438 1691811       2 65.5 ~/.nvm/versions/node/v26.13.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/squawk/t/ec454b
+1694456 1691811       2 92.8 ~/.nvm/versions/node/v26.13.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/squawk/t/ec454b
+1695031 1694438       1 30.0 node ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/packages/cezar/scripts/mock-opencode-serve.mjs serve --hostname 127.0
+1695396 1694456       0 76.1 node ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/packages/cezar/scripts/mock-opencode-serve.mjs serve --hostname 127.0
+1695397 1694419       0  129 node ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/packages/cezar/scripts/mock-omp-rpc.mjs --mode rpc --extension /home/
+1695512 1695396       0  144 ~/.nvm/versions/node/v26.13.0/bin/node --import ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/node_modules/.pn
+1695541 1694438       0  138 ~/.nvm/versions/node/v26.13.0/bin/node --import file:///home/user/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/node_modu
+1695555 1695397       0 66.6 ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/node_modules/.pnpm/@esbuild+linux-x64@0.28.1/node_modules/@esbuild/linux-x
+1695613 1695512       0  0.0 ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/node_modules/.pnpm/@esbuild+linux-x64@0.28.1/node_modules/@esbuild/linux-x
+gate_exit=137
+5 s after:
+1694438 1691811       7 39.0 ~/.nvm/versions/node/v26.13.0/bin/node --experimental-import-meta-resolve --require ~/projects/squeal/.ai/squawk/t/ec454b
+1697445 1694438       1 32.6 node ~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-cezar-warm/packages/cezar/scripts/mock-opencode-serve.mjs serve --hostname 127.0
+30 s after:

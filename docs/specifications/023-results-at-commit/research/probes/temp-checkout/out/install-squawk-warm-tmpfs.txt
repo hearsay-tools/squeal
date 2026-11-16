@@ -1,0 +1,17 @@
+label=cezar-warm-tmpfs commit=3e458b2362abcd3c3458252b12007cb83f3c9e7f pm=pnpm cache=warm
+bg_rx_15s_bytes=242452
+load_before=18.75
+worktree_add_s=.382353988
+checkout_files=4729
+checkout_kb=64644
+install_rc=0
+install_s=1.919605093
+load_after=18.53
+install_rx_bytes=121076383
+node_modules_dirs=5
+nm_unique_bytes=1168993
+nm_hardlinked_bytes=506054930
+nm_entries=36620
+Packages: +702
+Progress: resolved 702, reused 0, downloaded 702, added 702, done
+wt=/dev/shm/tc-ec454b4a/wt-cezar-warm-tmpfs

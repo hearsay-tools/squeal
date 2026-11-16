@@ -1,0 +1,14 @@
+{"repo":"/home/user/projects/cezar","ref":"3e458b236","commits":200,"testFiles":1545,"added":100,"addedMissing":27,"modified":1445,"modifiedMissing":125,"withSourceChange":1504,"withSourceChangeMissing":152}
+{"missingKinds":{"onlyTestSide":67,"source":85}}
+{"commit":"3e458b236","status":"A","path":"packages/cezar/src/workflows/run/done-accepted.test.ts","srcChanged":29,"relativeImports":5,"missingAtParent":["packages/cezar/src/workflows/run/done-accepted.ts"]}
+{"commit":"72219c129","status":"A","path":"packages/cezar/src/lint/layer-import.test.ts","srcChanged":9,"relativeImports":1,"missingAtParent":["packages/cezar/src/lint/layer-import.ts"]}
+{"commit":"2cab1e991","status":"A","path":".ai/skills/check-code-quality/scripts/crap-report.test.mjs","srcChanged":17,"relativeImports":3,"missingAtParent":[".ai/skills/check-code-quality/scripts/crap-report.mjs"]}
+{"commit":"a96431462","status":"A","path":"packages/cezar/src/worker-scope/job.test.ts","srcChanged":11,"relativeImports":4,"missingAtParent":["packages/cezar/src/worker-scope/job.ts"]}
+{"commit":"7d49c0e5c","status":"M","path":"packages/cezar/src/delegation/scratch-cleanup.test.ts","srcChanged":49,"relativeImports":8,"missingAtParent":["packages/cezar/src/worker-scope/worker-scopes.ts"]}
+{"commit":"7d49c0e5c","status":"A","path":"packages/cezar/src/worker-scope/cgroup.test.ts","srcChanged":49,"relativeImports":1,"missingAtParent":["packages/cezar/src/worker-scope/cgroup.ts"]}
+{"commit":"7d49c0e5c","status":"A","path":"packages/cezar/src/worker-scope/groups-zombie.test.ts","srcChanged":49,"relativeImports":2,"missingAtParent":["packages/cezar/src/worker-scope/scope.ts","packages/cezar/src/worker-scope/worker-scopes.ts"]}
+{"commit":"7d49c0e5c","status":"A","path":"packages/cezar/src/worker-scope/worker-scopes.test.ts","srcChanged":49,"relativeImports":5,"missingAtParent":["packages/cezar/src/worker-scope/cgroup.ts","packages/cezar/src/worker-scope/scope.ts","packages/cezar/src/worker-scope/groups.ts","packages/cezar/src/worker-scope/worker-scopes.ts"]}
+{"commit":"7d49c0e5c","status":"M","path":"packages/cezar/src/workflows/worker-destroy-orphaned-generation.test.ts","srcChanged":49,"relativeImports":20,"missingAtParent":["packages/cezar/src/worker-scope/worker-scopes.ts"]}
+{"commit":"7d49c0e5c","status":"M","path":"packages/cezar/src/workflows/worker-destroy-process-holders.test.ts","srcChanged":49,"relativeImports":20,"missingAtParent":["packages/cezar/src/worker-scope/worker-scopes.ts"]}
+{"commit":"961b5a266","status":"M","path":"packages/web/src/routes/task-thread/subagent-dock.test.ts","srcChanged":4,"relativeImports":4,"missingAtParent":["packages/cezar/src/core/__fixtures__/claude/forked-command.expected.json"]}
+{"commit":"961b5a266","status":"M","path":"packages/web/src/routes/task-thread/thread-groups.test.ts","srcChanged":4,"relativeImports":5,"missingAtParent":["packages/cezar/src/core/__fixtures__/claude/forked-command.expected.json"]}

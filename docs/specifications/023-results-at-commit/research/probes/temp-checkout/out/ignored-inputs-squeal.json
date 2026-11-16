@@ -1,0 +1,502 @@
+{
+ "testFilesAtX": 1887,
+ "missingPaths": 3249,
+ "ignoredPaths": 419,
+ "ignoredGroups": {
+  "test/fixtures/vitest": 127,
+  "test/fixtures/node-test": 292
+ },
+ "testFilesNamingIgnored": 41,
+ "files": [
+  {
+   "test": " test/ci/export-absolute.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export-evidence.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export-formats.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export-loaded.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export-snapshot.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export-wrapper.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/ci/export.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/ci-record.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/code-gate-parts-cases.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/code-gate-parts-environment.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/code-gate-parts-link.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/code-gate-parts-unstarted.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/cli/code-gate-parts.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/node-test.test.ts",
+   "ignoredInputs": 291,
+   "groups": [
+    "test/fixtures/node-test"
+   ],
+   "sample": [
+    "test/fixtures/node-test/.tmp/.postcssrc",
+    "test/fixtures/node-test/.tmp/.postcssrc.cjs",
+    "test/fixtures/node-test/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/optimizer-off.test.ts",
+   "ignoredInputs": 28,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.pnp.cjs",
+    "test/fixtures/vitest/.tmp/.pnp.js",
+    "test/fixtures/vitest/.tmp/.postcssrc"
+   ]
+  },
+  {
+   "test": " test/integration/optimizer-start.test.ts",
+   "ignoredInputs": 105,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.pnp.cjs",
+    "test/fixtures/vitest/.tmp/.pnp.js",
+    "test/fixtures/vitest/.tmp/.postcssrc"
+   ]
+  },
+  {
+   "test": " test/integration/project-config-stamps.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/pytest-environment.test.ts",
+   "ignoredInputs": 22,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/pytest.test.ts",
+   "ignoredInputs": 22,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/query-stamps.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/revert-restore.test.ts",
+   "ignoredInputs": 44,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/setup-missing-import.test.ts",
+   "ignoredInputs": 22,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/status-wait-edit.test.ts",
+   "ignoredInputs": 22,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/status-wait-sync.test.ts",
+   "ignoredInputs": 22,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/touched-caches.test.ts",
+   "ignoredInputs": 28,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.pnp.cjs",
+    "test/fixtures/vitest/.tmp/.pnp.js",
+    "test/fixtures/vitest/.tmp/.postcssrc"
+   ]
+  },
+  {
+   "test": " test/integration/touched-in-flight.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/touched-late.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/touched-own-write.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/touched-restart.test.ts",
+   "ignoredInputs": 28,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.pnp.cjs",
+    "test/fixtures/vitest/.tmp/.pnp.js",
+    "test/fixtures/vitest/.tmp/.postcssrc"
+   ]
+  },
+  {
+   "test": " test/integration/touched-scope.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/integration/touched-stamped.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runner-host/node-test-parity.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "test/fixtures/node-test"
+   ],
+   "sample": [
+    "test/fixtures/node-test/.tmp/163b8c9f-2344-441b-8c1a-7fe5f2bb6510/852b0b97-e0f0-4d86-8387-eaf1e9ee3f18/reference"
+   ]
+  },
+  {
+   "test": " test/runners/pytest/spawned.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/ci-record-coverage-v8.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/ci-record-coverage-yield.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/ci-record-coverage.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/ci-record-inspector.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/ci-record-nested.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/runners/vitest/optimizer.test.ts",
+   "ignoredInputs": 28,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.pnp.cjs",
+    "test/fixtures/vitest/.tmp/.pnp.js",
+    "test/fixtures/vitest/.tmp/.postcssrc"
+   ]
+  },
+  {
+   "test": " test/scheduler/idle-pass.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  },
+  {
+   "test": " test/scheduler/pytest-observed.test.ts",
+   "ignoredInputs": 21,
+   "groups": [
+    "test/fixtures/vitest"
+   ],
+   "sample": [
+    "test/fixtures/vitest/.tmp/.postcssrc",
+    "test/fixtures/vitest/.tmp/.postcssrc.cjs",
+    "test/fixtures/vitest/.tmp/.postcssrc.cts"
+   ]
+  }
+ ]
+}

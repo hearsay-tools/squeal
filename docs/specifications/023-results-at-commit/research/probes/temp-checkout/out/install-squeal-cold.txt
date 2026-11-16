@@ -1,0 +1,19 @@
+label=squeal-cold commit=5150132e37d63c07a762523acda69589965bdd1c pm=pnpm cache=cold
+bg_rx_15s_bytes=1038222
+load_before=22.11
+worktree_add_s=1.441391101
+checkout_files=13186
+checkout_kb=270040
+install_rc=0
+install_s=6.226442911
+load_after=20.22
+install_rx_bytes=303574496
+node_modules_dirs=5
+nm_unique_bytes=15295671
+nm_hardlinked_bytes=796721858
+nm_entries=24979
+cold_cache_kb 660420	~/projects/squeal/.ai/squawk/t/ec454b4a/tc/store-cold-squeal-cold
+cold_cache_kb 182772	~/projects/squeal/.ai/squawk/t/ec454b4a/tc/cache-cold-squeal-cold
+Packages: +321
+Progress: resolved 321, reused 0, downloaded 321, added 321, done
+wt=~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-squeal-cold

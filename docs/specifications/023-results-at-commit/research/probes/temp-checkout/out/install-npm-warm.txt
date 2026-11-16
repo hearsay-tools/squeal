@@ -1,0 +1,16 @@
+label=npm-warm commit=b22a25deb1f10d91d566ce8acc07dc281d9b1d2c pm=npm cache=warm
+bg_rx_15s_bytes=511392
+load_before=14.82
+worktree_add_s=.011031669
+checkout_files=2
+checkout_kb=20
+install_rc=0
+install_s=.766630813
+load_after=14.82
+install_rx_bytes=12040
+node_modules_dirs=1
+nm_unique_bytes=24912823
+nm_hardlinked_bytes=22855904
+nm_entries=190
+added 8 packages in 637ms
+wt=~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-npm-warm

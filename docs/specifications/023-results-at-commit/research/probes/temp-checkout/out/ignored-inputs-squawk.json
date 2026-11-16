@@ -1,0 +1,683 @@
+{
+ "testFilesAtX": 1939,
+ "missingPaths": 3388,
+ "ignoredPaths": 431,
+ "ignoredGroups": {
+  "packages/cezar/dist": 410,
+  ".ai/qa/test-env.json": 1,
+  "packages/web/.e2e-fixtures": 1,
+  ".ai/qa/served": 6,
+  ".ai/qa/cez-home": 2,
+  ".ai/squawk/runs.db": 1,
+  ".ai/squawk-migration.json": 1,
+  ".ai/squawk-migration.lock": 1,
+  ".ai/cezar/t": 6,
+  "packages/cezar/web": 1,
+  ".agents/skills": 1
+ },
+ "testFilesNamingIgnored": 62,
+ "files": [
+  {
+   "test": "e2e packages/web/e2e/agent-browser-tabs.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/command-palette.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/completion-controls.e2e.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    "packages/web/.e2e-fixtures",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    "packages/web/.e2e-fixtures/package.json",
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/create-project.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/github-core.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/github-layout.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/github-paging.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/github-pr-review.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/github-states.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/ios-sweep.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/issue-linked-tasks.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/mobile-projects.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/page-headings.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/project-order.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/project-rail.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/project-sidebar.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/repo-git.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/run-header-ci-wait.e2e.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    "packages/web/.e2e-fixtures",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    "packages/web/.e2e-fixtures/package.json",
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/screenshot-element.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-agent-config.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-agents.e2e.ts",
+   "ignoredInputs": 5,
+   "groups": [
+    ".ai/qa/served",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/served/cezar/.git/cezar-moved-projects/3aa3a7634d3220fac653a75fd3a2efbb2a1d62df51ed91a5e124ec65d30bf73a.json",
+    ".ai/qa/served/cezar/.git/commondir",
+    ".ai/qa/served/e64211b9-db69-409f-abe0-dd4a5905d3e7/.git/cezar-moved-projects/41bba9b43c00d8311200fc5c7264cf8badde18f070c728c7855494c6162d0f90.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-appearance.e2e.ts",
+   "ignoredInputs": 3,
+   "groups": [
+    ".ai/qa/cez-home",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/cez-home/config/.migrating",
+    ".ai/qa/cez-home/config/install.json",
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-resources.e2e.ts",
+   "ignoredInputs": 5,
+   "groups": [
+    ".ai/qa/served",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/served/cezar/.git/cezar-moved-projects/3aa3a7634d3220fac653a75fd3a2efbb2a1d62df51ed91a5e124ec65d30bf73a.json",
+    ".ai/qa/served/cezar/.git/commondir",
+    ".ai/qa/served/e64211b9-db69-409f-abe0-dd4a5905d3e7/.git/cezar-moved-projects/41bba9b43c00d8311200fc5c7264cf8badde18f070c728c7855494c6162d0f90.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-sidebar.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-skills.e2e.ts",
+   "ignoredInputs": 5,
+   "groups": [
+    ".ai/qa/served",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/served/cezar/.git/cezar-moved-projects/3aa3a7634d3220fac653a75fd3a2efbb2a1d62df51ed91a5e124ec65d30bf73a.json",
+    ".ai/qa/served/cezar/.git/commondir",
+    ".ai/qa/served/e64211b9-db69-409f-abe0-dd4a5905d3e7/.git/cezar-moved-projects/41bba9b43c00d8311200fc5c7264cf8badde18f070c728c7855494c6162d0f90.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/settings-task-archiving.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/smoke.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/tools-menu.e2e.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/test-env.json"
+   ]
+  },
+  {
+   "test": "e2e packages/web/e2e/workflows.e2e.ts",
+   "ignoredInputs": 5,
+   "groups": [
+    ".ai/qa/served",
+    ".ai/qa/test-env.json"
+   ],
+   "sample": [
+    ".ai/qa/served/cezar/.git/cezar-moved-projects/3aa3a7634d3220fac653a75fd3a2efbb2a1d62df51ed91a5e124ec65d30bf73a.json",
+    ".ai/qa/served/cezar/.git/commondir",
+    ".ai/qa/served/e64211b9-db69-409f-abe0-dd4a5905d3e7/.git/cezar-moved-projects/41bba9b43c00d8311200fc5c7264cf8badde18f070c728c7855494c6162d0f90.json"
+   ]
+  },
+  {
+   "test": "f2:package packages/cezar/test/e2e/compatibility-packages.test.ts",
+   "ignoredInputs": 16,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/application-update/bin-recovery.js",
+    "packages/cezar/dist/application-update/discovery.js",
+    "packages/cezar/dist/application-update/helper.js"
+   ]
+  },
+  {
+   "test": "f2:package packages/cezar/test/e2e/delegation.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/workflows/run/tracked-work.js"
+   ]
+  },
+  {
+   "test": "f2:package packages/cezar/test/e2e/inline-contract.test.ts",
+   "ignoredInputs": 272,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/activity/text.js",
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/core/harness-omp-owned-input-parity.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/ci-wait/tools.js"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/core/product-env-cli.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    ".ai/squawk-migration.json",
+    ".ai/squawk-migration.lock"
+   ],
+   "sample": [
+    ".ai/squawk-migration.json",
+    ".ai/squawk-migration.lock"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/core/skill-resume-recovery-prompt-parity.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-4zIVG5/.ai/cezar"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/core/workflow-timeout-explicit-zero-parity.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/ci-wait/tools.js"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/data-gitignore.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/squawk/runs.db"
+   ],
+   "sample": [
+    ".ai/squawk/runs.db"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/delegation/provision-accepted-grants.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-HSyMm5/.ai/cezar"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/home/runtime-cli.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    ".ai/squawk-migration.json",
+    ".ai/squawk-migration.lock"
+   ],
+   "sample": [
+    ".ai/squawk-migration.json",
+    ".ai/squawk-migration.lock"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/project-paths.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/squawk/runs.db"
+   ],
+   "sample": [
+    ".ai/squawk/runs.db"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server-install/platforms/macosx-migration.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/hsq.js"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/fs-browse.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/home-recovery-security.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/live-routes.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/models-api.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/preview-socket.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".agents/skills"
+   ],
+   "sample": [
+    ".agents/skills"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/providers-api.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/runs-index-api.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/task-webhook-api.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".agents/skills"
+   ],
+   "sample": [
+    ".agents/skills"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/server/workspace-api.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    "packages/cezar/web"
+   ],
+   "sample": [
+    "packages/cezar/web/dist/index.html"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/workflows/launch-read-boundaries.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-0nbbyb/.ai/cezar",
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-HSyMm5/.ai/cezar"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/workflows/waits-parity.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-0nbbyb/.ai/cezar"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/workflows/worker-questions-reply-recovery.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    ".ai/qa/served"
+   ],
+   "sample": [
+    ".ai/qa/served/13bd9249-d2c4-40a2-b684-445c11fcf618/.git/cezar-moved-projects/7ec21c590a6c3c124a78bfa58acaa8ad87d0d5dd6e6082fee8ebf445f46159bb.json",
+    ".ai/qa/served/13bd9249-d2c4-40a2-b684-445c11fcf618/.git/commondir"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/workflows/worker-wait-capacity-ask-admission.test.ts",
+   "ignoredInputs": 1,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/f25ce1ab/cezar-e2e-preview-Cukac7/.ai/cezar"
+   ]
+  },
+  {
+   "test": "server packages/cezar/src/workflows/worker-wait-durability.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    ".ai/cezar/t"
+   ],
+   "sample": [
+    ".ai/cezar/t/12b74ac4/cez-installed-workers-wCFEV1/repo/.ai/cezar",
+    ".ai/cezar/t/12b74ac4/cez-task-e2e-W0DRbm/repo/.ai/cezar"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/cockpit-ownership.test.ts",
+   "ignoredInputs": 242,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/agent-config/account-identity.js",
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/delegation.test.ts",
+   "ignoredInputs": 245,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/agent-config/account-identity.js",
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/inline-contract.test.ts",
+   "ignoredInputs": 152,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js",
+    "packages/cezar/dist/agent-config/model-settings/claude.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/release-snapshot.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/release/manifests.js",
+    "packages/cezar/dist/release/snapshot.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/release.test.ts",
+   "ignoredInputs": 2,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/release/manifests.js",
+    "packages/cezar/dist/release/stable.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/serve-port.test.ts",
+   "ignoredInputs": 243,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/agent-config/account-identity.js",
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js"
+   ]
+  },
+  {
+   "test": "test:package packages/cezar/test/e2e/task-cli.test.ts",
+   "ignoredInputs": 248,
+   "groups": [
+    "packages/cezar/dist"
+   ],
+   "sample": [
+    "packages/cezar/dist/agent-config/account-identity.js",
+    "packages/cezar/dist/agent-config/catalog.js",
+    "packages/cezar/dist/agent-config/files.js"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+remove wt-squeal-cold rc=0 s=1.468097511 load=17.13
+remove wt-squeal-warm rc=0 s=1.445497528 load=17.13
+remove wt-cezar-cold rc=0 s=1.207976420 load=17.13
+remove wt-cezar-warm rc=0 s=1.030125734 load=17.13
+remove wt-overlay rc=0 s=1.005175916 load=17.12
+remove wt-npm-warm rc=0 s=.018133232 load=17.12
+remove wt-npm-cold rc=0 s=.014785940 load=17.12

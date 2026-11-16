@@ -1,0 +1,13 @@
+total 16
+-rw-rw-r--  1 agent agent   36 16:41:19 .cez-run
+drwxrwxr-x  3 agent agent   17 16:53:46 8SY9ibl04LovBKLLs3EjA
+drwxrwxr-x  3 agent agent   17 16:57:45 UOCtFGcttyI7aI3pzjMWZ
+drwx------  4 agent agent  121 16:41:36 claude-1001
+drwxrwxr-x  3 agent agent   40 16:41:19 node-compile-cache
+drwx------  3 agent agent   29 16:57:40 squeal-gate-e6cL5H
+drwx------  3 agent agent   20 16:57:42 squeal-gate-keys-NsjHVd
+drwx------  3 agent agent   20 16:53:42 squeal-gate-keys-xZVU7o
+drwx------  3 agent agent   29 16:53:41 squeal-gate-vcYv3J
+drwx------  4 agent agent   51 16:53:00 squeal-links-f2686bc48755ed28
+drwx------  2 agent agent 4096 16:53:56 squeal-observe-6RYf0Z
+drwx------  2 agent agent 4096 16:57:48 squeal-observe-fTEiS8

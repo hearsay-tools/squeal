@@ -1,0 +1,17 @@
+label=npm-cold commit=b22a25deb1f10d91d566ce8acc07dc281d9b1d2c pm=npm cache=cold
+bg_rx_15s_bytes=5155933
+load_before=14.30
+worktree_add_s=.012215348
+checkout_files=2
+checkout_kb=20
+install_rc=0
+install_s=.811286416
+load_after=14.30
+install_rx_bytes=9784239
+node_modules_dirs=1
+nm_unique_bytes=24912823
+nm_hardlinked_bytes=22855904
+nm_entries=190
+cold_cache_kb 9204	~/projects/squeal/.ai/squawk/t/ec454b4a/tc/cache-cold-npm-cold
+added 8 packages in 718ms
+wt=~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-npm-cold

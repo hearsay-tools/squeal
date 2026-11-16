@@ -1,0 +1,17 @@
+label=squeal-warm commit=5150132e37d63c07a762523acda69589965bdd1c pm=pnpm cache=warm
+bg_rx_15s_bytes=5629875
+load_before=31.10
+worktree_add_s=1.669004082
+checkout_files=13186
+checkout_kb=270040
+install_rc=0
+install_s=.649794855
+load_after=31.65
+install_rx_bytes=58839
+node_modules_dirs=5
+nm_unique_bytes=15162382
+nm_hardlinked_bytes=796855107
+nm_entries=24979
+Packages: +321
+Progress: resolved 321, reused 321, downloaded 0, added 321, done
+wt=~/projects/squeal/.ai/squawk/t/ec454b4a/tc/wt-squeal-warm
