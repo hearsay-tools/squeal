@@ -58,14 +58,14 @@ describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, (
       runs.push({ files, options });
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     // The tree's first window: the gate reads the host again a second after the last read.
     await delay(HOST_WINDOW_MIN_MS + 100);
 
     runs.length = 0;
     appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
     await h.batch("vitest.config.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(runs.length).toBeGreaterThan(0);
     // 23.9 busy cores against 4 slots: no permit on cores, and the floor's one while none runs.
     expect(Math.max(...runs.map((r) => r.options.workers ?? 0))).toBe(1);
@@ -73,7 +73,7 @@ describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, (
     runs.length = 0;
     appendFileSync(join(h.root, "test/math.test.ts"), "// an edit\n");
     await h.batch("test/math.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     // An edit's tier is never refused: it runs without a grant.
     expect(runs.map((r) => [r.files.map((f) => f.path), r.options.workers])).toEqual([
       [["test/math.test.ts"], undefined],
@@ -81,7 +81,7 @@ describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, (
 
     runs.length = 0;
     const checkpoint = await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(runs.length).toBeGreaterThan(0);
     expect(store.runs.get(runs[0]?.options.runId ?? "")?.checkpointId).toBe(checkpoint.id);
     expect(Math.max(...runs.map((r) => r.options.workers ?? 0))).toBe(4);

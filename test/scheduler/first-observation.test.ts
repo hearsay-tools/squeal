@@ -121,7 +121,7 @@ describe(
         const store = openRepoStore(repo.commonDir);
         const h = await openHarness(repo.main, store, repo.commonDir, OBSERVING);
         await h.scheduler.start();
-        await h.scheduler.idle();
+        await h.quiet();
         // An edit's tier, which a watch batch during it does not cancel, as a backlog tier's is.
         const stop = appearWhenReady(repo.main, looked, () =>
           watched ? h.batch("data/appeared.txt") : Promise.resolve(),
@@ -129,7 +129,7 @@ describe(
         try {
           plant(repo.main, read, link);
           await h.batch(APPEAR, ...(link ? ["linked"] : []));
-          await h.scheduler.idle();
+          await h.quiet();
         } finally {
           stop();
         }
@@ -166,7 +166,7 @@ describe(
         writeFileSync(join(root, "data/appeared.txt"), "appeared\n");
         const second = await openHarness(root, store, repo.commonDir, OBSERVING);
         await second.scheduler.start();
-        await second.scheduler.idle();
+        await second.quiet();
         for (const [i, pool] of POOLS.entries()) {
           const ref = at(APPEAR, pool);
           expect(keyOf(second, ref)).toBe(keys[i]);
@@ -186,7 +186,7 @@ describe(
         policy: { ...OBSERVING.policy, ...RUN_MISSING },
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       for (const pool of POOLS) {
         const ref = at("test/new-path.test.ts", pool);
         expect(runOutcomes(h, ref)).toEqual(["pass", "pass", "pass"]);

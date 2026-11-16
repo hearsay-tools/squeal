@@ -42,7 +42,7 @@ describe("a newer daemon after one that wrote no moves", () => {
         policy: RUN_MISSING,
       });
       await first.scheduler.start();
-      await first.scheduler.idle();
+      await first.quiet();
       await first.scheduler.close();
       liveDaemon(store, first.worktreeId, repo.main, repo.commonDir);
       const id = first.worktreeId as WorktreeId;
@@ -58,7 +58,7 @@ describe("a newer daemon after one that wrote no moves", () => {
       // An older daemon registered in between.
       const second = await openHarness(repo.main, store, repo.commonDir, { predecessor: OLDER });
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
 
       const after = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
       // Taken in by the commit that dropped the history before it: a wait from before falls back.
@@ -87,7 +87,7 @@ describe("a newer daemon after one that wrote no moves", () => {
       const store = openRepoStore(repo.commonDir);
       const first = await openHarness(repo.main, store, repo.commonDir, { predecessor: null });
       await first.scheduler.start();
-      await first.scheduler.idle();
+      await first.quiet();
       await first.scheduler.close();
       const id = first.worktreeId as WorktreeId;
       const fresh = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
@@ -104,7 +104,7 @@ describe("a newer daemon after one that wrote no moves", () => {
         incarnation: NEXT,
       });
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
 
       const after = JSON.parse(store.meta.get(rekeyedMovesMetaKey(id)) ?? "{}");
       expect(after.dropped).toBe(before.dropped);

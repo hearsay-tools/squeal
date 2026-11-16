@@ -42,7 +42,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
     });
     const started = performance.now();
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baselineMs = Math.round(performance.now() - started);
     const baselineTiers = h.runner.runs.length;
     expect(baselineTiers).toBeLessThanOrEqual(3);
@@ -58,7 +58,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       appendFileSync(join(h.root, "vitest.config.ts"), `// environment change ${round}\n`);
       const at = performance.now();
       await h.batch("vitest.config.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       const backlogMs = Math.round(performance.now() - at);
       const tiers = h.runner.runs.slice(before);
 
@@ -90,7 +90,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
     });
     try {
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const baselineTiers = h.runner.runs.length;
 
       appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
@@ -108,7 +108,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       await h.batch("vitest.config.ts");
       await waitFor(() => edit !== null, 60_000);
       await edit;
-      await h.scheduler.idle();
+      await h.quiet();
 
       const [cancelled, next, ...rest] = h.runner.runs.slice(baselineTiers);
       if (!cancelled || !next) throw new Error("expected a cancelled tier and the edit's tier");
@@ -146,7 +146,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
     });
     try {
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const baselineTiers = h.runner.runs.length;
       rmSync(mark, { force: true });
       let edit: Promise<void> | null = null;
@@ -161,7 +161,7 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
       await h.scheduler.requestFullSuite({ force: true });
       await waitFor(() => edit !== null, 60_000);
       await edit;
-      await h.scheduler.idle();
+      await h.quiet();
       const tiers = h.runner.runs.slice(baselineTiers);
       expect(tiers).toHaveLength(1);
       expect(tiers[0]?.report.failure).toBeNull();

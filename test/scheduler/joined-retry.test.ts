@@ -83,12 +83,12 @@ describe("a session joining a claimed retry", SLOW, () => {
 
     expect(ask(storeB, b, "s2", "environment").kind).toBe("queued");
     await b.scheduler.requestRetries();
-    await b.scheduler.idle();
+    await b.quiet();
     await pass(b);
     expect(b.runsOf(FLAKY)).toHaveLength(1);
 
     held.release();
-    await a.scheduler.idle();
+    await a.quiet();
     await pass(b);
     // One retry run between the two daemons: A's, past each one's own first run.
     expect(a.runsOf(FLAKY).length + b.runsOf(FLAKY).length).toBe(3);
@@ -114,7 +114,7 @@ describe("a session joining a claimed retry", SLOW, () => {
     await held.started;
     ask(storeB, b, "s2", "environment");
     await b.scheduler.requestRetries();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runsOf(FLAKY)).toHaveLength(1);
 
     // A's daemon dies with its run in flight: its heartbeat stops.

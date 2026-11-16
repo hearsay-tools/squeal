@@ -15,7 +15,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     });
 
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // Five files in tiers of two.
     expect(h.runner.runs.map((r) => r.files.length)).toEqual([2, 2, 1]);
@@ -62,11 +62,11 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baselineRuns = h.runner.runs.length;
 
     const checkpoint = await h.scheduler.requestFullSuite({ force: true });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(checkpoint.kind).toBe("run-all");
     expect(checkpoint.testFiles.map((f) => f.path).sort()).toEqual(ALL_TEST_FILES);
@@ -84,11 +84,11 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const runs = h.runner.runs.length;
 
     const checkpoint = await h.scheduler.requestFullSuite();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(checkpoint.testFiles).toEqual([]);
     expect(store.checkpoints.get(checkpoint.id)?.end).toBe("completed");
@@ -100,12 +100,12 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const a = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
 
     const root = addWorktree(repo.main, repo.dir, "second");
     const b = await openHarness(root, store, repo.commonDir);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
 
     expect(b.runner.runs).toEqual([]);
     expect(b.header()).toMatchObject({
@@ -138,7 +138,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
       policy: { baseline: { onStart: "lookup-only" } },
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runner.runs).toEqual([]);
     expect(store.checkpoints.lastCompleted(h.worktreeId)).toBeNull();
@@ -151,7 +151,7 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     // An edit still runs what it affects.
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.flatMap((r) => r.files)).toEqual([ref("test/math.test.ts")]);
   });
 
@@ -160,13 +160,13 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     await first.runner.close();
 
     const second = await openHarness(repo.main, store, repo.commonDir);
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
 
     expect(second.runner.runs).toEqual([]);
     expect(second.header()).toMatchObject({
@@ -197,9 +197,9 @@ describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
       await waitFor(() => store.revisions.latest(h.worktreeId) !== null, 10_000);
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     await batch;
-    await h.scheduler.idle();
+    await h.quiet();
 
     const mixed = h.runner.runs.find((r) => r.files.some((f) => f.path === "test/new.test.ts"));
     expect(mixed?.files.map((f) => f.path)).toEqual(["test/new.test.ts", "test/plain.test.ts"]);

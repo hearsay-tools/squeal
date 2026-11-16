@@ -32,7 +32,7 @@ describe("a refinement a busy store refused (spec 021 D2)", () => {
     const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
     const h = await openHarness(main, store, commonDir, { busyWaits, busySliceMs: SLICE_MS });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The first closure of revision 1's new file waits until revision 2 is stored and the lock held.
     let arrived = (): void => {};
@@ -67,7 +67,7 @@ describe("a refinement a busy store refused (spec 021 D2)", () => {
       holder = await holdLock(storePaths(commonDir).database, "immediate", HOLD_MS);
       release();
       await holder.released;
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(h.keyOf("test/new-one.test.ts")).not.toBeNull();
       expect(h.keyOf("test/new-two.test.ts")).not.toBeNull();

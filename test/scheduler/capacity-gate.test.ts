@@ -30,7 +30,7 @@ describe("an edit's tier under the CPU gate (row 011-98)", SLOW, () => {
       capacity: { dir, hostSlots: 2 },
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const own = (): PoolMark | undefined =>
       readMarks(dir, "reader", Date.now()).find((m) => m.id === h.worktreeId);
     expect(own()).toBeUndefined();
@@ -57,7 +57,7 @@ describe("an edit's tier under the CPU gate (row 011-98)", SLOW, () => {
     expect(edit?.options.workers).toBeUndefined();
     expect(edit?.mark).toMatchObject({ want: 0, grant: 0, since: null });
     expect(edit?.mark?.cores).toBeGreaterThan(0);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(own()).toBeUndefined();
   });
 });

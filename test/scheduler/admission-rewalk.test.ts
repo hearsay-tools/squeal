@@ -39,7 +39,7 @@ describe("the re-walk's admission under the lock (011-340)", SLOW, () => {
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
     });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     connectionOf(store).run("DELETE FROM test_file_imports");
 
@@ -64,7 +64,7 @@ describe("the re-walk's admission under the lock (011-340)", SLOW, () => {
 
     await h.scheduler.start();
     const idle = await Promise.race([
-      h.scheduler.idle().then(() => true),
+      h.quiet().then(() => true),
       delay(15_000).then(() => false),
     ]);
     expect(blocks).toHaveLength(1);

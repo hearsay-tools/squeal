@@ -75,7 +75,7 @@ describe("scheduler: a node:test edit waits at most one backlog slot (tasks 001-
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const outcome = () =>
       store.knownStates
@@ -101,7 +101,7 @@ describe("scheduler: a node:test edit waits at most one backlog slot (tasks 001-
     await edit;
     await expect.poll(() => outcome()?.outcome, { timeout: 60_000, interval: 50 }).toBe("fail");
     const waitedMs = performance.now() - editedAt;
-    await h.scheduler.idle();
+    await h.quiet();
 
     const longest = Math.max(...sleeps);
     // The edit's own run: one quick node:test process; 3 s of slack for process starts and load.

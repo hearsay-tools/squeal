@@ -51,7 +51,7 @@ describe("the re-walk beside a configured lane's waiting file (011-342)", SLOW, 
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
     });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     connectionOf(store).run("DELETE FROM test_file_imports");
 

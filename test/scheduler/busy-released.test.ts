@@ -47,7 +47,7 @@ describe("a merge hold's released paths on a busy store (spec 021 D2)", () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.keyOf("test/math.test.ts");
 
     expect(gitMay(main, ["merge", "side"])).toBe(1);
@@ -77,7 +77,7 @@ describe("a merge hold's released paths on a busy store (spec 021 D2)", () => {
       await expect
         .poll(() => h.scheduler.status().revision, { timeout: 15_000 })
         .toBe(conflicted + 1);
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(held).not.toBeNull();
       // No tier ran at the conflicted keys: the restored bytes' revision came first, at the stored pass.

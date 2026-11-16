@@ -161,7 +161,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
       }) as never;
     }
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(calls).toEqual([]);
     expect(h.runner.runs).toEqual([]);
@@ -199,7 +199,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     // The agent edits: a revision, still nothing for the runner and nothing to report.
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 0;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(calls).toEqual([]);
     expect(h.runner.runs).toEqual([]);
     expect(h.header()).toMatchObject({ revision: 1, runnerPartPending: false });
@@ -208,7 +208,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     // The install writes only ignored files; the next reconciliation pass sees it.
     h.write("node_modules/.package-lock.json", "{}");
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(calls).toContain("testFiles");
     expect(h.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual(ALL_TEST_FILES);
     expect(h.header().awaitingInstall).toBeUndefined();
@@ -220,7 +220,7 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual(ALL_TEST_FILES);
     expect(h.header().awaitingInstall).toBeUndefined();
   });
@@ -236,10 +236,10 @@ describe("scheduler: run --all while waiting (review wave 11, B1)", SLOW, () => 
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const record = await h.scheduler.requestFullSuite();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(store.checkpoints.get(record.id)?.end).toBe("abandoned");
     expect(h.runner.runs).toEqual([]);
     const header = h.header();
@@ -279,7 +279,7 @@ describe(
         policy: RUN_MISSING,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.header().awaitingInstall).toBe(true);
 
       // The agent edits, reads that nothing runs until an install, then installs.
@@ -287,7 +287,7 @@ describe(
       await h.batch("src/m09.ts");
       h.write("node_modules/.package-lock.json", "{}");
       await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(h.runner.runs[0]?.files.map((f) => f.path)).toContain("test/f09.test.ts");
       expect(h.runner.runs.flatMap((r) => r.files)).toHaveLength(17);

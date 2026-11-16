@@ -28,7 +28,7 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
     const baselineRuns = h.runsOf("test/math.test.ts").length;
 
@@ -47,9 +47,9 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
     };
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     await Promise.all(batches);
-    await h.scheduler.idle();
+    await h.quiet();
 
     const runs = h.runsOf("test/math.test.ts").slice(baselineRuns);
     expect(runs).toHaveLength(4);
@@ -79,7 +79,7 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
       console.log(`001-335 hung run: ${runs.join(", ")}`);
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // Blocks its worker as a busy loop would, ignoring a cancel, without using a core while it waits.
     h.write(
@@ -87,7 +87,7 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
       'import { it } from "vitest";\nit("hangs", () => {\n  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);\n});\n',
     );
     await h.batch("test/hang.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/hang.test.ts").map((r) => r.report.end)).toEqual(["timed-out"]);
     // Alone in its tier, it is `unknown` and not run again (task 001-179).
     expect(h.sink.callsOf("markUnknown").map((c) => c.reason)).toEqual([
@@ -96,7 +96,7 @@ describe("scheduler: discards and timeouts (S5, S10)", SLOW, () => {
 
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/math.test.ts").at(-1)?.report.end).toBe("completed");
     expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
   });

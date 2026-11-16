@@ -22,7 +22,7 @@ async function open(
   const repo = createRepo();
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   const calls: string[] = [];
   const runner: RunnerAdapter = h.runner;
   for (const name of CALLS) {
@@ -53,9 +53,9 @@ describe("scheduler: the recheck at a quiet reconciliation pass (007-26)", () =>
       const revision = latest(h);
       const runs = h.runner.runs.length;
       await interval(h);
-      await h.scheduler.idle();
+      await h.quiet();
       await interval(h);
-      await h.scheduler.idle();
+      await h.quiet();
 
       // R2: no `affected([])`, whose Vitest answer globs the suite's specifications again.
       expect(calls).toEqual(["recheck", "recheck"]);
@@ -67,7 +67,7 @@ describe("scheduler: the recheck at a quiet reconciliation pass (007-26)", () =>
   it("a watch batch with nothing changed does not recheck", SLOW, async () => {
     const { h, calls } = await open();
     await h.scheduler.handleBatch({ trigger: "watch", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(calls).toEqual([]);
   });
@@ -86,7 +86,7 @@ describe("scheduler: the recheck at a quiet reconciliation pass (007-26)", () =>
           resolvedConfig: `${e.resolvedConfig}+upgraded`,
         }));
       await interval(h);
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(h.keyOf("test/math.test.ts")).not.toEqual(before);
       expect(h.runsOf("test/math.test.ts").length).toBe(runs + 1);
@@ -102,7 +102,7 @@ describe("scheduler: the recheck at a quiet reconciliation pass (007-26)", () =>
     });
     const before = h.keyOf("test/math.test.ts");
     await interval(h);
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(calls).toEqual(["recheck"]);
     expect(h.keyOf("test/math.test.ts")).toEqual(before);

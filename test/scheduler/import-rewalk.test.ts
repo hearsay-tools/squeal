@@ -56,7 +56,7 @@ async function upgraded(): Promise<{ repo: ReturnType<typeof createRepo>; store:
     policy: { baseline: { onStart: "lookup-then-run-missing" } },
   });
   await first.scheduler.start();
-  await first.scheduler.idle();
+  await first.quiet();
   await first.scheduler.close();
   connectionOf(store).run("DELETE FROM test_file_imports");
   return { repo, store };
@@ -84,7 +84,7 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
     const { h, walked } = await next(repo, shared);
     const keysBefore = keysOf(h);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const listed = shared.testFileKeys.list(h.worktreeId);
     expect(listed.length).toBeGreaterThan(1);
@@ -100,13 +100,13 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
     const { repo, store: shared } = await upgraded();
     const second = await next(repo, shared);
     await second.h.scheduler.start();
-    await second.h.scheduler.idle();
+    await second.h.quiet();
     await second.h.scheduler.close();
     connectionOf(shared).run("DELETE FROM test_file_imports");
 
     const third = await next(repo, shared);
     await third.h.scheduler.start();
-    await third.h.scheduler.idle();
+    await third.h.quiet();
     expect(third.walked).toEqual([]);
     expect(readImportGraph(shared, third.h.worktreeId).walk(ref(GATE))).toBeUndefined();
   });
@@ -132,7 +132,7 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
     h.write(GATEWAY, 'export { value } from "./a.js";\n');
     await h.batch(GATEWAY);
     release.resolve();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const fresh = await original(ref(GATE));
     expect(fresh.imports?.find((f) => f.path === GATEWAY)?.static).toEqual(["src/a.ts"]);
@@ -163,7 +163,7 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
         policy: { baseline: { onStart: "lookup-then-run-missing" } },
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       await h.scheduler.close();
     }
     // A store from before the walks: closures and results, no walk and no marker.
@@ -172,7 +172,7 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
 
     const { h, walked } = await next(repo, shared);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(walked).toContain(GATE);
     expect(h.runner.runs).toEqual([]);
     expect(closureFor(shared, h.worktreeId)(ref(GATE))).toBeUndefined();
