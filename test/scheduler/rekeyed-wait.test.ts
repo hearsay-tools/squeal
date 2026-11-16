@@ -25,7 +25,7 @@ describe("status --wait over a later edit of its file (task 001-194)", () => {
       const repo = createRepo();
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.rest();
       liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       let release = () => {};
       const held = new Promise<void>((resolve) => {

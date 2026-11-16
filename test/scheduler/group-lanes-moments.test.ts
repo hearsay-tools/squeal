@@ -55,7 +55,7 @@ describe("group moments (spec 019 D1, row 019-10)", { timeout: 60_000 }, () => {
     expect(log["group:e2e:vitest"]).toEqual([[C]]);
     expect(log["group:nodes:node-test"]).toEqual([[D]]);
     // A `commit` group never runs by itself (D5 queues it at a commit).
-    await side.scheduler.idle();
+    await side.rest();
     await delay(300);
     expect(ranPaths(side)).not.toContain(F);
     expect(side.scheduler.slowPending()).toBe(false);
@@ -105,7 +105,7 @@ describe("group moments (spec 019 D1, row 019-10)", { timeout: 60_000 }, () => {
       },
     });
     await expect.poll(() => ranPaths(side).length, { timeout: 20_000 }).toBeGreaterThan(0);
-    await side.scheduler.idle();
+    await side.rest();
     expect(ranPaths(side)).not.toContain(D);
     expect(await side.scheduler.requestGroup("nodes")).toMatchObject({ queued: 1 });
     await expect.poll(() => ranPaths(side), { timeout: 20_000 }).toContain(D);

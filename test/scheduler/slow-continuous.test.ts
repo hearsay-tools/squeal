@@ -57,7 +57,7 @@ async function inTurn(trigger: SlowTrigger) {
   await h.scheduler.start();
   await waitFor(() => h.runsOf(UPPER).length > 0, 60_000);
   if (trigger === "continuous") await waitFor(() => h.runsOf(STRINGS).length === 1, 60_000);
-  await h.scheduler.idle();
+  await h.rest();
   return { h, store, delivery, consumer, starts };
 }
 
@@ -85,7 +85,7 @@ describe("a continuous slow lane (spec 004 D2 as amended 2026-10-18)", SLOW, () 
     );
     await h.batch(STRINGS);
     await waitFor(() => h.runsOf(STRINGS).length === 2, 8_000);
-    await h.scheduler.idle();
+    await h.rest();
     const delta = await delivery.onToolBoundary(consumer);
     if (delta === null) throw new Error("no delivery at the tool call");
     expect(formatDelta(delta)).toContain(STRINGS);

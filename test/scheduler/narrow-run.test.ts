@@ -72,13 +72,13 @@ async function narrowSide(
   prepare(side);
   const turn = await inTurn(side);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.rest();
   return { side, end: () => turn.end() };
 }
 
 /** Lets every lane run what it may; none of `paths` ran. */
 async function noneRan(side: CatchUpSide, ...paths: string[]): Promise<void> {
-  await side.scheduler.idle();
+  await side.rest();
   await delay(300);
   expect(ranPaths(side).filter((path) => paths.includes(path))).toEqual([]);
 }

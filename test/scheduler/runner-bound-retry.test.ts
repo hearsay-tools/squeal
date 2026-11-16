@@ -75,7 +75,7 @@ describe("the runner-part bound covers the retry and the baseline (task 001-259)
         runnerPartMs: BOUND_MS,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.rest();
       liveDaemon(h.store, h.worktreeId, h.root, repo.commonDir);
       // The runner is broken: `run --all` retries it first, and its `environment` wedges.
       h.runner.failing.clear();
@@ -98,7 +98,7 @@ describe("the runner-part bound covers the retry and the baseline (task 001-259)
 
       const answer = await wait;
       expect(["quiet", "news"]).toContain(answer.outcome);
-      await h.scheduler.idle();
+      await h.rest();
     },
   );
 
@@ -132,7 +132,7 @@ describe("the runner-part bound covers the retry and the baseline (task 001-259)
       const answer = await wait;
       expect(["quiet", "news"]).toContain(answer.outcome);
       // The next refinement retried the runner: the files are listed and keyed again.
-      await h.scheduler.idle();
+      await h.rest();
       expect(h.header().counts.unknown).toBe(0);
     },
   );

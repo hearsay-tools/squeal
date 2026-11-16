@@ -198,10 +198,10 @@ export function wallSide(options: WallOptions): WallSide {
     dir,
     async backlog() {
       await scheduler.start();
-      await scheduler.idle();
+      await scheduler.rest();
       const before = runner.runs.length;
       await scheduler.requestFullSuite({ force: true });
-      await scheduler.idle();
+      await scheduler.rest();
       return runner.runs.slice(before);
     },
   };

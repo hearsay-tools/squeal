@@ -85,7 +85,7 @@ describe("run --slow joins a slow file already running (row 004-83)", SLOW, () =
       const now = read();
       return heldSlowLeft(held, now.states, now.keys).length === 0;
     }, 60_000);
-    await h.scheduler.idle();
+    await h.rest();
 
     expect(h.runsOf(STRINGS)).toHaveLength(1);
     const checks = read().states.filter(

@@ -59,7 +59,7 @@ async function open(rank: Policy["slow"]["rank"]): Promise<Harness> {
   });
   await h.scheduler.start();
   await waitFor(() => slowOrder(h, 0).length >= 3, 60_000);
-  await h.scheduler.idle();
+  await h.rest();
   return h;
 }
 
@@ -76,7 +76,7 @@ async function edit(h: Harness, path: string, content: string, expected = 3): Pr
   h.write(path, content);
   await h.batch(path);
   await waitFor(() => slowOrder(h, start).length >= expected, 60_000);
-  await h.scheduler.idle();
+  await h.rest();
   return slowOrder(h, start);
 }
 

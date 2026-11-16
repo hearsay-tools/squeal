@@ -30,7 +30,7 @@ describe("Scheduler.readers", () => {
     // Before the start: the revision only.
     expect(await side.scheduler.readers?.([START])).toEqual({ revision: 0 });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.rest();
 
     const before = await side.scheduler.readers?.([START, "src/none.ts"]);
     expect(before).toEqual({

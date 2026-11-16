@@ -48,7 +48,7 @@ async function waitingForIdle() {
     return activity?.kind === "waiting" && activity.for === "idle";
   }, 60_000);
   // The fast tiers are recorded and the pump has stopped: only the timer or a nudge plans again.
-  await h.scheduler.idle();
+  await h.rest();
   return { h, delivery, consumer };
 }
 
@@ -101,7 +101,7 @@ describe("the slow tier on a nudge (task 001-281)", SLOW, () => {
       const activity = readSlowActivity(store, h.worktreeId);
       return activity?.kind === "waiting" && activity.for === "idle";
     }, 60_000);
-    await h.scheduler.idle();
+    await h.rest();
     expect(h.runsOf(STRINGS)).toHaveLength(0);
     await delivery.endTurn(consumer);
     h.scheduler.nudge();
