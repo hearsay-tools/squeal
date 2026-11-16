@@ -7,7 +7,7 @@ import { join } from "node:path";
  * (`research/probes/process-measurement/logs/snapshot-1.txt` and
  * `snapshot-3-nosmaps.json`, 2026-10-21 08:14 to 08:17 UTC): pids, parents,
  * groups, nice, ages, lifetime CPU, memory in kB, marks and command lines.
- * Paths are anonymized: `~` is `/home/user`, the uid is 1000 and
+ * Paths are anonymized: the home directory is `/home/user`, the uid is 1000 and
  * the projects are `alpha` and `beta`.
  */
 
