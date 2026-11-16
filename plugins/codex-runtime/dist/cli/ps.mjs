@@ -3,8 +3,8 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/cli/ps.ts
-import { homedir as homedir2 } from "node:os";
-import { isAbsolute as isAbsolute8, resolve as resolve3 } from "node:path";
+import { homedir as homedir3 } from "node:os";
+import { isAbsolute as isAbsolute9, resolve as resolve3 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // src/core/daemon/paths.ts
@@ -2179,6 +2179,11 @@ var render = (snapshot, { full }) => {
     lines.push("", "Files no live process uses");
     for (const file of snapshot.files) lines.push(...fileLines2(file));
   }
+  const checkouts = snapshot.checkouts ?? [];
+  if (checkouts.length > 0) {
+    lines.push("", "Temporary checkouts");
+    for (const checkout of checkouts) lines.push(...checkoutLines(checkout, snapshot.at));
+  }
   if (snapshot.unflaggedFiles !== null) {
     const counts = snapshot.unflaggedFiles.map((f) => `${f.kind} ${thousands(f.count)}`);
     lines.push(
@@ -2201,7 +2206,8 @@ function firstLine(s) {
   const all2 = [
     ...daemons.flatMap((d) => [...d.flags, ...d.processes.flatMap((p) => p.flags)]),
     ...s.orphans.flatMap((o) => o.flags),
-    ...s.files
+    ...s.files,
+    ...(s.checkouts ?? []).flatMap((c) => c.flags)
   ];
   for (const f of all2) names3.set(f.flag, (names3.get(f.flag) ?? 0) + 1);
   const listed = [...names3].map(([name2, n]) => n === 1 ? name2 : `${name2} \xD7${n}`).join(", ");
@@ -2348,6 +2354,16 @@ function orphanLines(o, at) {
 function fileLines2(f) {
   return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
+function checkoutLines(c, at) {
+  const mark = c.flags.length > 0 ? "!" : " ";
+  const commit = c.commit === null ? UNKNOWN : c.commit.slice(0, 12);
+  const pid = c.pid === null ? UNKNOWN : String(c.pid);
+  const owner = c.owner === "live" ? "" : `  owner ${c.owner}`;
+  return [
+    `  ${mark} ${c.path}  pid ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
+    ...flagLines(c.flags)
+  ];
+}
 function flagLines(flags) {
   return flags.flatMap((f) => [
     `${DETAIL}${f.flag}: ${f.reason}`,
@@ -2390,8 +2406,201 @@ function clip(text2, width) {
   return text2.length <= width ? text2 : `\u2026${text2.slice(text2.length - width + 1)}`;
 }
 
+// src/core/checkout/location.ts
+import { homedir as homedir2 } from "node:os";
+import { dirname as dirname8, isAbsolute as isAbsolute6, join as join18 } from "node:path";
+function cacheCheckoutsRoot(env = process.env, platform = process.platform) {
+  return join18(cacheHome(env, platform), "squeal", "checkouts");
+}
+function cacheHome(env, platform) {
+  const xdg = env.XDG_CACHE_HOME;
+  if (xdg !== void 0 && xdg !== "" && isAbsolute6(xdg)) return xdg;
+  const home = env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2();
+  return platform === "darwin" ? join18(home, "Library", "Caches") : join18(home, ".cache");
+}
+function gitCheckoutsDir(commonDir) {
+  return join18(commonDir, "squeal", "checkouts");
+}
+
+// src/core/checkout/sweep.ts
+import { readdirSync as readdirSync8 } from "node:fs";
+import { join as join20 } from "node:path";
+
+// src/core/delivery/harness-process.ts
+import { readFileSync as readFileSync10, readlinkSync as readlinkSync2 } from "node:fs";
+function readProcStat(pid) {
+  let text2;
+  try {
+    text2 = readFileSync10(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open = text2.indexOf("(");
+  const close = text2.lastIndexOf(")");
+  const rest2 = text2.slice(close + 2).split(" ");
+  const ppid = Number(rest2[1]);
+  const startTime = Number(rest2[19]);
+  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text2.slice(open + 1, close), state: rest2[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync2("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+function harnessAlive(harness, namespace, statOf2) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf2(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
+function toHarness(value) {
+  if (!isRecord(value)) return void 0;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value;
+  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace2 === "string" ? { pid, startTime, pidNamespace: pidNamespace2 } : void 0;
+}
+
+// src/core/daemon/lease-process.ts
+function leaseProcessAlive(holder) {
+  const { pid, startTime, pidNamespace: namespace } = holder;
+  if (startTime !== null && namespace !== null) {
+    try {
+      return harnessAlive(
+        { pid, startTime, pidNamespace: namespace },
+        pidNamespace(),
+        readProcStat
+      );
+    } catch {
+      return null;
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = error.code;
+    return code === "ESRCH" ? false : code === "EPERM" ? true : null;
+  }
+}
+
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/checkout/marker.ts
+import { readFileSync as readFileSync11, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join19 } from "node:path";
+var MARKER_VERSION = 1;
+function markerPath(folder) {
+  return join19(folder, "marker.json");
+}
+function treePath(folder) {
+  return join19(folder, "tree");
+}
+function readMarker(folder) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync11(markerPath(folder), "utf8"));
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
+  const { owner, commit, commonDir, createdAt } = value;
+  if (typeof owner.pid !== "number") return null;
+  if (typeof commit !== "string" || typeof commonDir !== "string") return null;
+  if (typeof createdAt !== "number") return null;
+  return {
+    v: MARKER_VERSION,
+    owner: {
+      pid: owner.pid,
+      startTime: typeof owner.startTime === "number" ? owner.startTime : null,
+      pidNamespace: typeof owner.pidNamespace === "string" ? owner.pidNamespace : null
+    },
+    commit,
+    commonDir,
+    createdAt
+  };
+}
+function ownerState(marker) {
+  const alive = leaseProcessAlive(marker.owner);
+  return alive === null ? "unknown" : alive ? "live" : "dead";
+}
+
+// src/core/checkout/sweep.ts
+function listCheckouts(dirs) {
+  const listed = [];
+  for (const dir of dirs) {
+    for (const name2 of entriesOf(dir)) {
+      const folder = join20(dir, name2);
+      const marker = readMarker(folder);
+      listed.push({
+        folder,
+        tree: treePath(folder),
+        marker,
+        owner: marker === null ? "unknown" : ownerState(marker)
+      });
+    }
+  }
+  return listed.sort((a, b) => a.folder.localeCompare(b.folder));
+}
+function cacheRepositoryDirs(cacheRoot) {
+  return entriesOf(cacheRoot).map((name2) => join20(cacheRoot, name2));
+}
+function entriesOf(dir) {
+  try {
+    return readdirSync8(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+
+// src/core/ps/checkouts.ts
+function readCheckouts(places, repo) {
+  const cacheRoot = places.checkoutsRoot ?? cacheCheckoutsRoot({ HOME: places.home, XDG_CACHE_HOME: process.env.XDG_CACHE_HOME });
+  const dirs = cacheRepositoryDirs(cacheRoot);
+  if (places.commonDir !== null) dirs.push(gitCheckoutsDir(places.commonDir));
+  return listCheckouts(dirs).filter((c) => !repo || c.marker !== null && c.marker.commonDir === places.commonDir).map(shapeOf);
+}
+function shapeOf(listed) {
+  const { marker, owner } = listed;
+  const dead = owner === "dead" && marker !== null;
+  return {
+    path: listed.tree,
+    folder: listed.folder,
+    commit: marker?.commit ?? null,
+    commonDir: marker?.commonDir ?? null,
+    pid: marker?.owner.pid ?? null,
+    createdAt: marker?.createdAt ?? null,
+    owner,
+    flags: dead ? [
+      {
+        flag: "dead-checkout",
+        reason: `its owner, pid ${marker.owner.pid}, is gone`,
+        command: removal(marker.commonDir, listed)
+      }
+    ] : []
+  };
+}
+function removal(commonDir, listed) {
+  const git = `git -C ${shellWord(commonDir)} worktree`;
+  return [
+    `${git} unlock ${shellWord(listed.tree)}`,
+    `${git} remove --force ${shellWord(listed.tree)}`,
+    `rm -rf ${shellWord(listed.folder)}`
+  ].join("; ");
+}
+
 // src/core/ps/host.ts
-import { join as join18 } from "node:path";
+import { join as join21 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -2465,12 +2674,12 @@ function capacityOf(path, cpus3) {
 function permitFiles(places) {
   const files = [];
   const add = (dir, permit) => {
-    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join18(dir, name2));
+    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join21(dir, name2));
   };
   for (const base of poolDirs(places)) {
     add(base, PERMIT2);
     for (const name2 of names(base)) {
-      const dir = join18(base, name2);
+      const dir = join21(base, name2);
       if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
     }
   }
@@ -2879,7 +3088,7 @@ function pids2(entries) {
 }
 
 // src/core/ps/snapshot-shape.ts
-function shapeOf(r, findings, o) {
+function shapeOf2(r, findings, o) {
   const { model, costs } = r;
   const { first, second } = model;
   const ticks = model.source.clockTicks();
@@ -3051,7 +3260,7 @@ function ofKept(what, kept2) {
 
 // src/core/ps/work.ts
 import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
 function daemonUsedMetaKey(worktreeId) {
@@ -3075,7 +3284,7 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join19 } from "node:path";
+import { join as join22 } from "node:path";
 
 // src/core/types/policy.ts
 var DEFAULT_POLICY = {
@@ -3261,7 +3470,7 @@ function defaultGroups(policy) {
 }
 
 // src/core/daemon/policy-node-test.ts
-import { isAbsolute as isAbsolute6, posix } from "node:path";
+import { isAbsolute as isAbsolute7, posix } from "node:path";
 function compiles(globs4) {
   for (const glob of globs4) {
     try {
@@ -3280,7 +3489,7 @@ var variables = (v) => isRecord(v) && Object.values(v).every((s) => typeof s ===
 var insideRoot = (v) => {
   if (typeof v !== "string") return "a path inside the worktree, relative to its root";
   const normal = posix.normalize(v.replaceAll("\\", "/"));
-  return isAbsolute6(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
+  return isAbsolute7(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
 var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
 var prepare = (v) => {
@@ -3573,7 +3782,7 @@ var node = (v) => v === "project" || v === "session" ? null : '"project" or "ses
 var NODE_SHAPE = { node };
 
 // src/core/daemon/policy-pytest.ts
-import { isAbsolute as isAbsolute7, posix as posix2 } from "node:path";
+import { isAbsolute as isAbsolute8, posix as posix2 } from "node:path";
 var FIELDS2 = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -3597,7 +3806,7 @@ function withDefaults2(entry) {
 }
 var pythonInsideRoot = (entry) => {
   const python = entry.python;
-  if (python === void 0 || isAbsolute7(python)) return null;
+  if (python === void 0 || isAbsolute8(python)) return null;
   const path = posix2.join(entry.cwd ?? ".", python.replaceAll("\\", "/"));
   if (insideRoot(path) === null) return null;
   return {
@@ -3782,7 +3991,7 @@ var SHAPE = {
   ...NODE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join19(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join22(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   const settled = settleChecks(loaded.value);
   return {
     policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
@@ -3796,18 +4005,6 @@ function readPolicy(root) {
 }
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
-}
-
-// src/core/delivery/harness-process.ts
-function harnessAlive(harness, namespace, statOf2) {
-  if (namespace === null || harness.pidNamespace !== namespace) return null;
-  const stat = statOf2(harness.pid);
-  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
-}
-function toHarness(value) {
-  if (!isRecord(value)) return void 0;
-  const { pid, startTime, pidNamespace } = value;
-  return typeof pid === "number" && typeof startTime === "number" && typeof pidNamespace === "string" ? { pid, startTime, pidNamespace } : void 0;
 }
 
 // src/core/slow/state.ts
@@ -3912,7 +4109,7 @@ function openReadOnly(path) {
     const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
-    db = new DatabaseSync3(held ? path : immutableUrl(path), { readOnly: true });
+    db = new DatabaseSync4(held ? path : immutableUrl(path), { readOnly: true });
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
     if (version >= READS_SCHEMA) return { db, file: held ? null : file };
@@ -4125,7 +4322,17 @@ function message(error) {
 var SAMPLE_MS = 2e3;
 async function takeSnapshot(options) {
   const read = await readWindow(options);
-  return shapeOf(read, options.flag(read.model), options);
+  const shape = shapeOf2(read, options.flag(read.model), options);
+  let checkouts = [];
+  let unknown = shape.unknown;
+  try {
+    checkouts = readCheckouts(options.places, options.repo);
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    unknown = [...unknown, { what: "checkouts", why: `not read: ${why}` }];
+  }
+  const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
+  return { ...shape, checkouts, flags: shape.flags + flags, unknown };
 }
 async function readWindow(o) {
   const { source, places } = o;
@@ -4317,9 +4524,9 @@ function placesOf(env, commonDir, options) {
   const xdg = env.XDG_RUNTIME_DIR;
   return {
     uid: options.uid ?? currentUid(),
-    home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(),
+    home: env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir3(),
     userConfig: userConfigPath(env),
-    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? xdg : null,
+    runtimeDir: xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? xdg : null,
     tempDir: options.tempDir ?? "/tmp",
     commonDir
   };
