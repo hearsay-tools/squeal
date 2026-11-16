@@ -17,7 +17,15 @@ import type { KnownState } from "../types/state.js";
 import type { StatusHeader } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { forgetLate, type LateNotes, lateNotes, type OwedFile, type OwnRead } from "./late.js";
+import {
+  endLate,
+  forgetLate,
+  type LateNotes,
+  lateIsOpen,
+  lateNotes,
+  type OwedFile,
+  type OwnRead,
+} from "./late.js";
 import { changedAfter, registration } from "./registered.js";
 import { readAll, readSlot, writeSlot } from "./slots.js";
 
@@ -140,8 +148,7 @@ export function editNotes(
   if (state === null || (state.said && !delivering && boundary === null)) return null;
   const own = readOwn(store, consumer, state.since, states);
   if (own === null) return null;
-  const lateness =
-    boundary === null ? null : lateNotes(store, consumer, own, boundary.at, boundary.header);
+  const { lateness, lateOpen } = lateOf(store, consumer, own, boundary);
   // An edit that queued nothing (one made while awaiting an install) has no results to come.
   const sawEdit = state.said || own.files === 0 ? undefined : { queued: own.files };
   const counted = own.refined && own.files > 0;
@@ -153,9 +160,9 @@ export function editNotes(
     ...lateParts(lateness),
     rekeyed: own.rekeyed,
     tell: (failed) => {
-      lateness?.tell(failed);
+      if (!failed) lateness?.tell();
       // A late state stays counted from its revision until caught up or a failure ends it.
-      const ended = lateness?.open !== true || lateness.caughtUp !== undefined || failed;
+      const ended = !lateOpen || lateness?.caughtUp !== undefined || failed;
       const moved = counted && own.owed.length === 0 && ended;
       // Written only when it changes: once per said line, never per quiet delivery.
       if (!moved && sawEdit === undefined) return;
@@ -196,6 +203,36 @@ export function editTold(
       ...(caughtUp === undefined ? {} : { caughtUp }),
     }),
   };
+}
+
+/**
+ * The late notes at a `boundary`, and whether a late state is open. Review 0.1.530 B1: the late
+ * state is read on every path, so a delivery that may not say caught up (Stop, the waiter, the
+ * turn start) keeps the window that caught up counts.
+ */
+function lateOf(
+  store: Store,
+  consumer: Consumer,
+  own: OwnRead,
+  boundary: Boundary | null,
+): { readonly lateness: LateNotes | null; readonly lateOpen: boolean } {
+  if (boundary === null) return { lateness: null, lateOpen: lateIsOpen(store, consumer) };
+  const lateness = lateNotes(store, consumer, own, boundary.at, boundary.header);
+  return { lateness, lateOpen: lateness?.open ?? false };
+}
+
+/**
+ * Records what a delivery told of `notes`. Review 0.1.530 B1: a delivered new failure ends the
+ * late state on every path, with or without notes. Call inside the delivery's transaction.
+ */
+export function tellEdits(
+  store: Store,
+  consumer: Consumer,
+  notes: EditNotes | null,
+  failed: boolean,
+): void {
+  notes?.tell(failed);
+  if (failed) endLate(store, consumer);
 }
 
 /** The late and caught-up parts of `EditNotes`, as `lateNotes` gave them. */

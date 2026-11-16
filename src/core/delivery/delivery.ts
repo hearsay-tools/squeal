@@ -51,7 +51,7 @@ import { commitNews, tellCommit } from "./commit-told.js";
 import { recordVersion } from "./consumer-version.js";
 import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { carriesEditResult, editNotes, editTold, startEdits } from "./edits.js";
+import { carriesEditResult, editNotes, editTold, startEdits, tellEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import { holdFree } from "./held-connection.js";
@@ -361,7 +361,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         read,
         states,
       );
-      notes?.tell(told.failed);
+      tellEdits(store, consumer, notes, told.failed);
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);

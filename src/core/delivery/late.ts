@@ -39,6 +39,20 @@ export function forgetLate(store: Store, consumer: Consumer): void {
   writeLate(store, consumer, null);
 }
 
+/** Whether `consumer` was told its results are late and not yet that Squeal caught up. */
+export function lateIsOpen(store: Store, consumer: Consumer): boolean {
+  return readLate(store, consumer) !== null;
+}
+
+/**
+ * Review 0.1.530 B1: a delivered new failure ends the late state on every path (a tool
+ * boundary, Stop, a peek, the turn start, the idle waiter), whether or not that path may say
+ * late or caught up: no caught-up follows it. Call inside the delivery's transaction.
+ */
+export function endLate(store: Store, consumer: Consumer): void {
+  if (lateIsOpen(store, consumer)) writeLate(store, consumer, null);
+}
+
 /** One file the consumer's edits affect with no result yet, and the revision of its edit. */
 export interface OwedFile {
   readonly file: TestFileRef;
@@ -64,8 +78,8 @@ export interface LateNotes {
   readonly open: boolean;
   readonly late?: EditsLate;
   readonly caughtUp?: CaughtUp;
-  /** Records what was said; `failed`: the delivery carries a new failure, which ends the late state. */
-  readonly tell: (failed: boolean) => void;
+  /** Records what was said: the late revision, or caught up, which ends the late state. */
+  readonly tell: () => void;
 }
 
 /** The test files the late line names, at most. */
@@ -89,24 +103,29 @@ export function lateNotes(
   if (open === null) {
     if (daemon.state !== "alive" || daemon.stopping !== undefined) return null;
     const late = lateNow(store, consumer.worktreeId, own, at, lateOf(daemon)?.since);
-    if (late === null || quietFor(late, header())) return null;
+    if (late === null || quietFor(header())) return null;
     return {
       open: false,
       late: late.kind === "unlisted" ? withRunners(late, header()) : late,
-      tell: (failed) => writeLate(store, consumer, failed ? null : late.revision),
+      tell: () => writeLate(store, consumer, late.revision),
     };
   }
   // Design section 2: caught up names the latest revision, refined, with no edit unread.
   const done = own.refined && own.owed.length === 0 && lateOf(daemon) === undefined;
-  const caughtUp =
-    done && own.files > 0
-      ? { revision: own.revision, files: own.files, unknown: own.unknown }
-      : undefined;
+  if (done && own.files === 0) {
+    // Review 0.1.530: a late state with nothing to count (its revision affects no test file)
+    // ends here, with nothing to say.
+    writeLate(store, consumer, null);
+    return null;
+  }
+  const caughtUp = done
+    ? { revision: own.revision, files: own.files, unknown: own.unknown }
+    : undefined;
   return {
     open: true,
     ...(caughtUp === undefined ? {} : { caughtUp }),
-    tell: (failed) => {
-      if (failed || caughtUp !== undefined) writeLate(store, consumer, null);
+    tell: () => {
+      if (caughtUp !== undefined) writeLate(store, consumer, null);
     },
   };
 }
@@ -149,13 +168,12 @@ function lateNow(
 }
 
 /**
- * Whether `late` is not said beside what `header` says: a hold on validation says no test runs
- * until it ends (row 011-73); with no test group at `edit`, owed files wait for their groups'
- * moments (row 019-49), so they are not late.
+ * Whether a late notice is not said beside what `header` says: a hold on validation says no
+ * test runs until it ends (row 011-73); with no test group at `edit`, the files wait for their
+ * groups' moments (row 019-49), so no form of it is said (review 0.1.530 B5).
  */
-function quietFor(late: EditsLate, header: StatusHeader): boolean {
-  if ((header.holds?.length ?? 0) > 0) return true;
-  return late.kind === "owed" && header.noTestsAtEdit === true;
+function quietFor(header: StatusHeader): boolean {
+  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true;
 }
 
 /** The unlisted notice with the runners that list a revision's files, as the header names them. */
