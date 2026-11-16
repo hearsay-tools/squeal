@@ -69,10 +69,16 @@ function daemonClock(virtual: VirtualClock, startedAt: EpochMs) {
 }
 
 /** The pool-wait owner as the scheduler wires it, writing to `store` for the daemon of `steps`. */
-function poolWaits(store: Store, steps: CalendarSteps, now: () => number): PoolWaits {
+function poolWaits(
+  store: Store,
+  steps: CalendarSteps,
+  clock: Clock,
+  log: (line: string) => void = () => {},
+): PoolWaits {
   return new PoolWaits({
-    now,
-    log: () => {},
+    now: clock.now,
+    elapsed: clock.elapsed,
+    log,
     publish: poolWaitsPublish(store, WT as never, steps),
   });
 }
@@ -133,7 +139,7 @@ describe("row 011-386: a live daemon's rows still read as its own after a calend
     const start = virtual.now();
     const store = liveStore(start);
     const { steps, clock } = daemonClock(virtual, start);
-    const waits = poolWaits(store, steps, clock.now);
+    const waits = poolWaits(store, steps, clock);
     virtual.advance(1_000);
     virtual.shiftCalendar(shift);
     // The lane's first refusal after the step writes the row.
@@ -151,7 +157,7 @@ describe("row 011-386: a live daemon's rows still read as its own after a calend
     const start = virtual.now();
     const store = liveStore(start);
     const { context, tier, yields } = yieldOwner(store, steps, clock);
-    const waits = poolWaits(store, steps, clock.now);
+    const waits = poolWaits(store, steps, clock);
     // The predecessor writes once more after its successor started, the calendar set back first.
     virtual.shiftCalendar(-HOUR);
     yields.fileEnded(context, tier);
@@ -162,6 +168,81 @@ describe("row 011-386: a live daemon's rows still read as its own after a calend
     expect(JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}").at).toBe(predecessor);
     expect(publishedYieldRow(store, WT as never, start).at).toBeUndefined();
     expect(publishedPoolWaits(store, WT as never, start, now).size).toBe(0);
+    store.close();
+  });
+});
+
+/*
+ * Row 011-389 (review 0.1.529, "the pool's refresh and duration"): the
+ * pool's wait counts its refresh, its continuity and its grant's seconds on
+ * elapsed time, so a calendar step neither keeps an old gate in the row,
+ * nor starts a new wait, nor logs negative seconds. The row's `since` and
+ * `at` stay calendar times, its shape unchanged.
+ */
+describe("row 011-389: the pool's wait keeps its times on elapsed time", () => {
+  /** A live daemon's pool wait on `virtual`, refused once with `GATE`, and its log. */
+  function refusedOnce(virtual: VirtualClock) {
+    const start = virtual.now();
+    const store = liveStore(start);
+    const { steps, clock } = daemonClock(virtual, start);
+    const lines: string[] = [];
+    const waits = poolWaits(store, steps, clock, (line) => lines.push(line));
+    waits.refused("", GATE);
+    return { start, store, clock, lines, waits };
+  }
+  const NEXT: PoolGate = { busyCores: 21, cpus: 24, hostSlots: 12, grants: 11 };
+
+  it("after a 1 h set-back, the row shows the latest gate and the grant counts positive seconds", () => {
+    const virtual = virtualClock(10_000_000);
+    const { start, store, clock, lines, waits } = refusedOnce(virtual);
+    virtual.advance(1_000);
+    virtual.shiftCalendar(-HOUR);
+    for (let s = 2; s <= 12; s += 2) {
+      virtual.advance(2_000);
+      waits.refused("", NEXT);
+    }
+    const row = JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}");
+    expect(Object.keys(row).sort()).toEqual(["at", "lanes"]);
+    // Written again 10 s of elapsed time after the first write, stamped no earlier than the start.
+    expect(row.at).toBe(start);
+    expect(publishedPoolWaits(store, WT as never, start, clock.now()).get("")).toEqual({
+      ...NEXT,
+      since: start,
+    });
+    virtual.advance(1_000);
+    waits.granted("");
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toBe("the pool granted the test lane's tier after 14 s of waiting for CPU");
+    store.close();
+  });
+
+  it("after a 1 h set-forward, the next refusal goes on with the same wait", () => {
+    const virtual = virtualClock(10_000_000);
+    const { start, store, clock, lines, waits } = refusedOnce(virtual);
+    virtual.advance(2_000);
+    virtual.shiftCalendar(HOUR);
+    waits.refused("", NEXT);
+    expect(lines).toHaveLength(1);
+    expect(publishedPoolWaits(store, WT as never, start, clock.now()).get("")?.since).toBe(start);
+    virtual.advance(10_000);
+    waits.refused("", NEXT);
+    const row = JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}");
+    expect(row.at).toBe(clock.now());
+    expect(row.lanes[""]).toEqual({ ...NEXT, since: start });
+    waits.granted("");
+    expect(lines[1]).toBe("the pool granted the test lane's tier after 12 s of waiting for CPU");
+    store.close();
+  });
+
+  it("refusals more than 30 s of elapsed time apart are still two waits", () => {
+    const virtual = virtualClock(10_000_000);
+    const { store, clock, lines, waits } = refusedOnce(virtual);
+    virtual.advance(31_000);
+    virtual.shiftCalendar(-HOUR);
+    waits.refused("", NEXT);
+    expect(lines.filter((l) => l.startsWith("the pool refused"))).toHaveLength(2);
+    const row = JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}");
+    expect(row.lanes[""].since).toBe(clock.now());
     store.close();
   });
 });
