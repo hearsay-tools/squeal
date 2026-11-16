@@ -3,13 +3,8 @@ import { getPriority } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import {
-  claimFullCheck,
-  FULL_CHECK_EVERY_MS,
-  type FullCheck,
-  runFullCheck,
-  startFullCheck,
-} from "../../src/core/daemon/full-check.js";
+import { type FullCheck, runFullCheck, startFullCheck } from "../../src/core/daemon/full-check.js";
+import { claimFullCheck, FULL_CHECK_EVERY_MS } from "../../src/core/daemon/full-check-claim.js";
 import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { storeCondemned, storeFileOf } from "../../src/core/daemon/store-file.js";
 import { META_FULL_CHECK, readStoreMark } from "../../src/core/store/open.js";
