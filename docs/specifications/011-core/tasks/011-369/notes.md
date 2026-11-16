@@ -142,3 +142,14 @@ Moving any of these to elapsed time would change what is stored or published (an
 - A wake is a delay. An owner with a calendar deadline states `after(deadline - now())`, read once.
 - A fixture's `now` (`CatchUpOptions.now`, `HarnessOptions.now`) is calendar time only. Wakes keep the host's elapsed time, so a calendar reading that stands still no longer stalls a wake.
 - To test a clock change, use `virtualClock(...).shiftCalendar(ms)`.
+
+## Rebase onto 0.1.521
+
+The two commits were rebased onto cand/0.1.521 at `42acd3b9c`, which holds row 011-372 (every decision in a step reads the step reading `at`) and row 011-375. Each change keeps both intents: row 011-372's decisions read the step's calendar reading, and row 011-369's wakes are delays kept on elapsed time.
+
+- `slow-tier.ts`, `#candidates`: a text conflict. Row 011-372 reads the queue at the step's reading (`const { at, context, ledger } = view; this.#queued(ledger, at)`). I keep that, so `at` stays in the destructuring that this row had dropped.
+- `slow-tier.ts`, the trigger's quiet wait: a text conflict. Row 011-372's `quietLeftMs(context, group, at)` stays, a decision on calendar time. This row's `this.#arm(ms)` stays, a delay on elapsed time without `at`.
+- `scheduler.ts` (the claims and pump wakes) and `slow-release.ts` (the release wake): these merged without a conflict. Only this row's wake lines changed in them; row 011-372's step-reading changes in those files are unchanged.
+- `test/scheduler/step-reading.test.ts`: a text conflict. Row 011-372 replaced the hand-made `tickingClock`, to which this row had added `elapsed` and `shiftCalendar`, with a spy on the virtual clock's `now`. I took row 011-372's version. The virtual clock has `elapsed` itself, so nothing else is needed.
+
+After the rebase, the clock reads in the list above keep their kinds. Row 011-372 routes more decisions through the step's reading; those reads are calendar time, as the list says for `step-live.ts`.
