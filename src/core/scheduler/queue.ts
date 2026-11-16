@@ -536,14 +536,19 @@ export class RunQueue {
 
   /**
    * `orderedSlow` for group `group`'s files alone (spec 019 D3): each group
-   * other than `tests` is a lane of its own.
+   * other than `tests` is a lane of its own. `now` as `ordered`'s.
    */
-  orderedGroup(group: string, durationOf: DurationOf = () => null, ranked = false): TestFileRef[] {
+  orderedGroup(
+    group: string,
+    durationOf: DurationOf = () => null,
+    ranked = false,
+    now?: number,
+  ): TestFileRef[] {
     return sorted(
       [...this.#entries.values()].filter((entry) => this.#checkGroup(entry.ref) === group),
       durationOf,
       false,
-      this.#ranks(),
+      this.#ranks(now),
       ranked,
     );
   }

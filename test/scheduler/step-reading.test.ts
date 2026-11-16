@@ -1,11 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { StepLive } from "../../src/core/scheduler/step-live.js";
 import { TierYields } from "../../src/core/scheduler/yields.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import type { VirtualClock } from "../helpers/virtual-clock.js";
 import { E, heldBatch } from "./batch-fixture.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Rows 011-366 and 011-372 (card 7, time as an input,
@@ -20,19 +25,22 @@ import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.j
  * row 011-372 beside selection (`beside.ts:36`, its batch order at `:51`),
  * the queue's batch rank (`RunQueue.hasFirstGroup`, `isCatchUp`, through
  * admission and `busyLanes`), adoption's read and the backlog tier's claim
- * read did.
+ * read did, and in a slow lane its group's order, its quiet moment and its
+ * claim check.
  */
 
 const TICK_MS = 7;
 
-/** A reading that stays its own, by the frame that took it. */
+/** A reading that stays its own, by the frames that took it (`taker < caller`). */
 const OWN_READS: Readonly<Record<string, RegExp>> = {
-  // A tier's start: its row's and its run's start time.
-  "tier start": /^(newTier|executeTier|startTier)\b/,
+  // A tier's start: its row's and its run's start time, a slow tier's too.
+  "tier start": /^(newTier|executeTier|startTier|SlowTier\.#select)\b/,
   // A row's write: the ledger's commit, a result's last-used time.
   "row write": /^(Ledger\.#write|acceptedAt)\b/,
-  // The wake loop's bookkeeping: a wake's arm, the runner part's bound.
-  "wake bookkeeping": /^(Wakes\.|RunnerPartBound\.)/,
+  // The lock's label for a lock watcher: when the turn's operation began.
+  "lock label": /^Mutex\.relabel\b/,
+  // The wake loop's bookkeeping: a wake's arm, the runner part's bound, the slow release's arm.
+  "wake bookkeeping": /^(Wakes\.|RunnerPartBound\.|SlowRelease\.#decide < SlowRelease\.arm\b)/,
 };
 
 /** Frames that only pass a reading on: the scheduler's `#now`, the promotions' clock, a transaction. */
@@ -71,8 +79,9 @@ function countSteps(clock: VirtualClock): Counted[] {
     if (step === null) return read();
     clock.jump(TICK_MS);
     const [first = "?", second = ""] = takers(new Error().stack ?? "");
-    const own = Object.entries(OWN_READS).find(([, site]) => site.test(first));
-    step.reads.push(first === "StepLive.step" ? "step" : (own?.[0] ?? `${first} < ${second}`));
+    const frames = `${first} < ${second}`;
+    const own = Object.entries(OWN_READS).find(([, site]) => site.test(frames));
+    step.reads.push(first === "StepLive.step" ? "step" : (own?.[0] ?? frames));
     return read();
   });
   const live = StepLive.prototype.step;
@@ -141,6 +150,38 @@ describe("every decision in a step's turn reads the step's one reading (rows 011
     gate.stop();
 
     expect(steps.some((s) => s.plans > 0)).toBe(true);
+    expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
+    expect(decisionReads(steps)).toEqual([]);
+  });
+
+  it("a slow lane's steps: its listing, guard and pick read the step's", async () => {
+    const files: CatchUpFile[] = [
+      { path: "test/a.test.ts", ms: 10, imports: ["src/core.ts"] },
+      { path: "test/e2e/s1.test.ts", ms: 10, imports: ["src/core.ts"] },
+      { path: "test/e2e/s2.test.ts", ms: 10, imports: ["src/core.ts"] },
+    ];
+    const repo = catchUpRepo(files);
+    const slotDir = mkdtempSync(join(tmpdir(), "squeal-011-372-slot-"));
+    onTestFinished(() => rmSync(slotDir, { recursive: true, force: true }));
+    const slow = { ...DEFAULT_POLICY.slow, include: ["test/e2e/**"], quietMs: 0, maxParallel: 2 };
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      policy: { ...RUN_MISSING, slow },
+      scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
+      clock: "virtual",
+    });
+    await side.scheduler.start();
+    await settle(side);
+    const base = side.runner.runs.length;
+
+    const steps = countSteps(side.clock as VirtualClock);
+    await side.edit("watch", "src/core.ts");
+    await settle(side);
+    vi.restoreAllMocks();
+
+    const ran = side.runner.runs.slice(base).flatMap((run) => run.files.map((f) => f.path));
+    expect(ran.toSorted()).toEqual(files.map((f) => f.path).toSorted());
     expect(steps.map(({ reads }) => reads[0])).toEqual(steps.map(() => "step"));
     expect(decisionReads(steps)).toEqual([]);
   });

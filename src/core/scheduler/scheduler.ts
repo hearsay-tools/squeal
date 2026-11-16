@@ -714,7 +714,7 @@ class TierScheduler implements Scheduler {
         if (context === null || ledger === null) return false;
         return lane === undefined
           ? ledger.queue.hasGroup(name)
-          : lane.holdsFollowers({ context, ledger });
+          : lane.holdsFollowers({ context, ledger }, at);
       },
       slowWaiting: () => context !== null && this.#laneWaiting(context),
     };
