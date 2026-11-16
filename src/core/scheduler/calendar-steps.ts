@@ -1,5 +1,5 @@
 import type { EpochMs } from "../types/common.js";
-import type { Clock } from "./clock.js";
+import type { Clock, Disarm, ElapsedMs } from "./clock.js";
 
 /*
  * Row 011-377 (`tasks/011-377/notes.md`, "Design"): waits that compare a
@@ -79,13 +79,27 @@ export class CalendarSteps {
 
 /** `clock`, whose each calendar reading reads elapsed time too and tells `steps` (row 011-377). */
 export function steppedClock(clock: Clock, steps: CalendarSteps): Clock {
-  return {
-    now: () => {
-      const at = clock.now();
-      steps.observe(at, clock.elapsed());
-      return at;
-    },
-    elapsed: () => clock.elapsed(),
-    arm: (ms, fire) => clock.arm(ms, fire),
+  return new SteppedClock(clock, steps);
+}
+
+/**
+ * `steppedClock`'s clock: a frame that only passes a reading on
+ * (`step-reading.test.ts`). Its readings are fields, so one taken off it
+ * reads as the host adapter's do.
+ */
+class SteppedClock implements Clock {
+  constructor(
+    private readonly clock: Clock,
+    private readonly steps: CalendarSteps,
+  ) {}
+
+  readonly now = (): EpochMs => {
+    const at = this.clock.now();
+    this.steps.observe(at, this.clock.elapsed());
+    return at;
   };
+
+  readonly elapsed = (): ElapsedMs => this.clock.elapsed();
+
+  readonly arm = (ms: number, fire: () => void): Disarm => this.clock.arm(ms, fire);
 }
