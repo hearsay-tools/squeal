@@ -52,3 +52,16 @@ Check, each as proven, plausible or unverified:
 2. **011-388.** `status-wait-pool` checks the printed elapsed time between the requested wait less 1 ms and the call's own measured duration plus 1 ms, then compares every other word exactly; the product text is unchanged; nothing is host-tuned; the case still fails on a wrong word.
 
 Coordinator at the candidate: lint and typecheck pass; both files pass (7 tests, load 22). Workers: each case 3 of 3 at load 24 to 37. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-387-388.md` and commit it on your branch.
+
+## R2 (W1, W2): review of cand/0.1.529
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.529` at `2fa68aa8d6862f662f472fc641bb271591e6a2e8`; candidate CI run 43968493359. Range `6f9f051be..2fa68aa8d6862f662f472fc641bb271591e6a2e8` (main at 0.1.527): worker ede0d6d2's two commits (row 011-386), worker 54a85ba0's three (row 011-382), cherry-picked without conflict, then the 0.1.529 raise and bundles (0.1.528 is coordinator d36c4d53's, not on main). Read: board rows 011-382 and 011-386; this file's W1 and W2; `tasks/011-382/notes.md`, `tasks/011-386/notes.md`; `tasks/011-377/notes.md` "Repair after review 0.1.524"; `reviews/0.1.524.md` B1 and "Inputs for the coordinator".
+
+Check, each as proven, plausible or unverified:
+
+1. **011-386.** The yield row (`TierYields.#publish`) and the pool-wait row (`poolWaitsPublish`) are stamped no earlier than the daemon's stored start; status keeps a live row across a 1 h set-back and set-forward; a predecessor's row stays rejected; no row shape or reader changed. The worker's named limit (`PoolWaits` keeps `since`, `last` and `#publishedAt` on calendar time: after a set-back the row's refresh waits until the calendar passes the last write, so status can show an old gate for up to the set-back): is it a defect a user sees, and should it be its own row?
+2. **011-382.** The lint pass's edit quiet reads through `steppedClock` with its own `CalendarSteps` and counts the latest revision from first sight; a 1 h set-back and set-forward leave the same wait; behaviour without a calendar change is unchanged; `LintIdleOptions` takes a `clock` (one caller, the daemon; `daemon.ts` passes `hostClock(this.#now)`). The named limit: a step between an edit and the lint wait's first read of that revision is not corrected. Is a separate `CalendarSteps` here right, or should it share the scheduler's?
+3. **`GLOSSARY.md` "Elapsed time"** now names only the command hold as a calendar wait; is that true after both rows?
+4. **Behaviour preserved** without a calendar change: no tier, order, width, status payload, note text, CLI output or key change.
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main` (0.1.527 to 0.1.529); `key-format` 12/12 alone; `version-sensitive`, `lint/pass/idle`, the three calendar-step files, `one-loop-source`, the model test 51/51 at load 70. Workers: 011-386 28 files 145 tests; 011-382 `idle` 6/6, Squeal 260 of 357 current with only the four bundle checks failing (fixed by the bundle commit). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/0.1.529.md` and commit it on your branch.
