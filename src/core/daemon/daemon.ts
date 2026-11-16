@@ -870,7 +870,8 @@ class Daemon {
               store,
               worktreeId,
               policy: () => this.#policy,
-              now: this.#now,
+              // Row 011-382: its quiet counts on elapsed time across a calendar step.
+              clock: hostClock(this.#now),
               inUse: () => this.#loop?.scheduler.inUse() ?? false,
             }),
             // Row 019-45: a lint group at `pause` or `stop` lints once the agent pauses.
