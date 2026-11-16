@@ -4,6 +4,7 @@ import { publishedWaits } from "../../src/core/scheduler/quiet.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
 import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import type { QuietOptions } from "../helpers/quiet-point.js";
 import type { VirtualClock } from "../helpers/virtual-clock.js";
 
 /*
@@ -24,7 +25,7 @@ export interface Clocked {
   /** The scheduler's virtual clock; `null` on the host's. */
   readonly clock: VirtualClock | null;
   /** Row 011-378: the quiet point: a rest with no runner call open. */
-  quiet(): Promise<Rest>;
+  quiet(options?: QuietOptions): Promise<Rest>;
 }
 
 /** How often `pastCatchUpQuiet` looks whether only a wait before catch-up is left, and `idleAfterQuiet` at the pump's wait. */

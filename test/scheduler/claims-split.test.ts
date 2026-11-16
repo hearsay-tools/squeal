@@ -41,7 +41,8 @@ describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60
       side(root, { policy: RUN_MISSING, count, tierSize: 4, backlogTierSize: 200, runMs: 300 }),
     );
     await Promise.all(sides.map((s) => s.scheduler.start()));
-    await Promise.all(sides.map((s) => s.quiet()));
+    // Files queued behind another worktree's claim wait for its recheck, which comes in real time here.
+    await Promise.all(sides.map((s) => s.quiet({ through: ["claims"] })));
     for (let i = 0; i < count; i++) {
       const path = fileName(i);
       expect(sides.reduce((runs, s) => runs + s.runner.ran(path), 0)).toBe(1);

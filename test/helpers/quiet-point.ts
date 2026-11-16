@@ -103,17 +103,37 @@ export interface QuietSide {
 /** A quiet point not found in this long fails the test: a guard on the host's clock only. */
 export const QUIET_LIMIT_MS = 120_000;
 
+/** How often a quiet point on the host's clock looks again while a wake it waits through is left. */
+const THROUGH_POLL_MS = 20;
+
+export interface QuietOptions {
+  /**
+   * On the host's clock, wakes it also waits through in real time, as
+   * `Scheduler.idle()` did: a claim recheck while queued files wait on
+   * another worktree (`"claims"`), the pump's own wait (`"pump"`). A
+   * record's gather (`"slot-gather"`) is always waited through. On a
+   * virtual clock no such wake fires unless the test moves time.
+   */
+  readonly through?: readonly string[];
+  /** Default `QUIET_LIMIT_MS`. */
+  readonly limitMs?: number;
+}
+
 /**
  * Row 011-378: the quiet point of `side`. It rests; while a runner call is
  * open it waits for the calls to end and rests again; it returns the rest
  * once no call is open and no call started or ended from before the rest
- * to one real timer turn after it. On a virtual clock it moves time only
- * to a record's gather that no other wake comes at or before (`gatherAt`,
- * as `settle` does); any other wake fires only when the test moves time.
+ * to one real timer turn after it. A record's gather is bookkeeping: on a
+ * virtual clock time moves to the first gather no other wake comes at or
+ * before (`gatherAt`, as `settle` does), and on the host's clock the quiet
+ * point waits for it. Any other wake fires only when the test moves time,
+ * or, on the host's clock, in real time when `options.through` names it.
  * A call the test holds open (a held run) holds the quiet point until it
  * ends: such a test reads `rest()` instead, or `settle` for catch-up sides.
  */
-export async function quiet(side: QuietSide, limitMs = QUIET_LIMIT_MS): Promise<Rest> {
+export async function quiet(side: QuietSide, options: QuietOptions = {}): Promise<Rest> {
+  const limitMs = options.limitMs ?? QUIET_LIMIT_MS;
+  const through = new Set(["slot-gather", ...(options.through ?? [])]);
   const limit = performance.now() + limitMs;
   const late = (what: string) =>
     new Error(`no quiet point in ${limitMs} ms: ${what}; open calls: ${side.calls.describe()}`);
@@ -129,9 +149,13 @@ export async function quiet(side: QuietSide, limitMs = QUIET_LIMIT_MS): Promise<
       side.clock.advance(Math.max(0, at - side.clock.now()));
       continue;
     }
-    await turn(1);
-    if (side.calls.open === 0 && side.calls.mark() === before) return rest;
-    if (performance.now() > limit) throw late("runner calls kept starting");
+    const waits = side.clock === null && rest.wakes.some((wake) => through.has(wake.reason));
+    await turn(waits ? THROUGH_POLL_MS : 1);
+    if (!waits && side.calls.open === 0 && side.calls.mark() === before) return rest;
+    if (performance.now() > limit) {
+      const left = rest.wakes.map((wake) => wake.reason).join(", ");
+      throw late(waits ? `wakes left: ${left}` : "runner calls kept starting");
+    }
   }
 }
 
