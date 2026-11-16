@@ -58,7 +58,7 @@ for (const repo of ["cezar", "squeal"]) {
 }
 
 // project-a: its store has revisions but no test files or results; layout only.
-const MVP = "/home/user/projects/project-a";
+const MVP = "~/projects/project-a";
 const mvpFiles = execFileSync("git", ["-C", MVP, "ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean);
 const isTest = (p) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(p) || /(^|\/)(test_[^/]*|[^/]*_test)\.py$/.test(p);
 const mvpTests = mvpFiles.filter(isTest);

@@ -3,7 +3,7 @@
 import datetime, json, os, pathlib, shutil, signal, sqlite3, subprocess, sys, tempfile, time
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
-NODE = '/home/user/.nvm/versions/node/v24.22.1/bin/node'
+NODE = '~/.nvm/versions/node/v24.22.1/bin/node'
 CLI = str(REPO / 'plugins/claude-code/dist/cli/squeal.mjs')
 BASE = [NODE, '--disable-warning=ExperimentalWarning', CLI]
 

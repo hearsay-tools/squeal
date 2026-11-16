@@ -10,8 +10,8 @@
     ],
     "cpus": 24,
     "node": "v24.22.1",
-    "cli": "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs",
-    "root": "/home/user/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
+    "cli": "~/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs",
+    "root": "~/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
     "control": false
   },
   {

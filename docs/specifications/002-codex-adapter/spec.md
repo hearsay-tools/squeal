@@ -116,7 +116,7 @@ Use regular files inside the fixed plugin: Codex rejects symlink entries. Publis
 
 ## Testing
 
-- Recorded hook JSON from `research/probes/codex-hooks/logs/` and `research/probes/codex-sessions-and-wake/` becomes fixtures under `test/fixtures/codex-hooks/`: every event under `exec`, app-server and the TUI; subagent events with `agent_id`; Stop with and without `stop_hook_active`; Interrupt; SessionEnd reasons; SessionStart sources `startup`, `resume`, `fork`, `clear`, `compact`.
+- Recorded hook JSON from `research/probes/codex-hooks/logs/` (raw logs removed) and `research/probes/codex-sessions-and-wake/` becomes fixtures under `test/fixtures/codex-hooks/`: every event under `exec`, app-server and the TUI; subagent events with `agent_id`; Stop with and without `stop_hook_active`; Interrupt; SessionEnd reasons; SessionStart sources `startup`, `resume`, `fork`, `clear`, `compact`.
 - Unit tests on the entries: output shapes of D3; PostToolUse idempotency over three calls with one transition; the deny once per regression and never on `Bash`; the `stop_hook_active` guard; Interrupt and silent Stop end the turn; SessionEnd unregisters; consumer keys for main and subagent events; the 8,000-character cap.
 - Bundled hooks: p95 under 80 ms at calm load (asserted as 001 does, skipped above a load threshold), the shell fast path under 10 ms, exit 0 and silence with no store, no config and a newer schema.
 - The shared-code move: the Claude Code recorded-JSON and e2e suites green with no fixture change.

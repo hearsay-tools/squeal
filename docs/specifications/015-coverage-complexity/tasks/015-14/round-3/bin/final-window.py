@@ -60,7 +60,7 @@ def codex_seen(path):
 
 
 def where_of(cwd):
-    m = re.match(r'/home/user/projects/([^/]+)(/\.ai/cezar/worktrees/([0-9a-f]{8}))?', cwd or '')
+    m = re.match(r'~/projects/([^/]+)(/\.ai/cezar/worktrees/([0-9a-f]{8}))?', cwd or '')
     return (m.group(1), m.group(3) or 'main') if m else (cwd, '?')
 
 

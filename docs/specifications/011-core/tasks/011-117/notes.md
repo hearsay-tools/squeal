@@ -29,7 +29,7 @@ Worker 67d779d1, 2026-10-22. Brief: `tasks/toolkit-latency.md`, section 011-117.
 ## Remaining concerns
 
 - **A run that lists `D` while the swap file exists, and ends after vim quits, stores its result.** The run may have seen the extra entry. The brief and `research/edit-latency.md` 6.2 accept this: only the listing at the end is compared.
-- **An observed set that holds a scratch file.** If a run ever reads a swap file (a walk that reads every file), the observed set keeps it ("merged and never pruned"). Each later swap write re-keys and cancels that test while vim is open. The live the client monorepo runs started while the swap file was absent, so this is not shown there. A fix would keep scratch names out of the observed sets (`observed.ts`, the `observe` kind of the key-format alarm); not filed.
+- **An observed set that holds a scratch file.** If a run ever reads a swap file (a walk that reads every file), the observed set keeps it ("merged and never pruned"). Each later swap write re-keys and cancels that test while vim is open. The live client monorepo runs started while the swap file was absent, so this is not shown there. A fix would keep scratch names out of the observed sets (`observed.ts`, the `observe` kind of the key-format alarm); not filed.
 
 ## Repair: review `reviews/0.1.268.md` B1
 

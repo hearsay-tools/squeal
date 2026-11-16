@@ -4,7 +4,7 @@ import json
 import os
 import subprocess
 
-CLI = "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal"
+CLI = "~/.codex/plugins/data/squeal-hearsay/bin/squeal"
 TEST = "test/cli/status-paths.test.ts"
 
 

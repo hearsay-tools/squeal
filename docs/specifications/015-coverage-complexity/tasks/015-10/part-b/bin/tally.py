@@ -54,7 +54,7 @@ for s in D['sessions']:
         continue
 for s in json.load(open('out/cc.json')):
     cwd = s['cwd'] or ''
-    repo = 'squeal' if cwd.startswith('/home/user/projects/squeal') else 'cezar' if cwd.startswith('/home/user/projects/cezar') else None
+    repo = 'squeal' if cwd.startswith('~/projects/squeal') else 'cezar' if cwd.startswith('~/projects/cezar') else None
     if not repo or '/worktrees/' not in cwd: continue
     starts = sorted(x['ts'] for x in s['starts'] if x['ts'])
     for t in s['tools']:

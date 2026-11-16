@@ -2,7 +2,7 @@
 // of cezar worktrees (read-only): time asked, time answered, worktree root, paths, a hint of the reply.
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-const HOME = "/home/user";
+const HOME = "~";
 const out = [];
 const WAIT = /status\s+--wait\s+(\d+)((?:\s+[^\s;&|"'\\]+)*)/g;
 function parseCmd(text) {

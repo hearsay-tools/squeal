@@ -55,7 +55,7 @@ cpython cpython-310
 prefix <S>/layout-3.10/.venv
 base ~/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu
 user site enabled False
-sys.path ['', '/home/user/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python310.zip', '/home/user/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10', '/home/user/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/layout-3.10/.venv/lib/python3.10/site-packages', '<S>/layout-3.10/src', '<S>/layout-3.10/packages/lib/src']
+sys.path ['', '~/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python310.zip', '~/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10', '~/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/lib-dynload', '<S>/layout-3.10/.venv/lib/python3.10/site-packages', '<S>/layout-3.10/src', '<S>/layout-3.10/packages/lib/src']
 -- pytest
 .....                                                                    [100%]
 5 passed in 0.11s
@@ -110,7 +110,7 @@ cpython cpython-313
 prefix <S>/layout-3.13/.venv
 base ~/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu
 user site enabled False
-sys.path ['', '/home/user/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '/home/user/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '/home/user/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/layout-3.13/.venv/lib/python3.13/site-packages', '<S>/layout-3.13/src', '<S>/layout-3.13/packages/lib/src']
+sys.path ['', '~/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python313.zip', '~/.local/share/uv/python/cpython-3.13.14-linux-x86_64-gnu/lib/python3.13', '~/.local/share/uv/python/cpython-3.13-linux-x86_64-gnu/lib/python3.13/lib-dynload', '<S>/layout-3.13/.venv/lib/python3.13/site-packages', '<S>/layout-3.13/src', '<S>/layout-3.13/packages/lib/src']
 -- pytest
 .....                                                                    [100%]
 5 passed in 0.03s

@@ -3,7 +3,7 @@
  "store": "/tmp/er112/stores/store.sqlite",
  "runs": "/tmp/er112/runs",
  "config": "/tmp/er112/cand/squeal.config.json",
- "modules": "/home/user/projects/squeal/.ai/cezar/worktrees/090b45e4-d6fd-41f8-8384-9c2015e04fe5/node_modules",
+ "modules": "~/projects/squeal/.ai/cezar/worktrees/090b45e4-d6fd-41f8-8384-9c2015e04fe5/node_modules",
  "setup": { "": ["vitest.config.ts", "test/global-teardown.ts"] },
  "helper": "^test/",
  "manual": "^test/e2e/",

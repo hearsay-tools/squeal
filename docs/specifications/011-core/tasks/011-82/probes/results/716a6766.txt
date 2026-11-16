@@ -3,7 +3,7 @@
 # The worktree was removed later and prune dropped its rows and run logs. Times are UTC.
 [Object: null prototype] {
   id: '5d085b7529e2247a',
-  root: '/home/user/projects/squeal/.ai/cezar/worktrees/716a6766-fe79-4c64-8274-9c6b8d18ace0'
+  root: '~/projects/squeal/.ai/cezar/worktrees/716a6766-fe79-4c64-8274-9c6b8d18ace0'
 }
 rev 1 17:52:52 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/cache-fixture.ts
 rev 2 17:53:22 watch head=f17bb8e8 dirty=1 n=1 test/harness/codex/version-copies.test.ts

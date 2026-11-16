@@ -21,5 +21,5 @@ done
 echo "== written outside the project since the start (scratch-relative)"
 find $S -newer $S/marker -type f -not -path "$W/*" -not -path "$S/uv-cache/*" | sed "s#$S/##" | cut -d/ -f1-3 | sort | uniq -c | sort -rn | head -20
 echo "== under the real HOME, PDM-named paths newer than the marker (should be none)"
-find ~ -maxdepth 5 -newer $S/marker -ipath '*pdm*' -not -path "$P/*" -not -path '/home/user/projects/*' 2>/dev/null | head
+find ~ -maxdepth 5 -newer $S/marker -ipath '*pdm*' -not -path "$P/*" -not -path '~/projects/*' 2>/dev/null | head
 echo "-- pdm.lock head"; sed -n 1,12p pdm.lock

@@ -11,7 +11,7 @@ import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { expect, it } from "vitest";
 
-const W = "/home/user/projects/squeal/.ai/squawk/worktrees/5192531d-1d8f-46f0-9999-7c27b4bb7618";
+const W = "~/projects/squeal/.ai/squawk/worktrees/5192531d-1d8f-46f0-9999-7c27b4bb7618";
 const { ciExport } = await import(`${W}/src/core/ci/export.ts`);
 const { ciExport: ciExportBefore } = await import(`${W}/src/core/ci/export-before.ts`);
 const { openStored } = await import(`${W}/src/core/code/gate/stored.ts`);

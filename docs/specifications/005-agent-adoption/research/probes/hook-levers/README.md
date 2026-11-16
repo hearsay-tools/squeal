@@ -9,7 +9,7 @@ All fixtures, settings, daemon stores, binaries and fetched source lived beneath
 Pinned inputs:
 
 - `git archive 9848df0571da95cdfd0fe7b8303873deb0fa8414 plugins` extracted to the scratch root; Squeal 0.1.67. Claude `--plugin-dir` points to the copy; Codex session flags declare copied hooks with expanded paths and disable installed plugins. The hooks used trust bypass only in these test invocations.
-- Claude 2.1.295 native executable copied into the scratch root, model `claude-sonnet-5-5`; Codex 0.160.1 native executable **and its sibling `codex-code-mode-host`** copied there, default configured model `gpt-6.1-sol`. Binary and plugin hashes: `logs/pins.json`.
+- Claude 2.1.295 native executable copied into the scratch root, model `claude-sonnet-5-5`; Codex 0.160.1 native executable **and its sibling `codex-code-mode-host`** copied there, default configured model `gpt-6.1-sol`. Binary and plugin hashes: `logs/pins.json` (raw logs removed).
 - A full copy of the same repository commit under `repo/`, `npm ci --ignore-scripts`, supplies Vitest 5.0.3 via fixture `node_modules` symlinks. Each fixture is its own git repository with one passing test. Daemons and stores are independent from the product checkout. `substitute.py` changes its own test to fail and records executions outside its fixture's root.
 - Subject shell permissions are deliberately different by harness: Claude normal approval mode with a small allow-list; Codex full-access/bypass mode as used by earlier research on this host. This measures rewrite support, not permission parity.
 
@@ -21,7 +21,7 @@ To replay in another disposable root, change `ROOT` in `probe.py`, adjust the ex
 4. `clean.py`: 6 Codex repeats with an explicit pinned-copy instruction; same prompt within that group.
 5. `substitute.py`: non-model CLI probe; no subject sessions. `collect.py`: preserves relevant events, hook inputs, warmup output and cost meters; omits unrelated skill bodies and initialization metadata.
 
-The shell-spawn microbenchmark ran `sh -c true`, the copied D9 fast gate ending in `true`, and `node -e 0`, 100 times each in `bench-sh` after its Squeal config was removed; durations use `time.perf_counter()`. It measures process cost, not internal `if` evaluation latency. Results: `logs/cost.json`.
+The shell-spawn microbenchmark ran `sh -c true`, the copied D9 fast gate ending in `true`, and `node -e 0`, 100 times each in `bench-sh` after its Squeal config was removed; durations use `time.perf_counter()`. It measures process cost, not internal `if` evaluation latency. Results: `logs/cost.json` (raw logs removed).
 
 The primary prompt is in `probe.py`: explicitly run exactly `npx vitest run`, no pipes/chains, then report what actually executed. Stop fixtures use `baseline.onStart: lookup-only` and `stop.requireFullSuite: true`, without warming a checkpoint. Other fixtures start a daemon and complete a checkpoint first. Claude settings are written after warmup, so registration records revision 1, with current reused results but the prior checkpoint at revision 0. Codex stays at revision 0. These differences are visible in the retained warmup logs.
 
@@ -38,7 +38,7 @@ The primary prompt is in `probe.py`: explicitly run exactly `npx vitest run`, no
 
 Exactly **40** subject sessions: 18 Claude matrix/pilot, 3 Claude filter benchmarks, 19 Codex including the failed pilot and 6 clean repeats. Total subject wall time summed across overlapping sessions: **814.957 s**.
 
-Claude's reported total: **$0.3454862** (list-price meters, rounded $0.345486 in summaries). Codex JSON reports usage, not billed dollars: **1,099,357 input tokens**, of which **862,720 cached**, **6,916 output tokens**, with **345 reasoning output tokens** reported separately. Codex dollar cost is **not determined**, because this configured provider did not expose a monetary meter; no price was invented. Per-session timing and usage are in `logs/sessions.json`; `events.jsonl` contains each session's command evidence and final answer, keyed by `session`; `hooks.jsonl` and `warmups.jsonl` retain hook inputs and initial evidence. The retained Claude result meters provide the unrounded costs.
+Claude's reported total: **$0.3454862** (list-price meters, rounded $0.345486 in summaries). Codex JSON reports usage, not billed dollars: **1,099,357 input tokens**, of which **862,720 cached**, **6,916 output tokens**, with **345 reasoning output tokens** reported separately. Codex dollar cost is **not determined**, because this configured provider did not expose a monetary meter; no price was invented. Per-session timing and usage are in `logs/sessions.json` (raw logs removed); `events.jsonl` (raw logs removed) contains each session's command evidence and final answer, keyed by `session`; `hooks.jsonl` and `warmups.jsonl` (raw logs removed) retain hook inputs and initial evidence. The retained Claude result meters provide the unrounded costs.
 
 ## Verification
 

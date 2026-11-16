@@ -53,7 +53,7 @@ Approve a bounded discovery wait or an explicit pending-discovery reply, or leav
 `npm run lint`: exit 0, `Checked 1770 files in 696ms. No fixes applied.`
 `npm run typecheck`: exit 0.
 `npm run build`: exit 0; no tracked bundle drift.
-`"/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal" run --all --wait`: exit 3, `No verdict: no daemon running`; fallback ran under the full-run lock as `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. This is repository verification, not issue reproduction.
+`"~/.codex/plugins/data/squeal-hearsay/bin/squeal" run --all --wait`: exit 3, `No verdict: no daemon running`; fallback ran under the full-run lock as `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`. This is repository verification, not issue reproduction.
 
 Fallback exit 0:
 

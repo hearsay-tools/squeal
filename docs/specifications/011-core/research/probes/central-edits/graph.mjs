@@ -15,7 +15,7 @@ import { dirname, join, posix } from "node:path";
 import { init, parse } from "es-module-lexer";
 import { transformSync } from "rolldown/utils";
 
-export const CEZAR = "/home/user/projects/cezar";
+export const CEZAR = "~/projects/cezar";
 const SCRATCH = process.env.R25_SCRATCH ?? "/tmp/r25/trees";
 const CODE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const TS = /\.(ts|tsx|mts|cts|jsx)$/;

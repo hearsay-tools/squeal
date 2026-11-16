@@ -5,7 +5,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, readFileSync } from 'node:fs';
 
-const store = process.argv[2] ?? '/home/user/projects/cezar/.git/squeal/store.sqlite';
+const store = process.argv[2] ?? '~/projects/cezar/.git/squeal/store.sqlite';
 const db = new DatabaseSync(store, { readOnly: true });
 const traces = [
   { name: '0.1.374', worktree: 'fc6636c99e616927', from: '01:22', to: '02:28' },

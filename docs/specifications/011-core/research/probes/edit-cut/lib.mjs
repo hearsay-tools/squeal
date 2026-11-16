@@ -19,7 +19,7 @@ const CEZAR_PACKAGES = { "@open-mercato/cezar-contract": "packages/contract/src"
 /** The two repositories this probe reads. `verbatim(path)`: whether the file's tsconfig sets `verbatimModuleSyntax`. */
 export const REPOS = {
   cezar: {
-    git: "/home/user/projects/cezar", store: process.env.R25_STORE ?? "/tmp/r3/cezar-store.sqlite",
+    git: "~/projects/cezar", store: process.env.R25_STORE ?? "/tmp/r3/cezar-store.sqlite",
     scratch: "/tmp/r25/trees", archive: ["packages", "scripts", ".github"],
     verbatim: (p) => p.startsWith("packages/web/"),
     alias(importer, spec) {
@@ -33,7 +33,7 @@ export const REPOS = {
     nodeTest: new Set(["test:unit", "root:test:unit", "test:package"]),
   },
   squeal: {
-    git: "/home/user/projects/squeal", store: process.env.R25B_STORE ?? "/tmp/r25b/squeal-store.sqlite",
+    git: "~/projects/squeal", store: process.env.R25B_STORE ?? "/tmp/r25b/squeal-store.sqlite",
     scratch: "/tmp/r25b/trees", archive: ["src", "test", "plugins", "scripts", "evals"],
     verbatim: () => true, alias: () => null, slow: /^$/, nodeTest: new Set(),
   },

@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 const control = process.argv.includes("--control");
 const output = resolve(process.argv[2]);
 mkdirSync(output, { recursive: true });
-const cli = "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs";
+const cli = "~/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs";
 const root = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "sq-181-"));
 const runtime = join(root, ".runtime");
 mkdirSync(runtime);

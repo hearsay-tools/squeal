@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "bbc0ed3ffcc05a97",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
   "revision": 2,
   "commit": {
     "head": "ffb7098c43b44f0b47089d26dd11ad92e3564d19",

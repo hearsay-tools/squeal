@@ -13,7 +13,7 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
   "available": true,
   "found": true,
   "worktreeId": "0537e219cb055430",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
   "revision": 2,
   "check": {
     "kind": "test",
@@ -22,7 +22,7 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
     "fullName": "the spread wins at runtime"
   },
   "worktreeRoots": {
-    "0537e219cb055430": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g"
+    "0537e219cb055430": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g"
   },
   "knownState": {
     "worktreeId": "0537e219cb055430",
@@ -79,8 +79,8 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
           "recordedAt": 1793540802744
         }
       },
-      "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
-      "logDir": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc"
+      "worktreeRoot": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc"
     },
     {
       "result": {
@@ -110,8 +110,8 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
           "recordedAt": 1793540762189
         }
       },
-      "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
-      "logDir": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/7488c3d2-cf10-47b7-a80c-7489e5dd6d42"
+      "worktreeRoot": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/7488c3d2-cf10-47b7-a80c-7489e5dd6d42"
     },
     {
       "result": {
@@ -141,8 +141,8 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
           "recordedAt": 1793540712859
         }
       },
-      "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
-      "logDir": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/4b9718e8-3b3c-49e2-805a-6ece0f539981"
+      "worktreeRoot": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g",
+      "logDir": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/4b9718e8-3b3c-49e2-805a-6ece0f539981"
     }
   ],
   "durations": {
@@ -158,7 +158,7 @@ $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal why the spread wins at runtime
   "runLog": {
     "runId": "6fed7027-5a51-4bcd-982d-2abc71bf3dcc",
     "worktreeId": "0537e219cb055430",
-    "path": "/home/user/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc/vitest.log",
+    "path": "~/projects/squeal/.ai/cezar/t/0cd4d982/squeal-issue-133-262iao6g/.git/squeal/runs/6fed7027-5a51-4bcd-982d-2abc71bf3dcc/vitest.log",
     "state": "present",
     "console": null
   }

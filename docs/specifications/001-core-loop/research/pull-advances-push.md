@@ -97,4 +97,4 @@ Board row done-when: in a `-p` and an attended session on a scratch repository, 
 - Pi: https://github.com/earendil-works/pi at `7fb59f9`, `packages/coding-agent/docs/environment-variables.md`.
 - OpenCode: https://github.com/sst/opencode at `ecc4916`, `packages/web/src/content/docs/plugins.mdx`, `packages/web/src/content/docs/agents.mdx:131`, `packages/plugin/src/index.ts`.
 - Squeal at `6ca3c8f`: `src/core/delivery/delivery.ts`, `src/core/delivery/delta.ts`, `src/cli/status-wait.ts`, `src/core/status/snapshot.ts`, `src/core/store/schema.ts`.
-- Probes: `probes/pull-advances-push/` (README, `logs/*.hooks.jsonl`, `logs/*.probe.txt`, `race/race.probe.ts`).
+- Probes: `probes/pull-advances-push/` (README, `logs/*.hooks.jsonl`, `logs/*.probe.txt` (raw logs removed), `race/race.probe.ts`).

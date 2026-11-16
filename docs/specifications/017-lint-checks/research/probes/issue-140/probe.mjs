@@ -10,7 +10,7 @@ const repo = resolve(here, "../../../../../..");
 const runtime = join(here, "runtime");
 mkdirSync(runtime, { recursive: true });
 const release =
-  process.argv[2] ?? "/home/user/.claude/plugins/cache/hearsay/squeal/0.1.392/dist/cli/squeal.mjs";
+  process.argv[2] ?? "~/.claude/plugins/cache/hearsay/squeal/0.1.392/dist/cli/squeal.mjs";
 const original = readFileSync(release, "utf8");
 const tagBlob = execFileSync(
   "git",

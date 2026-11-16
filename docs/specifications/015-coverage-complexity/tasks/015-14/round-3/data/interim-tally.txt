@@ -1,5 +1,5 @@
 == summaries by repo, checkout, harness, type, event
-49 ('cezar', '/home/user/projects/cezar', 'claude', 'registration', 'Sessi')
+49 ('cezar', '~/projects/cezar', 'claude', 'registration', 'Sessi')
 1 ('cezar', 'worktree', 'claude', 'registration', 'Sessi')
 12 ('cezar', 'worktree', 'codex', 'counted', 'devel')
 12 ('cezar', 'worktree', 'codex', 'counting', 'devel')

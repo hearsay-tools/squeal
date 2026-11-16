@@ -92,7 +92,7 @@ AssertionError: expected { …(6) } to match object { reason: 'lost-lock', code:
 -   "reason": "lost-lock",
 +   "exited": Promise {},
 +   "ready": Promise {},
-+   "root": "/home/user/projects/squeal/.ai/cezar/worktrees/2d3300df-9127-427c-9dd0-90bc6f826f67/test/fixtures/scheduler/.tmp/479971ab-c08e-4333-be15-af8178613f07/main",
++   "root": "~/projects/squeal/.ai/cezar/worktrees/2d3300df-9127-427c-9dd0-90bc6f826f67/test/fixtures/scheduler/.tmp/479971ab-c08e-4333-be15-af8178613f07/main",
 +   "socketPath": "/tmp/sq-bGw6OQ/squeal-6c1362c717195fce.sock",
 +   "stop": [Function stop],
 +   "worktreeId": "6c1362c717195fce",

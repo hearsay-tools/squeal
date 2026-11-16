@@ -245,61 +245,61 @@
       "execution": [
         {
           "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/braced/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/braced/codex home/plugins/cache/approval-probe/probe/1.0.1"
         }
@@ -790,61 +790,61 @@
       "execution": [
         {
           "key": "probe@approval-probe:hooks/hooks.json:pre_tool_use:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/pre-tool-use.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:post_tool_use:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/post-tool-use.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:session_start:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-start.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:session_end:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/session-end.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:user_prompt_submit:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/user-prompt-submit.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:subagent_start:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-start.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:subagent_stop:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/subagent-stop.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:stop:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:stop:0:1",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/stop-slow.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         },
         {
           "key": "probe@approval-probe:hooks/hooks.json:interrupt:0:0",
-          "file": "file:///home/user/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
+          "file": "file://~/projects/squeal/.ai/cezar/t/289cbf74/squeal%20approval%20MG4qiW/shell/codex%20home/plugins/cache/approval-probe/probe/1.0.1/dist/interrupt.mjs",
           "version": "1.0.1",
           "root": "<SCRATCH>/shell/codex home/plugins/cache/approval-probe/probe/1.0.1"
         }

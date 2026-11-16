@@ -58,7 +58,7 @@ git('-c', 'user.name=Research Probe', '-c', 'user.email=probe@example.invalid', 
 put('e2e/target.test.ts', testBody('target', true));
 put('unit/basic.test.ts', testBody('unit', true));
 if (shape === 'shared') put('src/helper.ts', 'export function value() { return 1 + 0; }\n');
-const cli = '/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.457/dist/cli/squeal.mjs';
+const cli = '~/.codex/plugins/data/squeal-hearsay/versions/0.1.457/dist/cli/squeal.mjs';
 const args = ['--disable-warning=ExperimentalWarning', cli, 'code', '--base', 'main', '--json', '--timeout', '20'];
 if (mode === 'test') args.push('--test', 'e2e/target.test.ts');
 if (mode === 'group') args.push('--group', 'browser');

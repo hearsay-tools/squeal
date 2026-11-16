@@ -12,22 +12,22 @@ Run on 2026-10-07 with Codex CLI 0.160.1 (`codex-cli 0.160.1`), Node 24.21.0, Li
 - `bin/mkprimer.sh <name> none|sessionstart|agents`, `primer.txt`, `fakebin/squeal`: the primer probe. A buggy `add.js` with a `node:test` file; the primer in SessionStart context, in `AGENTS.md`, or absent; a fake `squeal status` that logs its calls.
 - `plugin-fixture/`: a repo marketplace (`.agents/plugins/marketplace.json`), a plugin with `.codex-plugin/plugin.json`, `hooks/hooks.json`, `skills/`, `bin/`, and a repo `.codex/config.toml` enabling it.
 - `bin/fake-daemon.sh`, `hooks/spawn-daemon.mjs`, `hooks/async-late.sh`: a heartbeat process standing in for a daemon (exits after 120 s), a SessionStart hook spawning it detached, and an async PostToolUse hook answering 8 s late.
-- `evidence/`: curated excerpts of the logs (hook payload summaries per run, the app-server timeline and messages, shell environment output, primer-run commands, daemon heartbeats).
+- `evidence/` (raw logs removed): curated excerpts of the logs (hook payload summaries per run, the app-server timeline and messages, shell environment output, primer-run commands, daemon heartbeats).
 
 ## Runs
 
 | Run | What | Evidence |
 |---|---|---|
-| r1 | `codex exec`, one shell call; then `exec resume` and `exec fork` of the same thread | `hooks-r1.jsonl`, `shell-env.txt` |
-| r2 | `codex exec` with one subagent running a shell call | `hooks-r2.jsonl`, `shell-env.txt` |
+| r1 | `codex exec`, one shell call; then `exec resume` and `exec fork` of the same thread | `hooks-r1.jsonl`, `shell-env.txt` (raw logs removed) |
+| r2 | `codex exec` with one subagent running a shell call | `hooks-r2.jsonl`, `shell-env.txt` (raw logs removed) |
 | r3 | app-server with `-c` trust only: hooks skipped (project not trusted) | not kept |
-| r4 | app-server with `thread/start` `config: { bypass_hook_trust, projects }` | `hooks-r4.jsonl`, `appserver-r4-*.jsonl` |
-| r5 | interactive TUI in tmux: `codex queue` while idle, Escape mid-tool, `/quit`; then a second TUI killed with `tmux kill-session` | `hooks-r5.jsonl` holds only the killed session; the first session's events are quoted in the findings |
-| r6 | `codex exec` with `codex queue` sent during its turn | `hooks-r6.jsonl` |
-| p-* | primer: none, SessionStart, AGENTS.md | `primer-*-commands.jsonl`, `fake-squeal.log` |
+| r4 | app-server with `thread/start` `config: { bypass_hook_trust, projects }` | `hooks-r4.jsonl`, `appserver-r4-*.jsonl` (raw logs removed) |
+| r5 | interactive TUI in tmux: `codex queue` while idle, Escape mid-tool, `/quit`; then a second TUI killed with `tmux kill-session` | `hooks-r5.jsonl` (raw logs removed) holds only the killed session; the first session's events are quoted in the findings |
+| r6 | `codex exec` with `codex queue` sent during its turn | `hooks-r6.jsonl` (raw logs removed) |
+| p-* | primer: none, SessionStart, AGENTS.md | `primer-*-commands.jsonl`, `fake-squeal.log` (raw logs removed) |
 | pl1 | repo-marketplace plugin, enabled in repo config only; then installed with `codex plugin` | quoted in the findings |
 | wt1 | `codex exec --worktree` | quoted in the findings |
-| dm-* | detached daemon from a SessionStart hook and from the shell tool, `danger-full-access` and `workspace-write` | `daemon-*.head-tail.log`, `shell-env.txt` |
+| dm-* | detached daemon from a SessionStart hook and from the shell tool, `danger-full-access` and `workspace-write` | `daemon-*.head-tail.log`, `shell-env.txt` (raw logs removed) |
 
 ## User-level side effects, and how they were undone
 

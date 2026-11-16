@@ -134,4 +134,4 @@ claim that a suite ran for this documentation change.
 - [0.1.422 source](https://github.com/hearsay-tools/squeal/tree/fd1a98f70478bfdd7f18c64c97830e72d915d06d), read locally with `git show`; source checks against the checkout used `git diff squeal--v0.1.422 -- <cited paths>` (empty).
 - Source paths: `src/harness/shared/{no-edit,stop-required,stop-lint}.ts`; `src/core/state/required.ts`; `src/core/delivery/{code-delta,code-format,code-since,edits}.ts`; `src/core/code/pass/head.ts`.
 - Repository rules: [011 C2/C3/C8](../spec.md), [017 D5/D7/D8](../../017-lint-checks/spec.md), [015 D6/D7](../../015-coverage-complexity/spec.md), and their `status.md` amendment logs.
-- Experiment evidence: probe README, `fast-lint.log`, `pending-lint.log`, `settled-control.log`, and `store-evidence.log` in the linked probe directory.
+- Experiment evidence: probe README, `fast-lint.log`, `pending-lint.log`, `settled-control.log` (raw logs removed), and `store-evidence.log` in the linked probe directory.

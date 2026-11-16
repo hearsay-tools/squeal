@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-const db = new DatabaseSync('/home/user/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
+const db = new DatabaseSync('~/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
 const imp = db.prepare("select id from imports order by imported_at desc limit 1").get().id;
 const ie = db.prepare("select environment, count(*) n from import_files where import_id=? and project='server' group by 1 order by n desc").all(imp);
 console.log('newest import', imp, ie);

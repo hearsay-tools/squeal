@@ -10,7 +10,7 @@ const since = Date.parse(sinceIso);
 const HOME = process.env.HOME;
 const idOf = (p) => createHash("sha256").update(p).digest("hex").slice(0, 16);
 const rootOf = (cwd) => {
-  const m = cwd.match(/^(.*?\/\.ai\/cezar\/worktrees\/[^/]+)/) ?? cwd.match(/^(\/home\/user\/projects\/[^/]+)/);
+  const m = cwd.match(/^(.*?\/\.ai\/cezar\/worktrees\/[^/]+)/) ?? cwd.match(/^(~\/projects\/[^/]+)/);
   if (!m) return cwd;
   try { return realpathSync(m[1]); } catch { return m[1]; }
 };

@@ -1,5 +1,5 @@
 {
- "storePath": "/home/user/projects/cezar/.git/squeal/store.sqlite",
+ "storePath": "~/projects/cezar/.git/squeal/store.sqlite",
  "from": "2026-10-14T19:10:00.000Z",
  "to": "2026-10-21T19:10:00.000Z",
  "runsInWindow": 6584,

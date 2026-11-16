@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 const scratch = mkdtempSync(join(tmpdir(), 'squeal wrapper '));
-const codex = process.env.PROBE_CODEX ?? '/home/user/.nvm/versions/node/v24.21.0/bin/codex';
+const codex = process.env.PROBE_CODEX ?? '~/.nvm/versions/node/v24.21.0/bin/codex';
 // Allowlist environment: no auth/provider/session values copied from this session.
 const baseEnv = { PATH: process.env.PATH, HOME: join(scratch, 'home'), SHELL: '/bin/bash', LANG: 'C.UTF-8' };
 mkdirSync(baseEnv.HOME);

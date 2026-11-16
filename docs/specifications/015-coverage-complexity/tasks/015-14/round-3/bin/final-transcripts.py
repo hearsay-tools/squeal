@@ -20,14 +20,14 @@ for p in (home/".codex/sessions").rglob("*.jsonl"):
   try: meta=json.loads(f.readline())
   except ValueError: continue
  cwd=meta.get("payload",{}).get("cwd","")
- if cwd.startswith("/home/user/projects/squeal") and not any(x in cwd for x in EXCLUDE): cx.append(p)
+ if cwd.startswith("~/projects/squeal") and not any(x in cwd for x in EXCLUDE): cx.append(p)
 # Keep full command text in private scratch so later apply_patch headers are not lost.
 extract=(R.parent/"part-b/bin/extract_codex.py").read_text().replace("[:1500]", "[:100000]")
 (O/"extract_codex.py").write_text(extract)
 run("python3","-I",O/"extract_codex.py",O/"codex.json",W0,W1,*cx)
 for name in ("cc","codex"):
  data=json.loads((O/(name+".json")).read_text())
- data=[s for s in data if (s.get("cwd") or "").startswith("/home/user/projects/squeal") and not any(x in (s.get("cwd") or "") for x in EXCLUDE)]
+ data=[s for s in data if (s.get("cwd") or "").startswith("~/projects/squeal") and not any(x in (s.get("cwd") or "") for x in EXCLUDE)]
  if name=="codex":
   for s in data: s["deliveries"]=[d for d in s["deliveries"] if d["text"].lstrip().startswith("SQUEAL")]
  (O/(name+".json")).write_text(json.dumps(data))

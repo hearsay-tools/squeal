@@ -25,7 +25,7 @@ s=$(date +%s%N); $T/pdm install 2>&1 | tail -1 | show; echo "   $(( ($(date +%s%
 python3 -I $P/snap.py snap $N $S/q4.2; python3 -I $P/snap.py diff $S/q4.1 $S/q4.2 | grep -v "same bytes"
 echo "-- files written outside the worktree by pdm run + pdm install (by top directory under scratch):"
 find $S -newer $S/marker4 -type f -not -path "$N/*" -not -path "$S/q4*" | sed "s#$S/##" | cut -d/ -f1-2 | sort | uniq -c
-echo "-- real HOME: PDM-named paths newer than the marker: $(find ~ -maxdepth 5 -newer $S/marker4 -ipath '*pdm*' -not -path '/home/user/projects/*' 2>/dev/null | wc -l)"
+echo "-- real HOME: PDM-named paths newer than the marker: $(find ~ -maxdepth 5 -newer $S/marker4 -ipath '*pdm*' -not -path '~/projects/*' 2>/dev/null | wc -l)"
 echo "-- minors installed: $(ls __pypackages__ | tr '\n' ' '); editable .pth name: $(cat __pypackages__/*/lib/*.pth | show | tr '\n' ' ')"
 echo "== install.cache = true in a second fresh worktree"
 N2=$W/.ai/wt/n2; git -C $W worktree add -q $N2 -b n2; cd $N2

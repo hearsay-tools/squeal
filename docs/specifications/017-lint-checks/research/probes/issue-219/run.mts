@@ -14,7 +14,7 @@ import { lintTransition } from '../../../../../../src/core/lint/transition.js';
 import { blobHash } from '../../../../../../src/core/hash/blob.js';
 
 const repo = resolve(import.meta.dirname, '../../../../../..');
-const cezar = process.env.ISSUE_219_CEZAR ?? '/home/user/projects/cezar';
+const cezar = process.env.ISSUE_219_CEZAR ?? '~/projects/cezar';
 const helperPath = join(cezar, 'packages/cezar/src/ast-grep-rules.testkit.ts');
 assert.equal(createHash('sha256').update(readFileSync(helperPath)).digest('hex'),
   '7d9f90b979a8eb112d29c3d572749d733307670c575dda96af433a82fa1463ad', 'Repository helper changed; re-pin before repeating');

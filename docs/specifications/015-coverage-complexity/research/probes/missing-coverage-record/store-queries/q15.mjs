@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-const dir = "/home/user/projects/squeal/.git/squeal/";
+const dir = "~/projects/squeal/.git/squeal/";
 const s = new DatabaseSync(dir + "store.sqlite", { readOnly: true });
 const windows = process.argv.slice(2).map(Date.parse);
 const firstRuns = s.prepare("select worktree_id w, min(started_at) t from runs group by worktree_id").all();

@@ -1,5 +1,5 @@
 {
-  "cwd": "/home/user/projects/squeal/.ai/cezar/worktrees/9ebda6fe-cae9-475d-9500-2ea711d81fd6",
+  "cwd": "~/projects/squeal/.ai/cezar/worktrees/9ebda6fe-cae9-475d-9500-2ea711d81fd6",
   "cpus": 24,
   "paths": {
     "test/cli/named-file": {
@@ -24,7 +24,7 @@
     },
     {
       "argv": [
-        "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
         "--version"
       ],
       "utc": "2026-11-10T04:13:11.924163+00:00",
@@ -63,7 +63,7 @@
     },
     {
       "argv": [
-        "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
         "status",
         "test/cli/named-file"
       ],
@@ -91,7 +91,7 @@
     },
     {
       "argv": [
-        "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
         "status",
         "test/cli/named-file-lines.test.ts",
         "test/cli/named-file-end.test.ts"
@@ -119,7 +119,7 @@
     },
     {
       "argv": [
-        "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
         "status",
         "test/commit"
       ],
@@ -131,7 +131,7 @@
     },
     {
       "argv": [
-        "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
         "status",
         "test/cli/named-file",
         "test/cli/named-file-lines.test.ts"
