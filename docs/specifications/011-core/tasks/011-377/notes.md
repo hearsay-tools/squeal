@@ -111,3 +111,48 @@ Each keeps its meaning:
 - `key-format.test.ts`, `model-scheduler.test.ts`, `model-harness-clock.test.ts`: 27 of 27 pass, load 20.8 to 23.8 on 24 CPUs (below the CPU count at the start).
 - Direct runs, `--maxWorkers=4`: 77 wait-related scheduler files (4 failures, all fixtures that moved the calendar alone, fixed above); 9 files with calendar skews: pass; the 136 `test/daemon/` and `test/scheduler/` files Squeal had not reached: 136 of 136 pass, 559 tests, load 15 at start, 31.7 at end, 651 s.
 - Squeal, `squeal status --wait` on the changed paths, two waits (57 min and 30 min) on a busy host: 690 test files current and passing. 4 known failures, all bundle drift (`cli/squeal.mjs differs from the build` in `plugin.test.ts`, the Codex, OpenCode and Pi package tests): `plugins/*/dist` is not this row's; the landing rebuilds it. 232 test files still queued, 7 unknown when the daemon was stopped: mostly `test/cli/`, `test/harness/`, `test/integration/`. They are not verified here.
+
+## Repair after review 0.1.524
+
+Review `reviews/0.1.524.md` FAIL: B1, B2 blockers, S1 should-fix, N2 nit. Brief: `tasks/wave-112.md`, "W1 repair". Commit `5480be5eb` and the docs commit after it.
+
+### B1: a live daemon's rows after a set-back
+
+The readers take a row only when its stamp `at` is not before the live daemon's stored start (`publishedWaits`, `publishedBatches`); after a set-back past the start, the shift's re-publication was rejected as a predecessor's. The coordinator chose design A (2026-11-16): no shape change, readers unchanged.
+
+- `CalendarSteps.stamp(at)`: `max(at, this daemon's stored start)`. The scheduler gives it the start through `#daemonStartedAt()`: the worktree's daemon record whose `daemonIncarnation` equals `SchedulerOptions.incarnation`, cached once found. A predecessor's or a successor's record never matches, so a predecessor's late row keeps its own, earlier start and is still rejected. Without an incarnation (a scheduler outside a daemon) nothing is clamped.
+- The quiet row (`scheduler.ts`, `publishQuiet`) and the promotions row (`ledger.ts`, `publishPromotions`) are stamped with it.
+- After a set-back past the daemon's start, those rows' `at` shows the daemon's start, not the reading. Their ends are in today's calendar.
+- Same pre-existing exposure, not changed here (the coordinator files it as its own row): the yields row (`writeYieldRow`, read by `readYieldRow`) and the pool-wait row (`publishPoolWaits`, read by `publishedPoolWaits`) are stamped with the reading, so any write after a set-back past the start is read as a predecessor's.
+
+### B2: a step between a decision and its wake's delay
+
+Rule: an owner reads the clock once, before it reads the calendar times it keeps; a calendar step that reading sees has moved those times first, so the delay holds no step. A calendar time copied out of a reading carries the steps' total at that reading and is moved by later steps before it becomes a delay.
+
+- `SlowRelease.arm`: one reading decides and gives the delay (was: `#decide()` read, then `- now()` read again). Proven case.
+- `TierYields.#arm`: the reading before `Math.min(...bounds)`.
+- The pump: `Step.mark` (new, optional) is the steps' total at the step's reading (`StepLive.step`, through `StepHost.stepsTotal`). `#waitFor` passes it on; `#eventOrAt` reads first and states `steps.since(at, mark) - now`; `#claimWake` reads first and opens the window at `steps.since(at, mark)`.
+- `step-reading.test.ts`: the slow release's wake reading now names `SlowRelease.arm < StepLive.step` (it moved out of `#decide`); it is the same wake bookkeeping reading.
+
+### S1: a pause inside a sample
+
+`SteppedClock.now` reads elapsed time, the calendar, and elapsed time again. `observe` uses the midpoint and leaves out a sample whose span is wider than `SURE_SAMPLE_MS` (50 ms, half of `CALENDAR_STEP_MS`): the offset of a sure sample is known to 25 ms, so two sure samples differ by less than 100 ms without a step. A left-out sample tells nothing; the next sure one tells a real step. The limits of the NTP model are in the `CALENDAR_STEP_MS` comment: an NTP client that steps under 100 ms, or a monotonic clock with another rate, moves a wait untold by up to that amount; ntpd's and chrony's settings were not tested.
+
+### N2
+
+`GLOSSARY.md`, "Elapsed time": the command hold is the one scheduler wait that still moves; the lint pass's copy of the edit quiet (`src/core/lint/pass/idle.ts`) still compares the stored revision time, held by row 011-382.
+
+### Tests (each failed before its fix)
+
+- `calendar-steps-seams.test.ts` (new):
+  - B1: owner to public reader, a real daemon record in a real store: the quiet row and the promotions row read as the live daemon's after a set-back and a set-forward of 1 h; a predecessor's row written after its successor started, the calendar set back first, is still rejected. Red before: `CalendarSteps.stamp` did not exist; mutation `stamp` returning the reading fails the two set-back rows.
+  - B2, slow release: the review's wrapper, the calendar stepped on reading 2 or 3 of `ended`, back and forward: the lane closes 60 s after, not 1 ms sooner. Red before: set back on reading 3 (the review's 3,660 s case).
+  - B2, yield bound: the calendar stepped on the first reading inside `TierYields.#arm`, back and forward: the tier yields 30 s past its estimate. Mutation (the old `min - now()` order) fails the set-back row.
+- `calendar-steps-scheduler.test.ts`: a real scheduler, the calendar set back 1 h on the first reading inside `#eventOrAt` after a cancel: the backlog starts 20 s after the cancel. Mutation (`at - now`, without `since`) fails it.
+- `calendar-steps-sample.test.ts` (new), S1: time passes inside elapsed reading 1, 2, 3 or 4 of two samples, with no calendar change: no step is told, and a real set-back after is. Mutation (no width check) fails readings 2 and 4, the ones that follow a calendar reading.
+- The set-forward rows of B2 passed before too: a forward step there gives a short or negative delay, and the owner reads again at once.
+
+### Type changes (additive)
+
+- `CalendarSteps` constructor `startedAt?: () => EpochMs | null`; `CalendarSteps.stamp`; `observe(calendar, before, after?)` (was `observe(calendar, elapsed)`); `SURE_SAMPLE_MS`.
+- `Step.mark?: number`; `StepHost.stepsTotal(): number`.
