@@ -81,7 +81,7 @@ describe("after a real lookup-only start (review 0.1.286 B6)", { timeout: 60_000
     });
     focusingSide(side);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.rest();
     // Lookup-only: F has a key, no result and nothing queued.
     expect(side.runner.runs).toEqual([]);
     const [row] = side.store.testFileKeys.list(side.worktreeId as never);

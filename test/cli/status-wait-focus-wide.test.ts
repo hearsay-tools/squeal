@@ -31,7 +31,7 @@ describe("a focused wait over 24 files (row 011-283, test 5)", { timeout: 60_000
     });
     focusing(side);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.rest();
     expect(side.runner.runs).toEqual([]);
     const revision = side.store.revisions.latest(side.worktreeId as never)?.number ?? 0;
     const synced = (): SyncState => ({

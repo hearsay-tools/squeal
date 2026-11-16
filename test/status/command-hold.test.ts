@@ -47,7 +47,7 @@ async function exited(): Promise<HarnessProcess> {
 async function side() {
   const s = holdSide(mergeRepo());
   await s.scheduler.start();
-  await s.scheduler.idle();
+  await s.rest();
   return s;
 }
 
