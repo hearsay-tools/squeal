@@ -1,6 +1,8 @@
+import { setTimeout as turn } from "node:timers/promises";
 import { expect } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
+import type { Rest } from "../../src/core/types/scheduler.js";
 import type { CatchUpRun, CatchUpRunner, CatchUpSide } from "./catch-up-fixture.js";
 
 /*
@@ -53,13 +55,72 @@ export function holdRuns(runner: CatchUpRunner, held: (path: string) => boolean)
   };
 }
 
-/** The run of `path` in flight once one has started after the `after` runs; it is held there. */
+/** A settle that finds no quiet point in this long fails the test: a guard on the host's clock only. */
+const SETTLE_LIMIT_MS = 20_000;
+
+/** `side`'s runs and how many are in flight: a run that starts or ends changes it. */
+const runsMark = (side: CatchUpSide) =>
+  `${side.runner.runs.length}/${side.runner.runs.filter((r) => r.endedAt === null).length}`;
+
+/**
+ * Row 011-363: the quiet point of `sides` on their virtual clocks. Each
+ * rests (`CatchUpSide.rest`); a rest sets a runner's run aside, so a run
+ * that is not held, 0 ms of real time here, can end after it, and its
+ * record follows. So the sides rest again until one real timer turn starts
+ * or ends no run. A record's gather (`slot-gather`) is bookkeeping: time
+ * moves to it; no other wake fires unless the test moves time. Returns the
+ * first side's last rest.
+ */
+export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
+  const limit = performance.now() + SETTLE_LIMIT_MS;
+  for (;;) {
+    const rests: Rest[] = [];
+    for (const side of sides) rests.push(await restOf(side, limit));
+    const gathers = sides.flatMap((side, i) =>
+      (rests[i]?.wakes ?? [])
+        .filter((wake) => wake.reason === "slot-gather")
+        .map((wake) => () => side.advance(Math.max(0, wake.at - side.now()))),
+    );
+    if (gathers.length > 0) {
+      for (const gather of gathers) gather();
+      continue;
+    }
+    const before = sides.map(runsMark).join(" ");
+    await turn(1);
+    const first = rests[0];
+    if (sides.map(runsMark).join(" ") === before && first !== undefined) return first;
+    if (performance.now() > limit) throw new Error(`no quiet point in ${SETTLE_LIMIT_MS} ms`);
+  }
+}
+
+async function restOf(side: CatchUpSide, limit: number): Promise<Rest> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`no rest in ${SETTLE_LIMIT_MS} ms`)),
+      Math.max(0, limit - performance.now()),
+    );
+  });
+  try {
+    return await Promise.race([side.rest(), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The run of `path` in flight once one has started after the `after` runs;
+ * it is held there. On a virtual clock (row 011-363) it is read at the
+ * side's quiet point, with no poll.
+ */
 export async function heldRun(side: CatchUpSide, path: string, after: number): Promise<CatchUpRun> {
-  await expect
-    .poll(() => side.runner.runs.slice(after).some((r) => holds(r, path) && r.endedAt === null), {
-      timeout: START_WITHIN_MS,
-    })
-    .toBe(true);
+  if (side.clock !== null) await settle(side);
+  else
+    await expect
+      .poll(() => side.runner.runs.slice(after).some((r) => holds(r, path) && r.endedAt === null), {
+        timeout: START_WITHIN_MS,
+      })
+      .toBe(true);
   const run = side.runner.runs.slice(after).find((r) => holds(r, path) && r.endedAt === null);
   if (run === undefined) throw new Error(`no run of ${path} in flight`);
   return run;
