@@ -30,7 +30,7 @@ describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60
     const { main } = claimRepo(20);
     const a = side(main, { policy: RUN_MISSING, count: 20, tierSize: 4, backlogTierSize: 20 });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runs[0]).toHaveLength(20);
   });
 
@@ -41,7 +41,7 @@ describe("claims: a backlog split between daemons (task 001-205)", { timeout: 60
       side(root, { policy: RUN_MISSING, count, tierSize: 4, backlogTierSize: 200, runMs: 300 }),
     );
     await Promise.all(sides.map((s) => s.scheduler.start()));
-    await Promise.all(sides.map((s) => s.scheduler.idle()));
+    await Promise.all(sides.map((s) => s.quiet()));
     for (let i = 0; i < count; i++) {
       const path = fileName(i);
       expect(sides.reduce((runs, s) => runs + s.runner.ran(path), 0)).toBe(1);
