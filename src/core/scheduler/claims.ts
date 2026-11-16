@@ -87,6 +87,11 @@ export class Claims {
     return claimed && at - (this.#seen.get(key) ?? at) <= this.#boundMs();
   }
 
+  /** Row 011-377: the calendar stepped `ms`: each bound's start moves with it (`CalendarSteps`). */
+  shift(ms: number): void {
+    for (const [key, since] of this.#seen) this.#seen.set(key, (since + ms) as EpochMs);
+  }
+
   /** `key` runs here: a later claim on it starts a new bound. */
   taken(key: CheckKey): void {
     this.#seen.delete(key);

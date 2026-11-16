@@ -154,12 +154,12 @@ describe("the slow lane's load budget on elapsed time (rows 011-351, 011-369)", 
       runs: true,
       row: "a calendar set back gives none back",
     },
-    // The `edit` trigger's quiet compares the stored revision time, calendar time: a set-back
-    // past the edit holds the group for it, as before row 011-369 (`slow-trigger.ts`).
+    // Row 011-377: the `edit` trigger's quiet counts from when this daemon first saw the revision,
+    // on elapsed time; until 0.1.523 a set-back past the edit held the group about 1 h.
     {
       moves: [{ advance: 3_000 }, { calendar: -3_600_000 }, { advance: 2_000 }],
-      runs: false,
-      row: "a calendar set back 1 h, past the edit, holds the group on its stored revision time",
+      runs: true,
+      row: "a calendar set back 1 h, past the edit, does not hold the group",
     },
     {
       moves: [{ advance: 3_000 }, { calendar: 3_600_000 }, { advance: 1_999 }],

@@ -216,6 +216,21 @@ export class Promotions {
     this.#told();
   }
 
+  /**
+   * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each wait's
+   * deadline and estimated end move with it, so each keeps its elapsed time
+   * left, and the store reads them again.
+   */
+  shift(ms: number): void {
+    if (this.#promotions.length === 0) return;
+    this.#promotions = this.#promotions.map((p) => ({
+      ...p,
+      until: p.until + ms,
+      estimatedEnd: p.estimatedEnd === null ? null : ((p.estimatedEnd + ms) as EpochMs),
+    }));
+    this.#told();
+  }
+
   clear(): void {
     if (this.#promotions.length === 0) return;
     this.#promotions = [];

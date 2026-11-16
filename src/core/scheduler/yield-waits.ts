@@ -1,3 +1,4 @@
+import type { EpochMs } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { LastYield } from "../types/standing.js";
@@ -184,10 +185,15 @@ function recreates(
 /**
  * The tier's estimated remainder: the largest last-known duration among
  * its files that have not ended, a file with none counting 0, less the time
- * it has run. Negative past its estimate.
+ * it has run. Negative past its estimate. Row 011-377: the time it has run
+ * is elapsed time, its start moved by the calendar steps since
+ * (`CalendarSteps.since`).
  */
 export function remainder(context: SchedulerContext, tier: Tier): number {
   const longest = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   const now = context.now();
-  return longest - (now - (tier.startedAt ?? now));
+  const { startedAt } = tier;
+  if (startedAt === undefined) return longest;
+  const start = context.steps?.since(startedAt as EpochMs, tier.startedStep ?? 0) ?? startedAt;
+  return longest - (now - start);
 }

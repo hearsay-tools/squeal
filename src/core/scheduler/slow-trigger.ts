@@ -38,7 +38,9 @@ export function momentHolds(
 /**
  * At `edit`, how long until the latest revision is `group.quietMs` old at
  * `at` (else now), at most 0 once it is; `null` at any other moment. A
- * worktree with no revision yet is quiet.
+ * worktree with no revision yet is quiet. Row 011-377: its age counts from
+ * when this daemon first saw it, through the calendar steps since
+ * (`CalendarSteps.local`); the stored `createdAt` stays as it is.
  */
 export function quietLeftMs(
   context: SchedulerContext,
@@ -47,7 +49,13 @@ export function quietLeftMs(
 ): number | null {
   if (group.at !== "edit") return null;
   const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + group.quietMs - (at ?? context.now());
+  if (latest === null) return 0;
+  const { steps } = context;
+  const created =
+    steps === undefined
+      ? latest.createdAt
+      : steps.local("revision", String(latest.number), latest.createdAt);
+  return created + group.quietMs - (at ?? context.now());
 }
 
 /**

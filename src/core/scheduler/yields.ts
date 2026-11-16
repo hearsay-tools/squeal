@@ -187,6 +187,16 @@ export class TierYields implements CutFiles {
     if (this.#bounds.delete(tier.runId)) this.#arm(context);
   }
 
+  /**
+   * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each bound
+   * and the ended count's last write move with it. The wake already counts
+   * its delay on elapsed time.
+   */
+  shift(ms: number): void {
+    for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
+    this.#history.shift(ms);
+  }
+
   /** The scheduler closed: no check comes again. */
   close(): void {
     this.#bounds.clear();
