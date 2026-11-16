@@ -118,7 +118,7 @@ describe("privateReport", () => {
       "src/b.ts": "cd /home/alice\nconst p = '/Users/zoë/x';\nconst q = \"/home/émile\";\n",
       "src/c.ts":
         "https://example.com/home/carol https://example.com/Users/zoë\n" +
-        "/home/<you>/x /home/$USER/x /Users/{name}/x /home/%u ${HOME}\n" +
+        "/home/<you>/x /home/$USER/x /Users/{name}/x /home/%u ${HOME} /Users/.localized\n" +
         "/home/user /home/runner /Users/user /home/squeal-e2e /home/\n",
     });
     expect(problems(root, base)).toEqual([

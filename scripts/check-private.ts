@@ -10,9 +10,10 @@ import { fileURLToPath } from "node:url";
  * and with JSON string escapes undone, up to three rounds for payloads serialized inside others.
  *
  *   1. an absolute home path, `/home/<name>` or `/Users/<name>`, any letters in the name; a name
- *      starting with `<`, `$`, `{` or `%` is a placeholder; three names pass: `user`, the fake
- *      value fixtures and examples use, `runner`, GitHub's runner home, and `squeal-e2e`, the
- *      throwaway user the real-CLI tests run as;
+ *      starting with `<`, `$`, `{` or `%` is a placeholder, one starting with `.` a file such as
+ *      `/Users/.localized`, not a home; three names pass: `user`, the fake value fixtures and
+ *      examples use, `runner`, GitHub's runner home, and `squeal-e2e`, the throwaway user the
+ *      real-CLI tests run as;
  *   2. a recorded agent session log: one added line, or the added lines of one JSON file, holding
  *      the transcript path key, or both the session id key and the working directory key;
  *   3. a case-insensitive substring from the private denylist, env SQUEAL_PRIVATE_DENYLIST (one
@@ -31,7 +32,8 @@ const ALLOW_FILE = ".private-allow";
 const DENYLIST_ENV = "SQUEAL_PRIVATE_DENYLIST";
 
 /** A home directory with a real user name: not preceded by a host or path word, as in a URL. */
-const HOME_PATH = /(?<![\p{L}\p{N}\p{M}_.-])\/(?:home|Users)\/([\p{L}\p{N}\p{M}_.-]+)/gu;
+const HOME_PATH =
+  /(?<![\p{L}\p{N}\p{M}_.-])\/(?:home|Users)\/([\p{L}\p{N}\p{M}_-][\p{L}\p{N}\p{M}_.-]*)/gu;
 const PUBLIC_USERS = new Set(["user", "runner", "squeal-e2e"]);
 // Each quote is a character class so this file holds none of the keys it looks for.
 const TRANSCRIPT_KEY = /["]transcript_path["]/;
