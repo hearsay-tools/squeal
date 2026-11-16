@@ -4,7 +4,7 @@ import { recordsForFile } from "../scheduler/records.js";
 import { describeFailure } from "../state/fingerprint.js";
 import { worktreeEnvironment } from "../store/environments.js";
 import type { ExportHeader } from "../store/imports.js";
-import type { ResultsBundle } from "../store/transfer-bundle.js";
+import type { AbsoluteFile, ResultsBundle } from "../store/transfer-bundle.js";
 import type {
   AbsolutePath,
   EpochMs,
@@ -94,6 +94,8 @@ export interface CiExportCounts {
    * (review of 0.1.443-r2 S1). Not in `inspector`.
    */
   readonly unwatched: number;
+  /** Files left out: one of their own entries is an absolute path, as a test that sets `process.platform` can observe (issue #228). */
+  readonly absolute: number;
 }
 
 /** A file left out because its shard's evidence does not certify these inputs' content here. */
@@ -108,11 +110,14 @@ export type CiExport =
       readonly bundle: ResultsBundle;
       readonly counts: CiExportCounts;
       readonly uncertified: readonly UncertifiedFile[];
+      /** The files left out for an absolute path, with the first such path of each. */
+      readonly absolute: readonly AbsoluteFile[];
     };
 
 /**
  * The D2 export of `input.parts` at this checkout, or the first reason the
- * parts make none (D9). Throws `AbsolutePathError` as `exportResults` does.
+ * parts make none (D9). Leaves out a file whose own entries hold an
+ * absolute path, and throws `AbsolutePathError` as `exportResults` does.
  * Writes the observed entries and environments into `input.store` only.
  */
 export async function ciExport(input: CiExportInput): Promise<CiExport> {
@@ -191,7 +196,7 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       records,
     });
   }
-  const bundle = bundleOf(store, worktreeId, header, exported);
+  const { bundle, absolute } = bundleOf(store, worktreeId, header, exported);
   const testFiles = bundle.testFiles.length;
   return {
     bundle,
@@ -199,13 +204,15 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       testFiles,
       results: bundle.results.length,
       failed: files.length - passed.length,
-      unkeyed: kept.length - testFiles - uncertified.length - inspected,
+      unkeyed: kept.length - testFiles - uncertified.length - inspected - absolute.length,
       uncertified: uncertified.length,
       ambiguous: passed.length - named.length,
       inspector: named.length - kept.length - unwatched + inspected,
       unwatched,
+      absolute: absolute.length,
     },
     uncertified,
+    absolute,
   };
 }
 

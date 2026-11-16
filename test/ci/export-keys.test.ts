@@ -209,6 +209,7 @@ describe("ci export's keys (spec 018 D9)", () => {
       ambiguous: 0,
       inspector: 0,
       unwatched: 0,
+      absolute: 0,
     });
     const [only] = result.bundle.testFiles;
     expect(only?.path).toBe("test/a.test.ts");

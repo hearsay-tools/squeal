@@ -4,6 +4,7 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
+import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { AbsolutePathError, exportResults } from "../../src/core/store/transfer.js";
 import { encodeBundle } from "../../src/core/store/transfer-bundle.js";
@@ -165,11 +166,32 @@ describe("squeal export and import between two stores (018 D2, D3)", SLOW, () =>
     expect(importRefusal(bundle)).toBeNull();
   });
 
-  it("refuses to export an absolute path", async () => {
+  it("leaves out a file whose closure holds an absolute path, and keeps the rest", async () => {
     const { a } = await exported();
     const testFile = { project: "", path: fileName(0) };
     const closure = { testFile, paths: ["/etc/passwd"], complete: true, method: METHOD };
     a.store.testFiles.put({ testFile, closure, updatedAt: 1, updatedBy: a.worktreeId });
+    const { bundle, counts, absolute } = exportResults(a.store, a.worktreeId, HEADER);
+    expect(absolute).toEqual([{ testFile, path: "/etc/passwd" }]);
+    expect(counts).toMatchObject({ testFiles: COUNT - 1, results: RESULTS - 2, absolute: 1 });
+    expect(bundle.testFiles.map((f) => f.path)).not.toContain(fileName(0));
+    expect(bundle.results.map((r) => r.testPath)).not.toContain(fileName(0));
+  });
+
+  // Issue #228: a test that sets `process.platform` to win32 observes a drive-letter path on Linux.
+  it("leaves out a file that observed a Windows path, and keeps the rest", async () => {
+    const { a } = await exported();
+    const windows = "C:\\Users\\dev\\repo";
+    a.store.meta.set(observedMetaKey(""), JSON.stringify({ [fileName(2)]: [windows] }));
+    const { bundle, counts, absolute } = exportResults(a.store, a.worktreeId, HEADER);
+    expect(absolute).toEqual([{ testFile: { project: "", path: fileName(2) }, path: windows }]);
+    expect(counts).toMatchObject({ testFiles: COUNT - 1, absolute: 1 });
+    expect(bundle.testFiles.map((f) => f.path)).not.toContain(fileName(2));
+  });
+
+  it("refuses to export an absolute path in a project's start-up entries", async () => {
+    const { a } = await exported();
+    a.store.meta.set(observedStartupMetaKey(""), JSON.stringify(["/etc/passwd"]));
     expect(() => exportResults(a.store, a.worktreeId, HEADER)).toThrow(
       new AbsolutePathError("/etc/passwd"),
     );

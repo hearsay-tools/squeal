@@ -6,7 +6,9 @@ import { worktreeEnvironments } from "../store/environments.js";
 import type { ExportHeader } from "../store/imports.js";
 import { AbsolutePathError } from "../store/transfer.js";
 import {
+  type AbsoluteFile,
   absolutePathIn,
+  absolutePathOfFile,
   type ExportedResult,
   type ExportedTestFile,
   OBSERVED_MAPS,
@@ -44,35 +46,45 @@ export interface KeyedFile {
 }
 
 /**
- * The D2 bundle of `files`, sorted as a store lists them. Throws
- * `AbsolutePathError` before returning one that holds an absolute path.
+ * The D2 bundle of `files`, sorted as a store lists them, less each file
+ * whose own entries hold an absolute path, which `absolute` names (issue
+ * #228). Throws `AbsolutePathError` before returning one that still holds
+ * an absolute path, in a project's entries.
  */
 export function bundleOf(
   store: Store,
   worktreeId: WorktreeId,
   header: ExportHeader,
   files: readonly KeyedFile[],
-): ResultsBundle {
-  const sorted = [...files].sort(
-    (a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path),
-  );
-  const projects = new Set(sorted.map(({ file }) => file.project));
+): { readonly bundle: ResultsBundle; readonly absolute: readonly AbsoluteFile[] } {
+  const absolute: AbsoluteFile[] = [];
+  const sorted = [...files]
+    .sort((a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path))
+    .flatMap(({ file, records }) => {
+      const testFile = { ...file, observed: observedOf(store, file) };
+      const results = [...records].sort(byCheck).map(exported);
+      const path = absolutePathOfFile(testFile, results);
+      if (path === null) return [{ testFile, results }];
+      absolute.push({ testFile: { project: file.project, path: file.path }, path });
+      return [];
+    });
+  const projects = new Set(sorted.map(({ testFile }) => testFile.project));
   const bundle: ResultsBundle = {
     format: RESULTS_FORMAT,
     header,
     environments: worktreeEnvironments(store, worktreeId)
       .filter((e) => projects.has(e.project))
       .map(({ project, hash, descriptor }) => ({ project, hash, descriptor })),
-    testFiles: sorted.map(({ file }) => ({ ...file, observed: observedOf(store, file) })),
+    testFiles: sorted.map(({ testFile }) => testFile),
     observedStartup: [...projects].sort(compare).flatMap((project) => {
       const paths = readSharedEntries(store, observedStartupMetaKey(project), "list")[""];
       return paths === undefined ? [] : [{ project, paths }];
     }),
-    results: sorted.flatMap(({ records }) => [...records].sort(byCheck).map(exported)),
+    results: sorted.flatMap(({ results }) => results),
   };
-  const absolute = absolutePathIn(bundle);
-  if (absolute !== null) throw new AbsolutePathError(absolute);
-  return bundle;
+  const refused = absolutePathIn(bundle);
+  if (refused !== null) throw new AbsolutePathError(refused);
+  return { bundle, absolute };
 }
 
 /** The file's entry in each observed map that has one. */

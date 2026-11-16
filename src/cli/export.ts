@@ -6,7 +6,7 @@ import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
 import type { ExportHeader, ExportSource } from "../core/store/imports.js";
 import { AbsolutePathError, type ExportCounts, exportResults } from "../core/store/transfer.js";
-import { encodeBundle } from "../core/store/transfer-bundle.js";
+import { type AbsoluteFile, encodeBundle } from "../core/store/transfer-bundle.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { openForWrites } from "./store-writes.js";
@@ -44,7 +44,8 @@ export async function exportCommand(args: readonly string[], io: CliIo): Promise
     source: sourceOf(io.env ?? process.env),
   };
   try {
-    const { bundle, counts } = exportResults(store, worktreeIdFor(root), header);
+    const { bundle, counts, absolute } = exportResults(store, worktreeIdFor(root), header);
+    for (const line of absoluteLines(absolute)) io.stderr(`squeal export: ${line}\n`);
     if (counts.testFiles === 0) {
       io.stderr(`squeal export: ${nothingText(counts)}; wrote nothing\n`);
       return 1;
@@ -105,7 +106,27 @@ function nothingText(counts: ExportCounts): string {
   if (counts.keyed === 0) {
     return "no test file of this worktree has a key yet: the daemon computes keys (squeal start)";
   }
-  return `none of the ${files(counts.keyed)} with a key has only passes and skips stored at it`;
+  const absolute =
+    counts.absolute > 0
+      ? `; ${files(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path left out`
+      : "";
+  return `none of the ${files(counts.keyed)} with a key has only passes and skips stored at it${absolute}`;
+}
+
+/** Files named one per line by `absoluteLines`; one more line counts the rest. */
+const NAMED_ABSOLUTE = 3;
+
+/**
+ * For the first few files an export left out for an absolute path, the file
+ * and the path (issue #228); one more line counts the rest.
+ */
+export function absoluteLines(left: readonly AbsoluteFile[]): string[] {
+  const named = left.slice(0, NAMED_ABSOLUTE).map(({ testFile, path }) => {
+    const name = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+    return `left out ${name}: it holds the absolute path ${path}, which an export does not write`;
+  });
+  const more = left.length - NAMED_ABSOLUTE;
+  return more > 0 ? [...named, `left out ${files(more)} more for an absolute path`] : named;
 }
 
 /** What the export wrote, and the files left out by reason. */
@@ -115,6 +136,9 @@ export function countsText(counts: ExportCounts, file: string): string {
     counts.noKey > 0 ? `${files(counts.noKey)} with no current key` : null,
     counts.noResult > 0 ? `${files(counts.noResult)} with no result at the key` : null,
     counts.failed > 0 ? `${files(counts.failed)} with a failure at the key` : null,
+    counts.absolute > 0
+      ? `${files(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path`
+      : null,
   ].filter((part) => part !== null);
   const leftText = left.length === 0 ? "" : `\nLeft out: ${left.join(", ")}.`;
   return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${leftText}`;

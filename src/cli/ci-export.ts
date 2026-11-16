@@ -24,7 +24,7 @@ import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { vitestResolves } from "../runners/vitest/ci-record.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
-import { sourceOf } from "./export.js";
+import { absoluteLines, sourceOf } from "./export.js";
 import type { CliIo } from "./main.js";
 
 /** An export that refused nothing. */
@@ -111,7 +111,10 @@ export async function ciExportCommand(
  * inputs that left the first few files out (`uncertifiedLines`).
  */
 function write(exported: Exported, file: AbsolutePath, io: CliIo): number {
-  for (const line of uncertifiedLines(exported.uncertified)) {
+  for (const line of [
+    ...uncertifiedLines(exported.uncertified),
+    ...absoluteLines(exported.absolute),
+  ]) {
     io.stderr(`squeal ci export: ${line}\n`);
   }
   if (exported.counts.testFiles === 0) {
@@ -183,13 +186,16 @@ export function countsText(counts: CiExportCounts, file: string): string {
   return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${leftText}`;
 }
 
+const nameOf = (testFile: { readonly project: string; readonly path: string }): string =>
+  `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+
 /** Files named in the lines `uncertifiedLines` gives; the count says the rest. */
 const NAMED_FILES = 3;
 
 /** For the first few files left out uncertified, the inputs whose content here is not their shard's. */
 function uncertifiedLines(files: readonly UncertifiedFile[]): string[] {
   return files.slice(0, NAMED_FILES).map(({ testFile, inputs }) => {
-    const name = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+    const name = nameOf(testFile);
     const shown = inputs.slice(0, NAMED_FILES).join(", ");
     const more = inputs.length > NAMED_FILES ? ` and ${inputs.length - NAMED_FILES} more` : "";
     return `left out ${name}: its shard recorded other content, or none, for ${shown}${more}`;
@@ -216,6 +222,9 @@ function leftOut(counts: CiExportCounts): string {
       : null,
     counts.unwatched > 0
       ? `${files(counts.unwatched)} whose node:inspector use could not be watched (as in a vmThreads pool)`
+      : null,
+    counts.absolute > 0
+      ? `${files(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path`
       : null,
   ]
     .filter((part) => part !== null)

@@ -9,7 +9,9 @@ import { worktreeEnvironments } from "./environments.js";
 import type { ExportHeader } from "./imports.js";
 import { connectionOf, readTransaction } from "./store.js";
 import {
+  type AbsoluteFile,
   absolutePathIn,
+  absolutePathOfFile,
   type ExportedResult,
   type ExportedTestFile,
   OBSERVED_MAPS,
@@ -37,6 +39,8 @@ export interface ExportCounts {
   readonly noResult: number;
   /** Files left out: a failure at the key. */
   readonly failed: number;
+  /** Files left out: one of their own entries is an absolute path (issue #228). */
+  readonly absolute: number;
 }
 
 /** A path an export would write that is not relative to the worktree (018 D2). */
@@ -50,24 +54,28 @@ export class AbsolutePathError extends Error {
  * Spec 018 D2: the passes and skips of `worktreeId`'s test files at their
  * keys, with the closure lists, observed entries and environments a fresh
  * store needs to compute the same keys. A file with a failure at its key is
- * left out whole; one with no key, a pending key or no result at it too.
- * Reads only. Throws `AbsolutePathError` before returning a bundle that would
- * hold an absolute path.
+ * left out whole; one with no key, a pending key or no result at it too,
+ * and one whose own entries hold an absolute path (`absolute` names them,
+ * issue #228). Reads only. Throws `AbsolutePathError` before returning a
+ * bundle that would still hold an absolute path, in a project's entries.
  */
 export function exportResults(
   store: Store,
   worktreeId: WorktreeId,
   header: ExportHeader,
-): { readonly bundle: ResultsBundle; readonly counts: ExportCounts } {
+): ExportedResults {
   // One read transaction: a daemon's commit between the reads never mixes two states.
   return readTransaction(store, () => exportOf(store, worktreeId, header));
 }
 
-function exportOf(
-  store: Store,
-  worktreeId: WorktreeId,
-  header: ExportHeader,
-): { readonly bundle: ResultsBundle; readonly counts: ExportCounts } {
+/** An export's bundle, its counts and the files it left out for an absolute path. */
+export interface ExportedResults {
+  readonly bundle: ResultsBundle;
+  readonly counts: ExportCounts;
+  readonly absolute: readonly AbsoluteFile[];
+}
+
+function exportOf(store: Store, worktreeId: WorktreeId, header: ExportHeader): ExportedResults {
   const keys = store.testFileKeys.list(worktreeId);
   const rows = exportedRows(connectionOf(store), worktreeId);
   const byFile = groupBy(rows, (r) => `${r.project}\0${r.testPath}`);
@@ -76,6 +84,7 @@ function exportOf(
   let noKey = 0;
   let noResult = 0;
   let failed = 0;
+  const absolute: AbsoluteFile[] = [];
   for (const k of keys) {
     if (k.key === null || k.pending !== null) {
       noKey++;
@@ -85,8 +94,19 @@ function exportOf(
     if (held.length === 0) noResult++;
     else if (held.some((r) => r.outcome === "fail")) failed++;
     else {
-      files.push(exportedFile(store, k.testFile, k.key));
-      for (const r of held) results.push({ ...r, outcome: r.outcome === "skip" ? "skip" : "pass" });
+      const file = exportedFile(store, k.testFile, k.key);
+      const rows = held.map(
+        (r): ExportedResult => ({
+          ...r,
+          outcome: r.outcome === "skip" ? "skip" : "pass",
+        }),
+      );
+      const path = absolutePathOfFile(file, rows);
+      if (path !== null) absolute.push({ testFile: k.testFile, path });
+      else {
+        files.push(file);
+        results.push(...rows);
+      }
     }
   }
   const projects = new Set(files.map((f) => f.project));
@@ -103,10 +123,14 @@ function exportOf(
     }),
     results,
   };
-  const absolute = absolutePathIn(bundle);
-  if (absolute !== null) throw new AbsolutePathError(absolute);
+  const refused = absolutePathIn(bundle);
+  if (refused !== null) throw new AbsolutePathError(refused);
   const counts = { keyed: keys.length - noKey, testFiles: files.length, results: results.length };
-  return { bundle, counts: { ...counts, noKey, noResult, failed } };
+  return {
+    bundle,
+    counts: { ...counts, noKey, noResult, failed, absolute: absolute.length },
+    absolute,
+  };
 }
 
 function exportedFile(store: Store, testFile: TestFileRef, key: CheckKey): ExportedTestFile {

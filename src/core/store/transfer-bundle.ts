@@ -152,6 +152,39 @@ export function observedHash(observed: ObservedEntries): string {
   return listHash(OBSERVED_MAPS.flatMap((map) => (observed[map] ?? []).map((p) => `${map}:${p}`)));
 }
 
+/** A test file an export leaves out because one of its own entries is an absolute path. */
+export interface AbsoluteFile {
+  readonly testFile: { readonly project: ProjectName; readonly path: RelativePath };
+  /** The first such path. */
+  readonly path: string;
+}
+
+/**
+ * Whether an export refuses to write `path`: a POSIX root, a backslash root
+ * or a drive letter. A test can observe a Windows path on Linux (it sets
+ * `process.platform`, issue #228); the export refuses it on every host.
+ */
+const isAbsolutePath = (path: string): boolean =>
+  path.startsWith("/") || path.startsWith("\\") || /^[A-Za-z]:/.test(path);
+
+/**
+ * The first absolute path in one test file's own entries: its path, closure,
+ * observed entries and its results' paths; `null` when it has none. The
+ * export leaves such a file out and keeps the rest (issue #228).
+ */
+export function absolutePathOfFile(
+  file: ExportedTestFile,
+  results: readonly ExportedResult[],
+): string | null {
+  const paths = [
+    file.path,
+    ...(file.closure?.paths ?? []),
+    ...Object.values(file.observed).flat(),
+    ...results.flatMap((r) => [r.testPath, ...(r.location === null ? [] : [r.location.path])]),
+  ];
+  return paths.find(isAbsolutePath) ?? null;
+}
+
 /** The first path in `bundle` that is not relative to the worktree, or `null`. */
 export function absolutePathIn(bundle: ResultsBundle): string | null {
   const paths = [
@@ -167,7 +200,7 @@ export function absolutePathIn(bundle: ResultsBundle): string | null {
     ]),
     ...bundle.environments.flatMap((e) => (e.descriptor?.files ?? []).map(([path]) => path)),
   ];
-  return paths.find((p) => p.startsWith("/") || p.startsWith("\\") || /^[A-Za-z]:/.test(p)) ?? null;
+  return paths.find(isAbsolutePath) ?? null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
