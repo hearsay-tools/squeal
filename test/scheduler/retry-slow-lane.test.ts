@@ -12,6 +12,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-323 (spec 011 `research/request-intake.md`, difference 2):
@@ -21,7 +22,8 @@ import {
  * retry staged before that turn (here while the step before it reads the
  * probe) queues a slow file the lane's tier takes; one staged during it
  * (here at the lane's listing) runs in the lane's next tier, once the
- * first tier ended.
+ * first tier ended. Row 011-363: the scheduler's clock is virtual, and the
+ * test reads at its quiet point (`settle`), with no poll.
  */
 
 const S1: TestFileRef = { project: "", path: "test/e2e/s1.test.ts" };
@@ -49,10 +51,11 @@ async function slowSide(): Promise<CatchUpSide> {
       slow: { ...DEFAULT_POLICY.slow, include: ["test/e2e/**"], quietMs: 0, maxParallel: 2 },
     },
     scheduler: { slow: { slotDir, recheckMs: 50, cpus: () => 1, load: () => [0] } },
+    clock: "virtual",
   });
   await side.scheduler.start();
-  await expect.poll(() => FILES.every((f) => side.current(f.path))).toBe(true);
-  await side.scheduler.idle();
+  await settle(side);
+  expect(FILES.every((f) => side.current(f.path))).toBe(true);
   return side;
 }
 
@@ -113,10 +116,11 @@ async function retried(at: Stage): Promise<string[][]> {
   try {
     ask(side, S1);
     await side.scheduler.requestRetries();
-    await expect.poll(() => second).not.toBeNull();
+    await settle(side);
+    expect(second).not.toBeNull();
     await second;
-    await expect.poll(() => side.current(S1.path) && side.current(S2.path)).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(side.current(S1.path) && side.current(S2.path)).toBe(true);
   } finally {
     stop();
   }
