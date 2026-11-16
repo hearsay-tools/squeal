@@ -158,7 +158,9 @@ describe("SessionStart (D2, D3)", () => {
     r.apply(r.pass());
     const out = await run(r, mode, name);
     expect(json(out)).toEqual(context("SessionStart", /^SQUEAL · registered at revision 1\n/));
-    expect(out.stdout).toContain(JSON.stringify(PRIMER).slice(1, -1));
+    // Row 005-91 (d): a resumed thread keeps the primer its first run heard.
+    const primed = name !== "session-start-resume";
+    expect(out.stdout.includes(JSON.stringify(PRIMER).slice(1, -1))).toBe(primed);
     expect(r.store.consumers.get(consumerOf(r, mode, name))).not.toBeNull();
   });
 

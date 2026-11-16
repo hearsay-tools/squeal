@@ -1,3 +1,4 @@
+import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensure, ensureToRegister } from "./ensure.js";
@@ -30,7 +31,9 @@ const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
  *
  * Task 001-88: wherever Squeal is used, the registration is followed by the
  * primer, and a main agent still registered after `compact` hears the primer
- * alone, since compaction drops it from context. Without a usable store
+ * alone, since compaction drops it from context. Row 005-91 (d): a `resume`
+ * keeps the earlier run's context, primer included, so it hears the
+ * registration alone; Squawk resumes a session at each human turn. Without a usable store
  * nothing validates yet, so there is no primer either: the first
  * registration, here or on a prompt or a tool boundary, carries it.
  */
@@ -63,6 +66,10 @@ export async function startSession(
       atStart,
       ...(startingSince === undefined ? {} : { startingSince }),
     });
+    // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
+    if (main && input.source === "resume") {
+      return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
+    }
     return withPrimer(registration, deps.command, coverageOf(context));
   });
   if (!ensured) await ensure(location, deps);
