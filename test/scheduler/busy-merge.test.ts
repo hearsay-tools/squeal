@@ -1,6 +1,7 @@
 import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MERGE_HOLD_POLL_MS } from "../../src/core/scheduler/hold.js";
 import { readMergeHold } from "../../src/core/scheduler/hold-rows.js";
 import type { SchedulerOptions } from "../../src/core/scheduler/options.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -33,6 +34,10 @@ import { openHarness } from "./vitest-harness.js";
  * result at a key it names. Now the record reads the hold again before each
  * try: the held file stays queued, nothing is stored at its key, and the
  * hold's end starts it.
+ *
+ * Row 011-367: both schedulers are on a virtual clock. The merge hold's poll
+ * is a wake (`advance`, then `rest`); the busy store's resume and the
+ * runners' runs stay real (card 9), so `idle` waits for them.
  */
 
 describe("a busy record and a merge hold that starts before it lands (review 0.1.273 B1)", () => {
@@ -45,6 +50,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       const h = await openHarness(main, store, commonDir, {
         busyWaits: busyWaits(),
         busySliceMs: 50,
+        clock: "virtual",
       });
       await h.scheduler.start();
       await h.scheduler.idle();
@@ -63,7 +69,9 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       try {
         h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
         await h.batch("src/math.ts");
-        await expect.poll(() => held).not.toBeNull();
+        // The record's write comes after the runner part and the tier's real Vitest run.
+        await h.scheduler.idle();
+        expect(held).not.toBeNull();
         await held;
         await h.scheduler.idle();
         expect(readMergeHold(store, h.worktreeId, 0)?.paths).toEqual(["src/math.ts"]);
@@ -75,11 +83,13 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       }
 
       git(main, ["add", "src/math.ts"]);
-      await expect
-        .poll(() => readMergeHold(store, h.worktreeId, 0)?.paths ?? null, { timeout: 10_000 })
-        .toBeNull();
-      await expect.poll(() => math()?.pending, { timeout: 30_000 }).toBeNull();
+      await h.rest();
+      expect(readMergeHold(store, h.worktreeId, 0)?.paths).toEqual(["src/math.ts"]);
+      h.advance(MERGE_HOLD_POLL_MS);
+      await h.rest();
+      expect(readMergeHold(store, h.worktreeId, 0)).toBeNull();
       await h.scheduler.idle();
+      expect(math()?.pending).toBeNull();
       expect(storedAt(math()?.key)).not.toEqual([]);
     },
   );
@@ -98,6 +108,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       hostSlots: 4,
       tierSize: 4,
       scheduler,
+      clock: "virtual",
     });
     await side.scheduler.start();
     await side.scheduler.idle();
@@ -112,7 +123,9 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       writeFileSync(join(repo.main, HELPER), helperReturning(7));
       appendFileSync(join(repo.main, OTHER), "\n");
       await batch(side, HELPER, OTHER);
-      await expect.poll(() => held).not.toBeNull();
+      // The record's write comes after the tier's run.
+      await side.scheduler.idle();
+      expect(held).not.toBeNull();
       await held;
       await side.scheduler.idle();
       expect(failsOnce()).toBe(0);
@@ -130,9 +143,13 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
     }
 
     git(repo.main, ["add", HELPER]);
-    await expect
-      .poll(() => [A, B, OTHER].map((path) => outcomes(side, path)), { timeout: 10_000 })
-      .toEqual([["pass"], ["pass"], ["pass"]]);
+    await side.rest();
+    expect(heldPaths(side)).toEqual([HELPER]);
+    side.advance(MERGE_HOLD_POLL_MS);
+    await side.rest();
+    expect(heldPaths(side)).toBeNull();
+    await side.scheduler.idle();
+    expect([A, B, OTHER].map((path) => outcomes(side, path))).toEqual([["pass"], ["pass"], ["pass"]]);
     expect(setupStates(side)).toEqual([]);
   });
 });
