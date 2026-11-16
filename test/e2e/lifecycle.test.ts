@@ -106,9 +106,13 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     // Row 011-276: while this boundary's spawn mark is fresh it takes no lock (row 011-251, F4)
     // and cannot tell the killed daemon from a busy one behind its record, so it reads a late
     // heartbeat; once the death is readable it reads no daemon. Either is honest; which one
-    // depends on timing. Both legs run the release under test (row 019-31).
+    // depends on timing. Both legs run the release under test (row 019-31). Row 005-91 (a): a
+    // heartbeat under a minute late is no news by itself, so that boundary may say nothing.
+    const quietLate = told.text === null;
     const late = /^SQUEAL · the daemon's heartbeat is late at revision \d+\n/.test(told.text ?? "");
-    if (late) {
+    if (quietLate) {
+      expect(told.stdout).toBe("");
+    } else if (late) {
       expect(told.text).toMatch(
         new RegExp(
           `The daemon's heartbeat is late: the last one was \\d+ (?:s|min) ago, at ${String(since).replace(/\./g, "\\.")}; ` +
@@ -121,7 +125,7 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
         `No daemon has validated since ${since}; results are as of revision ${down.revision}.`,
       );
     }
-    expectAgrees(told.text, down);
+    if (!quietLate) expectAgrees(told.text, down);
 
     // That boundary found the heartbeat stale and started a replacement (S2); SessionStart finds it.
     const start = await e.hook("session-start", e.main, { session_id: OTHER_SESSION });
@@ -131,13 +135,18 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     const alive = await e.settle(e.main, "the replacement's heartbeat", quiet);
 
     const back = await e.hook("post-tool-batch", e.main);
-    // Row 011-276: recovery says what changed, after either reading: what a consumer was told
-    // keeps only "down", so `livenessTitle` has one recovery title.
-    expect(back.text).toMatch(
-      /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/,
-    );
-    expect(back.text).not.toContain("No daemon");
-    expectAgrees(back.text, alive);
+    if (quietLate) {
+      // Row 005-91 (a): the short late heartbeat was not told, so its recovery is no news.
+      expect(back.stdout).toBe("");
+    } else {
+      // Row 011-276: recovery says what changed, after either reading: what a consumer was told
+      // keeps only "down", so `livenessTitle` has one recovery title.
+      expect(back.text).toMatch(
+        /^SQUEAL · a daemon is validating again at revision \d+: its heartbeat is current\n/,
+      );
+      expect(back.text).not.toContain("No daemon");
+      expectAgrees(back.text, alive);
+    }
     expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");
   }, 240_000);
 });

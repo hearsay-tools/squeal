@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
-import { livenessMetaKey } from "../../src/core/delivery/liveness.js";
+import { LATE_HEARTBEAT_NEWS_MS, livenessMetaKey } from "../../src/core/delivery/liveness.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
 import type { StateSink } from "../../src/core/types/state.js";
@@ -17,6 +17,8 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const C2: Consumer = { worktreeId: WT, sessionId: "s2", agentId: "main" };
 const A = check("a");
 const INTERVAL = 5_000;
+/** Row 005-91 (a): a late heartbeat this old is news by itself. */
+const LATE = LATE_HEARTBEAT_NEWS_MS;
 
 let store: Store;
 let sink: StateSink;
@@ -64,13 +66,13 @@ describe("liveness in headers", () => {
     const registration = await delivery.register(C1);
     expect(registration.header.daemon).toEqual({ state: "alive", lastHeartbeatAt: clock });
     apply("fail");
-    clock += 3 * INTERVAL;
+    clock += LATE;
     const delta = await delivery.onToolBoundary(C1);
     // Row 011-276: the record no shutdown cleared, its lock not free, is a late heartbeat.
     expect(delta?.header.daemon).toEqual({
       state: "down",
-      since: clock - 3 * INTERVAL,
-      heartbeatLate: { ageMs: 3 * INTERVAL },
+      since: clock - LATE,
+      heartbeatLate: { ageMs: LATE },
     });
     expect(delta?.entries).toHaveLength(1);
     // Row 011-295: news tells the late heartbeat as the header says it.
@@ -103,7 +105,7 @@ describe("a liveness change", () => {
     apply("pass");
     await delivery.register(C1);
     await delivery.register(C2);
-    clock += 3 * INTERVAL;
+    clock += LATE;
 
     const first = await delivery.onToolBoundary(C1);
     expect(first).toMatchObject({ entries: [], liveness: { state: "down" } });
@@ -120,7 +122,7 @@ describe("a liveness change", () => {
   });
 
   it("is not delivered to a consumer registered while the daemon was already down", async () => {
-    clock += 3 * INTERVAL;
+    clock += LATE;
     await delivery.register(C1);
     expect(await delivery.onToolBoundary(C1)).toBeNull();
   });
@@ -128,7 +130,7 @@ describe("a liveness change", () => {
   it("is left for the next tool boundary by a PreToolUse peek and the idle waiter", async () => {
     apply("pass");
     await delivery.register(C1);
-    clock += 3 * INTERVAL;
+    clock += LATE;
 
     expect(await delivery.peek(C1, { kinds: ["pass-to-fail"] })).toBeNull();
     expect(await delivery.waitForDelta(C1, { timeoutMs: 20 })).toBeNull();

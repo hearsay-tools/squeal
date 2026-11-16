@@ -54,14 +54,15 @@ const text = (delta: Delta | null) => (delta === null ? null : formatDelta(delta
 describe("news tells a late heartbeat and a death once per consumer (row 011-295)", () => {
   it("tells the late heartbeat, then the death after it, as the header words them", async () => {
     const { boundary, to, free, c1, c2 } = await twoConsumers();
-    to(9_000);
+    // Row 005-91 (a): a minute late or more, so the late heartbeat is news by itself.
+    to(58_000);
     const late = text(await boundary(c1));
     expect(late).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 2\n/);
-    expect(late).toContain("The daemon's heartbeat is late: the last one was 11 s ago");
+    expect(late).toContain("The daemon's heartbeat is late: the last one was 60 s ago");
     expect(await boundary(c1)).toBeNull();
 
     free();
-    to(10_000);
+    to(59_000);
     const died = text(await boundary(c1));
     expect(died).toMatch(/^SQUEAL · no daemon is validating at revision 2\n/);
     expect(died).toContain(

@@ -22,9 +22,12 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  */
 
 const T = Date.now() as EpochMs;
-const LAST = (T - 20_000) as EpochMs;
+// Row 005-91 (a): 60 s late or more, so a late heartbeat is news by itself.
+const LAST = (T - 90_000) as EpochMs;
 const ISO = new Date(LAST).toISOString();
-const DETAIL = `the last one was 20 s ago, at ${ISO}; the daemon may be busy or stopped`;
+const DETAIL = `the last one was 90 s ago, at ${ISO}; the daemon may be busy or stopped`;
+/** Under `LATE_HEARTBEAT_NEWS_MS`: no news by itself, nor its recovery. */
+const SHORT = (T - 20_000) as EpochMs;
 const EDIT = { tool_calls: [{ tool_name: "Edit", tool_input: {}, tool_use_id: "toolu_01A" }] };
 const READ = { tool_calls: [{ tool_name: "Read", tool_input: {}, tool_use_id: "toolu_01B" }] };
 
@@ -83,7 +86,7 @@ describe("a late heartbeat (row 011-276)", () => {
           `The daemon's heartbeat is late: ${DETAIL}; results are as of revision 1.\n` +
           `Not validated: the daemon's heartbeat is late: ${DETAIL}; any change this call made has no result until it validates again.`,
       );
-      expect(json).toEqual({ state: "down", since: LAST, heartbeatLate: { ageMs: 20_000 } });
+      expect(json).toEqual({ state: "down", since: LAST, heartbeatLate: { ageMs: 90_000 } });
       expect(text).toContain(`Daemon: heartbeat late: ${DETAIL}`);
       expect(text).toContain(
         `  the daemon's heartbeat is late: ${DETAIL}; results are as of revision 1; \`squeal start\` starts one once it has exited`,
@@ -119,6 +122,80 @@ describe("a late heartbeat (row 011-276)", () => {
       expect(json).toEqual({ state: "alive", lastHeartbeatAt: expect.any(Number) });
       expect(text).toMatch(/^Daemon: running, last heartbeat \d+ s ago$/m);
       expect(`${hook}\n${text}`).not.toContain("late");
+    } finally {
+      held.release();
+    }
+  });
+});
+
+describe("a heartbeat under a minute late (row 005-91 a)", () => {
+  const boundary = (r: SquealRepo, input = READ) =>
+    runHook("post-tool-batch", recorded("post-tool-batch", r.root, input), hung).then(context);
+
+  it("sends nothing alone, nor its recovery", async () => {
+    const r = await registered();
+    r.daemon("stale", SHORT);
+    const held = lock(r);
+    try {
+      expect(await boundary(r)).toBe("");
+      r.daemon("alive");
+      expect(await boundary(r)).toBe("");
+    } finally {
+      held.release();
+    }
+  });
+
+  it("told at registration, its recovery sends nothing", async () => {
+    const r = squealRepo();
+    r.apply(r.pass());
+    r.daemon("stale", SHORT);
+    const held = lock(r);
+    try {
+      await runHook("session-start", recorded("session-start", r.root), hung);
+      r.daemon("alive");
+      expect(await boundary(r)).toBe("");
+    } finally {
+      held.release();
+    }
+  });
+
+  it("is still said in the header of a delivery with other news", async () => {
+    const r = await registered();
+    r.apply(r.fail());
+    r.daemon("stale", SHORT);
+    const held = lock(r);
+    try {
+      const hook = await boundary(r);
+      expect(hook).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 2\n/);
+      expect(hook).toContain("The daemon's heartbeat is late: the last one was 20 s ago");
+    } finally {
+      held.release();
+    }
+  });
+
+  it("leaves the line an edit with no result gets", async () => {
+    const r = await registered();
+    r.daemon("stale", SHORT);
+    const held = lock(r);
+    try {
+      expect(await boundary(r, EDIT)).toMatch(
+        /^SQUEAL · Not validated: the daemon's heartbeat is late: the last one was 20 s ago/,
+      );
+    } finally {
+      held.release();
+    }
+  });
+
+  it("a minute or later is said once, and its recovery once", async () => {
+    const r = await registered();
+    r.daemon("stale", LAST);
+    const held = lock(r);
+    try {
+      expect(await boundary(r)).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
+      expect(await boundary(r)).toBe("");
+      r.daemon("alive");
+      expect(await boundary(r)).toMatch(/^SQUEAL · a daemon is validating again at revision 1/);
+      expect(await boundary(r)).toBe("");
     } finally {
       held.release();
     }

@@ -62,6 +62,7 @@ import {
   readLiveHeader,
   tellLiveness,
   tellRevision,
+  toldAtRegistration,
   toldLiveness,
   toldRevision,
   withTold,
@@ -530,7 +531,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         knownFailures.map((f) => f.check),
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
-      const daemon = header.daemon === undefined ? null : toldOf(header.daemon);
+      const daemon = header.daemon === undefined ? null : toldAtRegistration(header.daemon);
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);

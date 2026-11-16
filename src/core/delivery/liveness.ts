@@ -2,8 +2,8 @@ import { isInstalledLockfile } from "../keys/environment.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { readPresence } from "../presence/decide.js";
 import { forgetRest } from "../presence/events.js";
-import { readTold, type ToldLiveness } from "../presence/told.js";
-import { headerView, newsChange, withToldStart } from "../presence/views.js";
+import { readTold, type ToldLiveness, type ToldPresence } from "../presence/told.js";
+import { headerView, newsChange, toldOf, withToldStart } from "../presence/views.js";
 import { readHeader } from "../state/header.js";
 import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
@@ -113,10 +113,39 @@ export function withTold(header: StatusHeader, told: ToldLiveness, at: EpochMs):
 }
 
 /**
+ * Row 005-91 (a): how old a late heartbeat must be before it is news by itself. In 4 days of
+ * transcripts a late heartbeat was 14 s old at the median and under 30 s in 63 of 68, and
+ * "validating again" followed 31 s later at the median: a busy daemon, not one an agent acts on.
+ * A fixed time, not a factor of the daemon's heartbeat interval: that interval is 5 s on every
+ * machine (only tests set another), so 12 intervals would read the same and say less.
+ */
+export const LATE_HEARTBEAT_NEWS_MS = 60_000;
+
+/** A late heartbeat younger than `LATE_HEARTBEAT_NEWS_MS`. Its header still says it. */
+function shortLate(live: DaemonLiveness): boolean {
+  return (
+    live.state === "down" &&
+    live.heartbeatLate !== undefined &&
+    live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS
+  );
+}
+
+/**
+ * What a registration tells `consumer` of `live` (`toldOf`). Row 005-91 (a): a short late
+ * heartbeat is told as a validating daemon, so neither it nor its recovery is news after it.
+ */
+export function toldAtRegistration(live: DaemonLiveness): ToldPresence {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
+}
+
+/**
  * The daemon's liveness when it differs from what `consumer` was told, else
  * `null`: daemon presence's news view (`newsChange`). A rest whose restart is
  * overdue is forgotten here, so this and every later boundary report the
- * daemon down as before. Call inside a transaction.
+ * daemon down as before. Row 005-91 (a): a short late heartbeat is no change,
+ * so it is not told and its recovery is no change either; one that reaches
+ * `LATE_HEARTBEAT_NEWS_MS` is told once, and its recovery once. Call inside a
+ * transaction.
  */
 export function livenessChange(
   store: Store,
@@ -126,7 +155,7 @@ export function livenessChange(
   const presence = readPresence(store, consumer.worktreeId, at);
   const { change, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
-  return change;
+  return change !== null && shortLate(change) ? null : change;
 }
 
 /*
