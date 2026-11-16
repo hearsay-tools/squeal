@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.519";
+  if (true) return "0.1.520";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14888,7 +14888,7 @@ var init_checkpoints = __esm({
 function claimBoundMs(timeoutMs) {
   return timeoutMs === null ? CLAIM_UNBOUNDED_MS : timeoutMs + CLAIM_GRACE_MS;
 }
-function claimOf(ledger, ref3) {
+function claimOf(ledger, ref3, at2) {
   const file = ledger.file(ref3);
   const key3 = file?.key ?? null;
   if (!file || key3 === null || file.blocked !== null) return "free";
@@ -14899,15 +14899,15 @@ function claimOf(ledger, ref3) {
     ledger.commit();
     return "settled";
   }
-  return mayWait && ledger.claims.holds(key3) ? "waits" : "free";
+  return mayWait && ledger.claims.holds(key3, at2) ? "waits" : "free";
 }
-function peekClaim(context, ledger, ref3) {
+function peekClaim(context, ledger, ref3, at2) {
   const { queue, claims: claims2 } = ledger;
   const key3 = ledger.file(ref3)?.key ?? null;
   if (key3 === null || queue.isForced(ref3)) return "free";
   const hits = context.store.results.byKey(key3, 0);
   if (hits.length > 0) return stands(context, hits) ? "stored" : "free";
-  return !queue.isRecent(ref3) && claims2.holds(key3, context.now()) ? "waits" : "free";
+  return !queue.isRecent(ref3) && claims2.holds(key3, at2 ?? context.now()) ? "waits" : "free";
 }
 function readClaim(context, ledger, ref3) {
   const { queue, claims: claims2 } = ledger;
@@ -15008,12 +15008,12 @@ var init_claims = __esm({
        * daemons have this worktree's queued keys pending too. The queued files
        * divided by those daemons and this one, rounded up, at least
        * `runner.tierSize` and at most `runner.backlogTierSize`; with none, the
-       * latter.
+       * latter. The claims' liveness reads `at`, a plan's reading (row 011-372).
        */
-      backlogSize(queued) {
+      backlogSize(queued, at2) {
         const { store, worktreeId, policy } = this.context;
         const { tierSize, backlogTierSize } = policy.runner;
-        const sharers = store.testFileKeys.sharers(worktreeId, this.#live());
+        const sharers = store.testFileKeys.sharers(worktreeId, this.#live(at2));
         if (sharers === 0) return backlogTierSize;
         return Math.min(backlogTierSize, Math.max(tierSize, Math.ceil(queued / (sharers + 1))));
       }
@@ -15970,16 +15970,20 @@ var init_queue = __esm({
       }
       /**
        * The batch of `ref` started a tier estimated to end at `estimatedEnd`,
-       * which status names (row 011-268); nothing when it is in no batch.
+       * which status names (row 011-268); nothing when it is in no batch at
+       * `now`, the decision's reading (row 011-372).
        */
-      batchStarted(ref3, estimatedEnd) {
-        const rank4 = this.#promotions.rankOf(testFileId(ref3));
+      batchStarted(ref3, estimatedEnd, now) {
+        const rank4 = this.#promotions.rankOf(testFileId(ref3), now);
         if (rank4 !== null) this.#promotions.started(rank4, estimatedEnd);
       }
-      /** Whether `ref`'s entry is queued and promoted now (C15). */
-      isPromoted(ref3) {
+      /**
+       * Whether `ref`'s entry is queued and promoted at `now`, the decision's
+       * reading (row 011-372), or a fresh one (C15).
+       */
+      isPromoted(ref3, now) {
         const id = testFileId(ref3);
-        return this.#entries.has(id) && this.#promotions.rankOf(id) !== null;
+        return this.#entries.has(id) && this.#promotions.rankOf(id, now) !== null;
       }
       /**
        * C15's rank of `ref`, queued or running, at `now`, a reading of the
@@ -15991,14 +15995,17 @@ var init_queue = __esm({
       rankAt(ref3, now) {
         return this.#promotions.rankAt(testFileId(ref3), now);
       }
-      /** `isRecent` or `isPromoted`: work of C4 step 4's first group (C15). */
-      isFirstGroup(ref3) {
-        return this.isRecent(ref3) || this.isPromoted(ref3);
+      /** `isRecent` or `isPromoted` at `now`: work of C4 step 4's first group (C15). */
+      isFirstGroup(ref3, now) {
+        return this.isRecent(ref3) || this.isPromoted(ref3, now);
       }
-      /** Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and not of the first group. */
-      isCatchUp(ref3) {
+      /**
+       * Catch-up (C4 step 4 as amended 2026-10-20, task 011-22): queued so, and
+       * not of the first group at `now`.
+       */
+      isCatchUp(ref3, now) {
         const entry4 = this.#entries.get(testFileId(ref3));
-        return entry4 !== void 0 && this.#groupOf(entry4) === Group.catchUp;
+        return entry4 !== void 0 && this.#groupOf(entry4, now) === Group.catchUp;
       }
       has(ref3) {
         return this.#entries.has(testFileId(ref3));
@@ -16116,9 +16123,10 @@ var init_queue = __esm({
        * unless the promoted entries alone make it the backlog's
        * (`batchFiles`, rows 011-265, 011-268). Not what cancels a backlog tier
        * outright: a promotion makes a tier yield (`TierYields`, row 011-51).
+       * `now`: the decision's reading (row 011-372).
        */
-      hasFirstGroup(where3 = () => true) {
-        return this.#fast().some((entry4) => this.#firstGroup(entry4) && where3(entry4.ref));
+      hasFirstGroup(where3 = () => true, now) {
+        return this.#fast().some((entry4) => this.#firstGroup(entry4, now) && where3(entry4.ref));
       }
       /**
        * Some entry `where` holds was made recent by a revision after `revision`:
@@ -16152,10 +16160,10 @@ var init_queue = __esm({
        * is told to `batchSelected` instead (row 011-268). Only a tier that took
        * an entry of the second group discharges the turn after a batch's tier,
        * not an edit's tier (review `reviews/0.1.378.md` B1); with none waiting,
-       * no turn is due.
+       * no turn is due. `now`: the decision's reading (row 011-372).
        */
-      tierSelected(tookBacklog) {
-        const waiting2 = this.#fast().some((entry4) => !this.#firstGroup(entry4));
+      tierSelected(tookBacklog, now) {
+        const waiting2 = this.#fast().some((entry4) => !this.#firstGroup(entry4, now));
         this.#recentTiers = tookBacklog || !waiting2 ? 0 : this.#recentTiers + 1;
         if (tookBacklog || !waiting2) this.#batchTurn = false;
       }
@@ -16164,21 +16172,22 @@ var init_queue = __esm({
        * Recommendation 4): while an entry of the second group is queued, the
        * backlog's turn is due (`batchTurn`), so a stream of waits moves the
        * backlog by one tier after each batch tier, edits queued or not. It does
-       * not count toward the four first-group tiers.
+       * not count toward the four first-group tiers. `now` as `tierSelected`'s.
        */
-      batchSelected() {
-        this.#batchTurn = this.#fast().some((entry4) => !this.#firstGroup(entry4));
+      batchSelected(now) {
+        this.#batchTurn = this.#fast().some((entry4) => !this.#firstGroup(entry4, now));
       }
       /**
        * A focused tier of `refs` was selected (row 011-283, review
        * `reviews/0.1.378-r2.md` N1): one of a named wait's group, a file of it
        * selected by an open wait or in a batch, is that group's tier
        * (`batchSelected`); any other counts as a tier of the first group
-       * (`tierSelected`, row 011-145).
+       * (`tierSelected`, row 011-145). `now` as `tierSelected`'s.
        */
-      focusedSelected(refs2) {
-        if (refs2.some((ref3) => this.#promotions.rankOf(testFileId(ref3)) !== null)) this.batchSelected();
-        else this.tierSelected(false);
+      focusedSelected(refs2, now) {
+        if (refs2.some((ref3) => this.#promotions.rankOf(testFileId(ref3), now) !== null))
+          this.batchSelected(now);
+        else this.tierSelected(false, now);
       }
       /** The backlog's turn is due after a batch's tier (`batchSelected`), until a tier takes a file of it. */
       batchTurn() {
@@ -16229,14 +16238,15 @@ var init_queue = __esm({
        * (spec 004 D2): `ordered`'s, where recent work comes first too and a
        * promoted file leads (C15), which does not make the slow tier eligible.
        * `ranked` (`slow.rank` `"tokens"`, D2 as amended 2026-10-18): within a
-       * class, more evidence first, then the duration order.
+       * class, more evidence first, then the duration order. `now` as
+       * `ordered`'s.
        */
-      orderedSlow(durationOf2 = () => null, ranked = false) {
+      orderedSlow(durationOf2 = () => null, ranked = false, now) {
         return sorted(
           [...this.#entries.values()].filter((entry4) => this.#isSlow(entry4.ref)),
           durationOf2,
           false,
-          this.#ranks(),
+          this.#ranks(now),
           ranked
         );
       }
@@ -16248,25 +16258,25 @@ var init_queue = __esm({
       }
       /**
        * `orderedSlow` for group `group`'s files alone (spec 019 D3): each group
-       * other than `tests` is a lane of its own.
+       * other than `tests` is a lane of its own. `now` as `ordered`'s.
        */
-      orderedGroup(group, durationOf2 = () => null, ranked = false) {
+      orderedGroup(group, durationOf2 = () => null, ranked = false, now) {
         return sorted(
           [...this.#entries.values()].filter((entry4) => this.#checkGroup(entry4.ref) === group),
           durationOf2,
           false,
-          this.#ranks(),
+          this.#ranks(now),
           ranked
         );
       }
       #fast() {
         return [...this.#entries.values()].filter((entry4) => !this.#isSlow(entry4.ref));
       }
-      #firstGroup(entry4) {
-        return entry4.recent || this.#promotions.rankOf(testFileId(entry4.ref)) !== null;
+      #firstGroup(entry4, now) {
+        return entry4.recent || this.#promotions.rankOf(testFileId(entry4.ref), now) !== null;
       }
-      #groupOf(entry4) {
-        return groupOf2(entry4, this.#promotions.rankOf(testFileId(entry4.ref)) !== null);
+      #groupOf(entry4, now) {
+        return groupOf2(entry4, this.#promotions.rankOf(testFileId(entry4.ref), now) !== null);
       }
       /**
        * Each promoted entry's request order at `now`, for `sorted`: every rank at
@@ -17138,45 +17148,55 @@ var init_ledger = __esm({
        * The queue in run order: D5 step 4 classes, shortest last known duration
        * first within one; `turn` false orders it as if the backlog's turn were
        * not due. While the backlog is paused, only the drain's files. `now`
-       * is the decision's clock reading (`RunQueue.ordered`, row 011-347).
+       * is the decision's clock reading (`RunQueue.ordered`, row 011-347), for
+       * the order and the drain's filter both (review 0.1.520 B1).
        */
       ordered(turn = this.queue.backlogTurn(), now) {
         const ordered2 = this.queue.ordered((ref3) => this.file(ref3)?.durationMs ?? null, turn, now);
-        return this.backlogPaused ? ordered2.filter((ref3) => this.#drains(ref3)) : ordered2;
+        return this.backlogPaused ? ordered2.filter((ref3) => this.#drains(ref3, now)) : ordered2;
       }
       /** The promoted files in the order a batch's tier takes them (`RunQueue.orderedBatches`, row 011-268). */
       orderedBatches(now) {
         return this.queue.orderedBatches((ref3) => this.file(ref3)?.durationMs ?? null, now);
       }
-      /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
-      fastQueued(where3 = () => true) {
-        return this.queue.hasFast((ref3) => where3(ref3) && (!this.backlogPaused || this.#drains(ref3)));
+      /**
+       * Whether a fast file `where` holds is queued to run: while the backlog is
+       * paused, a drain's, its batch rank at `now`, the decision's reading (row 011-372).
+       */
+      fastQueued(where3 = () => true, now) {
+        return this.queue.hasFast(
+          (ref3) => where3(ref3) && (!this.backlogPaused || this.#drains(ref3, now))
+        );
       }
       /** A file a drain runs: an edit's work or a promoted file, the open explicit checkpoint's, a re-run. */
-      #drains(ref3) {
-        if (this.queue.isFirstGroup(ref3) || this.file(ref3)?.rerunPending === true) return true;
+      #drains(ref3, now) {
+        if (this.queue.isFirstGroup(ref3, now) || this.file(ref3)?.rerunPending === true) return true;
         return this.checkpoints.active?.explicit === true && this.checkpoints.idFor(ref3) !== null;
       }
       /**
        * The slow class of the queue in the order the slow tier runs it (spec 004
        * D2): by evidence within a class unless `slow.rank` is `"duration"`.
+       * `now` as `RunQueue.orderedSlow`'s.
        */
-      orderedSlow() {
+      orderedSlow(now) {
         return this.queue.orderedSlow(
           (ref3) => this.file(ref3)?.durationMs ?? null,
-          this.context.policy.slow.rank !== "duration"
+          this.context.policy.slow.rank !== "duration",
+          now
         );
       }
       /**
        * Group `group`'s files in the queue in the order its lane runs them (spec
        * 019 D3): the default `slow` group's by evidence within a class unless
        * `slow.rank` is `"duration"` (004 D2), every other group's by duration.
+       * `now` as `RunQueue.orderedGroup`'s.
        */
-      orderedGroup(group) {
+      orderedGroup(group, now) {
         return this.queue.orderedGroup(
           group,
           (ref3) => this.file(ref3)?.durationMs ?? null,
-          group === SLOW_GROUP && this.context.policy.slow.rank !== "duration"
+          group === SLOW_GROUP && this.context.policy.slow.rank !== "duration",
+          now
         );
       }
       addFile(ref3) {
@@ -19592,10 +19612,10 @@ function runnable(context, ledger, entry4) {
   if (!mayFocus(context, ledger, entry4.ref) || file.resultKey === file.key) return null;
   return { file, key: file.key };
 }
-function focusedWaiting(context, ledger, where3 = () => true) {
+function focusedWaiting(context, ledger, where3 = () => true, at2) {
   const { focused } = ledger.queue;
   if (focused.size === 0) return false;
-  return focused.waiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
+  return focused.waiting(at2 ?? context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
 }
 function readFocused2(context, ledger, where3) {
   const { focused } = ledger.queue;
@@ -19603,7 +19623,7 @@ function readFocused2(context, ledger, where3) {
   const waits2 = focused.peekWaiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
   return { waits: waits2, read: true };
 }
-function startFocusedTier(context, ledger, picked, files5) {
+function startFocusedTier(context, ledger, picked, files5, at2) {
   const { store, worktreeId } = context;
   const first2 = files5[0];
   if (first2 === void 0) return null;
@@ -19638,7 +19658,10 @@ function startFocusedTier(context, ledger, picked, files5) {
     picked.map((p) => p.entry),
     tier.runId
   );
-  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
+  ledger.queue.focusedSelected(
+    picked.map((p) => p.entry.ref),
+    at2
+  );
   return tier;
 }
 var init_focused = __esm({
@@ -19671,7 +19694,7 @@ var init_sharing = __esm({
 function backlogSlot(context, ref3) {
   return context.runner.traits.backlogSlot(ref3);
 }
-function busyLanes(context, ledger, inFlight) {
+function busyLanes(context, ledger, inFlight, at2) {
   const held3 = /* @__PURE__ */ new Map();
   for (const tier of inFlight) held3.set(tier.lane, [...held3.get(tier.lane) ?? [], tier]);
   const busy2 = /* @__PURE__ */ new Set();
@@ -19679,7 +19702,7 @@ function busyLanes(context, ledger, inFlight) {
     const backlog = tiers.filter((tier) => tier.kind === "backlog");
     const edit = backlog.length < tiers.length;
     const inLane = (ref3) => laneOf(context, ref3) === lane;
-    const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
+    const queued = ledger.queue.hasFirstGroup(inLane, at2) || focusedWaiting(context, ledger, inLane, at2);
     const lead = backlog[0]?.files[0]?.file.ref;
     const beside = queued && !edit && lead !== void 0 && context.runner.traits.besideBacklog(lead);
     const any = tiers[0]?.files[0]?.file.ref;
@@ -20512,10 +20535,14 @@ import { join as join29 } from "node:path";
 function laneOf(context, ref3) {
   return laneFor(context.policy, ref3, context.runner.traits.lane(ref3));
 }
-function startTier(context, ledger, picked, kind, lease, { promoted = false, beside = false } = {}) {
+function startTier(context, ledger, picked, kind, lease, {
+  promoted = false,
+  beside = false,
+  at: at2
+} = {}) {
   const { store } = context;
   return store.transaction(() => {
-    const files5 = picked.flatMap((p) => startable(ledger, p));
+    const files5 = picked.flatMap((p) => startable(ledger, p, at2));
     const first2 = files5[0];
     if (first2 === void 0) {
       ledger.commit();
@@ -20578,7 +20605,7 @@ function newTier(context, ledger, first2, files5, kind) {
 function cancels(context, ref3) {
   return backlogSlot(context, ref3) === null;
 }
-function startable(ledger, p) {
+function startable(ledger, p, at2) {
   if (p.forced) return [p];
   const { hits, mayWait } = ledger.probe(p.key);
   if (hits.length > 0) {
@@ -20586,7 +20613,7 @@ function startable(ledger, p) {
     return [];
   }
   const waits2 = p.waits === true && mayWait;
-  if (waits2 && ledger.claims.holds(p.key)) return [];
+  if (waits2 && ledger.claims.holds(p.key, at2)) return [];
   return [{ ...p, waits: waits2 }];
 }
 async function executeTier(context, tier, observeIgnored = false, stop2, onFileEnd) {
@@ -54760,9 +54787,8 @@ var init_batch = __esm({
 });
 
 // src/core/scheduler/beside.ts
-function besideFiles(context, ledger, inFlight) {
+function besideFiles(context, ledger, inFlight, at2) {
   const { queue } = ledger;
-  const at2 = context.now();
   const rankOf = (ref3) => queue.rankAt(ref3, at2)?.rank ?? null;
   const lanes = /* @__PURE__ */ new Set();
   const running = /* @__PURE__ */ new Set();
@@ -54776,7 +54802,7 @@ function besideFiles(context, ledger, inFlight) {
   if (lanes.size === 0) return null;
   const inLanes = (ref3) => lanes.has(laneOf(context, ref3));
   const sums = /* @__PURE__ */ new Map();
-  for (const ref3 of ledger.orderedBatches()) {
+  for (const ref3 of ledger.orderedBatches(at2)) {
     const rank4 = rankOf(ref3);
     if (rank4 === null || running.has(rank4) || !inLanes(ref3)) continue;
     const ms2 = ledger.file(ref3)?.durationMs ?? Number.POSITIVE_INFINITY;
@@ -54790,13 +54816,13 @@ function besideFiles(context, ledger, inFlight) {
   };
   return queue.hasFast(takes) ? takes : null;
 }
-function besideDone(context, ledger, inFlight, lane) {
+function besideDone(context, ledger, inFlight, lane, at2) {
   const busy2 = inFlight.some(
     (tier) => tier.lane === lane && (tier.promoted === true || tier.beside === true)
   );
   if (busy2) return false;
   return !ledger.queue.hasFast(
-    (ref3) => ledger.queue.isPromoted(ref3) && laneOf(context, ref3) === lane
+    (ref3) => ledger.queue.isPromoted(ref3, at2) && laneOf(context, ref3) === lane
   );
 }
 var BESIDE_BATCH_MS;
@@ -57729,22 +57755,22 @@ var init_group_limits = __esm({
 });
 
 // src/core/scheduler/slow-trigger.ts
-function momentHolds(context, group) {
+function momentHolds(context, group, at2) {
   switch (group.at) {
     case "edit":
-      return (quietLeftMs(context, group) ?? 0) <= 0;
+      return (quietLeftMs(context, group, at2) ?? 0) <= 0;
     case "pause":
     case "stop":
-      return consumersIdle(context.store, context.worktreeId, context.now());
+      return consumersIdle(context.store, context.worktreeId, at2 ?? context.now());
     case "commit":
     case "manual":
       return false;
   }
 }
-function quietLeftMs(context, group) {
+function quietLeftMs(context, group, at2) {
   if (group.at !== "edit") return null;
   const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + group.quietMs - context.now();
+  return latest === null ? 0 : latest.createdAt + group.quietMs - (at2 ?? context.now());
 }
 function consumersIdle(store, worktreeId, now) {
   for (const record2 of store.consumers.list(worktreeId)) {
@@ -57887,9 +57913,9 @@ var init_slow_tier = __esm({
       #resolved(context) {
         return groupView(context.policy).groups.find((group) => group.name === this.group) ?? null;
       }
-      /** The files of the group in the queue, in run order. */
-      #queued(ledger) {
-        return ledger.orderedGroup(this.group);
+      /** The files of the group in the queue, in run order; batch ranks at `at` (row 011-372), else now. */
+      #queued(ledger, at2) {
+        return ledger.orderedGroup(this.group, at2);
       }
       /**
        * The group's slot directory (`slotDirOf`), read once: under `"repository"`
@@ -58069,13 +58095,13 @@ var init_slow_tier = __esm({
        * a request or a checkpoint covers it. Any other runs for no one until a
        * later commit or `squeal run <group>`, so a follower would wait for it
        * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
-       * moment every queued file holds.
+       * moment every queued file holds. `at`: a step's reading (row 011-372).
        */
-      holdsFollowers({ context, ledger }) {
-        const queued = this.#queued(ledger);
+      holdsFollowers({ context, ledger }, at2) {
+        const queued = this.#queued(ledger, at2);
         const group = this.#resolved(context);
         if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
-        return queued.some(this.#trigger(context, ledger, group));
+        return queued.some(this.#trigger(context, ledger, group, at2));
       }
       /**
        * Another worktree holds the slot, or this one yields its turn: the files
@@ -58109,7 +58135,7 @@ var init_slow_tier = __esm({
        */
       #candidates(view) {
         const { at: at2, context, ledger } = view;
-        const queued = this.#queued(ledger);
+        const queued = this.#queued(ledger, at2);
         const group = this.#resolved(context);
         this.asks.prune(ledger);
         this.narrow.prune(ledger);
@@ -58123,8 +58149,8 @@ var init_slow_tier = __esm({
           this.#publish({ kind: "waiting", for: "fast" });
           return [];
         }
-        const triggered = queued.filter(this.#trigger(context, ledger, group));
-        const claims2 = new Map(triggered.map((ref3) => [ref3, claimOf(ledger, ref3)]));
+        const triggered = queued.filter(this.#trigger(context, ledger, group, at2));
+        const claims2 = new Map(triggered.map((ref3) => [ref3, claimOf(ledger, ref3, at2)]));
         const free = triggered.filter((ref3) => claims2.get(ref3) === "free");
         const first2 = free[0];
         if (first2 !== void 0) {
@@ -58134,7 +58160,7 @@ var init_slow_tier = __esm({
         if ([...claims2.values()].includes("settled")) return this.#candidates(view);
         if ([...claims2.values()].includes("waits")) return [];
         this.#publishUntriggered(group);
-        const quiet = quietLeftMs(context, group);
+        const quiet = quietLeftMs(context, group, at2);
         this.#arm(at2, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
         return [];
       }
@@ -58144,10 +58170,11 @@ var init_slow_tier = __esm({
        * `slow.trigger`), an open request, a commit's ask at the file's key (019
        * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
        * file's open `run --all` checkpoint. Explicit
-       * requests ignore moments (spec 019 D1).
+       * requests ignore moments (spec 019 D1). The moment holds at `at`, a
+       * step's reading (row 011-372), else now.
        */
-      #trigger(context, ledger, group) {
-        const moment2 = momentHolds(context, group);
+      #trigger(context, ledger, group, at2) {
+        const moment2 = momentHolds(context, group, at2);
         const runAll = ledger.checkpoints.active?.explicit === true;
         return (ref3) => moment2 || this.#requested || this.asks.has(ledger, ref3) || this.narrow.has(ledger, ref3) || runAll && ledger.checkpoints.idFor(ref3) !== null;
       }
@@ -58228,7 +58255,7 @@ var init_slow_tier = __esm({
         if (admitted.refusal !== null) return null;
         const { context, ledger } = view;
         const width = admitted.width === "wide" ? slot2.permits : 1;
-        const triggered = this.#trigger(context, ledger, group);
+        const triggered = this.#trigger(context, ledger, group, view.at);
         const picked = [];
         for (const ref3 of refs2) {
           if (picked.length >= width) break;
@@ -58253,7 +58280,7 @@ var init_slow_tier = __esm({
         const since = context.now();
         let started2 = null;
         try {
-          started2 = this.#start(context, ledger, picked, since, lease, group);
+          started2 = this.#start(context, ledger, picked, since, lease, group, view.at);
         } finally {
           if (started2 === null) lease?.release();
         }
@@ -58272,9 +58299,9 @@ var init_slow_tier = __esm({
         return { tier, admitted };
       }
       /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
-      #start(context, ledger, picked, since, lease, group) {
+      #start(context, ledger, picked, since, lease, group, at2) {
         return context.store.transaction(() => {
-          const tier = startTier(context, ledger, picked, tierKindOf(group), lease);
+          const tier = startTier(context, ledger, picked, tierKindOf(group), lease, { at: at2 });
           const first2 = tier?.files[0];
           if (tier === null || first2 === void 0) return null;
           this.#flying = tier;
@@ -58819,9 +58846,12 @@ var init_slow_release = __esm({
         this.#open.delete(lane);
         await this.host.release(lane);
       }
-      /** The open lanes no tier runs in now (`decideRelease`'s `idle`): a step's decision (row 011-356). */
-      idleLanes() {
-        return this.#decide().idle;
+      /**
+       * The open lanes no tier runs in at `at`, the step's reading (row
+       * 011-372), else now (`decideRelease`'s `idle`): a step's decision (row 011-356).
+       */
+      idleLanes(at2) {
+        return this.#decide(at2).idle;
       }
       /** Closes `lanes`, a step decided idle on a hold. */
       async closeIdle(lanes) {
@@ -58836,15 +58866,15 @@ var init_slow_release = __esm({
       close() {
         this.#wake.clear();
       }
-      /** `decideRelease` over the open lanes now, each counting from its own end, else from now. */
-      #decide() {
+      /** `decideRelease` over the open lanes at `at`, each counting from its own end, else from `at`. */
+      #decide(at2 = this.host.now()) {
         const busy2 = new Set(this.host.lanes());
         const lanes = [...this.#open].map((lane) => ({
           lane,
           busy: busy2.has(lane),
           endedAt: this.#endedAt.get(lane) ?? null
         }));
-        return decideRelease(lanes, this.host.now(), this.afterMs);
+        return decideRelease(lanes, at2, this.afterMs);
       }
       /**
        * Closes each idle lane past its own bound and arms the next. A lane
@@ -58974,12 +59004,12 @@ var init_step = __esm({
         if (inTurn(decision)) this.ports.carry(decision, this.at);
       }
     };
-    pumpEnded = ({ events, ports }, out2) => {
+    pumpEnded = ({ at: at2, events, ports }, out2) => {
       if (!events.some((event2) => event2.kind === "pump-ended")) return void 0;
-      const { halts } = ports.admit();
+      const { halts } = ports.admit(at2);
       if (halts.has("reinstalled")) out2.decide({ kind: "tell", note: "reinstalled" });
       else if (halts.has("runtime-gone")) out2.decide({ kind: "tell", note: "runtime-gone" });
-      const rearm = ports.admit();
+      const rearm = ports.admit(at2);
       const work = rearm.hasWork || ports.busyWaiting();
       return !rearm.halted && (!ports.stalled() || ports.asked()) && work ? AGAIN : END;
     };
@@ -58989,17 +59019,17 @@ var init_step = __esm({
       return AGAIN;
     };
     inTurnEnds = (turn) => turn.reads === null ? TURN : void 0;
-    stallHolds = ({ ports }) => ports.stalled() || ports.admit().halted ? END : void 0;
+    stallHolds = ({ at: at2, ports }) => ports.stalled() || ports.admit(at2).halted ? END : void 0;
     drainRunnerWork = ({ ports }, out2) => {
       const { queued, draining } = ports.runnerWork();
       if (!draining && queued > 0) out2.decide({ kind: "drain" });
       return draining || queued > 0 ? EVENT : void 0;
     };
-    installWait2 = ({ ports }) => {
-      const { halts } = ports.admit();
+    installWait2 = ({ at: at2, ports }) => {
+      const { halts } = ports.admit(at2);
       return halts.has("install-wait") || halts.has("reinstalled") ? END : void 0;
     };
-    nothingMayStart = ({ ports, reads: reads2 }) => reads2 !== null && Object.keys(reads2).length === 0 && !ports.admit().any ? EVENT : void 0;
+    nothingMayStart = ({ at: at2, ports, reads: reads2 }) => reads2 !== null && Object.keys(reads2).length === 0 && !ports.admit(at2).any ? EVENT : void 0;
     readInstallStamp = ({ reads: reads2 }, out2) => {
       if (reads2?.install === void 0) {
         out2.decide({ kind: "read-install" });
@@ -59024,13 +59054,13 @@ var init_step = __esm({
       return void 0;
     };
     rewalkRead = (reads2) => reads2?.rewalk !== void 0;
-    reinstallMissing = ({ events, ports, reads: reads2 }, out2) => {
+    reinstallMissing = ({ at: at2, events, ports, reads: reads2 }, out2) => {
       if (events.some((event2) => event2.kind === "install-missing")) {
         out2.decide({ kind: "reinstall" });
         return TURN;
       }
       if (reads2 === null || out2.held || rewalkRead(reads2)) return void 0;
-      if (ports.admit().fast !== "install-missing") return void 0;
+      if (ports.admit(at2).fast !== "install-missing") return void 0;
       out2.selected = true;
       out2.decide({ kind: "reinstall" });
       return END;
@@ -59039,7 +59069,7 @@ var init_step = __esm({
       const { at: at2, ports, reads: reads2 } = turn;
       if (out2.held || rewalkRead(reads2)) return void 0;
       out2.selected = true;
-      const admitted = ports.admit();
+      const admitted = ports.admit(at2);
       const fast = admitted.fast;
       if (fast === "held") out2.held = true;
       else if (fast === "runner-work") return AGAIN;
@@ -59063,7 +59093,7 @@ var init_step = __esm({
     askSlowLanes = ({ at: at2, ports, reads: reads2 }, out2) => {
       if (out2.held || rewalkRead(reads2)) return void 0;
       const stamp2 = reads2?.install?.stamp ?? "";
-      for (const group of ports.admit().ask) {
+      for (const group of ports.admit(at2).ask) {
         const decided = ports.askLane(group, at2, (run7) => {
           out2.decide({ kind: "start-tier", tier: run7.tier, stamp: stamp2, turn: run7.turn, slow: run7 });
         });
@@ -59072,20 +59102,20 @@ var init_step = __esm({
       }
       return void 0;
     };
-    closeSlowLanes = ({ events, ports }, out2) => {
+    closeSlowLanes = ({ at: at2, events, ports }, out2) => {
       const ended2 = events.flatMap((event2) => event2.kind === "slow-ended" ? [event2.lane] : []);
       if (ended2.length > 0) {
-        const held3 = ports.admit().halts.has("held");
-        const lanes = ended2.filter((lane) => held3 || !ports.slowQueued(lane));
+        const held3 = ports.admit(at2).halts.has("held");
+        const lanes = ended2.filter((lane) => held3 || !ports.slowQueued(lane, at2));
         if (lanes.length > 0) out2.decide({ kind: "close-lanes", lanes });
       }
       if (!out2.held) return void 0;
-      out2.decide({ kind: "close-lanes", lanes: ports.idleLanes() });
+      out2.decide({ kind: "close-lanes", lanes: ports.idleLanes(at2) });
       return END;
     };
-    closeBesideLane = ({ events, ports }, out2) => {
+    closeBesideLane = ({ at: at2, events, ports }, out2) => {
       for (const event2 of events)
-        if (event2.kind === "beside-ended" && ports.besideDone(event2.lane))
+        if (event2.kind === "beside-ended" && ports.besideDone(event2.lane, at2))
           out2.decide({ kind: "close-beside", lane: event2.lane });
       return void 0;
     };
@@ -59160,14 +59190,14 @@ function liveView(context, ledger, options) {
     orderedBatches: () => ledger.orderedBatches(now),
     rankAt: (ref3, now2) => queue.rankAt(ref3, now2)?.rank ?? null,
     has: (ref3) => queue.has(ref3),
-    isFirstGroup: (ref3) => queue.isFirstGroup(ref3),
+    isFirstGroup: (ref3) => queue.isFirstGroup(ref3, now),
     isForced: (ref3) => queue.isForced(ref3),
     isRecent: (ref3) => queue.isRecent(ref3),
-    isCatchUp: (ref3) => queue.isCatchUp(ref3),
-    isPromoted: (ref3) => queue.isPromoted(ref3),
+    isCatchUp: (ref3) => queue.isCatchUp(ref3, now),
+    isPromoted: (ref3) => queue.isPromoted(ref3, now),
     hasFast: (where3) => queue.hasFast(where3),
-    fastQueued: (where3) => ledger.fastQueued(where3),
-    hasFirstGroup: (where3) => queue.hasFirstGroup(where3),
+    fastQueued: (where3) => ledger.fastQueued(where3, now),
+    hasFirstGroup: (where3) => queue.hasFirstGroup(where3, now),
     fastSize: () => queue.fastSize,
     batchTurn: () => queue.batchTurn(),
     quietHolds: (ref3, lane, tier, now2) => quietHolds(context, ledger, ref3, lane, tier, now2),
@@ -59176,13 +59206,13 @@ function liveView(context, ledger, options) {
     focusRunnable: (entry4) => runnable(context, ledger, entry4)
   };
 }
-function liveAsks(context, ledger) {
+function liveAsks(context, ledger, now) {
   const { queue, claims: claims2 } = ledger;
   return {
     beginPass: () => claims2.begin(),
-    focusWaiting: (now) => queue.focused.waiting(now),
+    focusWaiting: (now2) => queue.focused.waiting(now2),
     dropFocus: (entry4) => queue.focused.drop(entry4),
-    peek: (ref3) => peekClaim(context, ledger, ref3),
+    peek: (ref3) => peekClaim(context, ledger, ref3, now),
     drop: (ref3) => {
       queue.remove(ref3);
       const file = ledger.file(ref3);
@@ -59194,8 +59224,8 @@ function liveAsks(context, ledger) {
       ledger.applyResults(file, key3, hits, ledger.checkpoints.idFor(file.ref));
       return "settled";
     },
-    held: (key3, now) => claims2.holds(key3, now),
-    backlogSize: (queued) => claims2.backlogSize(queued),
+    held: (key3, now2) => claims2.holds(key3, now2),
+    backlogSize: (queued) => claims2.backlogSize(queued, now),
     // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
     offer: (want, kind) => context.capacity?.offer(want, kind) ?? defaultHostSlots(),
     endPass: () => ledger.commit(),
@@ -59229,7 +59259,7 @@ function startNext(context, ledger, plan2, options = {}) {
       };
     }
     options.check?.(step2.lane);
-    const done = act(context, ledger, step2);
+    const done = act(context, ledger, step2, options.at);
     if ("tier" in done) {
       first2 ??= done.tier;
       if (options.fly === void 0) return { tier: first2 };
@@ -59244,9 +59274,9 @@ function startNext(context, ledger, plan2, options = {}) {
 function waitsFirst(idle2) {
   return idle2.idle === "claims" || idle2.idle === "quiet";
 }
-function act(context, ledger, candidate) {
+function act(context, ledger, candidate, at2) {
   if (candidate.focus !== null) {
-    const tier2 = startFocusedTier(context, ledger, candidate.focus, candidate.files);
+    const tier2 = startFocusedTier(context, ledger, candidate.focus, candidate.files, at2);
     return tier2 === null ? { unstarted: [] } : { tier: tier2 };
   }
   const ask2 = candidate.width;
@@ -59263,23 +59293,25 @@ function act(context, ledger, candidate) {
     }
     tier = files5.length === 0 ? null : startTier(context, ledger, files5, candidate.kind, lease ?? void 0, {
       promoted: candidate.promoted,
-      beside: candidate.beside
+      beside: candidate.beside,
+      at: at2
     });
   } finally {
     if (tier === null) lease?.release();
   }
   if (tier === null) return { unstarted: files5 };
   const grant = lease?.grant ?? (ask2 === null ? tier.files.length : ask2.offer);
-  if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant);
-  else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog);
+  if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at2);
+  else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at2);
   return { tier };
 }
-function batchStarted(context, ledger, tier, grant) {
+function batchStarted(context, ledger, tier, grant, at2) {
   const first2 = tier.files[0]?.file.ref;
   if (first2 === void 0) return;
   const estimate = estimateMs(context.runner.traits, tier.files, grant);
-  ledger.queue.batchSelected();
-  ledger.queue.batchStarted(first2, (tier.startedAt ?? context.now()) + estimate);
+  ledger.queue.batchSelected(at2);
+  const end = (tier.startedAt ?? context.now()) + estimate;
+  ledger.queue.batchStarted(first2, end, at2);
 }
 var init_tier_start = __esm({
   "src/core/scheduler/tier-start.ts"() {
@@ -59369,7 +59401,7 @@ var init_step_live = __esm({
       }
       /** The step's ports: the scheduler's memory and store (row 011-356). */
       #ports = {
-        admit: () => this.host.admit(),
+        admit: (at2) => this.host.admit(at2),
         stalled: () => this.host.stalled(),
         asked: () => this.host.asked(),
         // A resume after a busy store runs once with nothing queued too: its writes end the wait.
@@ -59381,10 +59413,11 @@ var init_step_live = __esm({
         },
         startNext: (admitted, at2, fly) => {
           const { context, ledger } = this.host.started();
-          this.host.adopt(context, ledger);
+          this.host.adopt(context, ledger, at2);
           const next = startNext(context, ledger, this.#plan(context, ledger, at2), {
             check: (lane) => checkTurn(admitted, this.host.lock.turn, lane),
-            fly
+            fly,
+            at: at2
           });
           return { idle: "tier" in next ? null : next.idle };
         },
@@ -59392,20 +59425,20 @@ var init_step_live = __esm({
           const { context, ledger } = this.host.started();
           const lane = this.host.groups.get(group);
           const doing = (operation) => this.host.lock.relabel(operation);
-          const view = { at: at2, context, ledger, admit: () => this.host.admit(), doing };
+          const view = { at: at2, context, ledger, admit: () => this.host.admit(at2), doing };
           const decided = lane === void 0 ? "none" : lane.decide(view, fly);
           this.host.lock.relabel(STEP_OPERATION);
           return decided;
         },
         idleNow: (at2) => this.#idleNow(at2),
-        idleLanes: () => this.host.slowRelease.idleLanes(),
-        slowQueued: (lane) => {
+        idleLanes: (at2) => this.host.slowRelease.idleLanes(at2),
+        slowQueued: (lane, at2) => {
           const { context, ledger } = this.host.started();
-          return ledger.orderedSlow().some((ref3) => laneOf(context, ref3) === lane);
+          return ledger.orderedSlow(at2).some((ref3) => laneOf(context, ref3) === lane);
         },
-        besideDone: (lane) => {
+        besideDone: (lane, at2) => {
           const { context, ledger } = this.host.started();
-          return besideDone(context, ledger, this.host.running(), lane);
+          return besideDone(context, ledger, this.host.running(), lane, at2);
         },
         claimsWaiting: () => this.host.started().ledger.claims.waiting,
         refused: () => this.host.refused(),
@@ -59423,20 +59456,20 @@ var init_step_live = __esm({
        */
       #plan(context, ledger, now) {
         const view = liveView(context, ledger, {
-          busy: () => this.host.busyLanes(),
+          busy: () => this.host.busyLanes(now),
           cut: this.host.yields,
-          beside: () => besideFiles(context, ledger, this.host.running()),
+          beside: () => besideFiles(context, ledger, this.host.running(), now),
           slots: true,
           now
         });
-        return planTiers(view, liveAsks(context, ledger));
+        return planTiers(view, liveAsks(context, ledger, now));
       }
       /** Why no fast tier starts at the step's reading `now`: what the plan answers when it ends idle. */
       #idleNow(now) {
         const { context, ledger } = this.host.started();
-        const busy2 = () => this.host.busyLanes();
+        const busy2 = () => this.host.busyLanes(now);
         const view = liveView(context, ledger, { busy: busy2, cut: this.host.yields, now });
-        return idleOf(view, liveAsks(context, ledger));
+        return idleOf(view, liveAsks(context, ledger, now));
       }
       /**
        * The yield check in this lock turn, after `trigger`, taking stored
@@ -59446,8 +59479,8 @@ var init_step_live = __esm({
        */
       #checkYields(trigger, adopt, at2) {
         const { context, ledger } = this.host.started();
-        if (adopt) this.host.adopt(context, ledger);
-        const held3 = this.host.admit().halts.has("held");
+        if (adopt) this.host.adopt(context, ledger, at2);
+        const held3 = this.host.admit(at2).halts.has("held");
         const tiers = [...this.host.inFlight.values()].map(({ tier }) => tier);
         this.host.yields.check(context, ledger, tiers, trigger, held3, at2);
       }
@@ -59553,11 +59586,13 @@ var init_stored_keys = __esm({
       /**
        * Settles this worktree's files at the keys stored since the last read, and
        * commits. A busy store's error leaves the ledger as the store holds it
-       * (`Ledger.hold`) and the read to the next one (task 001-422).
+       * (`Ledger.hold`) and the read to the next one (task 001-422). `at`: when
+       * the read begins, a step's reading (row 011-372), else now; never after
+       * the store's read, so the next read misses nothing.
        */
-      adopt(context, ledger) {
+      adopt(context, ledger, at2) {
         const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
-        const readAt2 = context.now();
+        const readAt2 = at2 ?? context.now();
         const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
         const keys = new Set(fresh.map(({ key: key3 }) => key3));
         const { index } = context.keys;
@@ -59574,7 +59609,7 @@ var init_stored_keys = __esm({
           }
         }
         this.#readAt = readAt2;
-        for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
+        for (const [key3, at3] of this.#seen) if (at3 <= since) this.#seen.delete(key3);
         for (const { key: key3, recordedAt: recordedAt2 } of fresh) this.#seen.set(key3, recordedAt2);
       }
     };
@@ -60122,14 +60157,14 @@ var init_scheduler2 = __esm({
           runtimeDir: options.runtimeDir,
           now: this.#now,
           started: () => this.#started(),
-          admit: () => this.#admit(),
+          admit: (at2) => this.#admit(at2),
           stalled: () => this.#stalled,
           asked: () => this.#asked,
           busyWaiting: () => this.#busy?.waiting === true,
           draining: () => this.#draining !== null,
           refused: () => this.#capacity?.refused() === true,
-          adopt: (context, ledger) => this.#adopt(context, ledger),
-          busyLanes: () => this.#busyLanes(),
+          adopt: (context, ledger, at2) => this.#adopt(context, ledger, at2),
+          busyLanes: (at2) => this.#busyLanes(at2),
           running: () => this.#running(),
           releaseLane: (lane) => this.#releaseLane(lane),
           fly: (tier, stamp2, slow, admitted) => this.#fly(tier, stamp2, slow, admitted),
@@ -60430,9 +60465,9 @@ var init_scheduler2 = __esm({
        * Not while runner work waits: keys would come from a revision the runner
        * has not invalidated yet, as a tier's would.
        */
-      #adopt(context, ledger) {
+      #adopt(context, ledger, at2) {
         if (this.#runnerWork.size > 0 || this.#runnerWork.refining) return;
-        this.#storedKeys.adopt(context, ledger);
+        this.#storedKeys.adopt(context, ledger, at2);
       }
       /**
        * Row 011-356: the step outside the pump's iteration, after `events`,
@@ -60531,9 +60566,11 @@ var init_scheduler2 = __esm({
       }
       /**
        * Row 011-340: the start facts in memory now (GLOSSARY "Start facts"),
-       * for `admit`. The costly ones are read when an answer needs them.
+       * for `admit`. The costly ones are read when an answer needs them; their
+       * queue and beside answers read `at`, a step's reading (row 011-372), or
+       * the clock as they always did.
        */
-      #facts() {
+      #facts(at2) {
         const context = this.#context;
         const ledger = this.#ledger;
         const work = this.#runnerWork;
@@ -60555,16 +60592,16 @@ var init_scheduler2 = __esm({
             edit: tier.kind !== "backlog" && !isGroupLane(tier.lane)
           })),
           groups: context === null ? null : groupView(context.policy).groups,
-          editQueued: () => ledger?.queue.hasFirstGroup() === true,
-          fastQueued: () => ledger?.fastQueued() === true,
-          focused: () => this.#focused(),
-          freeLaneQueued: () => ready && this.#freeLaneQueued(),
+          editQueued: () => ledger?.queue.hasFirstGroup(void 0, at2) === true,
+          fastQueued: () => ledger?.fastQueued(void 0, at2) === true,
+          focused: () => this.#focused(at2),
+          freeLaneQueued: () => ready && this.#freeLaneQueued(at2),
           lanes: () => context === null ? [] : this.#groups.lanes(context.policy).map((lane) => ({ kind: "local", group: lane.group })),
           queued: (name3) => ledger?.queue.hasGroup(name3) ?? false,
           holdsFollowers: (name3) => {
             const lane = this.#groups.get(name3);
             if (context === null || ledger === null) return false;
-            return lane === void 0 ? ledger.queue.hasGroup(name3) : lane.holdsFollowers({ context, ledger });
+            return lane === void 0 ? ledger.queue.hasGroup(name3) : lane.holdsFollowers({ context, ledger }, at2);
           },
           slowWaiting: () => context !== null && this.#laneWaiting(context)
         };
@@ -60578,9 +60615,9 @@ var init_scheduler2 = __esm({
         if (readSlowActivity(store, worktreeId)?.kind === "waiting") return true;
         return this.#groups.lanes(context.policy).some(({ group }) => readGroupActivity(store, worktreeId, group)?.kind === "waiting");
       }
-      /** `admit` of the start facts now (row 011-340). */
-      #admit() {
-        return admit(this.#facts());
+      /** `admit` of the start facts now (row 011-340), at `at` when a step gives its reading. */
+      #admit(at2) {
+        return admit(this.#facts(at2));
       }
       async commandHold() {
         if (this.#closed) return false;
@@ -61084,13 +61121,16 @@ var init_scheduler2 = __esm({
           (error) => this.#backgroundError(`could not close the runner of lane ${lane}`, error)
         );
       }
-      /** A fast file whose lane may take a tier is queued, or one a tier beside a batch's takes. */
-      #freeLaneQueued() {
+      /**
+       * A fast file whose lane may take a tier is queued, or one a tier beside a
+       * batch's takes, at `at` when a step gives its reading (row 011-372).
+       */
+      #freeLaneQueued(at2) {
         const { context, ledger } = this.#started();
-        const busy2 = this.#busyLanes();
+        const busy2 = this.#busyLanes(at2);
         const free = (ref3) => !busy2.has(laneOf(context, ref3));
-        if (ledger.fastQueued(free) || focusedWaiting(context, ledger, free)) return true;
-        return besideFiles(context, ledger, this.#running()) !== null;
+        if (ledger.fastQueued(free, at2) || focusedWaiting(context, ledger, free, at2)) return true;
+        return besideFiles(context, ledger, this.#running(), at2 ?? this.#now()) !== null;
       }
       /** The tiers in flight whose runs have not ended. */
       #running() {
@@ -61104,14 +61144,15 @@ var init_scheduler2 = __esm({
         const ended2 = this.#stepOutside([{ kind: "beside-ended", lane }]);
         if (ended2.decisions.length > 0) void this.#wakes.track(() => this.#live.after(ended2));
       }
-      /** The lanes no tier may start in now. */
-      #busyLanes() {
+      /** The lanes no tier may start in now, at `at` when a step gives its reading. */
+      #busyLanes(at2) {
         const { context, ledger } = this.#started();
         const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
         return busyLanes(
           context,
           ledger,
-          running.map(({ tier }) => tier)
+          running.map(({ tier }) => tier),
+          at2
         );
       }
       /** The lane of each tier in flight. */
@@ -61206,10 +61247,10 @@ var init_scheduler2 = __esm({
         this.#post({ kind: "stalled" });
       }
       /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
-      #focused() {
+      #focused(at2) {
         const context = this.#context;
         const ledger = this.#ledger;
-        return context !== null && ledger !== null && focusedWaiting(context, ledger);
+        return context !== null && ledger !== null && focusedWaiting(context, ledger, void 0, at2);
       }
       /** A slow run's end as its lane publishes it (`SlowTier.ended`): the state and admission now. */
       #laneEnd() {
