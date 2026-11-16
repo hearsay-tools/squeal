@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.523";
+  if (true) return "0.1.524";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -14999,6 +14999,10 @@ var init_claims = __esm({
       peek(key3, at2, claimed = this.claimed(key3, at2)) {
         return claimed && at2 - (this.#seen.get(key3) ?? at2) <= this.#boundMs();
       }
+      /** Row 011-377: the calendar stepped `ms`: each bound's start moves with it (`CalendarSteps`). */
+      shift(ms2) {
+        for (const [key3, since] of this.#seen) this.#seen.set(key3, since + ms2);
+      }
       /** `key` runs here: a later claim on it starts a new bound. */
       taken(key3) {
         this.#seen.delete(key3);
@@ -15600,6 +15604,10 @@ var init_focused_entries = __esm({
           runId: null
         });
       }
+      /** Row 011-377: the calendar stepped `ms`: each deadline moves with it (`CalendarSteps`). */
+      shift(ms2) {
+        for (const entry4 of this.#entries) entry4.until += ms2;
+      }
       /** The entries that wait for a run at `now`, in request order; one past its deadline goes. */
       waiting(now) {
         this.#entries = this.#entries.filter((entry4) => entry4.runId !== null || entry4.until > now);
@@ -15764,6 +15772,20 @@ var init_promotions = __esm({
           const promotion = { files: files5, until, seq, members, estimatedEnd: null, seen: members };
           this.#promotions.push({ ...promotion, facts: NO_FACTS, keys: NO_KEYS });
         }
+        this.#told();
+      }
+      /**
+       * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each wait's
+       * deadline and estimated end move with it, so each keeps its elapsed time
+       * left, and the store reads them again.
+       */
+      shift(ms2) {
+        if (this.#promotions.length === 0) return;
+        this.#promotions = this.#promotions.map((p) => ({
+          ...p,
+          until: p.until + ms2,
+          estimatedEnd: p.estimatedEnd === null ? null : p.estimatedEnd + ms2
+        }));
         this.#told();
       }
       clear() {
@@ -16076,6 +16098,14 @@ var init_queue = __esm({
           }
           promotions();
         };
+      }
+      /**
+       * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): the named
+       * waits' deadlines move with it, so each keeps its elapsed time left.
+       */
+      shift(ms2) {
+        this.#promotions.shift(ms2);
+        this.focused.shift(ms2);
       }
       /** Empties the queue; promotions and focused entries go with it. */
       clear() {
@@ -17073,7 +17103,10 @@ var init_ledger = __esm({
         this.queue = new RunQueue({
           now: context.now,
           isRunning: (ref3) => (this.file(ref3)?.runningKey ?? null) !== null,
-          publish: (live) => publishPromotions(context.store, context.worktreeId, live, context.now())
+          publish: (live) => {
+            const at2 = context.now();
+            publishPromotions(context.store, context.worktreeId, live, context.steps?.stamp(at2) ?? at2);
+          }
         });
         this.queue.setGroups((ref3) => groupView(context.policy).of(ref3).name);
         this.#ranker = new SlowRanker(
@@ -19855,6 +19888,17 @@ var init_quiet = __esm({
         this.#catchUp.clear();
         this.#told(now);
       }
+      /**
+       * Row 011-377: the calendar stepped `ms` (`CalendarSteps`) at `at`: each
+       * end moves with it, so each wait keeps its elapsed time left, and status
+       * reads the ends again.
+       */
+      shift(ms2, at2) {
+        if (this.#until.size === 0 && this.#catchUp.size === 0) return;
+        for (const until of [this.#until, this.#catchUp])
+          for (const [lane, end] of until) until.set(lane, end + ms2);
+        this.#told(at2);
+      }
       /** Whether `lane` waits for quiet at `now`. */
       waits(lane, now) {
         return waiting(this.#until, lane, now);
@@ -20592,6 +20636,8 @@ function newTier(context, ledger, first2, files5, kind) {
     ),
     kind,
     startedAt: context.now(),
+    // Read after `startedAt`: that reading told the steps first.
+    startedStep: context.steps?.total ?? 0,
     ended: /* @__PURE__ */ new Set(),
     cancel: cancellable ? new AbortController() : null,
     loadPerCpu: tierLoad(context)
@@ -21344,7 +21390,10 @@ function recreates(context, ledger, revision, lane) {
 function remainder(context, tier) {
   const longest2 = Math.max(0, ...unfinished(tier).map(({ file }) => file.durationMs ?? 0));
   const now = context.now();
-  return longest2 - (now - (tier.startedAt ?? now));
+  const { startedAt } = tier;
+  if (startedAt === void 0) return longest2;
+  const start2 = context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
+  return longest2 - (now - start2);
 }
 var init_yield_waits = __esm({
   "src/core/scheduler/yield-waits.ts"() {
@@ -21495,6 +21544,10 @@ var init_yield_history = __esm({
           runStartedAt: tier.startedAt ?? at2,
           runEndedAt: null
         };
+      }
+      /** Row 011-377: the calendar stepped `ms`: the count's last write moves with it (`CalendarSteps`). */
+      shift(ms2) {
+        if (this.#endedAt !== null) this.#endedAt = this.#endedAt + ms2;
       }
       /**
        * The runner named a file of `tier` ended at `now`: whether the row is due
@@ -21833,6 +21886,15 @@ var init_yields = __esm({
         if (changed2) this.#publish(context);
         if (this.#bounds.delete(tier.runId)) this.#arm(context);
       }
+      /**
+       * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each bound
+       * and the ended count's last write move with it. The wake already counts
+       * its delay on elapsed time.
+       */
+      shift(ms2) {
+        for (const [runId, at2] of this.#bounds) this.#bounds.set(runId, at2 + ms2);
+        this.#history.shift(ms2);
+      }
       /** The scheduler closed: no check comes again. */
       close() {
         this.#bounds.clear();
@@ -21845,8 +21907,12 @@ var init_yields = __esm({
        */
       #arm(context) {
         this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
-        if (this.#bounds.size === 0) this.#wake.clear();
-        else this.#wake.after(Math.min(...this.#bounds.values()) - context.now());
+        if (this.#bounds.size === 0) {
+          this.#wake.clear();
+          return;
+        }
+        const now = context.now();
+        this.#wake.after(Math.min(...this.#bounds.values()) - now);
       }
       #disarm() {
         this.#wake?.clear();
@@ -55909,6 +55975,110 @@ var init_busy_resume = __esm({
   }
 });
 
+// src/core/scheduler/calendar-steps.ts
+function steppedClock(clock, steps) {
+  return new SteppedClock(clock, steps);
+}
+var CALENDAR_STEP_MS, SURE_SAMPLE_MS, CalendarSteps, SteppedClock;
+var init_calendar_steps = __esm({
+  "src/core/scheduler/calendar-steps.ts"() {
+    "use strict";
+    CALENDAR_STEP_MS = 100;
+    SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
+    CalendarSteps = class {
+      /**
+       * `startedAt`: the start this daemon stored on its worktree, `null` while
+       * it is not known (review 0.1.524 B1, `stamp`).
+       */
+      constructor(startedAt = () => null) {
+        this.startedAt = startedAt;
+      }
+      startedAt;
+      /** `calendar - elapsed` as of the last step; `null` before the first reading. */
+      #offset = null;
+      #total = 0;
+      #listeners = /* @__PURE__ */ new Set();
+      /** What `local` saw first, by kind: the stamp's id and `total` then. */
+      #seen = /* @__PURE__ */ new Map();
+      /** The sum of the steps seen: a stamp kept from before a step is behind by the steps after it. */
+      get total() {
+        return this.#total;
+      }
+      /**
+       * Tells `shift` each step, in ms (back when negative), with the calendar
+       * reading that saw it, until the returned function is called.
+       */
+      onStep(shift) {
+        this.#listeners.add(shift);
+        return () => this.#listeners.delete(shift);
+      }
+      /**
+       * A calendar reading taken between the elapsed readings `before` and
+       * `after`: a step since the last sample is told to each listener before
+       * this returns. A sample whose span is wider than `SURE_SAMPLE_MS` is
+       * not sure and is left out (review 0.1.524 S1).
+       */
+      observe(calendar, before4, after3 = before4) {
+        if (after3 - before4 > SURE_SAMPLE_MS) return;
+        const offset2 = calendar - (before4 + after3) / 2;
+        if (this.#offset === null) {
+          this.#offset = offset2;
+          return;
+        }
+        const ms2 = Math.round(offset2 - this.#offset);
+        if (Math.abs(ms2) < CALENDAR_STEP_MS) return;
+        this.#offset += ms2;
+        this.#total += ms2;
+        for (const shift of [...this.#listeners]) shift(ms2, calendar);
+      }
+      /**
+       * `stamp`, a stored calendar time of `kind` with `id`, in today's
+       * calendar: moved by the steps since this daemon first saw `id`. One id
+       * is kept for each kind; a new id is first seen now.
+       */
+      local(kind, id, stamp2) {
+        let seen = this.#seen.get(kind);
+        if (seen?.id !== id) {
+          seen = { id, mark: this.#total };
+          this.#seen.set(kind, seen);
+        }
+        return stamp2 + this.#total - seen.mark;
+      }
+      /**
+       * Review 0.1.524 B1: the time to stamp a row this daemon publishes for
+       * status, read at `at`: `at`, but never before this daemon's stored start.
+       * A reader takes a row stamped before the live daemon's start as a
+       * predecessor's (`publishedWaits`, `publishedBatches`); after a set-back
+       * past its start, the live daemon's rows show its start instead.
+       */
+      stamp(at2) {
+        const startedAt = this.startedAt();
+        return startedAt === null ? at2 : Math.max(at2, startedAt);
+      }
+      /** `stamp`, taken when `total` was `mark`, in today's calendar. */
+      since(stamp2, mark) {
+        return stamp2 + this.#total - mark;
+      }
+    };
+    SteppedClock = class {
+      constructor(clock, steps) {
+        this.clock = clock;
+        this.steps = steps;
+      }
+      clock;
+      steps;
+      now = () => {
+        const before4 = this.clock.elapsed();
+        const at2 = this.clock.now();
+        this.steps.observe(at2, before4, this.clock.elapsed());
+        return at2;
+      };
+      elapsed = () => this.clock.elapsed();
+      arm = (ms2, fire) => this.clock.arm(ms2, fire);
+    };
+  }
+});
+
 // src/core/scheduler/command-hold.ts
 function processIdentity(pid) {
   const namespace2 = pidNamespace();
@@ -56198,6 +56368,10 @@ var init_group_tiers = __esm({
       get endedAt() {
         const ends = this.#all().map((lane) => lane.endedAt).filter((at2) => at2 !== null);
         return ends.length === 0 ? null : Math.max(...ends);
+      }
+      /** Row 011-377: the calendar stepped `ms`: each lane's last end moves with it. */
+      shift(ms2) {
+        for (const lane of this.#all()) lane.shift(ms2);
       }
       set draining(on) {
         for (const lane of this.#all()) lane.draining = on;
@@ -57773,7 +57947,10 @@ function momentHolds(context, group, at2) {
 function quietLeftMs(context, group, at2) {
   if (group.at !== "edit") return null;
   const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + group.quietMs - (at2 ?? context.now());
+  if (latest === null) return 0;
+  const { steps } = context;
+  const created = steps === void 0 ? latest.createdAt : steps.local("revision", String(latest.number), latest.createdAt);
+  return created + group.quietMs - (at2 ?? context.now());
 }
 function consumersIdle(store, worktreeId, now) {
   for (const record2 of store.consumers.list(worktreeId)) {
@@ -57940,6 +58117,10 @@ var init_slow_tier = __esm({
       /** When a slow run last ended, recorded, discarded or put back; `null` before the first. */
       get endedAt() {
         return this.#endedAt;
+      }
+      /** Row 011-377: the calendar stepped `ms`: the last end moves with it (`CalendarSteps`). */
+      shift(ms2) {
+        if (this.#endedAt !== null) this.#endedAt = this.#endedAt + ms2;
       }
       /**
        * The runner lane whose files wait for the load guard now, `null` when
@@ -58845,6 +59026,13 @@ var init_slow_release = __esm({
         this.#endedAt.set(lane, this.host.now());
         this.arm();
       }
+      /**
+       * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each lane's
+       * end moves with it, so its bound keeps its elapsed time left.
+       */
+      shift(ms2) {
+        for (const [lane, at2] of this.#endedAt) this.#endedAt.set(lane, at2 + ms2);
+      }
       /** Closes `lane`'s instance now; a tier of it may still be in flight, ending. */
       async release(lane) {
         this.#open.delete(lane);
@@ -58864,8 +59052,9 @@ var init_slow_release = __esm({
       /** Arms the close at the earliest bound of an open lane no tier runs in; an earlier one replaces it. */
       arm() {
         if (this.host.closed()) return;
-        const { wakeAt } = this.#decide();
-        if (wakeAt !== null) this.#wake.within(wakeAt - this.host.now());
+        const at2 = this.host.now();
+        const { wakeAt } = this.#decide(at2);
+        if (wakeAt !== null) this.#wake.within(wakeAt - at2);
       }
       close() {
         this.#wake.clear();
@@ -59378,7 +59567,8 @@ var init_step_live = __esm({
        */
       step(events, reads2) {
         const turn = { at: this.host.now(), events, reads: reads2, ports: this.#ports };
-        const decided = step(turn);
+        const mark = this.host.stepsTotal();
+        const decided = { ...step(turn), mark };
         if (decided.laneAnswered) this.host.slowRelease.arm();
         this.#told(reads2, decided);
         return decided;
@@ -60001,12 +60191,14 @@ var init_scheduler2 = __esm({
     init_busy();
     init_connection();
     init_text();
+    init_daemon();
     init_scheduler();
     init_admission();
     init_batch();
     init_beside();
     init_bootstrap();
     init_busy_resume();
+    init_calendar_steps();
     init_capacity();
     init_checkpoint_requests();
     init_claims();
@@ -60052,7 +60244,7 @@ var init_scheduler2 = __esm({
     TierScheduler = class {
       constructor(options) {
         this.options = options;
-        this.#clock = clockOf(options);
+        this.#clock = steppedClock(clockOf(options), this.#steps);
         this.#wakes = new Wakes(this.#clock);
         this.#pumpWake = this.#wakes.slot("pump", () => this.#post({ kind: "wake", reason: "pump" }));
         this.#claimsWake = this.#wakes.slot("claims", (at2) => this.#claimPoll(at2));
@@ -60147,6 +60339,7 @@ var init_scheduler2 = __esm({
           inFlight: this.#inFlight,
           runtimeDir: options.runtimeDir,
           now: this.#now,
+          stepsTotal: () => this.#steps.total,
           started: () => this.#started(),
           admit: (at2) => this.#admit(at2),
           stalled: () => this.#stalled,
@@ -60166,10 +60359,18 @@ var init_scheduler2 = __esm({
           reconcileReleased: () => this.#reconcileReleased(),
           queueRewalk: () => this.#queueRewalk()
         });
+        this.#steps.onStep((ms2, at2) => this.#shift(ms2, at2));
       }
       options;
-      /** Row 011-351: the one clock, `SchedulerOptions.clock` or the host adapter over `now`. */
+      /**
+       * Row 011-351: the one clock, `SchedulerOptions.clock` or the host
+       * adapter over `now`. Row 011-377: each calendar reading tells `#steps`.
+       */
       #clock;
+      /** Row 011-377: the calendar steps `#clock` saw; each is told to `#shift`. */
+      #steps = new CalendarSteps(() => this.#daemonStartedAt());
+      /** The start this scheduler's daemon stored on the worktree, once found (`#daemonStartedAt`). */
+      #startedAt = null;
       #now = () => this.#clock.now();
       /** Row 011-352: the one timer, at the earliest wake an owner states; the rest signal's counts. */
       #wakes;
@@ -60217,7 +60418,7 @@ var init_scheduler2 = __esm({
        * edit's catch-up (C4 step 5, rows 011-82 and 011-153).
        */
       #quiet = new BacklogQuiet(
-        (ends, at2, catchUp) => publishQuiet(this.options.store, this.options.worktreeId, ends, at2, catchUp)
+        (ends, at2, catchUp) => publishQuiet(this.options.store, this.options.worktreeId, ends, this.#steps.stamp(at2), catchUp)
       );
       /** The events of the step queued under the lock, not run yet (rows 011-54, 011-107, 011-356). */
       #queued = [];
@@ -60355,7 +60556,8 @@ var init_scheduler2 = __esm({
             ...options.predecessor === void 0 ? {} : { predecessor: options.predecessor },
             ...this.#capacity === null ? {} : { capacity: this.#capacity },
             quiet: this.#quiet,
-            wakes: this.#wakes
+            wakes: this.#wakes,
+            steps: this.#steps
           };
           const ledger = new Ledger(context);
           attachCommitLanes(context, {
@@ -60816,12 +61018,13 @@ var init_scheduler2 = __esm({
        */
       slowWaiting() {
         if (!this.#ledger || !this.#context || !this.#backlogPaused) return null;
+        const now = this.#now();
         const admitted = this.#admit();
         if (admitted.quiet) return null;
         const queued = this.#drainable();
         const busy2 = this.#lanes().some(isGroupLane) || admitted.editPending || !admitted.fastIdle;
         if (busy2 || queued.length === 0 || this.#drainBusyAt === null) {
-          this.#drainBusyAt = this.#context.now();
+          this.#drainBusyAt = now;
           return null;
         }
         const since = Math.max(this.#drainBusyAt, this.#groups.endedAt ?? 0);
@@ -60966,7 +61169,7 @@ var init_scheduler2 = __esm({
               if (decided.error !== null) throw decided.error;
               if (decided.wake.kind === "end") break;
               if (decided.wake.kind !== "reads") reads2 = {};
-              const waiting2 = this.#waitFor(decided.wake);
+              const waiting2 = this.#waitFor(decided.wake, decided.mark ?? this.#steps.total);
               if (waiting2 !== null) await waiting2;
             }
           } catch (error) {
@@ -60991,7 +61194,7 @@ var init_scheduler2 = __esm({
        * The wait the step's next wake names: an event, a time or the claims
        * window; `null` to step again at once, with no wait in between.
        */
-      #waitFor(wake) {
+      #waitFor(wake, mark) {
         switch (wake.kind) {
           case "reads":
           case "again":
@@ -61000,9 +61203,9 @@ var init_scheduler2 = __esm({
           case "event":
             return this.#nextEvent();
           case "at":
-            return this.#eventOrAt(wake.at);
+            return this.#eventOrAt(wake.at, mark);
           case "claims":
-            return this.#claimWake(wake.at);
+            return this.#claimWake(wake.at, mark);
           case "turn":
             throw new Error("squeal scheduler: a pump step ended as one inside another turn");
           default:
@@ -61166,9 +61369,10 @@ var init_scheduler2 = __esm({
        * `CLAIM_RECHECK_MS`, never in a tight loop. The claims owner polls the
        * store's marker at its wake (row 011-352).
        */
-      async #claimWake(at2) {
+      async #claimWake(at2, mark) {
         const { context } = this.#started();
-        this.#claimWindow = claimWindow(context.store, at2);
+        this.#now();
+        this.#claimWindow = claimWindow(context.store, this.#steps.since(at2, mark));
         this.#claimsWake.after(CLAIM_POLL_MS);
         try {
           await this.#nextEvent();
@@ -61176,6 +61380,39 @@ var init_scheduler2 = __esm({
           this.#claimWindow = null;
           this.#claimsWake.clear();
         }
+      }
+      /**
+       * Row 011-377 (`tasks/011-377/notes.md`, "Design"): the calendar stepped
+       * `ms` at `at`. Each owner of a wait that compares a calendar time moves
+       * the times it keeps by `ms`, so each wait keeps its elapsed time left; an
+       * owner that publishes its ends writes them again. Stored stamps stay.
+       */
+      #shift(ms2, at2) {
+        this.#quiet.shift(ms2, at2);
+        if (this.#claimWindow !== null)
+          this.#claimWindow = {
+            ...this.#claimWindow,
+            until: this.#claimWindow.until + ms2
+          };
+        if (this.#drainBusyAt !== null) this.#drainBusyAt = this.#drainBusyAt + ms2;
+        this.#ledger?.queue.shift(ms2);
+        this.#ledger?.claims.shift(ms2);
+        this.#groups.shift(ms2);
+        this.#slowRelease.shift(ms2);
+        this.#yields.shift(ms2);
+      }
+      /**
+       * Review 0.1.524 B1: the start this scheduler's daemon stored on the
+       * worktree, found by its incarnation, so a predecessor's or a successor's
+       * record is never taken for it; `null` while none matches, or with no
+       * incarnation (a scheduler outside a daemon).
+       */
+      #daemonStartedAt() {
+        if (this.#startedAt !== null || this.options.incarnation === void 0) return this.#startedAt;
+        const record2 = this.options.store.worktrees.get(this.options.worktreeId)?.daemon ?? null;
+        if (record2 !== null && daemonIncarnation(record2) === this.options.incarnation)
+          this.#startedAt = record2.startedAt;
+        return this.#startedAt;
       }
       /** The claims owner's wake: an event when the store moved or the window passed; else the next poll. */
       #claimPoll(at2) {
@@ -61186,8 +61423,9 @@ var init_scheduler2 = __esm({
         else this.#claimsWake.after(next - at2);
       }
       /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
-      async #eventOrAt(at2) {
-        this.#pumpWake.after(at2 - this.#now());
+      async #eventOrAt(at2, mark) {
+        const now = this.#now();
+        this.#pumpWake.after(this.#steps.since(at2, mark) - now);
         try {
           await this.#nextEvent();
         } finally {
