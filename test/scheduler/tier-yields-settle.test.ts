@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EpochMs } from "../../src/core/types/common.js";
 import type { Rest, RestWake } from "../../src/core/types/scheduler.js";
+import { RunnerCalls } from "../helpers/quiet-point.js";
 import { virtualClock } from "../helpers/virtual-clock.js";
 import type { CatchUpSide } from "./catch-up-fixture.js";
 import { settle } from "./tier-yields-fixture.js";
@@ -29,7 +30,7 @@ function sideOf(wakes: readonly RestWake[]) {
     return { next: left[0] ?? null, wakes: left, busyResume: false };
   };
   const side = {
-    runner: { runs: [] },
+    calls: new RunnerCalls(),
     clock,
     now: () => clock.now(),
     advance: (ms: number) => clock.advance(ms),

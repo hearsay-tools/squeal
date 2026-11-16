@@ -19,6 +19,7 @@ import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { RecordingSink } from "./recording-sink.js";
 
@@ -203,6 +204,10 @@ export interface Side {
   readonly clock: VirtualClock | null;
   /** Row 011-367: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
   rest(): Promise<Rest>;
+  /** Row 011-378: the runner calls the scheduler has open. */
+  readonly calls: RunnerCalls;
+  /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
+  quiet(): Promise<Rest>;
 }
 
 export interface SideOptions {
@@ -274,11 +279,12 @@ export function side(root: string, options: SideOptions): Side {
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store: options.wrap?.(store) ?? store,
-    runner,
+    runner: countCalls(runner, calls),
     sink: new RecordingSink(store, worktreeId),
     policy,
     squealVersion: "0.0.0-test",
@@ -299,6 +305,10 @@ export function side(root: string, options: SideOptions): Side {
   const row = (path: string) =>
     store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === path);
   const hasher = createFsHasher(root, "sha1");
+  const rest = () => {
+    clocked.clock?.advance(0);
+    return scheduler.rest();
+  };
   return {
     store,
     root,
@@ -319,10 +329,9 @@ export function side(root: string, options: SideOptions): Side {
     now: clocked.now,
     advance: clocked.advance,
     clock: clocked.clock,
-    rest: () => {
-      clocked.clock?.advance(0);
-      return scheduler.rest();
-    },
+    rest,
+    calls,
+    quiet: () => quiet({ rest, calls, clock: clocked.clock }),
   };
 }
 

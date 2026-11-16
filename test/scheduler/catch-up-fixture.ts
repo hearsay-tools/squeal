@@ -18,6 +18,7 @@ import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/
 import { declareTraits, type RunnerTraits } from "../../src/core/types/runner-traits.js";
 import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock, type VirtualClock } from "../helpers/virtual-clock.js";
 import { claimRepo } from "./claims-fixture.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -329,6 +330,10 @@ export interface CatchUpSide {
   readonly clock: VirtualClock | null;
   /** Row 011-353: on a virtual clock, fires the timers due, then `Scheduler.rest()`. */
   rest(): Promise<Rest>;
+  /** Row 011-378: the runner calls the scheduler has open, a remote lane's run included. */
+  readonly calls: RunnerCalls;
+  /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
+  quiet(): Promise<Rest>;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store, over the repository's pool. */
@@ -372,11 +377,12 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     },
   };
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store,
-    runner: options.wrapRunner?.(runner) ?? runner,
+    runner: countCalls(options.wrapRunner?.(runner) ?? runner, calls),
     sink: new RecordingSink(store, worktreeId),
     policy,
     squealVersion: "0.0.0-test",
@@ -397,6 +403,10 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
   });
   const hasher = createFsHasher(root, "sha1");
   let edits = 0;
+  const rest = () => {
+    clock?.advance(0);
+    return scheduler.rest();
+  };
   const touch = (...paths: string[]) => {
     edits += 1;
     for (const path of paths) appendFileSync(join(root, path), `// edit ${edits}\n`);
@@ -416,10 +426,9 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     now,
     advance,
     clock,
-    rest: () => {
-      clock?.advance(0);
-      return scheduler.rest();
-    },
+    rest,
+    calls,
+    quiet: () => quiet({ rest, calls, clock }),
     current: (path) => {
       const states = store.knownStates.list(worktreeId).filter((s) => s.check.testPath === path);
       return states.length > 0 && states.every((s) => s.validity === "current");
