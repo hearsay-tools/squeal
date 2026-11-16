@@ -229,6 +229,8 @@ test/cli/code-gate-keep-early.test.ts
 test/cli/code-gate-keep-kill.test.ts
 # Spec 023 D6 (row 023-04): a SIGKILL'd CLI process leaves no real node:test run behind.
 test/cli/code-gate-kill-parent.test.ts
+# Review wave 1 B2 (row 023-04): the files-only gate's one environment over real node:test runs.
+test/cli/code-gate-files-environment.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test
