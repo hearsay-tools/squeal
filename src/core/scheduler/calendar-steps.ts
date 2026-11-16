@@ -17,6 +17,15 @@ import type { Clock, Disarm, ElapsedMs } from "./clock.js";
  * The least change of `calendar - elapsed` that is a calendar step. The two
  * host readings differ by about 1 ms (`Date.now` is whole milliseconds), and
  * NTP slews both under 128 ms and steps the calendar only above it.
+ *
+ * Limits of that model (review 0.1.524 S1): it is Linux with an NTP client
+ * that slews `CLOCK_REALTIME` and `CLOCK_MONOTONIC` alike and steps only
+ * larger offsets (ntpd's default step threshold is 128 ms; chrony steps
+ * only where its `makestep` allows; either can be set otherwise; neither
+ * was tested here). A host whose monotonic clock keeps another rate,
+ * or a client that steps under 100 ms, moves a wait by up to that step
+ * untold. A pause between the readings of one sample is left out, not told
+ * (`SURE_SAMPLE_MS`). The value is not measured on any one host.
  */
 export const CALENDAR_STEP_MS = 100;
 
