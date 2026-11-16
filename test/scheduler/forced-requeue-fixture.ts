@@ -53,15 +53,15 @@ export async function listing(
   });
   h.write(A, "a\n");
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return { h, stored: h.keyOf(LISTS) };
 }
 
-/** `tree/a.txt` as `text`, once the scheduler is idle again; the file's key then. */
+/** `tree/a.txt` as `text`, once the scheduler is at its quiet point again; the file's key then. */
 export async function edit(h: Harness, text: string): Promise<CheckKey | null> {
   h.write(A, text);
   await h.batch(A);
-  await h.scheduler.idle();
+  await h.quiet();
   return h.keyOf(LISTS);
 }
 

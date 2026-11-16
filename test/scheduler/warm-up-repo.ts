@@ -84,7 +84,7 @@ test("reads below a directory it makes", () => {
 `;
 
 /**
- * The repository and its harness; `started`, its baseline run and idle.
+ * The repository and its harness; `started`, its baseline run and at its quiet point.
  * `runtimeInputs` is policy `observe.runtimeInputs`: off, Vitest observes nothing.
  * `fresh`: the default `baseline.onStart`, lookup-only, so a start runs
  * nothing and a warm-up is each file's first run, and `SCRATCH` too.
@@ -130,7 +130,7 @@ export async function warmUpRepo({
   });
   if (started) {
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
   }
   return { h, commonDir: repo.commonDir };
 }

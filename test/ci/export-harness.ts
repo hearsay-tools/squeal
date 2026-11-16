@@ -78,7 +78,7 @@ export async function daemonExport(
   });
   await h.scheduler.start();
   await h.scheduler.requestFullSuite();
-  await h.scheduler.idle();
+  await h.quiet();
   const { bundle } = exportResults(h.store, h.worktreeId as WorktreeId, await headerOf(root));
   return { bundle, store: h.store };
 }

@@ -47,9 +47,9 @@ export async function crashRekey(
   const h = await trace.wait("baseline", "open the harness", () =>
     openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING, trace }),
   );
-  await trace.wait("baseline", "start and idle", async () => {
+  await trace.wait("baseline", "start and quiet", async () => {
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
   });
 
   let batch: Promise<void> | null = null;
@@ -101,14 +101,14 @@ export async function crashRekey(
   };
   h.write("test/kill.test.ts", killing(pidFile, fixed, options.held === true ? release : null));
   await trace.wait("batch", "the crashing file", () => h.batch("test/kill.test.ts"));
-  await trace.wait("idle", "after the crashing file's batch", () => h.scheduler.idle());
+  await trace.wait("idle", "after the crashing file's batch", () => h.quiet());
   await trace.wait("batch", "the fix, after the child's rewrite", async () => {
     await batch;
   });
   await trace.wait("child exit", "the crashing child", async () => {
     await exit;
   });
-  await trace.wait("idle", "after the fix's batch", () => h.scheduler.idle());
+  await trace.wait("idle", "after the fix's batch", () => h.quiet());
 
   const runs = h.runsOf("test/kill.test.ts");
   expect(runs.map((r) => r.report.end)).toEqual(["crashed", "completed"]);
