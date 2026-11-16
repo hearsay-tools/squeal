@@ -67,7 +67,7 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
       "SQUEAL · your edit queued 2 test files; the counts after the listing at revision 5",
     );
     const groups = { ...header, groupTiers: [browser(2)] };
-    expect(titleOf({ sawEdit: { queued: 2 }, groupTiersChanged: true }, groups)).toBe(
+    expect(titleOf({ sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] }, groups)).toBe(
       "SQUEAL · your edit queued 2 test files; browser group waiting at revision 5",
     );
     const commitLine = { commit: "abc1234def5678", text: "Commit abc1234: 1 known failure" };
@@ -81,9 +81,47 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     for (const parts of [
       { sawEdit: { queued: 2 } },
       { editsSettled: { since: 1, files: 1, unknown: 0 } },
-      { sawEdit: { queued: 2 }, groupTiersChanged: true as const },
+      { sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] },
     ]) {
       expect(titleOf(parts, groups)).not.toBe("SQUEAL · revision 5");
     }
+  });
+
+  it("names code lines that count no function change (review 0.1.527, B2)", () => {
+    const code = { v: 1 as const, entries: [], more: 0 };
+    const at = { revision: 5, at: 1 };
+    expect(
+      titleOf({
+        code: { ...code, recount: { ...at, reason: "threshold", threshold: 30, over: 0 } },
+      }),
+    ).toBe("SQUEAL · complexity threshold changed at revision 5");
+    expect(
+      titleOf({ code: { ...code, recount: { ...at, reason: "first", threshold: 20, over: 3 } } }),
+    ).toBe("SQUEAL · complexity counted at revision 5");
+    expect(titleOf({ code: { ...code, crapRecount: { ...at, threshold: 30, over: 1 } } })).toBe(
+      "SQUEAL · CRAP threshold changed at revision 5",
+    );
+    expect(
+      titleOf({ code: { ...code, coverageChange: { ...at, off: ["crap"], excluded: 0 } } }),
+    ).toBe("SQUEAL · coverage checks changed at revision 5");
+    expect(
+      titleOf({ code: { ...code, tooBig: [{ path: "a.ts", size: 600_000, limit: 524_288 }] } }),
+    ).toBe("SQUEAL · 1 file too big to count at revision 5");
+  });
+
+  it("names only the groups whose kind changed (review 0.1.527, B1)", () => {
+    const other: GroupTierState = { ...browser(2), name: "run-loop" };
+    const groups = { ...header, groupTiers: [browser(2), other] };
+    const text = formatDelta({
+      schemaVersion: 1,
+      consumer,
+      header: groups,
+      label: "transitions",
+      entries: [],
+      groupTiersChanged: ["run-loop"],
+    });
+    expect(text.split("\n")[0]).toBe("SQUEAL · run-loop group waiting at revision 5");
+    expect(text).toContain("\nrun-loop: ");
+    expect(text).not.toContain("\nbrowser: ");
   });
 });

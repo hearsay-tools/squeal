@@ -1043,9 +1043,10 @@ var init_slow_text = __esm({
 });
 
 // src/core/state/group-text.ts
-function groupTierLines(header2, command) {
+function groupTierLines(header2, command, only2) {
   const late = header2.daemon?.state === "down";
   return (header2.groupTiers ?? []).flatMap((group) => {
+    if (only2 !== void 0 && !only2.includes(group.name)) return [];
     const line = groupTierText(group, header2.revision, late, command);
     return line === null ? [] : [line];
   });

@@ -20,10 +20,18 @@ import {
  * `squeal run <group>` (row 019-47).
  */
 
-/** The line of each group in `header.groupTiers` that is not all current, in `checks` order. */
-export function groupTierLines(header: StatusHeader, command: string): string[] {
+/**
+ * The line of each group in `header.groupTiers` that is not all current, in `checks` order;
+ * with `only`, of the groups it names (a change delivery's changed groups).
+ */
+export function groupTierLines(
+  header: StatusHeader,
+  command: string,
+  only?: readonly string[],
+): string[] {
   const late = header.daemon?.state === "down";
   return (header.groupTiers ?? []).flatMap((group) => {
+    if (only !== undefined && !only.includes(group.name)) return [];
     const line = groupTierText(group, header.revision, late, command);
     return line === null ? [] : [line];
   });

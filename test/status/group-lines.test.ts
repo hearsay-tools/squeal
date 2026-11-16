@@ -146,12 +146,13 @@ describe("a status line per group not all current (019 D6)", () => {
       "tree",
     ]);
     expect(names(headerLines(header, "squeal", "news"))).toEqual([]);
-    expect(names(headerLines(header, "squeal", "news", { groupTiersChanged: true }))).toEqual([
-      "e2e",
-      "unit",
-      "api",
-      "tree",
-    ]);
+    expect(
+      names(
+        headerLines(header, "squeal", "news", {
+          groupTiersChanged: ["e2e", "unit", "api", "tree"],
+        }),
+      ),
+    ).toEqual(["e2e", "unit", "api", "tree"]);
   });
 });
 

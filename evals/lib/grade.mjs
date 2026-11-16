@@ -268,7 +268,7 @@ function relPath(p) {
  * a group or the slow tier, a lint line and a commit, each before `at revision N`.
  */
 const RESULT_TITLE =
-  /SQUEAL · (?:revision|\d+ checks? changed|(?:your edits?\b|the counts after|\S+ group |slow tier |lint |commit )[^\n\\]* at revision \d)/;
+  /SQUEAL · (?:revision|\d+ checks? changed|(?:your edits?\b|the counts after|\S+ group |slow tier |lint |commit |complexity |CRAP threshold |coverage checks |\d+ files? too big )[^\n\\]* at revision \d)/;
 
 function delivery(k) {
   const text = k.text;

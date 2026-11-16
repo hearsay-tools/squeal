@@ -81,16 +81,38 @@ export function groupTiersState(groups: readonly GroupTierState[] | undefined): 
   return JSON.stringify(groups.map((group) => [group.name, groupKind(group)]));
 }
 
-/** Whether `groups` differ from what `consumer` was last shown; never shown reads as changed. */
-export function groupTiersChanged(
+/**
+ * The names of the groups whose kind differs from what `consumer` was last shown (review
+ * 0.1.527, B1: one flag for every group sent an unchanged group's line again when another
+ * changed kind). A group never shown, and every group for a value an older version stored,
+ * reads as changed.
+ */
+export function changedGroups(
   store: Store,
   consumer: Consumer,
   groups: readonly GroupTierState[] | undefined,
-): boolean {
-  const state = groupTiersState(groups);
-  return (
-    state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state
-  );
+): string[] {
+  if (groups === undefined) return [];
+  const told = toldKinds(readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer));
+  return groups.filter((g) => told.get(g.name) !== groupKind(g)).map((g) => g.name);
+}
+
+/** The kinds a stored value holds by group name; none for no value or one of another shape. */
+function toldKinds(stored: unknown): Map<string, string> {
+  if (typeof stored !== "string") return new Map();
+  try {
+    const value: unknown = JSON.parse(stored);
+    if (!Array.isArray(value)) return new Map();
+    return new Map(
+      value.flatMap((entry): [string, string][] =>
+        Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "string"
+          ? [[entry[0], entry[1]]]
+          : [],
+      ),
+    );
+  } catch {
+    return new Map();
+  }
 }
 
 /** Records the groups as shown to `consumer`; `undefined` forgets them. Call inside a transaction. */

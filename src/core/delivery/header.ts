@@ -219,7 +219,12 @@ export function headerLines(
       ? fullLine(header, command, told.countsOwed)
       : newsLine(header, command, told.countsOwed);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
-  const groups = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
+  const groups =
+    form === "full"
+      ? groupTierLines(header, command)
+      : told.groupTiersChanged === undefined
+        ? []
+        : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : undefined;
   return [
     line,

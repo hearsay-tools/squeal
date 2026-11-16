@@ -1347,9 +1347,10 @@ function capitalized(text2) {
 }
 
 // src/core/state/group-text.ts
-function groupTierLines(header, command) {
+function groupTierLines(header, command, only) {
   const late = header.daemon?.state === "down";
   return (header.groupTiers ?? []).flatMap((group) => {
+    if (only !== void 0 && !only.includes(group.name)) return [];
     const line = groupTierText(group, header.revision, late, command);
     return line === null ? [] : [line];
   });
@@ -4059,9 +4060,24 @@ function groupTiersState(groups2) {
   if (groups2 === void 0) return null;
   return JSON.stringify(groups2.map((group) => [group.name, groupKind(group)]));
 }
-function groupTiersChanged(store, consumer, groups2) {
-  const state = groupTiersState(groups2);
-  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
+function changedGroups(store, consumer, groups2) {
+  if (groups2 === void 0) return [];
+  const told = toldKinds(readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer));
+  return groups2.filter((g) => told.get(g.name) !== groupKind(g)).map((g) => g.name);
+}
+function toldKinds(stored4) {
+  if (typeof stored4 !== "string") return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(stored4);
+    if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      value.flatMap(
+        (entry3) => Array.isArray(entry3) && typeof entry3[0] === "string" && typeof entry3[1] === "string" ? [[entry3[0], entry3[1]]] : []
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
 }
 function tellGroupTiers(store, consumer, groups2) {
   writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
@@ -4999,7 +5015,7 @@ function countsText(counts, fileLevel) {
 function headerLines(header, command, form = "full", told = {}) {
   const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
-  const groups2 = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
+  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
   return [
     line,
@@ -12421,8 +12437,8 @@ function createDelivery(store, options) {
       notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
-      const groupsChanged = groupTiersChanged(store, consumer, header.groupTiers);
-      if (stop || groupsChanged) tellGroupTiers(store, consumer, header.groupTiers);
+      const groupsChanged = changedGroups(store, consumer, header.groupTiers);
+      if (stop || groupsChanged.length > 0) tellGroupTiers(store, consumer, header.groupTiers);
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
       const sawEdit = notes === null || carriesEditResult(
@@ -12441,7 +12457,7 @@ function createDelivery(store, options) {
         ...changed === null ? {} : { liveness: changed },
         ...holds2 === null ? {} : { holds: holdChanges(holds2, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
-        ...groupsChanged ? { groupTiersChanged: true } : {},
+        ...groupsChanged.length > 0 ? { groupTiersChanged: groupsChanged } : {},
         ...commit === void 0 ? {} : { commitChanged: true },
         ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },

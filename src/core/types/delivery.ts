@@ -256,11 +256,12 @@ export interface Delta {
    */
   readonly slowTierChanged?: true;
   /**
-   * Row 019-16 (spec 019 D6): a configured group's lane state differs from
-   * what this consumer was last shown, so a change delivery carries the
-   * group lines, as `slowTierChanged` carries the slow-tier line.
+   * Row 019-16 (spec 019 D6): the configured groups whose lane state differs
+   * from what this consumer was last shown, by name, so a change delivery
+   * carries their lines, as `slowTierChanged` carries the slow-tier line.
+   * Row 005-91 (b), review 0.1.527 B1: only theirs, never an unchanged group's.
    */
-  readonly groupTiersChanged?: true;
+  readonly groupTiersChanged?: readonly string[];
   /**
    * Row 019-16 (spec 019 D5 step 3): the header's commit report is one this
    * consumer was not shown, so the delivery carries its line once.

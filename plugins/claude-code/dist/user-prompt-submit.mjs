@@ -1402,9 +1402,10 @@ function capitalized(text2) {
 }
 
 // src/core/state/group-text.ts
-function groupTierLines(header, command) {
+function groupTierLines(header, command, only) {
   const late = header.daemon?.state === "down";
   return (header.groupTiers ?? []).flatMap((group) => {
+    if (only !== void 0 && !only.includes(group.name)) return [];
     const line = groupTierText(group, header.revision, late, command);
     return line === null ? [] : [line];
   });
@@ -4417,9 +4418,24 @@ function groupTiersState(groups2) {
   if (groups2 === void 0) return null;
   return JSON.stringify(groups2.map((group) => [group.name, groupKind(group)]));
 }
-function groupTiersChanged(store, consumer, groups2) {
-  const state = groupTiersState(groups2);
-  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
+function changedGroups(store, consumer, groups2) {
+  if (groups2 === void 0) return [];
+  const told = toldKinds(readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer));
+  return groups2.filter((g) => told.get(g.name) !== groupKind(g)).map((g) => g.name);
+}
+function toldKinds(stored4) {
+  if (typeof stored4 !== "string") return /* @__PURE__ */ new Map();
+  try {
+    const value = JSON.parse(stored4);
+    if (!Array.isArray(value)) return /* @__PURE__ */ new Map();
+    return new Map(
+      value.flatMap(
+        (entry3) => Array.isArray(entry3) && typeof entry3[0] === "string" && typeof entry3[1] === "string" ? [[entry3[0], entry3[1]]] : []
+      )
+    );
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
 }
 function tellGroupTiers(store, consumer, groups2) {
   writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
@@ -4436,8 +4452,9 @@ function contentWords(delta) {
     words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
   }
   if (delta.countsOwed !== void 0) words.push("the counts after the listing");
-  if (delta.groupTiersChanged === true) {
+  if (delta.groupTiersChanged !== void 0) {
     for (const group of header.groupTiers ?? []) {
+      if (!delta.groupTiersChanged.includes(group.name)) continue;
       const kind = groupKind(group);
       if (kind !== "current") words.push(`${group.name} group ${kind}`);
     }
@@ -4445,7 +4462,7 @@ function contentWords(delta) {
   if (delta.slowTierChanged === true && header.slowTier !== void 0) {
     words.push(`slow tier ${groupKind(header.slowTier)}`);
   }
-  words.push(...lintWords(delta.lint));
+  words.push(...codeWords(delta.code), ...lintWords(delta.lint));
   const commit = delta.commitChanged === true ? header.commitLine : void 0;
   if (commit !== void 0) {
     words.push(`commit ${/^Commit (\S+?):/.exec(commit.text)?.[1] ?? commit.commit.slice(0, 7)}`);
@@ -4458,6 +4475,18 @@ function lintWords(lint2) {
     ...lint2.summary === void 0 ? [] : [lint2.summary.reason === "config" ? "lint config changed" : "lint summary"],
     ...lint2.failed === void 0 ? [] : ["lint unknown"],
     ...lint2.off === void 0 ? [] : ["lint off"]
+  ];
+}
+function codeWords(code) {
+  if (code === void 0 || codeTitleWords(code) !== null) return [];
+  const too = code.tooBig?.length ?? 0;
+  return [
+    ...code.recount === void 0 ? [] : [
+      code.recount.reason === "threshold" ? "complexity threshold changed" : "complexity counted"
+    ],
+    ...code.crapRecount === void 0 ? [] : ["CRAP threshold changed"],
+    ...code.coverageChange === void 0 ? [] : ["coverage checks changed"],
+    ...too === 0 ? [] : [`${plural(too, "file")} too big to count`]
   ];
 }
 
@@ -5555,7 +5584,7 @@ function countsText(counts, fileLevel) {
 function headerLines(header, command, form = "full", told = {}) {
   const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
-  const groups2 = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
+  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
   return [
     line,
@@ -13142,8 +13171,8 @@ function createDelivery(store, options) {
       notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
-      const groupsChanged = groupTiersChanged(store, consumer, header.groupTiers);
-      if (stop || groupsChanged) tellGroupTiers(store, consumer, header.groupTiers);
+      const groupsChanged = changedGroups(store, consumer, header.groupTiers);
+      if (stop || groupsChanged.length > 0) tellGroupTiers(store, consumer, header.groupTiers);
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
       const sawEdit = notes === null || carriesEditResult(
@@ -13162,7 +13191,7 @@ function createDelivery(store, options) {
         ...changed === null ? {} : { liveness: changed },
         ...holds2 === null ? {} : { holds: holdChanges(holds2, header) },
         ...slowChanged ? { slowTierChanged: true } : {},
-        ...groupsChanged ? { groupTiersChanged: true } : {},
+        ...groupsChanged.length > 0 ? { groupTiersChanged: groupsChanged } : {},
         ...commit === void 0 ? {} : { commitChanged: true },
         ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },

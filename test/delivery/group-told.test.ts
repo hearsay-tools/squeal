@@ -111,7 +111,7 @@ describe("the group lines in a change delivery (019 D6)", () => {
     sink.refresh(WT, revision(), { checkpointId: null });
     flipUnit();
     const changed = await boundary();
-    expect(changed.groupTiersChanged).toBe(true);
+    expect(changed.groupTiersChanged).toEqual(["e2e"]);
     expect(lineOf(formatDelta(changed), "e2e:")).toMatch(/^e2e: 1 test file; 1 pending\./);
     flipUnit();
     expect(lineOf(formatDelta(await boundary()), "e2e:")).toBeUndefined();
@@ -176,7 +176,7 @@ describe("a group line once per kind (row 005-91 b)", () => {
     expect(lineOf(formatDelta(await boundary()), "e2e:")).toMatch(/^e2e: /);
     ran("k2", E2E_FILE);
     apply(result(E2E, "pass", { key: "k2" }), result(OTHER, "pass", { key: "v1" }));
-    expect((await boundary()).groupTiersChanged).toBe(true);
+    expect((await boundary()).groupTiersChanged).toEqual(["e2e"]);
     queue(["b2", E2E_B_FILE]);
     apply(result(UNIT, "fail", { key: "u1" }));
     expect(lineOf(formatDelta(await boundary()), "e2e:")).toMatch(/^e2e: 2 test files; 1 /);

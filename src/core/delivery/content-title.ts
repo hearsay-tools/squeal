@@ -1,6 +1,7 @@
 import { lintTitleWords } from "../lint/surface/format.js";
 import { plural } from "../text.js";
 import type { Delta } from "../types/delivery.js";
+import { codeTitleWords } from "./code-format.js";
 import { groupKind } from "./slow-told.js";
 
 /**
@@ -20,8 +21,9 @@ export function contentWords(delta: Delta): string[] {
     words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
   }
   if (delta.countsOwed !== undefined) words.push("the counts after the listing");
-  if (delta.groupTiersChanged === true) {
+  if (delta.groupTiersChanged !== undefined) {
     for (const group of header.groupTiers ?? []) {
+      if (!delta.groupTiersChanged.includes(group.name)) continue;
       const kind = groupKind(group);
       if (kind !== "current") words.push(`${group.name} group ${kind}`);
     }
@@ -29,7 +31,7 @@ export function contentWords(delta: Delta): string[] {
   if (delta.slowTierChanged === true && header.slowTier !== undefined) {
     words.push(`slow tier ${groupKind(header.slowTier)}`);
   }
-  words.push(...lintWords(delta.lint));
+  words.push(...codeWords(delta.code), ...lintWords(delta.lint));
   const commit = delta.commitChanged === true ? header.commitLine : undefined;
   if (commit !== undefined) {
     words.push(`commit ${/^Commit (\S+?):/.exec(commit.text)?.[1] ?? commit.commit.slice(0, 7)}`);
@@ -46,5 +48,26 @@ function lintWords(lint: Delta["lint"]): string[] {
       : [lint.summary.reason === "config" ? "lint config changed" : "lint summary"]),
     ...(lint.failed === undefined ? [] : ["lint unknown"]),
     ...(lint.off === undefined ? [] : ["lint off"]),
+  ];
+}
+
+/**
+ * Code lines with no function change to count (review 0.1.527, B2): a recount, a threshold
+ * or coverage change, a file too big to count. Their summary lines follow the blocks.
+ */
+function codeWords(code: Delta["code"]): string[] {
+  if (code === undefined || codeTitleWords(code) !== null) return [];
+  const too = code.tooBig?.length ?? 0;
+  return [
+    ...(code.recount === undefined
+      ? []
+      : [
+          code.recount.reason === "threshold"
+            ? "complexity threshold changed"
+            : "complexity counted",
+        ]),
+    ...(code.crapRecount === undefined ? [] : ["CRAP threshold changed"]),
+    ...(code.coverageChange === undefined ? [] : ["coverage checks changed"]),
+    ...(too === 0 ? [] : [`${plural(too, "file")} too big to count`]),
   ];
 }

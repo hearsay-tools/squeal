@@ -25,6 +25,23 @@ const NEW = [
   delta({ sawEdit: { queued: 2 } }),
   delta({ editsSettled: { since: 2, files: 2, unknown: 0 } }),
   delta({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } }),
+  // Review 0.1.527, B2: code lines that count no function change.
+  delta({
+    code: {
+      v: 1,
+      entries: [],
+      more: 0,
+      recount: { revision: 4, at: 1, reason: "threshold", threshold: 30, over: 0 },
+    },
+  }),
+  delta({
+    code: {
+      v: 1,
+      entries: [],
+      more: 0,
+      crapRecount: { revision: 4, at: 1, threshold: 30, over: 1 },
+    },
+  }),
 ];
 const OLD = "SQUEAL · revision 4\nRevision 4: no check pending, stale or unknown.";
 

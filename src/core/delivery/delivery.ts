@@ -70,7 +70,7 @@ import {
 import { ownEditUnknown } from "./own-edit.js";
 import { type Prepare, startHold } from "./prepared.js";
 import { registrationHead, scannedDaemon, tellRegistered } from "./registered.js";
-import { groupTiersChanged, slowTierChanged, tellGroupTiers, tellSlowTier } from "./slow-told.js";
+import { changedGroups, slowTierChanged, tellGroupTiers, tellSlowTier } from "./slow-told.js";
 import { toldAtStop } from "./stop-news.js";
 import {
   currentKeys,
@@ -344,8 +344,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       // Row 019-16 (spec 019 D6): the groups' lines follow the slow-tier line's rule.
-      const groupsChanged = groupTiersChanged(store, consumer, header.groupTiers);
-      if (stop || groupsChanged) tellGroupTiers(store, consumer, header.groupTiers);
+      const groupsChanged = changedGroups(store, consumer, header.groupTiers);
+      if (stop || groupsChanged.length > 0) tellGroupTiers(store, consumer, header.groupTiers);
       if (commit !== undefined) tellCommit(store, consumer, commit);
       // Row 011-205: once, the counts a consumer that registered before the listing is owed.
       const countsOwed = payCounts(store, consumer, header);
@@ -372,7 +372,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(changed === null ? {} : { liveness: changed }),
         ...(holds === null ? {} : { holds: holdChanges(holds, header) }),
         ...(slowChanged ? { slowTierChanged: true as const } : {}),
-        ...(groupsChanged ? { groupTiersChanged: true as const } : {}),
+        ...(groupsChanged.length > 0 ? { groupTiersChanged: groupsChanged } : {}),
         ...(commit === undefined ? {} : { commitChanged: true as const }),
         ...countsOwed,
         ...(sawEdit === undefined ? {} : { sawEdit }),
