@@ -113,9 +113,11 @@ describe(`the trust hash port (Codex ${CODEX_HASH_VERSION})`, () => {
 
 describe("launcher hooks (thread/start config)", () => {
   // `probes/wave-0-checks/bin/q2-appserver.sh`: two hooks declared in `thread/start`
-  // `config` and trusted only by these hashes, which Codex then ran.
-  const B =
-    ["", "home", "agent"].join("/") + "/projects/squeal/.ai/cezar/worktrees/fdeedfc7-56f7-493a-82c7-4c4ce46afa71/docs/specifications/002-codex-adapter/research/probes/wave-0-checks/bin";
+  // `config` and trusted only by these hashes, which Codex then ran. The hash
+  // covers the command, so the probe's directory under the recording host's
+  // home is rebuilt here exactly as Codex saw it.
+  const recordingHome = ["", "home", "agent"].join("/");
+  const B = `${recordingHome}/projects/squeal/.ai/cezar/worktrees/fdeedfc7-56f7-493a-82c7-4c4ce46afa71/docs/specifications/002-codex-adapter/research/probes/wave-0-checks/bin`;
   const shellProbe =
     'echo "$0|$-|$(shopt -q login_shell 2>/dev/null && echo login || echo non-login)|launcher" >> /tmp/w0c/logs/q2-shell.txt; ' +
     `sh ${B}/hook.sh launcher-SessionStart`;

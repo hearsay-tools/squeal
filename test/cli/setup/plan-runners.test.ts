@@ -42,7 +42,7 @@ const lines = (text: string) => text.split("\n");
 const REFUSED =
   'script "test:node" in package.json is not `node [flags...] --test <globs...>` (a chain); add its nodeTest entry by hand from the template below';
 
-describe("the plan on a repository shaped like the client monorepo", () => {
+describe("the plan on a repository shaped like the client monorepo of rows 005-79 and 005-80", () => {
   it("lists no Vitest, and names the one below the root with why and the fix", async () => {
     const root = toolkitShaped();
     const { stdout } = await run(root, ["--plan"]);
