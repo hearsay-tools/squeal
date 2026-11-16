@@ -29,12 +29,12 @@ describe("scheduler with state and delivery", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
 
     h.write("src/math.ts", BROKEN_ADD);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const broken = await delivery.onToolBoundary(consumer);
     expect(broken?.entries.map((e) => [e.check, e.kind])).toEqual([[adds, "pass-to-fail"]]);
     // S8: the default describer is describeFailure, so stored failures carry a fingerprint.
@@ -47,16 +47,16 @@ describe("scheduler with state and delivery", SLOW, () => {
 
     h.write("src/math.ts", FIXED_ADD);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const fixed = await delivery.onToolBoundary(consumer);
     expect(fixed?.entries.map((e) => [e.check, e.kind])).toEqual([[adds, "fail-to-pass"]]);
 
     h.write("src/math.ts", BROKEN_ADD);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     h.write("src/math.ts", FIXED_ADD);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(await delivery.onToolBoundary(consumer)).toBeNull();
   });
 
@@ -65,19 +65,19 @@ describe("scheduler with state and delivery", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
     const fileCheck: FileCheckId = { kind: "file", project: "", testPath: "test/new.test.ts" };
 
     h.write("test/new.test.ts", 'import { it } from "vitest";\nit("is new", () => {\n');
     await h.batch("test/new.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const broken = await delivery.onToolBoundary(consumer);
     expect(broken?.entries.map((e) => [e.check, e.kind])).toEqual([[fileCheck, "first-seen-fail"]]);
 
     h.write("test/new.test.ts", 'import { it } from "vitest";\nit("is new", () => {});\n');
     await h.batch("test/new.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const fixed = await delivery.onToolBoundary(consumer);
     expect(fixed?.entries.map((e) => [e.check, e.kind])).toEqual([[fileCheck, "fail-to-pass"]]);
     expect(h.sink.stateOf(fileCheck)).toMatchObject({ outcome: "pass", validity: "current" });
@@ -88,10 +88,10 @@ describe("scheduler with state and delivery", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     first.write("src/math.ts", BROKEN_ADD);
     await first.batch("src/math.ts");
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     await first.runner.close();
 
@@ -102,7 +102,7 @@ describe("scheduler with state and delivery", SLOW, () => {
       policy: RUN_MISSING,
     });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
 
     expect(second.runner.runs.map((r) => r.files)).toHaveLength(5);
     expect(second.runner.runs[0]?.files).toEqual([ref("test/math.test.ts")]);
@@ -114,10 +114,10 @@ describe("scheduler with state and delivery", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     h.write("src/math.ts", BROKEN_ADD);
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.runner.runs.length;
 
     // Three files are queued, all direct (D5 step 4): plain changed itself, strings and
@@ -137,9 +137,9 @@ describe("scheduler with state and delivery", SLOW, () => {
     );
     armed = true;
     await h.batch("src/strings.ts", "test/plain.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     await during;
-    await h.scheduler.idle();
+    await h.quiet();
 
     const order = h.runner.runs.slice(before).map((r) => r.files.map((f) => f.path));
     expect(order).toHaveLength(4);

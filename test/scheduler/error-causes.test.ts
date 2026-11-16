@@ -42,7 +42,7 @@ describe("a stored failure shows its code and cause (task 001-361)", SLOW, () =>
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
 
     h.write(
@@ -56,7 +56,7 @@ describe("a stored failure shows its code and cause (task 001-361)", SLOW, () =>
       'import { it } from "vitest";\nimport { gone } from "./does-not-exist.js";\nit("uses", () => gone);\n',
     );
     await h.batch(SERVER, MISSING);
-    await h.scheduler.idle();
+    await h.quiet();
 
     // Stored as Vitest reported them: the cause's code, the error's own code, the phase.
     const fileLevel = (path: string) =>

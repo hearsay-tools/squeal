@@ -20,7 +20,7 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
     });
     h.write("fixtures/data.json", '{"n": 1}\n');
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const keys = () => Object.fromEntries(ALL_TEST_FILES.map((path) => [path, h.keyOf(path)]));
     const before = keys();
 
@@ -61,7 +61,7 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: { inputs } });
     h.write("fixtures/data.json", '{"n": 1}\n');
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const texts = () => readDaemonNotes(store, h.worktreeId).map((note) => note.text);
     const expected = [
@@ -83,14 +83,14 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
         changes.some((c) => c.path === "squeal.config.json") ? policy : null,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const texts = () => readDaemonNotes(store, h.worktreeId).map((note) => note.text);
     expect(texts()).toHaveLength(1);
 
     policy = { ...DEFAULT_POLICY, inputs: { "test/math.test.ts": ["nowhere/**"] } };
     h.write("squeal.config.json", JSON.stringify({ inputs: policy.inputs }));
     await h.batch("squeal.config.json");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(texts().at(-1)).toBe('squeal.config.json: inputs glob "nowhere/**" matches no file');
   });
@@ -101,11 +101,11 @@ describe("scheduler: per-test-file declared inputs", SLOW, () => {
     const options = { policy: { inputs: ["nowhere/**"] } };
     const first = await openHarness(repo.main, store, repo.commonDir, options);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     const second = await openHarness(repo.main, store, repo.commonDir, options);
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
 
     expect(readDaemonNotes(store, second.worktreeId).map((note) => note.text)).toEqual([
       'squeal.config.json: inputs glob "nowhere/**" matches no file',

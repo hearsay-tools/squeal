@@ -25,7 +25,7 @@ describe(
         asked.request = await h.scheduler.requestFullSuite();
       };
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
 
       const baseline = store.runs.get(h.runner.runs[0]?.options.runId ?? "")?.checkpointId ?? "";
       expect(store.checkpoints.get(baseline)).toMatchObject({ kind: "baseline", end: "completed" });
@@ -41,7 +41,7 @@ describe(
       const store = openRepoStore(repo.commonDir);
       const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const baselineRuns = h.runner.runs.length;
       const asked: { request?: FullSuiteCheckpoint } = {};
       h.runner.beforeRun = async () => {
@@ -49,7 +49,7 @@ describe(
         asked.request = await h.scheduler.requestFullSuite({ force: true });
       };
       const first = await h.scheduler.requestFullSuite({ force: true });
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(first.owner).toBe(first.id);
       expect(asked.request?.owner).toBe(first.id);
@@ -67,7 +67,7 @@ describe(
         policy: RUN_MISSING,
       });
       await first.scheduler.start();
-      await first.scheduler.idle();
+      await first.quiet();
       const baselineRuns = first.runner.runs.length;
       let closing: Promise<void> | null = null;
       const owed: (string | null)[] = [];
@@ -78,7 +78,7 @@ describe(
         closing = first.scheduler.close();
       };
       const checkpoint = await first.scheduler.requestFullSuite({ force: true });
-      await first.scheduler.idle();
+      await first.quiet();
       await closing;
       const forcedFirst = ran(first.runner.runs.slice(baselineRuns));
       expect(forcedFirst).toHaveLength(4);
@@ -90,7 +90,7 @@ describe(
         policy: RUN_MISSING,
       });
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
 
       // Only the file the first daemon never ran, forced: every key had a result.
       const rest = ALL_TEST_FILES.filter((path) => !forcedFirst.includes(path));
@@ -116,13 +116,13 @@ describe(
         policy: { baseline: { onStart: "lookup-only" } },
       });
       await first.scheduler.start();
-      await first.scheduler.idle();
+      await first.quiet();
       let closing: Promise<void> | null = null;
       first.runner.beforeRun = () => {
         if (first.runner.runs.length === 1) closing = first.scheduler.close();
       };
       const checkpoint = await first.scheduler.requestFullSuite();
-      await first.scheduler.idle();
+      await first.quiet();
       await closing;
       const before = ran(first.runner.runs);
       expect(before).toHaveLength(4);
@@ -132,7 +132,7 @@ describe(
         policy: RUN_MISSING,
       });
       await second.scheduler.start();
-      await second.scheduler.idle();
+      await second.quiet();
 
       expect(ran(second.runner.runs)).toEqual(ALL_TEST_FILES.filter((p) => !before.includes(p)));
       const baseline = store.runs.get(second.runner.runs[0]?.options.runId ?? "")?.checkpointId;

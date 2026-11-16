@@ -101,7 +101,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
     const h = await openHarness(main, store, commonDir, { busyWaits });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let releasedAt: number | null = null;
     const runs: string[][] = [];
@@ -119,7 +119,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
     await h.batch("src/math.ts");
     const revision = h.scheduler.status().revision;
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(releasedAt).not.toBeNull();
     // The new failure's run once more (C5) is the pump's after the free, with no batch asking.
@@ -148,7 +148,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
     const h = await openHarness(main, store, commonDir, { busyWaits, allowErrors: true });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const deferred = deferResume();
     const writes = failWrites(store);
@@ -194,7 +194,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
       const busyWaits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
       const h = await openHarness(main, store, commonDir, { busyWaits, allowErrors: true });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
 
       const deferred = deferResume();
       const writes = failWrites(store);
@@ -220,7 +220,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
         expect(runs).toBe(0);
         // The next batch restarts the pump; its writes land, and the abandoned wait is no news.
         await h.batch("src/math.ts");
-        await h.scheduler.idle();
+        await h.quiet();
         expect(runs).toBeGreaterThan(0);
         expect(notes).toEqual([]);
       } finally {

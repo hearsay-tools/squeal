@@ -38,7 +38,7 @@ it("records a file's whole time on its file-level check (013-03)", SLOW, async (
   const store = openRepoStore(repo.commonDir);
   const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
 
   const [run] = h.runsOf(FILE);
   const why = readWhy(h.root, `${FILE} (file-level)`);

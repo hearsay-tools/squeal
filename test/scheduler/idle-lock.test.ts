@@ -36,16 +36,16 @@ describe("an idle daemon's reconciliation pass on a busy store (001-412)", () =>
       const store = openRepoStore(commonDir);
       const h = await openHarness(main, store, commonDir);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-      await h.scheduler.idle();
+      await h.quiet();
       const before = store.revisions.latest(h.worktreeId)?.number ?? 0;
       setBusyTimeout(store, BUSY_MS);
 
       const release = holdWriteLock(commonDir);
       try {
         await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-        await h.scheduler.idle();
+        await h.quiet();
       } finally {
         release();
       }
@@ -53,7 +53,7 @@ describe("an idle daemon's reconciliation pass on a busy store (001-412)", () =>
 
       h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
       await h.batch("src/math.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       expect(store.revisions.latest(h.worktreeId)?.number).toBe(before + 1);
     },
   );

@@ -41,7 +41,7 @@ describe("scheduler: a checkpoint counts a file current by lookup (row 011-118)"
     });
     h.write("tree/a.txt", "a\n");
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const stored = h.keyOf(LISTS);
     expect(store.testFiles.get({ project: "", path: LISTS })?.closure.paths).toContain("tree/");
 
@@ -79,7 +79,7 @@ describe("scheduler: a checkpoint counts a file current by lookup (row 011-118)"
     } finally {
       release();
     }
-    await h.scheduler.idle();
+    await h.quiet();
     expect(store.checkpoints.get(checkpoint)?.end).toBe("completed");
     expect(h.keyOf(LISTS)).toBe(stored);
     expect(h.header()).toMatchObject({ counts: { pending: 0, stale: 0, unknown: 0 } });

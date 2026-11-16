@@ -98,7 +98,7 @@ async function inheritFail(options: HarnessOptions) {
     policy: { ...options.policy, ...RUN_MISSING },
   });
   await a.scheduler.start();
-  await a.scheduler.idle();
+  await a.quiet();
   expect(a.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
   const told = await a.consumer();
 
@@ -147,7 +147,7 @@ describe("an inherited failure stands only once the receiving worktree confirms 
     // B's run passes: the row is B's pass, A's state is the current pass, both carry the note.
     rmSync(repo.marker);
     release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runsOf(FLAKY)).toHaveLength(1);
     // Every other file of B inherited A's pass at once: B ran only the flaky file.
     expect(b.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([FLAKY]);
@@ -184,7 +184,7 @@ describe("an inherited failure stands only once the receiving worktree confirms 
     const { store, a, b, release } = await inheritFail({});
     const { delivery, consumer } = await b.consumer();
     release();
-    await b.scheduler.idle();
+    await b.quiet();
 
     // B's fail confirms A's: two runs failed, and B does not re-run it (task 001-171).
     expect(b.runsOf(FLAKY)).toHaveLength(1);
@@ -225,7 +225,7 @@ describe("an inherited failure stands only once the receiving worktree confirms 
 
     rmSync(repo.marker);
     release();
-    await b.scheduler.idle();
+    await b.quiet();
     const slowRuns = b.runsOf(FLAKY);
     expect(slowRuns.map((run) => run.files.map((f) => f.path))).toEqual([[FLAKY]]);
     expect(b.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });

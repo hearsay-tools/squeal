@@ -53,7 +53,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
         clock: "virtual",
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const math = () =>
         store.testFileKeys.list(h.worktreeId).find((r) => r.testFile.path === "test/math.test.ts");
       const storedAt = (key: string | null | undefined) =>
@@ -70,10 +70,10 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
         h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
         await h.batch("src/math.ts");
         // The record's write comes after the runner part and the tier's real Vitest run.
-        await h.scheduler.idle();
+        await h.quiet();
         expect(held).not.toBeNull();
         await held;
-        await h.scheduler.idle();
+        await h.quiet();
         expect(readMergeHold(store, h.worktreeId, 0)?.paths).toEqual(["src/math.ts"]);
         expect(beforeStore).toEqual([]);
         expect(storedAt(math()?.key)).toEqual([]);
@@ -88,7 +88,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       h.advance(MERGE_HOLD_POLL_MS);
       await h.rest();
       expect(readMergeHold(store, h.worktreeId, 0)).toBeNull();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(math()?.pending).toBeNull();
       expect(storedAt(math()?.key)).not.toEqual([]);
     },
@@ -111,7 +111,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       clock: "virtual",
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const failsOnce = startupFailureOnce(side, HELPER);
     let held: Promise<void> | null = null;
     const restore = busyWrite(side.store, () => {
@@ -124,10 +124,10 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
       appendFileSync(join(repo.main, OTHER), "\n");
       await batch(side, HELPER, OTHER);
       // The record's write comes after the tier's run.
-      await side.scheduler.idle();
+      await side.quiet();
       expect(held).not.toBeNull();
       await held;
-      await side.scheduler.idle();
+      await side.quiet();
       expect(failsOnce()).toBe(0);
       expect(heldPaths(side)).toEqual([HELPER]);
       expect(setupStates(side)).toEqual([]);
@@ -148,7 +148,7 @@ describe("a busy record and a merge hold that starts before it lands (review 0.1
     side.advance(MERGE_HOLD_POLL_MS);
     await side.rest();
     expect(heldPaths(side)).toBeNull();
-    await side.scheduler.idle();
+    await side.quiet();
     expect([A, B, OTHER].map((path) => outcomes(side, path))).toEqual([
       ["pass"],
       ["pass"],

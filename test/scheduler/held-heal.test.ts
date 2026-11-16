@@ -62,7 +62,7 @@ async function healMixed() {
     policy: RUN_MISSING,
   });
   await a.scheduler.start();
-  await a.scheduler.idle();
+  await a.quiet();
   expect(a.sink.stateOf(x)).toMatchObject({ outcome: "pass", validity: "current" });
   expect(a.sink.stateOf(y)).toMatchObject({ outcome: "fail", validity: "current" });
   const told = await a.consumer();
@@ -70,7 +70,7 @@ async function healMixed() {
   writeFileSync(repo.marker, "");
   const b = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
   await b.scheduler.start();
-  await b.scheduler.idle();
+  await b.quiet();
   expect(b.runsOf(PAIR)).toHaveLength(1);
   expect(b.keyOf(PAIR)).toBe(a.keyOf(PAIR));
   expect(b.sink.stateOf(x)).toMatchObject({ outcome: "fail", origin: { kind: "own" } });
@@ -90,7 +90,7 @@ describe("a heal that leaves the receiving worktree's file held queues it there"
     expect(a.sink.stateOf(y)?.validity).toBe("pending");
 
     const checkpoint = await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runsOf(PAIR)).toHaveLength(2);
     expect(store.checkpoints.get(checkpoint.id)?.testFiles.map((f) => f.path)).toContain(PAIR);
     expect(a.sink.stateOf(x)).toMatchObject({
@@ -114,7 +114,7 @@ describe("a heal that leaves the receiving worktree's file held queues it there"
   it("is confirmed by A's next reconciliation pass without a request", async () => {
     const { a } = await healMixed();
     await a.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runsOf(PAIR)).toHaveLength(2);
     expect(a.sink.stateOf(x)).toMatchObject({ outcome: "fail", validity: "current" });
     expect(a.sink.stateOf(y)).toMatchObject({ outcome: "pass", validity: "current" });

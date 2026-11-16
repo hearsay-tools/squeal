@@ -122,7 +122,7 @@ describe("an idle pass over Vitest, node:test and pytest (007-26)", () => {
       });
       count(h.runner, "vitest", calls);
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       // Every runner ran at the baseline, pytest in a ready environment.
       expect(calls).toEqual(expect.arrayContaining(["vitest.run", "node-test.run", "pytest.run"]));
       expect((await pytest.environment())[0]?.runnerVersion).toMatch(/^\d+\.\d+/);
@@ -133,7 +133,7 @@ describe("an idle pass over Vitest, node:test and pytest (007-26)", () => {
       fingerprints.reads = 0;
       for (let pass = 0; pass < PASSES; pass++) {
         await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-        await h.scheduler.idle();
+        await h.quiet();
       }
       ctx.annotate(
         `${PASSES} quiet passes: calls ${JSON.stringify(calls)}, observation reads ${reads.length}, fingerprint reads ${fingerprints.reads}`,
