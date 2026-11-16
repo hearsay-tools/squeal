@@ -2483,6 +2483,17 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 | 022-03 recorder, union and the loaded-list table (D1, D2, D3) | done (released 0.1.496: tag `squeal--v0.1.496` at `a6c03c389`, hub `51b6638`, GitHub latest with `install.sh` and both Codex runtime assets, main CI 43621729125 green on attempt 2 (attempt 1: `test/cli/wait-stale-start.test.ts` 5 s timeout, Node 26 3/3); landed 2026-11-14; reviews `reviews/0.1.493.md` FAIL, `reviews/0.1.496-r2.md` PASS; repair 022-03r; candidate CI 43617670473 green on attempt 2 (attempt 1: the known `handover-batches.test.ts` test 4 flake); workers 29ad9cc0, 274df67e; notes `tasks/022-03/notes.md`; no key format change) | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
 | 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | done (released 0.1.496: tag `squeal--v0.1.496` at `a6c03c389`, hub `51b6638`, GitHub latest with `install.sh` and both Codex runtime assets, main CI 43621729125 green on attempt 2 (attempt 1: `test/cli/wait-stale-start.test.ts` 5 s timeout, Node 26 3/3); landed 2026-11-14; reviews `reviews/0.1.493.md` FAIL, `reviews/0.1.496-r2.md` PASS; repair 022-04r; workers 4d985a36, 81025666) | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
 
+## Feature 023: results at a commit
+
+Spec folder `specifications/023-results-at-commit/` (stage: research; the human, 2026-11-16: an agent asks Squeal for the results at a commit, the checks with no result there, and has Squeal run those; chose one slice with auto-run, retention stays 7 days). First finding `specifications/018-ci-and-shared-results/research/results-at-commit.md`. Coordinator d36c4d53.
+
+### Wave 0: research (parallel; brief `specifications/023-results-at-commit/research/README.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 023-01 research: running missing test files in a temporary checkout at a commit | running | topic temp-checkout | `research/temp-checkout.md` committed |
+| 023-02 research: computing keys when the commit's environment differs | running | topic environment-at-commit | `research/environment-at-commit.md` committed |
+
 ## Later
 
 - Main CI timing sighting (coordinator 3d192245, 2026-11-14): `test/cli/wait-stale-start.test.ts` "with a spawn mark alone: named and pathless read as with no mark" timed out at its 5 s limit on Node 26 (3/3), main CI 43621729125 attempt 1 on `a6c03c389` (0.1.496); attempt 2 passed, and it passed locally 6/6 at load 7.4. The test runs several `status --wait 1500` commands in sequence, close to the limit. No row yet.
