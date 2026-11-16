@@ -104,3 +104,16 @@ describe("the evals parser reads a report that says a repeated fact once (row 00
     expect([...(step.failing ?? [])].sort()).toEqual(["test/a.test.ts", "test/b.test.ts"]);
   });
 });
+
+describe("the evals parser reads a group recorded before row 005-92", () => {
+  it("skips its 'its closure reads' line as a fact, not a check", () => {
+    const text = formatDelta(
+      delta([
+        failure("test/a.test.ts", "one", "boom", ["src/x.ts"]),
+        failure("test/b.test.ts", "two", "boom", ["src/x.ts"]),
+      ]),
+    ).replace("its imports include", "its closure reads");
+    expect(text).toContain("      its closure reads files changed here");
+    expect(read(text)).toMatchObject({ failures: 2 });
+  });
+});
