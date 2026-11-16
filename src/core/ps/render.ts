@@ -12,6 +12,7 @@ import {
   UNKNOWN,
 } from "./render-units.js";
 import type {
+  PsCheckout,
   PsDaemon,
   PsFileFlag,
   PsFlag,
@@ -57,6 +58,11 @@ export const render: Render = (snapshot, { full }) => {
     lines.push("", "Files no live process uses");
     for (const file of snapshot.files) lines.push(...fileLines(file));
   }
+  const checkouts = snapshot.checkouts ?? [];
+  if (checkouts.length > 0) {
+    lines.push("", "Temporary checkouts");
+    for (const checkout of checkouts) lines.push(...checkoutLines(checkout, snapshot.at));
+  }
   if (snapshot.unflaggedFiles !== null) {
     const counts = snapshot.unflaggedFiles.map((f) => `${f.kind} ${thousands(f.count)}`);
     lines.push(
@@ -80,6 +86,7 @@ function firstLine(s: PsSnapshot): string {
     ...daemons.flatMap((d) => [...d.flags, ...d.processes.flatMap((p) => p.flags)]),
     ...s.orphans.flatMap((o) => o.flags),
     ...s.files,
+    ...(s.checkouts ?? []).flatMap((c) => c.flags),
   ];
   for (const f of all) names.set(f.flag, (names.get(f.flag) ?? 0) + 1);
   const listed = [...names].map(([name, n]) => (n === 1 ? name : `${name} ×${n}`)).join(", ");
@@ -252,6 +259,18 @@ function orphanLines(o: PsOrphan, at: number): string[] {
 
 function fileLines(f: PsFileFlag): string[] {
   return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
+}
+
+/** Spec 023 D6: `<path>  pid <pid>  age <age>  at <commit>`, a dead one flagged. */
+function checkoutLines(c: PsCheckout, at: number): string[] {
+  const mark = c.flags.length > 0 ? "!" : " ";
+  const commit = c.commit === null ? UNKNOWN : c.commit.slice(0, 12);
+  const pid = c.pid === null ? UNKNOWN : String(c.pid);
+  const owner = c.owner === "live" ? "" : `  owner ${c.owner}`;
+  return [
+    `  ${mark} ${c.path}  pid ${pid}  age ${age(c.createdAt, at)}  at ${commit}${owner}`,
+    ...flagLines(c.flags),
+  ];
 }
 
 function flagLines(flags: readonly PsFlag[]): string[] {

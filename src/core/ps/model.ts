@@ -35,6 +35,8 @@ export interface PsPlaces {
   readonly tempDir: AbsolutePath;
   /** The current repository's common dir; `null` outside one (D1). */
   readonly commonDir: AbsolutePath | null;
+  /** Spec 023 D6: `<cache>/squeal/checkouts`; by default under `XDG_CACHE_HOME` or `home`. */
+  readonly checkoutsRoot?: AbsolutePath;
 }
 
 /** D2: one daemon process, found by its command line. */

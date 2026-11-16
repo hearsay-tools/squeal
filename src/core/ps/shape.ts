@@ -29,7 +29,9 @@ export interface PsSnapshot {
   readonly files: readonly PsFileFlag[];
   /** With `--full`: the files that never get a flag, counted by kind (D7); `null` without it. */
   readonly unflaggedFiles: readonly PsUnflaggedFiles[] | null;
-  /** Every flag of the snapshot: on daemons, processes, orphans and files. */
+  /** Spec 023 D6: the temporary checkouts, by path; absent from a snapshot that did not read them. */
+  readonly checkouts?: readonly PsCheckout[];
+  /** Every flag of the snapshot: on daemons, processes, orphans, files and checkouts. */
   readonly flags: number;
   readonly unknown: readonly PsUnknown[];
 }
@@ -257,7 +259,9 @@ export type PsFlagName =
   | "orphan-waiter"
   | "stale-socket"
   | "stale-pool-mark"
-  | "foreign-permit";
+  | "foreign-permit"
+  // Spec 023 D6: a temporary checkout whose owner is gone.
+  | "dead-checkout";
 
 export interface PsFlag {
   readonly flag: PsFlagName;
@@ -281,6 +285,24 @@ export interface PsFileFlag {
   readonly count: number;
   readonly bytes: number;
   readonly command: string;
+}
+
+/** Spec 023 D6: one temporary checkout of `squeal status --at --run` or `squeal proof`. */
+export interface PsCheckout {
+  /** Its git worktree. */
+  readonly path: AbsolutePath;
+  /** The folder that holds the tree, its marker and its run folder. */
+  readonly folder: AbsolutePath;
+  /** The rest is from its marker, `null` without one. */
+  readonly commit: string | null;
+  readonly commonDir: AbsolutePath | null;
+  /** Its owner's pid. */
+  readonly pid: number | null;
+  readonly createdAt: EpochMs | null;
+  /** `unknown` without a marker or when the owner's PID namespace is another. */
+  readonly owner: "live" | "dead" | "unknown";
+  /** `dead-checkout` when its owner is gone. */
+  readonly flags: readonly PsFlag[];
 }
 
 /** Files whose lock the OS frees when the holder dies, so they never get a flag (D7). */

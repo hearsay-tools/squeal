@@ -1,4 +1,5 @@
 import type { EpochMs } from "../types/common.js";
+import { readCheckouts } from "./checkouts.js";
 import { discover, lockedAgain } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
 import { below, measure, takeSample } from "./measure.js";
@@ -55,7 +56,10 @@ export interface SnapshotOptions {
 
 export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot> {
   const read = await readWindow(options);
-  return shapeOf(read, options.flag(read.model), options);
+  const shape = shapeOf(read, options.flag(read.model), options);
+  const checkouts = readCheckouts(options.places, options.repo);
+  const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
+  return { ...shape, checkouts, flags: shape.flags + flags };
 }
 
 async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
