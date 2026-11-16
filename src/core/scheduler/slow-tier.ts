@@ -213,9 +213,9 @@ export class SlowTier {
     return groupView(context.policy).groups.find((group) => group.name === this.group) ?? null;
   }
 
-  /** The files of the group in the queue, in run order. */
-  #queued(ledger: Ledger): TestFileRef[] {
-    return ledger.orderedGroup(this.group);
+  /** The files of the group in the queue, in run order; batch ranks at `at` (row 011-372), else now. */
+  #queued(ledger: Ledger, at?: EpochMs): TestFileRef[] {
+    return ledger.orderedGroup(this.group, at);
   }
 
   /**
@@ -442,13 +442,13 @@ export class SlowTier {
    * a request or a checkpoint covers it. Any other runs for no one until a
    * later commit or `squeal run <group>`, so a follower would wait for it
    * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
-   * moment every queued file holds.
+   * moment every queued file holds. `at`: a step's reading (row 011-372).
    */
-  holdsFollowers({ context, ledger }: LaneState): boolean {
-    const queued = this.#queued(ledger);
+  holdsFollowers({ context, ledger }: LaneState, at?: EpochMs): boolean {
+    const queued = this.#queued(ledger, at);
     const group = this.#resolved(context);
     if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
-    return queued.some(this.#trigger(context, ledger, group));
+    return queued.some(this.#trigger(context, ledger, group, at));
   }
 
   /**
@@ -485,7 +485,7 @@ export class SlowTier {
    */
   #candidates(view: LaneView): TestFileRef[] {
     const { at, context, ledger } = view;
-    const queued = this.#queued(ledger);
+    const queued = this.#queued(ledger, at);
     const group = this.#resolved(context);
     this.asks.prune(ledger);
     this.narrow.prune(ledger);
@@ -500,8 +500,8 @@ export class SlowTier {
       this.#publish({ kind: "waiting", for: "fast" });
       return [];
     }
-    const triggered = queued.filter(this.#trigger(context, ledger, group));
-    const claims = new Map(triggered.map((ref) => [ref, claimOf(ledger, ref)]));
+    const triggered = queued.filter(this.#trigger(context, ledger, group, at));
+    const claims = new Map(triggered.map((ref) => [ref, claimOf(ledger, ref, at)]));
     const free = triggered.filter((ref) => claims.get(ref) === "free");
     const first = free[0];
     if (first !== undefined) {
@@ -512,7 +512,7 @@ export class SlowTier {
     if ([...claims.values()].includes("settled")) return this.#candidates(view);
     if ([...claims.values()].includes("waits")) return [];
     this.#publishUntriggered(group);
-    const quiet = quietLeftMs(context, group);
+    const quiet = quietLeftMs(context, group, at);
     this.#arm(at, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
     return [];
   }
@@ -523,14 +523,16 @@ export class SlowTier {
    * `slow.trigger`), an open request, a commit's ask at the file's key (019
    * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
    * file's open `run --all` checkpoint. Explicit
-   * requests ignore moments (spec 019 D1).
+   * requests ignore moments (spec 019 D1). The moment holds at `at`, a
+   * step's reading (row 011-372), else now.
    */
   #trigger(
     context: SchedulerContext,
     ledger: Ledger,
     group: ResolvedGroup,
+    at?: EpochMs,
   ): (ref: TestFileRef) => boolean {
-    const moment = momentHolds(context, group);
+    const moment = momentHolds(context, group, at);
     const runAll = ledger.checkpoints.active?.explicit === true;
     return (ref) =>
       moment ||
@@ -637,7 +639,7 @@ export class SlowTier {
     const { context, ledger } = view;
     // The slot's permits carry `#want`'s width already; the width is read again here.
     const width = admitted.width === "wide" ? slot.permits : 1;
-    const triggered = this.#trigger(context, ledger, group);
+    const triggered = this.#trigger(context, ledger, group, view.at);
     const picked: TierFile[] = [];
     for (const ref of refs) {
       if (picked.length >= width) break;
