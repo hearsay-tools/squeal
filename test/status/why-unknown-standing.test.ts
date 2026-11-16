@@ -111,6 +111,17 @@ function runBehind(store: Store, worktreeId: WorktreeId, c: CheckId) {
   return unknownRunOf(store, worktreeId, c, store.knownStates.get(worktreeId, c), logOf);
 }
 
+/**
+ * `store` with `worktreeId`'s records read once (row 011-358). One `why`
+ * reads them once; a case that asks for every one of 600 checks would read
+ * and parse every record per check, a cost that grows with the square of
+ * the records and made the case time out on a loaded CI runner.
+ */
+function recordsReadOnce(store: Store, worktreeId: WorktreeId): Store {
+  const records = store.failures.unknownRuns(worktreeId);
+  return { ...store, failures: { ...store.failures, unknownRuns: () => records } };
+}
+
 describe("a standing UNKNOWN keeps its run record past any bound (review 0.1.265 B3)", () => {
   it("names its run after 1,024 newer records and a prune past retention (the review's probe)", () => {
     const { repo, store } = seed();
@@ -150,10 +161,11 @@ describe("a standing UNKNOWN keeps its run record past any bound (review 0.1.265
     prune(store);
 
     for (const [worktreeId, checks] of byWorktree) {
-      expect(store.failures.unknownRuns(worktreeId)).toHaveLength(600);
+      const read = recordsReadOnce(store, worktreeId);
+      expect(read.failures.unknownRuns(worktreeId)).toHaveLength(600);
       checks.forEach((c, i) => {
         const runId = `run-${worktreeId}-${Math.floor(i / 100)}`;
-        expect(runBehind(store, worktreeId, c)).toMatchObject({ runId, worktreeId, revision: 6 });
+        expect(runBehind(read, worktreeId, c)).toMatchObject({ runId, worktreeId, revision: 6 });
         expect(store.runs.get(runId)).not.toBeNull();
       });
     }
