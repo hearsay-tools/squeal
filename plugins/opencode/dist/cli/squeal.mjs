@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.520";
+  if (true) return "0.1.521";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3896,7 +3896,7 @@ async function requestGroup(scheduler, group, held3, paths) {
 }
 function groupRequests(requestGroup2, max, step2 = () => null, now = Date.now) {
   const requests = /* @__PURE__ */ new Map();
-  const holderOf5 = (request) => {
+  const holderOf6 = (request) => {
     const { held: held3 } = request;
     if (request.requested !== null || request.unknown || request.error !== null) return null;
     const at2 = now();
@@ -3929,7 +3929,7 @@ function groupRequests(requestGroup2, max, step2 = () => null, now = Date.now) {
       },
       unknown: request.unknown,
       error: request.error,
-      holder: holderOf5(request),
+      holder: holderOf6(request),
       ...requested?.narrow === void 0 ? {} : { narrow: requested.narrow }
     };
   };
@@ -12831,14 +12831,14 @@ var init_escaped = __esm({
         const marks = await Promise.all(
           others.map(({ pid, start: start2 }) => start2 >= since ? this.#markOf(pid) : void 0)
         );
-        const orphaned = (entry4) => strangers !== null && entry4.pgrp === this.#self && !foreign2.has(entry4.pid) && (scope2 === null || !descendants.has(entry4.pid));
+        const orphaned2 = (entry4) => strangers !== null && entry4.pgrp === this.#self && !foreign2.has(entry4.pid) && (scope2 === null || !descendants.has(entry4.pid));
         return others.flatMap((entry4, i3) => {
           const mark = marks[i3];
           if (scope2 === null)
-            return mark !== void 0 || orphaned(entry4) ? [{ entry: entry4, own: false }] : [];
+            return mark !== void 0 || orphaned2(entry4) ? [{ entry: entry4, own: false }] : [];
           if (mark === scope2.lane) return entry4.start >= scope2.since ? [{ entry: entry4, own: true }] : [];
           if (scope2.alone === null || entry4.start < scope2.alone) return [];
-          const shared2 = mark === null || mark === void 0 && orphaned(entry4);
+          const shared2 = mark === null || mark === void 0 && orphaned2(entry4);
           return shared2 ? [{ entry: entry4, own: false }] : [];
         });
       }
@@ -97783,9 +97783,65 @@ init_process_label();
 init_open();
 init_paths();
 init_sliced_write();
-init_low_priority();
 import { spawn as spawn9 } from "node:child_process";
 import { setPriority as setPriority2 } from "node:os";
+
+// src/core/daemon/full-check-claim.ts
+init_open();
+var FULL_CHECK_EVERY_MS = 24 * 60 * 6e4;
+var META_FULL_CHECK_HOLDER = "store.full-check.holder";
+function holderOf4(store) {
+  const raw = store.meta.get(META_FULL_CHECK_HOLDER);
+  if (raw === null) return null;
+  try {
+    const read5 = JSON.parse(raw);
+    const process2 = read5.process;
+    if (typeof read5.at !== "number" || typeof process2?.pid !== "number") return null;
+    return {
+      at: read5.at,
+      process: {
+        pid: process2.pid,
+        startTime: typeof process2.startTime === "number" ? process2.startTime : null,
+        pidNamespace: typeof process2.pidNamespace === "string" ? process2.pidNamespace : null
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+function orphaned(store, before4) {
+  if (before4 === null) return false;
+  const holder = holderOf4(store);
+  return holder !== null && String(holder.at) === before4 && leaseProcessAlive(holder.process) === false;
+}
+function claimFullCheck(store, at2, holder = leaseProcess()) {
+  return store.transaction(() => {
+    const before4 = store.meta.get(META_FULL_CHECK);
+    const last = before4 === null ? Number.NaN : Number(before4);
+    const takenOver2 = orphaned(store, before4);
+    if (last <= at2 && at2 - last < FULL_CHECK_EVERY_MS && !takenOver2) return null;
+    store.meta.set(META_FULL_CHECK, String(at2));
+    store.meta.set(META_FULL_CHECK_HOLDER, JSON.stringify({ at: at2, process: holder }));
+    return { at: at2, before: takenOver2 ? null : before4 };
+  });
+}
+function dropHolder(store, claim) {
+  if (holderOf4(store)?.at === claim.at) store.meta.delete(META_FULL_CHECK_HOLDER);
+}
+function releaseClaim(store, claim) {
+  store.transaction(() => {
+    if (store.meta.get(META_FULL_CHECK) !== String(claim.at)) return;
+    dropHolder(store, claim);
+    if (claim.before === null) store.meta.delete(META_FULL_CHECK);
+    else store.meta.set(META_FULL_CHECK, claim.before);
+  });
+}
+function keepClaim(store, claim) {
+  store.transaction(() => dropHolder(store, claim));
+}
+
+// src/core/daemon/full-check.ts
+init_low_priority();
 
 // src/core/daemon/open.ts
 init_git();
@@ -98089,7 +98145,6 @@ function message(error) {
 }
 
 // src/core/daemon/full-check.ts
-var FULL_CHECK_EVERY_MS = 24 * 60 * 6e4;
 var MAX_PROBLEMS = 10;
 var SCRIPT = `
 const { DatabaseSync } = require("node:sqlite");
@@ -98139,22 +98194,6 @@ function outcomeOf4(out2, code, signal2) {
   } catch {
   }
   return { unrun: `the check's process ended with ${signal2 ?? `code ${code}`}` };
-}
-function claimFullCheck(store, at2) {
-  return store.transaction(() => {
-    const before4 = store.meta.get(META_FULL_CHECK);
-    const last = before4 === null ? Number.NaN : Number(before4);
-    if (last <= at2 && at2 - last < FULL_CHECK_EVERY_MS) return null;
-    store.meta.set(META_FULL_CHECK, String(at2));
-    return { at: at2, before: before4 };
-  });
-}
-function releaseClaim(store, claim) {
-  store.transaction(() => {
-    if (store.meta.get(META_FULL_CHECK) !== String(claim.at)) return;
-    if (claim.before === null) store.meta.delete(META_FULL_CHECK);
-    else store.meta.set(META_FULL_CHECK, claim.before);
-  });
 }
 var RELEASE_WITHIN_MS = DAEMON_START_BUSY_TIMEOUT_MS;
 function startFullCheck(context) {
@@ -98207,28 +98246,33 @@ var FullCheckOwner = class {
         log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome2.unrun}`}`);
       }
     } finally {
-      if (!answered2) await this.#giveBack(claim);
+      if (answered2) await this.#settle(claim, keepClaim, "kept");
+      else await this.#settle(claim, releaseClaim, "given back");
     }
   }
-  /** Gives `claim` back, waiting at most `RELEASE_WITHIN_MS` for a busy store; never throws. */
-  async #giveBack(claim) {
+  /**
+   * Writes `claim`'s end with `write`, waiting at most `RELEASE_WITHIN_MS`
+   * for a busy store; never throws. A claim kept whose holder row stays is
+   * taken over once this daemon is gone: one more check, never a missed one.
+   */
+  async #settle(claim, write3, what) {
     const { store, log } = this.#context;
     const deadline = performance.now() + RELEASE_WITHIN_MS;
     try {
       const done = await slicedWrite(
         () => {
-          releaseClaim(store, claim);
+          write3(store, claim);
           return true;
         },
         () => performance.now() >= deadline
       );
       if (done !== true) {
         log(
-          `full integrity check claim not given back: the store stayed busy for ${RELEASE_WITHIN_MS} ms`
+          `full integrity check claim not ${what}: the store stayed busy for ${RELEASE_WITHIN_MS} ms`
         );
       }
     } catch (error) {
-      log(`full integrity check claim not given back: ${String(error)}`);
+      log(`full integrity check claim not ${what}: ${String(error)}`);
     }
   }
 };
@@ -104667,7 +104711,7 @@ function lockedAgain(source2, discovery, [first2, second]) {
     return held3 === d.holdsLock ? d : { ...d, holdsLock: held3 };
   });
   const sockets = discovery.sockets.map(
-    (s) => s.daemonPid === null ? { ...s, daemonPid: holderOf4(daemons, s.worktreeId) } : s
+    (s) => s.daemonPid === null ? { ...s, daemonPid: holderOf5(daemons, s.worktreeId) } : s
   );
   if (both) return { ...discovery, daemons, sockets };
   const [lost, read5] = first2 === null ? ["first", "second"] : ["second", "first"];
@@ -104789,14 +104833,14 @@ function socketFiles(source2, places, daemons) {
         path,
         worktreeId,
         mtimeMs: stat10.mtimeMs,
-        daemonPid: holderOf4(daemons, worktreeId),
+        daemonPid: holderOf5(daemons, worktreeId),
         listening: listeners === null ? null : listeners.some((l) => l.fileInode === stat10.ino)
       });
     }
   }
   return sockets;
 }
-function holderOf4(daemons, worktreeId) {
+function holderOf5(daemons, worktreeId) {
   return daemons.find((d) => d.worktreeId === worktreeId && (d.holdsLock ?? true))?.row.pid ?? null;
 }
 
