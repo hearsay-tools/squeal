@@ -50,20 +50,33 @@ export function tellSlowTier(store: Store, consumer: Consumer, tier: SlowTierSta
 }
 
 /*
- * Row 019-16 (spec 019 D6): the configured groups' lines follow the same
- * rule as the slow-tier line, under their own key, so a consumer's slow-tier
- * record is as before. Absent without a `checks` key: nothing is written.
+ * Row 019-16 (spec 019 D6): the configured groups' lines are told under their
+ * own key, so a consumer's slow-tier record is as before. Absent without a
+ * `checks` key: nothing is written. Row 005-91 (b): a group line went out
+ * whenever a count moved (the `browser:` line was in 346 of 1,081 cezar
+ * messages); now only when a group's kind changes (`groupKind`). A failure
+ * says itself in its own FAIL block and adds no group line. The slow-tier
+ * line keeps its rule above.
  */
+
+/** A group's kind: what its line tells the agent to do, which a moving count does not change. */
+export type GroupKind = "current" | "waiting" | "not run";
+
+/** `current` with every listed file current (or none listed), `waiting` with any pending, else `not run`. */
+export function groupKind(group: GroupTierState): GroupKind {
+  if (group.current >= group.testFiles) return "current";
+  return group.pending > 0 ? "waiting" : "not run";
+}
 
 /** `meta` key of the groups' state each consumer of a worktree was last shown. */
 export function groupsToldMetaKey(worktreeId: WorktreeId): string {
   return worktreeMetaKey("groupTiersTold", worktreeId);
 }
 
-/** The groups' states as one string, each by name as `slowTierState` counts it; `null` without groups. */
+/** The groups' kinds as one string, each by name (`groupKind`); `null` without groups. */
 export function groupTiersState(groups: readonly GroupTierState[] | undefined): string | null {
   if (groups === undefined) return null;
-  return JSON.stringify(groups.map((group) => [group.name, slowTierState(group)]));
+  return JSON.stringify(groups.map((group) => [group.name, groupKind(group)]));
 }
 
 /** Whether `groups` differ from what `consumer` was last shown; never shown reads as changed. */
