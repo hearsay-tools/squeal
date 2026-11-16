@@ -23,3 +23,4 @@ No change needed: it does not mention `idle()`. Its `_Avoid_: idle (...)` line n
 - `git grep -nE "scheduler\??\.idle\(|Pick<Scheduler, \"idle\">" -- src test evals scripts`: nothing.
 - `pnpm run typecheck`: pass. `pnpm run lint`: pass (3540 files).
 - One run, `scheduler-rest`, `model-scheduler`, `key-format`, `quiet-point-abandon`: 4 files, 25 tests passed, 16.2 s; then `scheduler-rest` twice more, 3 of 3 each. Load 8.1 before, 10.6 after, on 24 CPUs.
+- `squeal status --wait 60000` on the four changed paths at revision 4 (`c56bbf97a`): 20 current, all pass (`quiet-point-abandon` among them); 1292 pending (queued behind the 120 s quiet, since the type file re-keys 1311 files); 3 unknown; no failure. The daemon was then stopped (`squeal stop --until-start`) so the host runs no near-full catch-up; the pending files are CI's.
