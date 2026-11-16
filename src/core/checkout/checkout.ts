@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { copyFileSync, mkdirSync, rmSync } from "node:fs";
-import { dirname, isAbsolute, join, normalize, sep } from "node:path";
+import { constants, copyFileSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
+import { isAbsolute, join, normalize, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { leaseProcess } from "../daemon/lease-process.js";
 import { awaitDaemonLock, type DaemonLock } from "../daemon/lock.js";
 import { runGit } from "../fs/git.js";
+import { lstatOrNull } from "../fs/git-layout.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { runPath, treePath, writeMarker } from "./marker.js";
 
@@ -114,7 +115,11 @@ export async function createCheckout(options: CreateCheckoutOptions): Promise<Ch
 
 /**
  * D5.2: copies `files`, paths relative to `from`, into the checkout's tree,
- * creating their folders. A path that leaves the tree is refused.
+ * creating their folders. A path that leaves the tree is refused. No write
+ * follows a symlink (review wave-1 B3): a parent folder that is a symlink is
+ * refused, and the file at the destination, a symlink included, is removed
+ * and created anew, so a link an old commit tracks never carries the copy
+ * into the user's tree.
  */
 export function copyIntoCheckout(
   checkout: Pick<Checkout, "tree">,
@@ -125,10 +130,33 @@ export function copyIntoCheckout(
     const relative = normalize(file);
     if (isAbsolute(relative) || relative === ".." || relative.startsWith(`..${sep}`))
       throw new Error(`squeal: ${file} is not a path inside the tree`);
-    const target = join(checkout.tree, relative);
-    mkdirSync(dirname(target), { recursive: true });
-    copyFileSync(join(from, relative), target);
+    const parts = relative.split(sep).filter((part) => part !== "" && part !== ".");
+    const name = parts.pop();
+    if (name === undefined) throw new Error(`squeal: ${file} names no file`);
+    let folder = checkout.tree;
+    for (const part of parts) {
+      folder = join(folder, part);
+      ownFolder(folder, file);
+    }
+    const target = join(folder, name);
+    const existing = lstatOrNull(target);
+    if (existing?.isDirectory()) throw new Error(`squeal: ${file} is a folder in the checkout`);
+    if (existing !== null) unlinkSync(target);
+    // Exclusive: a link made at `target` since the unlink fails the copy, never takes it.
+    copyFileSync(join(from, relative), target, constants.COPYFILE_EXCL);
   }
+}
+
+/** Makes `folder` when missing; refuses a symlink or a file there. */
+function ownFolder(folder: AbsolutePath, file: string): void {
+  const stats = lstatOrNull(folder);
+  if (stats === null) {
+    mkdirSync(folder);
+    return;
+  }
+  if (stats.isSymbolicLink())
+    throw new Error(`squeal: ${file} lies under a symlink in the checkout (${folder})`);
+  if (!stats.isDirectory()) throw new Error(`squeal: ${file} lies under a file in the checkout`);
 }
 
 export interface RemoveCheckoutOptions {

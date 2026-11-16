@@ -1,12 +1,14 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -176,6 +178,70 @@ describe("a temporary checkout", () => {
     expect(installed.reason).toMatch(/^exit /);
     expect(installed.log).toMatch(/npm error/);
     await removeCheckout(checkout);
+  });
+});
+
+describe("copy-in and symlinks (review wave-1 B3)", () => {
+  /**
+   * Commit A tracks `test/helper.ts` as a link to the user's `src/user.ts`
+   * and `test/data` as a link to the user's `src/data`; commit B, HEAD,
+   * makes both a regular file and a folder. Returns A.
+   */
+  function linkedBase(): string {
+    write(join(repo, "src/user.ts"), "original user content\n");
+    write(join(repo, "src/data/fixture.json"), "original fixture\n");
+    mkdirSync(join(repo, "test"), { recursive: true });
+    symlinkSync(join(repo, "src/user.ts"), join(repo, "test/helper.ts"));
+    symlinkSync(join(repo, "src/data"), join(repo, "test/data"));
+    git(repo, "add", "-A");
+    git(repo, "commit", "-q", "-m", "links");
+    const linked = git(repo, "rev-parse", "HEAD").trim();
+    rmSync(join(repo, "test/helper.ts"));
+    rmSync(join(repo, "test/data"));
+    write(join(repo, "test/helper.ts"), "new helper content\n");
+    write(join(repo, "test/data/fixture.json"), "new fixture\n");
+    git(repo, "add", "-A");
+    git(repo, "commit", "-q", "-m", "files");
+    return linked;
+  }
+
+  /** Every file of the user's `src`, with its bytes. */
+  const userFiles = () =>
+    Object.fromEntries(
+      ["src/user.ts", "src/data/fixture.json"].map((f) => [f, readFileSync(join(repo, f))]),
+    );
+
+  it("replaces a symlink at the destination instead of writing through it", async () => {
+    const checkout = await createCheckout({ root: repo, commonDir, commit: linkedBase(), dir });
+    const before = userFiles();
+    expect(lstatSync(join(checkout.tree, "test/helper.ts")).isSymbolicLink()).toBe(true);
+
+    copyIntoCheckout(checkout, repo, ["test/helper.ts"]);
+
+    expect(userFiles()).toEqual(before);
+    expect(readFileSync(join(repo, "src/user.ts"), "utf8")).toBe("original user content\n");
+    const copied = join(checkout.tree, "test/helper.ts");
+    expect(lstatSync(copied).isSymbolicLink()).toBe(false);
+    expect(readFileSync(copied, "utf8")).toBe("new helper content\n");
+    await removeCheckout(checkout);
+  });
+
+  it("refuses a destination under a symlinked folder and leaves the user's tree as it was", async () => {
+    const checkout = await createCheckout({ root: repo, commonDir, commit: linkedBase(), dir });
+    const before = userFiles();
+    expect(lstatSync(join(checkout.tree, "test/data")).isSymbolicLink()).toBe(true);
+
+    expect(() => copyIntoCheckout(checkout, repo, ["test/data/fixture.json"])).toThrow(
+      /under a symlink in the checkout/,
+    );
+    expect(() => copyIntoCheckout(checkout, repo, ["test/data/new.json"])).toThrow(
+      /under a symlink in the checkout/,
+    );
+
+    expect(userFiles()).toEqual(before);
+    expect(readdirSync(join(repo, "src/data"))).toEqual(["fixture.json"]);
+    await removeCheckout(checkout);
+    expect(userFiles()).toEqual(before);
   });
 });
 
