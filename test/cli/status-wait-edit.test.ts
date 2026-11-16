@@ -96,15 +96,21 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const { repo, store } = repoWith([A, B, C]);
     later(100, () => finish(store, repo.mainId, A));
 
-    const wait = await waitForStatus(
-      repo.main,
-      options(answering(store, repo.mainId, [A, B, C]).sync, 800),
-    );
+    const sync = answering(store, repo.mainId, [A, B, C]).sync;
+    const called = performance.now();
+    const wait = await waitForStatus(repo.main, options(sync, 800));
+    const ranMs = performance.now() - called;
 
     expect(wait.outcome).toBe("timeout");
     expect(wait).toMatchObject({ edit: { testFiles: 3, pending: 2 } });
+    // The elapsed time between two measured ends, not a fixed tenth (row 011-374): the
+    // 800 ms deadline passed (less 1 ms of timer clock, `wait-clock.ts`), inside the call.
+    expect(wait.waitedMs).toBeGreaterThanOrEqual(799);
+    expect(wait.waitedMs).toBeLessThanOrEqual(ranMs + 1);
+    const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
+    expect(waitLine(wait as EndedWait).startsWith(`Returned on timeout ${after}: `)).toBe(true);
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on timeout after 0\.\d s: 2 of the 3 test files the edits since revision 4 re-keyed pending at revision 4\. Worktree: /,
+      /^Returned on timeout after \d+\.\d s: 2 of the 3 test files the edits since revision 4 re-keyed pending at revision 4\. Worktree: /,
     );
   });
 
