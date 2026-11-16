@@ -9,7 +9,7 @@ import { folderListings, globPatterns } from "../../../src/runners/vitest/glob-l
 
 const ROOT = "/repo";
 const FILE = "/repo/src/registry.ts";
-const noResolve = async () => null;
+const noResolve = async (_pattern: string): Promise<string | null> => null;
 
 const listings = (source: string, file = FILE, resolve = noResolve) =>
   folderListings(file, source, ROOT, resolve);

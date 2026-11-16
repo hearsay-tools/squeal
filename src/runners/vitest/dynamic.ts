@@ -34,13 +34,14 @@ export function expandsFromDisk(file: AbsolutePath, transform: object): boolean 
   let found = scanned.get(transform);
   if (found === undefined) {
     const source = readSource(file);
-    found = source === null || mayExpandFromDisk(source);
+    found = source === null || DYNAMIC_SPECIFIER.test(source);
     scanned.set(transform, found);
   }
   return found;
 }
 
-function readSource(file: AbsolutePath): string | null {
+/** The source of `file` on disk; `null` when it cannot be read. */
+export function readSource(file: AbsolutePath): string | null {
   try {
     return readFileSync(file, "utf8");
   } catch {

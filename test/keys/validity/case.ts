@@ -144,6 +144,12 @@ export interface AssembleInput {
     readonly path: string;
     readonly imports: readonly string[];
     readonly walk?: readonly FileImports[];
+    /** Row 023-13: the folders the closure's modules glob (`RunnerClosure.globs`); a tree before it ignores them. */
+    readonly globs?: readonly {
+      readonly path: string;
+      readonly directories: readonly string[];
+      readonly recursive: readonly string[];
+    }[];
   }[];
   /** Paths among the files the stat cache holds before bootstrap, as a predecessor left them (011-36). */
   readonly cached?: readonly string[];

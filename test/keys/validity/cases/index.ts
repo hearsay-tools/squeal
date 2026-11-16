@@ -12,11 +12,13 @@ import { NODE_TEST_RUNS } from "./adapter/node-test.js";
 import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
+import { VITEST_GLOBS } from "./adapter/vitest-globs.js";
 import { CHECK_GROUPS } from "./assemble/check-groups.js";
 import { DECLARED } from "./assemble/declared.js";
 import { DESCRIBED } from "./assemble/described.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { GATE_GROUPS } from "./assemble/gate-groups.js";
+import { GLOB_LISTINGS } from "./assemble/globs.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { PREPARE } from "./assemble/prepare.js";
 import { REFUSED_OBSERVED } from "./assemble/refused.js";
@@ -92,4 +94,6 @@ export const CASES: readonly Case[] = [
   ...PRUNE_SLICES,
   ...PRUNE_KEYS,
   ...WALKED,
+  ...GLOB_LISTINGS,
+  ...VITEST_GLOBS,
 ];
