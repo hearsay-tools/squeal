@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readMarks } from "../../src/core/capacity/marks.js";
 import { createPermitPool } from "../../src/core/capacity/pool.js";
@@ -11,13 +10,12 @@ import type { WorktreeId } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { NodeTestProject } from "../../src/core/types/policy.js";
 import type { RunOptions } from "../../src/core/types/runner.js";
-import type { Rest } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn, settle, until } from "./drive-fixture.js";
 import { openHarness } from "./node-test-harness.js";
 import { createRepo, openRepoStore } from "./repo.js";
-import type { Harness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): backlog and checkpoint tiers take a
@@ -34,42 +32,6 @@ import type { Harness } from "./vitest-harness.js";
  * recheck is a wake (`advance`, then `rest`). The runners' work stays real:
  * a re-key, a Vitest run and a node:test run are waited for in real time.
  */
-
-/** Rests once no runner-part call is open: those are the runner's real work, set aside by `rest`. */
-async function settle(h: Harness): Promise<Rest> {
-  for (;;) {
-    const rest = await h.rest();
-    if (!rest.wakes.some((wake) => wake.reason === "runner-part-bound")) return rest;
-    await delay(10);
-  }
-}
-
-/** The wakes `until` moves the clock to: a backlog record's gather and the pump's own wait. */
-const DRIVEN: readonly string[] = ["slot-gather", "pump"];
-
-/**
- * Until `done`: at each rest the clock moves to the next wake if `DRIVEN`
- * names it, else the runner's real work goes on for 10 ms. No other wake
- * (a yield bound, a pool recheck) is passed.
- */
-async function until(h: Harness, done: () => boolean, steps = 3_000): Promise<void> {
-  for (let i = 0; i < steps && !done(); i++) {
-    const rest = await settle(h);
-    if (done()) return;
-    if (rest.next !== null && DRIVEN.includes(rest.next.reason))
-      h.advance(Math.max(0, rest.next.at - h.now()));
-    else await delay(10);
-  }
-}
-
-/** `Scheduler.idle` on the virtual clock: `until` it resolves. */
-async function idleOn(h: Harness): Promise<void> {
-  let idle = false;
-  void h.scheduler.idle().then(() => {
-    idle = true;
-  });
-  await until(h, () => idle);
-}
 
 const NT: NodeTestProject = {
   name: "nt",

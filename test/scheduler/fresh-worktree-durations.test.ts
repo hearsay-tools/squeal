@@ -12,7 +12,10 @@ import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { harnessClock } from "../helpers/virtual-clock.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
+import { SLOW } from "./cleanup.js";
+import { idleOn } from "./drive-fixture.js";
 import { RecordingSink } from "./recording-sink.js";
 import { WallRunner, wallOf } from "./wall-fixture.js";
 
@@ -23,6 +26,11 @@ import { WallRunner, wallOf } from "./wall-fixture.js";
  * baseline tier filled to `runner.backlogTierSize`. With no previous key, a
  * miss takes its duration from the file's newest stored result, from any
  * worktree, without advancing last-used.
+ *
+ * Row 011-367: each daemon's scheduler is on a virtual clock, its gather
+ * and pump wakes moved to by `idleOn`. Its stored timeouts were the test's
+ * 5 s default spent on the repository's git setup under load (about 5 s of
+ * git at load 94 on 24 CPUs, `tasks/011-367/notes.md`), so it takes `SLOW`.
  */
 const BUDGET_MS = 120_000;
 const FILES = 200;
@@ -57,6 +65,7 @@ function daemonAt(root: string, store: Store, commonDir: string) {
   });
   const files = Array.from({ length: FILES }, (_, i) => ({ project: "", path: fileName(i) }));
   const runner = new WallRunner(files, () => DURATION_MS);
+  const clock = harnessClock("virtual");
   const scheduler = createScheduler({
     root,
     worktreeId,
@@ -69,16 +78,21 @@ function daemonAt(root: string, store: Store, commonDir: string) {
     head: () => readHead(root),
     // No live host CPU in the gate (row 011-182).
     capacity: { dir, hostSlots: SLOTS, host: null },
+    ...clock.scheduler,
   });
   onTestFinished(async () => {
     runner.release();
     await scheduler.close();
   });
-  return { runner, scheduler, worktreeId };
+  const rest = () => {
+    clock.clock?.advance(0);
+    return scheduler.rest();
+  };
+  return { runner, scheduler, worktreeId, now: clock.now, advance: clock.advance, rest };
 }
 
 describe("scheduler: a new worktree's misses take the file's newest stored duration (011-154)", () => {
-  it("cuts the first baseline tier to the budget, not to backlogTierSize", async () => {
+  it("cuts the first baseline tier to the budget, not to backlogTierSize", SLOW, async () => {
     const { main, other } = claimRepo(FILES);
     const commonDir = join(main, ".git");
     const opened = openStore(commonDir, { busyTimeoutMs: 10_000 });
@@ -89,7 +103,7 @@ describe("scheduler: a new worktree's misses take the file's newest stored durat
     // The main worktree's daemon ran every file: the store holds 200 durations.
     const first = daemonAt(main, store, commonDir);
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await idleOn(first);
     expect(first.runner.runs.flatMap((run) => run.files)).toHaveLength(FILES);
     await first.scheduler.close();
 
@@ -102,7 +116,7 @@ describe("scheduler: a new worktree's misses take the file's newest stored durat
     const fresh = daemonAt(other, store, commonDir);
     expect(store.testFileKeys.list(fresh.worktreeId)).toEqual([]);
     await fresh.scheduler.start();
-    await fresh.scheduler.idle();
+    await idleOn(fresh);
 
     const tiers = fresh.runner.runs.map((run) => run.files.length);
     let fits = SLOTS;
