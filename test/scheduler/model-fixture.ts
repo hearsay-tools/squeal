@@ -250,21 +250,21 @@ export class Model {
     await scheduler.commandHold();
   }
 
-  /** Ends every hold and every run as it comes, moving the clock past each wait; whether the scheduler went idle. */
+  /**
+   * Ends every hold and every run as it comes, moving the clock past each
+   * wait; whether the scheduler went idle: at its quiet point (row 011-378)
+   * with no run live and no wake left.
+   */
   async drain(): Promise<boolean> {
     this.#drain = true;
     if (this.#holds.length > 0) await this.unhold();
-    let idle = false;
-    void this.side.scheduler.idle().then(() => {
-      idle = true;
-    });
-    for (let i = 0; i < 300 && !idle; i++) {
+    for (let i = 0; i < 300; i++) {
       for (const f of this.live()) this.#complete(f, false);
-      await this.#settle();
-      if (idle) break;
+      const rest = await this.side.quiet();
+      if (rest.next === null && this.live().length === 0) return true;
       this.clock.advance(60_000);
     }
-    return idle;
+    return false;
   }
 
   /** Notes of errors the scheduler had no caller for. */

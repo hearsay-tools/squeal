@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
+import type { Rest } from "../../src/core/types/scheduler.js";
 
 /*
  * Row 011-367: a scheduler on a virtual clock whose runner works in real
@@ -10,10 +10,11 @@ import type { Rest, Scheduler } from "../../src/core/types/scheduler.js";
 
 /** What a harness on the virtual clock offers (`vitest-harness.ts`, `catch-up-fixture.ts`, `claims-fixture.ts`). */
 export interface Driven {
-  readonly scheduler: Pick<Scheduler, "idle">;
   now(): number;
   advance(ms: number): void;
   rest(): Promise<Rest>;
+  /** Row 011-378: the quiet point (`quiet-point.ts`): a rest with no runner call open. */
+  quiet(): Promise<Rest>;
 }
 
 /**
@@ -53,12 +54,19 @@ export async function until(
   }
 }
 
-/** `Scheduler.idle` on the virtual clock: `until` it resolves. Throws when it did not. */
-export async function idleOn(side: Driven): Promise<void> {
-  let idle = false;
-  void side.scheduler.idle().then(() => {
-    idle = true;
-  });
-  await until(side, () => idle);
-  if (!idle) throw new Error("the scheduler did not come to idle on the virtual clock");
+/**
+ * Row 011-378: the scheduler idle on the virtual clock: at its quiet point
+ * (`quiet-point.ts`) with no wake `DRIVEN` names left; the clock moves to
+ * each such wake on the way, as `until` moves it. A wake no driven reason
+ * names (a yield bound, a claim recheck) stays for the test to move.
+ * Returns that rest; throws when the driven wakes never end.
+ */
+export async function idleOn(side: Driven, steps = 3_000): Promise<Rest> {
+  for (let i = 0; i < steps; i++) {
+    const rest = await side.quiet();
+    const { next } = rest;
+    if (next === null || !DRIVEN.includes(next.reason)) return rest;
+    side.advance(Math.max(0, next.at - side.now()));
+  }
+  throw new Error("the scheduler did not come to idle on the virtual clock");
 }

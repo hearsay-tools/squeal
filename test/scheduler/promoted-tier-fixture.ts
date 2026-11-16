@@ -68,7 +68,7 @@ export async function promotedBehindEdit(
     now,
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const base = side.runner.runs.length;
   const gate = holdRuns(side.runner, held);
   await side.edit("watch", "src/x.ts", "config.json");

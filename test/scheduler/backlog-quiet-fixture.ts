@@ -66,7 +66,7 @@ export async function quietSide(
   const now = () => start + Math.floor((Date.now() - start) / 10) + offset;
   const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, now, ...options });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return {
     side,
     advance: (ms) => {

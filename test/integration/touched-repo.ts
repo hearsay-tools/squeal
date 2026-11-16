@@ -100,7 +100,7 @@ export function touchHeard(h: Harness): Promise<void> {
  * first closure walk and restores the disk. The watch batch of the restore
  * then waits for the scheduler's lock behind that walk, so the scheduler
  * hands the runner the touch of `touched` before it selects the first tier.
- * Then the scheduler runs to idle. A touch reconciled only after the tier
+ * Then the scheduler runs to its quiet point. A touch reconciled only after the tier
  * was selected withholds its run (task 001-168): `touched-late.test.ts`.
  */
 export async function probeTouched(
@@ -123,7 +123,7 @@ export async function probeTouched(
   await h.scheduler.start();
   await batch;
   await heard;
-  await h.scheduler.idle();
+  await h.quiet();
   expect(batch).not.toBeNull();
 }
 
@@ -221,7 +221,7 @@ export function release(root: string): void {
  * Plants with `plant` during the scheduler's first closure walk, the held
  * test released, then starts the scheduler. Once its run started, the batch
  * of `path`, which the run rewrote, is handed over; the run ends once the
- * runner heard the touch. Then the scheduler runs to idle.
+ * runner heard the touch. Then the scheduler runs to its quiet point.
  */
 export async function touchWhileHeld(
   h: Harness,
@@ -248,5 +248,5 @@ export async function touchWhileHeld(
   await h.batch(path);
   await heard;
   release(h.root);
-  await h.scheduler.idle();
+  await h.quiet();
 }

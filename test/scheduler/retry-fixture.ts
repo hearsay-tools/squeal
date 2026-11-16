@@ -68,7 +68,7 @@ export const options = (load: ReturnType<typeof loadKnob>): HarnessOptions => ({
 
 export async function failing(h: Harness) {
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail", validity: "current" });
   return h.keyOf(FLAKY) as string;
 }
@@ -87,5 +87,5 @@ export function ask(store: Store, h: Harness, session: string, reason: RetryReas
 /** A reconciliation pass, as the change feed's every 30 s, and its work. */
 export async function pass(h: Harness) {
   await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-  await h.scheduler.idle();
+  await h.quiet();
 }

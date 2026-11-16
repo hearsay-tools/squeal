@@ -12,6 +12,7 @@ import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { countCalls, quiet as quietPoint, RunnerCalls } from "../helpers/quiet-point.js";
 import { harnessClock } from "../helpers/virtual-clock.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
 import { SLOW } from "./cleanup.js";
@@ -66,11 +67,12 @@ function daemonAt(root: string, store: Store, commonDir: string) {
   const files = Array.from({ length: FILES }, (_, i) => ({ project: "", path: fileName(i) }));
   const runner = new WallRunner(files, () => DURATION_MS);
   const clock = harnessClock("virtual");
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store,
-    runner,
+    runner: countCalls(runner, calls),
     sink: new RecordingSink(store, worktreeId),
     policy,
     squealVersion: "0.0.0-test",
@@ -88,7 +90,8 @@ function daemonAt(root: string, store: Store, commonDir: string) {
     clock.clock?.advance(0);
     return scheduler.rest();
   };
-  return { runner, scheduler, worktreeId, now: clock.now, advance: clock.advance, rest };
+  const quiet = () => quietPoint({ rest, calls, clock: clock.clock });
+  return { runner, scheduler, worktreeId, now: clock.now, advance: clock.advance, rest, quiet };
 }
 
 describe("scheduler: a new worktree's misses take the file's newest stored duration (011-154)", () => {
