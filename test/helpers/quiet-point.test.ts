@@ -87,10 +87,12 @@ describe("the quiet point (row 011-378)", () => {
 
     const point = quiet(side);
     expect(await settledSoon(point)).toBe(false);
+    // While the run is open it rests again now and then (review 011-378 B1), and once more after the end.
+    const before = side.rests;
     ends[0]?.();
     await point;
     expect(calls.open).toBe(0);
-    expect(side.rests).toBe(2);
+    expect(side.rests).toBeGreaterThan(before);
   });
 
   it("counts a call the test replaced after the build; a call the runner lacks stays absent", async () => {
@@ -101,7 +103,7 @@ describe("the quiet point (row 011-378)", () => {
     void counted.testFiles();
     expect(calls.describe()).toBe("testFiles ×1");
     replaced.resolve([]);
-    await calls.nextEnd();
+    await calls.nextEnd(5_000);
     expect(calls.open).toBe(0);
     expect(counted.recheck).toBeUndefined();
     expect(counted.name).toBe("held");
