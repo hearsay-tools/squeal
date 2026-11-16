@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { storePaths } from "../../../../src/core/store/paths.js";
 import { connectionOf } from "../../../../src/core/store/store.js";
-import type { ResultRepo, Store } from "../../../../src/core/types/store.js";
+import type { ResultRepo, RunRepo, Store } from "../../../../src/core/types/store.js";
 import type { CaseOutput, PruneInput } from "../case.js";
 import { scratchStore } from "./shared.js";
 
@@ -103,6 +103,7 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
     return {
       outputs: {
         ...withResults(store, input.asked),
+        ...timingsOf(store, input.timings),
         removed,
         worktrees: column("SELECT id FROM worktrees ORDER BY id"),
         results: column("SELECT worktree_id || ' ' || key FROM results ORDER BY 1"),
@@ -143,6 +144,67 @@ function withResults(
   }
   const stored = new Set(results.keysSince(0).map((k) => k.key));
   return { withResults: [...new Set(asked)].filter((key) => stored.has(key)) };
+}
+
+/**
+ * With `timings`, the worktree's newest completed edit runs after the prune, each with its
+ * files' durations, sorted (row 005-93). A tree before it has no `recentTimings`: there the
+ * answer is read here, run by run, from the rows that tree's schema holds alike.
+ */
+function timingsOf(
+  store: Store,
+  timings: PruneInput["timings"],
+): { timings?: readonly (readonly number[])[] } {
+  if (timings === undefined) return {};
+  const runs: Partial<Pick<RunRepo, "recentTimings">> = store.runs;
+  const read = runs.recentTimings?.(timings.worktree, timings.limit) ?? readTimings(store, timings);
+  return {
+    timings: read.map((t) => [
+      t.revision,
+      t.startedAt,
+      t.endedAt,
+      ...[...t.durations].sort((a, b) => a - b),
+    ]),
+  };
+}
+
+/** `recentTimings` read without it: each run, then each of its files' tests and file check. */
+function readTimings(store: Store, { worktree, limit }: NonNullable<PruneInput["timings"]>) {
+  const db = connectionOf(store).db;
+  const runs = db
+    .prepare(
+      `SELECT id, revision, started_at, ended_at, checkpoint_id, end_state FROM runs
+       WHERE worktree_id = ? ORDER BY started_at DESC, rowid DESC`,
+    )
+    .all(worktree)
+    .filter((r) => r.checkpoint_id === null && r.end_state === "completed")
+    .slice(0, limit);
+  return runs.map((run) => {
+    const files = new Map<string, { file: number; tests: number }>();
+    const rows = db
+      .prepare(
+        `SELECT c.kind, c.project, c.test_path, r.duration_ms FROM results r
+         JOIN checks c ON c.id = r.check_id WHERE r.run_id = ?`,
+      )
+      .all(String(run.id));
+    for (const row of rows) {
+      const id = `${String(row.project)}\n${String(row.test_path)}`;
+      const was = files.get(id) ?? { file: 0, tests: 0 };
+      const ms = Number(row.duration_ms);
+      files.set(
+        id,
+        row.kind === "file"
+          ? { ...was, file: Math.max(was.file, ms) }
+          : { ...was, tests: was.tests + ms },
+      );
+    }
+    return {
+      revision: Number(run.revision),
+      startedAt: Number(run.started_at),
+      endedAt: Number(run.ended_at),
+      durations: [...files.values()].map((f) => Math.max(f.file, f.tests)),
+    };
+  });
 }
 
 /** Spec 022 D3's table, as `LOADED_MODULES_SQL` makes it, with a list at each of `keys`. */

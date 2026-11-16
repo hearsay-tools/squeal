@@ -410,6 +410,12 @@ export interface PruneInput {
    */
   readonly asked?: readonly string[];
   /**
+   * Row 005-93: after the prune, the worktree's newest `limit` completed edit runs, each with
+   * its test files' durations from its own results, as the late bound reads them
+   * (`RunRepo.recentTimings`).
+   */
+  readonly timings?: { readonly worktree: string; readonly limit: number };
+  /**
    * Spec 022 D3 (row 022-03): result keys a loaded list is stored at, in a
    * `loaded_modules` table made by SQL. No key reads the table, so what a
    * prune leaves of it is wording: a release before it leaves every list.
