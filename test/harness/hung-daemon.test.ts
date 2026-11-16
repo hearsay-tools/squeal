@@ -121,8 +121,8 @@ describe("a SIGSTOPped daemon (lessons, defect 22)", SLOW, () => {
       const first = context(
         await runHook("post-tool-batch", recorded("post-tool-batch", repo.root, EDIT), hung),
       );
-      expect(first).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision \d+\n/);
-      expect(first).toMatch(new RegExp(`\n${line}$`));
+      // Row 005-91 (a): a heartbeat under a minute late is no news by itself; the edit's line is.
+      expect(first).toMatch(new RegExp(`^SQUEAL · ${line}$`));
       expect(first).not.toMatch(/no daemon/i);
 
       const second = context(

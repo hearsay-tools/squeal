@@ -215,10 +215,11 @@ describe("a running daemon's late heartbeat", () => {
 
   it("is reported once past them, as late with its age (row 011-276)", async () => {
     const r = await registeredWith(T);
-    const text = context(await batch(r, T + 10_001));
+    // Row 005-91 (a): a minute late or more, so the late heartbeat is news by itself.
+    const text = context(await batch(r, T + 60_001));
     expect(text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
     expect(text).toContain(
-      ` The daemon's heartbeat is late: the last one was 10 s ago, at ${new Date(T).toISOString()}; ` +
+      ` The daemon's heartbeat is late: the last one was 60 s ago, at ${new Date(T).toISOString()}; ` +
         "the daemon may be busy or stopped; results are as of revision 1.",
     );
   });
