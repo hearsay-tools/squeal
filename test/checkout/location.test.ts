@@ -8,7 +8,7 @@ import {
   deviceOf,
   gitCheckoutsDir,
   locateCheckouts,
-} from "../../../src/core/checkout/location.js";
+} from "../../src/core/checkout/location.js";
 
 /* Row 023-05 (spec 023 D4.2, human 2026-11-16): the cache folder on the store's filesystem, else the git folder. */
 

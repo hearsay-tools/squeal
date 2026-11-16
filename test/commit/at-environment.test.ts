@@ -2,18 +2,18 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { type EnvironmentAtInput, environmentAt } from "../../../src/core/commit/at-environment.js";
+import { type EnvironmentAtInput, environmentAt } from "../../src/core/commit/at-environment.js";
 import {
   installedLockText,
   installedPart,
   type LockfileSides,
   readLockfileSides,
   runnerPins,
-} from "../../../src/core/commit/at-environment-lockfile.js";
-import { committedBlobs } from "../../../src/core/commit/tree.js";
-import type { EnvironmentDescriptor } from "../../../src/core/keys/environment-descriptor.js";
-import type { StoredEnvironment } from "../../../src/core/store/environments.js";
-import { git } from "../../hash/git-repo.js";
+} from "../../src/core/commit/at-environment-lockfile.js";
+import { committedBlobs } from "../../src/core/commit/tree.js";
+import type { EnvironmentDescriptor } from "../../src/core/keys/environment-descriptor.js";
+import type { StoredEnvironment } from "../../src/core/store/environments.js";
+import { git } from "../hash/git-repo.js";
 
 /*
  * Spec 023 D2.2 (row 023-03): one project's environment hash at a commit

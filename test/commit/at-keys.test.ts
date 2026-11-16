@@ -1,23 +1,18 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type KeyAt,
-  keysAtCommit,
-  mixedBlobs,
-  sideKeys,
-} from "../../../src/core/commit/at-keys.js";
-import { untrackedBy } from "../../../src/core/commit/at-keys-untracked.js";
-import { testFileId } from "../../../src/core/keys/reverse-index.js";
-import type { Store } from "../../../src/core/types/store.js";
-import { git } from "../../hash/git-repo.js";
-import { RUN_MISSING } from "../../helpers/baseline.js";
+import { type KeyAt, keysAtCommit, mixedBlobs, sideKeys } from "../../src/core/commit/at-keys.js";
+import { untrackedBy } from "../../src/core/commit/at-keys-untracked.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import type { Store } from "../../src/core/types/store.js";
+import { git } from "../hash/git-repo.js";
+import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
   type CatchUpSide,
   catchUpRepo,
   catchUpSide,
-} from "../../scheduler/catch-up-fixture.js";
+} from "../scheduler/catch-up-fixture.js";
 
 /*
  * Spec 023 D2 (row 023-03): keys at a commit, computed from this worktree's

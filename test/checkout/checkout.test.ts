@@ -16,11 +16,11 @@ import {
   copyIntoCheckout,
   createCheckout,
   removeCheckout,
-} from "../../../src/core/checkout/checkout.js";
-import { installCheckout } from "../../../src/core/checkout/install.js";
-import { readMarker, writeMarker } from "../../../src/core/checkout/marker.js";
-import { listCheckouts, sweepCheckouts } from "../../../src/core/checkout/sweep.js";
-import { pidNamespace } from "../../../src/core/delivery/harness-process.js";
+} from "../../src/core/checkout/checkout.js";
+import { installCheckout } from "../../src/core/checkout/install.js";
+import { readMarker, writeMarker } from "../../src/core/checkout/marker.js";
+import { listCheckouts, sweepCheckouts } from "../../src/core/checkout/sweep.js";
+import { pidNamespace } from "../../src/core/delivery/harness-process.js";
 
 /*
  * Row 023-05 (spec 023 D4.1 to D4.3, D4.8, D6): a temporary checkout on a
