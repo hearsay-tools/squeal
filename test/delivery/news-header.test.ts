@@ -189,10 +189,12 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   });
 
   it("keeps the unlisted and the runner-part sentences, which say the counts are not complete", () => {
-    // Row 011-311: a header with no runners named says "the test runner".
-    expect(headerLine({ ...header, testFilesListed: false })).toContain(
-      " The daemon has not listed this worktree's test files yet; these counts are not complete.",
+    // Row 005-90: unlisted, the sentence replaces the counts.
+    expect(headerLine({ ...header, testFilesListed: false })).toBe(
+      "Revision 184 (changed src/auth.ts, src/parse.ts): Squeal is still starting in this worktree and has no results yet. " +
+        "`squeal status --wait 60000 <path>...` waits for the files you change.",
     );
+    // Row 011-311: a header with no runners named says "the test runner".
     expect(headerLine({ ...header, runnerPartPending: true })).toContain(
       " The test runner has not yet listed the test files of revision 184, so new test files are not counted.",
     );

@@ -66,6 +66,8 @@ describe("squeal status", () => {
     expect(stderr).toBe("");
     expect(stdout.split("\n").slice(0, 8)).toEqual([
       "Revision: 3",
+      // Row 005-90: nothing is listed, so no counts; a stored failure is still counted.
+      "Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.",
       // Row 011-26 (gh-45): what is not current, here that nothing is listed.
       "Known failures: 1 (1 test); the daemon has not listed this worktree's test files yet",
       "  FAIL  src/a.test.ts > adds",
@@ -73,7 +75,6 @@ describe("squeal status", () => {
       "        observed at revision 3, current",
       // Review 001-417 B3: no stored result produced it.
       "        recorded at an unknown time and load: the result that produced it is no longer identifiable in the store",
-      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 3; `squeal run --all` requests one)",
     ]);
   });

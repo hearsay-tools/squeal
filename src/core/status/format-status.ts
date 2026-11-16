@@ -1,3 +1,4 @@
+import { noResultsText } from "../delivery/header.js";
 import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/text.js";
 import { formatCheck } from "../state/check-name.js";
 import { groupTierLines } from "../state/group-text.js";
@@ -74,8 +75,10 @@ export function formatStatus(
     // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does; row
     // 011-311: so does the revision's listing, in the same sentence when both apply.
     ...delaysLines(result),
+    // Row 005-90: before the listing, no count reads as all clear; one sentence says why.
+    ...(result.testFilesListed === false ? [noResultsText(command)] : []),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
-    `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
+    ...knownFailuresLine(result),
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
     ...result.knownFailures.flatMap((f) => [
       `  FAIL  ${formatCheck(f.check)}`,
@@ -96,7 +99,7 @@ export function formatStatus(
     ]),
     // Row 011-146 (C6 as amended 2026-10-23): focused runs, after the failures, never counted.
     ...focusedLines(result, full),
-    `Affected checks: ${affected(result, command)}`,
+    ...(result.testFilesListed === false ? [] : [`Affected checks: ${affected(result, command)}`]),
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     // Spec 018 D5: an import none of whose results is current because the environment differs.
     ...importDefaultLines(result),
@@ -132,6 +135,13 @@ export function formatStatus(
       : [`More: \`${command} status --full\` adds ${listText(hiddenParts(result, command))}`]),
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/** Row 005-90: none for zero failures while the test files are not listed. */
+function knownFailuresLine(s: StatusSnapshot): string[] {
+  if (s.testFilesListed === false && s.knownFailures.length === 0) return [];
+  const current = splitByValidity(s.knownFailures).current.map((f) => f.check);
+  return [`Known failures: ${failureCountText(current)}${notCurrentText(s)}`];
 }
 
 /** `a, b and c`. */
@@ -193,14 +203,11 @@ export function formatUnavailable(result: StatusUnavailable, command = "squeal")
  * queued (9 tests, 3 test files loaded)", then skipped, stale and unknown
  * when there are any, each count naming its tests and file-level checks
  * apart (spec 005 D1). Before the daemon listed the test files, zero counts would
- * read as complete, so none are printed (D7 as amended). While the runner
+ * read as complete, so the line is not printed (row 005-90). While the runner
  * part of the revision is pending, the line after the revision line says what
  * the counts leave out (D2 as amended, review wave 4.5 S1; row 011-311).
  */
 function affected(s: StatusSnapshot, command: string): string {
-  if (s.testFilesListed === false) {
-    return "none counted; the daemon has not listed this worktree's test files yet";
-  }
   const { currentByOutcome, pendingByPhase, fileLevelByOutcome, fileLevelByPhase } = s.breakdown;
   const files = s.fileLevelCounts;
   const parts = [

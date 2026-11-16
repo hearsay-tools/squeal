@@ -297,10 +297,10 @@ describe("formatDelta", () => {
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
       testFilesListed: false,
     };
+    // Row 005-90: no zero counts and no checkpoint sentence, which names the counts.
     expect(line(fresh)).toBe(
-      "Revision 0: 0 current, 0 pending, 0 stale, 0 unknown. " +
-        "The daemon has not listed this worktree's test files yet; these counts are not complete. " +
-        "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one).",
+      "Revision 0: Squeal is still starting in this worktree and has no results yet. " +
+        "`squeal status --wait 60000 <path>...` waits for the files you change.",
     );
     expect(line({ ...header, testFilesListed: true })).toBe(line(header));
   });
@@ -452,7 +452,7 @@ describe("formatRegistration", () => {
       ...registration([]),
       header: { ...header, testFilesListed: false },
     });
-    expect(fresh).toContain("The daemon has not listed this worktree's test files yet");
+    expect(fresh).toContain("Squeal is still starting in this worktree and has no results yet.");
   });
 
   it("renders the header and every known failure", () => {

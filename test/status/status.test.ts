@@ -450,10 +450,11 @@ describe("readStatus", () => {
     const status = snapshotOf(readStatus(repo.main, { now: () => NOW }));
 
     expect(status.testFilesListed).toBe(false);
+    // Row 005-90: no zero counts; the sentence says why and which wait gives results.
     expect(formatStatus(status, NOW).split("\n").slice(0, 3)).toEqual([
       "Revision: 0",
-      "Known failures: 0; the daemon has not listed this worktree's test files yet",
-      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
+      "Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.",
+      "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)",
     ]);
 
     setKeys(store, repo.mainId, ["src/a.test.ts"]);
@@ -746,10 +747,9 @@ describe("readStatus", () => {
       ],
     });
     const lines = formatStatus(status, NOW, "squeal", { full: true }).split("\n");
-    expect(lines.slice(0, 4)).toEqual([
+    expect(lines.slice(0, 3)).toEqual([
       "Revision: 0",
-      "Known failures: 0; the daemon has not listed this worktree's test files yet",
-      "Affected checks: none counted; the daemon has not listed this worktree's test files yet",
+      "Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.",
       "Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)",
     ]);
     expect(lines).toContain(

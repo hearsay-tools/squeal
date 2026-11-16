@@ -540,6 +540,16 @@ function livenessTitle(
 }
 
 /**
+ * The registration's `Known failures:` line. Row 005-90: while the test files are not listed,
+ * none for zero failures, since the header says Squeal has no results yet.
+ */
+function knownFailuresLines(header: StatusHeader, failures: readonly KnownFailure[]): string[] {
+  const current = splitByValidity(failures).current.map((f) => f.check);
+  if (header.testFilesListed === false && failures.length === 0) return [];
+  return [`Known failures: ${failureCountText(current)}${notCurrentText(header)}`];
+}
+
+/**
  * Renders a registration: header and every known failure, which are never
  * delivered again. `max` below the cap leaves room for text the hook adds;
  * `command` is how the text names the CLI (`SQUEAL_COMMAND`); `now` dates
@@ -557,8 +567,9 @@ export function formatRegistration(
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
-    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words.
-    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}${notCurrentText(header)}`,
+    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words; row 005-90: none while
+    // the test files are not listed, unless the store holds a failure.
+    ...knownFailuresLines(header, knownFailures),
     ...earlierFailuresLines(knownFailureCounts(knownFailures)),
     // Spec 015 D6: a number and the command that lists them, never the list.
     ...(registration.code === undefined ? [] : [codeRegistrationLine(registration.code, command)]),

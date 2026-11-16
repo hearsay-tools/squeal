@@ -54,7 +54,8 @@ function expectNoFullSuite(): void {
   expect(store.checkpoints.lastCompletedFull(WT)).toBeNull();
   const header = readHeader(store, WT);
   expect(header.fullSuite.atCurrentRevision).toBe(false);
-  expect(headerLines(header, "squeal").join("\n")).toContain(
+  // Row 005-90: an unlisted header prints no checkpoint sentence; this store lists no test files.
+  expect(headerLines({ ...header, testFilesListed: true }, "squeal").join("\n")).toContain(
     "Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 1",
   );
   expect(fullSuiteReason(header)).toContain("none completed at any revision");

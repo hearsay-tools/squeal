@@ -212,6 +212,7 @@ for (const harness of ["codex", "claude"] as const)
       expect(alone(NEWS(3, { counts: files }))).toEqual(MISSED);
       expect(alone(NEWS(3, { counts: "test files without checks: 1 pending" }))).toEqual(MISSED);
       expect(alone(NEWS(3, { counts: "test files without checks: 1 unknown" }))).toEqual(MISSED);
+      // Before row 005-90 the unlisted sentence followed the counts.
       const unlisted = `${NEWS_LINE}. The daemon has not listed this worktree's test files yet; these counts are not complete`;
       expect(alone(NEWS(3, { counts: unlisted }))).toEqual(MISSED);
     });
@@ -336,6 +337,12 @@ for (const harness of ["codex", "claude"] as const)
       it(`${form} with a pending or an unknown test file without checks stays a miss`, () => {
         expect(atClaim([...steps(withoutChecks(1, 0)), CLAIM("pass")], harness)).toEqual(MISSED);
         expect(atClaim([...steps(withoutChecks(0, 1)), CLAIM("pass")], harness)).toEqual(MISSED);
+      });
+
+      // Row 005-90: unlisted, each form says Squeal has no results yet and counts nothing.
+      it(`${form} before the listing, with no counts, stays a miss`, () => {
+        const unlisted = { ...settled, testFilesListed: false };
+        expect(atClaim([...steps(unlisted), CLAIM("pass")], harness)).toEqual(MISSED);
       });
     }
   });

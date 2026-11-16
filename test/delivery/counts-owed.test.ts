@@ -29,8 +29,8 @@ const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
 const C2: Consumer = { worktreeId: WT, sessionId: "s2", agentId: "main" };
 const SHARED = check("shared", INHERITED);
 const MINE = check("mine", OWN);
-const NOT_LISTED =
-  "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+// Row 005-90: the sentence an unlisted header says in place of its counts.
+const NOT_LISTED = "Squeal is still starting in this worktree and has no results yet.";
 const COUNTS =
   "Revision 0: 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Inherited: 1 of 2 current (1 test). " +
   "Test files without checks: 0 pending, 1 unknown; the baseline is lookup-only, so it queued none of them.";

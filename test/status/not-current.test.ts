@@ -340,10 +340,10 @@ describe("all N test files current only with a live daemon, the files listed and
   });
 
   it("not while the daemon has not listed the test files", async () => {
+    // Row 005-90: no zero count at all; the header's sentence says Squeal has no results yet.
     const w = worktree();
-    const line = "Known failures: 0; the daemon has not listed this worktree's test files yet";
-    expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(line);
-    expect(knownLine(await registrationText(w))).toBe(line);
+    expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBeUndefined();
+    expect(knownLine(await registrationText(w))).toBeUndefined();
   });
 
   it("names the unlisted revision after what is not current", () => {

@@ -29,9 +29,31 @@ import { installSentences } from "./provenance.js";
 /** `full`: registration, Stop and status. `news`: every other delivery. */
 export type HeaderForm = "full" | "news";
 
-/** Spec 001 D7 as amended: the daemon has not listed the test files, so zero counts are not complete. */
-const NOT_LISTED_SENTENCE =
-  "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+/**
+ * Row 005-90 (amends 001 D7's "these counts are not complete"): before the daemon lists the
+ * worktree's test files, no count is printed, since zeros read as all clear; this says why and
+ * which wait gives results. `squeal status` prints it too.
+ */
+export function noResultsText(command: string): string {
+  return (
+    "Squeal is still starting in this worktree and has no results yet. " +
+    `\`${command} status --wait 60000 <path>...\` waits for the files you change.`
+  );
+}
+
+/**
+ * Row 005-90: the line of either form while the test files are not listed: the sentence, then
+ * the daemon's. No counts, no delay sentence and no checkpoint sentence, which name counts.
+ */
+function unlistedLine(header: StatusHeader, command: string): string | null {
+  if (header.testFilesListed !== false) return null;
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command)}`;
+}
+
+/** `Revision 12 (changed src/a.ts): `, which both forms start with. */
+function revisionPrefix(header: StatusHeader): string {
+  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+}
 
 /** Paths a header names before the rest is counted (task 001-85). */
 const CHANGED_PATHS_SHOWN = 3;
@@ -64,15 +86,14 @@ function changedText(header: StatusHeader): string {
 }
 
 /**
- * What the counts leave out: the listing not done; then, in one sentence (row 011-311), the
- * revision's test files not listed yet, the edits a late change feed has not read, or both. A
- * stopping daemon's own sentence says what it does instead (`livenessSentence`).
+ * What the counts leave out, in one sentence (row 011-311): the revision's test files not listed
+ * yet, the edits a late change feed has not read, or both. A stopping daemon's own sentence says
+ * what it does instead (`livenessSentence`). The worktree's listing not done is `unlistedLine`.
  */
 function incompleteText(header: StatusHeader): string {
-  const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const late = header.daemon?.stopping === undefined ? lateOf(header.daemon) : undefined;
   const delays = delaysText(header, late);
-  return `${listed}${delays === null ? "" : ` ${delays}`}`;
+  return delays === null ? "" : ` ${delays}`;
 }
 
 /** What both forms end with: daemon liveness, then the install wait or the install sentences. */
@@ -112,8 +133,10 @@ function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
 }
 
 function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
+  const unlisted = unlistedLine(header, command);
+  if (unlisted !== null) return `${unlisted}${holdsText(header, command)}`;
   return (
-    `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed)}${incompleteText(header)} ` +
+    `${revisionPrefix(header)}${fullCounts(header, owed)}${incompleteText(header)} ` +
     `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`
   );
 }
@@ -140,8 +163,10 @@ const ACTIONABLE = ["pending", "stale", "unknown"] as const;
  * an agent sees why checks re-ran.
  */
 function newsLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
+  const unlisted = unlistedLine(header, command);
+  if (unlisted !== null) return unlisted;
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+  const revision = revisionPrefix(header);
   // Row 011-205: the first delivery after the listing to a consumer registered before it.
   if (owed !== undefined) {
     return `${revision}${fullCounts(header, owed)}${incompleteText(header)}${daemonText(header, command)}`;
