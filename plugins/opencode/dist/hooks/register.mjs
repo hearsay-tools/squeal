@@ -2795,7 +2795,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.526";
+  if (true) return "0.1.527";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4030,6 +4030,47 @@ function checkName(check) {
   return cap(formatCheck(check), SUMMARY_MAX_CHARS);
 }
 
+// src/core/delivery/slow-told.ts
+function slowToldMetaKey(worktreeId) {
+  return worktreeMetaKey("slowTierTold", worktreeId);
+}
+function slowTierState(tier) {
+  if (tier === void 0) return null;
+  return JSON.stringify([
+    tier.testFiles,
+    tier.current,
+    tier.pending,
+    tier.notRun,
+    tier.currentAt,
+    tier.currentUpTo ?? null
+  ]);
+}
+function slowTierChanged(store, consumer, tier) {
+  const state = slowTierState(tier);
+  return state !== null && readSlot(store, slowToldMetaKey(consumer.worktreeId), consumer) !== state;
+}
+function tellSlowTier(store, consumer, tier) {
+  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
+}
+function groupKind(group) {
+  if (group.current >= group.testFiles) return "current";
+  return group.pending > 0 ? "waiting" : "not run";
+}
+function groupsToldMetaKey(worktreeId) {
+  return worktreeMetaKey("groupTiersTold", worktreeId);
+}
+function groupTiersState(groups2) {
+  if (groups2 === void 0) return null;
+  return JSON.stringify(groups2.map((group) => [group.name, groupKind(group)]));
+}
+function groupTiersChanged(store, consumer, groups2) {
+  const state = groupTiersState(groups2);
+  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
+}
+function tellGroupTiers(store, consumer, groups2) {
+  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
+}
+
 // src/core/delivery/provenance.ts
 var TOUCHED_SHOWN = 3;
 var CHANGED_HERE = "files changed here since this session started";
@@ -4890,7 +4931,16 @@ function toKnownFailure(state, revision) {
 }
 
 // src/core/delivery/header.ts
-var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+function noResultsText(command) {
+  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
+}
+function unlistedLine(header, command) {
+  if (header.testFilesListed !== false) return null;
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command)}`;
+}
+function revisionPrefix(header) {
+  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+}
 var CHANGED_PATHS_SHOWN = 3;
 function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
@@ -4905,10 +4955,9 @@ function changedText(header) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function incompleteText(header) {
-  const listed4 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
   const delays = delaysText(header, late);
-  return `${listed4}${delays === null ? "" : ` ${delays}`}`;
+  return delays === null ? "" : ` ${delays}`;
 }
 function daemonText(header, command) {
   const awaiting2 = awaitingInstallText(header);
@@ -4925,15 +4974,19 @@ function fullCounts(header, owed2) {
   return `${countsText(counts, fileLevel)}.${inherited}${imported}${withoutChecks}`;
 }
 function fullLine(header, command, owed2) {
-  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText2(header, command)}`;
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
+  return `${revisionPrefix(header)}${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText2(header, command)}`;
 }
 function holdsText2(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
 function newsLine(header, command, owed2) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return unlisted3;
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+  const revision = revisionPrefix(header);
   if (owed2 !== void 0) {
     return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
   }
@@ -5052,6 +5105,11 @@ ${overflow(blocks.slice(i))}`, room)}${end}`;
   }
   return `${out}${end}`;
 }
+function knownFailuresLines(header, failures) {
+  const current2 = splitByValidity(failures).current.map((f) => f.check);
+  if (header.testFilesListed === false && failures.length === 0) return [];
+  return [`Known failures: ${failureCountText(current2)}${notCurrentText(header)}`];
+}
 function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQUEAL_COMMAND, now = Date.now()) {
   const { header, knownFailures } = registration2;
   const head = [
@@ -5059,8 +5117,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
     ...headerLines(header, command),
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...header.optimizerOff === void 0 ? [] : [header.optimizerOff],
-    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words.
-    `Known failures: ${failureCountText(splitByValidity(knownFailures).current.map((f) => f.check))}${notCurrentText(header)}`,
+    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words; row 005-90: none while
+    // the test files are not listed, unless the store holds a failure.
+    ...knownFailuresLines(header, knownFailures),
     ...earlierFailuresLines(knownFailureCounts(knownFailures)),
     // Spec 015 D6: a number and the command that lists them, never the list.
     ...registration2.code === void 0 ? [] : [codeRegistrationLine(registration2.code, command)],
@@ -11860,11 +11919,18 @@ function tellLiveness(store, consumer, told) {
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: withToldStart(header.daemon, told, at) };
 }
+var LATE_HEARTBEAT_NEWS_MS = 6e4;
+function shortLate(live) {
+  return live.state === "down" && live.heartbeatLate !== void 0 && live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS;
+}
+function toldAtRegistration(live) {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
+}
 function livenessChange(store, consumer, at) {
   const presence = readPresence(store, consumer.worktreeId, at);
   const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
-  return change2;
+  return change2 !== null && shortLate(change2) ? null : change2;
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
@@ -11875,43 +11941,6 @@ function toldRevision(store, consumer) {
 }
 function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
-}
-
-// src/core/delivery/slow-told.ts
-function slowToldMetaKey(worktreeId) {
-  return worktreeMetaKey("slowTierTold", worktreeId);
-}
-function slowTierState(tier) {
-  if (tier === void 0) return null;
-  return JSON.stringify([
-    tier.testFiles,
-    tier.current,
-    tier.pending,
-    tier.notRun,
-    tier.currentAt,
-    tier.currentUpTo ?? null
-  ]);
-}
-function slowTierChanged(store, consumer, tier) {
-  const state = slowTierState(tier);
-  return state !== null && readSlot(store, slowToldMetaKey(consumer.worktreeId), consumer) !== state;
-}
-function tellSlowTier(store, consumer, tier) {
-  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
-}
-function groupsToldMetaKey(worktreeId) {
-  return worktreeMetaKey("groupTiersTold", worktreeId);
-}
-function groupTiersState(groups2) {
-  if (groups2 === void 0) return null;
-  return JSON.stringify(groups2.map((group) => [group.name, slowTierState(group)]));
-}
-function groupTiersChanged(store, consumer, groups2) {
-  const state = groupTiersState(groups2);
-  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
-}
-function tellGroupTiers(store, consumer, groups2) {
-  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
 }
 
 // src/core/delivery/turn.ts
@@ -12472,7 +12501,7 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);

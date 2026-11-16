@@ -23,3 +23,17 @@ Owns: the files named above, their tests, `evals/` parsers these texts move (rou
 Done when: a test per part, red first; texts of every harness that share these functions still parse; lint, typecheck, affected tests current; the two e2e files above pass.
 
 Final message: each text before and after; the threshold you chose and why; the tool-boundary registration finding; every e2e file you ran with its result.
+
+## Review of cand/0.1.527
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.527` SHA named in the spawn; the range is from the base named there to that SHA. It holds rows 005-90 and 005-91: ten commits of worker bacce449 (cherry-picked with `-x`) and one coordinator commit (the release 0.1.527 with bundles; in it also: the title says "your edit affects N test files", not "re-keyed", and `lintWords` split out of `contentWords`, which was over the complexity threshold). Read rows 005-90 and 005-91, this file, `tasks/005-91/notes.md`, `research/hook-messages-2026-11-16.md` findings 2, 7, 9, 10, 11, `status.md` 2026-11-16, `docs/vision.md` principle 1.
+
+Judge:
+- 005-90: while the test files are not listed, no hook text and no `squeal status` text reads as a result (no zero counts, no "Known failures: 0"); a failure the store holds is still said; a listed worktree is byte-identical; the state ends when the listing lands (no stale "still starting").
+- Resume: a resumed session is registered and swept as before and gets no primer; `compact`, `clear`, `startup` and a subagent start unchanged in every harness that shares `session.ts`; a first registration at a tool boundary still carries the primer.
+- Heartbeat: under 60 s no delivery is only that notice or its recovery, and no recovery is sent for a notice that was never sent; over it, each once; the header sentence and the `Not validated:` line unchanged; no notice is lost for a stopped, stopping or absent daemon.
+- Group lines: first time and on a change of kind only; the stored told value's format change (one more line after an upgrade) is safe for a consumer registered by an older version; the slow-tier line unchanged.
+- Titles: each names what the delivery carries; no parser in `evals/` or a harness reads the old bare title and now misreads; the 0.1.393 control's `accepted` list maps only intended differences.
+- Every changed sentence against the human's test: it is for the agent in the session.
+
+No full suite and no full-suite checkpoint; candidate CI is the full suite: name its run and result. `test/e2e/**` is outside Squeal's coverage: say which e2e files you ran directly. Write `reviews/0.1.527.md` and commit it on your branch.

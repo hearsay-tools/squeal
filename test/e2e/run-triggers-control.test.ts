@@ -222,7 +222,7 @@ function lineWords(line: string): string[] {
     line,
   );
   if (queued !== null) {
-    return [`your edit ${line.includes("re-keyed") ? "re-keyed" : "queued"} ${queued[1]}`];
+    return [`your edit ${line.includes("re-keyed") ? "affects" : "queued"} ${queued[1]}`];
   }
   if (/^Squeal saw your edit; |your edits since revision \d+ re-keyed/.test(line)) {
     return [

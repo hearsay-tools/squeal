@@ -2711,7 +2711,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.526";
+  if (true) return "0.1.527";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4094,6 +4094,83 @@ function collapse(head, changed, stillFailing) {
   return { head, lines: failingLines.length <= changedLines.length ? failingLines : changedLines };
 }
 
+// src/core/delivery/slow-told.ts
+function slowToldMetaKey(worktreeId) {
+  return worktreeMetaKey("slowTierTold", worktreeId);
+}
+function slowTierState(tier) {
+  if (tier === void 0) return null;
+  return JSON.stringify([
+    tier.testFiles,
+    tier.current,
+    tier.pending,
+    tier.notRun,
+    tier.currentAt,
+    tier.currentUpTo ?? null
+  ]);
+}
+function slowTierChanged(store, consumer, tier) {
+  const state = slowTierState(tier);
+  return state !== null && readSlot(store, slowToldMetaKey(consumer.worktreeId), consumer) !== state;
+}
+function tellSlowTier(store, consumer, tier) {
+  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
+}
+function groupKind(group) {
+  if (group.current >= group.testFiles) return "current";
+  return group.pending > 0 ? "waiting" : "not run";
+}
+function groupsToldMetaKey(worktreeId) {
+  return worktreeMetaKey("groupTiersTold", worktreeId);
+}
+function groupTiersState(groups2) {
+  if (groups2 === void 0) return null;
+  return JSON.stringify(groups2.map((group) => [group.name, groupKind(group)]));
+}
+function groupTiersChanged(store, consumer, groups2) {
+  const state = groupTiersState(groups2);
+  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
+}
+function tellGroupTiers(store, consumer, groups2) {
+  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
+}
+
+// src/core/delivery/content-title.ts
+function contentWords(delta) {
+  const { sawEdit, editsSettled, header } = delta;
+  const words = [];
+  if (editsSettled !== void 0) {
+    words.push(`your edits' test files ${editsSettled.unknown === 0 ? "are current" : "finished"}`);
+  } else if (sawEdit !== void 0) {
+    const did = header.noTestsAtEdit === true ? "affects" : "queued";
+    words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
+  }
+  if (delta.countsOwed !== void 0) words.push("the counts after the listing");
+  if (delta.groupTiersChanged === true) {
+    for (const group of header.groupTiers ?? []) {
+      const kind = groupKind(group);
+      if (kind !== "current") words.push(`${group.name} group ${kind}`);
+    }
+  }
+  if (delta.slowTierChanged === true && header.slowTier !== void 0) {
+    words.push(`slow tier ${groupKind(header.slowTier)}`);
+  }
+  words.push(...lintWords(delta.lint));
+  const commit = delta.commitChanged === true ? header.commitLine : void 0;
+  if (commit !== void 0) {
+    words.push(`commit ${/^Commit (\S+?):/.exec(commit.text)?.[1] ?? commit.commit.slice(0, 7)}`);
+  }
+  return words;
+}
+function lintWords(lint2) {
+  if (lint2 === void 0 || lintTitleWords(lint2) !== null) return [];
+  return [
+    ...lint2.summary === void 0 ? [] : [lint2.summary.reason === "config" ? "lint config changed" : "lint summary"],
+    ...lint2.failed === void 0 ? [] : ["lint unknown"],
+    ...lint2.off === void 0 ? [] : ["lint off"]
+  ];
+}
+
 // src/core/delivery/provenance.ts
 var upper = (outcome) => outcome.toUpperCase();
 var TOUCHED_SHOWN = 3;
@@ -5104,7 +5181,16 @@ function toKnownFailure(state, revision) {
 }
 
 // src/core/delivery/header.ts
-var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
+function noResultsText(command) {
+  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
+}
+function unlistedLine(header, command) {
+  if (header.testFilesListed !== false) return null;
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command)}`;
+}
+function revisionPrefix(header) {
+  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+}
 var CHANGED_PATHS_SHOWN = 3;
 function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
@@ -5119,10 +5205,9 @@ function changedText(header) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function incompleteText(header) {
-  const listed3 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
   const delays = delaysText(header, late);
-  return `${listed3}${delays === null ? "" : ` ${delays}`}`;
+  return delays === null ? "" : ` ${delays}`;
 }
 function daemonText(header, command) {
   const awaiting2 = awaitingInstallText(header);
@@ -5139,15 +5224,19 @@ function fullCounts(header, owed2) {
   return `${countsText(counts, fileLevel)}.${inherited}${imported}${withoutChecks}`;
 }
 function fullLine(header, command, owed2) {
-  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText2(header, command)}`;
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
+  return `${revisionPrefix(header)}${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText2(header, command)}`;
 }
 function holdsText2(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
 function newsLine(header, command, owed2) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return unlisted3;
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
-  const revision = `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+  const revision = revisionPrefix(header);
   if (owed2 !== void 0) {
     return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
   }
@@ -5420,7 +5509,8 @@ function titleOf(delta, holdTitle, command) {
   const code = words.length === 0 ? null : words.join(" and ");
   const own = entries.length === 0 ? delta.liveness === void 0 ? holdTitle ?? null : livenessTitle(delta.liveness, header, command) : delta.label === "baseline" ? `SQUEAL \xB7 Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}` : `SQUEAL \xB7 ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   if (own === null) {
-    return code === null ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${code} at revision ${header.revision}`;
+    const words2 = [code, ...contentWords(delta)].filter((w) => w !== null);
+    return words2.length === 0 ? `SQUEAL \xB7 revision ${header.revision}` : `SQUEAL \xB7 ${words2.join("; ")} at revision ${header.revision}`;
   }
   return code === null ? own : `${own}; ${code}`;
 }
@@ -12239,11 +12329,18 @@ function tellLiveness(store, consumer, told) {
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: withToldStart(header.daemon, told, at) };
 }
+var LATE_HEARTBEAT_NEWS_MS = 6e4;
+function shortLate(live) {
+  return live.state === "down" && live.heartbeatLate !== void 0 && live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS;
+}
+function toldAtRegistration(live) {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
+}
 function livenessChange(store, consumer, at) {
   const presence = readPresence(store, consumer.worktreeId, at);
   const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
-  return change2;
+  return change2 !== null && shortLate(change2) ? null : change2;
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
@@ -12254,43 +12351,6 @@ function toldRevision(store, consumer) {
 }
 function tellRevision(store, consumer, revision) {
   writeSlot(store, revisionMetaKey(consumer.worktreeId), consumer, revision);
-}
-
-// src/core/delivery/slow-told.ts
-function slowToldMetaKey(worktreeId) {
-  return worktreeMetaKey("slowTierTold", worktreeId);
-}
-function slowTierState(tier) {
-  if (tier === void 0) return null;
-  return JSON.stringify([
-    tier.testFiles,
-    tier.current,
-    tier.pending,
-    tier.notRun,
-    tier.currentAt,
-    tier.currentUpTo ?? null
-  ]);
-}
-function slowTierChanged(store, consumer, tier) {
-  const state = slowTierState(tier);
-  return state !== null && readSlot(store, slowToldMetaKey(consumer.worktreeId), consumer) !== state;
-}
-function tellSlowTier(store, consumer, tier) {
-  writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
-}
-function groupsToldMetaKey(worktreeId) {
-  return worktreeMetaKey("groupTiersTold", worktreeId);
-}
-function groupTiersState(groups2) {
-  if (groups2 === void 0) return null;
-  return JSON.stringify(groups2.map((group) => [group.name, slowTierState(group)]));
-}
-function groupTiersChanged(store, consumer, groups2) {
-  const state = groupTiersState(groups2);
-  return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
-}
-function tellGroupTiers(store, consumer, groups2) {
-  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
 }
 
 // src/core/delivery/turn.ts
@@ -12851,7 +12911,7 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);

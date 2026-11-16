@@ -8007,7 +8007,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.526";
+  if (true) return "0.1.527";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10792,11 +10792,18 @@ function tellLiveness(store, consumer, told) {
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: withToldStart(header.daemon, told, at) };
 }
+var LATE_HEARTBEAT_NEWS_MS = 6e4;
+function shortLate(live) {
+  return live.state === "down" && live.heartbeatLate !== void 0 && live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS;
+}
+function toldAtRegistration(live) {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
+}
 function livenessChange(store, consumer, at) {
   const presence = readPresence(store, consumer.worktreeId, at);
   const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
-  return change2;
+  return change2 !== null && shortLate(change2) ? null : change2;
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
@@ -10831,12 +10838,16 @@ function slowTierChanged(store, consumer, tier) {
 function tellSlowTier(store, consumer, tier) {
   writeSlot(store, slowToldMetaKey(consumer.worktreeId), consumer, slowTierState(tier));
 }
+function groupKind(group) {
+  if (group.current >= group.testFiles) return "current";
+  return group.pending > 0 ? "waiting" : "not run";
+}
 function groupsToldMetaKey(worktreeId) {
   return worktreeMetaKey("groupTiersTold", worktreeId);
 }
 function groupTiersState(groups2) {
   if (groups2 === void 0) return null;
-  return JSON.stringify(groups2.map((group) => [group.name, slowTierState(group)]));
+  return JSON.stringify(groups2.map((group) => [group.name, groupKind(group)]));
 }
 function groupTiersChanged(store, consumer, groups2) {
   const state = groupTiersState(groups2);
@@ -11404,7 +11415,7 @@ function createDelivery(store, options) {
         knownFailures.map((f) => f.check)
       );
       const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
       tellLiveness(store, consumer, starting ? told : daemon);
       tellRevision(store, consumer, header.revision);
       tellSlowTier(store, consumer, header.slowTier);

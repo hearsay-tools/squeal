@@ -15,7 +15,8 @@ export function contentWords(delta: Delta): string[] {
   if (editsSettled !== undefined) {
     words.push(`your edits' test files ${editsSettled.unknown === 0 ? "are current" : "finished"}`);
   } else if (sawEdit !== undefined) {
-    const did = header.noTestsAtEdit === true ? "re-keyed" : "queued";
+    // No test group at `edit`: the files wait for their groups' moments, so none was queued.
+    const did = header.noTestsAtEdit === true ? "affects" : "queued";
     words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
   }
   if (delta.countsOwed !== undefined) words.push("the counts after the listing");
@@ -28,18 +29,22 @@ export function contentWords(delta: Delta): string[] {
   if (delta.slowTierChanged === true && header.slowTier !== undefined) {
     words.push(`slow tier ${groupKind(header.slowTier)}`);
   }
-  // A lint line with no change to count: the summary after a keying, or a reason lint is unknown or off.
-  const lint = delta.lint;
-  if (lint !== undefined && lintTitleWords(lint) === null) {
-    if (lint.summary !== undefined) {
-      words.push(lint.summary.reason === "config" ? "lint config changed" : "lint summary");
-    }
-    if (lint.failed !== undefined) words.push("lint unknown");
-    if (lint.off !== undefined) words.push("lint off");
-  }
+  words.push(...lintWords(delta.lint));
   const commit = delta.commitChanged === true ? header.commitLine : undefined;
   if (commit !== undefined) {
     words.push(`commit ${/^Commit (\S+?):/.exec(commit.text)?.[1] ?? commit.commit.slice(0, 7)}`);
   }
   return words;
+}
+
+/** A lint line with no change to count: the summary after a keying, or a reason lint is unknown or off. */
+function lintWords(lint: Delta["lint"]): string[] {
+  if (lint === undefined || lintTitleWords(lint) !== null) return [];
+  return [
+    ...(lint.summary === undefined
+      ? []
+      : [lint.summary.reason === "config" ? "lint config changed" : "lint summary"]),
+    ...(lint.failed === undefined ? [] : ["lint unknown"]),
+    ...(lint.off === undefined ? [] : ["lint off"]),
+  ];
 }

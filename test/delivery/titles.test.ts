@@ -48,7 +48,7 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
       "SQUEAL · your edit queued 2 test files at revision 5",
     );
     expect(titleOf({ sawEdit: { queued: 1 } }, { ...header, noTestsAtEdit: true })).toBe(
-      "SQUEAL · your edit re-keyed 1 test file at revision 5",
+      "SQUEAL · your edit affects 1 test file at revision 5",
     );
   });
 
