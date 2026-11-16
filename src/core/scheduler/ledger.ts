@@ -215,11 +215,12 @@ export class Ledger {
    * The queue in run order: D5 step 4 classes, shortest last known duration
    * first within one; `turn` false orders it as if the backlog's turn were
    * not due. While the backlog is paused, only the drain's files. `now`
-   * is the decision's clock reading (`RunQueue.ordered`, row 011-347).
+   * is the decision's clock reading (`RunQueue.ordered`, row 011-347), for
+   * the order and the drain's filter both (review 0.1.520 B1).
    */
   ordered(turn = this.queue.backlogTurn(), now?: number): TestFileRef[] {
     const ordered = this.queue.ordered((ref) => this.file(ref)?.durationMs ?? null, turn, now);
-    return this.backlogPaused ? ordered.filter((ref) => this.#drains(ref)) : ordered;
+    return this.backlogPaused ? ordered.filter((ref) => this.#drains(ref, now)) : ordered;
   }
 
   /** The promoted files in the order a batch's tier takes them (`RunQueue.orderedBatches`, row 011-268). */
