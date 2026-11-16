@@ -1,0 +1,147 @@
+# Probe output, 2026-11-16 (UTC), main 7bd783c9b; stores read-only, 45-day window (live worktrees only)
+
+## squeal: first tier planned at each edit's revision (edit-tiers.mjs | first-tier.mjs)
+edit -> first tier start ms        n   94 p50 17580 p75 135991 p90 526854 p95 1165656 max 2443184
+first tier wall ms                 n   94 p50 7318 p75 31525 p90 73213 p95 115516 max 177131
+first tier estimate ms             n   94 p50 4531 p75 28780 p90 75879 p95 91608 max 192569
+tier wall - estimate ms            n   94 p50 1558 p75 4163 p90 10449 p95 24070 max 65113
+edit -> first tier end ms          n   94 p50 44621 p75 168370 p90 600067 p95 1171198 max 2446967
+measured median start delay 17580 median tier overhead 1558
+late at 2 x (start + overhead + estimate): 34 of 94 (36%) of which the next edit came first 0
+late at 3 x (start + overhead + estimate): 27 of 94 (29%) of which the next edit came first 0
+late at 4 x (start + overhead + estimate): 22 of 94 (23%) of which the next edit came first 0
+k=3 episodes: worktrees 11 late notices 27 worktrees with none 7 max per worktree 21 edit-span hours 36
+
+## squeal: all files whose closure holds a changed path (edits.mjs | analyse.mjs, startup = median run wall - longest file)
+edits with a file run after them 286 of which some file had no stored duration 158
+files run after the edit       n 286 p50 79 p75 339 p90 875 p95 989 max 1099
+files with a lookup or no run  n 286 p50 0 p75 2 p90 21 p95 163 max 930
+first start ms                 n 286 p50 230055 p75 177435668 p90 496017791 p95 533532187 max 576738692
+last result ms                 n 286 p50 19130799 p75 183061224 p90 516420167 p95 547995115 max 600544905
+idle estimate ms               n 286 p50 129485 p75 456030 p90 3219314 p95 3347103 max 3697333
+last result / idle estimate %  n 286 p50 4446 p75 184994 p90 456289 p95 6277963 max 19698451
+2 x idle estimate                    late edits 263 (92%) late notices 9 worktree-hours 199 notice -> caught up ms p50 11745 p90 600285935
+3 x idle estimate                    late edits 257 (90%) late notices 9 worktree-hours 199 notice -> caught up ms p50 10671 p90 600156450
+2 x idle + 30 s                      late edits 253 (88%) late notices 4 worktree-hours 199 notice -> caught up ms p50 2515028 p90 600255935
+idle + 60 s                          late edits 257 (90%) late notices 5 worktree-hours 199 notice -> caught up ms p50 2942579 p90 600355420
+fixed 30 s (host-tuned, for scale)   late edits 269 (94%) late notices 13 worktree-hours 199 notice -> caught up ms p50 110718 p90 109237138
+fixed 120 s (host-tuned, for scale)  late edits 260 (91%) late notices 8 worktree-hours 199 notice -> caught up ms p50 71169 p90 600424905
+
+## squeal: moments all those files had run (settles.mjs)
+worktrees 13 edits 286 moments all re-keyed files had run 17
+
+## cezar: first tier planned at each edit's revision (edit-tiers.mjs | first-tier.mjs)
+edit -> first tier start ms        n  556 p50 10549 p75 17661 p90 45564 p95 77591 max 51386660
+first tier wall ms                 n  556 p50 4055 p75 7782 p90 15971 p95 24927 max 152975
+first tier estimate ms             n  556 p50 934 p75 2155 p90 6250 p95 8473 max 59257
+tier wall - estimate ms            n  556 p50 2864 p75 4780 p90 10530 p95 17390 max 150503
+edit -> first tier end ms          n  556 p50 15663 p75 28113 p90 57941 p95 103197 max 51387456
+measured median start delay 10549 median tier overhead 2864
+late at 2 x (start + overhead + estimate): 103 of 556 (19%) of which the next edit came first 5
+late at 3 x (start + overhead + estimate): 63 of 556 (11%) of which the next edit came first 4
+late at 4 x (start + overhead + estimate): 48 of 556 (9%) of which the next edit came first 2
+k=3 episodes: worktrees 21 late notices 59 worktrees with none 6 max per worktree 28 edit-span hours 814
+
+## cezar: all files whose closure holds a changed path (edits.mjs | analyse.mjs, startup = median run wall - longest file)
+edits with a file run after them 1004 of which some file had no stored duration 207
+files run after the edit       n 1004 p50 2 p75 16 p90 155 p95 297 max 1880
+files with a lookup or no run  n 1004 p50 0 p75 8 p90 126 p95 480 max 1348
+first start ms                 n 1004 p50 32486 p75 622267 p90 1748035 p95 4714379 max 1941559903
+last result ms                 n 1004 p50 2586704 p75 8648926 p90 69147487 p95 2824893781 max 2833504914
+idle estimate ms               n 1004 p50 4914 p75 58170 p90 398693 p95 1109427 max 5989196
+last result / idle estimate %  n 1004 p50 3660 p75 91987 p90 1906869 p95 4862851 max 123826533
+2 x idle estimate                    late edits 993 (99%) late notices 27 worktree-hours 877 notice -> caught up ms p50 2256842 p90 48231886
+3 x idle estimate                    late edits 956 (95%) late notices 26 worktree-hours 877 notice -> caught up ms p50 2057466 p90 48225761
+2 x idle + 30 s                      late edits 702 (70%) late notices 25 worktree-hours 877 notice -> caught up ms p50 2278202 p90 48201886
+idle + 60 s                          late edits 685 (68%) late notices 25 worktree-hours 877 notice -> caught up ms p50 2498939 p90 48178010
+fixed 30 s (host-tuned, for scale)   late edits 744 (74%) late notices 26 worktree-hours 877 notice -> caught up ms p50 2232492 p90 48214135
+fixed 120 s (host-tuned, for scale)  late edits 665 (66%) late notices 25 worktree-hours 877 notice -> caught up ms p50 2689675 p90 48124135
+
+## cezar: moments all those files had run (settles.mjs)
+worktrees 23 edits 1004 moments all re-keyed files had run 27
+
+## settled lines delivered to the same worktrees (settled-per-worktree.mjs)
+worktrees with edits 13 with transcripts 12 PostToolBatch messages 62 settled lines 8
+worktrees with edits 23 with transcripts 13 PostToolBatch messages 193 settled lines 0
+
+## edit tool result -> revision recorded, next delivered PostToolBatch (same-call.mjs), ms
+squeal:
+{"w":"c17c6f14","lag":174,"rev":1,"hook":null}
+{"w":"5446ad27","lag":348,"rev":1,"hook":null}
+{"w":"5446ad27","lag":1727,"rev":8,"hook":null}
+{"w":"5446ad27","lag":301,"rev":14,"hook":null}
+{"w":"5446ad27","lag":299,"rev":38,"hook":null}
+{"w":"5446ad27","lag":222,"rev":58,"hook":null}
+{"w":"5446ad27","lag":231,"rev":75,"hook":null}
+{"w":"5446ad27","lag":234,"rev":104,"hook":null}
+{"w":"5446ad27","lag":266,"rev":134,"hook":null}
+{"w":"5446ad27","lag":325,"rev":138,"hook":null}
+{"w":"5446ad27","lag":174,"rev":155,"hook":null}
+{"w":"5446ad27","lag":383,"rev":170,"hook":null}
+{"w":"5446ad27","lag":28879,"rev":197,"hook":null}
+{"w":"5446ad27","lag":222,"rev":234,"hook":null}
+{"w":"5446ad27","lag":258,"rev":242,"hook":null}
+{"w":"5446ad27","lag":245,"rev":265,"hook":null}
+{"w":"5446ad27","lag":405,"rev":269,"hook":null}
+{"w":"db0382bd","lag":183,"rev":6,"hook":null}
+{"w":"cded6878","lag":204,"rev":1,"hook":null}
+{"w":"b222c2e0","lag":334,"rev":2,"hook":{"start":10178,"end":10836,"named":2}}
+{"w":"b30cb841","lag":334,"rev":2,"hook":{"start":8308,"end":8890,"named":2}}
+{"w":"f90ce894","lag":169,"rev":4,"hook":{"start":14173,"end":14662,"named":5}}
+{"w":"e9e312e9","lag":739,"rev":1,"hook":{"start":30983,"end":31443,"named":1}}
+{"w":"6e09a0dc","lag":322,"rev":2,"hook":{"start":3,"end":1284,"named":null}}
+{"w":"6e09a0dc","lag":296,"rev":7,"hook":null}
+cezar:
+{"w":"e3960849","lag":2917,"rev":2,"hook":null}
+{"w":"0e4bdd9f","lag":35919,"rev":1,"hook":null}
+{"w":"0e4bdd9f","lag":3116,"rev":2,"hook":null}
+{"w":"0bb25930","lag":8315,"rev":3,"hook":{"start":38760,"end":39354,"named":0}}
+{"w":"58bd4d48","lag":8301,"rev":4,"hook":{"start":31139,"end":32257,"named":6}}
+{"w":"534fed9b","lag":150,"rev":1,"hook":null}
+{"w":"534fed9b","lag":34133,"rev":9,"hook":null}
+
+## PostToolBatch messages in transcripts modified in the last 4 days (messages.mjs)
+{
+ "squeal": {
+  "transcripts": 2426,
+  "withPostToolBatch": 138,
+  "messages": 935,
+  "sessionsWithSawEdit": 110,
+  "settled": 33,
+  "sawSettled": 12,
+  "sawEdit": 98,
+  "heartbeatLate": 39,
+  "validatingAgain": 64,
+  "feedLate": 8,
+  "pending": 833,
+  "changed": 458,
+  "revisionOnly": 185,
+  "newsPendingCount": {
+   "n": 833,
+   "p50": 507,
+   "p90": 7168,
+   "max": 13905
+  }
+ },
+ "cezar": {
+  "transcripts": 3382,
+  "withPostToolBatch": 168,
+  "messages": 994,
+  "sessionsWithSawEdit": 61,
+  "settled": 0,
+  "sawSettled": 1,
+  "sawEdit": 60,
+  "heartbeatLate": 77,
+  "validatingAgain": 132,
+  "feedLate": 12,
+  "pending": 788,
+  "changed": 172,
+  "revisionOnly": 349,
+  "newsPendingCount": {
+   "n": 788,
+   "p50": 1867,
+   "p90": 14936,
+   "max": 30697
+  }
+ }
+}
