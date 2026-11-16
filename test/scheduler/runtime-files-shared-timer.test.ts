@@ -72,7 +72,7 @@ it(
       policy: scoped,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const timers = observedTimers(h, repo.commonDir);
     const before = [h.keyOf(A), h.keyOf(B)];
     const runs = [h.runsOf(A).length, h.runsOf(B).length];
@@ -138,7 +138,7 @@ it(
     });
     timers = observedTimers(h, repo.commonDir);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     timers.restart(ordinary);
     try {
       h.write("squeal.config.json", JSON.stringify({ runtimeFiles: scoped.runtimeFiles }));

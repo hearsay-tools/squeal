@@ -102,12 +102,12 @@ async function atA(
     ...options,
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   await edit(h, subject, subject.B);
-  await h.scheduler.idle();
+  await h.quiet();
   const keyB = keyOf(h, subject);
   await edit(h, subject, subject.A);
-  await h.scheduler.idle();
+  await h.quiet();
   return { h, store, keyB };
 }
 
@@ -145,7 +145,7 @@ async function supersedeHeldTier(
   expect(keyOf(h, subject)).toBe(keyB);
   beforeRelease();
   release();
-  await h.scheduler.idle();
+  await h.quiet();
   return { keyC, held: held as unknown as RunOptions, runs };
 }
 
@@ -162,7 +162,7 @@ async function expectRunsAgainAtC(
 ): Promise<void> {
   const before = runs.length;
   await edit(h, subject, subject.C);
-  await h.scheduler.idle();
+  await h.quiet();
 
   const [row] = h.store.testFileKeys.list(h.worktreeId, [subject.file]);
   expect(row?.key).toBe(keyC);
@@ -176,7 +176,7 @@ async function expectRunsAgainAtC(
   expect(known?.outcome).toBe("pass");
 
   const checkpoint = await h.scheduler.requestFullSuite();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(h.store.checkpoints.get(checkpoint.id)?.completedAt ?? null).not.toBeNull();
   expect(h.scheduler.owedWork()).toBeNull();
 }

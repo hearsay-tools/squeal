@@ -61,7 +61,7 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
         clock: "virtual",
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const runs = h.runsOf("test/math.test.ts").length;
 
       stallNextInvalidate(h);
@@ -74,7 +74,7 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
       expect(h.header()).toMatchObject({ revision: 1, refinedRevision: 0 });
       // The stalled call never answers before the test ends: past the bound the revision proceeds without it.
       h.advance(BOUND_MS);
-      await h.scheduler.idle();
+      await h.quiet();
       expect((await h.rest()).wakes.map((wake) => wake.reason)).not.toContain("runner-part-bound");
       expect(h.header()).toMatchObject({ revision: 1, refinedRevision: 1 });
       expect(h.header().counts.unknown).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
 
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // 2\n");
       await h.batch("src/math.ts");
-      await h.scheduler.idle();
+      await h.quiet();
       const header = h.header();
       expect(header).toMatchObject({ revision: 2, refinedRevision: 2 });
       expect(header.counts).toMatchObject({ unknown: 0, pending: 0, stale: 0 });

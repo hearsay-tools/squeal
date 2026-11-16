@@ -37,7 +37,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     await duringBarrelTier(h);
     const events: string[] = [];
     const invalidate = h.runner.invalidate;
@@ -54,7 +54,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
       return checkpoint;
     });
     const checkpoint = await requested;
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(events).toEqual(["invalidate src/math.ts", "checkpoint"]);
     expect(checkpoint).toMatchObject({ kind: "run-all", revision });
@@ -75,7 +75,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
       allowErrors: true,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const closure = h.runner.closure;
     let broken = true;
     // An absolute path in a closure cannot be keyed: the apply phase throws on it.
@@ -87,7 +87,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 0;\n");
     await h.batch("src/math.ts");
     const failed = store.revisions.latest(h.worktreeId)?.number ?? 0;
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.errors.map((e) => e.message)).toEqual([
       expect.stringContaining('expected a worktree-relative path, got "/outside/the/worktree.ts"'),
@@ -99,7 +99,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     broken = false;
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.header()).toMatchObject({
       refinedRevision: failed + 1,
       counts: { pending: 0, stale: 0, unknown: 0 },
@@ -111,7 +111,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     await duringBarrelTier(h);
     const invalidated: string[] = [];
     const invalidate = h.runner.invalidate;
@@ -132,7 +132,7 @@ describe("scheduler: work queued behind the runner part of a revision", SLOW, ()
     const runs = h.runner.runs.length;
 
     await h.scheduler.close();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(await outcome).toBe("squeal scheduler: closed");
     // Task 001-140: the runner part began beside the tier, waited in the adapter for its run, and was applied.

@@ -91,7 +91,7 @@ async function openTwoProjects(hold: string, started: string): Promise<Harness> 
     return { ...report, results };
   };
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(h.runsOf(HELD)).toHaveLength(1);
   return h;
 }
@@ -142,7 +142,7 @@ describe(
       expect(existsSync(hold)).toBe(true);
 
       rmSync(hold);
-      await h.scheduler.idle();
+      await h.quiet();
       // The cut file ran again and stored: three runs, the last to its end.
       expect(h.runsOf(HELD)).toHaveLength(3);
       expect(h.runsOf(HELD)[2]?.report.completedFiles.map((f) => f.path)).toEqual([HELD]);

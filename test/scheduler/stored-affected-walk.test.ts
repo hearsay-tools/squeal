@@ -73,7 +73,7 @@ async function settled(nodeTest = false) {
       })
     : await openHarness(repo.main, store, repo.commonDir, { tierSize: 2 });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   const host = h.runner.affected.bind(h.runner);
   const asked: string[][] = [];
   h.runner.affected = (paths) => {
@@ -87,7 +87,7 @@ async function edit(h: Harness, path: string, text: string | null): Promise<void
   if (text === null) h.remove(path);
   else h.write(path, text);
   await h.batch(path);
-  await h.scheduler.idle();
+  await h.quiet();
 }
 
 const pathsOf = (a: AffectedTestFiles | null) => ({

@@ -79,7 +79,7 @@ async function rig(policy: Partial<Policy> = {}): Promise<Rig> {
   // Every run of `HELD` the test does not hold is released as it starts.
   writeFileSync(released, "x".repeat(1_000));
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   return {
     h,
     async edit() {
@@ -111,7 +111,7 @@ describe("a run the runner withheld for a touch no key names (issue 10, task 011
     const before = r.runs();
     await r.edit();
     await r.touchDuring(1);
-    await r.h.scheduler.idle();
+    await r.h.quiet();
 
     const runs = r.h.runsOf(HELD).slice(before);
     expect(runs).toHaveLength(2);
@@ -130,7 +130,7 @@ describe("a run the runner withheld for a touch no key names (issue 10, task 011
     const before = r.runs();
     await r.edit();
     await r.touchDuring(MAX_DISCARDS);
-    await r.h.scheduler.idle();
+    await r.h.quiet();
 
     expect(r.runs() - before).toBe(MAX_DISCARDS);
     const reasons = r.h.sink
@@ -143,7 +143,7 @@ describe("a run the runner withheld for a touch no key names (issue 10, task 011
     // It stays unknown at that key: an edit elsewhere runs other files, never this one again.
     r.h.write("src/strings.ts", `${readFileSync(join(r.h.root, "src/strings.ts"), "utf8")}\n`);
     await r.h.batch("src/strings.ts");
-    await r.h.scheduler.idle();
+    await r.h.quiet();
     expect(r.runs() - before).toBe(MAX_DISCARDS);
   });
 
@@ -152,7 +152,7 @@ describe("a run the runner withheld for a touch no key names (issue 10, task 011
     expect(r.h.runner.runs).toEqual([]);
     await r.edit();
     await r.touchDuring(1);
-    await r.h.scheduler.idle();
+    await r.h.quiet();
 
     expect(r.runs()).toBe(2);
     expect(r.h.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([HELD, HELD]);

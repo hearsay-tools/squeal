@@ -61,7 +61,7 @@ it(
       runnerPartBesideRun: true,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let signal: AbortSignal | undefined;
     h.gate.before = (files, options) => {
@@ -83,7 +83,7 @@ it(
     h.write(HELD, 'import { it } from "vitest";\nit("runs", () => {});\n');
     await h.batch(HELD);
     await expect.poll(() => signal?.aborted, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await h.scheduler.idle();
+    await h.quiet();
 
     const [cut, rerun] = h.runsOf(HELD).slice(-2);
     expect(cut?.report.failure).toContain(cancelled("supersession"));

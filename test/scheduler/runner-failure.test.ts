@@ -42,7 +42,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const { delivery, consumer } = await h.consumer();
     const known = h.sink.states().length;
     const runs = h.runner.runs.length;
@@ -51,7 +51,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     const config = readFileSync(join(h.root, "vitest.config.ts"), "utf8");
     h.write("vitest.config.ts", "export default {;\n");
     await h.batch("vitest.config.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     const header = h.header();
     expect(header.revision).toBe(1);
@@ -79,7 +79,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
 
     h.write("vitest.config.ts", config);
     await h.batch("vitest.config.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.header().counts).toEqual({ current: known, pending: 0, stale: 0, unknown: 0 });
     expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
   });
@@ -89,7 +89,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const first = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     await first.scheduler.close();
     await first.runner.close();
     const known = first.sink.states().length;
@@ -101,7 +101,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
       allowErrors: true,
     });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
 
     expect(second.runner.runs).toEqual([]);
     // Nothing retired, every row kept without a key.
@@ -126,7 +126,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     second.runner.failing.clear();
     second.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await second.batch("src/math.ts");
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.header().counts).toEqual({ current: known, pending: 0, stale: 0, unknown: 0 });
     expect(second.runner.runs.flatMap((r) => r.files.map((f) => f.path)).sort()).toEqual([
       "test/math.test.ts",
@@ -143,13 +143,13 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const known = h.sink.states().length;
 
     h.runner.failing.add("testFiles");
     h.write("test/extra.test.ts", 'import { it } from "vitest";\nit("is extra", () => {});\n');
     await h.batch("test/extra.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.sink.callsOf("retire")).toEqual([]);
     expect(h.sink.states()).toHaveLength(known);
     expect(notes(store, h.worktreeId).some((n) => n.text.includes("testFiles"))).toBe(true);
@@ -157,7 +157,7 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     h.runner.failing.clear();
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/extra.test.ts")).toHaveLength(1);
     expect(h.sink.callsOf("retire")).toEqual([]);
   });
@@ -167,13 +167,13 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { allowErrors: true });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const known = h.sink.states().length;
 
     h.runner.failing.add("closure");
     h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.header().counts.unknown).toBe(known);
     expect(notes(store, h.worktreeId).some((n) => n.text.includes("test/math.test.ts"))).toBe(true);
@@ -187,12 +187,12 @@ describe("scheduler: a runner failure is a state (B1)", SLOW, () => {
       allowErrors: true,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(rows(h)).toEqual(ALL_TEST_FILES.map((path) => [path, null, null]));
     expect(store.checkpoints.lastCompleted(h.worktreeId)).toBeNull();
 
     const checkpoint = await h.scheduler.requestFullSuite();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(checkpoint.testFiles.map((f) => f.path).sort()).toEqual(ALL_TEST_FILES);
     expect(store.checkpoints.get(checkpoint.id)?.end).toBe("abandoned");
     expect(h.runner.runs).toEqual([]);

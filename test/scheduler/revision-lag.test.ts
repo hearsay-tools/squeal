@@ -34,7 +34,7 @@ async function barrelInFlight(barrier?: Promise<void>) {
     policy: RUN_MISSING,
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
 
   let tierStarted: () => void = () => {};
   const started = new Promise<void>((resolve) => {
@@ -111,7 +111,7 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
       open();
     }
 
-    await h.scheduler.idle();
+    await h.quiet();
     // The runner part of each revision, once and in batch order: the first waited in the
     // adapter, which serializes behind the run; the second came once the run ended.
     expect(invalidations).toEqual([
@@ -129,7 +129,7 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
 
     expect(await saveMath(h, "a + b + 0")).toBeLessThan(500);
     expect(store.revisions.latest(h.worktreeId)?.number).toBe(first + 1);
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The 5 s run ended at the cancel, its file not completed (011 C4 step 5 as amended 2026-10-21).
     const [cancelled, ...after] = h.runner.runs.slice(runsBefore);
@@ -156,7 +156,7 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let tierStarted: () => void = () => {};
     const started = new Promise<void>((resolve) => {
@@ -192,7 +192,7 @@ describe("scheduler: revisions during a running tier (D2, D5)", SLOW, () => {
     };
     const poll = setInterval(sample, 2);
     try {
-      await h.scheduler.idle();
+      await h.quiet();
     } finally {
       clearInterval(poll);
     }

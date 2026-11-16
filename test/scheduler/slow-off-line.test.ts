@@ -66,7 +66,7 @@ async function harness(onStart: Policy["baseline"]["onStart"]) {
   await delivery.startTurn(consumer);
   await delivery.endTurn(consumer);
   h.scheduler.nudge();
-  await h.scheduler.idle();
+  await h.quiet();
   const line = () => slowTierText(h.header(), "squeal") ?? "";
   const row = () =>
     store.testFileKeys
@@ -89,7 +89,7 @@ describe("the slow-tier off-line's automatic-run claim (review wave-13ax B1)", S
 
     // The explicit request: the same file runs once, so the line's command is true.
     await h.scheduler.requestSlowSuite();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(STRINGS)).toHaveLength(1);
     expect(line()).toMatch(CURRENT);
   });

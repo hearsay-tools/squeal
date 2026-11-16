@@ -80,7 +80,7 @@ it("protects recorder-only module loads and keeps a real failure visible", SLOW,
   );
   const h = await openHarness(repo.main, store, repo.commonDir, { observe: true, policy });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   expect(h.scheduler.extraFiles()).toContain(module);
   expect(store.testFiles.get({ project: "", path: A })?.closure.paths).toContain(module);
   expect(runtimeFilesStatus(store, h.worktreeId, h.root)).toMatchObject({
@@ -114,7 +114,7 @@ it(
       policy: scoped,
     });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     const second = await openHarness(otherRoot, store, repo.commonDir, {
       observe: true,
       policy: RUN_MISSING,
@@ -122,7 +122,7 @@ it(
         changes.some((c) => c.path === "squeal.config.json") ? scoped : null,
     });
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(first.keyOf(A)).not.toBe(second.keyOf(A));
     expect(first.scheduler.extraFiles()).not.toContain(DATA);
     expect(second.scheduler.extraFiles()).toContain(DATA);
