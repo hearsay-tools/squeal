@@ -155,11 +155,12 @@ export const TOOLKIT_PYTEST = [
 ];
 
 /**
- * the client monorepo at session c92fddaf (rows 005-79 and 005-80), reduced: a root
- * `package.json` with scripts only, whose `test:node` chains `node --test`
- * into a Vitest below the root; a root pytest project whose `testpaths`
- * covers a nested one; a config with `"nodeTest": []` and both pytest
- * projects. `files` adds or replaces files, as `squealShaped` takes them.
+ * A private client monorepo at session c92fddaf (rows 005-79 and 005-80),
+ * reduced: a root `package.json` with scripts only, whose `test:node`
+ * chains `node --test` into a Vitest below the root; a root pytest project
+ * whose `testpaths` covers a nested one; a config with `"nodeTest": []`
+ * and both pytest projects. `files` adds or replaces files, as
+ * `squealShaped` takes them.
  */
 export function toolkitShaped(files: Readonly<Record<string, string>> = {}): string {
   const root = scratch("squeal-setup-toolkit-");

@@ -12,9 +12,9 @@ import type { Tier } from "./tiers.js";
  * 3): the files an editor writes beside the file it opens. Untracked and not
  * ignored, they change their directory's listing, so each test file that
  * lists it re-keys as before. Such a change cancels no tier in flight and
- * starts no quiet: in the client monorepo four vim opens and quits threw away 138 s
- * of runs and added about 57 s of quiet. The completion barrier compares the
- * listing at the run's end instead (`scratchUnstable`).
+ * starts no quiet: in a private client monorepo four vim opens and quits
+ * threw away 138 s of runs and added about 57 s of quiet. The completion
+ * barrier compares the listing at the run's end instead (`scratchUnstable`).
  */
 
 /** Vim's swap file `.<name>.swp`, and `.swo` down to `.swa` when that name is taken. */

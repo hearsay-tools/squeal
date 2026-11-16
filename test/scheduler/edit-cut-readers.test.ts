@@ -20,10 +20,11 @@ import { pastCatchUpQuiet } from "./quiet-clock.js";
  * `research/edit-latency.md` 3 and 6.1, `research/watch-mode-comparison.md`
  * 3 and 5.2): the cut's `runner.tierSize` places go to the revision's other
  * direct importers first, then to the files that import a changed path
- * through other modules or whose runs read it. In the client monorepo the only check
- * of a `cli.py` edit read it at run time, ran as catch-up and waited 46.4 s
- * for a permit; in squeal two transitive importers under 1 s waited 34 to
- * 43 s in a 41-file backlog tier beside declared-input files.
+ * through other modules or whose runs read it. In a private client monorepo
+ * the only check of a `cli.py` edit read it at run time, ran as catch-up
+ * and waited 46.4 s for a permit; in squeal two transitive importers under
+ * 1 s waited 34 to 43 s in a 41-file backlog tier beside declared-input
+ * files.
  */
 const A = "src/a.ts";
 const E = "src/e.ts";

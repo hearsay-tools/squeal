@@ -91,8 +91,8 @@ export async function fetchEditCut(
  * is catch-up, a file a declared input alone reaches among them. On cezar
  * this cut the next edit's wait at p90 from 132 s to 8 s, and reported 1 of
  * 75 revisions' first new failure later, by 63 s (`research/edit-cut.md`).
- * In the client monorepo the only check of an edit read it at run time, and as
- * catch-up waited 46.4 s for a permit (task 011-116,
+ * In a private client monorepo the only check of an edit read it at run
+ * time, and as catch-up waited 46.4 s for a permit (task 011-116,
  * `research/edit-latency.md`). A file only stored direct marks reach
  * (`observedDirect`, 016 D4) counts among the other direct importers, never
  * as a source's fallback, so the K shortest cap what they keep. `within`

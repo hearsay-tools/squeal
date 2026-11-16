@@ -16,12 +16,13 @@ import { heldRun, settle } from "./tier-yields-fixture.js";
 /*
  * Row 011-117 (spec 011 C4 step 5 as amended 2026-10-22,
  * `research/edit-latency.md` 3 and 6.2): vim's swap file and emacs's lock
- * file, untracked and not ignored, change the listing of their directory.
- * A test file that lists it re-keys as before, but the revision cancels no
+ * file, untracked and not ignored, change the listing of their directory. A
+ * test file that lists it re-keys as before, but the revision cancels no
  * tier in flight and starts no quiet; the completion barrier discards a
  * result only when the listing differs at the run's end. Before it, each vim
- * open cancelled the tier that ran the file and held its lane 20 s: in
- * the client monorepo 138 s of runs were thrown away and about 57 s of quiet added.
+ * open cancelled the tier that ran the file and held its lane 20 s: in a
+ * private client monorepo 138 s of runs were thrown away and about 57 s of
+ * quiet added.
  * Row 011-368: the scheduler's clock is virtual; each check reads at the
  * side's quiet point (`settle`).
  */

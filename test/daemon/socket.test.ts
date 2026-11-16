@@ -72,7 +72,7 @@ describe("socket paths (spec 001 D1)", () => {
   });
 
   it("falls back to /tmp/squeal-<uid> when the runtime dir would make the path too long to bind", () => {
-    const long = `/home/user/${"x".repeat(80)}`;
+    const long = `/run/user/${"x".repeat(82)}`;
     expect(socketPathFor("0123456789abcdef", { XDG_RUNTIME_DIR: long })).toBe(
       `/tmp/squeal-${uid}/squeal-0123456789abcdef.sock`,
     );
