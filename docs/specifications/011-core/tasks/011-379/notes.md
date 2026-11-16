@@ -59,3 +59,7 @@ Not edited:
 Limit: no run on the old `idle()` code at the same load, so "ends at the same point" rests on the survey's probe (every call `same`) and the stable times here, not on a before/after comparison.
 
 Squeal: `squeal status --wait 60000` on the 22 changed paths, revision 2: 30 test files selected (the fixtures select 13 and 4 readers), no known failures, each current.
+
+## After candidate CI 43916532418 (coordinator, 2026-11-16)
+
+`claims-slow-slot.test.ts` is class B on CI: on Node 26 (shard 3/3) its `records` case read `passing()` as 1 where 2 was expected, because `rest()` returned while the released run was still in flight (the survey's warning: a call that is "same" on this host can be "aside" on a slower one). It now waits with the claims side's `quiet()` (row 011-378), which also waits for runner work. Local: 3 of 3 at load 3.5 to 6.
