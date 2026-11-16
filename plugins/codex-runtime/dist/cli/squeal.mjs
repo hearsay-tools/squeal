@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.522";
+  if (true) return "0.1.523";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -15535,9 +15535,9 @@ var init_hold = __esm({
        * 011-352: a fixed delay after each check, where a fixed rate skipped a
        * tick while a check ran); tells `resumed` when a poll ends it.
        */
-      #poll(at2 = this.options.now()) {
-        if (this.#polling || this.#closed || this.#wake.wake !== null) return;
-        this.#wake.at(at2 + (this.options.pollMs ?? MERGE_HOLD_POLL_MS));
+      #poll() {
+        if (this.#polling || this.#closed || this.#wake.due !== null) return;
+        this.#wake.after(this.options.pollMs ?? MERGE_HOLD_POLL_MS);
       }
       /** The poll's wake: one check, counted as the scheduler's work; the next wake once it ended. */
       #polled() {
@@ -19886,8 +19886,7 @@ function runnerPartBoundMs(timeoutMs) {
 function runnerPartBound(context) {
   return new RunnerPartBound(
     context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs),
-    context.wakes,
-    context.now
+    context.wakes
   );
 }
 function seconds(ms2) {
@@ -19902,17 +19901,15 @@ var init_runner_work_bound = __esm({
     RunnerPartBound = class {
       /**
        * `wakes` is the scheduler's loop, whose wake ends a call past its bound
-       * (row 011-352), read on `now`, its clock.
+       * (row 011-352), `ms` of elapsed time after the call (row 011-369).
        */
-      constructor(ms2, wakes, now) {
+      constructor(ms2, wakes) {
         this.ms = ms2;
         this.#wakes = wakes;
-        this.#now = now;
       }
       ms;
       #abandoned = null;
       #wakes;
-      #now;
       call(call2) {
         if (this.#abandoned !== null) return Promise.reject(new Error(this.#abandoned));
         const answer4 = call2();
@@ -19927,7 +19924,7 @@ var init_runner_work_bound = __esm({
           this.#abandoned ??= `no answer within ${seconds(this.ms)}; the call was abandoned`;
           reject(new Error(this.#abandoned));
         });
-        wake.at(this.#now() + this.ms);
+        wake.after(this.ms);
         const waited = this.#wakes.waitFor(
           { for: "wake", reason: "runner-part-bound" },
           Promise.race([answer4, abandoned])
@@ -21842,14 +21839,14 @@ var init_yields = __esm({
         this.#disarm();
       }
       /**
-       * States the wake at the earliest bound, none without a bound. `_context`
-       * chose the fallback loop's clock until row 011-364; dropping it touches
-       * `check`'s body (row 011-361's), so it goes after that row lands.
+       * States the wake at the earliest bound, none without a bound. A bound is
+       * a calendar time (a tier's stamped start plus its estimate): the wake is
+       * the delay to it from `context`'s calendar now (row 011-369).
        */
-      #arm(_context) {
+      #arm(context) {
         this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
         if (this.#bounds.size === 0) this.#wake.clear();
-        else this.#wake.at(Math.min(...this.#bounds.values()));
+        else this.#wake.after(Math.min(...this.#bounds.values()) - context.now());
       }
       #disarm() {
         this.#wake?.clear();
@@ -25528,7 +25525,7 @@ var init_hasher = __esm({
 function hostClock(now = hostNow) {
   return {
     now,
-    ticks: () => performance.now(),
+    elapsed: () => performance.now(),
     arm(ms2, fire) {
       const timer = globalThis.setTimeout(fire, Math.min(Math.max(0, ms2), MAX_TIMER_MS));
       timer.unref?.();
@@ -25537,10 +25534,7 @@ function hostClock(now = hostNow) {
   };
 }
 function clockOf(options) {
-  return options.clock ?? hostClock(options.now);
-}
-function elapsed(earlier, later) {
-  return Math.max(0, later - earlier);
+  return options.clock ?? hostClock();
 }
 var MAX_TIMER_MS, hostNow;
 var init_clock = __esm({
@@ -56029,10 +56023,14 @@ var init_command_hold = __esm({
         this.#closed = true;
         this.#wake.clear();
       }
-      /** The wake at the read's earliest `until`, none without an entry; the loop clamps a far one and reads again. */
+      /**
+       * The wake at the read's earliest `until`, none without an entry; the loop
+       * clamps a far one and reads again. `until` is stored calendar time, which
+       * other processes compare: the wake is the delay to it (row 011-369).
+       */
       #arm(wakeAt) {
         if (wakeAt === null || this.#closed) this.#wake.clear();
-        else this.#wake.at(wakeAt);
+        else this.#wake.after(wakeAt - this.options.now());
       }
     };
   }
@@ -57150,7 +57148,6 @@ var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
 var init_slot_records = __esm({
   "src/core/scheduler/slot-records.ts"() {
     "use strict";
-    init_clock();
     SLOT_GATHER_MS = 25;
     SLOT_GATHER_COMMITS = 3;
     SlotRecords = class {
@@ -57163,11 +57160,9 @@ var init_slot_records = __esm({
       #wake;
       /** The scheduler's loop, whose named wait the gather takes. */
       #wakes;
-      #now;
       #commitMs = 0;
       constructor(options) {
         this.#options = options;
-        this.#now = options.now;
         this.#wakes = options.wakes;
         this.#wake = options.wakes.slot("slot-gather", () => this.#gathered?.());
       }
@@ -57192,11 +57187,10 @@ var init_slot_records = __esm({
             }
           }
           if (recorded2.length === 0) return;
-          const now = this.#now;
-          const started2 = now();
+          const started2 = this.#wakes.elapsed();
           try {
             this.#options.commit();
-            this.#commitMs = elapsed(started2, now());
+            this.#commitMs = this.#wakes.elapsed() - started2;
           } catch (error) {
             for (const { slot: slot2 } of recorded2) slot2.reject(error);
             return;
@@ -57214,7 +57208,7 @@ var init_slot_records = __esm({
             this.#gathered = null;
             resolve45();
           };
-          this.#wake.at(this.#now() + gather);
+          this.#wake.after(gather);
         });
       }
     };
@@ -57252,7 +57246,6 @@ var init_record2 = __esm({
           lock: host.lock,
           record: (ended2) => this.#recordSlot(ended2),
           commit: () => host.started().ledger.commit(),
-          now: () => host.started().context.now(),
           wakes: host.wakes
         });
       }
@@ -57849,7 +57842,6 @@ var init_slow_tier = __esm({
     init_scheduler();
     init_capacity();
     init_claims();
-    init_clock();
     init_commit_asks();
     init_context();
     init_files();
@@ -57902,9 +57894,10 @@ var init_slow_tier = __esm({
       /** Row 011-352: this lane's wake in the scheduler's loop; an earlier deadline replaces a later one. */
       #wake;
       /**
-       * While the load guard holds the lane: when its wait began (the
-       * scheduler's clock), and the runner lane its files run in. The next
-       * `decide` or a `preempt` ends the wait and takes its time off the budget.
+       * While the load guard holds the lane: when its wait began, on elapsed
+       * time (row 011-369: a calendar change spends none of the budget and gives
+       * none back), and the runner lane its files run in. The next `decide` or a
+       * `preempt` ends the wait and takes its time off the budget.
        */
       #deferred = null;
       /** What this tier last published, as stored, so `close` clears only its own. */
@@ -57975,15 +57968,15 @@ var init_slow_tier = __esm({
       }
       /** Fast work may be coming (a revision, `run --all`), or a hold: a load guard wait gives way to it. */
       preempt() {
-        this.#endDeferral(this.loop.now());
+        this.#endDeferral();
       }
-      /** The load guard's wait ends at `at`: the pass's budget keeps what it did not take. */
-      #endDeferral(at2) {
+      /** The load guard's wait ends now: the pass's budget keeps what it did not take. */
+      #endDeferral() {
         const deferred = this.#deferred;
         if (deferred === null) return;
         this.#deferred = null;
         if (this.#budgetMs === null) return;
-        this.#budgetMs = Math.max(0, this.#budgetMs - elapsed(deferred.from, at2));
+        this.#budgetMs = Math.max(0, this.#budgetMs - (this.loop.wakes.elapsed() - deferred.from));
       }
       close() {
         this.#wake.drop();
@@ -58006,7 +57999,7 @@ var init_slow_tier = __esm({
        * no run starts once a hold began (011 C9; review 0.1.269, B1).
        */
       decide(view, fly) {
-        this.#endDeferral(view.at);
+        this.#endDeferral();
         view.doing(`listing the queued files of group ${this.group}`);
         const refs2 = this.#candidates(view);
         const dir2 = this.#slotDir();
@@ -58128,7 +58121,7 @@ var init_slow_tier = __esm({
         }
         this.#publish({ kind: "waiting", for: "slot" });
         if (!yielded) this.#slotMissed(context, dir2, at2);
-        this.#arm(at2);
+        this.#arm();
         return "none";
       }
       #unmark(dir2, worktreeId) {
@@ -58171,7 +58164,7 @@ var init_slow_tier = __esm({
         if ([...claims2.values()].includes("waits")) return [];
         this.#publishUntriggered(group);
         const quiet = quietLeftMs(context, group, at2);
-        this.#arm(at2, quiet === null ? this.#recheckMs() : Math.max(1, quiet));
+        this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
         return [];
       }
       /**
@@ -58226,7 +58219,7 @@ var init_slow_tier = __esm({
        * slot. Else `DEFERRED`: the lane publishes that it waits for the load and
        * arms its recheck, at most the budget left; its `lane` is `deferring`.
        */
-      #guard({ at: at2 }, dir2, group, defer, lane) {
+      #guard(_view, dir2, group, defer, lane) {
         const budget2 = this.#budgetMs ?? defer.maxDeferMs;
         this.#budgetMs = budget2;
         const load = this.#load();
@@ -58234,9 +58227,9 @@ var init_slow_tier = __esm({
         if (budget2 <= 0) return { ranUnderLoad: load, idle: false };
         const permits = group.limits.maxParallel;
         if (permits !== null && slowSlotHeld({ dir: dir2, permits, group: this.group })) return "held";
-        this.#deferred = { from: at2, lane };
+        this.#deferred = { from: this.loop.wakes.elapsed(), lane };
         this.#publish({ kind: "waiting", for: "load" });
-        this.#arm(at2, Math.min(this.#recheckMs(), budget2));
+        this.#arm(Math.min(this.#recheckMs(), budget2));
         return DEFERRED2;
       }
       /**
@@ -58407,11 +58400,12 @@ var init_slow_tier = __esm({
         );
       }
       /**
-       * Pumps again `ms` after `at`, once; a wake stated later gives way. The
-       * step re-arms while slow work still waits; a closed lane's wake is dropped.
+       * Pumps again `ms` of elapsed time from now, once; a wake stated later
+       * gives way (row 011-369: from the step's arm, not its calendar reading).
+       * The step re-arms while slow work still waits; a closed lane's wake is dropped.
        */
-      #arm(at2, ms2 = this.#recheckMs()) {
-        this.#wake.atMost(at2 + ms2);
+      #arm(ms2 = this.#recheckMs()) {
+        this.#wake.within(ms2);
       }
       #recheckMs() {
         return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
@@ -58871,7 +58865,7 @@ var init_slow_release = __esm({
       arm() {
         if (this.host.closed()) return;
         const { wakeAt } = this.#decide();
-        if (wakeAt !== null) this.#wake.atMost(wakeAt);
+        if (wakeAt !== null) this.#wake.within(wakeAt - this.host.now());
       }
       close() {
         this.#wake.clear();
@@ -59638,30 +59632,32 @@ var init_wakes = __esm({
     init_clock();
     init_step_events();
     Slot = class {
-      constructor(reason2, fire, rank4, seq, state) {
+      constructor(reason2, fire, rank4, seq, state, from) {
         this.reason = reason2;
         this.fire = fire;
         this.rank = rank4;
         this.seq = seq;
         this.state = state;
+        this.from = from;
       }
       reason;
       fire;
       rank;
       seq;
       state;
-      wake = null;
-      /** `wake` on the loop's steady time (`Wakes.#steady`): when it is due. */
+      from;
       due = null;
       dropped = false;
-      at(at2) {
-        if (!this.dropped) this.state(this, at2);
+      after(ms2) {
+        if (!this.dropped) this.state(this, this.from() + ms2);
       }
-      atMost(at2) {
-        if (this.wake === null || at2 < this.wake) this.at(at2);
+      within(ms2) {
+        if (this.dropped) return;
+        const due = this.from() + ms2;
+        if (this.due === null || due < this.due) this.state(this, due);
       }
       clear() {
-        this.at(null);
+        if (!this.dropped) this.state(this, null);
       }
       drop() {
         this.clear();
@@ -59674,10 +59670,8 @@ var init_wakes = __esm({
       #slots = /* @__PURE__ */ new Set();
       #seq = 0;
       #disarm = null;
-      /** The due time the timer is armed for, and the steady time it stands for (at most `MAX_TIMER_MS` on). */
+      /** The elapsed time the timer is armed for. */
       #armed = null;
-      /** The loop's steady time: never goes back. */
-      #steady = Number.NEGATIVE_INFINITY;
       /** The reading of the pass that runs, while one runs. */
       #pass = null;
       #closed = false;
@@ -59697,7 +59691,8 @@ var init_wakes = __esm({
           fire,
           options.rank ?? 0,
           this.#seq++,
-          (s, at2) => this.#state(s, at2)
+          (s, due) => this.#state(s, due),
+          () => this.elapsed()
         );
         this.#slots.add(slot2);
         return slot2;
@@ -59757,9 +59752,18 @@ var init_wakes = __esm({
         this.#armed = null;
         this.#poke();
       }
-      /** Each owner's stated wake, earliest first, then in the written order. */
+      /** Elapsed time now: the pass's reading inside a pass, else the clock's. */
+      elapsed() {
+        return this.#pass?.elapsed ?? this.#clock.elapsed();
+      }
+      /**
+       * Each owner's stated wake, earliest first, then in the written order; its
+       * `at` is calendar time now plus the delay left, as a reader moves the clock.
+       */
       wakes() {
-        return [...this.#slots].filter((slot2) => slot2.due !== null).sort((a, b) => a.due - b.due || inOrder2(a, b)).map(({ reason: reason2, wake }) => ({ reason: reason2, at: wake }));
+        const at2 = this.#clock.now();
+        const elapsed = this.#clock.elapsed();
+        return [...this.#slots].filter((slot2) => slot2.due !== null).sort((a, b) => a.due - b.due || inOrder2(a, b)).map(({ reason: reason2, due }) => ({ reason: reason2, at: at2 + Math.max(0, due - elapsed) }));
       }
       /** Resolves when the scheduler rests (`Scheduler.rest`), with the next wake and each owner's. */
       async rest() {
@@ -59779,33 +59783,14 @@ var init_wakes = __esm({
         if (this.#pass !== null || this.#locked > 0) return false;
         for (const piece of this.#pieces) if (piece.waiting === 0) return false;
         if (this.#closed) return true;
-        const steady = this.#steadyNow();
-        for (const slot2 of this.#slots) if (slot2.due !== null && slot2.due <= steady) return false;
+        const elapsed = this.#clock.elapsed();
+        for (const slot2 of this.#slots) if (slot2.due !== null && slot2.due <= elapsed) return false;
         return true;
       }
-      /** The loop's steady time now: the clock's ticks, or `at` without them; never behind a timer that fired. */
-      #steadyNow(at2) {
-        const ticks = this.#clock.ticks?.() ?? at2 ?? this.#clock.now();
-        if (ticks > this.#steady) this.#steady = ticks;
-        return this.#steady;
-      }
-      /** The reading a statement is measured from: the pass's, else one taken now. */
-      #reading() {
-        if (this.#pass !== null) return this.#pass;
-        const at2 = this.#clock.now();
-        return { at: at2, steady: this.#steadyNow(at2) };
-      }
-      #state(slot2, at2) {
+      #state(slot2, due) {
         if (slot2.dropped) this.#slots.delete(slot2);
-        else if (slot2.wake === at2) return;
-        else {
-          slot2.wake = at2;
-          if (at2 === null) slot2.due = null;
-          else {
-            const reading = this.#reading();
-            slot2.due = reading.steady + (at2 - reading.at);
-          }
-        }
+        else if (slot2.due === due) return;
+        else slot2.due = due;
         this.#rearm();
         this.#poke();
       }
@@ -59816,20 +59801,16 @@ var init_wakes = __esm({
        * pass, as a timer's would be.
        */
       #run() {
-        const armed2 = this.#armed;
         this.#disarm = null;
         this.#armed = null;
         if (this.#closed) return;
-        if (armed2 !== null && armed2.until > this.#steady) this.#steady = armed2.until;
-        const at2 = this.#clock.now();
-        const pass2 = { at: at2, steady: this.#steadyNow(at2) };
+        const pass2 = { at: this.#clock.now(), elapsed: this.#clock.elapsed() };
         this.#pass = pass2;
-        const due = [...this.#slots].filter((slot2) => slot2.due !== null && slot2.due <= pass2.steady);
+        const due = [...this.#slots].filter((slot2) => slot2.due !== null && slot2.due <= pass2.elapsed);
         const errors = [];
         try {
           for (const slot2 of due.sort(inOrder2)) {
-            if (slot2.dropped || slot2.due === null || slot2.due > pass2.steady) continue;
-            slot2.wake = null;
+            if (slot2.dropped || slot2.due === null || slot2.due > pass2.elapsed) continue;
             slot2.due = null;
             try {
               slot2.fire(pass2.at);
@@ -59846,22 +59827,22 @@ var init_wakes = __esm({
       }
       /**
        * Arms the one timer at the earliest due wake. Its delay is measured from
-       * the steady time now, read after a pass's owners ran (review 0.1.513 B2):
-       * the time they took is not added to the next wake.
+       * elapsed time now, read after a pass's owners ran (review 0.1.513 B2):
+       * the time they took is not added to the next wake. A delay past a
+       * timer's range fires early, at the range's end, and arms again.
        */
       #rearm() {
         if (this.#pass !== null || this.#closed) return;
         let next = null;
         for (const slot2 of this.#slots)
           if (slot2.due !== null && (next === null || slot2.due < next)) next = slot2.due;
-        if (next === (this.#armed?.due ?? null)) return;
+        if (next === this.#armed) return;
         this.#disarm?.();
         this.#disarm = null;
         this.#armed = null;
         if (next === null) return;
-        const steady = this.#steadyNow();
-        const ms2 = next - steady;
-        this.#armed = { due: next, until: steady + Math.min(ms2, MAX_TIMER_MS) };
+        const ms2 = Math.min(Math.max(0, next - this.#clock.elapsed()), MAX_TIMER_MS);
+        this.#armed = next;
         this.#disarm = this.#clock.arm(ms2, () => this.#piece.exit(() => this.#run()));
       }
       #poke() {
@@ -61188,7 +61169,7 @@ var init_scheduler2 = __esm({
       async #claimWake(at2) {
         const { context } = this.#started();
         this.#claimWindow = claimWindow(context.store, at2);
-        this.#claimsWake.at(at2 + CLAIM_POLL_MS);
+        this.#claimsWake.after(CLAIM_POLL_MS);
         try {
           await this.#nextEvent();
         } finally {
@@ -61202,11 +61183,11 @@ var init_scheduler2 = __esm({
         if (window2 === null) return;
         const next = claimPoll(this.#started().context.store, window2, at2);
         if (next === "ends") this.#post({ kind: "wake", reason: "claims" });
-        else this.#claimsWake.at(next);
+        else this.#claimsWake.after(next - at2);
       }
       /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
       async #eventOrAt(at2) {
-        this.#pumpWake.at(at2);
+        this.#pumpWake.after(at2 - this.#now());
         try {
           await this.#nextEvent();
         } finally {
@@ -64189,6 +64170,7 @@ __export(daemon_loop_exports, {
 });
 function createDaemonLoop(options) {
   const { onDropped, backend, timings, afterBatch, ...rest2 } = options;
+  const clock = options.clock;
   let feed = null;
   let closing = null;
   const deliveredRow = new FeedDeliveredRow(options.store, options.worktreeId, options.onError);
@@ -64224,7 +64206,7 @@ function createDaemonLoop(options) {
         ...timings === void 0 ? {} : { timings },
         trackedPaths: () => scheduler.trackedPaths(),
         extraFiles: scheduler.extraFiles(),
-        ...options.now === void 0 ? {} : { now: options.now },
+        ...clock === void 0 ? {} : { now: () => clock.now() },
         onDelivered: (startedAt) => {
           setImmediate(() => {
             if (closing === null) deliveredRow.record(startedAt);
@@ -87085,7 +87067,7 @@ function namedPoll(cwd, paths, options) {
     name: "named",
     sync: () => sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed2) => {
+    read: ({ store, root, commonDir }, final, elapsed) => {
       const id = worktreeIdFor(root);
       const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
       sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
@@ -87093,7 +87075,7 @@ function namedPoll(cwd, paths, options) {
       const readers = syncedReaders(current2);
       const selection = selectNamedFiles(store, id, root, cwd, paths, readers, stored3);
       const all2 = readClasses(store, id, selection.files);
-      const settled2 = final || elapsed2() >= options.settleMs;
+      const settled2 = final || elapsed() >= options.settleMs;
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, worktree, at: readAt2 } = judgeWait(watch2, store, id, options.now);
       const record2 = worktree?.daemon ?? null;
@@ -87446,7 +87428,7 @@ import { setTimeout as sleep11 } from "node:timers/promises";
 var ROW2 = STATUS_WAITS.snapshot;
 async function namedSnapshot(cwd, paths, options) {
   const started2 = performance.now();
-  const elapsed2 = () => performance.now() - started2;
+  const elapsed = () => performance.now() - started2;
   const settleMs = options.settleMs ?? SETTLE_MS;
   const pollMs = options.pollMs ?? SYNC_POLL_MS;
   let sync;
@@ -87454,7 +87436,7 @@ async function namedSnapshot(cwd, paths, options) {
     const step2 = decideStatusWait(ROW2, { store: "unread" });
     if (step2.kind !== "end")
       throw new Error("snapshot: a read that did not read the store ends it");
-    return { outcome: "unavailable", waitedMs: elapsed2(), result };
+    return { outcome: "unavailable", waitedMs: elapsed(), result };
   };
   try {
     const found3 = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) => {
@@ -87471,7 +87453,7 @@ async function namedSnapshot(cwd, paths, options) {
     if ("available" in found3) return unread(found3);
     for (; ; ) {
       const state = sync?.current().state;
-      const left = settleMs - elapsed2();
+      const left = settleMs - elapsed();
       if (state === "synced" || left <= 0) break;
       await (state === "unsupported" ? sleep11(left) : pollPause(Math.min(pollMs, left), sync));
     }
@@ -87482,7 +87464,7 @@ async function namedSnapshot(cwd, paths, options) {
     );
     if ("usage" in read5) throw new CheckUsageError(read5.usage);
     if ("available" in read5) return unread(read5);
-    return { ...read5, waitedMs: elapsed2() };
+    return { ...read5, waitedMs: elapsed() };
   } finally {
     sync?.stop();
   }
@@ -87877,7 +87859,7 @@ function editPoll(options) {
     first: () => start2 === null,
     sync: () => syncing.sync,
     stop: () => watch2?.stop?.(),
-    read: ({ store, root, commonDir }, final, elapsed2) => {
+    read: ({ store, root, commonDir }, final, elapsed) => {
       const id = worktreeIdFor(root);
       if (start2 === null) {
         const states = store.knownStates.list(id);
@@ -87901,7 +87883,7 @@ function editPoll(options) {
       const window2 = syncing.window;
       const held3 = syncing.slow;
       const heldFiles2 = held3 === void 0 ? [] : [...held3.values()];
-      const settled2 = final || elapsed2() >= options.settleMs;
+      const settled2 = final || elapsed() >= options.settleMs;
       const fallback2 = fallbackOf(ROW3, settled2);
       watch2 ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, at: at2 } = judgeWait(watch2, store, id, now);
@@ -88067,30 +88049,30 @@ async function statusWait(ask2) {
 }
 async function pollStatus(cwd, timeoutMs, pollMs, poll) {
   const started2 = performance.now();
-  const elapsed2 = () => performance.now() - started2;
+  const elapsed = () => performance.now() - started2;
   const row2 = STATUS_WAITS[poll.name];
   let wentOn = false;
   try {
     for (; ; ) {
-      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed2);
+      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed);
       const read5 = withStatusStore(
         cwd,
         { busyTimeoutMs },
-        (context) => poll.read(context, final, elapsed2)
+        (context) => poll.read(context, final, elapsed)
       );
       if (read5 !== null && "available" in read5) {
         const first2 = poll.first?.() ?? !wentOn;
         const step2 = decideStatusWait(row2, { store: "unread", first: first2, late: final });
         if (step2.kind === "end")
-          return { outcome: "unavailable", waitedMs: elapsed2(), result: read5 };
+          return { outcome: "unavailable", waitedMs: elapsed(), result: read5 };
       } else if (read5 !== null && "act" in read5) {
         await read5.act();
         continue;
       } else if (read5 !== null) {
-        return { end: read5.end, waitedMs: elapsed2() };
+        return { end: read5.end, waitedMs: elapsed() };
       }
       wentOn = true;
-      const remaining = timeoutMs - elapsed2();
+      const remaining = timeoutMs - elapsed();
       if (remaining > 0) await pollPause(Math.min(pollMs, remaining), poll.sync());
     }
   } finally {
@@ -96869,6 +96851,7 @@ function startTimeOf(pid) {
 }
 
 // src/core/daemon/daemon.ts
+init_clock();
 init_hold_rows();
 
 // src/core/shared/imports-seen.ts
@@ -100123,7 +100106,8 @@ var Daemon = class {
         ...this.#resumesRest ? { resumesRest: true } : {},
         runsDir: storePaths2(commonDir).runsDir,
         describeFailure: describeFailure2,
-        now: this.#now,
+        // Row 011-369: the scheduler's one clock, over the daemon's reading.
+        clock: hostClock(this.#now),
         // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
         onError: (error) => isBusy(error) ? this.#log(`daemon error: ${error.message}`) : this.#note(`daemon error: ${error.message}`),
         // Row 011-309: a lane's wait for the pool, at its start and its grant.
