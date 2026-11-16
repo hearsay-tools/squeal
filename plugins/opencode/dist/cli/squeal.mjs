@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.521";
+  if (true) return "0.1.522";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -23577,6 +23577,15 @@ function staticListHash(paths, observed2 = []) {
 function observedHash(observed2) {
   return listHash(OBSERVED_MAPS.flatMap((map) => (observed2[map] ?? []).map((p) => `${map}:${p}`)));
 }
+function absolutePathOfFile(file, results3) {
+  const paths = [
+    file.path,
+    ...file.closure?.paths ?? [],
+    ...Object.values(file.observed).flat(),
+    ...results3.flatMap((r) => [r.testPath, ...r.location === null ? [] : [r.location.path]])
+  ];
+  return paths.find(isAbsolutePath) ?? null;
+}
 function absolutePathIn(bundle) {
   const paths = [
     ...bundle.testFiles.flatMap((f) => [
@@ -23591,7 +23600,7 @@ function absolutePathIn(bundle) {
     ]),
     ...bundle.environments.flatMap((e) => (e.descriptor?.files ?? []).map(([path]) => path))
   ];
-  return paths.find((p) => p.startsWith("/") || p.startsWith("\\") || /^[A-Za-z]:/.test(p)) ?? null;
+  return paths.find(isAbsolutePath) ?? null;
 }
 function isObject2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -23614,7 +23623,7 @@ function isResult(value) {
   const at2 = value.location;
   return typeof value.project === "string" && typeof value.testPath === "string" && (value.kind === "test" || value.kind === "file" || value.kind === "setup") && (typeof value.fullName === "string" || value.fullName === null && value.kind !== "test") && (at2 === null || isObject2(at2) && typeof at2.path === "string" && typeof at2.line === "number" && typeof at2.column === "number") && typeof value.key === "string" && (value.outcome === "pass" || value.outcome === "skip") && typeof value.durationMs === "number";
 }
-var RESULTS_FORMAT, OBSERVED_MAPS, STATIC_LIST, isStrings;
+var RESULTS_FORMAT, OBSERVED_MAPS, STATIC_LIST, isAbsolutePath, isStrings;
 var init_transfer_bundle = __esm({
   "src/core/store/transfer-bundle.ts"() {
     "use strict";
@@ -23623,6 +23632,7 @@ var init_transfer_bundle = __esm({
     RESULTS_FORMAT = "squeal-results/1";
     OBSERVED_MAPS = ["observed", "observedDirect", "observedModules"];
     STATIC_LIST = "static:";
+    isAbsolutePath = (path) => path.startsWith("/") || path.startsWith("\\") || /^[A-Za-z]:/.test(path);
     isStrings = (value) => Array.isArray(value) && value.every((v) => typeof v === "string");
   }
 });
@@ -68444,7 +68454,7 @@ function deriveRoots(root) {
   const top2 = readPyproject(root, notes);
   if (top2 === null) return { pthPaths: [], mapped, notes };
   const installed2 = /* @__PURE__ */ new Map();
-  if (nameOf2(top2) !== void 0 && isPackage(top2)) installed2.set(root, top2);
+  if (nameOf3(top2) !== void 0 && isPackage(top2)) installed2.set(root, top2);
   const members = workspaceMembers(root, top2, notes);
   const seen = /* @__PURE__ */ new Set();
   const walk6 = (dir2, project) => {
@@ -68482,7 +68492,7 @@ function deriveRoots(root) {
 }
 function layout(dir2, project, sink2) {
   const backend = String(get(project, "build-system", "build-backend") ?? "");
-  const name3 = nameOf2(project) ?? "";
+  const name3 = nameOf3(project) ?? "";
   const n = normalize6(name3);
   const module2 = name3.replace(/[-.]/g, "_");
   if (backend.startsWith("hatchling")) hatchling(dir2, project, name3, sink2);
@@ -68563,7 +68573,7 @@ function setuptools(dir2, project, sink2) {
   const version2 = String(get(project, "project", "version") ?? "0");
   const keys = Object.keys(packageDir);
   if (keys.length === 1 && keys[0] === "") {
-    const n = normalize6(String(nameOf2(project)));
+    const n = normalize6(String(nameOf3(project)));
     sink2.entry(`__editable__.${n}-${version2}.pth`, join131(dir2, packageDir[""]));
     return;
   }
@@ -68590,7 +68600,7 @@ function workspaceMembers(root, top2, notes) {
     }
     for (const dir2 of dirs) {
       const project = isDir(dir2) ? readPyproject(dir2, notes) : null;
-      const name3 = project === null ? void 0 : nameOf2(project);
+      const name3 = project === null ? void 0 : nameOf3(project);
       if (project !== null && name3 !== void 0) members.set(normalize6(name3), { dir: dir2, project });
     }
   }
@@ -68608,7 +68618,7 @@ function readPyproject(dir2, notes) {
     return null;
   }
 }
-function nameOf2(project) {
+function nameOf3(project) {
   const name3 = get(project, "project", "name") ?? get(project, "tool", "poetry", "name");
   return typeof name3 === "string" ? name3 : void 0;
 }
@@ -82323,6 +82333,7 @@ function exportOf(store, worktreeId, header2) {
   let noKey = 0;
   let noResult = 0;
   let failed7 = 0;
+  const absolute = [];
   for (const k of keys) {
     if (k.key === null || k.pending !== null) {
       noKey++;
@@ -82332,8 +82343,19 @@ function exportOf(store, worktreeId, header2) {
     if (held3.length === 0) noResult++;
     else if (held3.some((r) => r.outcome === "fail")) failed7++;
     else {
-      files5.push(exportedFile(store, k.testFile, k.key));
-      for (const r of held3) results3.push({ ...r, outcome: r.outcome === "skip" ? "skip" : "pass" });
+      const file = exportedFile(store, k.testFile, k.key);
+      const rows2 = held3.map(
+        (r) => ({
+          ...r,
+          outcome: r.outcome === "skip" ? "skip" : "pass"
+        })
+      );
+      const path = absolutePathOfFile(file, rows2);
+      if (path !== null) absolute.push({ testFile: k.testFile, path });
+      else {
+        files5.push(file);
+        results3.push(...rows2);
+      }
     }
   }
   const projects2 = new Set(files5.map((f) => f.project));
@@ -82348,10 +82370,14 @@ function exportOf(store, worktreeId, header2) {
     }),
     results: results3
   };
-  const absolute = absolutePathIn(bundle);
-  if (absolute !== null) throw new AbsolutePathError(absolute);
+  const refused = absolutePathIn(bundle);
+  if (refused !== null) throw new AbsolutePathError(refused);
   const counts = { keyed: keys.length - noKey, testFiles: files5.length, results: results3.length };
-  return { bundle, counts: { ...counts, noKey, noResult, failed: failed7 } };
+  return {
+    bundle,
+    counts: { ...counts, noKey, noResult, failed: failed7, absolute: absolute.length },
+    absolute
+  };
 }
 function exportedFile(store, testFile, key3) {
   const record2 = store.testFiles.get(testFile);
@@ -82376,24 +82402,30 @@ var MAP_KEY4 = {
   observedModules: observedModulesMetaKey
 };
 function bundleOf(store, worktreeId, header2, files5) {
-  const sorted3 = [...files5].sort(
-    (a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path)
-  );
-  const projects2 = new Set(sorted3.map(({ file }) => file.project));
+  const absolute = [];
+  const sorted3 = [...files5].sort((a, b) => compare(a.file.project, b.file.project) || compare(a.file.path, b.file.path)).flatMap(({ file, records }) => {
+    const testFile = { ...file, observed: observedOf(store, file) };
+    const results3 = [...records].sort(byCheck).map(exported);
+    const path = absolutePathOfFile(testFile, results3);
+    if (path === null) return [{ testFile, results: results3 }];
+    absolute.push({ testFile: { project: file.project, path: file.path }, path });
+    return [];
+  });
+  const projects2 = new Set(sorted3.map(({ testFile }) => testFile.project));
   const bundle = {
     format: RESULTS_FORMAT,
     header: header2,
     environments: worktreeEnvironments(store, worktreeId).filter((e) => projects2.has(e.project)).map(({ project, hash: hash4, descriptor }) => ({ project, hash: hash4, descriptor })),
-    testFiles: sorted3.map(({ file }) => ({ ...file, observed: observedOf(store, file) })),
+    testFiles: sorted3.map(({ testFile }) => testFile),
     observedStartup: [...projects2].sort(compare).flatMap((project) => {
       const paths = readSharedEntries(store, observedStartupMetaKey(project), "list")[""];
       return paths === void 0 ? [] : [{ project, paths }];
     }),
-    results: sorted3.flatMap(({ records }) => [...records].sort(byCheck).map(exported))
+    results: sorted3.flatMap(({ results: results3 }) => results3)
   };
-  const absolute = absolutePathIn(bundle);
-  if (absolute !== null) throw new AbsolutePathError(absolute);
-  return bundle;
+  const refused = absolutePathIn(bundle);
+  if (refused !== null) throw new AbsolutePathError(refused);
+  return { bundle, absolute };
 }
 function observedOf(store, testFile) {
   const observed2 = {};
@@ -82839,7 +82871,7 @@ async function exportWith(input, runner) {
       records
     });
   }
-  const bundle = bundleOf(store, worktreeId, header2, exported2);
+  const { bundle, absolute } = bundleOf(store, worktreeId, header2, exported2);
   const testFiles3 = bundle.testFiles.length;
   return {
     bundle,
@@ -82847,13 +82879,15 @@ async function exportWith(input, runner) {
       testFiles: testFiles3,
       results: bundle.results.length,
       failed: files5.length - passed.length,
-      unkeyed: kept6.length - testFiles3 - uncertified.length - inspected,
+      unkeyed: kept6.length - testFiles3 - uncertified.length - inspected - absolute.length,
       uncertified: uncertified.length,
       ambiguous: passed.length - named4.length,
       inspector: named4.length - kept6.length - unwatched + inspected,
-      unwatched
+      unwatched,
+      absolute: absolute.length
     },
-    uncertified
+    uncertified,
+    absolute
   };
 }
 async function keyFiles(keying, passed, leftOut3) {
@@ -88610,7 +88644,9 @@ ${USAGE}`);
     source: sourceOf2(io.env ?? process.env)
   };
   try {
-    const { bundle, counts } = exportResults(store, worktreeIdFor(root), header2);
+    const { bundle, counts, absolute } = exportResults(store, worktreeIdFor(root), header2);
+    for (const line of absoluteLines(absolute)) io.stderr(`squeal export: ${line}
+`);
     if (counts.testFiles === 0) {
       io.stderr(`squeal export: ${nothingText(counts)}; wrote nothing
 `);
@@ -88666,14 +88702,25 @@ function nothingText(counts) {
   if (counts.keyed === 0) {
     return "no test file of this worktree has a key yet: the daemon computes keys (squeal start)";
   }
-  return `none of the ${files2(counts.keyed)} with a key has only passes and skips stored at it`;
+  const absolute = counts.absolute > 0 ? `; ${files2(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path left out` : "";
+  return `none of the ${files2(counts.keyed)} with a key has only passes and skips stored at it${absolute}`;
+}
+var NAMED_ABSOLUTE = 3;
+function absoluteLines(left) {
+  const named4 = left.slice(0, NAMED_ABSOLUTE).map(({ testFile, path }) => {
+    const name3 = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+    return `left out ${name3}: it holds the absolute path ${path}, which an export does not write`;
+  });
+  const more2 = left.length - NAMED_ABSOLUTE;
+  return more2 > 0 ? [...named4, `left out ${files2(more2)} more for an absolute path`] : named4;
 }
 function countsText(counts, file) {
   const results3 = `${counts.results} result${counts.results === 1 ? "" : "s"}`;
   const left = [
     counts.noKey > 0 ? `${files2(counts.noKey)} with no current key` : null,
     counts.noResult > 0 ? `${files2(counts.noResult)} with no result at the key` : null,
-    counts.failed > 0 ? `${files2(counts.failed)} with a failure at the key` : null
+    counts.failed > 0 ? `${files2(counts.failed)} with a failure at the key` : null,
+    counts.absolute > 0 ? `${files2(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path` : null
   ].filter((part2) => part2 !== null);
   const leftText = left.length === 0 ? "" : `
 Left out: ${left.join(", ")}.`;
@@ -88741,7 +88788,10 @@ ${EXPORT_USAGE}`);
   }
 }
 function write2(exported2, file, io) {
-  for (const line of uncertifiedLines(exported2.uncertified)) {
+  for (const line of [
+    ...uncertifiedLines(exported2.uncertified),
+    ...absoluteLines(exported2.absolute)
+  ]) {
     io.stderr(`squeal ci export: ${line}
 `);
   }
@@ -88801,10 +88851,11 @@ function countsText2(counts, file) {
 Left out: ${left}.`;
   return `Exported ${files3(counts.testFiles)}, ${results3}, to ${file}.${leftText}`;
 }
+var nameOf2 = (testFile) => `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
 var NAMED_FILES = 3;
 function uncertifiedLines(files5) {
   return files5.slice(0, NAMED_FILES).map(({ testFile, inputs: inputs2 }) => {
-    const name3 = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+    const name3 = nameOf2(testFile);
     const shown = inputs2.slice(0, NAMED_FILES).join(", ");
     const more2 = inputs2.length > NAMED_FILES ? ` and ${inputs2.length - NAMED_FILES} more` : "";
     return `left out ${name3}: its shard recorded other content, or none, for ${shown}${more2}`;
@@ -88821,7 +88872,8 @@ function leftOut2(counts) {
     counts.uncertified > 0 ? `${files3(counts.uncertified)} whose inputs here are not what their shard read` : null,
     counts.ambiguous > 0 ? `${files3(counts.ambiguous)} with two checks of one name` : null,
     counts.inspector > 0 ? `${files3(counts.inspector)} that loaded node:inspector beside a coverage provider` : null,
-    counts.unwatched > 0 ? `${files3(counts.unwatched)} whose node:inspector use could not be watched (as in a vmThreads pool)` : null
+    counts.unwatched > 0 ? `${files3(counts.unwatched)} whose node:inspector use could not be watched (as in a vmThreads pool)` : null,
+    counts.absolute > 0 ? `${files3(counts.absolute)} that ${counts.absolute === 1 ? "holds" : "hold"} an absolute path` : null
   ].filter((part2) => part2 !== null).join(", ");
 }
 
