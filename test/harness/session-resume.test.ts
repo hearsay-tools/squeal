@@ -40,11 +40,7 @@ describe("SessionStart on resume (row 005-91 d)", () => {
       { worktreeId: r.worktreeId, sessionId: SESSION, agentId: SUBAGENT },
       1,
     );
-    await runHook(
-      "session-start",
-      recorded("session-start", r.root, { source: "resume" }),
-      deps(),
-    );
+    await runHook("session-start", recorded("session-start", r.root, { source: "resume" }), deps());
     const left = r.store.consumers.list(r.worktreeId).map((c) => c.consumer.agentId);
     expect(left).toEqual(["main"]);
   });
