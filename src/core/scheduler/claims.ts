@@ -130,9 +130,14 @@ export function claimBoundMs(timeoutMs: number | null): number {
  * its key. Only a file another worktree's result could stand for waits: not
  * forced, not work an edit caused (`recent`), and missed by a lookup that
  * withheld nothing (`Ledger.probe`). A result the lookup finds is applied
- * and the file leaves the queue; `"settled"`.
+ * and the file leaves the queue; `"settled"`. The claim's bound reads `at`,
+ * a step's reading (row 011-372), else now.
  */
-export function claimOf(ledger: Ledger, ref: TestFileRef): "waits" | "settled" | "free" {
+export function claimOf(
+  ledger: Ledger,
+  ref: TestFileRef,
+  at?: EpochMs,
+): "waits" | "settled" | "free" {
   const file = ledger.file(ref);
   const key = file?.key ?? null;
   if (!file || key === null || file.blocked !== null) return "free";
@@ -143,7 +148,7 @@ export function claimOf(ledger: Ledger, ref: TestFileRef): "waits" | "settled" |
     ledger.commit();
     return "settled";
   }
-  return mayWait && ledger.claims.holds(key) ? "waits" : "free";
+  return mayWait && ledger.claims.holds(key, at) ? "waits" : "free";
 }
 
 /**

@@ -17,14 +17,18 @@ import type { SchedulerContext } from "./context.js";
  * (`SlowTier`).
  */
 
-/** Whether group `group`'s moment holds now. */
-export function momentHolds(context: SchedulerContext, group: ResolvedGroup): boolean {
+/** Whether group `group`'s moment holds at `at`, a step's reading (row 011-372), else now. */
+export function momentHolds(
+  context: SchedulerContext,
+  group: ResolvedGroup,
+  at?: EpochMs,
+): boolean {
   switch (group.at) {
     case "edit":
-      return (quietLeftMs(context, group) ?? 0) <= 0;
+      return (quietLeftMs(context, group, at) ?? 0) <= 0;
     case "pause":
     case "stop":
-      return consumersIdle(context.store, context.worktreeId, context.now());
+      return consumersIdle(context.store, context.worktreeId, at ?? context.now());
     case "commit":
     case "manual":
       return false;
@@ -32,14 +36,18 @@ export function momentHolds(context: SchedulerContext, group: ResolvedGroup): bo
 }
 
 /**
- * At `edit`, how long until the latest revision is `group.quietMs` old, at
- * most 0 once it is; `null` at any other moment. A worktree with no
- * revision yet is quiet.
+ * At `edit`, how long until the latest revision is `group.quietMs` old at
+ * `at` (else now), at most 0 once it is; `null` at any other moment. A
+ * worktree with no revision yet is quiet.
  */
-export function quietLeftMs(context: SchedulerContext, group: ResolvedGroup): number | null {
+export function quietLeftMs(
+  context: SchedulerContext,
+  group: ResolvedGroup,
+  at?: EpochMs,
+): number | null {
   if (group.at !== "edit") return null;
   const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + group.quietMs - context.now();
+  return latest === null ? 0 : latest.createdAt + group.quietMs - (at ?? context.now());
 }
 
 /**

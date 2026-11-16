@@ -260,12 +260,14 @@ export class Ledger {
    * Group `group`'s files in the queue in the order its lane runs them (spec
    * 019 D3): the default `slow` group's by evidence within a class unless
    * `slow.rank` is `"duration"` (004 D2), every other group's by duration.
+   * `now` as `RunQueue.orderedGroup`'s.
    */
-  orderedGroup(group: string): TestFileRef[] {
+  orderedGroup(group: string, now?: number): TestFileRef[] {
     return this.queue.orderedGroup(
       group,
       (ref) => this.file(ref)?.durationMs ?? null,
       group === SLOW_GROUP && this.context.policy.slow.rank !== "duration",
+      now,
     );
   }
 
