@@ -112,6 +112,82 @@ describe("privateReport", () => {
     expect(problems(root, base)).toEqual(['src/we"ird\tnäme\\.ts:1: holds an absolute home path']);
   });
 
+  it("fails a home root with no slash and a non-ASCII name, and passes URLs and placeholders", () => {
+    const { root, base } = repo();
+    commit(root, {
+      "src/b.ts": "cd /home/alice\nconst p = '/Users/zoë/x';\nconst q = \"/home/émile\";\n",
+      "src/c.ts":
+        "https://example.com/home/carol https://example.com/Users/zoë\n" +
+        "/home/<you>/x /home/$USER/x /Users/{name}/x /home/%u ${HOME}\n" +
+        "/home/user /home/runner /Users/user /home/squeal-e2e /home/\n",
+    });
+    expect(problems(root, base)).toEqual([
+      "src/b.ts:1: holds an absolute home path",
+      "src/b.ts:2: holds an absolute home path",
+      "src/b.ts:3: holds an absolute home path",
+    ]);
+  });
+
+  it("undoes JSON string escapes, nested up to three times, before each rule, never printing them", () => {
+    const { root, base } = repo();
+    const hook = { session_id: "abc", cwd: "/tmp/x" };
+    const once = JSON.stringify({ input: JSON.stringify(hook) });
+    const thrice = JSON.stringify({ a: JSON.stringify({ b: once }) });
+    // Three rounds bound the work a line costs; a fourth nesting goes unread.
+    const fourTimes = JSON.stringify({ a: thrice });
+    commit(root, {
+      "logs/a.json": `{"p":"\\/home\\/alice\\/x"}\n${once}\n${thrice}\n${fourTimes}\n`,
+      "logs/b.json": `{"n":"secret\\u002dclient\\u002Drepo"}\n{"t":"\\\\u0022transcript_path\\\\u0022"}\n`,
+      "logs/c.json": `${JSON.stringify({ a: '"session_id":1', b: '"cwd":2' }, null, 2)}\n`,
+      "src/d.ts": "const s = 'a\\\\b \\\\/home/ \\\\u00';\n",
+    });
+    const found = problems(root, base);
+    expect(found).toEqual([
+      "logs/a.json:1: holds an absolute home path",
+      "logs/a.json:2: holds a recorded agent session log",
+      "logs/a.json:3: holds a recorded agent session log",
+      "logs/b.json:1: matches the private denylist",
+      "logs/b.json:2: holds a recorded agent session log",
+      "logs/c.json:2: holds a recorded agent session log",
+    ]);
+    expect(found.join("\n").toLowerCase()).not.toContain(DENY);
+  });
+
+  it("reads a file name with a space and an upper-case .JSON suffix exactly", () => {
+    const { root, base } = repo();
+    const hook = `${JSON.stringify({ session_id: "abc", cwd: "/tmp/x" }, null, 2)}\n`;
+    commit(root, {
+      "logs/log name.json": hook,
+      "logs/LOG.JSON": hook,
+      "src/a b.ts": "const p = '/home/alice/x';\n",
+    });
+    expect(problems(root, base)).toEqual([
+      "src/a b.ts:1: holds an absolute home path",
+      "logs/LOG.JSON:2: holds a recorded agent session log",
+      "logs/log name.json:2: holds a recorded agent session log",
+    ]);
+  });
+
+  it("reads a text file an attribute marks binary as text, added whole or changed", () => {
+    const { root, base } = repo();
+    commit(root, {
+      ".gitattributes": "*.txt -diff\n*.bin -diff\n",
+      "doc.txt": "plain\n/home/alice/x\n",
+      "real.bin": Buffer.from(`\0\0/home/alice/x\0 ${DENY}\n`),
+    });
+    expect(problems(root, base)).toEqual(["doc.txt:2: holds an absolute home path"]);
+    const mid = git(root, ["rev-parse", "HEAD"]).trim();
+    commit(root, { "doc.txt": `plain ${DENY}\n/home/alice/x\n`, "new.txt": "/Users/bob/y\n" });
+    expect(problems(root, mid)).toEqual([
+      "doc.txt:1: matches the private denylist",
+      "new.txt:1: holds an absolute home path",
+    ]);
+    const last = git(root, ["rev-parse", "HEAD"]).trim();
+    git(root, ["mv", "doc.txt", "moved.txt"]);
+    commit(root, { "moved.txt": `plain ${DENY}\n/home/alice/x\nend /home/bob\n` });
+    expect(problems(root, last)).toEqual(["moved.txt:3: holds an absolute home path"]);
+  });
+
   it("takes the merge-base with origin/main when no base is given", () => {
     const { root, base } = repo();
     commit(root, { "src/b.ts": "const p = '/Users/bob/x';\n" });
