@@ -11,7 +11,7 @@ import {
   sources,
   testFiles,
 } from "./catch-up-fixture.js";
-import { ref } from "./tier-yields-fixture.js";
+import { ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-283 (011-273 option B, `research/named-wait-rule.md` rule 3 and
@@ -19,7 +19,9 @@ import { ref } from "./tier-yields-fixture.js";
  * starts after a step-down takes over each batch whose files it queues
  * again at the same key, in their order, before its own, and republishes
  * them. A file whose key moved is no batch's. Probe P3 showed the
- * successor read none of the predecessor's row on 0.1.379.
+ * successor read none of the predecessor's row on 0.1.379. Row 011-363: each
+ * daemon's clock is virtual, and the test reads at its quiet point
+ * (`settle`), with no poll.
  */
 const FILES = testFiles(8, sources(4), () => 100);
 const LOOKUP_ONLY: Partial<Policy> = { baseline: { onStart: "lookup-only" } };
@@ -29,7 +31,7 @@ const [F0, F2, F5, F7] = [
   "test/f005.test.ts",
   "test/f007.test.ts",
 ];
-const sizes = { hostSlots: 4, backlogTierSize: 8 };
+const sizes = { hostSlots: 4, backlogTierSize: 8, clock: "virtual" as const };
 
 /**
  * A worktree whose files all ran, then a daemon whose backlog tier of an
@@ -40,14 +42,15 @@ async function steppedDown(waits: readonly (readonly string[])[]): Promise<Catch
   const repo = catchUpRepo(FILES);
   const first = catchUpSide(repo, repo.main, { files: FILES, ...sizes, policy: RUN_MISSING });
   await first.scheduler.start();
-  await first.scheduler.idle();
+  await settle(first);
   await first.scheduler.close();
   const side = catchUpSide(repo, repo.main, { files: FILES, ...sizes, policy: LOOKUP_ONLY });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await settle(side);
   side.runner.hold();
   await side.edit("watch", "config.json");
-  await expect.poll(() => side.runner.active).toBeGreaterThan(0);
+  await settle(side);
+  expect(side.runner.active).toBeGreaterThan(0);
   for (const paths of waits) {
     await side.scheduler.promote(
       paths.map((path) => ref(path)),
@@ -69,7 +72,8 @@ async function successor(repo: CatchUpRepo, adapterVersion = "1"): Promise<Catch
     (await environment()).map((env) => ({ ...env, adapterVersion }));
   next.runner.hold();
   await next.scheduler.start();
-  await expect.poll(() => next.runner.active).toBeGreaterThan(0);
+  await settle(next);
+  expect(next.runner.active).toBeGreaterThan(0);
   return next;
 }
 
@@ -86,7 +90,7 @@ describe("a successor takes over its predecessor's batches (row 011-283, tests 2
     const standing = standingOf(next, F5);
     expect(standing.standing).toMatchObject({ kind: "running", batch: { position: 1, of: 1 } });
     next.runner.release();
-    await next.scheduler.idle();
+    await settle(next);
     expect(FILES.every((f) => next.current(f.path))).toBe(true);
     // B settled; its wait is open, so the row keeps it with no file of its own.
     expect(batchesOf(next).size).toBe(0);
@@ -99,7 +103,7 @@ describe("a successor takes over its predecessor's batches (row 011-283, tests 2
     expect(next.store.meta.get(promotionsMetaKey(next.worktreeId))).toBeNull();
     expect(standingOf(next, F5).standing).not.toHaveProperty("batch");
     next.runner.release();
-    await next.scheduler.idle();
+    await settle(next);
   });
 
   it("4: two batches keep their order, and a new wait's batch goes after both", async () => {
@@ -113,8 +117,7 @@ describe("a successor takes over its predecessor's batches (row 011-283, tests 2
     expect(places.get(F7)).toMatchObject({ position: 3, of: 3 });
     expect(runPaths(next)[0]).toEqual([F5]);
     next.runner.release();
-    await expect.poll(() => next.runner.runs.length).toBeGreaterThan(1);
+    await settle(next);
     expect([...(runPaths(next)[1] ?? [])].sort()).toEqual([F0, F2].sort());
-    await next.scheduler.idle();
   });
 });
