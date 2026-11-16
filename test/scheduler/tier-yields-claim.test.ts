@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classLines } from "../../src/cli/named-file-lines.js";
+import { CLAIM_RECHECK_MS } from "../../src/core/scheduler/claims.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   F,
@@ -12,7 +13,7 @@ import {
   SLOW,
   sides,
 } from "./tier-yields-claim-fixture.js";
-import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
+import { heldRun, holdRuns, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-55 (spec 011 C15 and C7; `tasks/011-51/notes.md`, "Open for
@@ -23,11 +24,12 @@ import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-
  * `tier-yields-claim-ends.test.ts` has the claim's end (row 011-123).
  *
  * This worktree's start runs every file (`RUN_MISSING`): the tier's
- * estimate reads the 200 s each run stored, so a promotion cuts it at once,
- * within `SETTLE_MS`. A start that runs nothing leaves no estimate, and C4
+ * estimate reads the 200 s each run stored, so a promotion cuts it at once. A start that runs nothing leaves no estimate, and C4
  * step 5 cuts such a tier 30 s after its start whatever waits (row
  * 011-107): that cut passed a 30 s poll by a few ms, and the claim's no-cut
- * check proved nothing (row 011-169).
+ * check proved nothing (row 011-169). Row 011-363: both clocks are virtual;
+ * the test reads at the quiet point (`settle`), and the claim's recheck
+ * comes when it moves this worktree's clock.
  */
 describe("a promoted file under another worktree's claim makes no tier yield (spec 011 C15, row 011-55)", {
   timeout: 120_000,
@@ -48,7 +50,7 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
     expect(rowOf(other, F)?.pending).toBe("running");
 
     await main.scheduler.promote([ref(F, "f")], 60_000);
-    await pause(SETTLE_MS);
+    await settle(main, other);
     expect(tier.cancelled).toBe(false);
     expect(tier.endedAt).toBeNull();
     const file = named(main, ref(F, "f"));
@@ -60,14 +62,18 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
 
     // A promoted file no other worktree runs still makes the tier yield.
     await main.scheduler.promote([ref(G, "g")], 60_000);
-    await expect.poll(() => tier.cancelled, { timeout: SETTLE_MS }).toBe(true);
-    await expect.poll(() => main.current(G), { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(main, other);
+    expect(tier.cancelled).toBe(true);
+    expect(main.current(G)).toBe(true);
     expect(ranSince(main, F, base)).toBe(0);
 
     ours.stop();
     theirs.stop();
-    await Promise.all([main.scheduler.idle(), other.scheduler.idle()]);
-    await expect.poll(() => main.current(F), { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(main, other);
+    // The claim's next recheck finds the claimant's result.
+    main.advance(CLAIM_RECHECK_MS);
+    await settle(main, other);
+    expect(main.current(F)).toBe(true);
     // F ran once, in the worktree that claimed it; this one took its result.
     expect(ranSince(main, F, base)).toBe(0);
     expect(ranSince(other, F, 0)).toBe(1);
@@ -89,11 +95,12 @@ describe("a promoted file under another worktree's claim makes no tier yield (sp
     expect(rowOf(main, F)).toMatchObject({ pending: "queued", key: rowOf(other, F)?.key });
 
     await main.scheduler.promote([ref(F, "f")], 60_000);
-    await expect.poll(() => tier.cancelled, { timeout: SETTLE_MS }).toBe(true);
-    await expect.poll(() => ranSince(main, F, base), { timeout: CUT_WITHIN_MS }).toBe(1);
+    await settle(main, other);
+    expect(tier.cancelled).toBe(true);
+    expect(ranSince(main, F, base)).toBe(1);
 
     ours.stop();
     theirs.stop();
-    await Promise.all([main.scheduler.idle(), other.scheduler.idle()]);
+    await settle(main, other);
   });
 });

@@ -66,14 +66,16 @@ const runsMark = (side: CatchUpSide) =>
  * Row 011-363: the quiet point of `sides` on their virtual clocks. Each
  * rests (`CatchUpSide.rest`); a rest sets a runner's run aside, so a run
  * that is not held, 0 ms of real time here, can end after it, and its
- * record follows. So the sides rest again until one real timer turn starts
- * or ends no run. A record's gather (`slot-gather`) is bookkeeping: time
+ * record follows. So the sides rest again until no run started or ended
+ * from before their rests to one real timer turn after them. A record's gather (`slot-gather`) is bookkeeping: time
  * moves to it; no other wake fires unless the test moves time. Returns the
  * first side's last rest.
  */
 export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
   const limit = performance.now() + SETTLE_LIMIT_MS;
   for (;;) {
+    // Taken before the rests: a run that starts or ends while another side rests is seen.
+    const before = sides.map(runsMark).join(" ");
     const rests: Rest[] = [];
     for (const side of sides) rests.push(await restOf(side, limit));
     const gathers = sides.flatMap((side, i) =>
@@ -85,7 +87,6 @@ export async function settle(...sides: CatchUpSide[]): Promise<Rest> {
       for (const gather of gathers) gather();
       continue;
     }
-    const before = sides.map(runsMark).join(" ");
     await turn(1);
     const first = rests[0];
     if (sides.map(runsMark).join(" ") === before && first !== undefined) return first;
