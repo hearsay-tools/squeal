@@ -95,24 +95,79 @@ export function primer(
     0,
     ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0),
   );
-  let text = "";
-  for (const arrival of arrivals) {
-    const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
+  const sentences =
+    (arrival: string, dropped: readonly Droppable[]) =>
+    (covers: string, naming: Naming, wait: WaitForm) =>
       [
         `${PRIMER_OPENING}${listed(names, "and")} tests in the background${arrival} do not run ${listed(names, "or")} to learn whether your edits broke something.`,
         ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
         waitSentence(command, naming, wait, quiet),
-        ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
-        "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
-        retrySentence(command, naming),
-        REVISION,
+        ...(coverage.slow === null || dropped.includes("slow")
+          ? []
+          : slowSentences(command, naming, coverage.slow).slice(
+              0,
+              dropped.includes("slow arrival") ? 1 : 2,
+            )),
+        ...(dropped.includes("run yourself") ? [] : [RUN_YOURSELF]),
+        ...(dropped.includes("retry") ? [] : [retrySentence(command, naming)]),
+        ...(dropped.includes("revision") ? [] : [REVISION]),
         covers,
         notCovered(coverage),
       ].join(" ");
-    text = folded(sentences, coverage, most);
+  let text = "";
+  for (const arrival of arrivals) {
+    text = folded(sentences(arrival, []), coverage, most);
     if (text.length <= PRIMER_CAP_CHARS) return text;
   }
+  // Row 005-89: over the cap at every fold, other text goes before the CLI's name and the path wait.
+  for (const dropped of droppable(coverage)) {
+    for (const arrival of arrivals) {
+      const kept = withPathWait(sentences(arrival, dropped), coverage, most);
+      if (kept !== null) return kept;
+    }
+  }
   return text;
+}
+
+/** When the agent runs tests itself: the primer's last word on hand runs. */
+const RUN_YOURSELF =
+  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+
+/** Text the primer can lose before the CLI's name or the path wait (row 005-89). */
+type Droppable = "slow" | "slow arrival" | "retry" | "run yourself" | "revision";
+
+/**
+ * Row 005-89 (research `hook-messages-2026-11-16.md`, finding 1): the sets
+ * of text to drop, cheapest first, each a superset of the one before. First
+ * both slow sentences while the daemon's listing counts no slow file: the
+ * coverage sentence still says 0, and nothing slow can fail. Then what a
+ * later message says where it applies: how a slow failure arrives (it
+ * arrives saying so), the retry (a failure's block names it), when to run
+ * tests by hand; the revision's definition last.
+ */
+function droppable(coverage: Coverage): (readonly Droppable[])[] {
+  const first: Droppable[] = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
+  const order: Droppable[] = [...first, "retry", "run yourself", "revision"];
+  return order.map((_, at) => order.slice(0, at + 1));
+}
+
+/**
+ * The first rendering within the cap that names the CLI at the path wait:
+ * every project named before fewer, the CLI named everywhere before once;
+ * `null` when none fits.
+ */
+function withPathWait(
+  sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
+  coverage: Coverage,
+  most: number,
+): string | null {
+  for (const naming of ["every", "first"] as const) {
+    for (let node = most; node >= 0; node--) {
+      const text = sentences(coversSentence(coverage, node), naming, "paths");
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
+  }
+  return null;
 }
 
 /**
@@ -120,7 +175,7 @@ export function primer(
  * the path wait joins only where it fits without folding more (task 005-68). Before the
  * CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
  * the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
- * Over the cap at every fold, the last one tried.
+ * Over the cap at every fold, the last one tried; `primer` then drops other text (row 005-89).
  */
 function folded(
   sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
