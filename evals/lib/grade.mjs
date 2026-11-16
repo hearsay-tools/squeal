@@ -262,6 +262,14 @@ function relPath(p) {
   return s.replace(/^\.\//, "");
 }
 
+/**
+ * A change delivery's title: `SQUEAL · revision N` before row 005-91 (c), `N checks changed`, or
+ * since that row the words of its other lines (`contentWords`): the edit lines, the owed counts,
+ * a group or the slow tier, a lint line and a commit, each before `at revision N`.
+ */
+const RESULT_TITLE =
+  /SQUEAL · (?:revision|\d+ checks? changed|(?:your edits?\b|the counts after|\S+ group |slow tier |lint |commit )[^\n\\]* at revision \d)/;
+
 function delivery(k) {
   const text = k.text;
   const kind = /"permissionDecision":\s*"deny"|"decision":\s*"block"/.test(text)
@@ -274,7 +282,7 @@ function delivery(k) {
           ? "resolved"
           : NO_DAEMON.test(text)
             ? "noDaemon"
-            : /SQUEAL · (?:revision|\d+ checks? changed)/.test(text)
+            : RESULT_TITLE.test(text)
               ? "result"
               : "other";
   return {

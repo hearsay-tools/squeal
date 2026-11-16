@@ -47,7 +47,10 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     expect(e.runs(e.main).some((r) => r.revision === same.revision)).toBe(true);
     const saw = await e.hook("post-tool-batch", e.main);
     expect(saw).toMatchObject({ code: 0, stderr: "" });
-    expect(saw.text).toMatch(new RegExp(`^SQUEAL · revision ${same.revision}\n`));
+    // Row 005-91 (c): titled by the edit line, no longer the revision alone.
+    expect(saw.text).toMatch(
+      new RegExp(`^SQUEAL · your edits' test files are current at revision ${same.revision}\n`),
+    );
     expect(saw.text).toContain(SAW_EDIT);
     expect(saw.text).not.toMatch(/PASS ->|FAIL ->/);
     expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");

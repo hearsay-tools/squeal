@@ -111,7 +111,10 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     editA();
     const said = await text();
     // Row 011-262: a change delivery's header names the changed paths, as the full form does.
-    expect(said).toMatch(/^SQUEAL · revision 1\nRevision 1 \(changed src\/a\.ts\): /);
+    // Row 005-91 (c): the title names the line.
+    expect(said).toMatch(
+      /^SQUEAL · your edit queued 1 test file at revision 1\nRevision 1 \(changed src\/a\.ts\): /,
+    );
     expect(said).toContain(
       "Squeal saw your edit and queued 1 test file; results arrive with later tool calls, and passing ones stay silent.",
     );

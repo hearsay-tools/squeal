@@ -43,7 +43,8 @@ describe("lint news across a config keying in the shared delivery (review 0.1.36
   it("tells the summary, with no finding from before the keying", async () => {
     const { delivery, me } = await acrossConfig();
     const text = formatDelta((await delivery.onToolBoundary(me)) ?? expect.unreachable());
-    expect(text.split("\n")[0]).toBe("SQUEAL · revision 3");
+    // Row 005-91 (c): the summary gives the title its words.
+    expect(text.split("\n")[0]).toBe("SQUEAL · lint config changed at revision 3");
     expect(lintLinesOf(text)).toEqual([SUMMARY]);
     expect(text).not.toContain("no-console");
     expect(await delivery.onToolBoundary(me)).toBeNull();

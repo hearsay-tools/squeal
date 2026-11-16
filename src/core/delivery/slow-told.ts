@@ -63,7 +63,9 @@ export function tellSlowTier(store: Store, consumer: Consumer, tier: SlowTierSta
 export type GroupKind = "current" | "waiting" | "not run";
 
 /** `current` with every listed file current (or none listed), `waiting` with any pending, else `not run`. */
-export function groupKind(group: GroupTierState): GroupKind {
+export function groupKind(
+  group: Pick<SlowTierState, "testFiles" | "current" | "pending">,
+): GroupKind {
   if (group.current >= group.testFiles) return "current";
   return group.pending > 0 ? "waiting" : "not run";
 }

@@ -40,6 +40,7 @@ import {
   toldOverLine,
 } from "./code-format.js";
 import { type Collapsed, checkName, collapse } from "./collapse.js";
+import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
@@ -416,9 +417,11 @@ function titleOf(delta: Delta, holdTitle: string | undefined, command: string): 
         ? `SQUEAL · Squeal's baseline run found ${checksText(checksOf(entries), "failing check", "that did not load")} at revision ${header.revision}`
         : `SQUEAL · ${plural(entries.length, "check")} changed (${partsText(checksOf(entries))}) at revision ${header.revision}`;
   if (own === null) {
-    return code === null
+    // Row 005-91 (c): never the revision alone; the other lines give the title its words.
+    const words = [code, ...contentWords(delta)].filter((w) => w !== null);
+    return words.length === 0
       ? `SQUEAL · revision ${header.revision}`
-      : `SQUEAL · ${code} at revision ${header.revision}`;
+      : `SQUEAL · ${words.join("; ")} at revision ${header.revision}`;
   }
   return code === null ? own : `${own}; ${code}`;
 }
