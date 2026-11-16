@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.518";
+  if (true) return "0.1.519";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -57601,7 +57601,7 @@ var init_request_intake = __esm({
           for (const group of new Set(covered.map((file) => queue.checkGroup(file.ref)))) {
             this.#host.wakeLane(group);
           }
-        } else if ("cutTiers" in wake) this.#host.cutTiers();
+        } else if ("checkYields" in wake) this.#host.checkYields();
       }
       /**
        * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
@@ -58397,7 +58397,7 @@ function promoteRequest(testFiles3, withinMs) {
         ledger.queue.promote(testFiles3, context.now() + withinMs, answeredOf(context, ledger));
       }
     },
-    wake: { cutTiers: true }
+    wake: { checkYields: true }
   };
 }
 function focusRequest(testFiles3, texts2, withinMs) {
@@ -58417,7 +58417,7 @@ function focusRequest(testFiles3, texts2, withinMs) {
         }
       }
     },
-    wake: { cutTiers: true }
+    wake: { checkYields: true }
   };
 }
 function groupRequest(group, groups3, passes) {
@@ -60028,7 +60028,7 @@ var init_scheduler2 = __esm({
         this.options = options;
         this.#clock = clockOf(options);
         this.#wakes = new Wakes(this.#clock);
-        this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
+        this.#pumpWake = this.#wakes.slot("pump", () => this.#post({ kind: "wake", reason: "pump" }));
         this.#claimsWake = this.#wakes.slot("claims", (at2) => this.#claimPoll(at2));
         this.#yields = new TierYields(
           () => this.#stepQueued({ kind: "wake", reason: "yield-bound" }),
@@ -60222,15 +60222,15 @@ var init_scheduler2 = __esm({
           this.#groups.lanes(this.#started().context.policy);
           this.#groups.get(group)?.preempt();
         },
-        cutTiers: () => this.#stepOutside([{ kind: "request-taken" }]),
+        checkYields: () => this.#stepOutside([{ kind: "request-taken" }]),
         pump: () => this.#pump()
       });
       /** The records of the runs that ended (row 011-131). */
       #records;
       /**
-       * The events posted since the pump's pass began (row 011-352): a tier
-       * ended, runner work drained, a batch or request came, a wake. The pump
-       * reads only that one came until the step (row 011-356).
+       * The events posted since the pump's step last read them (row 011-352): a
+       * tier ended, runner work drained, a batch or request came, a wake. The
+       * step reads and clears them (row 011-356).
        */
       #events = [];
       #wake = null;
@@ -60782,7 +60782,7 @@ var init_scheduler2 = __esm({
       }
       /**
        * A drain's slow lane waits once the drain's fast work is done (the work
-       * `#fastFirst` of the slow tier waits for) and no slow file runs; its wait
+       * the slow lane's `waits` names, `Admission.lane`) and no slow file runs; its wait
        * counts from the later of the last check that found either or began the
        * drain, and the last slow run's end (row 011-163).
        */
@@ -60849,7 +60849,7 @@ var init_scheduler2 = __esm({
         this.#groups.close();
         this.#slowRelease.close();
         this.#busy?.close();
-        this.#notify({ kind: "closing" });
+        this.#post({ kind: "closing" });
         await this.#pumping;
         this.#wakes.close();
         this.#capacity?.close();
@@ -60905,7 +60905,7 @@ var init_scheduler2 = __esm({
        * as long as its tier runs.
        *
        * A slow tier (spec 004 D2) is selected when no slow tier and no edit's
-       * tier is in flight (`#slowMayStart`); the slow tier itself waits for this
+       * tier is in flight (`Admission.asked`); the slow tier itself waits for this
        * daemon's fast backlog unless `run --slow` asked (D2 as amended
        * 2026-10-14, task 004-60), and a backlog tier that arrives while it runs
        * starts beside it (task 004-34). It runs in a lane of its own
@@ -60921,7 +60921,7 @@ var init_scheduler2 = __esm({
         if (this.#admit().halted || !this.#ledger) return;
         if (this.#pumping) {
           this.#asked = true;
-          this.#notify({ kind: "asked" });
+          this.#post({ kind: "asked" });
           return;
         }
         this.#stalled = false;
@@ -61021,7 +61021,7 @@ var init_scheduler2 = __esm({
             if (tier.slot === true) {
               tier.lease?.release();
               flight.ran = true;
-              this.#notify({ kind: "slot-ran", runId: tier.runId });
+              this.#post({ kind: "slot-ran", runId: tier.runId });
             }
             const record2 = await this.#records.record(tier, ran, installStamp, slow, held3);
             recorded2 = true;
@@ -61042,7 +61042,7 @@ var init_scheduler2 = __esm({
             if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
             if (slow === null) this.#groups.preempt();
             else this.#slowRelease.ended(tier.lane);
-            this.#notify({ kind: "tier-ended", runId: tier.runId });
+            this.#post({ kind: "tier-ended", runId: tier.runId });
           }
         });
       }
@@ -61124,7 +61124,7 @@ var init_scheduler2 = __esm({
         this.#draining = this.#wakes.track(
           () => this.#runnerWork.drain().catch((error) => this.#backgroundError("could not apply runner work", error)).finally(() => {
             this.#draining = null;
-            this.#notify({ kind: "runner-work-drained" });
+            this.#post({ kind: "runner-work-drained" });
           })
         );
       }
@@ -61150,7 +61150,7 @@ var init_scheduler2 = __esm({
         const window2 = this.#claimWindow;
         if (window2 === null) return;
         const next = claimPoll(this.#started().context.store, window2, at2);
-        if (next === "ends") this.#notify({ kind: "wake", reason: "claims" });
+        if (next === "ends") this.#post({ kind: "wake", reason: "claims" });
         else this.#claimsWake.at(next);
       }
       /** The pump's one wait (row 011-352): an event, or its wake at `at`, whichever comes first. */
@@ -61178,7 +61178,7 @@ var init_scheduler2 = __esm({
         );
       }
       /** Posts `event` (row 011-352): the pump's wait ends. */
-      #notify(event2) {
+      #post(event2) {
         this.#events.push(event2);
         const wake = this.#wake;
         this.#wake = null;
@@ -61196,14 +61196,14 @@ var init_scheduler2 = __esm({
         this.#asked = false;
         if (this.#busy !== null && isBusy(error)) {
           if (!this.#failed) this.#busy.gaveUp(waiting2);
-          this.#notify({ kind: "stalled" });
+          this.#post({ kind: "stalled" });
           return;
         }
         this.#failed = true;
         this.#busy?.abandon();
         this.#note(`scheduler stopped running tiers: ${String(error)}`);
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
-        this.#notify({ kind: "stalled" });
+        this.#post({ kind: "stalled" });
       }
       /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
       #focused() {
