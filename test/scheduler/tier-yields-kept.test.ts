@@ -12,7 +12,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-yields-fixture.js";
+import { heldRun, holdRuns, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-209, `research/issue-91.md` F2 and F3 (spec 011 C15): the daemon
@@ -21,7 +21,9 @@ import { CUT_WITHIN_MS, heldRun, holdRuns, pause, ref, SETTLE_MS } from "./tier-
  * tier that holds a cut file ends. Running and queued lines of its lane
  * name it. A daemon restart keeps none, and the restarted daemon's first
  * tier says so (rule C, `tasks/011-209/notes.md`). The probe's shape: four
- * 200 s files in one tier, two fast files promoted behind it.
+ * 200 s files in one tier, two fast files promoted behind it. Row 011-363:
+ * each daemon's clock is virtual, and the test reads at its quiet point
+ * (`settle`), with no poll or pause.
  */
 const SLOW = [1, 2, 3, 4].map((i) => `test/s${i}.test.ts`);
 const [F, G] = ["f/f.test.ts", "f/g.test.ts"];
@@ -37,7 +39,12 @@ const KEPT =
   /; a yield at \d\d:\d\d:\d\d cut 4 files after \d+ s of their run \(to a promoted file; estimated remainder \d+ s, over 30 s\)/;
 
 function sideOf(repo: CatchUpRepo): CatchUpSide {
-  return catchUpSide(repo, repo.main, { files: FILES, hostSlots: 8, policy: RUN_MISSING });
+  return catchUpSide(repo, repo.main, {
+    files: FILES,
+    hostSlots: 8,
+    policy: RUN_MISSING,
+    clock: "virtual",
+  });
 }
 
 /** The named files as a named wait of `side`'s daemon reads them now. */
@@ -59,15 +66,15 @@ async function restarted() {
   const repo = catchUpRepo(FILES);
   const side = sideOf(repo);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await settle(side);
   const base = side.runner.runs.length;
   const hold = holdRuns(side.runner, (path) => SLOW.includes(path));
   await side.edit("watch", "src/s.ts", "f.config.json");
   const first = await heldRun(side, SLOW[0] ?? "", base);
   await side.scheduler.promote(PROMOTED, 60_000);
-  await expect.poll(() => first.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-  const cutAt = side.runner.runs.length;
-  const second = await heldRun(side, SLOW[0] ?? "", cutAt);
+  await settle(side);
+  expect(first.cancelled).toBe(true);
+  const second = await heldRun(side, SLOW[0] ?? "", side.runner.runs.indexOf(first) + 1);
   return { repo, side, hold, second };
 }
 
@@ -107,14 +114,14 @@ describe("a named wait names the last yield (row 011-209, issue-91 F2 and F3)", 
       rule: "remainder",
     });
     hold.stop();
-    await side.scheduler.idle();
+    await settle(side);
   });
 
   it("a promotion behind the restarted tier: the 'cut' reason names the yield it means (F3)", async () => {
     const { side, hold, second } = await restarted();
     await side.edit("watch", "src/f.ts");
     await side.scheduler.promote(PROMOTED, 60_000);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(second.cancelled).toBe(false);
     const queued = classLines(named(side), "squeal").find((line) => line.includes("f/f.test.ts"));
     expect(queued).toMatch(
@@ -123,14 +130,14 @@ describe("a named wait names the last yield (row 011-209, issue-91 F2 and F3)", 
       ),
     );
     hold.stop();
-    await side.scheduler.idle();
+    await settle(side);
   });
 
   it("the yield goes once the restarted tier ends", async () => {
     const { side, hold } = await restarted();
     expect(lastOf(side)).not.toBeNull();
     hold.stop();
-    await side.scheduler.idle();
+    await settle(side);
     expect(lastOf(side)).toBeNull();
     expect(classLines(named(side), "squeal").join("\n")).not.toMatch(/a yield at/);
   });
@@ -145,6 +152,9 @@ describe("a named wait names the last yield (row 011-209, issue-91 F2 and F3)", 
     const again = holdRuns(next.runner, (path) => SLOW.includes(path));
     await next.scheduler.start();
     await heldRun(next, SLOW[0] ?? "", 0);
+    // Row 011-301: the predecessor rested before its stop, so F and G kept their results and
+    // no tier of the lane ran and ended here first (rule C's input).
+    expect(next.runner.runs.map((run) => run.files.map((f) => f.path))).toEqual([SLOW]);
     expect(lastOf(next)).toBeNull();
     const [, running] = classLines(named(next), "squeal");
     expect(running).not.toMatch(/a yield at/);
@@ -152,6 +162,6 @@ describe("a named wait names the last yield (row 011-209, issue-91 F2 and F3)", 
       /^ {2}4 in the vitest tier of 4 test files running since \S+; no yield kept since the daemon started at \d\d:\d\d:\d\d: test\/s1/,
     );
     again.stop();
-    await next.scheduler.idle();
+    await settle(next);
   });
 });
