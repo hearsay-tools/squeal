@@ -16,6 +16,7 @@ import {
 import { shortText, stoppingText } from "../status/stopping.js";
 import type { Delta } from "../types/delivery.js";
 import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/status.js";
+import { ownCountText } from "./late-format.js";
 import { installSentences } from "./provenance.js";
 
 /*
@@ -150,41 +151,36 @@ function holdsText(header: StatusHeader, command: string): string {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 
-/** The validities a news header counts: those that need a run or a wait. */
+/** The validities beside `current` the full form counts. */
 const ACTIONABLE = ["pending", "stale", "unknown"] as const;
 
 /**
  * Task 001-407: the news form drops the current count, the inherited
- * sentence and the checkpoint sentence, and counts only what is not zero:
- * `Revision 12 (changed src/a.ts): 3 pending (2 tests, 1 test file loaded).`
- * Row 011-205: with no such check, the test files without checks alone, so
- * "no check pending, stale or unknown" means that none of them is either.
- * Row 011-262 (gh-105): it names the changed paths as the full form does, so
- * an agent sees why checks re-ran.
+ * sentence and the checkpoint sentence. Row 005-93 (c): it counts the test
+ * files the consumer's own edits affect in place of the worktree's queue
+ * (`Revision 12 (changed src/a.ts): 3 of the 9 test files your edits affect
+ * have not run.`); a consumer with no edit since its count began gets no
+ * count, so the line ends after the changed paths. While the consumer has
+ * owed files, the late message says the late-feed and unlisted sentences.
+ * `squeal status` keeps the worktree's counts. Row 011-262 (gh-105): it names
+ * the changed paths as the full form does, so an agent sees why checks re-ran.
  */
-function newsLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
+function newsLine(
+  header: StatusHeader,
+  command: string,
+  told: Pick<Delta, "countsOwed" | "ownEdits">,
+): string {
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return unlisted;
-  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
   const revision = revisionPrefix(header);
   // Row 011-205: the first delivery after the listing to a consumer registered before it.
-  if (owed !== undefined) {
-    return `${revision}${fullCounts(header, owed)}${incompleteText(header)}${daemonText(header, command)}`;
+  if (told.countsOwed !== undefined) {
+    return `${revision}${fullCounts(header, told.countsOwed)}${incompleteText(header)}${daemonText(header, command)}`;
   }
-  const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map((v) =>
-    countedText(counts[v], v, fileLevel?.[v]),
-  );
-  const without = (["pending", "unknown"] as const)
-    .filter((v) => files[v] > 0)
-    .map((v) => `${files[v]} ${v}`)
-    .join(", ");
-  const news =
-    actionable.length > 0
-      ? `${actionable.join(", ")}.${without === "" ? "" : ` Test files without checks: ${without}.`}`
-      : without === ""
-        ? "no check pending, stale or unknown."
-        : `test files without checks: ${without}.`;
-  return `${revision}${news}${incompleteText(header)}${daemonText(header, command)}`;
+  const own = told.ownEdits;
+  const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
+  const delays = own !== undefined && own.owed > 0 ? "" : incompleteText(header);
+  return `${line}${delays}${daemonText(header, command)}`;
 }
 
 /**
@@ -203,7 +199,7 @@ function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefine
  * files (spec 004 D8). The news form carries the slow-tier line only when
  * `told.slowTierChanged`: the slow tier's state differs from what the
  * consumer was last shown (task 001-407); and the full counts once, when
- * `told.countsOwed` (row 011-205). Row 019-16 (spec 019 D5, D6), with a
+ * `told.countsOwed` (row 011-205), and else the own count of `told.ownEdits` (row 005-93). Row 019-16 (spec 019 D5, D6), with a
  * `checks` key only: a line per configured group not all current, which
  * the news form carries when `told.groupTiersChanged`; then the newest
  * commit report's line, when `told.commitChanged` (status prints it always).
@@ -212,12 +208,13 @@ export function headerLines(
   header: StatusHeader,
   command: string,
   form: HeaderForm = "full",
-  told: Pick<Delta, "slowTierChanged" | "countsOwed" | "groupTiersChanged" | "commitChanged"> = {},
+  told: Pick<
+    Delta,
+    "slowTierChanged" | "countsOwed" | "groupTiersChanged" | "commitChanged" | "ownEdits"
+  > = {},
 ): string[] {
   const line =
-    form === "full"
-      ? fullLine(header, command, told.countsOwed)
-      : newsLine(header, command, told.countsOwed);
+    form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
   const groups =
     form === "full"

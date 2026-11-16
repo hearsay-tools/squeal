@@ -16,10 +16,13 @@ import { check, FILE, freshStore, result, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 
 /*
- * Tasks 001-223 and 001-224 (spec 005 D6, proposals a and c): the first
- * delivery after a consumer's first edit says Squeal saw it and how many test
- * files it queued, once; once every test file its edits re-keyed is no
- * longer pending, the next delivery says so, once.
+ * Task 001-224 (spec 005 D6, proposal c): the first delivery after a
+ * consumer's first edit says Squeal saw it and how many test files it
+ * queued, once. Row 005-93 (c), replacing 001-223's settled line: a news
+ * header counts the test files the consumer's edits affect; once every one
+ * has run, it says so, and edits count again from that revision. Revisions
+ * here are recorded now, so no result is late (row 005-93 parts 2 and 3:
+ * `late.test.ts`).
  */
 
 const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
@@ -31,7 +34,8 @@ const A = check("a");
 const B = check("b", OTHER_FILE);
 const NONE = { checkpointId: null };
 const SAW = /Squeal saw your edit and queued (\d+) test files?; results arrive/;
-const SETTLED = /your edits since revision \d+ re-keyed (is|are) current\./;
+const ALL_RAN = /your edits affect (?:has run|have all run)\./;
+const NOT_RUN = /your edits affect (?:has|have) not run\./;
 
 let store: Store;
 let sink: StateSink;
@@ -72,7 +76,7 @@ function resolved(file: TestFileRef): void {
 function edit(paths: readonly string[], refinedTo = Number.NaN): void {
   revision = store.revisions.append({
     worktreeId: WT,
-    createdAt: 1,
+    createdAt: Date.now(),
     head: null,
     dirty: true,
     trigger: "watch",
@@ -196,29 +200,33 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
   });
 });
 
-describe("once the consumer's edits are settled (task 001-223)", () => {
+describe("the own count in a news header (row 005-93 c, replacing 001-223)", () => {
   async function sawEdit(): Promise<void> {
     await delivery.register(C1);
     editA();
     expect(await text()).toMatch(SAW);
   }
 
-  it("says nothing while a file the edits re-keyed is pending", async () => {
+  it("counts a file the edits affect as not run while it is pending", async () => {
     await sawEdit();
     otherNews("b2");
-    expect(await text()).not.toMatch(SETTLED);
+    const said = await text();
+    expect(said).toContain(
+      "Revision 1 (changed src/a.ts): the 1 test file your edits affect has not run.",
+    );
+    expect(said).not.toMatch(ALL_RAN);
   });
 
-  it("says so on the next delivery once every one is current, then never again", async () => {
+  it("says once every one has run, on the next delivery with news, and then counts from there", async () => {
     await sawEdit();
     finishA();
     expect(await text()).toBeNull();
     otherNews("b2");
-    expect(await text()).toContain(
-      "The test file your edits since revision 0 re-keyed is current.",
-    );
+    expect(await text()).toContain(": the 1 test file your edits affect has run.");
     otherNews("b3");
-    expect(await text()).not.toMatch(SETTLED);
+    const next = await text();
+    expect(next).toContain("Revision 1 (changed src/a.ts).");
+    expect(next).not.toMatch(/your edits affect/);
   });
 
   it("is held by a file the edits re-keyed and moved back before its result (review wave 13u, B1)", async () => {
@@ -236,13 +244,11 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
     moved(NEVER_RUN, first);
     finishA();
     otherNews("b2");
-    expect(await text()).not.toMatch(SETTLED);
+    expect(await text()).toContain("1 of the 2 test files your edits affect has not run.");
     key(NEVER_RUN, "d0");
     resolved(NEVER_RUN);
     otherNews("b3");
-    expect(await text()).toContain(
-      "All 2 test files your edits since revision 0 re-keyed are current.",
-    );
+    expect(await text()).toContain("the 2 test files your edits affect have all run.");
   });
 
   it("is not held by a backlog file whose key the edits did not move", async () => {
@@ -250,59 +256,33 @@ describe("once the consumer's edits are settled (task 001-223)", () => {
     key(BACKLOG, "c1", "running");
     finishA();
     otherNews("b2");
-    expect(await text()).toMatch(SETTLED);
+    expect(await text()).toMatch(ALL_RAN);
   });
 
-  it("says it again for later edits, counted from the last time", async () => {
+  it("counts later edits from the revision it said all had run", async () => {
     await sawEdit();
     finishA();
     otherNews("b2");
-    expect(await text()).toMatch(SETTLED);
-    const settledAt = revision;
+    expect(await text()).toMatch(ALL_RAN);
     editA();
     otherNews("b3");
-    expect(await text()).not.toMatch(SETTLED);
+    expect(await text()).toMatch(NOT_RUN);
     finishA();
     otherNews("b4");
-    expect(await text()).toContain(`your edits since revision ${settledAt} re-keyed is current.`);
+    expect(await text()).toContain("the 1 test file your edits affect has run.");
   });
 
-  it("names the files that ended with no result", async () => {
-    await sawEdit();
-    key(FILE, `k${revision + 1}`);
-    sink.markUnknown(WT, revision, [FILE], "runner crashed");
-    resolved(FILE);
-    otherNews("b2");
-    expect(await text()).toContain(
-      "The test file your edits since revision 0 re-keyed finished: 0 current, 1 with no result (unknown).",
-    );
-  });
-
-  it("merges with the first edit's line when both land in one delivery", async () => {
+  it("says only that a pass stays silent when the first edit's files already ran", async () => {
     await delivery.register(C1);
     edit(["src/a.ts"]);
     moved(FILE);
     finishA();
     const said = await text();
-    expect(said).toContain(
-      "Squeal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.",
-    );
+    expect(said).toContain("the 1 test file your edits affect has run.");
+    expect(said).toContain("Squeal saw your edit; passing results stay silent.");
     expect(said).not.toMatch(SAW);
-    expect(said).not.toMatch(SETTLED);
     otherNews("b2");
-    expect(await text()).not.toMatch(/Squeal saw your edit|re-keyed/);
-  });
-
-  it("names the merged line's files with no result", async () => {
-    await delivery.register(C1);
-    edit(["src/a.ts"]);
-    moved(FILE);
-    key(FILE, `k${revision + 1}`);
-    sink.markUnknown(WT, revision, [FILE], "runner crashed");
-    resolved(FILE);
-    expect(await text()).toContain(
-      "Squeal saw your edit; of the 1 test file it re-keyed, 0 current and 1 with no result (unknown); passing results stay silent.",
-    );
+    expect(await text()).not.toMatch(/Squeal saw your edit|re-keyed|your edits affect/);
   });
 });
 
@@ -390,7 +370,7 @@ describe("the scheduler's re-key record, as delivery prunes it", () => {
     key(NEVER_RUN, "d1");
     resolved(NEVER_RUN);
     otherNews("b2");
-    expect(await text()).toMatch(SETTLED);
+    expect(await text()).toMatch(ALL_RAN);
     expect(readRekeyed(store, WT).size).toBe(0);
     editA();
     await delivery.unregister(C1);

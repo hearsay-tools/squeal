@@ -18,6 +18,7 @@ import type {
   ReplacedFailure,
   ResultRecord,
   RunRecord,
+  RunTiming,
   TestFileKeyRecord,
   TestFileRecord,
   UnknownRun,
@@ -289,6 +290,12 @@ export interface RunRepo {
    * (task 001-263).
    */
   inFlight(worktreeId: WorktreeId, startedSince: EpochMs): readonly RunRecord[];
+  /**
+   * Row 005-93: the worktree's newest `limit` completed runs the daemon scheduled on its own
+   * (no checkpoint), newest first, each with its test files' durations from its own results,
+   * what the late bound measures this worktree's start delay and overhead from.
+   */
+  recentTimings(worktreeId: WorktreeId, limit: number): readonly RunTiming[];
 }
 
 /** Spec 001 D8: "`checkpoints` (one per `run --all` or baseline request, referenced by its tier runs)". */
@@ -373,6 +380,7 @@ export const WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
+  editsLate: { prefix: "edits-late:", owner: "delivery/late" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
   departed: { prefix: "departed:", owner: "delivery/expiry" },
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },

@@ -10,7 +10,9 @@ import type { SlowTierState, StatusHeader } from "../../src/core/types/status.js
  * slow-tier line unless the slow tier's state changed. The title, daemon
  * liveness, install notes, edit lines and FAIL/PASS blocks stay;
  * registration, Stop and status keep the full block. Row 011-262 (gh-105):
- * the changed paths stay too, as the full block names them.
+ * the changed paths stay too, as the full block names them. Row 005-93 (c):
+ * the counts are the consumer's own, the test files its edits affect, in
+ * place of the worktree's queue; with no edit since its count began, none.
  */
 
 const consumer = { worktreeId: "wt-a", sessionId: "s1", agentId: "main" };
@@ -49,7 +51,11 @@ const regression: TransitionEntry = {
   location: { path: "src/auth.ts", line: 42, column: 7 },
 };
 
-function delta(h: StatusHeader = header, extra: Partial<Delta> = {}): Delta {
+/** Row 005-93 (c): 3 of the 4 test files the consumer's edits affect have no result yet. */
+const OWN = { ownEdits: { files: 4, owed: 3 } };
+const COUNT = "3 of the 4 test files your edits affect have not run.";
+
+function delta(h: StatusHeader = header, extra: Partial<Delta> = OWN): Delta {
   return {
     schemaVersion: 1,
     consumer,
@@ -64,14 +70,14 @@ function delta(h: StatusHeader = header, extra: Partial<Delta> = {}): Delta {
 const REVISION = "Revision 184 (changed src/auth.ts, src/parse.ts):";
 
 const lines = (text: string) => text.split("\n");
-const headerLine = (h: StatusHeader, extra: Partial<Delta> = {}) =>
+const headerLine = (h: StatusHeader, extra: Partial<Delta> = OWN) =>
   lines(formatDelta(delta(h, extra)))[1];
 
 describe("a change delivery's header sends the news (task 001-407)", () => {
-  it("is the revision and the non-zero actionable counts, each split into its parts", () => {
+  it("is the revision and the consumer's own count", () => {
     expect(lines(formatDelta(delta()))).toEqual([
       "SQUEAL · 1 check changed (1 test) at revision 184",
-      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`,
+      `${REVISION} ${COUNT}`,
       "",
       "FAIL  tests/auth.test.ts > login",
       "      PASS -> FAIL, seen by Squeal's run at revision 184",
@@ -92,7 +98,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     );
     expect(named([])).toBe("Revision 184");
     const { changedPaths: _, ...unnamed } = header;
-    expect(headerLine(unnamed)).toMatch(/^Revision 184: /);
+    expect(headerLine(unnamed)).toBe(`Revision 184: ${COUNT}`);
   });
 
   it("marks each named path git ignores, in the news and the full form", () => {
@@ -105,8 +111,29 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     expect(full?.slice(0, named.length)).toBe(named);
   });
 
-  it("drops the current count and the zero counts", () => {
-    expect(headerLine(header)).not.toMatch(/current|unknown|\b0 /);
+  it("drops the worktree's counts: current, pending, stale, unknown and the test files without checks", () => {
+    const h = { ...header, testFilesWithoutChecks: { pending: 4, unknown: 97 } };
+    expect(headerLine(h)).toBe(`${REVISION} ${COUNT}`);
+    expect(headerLine(h)).not.toMatch(/current|unknown|pending|stale|without checks/);
+  });
+
+  it("says when every test file the consumer's edits affect has run", () => {
+    expect(headerLine(header, { ownEdits: { files: 9, owed: 0 } })).toBe(
+      `${REVISION} the 9 test files your edits affect have all run.`,
+    );
+    expect(headerLine(header, { ownEdits: { files: 1, owed: 0 } })).toBe(
+      `${REVISION} the 1 test file your edits affect has run.`,
+    );
+    expect(headerLine(header, { ownEdits: { files: 1, owed: 1 } })).toBe(
+      `${REVISION} the 1 test file your edits affect has not run.`,
+    );
+    expect(headerLine(header, { ownEdits: { files: 5, owed: 1 } })).toBe(
+      `${REVISION} 1 of the 5 test files your edits affect has not run.`,
+    );
+  });
+
+  it("gives a consumer with no edit since its count began no count: it ends after the changed paths", () => {
+    expect(headerLine(header, {})).toBe("Revision 184 (changed src/auth.ts, src/parse.ts).");
   });
 
   it("drops the Inherited sentence", () => {
@@ -122,62 +149,10 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     expect(headerLine(completed)).not.toContain("checkpoint");
   });
 
-  it("says nothing is pending, stale or unknown when all is current", () => {
-    const counts = { current: 50, pending: 0, stale: 0, unknown: 0 };
-    expect(headerLine({ ...header, counts, fileLevelCounts: { ...counts, current: 4 } })).toBe(
-      `${REVISION} no check pending, stale or unknown.`,
-    );
-  });
-
-  // Row 011-205: "no check pending, stale or unknown" never stands beside test files without checks.
-  it("names the test files without checks alone when no check is pending, stale or unknown", () => {
-    const counts = { current: 50, pending: 0, stale: 0, unknown: 0 };
-    const fileLevelCounts = { ...counts, current: 4 };
-    const h = { ...header, counts, fileLevelCounts };
-    expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 1, unknown: 97 } })).toBe(
-      `${REVISION} test files without checks: 1 pending, 97 unknown.`,
-    );
-    expect(headerLine({ ...h, testFilesWithoutChecks: { pending: 0, unknown: 97 } })).toBe(
-      `${REVISION} test files without checks: 97 unknown.`,
-    );
-  });
-
-  it("says no check is pending, stale or unknown only when no test file is without checks", () => {
-    const zero = { current: 50, pending: 0, stale: 0, unknown: 0 };
-    for (const counts of [
-      zero,
-      { ...zero, pending: 1 },
-      { ...zero, stale: 1 },
-      { ...zero, unknown: 1 },
-    ])
-      for (const [pending, unknown] of [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-        [2, 3],
-      ] as const)
-        for (const extra of [{}, { countsOwed: { lookupOnly: true } }])
-          for (const form of ["news", "full"] as const) {
-            const h = {
-              ...header,
-              counts,
-              fileLevelCounts: { ...zero, current: 4 },
-              testFilesWithoutChecks: { pending, unknown },
-            };
-            const said = formatDelta(delta(h, extra), "squeal", 10_000, form).includes(
-              "no check pending, stale or unknown",
-            );
-            const none = counts.pending + counts.stale + counts.unknown + pending + unknown === 0;
-            expect(said, JSON.stringify({ counts, pending, unknown, extra, form })).toBe(
-              none && form === "news" && !("countsOwed" in extra),
-            );
-          }
-  });
-
-  it("keeps the test files without checks, only their non-zero classes", () => {
-    const h = { ...header, testFilesWithoutChecks: { pending: 4, unknown: 0 } };
-    expect(headerLine(h)).toBe(
-      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). Test files without checks: 4 pending.`,
+  it("keeps the full counts once when the consumer is owed them (row 011-205)", () => {
+    const h = { ...header, testFilesWithoutChecks: { pending: 1, unknown: 97 } };
+    expect(headerLine(h, { ...OWN, countsOwed: { lookupOnly: true } })).toBe(
+      `${REVISION} 47 current (43 tests, 4 test files loaded), 3 pending (2 tests, 1 test file loaded), 1 stale (1 test), 0 unknown. Inherited: 30 of 47 current. Test files without checks: 1 pending, 97 unknown; the baseline is lookup-only, so it queued none of them.`,
     );
   });
 
@@ -188,18 +163,21 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     );
   });
 
-  it("keeps the unlisted and the runner-part sentences, which say the counts are not complete", () => {
+  it("keeps the unlisted and the runner-part sentences while the consumer owes no file", () => {
     // Row 005-90: unlisted, the sentence replaces the counts.
     expect(headerLine({ ...header, testFilesListed: false })).toBe(
       "Revision 184 (changed src/auth.ts, src/parse.ts): Squeal is still starting in this worktree and has no results yet. " +
         "`squeal status --wait 60000 <path>...` waits for the files you change.",
     );
     // Row 011-311: a header with no runners named says "the test runner".
-    expect(headerLine({ ...header, runnerPartPending: true })).toContain(
+    expect(headerLine({ ...header, runnerPartPending: true }, {})).toContain(
       " The test runner has not yet listed the test files of revision 184, so new test files are not counted.",
     );
     expect(
-      headerLine({ ...header, runnerPartPending: true, listingRunners: ["Vitest", "node:test"] }),
+      headerLine(
+        { ...header, runnerPartPending: true, listingRunners: ["Vitest", "node:test"] },
+        { ownEdits: { files: 2, owed: 0 } },
+      ),
     ).toContain(
       " Vitest and node:test have not yet listed the test files of revision 184, so new test files are not counted.",
     );
@@ -208,13 +186,13 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("keeps daemon liveness", () => {
     const daemon = { state: "down" as const, since: Date.UTC(2026, 9, 4, 14, 2, 0) };
     expect(headerLine({ ...header, daemon })).toBe(
-      `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test). ` +
+      `${REVISION} ${COUNT} ` +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
   });
 
   it("keeps the install notes", () => {
-    const counts = `${REVISION} 3 pending (2 tests, 1 test file loaded), 1 stale (1 test).`;
+    const counts = `${REVISION} ${COUNT}`;
     expect(headerLine({ ...header, installedLockfile: "package-lock.json" })).toBe(
       `${counts} These results follow a dependency install (package-lock.json changed).`,
     );

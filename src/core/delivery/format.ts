@@ -24,7 +24,6 @@ import type { CheckId } from "../types/check.js";
 import type {
   Delta,
   DeltaEntry,
-  EditsSettled,
   Registration,
   RetiredEntry,
   TransitionEntry,
@@ -43,6 +42,7 @@ import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { type HeaderForm, headerLines } from "./header.js";
+import { caughtUpLine, lateLine } from "./late-format.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
 import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 
@@ -438,11 +438,14 @@ export function quietEditsText(command: string): string {
  * Task 001-224, decided by the human: said once per consumer, after its
  * first edit. With no test group at `edit` (row 019-49), the files wait for
  * their groups' moments, so nothing says they were queued or that a pass
- * stays silent.
+ * stays silent. Row 005-93: when every file it affects already ran (`done`),
+ * the header's own count says so, and the line says only that a pass stays
+ * silent.
  */
-export function sawEditLine(queued: number, quiet: string | null = null): string {
+export function sawEditLine(queued: number, quiet: string | null = null, done = false): string {
+  if (done) return `Squeal saw your edit; ${quiet ?? "passing results stay silent"}.`;
   if (quiet !== null) {
-    return `Squeal saw your edit, which re-keyed ${plural(queued, "test file")}; ${quiet}.`;
+    return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
   return (
     `Squeal saw your edit and queued ${plural(queued, "test file")}; ` +
@@ -450,44 +453,16 @@ export function sawEditLine(queued: number, quiet: string | null = null): string
   );
 }
 
-/** Task 001-223: once none of the test files the consumer's edits re-keyed is pending. */
-export function settledLine({ since, files, unknown }: EditsSettled): string {
-  const which = `${files === 1 ? "The test file" : `All ${files} test files`} your edits since revision ${since} re-keyed`;
-  if (unknown === 0) return `${which} ${files === 1 ? "is" : "are"} current.`;
-  return `${which} finished: ${files - unknown} current, ${unknown} with no result (unknown).`;
-}
-
-/**
- * Tasks 001-223 and 001-224 in one delivery: the edit's files are already
- * settled, so "results arrive with later tool calls" would contradict them.
- * With no test group at `edit` (row 019-49), `quiet` replaces the silence
- * clause.
- */
-export function sawSettledLine(
-  { files, unknown }: EditsSettled,
-  quiet: string | null = null,
-): string {
-  const head = "Squeal saw your edit; ";
-  const tail = quiet === null ? "passing results stay silent." : `${quiet}.`;
-  if (unknown === 0) {
-    const which = files === 1 ? "the 1 test file" : `all ${files} test files`;
-    return `${head}${which} it re-keyed ${files === 1 ? "is" : "are"} current, and ${tail}`;
-  }
-  return (
-    `${head}of the ${plural(files, "test file")} it re-keyed, ${files - unknown} current and ` +
-    `${unknown} with no result (unknown); ${tail}`
-  );
-}
-
-/** The lines on the consumer's own edits, after the header (tasks 001-223, 001-224). */
-function editLines({ sawEdit, editsSettled, header }: Delta, command: string): string[] {
+/** The lines on the consumer's own edits, after the header (001-224; row 005-93's late and caught up). */
+function editLines(
+  { sawEdit, ownEdits, editsLate, caughtUp, header }: Delta,
+  command: string,
+): string[] {
   const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
-  if (sawEdit !== undefined && editsSettled !== undefined) {
-    return [sawSettledLine(editsSettled, quiet)];
-  }
   return [
-    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued, quiet)]),
-    ...(editsSettled === undefined ? [] : [settledLine(editsSettled)]),
+    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)]),
+    ...(editsLate === undefined ? [] : [lateLine(editsLate, command)]),
+    ...(caughtUp === undefined ? [] : [caughtUpLine(caughtUp)]),
   ];
 }
 
