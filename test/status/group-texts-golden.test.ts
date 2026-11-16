@@ -75,7 +75,7 @@ describe("texts without a `checks` key are today's (019-16 golden)", () => {
           "Slow tier: 2 test files; 1 current at revision 2; running test/e2e/b.test.ts since <clock> (last run 4 min). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for its result.",
         ],
         "news": [
-          "Revision 3: test files without checks: 2 pending.",
+          "Revision 3.",
           "Slow tier: 2 test files; 1 current at revision 2; running test/e2e/b.test.ts since <clock> (last run 4 min). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for its result.",
         ],
         "status": "Revision: 3
@@ -101,7 +101,7 @@ describe("texts without a `checks` key are today's (019-16 golden)", () => {
           "Revision 3: 1 current (1 test), 0 pending, 0 stale, 0 unknown. Test files without checks: 2 pending, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 3; \`squeal run --all\` requests one).",
         ],
         "news": [
-          "Revision 3: test files without checks: 2 pending.",
+          "Revision 3.",
         ],
         "status": "Revision: 3
       Known failures: 0; not current: 2 of 3 test files (1 running, 1 queued)

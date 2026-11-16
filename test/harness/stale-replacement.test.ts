@@ -24,7 +24,7 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 const STALE = Date.UTC(2026, 0, 2, 14, 2);
 const DOWN = new RegExp(
   "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
-    "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+    "Revision 1 \\(changed src/math\\.ts\\)\\. " +
     "The daemon's heartbeat is late: the last one was \\d+ (?:s|min|h) ago, at 2026-01-02T14:02:00\\.000Z; " +
     "the daemon may be busy or stopped; results are as of revision 1\\.$",
 );

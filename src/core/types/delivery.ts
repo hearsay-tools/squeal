@@ -248,8 +248,16 @@ export interface Delta {
    * starts deliver for it alone; a Stop only beside other news.
    */
   readonly sawEdit?: { readonly queued: number };
-  /** Task 001-223: set once every test file the consumer's edits re-keyed is no longer pending. */
+  /**
+   * Task 001-223: set once every test file the consumer's edits re-keyed is no longer pending.
+   * Not set since row 005-93: the own count (`ownEdits`) says it.
+   */
   readonly editsSettled?: EditsSettled;
+  /**
+   * Row 005-93 (c): the test files the consumer's edits affect since its count began, for the
+   * news header in place of the worktree's queue. Absent for a consumer with no edit since.
+   */
+  readonly ownEdits?: OwnEdits;
   /**
    * Task 001-407: the slow tier's state differs from what this consumer was
    * last shown, so a change delivery carries the slow-tier line.
@@ -298,6 +306,16 @@ export interface EditsSettled {
   readonly files: number;
   /** Of `files`, those with an unknown check: no result. */
   readonly unknown: number;
+}
+
+/**
+ * Row 005-93 (c): of the `files` the consumer's edits affect, `owed` have no result yet and
+ * `unknown` ran with no result (review 0.1.530 B4); absent reads as 0.
+ */
+export interface OwnEdits {
+  readonly files: number;
+  readonly owed: number;
+  readonly unknown?: number;
 }
 
 /** Options of `HarnessDelivery.onToolBoundary`. */

@@ -109,7 +109,8 @@ describe("the counts after the listing (row 011-205)", () => {
     flip();
     const later = await boundary();
     expect(later.countsOwed).toBeUndefined();
-    expect(headerLine(later)).toBe("Revision 0: test files without checks: 1 unknown.");
+    // Row 005-93 (c): later news counts only the consumer's own edits, none here.
+    expect(headerLine(later)).toBe("Revision 0.");
   });
 
   it("stay owed while no delivery carried them", async () => {
@@ -164,7 +165,7 @@ describe("the counts after the listing (row 011-205)", () => {
     flip();
     const d = await boundary(C2);
     expect(d.countsOwed).toBeUndefined();
-    expect(headerLine(d)).toBe("Revision 0: test files without checks: 1 unknown.");
+    expect(headerLine(d)).toBe("Revision 0.");
     expect(store.meta.get(countsOwedMetaKey(WT))).toBeNull();
   });
 

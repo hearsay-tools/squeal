@@ -20,9 +20,12 @@ const ADDS = "test/math.test.ts > math > adds";
 const quiet = (s: { knownFailures: readonly unknown[] }) => s.knownFailures.length === 0;
 const failing = (s: { knownFailures: readonly { validity: string }[] }) =>
   s.knownFailures.length === 1 && s.knownFailures[0]?.validity === "current";
-/** The first delivery after the session's first edit, its one test file already current. */
-const SAW_EDIT =
-  "Squeal saw your edit; the 1 test file it re-keyed is current, and passing results stay silent.";
+/**
+ * The first delivery after the session's first edit, its one test file already current. Row
+ * 005-93: the news header's own count says it ran; the line says only that a pass is silent.
+ */
+const SAW_EDIT = "Squeal saw your edit; passing results stay silent.";
+const RAN = ": the 1 test file your edits affect has run.";
 
 describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
   it("delivers one PASS -> FAIL and one FAIL -> PASS, nothing in between", async (ctx) => {
@@ -49,9 +52,10 @@ describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {
     expect(saw).toMatchObject({ code: 0, stderr: "" });
     // Row 005-91 (c): titled by the edit line, no longer the revision alone.
     expect(saw.text).toMatch(
-      new RegExp(`^SQUEAL · your edits' test files are current at revision ${same.revision}\n`),
+      new RegExp(`^SQUEAL · your edit queued 1 test file at revision ${same.revision}\n`),
     );
     expect(saw.text).toContain(SAW_EDIT);
+    expect(saw.text).toContain(RAN);
     expect(saw.text).not.toMatch(/PASS ->|FAIL ->/);
     expect((await e.hook("post-tool-batch", e.main)).stdout).toBe("");
     const again = await e.edit(e.main, "math", `${MATH()}// again\n`, quiet);

@@ -376,7 +376,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(commit === undefined ? {} : { commitChanged: true as const }),
         ...countsOwed,
         ...(sawEdit === undefined ? {} : { sawEdit }),
-        ...(notes?.editsSettled === undefined ? {} : { editsSettled: notes.editsSettled }),
+        // Row 005-93 (c): the news header counts the consumer's own test files.
+        ...(notes?.own === undefined ? {} : { ownEdits: notes.own }),
         ...sideParts(code, lint, states),
       };
     });

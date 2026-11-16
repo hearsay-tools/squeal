@@ -52,16 +52,6 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     );
   });
 
-  it("names the edits' test files once they are settled", () => {
-    const settled = { since: 3, files: 2, unknown: 0 };
-    expect(titleOf({ editsSettled: settled })).toBe(
-      "SQUEAL · your edits' test files are current at revision 5",
-    );
-    expect(titleOf({ sawEdit: { queued: 2 }, editsSettled: { ...settled, unknown: 1 } })).toBe(
-      "SQUEAL · your edits' test files finished at revision 5",
-    );
-  });
-
   it("names the owed counts, a group's kind and a commit", () => {
     expect(titleOf({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } })).toBe(
       "SQUEAL · your edit queued 2 test files; the counts after the listing at revision 5",
@@ -80,7 +70,6 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     const groups = { ...header, groupTiers: [browser(0, 1)] };
     for (const parts of [
       { sawEdit: { queued: 2 } },
-      { editsSettled: { since: 1, files: 1, unknown: 0 } },
       { sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] },
     ]) {
       expect(titleOf(parts, groups)).not.toBe("SQUEAL · revision 5");

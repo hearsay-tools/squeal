@@ -55,25 +55,19 @@ const QUIET =
 describe("the edit lines with no test group at edit (019-49)", () => {
   const quiet = { ...header, noTestsAtEdit: true as const };
 
-  it("say the edit re-keyed files and silence is not a pass, never that they were queued", () => {
+  it("say the edit affects files and silence is not a pass, never that they were queued", () => {
     const text = formatDelta(delta(quiet, { sawEdit: { queued: 2 } }));
-    expect(text).toContain(`Squeal saw your edit, which re-keyed 2 test files; ${QUIET}`);
+    expect(text).toContain(`Squeal saw your edit, which affects 2 test files; ${QUIET}`);
     expect(text).not.toContain("stay silent");
     expect(text).not.toContain("queued 2");
   });
 
-  it("say it beside settled files, and name the CLI as the delivery does", () => {
-    const settled = { since: 6, files: 1, unknown: 0 };
-    const text = formatDelta(delta(quiet, { sawEdit: { queued: 1 }, editsSettled: settled }));
-    expect(text).toContain(
-      `Squeal saw your edit; the 1 test file it re-keyed is current, and ${QUIET}`,
-    );
-    const codex = formatDelta(
-      delta(quiet, { sawEdit: { queued: 2 }, editsSettled: { since: 6, files: 2, unknown: 1 } }),
-      "/x/squeal",
-    );
-    expect(codex).toContain(
-      "of the 2 test files it re-keyed, 1 current and 1 with no result (unknown); no test group runs after each edit, so silence between edits is not a pass; `/x/squeal run <group> <path>... --wait 60000`",
+  // Row 005-93: the own count says the files ran; the line keeps only what silence means.
+  it("say it beside files that already ran, and name the CLI as the delivery does", () => {
+    const ran = { sawEdit: { queued: 1 }, ownEdits: { files: 1, owed: 0 } };
+    expect(formatDelta(delta(quiet, ran))).toContain(`Squeal saw your edit; ${QUIET}`);
+    expect(formatDelta(delta(quiet, ran), "/x/squeal")).toContain(
+      "Squeal saw your edit; no test group runs after each edit, so silence between edits is not a pass; `/x/squeal run <group> <path>... --wait 60000`",
     );
   });
 

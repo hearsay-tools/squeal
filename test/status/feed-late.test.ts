@@ -112,9 +112,7 @@ describe("a late change feed is said (011-200)", () => {
     });
     expect(out.stop).toContain(` ${sentence}`);
     expect(out.registration).toContain(` ${sentence}`);
-    expect(out.news).toBe(
-      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${sentence}`,
-    );
+    expect(out.news).toBe(`Revision ${HEAD} (changed src/a.ts). ${sentence}`);
   });
 
   it("a feed on time changes no byte of any output", async () => {
@@ -167,9 +165,7 @@ describe("a late feed and an unlisted revision are one sentence (011-311)", () =
       expect(occurrences(text, sentence)).toBe(1);
       expect(text).not.toMatch(/runner part|may not be seen|current as of revision/);
     }
-    expect(out.news).toBe(
-      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${sentence}`,
-    );
+    expect(out.news).toBe(`Revision ${HEAD} (changed src/a.ts). ${sentence}`);
   });
 
   it("names the project's runners: pytest alone, then beside Vitest", async () => {
@@ -201,9 +197,7 @@ describe("a late feed and an unlisted revision are one sentence (011-311)", () =
     const lateOut = await outputs(late);
     const lateSentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${HEAD} and earlier.`;
     expect(lateOut.status.split("\n")[1]).toBe(lateSentence);
-    expect(lateOut.news).toBe(
-      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${lateSentence}`,
-    );
+    expect(lateOut.news).toBe(`Revision ${HEAD} (changed src/a.ts). ${lateSentence}`);
     const listing = worktree();
     unlisted(listing);
     const listingOut = await outputs(listing);

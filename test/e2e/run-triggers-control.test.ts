@@ -182,7 +182,29 @@ function loadNamed(text: string): string {
 const accepted = (text: string | null) =>
   text === null
     ? null
-    : contentTitle(noResultsYet(sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"))));
+    : ownCount(
+        contentTitle(
+          noResultsYet(sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"))),
+        ),
+      );
+
+/** 0.1.393's news header with nothing pending, then its merged first-edit and settled line. */
+const SETTLED_NEWS =
+  /^(Revision [^\n]*?): no check pending, stale or unknown\.\nSqueal saw your edit; (?:all (\d+) test files|the 1 test file) it re-keyed (?:are|is) current, and passing results stay silent\.$/m;
+
+/**
+ * Row 005-93 (c), part 5: a news header counts the test files the session's edits affect in
+ * place of the worktree's queue, and the settled line (001-223) is gone. Beside the edit's own
+ * results, with nothing pending, the first-edit line is left out (001-396), so 0.1.393's header
+ * and merged line are one own count: `the 2 test files your edits affect have all run.`
+ */
+function ownCount(text: string): string {
+  return text.replace(SETTLED_NEWS, (_, revision: string, files?: string) =>
+    files === undefined
+      ? `${revision}: the 1 test file your edits affect has run.`
+      : `${revision}: the ${files} test files your edits affect have all run.`,
+  );
+}
 
 /** 0.1.393's sentence and count lines for a worktree whose test files are not listed yet. */
 const UNLISTED =

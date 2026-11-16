@@ -85,7 +85,7 @@ describe("formatDelta", () => {
     expect(formatDelta(delta([regression, recovery]))).toBe(
       [
         "SQUEAL · 2 checks changed (2 tests) at revision 184",
-        "Revision 184: 3 pending, 12 unknown.",
+        "Revision 184.",
         "",
         "FAIL  tests/auth/login.test.ts > login > expired token",
         "      PASS -> FAIL, seen by Squeal's run at revision 184",
@@ -410,14 +410,14 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
   it("titles a delta that carries only a liveness change", () => {
     expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
       "SQUEAL · no daemon is validating at revision 184\n" +
-        "Revision 184: 3 pending, 12 unknown. " +
+        "Revision 184. " +
         "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
     const alive = { state: "alive" as const, lastHeartbeatAt: since };
     expect(
       formatDelta({ ...delta([]), header: { ...header, daemon: alive }, liveness: alive }),
     ).toMatch(
-      /^SQUEAL · a daemon is validating again at revision 184: its heartbeat is current\nRevision 184: /,
+      /^SQUEAL · a daemon is validating again at revision 184: its heartbeat is current\nRevision 184\.$/,
     );
   });
 
@@ -427,7 +427,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
       formatDelta({ ...delta([]), header: { ...down, daemon: late }, liveness: down.daemon }),
     ).toBe(
       "SQUEAL · the daemon's heartbeat is late at revision 184\n" +
-        "Revision 184: 3 pending, 12 unknown. " +
+        "Revision 184. " +
         "The daemon's heartbeat is late: the last one was 14 s ago, at 2026-10-04T14:02:00.000Z; " +
         "the daemon may be busy or stopped; results are as of revision 184.",
     );

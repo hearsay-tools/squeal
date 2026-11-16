@@ -94,7 +94,7 @@ describe("liveness in delivered text", () => {
     expect(context(first)).toMatch(
       new RegExp(
         "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
-          "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+          "Revision 1 \\(changed src/math\\.ts\\)\\. " +
           `The daemon's heartbeat is late: ${lateDetail("2026-01-02T14:02:00.000Z")}; results are as of revision 1\\.$`,
       ),
     );
@@ -212,7 +212,7 @@ describe("a boundary while no daemon validates and none was started", () => {
     expect(context(first)).toMatch(
       new RegExp(
         "^SQUEAL · the daemon's heartbeat is late at revision 1\n" +
-          "Revision 1 \\(changed src/math\\.ts\\): no check pending, stale or unknown\\. " +
+          "Revision 1 \\(changed src/math\\.ts\\)\\. " +
           `The daemon's heartbeat is late: ${lateDetail("2026-01-02T14:02:00.000Z")}; results are as of revision 1\\.\n${LINE}$`,
       ),
     );

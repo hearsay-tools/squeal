@@ -122,7 +122,7 @@ describe("the hook's Not validated line says what status says (row 011-295)", ()
       const stopping = `stopping since ${ISO}`;
       expect(text).toContain(`Daemon: ${stopping} (20 s); nothing validates until its lock frees`);
       expect(lines).toContain(
-        `Revision 1 (changed src/math.ts): no check pending, stale or unknown. The daemon is ${stopping}; nothing validates until its lock frees; results are as of revision 1.`,
+        `Revision 1 (changed src/math.ts). The daemon is ${stopping}; nothing validates until its lock frees; results are as of revision 1.`,
       );
       expect(lines.at(-1)).toBe(
         `Not validated: the daemon is ${stopping}; nothing validates until its lock frees; ${NO_RESULT}`,

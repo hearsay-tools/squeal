@@ -314,6 +314,18 @@ const NEWS =
   /^Revision \d+(?: · [^:]*)?(?: \(changed (?:[^)\n]|\)(?!: ))*\))?: (?:(no check pending, stale or unknown|\d+ (?:pending|stale|unknown)\b[^.]*)\.|(?=test files without checks: ))/m;
 
 /**
+ * From row 005-93 (c), a change delivery's news header counts the test files the session's own
+ * edits affect in place of the worktree's queue: `Revision 12 (changed src/a.ts): 3 of the 9 test
+ * files your edits affect have not run.`, `…: the 1 test file your edits affect has not run.`, or
+ * once none is owed `…: the 9 test files your edits affect have all run.` The files not run are
+ * read as pending; the files that ran with no result (`; 1 with no result (unknown).`) as
+ * unknown. A news header with no count (no edit since its
+ * count began) ends after the changed paths and counts nothing, so it gives no counts.
+ */
+const OWN =
+  /^Revision \d+(?: · [^:]*)?(?: \(changed (?:[^)\n]|\)(?!: ))*\))?: (?:(\d+) of )?the (\d+) test files? your edits affect (?:has run|have all run|(?:has|have) (not) run)(?:; (\d+) with no result \(unknown\))?\./m;
+
+/**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
  * from row 011-26 (011 C6 as amended 2026-10-20): `not current: 8 of 10 test files (2 queued, 6
  * stale), 80 tests (20 queued, 60 stale)`, its test files' parts, then its tests'. A count may
@@ -333,37 +345,65 @@ const NONE_NOT_CURRENT =
 const MORE = /^More: `[^`]*status --full` adds /m;
 
 /**
+ * The counts of a full header, a news header's (001-407) or its own count (row 005-93), as
+ * `{ counts: [pending, stale, unknown], news }`; `null` with no header to count.
+ */
+function headerCounts(t) {
+  const header = HEADER.exec(t);
+  if (header) return { counts: [header[2], header[3], header[4]].map(Number), news: false };
+  const news = NEWS.exec(t);
+  if (news !== null) {
+    const counted = news[1] ?? "";
+    const counts = ["pending", "stale", "unknown"].map((v) =>
+      count(new RegExp(`(\\d+) ${v}\\b`), counted),
+    );
+    return { counts, news: true };
+  }
+  const own = OWN.exec(t);
+  if (own === null) return null;
+  const owed = own[3] === undefined ? 0 : Number(own[1] ?? own[2]);
+  const unknown = Number(own[4] ?? 0);
+  return { counts: [owed, 0, unknown], news: true };
+}
+
+/**
+ * The counts of a status's `Affected checks:` line, or of the not-current clause of a
+ * `Known failures:` line or a wait's verdict line (row 011-26); `null` with neither.
+ */
+function clauseCounts(t) {
+  const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
+  const short = MORE.test(t) && !/^Test files without checks: /m.test(t) && NOT_CURRENT.test(t);
+  if (affected !== undefined && !/^none counted/.test(affected) && !short) {
+    const counts = [
+      count(/(\d+) running/, affected) + count(/(\d+) queued/, affected),
+      count(/(\d+) stale/, affected),
+      count(/(\d+) unknown/, affected),
+    ];
+    return { counts, news: false };
+  }
+  if (NOT_CURRENT.test(t)) {
+    const [, files, tests = ""] = NOT_CURRENT.exec(t);
+    const both = (re) => count(re, files) + count(re, tests);
+    const counts = [
+      both(/(\d+) running/) + both(/(\d+) queued/),
+      both(/(\d+) stale/),
+      both(/(\d+) unknown/),
+    ];
+    return { counts, news: false };
+  }
+  return NONE_NOT_CURRENT.test(t) ? { counts: [0, 0, 0], news: false } : null;
+}
+
+/**
  * Pending, stale and unknown counts in a delivered header, a status or, without either, the
  * not-current clause of a wait's verdict line (row 011-26), or `null` for none. The clause counts
  * test files and tests apart, so a file and its tests both count. Status's default text (row
  * 011-29) has no `Test files without checks:` line, so its counts are its clause's.
  */
 function countsOf(t) {
-  let pending;
-  let stale;
-  let unknown;
-  const header = HEADER.exec(t);
-  const newsMatch = NEWS.exec(t);
-  const news = newsMatch === null ? undefined : (newsMatch[1] ?? "");
-  const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
-  const short = MORE.test(t) && !/^Test files without checks: /m.test(t) && NOT_CURRENT.test(t);
-  if (header) [pending, stale, unknown] = [header[2], header[3], header[4]].map(Number);
-  else if (news !== undefined) {
-    [pending, stale, unknown] = ["pending", "stale", "unknown"].map((v) =>
-      count(new RegExp(`(\\d+) ${v}\\b`), news),
-    );
-  } else if (affected !== undefined && !/^none counted/.test(affected) && !short) {
-    pending = count(/(\d+) running/, affected) + count(/(\d+) queued/, affected);
-    stale = count(/(\d+) stale/, affected);
-    unknown = count(/(\d+) unknown/, affected);
-  } else if (NOT_CURRENT.test(t)) {
-    const [, files, tests = ""] = NOT_CURRENT.exec(t);
-    const both = (re) => count(re, files) + count(re, tests);
-    pending = both(/(\d+) running/) + both(/(\d+) queued/);
-    stale = both(/(\d+) stale/);
-    unknown = both(/(\d+) unknown/);
-  } else if (NONE_NOT_CURRENT.test(t)) [pending, stale, unknown] = [0, 0, 0];
-  else return null;
+  const read = headerCounts(t) ?? clauseCounts(t);
+  if (read === null) return null;
+  let [pending, stale, unknown] = read.counts;
   // Both classes in a full header and a status; a news header names only the non-zero ones. A
   // header ends the sentence with a period, a status with its line (review 001-423, B2). A news
   // header with no check to count starts with it in lower case (row 011-205).
@@ -384,7 +424,7 @@ function countsOf(t) {
   )
     pending++;
   if (/No dependencies are installed|until an install/.test(t)) unknown++;
-  return { pending, stale, unknown, ...(!header && news !== undefined ? { news: true } : {}) };
+  return { pending, stale, unknown, ...(read.news ? { news: true } : {}) };
 }
 
 /** A check as `formatCheck` names it, `[project] path > test` or `path (file-level)`: its file. */

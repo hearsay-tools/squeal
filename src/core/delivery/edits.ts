@@ -5,7 +5,7 @@ import { pruneRekeyed, readRekeyed } from "../scheduler/rekeyed-record.js";
 import { testFileKeyOf } from "../state/derive.js";
 import type { CheckId } from "../types/check.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
-import type { Consumer, EditsSettled } from "../types/delivery.js";
+import type { Consumer, OwnEdits } from "../types/delivery.js";
 import type { KnownState } from "../types/state.js";
 import type { StatusHeader } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
@@ -20,11 +20,11 @@ import { readAll, readSlot, writeSlot } from "./slots.js";
  * keeps in the store for hooks (`readRekeyed`, review wave 13u B1, task
  * 001-238): a file whose latest re-key came after the consumer's edit state
  * began, owed while its earliest unresolved re-key has no result. A key a
- * backlog merely runs again, or a first listing, is never recorded. The
- * settled line waits while any of those files is queued or running again,
- * for example 001-171's confirmation of its edit's new failure at the same
- * key (review wave 13v, B1, task 001-240); `status --wait` holds for no such
- * run (task 001-196).
+ * backlog merely runs again, or a first listing, is never recorded. Row
+ * 005-93 (c): a change delivery's news header counts those files and the
+ * ones owed; once none is owed, the count starts again from that revision.
+ * A confirmation run at the same key after the edit's result (001-171)
+ * owes nothing; `status --wait` holds for no such run (task 001-196).
  *
  * Each consumer keeps the revision its edits are counted from and whether
  * the 001-224 line was said, in one slot. When it leaves, "said" is parked
@@ -38,7 +38,7 @@ export function editsMetaKey(worktreeId: WorktreeId): string {
 }
 
 interface EditState {
-  /** Edits after this revision are the ones not settled yet. */
+  /** Edits after this revision are the ones the own count counts. */
   readonly since: RevisionNumber;
   /** Whether the 001-224 line was said. */
   readonly said: boolean;
@@ -94,20 +94,19 @@ function prune(store: Store, worktreeId: WorktreeId): void {
 /** What a delivery says about the consumer's edits, and what saying it records. */
 export interface EditNotes {
   readonly sawEdit?: { readonly queued: number };
-  readonly editsSettled?: EditsSettled;
-  /** The test files (`testFileId`) the edits re-keyed, the ones `sawEdit` counts. */
+  /** Row 005-93 (c): the own count the news header shows; absent with no file affected. */
+  readonly own?: OwnEdits;
+  /** The test files (`testFileId`) the edits affect, the ones `sawEdit` counts. */
   readonly rekeyed: ReadonlySet<string>;
-  /** Records what was said: 001-224 once, and after a settled line, edits count from its revision. */
+  /** Records what was said: 001-224 once, and once none is owed, edits count from this revision. */
   readonly tell: () => void;
 }
 
 /**
- * The notes on `consumer`'s edits after its edit state's revision, once the
- * runner part of the latest revision is applied (`isRefined`): until
- * then the files it adds have no key. `null` with nothing to say, before any edit, or for a
- * consumer registered before these notes (no edit state). `delivering`
- * says the delivery has other news; without it, and with 001-224 said, only
- * the edit state is read.
+ * The notes on `consumer`'s edits after its edit state's revision. `null` with nothing to say,
+ * before any edit, or for a consumer registered before these notes (no edit state).
+ * `delivering` says the delivery has other news; without it, and with 001-224 said, only the
+ * edit state is read.
  */
 export function editNotes(
   store: Store,
@@ -118,44 +117,77 @@ export function editNotes(
   const state = readState(store, consumer);
   // Once 001-224 was said, only a delivery with other news carries a note.
   if (state === null || (state.said && !delivering)) return null;
-  const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  if (revision <= state.since || !isRefined(store, consumer.worktreeId, revision)) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  const { changed } = changedAfter(
-    store,
-    consumer.worktreeId,
-    { since: state.since, gaps },
-    revision,
-  );
-  if (changed.size === 0) return null;
-  const rows = new Map(
-    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k]),
-  );
-  const rekeyed: TestFileKeyRecord[] = [];
-  let owed = false;
-  for (const [id, entry] of readRekeyed(store, consumer.worktreeId)) {
-    const row = rows.get(id);
-    // An unkeyed file has no result to come.
-    if (row === undefined || row.key === null || entry.last <= state.since) continue;
-    rekeyed.push(row);
-    // Pending for any reason, a confirmation of its edit's result among them (review wave 13v, B1).
-    owed ||= row.pending !== null;
-  }
+  const own = readOwn(store, consumer, state.since, states);
   // An edit that queued nothing (one made while awaiting an install) has no results to come.
-  const sawEdit = state.said || rekeyed.length === 0 ? undefined : { queued: rekeyed.length };
-  const editsSettled = owed ? undefined : settled(state.since, rekeyed, states);
-  if (sawEdit === undefined && editsSettled === undefined) return null;
+  if (own === null || own.files === 0) return null;
+  const sawEdit = state.said ? undefined : { queued: own.files };
+  const moved = own.owed === 0;
   return {
     ...(sawEdit === undefined ? {} : { sawEdit }),
-    ...(editsSettled === undefined ? {} : { editsSettled }),
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
+    own: ownCount(own),
+    rekeyed: own.rekeyed,
     tell: () => {
-      writeState(store, consumer, {
-        since: editsSettled === undefined ? state.since : revision,
-        said: true,
-      });
-      if (editsSettled !== undefined) prune(store, consumer.worktreeId);
+      // Written only when it changes: once per said line, never per quiet delivery.
+      if (!moved && sawEdit === undefined) return;
+      writeState(store, consumer, { since: moved ? own.revision : state.since, said: true });
+      if (moved) prune(store, consumer.worktreeId);
     },
+  };
+}
+
+/** The own count of `own`, its unknown files only when there are any. */
+function ownCount(own: Own): OwnEdits {
+  const count = { files: own.files, owed: own.owed };
+  return own.unknown === 0 ? count : { ...count, unknown: own.unknown };
+}
+
+/** What the consumer's edits since its count began read at the latest revision. */
+interface Own {
+  readonly revision: RevisionNumber;
+  /** The test files the edits affect. */
+  readonly files: number;
+  /** Of `files`, those with no result at their key yet. */
+  readonly owed: number;
+  /** Of `files`, those with an unknown check: no result. */
+  readonly unknown: number;
+  /** The ids (`testFileId`) of the files the edits affect. */
+  readonly rekeyed: ReadonlySet<string>;
+}
+
+/**
+ * The consumer's edits after `since` at the latest revision; `null` with none, or until the
+ * latest revision's runner part is applied (`isRefined`): the files it adds have no key until
+ * then. A file is owed while its re-key has no result at its key (row 005-93).
+ */
+function readOwn(
+  store: Store,
+  consumer: Consumer,
+  since: RevisionNumber,
+  states: readonly KnownState[],
+): Own | null {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since || !isRefined(store, worktreeId, revision)) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed: TestFileKeyRecord[] = [];
+  let owed = 0;
+  for (const [id, entry] of readRekeyed(store, worktreeId)) {
+    const row = rows.get(id);
+    // An unkeyed file has no result to come.
+    if (row === undefined || row.key === null || entry.last <= since) continue;
+    rekeyed.push(row);
+    // Owed while its re-key has no result at its key (row 005-93): a confirmation run at the same
+    // key after the edit's result (001-171) owes nothing.
+    if (entry.open !== null) owed++;
+  }
+  return {
+    revision,
+    files: rekeyed.length,
+    owed,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
   };
 }
 
@@ -163,16 +195,16 @@ export function editNotes(
  * Task 001-396: whether the 001-224 line would sit in the message that is
  * the edit's result. It would say "queued N; results arrive with later tool
  * calls" beside the result of a file it counts and a header with nothing
- * pending: a file re-keyed by the edit can still be pending on its row, a
- * new failure's confirmation run at the same key (001-171), which holds the
- * settled line and no check. The line is then left out, and spent.
+ * pending: a file the edit affects can still be pending on its row, a
+ * new failure's confirmation run at the same key (001-171), which holds no
+ * check. The line is then left out, and spent.
  */
 export function carriesEditResult(
   notes: EditNotes,
   checks: readonly CheckId[],
   header: StatusHeader,
 ): boolean {
-  if (notes.sawEdit === undefined || notes.editsSettled !== undefined) return false;
+  if (notes.sawEdit === undefined) return false;
   const pending =
     header.counts.pending > 0 ||
     header.testFilesWithoutChecks.pending > 0 ||
@@ -180,22 +212,13 @@ export function carriesEditResult(
   return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
 
-/**
- * `rekeyed`, none pending, as the settled line counts them: a file with an
- * unknown check has no result. `undefined` when the edits re-keyed nothing.
- */
-function settled(
-  since: RevisionNumber,
+/** Of `rekeyed`, the files with an unknown check: no result. */
+function unknownFiles(
   rekeyed: readonly TestFileKeyRecord[],
   states: readonly KnownState[],
-): EditsSettled | undefined {
-  if (rekeyed.length === 0) return undefined;
+): number {
   const unknown = new Set(
     states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check)),
   );
-  return {
-    since,
-    files: rekeyed.length,
-    unknown: rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length,
-  };
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
 }

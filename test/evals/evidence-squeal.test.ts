@@ -22,11 +22,19 @@ const header = (s: StatusSnapshot) =>
   formatRegistration({ header: s, knownFailures: s.knownFailures } as never);
 const stop = (s: StatusSnapshot) => statusText(s, s.knownFailures);
 /**
- * A change delivery's header, the news form from 001-407 on: non-zero counts only. It carries
- * the slow-tier line when the slow tier changed, as it does here.
+ * A change delivery's header, the news form from 001-407 on. From row 005-93 (c) it counts the
+ * test files the session's edits affect: here every check the snapshot does not hold current is
+ * one of them, and one more file ran. It carries the slow-tier line when the slow tier changed,
+ * as it does here.
  */
 const news = (s: StatusSnapshot) =>
-  formatDelta({ header: s, entries: [], slowTierChanged: true } as never);
+  formatDelta({ header: s, entries: [], slowTierChanged: true, ownEdits: ownOf(s) } as never);
+/** Row 005-93 (c): the own count `news` gives `s`. */
+function ownOf(s: StatusSnapshot) {
+  const { pending, stale, unknown } = countsOf(s);
+  const owed = pending + stale + unknown;
+  return { files: owed + 1, owed };
+}
 /**
  * Row 011-205: the first change delivery after the listing to a consumer registered before it,
  * the full counts once, with why a lookup-only baseline queued no test file without checks.
@@ -169,7 +177,7 @@ const formatters = [
   // Row 011-26: Stop's status text, its `Known failures:` line naming the failures and what is
   // not current.
   ["Stop's status text", stop, "push"],
-  ["change delivery's news header (task 001-407)", news, "push"],
+  ["change delivery's news header, its own count (row 005-93)", news, "push"],
   ["change delivery's news header owed the counts (row 011-205)", owedNews, "push"],
 ] as const;
 const wrappings = [
@@ -298,9 +306,11 @@ describe("squealEvidence", () => {
           const { failing, ...rest } = want as { failing?: string[] };
           const known = form === "status" ? 0 : s.knownFailures.length;
           const e = squealEvidence(wrap(format(s)), from, known);
+          // Row 005-93 (c): the own count's files not run read as pending.
+          const own = { pending: ownOf(s).owed, stale: 0, unknown: 0 };
           expect(e).toMatchObject({
             revision: 3,
-            ...(form === "status" ? statusCounts(s) : countsOf(s)),
+            ...(form === "status" ? statusCounts(s) : format === news ? own : countsOf(s)),
             ...rest,
             ...(form === "status" && failing ? { failing } : {}),
           });
@@ -309,9 +319,13 @@ describe("squealEvidence", () => {
           // reads no news header, so a news header is held to its reading of the full one.
           const base = mainEvidence(wrap((form === "status" ? status : header)(s)), from, known);
           if (e?.verdict === "pass") expect(base?.verdict).toBe("pass");
-          for (const count of ["pending", "stale", "unknown"] as const)
-            if (typeof base?.[count] === "number")
-              expect(e?.[count], count).toBeGreaterThanOrEqual(base[count]);
+          // The own count does not split what is not run: its sum is held to the full header's.
+          const sum = (c: typeof e) => (c?.pending ?? 0) + (c?.stale ?? 0) + (c?.unknown ?? 0);
+          if (format === news) expect(sum(e)).toBeGreaterThanOrEqual(sum(base));
+          else
+            for (const count of ["pending", "stale", "unknown"] as const)
+              if (typeof base?.[count] === "number")
+                expect(e?.[count], count).toBeGreaterThanOrEqual(base[count]);
         });
 
   // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of

@@ -46,6 +46,8 @@ export function delivered(revision: number, changes: Change[], pending = 0): str
       summary: null,
       location: null,
     })) as Delta["entries"],
+    // Row 005-93 (c): the news header counts the session's own test files, the pending ones owed.
+    ownEdits: { files: changes.length + pending + stale, owed: pending + stale },
   } as Delta;
   return formatDelta(delta);
 }
