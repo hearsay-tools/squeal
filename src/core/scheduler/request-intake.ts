@@ -73,7 +73,7 @@ export interface IntakeHost {
   wakeAll(): void;
   /** `group`'s lane; a group with no lane of its own (`tests`) has none to wake. */
   wakeLane(group: string): void;
-  cutTiers(): void;
+  checkYields(): void;
   pump(): void;
 }
 
@@ -266,7 +266,7 @@ export class RequestIntake {
       for (const group of new Set(covered.map((file) => queue.checkGroup(file.ref)))) {
         this.#host.wakeLane(group);
       }
-    } else if ("cutTiers" in wake) this.#host.cutTiers();
+    } else if ("checkYields" in wake) this.#host.checkYields();
   }
 
   /**

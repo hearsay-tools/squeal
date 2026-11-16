@@ -45,7 +45,7 @@ export function promoteRequest(testFiles: readonly TestFileRef[], withinMs: numb
         ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
       },
     },
-    wake: { cutTiers: true },
+    wake: { checkYields: true },
   };
 }
 
@@ -77,7 +77,7 @@ export function focusRequest(
         }
       },
     },
-    wake: { cutTiers: true },
+    wake: { checkYields: true },
   };
 }
 

@@ -21,17 +21,6 @@ export interface Clocked {
   advance(ms: number): void;
 }
 
-/** `base` plus what `advance` added. */
-export function movableClock(base: () => number = Date.now): Pick<Clocked, "now" | "advance"> {
-  let offset = 0;
-  return {
-    now: () => base() + offset,
-    advance: (ms) => {
-      offset += ms;
-    },
-  };
-}
-
 /** How often `idleAfterQuiet` looks whether only a wait before catch-up is left. */
 const QUIET_POLL_MS = 100;
 

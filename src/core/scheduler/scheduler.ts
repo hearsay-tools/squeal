@@ -195,15 +195,15 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(this.#started().context.policy);
       this.#groups.get(group)?.preempt();
     },
-    cutTiers: () => this.#stepOutside([{ kind: "request-taken" }]),
+    checkYields: () => this.#stepOutside([{ kind: "request-taken" }]),
     pump: () => this.#pump(),
   });
   /** The records of the runs that ended (row 011-131). */
   readonly #records: TierRecords;
   /**
-   * The events posted since the pump's pass began (row 011-352): a tier
-   * ended, runner work drained, a batch or request came, a wake. The pump
-   * reads only that one came until the step (row 011-356).
+   * The events posted since the pump's step last read them (row 011-352): a
+   * tier ended, runner work drained, a batch or request came, a wake. The
+   * step reads and clears them (row 011-356).
    */
   readonly #events: SchedulerEvent[] = [];
   #wake: (() => void) | null = null;
@@ -256,7 +256,7 @@ class TierScheduler implements Scheduler {
   constructor(private readonly options: SchedulerOptions) {
     this.#clock = clockOf(options);
     this.#wakes = new Wakes(this.#clock);
-    this.#pumpWake = this.#wakes.slot("pump", () => this.#notify({ kind: "wake", reason: "pump" }));
+    this.#pumpWake = this.#wakes.slot("pump", () => this.#post({ kind: "wake", reason: "pump" }));
     this.#claimsWake = this.#wakes.slot("claims", (at) => this.#claimPoll(at));
     this.#yields = new TierYields(
       () => this.#stepQueued({ kind: "wake", reason: "yield-bound" }),
@@ -974,7 +974,7 @@ class TierScheduler implements Scheduler {
 
   /**
    * A drain's slow lane waits once the drain's fast work is done (the work
-   * `#fastFirst` of the slow tier waits for) and no slow file runs; its wait
+   * the slow lane's `waits` names, `Admission.lane`) and no slow file runs; its wait
    * counts from the later of the last check that found either or began the
    * drain, and the last slow run's end (row 011-163).
    */
@@ -1049,7 +1049,7 @@ class TierScheduler implements Scheduler {
     this.#groups.close();
     this.#slowRelease.close();
     this.#busy?.close();
-    this.#notify({ kind: "closing" });
+    this.#post({ kind: "closing" });
     await this.#pumping;
     // Row 011-352: after the pump, so a slot record's gather still ends; no owner wakes after it.
     this.#wakes.close();
@@ -1112,7 +1112,7 @@ class TierScheduler implements Scheduler {
    * as long as its tier runs.
    *
    * A slow tier (spec 004 D2) is selected when no slow tier and no edit's
-   * tier is in flight (`#slowMayStart`); the slow tier itself waits for this
+   * tier is in flight (`Admission.asked`); the slow tier itself waits for this
    * daemon's fast backlog unless `run --slow` asked (D2 as amended
    * 2026-10-14, task 004-60), and a backlog tier that arrives while it runs
    * starts beside it (task 004-34). It runs in a lane of its own
@@ -1128,7 +1128,7 @@ class TierScheduler implements Scheduler {
     if (this.#admit().halted || !this.#ledger) return;
     if (this.#pumping) {
       this.#asked = true;
-      this.#notify({ kind: "asked" });
+      this.#post({ kind: "asked" });
       return;
     }
     this.#stalled = false;
@@ -1241,7 +1241,7 @@ class TierScheduler implements Scheduler {
         if (tier.slot === true) {
           tier.lease?.release();
           flight.ran = true;
-          this.#notify({ kind: "slot-ran", runId: tier.runId });
+          this.#post({ kind: "slot-ran", runId: tier.runId });
         }
         const record = await this.#records.record(tier, ran, installStamp, slow, held);
         recorded = true;
@@ -1267,7 +1267,7 @@ class TierScheduler implements Scheduler {
         if (slow === null) this.#groups.preempt();
         // Row 011-211: a slow lane left open counts toward its close from its own run's end.
         else this.#slowRelease.ended(tier.lane);
-        this.#notify({ kind: "tier-ended", runId: tier.runId });
+        this.#post({ kind: "tier-ended", runId: tier.runId });
       }
     });
   }
@@ -1362,7 +1362,7 @@ class TierScheduler implements Scheduler {
         .catch((error: unknown) => this.#backgroundError("could not apply runner work", error))
         .finally(() => {
           this.#draining = null;
-          this.#notify({ kind: "runner-work-drained" });
+          this.#post({ kind: "runner-work-drained" });
         }),
     );
   }
@@ -1390,7 +1390,7 @@ class TierScheduler implements Scheduler {
     const window = this.#claimWindow;
     if (window === null) return;
     const next = claimPoll(this.#started().context.store, window, at);
-    if (next === "ends") this.#notify({ kind: "wake", reason: "claims" });
+    if (next === "ends") this.#post({ kind: "wake", reason: "claims" });
     else this.#claimsWake.at(next);
   }
 
@@ -1421,7 +1421,7 @@ class TierScheduler implements Scheduler {
   }
 
   /** Posts `event` (row 011-352): the pump's wait ends. */
-  #notify(event: SchedulerEvent): void {
+  #post(event: SchedulerEvent): void {
     this.#events.push(event);
     const wake = this.#wake;
     this.#wake = null;
@@ -1442,7 +1442,7 @@ class TierScheduler implements Scheduler {
     if (this.#busy !== null && isBusy(error)) {
       // After another error the next batch or request resumes the pump, not a busy wait.
       if (!this.#failed) this.#busy.gaveUp(waiting);
-      this.#notify({ kind: "stalled" });
+      this.#post({ kind: "stalled" });
       return;
     }
     // A resume a busy write armed before this error would run tiers no batch asked for.
@@ -1450,7 +1450,7 @@ class TierScheduler implements Scheduler {
     this.#busy?.abandon();
     this.#note(`scheduler stopped running tiers: ${String(error)}`);
     this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
-    this.#notify({ kind: "stalled" });
+    this.#post({ kind: "stalled" });
   }
 
   /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
