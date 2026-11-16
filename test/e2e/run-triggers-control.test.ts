@@ -180,7 +180,68 @@ function loadNamed(text: string): string {
  * said "dirty not known" until its idle pass, up to 30 s later.
  */
 const accepted = (text: string | null) =>
-  text === null ? null : sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"));
+  text === null
+    ? null
+    : contentTitle(noResultsYet(sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"))));
+
+/** 0.1.393's sentence and count lines for a worktree whose test files are not listed yet. */
+const UNLISTED =
+  /^(Revision [^:\n]*: )[^\n]*? The daemon has not listed this worktree's test files yet; these counts are not complete\.(?: Full-suite checkpoint: [^\n]*?requests one\)\.)?/m;
+
+/**
+ * Row 005-90: before the listing, a registration or news header prints no counts, no
+ * checkpoint sentence and no zero known-failure count; one sentence names the path wait.
+ */
+function noResultsYet(text: string): string {
+  if (!UNLISTED.test(text)) return text;
+  const command = /`([^`\s]+) (?:run|status|lint)\b/.exec(text)?.[1] ?? "squeal";
+  const sentence =
+    "Squeal is still starting in this worktree and has no results yet. " +
+    `\`${command} status --wait 60000 <path>...\` waits for the files you change.`;
+  return text
+    .replace(UNLISTED, (_, revision: string) => `${revision}${sentence}`)
+    .replace(/^Known failures: 0; the daemon has not listed this worktree's test files yet\n/m, "");
+}
+
+/**
+ * Row 005-91 (c): a delivery 0.1.393 titled `SQUEAL · revision N` is titled by its lines'
+ * words (`contentWords`): the edit lines, the owed counts (a news header with the current
+ * count), the slow tier's kind, a lint line with no change to count, and a commit.
+ */
+function contentTitle(text: string): string {
+  const [first = "", ...rest] = text.split("\n");
+  const revision = /^SQUEAL · revision (\d+)$/.exec(first)?.[1];
+  if (revision === undefined) return text;
+  const words = rest.flatMap(lineWords);
+  if (words.length === 0) return text;
+  return [`SQUEAL · ${words.join("; ")} at revision ${revision}`, ...rest].join("\n");
+}
+
+function lineWords(line: string): string[] {
+  const queued = /^Squeal saw your edit(?: and queued|, which re-keyed) (\d+ test files?)/.exec(
+    line,
+  );
+  if (queued !== null) {
+    return [`your edit ${line.includes("re-keyed") ? "re-keyed" : "queued"} ${queued[1]}`];
+  }
+  if (/^Squeal saw your edit; |your edits since revision \d+ re-keyed/.test(line)) {
+    return [
+      `your edits' test files ${/ current(?:,|\.)/.test(line) && !/unknown/.test(line) ? "are current" : "finished"}`,
+    ];
+  }
+  if (/^Revision [^:]*: \d+ current\b/.test(line)) return ["the counts after the listing"];
+  if (line.startsWith("Slow tier:")) {
+    return [
+      `slow tier ${/\d+ pending/.test(line) ? "waiting" : /not run/.test(line) ? "not run" : "current"}`,
+    ];
+  }
+  if (line.startsWith("Lint config changed:")) return ["lint config changed"];
+  if (/^Lint: \d+ files? with findings/.test(line)) return ["lint summary"];
+  if (line.startsWith("Lint: unknown:")) return ["lint unknown"];
+  if (line.startsWith("Lint: off:")) return ["lint off"];
+  const commit = /^Commit (\S+?):/.exec(line)?.[1];
+  return commit === undefined ? [] : [`commit ${commit}`];
+}
 
 /** A failure block's line on its changed imports, as 0.1.393 printed it in every block. */
 const CLOSURE = /^ {6}its closure reads (files changed here since this session started: .*)$/;
