@@ -66,14 +66,14 @@ export function liveView(
     orderedBatches: () => ledger.orderedBatches(now),
     rankAt: (ref, now) => queue.rankAt(ref, now)?.rank ?? null,
     has: (ref) => queue.has(ref),
-    isFirstGroup: (ref) => queue.isFirstGroup(ref),
+    isFirstGroup: (ref) => queue.isFirstGroup(ref, now),
     isForced: (ref) => queue.isForced(ref),
     isRecent: (ref) => queue.isRecent(ref),
-    isCatchUp: (ref) => queue.isCatchUp(ref),
-    isPromoted: (ref) => queue.isPromoted(ref),
+    isCatchUp: (ref) => queue.isCatchUp(ref, now),
+    isPromoted: (ref) => queue.isPromoted(ref, now),
     hasFast: (where) => queue.hasFast(where),
-    fastQueued: (where) => ledger.fastQueued(where),
-    hasFirstGroup: (where) => queue.hasFirstGroup(where),
+    fastQueued: (where) => ledger.fastQueued(where, now),
+    hasFirstGroup: (where) => queue.hasFirstGroup(where, now),
     fastSize: () => queue.fastSize,
     batchTurn: () => queue.batchTurn(),
     quietHolds: (ref, lane, tier, now) => quietHolds(context, ledger, ref, lane, tier, now),
@@ -88,15 +88,16 @@ export function liveView(
  * as the selection did before the plan. A lookup's hit is applied there
  * (`Ledger.applyResults`), an unkeyed, blocked or unlisted file leaves the
  * queue, and `endPass` commits; every write lands in the ledger's next
- * commit or the claims' memory, as before.
+ * commit or the claims' memory, as before. Its claim reads take `now`, the
+ * plan's one reading (row 011-372), else the clock's.
  */
-export function liveAsks(context: SchedulerContext, ledger: Ledger): PlanAsks {
+export function liveAsks(context: SchedulerContext, ledger: Ledger, now?: EpochMs): PlanAsks {
   const { queue, claims } = ledger;
   return {
     beginPass: () => claims.begin(),
     focusWaiting: (now) => queue.focused.waiting(now),
     dropFocus: (entry) => queue.focused.drop(entry),
-    peek: (ref) => peekClaim(context, ledger, ref),
+    peek: (ref) => peekClaim(context, ledger, ref, now),
     drop: (ref) => {
       queue.remove(ref);
       const file = ledger.file(ref);
@@ -109,7 +110,7 @@ export function liveAsks(context: SchedulerContext, ledger: Ledger): PlanAsks {
       return "settled";
     },
     held: (key, now) => claims.holds(key, now),
-    backlogSize: (queued) => claims.backlogSize(queued),
+    backlogSize: (queued) => claims.backlogSize(queued, now),
     // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
     offer: (want, kind) => context.capacity?.offer(want, kind) ?? defaultHostSlots(),
     endPass: () => ledger.commit(),

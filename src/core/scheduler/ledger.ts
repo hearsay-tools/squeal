@@ -227,25 +227,32 @@ export class Ledger {
     return this.queue.orderedBatches((ref) => this.file(ref)?.durationMs ?? null, now);
   }
 
-  /** Whether a fast file `where` holds is queued to run: while the backlog is paused, a drain's. */
-  fastQueued(where: (ref: TestFileRef) => boolean = () => true): boolean {
-    return this.queue.hasFast((ref) => where(ref) && (!this.backlogPaused || this.#drains(ref)));
+  /**
+   * Whether a fast file `where` holds is queued to run: while the backlog is
+   * paused, a drain's, its batch rank at `now`, the decision's reading (row 011-372).
+   */
+  fastQueued(where: (ref: TestFileRef) => boolean = () => true, now?: number): boolean {
+    return this.queue.hasFast(
+      (ref) => where(ref) && (!this.backlogPaused || this.#drains(ref, now)),
+    );
   }
 
   /** A file a drain runs: an edit's work or a promoted file, the open explicit checkpoint's, a re-run. */
-  #drains(ref: TestFileRef): boolean {
-    if (this.queue.isFirstGroup(ref) || this.file(ref)?.rerunPending === true) return true;
+  #drains(ref: TestFileRef, now?: number): boolean {
+    if (this.queue.isFirstGroup(ref, now) || this.file(ref)?.rerunPending === true) return true;
     return this.checkpoints.active?.explicit === true && this.checkpoints.idFor(ref) !== null;
   }
 
   /**
    * The slow class of the queue in the order the slow tier runs it (spec 004
    * D2): by evidence within a class unless `slow.rank` is `"duration"`.
+   * `now` as `RunQueue.orderedSlow`'s.
    */
-  orderedSlow(): TestFileRef[] {
+  orderedSlow(now?: number): TestFileRef[] {
     return this.queue.orderedSlow(
       (ref) => this.file(ref)?.durationMs ?? null,
       this.context.policy.slow.rank !== "duration",
+      now,
     );
   }
 

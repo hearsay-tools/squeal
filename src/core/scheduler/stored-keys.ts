@@ -52,11 +52,13 @@ export class StoredKeys {
   /**
    * Settles this worktree's files at the keys stored since the last read, and
    * commits. A busy store's error leaves the ledger as the store holds it
-   * (`Ledger.hold`) and the read to the next one (task 001-422).
+   * (`Ledger.hold`) and the read to the next one (task 001-422). `at`: when
+   * the read begins, a step's reading (row 011-372), else now; never after
+   * the store's read, so the next read misses nothing.
    */
-  adopt(context: SchedulerContext, ledger: Ledger): void {
+  adopt(context: SchedulerContext, ledger: Ledger, at?: EpochMs): void {
     const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
-    const readAt = context.now();
+    const readAt = at ?? context.now();
     const fresh = context.store.results
       .keysSince(since)
       .filter(({ key, recordedAt }) => this.#seen.get(key) !== recordedAt);

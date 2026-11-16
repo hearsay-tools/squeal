@@ -359,14 +359,14 @@ class TierScheduler implements Scheduler {
       runtimeDir: options.runtimeDir,
       now: this.#now,
       started: () => this.#started(),
-      admit: () => this.#admit(),
+      admit: (at) => this.#admit(at),
       stalled: () => this.#stalled,
       asked: () => this.#asked,
       busyWaiting: () => this.#busy?.waiting === true,
       draining: () => this.#draining !== null,
       refused: () => this.#capacity?.refused() === true,
-      adopt: (context, ledger) => this.#adopt(context, ledger),
-      busyLanes: () => this.#busyLanes(),
+      adopt: (context, ledger, at) => this.#adopt(context, ledger, at),
+      busyLanes: (at) => this.#busyLanes(at),
       running: () => this.#running(),
       releaseLane: (lane) => this.#releaseLane(lane),
       fly: (tier, stamp, slow, admitted) => this.#fly(tier, stamp, slow, admitted),
@@ -554,9 +554,9 @@ class TierScheduler implements Scheduler {
    * Not while runner work waits: keys would come from a revision the runner
    * has not invalidated yet, as a tier's would.
    */
-  #adopt(context: SchedulerContext, ledger: Ledger): void {
+  #adopt(context: SchedulerContext, ledger: Ledger, at?: EpochMs): void {
     if (this.#runnerWork.size > 0 || this.#runnerWork.refining) return;
-    this.#storedKeys.adopt(context, ledger);
+    this.#storedKeys.adopt(context, ledger, at);
   }
 
   /**
@@ -672,9 +672,11 @@ class TierScheduler implements Scheduler {
 
   /**
    * Row 011-340: the start facts in memory now (GLOSSARY "Start facts"),
-   * for `admit`. The costly ones are read when an answer needs them.
+   * for `admit`. The costly ones are read when an answer needs them; their
+   * queue and beside answers read `at`, a step's reading (row 011-372), or
+   * the clock as they always did.
    */
-  #facts(): StartFacts {
+  #facts(at?: EpochMs): StartFacts {
     const context = this.#context;
     const ledger = this.#ledger;
     const work = this.#runnerWork;
@@ -696,10 +698,10 @@ class TierScheduler implements Scheduler {
         edit: tier.kind !== "backlog" && !isGroupLane(tier.lane),
       })),
       groups: context === null ? null : groupView(context.policy).groups,
-      editQueued: () => ledger?.queue.hasFirstGroup() === true,
-      fastQueued: () => ledger?.fastQueued() === true,
-      focused: () => this.#focused(),
-      freeLaneQueued: () => ready && this.#freeLaneQueued(),
+      editQueued: () => ledger?.queue.hasFirstGroup(undefined, at) === true,
+      fastQueued: () => ledger?.fastQueued(undefined, at) === true,
+      focused: () => this.#focused(at),
+      freeLaneQueued: () => ready && this.#freeLaneQueued(at),
       lanes: () =>
         context === null
           ? []
@@ -730,9 +732,9 @@ class TierScheduler implements Scheduler {
       .some(({ group }) => readGroupActivity(store, worktreeId, group)?.kind === "waiting");
   }
 
-  /** `admit` of the start facts now (row 011-340). */
-  #admit(): Admission {
-    return admit(this.#facts());
+  /** `admit` of the start facts now (row 011-340), at `at` when a step gives its reading. */
+  #admit(at?: EpochMs): Admission {
+    return admit(this.#facts(at));
   }
 
   async commandHold(): Promise<boolean> {
@@ -1314,13 +1316,16 @@ class TierScheduler implements Scheduler {
     );
   }
 
-  /** A fast file whose lane may take a tier is queued, or one a tier beside a batch's takes. */
-  #freeLaneQueued(): boolean {
+  /**
+   * A fast file whose lane may take a tier is queued, or one a tier beside a
+   * batch's takes, at `at` when a step gives its reading (row 011-372).
+   */
+  #freeLaneQueued(at?: EpochMs): boolean {
     const { context, ledger } = this.#started();
-    const busy = this.#busyLanes();
+    const busy = this.#busyLanes(at);
     const free = (ref: TestFileRef) => !busy.has(laneOf(context, ref));
-    if (ledger.fastQueued(free) || focusedWaiting(context, ledger, free)) return true;
-    return besideFiles(context, ledger, this.#running()) !== null;
+    if (ledger.fastQueued(free, at) || focusedWaiting(context, ledger, free, at)) return true;
+    return besideFiles(context, ledger, this.#running(), at ?? this.#now()) !== null;
   }
 
   /** The tiers in flight whose runs have not ended. */
@@ -1337,14 +1342,15 @@ class TierScheduler implements Scheduler {
     if (ended.decisions.length > 0) void this.#wakes.track(() => this.#live.after(ended));
   }
 
-  /** The lanes no tier may start in now. */
-  #busyLanes(): Set<string> {
+  /** The lanes no tier may start in now, at `at` when a step gives its reading. */
+  #busyLanes(at?: EpochMs): Set<string> {
     const { context, ledger } = this.#started();
     const running = [...this.#inFlight.values()].filter(({ ran }) => !ran);
     return busyLanes(
       context,
       ledger,
       running.map(({ tier }) => tier),
+      at,
     );
   }
 
@@ -1454,10 +1460,10 @@ class TierScheduler implements Scheduler {
   }
 
   /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
-  #focused(): boolean {
+  #focused(at?: EpochMs): boolean {
     const context = this.#context;
     const ledger = this.#ledger;
-    return context !== null && ledger !== null && focusedWaiting(context, ledger);
+    return context !== null && ledger !== null && focusedWaiting(context, ledger, undefined, at);
   }
 
   /** A slow run's end as its lane publishes it (`SlowTier.ended`): the state and admission now. */
