@@ -9,7 +9,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[5]
-CLI = os.environ.get('ISSUE195_CLI', '/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal')
+CLI = os.environ.get('ISSUE195_CLI', '~/.codex/plugins/data/squeal-hearsay/bin/squeal')
 CLI_COMMAND = ['node', '--disable-warning=ExperimentalWarning', CLI] if CLI.endswith('.mjs') else [CLI]
 RUNS = HERE / '.runs'
 RUNS.mkdir(exist_ok=True)

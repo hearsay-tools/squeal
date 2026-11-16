@@ -8,7 +8,7 @@ const { runs, sessions, from, to } = JSON.parse(fs.readFileSync(file, "utf8"));
 const { commandContext } = await import(`${wt}/src/runners/descriptions.ts`);
 const { readPolicy } = await import(`${wt}/src/core/daemon/policy.ts`);
 // The context a hook builds for a command run at the root (deny.ts testCommandOf), read now.
-const roots: Record<string, string> = { squeal: wt, cezar: "/home/user/projects/cezar" };
+const roots: Record<string, string> = { squeal: wt, cezar: "~/projects/cezar" };
 const contexts: Record<string, unknown> = {};
 for (const [repo, root] of Object.entries(roots)) contexts[repo] = commandContext(readPolicy(root), root, root);
 const ctx = (repo: string) => contexts[repo] as never;

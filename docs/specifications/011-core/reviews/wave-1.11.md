@@ -477,7 +477,7 @@ npm error code ENOTEMPTY
 npm error syscall rmdir
 npm error path ~/projects/squeal/.ai/cezar/worktrees/***/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709
 npm error errno -39
-npm error ENOTEMPTY: directory not empty, rmdir '/home/user/projects/squeal/.ai/cezar/worktrees/***/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709'
+npm error ENOTEMPTY: directory not empty, rmdir '~/projects/squeal/.ai/cezar/worktrees/***/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709'
 npm error A complete log of this run can be found in: ~/.npm/_logs/2026-10-17T14_16_38_370Z-debug-0.log
 (exit 217)
 

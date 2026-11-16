@@ -23,7 +23,7 @@ const link = opt("--link");
 if (Number.isNaN(since)) throw new Error("--since <iso> is required");
 
 const home = os.homedir();
-const REPO = "/home/user/projects/squeal";
+const REPO = "~/projects/squeal";
 const MARK = "SQUEAL · registered";
 
 /** The first record's timestamp and the whole text, or null for an unreadable file. */

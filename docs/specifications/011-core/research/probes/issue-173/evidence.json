@@ -1,7 +1,7 @@
 {
   "timestamp": "2026-11-10T17:03:21.628Z",
   "node": "v24.22.1",
-  "cli": "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
+  "cli": "~/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
   "cases": [
     {
       "mode": "attached",

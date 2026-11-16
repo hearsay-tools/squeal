@@ -17,7 +17,7 @@ const stores = dbs.map((db) => {
 // the u32 at byte 16 (native byte order). Read with plain file I/O, no lock.
 const walSize = (db) => { try { const fd = openSync(`${db}-shm`, "r"); const b = Buffer.alloc(4); readSync(fd, b, 0, 4, 16); closeSync(fd); return b.readUInt32LE(0); } catch { return 0; } };
 const cmd = (pid) => {
-  try { return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter((s) => s && s.length < 200).join(" ").replace(/\/home\/user\/[^ ]*\/(dist\/cli\/)?/g, "").slice(0, 160); }
+  try { return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter((s) => s && s.length < 200).join(" ").replace(/~\/[^ ]*\/(dist\/cli\/)?/g, "").slice(0, 160); }
   catch { return "(gone)"; }
 };
 const cmds = new Map();

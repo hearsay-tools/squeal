@@ -114,7 +114,7 @@ Documentation-only integration, 2026-10-16. `npm ci`: 196 packages installed, 0 
 Full-suite command (installed Squeal, no independent Vitest run):
 
 ```sh
-node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs" run --all --wait
+node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs" run --all --wait
 ```
 
 Output (exit 1):

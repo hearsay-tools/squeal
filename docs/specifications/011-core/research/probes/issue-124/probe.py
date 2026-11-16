@@ -9,8 +9,8 @@ import tempfile
 import time
 import uuid
 
-NODE = "/home/user/.nvm/versions/node/v24.22.1/bin/node"
-RUNTIME = Path("/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.374")
+NODE = "~/.nvm/versions/node/v24.22.1/bin/node"
+RUNTIME = Path("~/.codex/plugins/data/squeal-hearsay/versions/0.1.374")
 CLI = RUNTIME / "dist/cli/squeal.mjs"
 load = os.getloadavg()[0]
 cpus = os.cpu_count()

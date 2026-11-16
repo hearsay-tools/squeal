@@ -8,7 +8,7 @@ import tempfile
 import time
 
 repo = Path.cwd()
-cli = "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal"
+cli = "~/.codex/plugins/data/squeal-hearsay/bin/squeal"
 mode = sys.argv[1]
 assert mode in ("control", "warning", "failure", "exit", "crash")
 load = os.getloadavg()[0]

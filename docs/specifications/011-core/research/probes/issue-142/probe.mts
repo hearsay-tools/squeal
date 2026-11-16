@@ -11,7 +11,7 @@ import { socketPathFor } from "../../../../../../src/core/daemon/paths.js";
 import { isStoreOpenFailure, openStore } from "../../../../../../src/core/store/open.js";
 import { daemonIncarnation, refinedMetaKey } from "../../../../../../src/core/types/index.js";
 
-const runtime = process.argv[2] ?? "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.390";
+const runtime = process.argv[2] ?? "~/.codex/plugins/data/squeal-hearsay/versions/0.1.390";
 const cli = join(runtime, "dist/cli/squeal.mjs");
 const manifest = JSON.parse(readFileSync(join(runtime, "runtime.json"), "utf8"));
 const hash = createHash("sha256").update(readFileSync(cli)).digest("hex");

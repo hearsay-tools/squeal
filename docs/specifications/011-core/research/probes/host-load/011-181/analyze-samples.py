@@ -14,14 +14,14 @@ import json, re, sys
 from collections import defaultdict
 from datetime import datetime, timezone
 
-WT = re.compile(r"/home/user/projects/([^/]+)/\.ai/cezar/(?:worktrees|t)/([0-9a-f]{8})")
+WT = re.compile(r"~/projects/([^/]+)/\.ai/cezar/(?:worktrees|t)/([0-9a-f]{8})")
 
 
 def where(cwd):
     m = WT.search(cwd or "")
     if m:
         return m.group(1), m.group(2)
-    m = re.match(r"/home/user/projects/([^/]+)", cwd or "")
+    m = re.match(r"~/projects/([^/]+)", cwd or "")
     if m:
         return m.group(1), None
     return ("tmp" if (cwd or "").startswith("/tmp") else "other"), None

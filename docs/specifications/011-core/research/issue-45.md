@@ -111,7 +111,7 @@ npm run typecheck
 npm run build
 > tsc -p tsconfig.build.json && npm run build:plugin
 (exit 0)
-node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs" run --all --wait
+node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs" run --all --wait
 Checkpoint f5bfb47c-125a-4c96-8609-73592e7cfa7f completed at revision 2: 2 known failures: 2 tests; 720 test files, 717 already current, 3 run by the baseline checkpoint 8485d3a3-f9c7-486b-af3a-b9d7cf8b387a it joined
 (exit 1)
 ```

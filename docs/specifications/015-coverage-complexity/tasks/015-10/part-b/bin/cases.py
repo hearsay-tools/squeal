@@ -32,7 +32,7 @@ BASH_WRITE = re.compile(r"sed -i|perl -[pi]|>\s*[\w./-]+\.(ts|tsx|js|mjs|py|md|j
 def repo_of(cwd):
     cwd = cwd or ''
     for r in ('squeal', 'cezar'):
-        base = '/home/user/projects/' + r
+        base = '~/projects/' + r
         if cwd == base:
             return r, 'main', None
         if cwd.startswith(base + '/.ai/cezar/worktrees/'):

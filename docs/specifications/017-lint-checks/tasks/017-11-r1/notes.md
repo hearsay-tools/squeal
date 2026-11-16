@@ -30,7 +30,7 @@ Squeal's own daemon (plugin 0.1.359) runs with no `NODE_PATH` (checked in `/proc
 
 - `childEnv` drops `NODE_PATH`, beside `NODE_OPTIONS`, `VITEST*` and `GIT_*`. Test daemons get the same env as under npm and as under Squeal's daemon.
 - The original assertion is unchanged. The test now also proves its fixture has no runner: `vitestDetected(root)` is false, and `vitest/node` does not resolve from the root in the daemon's env (`vitestFrom`, a `node -e` probe with the daemon's env and Node binary, the way `loadVitest` resolves).
-- Regression: "starts its daemons without the test's NODE_PATH, from which Vitest resolves anywhere". It stubs `NODE_PATH` to the repository's `node_modules`, checks the probe resolves Vitest with it (so the probe can tell the two cases apart), and checks the fixture's env has no `NODE_PATH` and resolves no Vitest. It does not depend on how Vitest was started: before the fix it failed when started with no `NODE_PATH` at all ("expected '/home/user/…' to be undefined").
+- Regression: "starts its daemons without the test's NODE_PATH, from which Vitest resolves anywhere". It stubs `NODE_PATH` to the repository's `node_modules`, checks the probe resolves Vitest with it (so the probe can tell the two cases apart), and checks the fixture's env has no `NODE_PATH` and resolves no Vitest. It does not depend on how Vitest was started: before the fix it failed when started with no `NODE_PATH` at all ("expected '~/…' to be undefined").
 
 ## The same cause in the test process: `load.test.ts`
 

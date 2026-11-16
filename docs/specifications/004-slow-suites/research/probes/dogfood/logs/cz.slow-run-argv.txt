@@ -5,7 +5,7 @@
   "node",
   "--enable-source-maps",
   "--require",
-  "/home/user/.codex/plugins/cache/squeal/squeal/0.1.58/dist/node-test/recorder.cjs",
+  "~/.codex/plugins/cache/squeal/squeal/0.1.58/dist/node-test/recorder.cjs",
   "--import",
   "../../scripts/test-git-env.mjs",
   "--import",

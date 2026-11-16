@@ -22,13 +22,13 @@ rate 60 s/min: ran 34847 recorded s over 12 moves; superseded before running 673
 rate 60 s/min, stored skipped: ran 30180 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5340 s
 rate 140 s/min: ran 35520 recorded s over 12 moves; superseded before running 0 s; skipped as stored 0 s
 rate 140 s/min, stored skipped: ran 30180 recorded s over 12 moves; superseded before running 0 s; skipped as stored 5340 s
-== the client monorepo plain: moves 7 (7 read); re-keyed 92 files, 410 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 2
+== client-monorepo plain: moves 7 (7 read); re-keyed 92 files, 410 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 2
 per move s: median 1, p90 311, max 311; full suite at the last move: {"files":398,"secs":825}
 rate 60 s/min: ran 411 recorded s over 7 moves; superseded before running 0 s; skipped as stored 0 s
 rate 60 s/min, stored skipped: ran 409 recorded s over 7 moves; superseded before running 0 s; skipped as stored 2 s
 rate 140 s/min: ran 411 recorded s over 7 moves; superseded before running 0 s; skipped as stored 0 s
 rate 140 s/min, stored skipped: ran 409 recorded s over 7 moves; superseded before running 0 s; skipped as stored 2 s
-== the client monorepo env-: moves 7 (7 read); re-keyed 2050 files, 4531 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 0
+== client-monorepo env-: moves 7 (7 read); re-keyed 2050 files, 4531 s; of them stored at equal content before the move 2 files, 2 s; moves re-keying nothing 0
 per move s: median 825, p90 825, max 825; full suite at the last move: {"files":398,"secs":825}
 rate 60 s/min: ran 3593 recorded s over 7 moves; superseded before running 935 s; skipped as stored 0 s
 rate 60 s/min, stored skipped: ran 3591 recorded s over 7 moves; superseded before running 935 s; skipped as stored 2 s

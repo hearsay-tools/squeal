@@ -161,7 +161,7 @@ Limits:
 
 ## Sources
 
-- Probes: `probes/codex-sessions-and-wake/` (README, `bin/`, `hooks/`, `evidence/`).
+- Probes: `probes/codex-sessions-and-wake/` (README, `bin/`, `hooks/`, `evidence/` (raw logs removed)).
 - openai/codex at `rust-v0.160.1` (`d27764b`), https://github.com/openai/codex/tree/rust-v0.160.1/codex-rs:
   - `app-server-protocol/src/protocol/common.rs`, `v2/thread.rs:910,1691`
   - `app-server/src/request_processors/thread_queue_processor.rs`, `thread_processor.rs:1345`, `message_processor.rs:305`

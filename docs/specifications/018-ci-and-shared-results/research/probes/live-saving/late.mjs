@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 const med = JSON.parse(readFileSync('local.json','utf8')).medianFileMs;
-const db = new DatabaseSync('/home/user/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
+const db = new DatabaseSync('~/projects/cezar/.git/squeal/store.sqlite', { readOnly: true });
 const cutoff = Date.parse('2026-11-12T14:45:00Z');
 const W = [['B',Date.parse('2026-11-10T21:49:00Z')],['C',Date.parse('2026-11-11T19:00:00Z')],['D',Date.parse('2026-11-12T09:19:00Z')],['E',Date.parse('2026-11-12T13:21:00Z')]];
 const win = t => [...W].reverse().find(w => t >= w[1])[0];

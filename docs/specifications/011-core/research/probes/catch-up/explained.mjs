@@ -6,7 +6,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-const REPO = process.argv[3] ?? "/home/user/projects/cezar";
+const REPO = process.argv[3] ?? "~/projects/cezar";
 const db = new DatabaseSync(process.argv[2] ?? "/tmp/r3/cezar-store.sqlite", { readOnly: true });
 const keyed = new Set();
 for (const t of db.prepare("select path, closure_paths from test_files").all()) { keyed.add(t.path); for (const p of JSON.parse(t.closure_paths)) keyed.add(p); }

@@ -14,7 +14,7 @@ S = json.load(open(sys.argv[1]))
 tab = collections.defaultdict(lambda: collections.Counter())
 for s in S:
     cwd = s['cwd'] or ''
-    repo = 'squeal' if cwd.startswith('/home/user/projects/squeal') else 'cezar' if cwd.startswith('/home/user/projects/cezar') else None
+    repo = 'squeal' if cwd.startswith('~/projects/squeal') else 'cezar' if cwd.startswith('~/projects/cezar') else None
     if not repo or '/worktrees/' not in cwd:
         continue
     starts = sorted(x['ts'] for x in s['starts'] if x['ts'])

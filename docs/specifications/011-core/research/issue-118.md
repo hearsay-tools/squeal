@@ -60,7 +60,7 @@ Version exited 0 with `0.1.370`. Status exited 3 at revision 2 with
   "state": "unknown",
   "reason": "no result: never run at this key: the baseline is lookup-only, so nothing queued it",
   "next": "`~/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts` runs it once",
-  "command": "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts"
+  "command": "~/.codex/plugins/data/squeal-hearsay/bin/squeal retry test/cli/status-paths.test.ts"
 }
 ```
 

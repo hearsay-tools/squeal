@@ -1,8 +1,8 @@
 {
   "utc": "2026-11-07T21:46:28.369Z",
   "node": "v24.22.1",
-  "cli": "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
-  "scratch": "/home/user/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3",
+  "cli": "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+  "scratch": "~/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3",
   "commit": "6922ff21415850088e3efe558c66b58bf341a5a1",
   "cases": [
     {
@@ -20,7 +20,7 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-165-no-python-runner\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         "src/sign.mjs": "export function sign(n) {\n  if (n < 0) return -1;\n  if (n === 0) return 0;\n  return 1;\n}\n",
         "test/sign.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { sign } from '../src/sign.mjs';\ntest('sign', () => { assert.equal(sign(-2), -1); assert.equal(sign(0), 0); assert.equal(sign(3), 1); });\n",
         "bench/__init__.py": "",
@@ -30,8 +30,8 @@
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -40,8 +40,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -53,8 +53,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "bench/stats.py"
           ],
@@ -64,8 +64,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "bench/stats.py",
             "--json"
@@ -76,8 +76,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "src/sign.mjs"
           ],
@@ -87,8 +87,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,
@@ -97,8 +97,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "status"
           ],
           "exit": 0,
@@ -125,7 +125,7 @@
       "files": {
         ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
         "package.json": "{\"name\":\"issue-165-coverage-exclude\",\"private\":true,\"type\":\"module\"}",
-        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/user/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[\"bench/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"~/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[\"bench/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
         "src/sign.mjs": "export function sign(n) {\n  if (n < 0) return -1;\n  if (n === 0) return 0;\n  return 1;\n}\n",
         "test/sign.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { sign } from '../src/sign.mjs';\ntest('sign', () => { assert.equal(sign(-2), -1); assert.equal(sign(0), 0); assert.equal(sign(3), 1); });\n",
         "bench/__init__.py": "",
@@ -135,8 +135,8 @@
       "commands": [
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "--version"
           ],
           "exit": 0,
@@ -145,8 +145,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "status",
             "--wait",
             "30000",
@@ -158,8 +158,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "bench/stats.py"
           ],
@@ -169,8 +169,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "bench/stats.py",
             "--json"
@@ -181,8 +181,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code",
             "src/sign.mjs"
           ],
@@ -192,8 +192,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "code"
           ],
           "exit": 0,
@@ -202,8 +202,8 @@
         },
         {
           "command": [
-            "/home/user/.nvm/versions/node/v24.22.1/bin/node",
-            "/home/user/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "~/.nvm/versions/node/v24.22.1/bin/node",
+            "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
             "status"
           ],
           "exit": 0,

@@ -13,7 +13,7 @@ db.execute('begin')
 scan=calendar.timegm(time.strptime('2026-10-21T08:22:38','%Y-%m-%dT%H:%M:%S'))
 print('load', open('/proc/loadavg').read().split()[:3])
 for root,ago in [('7c144ff7-78b9-47e7-b70c-401220d1d97f',13.4),('6a5e5c80-692a-436f-9d14-3acf238bb50e',42.1),('25bebea2-6e4f-492b-81d8-315ce7efa64b',17.2),('ee6ef330-de85-4fc6-80fb-02d7b875fcff',33.0)]:
-    wt=hashlib.sha256(('/home/user/projects/cezar/.ai/cezar/worktrees/'+root).encode()).hexdigest()[:16]
+    wt=hashlib.sha256(('~/projects/cezar/.ai/cezar/worktrees/'+root).encode()).hexdigest()[:16]
     dep=int((scan-ago*60)*1000); end=dep+3600_000
     rows=db.execute('select r.id,r.test_files,c.kind,r.started_at,r.ended_at,r.end_state from runs r left join checkpoints c on c.id=r.checkpoint_id where r.worktree_id=? and r.started_at>=? and r.started_at<=? order by r.started_at',(wt,dep,end)).fetchall()
     slow=[r for r in rows if all(fnmatch.fnmatch(f['path'],'packages/web/e2e/*.e2e.ts') for f in json.loads(r[1]))]

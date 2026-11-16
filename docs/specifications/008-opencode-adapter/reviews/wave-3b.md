@@ -54,12 +54,12 @@ The focused suite's failure exhausted all three attempts before reaching the cau
 **Unverified full-suite result.** The first Squeal checkpoint joined the baseline. After more than ten minutes it had not completed (the last status before the bounded request: 519 of 590 files done, 71 pending and 195 unknown). I then issued a bounded checkpoint request; that newer request replaced the first, and both CLI waits returned exit 3. No independent full run was substituted, per the brief. Background work continues in the daemon; this report does not wait for or certify it.
 
 ```text
-$ node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait
+$ node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait
 Checkpoint 83127997-a186-4371-8788-c4076438b49a has no verdict: it was abandoned before every test file had a result (a newer request replaced it, a tier crashed or timed out, or the daemon stopped)
 Checkpoint 83127997-a186-4371-8788-c4076438b49a started at revision 0: 590 test files to run, 12 already current, joining the baseline checkpoint e7ab0bdc-6159-480e-b37e-270ea8dc079f already running them (0 of 590 test files done); it ends when that one ends
 exit 3
 
-$ node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait 1000
+$ node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait 1000
 Checkpoint a7ebe45c-0c17-4f77-a54e-7186ade29acf has no verdict: the deadline passed with 263 test files pending at revision 0; the checkpoint goes on in the daemon
 Checkpoint a7ebe45c-0c17-4f77-a54e-7186ade29acf started at revision 0: 263 test files to run, 339 already current
 Revision: 0

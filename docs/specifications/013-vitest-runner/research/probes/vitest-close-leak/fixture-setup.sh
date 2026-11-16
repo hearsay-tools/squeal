@@ -23,7 +23,7 @@ cat >"$S/fixture/squeal.config.json" <<'JSON'
 }
 JSON
 echo '{ "capacity": { "hostSlots": 4 } }' >"$S/config/squeal/config.json"
-cp -r "/home/user/.claude/plugins/cache/hearsay/squeal/$VERSION" "$S/squeal"
+cp -r "~/.claude/plugins/cache/hearsay/squeal/$VERSION" "$S/squeal"
 git -C "$S/fixture" init --quiet
 git -C "$S/fixture" add -A
 git -C "$S/fixture" -c user.name=probe -c user.email=probe@localhost commit --quiet -m "probe fixture"

@@ -60,7 +60,7 @@ Outcome: a Codex thread that runs under the main agent's `session_id` without an
 
 Read: `lessons.md` defect 2 and its N4 section (the field table), spec 002 D2 as amended, `src/harness/codex/` (input, handlers, hook), 001 D9 on forks.
 
-Shape: repair. Seam: `src/harness/codex/input.ts`, one predicate `isUnservedThread(input)`: `agent_id` absent, `transcript_path` present, and its file name not ending in `<session_id>.jsonl`. Then every handler returns no output and touches no store for such an input (UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, Interrupt). Fixtures under `test/fixtures/codex-hooks/review/` built from `research/probes/proof/logs/n4inline2.stdin.jsonl` (trim prompts).
+Shape: repair. Seam: `src/harness/codex/input.ts`, one predicate `isUnservedThread(input)`: `agent_id` absent, `transcript_path` present, and its file name not ending in `<session_id>.jsonl`. Then every handler returns no output and touches no store for such an input (UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, Interrupt). Fixtures under `test/fixtures/codex-hooks/review/` built from `research/probes/proof/logs/n4inline2.stdin.jsonl` (raw logs removed) (trim prompts).
 
 Owns: `src/harness/codex/**`, `test/harness/codex/**`, `test/fixtures/codex-hooks/**`. Leave alone: `src/harness/shared/**` and `src/core/delivery/**` (the other coordinator's 001-112 is running there), `plugins/**`, `test/e2e/**` (002-20).
 

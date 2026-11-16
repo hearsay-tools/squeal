@@ -60,7 +60,7 @@ The coordinator's supplied 2,535-pass/one-parcel-failure gate is separate eviden
 The separate background Squeal baseline reported four failures, then recovered all four. A final pull before writing this report said:
 
 ```text
-$ node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.99/dist/cli/squeal.mjs" status
+$ node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.99/dist/cli/squeal.mjs" status
 Revision: 0
 Known failures: 0
 Affected checks: 2887 passed, 0 running, 0 queued, 10 skipped

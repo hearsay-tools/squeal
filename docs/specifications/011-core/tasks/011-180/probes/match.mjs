@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 const [, , yields, waitsFile, store] = process.argv;
 const db = new DatabaseSync(store, { readOnly: true });
 const paths = db.prepare("SELECT DISTINCT path FROM test_files").all().map((r) => r.path);
-const idOf = (cwd0) => { const cwd = String(cwd0 ?? "").replace(/^file:\/\//, ""); const m = /^(.*\/\.ai\/cezar\/worktrees\/[0-9a-f-]{36})/.exec(cwd ?? ""); const root = m ? m[1] : (/^\/home\/user\/projects\/[^/]+/.exec(cwd ?? "") ?? [""])[0]; return createHash("sha256").update(root).digest("hex").slice(0, 8); };
+const idOf = (cwd0) => { const cwd = String(cwd0 ?? "").replace(/^file:\/\//, ""); const m = /^(.*\/\.ai\/cezar\/worktrees\/[0-9a-f-]{36})/.exec(cwd ?? ""); const root = m ? m[1] : (/^~\/projects\/[^/]+/.exec(cwd ?? "") ?? [""])[0]; return createHash("sha256").update(root).digest("hex").slice(0, 8); };
 const waits = readFileSync(waitsFile, "utf8").trim().split("\n").map((l) => JSON.parse(l)).map((w) => ({ ...w, at: Date.parse(w.ts), wt: idOf(w.cwd) }));
 const rx = (p) => new RegExp("^" + p.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\0").replace(/\*/g, "[^/]*").replace(/\0/g, ".*").replace(/\?/g, ".") + "$");
 const expand = (w) => (w.set ??= new Set(w.paths.filter((p) => /^[\w.@/*?-]+$/.test(p)).flatMap((p) => { const r = rx(p); return paths.filter((x) => r.test(x)); })));

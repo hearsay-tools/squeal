@@ -1,6 +1,6 @@
 // Throwaway (row 018-43): keys of the results each bundle holds, compared with the first bundle's.
 import { readFileSync } from "node:fs";
-import { decodeBundle } from "/home/user/projects/squeal/.ai/cezar/worktrees/37809bc6-27de-49d9-8d04-79dd3264b3f6/src/core/store/transfer-bundle.ts";
+import { decodeBundle } from "~/projects/squeal/.ai/cezar/worktrees/37809bc6-27de-49d9-8d04-79dd3264b3f6/src/core/store/transfer-bundle.ts";
 const read = (file: string) => {
   const bundle = decodeBundle(readFileSync(file));
   if (typeof bundle === "string") throw new Error(`${file}: ${bundle}`);

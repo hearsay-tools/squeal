@@ -8,8 +8,8 @@ Claude Code 2.1.292, Linux, 2026-10-07. Every session ran in a fresh scratch git
 
 - `run.sh <scenario> <prompt> [claude args]`: `claude -p` with `--output-format stream-json --include-hook-events`. `TEMPLATE=<dir>` overlays a settings directory on `scenario-template/`; `PERM_MODE` overrides `bypassPermissions`.
 - `irun.sh <scenario> <prompt>`: the same, interactive, in tmux on its own socket (`tmux -L sq84`).
-- `hooks/log.sh`: records each hook's stdin and its `CLAUDE*` environment to `logs/<scenario>.hooks.jsonl`.
-- `hooks/probe.sh <label>`: run by the agent through Bash; records what the subprocess sees (`CLAUDE*` variables, names of all others, process chain, file descriptors) to `logs/<scenario>.probe.txt`.
+- `hooks/log.sh`: records each hook's stdin and its `CLAUDE*` environment to `logs/<scenario>.hooks.jsonl` (raw logs removed).
+- `hooks/probe.sh <label>`: run by the agent through Bash; records what the subprocess sees (`CLAUDE*` variables, names of all others, process chain, file descriptors) to `logs/<scenario>.probe.txt` (raw logs removed).
 - `hooks/tag.mjs`: PreToolUse on Bash (`if: "Bash(./probe.sh *)"`) that rewrites the command through `updatedInput`; `TAG_SHAPE` = `prefix` (env assignments), `export`, or `flag` (appended argument).
 - `hooks/emit.sh`: prints a block between begin and end lines, standing in for a pull's output.
 - `scenario-template/`, `scenario-tag/`, `scenario-batch/`: hook settings and a `prober` agent.

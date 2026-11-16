@@ -1,5 +1,5 @@
 {"at":"2026-10-17T11:11:41.549Z","node":"v24.21.0","load1":16.96,"cpuCount":24}
-{"label":"installed-0.1.199","file":"/home/user/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
+{"label":"installed-0.1.199","file":"~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
 {"case":"exact-unit","named":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}
 {"case":"exact-second","named":["packages/cezar/src/workflows/destruction-results.test.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/destruction-results.test.ts"],"unmatched":[]}
 {"case":"source","named":["packages/cezar/src/workflows/ci-wait-refusal.ts"],"selectedCount":84,"browserCount":83,"selectedServer":["packages/cezar/src/workflows/ci-wait-refusal.test.ts"],"unmatched":[]}

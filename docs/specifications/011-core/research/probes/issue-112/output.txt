@@ -193,7 +193,7 @@ $ node --disable-warning=ExperimentalWarning ~/.codex/plugins/data/squeal-hearsa
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "aa7e6dddda3d4e6d",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/7923d391/squeal-issue112-owned-pvucxzsy/repo",
   "revision": 2,
   "commit": {
     "head": "49dfe3380ee4b6232b6fcec33d2a14cd0498f515",

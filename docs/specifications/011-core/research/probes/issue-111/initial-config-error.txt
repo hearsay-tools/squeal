@@ -14,7 +14,7 @@ squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.servic
 squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
 
 Traceback (most recent call last):
-  File "/home/user/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/docs/specifications/011-core/research/probes/issue-111/probe.py", line 91, in <module>
+  File "~/projects/squeal/.ai/cezar/worktrees/646abc7c-f8d8-478e-8bde-6023d4883c26/docs/specifications/011-core/research/probes/issue-111/probe.py", line 91, in <module>
     assert snapshot is not None, "no ended=1 snapshot: " + daemon_log.read_text()
            ^^^^^^^^^^^^^^^^^^^^
 AssertionError: no ended=1 snapshot: squeal daemon: squeal.config.json: "baseline.onStart" must be one of "lookup-then-run-missing", "lookup-only", got "run-missing"; the defaults apply in their place

@@ -17,7 +17,7 @@ const [, , clsPath, scratch, outPath, mode] = process.argv;
 const dbs = {};
 const db = (p) => (dbs[p] ??= new DatabaseSync(`${scratch}/${p}/store.sqlite`, { readOnly: true }));
 const rootOf = (cwd) => {
-  const m = cwd.match(/^(\/home\/user\/projects\/([^/]+)(?:\/\.ai\/cezar\/worktrees\/[^/]+)?)/);
+  const m = cwd.match(/^(~\/projects\/([^/]+)(?:\/\.ai\/cezar\/worktrees\/[^/]+)?)/);
   return m ? { root: m[1], project: m[2] } : null;
 };
 const out = [];

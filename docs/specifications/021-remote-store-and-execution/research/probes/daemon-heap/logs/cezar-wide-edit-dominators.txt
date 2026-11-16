@@ -84,7 +84,7 @@
             8.1 (0.0) internal:context ← closure of | object system / Context
               8.1 (0.0) context:byPath3 ← object system / Context | object Map
                 8.1 (0.2) internal:table ← object Map | array 
-  7.8 (7.8) internal:source ← code file:///home/user/projects/squeal/.ai/cezar/t/2e3bd449/dh-cezar-hJJBSw/squeal/dist/cli/sq | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
+  7.8 (7.8) internal:source ← code file://~/projects/squeal/.ai/cezar/t/2e3bd449/dh-cezar-hJJBSw/squeal/dist/cli/sq | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
   5.3 (0.0) internal:previous ← object system / Context | object system / Context
     5.3 (0.0) context:queue ← object system / Context | object Array
 

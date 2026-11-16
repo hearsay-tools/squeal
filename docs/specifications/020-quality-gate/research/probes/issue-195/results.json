@@ -9,7 +9,7 @@
       {
         "mode": "missing",
         "command": [
-          "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
           "code",
           "--base",
           "HEAD",
@@ -28,7 +28,7 @@
         },
         "tmp_exists_after": false,
         "stdout_bytes": 0,
-        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
         "json_parse": false,
         "json_error": "Expecting value: line 1 column 1 (char 0)",
         "stdout": ""
@@ -36,7 +36,7 @@
       {
         "mode": "existing",
         "command": [
-          "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
           "code",
           "--base",
           "HEAD",
@@ -113,7 +113,7 @@
       {
         "mode": "missing",
         "command": [
-          "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
           "code",
           "--base",
           "HEAD",
@@ -132,7 +132,7 @@
         },
         "tmp_exists_after": false,
         "stdout_bytes": 0,
-        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
         "json_parse": false,
         "json_error": "Expecting value: line 1 column 1 (char 0)",
         "stdout": ""
@@ -140,7 +140,7 @@
       {
         "mode": "existing",
         "command": [
-          "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
           "code",
           "--base",
           "HEAD",
@@ -218,7 +218,7 @@
         "command": [
           "node",
           "--disable-warning=ExperimentalWarning",
-          "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
+          "~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
           "code",
           "--base",
           "HEAD",
@@ -237,7 +237,7 @@
         },
         "tmp_exists_after": false,
         "stdout_bytes": 0,
-        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:82850:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84209:34)\n    at async gate (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84164:21)\n    at async runAsChild (file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:83345:16)\n    at async file:///home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:100986:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:82850:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84209:34)\n    at async gate (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84164:21)\n    at async runAsChild (file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:83345:16)\n    at async file://~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:100986:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
         "json_parse": false,
         "json_error": "Expecting value: line 1 column 1 (char 0)",
         "stdout": ""
@@ -247,7 +247,7 @@
         "command": [
           "node",
           "--disable-warning=ExperimentalWarning",
-          "/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
+          "~/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
           "code",
           "--base",
           "HEAD",

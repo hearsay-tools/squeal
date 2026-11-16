@@ -50,8 +50,8 @@
   ],
   "finalDaemon": {
     "id": "79e949cb9034fc84",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo",
-    "common_dir": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo/.git",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo",
+    "common_dir": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/b7d4a529-fec3-4e92-977c-9cd1ac486ef6/repo/.git",
     "is_main": 1,
     "registered_at": 1792674728891,
     "daemon_socket": "/tmp/squeal-1001/squeal-79e949cb9034fc84.sock",
@@ -129,8 +129,8 @@
   ],
   "finalDaemon": {
     "id": "305bdf6c1a82ce14",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo",
-    "common_dir": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo/.git",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo",
+    "common_dir": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/6b51661d-0fdf-40fd-bf1f-854df54b038a/repo/.git",
     "is_main": 1,
     "registered_at": 1792674594106,
     "daemon_socket": "/tmp/squeal-1001/squeal-305bdf6c1a82ce14.sock",
@@ -221,8 +221,8 @@
   ],
   "finalDaemon": {
     "id": "ceaa339fab11a712",
-    "root": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo",
-    "common_dir": "/home/user/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo/.git",
+    "root": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo",
+    "common_dir": "~/projects/squeal/.ai/cezar/worktrees/6740e4d1-e779-466c-b3dd-9cf864924ab2/docs/specifications/011-core/research/probes/issue-75/.scratch/108f7056-f87c-46b5-898d-87bb392572c1/repo/.git",
     "is_main": 1,
     "registered_at": 1792674698891,
     "daemon_socket": "/tmp/squeal-1001/squeal-ceaa339fab11a712.sock",

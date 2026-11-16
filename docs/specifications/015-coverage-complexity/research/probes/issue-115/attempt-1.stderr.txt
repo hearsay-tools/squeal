@@ -8,7 +8,7 @@ AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 + undefined
 - 'fail'
 
-    at file:///home/user/projects/squeal/.ai/cezar/worktrees/a3eeec64-99cd-431d-8d10-2ce01ffdc557/research/probes/issue-115/probe.mjs:115:12 {
+    at file://~/projects/squeal/.ai/cezar/worktrees/a3eeec64-99cd-431d-8d10-2ce01ffdc557/research/probes/issue-115/probe.mjs:115:12 {
   generatedMessage: true,
   code: 'ERR_ASSERTION',
   actual: undefined,

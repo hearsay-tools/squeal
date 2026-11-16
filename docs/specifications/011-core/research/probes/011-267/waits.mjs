@@ -2,7 +2,7 @@
 // (cezar worktree 563b3d1c, .ai/qa/2141, read-only) and writes waits.json:
 // for each wait, its end (file mtime), waited ms, selected files and pending files.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-const dir = process.argv[2] ?? '/home/user/projects/cezar/.ai/cezar/worktrees/563b3d1c-f5b8-46ee-b702-a8feb6d1e143/.ai/qa/2141';
+const dir = process.argv[2] ?? '~/projects/cezar/.ai/cezar/worktrees/563b3d1c-f5b8-46ee-b702-a8feb6d1e143/.ai/qa/2141';
 const out = [];
 for (const name of readdirSync(dir).filter((n) => /^parity-\d+\.json$/.test(n))) {
   const path = `${dir}/${name}`;

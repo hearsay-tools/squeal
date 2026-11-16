@@ -12,7 +12,7 @@ for row in rows:
     files=[m['file'] for m in primary['edited']['modules'] if m['state']=='failed']
     assert files and set(files)<=set(json.loads((HERE/'declaration.json').read_text())['sample'])
     report=root/(row['id']+'-diagnostic.json');project=dest/'packages/contract'
-    cmd=['/home/user/.nvm/versions/node/v24.22.1/bin/node',str(dest/'node_modules/vitest/vitest.mjs'),'run',*map(lambda p:str(dest/p),files),
+    cmd=['~/.nvm/versions/node/v24.22.1/bin/node',str(dest/'node_modules/vitest/vitest.mjs'),'run',*map(lambda p:str(dest/p),files),
          '--root',str(project),'--config',str(project/'vitest.config.ts'),'--maxWorkers=1','--no-file-parallelism','--reporter=json','--outputFile',str(report)]
     env={'PATH':'/usr/bin:/bin','HOME':str(root/'exhaustive-home'),'TMPDIR':str(root/'exhaustive-tmp'),'XDG_CACHE_HOME':str(root/'exhaustive-cache'),'LANG':'C.UTF-8','TZ':'UTC','CI':'true','NODE_OPTIONS':'--max-old-space-size=2048'}
     before=resource.getrusage(resource.RUSAGE_CHILDREN);start=time.monotonic();proc=subprocess.run(cmd,env=env,cwd=project,capture_output=True,timeout=120);after=resource.getrusage(resource.RUSAGE_CHILDREN)

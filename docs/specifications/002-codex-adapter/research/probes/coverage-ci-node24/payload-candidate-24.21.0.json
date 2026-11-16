@@ -1,6 +1,6 @@
 {
   "node": "v24.21.0",
-  "execPath": "/home/user/.nvm/versions/node/v24.21.0/bin/node",
+  "execPath": "~/.nvm/versions/node/v24.21.0/bin/node",
   "commit": "9401c1d083df042fe85a44d66d73495515bf0ebe",
   "mode": "adapter",
   "notes": [],

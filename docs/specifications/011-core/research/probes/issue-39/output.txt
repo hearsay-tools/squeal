@@ -1,5 +1,5 @@
 {"at":"2026-10-19T14:13:54.633Z","node":"v24.21.0","load1":3.2,"cpuCount":24}
-{"label":"installed-0.1.222","file":"/home/user/.claude/plugins/cache/hearsay/squeal/0.1.222/dist/cli/squeal.mjs","sha256":"94380a2e8fa4b409f8c57f564184bdd7fb9a1d0ddb5e20d2ada32a1086685f9b"}
+{"label":"installed-0.1.222","file":"~/.claude/plugins/cache/hearsay/squeal/0.1.222/dist/cli/squeal.mjs","sha256":"94380a2e8fa4b409f8c57f564184bdd7fb9a1d0ddb5e20d2ada32a1086685f9b"}
 {"target":"installed-0.1.222","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
 {"target":"installed-0.1.222","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
 {"target":"installed-0.1.222","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":1,"browsers":0,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
@@ -12,7 +12,7 @@
 {"target":"installed-0.1.222","case":"missing test under src/** from sub","cwd":"packages/cezar","args":["src/core/missing.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["packages/cezar/src/core/missing.test.ts"]}
 {"target":"installed-0.1.222","case":"A cwd-relative from sub, A unlisted","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":81,"browsers":81,"units":[],"unmatched":[]}
 {"target":"installed-0.1.222","case":"outside worktree from sub","cwd":"packages/cezar","args":["../../../elsewhere.test.ts"],"selected":0,"browsers":0,"units":[],"unmatched":["../../../elsewhere.test.ts"]}
-{"label":"installed-0.1.199","file":"/home/user/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
+{"label":"installed-0.1.199","file":"~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs","sha256":"6869478e38d3233f30c3e95f3dcdadafcfc2d1520a1579606bad6c3b6f5ae31f"}
 {"target":"installed-0.1.199","case":"A cwd-relative from sub","cwd":"packages/cezar","args":["src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
 {"target":"installed-0.1.199","case":"A repo-relative from root","cwd":".","args":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}
 {"target":"installed-0.1.199","case":"A absolute from sub","cwd":"packages/cezar","args":["<root>/packages/cezar/src/core/cursor-acp-runner.test.ts"],"selected":82,"browsers":81,"units":["packages/cezar/src/core/cursor-acp-runner.test.ts"],"unmatched":[]}

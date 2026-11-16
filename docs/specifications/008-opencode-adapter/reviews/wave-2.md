@@ -59,8 +59,8 @@ Checkpoint 63b3f27b-4808-47aa-b84b-9cdc2b1d44e3 started at revision 0: 386 test 
 Revision: 0
 Known failures: 0
 Affected checks: 2158 passed (1958 tests, 200 test files loaded), 0 running, 0 queued; 386 test files without checks yet: 186 running, 200 queued
-Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all` requests one)
-Checkpoint in progress: `run --all` requested at revision 0, started 11 s ago: 0 of 386 test files done (`node --disable-warning=ExperimentalWarning "/home/user/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait` waits for it)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all` requests one)
+Checkpoint in progress: `run --all` requested at revision 0, started 11 s ago: 0 of 386 test files done (`node --disable-warning=ExperimentalWarning "~/.codex/plugins/cache/hearsay/squeal/0.1.168/dist/cli/squeal.mjs" run --all --wait` waits for it)
 
 Worktree: ~/projects/squeal/.ai/cezar/worktrees/68edb989-c07e-4f04-8400-5e8cec1128d0 (HEAD 20647e1, dirty state not known: no revision recorded yet)
 Daemon: running, last heartbeat 4 s ago

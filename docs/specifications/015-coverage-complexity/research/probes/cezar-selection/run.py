@@ -1,7 +1,7 @@
 """Run only the declared experiment; pauses (exit 75) at a host gate, never polls."""
 import argparse,base64,gzip,json,os,pathlib,resource,subprocess,tarfile,time
 HERE=pathlib.Path(__file__).resolve().parent;SQUEAL=HERE.parents[5]
-p=argparse.ArgumentParser();p.add_argument('scratch');p.add_argument('--only');p.add_argument('--regressions',action='store_true');p.add_argument('--repo',default='/home/user/projects/cezar');a=p.parse_args();root=pathlib.Path(a.scratch).resolve()
+p=argparse.ArgumentParser();p.add_argument('scratch');p.add_argument('--only');p.add_argument('--regressions',action='store_true');p.add_argument('--repo',default='~/projects/cezar');a=p.parse_args();root=pathlib.Path(a.scratch).resolve()
 d=json.loads((HERE/'declaration.json').read_text())
 with gzip.open(HERE/'inputs.json.gz','rt') as f: rows=json.load(f)
 source_rows=rows
@@ -66,11 +66,11 @@ for i,row in enumerate(rows):
         started=time.monotonic();snapshot(dest,row['parent']);setupSeconds=time.monotonic()-started
         payload={k:v for k,v in row.items() if not k.endswith('Manifest')};payload['edits']=row.get('edits') or edits(row)
         inp=root/'input.json';inp.write_text(json.dumps(payload))
-        env={'PATH':str(pathlib.Path('/home/user/.nvm/versions/node/v24.22.1/bin'))+':/usr/bin:/bin',
+        env={'PATH':str(pathlib.Path('~/.nvm/versions/node/v24.22.1/bin'))+':/usr/bin:/bin',
              'HOME':str(root/(mode+'-home')),'TMPDIR':str(root/(mode+'-tmp')),
              'XDG_CACHE_HOME':str(root/(mode+'-cache')),'XDG_CONFIG_HOME':str(root/(mode+'-config')),'XDG_DATA_HOME':str(root/(mode+'-data')),
              'PROBE_NODE_MODULES':str(dest/'node_modules'),'LANG':'C.UTF-8','TZ':'UTC','NODE_OPTIONS':'--max-old-space-size=2048','CI':'true'}
-        cmd=['/home/user/.nvm/versions/node/v24.22.1/bin/node','--import',str(SQUEAL/'node_modules/tsx/dist/loader.mjs'),str(HERE/'arm.mjs'),str(dest),str(inp),mode,str(output)]
+        cmd=['~/.nvm/versions/node/v24.22.1/bin/node','--import',str(SQUEAL/'node_modules/tsx/dist/loader.mjs'),str(HERE/'arm.mjs'),str(dest),str(inp),mode,str(output)]
         before=resource.getrusage(resource.RUSAGE_CHILDREN);start=time.monotonic()
         proc=subprocess.run(cmd,env=env,cwd=dest,capture_output=True,timeout=300)
         after=resource.getrusage(resource.RUSAGE_CHILDREN)

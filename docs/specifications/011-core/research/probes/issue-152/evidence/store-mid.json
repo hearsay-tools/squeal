@@ -34,7 +34,7 @@
       "revision": 0,
       "test_files": "[{\"project\":\"\",\"path\":\"fast.test.ts\"},{\"project\":\"\",\"path\":\"slow.test.ts\"}]",
       "checkpoint_id": null,
-      "log_dir": "/home/user/projects/squeal/.ai/cezar/t/659994d6/sq-152-woucJ4/.git/squeal/runs/8a3428df-e28f-491c-8003-e4cb2bd87a77",
+      "log_dir": "~/projects/squeal/.ai/cezar/t/659994d6/sq-152-woucJ4/.git/squeal/runs/8a3428df-e28f-491c-8003-e4cb2bd87a77",
       "started_at": 1793935760786,
       "ended_at": null,
       "end_state": null

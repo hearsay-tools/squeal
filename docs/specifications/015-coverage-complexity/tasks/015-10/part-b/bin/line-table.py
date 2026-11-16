@@ -36,7 +36,7 @@ for s in X:
                 if not m: continue
                 fn = m.group(1) if k in ('STILL FAIL', 'FAIL', 'PASS') else ('-' if k == 'summary' else 'run.ts')
                 j = J[('codex', key, d['ts'][11:19], k, fn)]
-                rows.append((d['ts'][11:19], repo, 'Codex ' + (key if co == 'worktree' else 'main checkout'), s['version'], short(ln.replace('/home/user/.codex/plugins/data/squeal-hearsay/bin/', '')), j))
+                rows.append((d['ts'][11:19], repo, 'Codex ' + (key if co == 'worktree' else 'main checkout'), s['version'], short(ln.replace('~/.codex/plugins/data/squeal-hearsay/bin/', '')), j))
                 break
 rows.sort()
 print('| Time (Z) | Repo | Session | Version | Line | Cause | Agent | Verdict | Note |')

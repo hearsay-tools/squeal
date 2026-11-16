@@ -23,31 +23,31 @@
     "cwd": "<fixture>"
   },
   {
-    "command": "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "command": "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
     "args": ["--version"],
     "cwd": "<fixture>"
   },
   {
-    "command": "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "command": "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
     "args": [
       "ci",
       "record",
       "--out",
       "parts",
       "--",
-      "/home/user/.nvm/versions/node/v26.13.0/bin/node",
-      "/home/user/projects/squeal/.ai/cezar/worktrees/12531320-509f-4a06-86f7-0b582b3c0af1/node_modules/vitest/vitest.mjs",
+      "~/.nvm/versions/node/v26.13.0/bin/node",
+      "~/projects/squeal/.ai/cezar/worktrees/12531320-509f-4a06-86f7-0b582b3c0af1/node_modules/vitest/vitest.mjs",
       "run"
     ],
     "cwd": "<fixture>"
   },
   {
-    "command": "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "command": "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
     "args": ["code", "--base", "HEAD", "--json", "--timeout", "30", "--parts", "parts"],
     "cwd": "<fixture>"
   },
   {
-    "command": "/home/user/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "command": "~/.codex/plugins/data/squeal-hearsay/bin/squeal",
     "args": ["code", "--base", "HEAD", "--json", "--timeout", "30", "--parts", "parts"],
     "cwd": "<fixture>"
   }

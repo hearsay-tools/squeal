@@ -99,7 +99,7 @@ AssertionError: expected [Function] to not throw an error but 'Error: ENOENT: no
 undefined
 
 + Received:
-"Error: ENOENT: no such file or directory, open '/home/user/projects/squeal/.ai/cezar/tmp/9558952d-d8f8-464e-9437-ba22fb6913b9/squeal-cli-v4i7AQ/ran'"
+"Error: ENOENT: no such file or directory, open '~/projects/squeal/.ai/cezar/tmp/9558952d-d8f8-464e-9437-ba22fb6913b9/squeal-cli-v4i7AQ/ran'"
 
  ❯ test/harness/bundles.test.ts:254:47
     252|     expect(() => readFileSync(ran)).not.toThrow();

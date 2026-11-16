@@ -9,7 +9,7 @@ const mode = process.argv[2] ?? 'idle';
 if (!['idle','running','excluded'].includes(mode)) throw Error('unknown mode');
 const repo = resolve(base, '../../../../../..');
 const root = join(base, '.fixture');
-const cli = '/home/user/.codex/plugins/data/squeal-hearsay/versions/0.1.414/dist/cli/squeal.mjs';
+const cli = '~/.codex/plugins/data/squeal-hearsay/versions/0.1.414/dist/cli/squeal.mjs';
 const emit = x => console.log(JSON.stringify(x));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const load = loadavg()[0];

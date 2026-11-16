@@ -14,7 +14,7 @@ if (load > cpuCount) {
   console.log(`NOT REPRODUCED: load ${load} exceeds ${cpuCount} CPUs; live probe skipped.`);
   process.exit(0);
 }
-const installed = '/home/user/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs';
+const installed = '~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs';
 const root = process.cwd();
 const unit = 'packages/cezar/src/workflows/ci-wait-refusal.test.ts';
 const second = 'packages/cezar/src/workflows/destruction-results.test.ts';

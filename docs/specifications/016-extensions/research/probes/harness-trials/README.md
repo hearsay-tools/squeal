@@ -21,7 +21,7 @@ Findings are in `../../harness-trials.md`. Everything here is throwaway and ran 
 | `stray-session.txt` | The OMP session Squeal's daemon spawn started in omp2. |
 | `ps-omp7.txt` | The processes during omp7: one `omp`, and a daemon under Node. |
 | `omp-real-sessions.txt` | The three real-model OMP sessions: RPC frames, shim trace, the stored session's Squeal entries with their role, `ps` counts. |
-| `cursor-source.txt` | Excerpts of the cursor-agent 2026.10.22-27dcf5f bundle. |
+| `cursor-source.txt` (raw logs removed) | Excerpts of the cursor-agent 2026.10.22-27dcf5f bundle. |
 | `cursor-hook.mjs`, `cursor-config.sh` | A logging hook for every Cursor event, registered in both formats, answering with nonce texts (the `user_email` field is never logged). `cursor-config.sh squeal` registers `cursor-squeal.sh` instead; `off` removes both. |
 | `cursor-squeal.sh`, `cursor-squeal.mjs` | A translator: Cursor's payload to Claude Code's hook input, Squeal's shipped bundle run as a child of the shell, its answer back to Cursor's fields. |
 | `run-cursor.sh`, `tty-cursor.mjs` | Run one Cursor session: print mode with stream-json, or interactive under `script`, quit after the stop follow-up. |

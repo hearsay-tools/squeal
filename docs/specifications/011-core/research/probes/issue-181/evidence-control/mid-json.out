@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "available": true,
   "worktreeId": "3f14df7cf2e29436",
-  "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
+  "worktreeRoot": "~/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
   "revision": 1,
   "commit": {
     "head": "b5f2d8cc2a9a3dba62fcfd83f173b96e41e410a5",
@@ -75,7 +75,7 @@
       },
       "recorded": {
         "worktreeId": "3f14df7cf2e29436",
-        "worktreeRoot": "/home/user/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
+        "worktreeRoot": "~/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
         "revision": 1,
         "recordedAt": 1794360314138,
         "loadPerCpu": 0.71625,

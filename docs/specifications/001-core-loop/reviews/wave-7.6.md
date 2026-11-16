@@ -97,7 +97,7 @@ execFileSync("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir });
 | Where it runs | Outcome |
 |---|---|
 | `npx vitest run`, `TMPDIR=/tmp` | **pass** |
-| `npx vitest run`, `TMPDIR=<common-dir>/squeal/tmp/x` | **fail**: `expected '/home/user/projects/squeal/.git\n' to be 'NOT A REPO'` |
+| `npx vitest run`, `TMPDIR=<common-dir>/squeal/tmp/x` | **fail**: `expected '~/projects/squeal/.git\n' to be 'NOT A REPO'` |
 | a real `squeal daemon` on a linked fixture worktree (baseline) | **fail**, stored as the result |
 
 Inside that directory, `git status` fails with "this operation must be run in a work tree". Any upward search from a temp directory now reaches the main checkout: `package.json`, `tsconfig.json`, linter configs and `node_modules`. I did not prove the search case on a fixture that has `node_modules` in the main checkout.

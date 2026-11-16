@@ -26,13 +26,13 @@ Stop without changes, starts the next turn, then runs only
 check is clean. Logs contain all subprocess commands, hook inputs, outputs and
 exit codes. Python's file writes and sleeps are explicit in `probe.py`.
 
-- `fast-lint.log`: current script, normal ESLint rule. Load 2.91/24. Stop holds
+- `fast-lint.log` (raw logs removed): current script, normal ESLint rule. Load 2.91/24. Stop holds
   for one pending lint check; a tool boundary reports one CRAP change.
-- `pending-lint.log`: current script with the slow flag. Load 4.00/24. The local
+- `pending-lint.log` (raw logs removed): current script with the slow flag. Load 4.00/24. The local
   rule sleeps five seconds on B with `Atomics.wait` (no busy loop). Same hold.
 - `store-evidence.log`: `inspect-store.py` on that second fixture. The pulled
   record names `src/a.js` at revision 1; all three measures have null edit marks.
-- `settled-control.log`: earlier fast variant, load 3.65/24. It omitted the second
+- `settled-control.log` (raw logs removed): earlier fast variant, load 3.65/24. It omitted the second
   UserPromptSubmit after the control Stop, leaving the consumer paused. Lint was
   already current at the later Stop, which did not block. It is a timing/control
   observation, not a comparison that isolates only lint speed.

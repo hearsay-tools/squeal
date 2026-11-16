@@ -62,7 +62,7 @@ lines = []
 cc = json.load(open(O + 'cc.json'))
 for s in cc:
     starts = sorted(x['ts'] for x in s['starts'] if x['ts'])
-    where = 'main' if s['cwd'] == '/home/user/projects/squeal' else ('worktree' if s['cwd'] and '/worktrees/' in s['cwd'] else str(s['cwd']))
+    where = 'main' if s['cwd'] == '~/projects/squeal' else ('worktree' if s['cwd'] and '/worktrees/' in s['cwd'] else str(s['cwd']))
     sid = (s['cwd'] or '').split('/')[-1][:8] if where == 'worktree' else s['session'][:8]
     model = 'haiku' if any('haiku' in m for m in s['models']) else ('opus' if any('opus' in m for m in s['models']) else ','.join(s['models']))
     for d in s['deliveries']:
@@ -76,7 +76,7 @@ for s in cc:
 cx = json.load(open(O + 'codex-all.json'))
 for s in cx:
     cwd = s['cwd'] or ''
-    repo = cwd.split('/')[4] if cwd.startswith('/home/user/projects/') else cwd
+    repo = cwd.split('/')[4] if cwd.startswith('~/projects/') else cwd
     where = 'worktree' if '/worktrees/' in cwd else 'main'
     sid = cwd.split('/')[-1][:8] if where == 'worktree' else s['file'].split('/')[-1][-20:-6]
     for d in s['deliveries']:
