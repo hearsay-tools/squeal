@@ -7,7 +7,7 @@ import { RUN_MISSING } from "./baseline.js";
  * Review `reviews/011-378.md` B1: a runner-part call the scheduler abandons
  * after the quiet point began waiting. Its bound (`RunnerPartBound`) drops
  * the call and leaves the runner's promise open, so no call ends: the quiet
- * point must see the abandonment in a fresh rest, as `Scheduler.idle()` does.
+ * point must see the abandonment in a fresh rest, as `Scheduler.idle()` did.
  */
 
 const BOUND_MS = 400;

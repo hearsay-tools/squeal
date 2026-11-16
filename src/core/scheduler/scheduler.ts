@@ -129,7 +129,6 @@ class TierScheduler implements Scheduler {
   readonly #claimsWake: WakeSlot;
   #claimWindow: ClaimWindow | null = null;
   readonly #lock = new Mutex(this.#now, (count) => this.#wakes.locked(count));
-  readonly #idle: (() => void)[] = [];
   /** Row 015-117: the once-after-upgrade re-walk, made at its first chunk. */
   #rewalk: ImportRewalk | null = null;
   readonly #runnerWork = new RunnerWork({
@@ -892,11 +891,6 @@ class TierScheduler implements Scheduler {
     }, "finding the test files that read the paths of a named wait");
   }
 
-  idle(): Promise<void> {
-    if (this.#isIdle()) return Promise.resolve();
-    return new Promise((resolve) => this.#idle.push(resolve));
-  }
-
   /**
    * Use is the work an edit, a request or a wait caused (011 C9 as amended
    * 2026-10-21, row 011-92): an edit's work and a promoted file
@@ -1079,7 +1073,6 @@ class TierScheduler implements Scheduler {
       // A daemon that is gone waits for nothing; the next one decides again.
       if (this.#awaitingInstall) stopWaiting(this.options);
     }, "closing the scheduler");
-    for (const resolve of this.#idle.splice(0)) resolve();
   }
 
   /** The close began, or the daemon's stop, which precedes it: no tier starts (row 011-66). */
@@ -1182,8 +1175,6 @@ class TierScheduler implements Scheduler {
         // An error of the pump's end is thrown past this block, as it was.
         failed = ended.error;
         if (failed === null && ended.wake.kind === "again") this.#pump();
-        else if (failed === null && this.#isIdle())
-          for (const resolve of this.#idle.splice(0)) resolve();
       }
       if (failed !== null) throw failed;
     });
@@ -1594,12 +1585,6 @@ class TierScheduler implements Scheduler {
       what: `a pass over ${plural(paths.length, "path")}`,
       stopped: () => this.#closed,
     });
-  }
-
-  #isIdle(): boolean {
-    if (this.#closed) return true;
-    if (this.#busy?.pending === true) return false;
-    return this.#pumping === null && (this.#stalled || !this.#admit().hasWork);
   }
 
   #started(): { context: SchedulerContext; ledger: Ledger } {

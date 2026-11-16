@@ -43,7 +43,7 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
 
     side.runner.release();
     await expect.poll(() => afterRun, { timeout: 10_000 }).not.toBeNull();
-    // The run's end does not count as rest: its record and the pump's last pass come first.
+    // The run's end does not count as rest: a rest asked for at the run's return sees its record stored.
     expect(await afterRun).toBe(true);
   });
 
@@ -74,7 +74,7 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
     expect(side.current("test/a.test.ts") && side.current("test/b.test.ts")).toBe(false);
 
     clock.advance(25);
-    // The gather's end, the records and the pump's last pass come before the next rest.
+    // The gather's end and the records come before the next rest.
     await side.scheduler.rest();
     expect(side.current("test/a.test.ts") && side.current("test/b.test.ts")).toBe(true);
     expect(side.runner.active).toBe(0);
@@ -121,7 +121,7 @@ describe("Scheduler.rest() with a held run (review 0.1.513 B1)", { timeout: 60_0
 
       clock.advance(25);
       await side.scheduler.rest();
-      // The record and the pump's last pass came before this rest.
+      // The record came before this rest.
       expect(side.current("test/a.test.ts")).toBe(true);
     } finally {
       release();

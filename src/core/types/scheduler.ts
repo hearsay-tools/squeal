@@ -454,12 +454,6 @@ export interface Scheduler {
    */
   readers?(paths: readonly RelativePath[]): Promise<SyncAnswer>;
   /**
-   * Resolves once nothing is queued or running and no revision waits for its
-   * runner part. Slow files that wait for a trigger or the slot (spec 004
-   * D2) do not count; a slow file running or waiting for load does.
-   */
-  idle(): Promise<void>;
-  /**
    * Row 011-352: resolves once the scheduler rests (`GLOSSARY.md`, "Rest"):
    * no wake pass runs, none of its own async work is open, its lock has
    * nothing queued or running, no wake is due, and this still holds after
