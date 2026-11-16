@@ -234,12 +234,10 @@ describe("scheduler: stored direct marks (016 D4, goal 6)", SLOW, () => {
       RUN_MISSING,
     );
     await side.scheduler.start();
-    // `preload-worktrees.ts` has no quiet point yet (row 011-380 B7): poll the mark the run stores.
-    await expect
-      .poll(() => JSON.parse(store.meta.get(observedDirectMetaKey(NT.name)) ?? "{}"), {
-        timeout: 30_000,
-      })
-      .toEqual({ "nt/test/t.test.mjs": ["nt/bin/child.mjs", "nt/lib/b.mjs"] });
+    await side.quiet();
+    expect(JSON.parse(store.meta.get(observedDirectMetaKey(NT.name)) ?? "{}")).toEqual({
+      "nt/test/t.test.mjs": ["nt/bin/child.mjs", "nt/lib/b.mjs"],
+    });
     // b is in the static closure: only the child's entry grew the observed set.
     expect(JSON.parse(store.meta.get(observedMetaKey(NT.name)) ?? "{}")).toEqual({
       "nt/test/t.test.mjs": ["nt/bin/child.mjs"],

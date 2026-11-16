@@ -12,7 +12,7 @@ describe("which runs are background (spec 021 D12)", { timeout: 120_000 }, () =>
   it("marks the backlog's tiers, and neither an edit's tier nor a named wait's batch", async () => {
     const { side, gate, batch, after } = await heldBatch();
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = side.runner.runs;
     // The baseline ran X in the backlog; the edit's tier is X's last run before the batch.
     expect(runs.find((run) => paths(run).includes(X))?.background).toBe(true);

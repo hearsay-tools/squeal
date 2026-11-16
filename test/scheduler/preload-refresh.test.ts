@@ -20,7 +20,7 @@ describe("a runner-only refinement still hears shared preload growth (007 R1)", 
     writeFileSync(join(repo.main, "nt/src/newly_observed.cjs"), "globalThis.extraValue = 1;\n");
     const a = await open(repo.main, store, repo.commonDir, undefined, PRELOADED);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const before = keyOf(store, repo.main, CONTROL_TEST);
     expect(before).toBeTruthy();
 
@@ -29,7 +29,7 @@ describe("a runner-only refinement still hears shared preload growth (007 R1)", 
     const prior = JSON.parse(store.meta.get(meta) ?? "[]") as string[];
     store.meta.set(meta, JSON.stringify([...prior, "nt/src/newly_observed.cjs"]));
     a.scheduler.refreshObserved();
-    await a.scheduler.idle();
+    await a.quiet();
 
     expect(keyOf(store, repo.main, CONTROL_TEST)).not.toBe(before);
   });

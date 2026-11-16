@@ -17,6 +17,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { SLOW } from "./cleanup.js";
 import {
   CONTROL_TEST,
@@ -108,11 +109,12 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
     };
     const worktreeId = worktreeIdFor(repo.main);
     const sink = new RecordingSink(store, worktreeId);
+    const calls = new RunnerCalls();
     const scheduler = createScheduler({
       root: repo.main,
       worktreeId,
       store,
-      runner,
+      runner: countCalls(runner, calls),
       sink,
       policy: { ...DEFAULT_POLICY, ...RUN_MISSING },
       squealVersion: "0.0.0-test",
@@ -126,8 +128,9 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
       await adapter.close();
     });
 
+    const side = { rest: () => scheduler.rest(), calls, clock: null };
     await scheduler.start();
-    await scheduler.idle();
+    await quiet(side);
     expect(runs.flat().map((f) => f.path)).toEqual([TEST, TEST, TEST]);
     // Each growth's move counts as the latest revision's, so `status --wait` holds for the file
     // while it re-runs; its `unknown` is its result and ends that (task 001-194).
@@ -197,14 +200,14 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
     const aStarted = a.scheduler.start();
     await expect.poll(() => a.closures()).toBeGreaterThan(0);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
       expect(outcome(store, rootB, path)).toBe("fail");
       expect(origin(store, rootB, path)).toBe("own");
     }
     releaseA();
     await aStarted;
-    await a.scheduler.idle();
+    await a.quiet();
     expect(outcome(store, repo.main)).toBe("pass");
 
     // A's first run went under keys lacking the path, the keys B's first run went under too:
@@ -250,7 +253,7 @@ describe("scheduler: a run that grew its environment (task 003-43)", SLOW, () =>
 
     // B's own run confirms its fail; nothing ever told B it passed.
     releaseB();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runs.length).toBeGreaterThan(before);
     for (const path of [CONTROL_TEST, HIDDEN_TEST]) {
       expect(outcome(store, rootB, path)).toBe("fail");

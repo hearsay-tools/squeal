@@ -70,7 +70,7 @@ describe(
         openNodeTest(repo.main, store, repo.commonDir, undefined, NT, undefined, RUN_MISSING);
       const side = await open();
       await side.scheduler.start();
-      await side.scheduler.idle();
+      await side.quiet();
       expect(JSON.parse(store.meta.get(observedMetaKey(NT.name)) ?? "{}")).toEqual({
         [KEPT]: ["nt/dist/x.mjs"],
       });
@@ -81,7 +81,7 @@ describe(
       // A restart: the kept path keys the file, which inherits its own pass; nothing grew.
       const again = await open();
       await again.scheduler.start();
-      await again.scheduler.idle();
+      await again.quiet();
       expect(again.runs).toEqual([]);
       expect(JSON.parse(store.meta.get(observedMetaKey(NT.name)) ?? "{}")).toEqual({
         [KEPT]: ["nt/dist/x.mjs"],

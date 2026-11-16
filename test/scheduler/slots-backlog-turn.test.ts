@@ -59,7 +59,7 @@ describe("scheduler: the backlog's turn in a lane of slots (review wave-4 slice 
     } finally {
       release();
     }
-    await h.scheduler.idle();
+    await h.quiet();
     const ran = runs.flatMap((run) => run.files.map((f) => f.path));
     for (const path of [...EDITED, ...BACKLOG]) expect(ran).toContain(path);
   });

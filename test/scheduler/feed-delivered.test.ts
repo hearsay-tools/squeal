@@ -1,7 +1,6 @@
 import { utimesSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { headerLines } from "../../src/core/delivery/header.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
@@ -19,6 +18,7 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { countedLoop } from "./counted-loop.js";
 import { RecordingSink } from "./recording-sink.js";
 import { createRepo, openRepoStore } from "./repo.js";
 
@@ -49,7 +49,7 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
     let clock = Date.now();
     const startedAt = clock - 1_000;
     const errors: Error[] = [];
-    const loop = createDaemonLoop({
+    const loop = countedLoop({
       root,
       worktreeId,
       store,
@@ -113,7 +113,7 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
     try {
       alive();
       await loop.start();
-      await loop.scheduler.idle();
+      await loop.quiet();
       await turn();
       expect(readFeedDelivered(store, worktreeId)).toBe(clock);
       const math = join(root, "src/math.ts");

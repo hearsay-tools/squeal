@@ -16,6 +16,7 @@ import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/polic
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { countCalls, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { SLOW } from "./cleanup.js";
 import { outcome } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
@@ -103,11 +104,12 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
         return adapter.run(files, options);
       },
     };
+    const calls = new RunnerCalls();
     const scheduler = createScheduler({
       root,
       worktreeId,
       store,
-      runner,
+      runner: countCalls(runner, calls),
       sink: new RecordingSink(store, worktreeId),
       // One file per tier, shortest first: a, then b, then b's re-run before a's.
       policy: {
@@ -125,6 +127,7 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
       await adapter.close();
     });
     const hasher = createFsHasher(root, "sha1");
+    const side = { rest: () => scheduler.rest(), calls, clock: null };
     const batch = async (...paths: string[]) =>
       scheduler.handleBatch({ trigger: "watch", paths: await statCandidates(paths, hasher) });
     const pending = (path: string) =>
@@ -132,10 +135,10 @@ describe("status --wait over a growth at the revision of a sibling's result (tas
 
     // The baseline, then a's edit at revision 1 and its quick result.
     await scheduler.start();
-    await scheduler.idle();
+    await quiet(side);
     appendFileSync(join(root, A), "// edited\n");
     await batch(A);
-    await scheduler.idle();
+    await quiet(side);
     expect(scheduler.status().revision).toBe(1);
     expect([A, B].map((path) => outcome(store, root, path))).toEqual(["pass", "pass"]);
 

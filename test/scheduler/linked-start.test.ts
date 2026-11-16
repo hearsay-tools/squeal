@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDaemonLoop, type DaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
@@ -13,6 +12,7 @@ import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { type CountedLoop, countedLoop } from "./counted-loop.js";
 import { RecordingSink } from "./recording-sink.js";
 import { createRepo, openRepoStore } from "./repo.js";
 
@@ -48,12 +48,12 @@ describe("a worktree with a linked directory starts at revision 0", SLOW, () => 
   async function withLoop(
     repo: ReturnType<typeof linkedRepo>,
     options: { backend?: WatcherBackend; reconcileIntervalMs?: number },
-    body: (loop: DaemonLoop) => Promise<void>,
+    body: (loop: CountedLoop) => Promise<void>,
   ): Promise<void> {
     const { root, store, worktreeId, commonDir } = repo;
     const runner = await createVitestAdapter({ root });
     const errors: Error[] = [];
-    const loop = createDaemonLoop({
+    const loop = countedLoop({
       root,
       worktreeId,
       store,
@@ -68,7 +68,7 @@ describe("a worktree with a linked directory starts at revision 0", SLOW, () => 
     });
     try {
       await loop.start();
-      await loop.scheduler.idle();
+      await loop.quiet();
       await body(loop);
     } finally {
       await loop.close();

@@ -8,9 +8,11 @@ import { storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/policy.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Rest } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
+import { countCalls, type QuietOptions, quiet, RunnerCalls } from "../helpers/quiet-point.js";
 import { RecordingSink } from "./recording-sink.js";
 import { addWorktree, createRepo, openRepoStore } from "./repo.js";
 
@@ -99,6 +101,10 @@ export interface Worktree {
   readonly runs: TestFileRef[][];
   /** `closure` answers the adapter computed. */
   readonly closures: () => number;
+  /** The runner calls the scheduler has open (row 011-380 B7). */
+  readonly calls: RunnerCalls;
+  /** The scheduler's quiet point (`test/helpers/quiet-point.ts`); host clock. */
+  quiet(options?: QuietOptions): Promise<Rest>;
 }
 
 /**
@@ -134,11 +140,12 @@ export async function open(
     },
   };
   const worktreeId = worktreeIdFor(root);
+  const calls = new RunnerCalls();
   const scheduler = createScheduler({
     root,
     worktreeId,
     store,
-    runner,
+    runner: countCalls(runner, calls),
     sink: new RecordingSink(store, worktreeId),
     policy: { ...DEFAULT_POLICY, ...policy },
     squealVersion: "0.0.0-test",
@@ -149,7 +156,14 @@ export async function open(
     await scheduler.close();
     await adapter.close();
   });
-  return { scheduler, runs, closures: () => closures };
+  const side = { rest: () => scheduler.rest(), calls, clock: null };
+  return {
+    scheduler,
+    runs,
+    closures: () => closures,
+    calls,
+    quiet: (options) => quiet(side, options),
+  };
 }
 
 export async function twoWorktrees(preload = false) {

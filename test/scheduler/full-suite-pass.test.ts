@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDaemonLoop, type DaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
@@ -12,6 +11,7 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits } from "./busy-fixture.js";
 import { SLOW } from "./cleanup.js";
+import { type CountedLoop, countedLoop } from "./counted-loop.js";
 import { RecordingSink } from "./recording-sink.js";
 import { createRepo, openRepoStore } from "./repo.js";
 
@@ -25,7 +25,7 @@ interface Fixture {
   readonly root: string;
   readonly worktreeId: WorktreeId;
   readonly store: Store;
-  readonly loop: DaemonLoop;
+  readonly loop: CountedLoop;
   readonly errors: Error[];
   /** The revision once the baseline ran, before the edit. */
   readonly before: number;
@@ -44,7 +44,7 @@ async function edited(run: (fixture: Fixture) => Promise<void>, onError?: () => 
   const worktreeId = worktreeIdFor(root);
   const runner = await createVitestAdapter({ root });
   const errors: Error[] = [];
-  const loop = createDaemonLoop({
+  const loop = countedLoop({
     root,
     worktreeId,
     store,
@@ -63,7 +63,7 @@ async function edited(run: (fixture: Fixture) => Promise<void>, onError?: () => 
   });
   try {
     await loop.start();
-    await loop.scheduler.idle();
+    await loop.quiet();
     const before = loop.scheduler.status().revision;
     const baseline = store.checkpoints.lastCompleted(worktreeId)?.id;
     writeFileSync(
@@ -109,7 +109,7 @@ describe("run --all plans only after a pass delivered since the request (011-198
       expect(store.revisions.latest(worktreeId)?.changes.map((c) => c.path)).toEqual([
         "src/math.ts",
       ]);
-      await loop.scheduler.idle();
+      await loop.quiet();
       expect(errors).toEqual([]);
     });
   });
@@ -129,7 +129,7 @@ describe("run --all plans only after a pass delivered since the request (011-198
         const record = await loop.scheduler.requestFullSuite();
         expect(record.revision).toBeGreaterThan(before);
         expect(record.testFiles.map((file) => file.path)).toContain("test/math.test.ts");
-        await loop.scheduler.idle();
+        await loop.quiet();
       },
       () => restore(),
     );
@@ -161,7 +161,7 @@ describe("run --all plans only after a pass delivered since the request (011-198
       expect(busy.thrown()).toBe(true);
       expect(record.revision).toBeGreaterThan(before);
       expect(record.testFiles.map((file) => file.path)).toContain("test/math.test.ts");
-      await loop.scheduler.idle();
+      await loop.quiet();
       expect(errors).toEqual([]);
     });
   });

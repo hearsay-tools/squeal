@@ -56,7 +56,7 @@ describe("a running file's lookup at a moved key (row 011-120)", SLOW, () => {
     } finally {
       edited.release();
     }
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(LISTS).slice(before)).toHaveLength(1);
     expect(h.keyOf(LISTS)).toBe(moved);
     expect(phaseOf(h, LISTS)).toBeNull();
@@ -97,7 +97,8 @@ describe("a running file's lookup at a moved key (row 011-120)", SLOW, () => {
       red.release();
       forced.release();
     }
-    await h.scheduler.idle();
+    // The checkpoint ends at the pump's next pass after the run: wait through it.
+    await h.quiet({ through: ["pump"] });
 
     // The cancelled run at the moved key, then one forced run at the stored key.
     const runs = h.runsOf(LISTS).slice(before);
