@@ -56,7 +56,7 @@ describe(
       writeInstall(repo.main, INSTALL);
       const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 10 });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       const before = h.keyOf(SIDE);
       const runs = h.runsOf(SIDE).length;
       expect(before).not.toBeNull();
@@ -79,9 +79,9 @@ describe(
       });
 
       await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-      await h.scheduler.idle();
+      await h.quiet();
       await queued;
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect([taken, queued !== null]).toEqual([1, true]);
       expect(h.keyOf(SIDE)).not.toBe(before);

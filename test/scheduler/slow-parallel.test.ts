@@ -64,7 +64,7 @@ describe("an idle slow tier takes several files (spec 004 D2, slow.maxParallel)"
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(slowRunsOf(h, slow)).toEqual([]);
     await delivery.endTurn(consumer);
     await waitFor(() => slowRunsOf(h, slow).flat().length === 3, 60_000);

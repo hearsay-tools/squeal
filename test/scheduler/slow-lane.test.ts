@@ -86,7 +86,7 @@ describe("the slow lane (spec 004 D2, task 004-18)", SLOW, () => {
     expect(h.runsOf(STRINGS)).toEqual([]);
 
     slow.release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(STRINGS)).toHaveLength(1);
     expect(lanesOf(h, STRINGS)).toEqual(["slow:"]);
     expect(new Set(lanesOf(h, MATH))).toEqual(new Set([""]));
@@ -97,7 +97,7 @@ describe("the slow lane (spec 004 D2, task 004-18)", SLOW, () => {
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(STRINGS)).toEqual([]);
 
     const fast = hold(h, MATH);
@@ -110,7 +110,7 @@ describe("the slow lane (spec 004 D2, task 004-18)", SLOW, () => {
     expect(h.runsOf(STRINGS)).toEqual([]);
     fast.release();
     await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await h.scheduler.idle();
+    await h.quiet();
   });
 
   it("releases the slow lane once its pass drains", async () => {
@@ -121,7 +121,7 @@ describe("the slow lane (spec 004 D2, task 004-18)", SLOW, () => {
     };
     await h.scheduler.start();
     await expect.poll(() => released.length, { timeout: 60_000 }).toBe(1);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(released).toEqual([{ lane: "slow:", slowRuns: 1 }]);
   });
 });

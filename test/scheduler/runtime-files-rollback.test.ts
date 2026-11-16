@@ -43,7 +43,7 @@ it(
         busyWaits: new BusyWaits({ now: Date.now, note: () => {} }),
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(rolledBack).toBe(true);
       expect(rawAfterRollback).toBeNull();
       const raw = JSON.parse(store.meta.get(meta) ?? "{}");

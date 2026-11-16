@@ -47,7 +47,7 @@ describe("a walk read before an edit (015-119)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const test = ref(TEST);
 
     // The next closure of the test file is held after the real adapter answered it.
@@ -73,7 +73,7 @@ describe("a walk read before an edit (015-119)", SLOW, () => {
     await h.batch(GATEWAY);
     release.resolve();
     await first;
-    await h.scheduler.idle();
+    await h.quiet();
 
     const fresh = await original(test);
     expect(fresh.imports?.find((f) => f.path === GATEWAY)?.static).toEqual(["src/a.ts"]);

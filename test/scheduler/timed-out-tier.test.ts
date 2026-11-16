@@ -103,7 +103,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const runs = h.runner.runs;
     const first = runs[0];
@@ -151,7 +151,7 @@ describe("scheduler: a timed-out tier keeps its completed files (D5, D12, task 0
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const runs = h.runner.runs;
     console.log(

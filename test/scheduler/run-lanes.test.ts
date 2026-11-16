@@ -37,7 +37,7 @@ async function open(): Promise<Harness> {
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
   });
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   await waitFor(() => readHeader(h.store, h.worktreeId).fullSuite.atCurrentRevision, 60_000);
   return h;
 }
@@ -57,13 +57,13 @@ describe("lane flags for a full run (task 004-61)", SLOW, () => {
     // A revision after the baseline's full suite, which the fast lane alone does not complete again.
     h.write("src/notes.md", "an edit\n");
     await h.batch("src/notes.md");
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.runner.runs.length;
     const record = await h.scheduler.requestFullSuite({ force: true, lane: "fast" });
     expect(record.lane).toBe("fast");
     expect(paths(record.testFiles)).toEqual([...FAST_FILES].sort());
     await waitFor(() => h.store.checkpoints.get(record.id)?.end === "completed", 60_000);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(ranSince(h, before)).toEqual([...FAST_FILES].sort());
 
     expect(h.store.checkpoints.get(record.id)?.lane).toBe("fast");
@@ -80,7 +80,7 @@ describe("lane flags for a full run (task 004-61)", SLOW, () => {
     const record = await h.scheduler.requestFullSuite({ force: true, lane: "slow" });
     expect(record.lane).toBe("slow");
     expect(paths(record.testFiles)).toEqual([...SLOW_FILES].sort());
-    await h.scheduler.idle();
+    await h.quiet();
   });
 
   it("both lanes are --all: every file, and a full-suite checkpoint", async () => {
@@ -91,6 +91,6 @@ describe("lane flags for a full run (task 004-61)", SLOW, () => {
     await waitFor(() => h.store.checkpoints.get(record.id)?.end === "completed", 60_000);
     expect(h.store.checkpoints.lastCompletedFull(h.worktreeId)?.id).toBe(record.id);
     expect(readHeader(h.store, h.worktreeId).fullSuite.lane).toBeUndefined();
-    await h.scheduler.idle();
+    await h.quiet();
   });
 });

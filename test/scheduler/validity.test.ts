@@ -35,7 +35,7 @@ async function duringTier(h: Harness, during: () => Promise<void>): Promise<void
   };
   h.write("test/plain.test.ts", PLAIN_EDITED);
   await h.batch("test/plain.test.ts");
-  await h.scheduler.idle();
+  await h.quiet();
 }
 
 describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
@@ -47,7 +47,7 @@ describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let header: StatusHeader | null = null;
     let state: KnownState | null = null;
@@ -60,7 +60,7 @@ describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
       state = h.sink.stateOf(adds);
     });
     await batch;
-    await h.scheduler.idle();
+    await h.quiet();
 
     // Read inside the tier, asserted here: a throw in beforeRun is a crashed run.
     expect(header).toMatchObject({ revision: 2, fullSuite: { atCurrentRevision: false } });
@@ -74,7 +74,7 @@ describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { tierSize: 1 });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let current = -1;
     let batch: Promise<void> = Promise.resolve();
@@ -85,7 +85,7 @@ describe("scheduler: validity never lags a revision (B2)", SLOW, () => {
       current = h.header().counts.current;
     });
     await batch;
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runsOf("test/plain.test.ts").at(-1)?.report.end).toBe("completed");
     expect(current).toBe(0);
@@ -102,7 +102,7 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.header().fullSuite.atCurrentRevision).toBe(true);
 
     h.write("node_modules/.package-lock.json", '{"packages":{}}\n');
@@ -111,7 +111,7 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
       header ??= h.header();
     };
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(store.revisions.latest(h.worktreeId)?.changes.map((c) => c.path)).toEqual([
       "node_modules/.package-lock.json",
@@ -129,7 +129,7 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
     });
     h.write("packages/app/node_modules/.package-lock.json", '{"packages":{}}\n');
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.extraFiles()).toContain("packages/app/node_modules/.package-lock.json");
     const before = h.keyOf("test/plain.test.ts");
 
@@ -139,7 +139,7 @@ describe("scheduler: installed lockfile (N3, N8)", SLOW, () => {
       '{"packages":{"node_modules/left-pad":{"version":"1.3.0"}}}\n',
     );
     await h.batch("packages/app/node_modules/.package-lock.json");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
   });
 });

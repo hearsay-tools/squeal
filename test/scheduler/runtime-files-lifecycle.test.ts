@@ -26,14 +26,14 @@ describe("runtime-file lifecycle", SLOW, () => {
         changes.some((c) => c.path === "squeal.config.json") ? next : null,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(A)).toHaveLength(1);
     expect(h.runsOf(B)).toHaveLength(1);
     expect(JSON.parse(store.meta.get(observedMetaKey("")) ?? "{}")[A]).toContain(DATA);
     expect(h.scheduler.extraFiles()).not.toContain(DATA);
     const before = [h.keyOf(A), h.keyOf(B)];
     h.write(DATA, text(4321));
-    await h.scheduler.idle();
+    await h.quiet();
     expect([h.keyOf(A), h.keyOf(B)]).toEqual(before);
     expect(h.runsOf(A)).toHaveLength(1);
     next = { ...DEFAULT_POLICY, ...RUN_MISSING };
@@ -57,7 +57,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: RUN_MISSING,
     });
     await old.scheduler.start();
-    await old.scheduler.idle();
+    await old.quiet();
     expect(store.testFiles.get({ project: "", path: A })?.closure.paths).toContain(DATA);
     await old.scheduler.close();
     const before = store.revisions.latest(old.worktreeId)?.number ?? 0;
@@ -67,7 +67,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: scoped,
     });
     await fresh.scheduler.start();
-    await fresh.scheduler.idle();
+    await fresh.quiet();
     expect(store.revisions.latest(fresh.worktreeId)?.number ?? 0).toBe(before);
     expect(store.testFiles.get({ project: "", path: A })?.closure.paths).not.toContain(DATA);
     expect(fresh.runsOf(A)).toHaveLength(1);
@@ -78,7 +78,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: scoped,
     });
     await again.scheduler.start();
-    await again.scheduler.idle();
+    await again.quiet();
     expect(again.runner.runs).toEqual([]);
     expect(
       store.revisions.latest(again.worktreeId)?.number ?? 0,
@@ -94,7 +94,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: RUN_MISSING,
     });
     await old.scheduler.start();
-    await old.scheduler.idle();
+    await old.quiet();
     await old.scheduler.close();
     writeFileSync(join(repo.main, DATA), text(2000));
     const h = await openHarness(repo.main, store, repo.commonDir, {
@@ -102,7 +102,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: scoped,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(store.revisions.latest(h.worktreeId)?.changes.map((c) => c.path)).toContain(DATA);
     expect(h.scheduler.extraFiles()).toContain(DATA);
     const keys = [h.keyOf(A), h.keyOf(B), h.keyOf(OUT)];
@@ -124,7 +124,7 @@ describe("runtime-file lifecycle", SLOW, () => {
         policy: RUN_MISSING,
       });
       await old.scheduler.start();
-      await old.scheduler.idle();
+      await old.quiet();
       await old.scheduler.close();
       writeFileSync(join(repo.main, DATA), text(2000));
       const h = await openHarness(repo.main, store, repo.commonDir, {
@@ -134,7 +134,7 @@ describe("runtime-file lifecycle", SLOW, () => {
         allowErrors: true,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.keyOf(A)).toBeNull();
       expect(h.scheduler.extraFiles()).toContain(DATA);
       expect(h.header().counts.current).toBe(0);
@@ -148,7 +148,7 @@ describe("runtime-file lifecycle", SLOW, () => {
       policy: RUN_MISSING,
     });
     await old.scheduler.start();
-    await old.scheduler.idle();
+    await old.quiet();
     await old.scheduler.close();
     const h = await openHarness(repo.main, store, repo.commonDir, {
       observe: true,
@@ -156,7 +156,7 @@ describe("runtime-file lifecycle", SLOW, () => {
         changes.some((c) => c.path === "squeal.config.json") ? scoped : null,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runner.runs).toEqual([]);
     const before = h.keyOf(A);
     const closure = h.runner.closure.bind(h.runner);
@@ -199,7 +199,7 @@ describe("runtime-file lifecycle", SLOW, () => {
     );
     const h = await openHarness(repo.main, store, repo.commonDir, { observe: true, policy });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const current = readStatus(h.root);
     expect(current).toMatchObject({
       runtimeFiles: {

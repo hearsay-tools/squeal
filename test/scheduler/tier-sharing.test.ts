@@ -108,7 +108,7 @@ describe(
         policy: RUN_MISSING,
       });
       await h.scheduler.start();
-      await h.scheduler.idle();
+      await h.quiet();
       expect(outcomeOf(store, h.worktreeId, MATH)).toBe("pass");
       expect(h.runsOf(HELD)).toHaveLength(1);
 
@@ -130,7 +130,7 @@ describe(
       h.write("src/math.ts", "export const add = (a: number, b: number) => b + a;\n");
       await h.batch("src/math.ts");
       rmSync(hold);
-      await h.scheduler.idle();
+      await h.quiet();
 
       expect(heldKey).not.toBeNull();
       if (heldKey !== null) expect(store.results.checksForKey(heldKey)).toEqual([]);

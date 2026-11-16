@@ -70,7 +70,7 @@ describe("a tier holds only the permits it runs (row 011-97)", SLOW, () => {
       seen.push(held());
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(seen).toEqual([
       {
         before: { workers: 3, free: 0, mark: { want: 3, grant: 3 } },
@@ -123,7 +123,7 @@ describe("a tier holds only the permits it runs (row 011-97)", SLOW, () => {
 
     held?.release();
     await expect.poll(() => runs.length, { timeout: 30_000 }).toBeGreaterThan(0);
-    await h.scheduler.idle();
+    await h.quiet();
     for (const run of runs) expect(run.options.workers ?? 0).toBeGreaterThanOrEqual(2);
   });
 });

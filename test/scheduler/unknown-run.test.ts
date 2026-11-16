@@ -64,12 +64,12 @@ describe("the run behind an UNKNOWN (011-108)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.sink.stateOf(exits)).toMatchObject({ outcome: "pass", validity: "current" });
 
     const b = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(b.runsOf(EXITS)).toHaveLength(0);
     expect(b.sink.stateOf(exits)?.origin).toMatchObject({ kind: "inherited" });
 
@@ -77,7 +77,7 @@ describe("the run behind an UNKNOWN (011-108)", SLOW, () => {
     writeFileSync(marker, "");
     b.write(EXITS, exitsSource(marker, " // b"));
     await b.batch(EXITS);
-    await b.scheduler.idle();
+    await b.quiet();
     const [crashed] = b.runsOf(EXITS);
     expect(crashed?.report.end).toBe("crashed");
     const crashRun = crashed?.options.runId as string;
@@ -103,7 +103,7 @@ describe("the run behind an UNKNOWN (011-108)", SLOW, () => {
     expect(whyOf(b).unknownRun?.runId).toBe(crashRun);
     const b2 = await openHarness(other, store, repo.commonDir, { rerunCap: 0 });
     await b2.scheduler.start();
-    await b2.scheduler.idle();
+    await b2.quiet();
     const last = (b2.runsOf(EXITS).at(-1) ?? crashed)?.options.runId as string;
     expect(store.runs.get(last)?.end).toBe("crashed");
     expect(b2.sink.stateOf(exits)?.outcome).toBe("unknown");
@@ -113,7 +113,7 @@ describe("the run behind an UNKNOWN (011-108)", SLOW, () => {
     rmSync(marker);
     a.write(EXITS, exitsSource(marker, " // a"));
     await a.batch(EXITS);
-    await a.scheduler.idle();
+    await a.quiet();
     const after = whyOf(b2);
     expect(after.results.length).toBeGreaterThanOrEqual(2);
     expect(after.results.every((r) => r.result.outcome === "pass")).toBe(true);

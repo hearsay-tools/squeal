@@ -63,7 +63,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     touchDuringRuns(h, 1);
     const put = puts(h.store, MATH);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const runs = h.runsOf(MATH);
     expect(runs).toHaveLength(2);
@@ -95,7 +95,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     });
     touchDuringRuns(h, Number.POSITIVE_INFINITY);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.runsOf(MATH)).toHaveLength(2);
     expect(h.store.results.listForCheck(adds, 10)).toEqual([]);
@@ -120,7 +120,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     // It stays unknown: an unrelated edit runs other files, never this one again.
     h.write("src/strings.ts", `${readFileSync(join(h.root, "src/strings.ts"), "utf8")}\n`);
     await h.batch("src/strings.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(MATH)).toHaveLength(2);
     expect(notes(h).filter((text) => text.includes("stays unknown"))).toHaveLength(1);
   });
@@ -132,7 +132,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.sink.stateOf(adds)).toMatchObject({ outcome: "pass", validity: "current" });
     const validated = h.store.results.listForCheck(adds, 10).map((r) => r.provenance.runId);
 
@@ -156,7 +156,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
       return touch?.(files);
     };
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     const runs = h.runsOf(MATH).slice(before);
     expect(runs).toHaveLength(2);
@@ -188,7 +188,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     };
     const put = puts(h.store, MATH);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // K2 is new work: its first withhold is a first one, so it runs once more and is current.
     const runs = h.runsOf(MATH);
@@ -210,7 +210,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     };
     const put = puts(a.store);
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
 
     // No revision moves a key: each file runs twice at its key, whatever tier it shares.
     expect([0, 1, 2].map((i) => a.runner.ran(fileName(i)))).toEqual([2, 2, 2]);
@@ -227,7 +227,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     const { main } = claimRepo(3);
     const a = side(main, { count: 3, tierSize: 2, backlogTierSize: 2 });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     const files = [0, 1, 2].map(fileName);
     const before = files.map((path) => a.runner.ran(path));
     const keys = files.map((path) => a.keyOf(path));
@@ -240,7 +240,7 @@ describe("a tier the completion barrier withholds (task 007-30)", SLOW, () => {
     };
     const put = puts(a.store);
     await a.scheduler.requestFullSuite({ force: true });
-    await a.scheduler.idle();
+    await a.quiet();
 
     // The forced entry of a file withheld twice is not queued again: each runs twice at its key.
     expect(files.map((path, i) => a.runner.ran(path) - (before[i] ?? 0))).toEqual([2, 2, 2]);

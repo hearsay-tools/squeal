@@ -91,7 +91,7 @@ async function seedPredecessor(store: Store, root: string, paths: string[]): Pro
 async function twoIntervals(h: Harness): Promise<void> {
   for (let pass = 0; pass < 2; pass += 1) {
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
   }
 }
 
@@ -113,7 +113,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     };
     await h.scheduler.start();
     await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(MATH)).toHaveLength(1);
     const revision = h.scheduler.status().revision;
     const key = h.keyOf(MATH);
@@ -177,7 +177,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     await h.scheduler.start();
     await expect.poll(ran, { timeout: 60_000 }).toBe(1);
     await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await h.scheduler.idle();
+    await h.quiet();
     const revision = h.scheduler.status().revision;
 
     await twoIntervals(h);
@@ -204,7 +204,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     });
     await h.scheduler.start();
     await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await h.scheduler.idle();
+    await h.quiet();
     await twoIntervals(h);
     expect(h.scheduler.extraFiles()).not.toContain("dist/index.js");
     expect(h.scheduler.extraFiles()).not.toContain("test/.tmp/out.txt");
@@ -239,7 +239,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
       await h.scheduler.start();
       await expect.poll(() => h.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
       await expect.poll(() => h.keyOf(MATH) !== null && h.runsOf(MATH).length > 0).toBe(true);
-      await h.scheduler.idle();
+      await h.quiet();
       expect(h.runsOf(MATH)).toHaveLength(1);
       const revision = h.scheduler.status().revision;
 
@@ -265,7 +265,7 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     const first = await openHarness(r.main, store, r.commonDir, options);
     await first.scheduler.start();
     await expect.poll(() => first.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await first.scheduler.idle();
+    await first.quiet();
     expect(first.scheduler.extraFiles()).toContain(CLIENT);
     await first.scheduler.close();
     await first.runner.close();
@@ -274,14 +274,14 @@ describe("a test writing scratch files under its declared inputs (lessons defect
     const second = await openHarness(r.main, store, r.commonDir, options);
     await second.scheduler.start();
     await expect.poll(() => second.runsOf(GEN).length, { timeout: 60_000 }).toBe(1);
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.runner.runs.flatMap((run) => run.files.map((f) => f.path))).toEqual([GEN]);
     expect(second.scheduler.extraFiles()).toContain(CLIENT);
 
     // Watched again: an edit reruns the file that imports it.
     second.write(CLIENT, 'export const client = () => "ok" as string;\n');
     await second.batch(CLIENT);
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.runsOf(GEN)).toHaveLength(2);
     expect(second.runsOf(MATH)).toHaveLength(0);
   });
@@ -318,7 +318,7 @@ describe("a removed project's saved closures (row 011-36)", SLOW, () => {
       slow: calm(),
     });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(first.scheduler.extraFiles()).toEqual(expect.arrayContaining([BUILD, CLIENT]));
     await first.scheduler.close();
     await first.runner.close();
@@ -328,7 +328,7 @@ describe("a removed project's saved closures (row 011-36)", SLOW, () => {
     // The project is removed: its test file's saved closure still names the build.
     const h = await openHarness(r.main, store, r.commonDir, { slow: calm() });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const revision = h.scheduler.status().revision;
     expect(h.scheduler.extraFiles()).toContain(CLIENT);
     expect(h.scheduler.extraFiles()).not.toContain(BUILD);
@@ -344,7 +344,7 @@ describe("a removed project's saved closures (row 011-36)", SLOW, () => {
     const all = [...h.scheduler.trackedPaths(), ...h.scheduler.extraFiles()];
     const paths = await statCandidates(all, createFsHasher(r.main, "sha1"));
     await h.scheduler.handleBatch({ trigger: "interval", paths });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.status().revision).toBe(revision);
   });
 });
@@ -360,7 +360,7 @@ describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
     const first = await openHarness(r.main, store, r.commonDir, options);
     await first.scheduler.start();
     await expect.poll(() => first.runsOf(STRINGS).length, { timeout: 60_000 }).toBe(1);
-    await first.scheduler.idle();
+    await first.quiet();
     const ref = first.runner.runs.flatMap((run) => run.files).find((f) => f.path === MATH);
     await first.scheduler.close();
     await first.runner.close();
@@ -377,7 +377,7 @@ describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
       if (files.some((f) => f.path === MATH)) h.write(SCRATCH, `${Math.random()}\n`);
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const revision = h.scheduler.status().revision;
     const runs = h.runsOf(MATH).length;
     // A run of the fast file, or anything else, rewrites the scratch.
@@ -387,7 +387,7 @@ describe("a predecessor's saved closure (reviews/wave-5.6.md S1)", SLOW, () => {
     const all = [...h.scheduler.trackedPaths(), ...h.scheduler.extraFiles()];
     const paths = await statCandidates(all, createFsHasher(r.main, "sha1"));
     await h.scheduler.handleBatch({ trigger: "interval", paths });
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.status().revision).toBe(revision);
     expect(h.runsOf(MATH)).toHaveLength(runs);
     expect(h.scheduler.extraFiles()).not.toContain(SCRATCH);

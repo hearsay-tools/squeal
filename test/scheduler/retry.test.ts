@@ -34,7 +34,7 @@ describe("squeal retry", SLOW, () => {
 
     expect(ask(store, h, "s1", "environment").kind).toBe("queued");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(2);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass", validity: "current" });
     expect(readFlakyNotes(store).get(checkIdentity(flips))).toMatchObject({ key, from: "fail" });
@@ -80,7 +80,7 @@ describe("squeal retry", SLOW, () => {
 
     ask(store, h, "s1", "environment");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(2);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "fail" });
     expect(ask(store, h, "s1", "environment")).toMatchObject({
@@ -91,7 +91,7 @@ describe("squeal retry", SLOW, () => {
     rmSync(repo.marker);
     expect(ask(store, h, "s2", "environment").kind).toBe("queued");
     await h.scheduler.requestRetries();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf(FLAKY)).toHaveLength(3);
     expect(h.sink.stateOf(flips)).toMatchObject({ outcome: "pass" });
   });
@@ -124,7 +124,7 @@ describe("squeal retry", SLOW, () => {
     const path = join(repo.main, FLAKY);
     h.write(FLAKY, `${readFileSync(path, "utf8")}// edited\n`);
     await h.batch(FLAKY);
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.keyOf(FLAKY)).not.toBe(key);
     load.set(1);
     await pass(h);
@@ -149,7 +149,7 @@ describe("a pending retry outlives its daemon", SLOW, () => {
 
     const second = await openHarness(repo.main, store, repo.commonDir, options(load));
     await second.scheduler.start();
-    await second.scheduler.idle();
+    await second.quiet();
     expect(second.runsOf(FLAKY)).toHaveLength(1);
     expect(second.sink.stateOf(flips)).toMatchObject({ outcome: "pass" });
     expect(readRetries(store)[0]?.end?.outcome).toBe("passed");

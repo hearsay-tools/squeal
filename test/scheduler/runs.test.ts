@@ -34,7 +34,8 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 0;\n");
     };
     await h.scheduler.start();
-    await h.scheduler.idle();
+    // The re-queued file waits on the pump's own wait after the unstable tier (as B2 found).
+    await h.quiet({ through: ["pump"] });
 
     expect(keyDuringRun).toMatch(/^[0-9a-f]{64}$/);
     const firstKey = keyDuringRun as unknown as CheckKey;
@@ -74,7 +75,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baselineRuns = h.runner.runs.length;
 
     // One tier: a new test file that kills its worker, and an edited test file.
@@ -87,7 +88,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       'import { expect, it } from "vitest";\n\nit("is plain", () => {\n  expect(1).toBe(1);\n});\n',
     );
     await h.batch("test/kill.test.ts", "test/plain.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     const tiers = h.runner.runs.slice(baselineRuns);
     expect(tiers.map((r) => r.files.map((f) => f.path).sort())).toEqual([
@@ -129,14 +130,14 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     h.write(
       "test/plain.test.ts",
       'import { expect, it } from "vitest";\n\nit("is plain, renamed", () => {\n  expect(1).toBe(1);\n});\n',
     );
     await h.batch("test/plain.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     const retired = h.sink.callsOf("retire").flatMap((c) => c.checks);
     expect(retired).toEqual([
@@ -153,11 +154,11 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, { policy: RUN_MISSING });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     h.remove("test/plain.test.ts");
     await h.batch("test/plain.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.keyOf("test/plain.test.ts")).toBeNull();
     expect(h.sink.callsOf("retire").flatMap((c) => c.checks)).toEqual([
@@ -177,7 +178,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
     });
     h.write("node_modules/.package-lock.json", '{"packages":{}}\n');
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.keyOf("test/plain.test.ts");
     expect(h.scheduler.extraFiles()).toContain("node_modules/.package-lock.json");
 
@@ -187,7 +188,7 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       '{"packages":{"node_modules/left-pad":{"version":"1.3.0"}}}\n',
     );
     await h.batch("node_modules/.package-lock.json");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
     expect(h.runner.runs.map((r) => r.files.length)).toEqual([5, 5]);
@@ -201,13 +202,13 @@ describe("scheduler: tiers, stability and crashes (D5, D12)", SLOW, () => {
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const before = h.keyOf("test/plain.test.ts");
 
     // First npm install: an ignored file in an ignored directory, so no watch batch names it.
     h.write("node_modules/.package-lock.json", '{"packages":{}}\n');
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(h.keyOf("test/plain.test.ts")).not.toBe(before);
     expect(h.scheduler.extraFiles()).toContain("node_modules/.package-lock.json");

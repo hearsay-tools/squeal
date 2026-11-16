@@ -18,7 +18,7 @@ async function open(): Promise<{ h: Harness; calls: InvalidatedPath[][] }> {
   const repo = createRepo();
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir);
   await h.scheduler.start();
-  await h.scheduler.idle();
+  await h.quiet();
   const calls: InvalidatedPath[][] = [];
   const invalidate = h.runner.invalidate;
   h.runner.invalidate = (paths) => {
@@ -39,7 +39,7 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     const revision = latest(h);
     rewrite(h, "src/math.ts");
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(latest(h)).toBe(revision);
     expect(calls).toEqual([[{ path: "src/math.ts", kind: "touch" }]]);
@@ -54,9 +54,9 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     rewrite(h, "src/math.ts");
     h.write("test/added.test.ts", 'import { it } from "vitest";\nit("passes", () => {});\n');
     await h.batch("src/math.ts");
-    await h.scheduler.idle();
+    await h.quiet();
     await h.batch("test/added.test.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(latest(h)).toBe(revision + 1);
     expect(h.runsOf("test/added.test.ts")).toHaveLength(1);
@@ -67,7 +67,7 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     rewrite(h, "src/math.ts");
     h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase() + '';\n");
     await h.batch("src/math.ts", "src/strings.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(calls).toEqual([
       [
@@ -100,7 +100,7 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
       await h.batch(path);
     }
     release();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // The first touch is the runner work under way; the next two wait behind it as one.
     expect(calls).toEqual([
@@ -118,7 +118,7 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     h.write("src/math.ts.tmp.1234.abcd", "export const x = 1;\n");
     h.remove("src/math.ts.tmp.1234.abcd");
     await h.batch("src/math.ts.tmp.1234.abcd");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(touches(calls)).toEqual([]);
   });
@@ -130,7 +130,7 @@ describe("scheduler: a touched file whose bytes ended unchanged (task 001-159)",
     // Hashed within the racy window of its write, so hashed again; nothing wrote it since.
     await h.scheduler.handleBatch({ trigger: "interval", paths: [] });
     await h.batch("src/strings.ts");
-    await h.scheduler.idle();
+    await h.quiet();
 
     expect(touches(calls)).toEqual([]);
   });
