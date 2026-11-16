@@ -33,7 +33,7 @@ Each new `at`/`now` parameter is optional except on the step's ports and the ada
 - `scheduler.ts`: `#admit(at?)` → `#facts(at?)`: `editQueued`, `fastQueued`, `focused`, `freeLaneQueued`, `holdsFollowers`; `#busyLanes(at?)`, `#freeLaneQueued(at?)`, `#focused(at?)`, `#adopt(…, at?)`.
 - `beside.ts`: `besideFiles(…, at)` (was `context.now()` at `:36`) and its `orderedBatches(at)` (was `:51`); `besideDone(…, at)` through `isPromoted(ref, at)`.
 - `queue.ts`: `isPromoted`, `isFirstGroup`, `isCatchUp`, `hasFirstGroup`, `orderedSlow`, `orderedGroup`, `tierSelected`, `batchSelected`, `focusedSelected`, `batchStarted` take `now?`; `#firstGroup` and `#groupOf` pass it to `Promotions.rankOf`.
-- `ledger.ts`: `fastQueued(where, now?)` (its paused-backlog drain check), `orderedSlow(now?)`, `orderedGroup(group, now?)`.
+- `ledger.ts`: `fastQueued(where, now?)` and `ordered(turn, now)` (each paused-backlog drain check, `#drains(ref, now)`; `ordered`'s was missed until the repair below), `orderedSlow(now?)`, `orderedGroup(group, now?)`.
 - `tier-live.ts`: the view's `isFirstGroup`, `isCatchUp`, `isPromoted`, `hasFirstGroup`, `fastQueued` read `now`; `liveAsks(context, ledger, now?)`: `peek` and `backlogSize`.
 - `slots.ts`: `busyLanes(…, at?)`. `focused.ts`: `focusedWaiting(…, at?)`, `startFocusedTier(…, at?)`.
 - `claims.ts`: `peekClaim(…, at?)`, `claimOf(…, at?)`, `Claims.backlogSize(queued, at?)`.
@@ -65,7 +65,7 @@ From a source sweep of `now()` under `src/core/scheduler/`; none is a decision i
 - Inside one step every batch rank, claim bound, quiet moment and beside sum reads the same time. Before, a wait whose deadline passed during the turn could rank one file and not the next; a claim's bound or a quiet window could end between two reads of one decision.
 - Adoption's next read window starts at the step's reading instead of a later reading in the same turn: it starts earlier by the turn's synchronous work. The overlap (`STORED_KEYS_OVERLAP_MS`) and the seen-key map already cover a window that starts earlier; nothing is read twice as new.
 - The slow lane's quiet wait (`#arm(at, quiet)`) counts from the step's reading, as its arm already did.
-- No tier, order, width, status payload, note text, CLI output or key changed.
+- No status payload, note text, CLI output or key changed, and no rule changed: the queue's class order, the batch turn, widths and the pool are as before. The rules now read one snapshot of time per step. A decision at an exact threshold (a deadline, a claim bound or a quiet window that ends between the step's reading and a later read in the same turn) now sees the threshold as not yet passed for the whole turn, and the next step sees it passed. That is the intended change; no test pins such a crossing yet (see the repair section, S1).
 
 ## Type changes
 
@@ -76,3 +76,14 @@ All additive. Required new parameters only where every caller is in this row: `S
 - The row's done-when holds for these three scenarios; a path they do not reach is covered only by the sweep above. A new decision helper that reads `context.now()` inside a step shows up in this test only if a scenario reaches it: add a scenario, or give the helper the step's reading from the start.
 - `OWN_READS` names sites by function name. A rename of `newTier`, `executeTier`, `startTier`, `SlowTier.#select`, `Ledger.#write`, `acceptedAt`, `PoolWaits.granted`/`refused`, `Mutex.relabel`, `Wakes.*`, `RunnerPartBound.*` or `SlowRelease.arm` fails the test with the frames named; update the list, not the source.
 - Candidate 0.1.520 (row 011-369) changes `clock.ts`, `wakes.ts`, `options.ts` and two lines of `scheduler.ts`; this row touches none of those lines. `test/helpers/virtual-clock.ts` and `batch-fixture.ts` change there; this test uses `virtualClock` through `catchUpSide(…, { clock: "virtual" })` and `heldBatch({ clock: "virtual" })` only.
+
+## Repair after review 0.1.520
+
+Review `reviews/0.1.520.md` (commit `f6ccb4892`): FAIL, one blocker.
+
+- **B1, fixed.** `Ledger.ordered(turn, now)` passed its reading to the queue's sort but not to the paused backlog's drain filter (`ledger.ts:222`), so `#drains` read each batch rank afresh through `isFirstGroup` → `isPromoted` → `Promotions.rankOf`. The test gains a fourth scenario: the beside-batch scenario with `side.scheduler.pauseBacklog(true)` after `heldBatch` (the two share `besideSteps(paused)`). Before the fix it failed with 46 decision reads, all `Promotions.rankOf < RunQueue.isPromoted`, as the review found; after it, none. Both callers of `#drains` (`ordered`, `fastQueued`) now pass the reading. The drain's rank read is not added to `OWN_READS`.
+- **S1, in part.** Done: each scenario now also checks values. Each yield check's sixth argument and each plan's `Ledger.ordered` reading must equal the step's own reading (`expectOneReading`). A count alone does not catch a constant or a wrong reading passed on. Checked: a plan given `now + 1` fails the edit scenario. Not done, left for a follow-up test slice: deterministic threshold cases, with a positive quiet window and another worktree's claim bound that ends just after the step's reading, asserting the step's choice, its next wake and the next step's choice. These need a claim fixture with a second worktree and a quiet-window set-up of their own; they are more than a small addition. The preservation claim above is stated in snapshot terms instead.
+- Not changed: `Promotions.#settle` (`promotions.ts:228`) stays a deadline decision outside these scenarios, for a later row, as listed above. The three-plus-one scenarios cover the paths they reach; they do not prove that no other step path reads the clock.
+
+Checks for the repair (host load 65–76 on 24 CPUs throughout): `step-reading.test.ts` red before the fix (1 failed, 3 passed, 16.8 s), green after (4 passed, 11.3 s); lint and typecheck pass.
+
