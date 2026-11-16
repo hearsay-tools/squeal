@@ -182,6 +182,65 @@ describe("other news keeps the caught-up notice owed (review 0.1.530 B1)", () =>
     expect(await boundary()).toMatch(CAUGHT);
   });
 
+  it("a recovery by peek keeps it", async () => {
+    failB();
+    await late();
+    finishA();
+    passB();
+    expect((await delivery.peek(C1, { kinds: ["fail-to-pass"] }))?.entries).toHaveLength(1);
+    expect(lateOpen()).toBe(true);
+    expect(await boundary()).toMatch(CAUGHT);
+  });
+
+  it("a recovery from the idle waiter keeps it", async () => {
+    sink.applyResults(WT, 0, [result(A, "fail")], NONE);
+    await late();
+    await delivery.endTurn(C1);
+    finishA();
+    const woke = text(await delivery.waitForDelta(C1, { timeoutMs: 0 }));
+    expect(woke).toContain("FAIL -> PASS");
+    expect(woke).not.toMatch(CAUGHT);
+    expect(lateOpen()).toBe(true);
+    expect(await boundary()).toMatch(CAUGHT);
+  });
+
+  it("a Stop that waited for another revision delivers nothing and changes nothing", async () => {
+    await late();
+    failB();
+    expect(await delivery.onToolBoundary(C1, { stop: true, atRevision: revision + 1 })).toBeNull();
+    expect(lateOpen()).toBe(true);
+  });
+
+  it("the end of a turn leaves the late state as it was", async () => {
+    await late();
+    await delivery.endTurn(C1);
+    expect(lateOpen()).toBe(true);
+    finishA();
+    expect(await boundary()).toMatch(CAUGHT);
+  });
+
+  it("caught up is said with the daemon down: the results it names are stored", async () => {
+    await late();
+    store.worktrees.setDaemon(WT, null);
+    finishA();
+    // The liveness change titles the delivery; the caught-up line rides in it, once.
+    const said = await boundary();
+    expect(said).toMatch(/^SQUEAL · no daemon is validating/);
+    expect(said).toContain(
+      "The 1 test file your edits affect has run at revision 1, with no new failure.",
+    );
+    expect(lateOpen()).toBe(false);
+  });
+
+  it("a session that leaves forgets its late state; registered again, it owes no caught up", async () => {
+    await late();
+    await delivery.unregister(C1);
+    expect(lateOpen()).toBe(false);
+    await delivery.register(C1);
+    finishA();
+    expect((await boundary()) ?? "").not.toMatch(CAUGHT);
+  });
+
   it("closes a late state with nothing to count once its revision affects no file", async () => {
     await delivery.register(C1);
     recordRefinedApplied(store, WT, 0);
