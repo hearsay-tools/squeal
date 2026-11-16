@@ -17,3 +17,16 @@ Seam: test first. Lead: extend `step-reading.test.ts` with a virtual clock whose
 Owns: `src/core/scheduler/` decision helpers that take a reading (`beside.ts`, `ledger.ts`, `queue.ts`, `claims.ts` read paths, `step-live.ts`, and others the count finds; name each), `test/scheduler/step-reading.test.ts` and new tests. Leave alone: `clock.ts`, `wakes.ts`, `options.ts` (row 011-369), `busy-resume.ts`, `store/busy.ts`, `local-permits.ts`, `src/core/capacity/` (cards 9, 10), `record-tier.ts`.
 
 Done when: row 011-372's done-when; `tasks/011-372/notes.md` lists each remaining read and why it stays; behaviour preserved (no tier, order, width, status payload, note text, CLI output or key change); `key-format` without a raise; lint, typecheck and `squeal status --wait 60000` on the changed paths pass; the model test passes once when the load is below the CPU count.
+
+## R1 (W1): review of cand/0.1.520
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `da570536b9674b242f0a0704d5ce2219405fbb16`; candidate CI run 43839480465. (0.1.520 is reused: the earlier candidate with that number, row 011-369's one-calendar-clock version, was abandoned and never landed.) Range `78c81d619..da570536b9674b242f0a0704d5ce2219405fbb16`: worker fe5d8433's four commits (row 011-372), cherry-picked without conflict, then the 0.1.520 raise and bundles. Read: board row 011-372; this file's W1; `tasks/011-372/notes.md`; `reviews/0.1.518.md` S1.
+
+Check, each as proven, plausible or unverified:
+
+1. **One reading for decisions.** `step-reading.test.ts` counts clock reads made by a step's decisions and pins them to 0 beyond the step's own (edit, beside-a-batch, slow-lane scenarios: 4, 180 and 14 before, 0 after); the count cannot miss a read path (it counts at the clock, not at chosen call sites).
+2. **The reads that remain** are what the notes say: tier-start stamps, row writes (`acceptedAt`, the pool's wait row), the lock label, wake bookkeeping. None of them feeds a decision in the same turn. `Promotions.#settle` and its row are named as later candidates.
+3. **Behaviour preserved.** Passing the step's reading instead of a fresh one changes each decision's time by at most the turn's length; prove or refute that no tier, order, width, status payload, note text, CLI output or key changes, and that no deadline or claim bound now fires a turn early or late in a way a user sees. Squeal flags `SlowTier.#select` (complexity 27) and `tier-start.ts` `act` (22), both over 20 before this row: say whether this row made them worse.
+4. **Row 011-369** is being reworked beside this row on `clock.ts` and `wakes.ts` (two named clocks); say if anything here will conflict.
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main`; direct runs of `step-reading`, `step`, `untracked-promises`, `one-loop-source`, `version-sensitive` pass; `key-format` failed once as a whole file in a parallel run at load 97 and passed 12/12 alone at load 106. Worker: model test 15/15; Squeal 19 of 942 current (the rest queued at load 76 to 94). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; the host is loaded by another project. Write `reviews/0.1.520.md` (overwrite the abandoned candidate's file: move it first to `reviews/0.1.520-abandoned-one-clock.md`) and commit both on your branch.
