@@ -80,9 +80,9 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
     const key = b.keyOf(F0);
     await end(a);
     a.runner.release();
-    await b.scheduler.idle();
+    await b.quiet({ through: ["claims"] });
     if (how === WITHHELD) {
-      await a.scheduler.idle();
+      await a.quiet({ through: ["claims"] });
       expect(a.runner.ran(F0) - 1 + b.runner.ran(F0)).toBe(1);
     } else expect(b.runner.ran(F0)).toBe(1);
     expect(b.keyOf(F0)).toBe(key);

@@ -25,7 +25,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     const a = side(main, { policy: RUN_MISSING, count: COUNT, backlogTierSize: 10, runMs: 100 });
     const b = side(other, { policy: RUN_MISSING, count: COUNT, backlogTierSize: 10, runMs: 100 });
     await Promise.all([a.scheduler.start(), b.scheduler.start()]);
-    await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
+    await Promise.all([a.quiet({ through: ["claims"] }), b.quiet({ through: ["claims"] })]);
     for (const path of all) expect(a.runner.ran(path) + b.runner.ran(path)).toBe(1);
     expect(a.passing()).toBe(COUNT);
     expect(b.passing()).toBe(COUNT);
@@ -38,7 +38,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     appendFileSync(join(main, F0), "// x\n");
     const b = side(other, { policy: RUN_MISSING, count: 4 });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     const a = side(main, { policy: RUN_MISSING, count: 4 });
     a.runner.hold();
     await a.scheduler.start();
@@ -56,14 +56,14 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     const a = side(main, { count: 6 });
     const b = side(other, { count: 6 });
     await Promise.all([a.scheduler.start(), b.scheduler.start()]);
-    await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
+    await Promise.all([a.quiet(), b.quiet()]);
     const fileRuns = (s: typeof a) => s.runner.runs.flat().length;
     const [ranA, ranB] = [fileRuns(a), fileRuns(b)];
     await Promise.all([
       a.scheduler.requestFullSuite({ force: true }),
       b.scheduler.requestFullSuite({ force: true }),
     ]);
-    await Promise.all([a.scheduler.idle(), b.scheduler.idle()]);
+    await Promise.all([a.quiet(), b.quiet()]);
     expect(fileRuns(a) - ranA).toBe(6);
     expect(fileRuns(b) - ranB).toBe(6);
   });
@@ -78,7 +78,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
       const a = side(main, { policy: RUN_MISSING, count: 4, rerunCap: 0 });
       a.runner.failing.add(F0);
       await a.scheduler.start();
-      await a.scheduler.idle();
+      await a.quiet();
       if (claimed) {
         a.runner.hold();
         await a.scheduler.requestFullSuite({ force: true });
@@ -156,7 +156,7 @@ describe("claims: two worktrees on one store (task 001-205)", () => {
     a.store.testFileKeys.upsertMany(
       a.store.testFileKeys.list(a.worktreeId).map((row) => ({ ...row, pending: null })),
     );
-    await b.scheduler.idle();
+    await b.quiet({ through: ["claims"] });
     for (const path of all) expect(b.runner.ran(path)).toBe(1);
   });
 });

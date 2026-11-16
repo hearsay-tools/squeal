@@ -12,6 +12,7 @@ import {
   sources,
   testFiles,
 } from "./catch-up-fixture.js";
+import { idleOn } from "./drive-fixture.js";
 
 /*
  * Task 011-22 with review W4r of wave 4 (spec 011 C4 step 4: after four tiers
@@ -43,9 +44,9 @@ async function turning(catchUpMs: number, editMs: number, options: Partial<Catch
     ...edited(20, editMs),
   ];
   const repo = catchUpRepo(files);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, ...options });
+  const side = catchUpSide(repo, repo.main, { files, clock: "virtual", hostSlots: 8, ...options });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await idleOn(side);
   const before = side.runner.runs.length;
   side.runner.hold();
   await side.edit("watch", ...TWELVE);
@@ -74,7 +75,7 @@ describe("scheduler: the second group's turn runs on the backlog's route (C4 ste
     await side.edit("watch", "src/e.ts");
     await new Promise((resolve) => setTimeout(resolve, 100));
     side.runner.release();
-    await side.scheduler.idle();
+    await idleOn(side);
     const ran = turn as CatchUpRun | null;
     expect(ran?.workers).toBeDefined();
     expect(ran?.cancelled).toBe(false);
@@ -93,7 +94,7 @@ describe("scheduler: the second group's turn runs on the backlog's route (C4 ste
       cancels: false,
     });
     side.runner.release();
-    await side.scheduler.idle();
+    await idleOn(side);
     const runs = side.runner.runs.slice(before);
     const fourth = runs.filter(isEdit)[3];
     if (fourth === undefined) throw new Error("fewer than four edit tiers");
@@ -121,12 +122,13 @@ describe("scheduler: the second group's turn runs on the backlog's route (C4 ste
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, {
       files,
+      clock: "virtual",
       hostSlots: 4,
       lane: (f) => (f.project === "x" ? "x" : "v"),
       policy: RUN_MISSING,
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await idleOn(side);
     for (let i = 0; i < 3; i++) {
       const db = takePermit(join(repo.poolDir, poolPermitFile(i)), {
         pid: process.pid,
@@ -140,7 +142,7 @@ describe("scheduler: the second group's turn runs on the backlog's route (C4 ste
     await expect.poll(() => side.runner.active).toBe(1);
     await side.edit("watch", ...TWELVE);
     await side.edit("watch", "src/e.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     const runs = side.runner.runs.slice(before);
     const other = runs.find((run) => run.files.every((f) => f.project === "x"));
     const fifth = runs.filter(isEdit)[4];

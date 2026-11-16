@@ -10,6 +10,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { idleOn } from "./drive-fixture.js";
 
 /*
  * Row 019-26 (review 0.1.398 B2; spec 019 D1 `after`, D5 steps 1 and 3): at
@@ -40,11 +41,12 @@ async function started(first: string[]): Promise<{ root: string; side: CatchUpSi
   const repo = catchUpRepo(FILES);
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
+    clock: "virtual",
     hostSlots: 4,
     policy: { ...RUN_MISSING, checks: groups(first) },
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await idleOn(side);
   return { root: repo.main, side };
 }
 
@@ -56,7 +58,7 @@ async function pass(side: CatchUpSide): Promise<void> {
 /** Edits `paths` and commits them: the commit's SHA. The scheduler has not seen the commit yet. */
 async function commit(root: string, side: CatchUpSide, ...paths: string[]): Promise<string> {
   await side.edit("watch", ...paths);
-  await side.scheduler.idle();
+  await idleOn(side);
   git(root, ["add", ...paths]);
   git(root, ["commit", "-qm", paths.join(" ")]);
   return git(root, ["rev-parse", "HEAD"]).trim();
@@ -99,9 +101,9 @@ describe("a commit group runs after its predecessor's asked files only (019-26, 
     const sha = await commit(root, side, "src/b.ts");
     const writes = writesOf(side, sha);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B), "the commit asked b").toBe(1);
     expect(runsOf(side, A), "a was not asked: it runs for no one").toBe(0);
     expect(writes.map((r) => ("tests" in r ? r.tests.running : r))).toEqual([1, 0]);
@@ -113,9 +115,9 @@ describe("a commit group runs after its predecessor's asked files only (019-26, 
     const sha = await commit(root, side, "src/a.ts", "src/b.ts");
     const writes = writesOf(side, sha);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(order(side, A, B, C), "a first, then b; c was not asked").toEqual([A, B]);
     expect(writes.map((r) => ("tests" in r ? r.tests.running : r))).toEqual([2, 0]);
     expect(writes[1]).toMatchObject({ commit: sha, updated: true });
@@ -128,9 +130,9 @@ describe("a commit group runs after its predecessor's asked files only (019-26, 
     await pass(side);
     expect(await side.scheduler.requestGroup("first")).toMatchObject({ queued: 2 });
     side.runner.release();
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     const ran = order(side, A, B, C);
     expect(ran.indexOf(B), "b after a and c").toBe(2);
     expect(ran).toHaveLength(3);
@@ -141,9 +143,9 @@ describe("a commit group runs after its predecessor's asked files only (019-26, 
     const sha = await commit(root, side, "src/a.ts", "src/b.ts");
     const writes = writesOf(side, sha);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(order(side, A, B)).toEqual([A, B]);
     expect(writes.at(-1)).toMatchObject({ commit: sha, updated: true, tests: { running: 0 } });
     expect(writes).toHaveLength(2);

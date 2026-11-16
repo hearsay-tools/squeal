@@ -88,7 +88,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
     await at(SETTLE_MS);
     expect(side.runner.runs.slice(second).filter((run) => run.workers !== undefined)).toEqual([]);
     offset += BACKLOG_QUIET_MS;
-    await side.scheduler.idle();
+    await side.quiet({ through: ["pump"] });
     const edit = side.runner.runs
       .slice(second)
       .find((run) => run.files.some((f) => f.path === next.path));
@@ -125,7 +125,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
       side.runner.runs.slice(second).some((run) => run.files.some((f) => f.path === next.path));
     await expect.poll(ran, { interval: 10, timeout: 30_000 }).toBe(true);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
     const edit = side.runner.runs
       .slice(second)
       .find((run) => run.files.some((f) => f.path === next.path));
@@ -187,7 +187,7 @@ describe("scheduler: the cut's catch-up takes catch-up's route (C4 step 4, task 
       const opts = { files, hostSlots: 23, tierSize: 4, ...(policy ? { policy } : {}) };
       const restarted = catchUpSide(repo, repo.main, opts);
       await restarted.scheduler.start();
-      await restarted.scheduler.idle();
+      await restarted.quiet();
       const result = split(restarted.runner.runs, 0);
       if (name === "lookup-only") {
         expect(result.after).toEqual([]);

@@ -54,7 +54,7 @@ describe("scheduler: a later edit cancels catch-up or runs beside it (C4 step 4,
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const before = side.runner.runs.length;
 
     await side.edit("watch", ...TWELVE);
@@ -69,7 +69,7 @@ describe("scheduler: a later edit cancels catch-up or runs beside it (C4 step 4,
       .poll(() => agent.every((f) => side.current(f.path)), { interval: 10, timeout: 30_000 })
       .toBe(true);
     const currentAt = performance.now();
-    await side.scheduler.idle();
+    await side.quiet({ through: ["pump"] });
 
     const runs = side.runner.runs.slice(before);
     expect(tier.workers).toBeDefined();
@@ -115,7 +115,7 @@ describe("scheduler: a later edit cancels catch-up or runs beside it (C4 step 4,
       cancels: false,
     });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const before = side.runner.runs.length;
 
     // The catch-up slots hold until the edit's run starts, so they are in flight beside it
@@ -131,7 +131,7 @@ describe("scheduler: a later edit cancels catch-up or runs beside it (C4 step 4,
     if (first === undefined) throw new Error("no catch-up slot");
     await at(first.startedAt + 1_000 - performance.now());
     await side.edit("watch", "src/e.ts");
-    await side.scheduler.idle();
+    await side.quiet();
 
     const runs = side.runner.runs.slice(before);
     const [edit] = holding(runs, ["test/e0.test.ts"]);

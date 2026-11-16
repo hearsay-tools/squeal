@@ -13,6 +13,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { idleOn } from "./drive-fixture.js";
 
 /*
  * Row 019-22 (spec 019 D5 steps 1 and 3, Testing "Commit"): a test group at
@@ -37,11 +38,12 @@ async function started(policy: Partial<Policy> = {}): Promise<{ root: string; si
   const repo = catchUpRepo(FILES);
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
+    clock: "virtual",
     hostSlots: 4,
     policy: { ...RUN_MISSING, checks: [AT_COMMIT], ...policy },
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await idleOn(side);
   return { root: repo.main, side };
 }
 
@@ -89,25 +91,25 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
     expect(runsOf(side, B) + runsOf(side, C), "never before a commit").toBe(0);
 
     await side.edit("watch", "src/b.ts", "src/c.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B) + runsOf(side, C), "an edit runs no `commit` group").toBe(0);
 
     git(root, ["add", "src/b.ts"]);
     git(root, ["commit", "-qm", "b only"]);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B), "the commit changed b's closure").toBe(1);
     expect(runsOf(side, C), "c's change is left unstaged: no result for the commit").toBe(0);
     await pass(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B), "once per commit").toBe(1);
 
     git(root, ["commit", "-qam", "c"]);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect([runsOf(side, B), runsOf(side, C)]).toEqual([1, 1]);
     expect(side.current(B) && side.current(C)).toBe(true);
     expect(side.scheduler.slowPending()).toBe(false);
@@ -117,7 +119,7 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
     const { root, side } = await started();
     side.runner.failing.add(B);
     await side.edit("watch", "src/b.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     git(root, ["commit", "-qam", "b"]);
     const commit = head(root);
     const writes = writesOf(side, commit);
@@ -133,10 +135,10 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
     // An edit between: a's closure now differs from the commit.
     await side.edit("watch", "src/a.ts");
     side.runner.release();
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B)).toBe(1);
     expect(writes.map((r) => ("tests" in r ? r.tests : r))).toEqual([
       { files: 3, failures: 0, notDetermined: 0, running: 1, unknown: 1 },
@@ -156,7 +158,7 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
   it("an edit that re-keys an asked file before it runs leaves it to the next commit", async () => {
     const { root, side } = await started();
     await side.edit("watch", "src/b.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     git(root, ["commit", "-qam", "b"]);
     const commit = head(root);
     const writes = writesOf(side, commit);
@@ -166,9 +168,9 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
     await side.edit("watch", "src/b.ts");
     await reported;
     side.runner.release();
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     const ran = side.runner.runsOf(B);
     expect(
       ran.every((run) => run.cancelled) || ran.length === 0,
@@ -180,30 +182,30 @@ describe("commit groups run at commit (019-22)", { timeout: 60_000 }, () => {
 
     git(root, ["commit", "-qam", "b again"]);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(side.current(B), "the next commit runs it").toBe(true);
   });
 
   it("a reset or checkout to a commit already reported runs nothing new", async () => {
     const { root, side } = await started();
     await side.edit("watch", "src/b.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     git(root, ["commit", "-qam", "b1"]);
     const first = head(root);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     await side.edit("watch", "src/b.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     git(root, ["commit", "-qam", "b2"]);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(runsOf(side, B)).toBe(2);
 
     git(root, ["reset", "-q", "--hard", first]);
     await watch(side, "src/b.ts");
-    await side.scheduler.idle();
+    await idleOn(side);
     await pass(side);
-    await side.scheduler.idle();
+    await idleOn(side);
     expect(newest(side)?.commit).toBe(first);
     expect(runsOf(side, B), "a known commit runs nothing").toBe(2);
   });

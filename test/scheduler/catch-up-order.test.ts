@@ -10,6 +10,7 @@ import {
   sources,
   testFiles,
 } from "./catch-up-fixture.js";
+import { idleOn } from "./drive-fixture.js";
 
 /*
  * Task 011-22 (spec 011 C4 step 4 as amended 2026-10-20, `research/catch-up.md`
@@ -43,20 +44,21 @@ async function queuedAll(files: readonly CatchUpFile[], options: Partial<CatchUp
   const repo = catchUpRepo(files);
   const side = catchUpSide(repo, repo.main, {
     files,
+    clock: "virtual",
     hostSlots: 4,
     backlogTierSize: 4,
     policy: { baseline: { onStart: "lookup-only" } },
     ...options,
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await idleOn(side);
   side.runner.hold();
   await side.scheduler.requestFullSuite();
   await expect.poll(() => side.runner.active).toBe(1);
   await side.edit("watch", ...TWELVE);
   await side.edit("watch", "src/e.ts");
   side.runner.release();
-  await side.scheduler.idle();
+  await idleOn(side);
   return side;
 }
 
@@ -111,9 +113,14 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
     async function catchingUp() {
       const files = testFiles(24, TWELVE, (i) => 1_000 + i * 10);
       const repo = catchUpRepo(files);
-      const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, backlogTierSize: 4 });
+      const side = catchUpSide(repo, repo.main, {
+        files,
+        clock: "virtual",
+        hostSlots: 4,
+        backlogTierSize: 4,
+      });
       await side.scheduler.start();
-      await side.scheduler.idle();
+      await idleOn(side);
       side.runner.hold();
       const before = side.runner.runs.length;
       await side.edit("watch", ...TWELVE);
@@ -127,7 +134,7 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
       const { side, before, last } = await catchingUp();
       await side.edit("watch", last);
       side.runner.release();
-      await side.scheduler.idle();
+      await idleOn(side);
       const [tier, next] = side.runner.runs.slice(before);
       expect(tier?.cancelled).toBe(true);
       expect(next?.files[0]?.path).toBe(last);
@@ -138,7 +145,7 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
       const { side, before, last } = await catchingUp();
       await side.scheduler.promote([{ project: "", path: last }], 60_000);
       side.runner.release();
-      await side.scheduler.idle();
+      await idleOn(side);
       const [tier, next] = side.runner.runs.slice(before);
       // A promotion cancels nothing: the catch-up tier ends, and the promoted file leads the next.
       expect(tier?.cancelled).toBe(false);
@@ -170,7 +177,7 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
         ...options,
       });
       await side.scheduler.start();
-      await side.scheduler.idle();
+      await side.quiet();
       const before = side.runner.runs.length;
       return { side, before };
     }
@@ -184,7 +191,7 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
         }
       };
       await side.edit("watch", heavy.path, ...ELEVEN);
-      await side.scheduler.idle();
+      await side.quiet();
       expect(lightAtHeavy).toBe(true);
       const [first] = side.runner.runs.slice(before);
       expect(first?.files).toHaveLength(50);
@@ -204,7 +211,7 @@ describe("scheduler: catch-up's place in the order (C4 step 4, task 011-22)", {
         .poll(() => light.every((f) => side.current(f.path)), { interval: 5, timeout: 30_000 })
         .toBe(true);
       expect(heavyRuns().every((run) => run.endedAt === null)).toBe(true);
-      await side.scheduler.idle();
+      await side.quiet();
       expect(heavyRuns()).toHaveLength(1);
     });
   });
