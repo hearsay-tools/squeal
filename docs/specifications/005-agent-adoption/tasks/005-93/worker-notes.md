@@ -10,7 +10,9 @@ Worker session 3501dac2, 2026-11-16. Seam map and choices the design left open.
   `RunRepo.recentTimings` (new, additive: the newest 20 completed runs with no checkpoint, each
   file's duration from its own results via `results_by_run`). `pastBound` reads each owed file's
   duration with `results.newestForTestFile` and reads runs only when the age passes the
-  durations-alone bound.
+  durations-alone bound. `recentTimings` is on the key-format validity path: the `prune` case
+  `cases/prune/timings.ts` runs it, and a tree before the row answers from the same rows in
+  `harness/prune.ts` (`readTimings`).
 - `src/core/delivery/late.ts`: the late state (meta row `edits-late:`, one slot per consumer,
   the revision the late message named), `lateNotes` (late or caught up), forms `owed`, `unread`,
   `unlisted`.
