@@ -85,16 +85,25 @@ describe("the squeal skill", () => {
   // Row 011-262 (review 0.1.379 S1): `reports.md`'s news example and its git-ignored mark are the
   // formatter's own line, and the body points there for the mark.
   it("shows the news line, its changed files and the git-ignored mark as Squeal prints them", () => {
-    const line = (header: Partial<StatusHeader>) =>
-      formatDelta({ header: { ...settled, revision: 12, ...header }, entries: [] } as never)
+    // Row 005-93 (c): the news line counts the test files the session's edits affect.
+    const line = (
+      header: Partial<StatusHeader>,
+      ownEdits: object | undefined = { files: 5, owed: 3 },
+    ) =>
+      formatDelta({
+        header: { ...settled, revision: 12, ...header },
+        entries: [],
+        ...(ownEdits === undefined ? {} : { ownEdits }),
+      } as never)
         .split("\n")
         .find((l) => l.startsWith("Revision 12")) ?? "";
-    const news = line({
-      counts: { current: 40, pending: 3, stale: 0, unknown: 2 },
-      fileLevelCounts: { current: 6, pending: 0, stale: 0, unknown: 0 },
-      changedPaths: ["src/math.ts"],
-    });
-    expect(read("reports.md")).toContain(`\`${news}\``);
+    const changed = { changedPaths: ["src/math.ts"] };
+    for (const news of [
+      line(changed),
+      line(changed, { files: 5, owed: 0 }),
+      line(changed, undefined),
+    ])
+      expect(read("reports.md")).toContain(`\`${news}\``);
     const descriptor = ".ai/qa/test-env.json";
     const marked = line({ changedPaths: [descriptor], ignoredPaths: [descriptor] });
     expect(marked.startsWith(`Revision 12 (changed git-ignored ${descriptor}): `)).toBe(true);
