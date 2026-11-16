@@ -79,58 +79,71 @@ describe("scheduler: backlog work runs in machine-wide tiers (D5, defect 25)", (
   it("cancels a backlog tier for an edit, keeps its completed files and runs the edit in the next small tier", {
     timeout: 300_000,
   }, async () => {
-    const mark = join(tmpdir(), `squeal-001-124-${process.pid}-${Date.now()}.log`);
-    const completions = () =>
-      existsSync(mark) ? readFileSync(mark, "utf8").split("\n").length - 1 : 0;
-    const repo = suite(200, 300, mark);
+    // Row 011-387: the trigger and the lower bound read one source, the files
+    // the runner told the scheduler ended (`RunOptions.fileEnded`), the same
+    // condition that makes a file completed (`endedInTime`). A test's own mark
+    // is written before its module ends, so a cancel between the two loses it.
+    const repo = suite(200, 300);
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
       backlogTierSize: 200,
     });
-    try {
-      await h.scheduler.start();
-      await h.quiet();
-      const baselineTiers = h.runner.runs.length;
+    await h.scheduler.start();
+    await h.quiet();
+    const baselineTiers = h.runner.runs.length;
 
-      appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
-      rmSync(mark, { force: true });
-      let edit: Promise<void> | null = null;
-      h.runner.beforeRun = () => {
-        if (edit !== null) return;
-        // Not awaited: the backlog tier runs while the agent edits.
-        edit = (async () => {
-          await waitFor(() => completions() >= 20, 60_000);
-          h.write("src/m123.ts", "export const value = 123; // edited\n");
-          await h.batch("src/m123.ts");
-        })();
-      };
-      await h.batch("vitest.config.ts");
-      await waitFor(() => edit !== null, 60_000);
-      await edit;
-      // The cancelled tier's other files come back after the pump's own wait.
-      await h.quiet({ through: ["pump"] });
-
-      const [cancelled, next, ...rest] = h.runner.runs.slice(baselineTiers);
-      if (!cancelled || !next) throw new Error("expected a cancelled tier and the edit's tier");
-      const kept = cancelled.report.completedFiles.map((f) => f.path);
-      console.log(
-        `001-124: the backlog tier was cancelled after ${kept.length} of ${cancelled.files.length} files; ` +
-          `the edit's tier ran ${next.files.length} files, then ${rest.length} more tiers`,
+    const told: string[] = [];
+    const recorded = h.runner.run;
+    h.runner.run = (files, options) =>
+      recorded(
+        files,
+        files.length < 200
+          ? options
+          : {
+              ...options,
+              fileEnded: (ref) => {
+                told.push(ref.path);
+                options.fileEnded?.(ref);
+              },
+            },
       );
-      expect(cancelled.files).toHaveLength(200);
-      expect(cancelled.report.failure).toBe(cancelText("backlog"));
-      expect(kept.length).toBeGreaterThanOrEqual(20);
-      expect(kept.length).toBeLessThan(200);
-      expect(next.files.length).toBeLessThanOrEqual(4);
-      expect(next.files[0]?.path).toBe("test/f123.test.ts");
-      // The completed files keep their results: none of them runs again, except the edited one.
-      const later = new Set([next, ...rest].flatMap((t) => t.files.map((f) => f.path)));
-      expect(kept.filter((path) => path !== "test/f123.test.ts" && later.has(path))).toEqual([]);
-      expect(new Set([...kept, ...later]).size).toBe(200);
-    } finally {
-      rmSync(mark, { force: true });
-    }
+    appendFileSync(join(h.root, "vitest.config.ts"), "// environment change\n");
+    let edit: Promise<void> | null = null;
+    h.runner.beforeRun = () => {
+      if (edit !== null) return;
+      // Not awaited: the backlog tier runs while the agent edits.
+      edit = (async () => {
+        await waitFor(() => told.length >= 20, 60_000);
+        h.write("src/m123.ts", "export const value = 123; // edited\n");
+        await h.batch("src/m123.ts");
+      })();
+    };
+    await h.batch("vitest.config.ts");
+    await waitFor(() => edit !== null, 60_000);
+    await edit;
+    // The cancelled tier's other files come back after the pump's own wait.
+    await h.quiet({ through: ["pump"] });
+
+    const [cancelled, next, ...rest] = h.runner.runs.slice(baselineTiers);
+    if (!cancelled || !next) throw new Error("expected a cancelled tier and the edit's tier");
+    const kept = cancelled.report.completedFiles.map((f) => f.path);
+    console.log(
+      `001-124: the backlog tier was cancelled after ${kept.length} of ${cancelled.files.length} files ` +
+        `(${told.length} told ended); the edit's tier ran ${next.files.length} files, then ${rest.length} more tiers`,
+    );
+    expect(cancelled.files).toHaveLength(200);
+    expect(cancelled.report.failure).toBe(cancelText("backlog"));
+    // Every file told ended before the cancel stays completed: at least the 20 that triggered the edit.
+    expect(told.length).toBeGreaterThanOrEqual(20);
+    expect(kept).toEqual(expect.arrayContaining(told));
+    expect(kept.length).toBeLessThan(200);
+    expect(next.files.length).toBeLessThanOrEqual(4);
+    expect(next.files[0]?.path).toBe("test/f123.test.ts");
+    // The completed files keep their results: none of them runs again, except the edited one.
+    const later = new Set([next, ...rest].flatMap((t) => t.files.map((f) => f.path)));
+    expect(kept.filter((path) => path !== "test/f123.test.ts" && later.has(path))).toEqual([]);
+    expect(new Set([...kept, ...later]).size).toBe(200);
   });
 
   it("lets a backlog tier finish through an edit no test file reaches", {
