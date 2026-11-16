@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type KeyAt, keysAtCommit, mixedBlobs, sideKeys } from "../../src/core/commit/at-keys.js";
@@ -69,7 +69,7 @@ describe("keys at a commit (spec 023 D2)", () => {
     expect(daemonAtFirst.get(id(A))).not.toBe(daemonAtSecond.get(id(A)));
     expect(daemonAtFirst.get(id(B))).toBe(daemonAtSecond.get(id(B)));
 
-    const asked = { root: repo.main, store: main.store, worktreeId: main.worktreeId };
+    const asked = { root: repo.main, store: main.store, worktreeId: main.worktreeId, inputs: [] };
     const atFirst = await keysAtCommit({ ...asked, commit: first });
     expect(keyOf(atFirst.get(id(A)))).toBe(daemonAtFirst.get(id(A)));
     expect(keyOf(atFirst.get(id(B)))).toBe(daemonAtFirst.get(id(B)));
@@ -107,7 +107,13 @@ describe("keys at a commit (spec 023 D2)", () => {
     });
     await started(main);
     const commit = git(repo.main, ["rev-parse", "HEAD"]).trim();
-    const asked = { root: repo.main, store: main.store, worktreeId: main.worktreeId, commit };
+    const asked = {
+      root: repo.main,
+      store: main.store,
+      worktreeId: main.worktreeId,
+      commit,
+      inputs: [],
+    };
     const unknown = await keysAtCommit({ ...asked, files: [{ project: "", path: B }] });
     expect(unknown.get(id(B))).toEqual({
       notDetermined: { reason: "closure", detail: "no stored closure list" },
@@ -121,6 +127,59 @@ describe("keys at a commit (spec 023 D2)", () => {
         detail: "the stored list does not give this worktree's key",
       },
     });
+  });
+});
+
+describe("a closure that shrank since the commit (review of wave 1 B1)", () => {
+  it("is not determined (closure): the test at the commit imports a file the list lacks", {
+    timeout: 120_000,
+  }, async () => {
+    const atA: CatchUpFile[] = [
+      { path: A, ms: 10, imports: ["src/a.ts", "src/old.ts"] },
+      { path: B, ms: 10, imports: ["src/b.ts"] },
+    ];
+    const atB: CatchUpFile[] = [
+      { path: A, ms: 10, imports: ["src/a.ts"] },
+      { path: B, ms: 10, imports: ["src/b.ts"] },
+    ];
+    const repo = catchUpRepo(atA);
+    const write = (text: string) => writeFileSync(join(repo.main, A), text);
+    write('import "../src/a.ts";\nimport "../src/old.ts";\n');
+    git(repo.main, ["commit", "-qam", "A"]);
+    const commitA = git(repo.main, ["rev-parse", "HEAD"]).trim();
+    git(repo.other, ["checkout", "-q", "--detach", commitA]);
+    write('import "../src/a.ts";\n');
+    appendFileSync(join(repo.main, "src/a.ts"), "// B\n");
+    git(repo.main, ["commit", "-qam", "B"]);
+    const commitB = git(repo.main, ["rev-parse", "HEAD"]).trim();
+
+    // The daemon at A first; B's starts last, so the stored list is B's, without `src/old.ts`.
+    const other = catchUpSide(repo, repo.other, { files: atA, hostSlots: 4, policy: RUN_MISSING });
+    await started(other);
+    const main = catchUpSide(repo, repo.main, { files: atB, hostSlots: 4, policy: RUN_MISSING });
+    await started(main);
+    const daemonAtA = keysIn(other.store, other.worktreeId);
+    expect(main.store.testFiles.get({ project: "", path: A })?.closure.paths).toEqual([
+      "src/a.ts",
+      A,
+    ]);
+
+    const asked = { root: repo.main, store: main.store, worktreeId: main.worktreeId, inputs: [] };
+    const keys = await keysAtCommit({ ...asked, commit: commitA });
+    expect(keys.get(id(A))).toEqual({
+      notDetermined: {
+        reason: "closure",
+        detail: `${A} imports src/old.ts at the commit, not in the list`,
+      },
+    });
+    // An unchanged file whose list covers the commit keeps its exact key.
+    expect(keyOf(keys.get(id(B)))).toBe(daemonAtA.get(id(B)));
+    // D5.1: the old test over the new code reads `src/old.ts` too.
+    const side = await sideKeys({ ...asked, code: commitB, tests: commitA, testPaths: [A] });
+    expect(side.get(id(A))).toMatchObject({ notDetermined: { reason: "closure" } });
+    // The new test over the old code needs only the list.
+    const back = await sideKeys({ ...asked, code: commitA, tests: commitB, testPaths: [A] });
+    expect(back.get(id(A))).toMatchObject({ step: 1 });
   });
 });
 
