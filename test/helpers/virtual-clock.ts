@@ -128,7 +128,9 @@ export interface HarnessClock {
  * clock from the host's time now; a virtual clock, that one; absent, the
  * host's clock with `now` plus what `advance` added (row 011-153) as its
  * calendar time. Row 011-369: its wakes are kept on the host's elapsed
- * time, so `advance` moves the calendar alone, as before.
+ * time. Row 011-377: `advance` is time that passed, so it moves elapsed
+ * time too and is no calendar step (`CalendarSteps`); the host's timers
+ * fire at their own times, as before.
  */
 export function harnessClock(
   clock: "virtual" | VirtualClock | undefined,
@@ -140,7 +142,9 @@ export function harnessClock(
     const advance = (ms: number) => {
       offset += ms;
     };
-    return { clock: null, now: read, advance, scheduler: { clock: hostClock(read) } };
+    const host = hostClock(read);
+    const elapsed = () => (host.elapsed() + offset) as ElapsedMs;
+    return { clock: null, now: read, advance, scheduler: { clock: { ...host, elapsed } } };
   }
   const virtual = clock === "virtual" ? virtualClock(Date.now(), { prompt: true }) : clock;
   return {

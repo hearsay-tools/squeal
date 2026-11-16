@@ -91,19 +91,14 @@ describe("claims: expiry and takeover (task 001-205)", { timeout: 30_000 }, () =
 
   it("10. a claim held past the waiter's timeout plus grace, heartbeat fresh: the waiter runs the file", async () => {
     const { main, other } = claimRepo(1);
-    let skew = 0;
     const a = side(main, { count: 1, heartbeatMs: 1_000_000_000, policy: RUN_MISSING });
-    const b = side(other, {
-      count: 1,
-      timeoutMs: 1_000,
-      now: () => Date.now() + skew,
-      policy: RUN_MISSING,
-    });
+    const b = side(other, { count: 1, timeoutMs: 1_000, policy: RUN_MISSING });
     await heldInA(a, b);
     await delay(CLAIM_RECHECK_MS * 1.5);
     expect(b.runner.runs).toEqual([]);
 
-    skew = 1_000 + CLAIM_GRACE_MS + 1;
+    // Row 011-377: the bound counts on elapsed time; `advance` is time that passed, not a calendar step.
+    b.advance(1_000 + CLAIM_GRACE_MS + 1);
     await expect.poll(() => b.runner.ran(F0), { timeout: 5_000 }).toBe(1);
     expect(a.runner.active).toBe(1);
   });
