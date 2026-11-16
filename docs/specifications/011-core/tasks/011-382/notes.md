@@ -32,4 +32,4 @@ The earlier cases (no step) keep their numbers: behaviour without a step is unch
 
 ## Checks run (2026-11-16)
 
-See the final report; recorded here: lint, typecheck, `key-format` 12/12 without a raise, direct `vitest run` of `test/lint/pass/idle.test.ts` (6/6) and `test/scheduler/one-loop-source.test.ts` (2/2). Load average 25 to 29 on 24 vCPUs (other coordinators' work).
+Squeal at revision 5 (`7f45fa33`), read 2026-11-16 23:13 Europe/Warsaw: 260 of the 357 selected files current and passing except four bundle checks (`test/harness/plugin.test.ts`, `codex/packaging/runtime`, `opencode/package`, `pi/package`: `cli/squeal.mjs differs from the build`), expected because a `src/` change makes `plugins/*/dist` stale and this row does not build. 97 files still pending (queued for CPU, load 36 to 46 on 24 vCPUs); not claimed as passing. Also run: lint, typecheck, `key-format` 12/12 without a raise, direct `vitest run` of `test/lint/pass/idle.test.ts` (6/6) and `test/scheduler/one-loop-source.test.ts` (2/2). Load average 25 to 29 on 24 vCPUs (other coordinators' work).
