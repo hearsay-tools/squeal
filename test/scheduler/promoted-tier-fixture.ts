@@ -46,6 +46,11 @@ export interface Setup {
   readonly promoteMs?: number;
   /** The pool's slots. */
   readonly hostSlots?: number;
+  /**
+   * Row 011-381: `"virtual"`, the side's clock is a prompt virtual clock and
+   * the setup reads at `settle`; absent, the `ModelClock` above.
+   */
+  readonly clock?: "virtual";
 }
 
 /**
@@ -57,15 +62,14 @@ export interface Setup {
  */
 export async function promotedBehindEdit(
   held: (path: string) => boolean,
-  { promoteMs = 600_000, hostSlots = 24 }: Setup = {},
+  { promoteMs = 600_000, hostSlots = 24, clock }: Setup = {},
 ) {
   const repo = catchUpRepo(FILES);
-  const now = new ModelClock().now;
   const side = catchUpSide(repo, repo.main, {
     files: FILES,
     hostSlots,
     policy: RUN_MISSING,
-    now,
+    ...(clock === undefined ? { now: new ModelClock().now } : { clock }),
   });
   await side.scheduler.start();
   await side.quiet();
