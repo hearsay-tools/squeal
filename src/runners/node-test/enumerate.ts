@@ -115,7 +115,7 @@ function parseStripped(source: string): Program | null {
  * would otherwise reach the daemon's stderr (review wave 1, inputs). Other
  * warnings pass through.
  */
-function quietly<T>(strip: () => T): T {
+export function quietly<T>(strip: () => T): T {
   const emit = process.emitWarning;
   process.emitWarning = function (this: NodeJS.Process, warning, ...rest: unknown[]) {
     const text = typeof warning === "string" ? warning : warning.message;
