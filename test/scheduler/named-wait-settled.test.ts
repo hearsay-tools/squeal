@@ -37,16 +37,21 @@ async function laterEditAndWait(side: CatchUpSide, edited: string): Promise<stri
   await side.edit("watch", `src/${edited}.ts`, "src/c.ts");
   await side.scheduler.promote([ref(C)], 600_000);
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   return side.runner.runs.slice(after).map((run) => run.files.map((f) => f.path));
 }
 
 /** Every file current, then B's edit held in flight while a wait selects `first`, then B settles. */
 async function finishedWait(first: readonly string[]) {
   const repo = catchUpRepo(FILES);
-  const side = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 4, policy: RUN_MISSING });
+  const side = catchUpSide(repo, repo.main, {
+    files: FILES,
+    hostSlots: 4,
+    clock: "virtual",
+    policy: RUN_MISSING,
+  });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   expect(FILES.every((f) => side.current(f.path))).toBe(true);
   const gate = holdRuns(side.runner, (path) => path === B);
   const base = side.runner.runs.length;
@@ -57,7 +62,7 @@ async function finishedWait(first: readonly string[]) {
     600_000,
   );
   gate.stop();
-  await side.scheduler.idle();
+  await side.quiet();
   expect([A, B].every((path) => side.current(path))).toBe(true);
   return side;
 }
@@ -79,9 +84,14 @@ describe("a wait ends once each selected file has its answer (review 0.1.384 B1)
 
   it("a selected file nothing queued that becomes current through a shared result ends the wait", async () => {
     const repo = catchUpRepo(FILES);
-    const side = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 4, policy: LOOKUP_ONLY });
+    const side = catchUpSide(repo, repo.main, {
+      files: FILES,
+      hostSlots: 4,
+      clock: "virtual",
+      policy: LOOKUP_ONLY,
+    });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     // Lookup-only: B has a key, no result and nothing queued; the wait comes before anything runs it.
     expect(side.runner.runs).toEqual([]);
     await side.scheduler.promote([ref(B)], 600_000);
@@ -89,13 +99,14 @@ describe("a wait ends once each selected file has its answer (review 0.1.384 B1)
     const other = catchUpSide(repo, repo.other, {
       files: FILES,
       hostSlots: 4,
+      clock: "virtual",
       policy: RUN_MISSING,
     });
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     expect(other.current(B)).toBe(true);
     await side.scheduler.requestFullSuite();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(side.current(B)).toBe(true);
     expect(side.runner.runs.some((run) => holds(run, B))).toBe(false);
 
