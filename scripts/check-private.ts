@@ -4,10 +4,14 @@ import { fileURLToPath } from "node:url";
 
 /*
  * CI check (row private-material-guard): no push adds private material. Only lines added in
- * `git diff <base>...HEAD` (text files) are read, by three rules, and added file names by rule 3:
+ * `git diff <base>...HEAD` are read, by three rules, and added file names by rule 3. Text files
+ * only: a file git diffs as binary is read as text when it holds no NUL byte in its first 8000
+ * bytes, since then only an attribute such as `-diff` hides it. Each rule sees a line as written
+ * and with JSON string escapes undone, up to three rounds for payloads serialized inside others.
  *
- *   1. an absolute home path, `/home/<name>/` or `/Users/<name>/`; three names pass: `user`, the
- *      fake value fixtures and examples use, `runner`, GitHub's runner home, and `squeal-e2e`, the
+ *   1. an absolute home path, `/home/<name>` or `/Users/<name>`, any letters in the name; a name
+ *      starting with `<`, `$`, `{` or `%` is a placeholder; three names pass: `user`, the fake
+ *      value fixtures and examples use, `runner`, GitHub's runner home, and `squeal-e2e`, the
  *      throwaway user the real-CLI tests run as;
  *   2. a recorded agent session log: one added line, or the added lines of one JSON file, holding
  *      the transcript path key, or both the session id key and the working directory key;
@@ -27,7 +31,7 @@ const ALLOW_FILE = ".private-allow";
 const DENYLIST_ENV = "SQUEAL_PRIVATE_DENYLIST";
 
 /** A home directory with a real user name: not preceded by a host or path word, as in a URL. */
-const HOME_PATH = /(?<![\w.-])\/(?:home|Users)\/([A-Za-z0-9._-]+)\//g;
+const HOME_PATH = /(?<![\p{L}\p{N}\p{M}_.-])\/(?:home|Users)\/([\p{L}\p{N}\p{M}_.-]+)/gu;
 const PUBLIC_USERS = new Set(["user", "runner", "squeal-e2e"]);
 // Each quote is a character class so this file holds none of the keys it looks for.
 const TRANSCRIPT_KEY = /["]transcript_path["]/;
@@ -60,6 +64,25 @@ const git = (cwd: string, args: readonly string[]) =>
     maxBuffer: 1 << 30,
     stdio: ["ignore", "pipe", "pipe"],
   });
+
+const JSON_ESCAPE = /\\(?:(["\\/])|u([0-9A-Fa-f]{4}))/g;
+
+/** `text` as written, then with JSON string escapes undone once, twice and three times. */
+function forms(text: string): string[] {
+  const all = [text];
+  for (let round = 0; round < 3; round++) {
+    const last = all[all.length - 1] ?? "";
+    if (!last.includes("\\")) break;
+    const next = last.replace(
+      JSON_ESCAPE,
+      (_, char: string | undefined, hex: string) =>
+        char ?? String.fromCharCode(Number.parseInt(hex, 16)),
+    );
+    if (next === last) break;
+    all.push(next);
+  }
+  return all;
+}
 
 /** The merge-base of HEAD with origin/main, the base when none is given. */
 function defaultBase(cwd: string): string {
@@ -126,7 +149,8 @@ export function addedLines(patch: string): Added[] {
       if (sign === "\\") continue;
     }
     if (raw.startsWith("+++ ")) {
-      const name = unquote(raw.slice(4));
+      // Git ends the name with a tab when it holds a space; a tab inside a name is quoted.
+      const name = unquote(raw.slice(4, raw.endsWith("\t") ? -1 : undefined));
       path = name.startsWith("b/") ? name.slice(2) : undefined;
       continue;
     }
@@ -152,6 +176,48 @@ function addedPaths(cwd: string, range: string): string[] {
     i += twoPaths ? 3 : 2;
   }
   return paths;
+}
+
+/**
+ * The paths, old and new, of the files git diffs as binary although their new content holds no
+ * NUL byte in its first 8000 bytes, git's own test: an attribute such as `-diff` made them binary.
+ */
+function attributeBinaries(cwd: string, range: string): string[] {
+  const fields = git(cwd, ["diff", "--numstat", "-z", "-M", range]).split("\0");
+  const paths: string[] = [];
+  for (let i = 0; i < fields.length - 1; ) {
+    const head = fields[i] ?? "";
+    // `added\tdeleted\tpath`, or for a rename or copy `added\tdeleted\t`, old path, new path.
+    const moved = head.endsWith("\t");
+    const pair = moved
+      ? [fields[i + 1] ?? "", fields[i + 2] ?? ""]
+      : [head.split("\t").slice(2).join("\t")];
+    i += moved ? 3 : 1;
+    if (!head.startsWith("-\t-\t")) continue;
+    let content: Buffer;
+    try {
+      content = execFileSync("git", ["cat-file", "blob", `HEAD:${pair[pair.length - 1]}`], {
+        cwd,
+        maxBuffer: 1 << 30,
+        stdio: ["ignore", "pipe", "ignore"],
+      });
+    } catch {
+      continue; // deleted at HEAD
+    }
+    if (!content.subarray(0, 8000).includes(0)) paths.push(...pair);
+  }
+  return paths;
+}
+
+/** The lines `range` adds to text files, with those only an attribute marks binary. */
+function addedText(cwd: string, range: string): Added[] {
+  const diff = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-U0", "-M"];
+  const prefixes = ["--src-prefix=a/", "--dst-prefix=b/"];
+  const added = addedLines(git(cwd, [...diff, ...prefixes, range]));
+  const textual = attributeBinaries(cwd, range);
+  if (textual.length === 0) return added;
+  const args = ["--literal-pathspecs", ...diff, "--text", ...prefixes, range, "--", ...textual];
+  return [...added, ...addedLines(git(cwd, args))];
 }
 
 /** A glob from `.private-allow`: `**` crosses folders, `*` and `?` do not. */
@@ -187,10 +253,17 @@ function allowGlobs(cwd: string): RegExp[] {
 }
 
 const homeName = (text: string) =>
-  [...text.matchAll(HOME_PATH)].some((match) => !PUBLIC_USERS.has(match[1] ?? ""));
+  forms(text).some((form) =>
+    [...form.matchAll(HOME_PATH)].some((match) => !PUBLIC_USERS.has(match[1] ?? "")),
+  );
 
 const sessionLog = (text: string) =>
-  TRANSCRIPT_KEY.test(text) || (SESSION_KEY.test(text) && CWD_KEY.test(text));
+  forms(text).some(
+    (form) => TRANSCRIPT_KEY.test(form) || (SESSION_KEY.test(form) && CWD_KEY.test(form)),
+  );
+
+const sessionStart = (text: string) =>
+  forms(text).some((form) => TRANSCRIPT_KEY.test(form) || SESSION_KEY.test(form));
 
 const protectedRef = (ref: string) =>
   ref === "refs/heads/main" || ref.startsWith("refs/heads/cand/");
@@ -217,10 +290,11 @@ export function privateReport(
       warnings.push(`${DENYLIST_ENV} is empty; the private denylist rule is skipped`);
     }
   }
-  const denied = (text: string) => {
-    const lower = text.toLowerCase();
-    return deny.some((entry) => lower.includes(entry));
-  };
+  const denied = (text: string) =>
+    forms(text).some((form) => {
+      const lower = form.toLowerCase();
+      return deny.some((entry) => lower.includes(entry));
+    });
   const globs = allowGlobs(cwd);
   const allowed = (path: string) => globs.some((glob) => glob.test(path));
   const shown = (path: string) => (denied(path) ? REDACTED : path);
@@ -229,18 +303,7 @@ export function privateReport(
     if (denied(path)) problems.push(`${REDACTED}: an added file's name ${DENY_PROBLEM}`);
   }
 
-  const patch = git(cwd, [
-    "diff",
-    "--no-color",
-    "--no-ext-diff",
-    "--no-textconv",
-    "-U0",
-    "-M",
-    "--src-prefix=a/",
-    "--dst-prefix=b/",
-    range,
-  ]);
-  const added = addedLines(patch);
+  const added = addedText(cwd, range);
   const byFile = new Map<string, Added[]>();
   for (const entry of added) {
     const where = `${shown(entry.path)}:${entry.line}`;
@@ -248,16 +311,14 @@ export function privateReport(
     if (allowed(entry.path)) continue;
     if (homeName(entry.text)) problems.push(`${where}: ${HOME_PROBLEM}`);
     if (sessionLog(entry.text)) problems.push(`${where}: ${SESSION_PROBLEM}`);
-    else if (entry.path.endsWith(".json")) {
+    else if (/\.json$/i.test(entry.path)) {
       byFile.set(entry.path, [...(byFile.get(entry.path) ?? []), entry]);
     }
   }
   // A JSON file pretty-printed over several lines: its added lines together.
   for (const [path, lines] of byFile) {
     if (!sessionLog(lines.map((entry) => entry.text).join("\n"))) continue;
-    const first = lines.find((entry) =>
-      [TRANSCRIPT_KEY, SESSION_KEY].some((k) => k.test(entry.text)),
-    );
+    const first = lines.find((entry) => sessionStart(entry.text));
     problems.push(`${shown(path)}:${first?.line ?? lines[0]?.line}: ${SESSION_PROBLEM}`);
   }
   return {
