@@ -44,6 +44,7 @@ async function heldBaseline(): Promise<{ h: Harness; release: () => void }> {
     policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: { slotDir: tempDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
+    clock: "virtual",
   });
   let release = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -68,7 +69,7 @@ describe("Scheduler.inUse: the backlog is no use (C9, row 011-92)", SLOW, () => 
     // One fast file runs; two fast and two slow files stay queued.
     expect(h.scheduler.queued()).toBe(4);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.inUse()).toBe(false);
   });
 
@@ -79,7 +80,7 @@ describe("Scheduler.inUse: the backlog is no use (C9, row 011-92)", SLOW, () => 
     expect(h.scheduler.inUse()).toBe(true);
     // The edit cancels the held backlog tier (C4 step 5); its held run ends at the release.
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.runsOf("test/plain.test.ts").length).toBeGreaterThan(0);
     expect(h.scheduler.inUse()).toBe(false);
   });
@@ -89,7 +90,7 @@ describe("Scheduler.inUse: the backlog is no use (C9, row 011-92)", SLOW, () => 
     await h.scheduler.requestFullSuite();
     expect(h.scheduler.inUse()).toBe(true);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     await waitFor(() => !h.scheduler.inUse(), 60_000);
   });
 
@@ -100,7 +101,7 @@ describe("Scheduler.inUse: the backlog is no use (C9, row 011-92)", SLOW, () => 
     await h.scheduler.requestSlowSuite();
     expect(h.scheduler.inUse()).toBe(true);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     await waitFor(() => !h.scheduler.slowPending(), 60_000);
     expect(h.scheduler.inUse()).toBe(false);
   });
@@ -110,7 +111,7 @@ describe("Scheduler.inUse: the backlog is no use (C9, row 011-92)", SLOW, () => 
     await h.scheduler.promote([{ project: "", path: "test/math.test.ts" }], 60_000);
     expect(h.scheduler.inUse()).toBe(true);
     release();
-    await h.scheduler.idle();
+    await h.quiet();
     expect(h.scheduler.inUse()).toBe(false);
   });
 });

@@ -5,7 +5,6 @@ import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore } from "./repo.js";
-import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
 import { openHarness } from "./vitest-harness.js";
 
 /*
@@ -19,8 +18,9 @@ import { openHarness } from "./vitest-harness.js";
  * config edit every one of them is a last known fail, the most urgent class;
  * `test/f123.test.ts` passes, and without the amendment its edit would run
  * it after all 199. The edit cancels the backlog's tier, so the lane waits
- * 20 s for quiet (row 011-94); the clock moves past the wait once it is
- * seen, rather than the test idling through it (CI run 39696846845).
+ * 20 s for quiet (row 011-94); the virtual clock moves past the wait once
+ * the quiet point shows it, rather than the test idling through it (CI run
+ * 39696846845; row 011-381).
  */
 const COUNT = 200;
 const EDITED = 123;
@@ -47,16 +47,15 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
       );
     }
     const store = openRepoStore(repo.commonDir);
-    let offset = 0;
     // Re-running 199 new failures (task 001-171) is not this test's subject.
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
       rerunCap: 0,
-      now: () => Date.now() + offset,
+      clock: "virtual",
       policy: RUN_MISSING,
     });
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baseline = h.runner.runs.length;
     expect(h.runner.runs.flatMap((r) => r.files)).toHaveLength(COUNT);
 
@@ -82,10 +81,10 @@ describe("scheduler: an edit runs ahead of an environment change's backlog (D5, 
     await expect.poll(() => h.runsOf(editedFile).length, { timeout: 60_000 }).toBe(2);
     // The edit's work ran; the lane waits for quiet and starts no backlog tier.
     const waiting = starts;
-    await pause(SETTLE_MS);
+    await h.quiet();
     expect(starts).toBe(waiting);
-    offset += BACKLOG_QUIET_MS;
-    await h.scheduler.idle();
+    h.advance(BACKLOG_QUIET_MS);
+    await h.quiet();
 
     const order = h.runner.runs.slice(baseline).flatMap((r) => r.files.map((f) => f.path));
     const position = order.indexOf(editedFile);

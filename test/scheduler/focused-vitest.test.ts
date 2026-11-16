@@ -34,13 +34,14 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
   it("the focused red is in the meta row before the file's own run starts", async () => {
     const repo = createRepo("basic");
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
+      clock: "virtual",
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
     });
     // The daemon's fast Vitest runner focuses: Vitest's traits (`vitestTraits`, row 011-329).
     const { focus } = h.scheduler;
     if (focus === undefined) throw new Error("the scheduler cannot focus");
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     // A tier of a short known file holds the lane while the requests come; it yields to nothing.
     let open = () => {};
@@ -69,7 +70,7 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
     await h.scheduler.promote([ref(PARITY)], 60_000);
     await focus.call(h.scheduler, [ref(PARITY)], ["new"], 60_000);
     open();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const [focused, own] = h.runsOf(PARITY);
     expect(focused?.options.checks).toEqual([{ testFile: ref(PARITY), texts: ["new"] }]);
@@ -96,13 +97,14 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
     const repo = createRepo("basic");
     // A second adapter makes the harness wrap its runners in the daemon's composite.
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
+      clock: "virtual",
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
       adapters: [emptyAdapter("x")],
     });
     const { focus } = h.scheduler;
     if (focus === undefined) throw new Error("the scheduler cannot focus");
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
 
     let open = () => {};
     const blocked = new Promise<void>((resolve) => {
@@ -127,7 +129,7 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
     await focus.call(h.scheduler, [ref(PARITY)], ["new"], 60_000);
     await focus.call(h.scheduler, [ref(ZERO)], ["absent"], 60_000);
     open();
-    await h.scheduler.idle();
+    await h.quiet();
 
     const rows = readFocused(h.store, h.worktreeId);
     const of = (path: string) => rows.find((run) => run.testFile.path === path);

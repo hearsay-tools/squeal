@@ -8,7 +8,6 @@ import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { completions, suite } from "./backlog-suite.js";
 import { openRepoStore } from "./repo.js";
-import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
@@ -25,9 +24,9 @@ import { type Harness, openHarness } from "./vitest-harness.js";
 /**
  * A 30-file backlog tier in flight, `during` run once its first test ended.
  * With `settled`, `during` cancels the tier: the lane then waits 20 s for
- * quiet (row 011-94), so until the clock moves past the wait, once
- * `settled` holds, no file of the suite has started again; the test does
- * not idle through the wait (CI run 39696846845).
+ * quiet (row 011-94), so at the quiet point once `settled` holds, no file
+ * of the suite has started again; the test moves the virtual clock past
+ * the wait (CI run 39696846845; row 011-381).
  */
 async function backlogWith(
   during: (h: Harness) => Promise<void>,
@@ -36,17 +35,16 @@ async function backlogWith(
   const mark = join(tmpdir(), `squeal-001-364-${process.pid}-${Date.now()}.log`);
   const repo = suite(30, 1_000, mark);
   writeFileSync(join(repo.main, "build-index-old.js"), "export const built = 1;\n");
-  let offset = 0;
   const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
     tierSize: 4,
     backlogTierSize: 200,
     runnerPartBesideRun: true,
-    now: () => Date.now() + offset,
+    clock: "virtual",
     policy: RUN_MISSING,
   });
   try {
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await h.quiet();
     const baselineTiers = h.runner.runs.length;
     rmSync(mark, { force: true });
     let edit: Promise<void> | null = null;
@@ -65,11 +63,11 @@ async function backlogWith(
     await edit;
     if (settled !== undefined) {
       await waitFor(() => settled(h), 60_000);
-      await pause(SETTLE_MS);
+      await h.quiet();
       expect(started.slice(30).filter((path) => /^test\/f\d{3}\.test\.ts$/.test(path))).toEqual([]);
-      offset += BACKLOG_QUIET_MS;
+      h.advance(BACKLOG_QUIET_MS);
     }
-    await h.scheduler.idle();
+    await h.quiet();
     return { h, tiers: h.runner.runs.slice(baselineTiers) };
   } finally {
     rmSync(mark, { force: true });
