@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cacheCheckoutsDir, gitCheckoutsDir } from "../../src/core/checkout/location.js";
@@ -96,6 +96,28 @@ describe("squeal ps and the temporary checkouts", () => {
 
     expect((await snap(false)).checkouts).toHaveLength(2);
     expect((await snap(true)).checkouts?.map((c) => c.path)).toEqual([treePath(own)]);
+  });
+
+  it("reads the listing as unknown, not the snapshot as failed, when the cache cannot be read", async () => {
+    mkdirSync(join(host.base, "cache", "squeal"), { recursive: true });
+    // A file where the checkouts folder should be: listing it fails with ENOTDIR on a child.
+    writeFileSync(cacheRoot, "");
+    const shape = await snap();
+    expect(shape.checkouts).toEqual([]);
+    expect(shape.unknown.map((u) => u.what)).not.toContain("checkouts");
+
+    rmSync(cacheRoot);
+    mkdirSync(cacheRoot, { recursive: true, mode: 0o000 });
+    try {
+      const unreadable = await snap();
+      if (process.getuid?.() === 0) return;
+      expect(unreadable.unknown).toContainEqual({
+        what: "checkouts",
+        why: expect.stringMatching(/^not read: .*EACCES/),
+      });
+    } finally {
+      chmodSync(cacheRoot, 0o700);
+    }
   });
 
   it("prints no checkout block when there is none", async () => {

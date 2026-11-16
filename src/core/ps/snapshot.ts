@@ -14,7 +14,7 @@ import type {
   PsPlaces,
 } from "./model.js";
 import { attribute } from "./processes.js";
-import type { PsSnapshot, PsUnknown } from "./shape.js";
+import type { PsCheckout, PsSnapshot, PsUnknown } from "./shape.js";
 import { shapeOf, type WindowRead } from "./snapshot-shape.js";
 import type { ProcessRow, ProcessTable, PsSource } from "./source.js";
 import { readWork } from "./work.js";
@@ -57,9 +57,17 @@ export interface SnapshotOptions {
 export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot> {
   const read = await readWindow(options);
   const shape = shapeOf(read, options.flag(read.model), options);
-  const checkouts = readCheckouts(options.places, options.repo);
+  let checkouts: PsCheckout[] = [];
+  let unknown = shape.unknown;
+  try {
+    checkouts = readCheckouts(options.places, options.repo);
+  } catch (error) {
+    // Spec 023 D6: a folder that cannot be read leaves the listing unknown, not the snapshot.
+    const why = error instanceof Error ? error.message : String(error);
+    unknown = [...unknown, { what: "checkouts", why: `not read: ${why}` }];
+  }
   const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
-  return { ...shape, checkouts, flags: shape.flags + flags };
+  return { ...shape, checkouts, flags: shape.flags + flags, unknown };
 }
 
 async function readWindow(o: SnapshotOptions): Promise<WindowRead> {
