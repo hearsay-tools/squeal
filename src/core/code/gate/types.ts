@@ -1,3 +1,4 @@
+import type { CheckError } from "../../types/check.js";
 import type { FunctionCount } from "../../types/code.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
@@ -191,6 +192,19 @@ export interface TestFileEvidence {
    * any other file.
    */
   readonly storedRerun?: StoredRerun;
+  /**
+   * Spec 023 D4.4, D5.5 (row 023-04): each name of `failed` with the errors
+   * its run or the stores hold, as `squeal why` reads them, in `failed`'s
+   * order. Absent when none failed and for a file read from the parts. The
+   * gate's report does not read it.
+   */
+  readonly failures?: readonly FailedTest[];
+}
+
+/** Row 023-04: one failed test of a file and its errors; `test` is `FILE_ERROR` for an import or syntax failure. */
+export interface FailedTest {
+  readonly test: string;
+  readonly errors: readonly CheckError[];
 }
 
 /**

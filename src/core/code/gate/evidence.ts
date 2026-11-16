@@ -8,7 +8,7 @@ import type { Picked } from "./prerun.js";
 import type { Mapped } from "./records.js";
 import type { Runner } from "./runners.js";
 import type { LeftOutFile } from "./scope.js";
-import type { TestFileEvidence } from "./types.js";
+import type { FailedTest, TestFileEvidence } from "./types.js";
 
 /*
  * Spec 020 D3: what the collector knows of one selected test file, from
@@ -48,10 +48,17 @@ export async function evidenceOf(
     : (report?.results ?? []).filter(
         (r) => r.check.project === ref.project && r.check.testPath === ref.path,
       );
-  const failed = [
-    ...(completed && report?.fileErrors.some(own) === true ? [FILE_ERROR] : []),
-    ...results.filter((r) => r.outcome === "fail").map((r) => r.check.fullName),
+  const fileErrors = completed ? (report?.fileErrors ?? []).filter(own) : [];
+  // Row 023-04: each failed name with its errors, the file's own first.
+  const failures: FailedTest[] = [
+    ...(fileErrors.length === 0
+      ? []
+      : [{ test: FILE_ERROR, errors: fileErrors.flatMap((e) => e.errors) }]),
+    ...results
+      .filter((r) => r.outcome === "fail")
+      .map((r) => ({ test: r.check.fullName, errors: r.errors })),
   ];
+  const failed = failures.map((f) => f.test);
   const skipped = results.some((r) => r.outcome === "skip");
   const loads = await loadsOf(runner.adapter, ref);
   const mapped = completed ? records.get(key) : undefined;
@@ -66,6 +73,7 @@ export async function evidenceOf(
     loads,
     record,
     ...counts,
+    ...(failures.length === 0 ? {} : { failures }),
   };
 }
 

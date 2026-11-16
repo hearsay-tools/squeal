@@ -19,6 +19,7 @@ import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
+import type { ResultRecord } from "../../types/store-records.js";
 import { COVERAGE_RECORD_VERSION, decodeRecord } from "../coverage/record.js";
 import { codeStorePath } from "../store/open.js";
 import { CODE_SCHEMA_VERSION } from "../store/schema.js";
@@ -173,6 +174,9 @@ export function openStored(options: StoredOptions): StoredFiles | null {
   return { stored, ran: (run) => keeper.ran(run), flush: () => keeper.flush(), keys, close };
 }
 
+/** The name a stored failure reads under in `failed`: its test's, or `FILE_ERROR` for the file's own. */
+const failedName = (r: ResultRecord) => (r.check.kind === "test" ? r.check.fullName : FILE_ERROR);
+
 /** The evidence the stores hold of `ref` at its key; `null` without results and a record there. */
 function evidenceAt(
   stores: Partial<Stores>,
@@ -190,19 +194,27 @@ function evidenceAt(
     providerVersion: COVERAGE_RECORD_VERSION,
   });
   if (bytes === null) return null;
-  const failed = results
-    .filter((r) => r.outcome === "fail")
-    .map((r) => (r.check.kind === "test" ? r.check.fullName : FILE_ERROR));
+  const failed = [...new Set(results.filter((r) => r.outcome === "fail").map(failedName))].sort(
+    compare,
+  );
+  // Row 023-04: each failed name with the errors stored under it.
+  const failures = failed.map((test) => ({
+    test,
+    errors: results
+      .filter((r) => r.outcome === "fail" && failedName(r) === test)
+      .flatMap((r) => r.errors),
+  }));
   return {
     runner,
     path: ref.path,
     // 015 D8: a record is stored only for a file that ran whole, every test selected.
     completed: true,
-    failed: [...new Set(failed)].sort(compare),
+    failed,
     skipped: results.some((r) => r.outcome === "skip"),
     loads,
     record: decodeRecord(bytes),
     from: "store",
+    ...(failures.length === 0 ? {} : { failures }),
   };
 }
 
