@@ -22,6 +22,7 @@
     "build:codex-adapter": "tsx src/harness/codex/build-adapter.ts",
     "package:codex-runtime": "tsx scripts/package-codex-runtime.ts",
     "check:version": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts",
+    "check:private": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-private.ts",
     "typecheck": "tsrs --fast --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",

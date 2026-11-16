@@ -1,0 +1,40 @@
+name: Private material
+
+# Row private-material-guard: every push and pull request, with no path filter, since a change only
+# under docs/ starts no CI run. `scripts/check-private.ts` reads the lines the push adds for an
+# absolute home path, a recorded agent session log and the private denylist, a repository secret
+# that is never committed. On main and cand/* an empty denylist fails the run.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  private:
+    name: No private material added
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The base is any earlier commit, and origin/main for the merge-base.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check the added lines
+        env:
+          SQUEAL_PRIVATE_DENYLIST: ${{ secrets.PRIVATE_DENYLIST }}
+          # A push against the commit it replaced; a new branch, a force push past it or a pull
+          # request has none here, and the script then takes the merge-base with origin/main.
+          BEFORE: ${{ github.event.before }}
+        # The script needs no package: pnpm 12 would install every one before `run` (017-11).
+        run: |
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            pnpm --config.verify-deps-before-run=false run check:private "$BEFORE"
+          else
+            pnpm --config.verify-deps-before-run=false run check:private
+          fi

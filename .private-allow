@@ -1,0 +1,8 @@
+# Path globs exempt from the home-path and session-log rules of scripts/check-private.ts, never
+# from the private denylist. `**` crosses folders, `*` and `?` do not. Add an entry only with the
+# coordinator's agreement: each one is a place real private material can land unchecked.
+test/fixtures/codex-hooks/**
+test/harness/recorded/**
+test/harness/codex/input.test.ts
+test/e2e/plugins.ts
+test/harness/check-private.test.ts
