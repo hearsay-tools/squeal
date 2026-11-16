@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { MERGE_HOLD_POLL_MS } from "../../src/core/scheduler/hold.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
@@ -28,12 +29,15 @@ import {
  * hold is one worktree's.
  */
 
+/** Row 011-381: each side's clock is virtual; the hold's poll comes when a case moves it. */
+const VIRTUAL = { clock: "virtual" } as const;
+
 describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_000 }, () => {
   it("6: a tier the check let past stores nothing for the importers, and a second such withhold leaves no unknown", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
+    const side = holdSide(repo, repo.main, FILES, RUN_MISSING, VIRTUAL);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     // The files land, the tier starts, then the index lands: what the check before a tier cannot see.
     let races = 2;
     const marked = side.runner.beforeRun;
@@ -46,18 +50,20 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
     };
     writeFileSync(join(repo.main, HELPER), helperReturning(7));
     await batch(side, HELPER);
-    await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([HELPER]);
-    await side.scheduler.idle();
+    await side.quiet();
+    expect(heldPaths(side)).toEqual([HELPER]);
     const held = rows(side);
     for (const path of [A, B]) {
       expect(held.get(path)?.pending).toBe("queued");
       expect(outcomes(side, path)).toEqual([]);
     }
 
+    // The hold sees each `git add` at its next poll.
     git(repo.main, ["add", HELPER]);
-    await expect.poll(() => races, { timeout: 5_000 }).toBe(0);
-    await expect.poll(() => heldPaths(side), { timeout: 5_000 }).toEqual([HELPER]);
-    await side.scheduler.idle();
+    side.advance(MERGE_HOLD_POLL_MS);
+    await side.quiet();
+    expect(races).toBe(0);
+    expect(heldPaths(side)).toEqual([HELPER]);
     expect(rows(side)).toEqual(held);
     const unknown = side.store.knownStates
       .list(side.worktreeId)
@@ -65,9 +71,9 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
     expect(unknown).toEqual([]);
 
     git(repo.main, ["add", HELPER]);
-    await expect
-      .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 10_000 })
-      .toEqual([["pass"], ["pass"]]);
+    side.advance(MERGE_HOLD_POLL_MS);
+    await side.quiet();
+    expect([outcomes(side, A), outcomes(side, B)]).toEqual([["pass"], ["pass"]]);
     expect([runsOf(side, A), runsOf(side, B)]).toEqual([4, 4]);
   });
 
@@ -76,66 +82,65 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     const conflicted = readFileSync(join(repo.main, HELPER), "utf8");
     git(repo.main, ["merge", "--abort"]);
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, {}, VIRTUAL);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const passed = rows(side).get(A)?.key;
     // The same bytes written by hand: no unmerged path, no hold, a FAIL at their key.
     writeFileSync(join(repo.main, HELPER), conflicted);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(outcomes(side, A)).toEqual(["fail"]);
     const failed = rows(side).get(A)?.key;
     git(repo.main, ["checkout", "--", HELPER]);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(outcomes(side, A)).toEqual(["pass"]);
     const runs = side.runner.runs.length;
 
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(rows(side).get(A)).toEqual({ key: failed, pending: "queued" });
     for (const path of [A, B]) expect(outcomes(side, path)).toEqual([]);
 
     // Resolved to main's side, whose pass is stored: still held, so still pending.
     writeFileSync(join(repo.main, HELPER), helperReturning(3));
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(rows(side).get(A)).toEqual({ key: passed, pending: "queued" });
     for (const path of [A, B]) expect(outcomes(side, path)).toEqual([]);
 
     git(repo.main, ["add", HELPER]);
-    await expect
-      .poll(() => [outcomes(side, A), outcomes(side, B)], { timeout: 5_000 })
-      .toEqual([["pass"], ["pass"]]);
-    await side.scheduler.idle();
+    side.advance(MERGE_HOLD_POLL_MS);
+    await side.quiet();
+    expect([outcomes(side, A), outcomes(side, B)]).toEqual([["pass"], ["pass"]]);
     expect(rows(side).get(A)).toEqual({ key: passed, pending: null });
     expect(side.runner.runs.length).toBe(runs);
   });
 
   it("7: a FAIL another worktree stores at the conflicted key during the hold is not promoted", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, {}, VIRTUAL);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = side.runner.runs.length;
 
-    const other = holdSide(repo, repo.other);
+    const other = holdSide(repo, repo.other, FILES, {}, VIRTUAL);
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     writeFileSync(join(repo.other, HELPER), readFileSync(join(repo.main, HELPER)));
     await batch(other, HELPER);
-    await other.scheduler.idle();
+    await other.quiet();
     expect(outcomes(other, A)).toEqual(["fail"]);
     expect(rows(other).get(A)?.key).toBe(rows(side).get(A)?.key);
 
     // A reconciliation pass reads the keys other worktrees stored (C4 step 3, task 011-23).
     await side.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await side.scheduler.idle();
+    await side.quiet();
     for (const path of [A, B]) {
       expect(rows(side).get(path)?.pending).toBe("queued");
       expect(outcomes(side, path)).toEqual([]);
@@ -145,19 +150,20 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
 
   it("8: a tier in flight at the hold's start finishes; its file whose key names no unmerged path stores", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, {}, VIRTUAL);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     side.runner.hold();
     for (const path of [A, B, OTHER]) appendFileSync(join(repo.main, path), "// edit\n");
     await batch(side, A, B, OTHER);
-    await expect.poll(() => side.runner.active, { timeout: 5_000 }).toBe(1);
+    await side.rest();
+    expect(side.runner.active).toBe(1);
 
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
     expect(heldPaths(side)).toEqual([HELPER]);
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
 
     expect(side.runner.runs.at(-1)?.cancelled).toBe(false);
     expect(rows(side).get(OTHER)?.pending).toBeNull();
@@ -170,21 +176,21 @@ describe("scheduler: what the merge hold records (row 011-72)", { timeout: 60_00
 
   it("9: another worktree's daemon runs its edit during the hold", async () => {
     const repo = mergeRepo();
-    const side = holdSide(repo);
+    const side = holdSide(repo, repo.main, FILES, {}, VIRTUAL);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     const runs = side.runner.runs.length;
 
-    const other = holdSide(repo, repo.other);
+    const other = holdSide(repo, repo.other, FILES, {}, VIRTUAL);
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     const before = runsOf(other, OTHER);
     appendFileSync(join(repo.other, OTHER), "// edit\n");
     await batch(other, OTHER);
-    await other.scheduler.idle();
+    await other.quiet();
     expect(runsOf(other, OTHER)).toBe(before + 1);
     expect(outcomes(other, OTHER)).toEqual(["pass"]);
     expect(heldPaths(other)).toBeNull();
