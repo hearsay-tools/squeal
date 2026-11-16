@@ -8,6 +8,15 @@ const DYNAMIC_SPECIFIER = /import\.meta\.glob|\bimport\s*\(\s*`[^`]*\$\{/;
 const scanned = new WeakMap<object, boolean>();
 
 /**
+ * True when `source` may expand imports from the files on disk. Comments and
+ * strings match too: the cheap first pass, which `glob-listing.ts` parses
+ * past (row 023-13).
+ */
+export function mayExpandFromDisk(source: string): boolean {
+  return DYNAMIC_SPECIFIER.test(source);
+}
+
+/**
  * True when a module's imports are expanded from the files on disk at
  * transform time: `import.meta.glob` and template-literal dynamic imports.
  * Any add can change such an expansion (spec 001 D4, reviews/wave-7.md B1).
@@ -25,7 +34,7 @@ export function expandsFromDisk(file: AbsolutePath, transform: object): boolean 
   let found = scanned.get(transform);
   if (found === undefined) {
     const source = readSource(file);
-    found = source === null || DYNAMIC_SPECIFIER.test(source);
+    found = source === null || mayExpandFromDisk(source);
     scanned.set(transform, found);
   }
   return found;

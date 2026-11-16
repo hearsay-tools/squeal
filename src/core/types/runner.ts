@@ -62,6 +62,23 @@ export interface RunnerClosure {
    * gives none (node:test, pytest). Entries may be shared between closures.
    */
   readonly imports?: readonly FileImports[];
+  /**
+   * Row 023-13: the folders each walked module's literal globs list
+   * (`import.meta.glob`, a template-literal `import()`). The core keeps them
+   * per module in a shared set every closure that holds the module is keyed
+   * with. Absent when the runner has none to report.
+   */
+  readonly globs?: readonly ModuleGlobs[];
+}
+
+/** Row 023-13: one module's glob folders, as `ObservedInputs` gives listed directories. */
+export interface ModuleGlobs {
+  /** The module that holds the globs. */
+  readonly path: RelativePath;
+  /** The folders its globs list. */
+  readonly directories: readonly RelativePath[];
+  /** Those among `directories` listed with every folder below them. */
+  readonly recursive: readonly RelativePath[];
 }
 
 /**

@@ -52,6 +52,7 @@ import { closeEmptied } from "./empty-closed.js";
 import { environmentGraph, projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
+import { moduleGlobs } from "./glob-listing.js";
 import { fileImports, importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
@@ -559,7 +560,9 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
       const read = (file: AbsolutePath) =>
         this.#sources.readHash(project.vite.environments.ssr, file);
       const imports = fileImports(graph, this.paths, read, this.#imports);
-      return { testFile, paths, packages, imports };
+      // Row 023-13: the folders its modules' globs list, which the core keys it with.
+      const globs = await moduleGlobs(project, graph, this.paths);
+      return { testFile, paths, packages, imports, ...(globs.length > 0 ? { globs } : {}) };
     });
   }
 

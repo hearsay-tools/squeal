@@ -23,6 +23,7 @@ import {
   environmentRecord,
 } from "../keys/environment-hash.js";
 import { createInputMatcher } from "../keys/glob.js";
+import { GlobListings } from "../keys/glob-listings.js";
 import { KEY_FORMATS_READ_AS_ONE } from "../keys/key-format.js";
 import { type KeyChange, KeyIndex, type ReadAsOne } from "../keys/key-index.js";
 import { ModuleSets } from "../keys/modules.js";
@@ -165,6 +166,8 @@ export class WorktreeKeys {
   /** What runs observed beyond static closures, shared per project (D3, task 001-132). */
   readonly #observed: ObservedSets;
   readonly #modules: ModuleSets;
+  /** Row 023-13: the folders each module's globs list, shared per project. */
+  readonly #globs: GlobListings;
   /** What runs loaded at start-up beyond the environments, shared per project (016 D4). */
   readonly #startup: StartupSets;
   /** Test files whose observed set another worktree grew, not assembled again yet (016 D4, O9). */
@@ -209,6 +212,7 @@ export class WorktreeKeys {
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
     this.#modules = new ModuleSets(options.store);
+    this.#globs = new GlobListings(options.store);
     this.#startup = new StartupSets(options.store);
     this.index = new KeyIndex(
       gitEntryByKind(options.root, (path) => {
@@ -509,8 +513,12 @@ export class WorktreeKeys {
     const observes = this.observes(runner.testFile.project);
     const raw = observes ? this.#observed.of(runner.testFile) : [];
     const observed = observes ? this.effectiveObserved(runner.testFile, raw) : [];
+    // Row 023-13: its modules' glob folders, observed or not; a stored list gains them too.
+    const { project } = runner.testFile;
+    this.#globs.see(project, runner.globs ?? [], (d) => this.#listings.below(d));
+    const globbed = this.#globs.of(project, runner.paths);
     const update = this.index.setClosure(
-      assembleClosure(runner, this.#declared.for(runner.testFile.path), observed),
+      assembleClosure(runner, this.#declared.for(runner.testFile.path), [...observed, ...globbed]),
       this.#dependencySegment(runner),
       this.#refused.keyed(
         runner.testFile,
@@ -726,6 +734,7 @@ export class WorktreeKeys {
     this.#startup.write();
     this.#observed.write();
     this.#modules.write();
+    this.#globs.write();
   }
 
   /** The listing paths a recursive listing of `directory` reads (`Listings.below`, task 001-134). */
