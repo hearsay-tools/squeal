@@ -2,14 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpSide, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
-import {
-  CUT_WITHIN_MS,
-  completions,
-  heldRun,
-  order,
-  pause,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+import { completions, heldRun, order, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-54 (review `reviews/0.1.237.md` B2): a runner that reports each
@@ -20,13 +13,17 @@ import {
  * barrier and the stability check. A ends at once, B would take a minute;
  * both are known at 20 s, under the yield's 30 s, so only the first rule
  * cancels. A runner that reports no end keeps the whole-tier rule
- * (`tier-yields-ended.test.ts`).
+ * (`tier-yields-ended.test.ts`). Row 011-368: the scheduler's clock is
+ * virtual, so the known durations stand as the test's time; each check
+ * reads at the side's quiet point (`settle`).
  */
 const [A, B, C] = ["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"];
 
 interface Ends {
   /** Reports `path`'s end now, in the run in flight that holds it and waits for `end`. */
   end(path: string): void;
+  /** Ends the run in flight that holds `path` now, every file complete (`CatchUpRunner.finishOf`). */
+  finish(path: string): void;
 }
 
 /**
@@ -41,6 +38,11 @@ function reportEnds(
   drop: (files: readonly TestFileRef[]) => readonly string[] = () => [],
 ): Ends {
   const waiting = new Map<string, () => void>();
+  const finishing = new Map<string, () => void>();
+  side.runner.finishOf = (run) =>
+    new Promise((resolve) => {
+      for (const f of run.files) finishing.set(f.path, resolve);
+    });
   const run = side.runner.run.bind(side.runner);
   side.runner.run = async (files, options) => {
     const timers = files.flatMap((f) => {
@@ -61,10 +63,13 @@ function reportEnds(
       };
     } finally {
       for (const timer of timers) clearTimeout(timer);
-      for (const f of files) waiting.delete(f.path);
+      for (const f of files) {
+        waiting.delete(f.path);
+        finishing.delete(f.path);
+      }
     }
   };
-  return { end: (path) => waiting.get(path)?.() };
+  return { end: (path) => waiting.get(path)?.(), finish: (path) => finishing.get(path)?.() };
 }
 
 /**
@@ -85,10 +90,15 @@ async function oneRunning(
   const [, b] = files;
   if (b === undefined) throw new Error("no files");
   const repo = catchUpRepo(files);
-  const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+  const side = catchUpSide(repo, repo.main, {
+    files,
+    hostSlots: 8,
+    policy: RUN_MISSING,
+    clock: "virtual",
+  });
   const ends = reportEnds(side, delay, drop);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await settle(side);
   const base = side.runner.runs.length;
   b.realMs = 60_000;
   await side.edit("watch", "src/ab.ts");
@@ -109,12 +119,13 @@ describe("a tier whose ended files the runner reports (row 011-54, spec 011 C4 s
       () => 20_000,
       (path) => (path === A ? 0 : null),
     );
-    await pause(SETTLE_MS);
+    await settle(side);
     const editAt = side.runner.runs.length;
 
     await side.edit("watch", B);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(tier.cancelled).toBe(true);
+    await settle(side);
 
     expect(tier.completed.map((f) => f.path)).toEqual([A]);
     expect(order(side, editAt)).toEqual([[B]]);
@@ -132,12 +143,13 @@ describe("a tier whose ended files the runner reports (row 011-54, spec 011 C4 s
 
     // A has not ended: B's save re-keys only some of the unfinished files.
     await side.edit("watch", B);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(tier.cancelled).toBe(false);
 
     ends.end(A);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(tier.cancelled).toBe(true);
+    await settle(side);
 
     expect(tier.completed.map((f) => f.path)).toEqual([A]);
     expect(completions(side, A, base)).toBe(1);
@@ -151,18 +163,20 @@ describe("a tier whose ended files the runner reports (row 011-54, spec 011 C4 s
       () => 20_000,
       (path) => (path === A ? 0 : null),
     );
-    await pause(SETTLE_MS);
+    await settle(side);
 
     // Only A, which has ended: B is unchanged, so the tier is not superseded.
     await side.edit("watch", A);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(tier.cancelled).toBe(false);
     ends.end(B);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(tier.cancelled).toBe(false);
+    expect(tier.endedAt).toBeNull();
 
     // The stability check discards A's result of the run and A runs again at its new key.
-    await side.scheduler.idle();
+    ends.finish(B);
+    await settle(side);
     expect(tier.completed.map((f) => f.path)).toEqual([A, B]);
     expect(completions(side, A, base)).toBe(2);
     expect(completions(side, B, base)).toBe(1);
@@ -183,12 +197,13 @@ describe("a tier whose ended files the runner reports (row 011-54, spec 011 C4 s
       drop,
     );
     armed = true;
-    await pause(SETTLE_MS);
+    await settle(side);
     const editAt = side.runner.runs.length;
 
     await side.edit("watch", B);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(tier.cancelled).toBe(true);
+    await settle(side);
 
     expect(armed).toBe(false);
     expect(order(side, editAt).flat().sort()).toEqual([A, B]);
@@ -202,16 +217,17 @@ describe("a tier whose ended files the runner reports (row 011-54, spec 011 C4 s
       (path) => (path === A ? 80_000 : 20_000),
       (path) => (path === A ? 0 : null),
     );
-    await pause(SETTLE_MS);
+    await settle(side);
 
     // An edit's work in the tier's lane: the tier yields only when its remainder exceeds 30 s.
     await side.edit("watch", C);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(tier.cancelled).toBe(false);
 
     await side.edit("watch", B);
-    await expect.poll(() => tier.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(tier.cancelled).toBe(true);
+    await settle(side);
     expect(tier.completed.map((f) => f.path)).toEqual([A]);
     expect(cancelledRuns(side, base)).toBe(1);
     expect([A, B, C].every((path) => side.current(path))).toBe(true);
