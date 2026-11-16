@@ -43,8 +43,12 @@ const OWN_READS: Readonly<Record<string, RegExp>> = {
   "wake bookkeeping": /^(Wakes\.|RunnerPartBound\.|SlowRelease\.#decide < SlowRelease\.arm\b)/,
 };
 
-/** Frames that only pass a reading on: the scheduler's `#now`, the promotions' clock, a transaction. */
-const PASSING = /#now\b|^Promotions\.now\b|^(Connection|Object)\.transaction\b/;
+/**
+ * Frames that only pass a reading on: the scheduler's `#now`, its stepped
+ * clock (row 011-377), the promotions' clock, a transaction.
+ */
+const PASSING =
+  /#now\b|^SteppedClock\.now\b|^Promotions\.now\b|^(Connection|Object)\.transaction\b/;
 
 /**
  * The names of the first two source frames that took a reading, innermost
