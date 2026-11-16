@@ -9,6 +9,7 @@ import {
   catchUpSide,
 } from "./catch-up-fixture.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Task 011-25 (spec 011 C4 step 4 as amended 2026-10-20, `research/edit-cut.md`
@@ -73,7 +74,9 @@ export async function started(
     policy: { ...RUN_MISSING, ...options.policy },
   });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  // Row 011-368: on a virtual clock a wake waits for the test to move time, so read the quiet point.
+  if (side.clock !== null) await settle(side);
+  else await side.scheduler.idle();
   return { repo, side };
 }
 

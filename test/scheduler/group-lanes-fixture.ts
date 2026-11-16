@@ -17,6 +17,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Spec 019 D1 to D3, row 019-10: a worktree with Vitest, node:test and
@@ -115,7 +116,12 @@ export interface GroupSide {
   setLoad(load: number): void;
 }
 
+/** The slow lane's recheck in `groupSide` (`SlowTierOptions.recheckMs`). */
+export const GROUP_RECHECK_MS = 50;
+
 export interface GroupSideOptions {
+  /** Row 011-368: `CatchUpOptions.clock`; absent, the host's. */
+  readonly clock?: CatchUpOptions["clock"];
   /** A consumer in a turn before the start: `pause` and `stop` groups wait (`inTurn`). */
   readonly beforeStart?: (side: CatchUpSide) => Promise<void>;
   /** The slot's base directory, shared with another side; default one of this side's own. */
@@ -147,13 +153,14 @@ export async function groupSide(
     scheduler: {
       slow: {
         slotDir,
-        recheckMs: 50,
+        recheckMs: GROUP_RECHECK_MS,
         cpus: () => 1,
         load: () => [load],
         ...(scope === undefined ? {} : { slotScope: { scope, commonDir } }),
       },
     },
     ...(options.wrapRunner === undefined ? {} : { wrapRunner: options.wrapRunner }),
+    ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
   await options.beforeStart?.(side);
   await side.scheduler.start();
@@ -207,8 +214,16 @@ export function tierLog(runs: readonly CatchUpRun[], from = 0): Record<string, s
   return log;
 }
 
-/** Waits until every file of `FILES` is current. */
+/**
+ * Waits until every file of `FILES` is current. On a virtual clock (row
+ * 011-368) it reads at the side's quiet point, with no poll.
+ */
 export async function allCurrent(side: CatchUpSide, timeout = 20_000): Promise<void> {
+  if (side.clock !== null) {
+    await settle(side);
+    expect(FILES.filter((f) => !side.current(f.path)).map((f) => f.path)).toEqual([]);
+    return;
+  }
   await expect
     .poll(() => FILES.filter((f) => !side.current(f.path)).map((f) => f.path), { timeout })
     .toEqual([]);

@@ -11,7 +11,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { CUT_WITHIN_MS, heldRun, pause, SETTLE_MS } from "./tier-yields-fixture.js";
+import { heldRun, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-117 (spec 011 C4 step 5 as amended 2026-10-22,
@@ -22,6 +22,8 @@ import { CUT_WITHIN_MS, heldRun, pause, SETTLE_MS } from "./tier-yields-fixture.
  * result only when the listing differs at the run's end. Before it, each vim
  * open cancelled the tier that ran the file and held its lane 20 s: in
  * the client monorepo 138 s of runs were thrown away and about 57 s of quiet added.
+ * Row 011-368: the scheduler's clock is virtual; each check reads at the
+ * side's quiet point (`settle`).
  */
 
 /** A test file whose runs list `lib/`, beside the source it imports. */
@@ -45,7 +47,7 @@ interface Lister {
 /** A side of `LISTS`, whose closure holds the listing `lib/`, its baseline stored, then each run held. */
 async function lister(): Promise<Lister> {
   const repo = catchUpRepo([LISTS]);
-  const side = catchUpSide(repo, repo.main, { files: [LISTS], hostSlots: 8 });
+  const side = catchUpSide(repo, repo.main, { files: [LISTS], hostSlots: 8, clock: "virtual" });
   const closure = side.runner.closure;
   side.runner.closure = async (ref) => {
     const found = await closure(ref);
@@ -59,7 +61,7 @@ async function lister(): Promise<Lister> {
     return run(files, options);
   };
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await settle(side);
   expect(side.store.testFiles.get({ project: "", path: LISTS.path })?.closure.paths).toContain(
     "lib/",
   );
@@ -76,7 +78,7 @@ async function lister(): Promise<Lister> {
       side.runner.release();
     },
     causes,
-    quiet: () => publishedQuiet(side.store, side.worktreeId, 0, Date.now()),
+    quiet: () => publishedQuiet(side.store, side.worktreeId, 0, side.now()),
   };
 }
 
@@ -103,18 +105,18 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
 
       l.side.touch(scratch);
       await l.batch(scratch);
-      await pause(SETTLE_MS);
+      await settle(l.side);
       // Red before row 011-117: the listing's move superseded the tier ("supersession").
       expect(run.cancelled).toBe(false);
       expect(keyOf(l.side)).not.toBe(ran);
       l.remove(scratch);
       await l.batch(scratch);
-      await pause(SETTLE_MS);
+      await settle(l.side);
       expect(run.cancelled).toBe(false);
       expect(keyOf(l.side)).toBe(ran);
 
       l.release();
-      await l.side.scheduler.idle();
+      await settle(l.side);
       expect(l.causes).toEqual([]);
       expect(l.side.runner.runsOf(LISTS.path).slice(-1)).toEqual([run]);
       expect(l.side.runner.runs.length).toBe(after + 1);
@@ -128,7 +130,8 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
     const l = await lister();
     const { run } = await heldBacklog(l);
     await l.side.edit("watch", SWAP, "lib/a.ts");
-    await expect.poll(() => run.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(l.side);
+    expect(run.cancelled).toBe(true);
     expect(l.causes).toEqual(["supersession"]);
     expect(l.quiet().size).toBe(1);
   });
@@ -138,7 +141,8 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
     const { run } = await heldBacklog(l);
     l.side.touch(SWAP, "lib/b.ts");
     await l.batch(SWAP, "lib/b.ts");
-    await expect.poll(() => run.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(l.side);
+    expect(run.cancelled).toBe(true);
     expect(l.causes).toEqual(["supersession"]);
   });
 
@@ -147,9 +151,9 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
     const { run } = await heldBacklog(l);
     l.side.touch(SWAP);
     await l.batch(SWAP);
-    await pause(SETTLE_MS);
+    await settle(l.side);
     l.release();
-    await l.side.scheduler.idle();
+    await settle(l.side);
     expect(run.cancelled).toBe(false);
     expect(run.completed.map((f) => f.path)).toEqual([LISTS.path]);
     // It ran again at the key with the swap file.
@@ -160,7 +164,7 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
     const before = l.side.runner.runsOf(LISTS.path).length;
     l.remove(SWAP);
     await l.batch(SWAP);
-    await l.side.scheduler.idle();
+    await settle(l.side);
     expect(l.side.runner.runsOf(LISTS.path).length).toBe(before + 1);
     expect(l.side.current(LISTS.path)).toBe(true);
   });
@@ -170,16 +174,20 @@ describe("editor scratch files cancel no tier and start no quiet (row 011-117)",
     const { run } = await heldBacklog(l);
     // A real edit cancels the backlog tier; the lane waits, and the edit's own tier runs.
     await l.side.edit("watch", "lib/a.ts");
-    await expect.poll(() => run.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(l.side);
+    expect(run.cancelled).toBe(true);
     l.release();
-    await expect.poll(() => l.side.current(LISTS.path), { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(l.side);
+    expect(l.side.current(LISTS.path)).toBe(true);
     const ends = l.quiet();
     expect(ends.size).toBe(1);
 
-    await pause(SETTLE_MS);
+    // A second on: a wait restarted by the scratch revision would end a second later.
+    l.side.advance(1_000);
+    await settle(l.side);
     l.side.touch(SWAP);
     await l.batch(SWAP);
-    await pause(SETTLE_MS);
+    await settle(l.side);
     expect(keyOf(l.side)).not.toBeNull();
     expect(l.side.current(LISTS.path)).toBe(false);
     // Red before row 011-117: the re-key queued a file of the lane, so the wait started again.
