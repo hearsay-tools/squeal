@@ -72,7 +72,7 @@ async function ciExport(): Promise<{ file: string; repo: string }> {
   const ci = vitest(side(main, { count: COUNT, policy: LOOKUP_ONLY }), CI);
   await ci.scheduler.start();
   await ci.scheduler.requestFullSuite();
-  await ci.scheduler.idle();
+  await ci.quiet();
   expect(await exportCommand(["--out", "results.json.gz"], io(main))).toBe(0);
   return { file: join(main, "results.json.gz"), repo: main };
 }
@@ -104,7 +104,7 @@ async function developer(
     addMissingEntries(dev.store, observedMetaKey(""), { [fileName(0)]: UNION }),
   );
   await dev.scheduler.start();
-  await dev.scheduler.idle();
+  await dev.quiet();
   expect(dev.runner.runs).toEqual([]);
   return dev;
 }
@@ -113,7 +113,7 @@ async function imported(dev: Side, file: string): Promise<string> {
   const run = io(dev.root);
   expect(await importCommand([file], run)).toBe(0);
   await dev.scheduler.handleBatch({ trigger: "interval", paths: [] });
-  await dev.scheduler.idle();
+  await dev.quiet();
   return run.out.join("");
 }
 

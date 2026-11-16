@@ -164,7 +164,7 @@ describe("formats read as one (011-38)", SLOW, () => {
     recordFailureKeys(b.store, own, new Map([[checkIdentity(fail.check), k3.older]]));
 
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     for (const [path, k] of [
       [F0, k0],
       [F1, k1],
@@ -220,14 +220,14 @@ describe("formats read as one (011-38)", SLOW, () => {
     });
     expect(formatWhy(why)).toContain("being confirmed");
     b.runner.release();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(ranPaths(b)).toEqual([F0]);
     expect(b.passing()).toBe(1);
 
     // The other worktree's daemon, a release behind, stores F1 at its own format.
     const later = stored(b.store, a, F1, laterAt, Date.now());
     await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
-    await b.scheduler.idle();
+    await b.quiet();
     expect(ranPaths(b)).toEqual([F0]);
     expect(b.passing()).toBe(2);
     expect(rowsAt(b.store, (await keyAt(other, F1, KEY_FORMAT_VERSION)) as CheckKey)).toEqual([

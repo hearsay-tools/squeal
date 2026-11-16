@@ -48,7 +48,7 @@ async function started() {
   const repo = catchUpRepo(FILES, [X, Y, "eslint.config.js"]);
   const side = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 4, policy: POLICY });
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const provider = new FakeProvider();
   const errors: Error[] = [];
   /** The updates lint records asked for; the daemon does not wait for them, a test does. */
@@ -74,7 +74,7 @@ async function started() {
     await Promise.all(recorded);
   };
   const settle = async () => {
-    await side.scheduler.idle();
+    await side.quiet();
     await linted();
   };
   await settle();

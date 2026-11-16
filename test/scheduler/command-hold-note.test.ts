@@ -111,7 +111,7 @@ describe("a command hold's removal and its notes are one write (row 011-231)", (
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const command = await liveProcess();
     hold(side, command.identity, { wrapper: null });
     expect(await side.scheduler.commandHold()).toBe(true);

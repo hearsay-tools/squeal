@@ -179,7 +179,7 @@ describe("the scheduler over a split tier whose parts fail to start (review 0.1.
     side.runner.run = (ran, options) => lane.run(ran, options);
 
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
 
     // The first tier ran A here and deferred B; B ran remote in the next.
     expect(localRuns).toEqual([[A.path]]);

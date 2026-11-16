@@ -18,10 +18,10 @@ describe("scheduler: worktrees on one commit share a catch-up through claims (C4
     const repo = catchUpRepo(FILES);
     const main = catchUpSide(repo, repo.main, { files: FILES, hostSlots: 8, policy: RUN_MISSING });
     await main.scheduler.start();
-    await main.scheduler.idle();
+    await main.quiet();
     const other = catchUpSide(repo, repo.other, { files: FILES, hostSlots: 8 });
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     // The second worktree inherited the first's baseline: nothing ran there.
     expect(other.runner.runs).toHaveLength(0);
     expect(FILES.every((f) => other.current(f.path))).toBe(true);
@@ -35,11 +35,11 @@ describe("scheduler: worktrees on one commit share a catch-up through claims (C4
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(other.runner.runs).toHaveLength(0);
     main.runner.release();
-    await main.scheduler.idle();
+    await main.quiet();
     await expect
       .poll(() => FILES.every((f) => other.current(f.path)), { timeout: 60_000 })
       .toBe(true);
-    await other.scheduler.idle();
+    await other.quiet();
 
     const ran = main.runner.runs.slice(before).flatMap((run) => run.files.map((f) => f.path));
     expect(ran.sort()).toEqual(FILES.map((f) => f.path).sort());

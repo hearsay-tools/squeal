@@ -28,7 +28,7 @@ async function started(options: CatchUpOptions = OPTIONS) {
   const repo = catchUpRepo(options.files);
   const side = catchUpSide(repo, repo.main, options);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   return { repo, side };
 }
 
@@ -61,7 +61,7 @@ describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4
     // Shortest first: the 60 s file is not in the first tier.
     expect(run.files.map((f) => f.path)).not.toContain("test/f480.test.ts");
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
     const after = side.runner.runs.slice(before);
     // Every file ran once at its new key, and every tier took the backlog's route.
     expect(after.flatMap((r) => r.files)).toHaveLength(481);
@@ -77,7 +77,7 @@ describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4
     const run = await firstRun(side, before);
     expect(backlogTier(run)).toEqual({ granted: false, wide: false });
     side.runner.release();
-    await side.scheduler.idle();
+    await side.quiet();
     const after = side.runner.runs.slice(before);
     expect(after.flatMap((r) => r.files)).toHaveLength(FILES.filter((_, i) => i % 12 < 9).length);
     expect(after.every((r) => r.workers === undefined && r.files.length <= 4)).toBe(true);
@@ -105,7 +105,7 @@ describe("scheduler: a revision of 10 or more keyed paths is catch-up (C4 step 4
     const run = await firstRun(next, 0);
     expect(backlogTier(run)).toEqual({ granted: true, wide: true });
     next.runner.release();
-    await next.scheduler.idle();
+    await next.quiet();
     expect(next.runner.runs.flatMap((r) => r.files)).toHaveLength(481);
   });
 });

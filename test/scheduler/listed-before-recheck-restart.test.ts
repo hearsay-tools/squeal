@@ -45,7 +45,7 @@ function at(root: string, adapterVersion: string, policy: Pick<Policy, "baseline
 
 async function idleAndClosed(s: Side): Promise<void> {
   await s.scheduler.start();
-  await s.scheduler.idle();
+  await s.quiet();
   s.stopBeat();
   await s.scheduler.close();
 }
@@ -85,7 +85,7 @@ async function restartedFromFirstCommit(pending: PendingPhase, hits: boolean) {
     return { testFile, paths: [testFile.path] };
   };
   await b.scheduler.start();
-  await b.scheduler.idle();
+  await b.quiet();
   const control = { ran: ran(b), phase: b.phase(F0), passing: b.passing() };
   b.stopBeat();
   await b.scheduler.close();
@@ -96,7 +96,7 @@ async function restartedFromFirstCommit(pending: PendingPhase, hits: boolean) {
   for (const suffix of ["-wal", "-shm"]) rmSync(`${database}${suffix}`, { force: true });
   const d = at(other, "2", LOOKUP_ONLY);
   await d.scheduler.start();
-  await d.scheduler.idle();
+  await d.quiet();
   return { atRecheck, control, d };
 }
 

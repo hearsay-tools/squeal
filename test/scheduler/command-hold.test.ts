@@ -42,7 +42,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const runs = side.runner.runs.length;
     const revision = side.scheduler.status().revision;
     await side.edit("watch", "src/held.ts");
-    await side.scheduler.idle();
+    await side.quiet();
     await settle();
     expect(side.scheduler.status().revision).toBe(revision + 1);
     expect(side.runner.runs.length).toBe(runs);
@@ -77,7 +77,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const entry = hold(side, command.identity);
     expect(await side.scheduler.commandHold()).toBe(true);
     await expect.poll(() => slot?.endedAt !== null, { timeout: 10_000 }).toBe(true);
-    await side.scheduler.idle();
+    await side.quiet();
     await settle(2_000);
     expect(slot?.cancelled).toBe(false);
     expect(side.current(ran ?? "")).toBe(true);
@@ -94,7 +94,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const wrapper = await liveProcess();
     const command = await liveProcess();
     hold(side, command.identity, { wrapper: wrapper.identity });
@@ -121,18 +121,18 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const repo = catchUpRepo(files);
     const first = catchUpSide(repo, repo.main, { files, hostSlots: 4, policy: RUN_MISSING });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     const command = await liveProcess();
     const entry = hold(first, command.identity);
     expect(await first.scheduler.commandHold()).toBe(true);
     await first.edit("watch", "src/held.ts");
-    await first.scheduler.idle();
+    await first.quiet();
     expect(first.runner.runs).toHaveLength(1);
     await first.scheduler.close();
 
     const next = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
     await next.scheduler.start();
-    await next.scheduler.idle();
+    await next.quiet();
     await settle();
     expect(next.runner.runs).toHaveLength(0);
     expect(pendingOf(next, paths)).toEqual(paths.map(() => "queued"));
@@ -149,7 +149,7 @@ describe("scheduler: the command hold (row 011-74)", { timeout: 60_000 }, () => 
     const repo = catchUpRepo(files);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 4 });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const live = await liveProcess();
     const reused = { ...live.identity, startTime: live.identity.startTime + 1 };
     hold(side, reused, { wrapper: reused });

@@ -56,12 +56,12 @@ describe("gh-82 on a real scheduler (row 011-207)", { timeout: 60_000 }, () => {
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
     });
     await other.scheduler.start();
-    await other.scheduler.idle();
+    await other.quiet();
     expect(other.current(F)).toBe(true);
 
     const first = catchUpSide(repo, repo.main, { files, hostSlots: 2, policy: LOOKUP_ONLY });
     await first.scheduler.start();
-    await first.scheduler.idle();
+    await first.quiet();
     expect(first.current(F)).toBe(true);
     expect(first.runner.runs).toEqual([]);
     await first.scheduler.close();
@@ -70,7 +70,7 @@ describe("gh-82 on a real scheduler (row 011-207)", { timeout: 60_000 }, () => {
     first.touch(SOURCE);
     const side = catchUpSide(repo, repo.main, { files, hostSlots: 2, policy: LOOKUP_ONLY });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const [row] = side.store.testFileKeys.list(side.worktreeId as never);
     expect(row).toMatchObject({ pending: null });
     const states = side.store.knownStates.list(side.worktreeId as never);

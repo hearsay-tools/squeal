@@ -117,7 +117,7 @@ describe("a git that hangs on `hash-object` (019-39, review 0.1.401-r2 N1)", {
     const root = repo.main;
     const side = catchUpSide(repo, root, { files, hostSlots: 4, policy: RUN_MISSING });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
 
     // `src/a.ts` is CRLF on disk and LF in each commit: only git's answer makes it the commit's.
     writeFileSync(join(root, ".gitattributes"), "src/a.ts text eol=crlf\n");
@@ -128,7 +128,7 @@ describe("a git that hangs on `hash-object` (019-39, review 0.1.401-r2 N1)", {
     age(root, "src/a.ts", ".gitattributes");
     expect(git(root, ["status", "--porcelain"])).toBe("");
     await watch(side, "src/a.ts", ".gitattributes");
-    await side.scheduler.idle();
+    await side.quiet();
     await pass(side);
     const control = newest(side);
     expect(counts(control), "git answers: nothing differs").toMatchObject({ notDetermined: 0 });

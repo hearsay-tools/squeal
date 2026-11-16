@@ -41,10 +41,10 @@ async function storedByMain() {
   const a = side(main, { count: COUNT, policy: NO_BASELINE_KEY, rerunCap: 0 });
   a.runner.failing.add(F0);
   await a.scheduler.start();
-  await a.scheduler.idle();
+  await a.quiet();
   expect(a.runner.runs).toEqual([]);
   await a.scheduler.requestFullSuite();
-  await a.scheduler.idle();
+  await a.quiet();
   expect(stateOf(a, F0)).toMatchObject({ outcome: "fail", validity: "current" });
   return { a, other };
 }
@@ -55,7 +55,7 @@ describe("lookup-only by default, and a held inherited fail runs once (011-159)"
     const { main } = claimRepo(COUNT);
     const a = side(main, { count: COUNT, policy: NO_BASELINE_KEY });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(a.runner.runs).toEqual([]);
     for (const path of all) expect(a.phase(path)).toBeNull();
   });
@@ -65,7 +65,7 @@ describe("lookup-only by default, and a held inherited fail runs once (011-159)"
     const b = side(other, { count: COUNT, policy: NO_BASELINE_KEY });
     b.runner.failing.add(F0);
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(ran(b)).toEqual([F0]);
     expect(b.passing()).toBe(COUNT - 1);
     expect(stateOf(b, F0)).toMatchObject({
@@ -77,7 +77,7 @@ describe("lookup-only by default, and a held inherited fail runs once (011-159)"
 
     // Confirmed: later passes run it no more.
     await pass(b);
-    await b.scheduler.idle();
+    await b.quiet();
     expect(ran(b)).toEqual([F0]);
   });
 
@@ -85,7 +85,7 @@ describe("lookup-only by default, and a held inherited fail runs once (011-159)"
     const { a, other } = await storedByMain();
     const b = side(other, { count: COUNT, policy: NO_BASELINE_KEY });
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await b.quiet();
     expect(ran(b)).toEqual([F0]);
     expect(b.passing()).toBe(COUNT);
     expect(stateOf(b, F0)).toMatchObject({ outcome: "pass", origin: { kind: "own" } });
@@ -96,7 +96,7 @@ describe("lookup-only by default, and a held inherited fail runs once (011-159)"
     const { main } = claimRepo(COUNT);
     const a = side(main, { count: COUNT, policy: RUN_MISSING });
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await a.quiet();
     expect(ran(a).sort()).toEqual(all);
     expect(a.passing()).toBe(COUNT);
   });

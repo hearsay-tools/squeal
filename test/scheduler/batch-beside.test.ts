@@ -51,7 +51,7 @@ describe("an edit's tier and a small later wait run beside a named wait's batch 
     expect(side.runner.released).not.toContain(BESIDE_LANE_PREFIX);
 
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(batch.completed.map((f) => f.path).toSorted()).toEqual(P);
     // With no batch left in the lane, its second instance closes.
     expect(side.runner.released).toContain(BESIDE_LANE_PREFIX);
@@ -85,7 +85,7 @@ describe("an edit's tier and a small later wait run beside a named wait's batch 
     // Their runs at their new keys give the verdict: beside, one tier at a time, and once the
     // batch's tier ended, in the lane as any edit's work.
     beside.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(P.every((path) => side.current(path))).toBe(true);
     const ranBeside = besideRuns(side, batch).flatMap((run) => run.completed.map((f) => f.path));
     expect(ranBeside.length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe("an edit's tier and a small later wait run beside a named wait's batch 
       .toBe(true);
     // The cancel made the lane wait for quiet, as any backlog tier's; the backlog starts after it.
     side.advance(BACKLOG_QUIET_MS);
-    await side.scheduler.idle();
+    await side.quiet();
   });
 
   it("5. a later wait of one file of 2 s starts beside the batch's tier", async () => {
@@ -117,7 +117,7 @@ describe("an edit's tier and a small later wait run beside a named wait's batch 
     expect(besideRuns(side, batch).map(paths)).toEqual([[S]]);
 
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(paths(batch)).toEqual(P_LONGEST);
     expect(batch.completed.map((f) => f.path).toSorted()).toEqual(P);
   });

@@ -38,7 +38,7 @@ async function registered() {
   const repo = mergeRepo();
   const side = holdSide(repo, repo.main, FILES, RUN_MISSING);
   await side.scheduler.start();
-  await side.scheduler.idle();
+  await side.quiet();
   const delivery = createDelivery(side.store, { status: fixedStatus() });
   const consumer: Consumer = { worktreeId: side.worktreeId, sessionId: "s1", agentId: "main" };
   await delivery.register(consumer);
@@ -51,7 +51,7 @@ describe("delivery: a hold's start and end (row 011-73)", { timeout: 60_000 }, (
     const { repo, side, delivery, consumer } = await registered();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(heldPaths(side)).toEqual([HELPER]);
 
     const start = await delivery.onToolBoundary(consumer);
@@ -67,13 +67,13 @@ describe("delivery: a hold's start and end (row 011-73)", { timeout: 60_000 }, (
     // The resolved write holds too; `git add` ends the hold, and both importers pass again.
     writeFileSync(join(repo.main, HELPER), helperReturning(4));
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(await delivery.onToolBoundary(consumer)).toBeNull();
     git(repo.main, ["add", HELPER]);
     await expect
       .poll(() => [runsOf(side, A), runsOf(side, B)], { timeout: 10_000 })
       .toEqual([2, 2]);
-    await side.scheduler.idle();
+    await side.quiet();
     expect(outcomes(side, A)).toEqual(["pass"]);
 
     const end = await delivery.onToolBoundary(consumer);
@@ -90,10 +90,10 @@ describe("delivery: a hold's start and end (row 011-73)", { timeout: 60_000 }, (
     const repo = mergeRepo();
     const side = holdSide(repo);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(gitMay(repo.main, ["merge", "side"])).toBe(1);
     await batch(side, HELPER);
-    await side.scheduler.idle();
+    await side.quiet();
     const delivery = createDelivery(side.store, { status: fixedStatus() });
     const consumer: Consumer = { worktreeId: side.worktreeId, sessionId: "s2", agentId: "main" };
     const registration = await delivery.register(consumer);
