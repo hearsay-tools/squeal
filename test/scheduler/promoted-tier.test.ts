@@ -13,7 +13,7 @@ import {
   standings,
   X,
 } from "./promoted-tier-fixture.js";
-import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS } from "./tier-yields-fixture.js";
+import { heldRun, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-265 (gh-79, gh-121; spec 011 C4 step 5 as amended 2026-10-28,
@@ -24,13 +24,16 @@ import { CUT_WITHIN_MS, heldRun, START_WITHIN_MS } from "./tier-yields-fixture.j
  * edit's work waits for it to end (coordinator, 2026-10-28; review
  * `reviews/0.1.377.md` B1). The setup is `promoted-tier-fixture.ts`.
  */
+/** Row 011-381: the side's clock is virtual; time moves only where a case moves it. */
+const VIRTUAL = { clock: "virtual" } as const;
+
 describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 step 5, row 011-265)", {
   timeout: 120_000,
 }, () => {
   it("56 promoted files beside a backlog run in one wide tier at the grant", async () => {
-    const { side, gate, after } = await promotedBehindEdit(holdX);
+    const { side, gate, after } = await promotedBehindEdit(holdX, VIRTUAL);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     const runs = side.runner.runs.slice(after);
     // On main: 14 tiers of 4 (`runner.tierSize`), each an edit's, with no grant.
@@ -42,10 +45,10 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
   });
 
   it("with an edit's work queued, the promoted files still run in one wide tier (row 011-268)", async () => {
-    const { side, gate, after } = await promotedBehindEdit(holdX);
+    const { side, gate, after } = await promotedBehindEdit(holdX, VIRTUAL);
     await side.edit("watch", "src/e.ts");
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     // Before row 011-268: 14 edit tiers of `runner.tierSize`, with no grant.
     const runs = side.runner.runs.slice(after).filter(holdsP);
@@ -56,18 +59,19 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
   });
 
   it("an edit's work runs beside it, and it runs on (row 011-269)", async () => {
-    const { side, gate, wide } = await heldWide();
+    const { side, gate, wide } = await heldWide(VIRTUAL);
     // E is no input of the tier; on an edit's tier, its 31 s remainder would make it yield.
     // Before row 011-269 E waited for the tier to end, which stood `named` for it.
     await side.edit("watch", "src/e.ts");
-    await expect.poll(() => side.current(E), { timeout: START_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(side.current(E)).toBe(true);
     expect(wide.cancelled).toBe(false);
     expect(wide.endedAt).toBeNull();
     // Nothing waits for the tier now.
     expect(standings(side)).toEqual([]);
 
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
     expect(wide.completed.map((f) => f.path).toSorted()).toEqual(P);
     const next = side.runner.runs[side.runner.runs.indexOf(wide) + 1];
     expect(next === undefined ? [] : paths(next)).toContain(E);
@@ -75,32 +79,32 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
   });
 
   it("an edit that changes an input of every unfinished file cancels it", async () => {
-    const { side, gate, wide } = await heldWide();
+    const { side, gate, wide } = await heldWide(VIRTUAL);
     await side.edit("watch", "src/p.ts");
-    await expect.poll(() => wide.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(wide.cancelled).toBe(true);
     expect(wide.completed).toEqual([]);
 
     gate.stop();
     // The cancel made the lane wait for quiet; the backlog starts once it ends.
-    await expect
-      .poll(() => P.every((path) => side.current(path)), { timeout: CUT_WITHIN_MS })
-      .toBe(true);
+    await settle(side);
+    expect(P.every((path) => side.current(path))).toBe(true);
     side.advance(BACKLOG_QUIET_MS);
-    await side.scheduler.idle();
+    await side.quiet();
     expect([...P, ...B].every((path) => side.current(path))).toBe(true);
   });
 
   it("a wait for quiet after its cancel holds neither the backlog's turn nor the next promoted-only tier", async () => {
-    const { side, gate, wide } = await heldWide();
+    const { side, gate, wide } = await heldWide(VIRTUAL);
     // The environment changes an input of every file of the tier and queues no edit's work.
     await side.edit("watch", "config.json");
-    await expect.poll(() => wide.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(wide.cancelled).toBe(true);
     // Review 0.1.378 B1: the backlog's turn after the batch's tier comes first, a turn's tier,
     // which the wait for quiet does not hold (C4 step 5).
     const after = side.runner.runs.indexOf(wide) + 1;
-    await expect
-      .poll(() => side.runner.runs.length > after, { timeout: START_WITHIN_MS })
-      .toBe(true);
+    await settle(side);
+    expect(side.runner.runs.length > after).toBe(true);
     const turn = side.runner.runs[after];
     expect(turn === undefined || holdsP(turn)).toBe(false);
     expect(turn?.files.length).toBeLessThanOrEqual(4);
@@ -110,7 +114,7 @@ describe("a tier of promoted files only is sized as the backlog's (spec 011 C4 s
     expect(paths(again).toSorted()).toEqual(P);
     gate.stop();
     side.advance(BACKLOG_QUIET_MS);
-    await side.scheduler.idle();
+    await side.quiet();
     expect([...P, ...B].every((path) => side.current(path))).toBe(true);
   });
 });

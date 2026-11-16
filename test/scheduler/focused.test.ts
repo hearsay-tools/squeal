@@ -10,14 +10,7 @@ import {
   catchUpSide,
 } from "./catch-up-fixture.js";
 import { focus, focusedRows, focusing, isFocused, runsSince } from "./focused-fixture.js";
-import {
-  CUT_WITHIN_MS,
-  completions,
-  heldRun,
-  pause,
-  ref,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+import { completions, heldRun, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-145, R2 of `tasks/011-135/design.md` (spec 011 C4, C5 and C15 as
@@ -40,7 +33,10 @@ function side(ms: number): { side: CatchUpSide; files: CatchUpFile[] } {
     { project: "f", path: F, ms: 1, imports: ["src/f.ts"] },
   ];
   const repo = catchUpRepo(files);
-  return { side: catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: BASELINE }), files };
+  return {
+    side: catchUpSide(repo, repo.main, { files, hostSlots: 8, clock: "virtual", policy: BASELINE }),
+    files,
+  };
 }
 
 /**
@@ -74,7 +70,7 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
       return phase === "own" && path === F && !focused;
     });
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     const transitions = s.store.transitions.history(s.worktreeId, CHECK).length;
     s.runner.failing.add(F);
@@ -85,7 +81,8 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     phase = "focused";
     await s.scheduler.promote([FILE], 60_000);
     await focus(s, [FILE], ["runs"], 60_000);
-    await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(s);
+    expect(cut.cancelled).toBe(true);
 
     const first = await heldRun(s, F, base);
     const at = s.runner.runs.indexOf(first);
@@ -125,7 +122,7 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
 
     phase = "free";
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
     // C5 unchanged: the own run's new failure is re-run once, so two whole runs fail it.
     const runsOfF = s.runner.runs.slice(base).filter((r) => r.files.some((x) => x.path === F));
     expect(runsOfF).toHaveLength(3);
@@ -144,19 +141,19 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     let holding = false;
     const record = holdWhere(s, (path) => holding && SLOW.includes(path));
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     holding = true;
     await s.edit("watch", "src/s.ts", "f.config.json");
     const tier = await heldRun(s, SLOW[0] ?? "", base);
 
     await focus(s, [FILE], ["runs"], 60_000);
-    await pause(SETTLE_MS);
+    await settle(s);
     expect(tier.cancelled).toBe(false);
     expect(tier.endedAt).toBeNull();
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     const after = runsSince(s, record, s.runner.runs.indexOf(tier));
     expect(after).toEqual([SLOW.join(","), `${F} focused`, F]);
@@ -168,10 +165,10 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     let holding = false;
     const record = holdWhere(s, (path) => holding && path === F);
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     // Current at its key: nothing runs.
     await focus(s, [FILE], ["runs"], 60_000);
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     expect(focusedRows(s)).toEqual([]);
 
@@ -180,11 +177,11 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     await s.edit("watch", "src/f.ts");
     const own = await heldRun(s, F, base);
     await focus(s, [FILE], ["runs"], 60_000);
-    await pause(SETTLE_MS);
+    await settle(s);
     expect(own.cancelled).toBe(false);
     holding = false;
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     expect(runsSince(s, record, base)).toEqual([F]);
     expect(focusedRows(s)).toEqual([]);
@@ -200,7 +197,7 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
       phase === "slow" ? SLOW.includes(path) : phase === "focused" && path === F && focused,
     );
     await s.scheduler.start();
-    await s.scheduler.idle();
+    await s.quiet();
     const base = s.runner.runs.length;
     phase = "slow";
     await s.edit("watch", "src/s.ts", "f.config.json");
@@ -215,7 +212,7 @@ describe("a focused tier (spec 011 C4 and C15 as amended 2026-10-23, row 011-145
     if (late) s.advance(61_000);
     phase = "free";
     s.runner.release();
-    await s.scheduler.idle();
+    await s.quiet();
 
     const discarded = record.writes.flat().find((r) => r.end === "discarded");
     expect(discarded).toMatchObject({ runId: started?.runId, key: started?.key, checks: [] });

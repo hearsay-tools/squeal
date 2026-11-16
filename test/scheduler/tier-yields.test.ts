@@ -1,16 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
-import {
-  CUT_WITHIN_MS,
-  completions,
-  heldRun,
-  holdRuns,
-  order,
-  pause,
-  ref,
-  SETTLE_MS,
-} from "./tier-yields-fixture.js";
+import { completions, heldRun, holdRuns, order, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-51, tests 1 to 4 of `research/running-tier-yields.md` ("The
@@ -34,9 +25,14 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
       ...SLOW.map((path) => ({ path, ms: 20_000, imports: ["src/waits.ts"] })),
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      clock: "virtual",
+      policy: RUN_MISSING,
+    });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const base = side.runner.runs.length;
     const gate = holdRuns(side.runner, isSlow);
     await side.edit("watch", "src/waits.ts");
@@ -46,9 +42,10 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
     // The fix re-keys the four files in flight and the regression, and a wait names it.
     await side.edit("watch", "src/waits.ts");
     await side.scheduler.promote([ref(REG)], 60_000);
-    await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(cut.cancelled).toBe(true);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     expect(cut.completed).toEqual([]);
     const after = order(side, fixAt);
@@ -61,19 +58,26 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
   });
 
   it("2: a revision that re-keys one file of four yields the tier; what ended keeps its result", async () => {
-    // S4 ends at once; the others would take a minute, past any wait.
+    // The start's runs take no real time (row 011-381: the minute was the start's too).
     const files = SLOW.map((path, i) => ({
       path,
       ms: 100_000,
-      realMs: i === 3 ? 0 : 60_000,
+      realMs: 0,
       imports: i === 0 ? ["src/one.ts", "src/s.ts"] : ["src/s.ts"],
     }));
     const [s1, s2, s3, s4] = SLOW;
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      clock: "virtual",
+      policy: RUN_MISSING,
+    });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const base = side.runner.runs.length;
+    // S4 ends at once; the others would take a minute, past any wait.
+    for (const [i, file] of files.entries()) file.realMs = i === 3 ? 0 : 60_000;
     await side.edit("watch", "src/s.ts");
     const cut = await heldRun(side, s1 ?? "", base);
     // Read at a run's start: the cut tier keeps its minute, a later run takes none.
@@ -81,8 +85,9 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
     const fixAt = side.runner.runs.length;
 
     await side.edit("watch", "src/one.ts");
-    await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
-    await side.scheduler.idle();
+    await settle(side);
+    expect(cut.cancelled).toBe(true);
+    await side.quiet();
 
     expect(cut.completed.map((f) => f.path)).toEqual([s4]);
     // The edit's file leads, the cut files after it; the one that ended runs no more.
@@ -98,10 +103,15 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
       { project: "f", path: F, ms: 1, imports: ["src/f.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, policy: RUN_MISSING });
+    const side = catchUpSide(repo, repo.main, {
+      files,
+      hostSlots: 8,
+      clock: "virtual",
+      policy: RUN_MISSING,
+    });
     side.runner.failing.add(F);
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const base = side.runner.runs.length;
     const gate = holdRuns(side.runner, isSlow);
     // An edit's tier of the four; the failing file is re-keyed by its project's environment, behind it.
@@ -110,11 +120,13 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
     const waitAt = side.runner.runs.length;
 
     await side.scheduler.promote([ref(F, "f")], 60_000);
-    await expect.poll(() => cut.cancelled, { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(cut.cancelled).toBe(true);
     // Current while the cut files, still held, run again.
-    await expect.poll(() => side.current(F), { timeout: CUT_WITHIN_MS }).toBe(true);
+    await settle(side);
+    expect(side.current(F)).toBe(true);
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     const after = side.runner.runs.slice(waitAt);
     expect(after.map((r) => r.files.map((f) => f.path))).toEqual([[F], SLOW]);
@@ -130,20 +142,20 @@ describe("a running tier yields (spec 011 C4 step 5 as amended 2026-10-21, row 0
       { project: "f", path: F, ms: 1, imports: ["src/f.ts"] },
     ];
     const repo = catchUpRepo(files);
-    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8 });
+    const side = catchUpSide(repo, repo.main, { files, hostSlots: 8, clock: "virtual" });
     await side.scheduler.start();
-    await side.scheduler.idle();
+    await side.quiet();
     const base = side.runner.runs.length;
     const gate = holdRuns(side.runner, isSlow);
     await side.edit("watch", "src/s.ts", "f.config.json");
     const tier = await heldRun(side, SLOW[0] ?? "", base);
 
     await side.scheduler.promote([ref(F, "f")], 60_000);
-    await pause(SETTLE_MS);
+    await settle(side);
     expect(tier.cancelled).toBe(false);
     expect(tier.endedAt).toBeNull();
     gate.stop();
-    await side.scheduler.idle();
+    await side.quiet();
 
     const next = side.runner.runs[side.runner.runs.indexOf(tier) + 1];
     expect(next?.files.map((f) => f.path)).toEqual([F]);
