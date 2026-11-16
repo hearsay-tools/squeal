@@ -30,3 +30,17 @@ Check, each as proven, plausible or unverified:
 4. **Behaviour preserved** apart from point 2: no tier, order, width, status payload, note text, CLI output or key change.
 
 Coordinator at the candidate: lint, typecheck, `check:version origin/main`; direct runs of `key-format`, `version-sensitive`, `wakes`, `clock-port`, `one-loop-source`, the model test, `batch-line`, `backlog-quiet-exempt` pass (69 tests, load 3). Worker: 698 of 702 affected files pass, 4 bundle drift (fixed by the bundle commit). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout. Write `reviews/0.1.520.md` and commit it on your branch.
+
+## W1 rework: two clocks, named by purpose (the human, 2026-11-16, "Timers: D: name both by purpose")
+
+Use /worker (worker 53e1f045, resumed). Shape: slice. Effort high. Candidate 0.1.520 (`cbbeda6d1`, one calendar clock) is abandoned: review `reviews/0.1.520.md` S1 proved that a clock set back 1 h held a 0.4 s runner-part bound and the 25 ms result gather for about 1 h.
+
+Outcome: the scheduler's clock offers two readings, each named for what it answers: **calendar time** ("what time is it": stored times and times compared with other daemons, such as claims, holds, notes, status "since") and **elapsed time** ("how long has it been": every wait and safety limit inside one daemon). Every wake is stated and kept on elapsed time; every stored or compared time comes from calendar time. A calendar-clock change moves no wait.
+
+Lead: start from main (0.1.519) on a fresh branch, keeping what still fits from your 0.1.520 work (the fixed-`now` test moves, `SchedulerOptions.now` gone). `Clock` gets `now()` (calendar, `EpochMs`) and an elapsed reading with its own type (for example `elapsed(): ElapsedMs`, monotonic, host: `performance.now`), plus `arm(ms, fire)`; `ticks` goes as a name. `Wakes` keeps due times on elapsed time only; owners state a wake as a delay (or an elapsed time), never as a calendar time. The virtual clock advances both readings together and can change the calendar reading alone, to test a clock change. `GLOSSARY.md`: add "Calendar time" and "Elapsed time" to "Deciding what runs next".
+
+Tests: a clock change in both directions on the virtual clock: no wait moves, no wake is lost, the timer re-arms; review S1's probe (a held runner-part bound and a finished-slot gather across a 1 h set-back) passes; every owner's wake fires after its delay; the one-loop and untracked-promise checks hold.
+
+Owns: as W1, plus `GLOSSARY.md` (that section), `daemon.ts` and `daemon-loop/index.ts` clock lines. Row 011-372 runs beside you on decision helpers (`beside.ts`, `ledger.ts`, `queue.ts`, `claims.ts` read paths, `step-live.ts`); leave those alone, and whichever lands second rebases.
+
+Done when: the outcome holds; `tasks/011-369/notes.md` lists each clock read under `src/core/scheduler/` as calendar or elapsed with its reason (paste the grep); behaviour preserved, with no timing difference in the daemon beyond what calendar-time stamps already had; `key-format` without a raise; lint, typecheck, `squeal status --wait 60000` on the changed paths; the model test once below the CPU count.
