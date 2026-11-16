@@ -33,3 +33,15 @@ Check, each as proven, plausible or unverified:
 3. **Slower hosts.** CI showed with `claims-slow-slot` that a wait that ends at the same point here can end early on a slower runner. Name any file in this range whose wait could still read a result before the run that writes it ends.
 
 Coordinator at the candidate: lint and typecheck pass; six files from the three slices pass (29 tests, load 14); 135 test files still call `scheduler.idle()` (rows 011-380 B4 to B7 and 011-381). Workers: each slice's files 3 of 3 (B1 25 files at load 5 to 22; B2 30 files at load 9 to 20; B3 28 files at load 13 to 25). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-380-b1-b3.md` and commit it on your branch.
+
+## R2 (B4 to B6): review of cand/011-380-b4-b6
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b4-b6` at `861c9da471c8be3eade0f306f1a259b8becefbe9`; candidate CI run 43927655040. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b1-b3 (`fb87ff582`, review PASS, landing after its CI). Range `fb87ff582..861c9da471c8be3eade0f306f1a259b8becefbe9`: workers 8f984d27 (B4, two commits), ce41e077 (B5, two) and 7ad9c303 (B6, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md`; `tasks/011-380/B4.md`, `B5.md`, `B6.md`; `reviews/011-380-b1-b3.md` (on branch `cez/09791541` until it lands).
+
+Check, each as proven, plausible or unverified:
+
+1. Each listed file's change is `scheduler.idle()` to the builder's `quiet()` and nothing else, apart from the named exceptions; each case keeps its meaning; no file of another slice changed.
+2. **The named exceptions:** `runs.test.ts` "discards a tier result whose inputs changed during the run" waits with `quiet({ through: ["pump"] })` (the re-run waits on the pump); `adoption.test.ts` case 1 uses `loop.scheduler.rest()` until the daemon loop gets `quiet()` in B7 (does its lookup-only start make that equivalent?); `observed-direct.test.ts` polls the stored mark for up to 30 s until `preload-worktrees.ts` gets `quiet()` in B7; `scheduler-rest.test.ts`'s three cases check `side.current(path)` in place of `idle()` resolving (the worker calls this a little weaker: does it still catch what those cases were written for?).
+3. **Slower hosts.** Name any file in this range whose wait could still read a result before the run that writes it ends.
+
+Coordinator at the candidate: lint and typecheck pass; the four exception files pass (25 tests, 8 skipped opt-in probes, load 13); 49 test files still call `scheduler.idle()` (B7 and row 011-381). Workers: each slice's files 3 of 3 (B4 29 files at load 6 to 15; B5 31 at load 8 to 12; B6 30 at load 7 to 10). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/011-380-b4-b6.md` and commit it on your branch.
