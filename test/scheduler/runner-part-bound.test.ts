@@ -54,9 +54,11 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
     SLOW,
     async () => {
       const repo = createRepo();
+      // Row 011-367 (row 011-360): the bound fires on the scheduler's virtual clock, never on the host's.
       const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
         runnerPartMs: BOUND_MS,
         policy: RUN_MISSING,
+        clock: "virtual",
       });
       await h.scheduler.start();
       await h.scheduler.idle();
@@ -64,11 +66,16 @@ describe("a runner part has a maximum duration (task 001-228)", () => {
 
       stallNextInvalidate(h);
       h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // 1\n");
-      const started = Date.now();
       await h.batch("src/math.ts");
-      // The stalled call never answers before the test ends: the revision proceeds without it.
+      const stated = h.now() + BOUND_MS;
+      // The stalled call waits for the bound's wake: the scheduler rests and names it.
+      const waiting = await h.rest();
+      expect(waiting.wakes).toContainEqual({ reason: "runner-part-bound", at: stated });
+      expect(h.header()).toMatchObject({ revision: 1, refinedRevision: 0 });
+      // The stalled call never answers before the test ends: past the bound the revision proceeds without it.
+      h.advance(BOUND_MS);
       await h.scheduler.idle();
-      expect(Date.now() - started).toBeGreaterThanOrEqual(BOUND_MS - 50);
+      expect((await h.rest()).wakes.map((wake) => wake.reason)).not.toContain("runner-part-bound");
       expect(h.header()).toMatchObject({ revision: 1, refinedRevision: 1 });
       expect(h.header().counts.unknown).toBeGreaterThan(0);
       expect(notes(h)).toContainEqual(
