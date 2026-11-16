@@ -197,7 +197,11 @@ export class Ledger {
     this.queue = new RunQueue({
       now: context.now,
       isRunning: (ref) => (this.file(ref)?.runningKey ?? null) !== null,
-      publish: (live) => publishPromotions(context.store, context.worktreeId, live, context.now()),
+      publish: (live) => {
+        // Review 0.1.524 B1: stamped no earlier than this daemon's start, so status reads it after a set-back.
+        const at = context.now();
+        publishPromotions(context.store, context.worktreeId, live, context.steps?.stamp(at) ?? at);
+      },
     });
     // Read at every query: a reload replaces `context.policy` (spec 019 D3: a file's class is its group).
     this.queue.setGroups((ref) => groupView(context.policy).of(ref).name);

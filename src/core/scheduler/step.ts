@@ -140,6 +140,12 @@ export interface Step {
   readonly laneAnswered: boolean;
   /** A port's error: the decisions before it stand, and the loop stalls after carrying them out. */
   readonly error: unknown;
+  /**
+   * Row 011-377, review 0.1.524 B2: the calendar steps' total at the step's
+   * reading (`CalendarSteps.since`): the wake's `at` is moved by the steps
+   * after it before it becomes a delay. Absent, none moves it.
+   */
+  readonly mark?: number;
 }
 
 const END: NextWake = { kind: "end" };

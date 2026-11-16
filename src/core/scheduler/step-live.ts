@@ -52,6 +52,8 @@ export interface StepHost {
   /** The daemon's runtime folder (row 011-106), named by the note of its loss. */
   readonly runtimeDir: string | undefined;
   now(): EpochMs;
+  /** Row 011-377: the calendar steps' total now (`CalendarSteps.total`), read right after `now`. */
+  stepsTotal(): number;
   started(): { context: SchedulerContext; ledger: Ledger };
   /** The admission of the start facts now; its queue and beside answers read `at` (row 011-372). */
   admit(at: EpochMs): Admission;
@@ -131,7 +133,9 @@ export class StepLive {
    */
   step(events: readonly SchedulerEvent[], reads: Reads | null): Step {
     const turn = { at: this.host.now(), events, reads, ports: this.#ports };
-    const decided = step(turn);
+    // Review 0.1.524 B2: the steps' total as of that reading, which the step's wake `at` is in.
+    const mark = this.host.stepsTotal();
+    const decided = { ...step(turn), mark };
     // Row 011-211: a lane its answer left idle (a load guard's wait that ended) counts toward its close.
     if (decided.laneAnswered) this.host.slowRelease.arm();
     this.#told(reads, decided);
