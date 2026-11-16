@@ -13,7 +13,8 @@ import { BASE, repo } from "./code-gate-fixture.js";
  * runs in a relaunch child. A SIGKILL'd CLI process leaves no process
  * behind: the child leads a process group of its own and ends it once its
  * parent is gone, its Vitest worker and a process the test started with
- * it. The CLI runs from source through tsx, so the relaunch is real.
+ * it, and the group of each node:test file it runs. The CLI runs from
+ * source through tsx, so the relaunch is real.
  */
 
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
@@ -33,6 +34,27 @@ const SLOW_TEST = [
   "}, 700_000);",
   "",
 ].join("\n");
+
+const SLOW_NODE_TEST = [
+  'import { writeFileSync } from "node:fs";',
+  'import { join } from "node:path";',
+  'import test from "node:test";',
+  "",
+  'test("waits", async () => {',
+  "  const pids = { file: process.pid, runner: process.ppid };",
+  '  writeFileSync(join(process.env.GATE_MARKS ?? "", "node.json"), JSON.stringify(pids));',
+  "  await new Promise((done) => setTimeout(done, 600_000));",
+  "});",
+  "",
+].join("\n");
+
+/** Vitest runs the `.test.ts` files under `test/`; node:test, which runs each file in a group of its own, the `.test.mjs` files. */
+const FILES: Readonly<Record<string, string>> = {
+  ...BASE,
+  "squeal.config.json": `${JSON.stringify({ nodeTest: [{ name: "t", include: ["test/*.test.mjs"] }] })}\n`,
+  "test/slow.test.ts": SLOW_TEST,
+  "test/slow-node.test.mjs": SLOW_NODE_TEST,
+};
 
 const left: number[] = [];
 const dirs: string[] = [];
@@ -74,16 +96,17 @@ async function until<T>(read: () => T | null, ms: number): Promise<T | null> {
 }
 
 describe("squeal code --base --json: a SIGKILL'd CLI process leaves no child (spec 023 D6, row 023-04)", () => {
-  it("ends the relaunch child, its Vitest worker and their processes within 5 s", {
+  it("ends the relaunch child, its Vitest worker, a node:test file and their processes within 5 s", {
     timeout: 180_000,
   }, async () => {
-    const root = repo({ ...BASE, "test/slow.test.ts": SLOW_TEST });
+    const root = repo(FILES);
     const home = mkdtempSync(join(tmpdir(), "squeal-gate-home-"));
     const marks = mkdtempSync(join(tmpdir(), "squeal-gate-marks-"));
     dirs.push(home, marks);
     const env = { PATH: process.env.PATH ?? "", HOME: home, GATE_MARKS: marks };
     const flags = ["--disable-warning=ExperimentalWarning", "--import", TSX, CLI];
-    const args = ["code", "--base", "main", "--json", "--test", "test/slow.test.ts"];
+    const tests = ["--test", "test/slow.test.ts", "--test", "test/slow-node.test.mjs"];
+    const args = ["code", "--base", "main", "--json", ...tests];
     const cli = spawn(process.execPath, [...flags, ...args, "--timeout", "300"], {
       cwd: root,
       env,
@@ -91,12 +114,11 @@ describe("squeal code --base --json: a SIGKILL'd CLI process leaves no child (sp
     });
     const exited = new Promise((done) => cli.once("exit", done));
     if (cli.pid !== undefined) left.push(cli.pid);
-    const file = join(marks, "pids.json");
+    const read = (name: string) => JSON.parse(readFileSync(join(marks, name), "utf8"));
+    const ready = () => ["pids.json", "node.json"].every((name) => existsSync(join(marks, name)));
     const pids = await until(
       () =>
-        existsSync(file)
-          ? (JSON.parse(readFileSync(file, "utf8")) as Record<string, number>)
-          : null,
+        ready() ? ({ ...read("pids.json"), ...read("node.json") } as Record<string, number>) : null,
       120_000,
     );
     expect(pids).not.toBeNull();

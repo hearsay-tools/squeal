@@ -6,13 +6,16 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
 import {
+  descendantGroups,
   PARENT_PID_VARIABLE,
+  takeParentPid,
+  watchParent,
+} from "../../src/cli/code-gate-parent.js";
+import {
   REPORT_FD_VARIABLE,
   relaunchGate,
   type SignalSource,
-  takeParentPid,
   unframe,
-  watchParent,
 } from "../../src/cli/code-gate-relaunch.js";
 import type { CliIo } from "../../src/cli/main.js";
 import { ownHomeAndTmp, repo } from "./code-gate-fixture.js";
@@ -210,5 +213,22 @@ describe("the gate's child ends once its parent is gone (spec 023 D6, row 023-04
     ppid = 3;
     await delay(30);
     expect(later).toBe(0);
+  });
+
+  it("names the groups of every descendant but its own, a node:test file's among them", () => {
+    const table = [
+      { pid: 1, ppid: 0, pgid: 1 },
+      { pid: 50, ppid: 1, pgid: 50 },
+      // The gate's child leads group 50; a Vitest worker in it, a node:test file in group 70.
+      { pid: 60, ppid: 50, pgid: 50 },
+      { pid: 70, ppid: 50, pgid: 70 },
+      { pid: 71, ppid: 70, pgid: 70 },
+      // A process the test started in a group of its own, and one that is not a descendant.
+      { pid: 80, ppid: 71, pgid: 80 },
+      { pid: 90, ppid: 1, pgid: 90 },
+    ];
+
+    expect(descendantGroups(50, table)).toEqual([70, 80]);
+    expect(descendantGroups(50, [])).toEqual([]);
   });
 });

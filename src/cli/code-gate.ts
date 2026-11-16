@@ -33,15 +33,10 @@ import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
 import { keptLogsLine, type LogRetention, runLogKeeper } from "./code-gate-log.js";
+import { takeParentPid, watchParent } from "./code-gate-parent.js";
 import { estimateOptions, preRunOptions } from "./code-gate-prerun.js";
 import { overrunText, timed } from "./code-gate-progress.js";
-import {
-  relaunchGate,
-  runAsChild,
-  takeParentPid,
-  takeReportFd,
-  watchParent,
-} from "./code-gate-relaunch.js";
+import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
