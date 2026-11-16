@@ -27,7 +27,7 @@ const HEADER = new RegExp(
  * the line ends after the changed paths. The worktree's counts stay in status.
  */
 const NEWS = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run))?\.`,
+  String.raw`Revision (\d+)${COMMIT}${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run)(?:; \d+ with no result \(unknown\))?)?\.`,
 );
 
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */

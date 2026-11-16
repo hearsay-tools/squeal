@@ -130,6 +130,10 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     expect(headerLine(header, { ownEdits: { files: 5, owed: 1 } })).toBe(
       `${REVISION} 1 of the 5 test files your edits affect has not run.`,
     );
+    // Review 0.1.530 B4: a file that ran with no result is said, never read as passed.
+    expect(headerLine(header, { ownEdits: { files: 9, owed: 0, unknown: 2 } })).toBe(
+      `${REVISION} the 9 test files your edits affect have all run; 2 with no result (unknown).`,
+    );
   });
 
   it("gives a consumer with no edit since its count began no count: it ends after the changed paths", () => {
