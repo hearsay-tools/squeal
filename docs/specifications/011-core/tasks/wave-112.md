@@ -46,3 +46,14 @@ Check, each as proven, plausible or unverified:
 6. **The pilot.** The seven files' only change is `scheduler.idle()` to `rest()` (or the side's `rest()`), and each wait ends at the same point as before (survey class A).
 
 Coordinator at the candidate: lint, typecheck, `check:version origin/main`; `key-format` 12/12 alone; `version-sensitive`, the clock and calendar-step files, `step-reading`, `claims-expiry`, `one-loop-source`, `wakes` and three pilot files 78/78 at load 30. Worker: model test at load 21 to 24; 136 daemon and scheduler files run directly, all pass; Squeal 690 affected files pass, 232 still queued (mostly `test/cli`, `test/harness`, `test/integration`). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/0.1.524.md` and commit it on your branch.
+
+## W1 repair: after review 0.1.524 (FAIL)
+
+Use /worker (worker 2249b18f, resumed). Shape: repair. Effort high. Read `reviews/0.1.524.md` in full; it names each seam and a fix scope. Base: your branch; the coordinator integrates.
+
+1. **B1.** After a calendar step, the republished quiet and promotion rows must still show in status while their owner enforces them, and a predecessor daemon's row must still be rejected. Make the publication and the reader's freshness rule agree across a set-back. If this needs a change to what is stored or published (a row's shape or a new field), message me with the design before code. Tests: owner to public reader, for quiet and promotions, with a real daemon-start value, set-back and set-forward, plus a genuine predecessor's row rejected.
+2. **B2.** A step between a decision and its wake's delay must not add the step to the delay. Derive the delay from the same reading as the decision, or keep it on elapsed time. Cover `SlowRelease.arm` (proven), and check `scheduler.ts` `#eventOrAt` and `TierYields.#arm` (plausible). Tests: the review's wrapper that steps the clock between the two reads, both directions.
+3. **S1.** Reject an uncertain sample: bracket the calendar reading with elapsed readings and ignore a pair whose width could hide a step. Test: a delayed sample with no calendar change reports no step. Document the limits of the NTP assumptions; do not tune the threshold to this host.
+4. **N2.** `GLOSSARY.md`: narrow "the one wait" to scheduler waits and name the lint edit-quiet copy (`src/core/lint/pass/idle.ts:49`), which row 011-382 holds. Not yours: that lint file.
+
+Keep row 011-372 (one decision reading), the command-hold exception and unchanged behaviour without a step. Done when: each blocker's test failed before its fix; notes gain "Repair after review 0.1.524"; lint, typecheck, `key-format`, the model test once, and the changed tests pass; `squeal status --wait 60000` on the changed paths (report pending as pending).
