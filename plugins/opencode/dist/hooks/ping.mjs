@@ -1589,6 +1589,10 @@ var ONLY_ALLOWED = configFieldHash(true);
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
 
+// src/core/scheduler/calendar-steps.ts
+var CALENDAR_STEP_MS = 100;
+var SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
+
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
