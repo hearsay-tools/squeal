@@ -312,10 +312,14 @@ export interface EditsSettled {
   readonly unknown: number;
 }
 
-/** Row 005-93 (c): of the `files` the consumer's edits affect, `owed` have no result yet. */
+/**
+ * Row 005-93 (c): of the `files` the consumer's edits affect, `owed` have no result yet and
+ * `unknown` ran with no result (review 0.1.530 B4); absent reads as 0.
+ */
 export interface OwnEdits {
   readonly files: number;
   readonly owed: number;
+  readonly unknown?: number;
 }
 
 /**

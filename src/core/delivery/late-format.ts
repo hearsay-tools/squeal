@@ -29,11 +29,18 @@ function notRun(owed: number, files: number): string {
 /**
  * Row 005-93 (c): the news header's own count, after the revision and its changed paths:
  * `3 of the 9 test files your edits affect have not run.`, or once none is owed,
- * `the 9 test files your edits affect have all run.`
+ * `the 9 test files your edits affect have all run.`; with files that ran with no result,
+ * `…; 1 with no result (unknown).`
  */
-export function ownCountText({ files, owed }: OwnEdits): string {
-  if (owed > 0) return `${notRun(owed, files)}.`;
-  return files === 1 ? `${affected(files)} has run.` : `${affected(files)} have all run.`;
+export function ownCountText({ files, owed, unknown = 0 }: OwnEdits): string {
+  const count =
+    owed > 0
+      ? notRun(owed, files)
+      : files === 1
+        ? `${affected(files)} has run`
+        : `${affected(files)} have all run`;
+  // Review 0.1.530 B4: a file that ran with no result is said, so "run" never reads as passed.
+  return unknown === 0 ? `${count}.` : `${count}; ${unknown} with no result (unknown).`;
 }
 
 /** The late line's last sentence: the wait that runs the owed files first, or a hand run. */

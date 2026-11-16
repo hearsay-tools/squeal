@@ -156,7 +156,7 @@ export function editNotes(
   if (!said && !(delivering && counted)) return null;
   return {
     ...(sawEdit === undefined ? {} : { sawEdit }),
-    ...(counted ? { own: { files: own.files, owed: own.owed.length } } : {}),
+    ...(counted ? { own: ownCount(own) } : {}),
     ...lateParts(lateness),
     rekeyed: own.rekeyed,
     tell: (failed) => {
@@ -242,6 +242,12 @@ function lateParts(lateness: LateNotes | null): Pick<EditNotes, "late" | "caught
     ...(lateness.late === undefined ? {} : { late: lateness.late }),
     ...(lateness.caughtUp === undefined ? {} : { caughtUp: lateness.caughtUp }),
   };
+}
+
+/** The own count of `own`, its unknown files only when there are any. */
+function ownCount(own: OwnRead): OwnEdits {
+  const count = { files: own.files, owed: own.owed.length };
+  return own.unknown === 0 ? count : { ...count, unknown: own.unknown };
 }
 
 /** `OwnRead` with the ids of the files the edits affect. */

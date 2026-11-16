@@ -67,6 +67,28 @@ describe("the own count, as the evals parser reads it (row 005-93 c)", () => {
     expect(read(caught)).toMatchObject({ revision: 7, pending: 0, verdict: "pass" });
   });
 
+  // Review 0.1.530 B4: a file that ran with no result is never a pass.
+  it("reads an unknown result in caught up and in the own count, never as a pass", () => {
+    const caught = text({
+      ownEdits: { files: 1, owed: 0 },
+      caughtUp: { revision: 7, files: 1, unknown: 1 },
+    });
+    expect(caught).toContain("0 with results, 1 with no result (unknown); no new failure.");
+    expect(read(caught)).toMatchObject({ pending: 0, unknown: 1 });
+    expect(read(caught)?.verdict).not.toBe("pass");
+    const news = text({ ownEdits: { files: 3, owed: 0, unknown: 1 } });
+    expect(news).toContain(
+      "Revision 7 (changed src/a.ts): the 3 test files your edits affect have all run; 1 with no result (unknown).",
+    );
+    expect(read(news)).toMatchObject({ pending: 0, unknown: 1 });
+    expect(read(news)?.verdict).not.toBe("pass");
+    const owing = text({ ownEdits: { files: 3, owed: 1, unknown: 1 } });
+    expect(owing).toContain(
+      "1 of the 3 test files your edits affect has not run; 1 with no result (unknown).",
+    );
+    expect(read(owing)).toMatchObject({ pending: 1, unknown: 1 });
+  });
+
   it("still reads 0.1.527's news headers as before", () => {
     const old = [
       [
