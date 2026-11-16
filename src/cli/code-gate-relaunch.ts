@@ -18,6 +18,17 @@ import type { CliIo } from "./main.js";
 /** The mark of the gate's child: the descriptor its report goes to. */
 export const REPORT_FD_VARIABLE = "SQUEAL_CODE_GATE_REPORT_FD";
 
+/**
+ * Spec 023 D6 (row 023-04): the pid of the CLI process that started the
+ * gate's child. The child ends, with every process of its group, once its
+ * parent is gone, so a SIGKILL'd parent leaves nothing writing to the store
+ * (`temp-checkout.md` 4: an orphaned child wrote 4 files after the kill).
+ */
+export const PARENT_PID_VARIABLE = "SQUEAL_CODE_GATE_PARENT";
+
+/** How often the child looks for its parent; the check is one field read. */
+const PARENT_POLL_MS = 250;
+
 const REPORT_FD = 3;
 
 /** How long the parent waits, after the child exits, for the pipe to end: a process the child started may hold it. */
@@ -42,6 +53,66 @@ export function takeReportFd(env: NodeJS.ProcessEnv = process.env): number | nul
   delete env[REPORT_FD_VARIABLE];
   const fd = Number(value);
   return Number.isInteger(fd) && fd > 2 ? fd : null;
+}
+
+/**
+ * The parent pid the gate's child was given, taken out of `env` at once as
+ * the mark is; `undefined` when none or not a pid.
+ */
+export function takeParentPid(env: NodeJS.ProcessEnv = process.env): number | undefined {
+  const value = env[PARENT_PID_VARIABLE];
+  if (value === undefined) return undefined;
+  delete env[PARENT_PID_VARIABLE];
+  const pid = Number(value);
+  return Number.isInteger(pid) && pid > 0 ? pid : undefined;
+}
+
+/** What `watchParent` reads and does; a test gives its own. */
+export interface ParentWatch {
+  /** This process's parent pid now. Default `process.ppid`. */
+  readonly ppid?: () => number;
+  /** Called once the parent is gone. Default `endGroup`. */
+  readonly gone?: () => void;
+  readonly intervalMs?: number;
+}
+
+/**
+ * Row 023-04 (spec 023 D6): calls `gone` once this process's parent is no
+ * longer `parent`, at once when it already is not, then every
+ * `intervalMs`. A dead parent's children go to another process, so the
+ * parent pid changes; this reads it on Linux and macOS alike. The timer
+ * keeps no process alive. Returns the function that stops the watch.
+ */
+export function watchParent(parent: number, watch: ParentWatch = {}): () => void {
+  const ppid = watch.ppid ?? (() => process.ppid);
+  const gone = watch.gone ?? endGroup;
+  let ended = false;
+  const look = () => {
+    if (ended || ppid() === parent) return;
+    ended = true;
+    clearInterval(timer);
+    gone();
+  };
+  const timer = setInterval(look, watch.intervalMs ?? PARENT_POLL_MS);
+  timer.unref();
+  look();
+  return () => {
+    ended = true;
+    clearInterval(timer);
+  };
+}
+
+/**
+ * Ends this process's group with SIGKILL: the gate's child leads its own
+ * (`relaunchGate` starts it detached), so its runners' workers end with
+ * it. When it leads none, only this process ends.
+ */
+export function endGroup(): void {
+  try {
+    process.kill(-process.pid, "SIGKILL");
+  } catch {
+    process.kill(process.pid, "SIGKILL");
+  }
 }
 
 /** In the child: `report` to `fd` as one frame, whole, then the descriptor closed. */
@@ -117,7 +188,9 @@ const how = (e: Ended) => (e.signal === null ? `with exit code ${e.code}` : `on 
  * exit code; 3 when it ends without one whole report, which then writes
  * nothing to stdout, and 3 when it ends on a signal, also after a whole
  * report (D1's codes; review 0.1.444 B1); 2 when it cannot start. SIGINT
- * and SIGTERM from `signals` go on to the child.
+ * and SIGTERM from `signals` go on to the child, which leads its own
+ * process group, so a terminal's signal reaches it only through this one.
+ * The child ends its group once this process is gone (spec 023 D6).
  */
 export async function relaunchGate(
   relaunch: readonly string[],
@@ -126,10 +199,16 @@ export async function relaunchGate(
   signals: SignalSource = process,
 ): Promise<number> {
   const [command = process.execPath, ...flags] = relaunch;
+  const marks = {
+    [REPORT_FD_VARIABLE]: String(REPORT_FD),
+    [PARENT_PID_VARIABLE]: String(process.pid),
+  };
+  // Row 023-04 (spec 023 D6): the child leads a process group of its own, which it ends when this process is gone.
   const child = spawn(command, [...flags, "code", ...args], {
     cwd: io.cwd ?? process.cwd(),
-    env: { ...(io.env ?? process.env), [REPORT_FD_VARIABLE]: String(REPORT_FD) },
+    env: { ...(io.env ?? process.env), ...marks },
     stdio: ["inherit", 2, "inherit", "pipe"],
+    detached: true,
   });
   const forward = (signal: NodeJS.Signals) => () => child.kill(signal);
   const listeners = FORWARDED.map((signal) => [signal, forward(signal)] as const);

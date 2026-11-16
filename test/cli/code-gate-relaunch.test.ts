@@ -6,10 +6,13 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
 import {
+  PARENT_PID_VARIABLE,
   REPORT_FD_VARIABLE,
   relaunchGate,
   type SignalSource,
+  takeParentPid,
   unframe,
+  watchParent,
 } from "../../src/cli/code-gate-relaunch.js";
 import type { CliIo } from "../../src/cli/main.js";
 import { ownHomeAndTmp, repo } from "./code-gate-fixture.js";
@@ -169,5 +172,43 @@ describe("squeal code --base --json in a child of the CLI process (spec 020 D14.
 
     expect(await codeGateCommand(["--base", "main"], { ...io, cwd: root })).toBe(0);
     expect(out.stdout).toMatch(/^Code gate: pass\. No function changed against main/);
+  });
+});
+
+describe("the gate's child ends once its parent is gone (spec 023 D6, row 023-04)", () => {
+  it("gives the child this process's pid, and the child takes it out of its environment", async () => {
+    const script = framing(
+      "x",
+      `process.exit(Number(process.env.${PARENT_PID_VARIABLE}) === process.ppid ? 0 : 8)`,
+    );
+    const { io } = capture(node(script));
+
+    expect(await relaunchGate(io.relaunch ?? [], ["--base", "main", "--json"], io)).toBe(0);
+    const env: NodeJS.ProcessEnv = { [PARENT_PID_VARIABLE]: "4242" };
+    expect(takeParentPid(env)).toBe(4242);
+    expect(env).toEqual({});
+    expect(takeParentPid({ [PARENT_PID_VARIABLE]: "nope" })).toBeUndefined();
+    expect(takeParentPid({})).toBeUndefined();
+  });
+
+  it("calls gone once when the parent pid changes, and never after its stop", async () => {
+    let ppid = 10;
+    let gone = 0;
+    watchParent(10, { ppid: () => ppid, gone: () => gone++, intervalMs: 5 });
+    await delay(30);
+    expect(gone).toBe(0);
+    ppid = 1;
+    await delay(30);
+    expect(gone).toBe(1);
+
+    const stop = watchParent(10, { ppid: () => ppid, gone: () => gone++, intervalMs: 5 });
+    expect(gone).toBe(2);
+    stop();
+    let later = 0;
+    const stopped = watchParent(10, { ppid: () => 10, gone: () => later++, intervalMs: 5 });
+    stopped();
+    ppid = 3;
+    await delay(30);
+    expect(later).toBe(0);
   });
 });

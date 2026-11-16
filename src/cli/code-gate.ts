@@ -35,7 +35,13 @@ import { exceptionsOf } from "./code-gate-exceptions.js";
 import { keptLogsLine, type LogRetention, runLogKeeper } from "./code-gate-log.js";
 import { estimateOptions, preRunOptions } from "./code-gate-prerun.js";
 import { overrunText, timed } from "./code-gate-progress.js";
-import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
+import {
+  relaunchGate,
+  runAsChild,
+  takeParentPid,
+  takeReportFd,
+  watchParent,
+} from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
@@ -142,6 +148,10 @@ export async function codeGateCommand(
   const afterReport: (() => Promise<void>)[] = [];
   try {
     if (reportFd !== undefined && reportFd !== null) {
+      // Row 023-04 (spec 023 D6): the child, with its group, ends once the CLI process is gone,
+      // until it exits: the keep after the report (D17.5) writes to the store too.
+      const parent = takeParentPid();
+      if (parent !== undefined) watchParent(parent);
       const run = (stdout: (text: string) => void) =>
         gate(args, { ...io, stdout }, adapters, afterReport);
       return await runAsChild(reportFd, run);
