@@ -7,6 +7,7 @@ import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { openHarness } from "./node-test-harness.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow } from "./slow-drive.js";
 import type { Harness } from "./vitest-harness.js";
 
 /*
@@ -127,10 +128,12 @@ export async function warmUpRepo({
       observe: { runtimeInputs },
     },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
+    // Row 011-381: the slow file's lane looks again on the virtual clock (`idleSlow`).
+    clock: "virtual",
   });
   if (started) {
     await h.scheduler.start();
-    await h.quiet();
+    await idleSlow(h);
   }
   return { h, commonDir: repo.commonDir };
 }

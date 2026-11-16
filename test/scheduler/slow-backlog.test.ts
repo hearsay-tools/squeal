@@ -1,16 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunOptions } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { until } from "./drive-fixture.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow, looks, SLOW_DRIVEN } from "./slow-drive.js";
 import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
@@ -44,6 +44,7 @@ async function open(extra: Partial<HarnessOptions> = {}): Promise<Harness> {
     policy: { ...RUN_MISSING, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES } },
     slow: { slotDir: tempDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
+    clock: "virtual",
     ...extra,
   });
 }
@@ -78,14 +79,19 @@ describe(
       const h = await open();
       const backlog = holdFirstFast(h);
       await h.scheduler.start();
-      await waitFor(() => backlog.held, 60_000);
+      await until(h, () => backlog.held, { driven: SLOW_DRIVEN });
+      expect(backlog.held).toBe(true);
       // The idle trigger holds (no consumer) and the load is 0: only the backlog holds the slow tier.
-      await delay(500);
+      // Row 011-381: the slow lane's looks pass on the virtual clock.
+      await looks(h);
       expect(slowRuns(h)).toEqual([]);
       expect(readSlowActivity(h.store, h.worktreeId)).toEqual({ kind: "waiting", for: "fast" });
       backlog.release();
-      await waitFor(() => slowRuns(h).flatMap((r) => r.files).length === 2, 60_000);
-      await h.scheduler.idle();
+      await until(h, () => slowRuns(h).flatMap((r) => r.files).length === 2, {
+        driven: SLOW_DRIVEN,
+      });
+      expect(slowRuns(h).flatMap((r) => r.files).length === 2).toBe(true);
+      await idleSlow(h);
       const runs = h.runner.runs.map((run) => isSlow(run.files));
       const firstSlow = runs.indexOf(true);
       expect(firstSlow).toBeGreaterThan(0);
@@ -99,9 +105,11 @@ describe(
       const h = await open({ capacity: { dir: join(tempDir(), "pool"), hostSlots: 1 } });
       const backlog = holdFirstFast(h);
       await h.scheduler.start();
-      await waitFor(() => backlog.held, 60_000);
+      await until(h, () => backlog.held, { driven: SLOW_DRIVEN });
+      expect(backlog.held).toBe(true);
       expect(await h.scheduler.requestSlowSuite()).toMatchObject({ queued: 2 });
-      await waitFor(() => slowRuns(h).length === 2, 60_000);
+      await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+      expect(slowRuns(h).length === 2).toBe(true);
       expect(backlog.held).toBe(true);
       // Fast work is queued and running: one file per tier, run as an edit's tier is, without a grant.
       const ran = slowRuns(h).map((run) => [
@@ -113,7 +121,7 @@ describe(
         [1, null],
       ]);
       backlog.release();
-      await h.scheduler.idle();
+      await idleSlow(h);
     });
   },
 );
@@ -130,11 +138,13 @@ describe("a departure drain runs its session's work (011 C9, 004 D2, row 011-93)
     const h = await open();
     const backlog = holdFirstFast(h);
     await h.scheduler.start();
-    await waitFor(() => backlog.held, 60_000);
+    await until(h, () => backlog.held, { driven: SLOW_DRIVEN });
+    expect(backlog.held).toBe(true);
     h.scheduler.pauseBacklog(true);
     backlog.release();
-    await waitFor(() => !h.scheduler.slowPending(), 60_000);
-    await h.scheduler.idle();
+    await until(h, () => !h.scheduler.slowPending(), { driven: SLOW_DRIVEN });
+    expect(!h.scheduler.slowPending()).toBe(true);
+    await idleSlow(h);
     // The held tier stored; no other fast tier ran, and its two files stay queued for the next daemon.
     expect(h.runner.runs.filter((run) => !isSlow(run.files))).toHaveLength(1);
     expect(
@@ -151,12 +161,16 @@ describe("a departure drain runs its session's work (011 C9, 004 D2, row 011-93)
     const h = await open();
     const backlog = holdFirstFast(h);
     await h.scheduler.start();
-    await waitFor(() => backlog.held, 60_000);
+    await until(h, () => backlog.held, { driven: SLOW_DRIVEN });
+    expect(backlog.held).toBe(true);
     await h.scheduler.requestFullSuite();
     h.scheduler.pauseBacklog(true);
     backlog.release();
-    await waitFor(() => h.scheduler.owedWork() === null && !h.scheduler.slowPending(), 60_000);
-    await h.scheduler.idle();
+    await until(h, () => h.scheduler.owedWork() === null && !h.scheduler.slowPending(), {
+      driven: SLOW_DRIVEN,
+    });
+    expect(h.scheduler.owedWork() === null && !h.scheduler.slowPending()).toBe(true);
+    await idleSlow(h);
     expect(h.scheduler.queued()).toBe(0);
     expect(queuedRows(h)).toEqual([]);
   });
@@ -165,15 +179,18 @@ describe("a departure drain runs its session's work (011 C9, 004 D2, row 011-93)
     const h = await open();
     const backlog = holdFirstFast(h);
     await h.scheduler.start();
-    await waitFor(() => backlog.held, 60_000);
+    await until(h, () => backlog.held, { driven: SLOW_DRIVEN });
+    expect(backlog.held).toBe(true);
     h.scheduler.pauseBacklog(true);
     backlog.release();
-    await waitFor(() => !h.scheduler.slowPending(), 60_000);
-    await h.scheduler.idle();
+    await until(h, () => !h.scheduler.slowPending(), { driven: SLOW_DRIVEN });
+    expect(!h.scheduler.slowPending()).toBe(true);
+    await idleSlow(h);
     expect(h.scheduler.queued()).toBe(2);
     h.scheduler.pauseBacklog(false);
-    await waitFor(() => h.scheduler.queued() === 0, 60_000);
-    await h.scheduler.idle();
+    await until(h, () => h.scheduler.queued() === 0, { driven: SLOW_DRIVEN });
+    expect(h.scheduler.queued() === 0).toBe(true);
+    await idleSlow(h);
     expect(h.runner.runs.filter((run) => !isSlow(run.files))).toHaveLength(3);
   });
 });
