@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
  * CI check (row private-material-guard): no push adds private material. Only lines added in
  * `git diff <base>...HEAD` (text files) are read, by three rules, and added file names by rule 3:
  *
- *   1. an absolute home path, `/home/<name>/` or `/Users/<name>/`; the name `user` is the fake
- *      value fixtures and examples use, so it passes;
+ *   1. an absolute home path, `/home/<name>/` or `/Users/<name>/`; three names pass: `user`, the
+ *      fake value fixtures and examples use, `runner`, GitHub's runner home, and `squeal-e2e`, the
+ *      throwaway user the real-CLI tests run as;
  *   2. a recorded agent session log: one added line, or the added lines of one JSON file, holding
  *      the transcript path key, or both the session id key and the working directory key;
  *   3. a case-insensitive substring from the private denylist, env SQUEAL_PRIVATE_DENYLIST (one
@@ -27,7 +28,7 @@ const DENYLIST_ENV = "SQUEAL_PRIVATE_DENYLIST";
 
 /** A home directory with a real user name: not preceded by a host or path word, as in a URL. */
 const HOME_PATH = /(?<![\w.-])\/(?:home|Users)\/([A-Za-z0-9._-]+)\//g;
-const FAKE_USER = "user";
+const PUBLIC_USERS = new Set(["user", "runner", "squeal-e2e"]);
 // Each quote is a character class so this file holds none of the keys it looks for.
 const TRANSCRIPT_KEY = /["]transcript_path["]/;
 const SESSION_KEY = /["]session_id["]/;
@@ -186,7 +187,7 @@ function allowGlobs(cwd: string): RegExp[] {
 }
 
 const homeName = (text: string) =>
-  [...text.matchAll(HOME_PATH)].some((match) => match[1] !== FAKE_USER);
+  [...text.matchAll(HOME_PATH)].some((match) => !PUBLIC_USERS.has(match[1] ?? ""));
 
 const sessionLog = (text: string) =>
   TRANSCRIPT_KEY.test(text) || (SESSION_KEY.test(text) && CWD_KEY.test(text));
