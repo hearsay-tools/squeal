@@ -54,3 +54,53 @@ Out of this row, unchanged, with the reason:
 - `clock-port.test.ts`: the pinned row ("a calendar set back 1 h, past the edit, holds the group") flips: the group runs once its 5 s budget is spent.
 - `clock-change.test.ts` (or a new file beside it), on the virtual clock, one case per wait moved: set the calendar back 1 h and forward 1 h after the wait starts, and check that the wait ends after its delay and not 1 ms sooner.
 - `calendar-steps.test.ts`: a step below 100 ms is not a step; a step is told once, rounded; `local` counts from first sight.
+
+## What changed
+
+- New `src/core/scheduler/calendar-steps.ts`: `CalendarSteps` (`observe`, `onStep`, `total`, `local`, `since`), `CALENDAR_STEP_MS`, and `steppedClock`. The stepped clock is a named class (`SteppedClock`), so a stack names its frame; its readings are arrow fields, so a reading taken off it works as the host adapter's does.
+- `scheduler.ts`: `#clock` is `steppedClock(clockOf(options), #steps)`. `#shift(ms, at)` is the one place that tells the owners; it is registered at the end of the constructor, once every owner exists. The context carries `steps`. `slowWaiting` reads the clock first, so a step moves `since` before `lifecycle.ts` compares it.
+- Owners, each with a `shift(ms)` that adds the step to the calendar times it keeps:
+  - `BacklogQuiet.shift(ms, at)` (`quiet.ts`): both maps; publishes again.
+  - `Promotions.shift` (`promotions.ts`): `until` and `estimatedEnd`; publishes again. `FocusedEntries.shift` (`focused-entries.ts`): `until`. `RunQueue.shift` (`queue.ts`) calls both.
+  - `Claims.shift` (`claims.ts`): `#seen`. The scheduler moves `#claimWindow.until`.
+  - `SlowRelease.shift` (`slow-release.ts`), `SlowTier.shift` (`slow-tier.ts`) through `GroupTiers.shift` (`group-tiers.ts`): the lanes' ends.
+  - `TierYields.shift` (`yields.ts`): `#bounds`, and `YieldHistory.shift` (`yield-history.ts`): the ended count's last write.
+  - The scheduler's `#drainBusyAt`.
+- Stored stamps, counted from first sight:
+  - `quietLeftMs` (`slow-trigger.ts`): the latest revision's `createdAt` through `steps.local("revision", number, createdAt)`.
+  - `remainder` (`yield-waits.ts`): `tier.startedAt` through `steps.since(startedAt, tier.startedStep)`. `newTier` (`tiers.ts`) sets `startedStep` right after its `startedAt` reading.
+- `GLOSSARY.md`, "Elapsed time": waits that compare a calendar time count on elapsed time too; the one exception is a command hold's end.
+
+The claims window, the drain time and the yield bound have no case of their own on a real scheduler. Their owner code is one line each in `#shift`, and `calendar-steps-scheduler.test.ts` fails when `#shift` is not registered.
+
+## Tests
+
+- `clock-port.test.ts`: the pinned row flips to "a calendar set back 1 h, past the edit, does not hold the group". Red before the change (Squeal at revision 4: `expected false to be true`), green after.
+- New `calendar-steps.test.ts`, on the virtual clock under `steppedClock`:
+  - `CalendarSteps`: a change of 99 ms is not told; a set-back of 1 h is told once, with its reading; `local` and `since` count from first sight.
+  - One case per owner, the calendar set back 1 h and set forward 1 h after its wait began, each ending after its delay and not 1 ms sooner: the lane's quiet and catch-up's quiet (and the re-published ends), a named wait's deadline (`Promotions` and `FocusedEntries`), the waiter's bound on a claim, the slow release's idle bound (with a re-arm after the step), a tier's remainder.
+- New `calendar-steps-scheduler.test.ts`: a real scheduler on the virtual clock; after a backlog tier's cancel, the calendar set back or forward 1 h; the backlog starts 20 s of elapsed time after the cancel, not before.
+- Mutation checks, each run once and reverted:
+  - `CalendarSteps.observe` never telling a step: all 11 owner and step cases fail, and the flipped `clock-port` row fails.
+  - The scheduler's `onStep` registration removed: both `calendar-steps-scheduler` rows fail.
+
+### Test files changed because they moved the calendar alone (coordinator's leave, 2026-11-16)
+
+Each keeps its meaning:
+
+- `test/helpers/virtual-clock.ts`, `harnessClock`'s host path: `advance(ms)` now moves elapsed time with the calendar. Tests call `advance` to say "this much time passed"; on 0.1.523 it moved the calendar alone, which now reads as a calendar step and would move the waits with it. Fixed by this alone: `focused.test.ts` case 4 (`advance(61_000)` past a named deadline), `tier-yields-named.test.ts` cases 3 and 6.
+- `test/scheduler/claims-expiry.test.ts` case 10: the waiter's `now` skewed by `timeoutMs + grace + 1` becomes `b.advance(...)` on the same side: the bound passed.
+- `test/scheduler/step-reading.test.ts`: `PASSING` adds `SteppedClock.now`, a frame that only passes a reading on, as `#now` does. No reading is added.
+
+## Type changes (all additive)
+
+- `SchedulerContext.steps?: CalendarSteps`.
+- `Tier.startedStep?: number`.
+- `shift(ms)` on `BacklogQuiet` (with `at`), `Promotions`, `FocusedEntries`, `RunQueue`, `Claims`, `SlowRelease`, `SlowTier`, `GroupTiers`, `TierYields`, `YieldHistory`.
+- New exports: `CalendarSteps`, `CALENDAR_STEP_MS`, `steppedClock`.
+
+## For the next worker
+
+- A wait owner that keeps a calendar time for its own wait adds a `shift(ms)` and a line in the scheduler's `#shift`. One that compares a stored stamp uses `context.steps.local(kind, id, stamp)` (one id per kind) or keeps the steps' `total` beside its stamp and uses `since`.
+- A fixture that freezes `now` or runs it at another speed, with the host's elapsed time, now reads as calendar steps: its waits count on the host's elapsed time. Use the virtual clock, or `advance` on the harness, to say time passed; use `shiftCalendar` to say the clock was set.
+- Known limit: a step inside one step's turn, after its reading, can move one decision of that turn (Design).
