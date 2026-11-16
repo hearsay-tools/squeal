@@ -63,15 +63,24 @@ export function gitMay(cwd: string, args: readonly string[]): number {
 
 /**
  * A side of `root` whose runs fail a file while a path of its closure holds
- * a marker. `policy` is set over the defaults.
+ * a marker. `policy` is set over the defaults. Row 011-381:
+ * `options.clock` `"virtual"` puts the side on a prompt virtual clock;
+ * absent, the host's.
  */
 export function holdSide(
   repo: CatchUpRepo,
   root = repo.main,
   files: readonly CatchUpFile[] = FILES,
   policy: Partial<Policy> = {},
+  { clock }: { readonly clock?: "virtual" } = {},
 ): CatchUpSide {
-  const side = catchUpSide(repo, root, { files, hostSlots: 4, tierSize: 4, policy });
+  const side = catchUpSide(repo, root, {
+    files,
+    hostSlots: 4,
+    tierSize: 4,
+    policy,
+    ...(clock === undefined ? {} : { clock }),
+  });
   const marked = (path: string) => {
     try {
       return readFileSync(join(root, path), "utf8").includes("<<<<<<<");
