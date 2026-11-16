@@ -6,9 +6,10 @@ import { acquireSlowSlot } from "../../src/core/slow/slot.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { isSlowLane, type RunOptions } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { until } from "./drive-fixture.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow, SLOW_DRIVEN } from "./slow-drive.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
@@ -74,6 +75,7 @@ async function open(): Promise<Held> {
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
     runnerPartBesideRun: true,
     capacity: { dir: join(tempDir("pool"), "squeal-uid"), hostSlots: 8 },
+    clock: "virtual",
   });
   const events: Event[] = [];
   const slowRuns: Held["slowRuns"] = [];
@@ -117,7 +119,7 @@ describe(
     it("leaves the rest queued past an edit, for a later tier, with the slot and pool shrunk", async () => {
       const { h, slotDir, events, slowRuns, release } = await open();
       await h.scheduler.start();
-      await waitFor(() => slowStarts(events).length === PROJECT_WIDTH, 60_000);
+      await until(h, () => slowStarts(events).length === PROJECT_WIDTH, { driven: SLOW_DRIVEN });
       const edit = events.length;
       try {
         // Two files hold two permits and two files' workers (slow.maxWorkers 2 each), no more.
@@ -129,8 +131,10 @@ describe(
       } finally {
         release();
       }
-      await waitFor(() => slowStarts(events).length === SLOW_FILES.length, 60_000);
-      await h.scheduler.idle();
+      await until(h, () => slowStarts(events).length === SLOW_FILES.length, {
+        driven: SLOW_DRIVEN,
+      });
+      await idleSlow(h);
 
       const starts = slowStarts(events);
       expect(new Set(starts.map((s) => s.path))).toEqual(new Set(SLOW_FILES));
@@ -149,7 +153,7 @@ describe(
     it("starts none of the rest once the scheduler closes", async () => {
       const { h, events, slowRuns, release } = await open();
       await h.scheduler.start();
-      await waitFor(() => slowStarts(events).length === PROJECT_WIDTH, 60_000);
+      await until(h, () => slowStarts(events).length === PROJECT_WIDTH, { driven: SLOW_DRIVEN });
       const closed = h.scheduler.close();
       release();
       await closed;

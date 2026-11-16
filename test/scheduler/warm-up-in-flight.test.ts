@@ -6,6 +6,8 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunOptions } from "../../src/core/types/runner.js";
 import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import { SLOW } from "./cleanup.js";
+import { until } from "./drive-fixture.js";
+import { idleSlow, SLOW_DRIVEN } from "./slow-drive.js";
 import type { Harness } from "./vitest-harness.js";
 import { BUILD, QUIET, READS, snapshot, VITEST, warmUpRepo } from "./warm-up-repo.js";
 
@@ -48,6 +50,16 @@ function holdFirst(h: Harness, path: string) {
   return { calls, held, release };
 }
 
+/** Row 011-381: `held`, with the clock moved to the slow lane's looks until it arrives. */
+async function arrival(h: Harness, held: Promise<RunOptions>): Promise<RunOptions> {
+  let arrived = false;
+  void held.then(() => {
+    arrived = true;
+  });
+  await until(h, () => arrived, { driven: SLOW_DRIVEN });
+  return held;
+}
+
 const EMPTY = { paths: [], more: 0 };
 
 /**
@@ -73,11 +85,11 @@ function expectObserved(h: Harness, record: CheckpointRecord): void {
 async function expectKeysAndReuse(h: Harness, calls: readonly Call[]): Promise<void> {
   const observed = snapshot(h);
   await h.scheduler.requestFullSuite({ force: true });
-  await h.scheduler.idle();
+  await idleSlow(h);
   expect(snapshot(h)).toEqual(observed);
   const runs = calls.length;
   const ordinary = await h.scheduler.requestFullSuite();
-  await h.scheduler.idle();
+  await idleSlow(h);
   expect(h.store.checkpoints.get(ordinary.id)?.end).toBe("completed");
   expect(calls).toHaveLength(runs);
 }
@@ -87,10 +99,10 @@ describe("a warm-up asked while unobserved work is in flight (review wave 13ar, 
     const { h } = await warmUpRepo({ started: false });
     const hold = holdFirst(h, READS);
     await h.scheduler.start();
-    expect((await hold.held).observeIgnored).toBeUndefined();
+    expect((await arrival(h, hold.held)).observeIgnored).toBeUndefined();
     const record = await h.scheduler.requestFullSuite({ observeIgnored: true });
     hold.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
     expectObserved(h, record);
     // The held run is not the one that counted: a flagged run of the file followed it.
     const ofReads = hold.calls.filter((c) => c.files.includes(`nt:${READS}`));
@@ -102,12 +114,12 @@ describe("a warm-up asked while unobserved work is in flight (review wave 13ar, 
     const { h } = await warmUpRepo();
     const hold = holdFirst(h, READS);
     await h.scheduler.requestFullSuite({ force: true });
-    expect((await hold.held).observeIgnored).toBeUndefined();
+    expect((await arrival(h, hold.held)).observeIgnored).toBeUndefined();
     const record = await h.scheduler.requestFullSuite({ force: true, observeIgnored: true });
     // It never joins (001-312), so it owns its work (review wave-3, B4).
     expect(record.owner).toBe(record.id);
     hold.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
     expectObserved(h, record);
     await expectKeysAndReuse(h, hold.calls);
   });
@@ -116,10 +128,10 @@ describe("a warm-up asked while unobserved work is in flight (review wave 13ar, 
     const { h } = await warmUpRepo({ started: false });
     const hold = holdFirst(h, VITEST);
     await h.scheduler.start();
-    expect((await hold.held).observeIgnored).toBeUndefined();
+    expect((await arrival(h, hold.held)).observeIgnored).toBeUndefined();
     const record = await h.scheduler.requestFullSuite({ observeIgnored: true });
     hold.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
     expectObserved(h, record);
   });
 
@@ -128,7 +140,7 @@ describe("a warm-up asked while unobserved work is in flight (review wave 13ar, 
     appendFileSync(join(h.root, VITEST), "// edited\n");
     await h.batch(VITEST);
     const record = await h.scheduler.requestFullSuite({ observeIgnored: true });
-    await h.scheduler.idle();
+    await idleSlow(h);
     expectObserved(h, record);
   });
 });

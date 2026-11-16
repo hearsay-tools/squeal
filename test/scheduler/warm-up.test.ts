@@ -3,6 +3,8 @@ import { readIgnoredReads } from "../../src/core/scheduler/ignored-reads.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { readRuns } from "../e2e/support.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn } from "./drive-fixture.js";
+import { idleSlow } from "./slow-drive.js";
 import type { Harness } from "./vitest-harness.js";
 import {
   BUILD,
@@ -18,7 +20,7 @@ import {
 
 async function fullSuite(h: Harness, observeIgnored: boolean) {
   const record = await h.scheduler.requestFullSuite({ force: true, observeIgnored });
-  await h.scheduler.idle();
+  await idleSlow(h);
   return record;
 }
 
@@ -108,7 +110,8 @@ describe("a warm-up reports the ignored paths each file read (task 001-307)", SL
     const runs = readRuns(storePaths(commonDir).database, h.worktreeId).length;
     h.write(BUILD, "built v2\n");
     await h.batch(BUILD);
-    await h.scheduler.idle();
+    // Row 011-381: not past the slow lane's looks: the slow file waits for them.
+    await idleOn(h);
     // 016 D4: the Vitest file's closure holds it, so its key moves and the slow file waits for
     // the slow lane (004); the node:test file's reads are no closure path.
     expect(readRuns(storePaths(commonDir).database, h.worktreeId)).toHaveLength(runs);

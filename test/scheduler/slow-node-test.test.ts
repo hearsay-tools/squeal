@@ -6,8 +6,10 @@ import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn, until } from "./drive-fixture.js";
 import { openHarness } from "./node-test-harness.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow, looks, SLOW_DRIVEN } from "./slow-drive.js";
 import type { Harness } from "./vitest-harness.js";
 
 /*
@@ -83,6 +85,10 @@ function starts(markers: string, names: readonly string[]): Record<string, numbe
   return Object.fromEntries(names.map((name) => [name, read(name)]));
 }
 
+/** How many starts the files `names` made in all. */
+const total = (markers: string, names: readonly string[]) =>
+  Object.values(starts(markers, names)).reduce((a, b) => a + b, 0);
+
 const release = (markers: string, name: string) =>
   writeFileSync(join(markers, `release-${name}`), "");
 
@@ -116,12 +122,14 @@ async function open(projects: Record<string, readonly string[]>, maxParallel: nu
       load: () => [0],
       cpus: () => 1,
     },
+    clock: "virtual",
   });
   // In a turn until the baseline's fast work is done, then idle: an idle tier.
   const { delivery, consumer } = await h.consumer();
   await delivery.startTurn(consumer);
   await h.scheduler.start();
-  await h.scheduler.idle();
+  // Row 011-381: in the turn, not past the slow lane's looks, which wait for its end.
+  await idleOn(h);
   expect(starts(markers, names)).toEqual(Object.fromEntries(names.map((n) => [n, 0])));
   await delivery.endTurn(consumer);
   return { h, markers, names };
@@ -155,26 +163,25 @@ async function heldEdit(h: Harness) {
 describe("an idle node:test slow tier starts all its files (review wave 4, B2)", SLOW, () => {
   it("starts slow.maxParallel files at once with runner.tierSize 1, and none again after an edit", async () => {
     const { h, markers, names } = await open({ nt: ["a", "b", "c"] }, 3);
-    await expect
-      .poll(() => starts(markers, names), { timeout: 60_000 })
-      .toEqual({ a: 1, b: 1, c: 1 });
+    await until(h, () => total(markers, names) === 3, { driven: SLOW_DRIVEN });
+    expect(starts(markers, names)).toEqual({ a: 1, b: 1, c: 1 });
 
     // An edit's fast tier, held, while the three are in flight; they finish (D4).
     const vitest = await heldEdit(h);
     for (const name of names) release(markers, name);
     await delay(1_500);
+    await looks(h);
     expect(vitest.held).toBe(true);
     expect(starts(markers, names)).toEqual({ a: 1, b: 1, c: 1 });
     vitest.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
     expect(starts(markers, names)).toEqual({ a: 1, b: 1, c: 1 });
   });
 
   it("starts no file of the tier after the scheduler closed", async () => {
     const { h, markers, names } = await open({ nt: ["a", "b", "c"] }, 3);
-    await expect
-      .poll(() => starts(markers, names), { timeout: 60_000 })
-      .toEqual({ a: 1, b: 1, c: 1 });
+    await until(h, () => total(markers, names) === 3, { driven: SLOW_DRIVEN });
+    expect(starts(markers, names)).toEqual({ a: 1, b: 1, c: 1 });
     const closed = h.scheduler.close();
     for (const name of names) release(markers, name);
     await closed;
@@ -183,11 +190,8 @@ describe("an idle node:test slow tier starts all its files (review wave 4, B2)",
 
   it("keeps a tier within one node:test project, so the next project waits for an edit's fast tier", async () => {
     const { h, markers, names } = await open({ n1: ["a", "b"], n2: ["c", "d"] }, 4);
-    await expect
-      .poll(() => Object.values(starts(markers, names)).reduce((a, b) => a + b), {
-        timeout: 60_000,
-      })
-      .toBe(2);
+    await until(h, () => total(markers, names) >= 2, { driven: SLOW_DRIVEN });
+    expect(total(markers, names)).toBe(2);
     const first = Object.entries(starts(markers, names))
       .filter(([, n]) => n === 1)
       .map(([name]) => name)
@@ -202,15 +206,15 @@ describe("an idle node:test slow tier starts all its files (review wave 4, B2)",
     const vitest = await heldEdit(h);
     for (const name of first) release(markers, name);
     await delay(2_000);
+    await looks(h);
     // The edit's fast tier is held: the other project's files wait (D2).
     expect(vitest.held).toBe(true);
     for (const name of rest) expect(starts(markers, [name])[name]).toBe(0);
 
     vitest.release();
-    await expect
-      .poll(() => rest.map((name) => starts(markers, [name])[name]), { timeout: 60_000 })
-      .toEqual([1, 1]);
+    await until(h, () => total(markers, rest) === 2, { driven: SLOW_DRIVEN });
+    expect(rest.map((name) => starts(markers, [name])[name])).toEqual([1, 1]);
     for (const name of rest) release(markers, name);
-    await h.scheduler.idle();
+    await idleSlow(h);
   });
 });

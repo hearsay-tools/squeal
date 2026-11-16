@@ -12,7 +12,9 @@ import { DEFAULT_POLICY, type Policy, type PolicyInputs } from "../../src/core/t
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn, until } from "./drive-fixture.js";
 import { addWorktree, createRepo, openRepoStore, ref } from "./repo.js";
+import { idleSlow, looks, SLOW_DRIVEN } from "./slow-drive.js";
 import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
@@ -51,7 +53,10 @@ function slowPolicy(include: readonly string[], inputs: PolicyInputs = []): Part
   };
 }
 
-function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}): HarnessOptions {
+/** On the host's clock: the slot shared by two worktrees, whose overlap is real time. */
+function hostOptions(
+  extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {},
+): HarnessOptions {
   const { inputs, ...rest } = extra;
   return {
     tierSize: 4,
@@ -59,6 +64,14 @@ function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}
     slow: { slotDir: slotDir(), recheckMs: 50, load: () => [0], cpus: () => 1 },
     ...rest,
   };
+}
+
+/**
+ * Row 011-381: on the virtual clock. The tests move it to the slow lane's
+ * looks (`SLOW_DRIVEN`), as `Scheduler.idle()` waited for them in real time.
+ */
+function options(extra: Partial<HarnessOptions> & { inputs?: PolicyInputs } = {}): HarnessOptions {
+  return { ...hostOptions(extra), clock: "virtual" };
 }
 
 /**
@@ -79,7 +92,7 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const h = await openHarness(repo.main, store, repo.commonDir, options());
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await idleSlow(h);
     let runs = paths(h);
     expect(runs.filter(isSlowRun)).toEqual(expect.arrayContaining([[STRINGS], [UPPER]]));
     const lastFast = runs.findLastIndex((files) => !isSlowRun(files));
@@ -91,7 +104,7 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // edited\n");
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
     await h.batch("src/strings.ts", "src/math.ts");
-    await h.scheduler.idle();
+    await idleSlow(h);
     runs = paths(h).slice(before);
     expect(runs[0]).toEqual(["test/math.test.ts"]);
     expect(runs.slice(1).sort()).toEqual([[STRINGS], [UPPER]]);
@@ -104,8 +117,9 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
-    await delay(300);
+    // In the turn, not past the slow lane's looks, which wait for its end.
+    await idleOn(h);
+    await looks(h);
     expect(slowRuns(h)).toEqual([]);
     expect(h.runsOf("test/math.test.ts")).toHaveLength(1);
     const pending = store.testFileKeys
@@ -120,7 +134,8 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     expect(turn.turn === "idle" ? turn.testFiles : []).toEqual(
       SLOW_FILES.map((p) => testFileId(ref(p))),
     );
-    await waitFor(() => slowRuns(h).length === 2, 30_000);
+    await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+    expect(slowRuns(h).length === 2).toBe(true);
   });
 
   it("runs on requestSlowSuite while a consumer is in a turn", async () => {
@@ -130,14 +145,15 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    await idleOn(h);
     expect(slowRuns(h)).toEqual([]);
     const request = await h.scheduler.requestSlowSuite();
     // Row 011-325: the answer names the record of its covered files.
     const revision = h.scheduler.status().revision;
     expect(request).toEqual({ revision, queued: 2, coveredId: expect.any(String) });
-    await waitFor(() => slowRuns(h).length === 2, 30_000);
-    await h.scheduler.idle();
+    await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+    expect(slowRuns(h).length === 2).toBe(true);
+    await idleSlow(h);
     // Every slow file is current now: a second request queues nothing.
     expect(await h.scheduler.requestSlowSuite()).toMatchObject({ queued: 0 });
   });
@@ -156,9 +172,10 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
       })();
     };
     await h.scheduler.start();
-    await waitFor(() => slowRuns(h).length === 2, 60_000);
+    await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+    expect(slowRuns(h).length === 2).toBe(true);
     await edit;
-    await h.scheduler.idle();
+    await idleSlow(h);
     const runs = paths(h);
     const first = runs.findIndex(isSlowRun);
     expect(runs.slice(first)).toEqual([
@@ -179,16 +196,19 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
       options({ slow: { slotDir: slotDir(), recheckMs: 50, load: () => [load], cpus: () => 1 } }),
     );
     await h.scheduler.start();
-    await waitFor(() => h.runsOf("test/math.test.ts").length === 1, 60_000);
-    await delay(200);
+    await until(h, () => h.runsOf("test/math.test.ts").length === 1, { driven: SLOW_DRIVEN });
+    expect(h.runsOf("test/math.test.ts").length === 1).toBe(true);
+    await looks(h);
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b; // edited\n");
     await h.batch("src/math.ts");
-    await waitFor(() => h.runsOf("test/math.test.ts").length === 2, 60_000);
-    await delay(200);
+    await until(h, () => h.runsOf("test/math.test.ts").length === 2, { driven: SLOW_DRIVEN });
+    expect(h.runsOf("test/math.test.ts").length === 2).toBe(true);
+    await looks(h);
     expect(slowRuns(h)).toEqual([]);
     load = 0.5;
-    await waitFor(() => slowRuns(h).length === 2, 60_000);
-    await h.scheduler.idle();
+    await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+    expect(slowRuns(h).length === 2).toBe(true);
+    await idleSlow(h);
     expect(
       readDaemonNotes(store, h.worktreeId).some((n) => n.text.includes("ran under load")),
     ).toBe(false);
@@ -205,8 +225,9 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
       },
     });
     await h.scheduler.start();
-    await waitFor(() => slowRuns(h).length === 2, 60_000);
-    await h.scheduler.idle();
+    await until(h, () => slowRuns(h).length === 2, { driven: SLOW_DRIVEN });
+    expect(slowRuns(h).length === 2).toBe(true);
+    await idleSlow(h);
     const notes = readDaemonNotes(store, h.worktreeId).filter((n) =>
       n.text.includes("ran under load"),
     );
@@ -225,8 +246,8 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
     const store = openRepoStore(repo.commonDir);
     const shared = slotDir();
     const slow = { slotDir: shared, recheckMs: 50, load: () => [0], cpus: () => 1 };
-    const a = await openHarness(repo.main, store, repo.commonDir, options({ slow }));
-    const b = await openHarness(other, store, repo.commonDir, options({ slow }));
+    const a = await openHarness(repo.main, store, repo.commonDir, hostOptions({ slow }));
+    const b = await openHarness(other, store, repo.commonDir, hostOptions({ slow }));
     let active = 0;
     let most = 0;
     for (const h of [a, b]) {
@@ -270,13 +291,13 @@ describe("the slow slot shared by two worktrees (spec 004 D2)", SLOW, () => {
       repo.main,
       store,
       repo.commonDir,
-      options({ policy, slow: slow(aLoad) }),
+      hostOptions({ policy, slow: slow(aLoad) }),
     );
     const b = await openHarness(
       other,
       store,
       repo.commonDir,
-      options({ policy, slow: slow(() => 0) }),
+      hostOptions({ policy, slow: slow(() => 0) }),
     );
     const starts: string[] = [];
     const isSlow = (files: readonly TestFileRef[]) =>
@@ -349,8 +370,9 @@ describe("a slow run whose keyed input changed (spec 004 D4)", SLOW, () => {
       h.write("src/strings.ts", "export const upper = (s: string) => s.toUpperCase(); // moved\n");
     };
     await h.scheduler.start();
-    await waitFor(() => h.runsOf(STRINGS).length === 2, 60_000);
-    await h.scheduler.idle();
+    await until(h, () => h.runsOf(STRINGS).length === 2, { driven: SLOW_DRIVEN });
+    expect(h.runsOf(STRINGS).length === 2).toBe(true);
+    await idleSlow(h);
     expect(firstKey).not.toBeNull();
     expect(store.results.byKey(firstKey)).toEqual([]);
     expect(h.keyOf(STRINGS)).not.toBe(firstKey);
@@ -366,11 +388,11 @@ describe("inheriting a slow result (spec 004 D5, D6)", SLOW, () => {
     const policy = slowPolicy([STRINGS]);
     const a = await openHarness(repo.main, store, repo.commonDir, options({ policy }));
     await a.scheduler.start();
-    await a.scheduler.idle();
+    await idleSlow(a);
     expect(a.runsOf(STRINGS)).toHaveLength(1);
     const b = await openHarness(other, store, repo.commonDir, options({ policy }));
     await b.scheduler.start();
-    await b.scheduler.idle();
+    await idleSlow(b);
     return { store, a, b };
   }
 

@@ -10,9 +10,10 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { SlowTierActivity } from "../../src/core/types/status.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn, until } from "./drive-fixture.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow, SLOW_DRIVEN } from "./slow-drive.js";
 import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
@@ -50,6 +51,7 @@ function options(load = 0, dir = slotDir(), maxParallel?: number): HarnessOption
     slow: { slotDir: dir, recheckMs: 50, load: () => [load], cpus: () => 1 },
     // A held run waits before the Vitest adapter's queue, as in its own slow lane (004-18).
     runnerPartBesideRun: true,
+    clock: "virtual",
   };
 }
 
@@ -68,7 +70,7 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
     await delivery.startTurn(consumer);
     await h.scheduler.start();
     // Task 004-60: "fast" while the baseline runs, then the reason it waits after it.
-    await waitFor(() => waitingFor(activity()) === "idle", 60_000);
+    await until(h, () => waitingFor(activity()) === "idle", { driven: SLOW_DRIVEN });
     expect(activity()).toEqual({ kind: "waiting", for: "idle" });
   });
 
@@ -81,7 +83,7 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
     try {
       const { h, activity } = await harness(0, dir);
       await h.scheduler.start();
-      await waitFor(() => waitingFor(activity()) === "slot", 60_000);
+      await until(h, () => waitingFor(activity()) === "slot", { driven: SLOW_DRIVEN });
       expect(activity()).toEqual({ kind: "waiting", for: "slot" });
     } finally {
       held?.release();
@@ -91,7 +93,7 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
   it("waits for load while the guard defers", async () => {
     const { h, activity } = await harness(8);
     await h.scheduler.start();
-    await waitFor(() => waitingFor(activity()) === "load", 60_000);
+    await until(h, () => waitingFor(activity()) === "load", { driven: SLOW_DRIVEN });
     expect(activity()).toEqual({ kind: "waiting", for: "load" });
   });
 
@@ -101,17 +103,18 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
     h.runner.beforeRun = (files: readonly TestFileRef[]) => {
       if (files.some((f) => SLOW_FILES.includes(f.path))) seen.push(activity());
     };
-    const before = Date.now();
+    // Row 011-381: `since` is on the scheduler's virtual clock.
+    const before = h.now();
     await h.scheduler.start();
-    await waitFor(() => seen.length === 2, 60_000);
-    await h.scheduler.idle();
+    await until(h, () => seen.length === 2, { driven: SLOW_DRIVEN });
+    await idleSlow(h);
     for (const entry of seen) {
       expect(entry).toMatchObject({ kind: "running", lastDurationMs: null });
       if (entry?.kind !== "running") continue;
       expect(SLOW_FILES).toContain(entry.path);
       expect(entry.since).toBeGreaterThanOrEqual(before);
     }
-    await waitFor(() => activity() === null, 10_000);
+    expect(activity()).toBeNull();
   });
 
   it("names every file an idle tier runs, and the line counts them (004-35)", async () => {
@@ -132,10 +135,12 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
     const { delivery, consumer } = await h.consumer();
     await delivery.startTurn(consumer);
     await h.scheduler.start();
-    await h.scheduler.idle();
+    // Row 011-381: in the turn, not past the slow lane's looks, which wait for its end.
+    await idleOn(h);
     const slow = hold(h, SLOW_FILES);
     await delivery.endTurn(consumer);
-    await expect.poll(() => slow.held.length, { timeout: 60_000 }).toBe(2);
+    await until(h, () => slow.held.length === 2, { driven: SLOW_DRIVEN });
+    expect(slow.held).toHaveLength(2);
     const seen = activity();
     expect(seen).toMatchObject({ kind: "running", lastDurationMs: null });
     if (seen?.kind !== "running") return;
@@ -146,8 +151,8 @@ describe("the slow tier's published activity (spec 004 D8)", SLOW, () => {
       `; running 2 slow files since ${clockText(seen.since)}: ${a} and ${b} (no earlier run).`,
     );
     slow.release();
-    await h.scheduler.idle();
-    await waitFor(() => activity() === null, 10_000);
+    await idleSlow(h);
+    expect(activity()).toBeNull();
   });
 });
 
@@ -202,7 +207,8 @@ describe("the slow tier's activity when a slow run ends (review wave 2, B1)", SL
     });
     const slow = hold(h, SLOW_FILES);
     await h.scheduler.start();
-    await expect.poll(() => slow.held.length, { timeout: 60_000 }).toBe(1);
+    await until(h, () => slow.held.length === 1, { driven: SLOW_DRIVEN });
+    expect(slow.held).toHaveLength(1);
     const first = slow.held[0] ?? "";
     const fast = hold(h, [MATH]);
     h.write("src/math.ts", "export const add = (a: number, b: number) => a + b + 1;\n");
@@ -231,7 +237,7 @@ describe("the slow tier's activity when a slow run ends (review wave 2, B1)", SL
     expect(line).not.toContain(`running ${first}`);
     expect(line).toContain("1 pending, waiting for fast test files");
     fast.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
   });
 
   it("says the same of a discarded run, its file queued again (control)", async () => {
@@ -245,14 +251,15 @@ describe("the slow tier's activity when a slow run ends (review wave 2, B1)", SL
     expect(line).not.toContain(`running ${first}`);
     expect(line).toContain("2 pending, waiting for fast test files");
     fast.release();
-    await h.scheduler.idle();
+    await idleSlow(h);
   });
 
   it("clears a running activity when the scheduler closes", async () => {
     const { h, activity } = await harness(0, undefined, 1);
     const slow = hold(h, SLOW_FILES);
     await h.scheduler.start();
-    await expect.poll(() => slow.held.length, { timeout: 60_000 }).toBe(1);
+    await until(h, () => slow.held.length === 1, { driven: SLOW_DRIVEN });
+    expect(slow.held).toHaveLength(1);
     expect(activity()).toMatchObject({ kind: "running" });
     const closed = h.scheduler.close();
     slow.release();

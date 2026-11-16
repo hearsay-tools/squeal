@@ -8,9 +8,10 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
+import { idleOn, until } from "./drive-fixture.js";
 import { createRepo, openRepoStore } from "./repo.js";
+import { idleSlow, SLOW_DRIVEN } from "./slow-drive.js";
 import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
@@ -39,6 +40,7 @@ function options(baseline: Partial<Policy> = {}): HarnessOptions {
     tierSize: 4,
     policy: { ...baseline, slow: { ...DEFAULT_POLICY.slow, include: SLOW_FILES, maxParallel: 1 } },
     slow: { slotDir, recheckMs: 50, load: () => [0], cpus: () => 1 },
+    clock: "virtual",
   };
 }
 
@@ -65,8 +67,8 @@ async function ranOnce() {
   );
   git(repo.main, ["commit", "-qam", "slower strings"]);
   await first.scheduler.start();
-  await waitFor(() => slowRuns(first).length === 2, 60_000);
-  await first.scheduler.idle();
+  await until(first, () => slowRuns(first).length === 2, { driven: SLOW_DRIVEN });
+  await idleSlow(first);
   const durations = new Map(
     SLOW_FILES.map((path) => [path, durationOf(store.results.byKey(first.keyOf(path), 0))]),
   );
@@ -95,18 +97,15 @@ async function restart(repo: ReturnType<typeof createRepo>, store: Harness["stor
     });
   };
   await second.scheduler.start();
-  await waitFor(() => named.length === 2, 60_000);
-  await second.scheduler.idle();
+  await until(second, () => named.length === 2, { driven: SLOW_DRIVEN });
+  await idleSlow(second);
   return named;
 }
 
 describe("a restarted daemon keeps the slow files' last durations across a key move", SLOW, () => {
   it("after a kill during the slow tier at the new keys: the line names them, shortest first", async () => {
     const { repo, store, first, durations } = await ranOnce();
-    let reached = () => {};
-    const atRun = new Promise<void>((resolve) => {
-      reached = resolve;
-    });
+    let reached = false;
     let release = () => {};
     const held = new Promise<void>((resolve) => {
       release = resolve;
@@ -114,11 +113,13 @@ describe("a restarted daemon keeps the slow files' last durations across a key m
     // The first daemon starts its slow tier at the new keys and never records it, as a kill leaves it.
     first.runner.beforeRun = async (files) => {
       if (!isSlow(files)) return;
-      reached();
+      reached = true;
       await held;
     };
     const before = await rekey(first);
-    await atRun;
+    // Row 011-381: the clock moves to the slow lane's look that starts the tier.
+    await until(first, () => reached, { driven: SLOW_DRIVEN });
+    expect(reached).toBe(true);
     expect(SLOW_FILES.map((path) => first.keyOf(path))).not.toEqual(before);
 
     try {
@@ -138,7 +139,8 @@ describe("a restarted daemon keeps the slow files' last durations across a key m
     const { delivery, consumer } = await first.consumer();
     await delivery.startTurn(consumer);
     const before = await rekey(first);
-    await first.scheduler.idle();
+    // Row 011-381: not past the slow lane's looks, which wait for the turn's end.
+    await idleOn(first);
     expect(SLOW_FILES.map((path) => first.keyOf(path))).not.toEqual(before);
     expect(slowRuns(first)).toHaveLength(2);
     await first.scheduler.close();
