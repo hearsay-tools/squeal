@@ -27,7 +27,8 @@ function context(out: HookResult): string {
 }
 
 describe("the SessionStart primer", () => {
-  it.each(["startup", "resume", "compact"])("follows the registration on %s", async (source) => {
+  // Row 005-91 (d): not on `resume`, whose context holds it (`session-resume.test.ts`).
+  it.each(["startup", "compact"])("follows the registration on %s", async (source) => {
     const r = squealRepo();
     r.apply(r.fail());
     const text = context(
