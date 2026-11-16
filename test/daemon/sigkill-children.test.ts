@@ -194,9 +194,17 @@ describe.runIf(process.platform === "linux")(
         30_000,
         "the full check's process",
       );
+      // Freeze the check before it can answer, so the claim stays unanswered
+      // whatever the disk's speed (review 0.1.521 N1).
+      process.kill(check, "SIGSTOP");
+      suite.cleanup(() => {
+        if (alive(check)) process.kill(check, "SIGKILL");
+      });
       const claimOf = () => withStore(repo, (store) => store.meta.get(META_FULL_CHECK));
       const killedClaim = claimOf();
       expect(killedClaim).not.toBeNull();
+      const holder = withStore(repo, (store) => store.meta.get(META_FULL_CHECK_HOLDER));
+      expect(JSON.parse(holder ?? "null")?.process?.pid).toBe(killedPid);
       killed.child.kill("SIGKILL");
       await killed.exited;
       // The orphaned check's answer goes nowhere: end it, so only the replacement checks.
