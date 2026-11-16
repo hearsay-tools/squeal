@@ -89,13 +89,15 @@ export function readFocused(
  * it claims no key, leaves its files queued as they were, writes each
  * file's entry in the focused meta row with `endedAt` null, and counts as a
  * tier of its named wait's group, or of the first group when no wait's
- * group holds a file of it (`RunQueue.focusedSelected`, row 011-283).
+ * group holds a file of it (`RunQueue.focusedSelected`, row 011-283), at
+ * `at`, the step's reading (row 011-372), else now.
  */
 export function startFocusedTier(
   context: SchedulerContext,
   ledger: Ledger,
   picked: readonly { entry: FocusEntry; file: FileState; key: CheckKey }[],
   files: readonly TierFile[],
+  at?: EpochMs,
 ): Tier | null {
   const { store, worktreeId } = context;
   const first = files[0];
@@ -134,6 +136,9 @@ export function startFocusedTier(
     tier.runId,
   );
   // Row 011-283 (N1): a focused tier of a named wait's group is that group's tier.
-  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
+  ledger.queue.focusedSelected(
+    picked.map((p) => p.entry.ref),
+    at,
+  );
   return tier;
 }

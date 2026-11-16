@@ -673,7 +673,7 @@ export class SlowTier {
     // The activity names the files in the transaction that marks them running (review wave 2, B1; 004-35).
     let started: Tier | null = null;
     try {
-      started = this.#start(context, ledger, picked, since, lease, group);
+      started = this.#start(context, ledger, picked, since, lease, group, view.at);
     } finally {
       if (started === null) lease?.release();
     }
@@ -708,9 +708,10 @@ export class SlowTier {
     since: EpochMs,
     lease: PoolLease | undefined,
     group: ResolvedGroup,
+    at: EpochMs,
   ): Tier | null {
     return context.store.transaction(() => {
-      const tier = startTier(context, ledger, picked, tierKindOf(group), lease);
+      const tier = startTier(context, ledger, picked, tierKindOf(group), lease, { at });
       const first = tier?.files[0];
       if (tier === null || first === undefined) return null;
       this.#flying = tier;
