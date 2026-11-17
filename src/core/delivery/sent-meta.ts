@@ -17,6 +17,11 @@ const SETS = new Set([
 ]);
 const DELETE = "DELETE FROM meta WHERE key = ?";
 
+/** Whether `sql` is the read of one `meta` key, the only read a pending write overlays. */
+export function readsMeta(sql: string): boolean {
+  return sql === READ;
+}
+
 /**
  * The row `sql` reads when it reads one `meta` key the `pending` writes
  * wrote last: `null` when they deleted it. `undefined` when `sql` is

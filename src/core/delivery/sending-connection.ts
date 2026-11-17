@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Statement } from "../daemon/write-batch.js";
 import { type Params, type Row, rollback } from "../store/connection.js";
 import { type HeldTransaction, HoldingConnection } from "./held-connection.js";
-import { overlaidMeta } from "./sent-meta.js";
+import { overlaidMeta, readsMeta } from "./sent-meta.js";
 
 /**
  * Where a `SendingConnection` sends its writes (`DaemonWriter`): the lease
@@ -135,6 +135,8 @@ export class SendingConnection extends HoldingConnection {
   override get(sql: string, ...params: Params): Row | null {
     if (this.#direct) return super.get(sql, ...params);
     this.#readable();
+    // Row 005-123: only a meta read is overlaid, so another read builds no pending list.
+    if (!readsMeta(sql)) return super.get(sql, ...params);
     const overlaid = overlaidMeta(sql, params, this.#pending());
     return overlaid === undefined ? super.get(sql, ...params) : overlaid;
   }
