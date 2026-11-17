@@ -215,12 +215,31 @@ describe("a lease's process (review 0.1.442 B3)", () => {
     });
     expect(asked).toEqual([PROCESS]);
     alive = false;
-    t.advance(LEASE_TTL_MS - 1);
-    // Asked again only once its time passed again.
-    expect(leaseFor(t.d, "2 next hook")).toMatchObject({ token: null });
-    expect(asked).toHaveLength(1);
     t.advance(1);
     expect(tokenOf(leaseFor(t.d, "2 next hook"))).not.toBe(token);
+  });
+
+  it("ends a killed hook's lease within its time, so the next hook need not wait it out (row 011-393)", () => {
+    let alive: boolean | null = true;
+    const t = desk({ alive: () => alive });
+    const token = tokenOf(leaseFor(t.d, "1 killed hook", PROCESS));
+    t.advance(1);
+    expect(leaseFor(t.d, "2 hook")).toMatchObject({ token: null, holder: "1 killed hook" });
+    alive = null;
+    expect(leaseFor(t.d, "2 hook")).toMatchObject({ token: null, holder: "1 killed hook" });
+    alive = false;
+    expect(tokenOf(leaseFor(t.d, "2 hook"))).not.toBe(token);
+  });
+
+  it("keeps a killed hook's lease while one of its writes still waits on the store", async () => {
+    let alive = true;
+    const t = desk({ alive: () => alive });
+    const token = tokenOf(leaseFor(t.d, "1 killed hook", PROCESS));
+    write(t.d, { token });
+    alive = false;
+    expect(leaseFor(t.d, "2 hook")).toMatchObject({ token: null, holder: "1 killed hook" });
+    await t.settle();
+    expect(tokenOf(leaseFor(t.d, "2 hook"))).not.toBe(token);
   });
 
   it("ends a lease past its time when its process cannot be told, as one with no process", () => {
