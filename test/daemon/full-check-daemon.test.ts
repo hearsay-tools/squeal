@@ -16,7 +16,7 @@ import { childEnv, createFixtureRepo, type FixtureRepo, ping, SLOW, withStore } 
 
 /*
  * Row 011-226 (spec 011, store failures as amended 2026-10-25), against real
- * daemons of two worktrees on one store: the start's quick check passes an
+ * daemons of two worktrees on one store: a start serves a store with an
  * index fault; the full check runs once in 24 h, after serving, in a process
  * of its own, so the socket answers meanwhile; a fault it finds stops both
  * daemons at their next heartbeat, and the next start moves the store aside.
