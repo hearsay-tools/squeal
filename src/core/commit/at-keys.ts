@@ -88,7 +88,7 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
     const store = main !== null;
     let ci: KeysAt["ci"];
     if (options.ci !== false) {
-      const input = { root, commit, main, policy: readPolicy(root), blobs };
+      const input = { root, commit, main, policy: readPolicy(root), blobs, env: options.env };
       const settled = await ciSettled(input, asked, options.ci);
       for (const [id, key] of settled.files) files.set(id, key);
       ci = { source: settled.source, settled: settled.files.size, missed: settled.missed };

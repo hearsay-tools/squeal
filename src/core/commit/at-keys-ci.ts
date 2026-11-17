@@ -1,22 +1,21 @@
-import { worktreeIdFor } from "../fs/git-layout.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { onFirstParentLine, upstreamOf } from "../shared/choose.js";
 import { fetchExport } from "../shared/fetch.js";
 import { failureOf, gitCall, networkEnv, textOf } from "../shared/git.js";
 import { FETCH_TIMEOUT_MS, LIST_TIMEOUT_MS } from "../shared/reader.js";
 import { DEFAULT_SHARED_REF, EXPORT_NAME, refOf } from "../shared/refs.js";
-import { worktreeEnvironment } from "../store/environments.js";
 import { sourceLabel } from "../store/imports.js";
 import { decodeBundle, type ExportedResult, type ResultsBundle } from "../store/transfer-bundle.js";
 import { importRefusal } from "../store/transfer-import.js";
-import { commitSegments, keyOver, NO_PARTS, proven, rekeyedHash } from "../store/transfer-rekey.js";
+import { commitSegments, keyOver, NO_PARTS, proven } from "../store/transfer-rekey.js";
 import type { CheckId } from "../types/check.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
-import type { CheckKey, EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
+import type { CheckKey, FileHash, TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import type { KeyAt } from "./at-keys-checkout.js";
+import { environmentsAt, type ProofInput, sameObserved } from "./at-keys-ci-proof.js";
 
 /*
  * Row 023-17 (spec 023 D2, 018 D2, D11, D13, D14): before the checkout,
@@ -60,6 +59,8 @@ export interface CiInput {
   readonly policy: Policy;
   /** Each file's blob id at the commit (`committedBlobs`). */
   readonly blobs: ReadonlyMap<RelativePath, FileHash>;
+  /** The call's variables, which the checkout's keyer reads (review wave-6 B2). */
+  readonly env: NodeJS.ProcessEnv;
 }
 
 const NONE: CiSettled = { files: new Map(), source: null, missed: null };
@@ -78,7 +79,7 @@ export async function ciSettled(
   const read = await exportOf(input, call);
   if (typeof read === "string") return { ...NONE, missed: read };
   if (read === null) return NONE;
-  const files = settle(input.main, input, read, asked);
+  const files = await settle({ ...input, main: input.main }, read, asked);
   return { files, source: sourceLabel(read.header), missed: null };
 }
 
@@ -106,6 +107,10 @@ async function exportOf(input: CiInput, call: CiCall): Promise<ResultsBundle | s
   if (typeof bundle === "string") return `${ref}: ${bundle}`;
   if (bundle.header.commit !== commit) {
     return `${ref}: its header names commit ${bundle.header.commit ?? "none"}`;
+  }
+  // Review wave-6 B3: the ref's name does not prove CI wrote it; the recorded source does.
+  if (bundle.header.source.kind !== "github") {
+    return `${ref}: ${sourceLabel(bundle.header)}, not CI's`;
   }
   const refusal = importRefusal(bundle);
   return refusal === null ? bundle : `${ref}: ${refusal}`;
@@ -142,16 +147,19 @@ async function fetched1(
   return Buffer.isBuffer(bytes) ? bytes : `fetching ${ref} from ${remote}: ${bytes.failed}`;
 }
 
-/** Each exported file of `asked` the export proves here, with CI's results at its key here. */
-function settle(
-  main: Store,
-  input: CiInput,
+/**
+ * Each exported file of `asked` the export proves here, with CI's results
+ * at its key here: the environment and the observed rows the checkout
+ * would key it with now are the export's (`at-keys-ci-proof.ts`).
+ */
+async function settle(
+  input: ProofInput,
   bundle: ResultsBundle,
   asked: readonly TestFileRef[] | null,
-): Map<string, KeyAt> {
+): Promise<Map<string, KeyAt>> {
   const at = commitSegments(input.blobs);
   const wanted = asked === null ? null : new Set(asked.map(testFileId));
-  const hashes = environmentsHere(main, input.root, bundle);
+  const hashes = await environmentsAt(input, bundle);
   const results = new Map<string, ExportedResult[]>();
   for (const r of bundle.results) {
     const id = testFileId({ project: r.project, path: r.testPath });
@@ -164,36 +172,11 @@ function settle(
     const environment = bundle.environments.find((e) => e.project === file.project);
     const here = hashes.get(file.project) ?? null;
     if (environment === undefined || here === null || file.closure === null) continue;
-    if (!proven(file, environment, at)) continue;
+    if (!proven(file, environment, at) || !sameObserved(input.main, bundle, file)) continue;
     const held = (results.get(id) ?? []).filter((r) => r.key === file.key);
     if (held.length === 0) continue;
     const key = keyOver(here, file, file.closure.paths, at, file.keyParts ?? NO_PARTS);
     out.set(id, { key, stored: held.map((r) => recordOf(r, key, bundle)) });
-  }
-  return out;
-}
-
-/**
- * Per exported project, the environment hash a keyer on this machine gives
- * it: this worktree's, when 018 D10 finds it equal to the export's and it
- * was recorded under this process's Node, platform and arch; else `null`.
- */
-function environmentsHere(
-  main: Store,
-  root: AbsolutePath,
-  bundle: ResultsBundle,
-): Map<string, EnvironmentHash | null> {
-  const worktreeId = worktreeIdFor(root);
-  const out = new Map<string, EnvironmentHash | null>();
-  for (const exported of bundle.environments) {
-    const here = worktreeEnvironment(main, worktreeId, exported.project);
-    const machine = here?.descriptor ?? null;
-    const stale =
-      machine !== null &&
-      (machine.nodeVersion !== process.version ||
-        machine.platform !== process.platform ||
-        machine.arch !== process.arch);
-    out.set(exported.project, stale ? null : rekeyedHash(exported, here));
   }
   return out;
 }

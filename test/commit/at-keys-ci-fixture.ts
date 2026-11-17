@@ -7,6 +7,7 @@ import { readPolicy } from "../../src/core/daemon/policy.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
+import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { openDaemonKeying } from "../../src/core/scheduler/daemon-keying.js";
 import { EXPORT_NAME } from "../../src/core/shared/refs.js";
 import { worktreeEnvironments } from "../../src/core/store/environments.js";
@@ -29,6 +30,10 @@ import { type Fixture, git, link } from "./at-keys-fixture.js";
  * pass per file, published as a results ref; and a remote for the
  * fixture's repository, so the export's commit is on `main`'s line.
  */
+
+/** A file's entry in the exported observed maps. */
+const observedOf = (paths: readonly string[] | undefined) =>
+  paths === undefined ? {} : { observed: paths };
 
 /** Runs `body` with the daemon's keying of `tree` over `store`; closes the adapters after. */
 async function keyedIn<T>(
@@ -61,12 +66,16 @@ export async function ciExportAt(
   f: Fixture,
   commit: string,
   files: readonly TestFileRef[],
+  /** The shared `observed` rows CI's run recorded, by test path (review wave-6 B1). */
+  observed: Readonly<Record<string, readonly string[]>> = {},
 ): Promise<ResultsBundle> {
   const tree = join(f.dir, `ci-${commit.slice(0, 8)}-${Date.now()}`) as AbsolutePath;
   git(f.root, "worktree", "add", "-q", "--detach", tree, commit);
   const scratchDir = mkdtempSync(join(f.dir, "ci-store-")) as AbsolutePath;
   const scratch = openStore(scratchDir);
   if (isStoreOpenFailure(scratch)) throw new Error(scratch.reason);
+  if (Object.keys(observed).length > 0)
+    scratch.meta.set(observedMetaKey(""), JSON.stringify(observed));
   try {
     link(tree);
     return await keyedIn(tree, scratch, async (keying) => {
@@ -86,7 +95,7 @@ export async function ciExportAt(
           ...ref,
           key,
           closure: { paths, complete, method },
-          observed: {},
+          observed: observedOf(observed[ref.path]),
           keyParts,
         });
         results.push({
