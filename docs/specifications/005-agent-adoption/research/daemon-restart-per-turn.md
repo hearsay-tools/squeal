@@ -1,8 +1,8 @@
 # 005-99: a task alone in its worktree restarts its daemon at every turn
 
-Researcher of row 005-99 (task fb9aacb2), 2026-11-17, 06:40Z to 07:30Z. Brief: `daemon-restart-per-turn-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `status.md`, `tasks/005-95/notes.md`, `../011-core/research/daemon-memory.md`, `restart-baseline.md`, `daemon-idle-cpu.md`, `hand-runs-2026-11-16.md`. Source at `18d475a5f` (0.1.538); the live daemons ran the installed 0.1.531 bundle. Claude Code 2.1.321.
+Researcher of row 005-99 (task fb9aacb2), 2026-11-17, 06:40Z to 07:10Z. Brief: `daemon-restart-per-turn-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `status.md`, `tasks/005-95/notes.md`, `../011-core/research/daemon-memory.md`, `restart-baseline.md`, `daemon-idle-cpu.md`, `hand-runs-2026-11-16.md`. Source at `18d475a5f` (0.1.538); the live daemons ran the installed 0.1.531 bundle. Claude Code 2.1.321.
 
-Data, read-only: Squawk run logs `~/projects/{cezar,squeal}/.ai/squawk/runs/*.ndjson` changed since 2026-11-14; the daemon logs `~/projects/{cezar,squeal}/.git/squeal/logs/` (they reach back to 2026-11-14 15:00Z, 2.6 days); Claude Code transcripts under `~/.claude/projects/`; the two stores opened `immutable=1`; `/proc` of live daemons. A passive watch of `/proc` ran 06:59Z to 07:19Z. No test, daemon or load was started. Probes: `probes/daemon-restart-per-turn/` (throwaway, README there).
+Data, read-only: Squawk run logs `~/projects/{cezar,squeal}/.ai/squawk/runs/*.ndjson` changed since 2026-11-14; the daemon logs `~/projects/{cezar,squeal}/.git/squeal/logs/` (they reach back to 2026-11-14 15:00Z, 2.6 days); Claude Code transcripts under `~/.claude/projects/`; the two stores opened `immutable=1`; `/proc` of live daemons. A passive watch of `/proc` ran 06:59Z to 07:09Z. No test, daemon or load was started. Probes: `probes/daemon-restart-per-turn/` (throwaway, README there).
 
 **Load.** "Busy CPUs" is the number Squeal's pool logged within 120 s of a sample (24 CPUs). Resumes that started a daemon: cezar median 17.3, p90 23.3 (48 of 48 known); squeal median 13, p90 23 (61 of 101 known). The passive watch: load average 17 to 26.
 
@@ -76,7 +76,7 @@ Read in source code at `18d475a5f`:
 5. Under `lookup-only` the first commit writes every listed file's state (`commitFirst`): median 43,167 rows (cezar, 579 starts) and 26,026 rows (squeal, 330 starts with a long write). Cezar's start held the shared store's write lock 3.6 s in sum (median, p90 10.1 s), which other worktrees wait for.
 6. Lost state: a parked registration keeps `scanned` only when the same daemon is live (`registered.ts:202`), and the Vitest module graph starts cold.
 
-CPU per start, passive watch 06:59Z to 07:19Z (`start-cpu.mjs`, load average 17 to 26), CPU seconds of the daemon process alone at its `serving` line:
+CPU per start, passive watch 06:59Z to 07:09Z (`start-cpu.mjs`, load average 17 to 26), CPU seconds of the daemon process alone at its `serving` line:
 
 | Start | n | To `serving` | CPU | Private at `serving` |
 |---|---|---|---|---|
