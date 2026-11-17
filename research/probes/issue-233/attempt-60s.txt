@@ -1,0 +1,4 @@
+Command: python3 research/probes/issue-233/probe.py --wait-ms 60000
+Run via Squawk job issue-233-60s on 2026-11-17.
+Exit: 1 (load guard; no fixture or daemon created)
+SKIP: load 31.08056640625 > 24 CPUs
