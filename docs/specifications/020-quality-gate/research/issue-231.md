@@ -26,7 +26,7 @@ were not executed here. All source findings below refer to this checkout.
 
 ## 1–2. Invocation evidence
 
-**verified by experiment — 0.1.543.** The [throwaway probe](../../../../research/probes/issue-231/README.md) used one real node:test file, coverage enabled, and no daemon. Each call used `codeGateCommand(["--base", "main", "--json", "--timeout", "15"], io)`.
+**verified by experiment — 0.1.543.** The [throwaway probe](probes/issue-231/README.md) used one real node:test file, coverage enabled, and no daemon. Each call used `codeGateCommand(["--base", "main", "--json", "--timeout", "15"], io)`.
 
 | Call | Report / exit | Wall / runner duration | Checkpoints | Runs | Results | Results joined to runs |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
@@ -125,3 +125,5 @@ failures and 119 unknown test files. No suite pass is claimed.
 - [011 spec](../../011-core/spec.md): C1 store/log layout, C6 checkpoint meaning, C7 replacement/pruning; [011 decisions](../../011-core/status.md).
 - [023 spec](../../023-results-at-commit/spec.md): Non-goals, D3–D4; [023 status](../../023-results-at-commit/status.md), 2026-11-16: “Keep 7 days”.
 - Source paths above are under `src/core/` except `code-gate*.ts` under `src/cli/`; `keep*.ts` under `src/core/code/gate/`; `store-records.ts` and `policy.ts` under `src/core/types/`; store files under `src/core/store/`, result writes under `repos/results.ts`. [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/b0da5d149d445ea92c8517497141a7ed6dbbcc96/src).
+
+Coordinator integration: probes moved from the worker’s root `research/` path to this spec’s `research/probes/issue-231/`, with imports adjusted. The commands above record the original run location; the probe README gives its current command.

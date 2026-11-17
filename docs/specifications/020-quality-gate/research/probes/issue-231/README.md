@@ -3,7 +3,7 @@
 These are research probes, not product tests. Run from the repository root:
 
 ```sh
-pnpm exec tsx research/probes/issue-231/probe.ts
+pnpm exec tsx docs/specifications/020-quality-gate/research/probes/issue-231/probe.ts
 ```
 
 The probe refuses live work when one-minute load exceeds available CPUs. It

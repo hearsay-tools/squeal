@@ -5,10 +5,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, loadavg, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { codeGateCommand } from "../../../src/cli/code-gate.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
-import { storePaths } from "../../../src/core/store/paths.js";
-import type { ResultRecord } from "../../../src/core/types/store-records.js";
+import { codeGateCommand } from "../../../../../../src/cli/code-gate.js";
+import { isStoreOpenFailure, openStore } from "../../../../../../src/core/store/open.js";
+import { storePaths } from "../../../../../../src/core/store/paths.js";
+import type { ResultRecord } from "../../../../../../src/core/types/store-records.js";
 
 const load = loadavg()[0];
 const cpus = availableParallelism();
