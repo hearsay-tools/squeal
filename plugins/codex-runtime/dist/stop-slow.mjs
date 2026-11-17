@@ -34,6 +34,7 @@ var WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
+  editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
   departed: { prefix: "departed:", owner: "delivery/expiry" },
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
@@ -8231,7 +8232,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.534";
+  if (true) return "0.1.535";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
