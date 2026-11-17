@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
-import { expectAgrees, headerRevision } from "../e2e/agree.js";
+import { expectAgrees, headerRevision, quietPoint } from "../e2e/agree.js";
 import { settled } from "../evals/status-snapshot.js";
 
 // Review 0.1.318 N1: the e2e agreement helper reads each header form the product prints. Row
@@ -44,21 +44,32 @@ describe("e2e agreement: the header forms (rows 011-205, 005-93, 005-94)", () =>
     expect(() => expectAgrees(full(completed), completed)).not.toThrow();
   });
 
-  // Results landing between the hook and the status read add current files at one revision:
-  // the hook may count fewer than status, never more, and the same files listed.
-  it("rejects a registration that counts more current test files than status, or other files", () => {
-    const fewer = {
+  // Review 0.1.537 S1, the sequence the probe sampled (worktrees.test.ts, both plugins): the edit
+  // settled on its check counts while the new failure's confirmation run kept its test file
+  // pending; a hook at that moment counted 1 of 2 current, the status read after the run 2 of 2.
+  it("waits for a test file's open run, then compares the counts strictly", () => {
+    const open = {
       ...settled,
-      testFileCounts: { current: 5, pending: 0, stale: 0, unknown: 1 },
+      testFileCounts: { current: 1, pending: 1, stale: 0, unknown: 0 },
+      testFilesByPhase: { running: 1, queued: 0 },
     } as StatusSnapshot;
-    expect(() => expectAgrees(full(settled), fewer)).toThrow();
-    expect(() => expectAgrees(full(fewer), fewer)).not.toThrow();
-    expect(() => expectAgrees(full(fewer), settled)).not.toThrow();
-    const more = {
-      ...settled,
-      testFileCounts: { current: 6, pending: 0, stale: 0, unknown: 1 },
+    const stable = { ...settled, testFileCounts: { current: 2, pending: 0, stale: 0, unknown: 0 } };
+    expect(open.counts.pending).toBe(0);
+    expect(quietPoint(open)).toBe(false);
+    expect(quietPoint(stable as StatusSnapshot)).toBe(true);
+    expect(() => expectAgrees(full(open), stable as StatusSnapshot)).toThrow();
+    expect(() =>
+      expectAgrees(full(stable as StatusSnapshot), stable as StatusSnapshot),
+    ).not.toThrow();
+    // A registration claiming more current files than status still fails.
+    expect(() => expectAgrees(full(stable as StatusSnapshot), open)).toThrow();
+    // With `fastOnly`, a slow file's open run is no reason to wait (spec 004 D2).
+    const slowOpen = {
+      ...open,
+      slowPending: { testFiles: 1, checks: 0, testFilesWithoutChecks: 0 },
     } as StatusSnapshot;
-    expect(() => expectAgrees(full(fewer), more)).toThrow();
+    expect(quietPoint(slowOpen, true)).toBe(true);
+    expect(quietPoint(slowOpen)).toBe(false);
   });
 
   it("rejects a header that names its commit or the checkpoint", () => {

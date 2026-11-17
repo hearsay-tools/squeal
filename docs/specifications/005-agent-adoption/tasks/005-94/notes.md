@@ -34,6 +34,10 @@ All are within `PRIMER_CAP_CHARS` (1,500).
 - **Late feed.** "these counts cover" became "these results cover", as `texts.md` 4 shows.
 - **Stop with a delta while unlisted.** `stop.ts` (not this row's) joins `formatDelta` and `knownFailuresLine` with a newline; `knownFailuresLine` now returns an empty string while unlisted with no failure, so that rare text ends with a newline.
 
+## Review 0.1.537 S1: what moved the count (a test race)
+
+The e2e `worktrees.test.ts` "runs only the affected files" step was probed in the scratch build, three runs per plugin, reading status at `e.edit`'s settle, right before the hook and right after it. Every sample was the same: at the settle, `testFileCounts` was 1 current and 1 pending (running), the check counts 0 pending, the failure current; before the hook, 2 of 2 current. The pending file is the new failure's confirmation run (001-171): its checks are current, its test file has an open run. The settle counted checks only, so it returned during that run; on CI's slower Node 22 runner the hook sampled during it (`1 of 2 test files is current`) and the status read came after it landed (2 of 2). The registration did not under-count: the file had an open run when the hook read it. The fix waits for no test file with an open run (`quietPoint` in `test/e2e/agree.ts`, used by the harness's settle) and keeps strict equality in `expectAgrees`; `test/delivery/e2e-agree.test.ts` pins that sequence.
+
 ## Seam map
 
 - The registration's and Stop's form: `headerParts` in `src/core/delivery/header.ts` (`fullLine`, `currentFilesText`); `formatRegistration` in `format.ts` puts the `Known failures` line between the line and the tier lines; `statusText` and `knownFailuresLine` in `src/harness/shared/text.ts`. `HeaderForm` keeps the name `full` for the registration's form, since `stop.ts` passes it.

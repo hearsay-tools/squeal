@@ -40,6 +40,26 @@ const NEWS = new RegExp(
   String.raw`Revision (\d+)${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run)(?:; \d+ with no result \(unknown\))?)?\.`,
 );
 
+/**
+ * Whether `s` is a quiet point (`E2E.settle`): a daemon validating, the revision's test files
+ * listed, no check pending and no test file pending. Review 0.1.537 S1: a new failure's
+ * confirmation run (001-171) keeps its test file pending while every check is current, so a
+ * point that counted checks alone let a hook count the file not current and the status read
+ * after it count it current, at one revision. With `fastOnly` (spec 004 D2), slow files may
+ * stay pending.
+ */
+export function quietPoint(s: StatusSnapshot, fastOnly = false): boolean {
+  const slow = fastOnly ? s.slowPending : undefined;
+  const checks =
+    s.counts.pending -
+    (slow?.checks ?? 0) +
+    s.testFilesWithoutChecks.pending -
+    (slow?.testFilesWithoutChecks ?? 0) +
+    s.testFilesWithoutChecks.unknown;
+  const files = (s.testFileCounts?.pending ?? 0) - (slow?.testFiles ?? 0);
+  return s.daemon.state === "alive" && s.runnerPartPending !== true && checks === 0 && files <= 0;
+}
+
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
 export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
   return [...text.matchAll(new RegExp(`^${outcome}  (.+)$`, "gm"))].map((m) => m[1] ?? "");
@@ -59,16 +79,18 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
   expect(text, text).not.toMatch(/^Revision \d+ · /m);
   expect(text, text).not.toMatch(/^Revision \d+[^\n]*: \d+ current\b/m);
   expect(text, text).not.toContain("Full-suite checkpoint");
-  // Row 005-94 (R1): the current test files the hook counted. Results that land between the
-  // hook and this status read, at the same revision, only add current files, so the hook may
-  // count fewer than status, never more; the files listed at that revision do not move.
+  // Row 005-94 (R1): the current test files the hook counted, equal to status's. Both are read
+  // at a quiet point (`quietPoint`): no test file has an open run, so the count cannot move
+  // between the hook and this read (review 0.1.537 S1).
   const files = FILES.exec(text);
   const counted = status.testFileCounts;
   if (files !== null && counted !== undefined) {
     const total = counted.current + counted.pending + counted.stale + counted.unknown;
     const [current, of] = files[1] === undefined ? [files[3], files[3]] : [files[1], files[2]];
-    expect(Number(of), text).toBe(total);
-    expect(Number(current), text).toBeLessThanOrEqual(counted.current);
+    expect({ current: Number(current), total: Number(of) }, text).toEqual({
+      current: counted.current,
+      total,
+    });
   }
   const news = NEWS.exec(text);
   if (news?.[2] !== undefined) {

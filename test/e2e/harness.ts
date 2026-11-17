@@ -20,6 +20,7 @@ import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { RUN_MISSING, runMissingConfig } from "../helpers/baseline.js";
 import type { PythonVersion } from "../helpers/pytest-env.js";
+import { quietPoint } from "./agree.js";
 import { FixtureCli } from "./fixture-cli.js";
 import { fixtureInstall, type Install, type InstallKind, uvSync } from "./install.js";
 import {
@@ -379,7 +380,8 @@ export class E2E {
   }
 
   /**
-   * Waits until status has nothing pending, a daemon validating, a revision
+   * Waits until status has nothing pending (`quietPoint`: no check and no test file with an
+   * open run, review 0.1.537 S1), a daemon validating, a revision
    * after `after` (when given) and `accept` holds. The runner part of a
    * revision counts as pending (001 D2): a node:test observed-only path
    * re-keys its test file only in the refinement, as the integration test
@@ -416,19 +418,7 @@ export class E2E {
   ): Promise<StatusSnapshot> {
     return until(what, SETTLE_WAIT_MS, async () => {
       const s = await this.status(root);
-      const slow = fastOnly ? s.slowPending : undefined;
-      const pending =
-        s.counts.pending -
-        (slow?.checks ?? 0) +
-        s.testFilesWithoutChecks.pending -
-        (slow?.testFilesWithoutChecks ?? 0) +
-        s.testFilesWithoutChecks.unknown;
-      const quiet =
-        s.daemon.state === "alive" &&
-        s.revision > after &&
-        s.runnerPartPending !== true &&
-        pending === 0;
-      return quiet && accept(s) ? s : null;
+      return s.revision > after && quietPoint(s, fastOnly) && accept(s) ? s : null;
     });
   }
 
