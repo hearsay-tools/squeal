@@ -44,3 +44,15 @@ The wave 1 review failed twice on 023-03 (`../reviews/wave-1.md` B1, `../reviews
 5. Recommend A, B, both, or another single owner, with the numbers.
 
 Findings to `research/glob-membership.md`; probes under `research/probes/glob-membership/`. Read-only on stores and other checkouts; no full suite; `timeout 600` on direct runs; no daemon left running.
+
+## Topic: keys-by-walk (row 023-15, 2026-11-17)
+
+The human, 2026-11-17, after the third review failure of git-only keys (`../reviews/wave-3.md`): "A: runner in checkout". Keys at a commit come from Squeal's own keying in the temporary checkout at that commit (023-05), exact by construction, with a fast path for test files whose inputs are unchanged since the commit. The candidate owner is the daemon itself: under `baseline.onStart: "lookup-only"` (001 D11, 011 C3) a daemon start lists, keys and looks up every test file and runs nothing.
+
+1. Time and peak memory for a lookup-only Squeal to list and key every test file in a fresh checkout plus warm install, for this repository and squawk (clone under `$TMPDIR`), at a recent main commit and at one 10 commits back, with the shared store of each (read-only copy). Split: install, Vitest/node:test start, transform walk, keying, lookup. State the load beside each number.
+2. Can that run be bounded and headless: started for one checkout, stopped as soon as every file is keyed, with no hook, no consumer, nothing left running? Name the existing command or the smallest new one (for example a `squeal keys` subcommand or a daemon flag), and whether the checkout's keys land in the shared store as that worktree's `test_file_keys`.
+3. Partial walks: can keying be limited to named test files (the changed ones), and what does it save?
+4. Fast path: which conditions make a test file's key at the commit equal to its key here without a walk (every closure blob, every `dir/` listing, every `package.json` and tsconfig on the resolution path, the runner files and the lockfile equal)? Share of test files it covers 1, 10 and 50 main commits back.
+5. Recommend the flow for `squeal status --at` and `squeal proof`, the time an agent waits, and what the git-only code on `cez/4a59bc1d` (`990b60650`, the environment steps) is still worth.
+
+Findings to `research/keys-by-walk.md`; probes under `research/probes/keys-by-walk/`. Stores read-only (`VACUUM INTO` copies); no daemon left running; no full suite; `timeout 600` on direct runs; write `~` for home paths.

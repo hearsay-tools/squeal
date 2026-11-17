@@ -44,6 +44,8 @@ squeal proof <test file>... --base <commit> [--case source|dependency|test] [--e
 
 Keys are computed, never looked up by label (first finding, recommendation).
 
+**Amended 2026-11-17 (the human, "A: runner in checkout").** Computing an older commit's closure from git objects failed three reviews (`reviews/wave-1.md`, `wave-1-rereview.md`, `wave-3.md`): a closure is the runner's resolution, which git alone does not reproduce. Keys at a commit now come from Squeal's own keying run in the temporary checkout at that commit (D4, a lookup-only start that keys and runs nothing), exact by construction. A test file whose inputs are all unchanged since the commit (closure blobs, `dir/` listings, the manifests and tsconfig on its resolution path, runner files, lockfile) keeps its current key without a checkout. The steps below stay as the environment and fast-path reference; row 023-15 measures the walk, row 023-16 builds it. Without the fast path, `squeal status --at` needs the checkout for changed files.
+
 1. **Files.** File hashes come from `git ls-tree <commit>`; they equal git blob ids (0 differences on 25,458 paths). Reuse 018 D11's `committedBlobs`, `commitSegments` and `keyOver`, with D11's closure rule: the local closure list must hold every path the result's run read, or the file is `not determined (closure)`.
 2. **Environment**, first step that yields exactly one hash (`environment-at-commit.md`, recommendation):
    1. The commit's runner-file blobs and lockfile equal this worktree's: this worktree's hash.
