@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.551";
+  if (true) return "0.1.553";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -84644,6 +84644,9 @@ var SETS = /* @__PURE__ */ new Set([
   "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value"
 ]);
 var DELETE = "DELETE FROM meta WHERE key = ?";
+function readsMeta(sql) {
+  return sql === READ;
+}
 function overlaidMeta(sql, params, pending) {
   if (sql !== READ || pending.length === 0) return void 0;
   const key3 = params[0];
@@ -84738,6 +84741,7 @@ var SendingConnection = class extends HoldingConnection {
   get(sql, ...params) {
     if (this.#direct) return super.get(sql, ...params);
     this.#readable();
+    if (!readsMeta(sql)) return super.get(sql, ...params);
     const overlaid = overlaidMeta(sql, params, this.#pending());
     return overlaid === void 0 ? super.get(sql, ...params) : overlaid;
   }

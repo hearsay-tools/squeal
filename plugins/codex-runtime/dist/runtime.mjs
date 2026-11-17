@@ -8461,7 +8461,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.551";
+  if (true) return "0.1.553";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10935,10 +10935,12 @@ function oweCounts(store, consumer, header) {
 function forgetCounts(store, consumer) {
   writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
 }
+function owesCounts(store, consumer) {
+  return readSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer) === true;
+}
 function payCounts(store, consumer, header) {
-  const key = countsOwedMetaKey(consumer.worktreeId);
-  if (owed(header) || readSlot(store, key, consumer) !== true) return {};
-  writeSlot(store, key, consumer, null);
+  if (owed(header) || !owesCounts(store, consumer)) return {};
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
   const root = store.worktrees.get(consumer.worktreeId)?.root;
   const lookupOnly = root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
   return { countsOwed: { lookupOnly } };
@@ -12220,13 +12222,13 @@ function unread(state, delivering, { countOnly, boundary }) {
 function recordNotes(store, consumer, { state, own, counted, sawEdit, lateness, lateOpen }, { shown, failed: failed2 }) {
   if (!failed2) lateness?.tell();
   const ended = !lateOpen || lateness?.caughtUp !== void 0 || failed2;
-  const move = counted && own.owed.length === 0 && shown && ended;
-  if (!move && sawEdit === void 0) return;
+  const move2 = counted && own.owed.length === 0 && shown && ended;
+  if (!move2 && sawEdit === void 0) return;
   writeState(store, consumer, {
-    since: move ? own.revision : state.since,
+    since: move2 ? own.revision : state.since,
     said: state.said || sawEdit !== void 0
   });
-  if (move) prune2(store, consumer.worktreeId);
+  if (move2) prune2(store, consumer.worktreeId);
 }
 function editTold(notes, entries, alone) {
   const failed2 = entries.some((e) => e.kind !== "fail-retired" && e.to === "fail");
@@ -12715,9 +12717,26 @@ function viewMarkOf(store, consumer) {
   return { mark: value.mark, at: value.at };
 }
 function registrationSeed(store, seed2) {
+  return underMark(store, seed2);
+}
+function underMark(store, rows) {
   const mark = currentBirthMark(store);
-  if (mark === null) return { rows: seed2, mark: null };
-  return { rows: seed2.filter((row) => row.outcome !== "pass"), mark };
+  if (mark === null) return { rows, mark: null };
+  return { rows: rows.filter((row) => row.outcome !== "pass"), mark };
+}
+function markedWrites(store, consumer, {
+  view,
+  at,
+  restricted
+}, { writes }) {
+  if (restricted) return writes;
+  const held = new Set(view.map((v) => checkIdentity(v.check)));
+  const untold = writes.filter((w) => !held.has(checkIdentity(w.check)));
+  const { rows, mark } = underMark(store, untold);
+  if (mark === null || rows.length === untold.length) return writes;
+  recordViewMark(store, consumer, { mark, at });
+  const seeded = new Set(rows);
+  return writes.filter((w) => held.has(checkIdentity(w.check)) || seeded.has(w));
 }
 function recordViewMark(store, consumer, mark) {
   const key = viewMarkMetaKey(consumer.worktreeId);
@@ -13183,9 +13202,13 @@ function createDelivery(store, options) {
       const states = store.knownStates.list(consumer.worktreeId);
       const selection = select(states);
       if (selection === "silent") return null;
-      const delta2 = plan(consumer, states, at, selection.only);
+      const view = store.views.list(consumer);
+      const delta2 = plan(consumer, states, at, selection.only, view);
       store.views.removeMany(consumer, delta2.removals);
-      store.views.writeMany(consumer, delta2.writes);
+      store.views.writeMany(
+        consumer,
+        markedWrites(store, consumer, { view, at, restricted: selection.only !== null }, delta2)
+      );
       const { live: changed, held: holds2 } = toldAtStop(
         { stop: stop2, transitions: delta2.entries.length > 0 },
         {
@@ -13664,6 +13687,9 @@ var SETS = /* @__PURE__ */ new Set([
   "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value"
 ]);
 var DELETE = "DELETE FROM meta WHERE key = ?";
+function readsMeta(sql) {
+  return sql === READ;
+}
 function overlaidMeta(sql, params, pending2) {
   if (sql !== READ || pending2.length === 0) return void 0;
   const key = params[0];
@@ -13758,6 +13784,7 @@ var SendingConnection = class extends HoldingConnection {
   get(sql, ...params) {
     if (this.#direct) return super.get(sql, ...params);
     this.#readable();
+    if (!readsMeta(sql)) return super.get(sql, ...params);
     const overlaid = overlaidMeta(sql, params, this.#pending());
     return overlaid === void 0 ? super.get(sql, ...params) : overlaid;
   }
@@ -19035,6 +19062,86 @@ function earlier(failures) {
   return failures.filter((f) => f.validity !== "current");
 }
 
+// src/core/store/write-markers.ts
+var CLOSURE_WRITES_KEY = "closure-writes";
+function statesMarkerMetaKey(worktreeId) {
+  return worktreeMetaKey("statesMarker", worktreeId);
+}
+var NEW_VALUE = "lower(hex(randomblob(8)))";
+var move = (key) => `INSERT INTO meta (key, value) VALUES (${key}, ${NEW_VALUE})
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value;`;
+var statesKey = (row) => `'${WORKTREE_META_ROWS.statesMarker.prefix}' || ${row}.worktree_id`;
+function triggersOf(table, marker) {
+  const moves = (row) => marker === "states" ? move(statesKey(row)) : move(`'${CLOSURE_WRITES_KEY}'`);
+  const on = {
+    INSERT: moves("NEW"),
+    UPDATE: `${moves("OLD")} ${moves("NEW")}`,
+    DELETE: moves("OLD")
+  };
+  return Object.entries(on).map(([event, body]) => {
+    const name2 = `squeal_marker_${table}_${event.toLowerCase()}`;
+    const sql = `CREATE TRIGGER IF NOT EXISTS ${name2} AFTER ${event} ON ${table} BEGIN ${body} END`;
+    return { name: name2, marker, sql };
+  });
+}
+var TRIGGERS3 = [
+  ...triggersOf("known_states", "states"),
+  ...triggersOf("test_file_keys", "states"),
+  ...triggersOf("test_files", "closures")
+];
+function connectionIn2(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+function armed2(conn) {
+  const names3 = new Set(
+    conn.all("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'squeal_marker_%'").map((row) => String(row.name))
+  );
+  const markers = /* @__PURE__ */ new Set(["states", "closures"]);
+  for (const trigger of TRIGGERS3) if (!names3.has(trigger.name)) markers.delete(trigger.marker);
+  return markers;
+}
+function trusted(store, marker, key) {
+  const conn = connectionIn2(store);
+  if (conn === null || !armed2(conn).has(marker)) return null;
+  return store.meta.get(key);
+}
+function statesMark(store, worktreeId) {
+  return trusted(store, "states", statesMarkerMetaKey(worktreeId));
+}
+
+// src/harness/shared/stop-states.ts
+function keepStates(store) {
+  const repo = store.knownStates;
+  let kept3 = null;
+  const keeping = {
+    list: (worktreeId, files2) => {
+      if (files2 !== void 0) return repo.list(worktreeId, files2);
+      const mark = statesMark(store, worktreeId);
+      if (mark !== null && kept3?.worktreeId === worktreeId && kept3.mark === mark) {
+        return kept3.states;
+      }
+      const states = repo.list(worktreeId);
+      kept3 = mark === null ? null : { worktreeId, mark, states };
+      return states;
+    },
+    untold: (consumer) => repo.untold(consumer),
+    get: (worktreeId, check) => repo.get(worktreeId, check),
+    upsertMany: (states) => {
+      kept3 = null;
+      repo.upsertMany(states);
+    },
+    removeMany: (worktreeId, checks) => {
+      kept3 = null;
+      repo.removeMany(worktreeId, checks);
+    }
+  };
+  store.knownStates = keeping;
+}
+
 // src/harness/shared/stop.ts
 var STOP_WAIT_CAP_MS = 1500;
 var STOP_MARGIN_MS = 250;
@@ -19054,6 +19161,7 @@ function stopTurn(input, location2, deps) {
     deps,
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
+      keepStates(context.store);
       const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
       const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
