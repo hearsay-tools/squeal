@@ -1,0 +1,65 @@
+{
+  "runtimeVersion": "0.1.531",
+  "exitCode": 3,
+  "revision": 8,
+  "selection": {
+    "outcome": "settled",
+    "waitedMs": 2028,
+    "code": 3,
+    "result": "none",
+    "reason": "not-current",
+    "verdict": {
+      "revision": 8,
+      "testFiles": 6,
+      "byClass": {
+        "current": 5,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 1
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  },
+  "testFiles": [
+    {
+      "project": "",
+      "path": "test/cli/wait-again.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    },
+    {
+      "project": "",
+      "path": "test/cli/selection-result.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    },
+    {
+      "project": "",
+      "path": "test/cli/status-paths.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    },
+    {
+      "project": "",
+      "path": "test/cli/status-wait-paths.test.ts",
+      "state": "unknown"
+    },
+    {
+      "project": "",
+      "path": "test/cli/status-wait-deadline.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    },
+    {
+      "project": "",
+      "path": "test/cli/wait/synced.test.ts",
+      "state": "current",
+      "verdict": "pass"
+    }
+  ],
+  "omissions": "Global inventory, local paths, and the unknown file claimant identity are omitted. The report describes the claim reason."
+}
