@@ -89,3 +89,19 @@ So the growth is a tenth of a millisecond at the median, below the "few millisec
 - `WORKTREE_META_ROWS`: added `editTimings`.
 
 Not changed: `KEY_FORMAT_VERSION`, any key, tier order or width, status payload, note text, CLI output.
+
+## Checks
+
+On `306d1ce5d`. No `pnpm run build`, no full suite, no `squeal run --all`. Load is the host's real one-minute load on 24 CPUs.
+
+- `pnpm run lint`: `Checked 3580 files ... No fixes applied.` `pnpm run typecheck` (`tsrs --fast --noEmit`): exit 0.
+- The model test once with key-format (`vitest run test/scheduler/model-scheduler.test.ts test/keys/key-format.test.ts`, load 50 to 52): 2 files, 20 tests passed, 37 s. No `KEY_FORMAT_VERSION` raise.
+- Direct (`vitest run --maxWorkers=4`, load 36 to 37): every test file that reaches `startTier`, `startNext`, `recordEditTier` or `WORKTREE_META_ROWS`, plus `late-bound` and `catch-up`: `capacity/pool`, `cli/next-step-pending`, `cli/status-wait-paths-slow`, `cli/status-wait-reasons`, `scheduler/busy-record`, `edit-timings`, `request-progress-ends`, `step-reading`, `step`, `tier-start-batch`, `tier-start-timings`, `tier-start`, `status/outstanding`, `store/worktree-meta`, `delivery/late-bound`, `scheduler/catch-up`: 16 files, 165 tests passed.
+- `squeal status --wait 60000` over the 9 changed `src/` and `test/` paths at revision 27: 28 selected test files current, all pass (`edit-timings`, `edit-cut` among them); **1429 pending**, queued while the host was busy (20 of 24 cores in use); 0 known failures. `src/core/types/store.ts` selects 1456 test files, so most of the worktree waits. Pending is pending: no verdict on them.
+- Not run: `test/e2e/**` (excluded by `squeal.config.json`); the bundles (`plugins/*/dist` are not this row's).
+
+## For the next worker (row 005-97)
+
+- Read the record with `readEditTimings` / `pastBound` / `worktreeMedians`; the shape is the contract's, unchanged.
+- Check-group tiers started by the slow lanes (`slow-tier.ts` `#start`) do not record (see "Decisions").
+- The probes in `probe/` can be rerun at a lower load; the paired whole-turn numbers here were taken at load 38 to 45.
