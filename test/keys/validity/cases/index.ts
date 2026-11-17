@@ -13,6 +13,7 @@ import { PYTEST_RUNS } from "./adapter/pytest.js";
 import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { VITEST_GLOBS } from "./adapter/vitest-globs.js";
+import { VITEST_RESOLUTION } from "./adapter/vitest-resolution.js";
 import { CHECK_GROUPS } from "./assemble/check-groups.js";
 import { DECLARED } from "./assemble/declared.js";
 import { DESCRIBED } from "./assemble/described.js";
@@ -96,4 +97,5 @@ export const CASES: readonly Case[] = [
   ...WALKED,
   ...GLOB_LISTINGS,
   ...VITEST_GLOBS,
+  ...VITEST_RESOLUTION,
 ];
