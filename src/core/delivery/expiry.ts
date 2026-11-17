@@ -11,7 +11,7 @@ import {
 import { removeWaiterLock, waiterLockState } from "../waiter-lock/waiter-lock.js";
 import { recordVersion } from "./consumer-version.js";
 import { forgetCounts } from "./counts-owed.js";
-import { editsSaid, forgetEdits } from "./edits.js";
+import { editsToPark, forgetEdits } from "./edits.js";
 import {
   harnessGone,
   harnessOf,
@@ -173,7 +173,7 @@ export function dropLeft(
  */
 export function drop(store: Store, consumer: Consumer, at: EpochMs): void {
   park(store, consumer, at, {
-    said: editsSaid(store, consumer),
+    ...editsToPark(store, consumer),
     uncovered: uncoveredTold(store, consumer),
   });
   store.consumers.unregister(consumer);

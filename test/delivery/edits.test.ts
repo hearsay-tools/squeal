@@ -385,7 +385,25 @@ describe("the scheduler's re-key record, as delivery prunes it", () => {
     finishA();
     expect(await text()).toMatch(/Squeal saw your edit;/);
     expect([...readRekeyed(store, WT).keys()]).toEqual([testFileId(FILE)]);
+    // Row 005-100: parked, OTHER may resume with its count, so the entry stays.
     await delivery.unregister(OTHER);
+    expect([...readRekeyed(store, WT).keys()]).toEqual([testFileId(FILE)]);
+  });
+
+  it("drops it once no registered or parked consumer's count reads it", async () => {
+    let now = 1_000;
+    delivery = createDelivery(store, { status: fixedStatus(), now: () => now });
+    await delivery.register(C1);
+    await delivery.register(OTHER);
+    editA();
+    finishA();
+    expect(await text()).toMatch(/Squeal saw your edit;/);
+    await delivery.unregister(OTHER);
+    now += CONSUMER_EXPIRY_MS + 1;
+    // C1 leaves after OTHER's parked registration expired: no count reads the entry.
+    await delivery.unregister(C1);
+    await delivery.register(C1);
+    await delivery.unregister(C1);
     expect(readRekeyed(store, WT).size).toBe(0);
   });
 });

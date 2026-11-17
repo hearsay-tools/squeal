@@ -56,6 +56,8 @@ interface Parked extends Registration {
   readonly said?: true;
   /** The paths the consumer was told no test reads (review wave 13as, B2); absent when none. */
   readonly uncovered?: readonly RelativePath[];
+  /** Row 005-100: the revision its own count counted from (`edits.ts`); absent when none. */
+  readonly editsSince?: RevisionNumber;
 }
 
 /** What a parked registration taken up brings back beside its revisions. */
@@ -63,6 +65,11 @@ export interface Resumed {
   readonly said: boolean;
   /** `uncoveredTold` when it left: told once per consumer, so not again after it returns. */
   readonly uncovered: readonly RelativePath[];
+  /**
+   * Row 005-100: the revision its own count counted from when it left, so a resumed session's
+   * count goes on; `null` when it had none.
+   */
+  readonly editsSince: RevisionNumber | null;
 }
 
 /** `meta` key of a worktree's registration revisions. */
@@ -170,7 +177,12 @@ export function tellRegistered(
     resumed: parked !== null,
     kept: registeredSlots(store, consumer.worktreeId, at),
   });
-  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+  if (parked === null) return null;
+  return {
+    said: parked.said === true,
+    uncovered: parked.uncovered ?? [],
+    editsSince: parked.editsSince ?? null,
+  };
 }
 
 /** The slots of the worktree's registrations and of its parked ones not expired `at` (S1). */
@@ -211,8 +223,8 @@ function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null)
 
 /**
  * Forgets `consumer`'s registration and parks it, with the revision it left
- * at, whether it was `said` the 001-224 line and the `uncovered` paths it was
- * told, for a registration of the same session and agent to take up (N4,
+ * at, whether it was `said` the 001-224 line, the `uncovered` paths it was
+ * told and the revision its own count counted from (`editsSince`, row 005-100), for a registration of the same session and agent to take up (N4,
  * review waves 13u B2 and 13as B2). They expire with it. Call inside the
  * unregistration's transaction.
  */
@@ -220,7 +232,7 @@ export function park(
   store: Store,
   consumer: Consumer,
   at: EpochMs,
-  { said, uncovered }: Resumed = { said: false, uncovered: [] },
+  { said, uncovered, editsSince }: Resumed = { said: false, uncovered: [], editsSince: null },
 ): void {
   const key = registeredMetaKey(consumer.worktreeId);
   const current = registration(store, consumer);
@@ -230,8 +242,19 @@ export function park(
   const told = {
     ...(said ? { said: true as const } : {}),
     ...(uncovered.length > 0 ? { uncovered } : {}),
+    ...(editsSince === null ? {} : { editsSince }),
   };
   writeParked(store, consumer, at, { ...current, leftAt, leftTime: at, ...told });
+}
+
+/**
+ * Row 005-100: the revisions the parked registrations' own counts count from, so the re-key
+ * record keeps what a resumed session's count still reads (`edits.ts`, `prune`).
+ */
+export function parkedEditsSinces(store: Store, worktreeId: WorktreeId): RevisionNumber[] {
+  return Object.values(readAll(store, parkedMetaKey(worktreeId))).flatMap((v) =>
+    isRecord(v) && isNumber(v.editsSince) ? [v.editsSince] : [],
+  );
 }
 
 /** Takes `consumer`'s parked registration out of the row; `null` when none is kept. */
@@ -249,6 +272,7 @@ function unpark(store: Store, consumer: Consumer, at: EpochMs): Parked | null {
     ...(Array.isArray(value.uncovered)
       ? { uncovered: value.uncovered.filter((p): p is string => typeof p === "string") }
       : {}),
+    ...(isNumber(value.editsSince) ? { editsSince: value.editsSince } : {}),
   };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }

@@ -644,8 +644,9 @@ function seedRegistered(
     scanned: scannedDaemon(store, consumer.worktreeId, alive),
     head: root === undefined ? null : registrationHead(root),
   });
-  // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
-  startEdits(store, consumer, header.revision, resumed?.said === true);
+  // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2), and
+  // its count goes on from where it left (row 005-100).
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
   // Review wave 13as, B2: a path told before it left is not told again.
   if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }

@@ -26,7 +26,7 @@ import {
   type OwedFile,
   type OwnRead,
 } from "./late.js";
-import { changedAfter, registration } from "./registered.js";
+import { changedAfter, parkedEditsSinces, registration } from "./registered.js";
 import { readAll, readSlot, writeSlot } from "./slots.js";
 
 /*
@@ -44,9 +44,10 @@ import { readAll, readSlot, writeSlot } from "./slots.js";
  * owes nothing; `status --wait` holds for no such run (task 001-196).
  *
  * Each consumer keeps the revision its edits are counted from and whether
- * the 001-224 line was said, in one slot. When it leaves, "said" is parked
+ * the 001-224 line was said, in one slot. When it leaves, both are parked
  * with its registration (`park`) and restored if the same session comes back
- * (review wave 13u B2).
+ * (review wave 13u B2; row 005-100 for the revision, so a resumed session's
+ * count goes on). A registration of a consumer still registered keeps both.
  */
 
 /** `meta` key of the consumers' edit state: the revision their edits count from, and whether 001-224 was said. */
@@ -73,8 +74,11 @@ function writeState(store: Store, consumer: Consumer, state: EditState | null): 
 
 /**
  * Counts `consumer`'s edits from after `revision`; `said` when a parked
- * registration of the same session had the 001-224 line said. Call inside
- * the registration's transaction.
+ * registration of the same session had the 001-224 line said. Row 005-100:
+ * a resumed session passes the revision its parked count counted from, a
+ * first registration and a new session their registration's. Call inside
+ * the registration's transaction, for a consumer not registered before; a
+ * registered one keeps its state.
  */
 export function startEdits(
   store: Store,
@@ -85,9 +89,16 @@ export function startEdits(
   writeState(store, consumer, { since: revision, said });
 }
 
-/** Whether `consumer` was said the 001-224 line, for `park`. */
-export function editsSaid(store: Store, consumer: Consumer): boolean {
-  return readState(store, consumer)?.said === true;
+/**
+ * What `park` keeps of `consumer`'s edit state: whether it was said the 001-224 line, and
+ * (row 005-100) the revision its own count counts from, so a resumed session's goes on.
+ */
+export function editsToPark(
+  store: Store,
+  consumer: Consumer,
+): { readonly said: boolean; readonly editsSince: RevisionNumber | null } {
+  const state = readState(store, consumer);
+  return { said: state?.said === true, editsSince: state?.since ?? null };
 }
 
 /** Drops `consumer`'s edit state. Call inside the unregistration's transaction. */
@@ -97,11 +108,15 @@ export function forgetEdits(store: Store, consumer: Consumer): void {
   prune(store, consumer.worktreeId);
 }
 
-/** Drops the record's resolved entries no registered consumer's edits can count. */
+/**
+ * Drops the record's resolved entries no registered consumer's edits can count, nor a parked
+ * one's that may resume (row 005-100).
+ */
 function prune(store: Store, worktreeId: WorktreeId): void {
   const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap((v) =>
     isRecord(v) && typeof v.since === "number" ? [v.since] : [],
   );
+  sinces.push(...parkedEditsSinces(store, worktreeId));
   pruneRekeyed(
     store,
     worktreeId,
