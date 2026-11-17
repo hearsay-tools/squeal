@@ -35,7 +35,7 @@ squeal proof <test file>... --base <commit> [--case source|dependency|test] [--e
 ```
 
 - `<commit>` is any commit-ish. Paths narrow the test files.
-- Without `--run` it is read-only: no daemon call that changes state, no run, no checkout.
+- Without `--run` it runs no test and writes nothing shared. It makes the temporary checkout by default for test files the fast path and CI's published results cannot settle (D2; the human, 2026-11-17, "by default"), so every file gets an exact answer; one commit back this took about 10 to 25 s (`research/keys-by-walk.md`).
 - `squeal proof` is D5. The human chose both names on 2026-11-16.
 - Exit codes as 020 D1: `0` every selected file is known on both sides, `3` some file is unknown, not determined or not comparable, `2` usage or setup error. A changed outcome is not an error: it is the answer.
 - The JSON report is versioned and carries the commit, `HEAD`, dirty flag, each file's state at both sides with its origin, and the run's budget use.
