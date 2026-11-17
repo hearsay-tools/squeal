@@ -306,6 +306,7 @@ class TierScheduler implements Scheduler {
     const waits = new PoolWaits({
       now: this.#now,
       elapsed: this.#clock.elapsed,
+      steps: this.#steps,
       log: options.log ?? (() => {}),
       publish: poolWaitsPublish(options.store, options.worktreeId, this.#steps),
     });
