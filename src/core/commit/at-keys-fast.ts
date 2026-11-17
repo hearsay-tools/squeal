@@ -51,8 +51,8 @@ export interface Difference {
   readonly addedOrDeleted: ReadonlySet<RelativePath>;
   /** Changed `package.json` files whose resolution fields differ, or that one side lacks. */
   readonly manifests: ReadonlySet<RelativePath>;
-  /** Whether a changed path is a declared input (`inputs` of the policy). */
-  readonly declared: (path: RelativePath) => boolean;
+  /** The policy's declared inputs of a test file at the commit, from its tree. */
+  readonly declared: (testFile: RelativePath) => readonly RelativePath[];
 }
 
 /** Installed lockfiles and the committed lockfile each one is installed from. */
@@ -92,13 +92,16 @@ export function changedInput(
     if (why !== null) return why;
     if (listedDirectory(path) === null && !PATTERN.test(path)) folders.add(folderOf(path));
   }
+  // 4: the commit's declared inputs are inputs here, so the checks above compare them.
+  const inputs = new Set(file.paths);
+  for (const path of diff.declared(file.path)) {
+    if (!inputs.has(path)) return `${path} is a declared input at the commit, not here`;
+  }
   const guarded = guardedFolders(file.closure);
   for (const path of diff.changed) {
     // The policy steers declared inputs and the environment's variables: its change moves keys
     // through paths the current inputs do not list.
     if (path === POLICY_FILE) return `${path} changed`;
-    // 4: a changed path a declared pattern of the policy names.
-    if (diff.declared(path)) return `${path} is a declared input and changed`;
     // 6: a file added or deleted, of any name, in a folder where the closure's imports
     // resolve (review wave-5 B1, re-review B1).
     if (diff.addedOrDeleted.has(path)) {

@@ -81,10 +81,10 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
           current.set(testFileId(ref), key);
           inputs.set(testFileId(ref), keyer.keys.stabilityPaths(ref));
         }
-        const [there, names, diff] = await Promise.all([
-          commitSide(root, commit),
+        const there = await commitSide(root, commit);
+        const [names, diff] = await Promise.all([
           hereNames(root),
-          differenceAt(root, commit, readPolicy(root)),
+          differenceAt(root, commit, readPolicy(root), there.blobs.keys()),
         ]);
         const untracked = await untrackedInputs(root, [...inputs.values()].flat());
         const here = { hashOf: (p: RelativePath) => keyer.keys.cache.hashOf(p), names, untracked };

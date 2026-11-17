@@ -139,4 +139,24 @@ describe("keys at a commit where resolution or the config moves (review wave-5)"
       /^src\/a\.custom was added or deleted in src, where the closure's imports resolve$/,
     );
   });
+
+  it("a declared input deleted since sends the file to the walk", async () => {
+    const f = fixture({
+      "squeal.config.json": `${JSON.stringify({ coverage: { enabled: false }, inputs: ["data/*.txt"] })}\n`,
+      "data/a.txt": "a\n",
+      "data/b.txt": "b\n",
+      "src/a.ts": "export const n = 2;\n",
+      [TEST.path]: testOf(2),
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "data/b.txt": null });
+    const keys = await keysAtCommit({ ...keying(f), root: f.root, commit: a, files: [TEST] });
+    expect(keys.files.get(testFileId(TEST))).toMatchObject({
+      key: await freshKey(f, a, TEST),
+      via: "walk",
+    });
+    expect(keys.changed.get(testFileId(TEST))).toBe(
+      "data/b.txt is a declared input at the commit, not here",
+    );
+  });
 });
