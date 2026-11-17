@@ -87,7 +87,7 @@ Revision 0: A daemon has been starting since 2026-11-18T09:00:01.000Z, and Squea
 ```
 
 With listed results (a worktree with a row whose record went stale), the sentence after the
-counts is ` A daemon has been starting since <time>; results are as of revision N.` in place of
+counts is ` A daemon has been starting since <time>; results are as of revision N.` (by the code, not tested) in place of
 ` A daemon is starting; results are as of revision N.`
 
 Unchanged ("told as now"):
