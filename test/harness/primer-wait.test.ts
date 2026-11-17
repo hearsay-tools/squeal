@@ -7,11 +7,15 @@ import { CODEX } from "./primer-helpers.js";
  * Spec 005 D6 as amended by the human (2026-10-17, task 005-68, issue 18):
  * the primer names the path wait, its verdict, and when each wait applies.
  * An agent that knew only `status --wait 60000` waited on a whole suite
- * other edits had re-keyed, then ran the tests it needed itself.
+ * other edits had re-keyed, then ran the tests it needed itself. Row 005-94
+ * (the human, 2026-11-17, C3): no checkpoint in the wait sentence, and the
+ * path wait in every primer it fits, tried before the plain wait, with row
+ * 005-89's drop order. Today's plain sentence stays only where no drop makes
+ * room for the CLI's name at the path wait.
  */
 
-const TODAY = (wait: string) =>
-  `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+const PATH_WAIT = (cli: string) =>
+  `Wait only when you need a result before your next step: \`${cli} status --wait 60000 <path>...\` for the verdict on files you just changed, and the CLI's \`status --wait 60000\` before you finish.`;
 
 const SCRIPTS = { name: "scripts", include: ["scripts/*.test.mjs"] };
 const E2E = { name: "e2e", include: ["e2e/**/*.test.mjs"] };
@@ -22,43 +26,43 @@ const coverage = (nodeTest: Coverage["nodeTest"], slow: Coverage["slow"]): Cover
   slow,
 });
 
-describe("the primer's waits (005-68)", () => {
-  it("names the path wait for files just changed, then the waits before finishing", () => {
+describe("the primer's waits (005-68, 005-94)", () => {
+  it("names the path wait for files just changed, then the wait before finishing", () => {
     const wait = PRIMER.slice(PRIMER.indexOf("Wait only"), PRIMER.indexOf(" Run tests yourself"));
     expect(wait).toBe(
-      "Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `squeal status --wait 60000` or a checkpoint, `squeal run --all --wait`.",
+      "Wait only when you need a result before your next step: `squeal status --wait 60000 <path>...` for the verdict on files you just changed, and `squeal status --wait 60000` before you finish.",
     );
+    expect(PRIMER).not.toContain("checkpoint");
     expect(PRIMER.indexOf("next tool call")).toBeLessThan(PRIMER.indexOf("status --wait"));
   });
 
   it("names a Codex CLI in full once, as the path wait", () => {
     const text = primer(CODEX);
-    expect(text).toContain(
-      `\`${CODEX} status --wait 60000 <path>...\` for the verdict on files you just changed; before you finish, the CLI's \`status --wait 60000\` or a checkpoint, the CLI's \`run --all --wait\`.`,
-    );
+    expect(text).toContain(PATH_WAIT(CODEX));
     expect(text.split(CODEX)).toHaveLength(2);
   });
 
-  it("says the CLI once, up front, where the primer names it nowhere", () => {
-    const root = `/home/user/${"x".repeat(250)}/.codex/plugins/cache/hearsay/squeal/0.1.109`;
+  it("says the CLI once, up front, where no drop makes room to name it", () => {
+    const root = `/home/user/${"x".repeat(1_000)}/.codex/plugins/cache/hearsay/squeal/0.1.109`;
     const text = primer(root, coverage([], { files: 3 }));
     expect(text).toContain(
-      "Wait only when you need a result before your next step, on the CLI SQUEAL messages name: `status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `status --wait 60000` or a checkpoint, `run --all --wait`.",
+      "Wait only when you need a result before your next step, on the CLI SQUEAL messages name: `status --wait 60000 <path>...` for the verdict on files you just changed, and `status --wait 60000` before you finish.",
     );
     expect(text).not.toContain(root);
+    expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
   });
 
   /*
-   * The 005 coordinator (2026-10-17): the primer folds its projects, then
-   * the path wait, then the CLI's naming. Where the path wait does not fit,
-   * the primer keeps today's wait sentence and today's naming.
+   * Row 005-94: under Codex with slow files the path wait is said, where today's plain
+   * sentence was; the slow arrival goes first (row 005-89), then the retry.
    */
-  it("keeps today's sentence and first command under Codex with slow files", () => {
+  it("names the path wait under Codex with slow files", () => {
     for (const slow of [{ files: 2 }, { files: 2, requireSlowSuite: true }]) {
       const text = primer(CODEX, coverage([], slow));
-      expect(text).toContain(TODAY(`\`${CODEX} status --wait 60000\``));
+      expect(text).toContain(PATH_WAIT(CODEX));
       expect(text).toContain("the CLI's `run --slow --wait 60000`");
-      expect(text).not.toContain("<path>");
+      expect(text).not.toContain("A slow failure");
+      expect(text).not.toContain("for example before saying the task is done");
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     }
   });
@@ -66,35 +70,30 @@ describe("the primer's waits (005-68)", () => {
   /*
    * Task 004-78 (research `atomic-flags-0215.md` 2, line 3): at the eval
    * cell's 217-character Codex CLI the primer named no CLI and kept the path
-   * wait, and agents ran `status --wait` with no CLI. The fold now drops the
-   * path wait and the sentence's example before it drops the CLI's name.
+   * wait, and agents ran `status --wait` with no CLI. Row 005-94: the CLI is
+   * named at the path wait, and the retry goes before it (row 005-89).
    */
-  it("names a 217-character Codex CLI at the wait, under either slow policy", () => {
+  it("names a 217-character Codex CLI at the path wait, under either slow policy", () => {
     const home =
       "/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec/a3-harmless.p0.codex-gpt-6-luna.e-medium.r3/codex";
     const cli = `node --disable-warning=ExperimentalWarning "${home}/plugins/cache/hearsay/squeal/0.1.215/dist/cli/squeal.mjs"`;
     expect(cli).toHaveLength(217);
     for (const requireSlowSuite of [false, true]) {
       const text = primer(cli, coverage([], { files: 1, requireSlowSuite }));
-      expect(text).toContain(
-        `Wait only when you need a result, as before you finish: \`${cli} status --wait 60000\`.`,
-      );
+      expect(text).toContain(PATH_WAIT(cli));
       expect(text).toContain("the CLI's `run --slow --wait 60000`");
       expect(text).not.toContain("CLI SQUEAL messages name");
+      expect(text).not.toContain("--reason load");
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     }
   });
 
   /*
-   * The 004 coordinator (2026-10-18): the short sentence is tried once the
-   * projects are folded and before the CLI goes unnamed. At 230 characters
-   * it still fits under either policy; past it the primer names no CLI path,
-   * as before 004-78, and keeps the path wait. Under either `slow.trigger`
-   * (004-80) and with the wait named in the slow sentence (004-83), the
-   * reach is 230 to 235 characters under continuous and 232 to 237 under
-   * idle, whose "between your turns" is 2 characters shorter; 250 is past both.
+   * The 004 coordinator (2026-10-18) bounded the short sentence's reach at 230 to 237
+   * characters. Row 005-94: the path wait with the CLI named reaches past it, with text dropped
+   * in row 005-89's order; at 500 characters it is the definition of a revision that goes last.
    */
-  it("names a 230-character CLI at the wait, and none past the fold's reach", () => {
+  it("names a long CLI at the path wait under every slow policy", () => {
     for (const [requireSlowSuite, pausesOnly] of [
       [false, false],
       [true, false],
@@ -102,20 +101,18 @@ describe("the primer's waits (005-68)", () => {
       [true, true],
     ] as const) {
       const slow = coverage([], { files: 1, requireSlowSuite, pausesOnly });
-      const at = "x".repeat(230);
-      const text = primer(at, slow);
-      expect(text).toContain(`\`${at} status --wait 60000\`.`);
-      expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
-      const past = "x".repeat(250);
-      const none = primer(past, slow);
-      expect(none).not.toContain(past);
-      expect(none).toContain("on the CLI SQUEAL messages name: `status --wait 60000 <path>...`");
+      for (const length of [230, 250, 500]) {
+        const at = "x".repeat(length);
+        const text = primer(at, slow);
+        expect(text).toContain(PATH_WAIT(at));
+        expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+      }
     }
   });
 
-  it("keeps every project and today's sentence under Claude Code with slow files and projects", () => {
+  it("keeps every project and the path wait under Claude Code with slow files and projects", () => {
     const text = primer("squeal", coverage([SCRIPTS, E2E], { files: 2, requireSlowSuite: true }));
-    expect(text).toContain(TODAY("`squeal status --wait 60000`"));
+    expect(text).toContain("`squeal status --wait 60000 <path>...`");
     expect(text).toContain("`squeal run --slow --wait 60000`");
     expect(text).toContain('node:test projects "scripts" (scripts/*.test.mjs) and "e2e"');
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);

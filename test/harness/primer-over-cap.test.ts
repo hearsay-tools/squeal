@@ -8,6 +8,9 @@ import { CODEX } from "./primer-helpers.js";
  * no fold fitted the cap, so every session read the last fold tried, with
  * the CLI unnamed and no path wait. Over the cap, other text goes first:
  * the slow sentences while the listing counts no slow file, then the rest.
+ * Row 005-94 (the human, 2026-11-17) replaces 005-89's "a primer that fits
+ * today keeps its wait, unchanged": the path wait is tried first in every
+ * primer, with the same drops, so every primer in the matrix has it.
  */
 
 const PATH_WAIT = "`squeal status --wait 60000 <path>...`";
@@ -114,12 +117,12 @@ describe("a primer over its cap keeps the CLI and the path wait (row 005-89)", (
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
     expect(text).toContain("`squeal ");
     expect(text).not.toContain("on the CLI SQUEAL messages name");
-    // A primer that needed a drop has the path wait; one that fitted keeps its wait (005-68).
-    if (!text.includes("A revision is") || !text.includes("--reason load")) {
-      // Row 019-49: with no test group at `edit`, the path wait is the narrow run.
-      const quiet = coverage.groups?.noTestsAtEdit === true;
-      expect(text).toContain(quiet ? "`squeal run <group> <path>... --wait 60000`" : PATH_WAIT);
-    }
+    // Row 005-94: every primer has the path wait, dropped text or not (it replaced 005-68's
+    // plain wait wherever that fitted). Row 019-49: with no test group at `edit`, the narrow run.
+    const quiet = coverage.groups?.noTestsAtEdit === true;
+    expect(text).toContain(quiet ? "`squeal run <group> <path>... --wait 60000`" : PATH_WAIT);
+    expect(text).not.toContain("for example before saying the task is done");
+    expect(text).not.toContain("checkpoint");
   });
 
   it("drops the retry and the hand-run sentence only where the slow ones were not enough", () => {

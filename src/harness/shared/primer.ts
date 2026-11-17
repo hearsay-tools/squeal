@@ -89,7 +89,7 @@ export function primer(
         ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;",
       ]
     : [
-        `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`,
+        `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`,
       ];
   const most = Math.max(
     0,
@@ -114,16 +114,21 @@ export function primer(
         covers,
         notCovered(coverage),
       ].join(" ");
-  let text = "";
-  for (const arrival of arrivals) {
-    text = folded(sentences(arrival, []), coverage, most);
-    if (text.length <= PRIMER_CAP_CHARS) return text;
-  }
-  // Row 005-89: over the cap at every fold, other text goes before the CLI's name and the path wait.
-  for (const dropped of droppable(coverage)) {
+  // Row 005-94 (texts.md 2): the path wait in every primer that fits it, tried before the plain
+  // wait; where it does not fit, other text goes first, in row 005-89's order.
+  for (const dropped of [[], ...droppable(coverage)]) {
     for (const arrival of arrivals) {
       const kept = withPathWait(sentences(arrival, dropped), coverage, most);
       if (kept !== null) return kept;
+    }
+  }
+  // Where no drop makes room for it, a CLI too long to name: the folds with the plain wait
+  // (tasks 005-68, 004-78), with the same drops.
+  let text = "";
+  for (const dropped of [[], ...droppable(coverage)]) {
+    for (const arrival of arrivals) {
+      text = folded(sentences(arrival, dropped), coverage, most);
+      if (text.length <= PRIMER_CAP_CHARS) return text;
     }
   }
   return text;
@@ -131,7 +136,7 @@ export function primer(
 
 /** When the agent runs tests itself: the primer's last word on hand runs. */
 const RUN_YOURSELF =
-  "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+  "Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it.";
 
 /** Text the primer can lose before the CLI's name or the path wait (row 005-89). */
 type Droppable = "slow" | "slow arrival" | "retry" | "run yourself" | "revision";
@@ -175,7 +180,8 @@ function withPathWait(
  * the path wait joins only where it fits without folding more (task 005-68). Before the
  * CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
  * the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
- * Over the cap at every fold, the last one tried; `primer` then drops other text (row 005-89).
+ * Over the cap at every fold, the last one tried. Row 005-94: `primer` reaches these folds only
+ * where no drop of row 005-89's order lets the path wait fit.
  */
 function folded(
   sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
@@ -202,8 +208,8 @@ function folded(
 /**
  * Spec 005 D6 as amended by the human (2026-10-17, task 005-68, issue 18):
  * which wait applies when. A path wait for the files just changed, with its
- * verdict line; the pathless wait and `run --all --wait` before saying the
- * task is done. An agent that knew only the pathless wait reported waiting
+ * verdict line; the pathless wait before saying the task is done (row 005-94,
+ * C3: the checkpoint, `run --all --wait`, is the skill's step 3). An agent that knew only the pathless wait reported waiting
  * on most of a suite other work had re-keyed. What a path selects (005-67) is the
  * skill's: the primer is at its cap. Where it does not fit, `paths` off
  * gives the sentence it replaced, so no primer says less than before it,
@@ -233,12 +239,13 @@ function waitSentence(command: string, naming: Naming, form: WaitForm, quiet = f
         ? `\`${sub}\``
         : `the CLI's \`${sub}\``;
   const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
-  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  // Row 005-94 (C3): no checkpoint here; the skill's step 3 names `run --all --wait`.
+  const finish = `${cli("status --wait 60000", false)} before you finish.`;
   // Row 019-49 (D6): with no test group at `edit`, the path wait is the narrow run.
   if (quiet) {
     return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
   }
-  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed, and ${finish}`;
 }
 
 /** D6's words for a moment, as the agent meets it; a `manual` group's clause names its run instead. */

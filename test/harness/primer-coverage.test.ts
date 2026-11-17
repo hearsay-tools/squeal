@@ -97,9 +97,9 @@ const MATRIX: Record<string, Case> = {
       'Squeal covers Vitest (vitest.config.ts) and node:test projects "scripts" (scripts/*.test.mjs) and "e2e" (e2e/**/*.test.mjs), with 2 slow test files at the daemon\'s last listing.',
     runners: "Vitest and node:test",
     slow: true,
+    // Row 005-94: under Codex the path wait comes first; the slow arrival and the retry go
+    // before any project is folded (row 005-89's order).
     codexFirstOnly: true,
-    codexCovers:
-      "Squeal covers Vitest (vitest.config.ts) and node:test (2 projects), with 2 slow test files at the daemon's last listing.",
   },
 };
 
@@ -258,9 +258,12 @@ describe("the slow sentence by harness (spec 004 D8, D9)", () => {
   });
 
   it("under Codex, says a slow failure arrives with the next prompt or tool call", () => {
-    const text = primer(CODEX, slow);
+    // Row 005-94: a short CLI leaves room for the sentence; a real Codex path drops it first
+    // (row 005-89), for the path wait.
+    const text = primer("/opt/squeal", slow);
     expect(text).toContain("A slow failure arrives with your next prompt or tool call.");
     expect(text).not.toContain("wakes you");
+    expect(primer(CODEX, slow)).not.toContain("A slow failure");
   });
 
   it.each([slow, required])(
@@ -292,8 +295,9 @@ describe("the primer's D6 sentences (005-15)", () => {
     "says passes are silent and defines a revision once, under %s",
     (command, coverage) => {
       const text = primer(command, coverage);
+      // Row 005-94: a pass that follows a failure is said.
       expect(text).toContain(
-        "a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;",
+        "a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;",
       );
       expect(text).toContain(` ${REVISION} Squeal covers `);
       expect(text.match(/A revision is /g)).toHaveLength(1);

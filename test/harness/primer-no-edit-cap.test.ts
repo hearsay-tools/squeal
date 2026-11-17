@@ -96,11 +96,12 @@ describe("the no-edit primer within its cap (review 0.1.411, B1)", () => {
     });
     const text = primerOf(await sessionStart(r, harness)).primer;
     expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
-    expect(text).toContain(
-      `Squeal runs this repository's Vitest tests in the background${COMPACT}`,
-    );
+    // Row 005-94: the narrow run is tried first, with row 005-89's drops: the slow sentences go
+    // while the listing counts no slow file, so D6's full clause fits.
+    expect(text).toContain(`Squeal runs this repository's Vitest tests in the background, ${FULL}`);
     expect(text).toContain("Check groups: lint, unit and node at Stop, and Stop waits for them;");
-    expect(text).toContain("Slow test files run after the fast tests;");
+    expect(text).toContain(" run <group> <path>... --wait 60000`");
+    expect(text).not.toContain("Slow test files run after the fast tests;");
   });
 
   it.each(matrix(false))(
@@ -109,10 +110,13 @@ describe("the no-edit primer within its cap (review 0.1.411, B1)", () => {
       const text = primer(command, coverage);
       expect(text.length).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
       expect(text).toContain(WARNING);
-      expect(text).not.toContain("passing results stay silent");
+      expect(text).not.toContain("passes stay silent");
       // The compact clause only where D6's clause leaves no rendering within the cap.
       expect(text.includes(COMPACT) || text.includes(FULL)).toBe(true);
-      expect(primer(command, edit(coverage))).toContain("and passing results stay silent");
+      // Row 005-94: the recovery clause.
+      expect(primer(command, edit(coverage))).toContain(
+        "; passes stay silent unless they follow a failure,",
+      );
     },
   );
 

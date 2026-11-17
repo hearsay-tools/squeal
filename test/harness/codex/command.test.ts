@@ -61,7 +61,6 @@ describe("codexCommand", () => {
 describe("Codex hook texts name the command they are given", () => {
   const command = 'node "/opt/codex/plugins/squeal/dist/cli/squeal.mjs"';
   /** Every header's checkpoint line without a checkpoint at the current revision (defect 27). */
-  const checkpoint = `\`${command} run --all\` requests one`;
   const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive", command };
   const IN_SESSION = sessionOf("exec", "session-start");
   const text = async (r: SquealRepo, name: CodexHookName, fixture: string, over: object = {}) => {
@@ -88,7 +87,6 @@ describe("Codex hook texts name the command they are given", () => {
     r.apply(r.fail());
     const start = await text(r, "session-start", "session-start");
     expect(start.endsWith(`\n\n${primer(command)}`)).toBe(true);
-    expect(start).toContain(checkpoint);
     expect(start).toContain(`Full output: ${command} why 'src/math.test.ts > math > adds'`);
     const sub = await text(r, "subagent-start", "subagent-start");
     expect(sub.endsWith(`\n\n${primer(command)}`)).toBe(true);
@@ -101,7 +99,8 @@ describe("Codex hook texts name the command they are given", () => {
     const r = squealRepo();
     r.apply(r.pass(), r.pass(SUBTRACTS));
     r.policy({ stop: { requireFullSuite: true } });
-    expect(await text(r, "session-start", "session-start")).toContain(checkpoint);
+    // Row 005-94: the registration names no checkpoint; `text` holds it to the given command.
+    expect(await text(r, "session-start", "session-start")).not.toContain("Full-suite checkpoint");
     const why = (name: string) => `Full output: ${command} why 'src/math.test.ts > math > ${name}'`;
     r.apply(r.fail(), r.pass(SUBTRACTS));
     const delivered = await text(r, "post-tool-use", "post-tool-use");
@@ -115,7 +114,7 @@ describe("Codex hook texts name the command they are given", () => {
     const stop = await text(r, "stop", "stop");
     expect(stop).toContain(`\`${command} run --all\` starts one.`);
     expect(stop).toContain(`SQUEAL · status at revision`);
-    expect(stop).toContain(checkpoint);
+    expect(stop).not.toContain("Full-suite checkpoint");
   });
 });
 

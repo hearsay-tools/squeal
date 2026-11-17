@@ -41,9 +41,12 @@ describe("rows the daemon listed before (review wave 13aa, B2)", () => {
         ],
       });
       const text = primerOf(await sessionStart(r, harness)).primer;
-      expect(text).toContain(
-        `Squeal covers node:test project "scripts" (scripts/*.test.mjs), with 1 slow test file at the daemon's last listing. ${NOT_COVERED}`,
+      // Row 005-94: the path wait comes first, so the project list may fold to its count.
+      expect(text).toMatch(
+        /Squeal covers node:test (?:project "scripts" \(scripts\/\*\.test\.mjs\)|\(1 project\)), with 1 slow test file at the daemon's last listing\. /,
       );
+      expect(text).toContain(NOT_COVERED);
+      expect(text).toContain("status --wait 60000 <path>...`");
       expect(text).not.toContain("Vitest");
     },
   );
