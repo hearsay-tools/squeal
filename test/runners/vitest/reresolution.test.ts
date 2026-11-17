@@ -25,6 +25,12 @@ interface Case {
   readonly specifier: string;
   /** `node_modules/a` links to `packages/a`, as a workspace install leaves it. */
   readonly workspace?: true;
+  /**
+   * Row 023-14: the manifest is on a `#`, workspace or own-package chain, so
+   * the closure holds it and `rekey` reports the importer too; the others
+   * (a relative directory's entry) are still in no closure.
+   */
+  readonly keyed?: true;
   readonly before: string;
   readonly after: string;
 }
@@ -82,6 +88,7 @@ const cases: Case[] = [
   // Reviews/wave-9.md P3c (S2): a workspace package imported by name.
   {
     name: "main of a workspace package edited: its name resolves to the new entry",
+    keyed: true,
     manifest: "packages/a/package.json",
     from: main("src/one.ts"),
     to: main("src/two.ts"),
@@ -94,6 +101,7 @@ const cases: Case[] = [
   // Reviews/wave-9b.md E5 (S1): Vite caches a package's data, `imports` included.
   {
     name: "imports of a workspace package edited: its subpath import resolves to the new target",
+    keyed: true,
     manifest: "packages/a/package.json",
     from: json({ name: "a", main: "src/entry.ts", imports: { "#x": "./src/one.ts" } }),
     to: json({ name: "a", main: "src/entry.ts", imports: { "#x": "./src/two.ts" } }),
@@ -110,6 +118,7 @@ const cases: Case[] = [
   // A nested manifest's `imports` shadows the root's for files below it.
   {
     name: "a nested manifest with imports deleted: the root's imports apply",
+    keyed: true,
     manifest: "src/pkg/package.json",
     from: json({ imports: { "#x": "./one.ts" } }),
     to: null,
@@ -125,6 +134,7 @@ const cases: Case[] = [
   },
   {
     name: "a nested manifest with imports added: it shadows the root's",
+    keyed: true,
     manifest: "src/pkg/package.json",
     from: null,
     to: json({ imports: { "#x": "./one.ts" } }),
@@ -141,6 +151,7 @@ const cases: Case[] = [
   // Reviews/wave-9b.md E6 (S1, S2): the root manifest re-resolves every closure.
   {
     name: "imports of the root manifest edited: its subpath import resolves to the new target",
+    keyed: true,
     manifest: "package.json",
     from: root({ imports: { "#lib": "./src/pa.ts" } }),
     to: root({ imports: { "#lib": "./src/pb.ts" } }),
@@ -152,6 +163,7 @@ const cases: Case[] = [
   // Reviews/wave-9b.md E7 (S2): the root package imported by its own name.
   {
     name: "exports of the root manifest edited: the package imported by name resolves anew",
+    keyed: true,
     manifest: "package.json",
     from: root({ exports: { ".": "./src/pa.ts" } }),
     to: root({ exports: { ".": "./src/pb.ts" } }),
@@ -165,8 +177,9 @@ const cases: Case[] = [
 /*
  * Task 001-72, reviews/wave-9.md S1 and S2: adding, deleting or editing a
  * `package.json` re-points the directory it sits in, between its `index` and
- * the entries it names. The manifest is in no closure and in no module graph,
- * so neither `rekey` nor `affected` reports the importer; `closuresToReresolve`
+ * the entries it names. The manifest is in no module graph, and in no
+ * closure unless row 023-14 keys it (`keyed`), so neither `rekey` nor
+ * `affected` reports the importer of an unkeyed one; `closuresToReresolve`
  * does, because the directory's `index` or an entry below it is in its
  * closure. If `affected` starts reporting it, the heuristic covers nothing
  * `affected` and `rekey` miss (tasks/wave-9.md, 001-72 table).
@@ -186,7 +199,7 @@ describe("re-resolution after a package.json is added, deleted or edited", SLOW,
     const closure = (await fx.adapter.closure(pkg)).paths;
     expect(closure).toContain(c.before);
     expect(closure).not.toContain(c.after);
-    expect(closure).not.toContain(c.manifest);
+    expect(closure.includes(c.manifest)).toBe(c.keyed === true);
     const index = new ReverseIndex();
     index.set(pkg, closure);
 
@@ -202,7 +215,7 @@ describe("re-resolution after a package.json is added, deleted or edited", SLOW,
     };
 
     expect(all(await fx.adapter.affected([path]))).toEqual([]);
-    expect(index.referencing([path])).toEqual([]);
+    expect(paths(index.referencing([path]))).toEqual(c.keyed ? [pkg.path] : []);
     expect(paths(closuresToReresolve([change], index, createInputMatcher([])))).toEqual([pkg.path]);
     expect((await fx.adapter.closure(pkg)).paths).toContain(c.after);
     expect(outcomes(await fx.adapter.run([pkg], fx.runOptions()))).toEqual(["pass"]);

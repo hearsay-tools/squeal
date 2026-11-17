@@ -4,7 +4,8 @@ import type { Case } from "../../case.js";
 /*
  * Row 023-14: the Vitest adapter's closure walk reads each module's import
  * specifiers and adds the manifests they read: a `#` import's nearest
- * `package.json`, the module's own package imported by name, an installed
+ * `package.json` (an exact entry, one with conditions and a bare target in
+ * an array, a pattern), the module's own package imported by name, an installed
  * package (none: the installed dependencies key it). The case reads the
  * closure and a run; the keys differ from the last release's (a re-key), and
  * the run stores alike.
@@ -19,7 +20,12 @@ const FILES: Readonly<Record<string, string>> = {
     name: "validity-resolution",
     private: true,
     type: "module",
-    imports: { "#reg": "./src/reg-a.ts" },
+    imports: {
+      "#reg": "./src/reg-a.ts",
+      // Reviews/wave-4.md B1: an entry's bare target, under conditions and in an array.
+      "#own": { node: ["validity-resolution/reg"], default: "./src/reg-a.ts" },
+      "#p/*": "./src/*.ts",
+    },
     exports: { "./reg": "./src/reg-a.ts" },
   })}\n`,
   "vitest.config.ts":
@@ -34,12 +40,14 @@ const FILES: Readonly<Record<string, string>> = {
     'import { setTimeout as delay } from "node:timers/promises";',
     'import { expect, it } from "vitest";',
     'import { value } from "#reg";',
+    'import { value as viaOwn } from "#own";',
+    'import { value as viaPattern } from "#p/reg-a";',
     'import { own } from "../src/self.ts";',
     'import { dep } from "../src/installed.ts";',
     'it("holds", async () => {',
     '  writeFileSync($STARTED, "");',
     "  while (existsSync($HOLD)) await delay(20);",
-    '  expect([value, own, dep]).toEqual(["a", "a", 1]);',
+    '  expect([value, own, dep, viaOwn, viaPattern]).toEqual(["a", "a", 1, "a", "a"]);',
     "}, 120_000);",
     "",
   ].join("\n"),
