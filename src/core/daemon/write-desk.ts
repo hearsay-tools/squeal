@@ -177,14 +177,23 @@ export class WriteDesk {
   }
 
   /**
-   * The lease in force. One past its time with no write waiting is kept
-   * while its process lives, for another `LEASE_TTL_MS`, and else has ended.
+   * The lease in force. One with no write waiting ends as soon as its
+   * process is surely gone, also within its time: a hook its harness killed
+   * leaves no lease for the next hook to wait out (row 011-393). Past its
+   * time it is kept while its process lives, for another `LEASE_TTL_MS`,
+   * and else has ended.
    */
   #current(): Lease | null {
     const lease = this.#lease;
-    if (lease === null || lease.pending > 0 || this.#now() < lease.until) return lease;
+    if (lease === null || lease.pending > 0) return lease;
     const alive = this.#context.alive ?? leaseProcessAlive;
-    if (lease.process !== undefined && alive(lease.process) === true) {
+    const lives = lease.process === undefined ? null : alive(lease.process);
+    if (lives === false) {
+      this.#lease = null;
+      return null;
+    }
+    if (this.#now() < lease.until) return lease;
+    if (lives === true) {
       lease.until = this.#now() + LEASE_TTL_MS;
       return lease;
     }
