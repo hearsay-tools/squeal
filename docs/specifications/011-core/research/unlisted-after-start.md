@@ -95,7 +95,7 @@ No row for the daemon's listing time: in cezar it is a median 2% of each stretch
 
 ## Sources
 
-- Transcripts `~/.claude/projects/-home-agent-projects-{cezar,squeal}--ai-squawk-worktrees-*/*.jsonl` (attachments `hook_success`, `hook_cancelled` with `durationMs`, `timedOut`, `timeoutMs`), read 2026-11-17 20:00 to 21:10Z.
+- Transcripts `~/.claude/projects/-<home>-projects-{cezar,squeal}--ai-squawk-worktrees-*/*.jsonl` (attachments `hook_success`, `hook_cancelled` with `durationMs`, `timedOut`, `timeoutMs`), read 2026-11-17 20:00 to 21:10Z.
 - Daemon logs `~/projects/{cezar,squeal}/.git/squeal/logs/daemon-*.log`; cezar's for the named runs: `daemon-025753328af4ba03.log` (09a5d3d2), `daemon-e9ddd0f8d18fa5f8.log` (ac0581f3).
 - Squawk run logs `~/projects/cezar/.ai/squawk/runs/{09a5d3d2,ac0581f3,4f01f44d,e6e8a925}-*.ndjson.br`.
 - Stores `~/projects/{cezar,squeal}/.git/squeal/store.sqlite`, table `worktrees` only, `mode=ro`.

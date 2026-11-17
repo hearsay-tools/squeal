@@ -19,7 +19,7 @@ Commands as run, 2026-11-17 (scratch `S=$TMPDIR/u385`):
 
 ```sh
 node daemon-starts.cjs ~/projects/cezar/.git/squeal/logs > $S/cezar-starts.ndjson
-node stretches.cjs 2026-11-10 -home-agent-projects-cezar--ai-squawk-worktrees- > $S/cezar-stretches.ndjson
+node stretches.cjs 2026-11-10 -<home>-projects-cezar--ai-squawk-worktrees- > $S/cezar-stretches.ndjson
 node join.cjs $S/cezar-stretches.ndjson $S/cezar-starts.ndjson > $S/cezar-joined.ndjson
 node summary.cjs $S/cezar-joined.ndjson
 # the same with squeal in place of cezar
