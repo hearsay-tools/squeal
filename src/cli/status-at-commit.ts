@@ -23,6 +23,8 @@ export interface CommitSide {
   readonly state: (ref: TestFileRef) => SideState;
   readonly checkoutMs: number | null;
   readonly inputCheckMs: number | null;
+  /** Row 023-07: the first path the install changed in the checkout; `null` when none. */
+  readonly changed: string | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
 }
@@ -58,15 +60,26 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
     })
     // CI's export may settle files beyond the paths.
     .filter((ref) => paths === null || selects(paths, ref.path));
+  const changed = at.changed ?? null;
   const state = (ref: TestFileRef): SideState => {
     const found = at.files.get(testFileId(ref));
+    // Row 023-07 ("Whole-checkout check"): a key from a changed checkout is not the commit's.
+    if (found !== undefined && "key" in found && changed !== null)
+      return { state: "not comparable", reason: `install changed the checkout: ${changed}` };
     if (found !== undefined) return commitState(found, worktreeId);
     // The commit's tree proves absence; B4: a failed checkout's empty listing proves nothing.
     if (!tree.has(ref.path)) return { state: "absent" };
     if (failure !== null) return { state: "not determined", reason: failure };
     return { state: "not determined", reason: `no runner lists it at ${commit.slice(0, 9)}` };
   };
-  return { refs, state, checkoutMs: at.checkoutMs, inputCheckMs: at.inputCheckMs ?? null, failure };
+  return {
+    refs,
+    state,
+    checkoutMs: at.checkoutMs,
+    inputCheckMs: at.inputCheckMs ?? null,
+    changed,
+    failure,
+  };
 }
 
 /** `adapters`, each listing only the test files `paths` select; keying is theirs unchanged. */

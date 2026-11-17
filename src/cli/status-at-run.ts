@@ -84,6 +84,7 @@ export function atRun(input: AtRunInput): AtRun {
   let leftOut: readonly KeyedFile[] = [];
   let overheadMs = 0;
   let durationsOf: (ref: TestFileRef) => number | null = () => null;
+  let changed: string | null = null;
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing },
@@ -92,7 +93,8 @@ export function atRun(input: AtRunInput): AtRun {
     },
   );
 
-  const beforeRemove: BeforeRemove = async (checkout, keyed) => {
+  const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
+    changed = change;
     for (const [id, state] of selection.states) states.set(id, state);
     const { run } = selection;
     const durations = storedDurations(checkout.tree);
@@ -127,6 +129,8 @@ export function atRun(input: AtRunInput): AtRun {
       checkout,
       files,
       budgetSeconds: left,
+      // "Whole-checkout check": a checkout the install changed stores nothing.
+      store: changed === null,
       env: input.env,
       forward: input.forward,
     });
@@ -144,6 +148,7 @@ export function atRun(input: AtRunInput): AtRun {
       run,
       siblings,
       answer,
+      changed,
     });
     for (const [id, state] of outcomes) states.set(id, state);
     leftOut = run.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
@@ -151,7 +156,9 @@ export function atRun(input: AtRunInput): AtRun {
 
   const use = (): RunUse => {
     const all = [...states.values()];
-    const ran = all.filter((s) => s.state === "pass" || s.state === "fail");
+    const ran = all.filter(
+      (s) => s.state === "pass" || s.state === "fail" || (s.state === "not comparable" && s.ran),
+    );
     const notRun = all.filter((s) => s.state === "not run").length;
     return {
       timeoutSeconds: args.timeoutSeconds,
@@ -160,6 +167,7 @@ export function atRun(input: AtRunInput): AtRun {
       selected: selection.run.length,
       ran: ran.length,
       stored: ran.filter((s) => "origin" in s && s.origin.stored === true).length,
+      changed,
       notRun,
       notComparable: all.filter((s) => s.state === "not comparable").length,
       timedOut,

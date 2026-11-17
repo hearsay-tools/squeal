@@ -1,5 +1,5 @@
-import { lstat, readFile, readlink, realpath } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { lstat, readFile, readlink } from "node:fs/promises";
+import { join } from "node:path";
 import { isMissing } from "../fs/errors.js";
 import { runGit, splitNul } from "../fs/git.js";
 import { blobHash, type ObjectFormat } from "../hash/blob.js";
@@ -8,15 +8,16 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { LS_TREE_TIMEOUT_MS, lsTreeArgs } from "./tree.js";
 
 /*
- * Spec 023 D4.7 (row 023-07, review wave-7 re-review B5; the human,
- * 2026-11-17, "Byte check"): a file keyed in the checkout is the commit's
- * only when every input its key reads is the commit's: the bytes, the file
- * mode and the symlink target of each path its closure loads and of its
- * project's runner files, compared with the commit's own tree (`git
- * ls-tree` of the commit, blob ids by Squeal's `blobHash`). Neither the
- * checkout's index, its flags (`assume-unchanged`, `skip-worktree`) nor its
- * `HEAD` is read, so an install that hides a change from `git status` is
- * still found. A path the commit does not hold is D4.9's, not this check's.
+ * Spec 023 D4.7 (row 023-07; the human, 2026-11-17, "Whole-checkout
+ * check", after reviews wave-7 to wave-7-third): a checkout is the
+ * commit's only when every path the commit tracks is there with the same
+ * bytes (Squeal's `blobHash`), the same mode and the same link target.
+ * After the install, the whole checkout is compared with the commit's own
+ * tree (`git ls-tree` of the commit), never with its index or `HEAD`, so
+ * `assume-unchanged`, `skip-worktree` and a moved `HEAD` hide nothing. A
+ * per-closure check missed links that resolve outside the tree or are
+ * gone; the whole-checkout rule needs no closure. A difference anywhere
+ * means nothing that runs there may be stored as the commit's.
  */
 
 /** One path of the commit's tree: its git mode and its blob id. */
@@ -42,70 +43,32 @@ export async function commitEntries(
   return entries;
 }
 
-/** A tracked symlink the checkout no longer has as the commit does, and where it now leads. */
-export interface ChangedLink {
-  readonly link: RelativePath;
-  /** What it resolves to in the tree now, relative to the tree; `null` when nothing, or outside it. */
-  readonly resolved: RelativePath | null;
-}
+/** How many files are read at once. */
+const PARALLEL = 32;
 
-export interface InputCheck {
-  /**
-   * The first of `paths` (in their order) whose file in the tree differs
-   * from the commit's in bytes, mode or link target, or is gone; `null`
-   * when none does. Each path is read once per check.
-   */
-  changed(paths: Iterable<RelativePath>): Promise<RelativePath | null>;
-  /**
-   * Every symlink the commit holds that differs in the tree. A runner
-   * resolves a link before it lists a load, so a closure names the link's
-   * target, not the link: a caller matches loads against `resolved`.
-   */
-  readonly links: readonly ChangedLink[];
-}
-
-/** Reads the checkout's files in `tree` against `commit`'s entries. */
-export async function inputCheck(
+/**
+ * The first path, in the commit's tree order, that the checkout `tree`
+ * does not hold as `commit` does: gone, another kind, another mode,
+ * other bytes or another link target; `null` when every tracked path
+ * matches. `skip` names paths written in on purpose (D5.2's test copies).
+ */
+export async function checkoutChange(
   root: AbsolutePath,
   tree: AbsolutePath,
   commit: string,
-): Promise<InputCheck> {
-  const entries = await commitEntries(root, commit);
+  skip: ReadonlySet<RelativePath> = new Set(),
+): Promise<RelativePath | null> {
+  const entries = [...(await commitEntries(root, commit))].filter(([path]) => !skip.has(path));
   const format = await readObjectFormat(root);
-  const seen = new Map<RelativePath, boolean>();
-  const same = async (path: RelativePath, entry: CommitEntry) => {
-    let known = seen.get(path);
-    if (known === undefined) {
-      known = await matches(join(tree, path), entry, format);
-      seen.set(path, known);
-    }
-    return known;
-  };
-  const links: ChangedLink[] = [];
-  for (const [link, entry] of entries) {
-    if (entry.mode !== "120000" || (await same(link, entry))) continue;
-    links.push({ link, resolved: await resolvedIn(tree, link) });
+  for (let at = 0; at < entries.length; at += PARALLEL) {
+    const batch = entries.slice(at, at + PARALLEL);
+    const same = await Promise.all(
+      batch.map(([path, entry]) => matches(join(tree, path), entry, format)),
+    );
+    const first = same.indexOf(false);
+    if (first >= 0) return (batch[first] as [RelativePath, CommitEntry])[0];
   }
-  return {
-    links,
-    async changed(paths) {
-      for (const path of paths) {
-        const entry = entries.get(path);
-        if (entry !== undefined && !(await same(path, entry))) return path;
-      }
-      return null;
-    },
-  };
-}
-
-/** Where `link` leads in `tree` now, relative to it; `null` when nowhere, or outside the tree. */
-async function resolvedIn(tree: AbsolutePath, link: RelativePath): Promise<RelativePath | null> {
-  try {
-    const at = relative(await realpath(tree), await realpath(join(tree, link)));
-    return at === "" || at.startsWith("..") ? null : at.split(sep).join("/");
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /** Whether the file at `path` is `entry`: its kind and mode, then its blob. */

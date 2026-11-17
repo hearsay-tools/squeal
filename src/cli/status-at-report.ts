@@ -50,8 +50,18 @@ export type SideState =
   | { readonly state: "not determined"; readonly reason: string }
   /** Row 023-07, D4.6: `--run` selected it and did not start it, for want of budget or of its `prepare`. */
   | { readonly state: "not run"; readonly reason: "budget" | "prepare" }
-  /** Row 023-07, D4.9: its closure at the commit reads a path git does not hold there. */
-  | { readonly state: "not comparable"; readonly reason: string };
+  /**
+   * Row 023-07, D4.9: its closure at the commit reads a path git does not
+   * hold there; or ("Whole-checkout check") the install changed the
+   * checkout, so its key is not the commit's. `ran`: `--run` ran it there
+   * with this outcome, and stored nothing.
+   */
+  | {
+      readonly state: "not comparable";
+      readonly reason: string;
+      readonly ran?: "pass" | "fail";
+      readonly failed?: readonly string[];
+    };
 
 /** D3's comparison. */
 export type Change = "pass -> fail" | "fail -> pass" | "unchanged" | "unknown";
@@ -160,8 +170,10 @@ export interface AtReport {
   readonly dirty: boolean;
   readonly now: NowSource;
   readonly checkoutMs: number | null;
-  /** Row 023-07: the check of the keyed files' inputs against the commit, within `checkoutMs`. */
+  /** Row 023-07: the whole-checkout check's time, within `checkoutMs`. */
   readonly inputCheckMs?: number | null;
+  /** Row 023-07: the first path the install changed in the checkout; `null` or absent when none. */
+  readonly changed?: string | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
   readonly files: readonly FileReport[];
@@ -183,6 +195,8 @@ export function originText(origin: Origin): string {
 }
 
 function word(side: SideState): string {
+  if (side.state === "not comparable" && side.ran !== undefined)
+    return `${side.ran} when run, not stored (${side.reason})`;
   if (
     side.state === "not determined" ||
     side.state === "not run" ||
@@ -198,12 +212,14 @@ function detail(name: string, side: SideState): string | null {
   if (side.state === "fail")
     return `${name}: ${side.failed.join(", ")}; ${originText(side.origin)}`;
   if (side.state === "pass") return `${name}: ${originText(side.origin)}`;
+  if (side.state === "not comparable" && side.failed !== undefined)
+    return `${name}: ${side.failed.join(", ")}`;
   return null;
 }
 
 /** The input check's share of the checkout's time, when one ran. */
 const checkText = (ms: number | null | undefined) =>
-  ms === null || ms === undefined ? "" : ` (its inputs checked against the commit in ${ms} ms)`;
+  ms === null || ms === undefined ? "" : ` (checked against the commit in ${ms} ms)`;
 
 /** D3's text: a header, each changed or unknown file on one line, the counts, the 7-day line. */
 export function formatAt(report: AtReport, nowMs: number): string {
@@ -226,6 +242,10 @@ export function formatAt(report: AtReport, nowMs: number): string {
     );
   }
   if (report.failure !== null) lines.push(`The checkout gave no keys: ${report.failure}`);
+  if (report.changed !== undefined && report.changed !== null)
+    lines.push(
+      `The install changed the checkout (${report.changed} differs from ${at}), so its keys and results are not ${at}'s and nothing from it is stored.`,
+    );
   const order: Change[] = ["pass -> fail", "fail -> pass", "unknown"];
   for (const kind of order) {
     for (const f of report.files.filter((file) => file.change === kind)) {
@@ -262,6 +282,7 @@ export function jsonAt(report: AtReport): string {
     now: report.now,
     checkoutMs: report.checkoutMs,
     inputCheckMs: report.inputCheckMs ?? null,
+    changed: report.changed ?? null,
     failure: report.failure,
     counts: countsOf(report.files),
     run: report.run ?? null,

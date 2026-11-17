@@ -14,7 +14,6 @@ import { sweepCheckouts } from "../checkout/sweep.js";
 import { type Keyer, openKeyer } from "../code/gate/stored.js";
 import { leaseProcess } from "../daemon/lease-process.js";
 import { readPolicy } from "../daemon/policy.js";
-import { runGit } from "../fs/git.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { installCommand } from "../scheduler/install-command.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
@@ -22,6 +21,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import type { Store } from "../types/store.js";
+import { checkoutChange } from "./at-keys-verify.js";
 
 /*
  * Spec 023 D2 as amended and D4 (row 023-16): the keys of the files the
@@ -63,6 +63,16 @@ export interface CheckoutOptions {
 }
 
 const INSTALL_TIMEOUT_MS = 300_000;
+
+/**
+ * Row 023-07: the whole-checkout check after the install: the first path
+ * the commit tracks that the checkout does not hold as the commit does,
+ * `null` when none; and the check's time.
+ */
+export interface CheckoutChange {
+  readonly path: RelativePath | null;
+  readonly ms: number;
+}
 
 /** A checkout that could not be made or installed: its files are not determined. */
 export class CheckoutFailed extends Error {
@@ -144,7 +154,7 @@ export async function withCheckout<T>(
     readonly copied?: readonly RelativePath[];
   },
   options: CheckoutOptions,
-  body: (checkout: Checkout, install: InstallResult) => Promise<T>,
+  body: (checkout: Checkout, install: InstallResult, change: CheckoutChange) => Promise<T>,
 ): Promise<T> {
   const { root, commonDir, commit } = input;
   const cacheRoot = options.cacheRoot ?? cacheCheckoutsRoot();
@@ -176,31 +186,16 @@ export async function withCheckout<T>(
       options.install ?? ((tree) => installCheckout(tree, { timeoutMs, started }))
     )(checkout.tree);
     if (!install.ok) throw new CheckoutFailed("install", `${install.command}: ${install.reason}`);
-    // Row 023-07 (review wave-7 B5): an install that rewrote a tracked file leaves a tree
-    // that is not the commit's, so nothing keyed or run in it is the commit's.
-    const changed = await trackedChanges(checkout.tree);
-    if (changed.length > 0) {
-      const named = changed.slice(0, 3).join(", ");
-      const more = changed.length > 3 ? ` and ${changed.length - 3} more` : "";
-      throw new CheckoutFailed(
-        "install",
-        `${install.command} changed files git holds at ${commit.slice(0, 9)}: ${named}${more}`,
-      );
-    }
-    return await body(checkout, install);
+    // Row 023-07 (the human, 2026-11-17, "Whole-checkout check"): every path the commit tracks,
+    // compared with the commit's tree after the install; a difference anywhere is told to `body`.
+    const checkStarted = performance.now();
+    const skip = new Set(input.copied ?? []);
+    const path = await checkoutChange(root, checkout.tree, checkout.commit, skip);
+    const change = { path, ms: Math.round(performance.now() - checkStarted) };
+    return await body(checkout, install, change);
   } finally {
     await removeCheckout(checkout);
   }
-}
-
-/** The tracked paths of `tree` that differ from its commit, sorted as git lists them. */
-export async function trackedChanges(tree: AbsolutePath): Promise<string[]> {
-  const args = ["status", "--porcelain=v1", "-z", "--untracked-files=no", "--no-renames"];
-  const out = await runGit(tree, args);
-  return out
-    .split("\0")
-    .filter((entry) => entry.length > 3)
-    .map((entry) => entry.slice(3));
 }
 
 async function manifestOf(root: AbsolutePath): Promise<unknown> {

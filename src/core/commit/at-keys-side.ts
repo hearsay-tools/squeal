@@ -56,7 +56,18 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
       const paths = copied.map((ref) => ref.path);
       const input = { root, commonDir, commit, prepare, copied: paths };
       const at = await inCheckout(main, input, copied, options);
-      for (const [id, key] of at.files) out.set(id, key);
+      // Row 023-07: a checkout the install changed gives no key that is the commit's.
+      const changed: KeyAt | null =
+        at.changed === null
+          ? null
+          : {
+              notDetermined: {
+                reason: "changed",
+                detail: `install changed the checkout: ${at.changed}`,
+              },
+            };
+      for (const [id, key] of at.files)
+        out.set(id, changed !== null && "key" in key ? changed : key);
       return out;
     });
   } finally {

@@ -33,6 +33,8 @@ interface RunRequest {
   readonly budgetSeconds: number;
   readonly tempDir: AbsolutePath;
   readonly answer: string;
+  /** Whether the gate reads and keeps results in the shared stores (`runGateFiles`' `store`). */
+  readonly store: boolean;
 }
 
 /** The child's answer: the gate's per-file outcomes, or why it gave none. */
@@ -58,6 +60,7 @@ export async function runChild(request: string): Promise<number> {
       files: asked.files,
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
+      store: asked.store,
       note: (text) => process.stderr.write(`squeal: ${text}\n`),
       output: () => {},
     });
@@ -75,6 +78,8 @@ export interface ChildRun {
   readonly checkout: Checkout;
   readonly files: readonly RelativePath[];
   readonly budgetSeconds: number;
+  /** Row 023-07: `false` when the install changed the checkout: the gate stores nothing. */
+  readonly store: boolean;
   /** The child's whole environment: the command's, as it started. */
   readonly env: NodeJS.ProcessEnv;
   /** The child's stdout and stderr, as they come. */
@@ -94,6 +99,7 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
     budgetSeconds: run.budgetSeconds,
     tempDir: checkout.run,
     answer,
+    store: run.store,
   };
   writeFileSync(request, JSON.stringify(asked));
   const child = spawn(command, [...flags, "status", "--at", checkout.commit], {

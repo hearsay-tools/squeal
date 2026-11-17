@@ -75,11 +75,7 @@ async function refuse(
   const states = new Map<string, SideState>();
   const refused = new Map<RelativePath, { ref: TestFileRef; why: string }>();
   for (const file of keyed) {
-    // Re-review B5: a file whose inputs the install changed has no key; its path runs for no project.
-    const changed = "notDetermined" in file.at && file.at.notDetermined.reason === "changed";
-    const path = changed ? null : needs(file);
-    if (changed && !refused.has(file.ref.path))
-      refused.set(file.ref.path, { ref: file.ref, why: file.at.notDetermined.detail });
+    const path = needs(file);
     if (path === null) continue;
     const why = `needs ${path}`;
     if (!refused.has(file.ref.path)) refused.set(file.ref.path, { ref: file.ref, why });

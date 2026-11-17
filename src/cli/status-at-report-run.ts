@@ -19,9 +19,15 @@ export interface RunUse {
   readonly ran: number;
   /** Of those, the ones the shared store holds at their key after the run (B7). */
   readonly stored: number;
+  /** "Whole-checkout check": the first path the install changed; with one, nothing was stored. */
+  readonly changed: string | null;
   /** Of those, the ones the budget left not run. */
   readonly notRun: number;
-  /** Files with no result that were not run because their closure needs a path git does not hold. */
+  /**
+   * Files not comparable with the commit: not run because their closure
+   * needs a path git does not hold (D4.9), and, after a changed checkout,
+   * those that ran there and were not stored.
+   */
   readonly notComparable: number;
   readonly timedOut: boolean;
   /** D17.1's estimate of the selected files; `null` when the checkout gave none. */
@@ -38,14 +44,18 @@ export function runLines(run: RunUse, at: string): string[] {
       ? `--run: no file with no result at ${at} to run (${used})`
       : `--run: ${run.ran} of ${run.selected} test files with no result at ${at} ran in its checkout, ${run.stored} stored at its keys (${used})`,
   ];
-  if (run.ran > run.stored)
+  const unstored = run.ran - run.stored;
+  if (unstored > 0 && run.changed !== null)
     lines.push(
-      `${run.ran - run.stored} not stored: the gate keeps a result only with coverage on at ${at}; the next --at has no result for ${run.ran - run.stored === 1 ? "it" : "them"}`,
+      `${unstored} not stored (install changed the checkout: ${run.changed}): ${unstored === 1 ? "its result is" : "their results are"} shown, not ${at}'s`,
     );
-  if (run.notComparable > 0)
+  else if (unstored > 0)
     lines.push(
-      `${run.notComparable} not run: their closure needs a path git does not hold at ${at}`,
+      `${unstored} not stored: the gate keeps a result only with coverage on at ${at}; the next --at has no result for ${unstored === 1 ? "it" : "them"}`,
     );
+  const needs = run.notComparable - (run.changed === null ? 0 : unstored);
+  if (needs > 0)
+    lines.push(`${needs} not run: their closure needs a path git does not hold at ${at}`);
   if (run.rerun !== null)
     lines.push(`${run.notRun} not run (budget). A rerun that fits: ${run.rerun}`);
   return lines;

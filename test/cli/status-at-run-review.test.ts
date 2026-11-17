@@ -1,19 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { AbsolutePath } from "../../src/core/types/common.js";
-import {
-  type Fixture,
-  fixture,
-  git,
-  link,
-  linkInstall,
-  ref,
-  write,
-} from "../commit/at-keys-fixture.js";
+import { type Fixture, fixture, git, linkInstall, ref, write } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { clean, run, testOf } from "./status-at-kit.js";
 
 /*
- * Row 023-07, review wave-7 (`reviews/wave-7.md`) B2, B4, B5, B6, B7: each
+ * Row 023-07, review wave-7 (`reviews/wave-7.md`) B2, B4, B6, B7 (B5 is `status-at-run-inputs.test.ts`'s): each
  * blocker's probe as a regression, on `$TMPDIR` fixtures with the real
  * Vitest adapter and `--run`'s real child.
  */
@@ -134,30 +125,6 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
       origin: { kind: "run" },
     });
     expect(atOf(input.out, TEST.path)?.state).toBe("no result");
-    clean(f);
-  });
-
-  it("B5: an install that rewrites a tracked file keys and runs nothing, and stores nothing", async () => {
-    const f = fixture({
-      ...ON,
-      "src/a.ts": "export const value = 2;\n",
-      [TEST.path]: testOf("a", 1),
-    });
-    const a = head(f);
-    f.commit({ "src/a.ts": "export const value = 3;\n" });
-    const install = async (tree: AbsolutePath) => {
-      link(tree);
-      write(tree, { "src/a.ts": "export const value = 1;\n" });
-      return { ok: true, command: "link", ms: 0 } as const;
-    };
-    const rewritten = await run(f, { commit: a, run: RUN }, { cacheRoot: f.cacheRoot, install });
-    expect(rewritten.code).toBe(3);
-    expect(rewritten.out).toContain(
-      `The checkout gave no keys: install: link changed files git holds at ${a.slice(0, 9)}: src/a.ts`,
-    );
-    expect(rewritten.out).not.toContain("--run:");
-    const plain = await run(f, { commit: a, json: true }, options(f));
-    expect(atOf(plain.out, TEST.path)?.state).toBe("no result");
     clean(f);
   });
 

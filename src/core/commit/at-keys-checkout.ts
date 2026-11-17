@@ -9,7 +9,6 @@ import type { Policy } from "../types/policy.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
-import { type ChangedLink, inputCheck } from "./at-keys-verify.js";
 import {
   CheckoutFailed,
   type CheckoutOptions,
@@ -37,8 +36,8 @@ export type NotDeterminedReason =
   /** The checkout's install failed. */
   | "install"
   /**
-   * Row 023-07 (re-review B5): a file its key reads differs in the
-   * checkout from the commit's tree: bytes, mode or link target.
+   * Row 023-07 ("Whole-checkout check"): the checkout, after its install,
+   * does not hold every path the commit tracks as the commit does (`sideKeys`).
    */
   | "changed";
 
@@ -66,10 +65,16 @@ export interface KeyedFile {
 
 /**
  * Row 023-07 (D4): runs in the checkout after its files are keyed and the
- * keyer is closed, before the checkout is removed; given the keyed files.
+ * keyer is closed, before the checkout is removed; given the keyed files
+ * and the first path the install changed (`null` when the checkout is the
+ * commit's): with one, nothing run there may be stored as the commit's.
  * What it throws rejects the whole call, the checkout removed first.
  */
-export type BeforeRemove = (checkout: Checkout, files: readonly KeyedFile[]) => Promise<void>;
+export type BeforeRemove = (
+  checkout: Checkout,
+  files: readonly KeyedFile[],
+  changed: RelativePath | null,
+) => Promise<void>;
 
 /**
  * Row 023-07 (review wave-7 B4): runs in the checkout after its files are
@@ -100,7 +105,14 @@ export interface Checked {
   readonly failure: NotDetermined | null;
   /** The checkout's whole time: make, install, open the keyer, key, remove. */
   readonly ms: number;
-  /** Row 023-07: the time of the check of the keyed files' inputs against the commit; `null` when none ran. */
+  /**
+   * Row 023-07 ("Whole-checkout check"): the first path the commit tracks
+   * that the installed checkout does not hold as the commit does; `null`
+   * when it holds every one, or no checkout was installed. With one, the
+   * keys and the results at them are the changed checkout's, not the commit's.
+   */
+  readonly changed: RelativePath | null;
+  /** The whole-checkout check's time; `null` when none ran. */
   readonly inputCheckMs: number | null;
 }
 
@@ -120,8 +132,10 @@ export async function inCheckout(
   const started = performance.now();
   const ms = () => Math.round(performance.now() - started);
   let inputCheckMs: number | null = null;
+  let changed: RelativePath | null = null;
   try {
-    await withCheckout(input, options, async (checkout) => {
+    await withCheckout(input, options, async (checkout, _install, change) => {
+      ({ path: changed, ms: inputCheckMs } = change);
       const refs = await withKeyer(
         checkout.tree,
         input.commonDir,
@@ -139,75 +153,20 @@ export async function inCheckout(
             } else out.set(id, { ...found(main, ref, at.key), loads: at.loads });
           }
           const { adapters, policy } = open;
-          const checkStarted = performance.now();
-          await refuseChanged(input, checkout, adapters, refs, out);
-          inputCheckMs = Math.round(performance.now() - checkStarted);
           await options.whileOpen?.({ adapters, policy, tree: checkout.tree }, keyedOf(refs, out));
           return refs;
         },
       );
       // Row 023-07: the keyer's adapters are closed; the files run in this same checkout.
-      await options.beforeRemove?.(checkout, keyedOf(refs, out));
+      await options.beforeRemove?.(checkout, keyedOf(refs, out), changed);
     });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
     const failure = { reason: error.reason, detail: error.message };
     for (const ref of files ?? []) out.set(testFileId(ref), { notDetermined: failure });
-    return { files: out, failure, ms: ms(), inputCheckMs };
+    return { files: out, failure, ms: ms(), changed: null, inputCheckMs };
   }
-  return { files: out, failure: null, ms: ms(), inputCheckMs };
-}
-
-/**
- * Re-review B5 (`at-keys-verify.ts`): each keyed file whose closure, or
- * its project's runner files, differs in the checkout from the commit's
- * tree is not the commit's: its key is dropped, so nothing reads, runs or
- * stores it as the commit's.
- */
-async function refuseChanged(
-  input: { readonly root: AbsolutePath; readonly copied?: readonly RelativePath[] },
-  checkout: Checkout,
-  adapters: readonly RunnerAdapter[],
-  refs: readonly TestFileRef[],
-  out: Map<string, KeyAt>,
-): Promise<void> {
-  const runnerFiles = new Map<string, RelativePath[]>();
-  for (const adapter of adapters) {
-    for (const environment of await adapter.environment()) {
-      const project = runnerFiles.get(environment.project) ?? [];
-      project.push(...environment.files);
-      runnerFiles.set(environment.project, project);
-    }
-  }
-  const every = [...runnerFiles.values()].flat();
-  const check = await inputCheck(input.root, checkout.tree, checkout.commit);
-  const copied = new Set(input.copied ?? []);
-  for (const ref of refs) {
-    const id = testFileId(ref);
-    const at = out.get(id);
-    if (at === undefined || !("key" in at)) continue;
-    const own = runnerFiles.get(ref.project) ?? every;
-    const inputs = [ref.path, ...own, ...(at.loads ?? [])].filter((p) => !copied.has(p));
-    const path = (await check.changed(inputs)) ?? throughLink(check.links, inputs);
-    if (path !== null) {
-      const detail = `install changed ${path}`;
-      out.set(id, { notDetermined: { reason: "changed", detail } });
-    }
-  }
-}
-
-/** A changed tracked link that `inputs` read: the link itself, or what it leads to now. */
-function throughLink(
-  links: readonly ChangedLink[],
-  inputs: readonly RelativePath[],
-): RelativePath | null {
-  for (const { link, resolved } of links) {
-    const reads = (path: RelativePath) =>
-      path === link ||
-      (resolved !== null && (path === resolved || path.startsWith(`${resolved}/`)));
-    if (inputs.some(reads)) return link;
-  }
-  return null;
+  return { files: out, failure: null, ms: ms(), changed, inputCheckMs };
 }
 
 function keyedOf(refs: readonly TestFileRef[], out: ReadonlyMap<string, KeyAt>): KeyedFile[] {

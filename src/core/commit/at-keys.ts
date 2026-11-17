@@ -1,6 +1,6 @@
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
-import type { AbsolutePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
   absent,
@@ -47,10 +47,13 @@ export interface KeysAt {
    */
   readonly checkoutMs: number | null;
   /**
-   * Row 023-07 (re-review B5): the time of the check of the keyed files'
-   * inputs against the commit's tree, within `checkoutMs`; `null` when no
-   * file was keyed in a checkout.
+   * Row 023-07 ("Whole-checkout check"): the first path the commit tracks
+   * that the installed checkout does not hold as the commit does; with
+   * one, every key from the checkout, and the results at it, are the
+   * changed checkout's, not the commit's. Absent or `null`: none.
    */
+  readonly changed?: RelativePath | null;
+  /** The whole-checkout check's time, within `checkoutMs`; `null` when none ran. */
   readonly inputCheckMs?: number | null;
   /** Whether the shared store could be read; without it every `stored` is empty. */
   readonly store: boolean;
@@ -113,7 +116,8 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
       ...(beforeRemove === undefined
         ? {}
         : {
-            beforeRemove: ((checkout, keyed) => beforeRemove(checkout, own(keyed))) as BeforeRemove,
+            beforeRemove: ((checkout, keyed, changed) =>
+              beforeRemove(checkout, own(keyed), changed)) as BeforeRemove,
           }),
       ...(whileOpen === undefined
         ? {}
@@ -121,7 +125,7 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
     };
     const at = await inCheckout(main, { root, commonDir, commit }, asked, { ...options, ...hooks });
     for (const [id, key] of at.files) if (!files.has(id)) files.set(id, key);
-    const timing = { checkoutMs: at.ms, inputCheckMs: at.inputCheckMs };
+    const timing = { checkoutMs: at.ms, inputCheckMs: at.inputCheckMs, changed: at.changed };
     return { commit, files, failure: at.failure, ...timing, store, ...ciPart };
   });
 }

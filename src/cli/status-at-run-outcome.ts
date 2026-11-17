@@ -29,6 +29,12 @@ export interface OutcomeInput {
    */
   readonly siblings: readonly KeyedFile[];
   readonly answer: RunAnswer;
+  /**
+   * Row 023-07 ("Whole-checkout check"): the first path the install
+   * changed; with one, the run stored nothing, and each outcome is shown
+   * as not the commit's.
+   */
+  readonly changed: string | null;
 }
 
 /** Each run file's state, by `testFileId`. */
@@ -39,6 +45,15 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     const reason = `run: ${answer.error}`;
     for (const file of input.run)
       states.set(testFileId(file.ref), { state: "not determined", reason });
+    return states;
+  }
+  const { changed } = input;
+  if (changed !== null) {
+    for (const file of input.run) {
+      if (!("key" in file.at)) continue;
+      const runs = answer.result.runs.filter((r) => r.path === file.ref.path);
+      states.set(testFileId(file.ref), notTheCommits(fromGate(file.at.key, runs, commit), changed));
+    }
     return states;
   }
   const chosen = new Set(input.run.map((f) => testFileId(f.ref)));
@@ -60,6 +75,14 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     }
   });
   return states;
+}
+
+/** A run's outcome in a checkout the install changed: shown, not the commit's, not stored. */
+function notTheCommits(state: SideState, changed: string): SideState {
+  if (state.state !== "pass" && state.state !== "fail") return state;
+  const reason = `install changed the checkout: ${changed}`;
+  const failed = state.state === "fail" ? { failed: state.failed } : {};
+  return { state: "not comparable", reason, ran: state.state, ...failed };
 }
 
 /** A stored state, its origin this command's run. */
