@@ -1064,10 +1064,10 @@ var SHAPE = {
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  const settled3 = settleChecks(loaded.value);
+  const settled2 = settleChecks(loaded.value);
   return {
-    policy: settled3.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled3.checks },
-    problems: [...loaded.problems, ...settled3.problems],
+    policy: settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks },
+    problems: [...loaded.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -7282,10 +7282,10 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
     }
     const socket = createConnection(socketPath);
     let buffer = "";
-    let settled3 = false;
+    let settled2 = false;
     const settle = (error, response) => {
-      if (settled3) return;
-      settled3 = true;
+      if (settled2) return;
+      settled2 = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", aborted);
       socket.destroy();
@@ -7993,7 +7993,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.532";
+  if (true) return "0.1.534";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10414,61 +10414,65 @@ function prune2(store, worktreeId) {
     sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces)
   );
 }
-function editNotes(store, consumer, states, delivering) {
+function editNotes(store, consumer, states, delivering, countOnly = false) {
   const state = readState(store, consumer);
-  if (state === null || state.said && !delivering) return null;
-  const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  if (revision <= state.since || !isRefined(store, consumer.worktreeId, revision)) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  const { changed } = changedAfter(
-    store,
-    consumer.worktreeId,
-    { since: state.since, gaps },
-    revision
-  );
-  if (changed.size === 0) return null;
-  const rows = new Map(
-    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
-  );
-  const rekeyed = [];
-  let owed2 = false;
-  for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
-    const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
-    rekeyed.push(row);
-    owed2 ||= row.pending !== null;
-  }
-  const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
-  const editsSettled = owed2 ? void 0 : settled2(state.since, rekeyed, states);
-  if (sawEdit === void 0 && editsSettled === void 0) return null;
+  if (state === null || (state.said || countOnly) && !delivering) return null;
+  const own = readOwn(store, consumer, state.since, states);
+  if (own === null || own.files === 0) return null;
+  const sawEdit = state.said || countOnly ? void 0 : { queued: own.files };
+  const moved = own.owed === 0;
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
-    ...editsSettled === void 0 ? {} : { editsSettled },
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
-    tell: () => {
+    own: ownCount(own),
+    rekeyed: own.rekeyed,
+    tell: (shown) => {
+      const move = moved && shown;
+      if (!move && sawEdit === void 0) return;
       writeState(store, consumer, {
-        since: editsSettled === void 0 ? state.since : revision,
-        said: true
+        since: move ? own.revision : state.since,
+        said: state.said || sawEdit !== void 0
       });
-      if (editsSettled !== void 0) prune2(store, consumer.worktreeId);
+      if (move) prune2(store, consumer.worktreeId);
     }
   };
 }
+function ownCount(own) {
+  const count2 = { files: own.files, owed: own.owed };
+  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
+}
+function readOwn(store, consumer, since, states) {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since || !isRefined(store, worktreeId, revision)) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed = [];
+  let owed2 = 0;
+  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null || entry3.last <= since) continue;
+    rekeyed.push(row);
+    if (entry3.open !== null) owed2++;
+  }
+  return {
+    revision,
+    files: rekeyed.length,
+    owed: owed2,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
+  };
+}
 function carriesEditResult(notes, checks, header) {
-  if (notes.sawEdit === void 0 || notes.editsSettled !== void 0) return false;
+  if (notes.sawEdit === void 0) return false;
   const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
   return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
-function settled2(since, rekeyed, states) {
-  if (rekeyed.length === 0) return void 0;
+function unknownFiles(rekeyed, states) {
   const unknown = new Set(
     states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
   );
-  return {
-    since,
-    files: rekeyed.length,
-    unknown: rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length
-  };
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
 }
 
 // src/core/waiter-lock/waiter-lock.ts
@@ -11076,16 +11080,16 @@ function startHold(prepare2) {
   const commit = () => {
     if (ended) return;
     ended = true;
-    const settled3 = acknowledge;
+    const settled2 = acknowledge;
     try {
       held?.commit();
     } catch (error) {
       rollbackHolds(code);
       throw error;
     }
-    if (settled3 === null) return rollbackHolds(code);
+    if (settled2 === null) return rollbackHolds(code);
     commitHolds(code);
-    settled3();
+    settled2();
   };
   prepare2.reports.add({
     commit,
@@ -11220,7 +11224,7 @@ function createDelivery(store, options) {
       });
       const commit = liveness ? commitNews(store, consumer) : void 0;
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
-      const notes = liveness || idle && news ? editNotes(store, consumer, states, news) : null;
+      const notes = ownNotes(store, consumer, states, { liveness, idle, news });
       const delivered = news || liveness && !stop && notes?.sawEdit !== void 0;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
@@ -11239,13 +11243,13 @@ function createDelivery(store, options) {
         live,
         states
       );
-      notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       const groupsChanged = changedGroups(store, consumer, header.groupTiers);
       if (stop || groupsChanged.length > 0) tellGroupTiers(store, consumer, header.groupTiers);
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
+      notes?.tell(ownShown(stop, countsOwed, header));
       const sawEdit = notes === null || carriesEditResult(
         notes,
         entries.map((e) => e.check),
@@ -11266,7 +11270,8 @@ function createDelivery(store, options) {
         ...commit === void 0 ? {} : { commitChanged: true },
         ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },
-        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
+        // Row 005-93 (c): the news header counts the consumer's own test files.
+        ...notes?.own === void 0 ? {} : { ownEdits: notes.own },
         ...sideParts(code, lint2, states)
       };
     });
@@ -11411,6 +11416,13 @@ function createDelivery(store, options) {
       };
     });
   }
+}
+function ownNotes(store, consumer, states, { liveness, idle, news }) {
+  if (!liveness && !news) return null;
+  return editNotes(store, consumer, states, news, !liveness && !idle);
+}
+function ownShown(stop, counts, header) {
+  return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
 }
 
 // src/core/delivery/daemon-writer.ts

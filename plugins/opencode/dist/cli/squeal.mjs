@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.532";
+  if (true) return "0.1.534";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -77332,6 +77332,9 @@ function foldedText(what, list2, command) {
   const processes2 = total === 1 ? "1 process" : `${total} processes`;
   return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
 }
+
+// src/core/delivery/header.ts
+init_text();
 
 // src/core/delivery/provenance.ts
 var TOUCHED_SHOWN = 3;

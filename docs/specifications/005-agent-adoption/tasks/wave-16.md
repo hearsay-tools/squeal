@@ -44,3 +44,17 @@ Write, each as before (verbatim, from the real formatters: call them in a throwa
 For each change: which finding it answers, who the sentence is for (agent, or the person on request), and where a removed fact stays readable (`squeal status --full`). Then: what an atomic eval run must show for this pass (which cells of `evals/ATOMIC.md` read these texts), without running any eval. List what you did not decide, as options.
 
 Owns: `tasks/005-94/`. No product code, no eval run, never run a script under `evals/bin`. Final message: the open choices for the human.
+
+## Review of cand/0.1.534
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.534` SHA named in the spawn; the range is from the base named there to that SHA. It holds row 005-93 part 1: three commits of worker a1eb0936 (cherry-picked with `-x`) and one coordinator commit (the release 0.1.534 with bundles and this section). Read row 005-93 as rewritten, this file's W1 section, `tasks/005-93/part1-notes.md` (each hunk carried or left, how `since` moves), `reviews/0.1.530.md` and `reviews/0.1.530-r2.md` (what was confirmed and what failed on `origin/wip/005-93`), `status.md` 2026-11-17.
+
+Judge:
+- Nothing late: no late state, no late or caught-up text or title, no bound, no scheduler or store change, no new meta key came with the carry-over (`git diff <base>..<sha> -- src/core/scheduler src/core/store` is empty).
+- The own count: a change delivery's header counts the consumer's own test files and nothing of the worktree's queue; "have all run" is said only when no file of its recorded edits is owed (no result at the file's key; judge the confirmation-run case of review wave 13v B1 again); the unknown clause; a consumer with no edit gets no count and nothing that reads as a pass; registration, Stop and `squeal status` unchanged.
+- `since` moves only when a delivered header shows the own count with no file owed: judge every delivery path (tool boundary, Stop, peek, the idle waiter, turn start, an unrefined revision) for a header that says "have all run" too early or a count that never resets.
+- The late-feed and unlisted sentences stay in the news header as on main.
+- The settled line is gone from every harness's texts, the skill copies and the parsers; `evals/lib/squeal-text.mjs` and `grade.mjs` round-trip the real formatters, old and new headers, and a header with no count never reads as a pass.
+- Complexity: no function newly over the threshold (`squeal code` on the touched files).
+
+No full suite and no full-suite checkpoint; candidate CI is the full suite: name its run and result. `test/e2e/**` is outside Squeal's coverage: say which e2e files you ran directly (control, lifecycle, transitions, run-triggers). Write `reviews/0.1.534.md` and commit it on your branch.

@@ -1068,10 +1068,10 @@ var SHAPE = {
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
-  const settled3 = settleChecks(loaded.value);
+  const settled2 = settleChecks(loaded.value);
   return {
-    policy: settled3.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled3.checks },
-    problems: [...loaded.problems, ...settled3.problems],
+    policy: settled2.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled2.checks },
+    problems: [...loaded.problems, ...settled2.problems],
     ...loaded.unparsed === true ? { unparsed: true } : {},
     ...loaded.unknownKeys === void 0 ? {} : { unknownKeys: loaded.unknownKeys }
   };
@@ -2727,7 +2727,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.532";
+  if (true) return "0.1.534";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4168,11 +4168,9 @@ function tellGroupTiers(store, consumer, groups2) {
 
 // src/core/delivery/content-title.ts
 function contentWords(delta) {
-  const { sawEdit, editsSettled, header } = delta;
+  const { sawEdit, header } = delta;
   const words = [];
-  if (editsSettled !== void 0) {
-    words.push(`your edits' test files ${editsSettled.unknown === 0 ? "are current" : "finished"}`);
-  } else if (sawEdit !== void 0) {
+  if (sawEdit !== void 0) {
     const did = header.noTestsAtEdit === true ? "affects" : "queued";
     words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
   }
@@ -4678,10 +4676,10 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
     }
     const socket = createConnection(socketPath);
     let buffer = "";
-    let settled3 = false;
+    let settled2 = false;
     const settle = (error, response) => {
-      if (settled3) return;
-      settled3 = true;
+      if (settled2) return;
+      settled2 = true;
       clearTimeout(timer);
       signal?.removeEventListener("abort", aborted);
       socket.destroy();
@@ -5276,26 +5274,30 @@ function holdsText2(header, command) {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
 var ACTIONABLE = ["pending", "stale", "unknown"];
-function newsLine(header, command, owed2) {
+function newsLine(header, command, told) {
   const unlisted3 = unlistedLine(header, command);
   if (unlisted3 !== null) return unlisted3;
-  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const revision = revisionPrefix(header);
-  if (owed2 !== void 0) {
-    return `${revision}${fullCounts(header, owed2)}${incompleteText(header)}${daemonText(header, command)}`;
+  if (told.countsOwed !== void 0) {
+    return `${revision}${fullCounts(header, told.countsOwed)}${incompleteText(header)}${daemonText(header, command)}`;
   }
-  const actionable = ACTIONABLE.filter((v) => counts[v] > 0).map(
-    (v) => countedText(counts[v], v, fileLevel?.[v])
-  );
-  const without = ["pending", "unknown"].filter((v) => files2[v] > 0).map((v) => `${files2[v]} ${v}`).join(", ");
-  const news = actionable.length > 0 ? `${actionable.join(", ")}.${without === "" ? "" : ` Test files without checks: ${without}.`}` : without === "" ? "no check pending, stale or unknown." : `test files without checks: ${without}.`;
-  return `${revision}${news}${incompleteText(header)}${daemonText(header, command)}`;
+  const own = told.ownEdits;
+  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
+  return `${line}${incompleteText(header)}${daemonText(header, command)}`;
+}
+function affected(files2) {
+  return `the ${plural(files2, "test file")} your edits affect`;
+}
+function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
+  const verb = owed2 === 1 ? "has" : "have";
+  const count2 = owed2 === files2 ? `${affected(files2)} ${verb} not run` : owed2 > 0 ? `${owed2} of ${affected(files2)} ${verb} not run` : `${affected(files2)} ${files2 === 1 ? "has run" : "have all run"}`;
+  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
 }
 function countsText(counts, fileLevel) {
   return ["current", ...ACTIONABLE].map((validity) => countedText(counts[validity], validity, fileLevel?.[validity])).join(", ");
 }
 function headerLines(header, command, form = "full", told = {}) {
-  const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
+  const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
   const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
@@ -5561,35 +5563,17 @@ function titleOf(delta, holdTitle, command) {
 function quietEditsText(command) {
   return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
 }
-function sawEditLine(queued, quiet = null) {
+function sawEditLine(queued, quiet = null, done = false) {
+  if (done) return `Squeal saw your edit; ${quiet ?? "passing results stay silent"}.`;
   if (quiet !== null) {
-    return `Squeal saw your edit, which re-keyed ${plural(queued, "test file")}; ${quiet}.`;
+    return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
   return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passing ones stay silent.`;
 }
-function settledLine({ since, files: files2, unknown }) {
-  const which = `${files2 === 1 ? "The test file" : `All ${files2} test files`} your edits since revision ${since} re-keyed`;
-  if (unknown === 0) return `${which} ${files2 === 1 ? "is" : "are"} current.`;
-  return `${which} finished: ${files2 - unknown} current, ${unknown} with no result (unknown).`;
-}
-function sawSettledLine({ files: files2, unknown }, quiet = null) {
-  const head = "Squeal saw your edit; ";
-  const tail = quiet === null ? "passing results stay silent." : `${quiet}.`;
-  if (unknown === 0) {
-    const which = files2 === 1 ? "the 1 test file" : `all ${files2} test files`;
-    return `${head}${which} it re-keyed ${files2 === 1 ? "is" : "are"} current, and ${tail}`;
-  }
-  return `${head}of the ${plural(files2, "test file")} it re-keyed, ${files2 - unknown} current and ${unknown} with no result (unknown); ${tail}`;
-}
-function editLines({ sawEdit, editsSettled, header }, command) {
+function editLines({ sawEdit, ownEdits, header }, command) {
+  if (sawEdit === void 0) return [];
   const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
-  if (sawEdit !== void 0 && editsSettled !== void 0) {
-    return [sawSettledLine(editsSettled, quiet)];
-  }
-  return [
-    ...sawEdit === void 0 ? [] : [sawEditLine(sawEdit.queued, quiet)],
-    ...editsSettled === void 0 ? [] : [settledLine(editsSettled)]
-  ];
+  return [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)];
 }
 var checksOf = (entries) => entries.map((e) => e.check);
 function holdChangeLine(change2, revision, command) {
@@ -12161,61 +12145,65 @@ function prune2(store, worktreeId) {
     sinces.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...sinces)
   );
 }
-function editNotes(store, consumer, states, delivering) {
+function editNotes(store, consumer, states, delivering, countOnly = false) {
   const state = readState(store, consumer);
-  if (state === null || state.said && !delivering) return null;
-  const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  if (revision <= state.since || !isRefined(store, consumer.worktreeId, revision)) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  const { changed } = changedAfter(
-    store,
-    consumer.worktreeId,
-    { since: state.since, gaps },
-    revision
-  );
-  if (changed.size === 0) return null;
-  const rows = new Map(
-    store.testFileKeys.list(consumer.worktreeId).map((k) => [testFileId(k.testFile), k])
-  );
-  const rekeyed = [];
-  let owed2 = false;
-  for (const [id, entry3] of readRekeyed(store, consumer.worktreeId)) {
-    const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry3.last <= state.since) continue;
-    rekeyed.push(row);
-    owed2 ||= row.pending !== null;
-  }
-  const sawEdit = state.said || rekeyed.length === 0 ? void 0 : { queued: rekeyed.length };
-  const editsSettled = owed2 ? void 0 : settled2(state.since, rekeyed, states);
-  if (sawEdit === void 0 && editsSettled === void 0) return null;
+  if (state === null || (state.said || countOnly) && !delivering) return null;
+  const own = readOwn(store, consumer, state.since, states);
+  if (own === null || own.files === 0) return null;
+  const sawEdit = state.said || countOnly ? void 0 : { queued: own.files };
+  const moved = own.owed === 0;
   return {
     ...sawEdit === void 0 ? {} : { sawEdit },
-    ...editsSettled === void 0 ? {} : { editsSettled },
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile))),
-    tell: () => {
+    own: ownCount(own),
+    rekeyed: own.rekeyed,
+    tell: (shown) => {
+      const move = moved && shown;
+      if (!move && sawEdit === void 0) return;
       writeState(store, consumer, {
-        since: editsSettled === void 0 ? state.since : revision,
-        said: true
+        since: move ? own.revision : state.since,
+        said: state.said || sawEdit !== void 0
       });
-      if (editsSettled !== void 0) prune2(store, consumer.worktreeId);
+      if (move) prune2(store, consumer.worktreeId);
     }
   };
 }
+function ownCount(own) {
+  const count2 = { files: own.files, owed: own.owed };
+  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
+}
+function readOwn(store, consumer, since, states) {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since || !isRefined(store, worktreeId, revision)) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed = [];
+  let owed2 = 0;
+  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null || entry3.last <= since) continue;
+    rekeyed.push(row);
+    if (entry3.open !== null) owed2++;
+  }
+  return {
+    revision,
+    files: rekeyed.length,
+    owed: owed2,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
+  };
+}
 function carriesEditResult(notes, checks, header) {
-  if (notes.sawEdit === void 0 || notes.editsSettled !== void 0) return false;
+  if (notes.sawEdit === void 0) return false;
   const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
   return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
 }
-function settled2(since, rekeyed, states) {
-  if (rekeyed.length === 0) return void 0;
+function unknownFiles(rekeyed, states) {
   const unknown = new Set(
     states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
   );
-  return {
-    since,
-    files: rekeyed.length,
-    unknown: rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length
-  };
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
 }
 
 // src/core/waiter-lock/waiter-lock.ts
@@ -12657,16 +12645,16 @@ function startHold(prepare2) {
   const commit = () => {
     if (ended) return;
     ended = true;
-    const settled3 = acknowledge;
+    const settled2 = acknowledge;
     try {
       held?.commit();
     } catch (error) {
       rollbackHolds(code);
       throw error;
     }
-    if (settled3 === null) return rollbackHolds(code);
+    if (settled2 === null) return rollbackHolds(code);
     commitHolds(code);
-    settled3();
+    settled2();
   };
   prepare2.reports.add({
     commit,
@@ -12801,7 +12789,7 @@ function createDelivery(store, options) {
       });
       const commit = liveness ? commitNews(store, consumer) : void 0;
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
-      const notes = liveness || idle && news ? editNotes(store, consumer, states, news) : null;
+      const notes = ownNotes(store, consumer, states, { liveness, idle, news });
       const delivered = news || liveness && !stop && notes?.sawEdit !== void 0;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
@@ -12820,13 +12808,13 @@ function createDelivery(store, options) {
         live,
         states
       );
-      notes?.tell();
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
       const groupsChanged = changedGroups(store, consumer, header.groupTiers);
       if (stop || groupsChanged.length > 0) tellGroupTiers(store, consumer, header.groupTiers);
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
+      notes?.tell(ownShown(stop, countsOwed, header));
       const sawEdit = notes === null || carriesEditResult(
         notes,
         entries.map((e) => e.check),
@@ -12847,7 +12835,8 @@ function createDelivery(store, options) {
         ...commit === void 0 ? {} : { commitChanged: true },
         ...countsOwed,
         ...sawEdit === void 0 ? {} : { sawEdit },
-        ...notes?.editsSettled === void 0 ? {} : { editsSettled: notes.editsSettled },
+        // Row 005-93 (c): the news header counts the consumer's own test files.
+        ...notes?.own === void 0 ? {} : { ownEdits: notes.own },
         ...sideParts(code, lint2, states)
       };
     });
@@ -12992,6 +12981,13 @@ function createDelivery(store, options) {
       };
     });
   }
+}
+function ownNotes(store, consumer, states, { liveness, idle, news }) {
+  if (!liveness && !news) return null;
+  return editNotes(store, consumer, states, news, !liveness && !idle);
+}
+function ownShown(stop, counts, header) {
+  return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
 }
 
 // src/core/delivery/daemon-writer.ts
