@@ -8177,7 +8177,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.555";
+  if (true) return "0.1.556";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11477,7 +11477,7 @@ function lateNow(store, worktreeId, own, at, unreadSince) {
   };
 }
 function quietFor(header) {
-  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true;
+  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true || header.testFilesListed === false;
 }
 function withRunners(late, header) {
   const runners = header.listingRunners;
@@ -11769,7 +11769,7 @@ function forgetRest(store, worktreeId) {
 }
 
 // src/core/delivery/liveness.ts
-function readLiveHeader(store, worktreeId, now, states, since = null, keys, commonDir) {
+function readLiveHeader(store, worktreeId, now, { commonDir, states, since = null, keys }) {
   const worktree = store.worktrees.get(worktreeId);
   const presence = readPresence(store, worktreeId, now, worktree, commonDir);
   const runs = openRuns(store, worktree, presence.heartbeat);
@@ -12401,15 +12401,11 @@ function createDelivery(store, options) {
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
       const live = once(
         () => withTold(
-          readLiveHeader(
-            store,
-            consumer.worktreeId,
-            at,
+          readLiveHeader(store, consumer.worktreeId, at, {
+            commonDir: options.commonDir,
             states,
-            toldRevision(store, consumer),
-            void 0,
-            options.commonDir
-          ),
+            since: toldRevision(store, consumer)
+          }),
           toldLiveness(store, consumer),
           at
         )
@@ -12573,15 +12569,10 @@ function createDelivery(store, options) {
       seedView(store, consumer, rows, at);
       recordViewMark(store, consumer, mark === null ? null : { mark, at });
       const told = startingSince === void 0 ? null : { startingSince };
-      const read4 = readLiveHeader(
-        store,
-        consumer.worktreeId,
-        at,
-        states,
-        null,
-        void 0,
-        options.commonDir
-      );
+      const read4 = readLiveHeader(store, consumer.worktreeId, at, {
+        commonDir: options.commonDir,
+        states
+      });
       const live = told === null ? read4 : withTold(read4, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(

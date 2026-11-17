@@ -1088,7 +1088,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.555";
+  if (true) return "0.1.556";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2557,6 +2557,9 @@ function unlistedClause(what) {
 }
 function readWaitText(command) {
   return `\`${command} status --wait 60000 <path>...\` asks it to read them and waits for the files your paths select.`;
+}
+function listWaitText(command) {
+  return `\`${command} status --wait 60000 <path>...\` waits until they are listed, then for the files your paths select.`;
 }
 function lateText(late, revision, command) {
   return `Squeal has not yet read edits made after ${utcTimeText(late.since)}; these results cover revision ${revision} and earlier. ${readWaitText(command)}`;
@@ -4294,7 +4297,7 @@ function holdEndText(change2) {
 }
 
 // src/core/delivery/liveness.ts
-function readLiveHeader(store, worktreeId, now, states, since = null, keys, commonDir) {
+function readLiveHeader(store, worktreeId, now, { commonDir, states, since = null, keys }) {
   const worktree = store.worktrees.get(worktreeId);
   const presence = readPresence(store, worktreeId, now, worktree, commonDir);
   const runs = openRuns(store, worktree, presence.heartbeat);
@@ -12444,11 +12447,14 @@ function lateNow(store, worktreeId, own, at, unreadSince) {
   };
 }
 function quietFor(header) {
-  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true;
+  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true || header.testFilesListed === false;
 }
 function lateMaySay(header) {
   const { daemon } = header;
   return daemon?.state === "alive" && daemon.stopping === void 0 && !quietFor(header);
+}
+function lateCarriesDelay(header, owed2, late) {
+  return (owed2 > 0 || late !== void 0) && lateMaySay(header);
 }
 function withRunners(late, header) {
   const runners = header.listingRunners;
@@ -13022,15 +13028,11 @@ function createDelivery(store, options) {
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
       const live = once(
         () => withTold(
-          readLiveHeader(
-            store,
-            consumer.worktreeId,
-            at,
+          readLiveHeader(store, consumer.worktreeId, at, {
+            commonDir: options.commonDir,
             states,
-            toldRevision(store, consumer),
-            void 0,
-            options.commonDir
-          ),
+            since: toldRevision(store, consumer)
+          }),
           toldLiveness(store, consumer),
           at
         )
@@ -13194,15 +13196,10 @@ function createDelivery(store, options) {
       seedView(store, consumer, rows, at);
       recordViewMark(store, consumer, mark === null ? null : { mark, at });
       const told = startingSince === void 0 ? null : { startingSince };
-      const read5 = readLiveHeader(
-        store,
-        consumer.worktreeId,
-        at,
-        states,
-        null,
-        void 0,
-        options.commonDir
-      );
+      const read5 = readLiveHeader(store, consumer.worktreeId, at, {
+        commonDir: options.commonDir,
+        states
+      });
       const live = told === null ? read5 : withTold(read5, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
@@ -16138,9 +16135,9 @@ function testFileLabel(project, path) {
 
 // src/core/status/died.ts
 var DIED_FILES_SHOWN = 5;
-function deathText(died) {
-  const during = died.runs.length === 0 ? "between runs" : `during ${died.runs.map((run2) => `run ${run2.id} (revision ${run2.revision}) of ${files(run2.testFiles)}`).join("; ")}`;
-  return `died without shutting down, ${during}`;
+function deathHookText(died) {
+  if (died.runs.length === 0) return "died without shutting down, between runs";
+  return `died without shutting down while running ${files(died.runs.flatMap((run2) => run2.testFiles))}`;
 }
 var DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
 function files(refs) {
@@ -16704,15 +16701,15 @@ function newsLine(header, command, told) {
   const unlisted3 = unlistedLine(header, command);
   if (unlisted3 !== null) return unlisted3;
   const revision = revisionPrefix(header);
+  const own = told.ownEdits;
+  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
   if (told.countsOwed !== void 0) {
     const files2 = currentFilesText(header, command);
     const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
-    return `${line2}${incompleteText(header, command)}${daemonText(header, command)}`;
+    return `${line2}${delays}${daemonText(header, command)}`;
   }
-  const own = told.ownEdits;
   const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  const latePart = own !== void 0 && own.owed > 0 && lateMaySay(header);
-  return `${line}${latePart ? "" : incompleteText(header, command)}${daemonText(header, command)}`;
+  return `${line}${delays}${daemonText(header, command)}`;
 }
 function affected(files2) {
   return `the ${plural(files2, "test file")} your edits affect`;
@@ -16776,8 +16773,10 @@ function livenessSentence(daemon, revision, command) {
     return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
   }
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return ` ${since}; results are as of revision ${revision}.${died}`;
+  const restart = died === "" ? "" : ` ${restartText(command)}`;
+  return ` ${since}; results are as of revision ${revision}.${died}${restart}`;
 }
+var restartText = (command) => `\`${command} start\` starts one.`;
 function slowStartText(daemon) {
   const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
   return `A daemon has been starting${since}`;
@@ -16787,7 +16786,7 @@ function stoppedStartText(daemon) {
   return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
 }
 function diedText(daemon) {
-  return daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
+  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
 }
 function noneRunning(daemon) {
   return daemon?.state === "down" && daemon.stopping === void 0 && stopOf(daemon) === null && daemon.startingSince === void 0 && daemon.resting !== true && daemon.heartbeatLate === void 0;
@@ -16798,18 +16797,18 @@ function nowText(late, command) {
   if (late.named !== void 0) {
     const paths = late.named.map(shellWord).join(" ");
     const them = late.named.length === 1 ? "it" : "them";
-    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first; or run ${them} yourself.`;
+    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first.`;
   }
-  return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first; or run those files yourself.`;
+  return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
 }
 function lateLine(late, command) {
   switch (late.kind) {
     case "owed":
       return `${capitalized2(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. Passes stay silent unless they follow a failure; Squeal says once when it has caught up. ${nowText(late, command)}`;
     case "unread":
-      return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. To have results now, run the tests yourself; \`${command} status\` says when Squeal reads them again.`;
+      return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
     case "unlisted":
-      return `${runnersHave(late.runners, true)} not yet listed the test files of revision ${late.revision}, so Squeal has not queued them. To have results now, run the tests yourself; \`${command} status\` says when they are listed.`;
+      return `${runnersHave(late.runners, true)} not yet listed the test files of revision ${late.revision}, so Squeal has not queued them. ${listWaitText(command)}`;
   }
 }
 function caughtUpLine({ revision, files: files2, unknown }) {
@@ -17516,6 +17515,10 @@ ${knownFailuresLine(failures, command, delta.header)}`;
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 var STOP_SLOW_HANDOFF_SLACK_MS = HOOK_TIMEOUT_MS;
 var STOP_SLOW_DOWN_MS = 1e4;
+function daemonDown({ daemon }) {
+  if (daemon?.state !== "down") return false;
+  return daemon.startMark !== "start" || daemon.startStopped === true;
+}
 var STOP_SLOW_POLL_MS = 250;
 async function stopSlow(input, location2, deps) {
   if (input.agent_id !== void 0) return null;
@@ -17542,11 +17545,15 @@ ${news ?? statusText(header, failures, deps.command)}`;
   });
 }
 function read4(context, required, clock) {
-  const { store, consumer } = context;
+  const { store, consumer, commonDir } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
+    const header = readLiveHeader(store, consumer.worktreeId, clock(), {
+      commonDir,
+      states,
+      keys
+    });
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
     return {
       states,
@@ -17594,7 +17601,7 @@ async function waitForRequired(context, required, deps, poll) {
       continue;
     }
     const now = elapsed();
-    downSince = last.header.daemon?.state === "down" ? downSince ?? now : null;
+    downSince = daemonDown(last.header) ? downSince ?? now : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down || stoppedByRequest(last.header);
