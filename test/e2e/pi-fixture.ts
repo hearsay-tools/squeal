@@ -52,7 +52,10 @@ export interface PiE2EOptions {
   readonly slow?: boolean;
 }
 
-export type PiE2ERunOptions = Omit<PiRunOptions, "install" | "env" | "cwd" | "extensions">;
+export type PiE2ERunOptions = Omit<PiRunOptions, "install" | "env" | "cwd" | "extensions"> & {
+  /** Added to Pi's environment; the fixture's own variables win. */
+  readonly env?: Record<string, string>;
+};
 
 /** One fixture: the package copy, a repository, and every Pi run made in it. */
 export class PiE2E {
@@ -203,7 +206,7 @@ export class PiE2E {
     beside: (world: PiWorld, done: () => boolean) => Promise<void> = async () => {},
   ): Promise<PiRun> {
     const marks = mkdtempSync(join(this.base, "marks-"));
-    const env = { XDG_RUNTIME_DIR: this.runtime, SQUEAL_TEST_MARKS: marks };
+    const env = { ...options.env, XDG_RUNTIME_DIR: this.runtime, SQUEAL_TEST_MARKS: marks };
     const world: PiWorld = { env, marks, spawnedDaemon: () => daemonPids(this.plugin).length > 0 };
     let finished = false;
     const run = runPi({ ...options, cwd: this.project, env, install: [this.plugin] }).finally(
