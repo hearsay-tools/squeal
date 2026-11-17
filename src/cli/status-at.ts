@@ -1,6 +1,5 @@
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { keysAtCommit } from "../core/commit/at-keys.js";
 import { resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -12,15 +11,9 @@ import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
-import { nowSide } from "./status-at-now.js";
-import {
-  type AtReport,
-  commitState,
-  compareSides,
-  exitCode,
-  formatAt,
-  jsonAt,
-} from "./status-at-report.js";
+import { commitSide } from "./status-at-commit.js";
+import { nowSide, selects } from "./status-at-now.js";
+import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
 
 /*
  * Spec 023 D1 and D3 (row 023-06): `squeal status --at <commit> [<path>...]
@@ -123,20 +116,19 @@ export async function statusAtCommand(
   const now = await withStores(commonDir, (main) => nowSide({ ...input, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
-  const at = await keysAtCommit({
+  // Named test files listed now go as they are; a folder or another path is listed at the commit.
+  const named = paths?.every((p) => now.refs.some((ref) => ref.path === p)) === true;
+  const at = await commitSide({
     ...keying,
     ...options,
     root,
     commit,
-    // A path that selects nothing now is still asked at the commit, which may list it.
-    ...(paths === null ? {} : { files: now.refs }),
+    paths,
+    worktreeId,
+    ...(named ? { files: now.refs } : {}),
     note: (text) => io.stderr(`squeal: ${text}\n`),
   });
-  const files = compareSides(
-    unionRefs(now.refs, paths === null ? at.files.keys() : []),
-    (ref) => commitState(at.files.get(testFileId(ref)), worktreeId),
-    now.state,
-  );
+  const files = compareSides(unionRefs(now.refs, at.refs, paths), at.state, now.state);
   const head = await readHead(root);
   const report: AtReport = {
     commit,
@@ -145,19 +137,28 @@ export async function statusAtCommand(
     dirty: head.dirty,
     now: now.source,
     checkoutMs: at.checkoutMs,
-    failure: at.failure === null ? null : `${at.failure.reason}: ${at.failure.detail}`,
+    failure: at.failure,
     files,
   };
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs));
-  return exitCode(files);
+  // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
+  return at.failure === null ? exitCode(files) : 3;
 }
 
-/** `refs`, and each file the commit side lists that they lack, by its `testFileId`. */
-function unionRefs(refs: readonly TestFileRef[], atIds: Iterable<string>): TestFileRef[] {
-  const all = new Map(refs.map((ref) => [testFileId(ref), ref]));
-  for (const id of atIds) {
-    const [project = "", path = ""] = id.split("\0");
-    if (!all.has(id)) all.set(id, { project, path });
+/**
+ * Both sides' files, by `testFileId`; a path that selects a file on
+ * neither side is a file of its own in the default project, so it is
+ * answered (absent, or not a test file) and not dropped.
+ */
+function unionRefs(
+  now: readonly TestFileRef[],
+  at: readonly TestFileRef[],
+  paths: readonly RelativePath[] | null,
+): TestFileRef[] {
+  const all = new Map([...now, ...at].map((ref) => [testFileId(ref), ref]));
+  for (const path of paths ?? []) {
+    if (![...all.values()].some((ref) => selects([path], ref.path)))
+      all.set(testFileId({ project: "", path }), { project: "", path });
   }
   return [...all.values()];
 }

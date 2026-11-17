@@ -112,14 +112,13 @@ describe("status --at states and comparison (D3)", () => {
     ).toBe(3);
   });
 
-  it("narrows by a file or a folder, and keeps a path that selects nothing now", () => {
+  it("narrows by a file or a folder; a path that selects nothing now is the commit side's", () => {
     const all = [ref("test/a.test.ts"), ref("test/sub/b.test.ts"), ref("other/c.test.ts")];
-    expect(select(all, ["test/sub"]).refs).toEqual([ref("test/sub/b.test.ts")]);
-    expect(select(all, ["test/a.test.ts", "gone.test.ts"]).refs).toEqual([
-      ref("test/a.test.ts"),
-      ref("gone.test.ts"),
-    ]);
-    expect(select(all, null).refs).toHaveLength(3);
+    expect(select(all, ["test/sub"])).toEqual([ref("test/sub/b.test.ts")]);
+    expect(select(all, ["test/sub/"])).toEqual([ref("test/sub/b.test.ts")]);
+    expect(select(all, ["test/a.test.ts", "gone.test.ts"])).toEqual([ref("test/a.test.ts")]);
+    expect(select(all, ["test/a"])).toEqual([]);
+    expect(select(all, null)).toHaveLength(3);
   });
 });
 

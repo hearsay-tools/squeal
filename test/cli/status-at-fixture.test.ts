@@ -1,22 +1,19 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import type { Store } from "../../src/core/types/store.js";
 import {
   type Fixture,
   fixture,
   freshKey,
   git,
-  linkInstall,
   passesAt,
   ref,
 } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
+import { check, clean, run, testCheck, testOf, withStore } from "./status-at-kit.js";
 
 /*
  * Row 023-06, done-when: `squeal status --at` on `$TMPDIR` git fixtures with
@@ -28,14 +25,6 @@ import { result } from "../store/helpers.js";
 const TEST = ref("test/a.test.ts");
 const PLAIN = ref("test/plain.test.ts");
 const NEW = ref("test/new.test.ts");
-
-const testOf = (module: string, value: number) =>
-  [
-    'import { expect, it } from "vitest";',
-    `import { value } from "../src/${module}";`,
-    `it("value", () => expect(value).toBe(${value}));`,
-    "",
-  ].join("\n");
 
 /** A test of `src/a.ts` that fails at the first commit and passes after the fix commit. */
 function fixed(): { f: Fixture; before: string; after: string } {
@@ -51,44 +40,6 @@ function fixed(): { f: Fixture; before: string; after: string } {
     [NEW.path]: testOf("plain", 1),
   });
   return { f, before, after };
-}
-
-const check = (path: string) => ({ kind: "file", project: "", testPath: path }) as const;
-const testCheck = (path: string) =>
-  ({ kind: "test", project: "", testPath: path, fullName: "value" }) as const;
-
-function withStore(f: Fixture, body: (store: Store) => void): void {
-  const store = openStore(join(f.root, ".git"));
-  if (isStoreOpenFailure(store)) throw new Error(store.reason);
-  try {
-    body(store);
-  } finally {
-    store.close();
-  }
-}
-
-async function run(
-  f: Fixture,
-  args: Partial<AtArgs> & Pick<AtArgs, "commit">,
-  options: AtOptions = { cacheRoot: f.cacheRoot, install: linkInstall().install },
-  now?: number,
-) {
-  const out: string[] = [];
-  const err: string[] = [];
-  const io = {
-    stdout: (t: string) => out.push(t),
-    stderr: (t: string) => err.push(t),
-    cwd: f.root,
-    ...(now === undefined ? {} : { now: () => now }),
-  };
-  const code = await statusAtCommand({ paths: [], json: false, ...args }, io, options);
-  return { code, out: out.join(""), err: err.join("") };
-}
-
-/** No checkout and no extra worktree is left. */
-function clean(f: Fixture): void {
-  expect(f.checkouts()).toEqual([]);
-  expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 }
 
 describe("squeal status --at on a git fixture (row 023-06)", SLOW, () => {

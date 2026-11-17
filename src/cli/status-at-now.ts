@@ -38,10 +38,8 @@ export interface NowInput {
 
 export interface NowSide {
   readonly source: NowSource;
-  /** The test files the paths select now, by `testFileId`: listed now, or named and not listed. */
+  /** The test files listed now that the paths select. */
   readonly refs: readonly TestFileRef[];
-  /** Whether a file is among those listed now: for a path that selects none, the commit side decides. */
-  readonly listed: ReadonlySet<string>;
   readonly state: (ref: TestFileRef) => SideState;
 }
 
@@ -58,7 +56,7 @@ export async function nowSide(input: NowInput): Promise<NowSide> {
 function daemonSide(input: NowInput, main: Store): NowSide {
   const rows = main.testFileKeys.list(input.worktreeId);
   const byId = new Map(rows.map((r) => [testFileId(r.testFile), r]));
-  const { refs, listed } = select(
+  const refs = select(
     rows.map((r) => r.testFile),
     input.paths,
   );
@@ -81,7 +79,7 @@ function daemonSide(input: NowInput, main: Store): NowSide {
   }
   const state = (ref: TestFileRef) =>
     states.get(testFileId(ref)) ?? unlisted(input.root, ref, "the daemon lists no such test file");
-  return { source: { kind: "daemon", revision }, refs, listed, state };
+  return { source: { kind: "daemon", revision }, refs, state };
 }
 
 /** D3 with no daemon: the gate's keyer in the working tree, and the results at its keys. */
@@ -89,14 +87,13 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
   const { root, commonDir, main } = input;
   const options = { adapters: input.adapters, squealVersion: input.squealVersion, env: input.env };
   return withKeyer(root, commonDir, main ?? undefined, options, async ({ keyer, listed: all }) => {
-    const { refs, listed } = select([...all.values()], input.paths);
-    const keyed = await keyer.keyed(refs.filter((ref) => listed.has(testFileId(ref))));
+    const refs = select([...all.values()], input.paths);
+    const keyed = await keyer.keyed(refs);
     const states = new Map<string, SideState>();
     for (const ref of refs) {
       const at = keyed.get(ref);
       const id = testFileId(ref);
-      if (!listed.has(id)) states.set(id, unlisted(root, ref, "no runner lists it"));
-      else if (at === undefined)
+      if (at === undefined)
         states.set(id, { state: "not determined", reason: "no runner keyed it" });
       else
         states.set(
@@ -106,7 +103,7 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
     }
     const state = (ref: TestFileRef) =>
       states.get(testFileId(ref)) ?? unlisted(root, ref, "no runner lists it");
-    return { source: { kind: "stored" }, refs, listed, state };
+    return { source: { kind: "stored" }, refs, state };
   });
 }
 
@@ -122,23 +119,18 @@ function unlisted(root: AbsolutePath, ref: TestFileRef, why: string): SideState 
   return { state: "not determined", reason: why };
 }
 
+/** Whether `paths` select `path`: the file itself, or a file below a named folder. */
+export function selects(paths: readonly RelativePath[], path: RelativePath): boolean {
+  return paths.some((p) => p === "" || p === path || path.startsWith(`${p.replace(/\/+$/, "")}/`));
+}
+
 /**
- * The listed files each path selects (the file, or every file below a
- * folder), and each path that selects none as a file of its own in the
- * default project: the commit may list it.
+ * The listed files the paths select (each file, or every file below a
+ * folder). A path that selects none now is the commit side's to answer.
  */
 export function select(
   all: readonly TestFileRef[],
   paths: readonly RelativePath[] | null,
-): { refs: TestFileRef[]; listed: Set<string> } {
-  const listed = new Set(all.map(testFileId));
-  if (paths === null) return { refs: [...all], listed };
-  const refs = new Map<string, TestFileRef>();
-  for (const path of paths) {
-    const under = path === "" ? "" : `${path.replace(/\/+$/, "")}/`;
-    const hits = all.filter((ref) => ref.path === path || ref.path.startsWith(under));
-    if (hits.length === 0) refs.set(testFileId({ project: "", path }), { project: "", path });
-    for (const ref of hits) refs.set(testFileId(ref), ref);
-  }
-  return { refs: [...refs.values()], listed };
+): TestFileRef[] {
+  return paths === null ? [...all] : all.filter((ref) => selects(paths, ref.path));
 }
