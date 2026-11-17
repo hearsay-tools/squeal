@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
+import { wordingPass } from "./control-wording.js";
 import { type E2E, e2eSuite } from "./harness.js";
 import { PLUGINS } from "./plugins.js";
 import {
@@ -177,15 +178,19 @@ function loadNamed(text: string): string {
  * The one change a repository with no `checks` key sees: the boundary after a
  * commit asks the daemon for a pass (019 D5, the report stored for every
  * commit), so status knows the committed tree is clean at once, where 0.1.393
- * said "dirty not known" until its idle pass, up to 30 s later.
+ * said "dirty not known" until its idle pass, up to 30 s later. Row 005-94's
+ * wording pass is `wordingPass`, applied last.
  */
 const accepted = (text: string | null) =>
   text === null
     ? null
-    : ownCount(
-        contentTitle(
-          noResultsYet(sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"))),
+    : wordingPass(
+        ownCount(
+          contentTitle(
+            noResultsYet(sharedImports(text.replace(/ \+ 0, dirty not known\n/, " + 0\n"))),
+          ),
         ),
+        ALL,
       );
 
 /** 0.1.393's news header with nothing pending, then its merged first-edit and settled line. */
@@ -251,7 +256,8 @@ function lineWords(line: string): string[] {
       `your edits' test files ${/ current(?:,|\.)/.test(line) && !/unknown/.test(line) ? "are current" : "finished"}`,
     ];
   }
-  if (/^Revision [^:]*: \d+ current\b/.test(line)) return ["the counts after the listing"];
+  // Row 005-94: the owed counts' title without the word "listing".
+  if (/^Revision [^:]*: \d+ current\b/.test(line)) return ["first results in this worktree"];
   if (line.startsWith("Slow tier:")) {
     return [
       `slow tier ${/\d+ pending/.test(line) ? "waiting" : /not run/.test(line) ? "not run" : "current"}`,

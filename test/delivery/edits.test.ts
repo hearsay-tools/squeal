@@ -118,7 +118,7 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
       /^SQUEAL · your edit queued 1 test file at revision 1\nRevision 1 \(changed src\/a\.ts\): /,
     );
     expect(said).toContain(
-      "Squeal saw your edit and queued 1 test file; results arrive with later tool calls, and passing ones stay silent.",
+      "Squeal saw your edit and queued 1 test file; results arrive with later tool calls, and passes stay silent unless they follow a failure.",
     );
     expect(await text()).toBeNull();
     editA();
@@ -277,7 +277,9 @@ describe("the own count in a news header (row 005-93 c, replacing 001-223)", () 
     finishA();
     const said = await text();
     expect(said).toContain("the 1 test file your edits affect has run.");
-    expect(said).toContain("Squeal saw your edit; passing results stay silent.");
+    expect(said).toContain(
+      "Squeal saw your edit; passes stay silent unless they follow a failure.",
+    );
     expect(said).not.toMatch(SAW);
     otherNews("b2");
     expect(await text()).not.toMatch(/Squeal saw your edit|re-keyed|your edits affect/);

@@ -220,7 +220,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   it("keeps the edit lines after the header", () => {
     const text = lines(formatDelta(delta(header, { sawEdit: { queued: 2 } })));
     expect(text[2]).toBe(
-      "Squeal saw your edit and queued 2 test files; results arrive with later tool calls, and passing ones stay silent.",
+      "Squeal saw your edit and queued 2 test files; results arrive with later tool calls, and passes stay silent unless they follow a failure.",
     );
   });
 

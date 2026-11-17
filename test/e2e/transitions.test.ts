@@ -24,7 +24,7 @@ const failing = (s: { knownFailures: readonly { validity: string }[] }) =>
  * The first delivery after the session's first edit, its one test file already current. Row
  * 005-93: the news header's own count says it ran; the line says only that a pass is silent.
  */
-const SAW_EDIT = "Squeal saw your edit; passing results stay silent.";
+const SAW_EDIT = "Squeal saw your edit; passes stay silent unless they follow a failure.";
 const RAN = ": the 1 test file your edits affect has run.";
 
 describe.each(PLUGINS)("transitions on $boundary, $name", (plugin) => {

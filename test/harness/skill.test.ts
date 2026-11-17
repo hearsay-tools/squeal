@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/format.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import { slowTierText } from "../../src/core/state/slow-text.js";
-import { countedText } from "../../src/core/status/checks.js";
+import { countedText, partsSuffix } from "../../src/core/status/checks.js";
 import type { SlowTierState, StatusHeader } from "../../src/core/types/status.js";
 import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
@@ -69,10 +69,10 @@ describe("the squeal skill", () => {
   it("says a header names the files changed since the last report, not the cause", () => {
     expect(body).toContain("changed since your last report");
     expect(read("reports.md")).toContain("changed since your last report");
-    // Task 001-407: only the registration and Stop carry the full header; every other report the
-    // news, which names the same files from row 011-262 (review 0.1.379 S1).
+    // Task 001-407: the registration and Stop carry their own form; every other report the news,
+    // which names the same files from row 011-262 (review 0.1.379 S1); row 005-94: no counts.
     expect(body).toContain(
-      "Other SQUEAL messages carry the news, those files and non-zero counts only",
+      "Other SQUEAL messages carry those files and how many of the test files your edits affect have not run yet; `squeal status` has every count.",
     );
     expect(read("reports.md")).toContain(
       "Every other SQUEAL message carries the news only: the same changed files",
@@ -85,27 +85,25 @@ describe("the squeal skill", () => {
   // Row 011-262 (review 0.1.379 S1): `reports.md`'s news example and its git-ignored mark are the
   // formatter's own line, and the body points there for the mark.
   it("shows the news line, its changed files and the git-ignored mark as Squeal prints them", () => {
-    // Row 005-93 (c): the news line counts the test files the session's edits affect.
-    const line = (
-      header: Partial<StatusHeader>,
-      ownEdits: object | undefined = { files: 5, owed: 3 },
-    ) =>
+    // Row 005-93 (c): the news line counts the test files the session's edits affect; `null`
+    // gives no count (review 0.1.534 N1: an explicit absent count, not the counted default).
+    const line = (header: Partial<StatusHeader>, ownEdits: object | null) =>
       formatDelta({
         header: { ...settled, revision: 12, ...header },
         entries: [],
-        ...(ownEdits === undefined ? {} : { ownEdits }),
+        ...(ownEdits === null ? {} : { ownEdits }),
       } as never)
         .split("\n")
         .find((l) => l.startsWith("Revision 12")) ?? "";
     const changed = { changedPaths: ["src/math.ts"] };
-    for (const news of [
-      line(changed),
-      line(changed, { files: 5, owed: 0 }),
-      line(changed, undefined),
-    ])
+    const owing = { files: 5, owed: 3 };
+    for (const news of [line(changed, owing), line(changed, { files: 5, owed: 0 })])
       expect(read("reports.md")).toContain(`\`${news}\``);
+    const countFree = line(changed, null);
+    expect(countFree).toBe("Revision 12 (changed src/math.ts).");
+    expect(read("reports.md")).toContain(`\`${countFree}\``);
     const descriptor = ".ai/qa/test-env.json";
-    const marked = line({ changedPaths: [descriptor], ignoredPaths: [descriptor] });
+    const marked = line({ changedPaths: [descriptor], ignoredPaths: [descriptor] }, owing);
     expect(marked.startsWith(`Revision 12 (changed git-ignored ${descriptor}): `)).toBe(true);
     expect(read("reports.md")).toContain(`\`(changed git-ignored ${descriptor})\``);
     expect(body).toContain("inherited, `git-ignored`, the slow tier");
@@ -294,8 +292,9 @@ describe("the squeal skill", () => {
 
   // Row 019-49 raised it from 5,000: the rule for a policy with no test group at `edit` belongs in
   // step 1, which the agent reads right before it runs tests (the coordinator, 2026-11-06).
+  // Row 005-94 raised it from 5,100: the human's texts (texts.md 6) add about 160 characters.
   it("stays within its budget", () => {
-    expect(body.length).toBeLessThan(5_100);
+    expect(body.length).toBeLessThan(5_300);
   });
 
   it("explains `squeal why`'s changed-since line, and defines a revision only in the primer", () => {
@@ -346,15 +345,19 @@ describe("the squeal skill", () => {
   it("shows every count of checks with tests and test files loaded apart", () => {
     const counts = (parts: [number, string, number][]) =>
       parts.map(([count, label, files]) => countedText(count, label, files)).join(", ");
-    const validity = (current: number, files: number, pending: number, stale = 0, unknown = 0) =>
-      counts([
-        [current, "current", files],
-        [pending, "pending", 0],
-        [stale, "stale", 0],
-        [unknown, "unknown", 0],
-      ]);
-    expect(body).toContain(`\`Revision 21 (changed src/math.ts): ${validity(40, 6, 3)}.\``);
-    expect(read("reports.md")).toContain(`\`Revision 12: ${validity(40, 6, 3, 1, 2)}.\``);
+    // Row 005-94 (R1): the registration's and Stop's line, as the formatter prints it.
+    const known = (testFileCounts: StatusHeader["testFileCounts"]) =>
+      formatRegistration({
+        header: { ...settled, testFileCounts },
+        knownFailures: [],
+      } as never)
+        .split("\n")
+        .find((l) => l.startsWith("Known failures:")) ?? "";
+    const r1 = known({ current: 40, pending: 3, stale: 0, unknown: 0 });
+    const all = known({ current: 43, pending: 0, stale: 0, unknown: 0 });
+    expect(body).toContain(`\`\`${r1}\`\``);
+    expect(read("reports.md")).toContain(`\`\`${r1}\`\``);
+    expect(read("reports.md")).toContain(`\`\`${all}\`\``);
     expect(read("commands.md")).toContain(
       `Affected checks: ${counts([
         [47, "passed", 7],
@@ -363,7 +366,7 @@ describe("the squeal skill", () => {
       ])}\n`,
     );
     expect(read("reports.md")).toContain(
-      "`Inherited: 30 of 40 current (25 tests, 5 test files loaded).`",
+      `\`Inherited from other worktrees: 30 current results${partsSuffix(30, 5)}\``,
     );
     for (const text of [body, read("reports.md"), read("commands.md")]) {
       expect(text).not.toMatch(/\b\d+ current, \d+ pending|\d+ passed, \d+ running/);

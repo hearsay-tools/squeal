@@ -426,7 +426,7 @@ function titleOf(delta: Delta, holdTitle: string | undefined, command: string): 
 
 /**
  * Row 019-49 (spec 019 D6): with no test group at `edit`, what the edit
- * lines say in place of "passing ones stay silent", as the primer does.
+ * lines say in place of "passes stay silent unless they follow a failure", as the primer does.
  */
 export function quietEditsText(command: string): string {
   return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
@@ -438,16 +438,17 @@ export function quietEditsText(command: string): string {
  * their groups' moments, so nothing says they were queued or that a pass
  * stays silent. Row 005-93: when every file it affects already ran (`done`),
  * the header's own count says so, and the line says only that a pass stays
- * silent.
+ * silent. Row 005-94: unless it follows a failure, as the primer says.
  */
 export function sawEditLine(queued: number, quiet: string | null = null, done = false): string {
-  if (done) return `Squeal saw your edit; ${quiet ?? "passing results stay silent"}.`;
+  if (done)
+    return `Squeal saw your edit; ${quiet ?? "passes stay silent unless they follow a failure"}.`;
   if (quiet !== null) {
     return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
   return (
     `Squeal saw your edit and queued ${plural(queued, "test file")}; ` +
-    "results arrive with later tool calls, and passing ones stay silent."
+    "results arrive with later tool calls, and passes stay silent unless they follow a failure."
   );
 }
 

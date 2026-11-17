@@ -385,7 +385,7 @@ describe("a pathless wait's quiet line says its scope (011-29, gh-41 E1)", () =>
     expect(text.slice(0, -2)).toEqual(formatStatus(result, NOW).trimEnd().split("\n"));
     expect(text.at(-2)).toBe("");
     expect(text.at(-1)).toBe(
-      "Returned on quiet: none of the 91 test files the edits since revision 1 re-keyed is pending, at revision 4 after 0.0 s; this wait does not hold for the rest of the worktree. Worktree: known failures 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)",
+      "Returned on quiet: none of the 91 test files the edits since revision 1 affect is pending, at revision 4 after 0.0 s; this wait does not hold for the rest of the worktree. Worktree: known failures 0; not current: 2 of 2 test files (2 queued), 2 tests (2 queued)",
     );
   });
 

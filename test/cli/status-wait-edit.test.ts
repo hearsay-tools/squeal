@@ -43,7 +43,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
       edit: { since: 4, testFiles: 1, pending: 0, otherTransitions: 0 },
     });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on quiet: the 1 test file the edits since revision 4 re-keyed is not pending, at revision 4 after \d+\.\d s; this wait does not hold for the rest of the worktree\. Worktree: known failures 0; not current: 2 of 3 test files \(2 queued\), 2 tests \(2 queued\)$/,
+      /^Returned on quiet: the 1 test file the edits since revision 4 affect is not pending, at revision 4 after \d+\.\d s; this wait does not hold for the rest of the worktree\. Worktree: known failures 0; not current: 2 of 3 test files \(2 queued\), 2 tests \(2 queued\)$/,
     );
   });
 
@@ -71,7 +71,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     expect(wait.waitedMs).toBeLessThan(2_000);
     expect(wait).toMatchObject({ transitions: 1, edit: { pending: 1 } });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 re-keyed, at revision 4 after \d+\.\d s\. Worktree: /,
+      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 affect, at revision 4 after \d+\.\d s\. Worktree: /,
     );
   });
 
@@ -110,7 +110,7 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
     const after = `after ${(wait.waitedMs / 1_000).toFixed(1)} s`;
     expect(waitLine(wait as EndedWait).startsWith(`Returned on timeout ${after}: `)).toBe(true);
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on timeout after \d+\.\d s: 2 of the 3 test files the edits since revision 4 re-keyed pending at revision 4\. Worktree: /,
+      /^Returned on timeout after \d+\.\d s: 2 of the 3 test files the edits since revision 4 affect pending at revision 4\. Worktree: /,
     );
   });
 

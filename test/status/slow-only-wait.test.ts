@@ -118,7 +118,7 @@ describe("every queued file slow and held: the wait is the slow tier's, named on
 
       expectSlowWaitOnly(text, wait);
       expect(text.split("\n").at(-1)).toMatch(
-        /^Returned on quiet: the 1 test file the edits since revision 1 re-keyed is not pending, at revision 2 after 0\.0 s; this wait does not hold for the rest of the worktree; 2 slow files are not current and Squeal runs them after the fast tests; /,
+        /^Returned on quiet: the 1 test file the edits since revision 1 affect is not pending, at revision 2 after 0\.0 s; this wait does not hold for the rest of the worktree; 2 slow files are not current and Squeal runs them after the fast tests; /,
       );
     },
   );

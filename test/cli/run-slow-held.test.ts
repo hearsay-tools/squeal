@@ -151,7 +151,7 @@ describe("slow news is the held files', not the edit window's (review wave-13ak,
       slow: { transitions: 1 },
     });
     expect(waitLine(wait as EndedWait)).toMatch(
-      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 re-keyed and 1 in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result\. Worktree: /,
+      /^Returned on news: 1 transition in the 1 test file the edits since revision 4 affect and 1 in the 1 slow file run --slow queued, at revision 4 after \d+\.\d s; the 1 slow file run --slow queued has its result\. Worktree: /,
     );
   });
 });

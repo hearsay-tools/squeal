@@ -73,7 +73,7 @@ describe("the edit lines with no test group at edit (019-49)", () => {
 
   it("read as before without the flag", () => {
     expect(formatDelta(delta(header, { sawEdit: { queued: 2 } }))).toContain(
-      "Squeal saw your edit and queued 2 test files; results arrive with later tool calls, and passing ones stay silent.",
+      "Squeal saw your edit and queued 2 test files; results arrive with later tool calls, and passes stay silent unless they follow a failure.",
     );
   });
 });

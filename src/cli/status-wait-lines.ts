@@ -93,13 +93,14 @@ function ownLine(wait: EndedWait, command: string): string {
 
 /**
  * Lessons, defect 32: the line says what the wait held for, the test files
- * the edits since revision N re-keyed, and what else changed, which did not
+ * the edits since revision N affect (row 005-94, C6: never "re-keyed", the
+ * hooks' word since 005-93), and what else changed, which did not
  * hold it. Row 011-29 (gh-41): a quiet one says it holds for those files
  * only while the rest of the worktree has work outstanding, which the
  * worktree part counts.
  */
 function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: string): string {
-  const files = `${plural(edit.testFiles, "test file")} the edits since revision ${edit.since} re-keyed`;
+  const files = `${plural(edit.testFiles, "test file")} the edits since revision ${edit.since} affect`;
   const others =
     edit.otherTransitions > 0
       ? `; ${plural(edit.otherTransitions, "transition")} of other checks`
@@ -119,9 +120,9 @@ function editLine(edit: StatusWaitEdit, wait: EndedWait, at: string, after: stri
   }
 }
 
-/** `none of the 91 test files the edits since revision 1 re-keyed is pending`. */
+/** `none of the 91 test files the edits since revision 1 affect is pending`. */
 function quietText(edit: StatusWaitEdit): string {
-  const since = `the edits since revision ${edit.since} re-keyed`;
+  const since = `the edits since revision ${edit.since} affect`;
   if (edit.testFiles === 0) return `${since} no test file`;
   if (edit.testFiles === 1) return `the 1 test file ${since} is not pending`;
   return `none of the ${edit.testFiles} test files ${since} is pending`;
