@@ -4,6 +4,8 @@ Worker 74012cb8, wave 119 W1 (`../../../011-core/tasks/wave-119.md`), 2026-11-17
 
 ## Design (written before the code)
 
+**Replaced by "Repair after review 0.1.535" (end of this file):** the in-transaction write below failed review 0.1.535 (B1). The sections up to "For the next worker" describe the first round, at `e3ac46929`.
+
 ### Where the write goes
 
 **Inside the transaction that starts the tier.** `startTier` (`src/core/scheduler/tiers.ts`) runs one `BEGIN IMMEDIATE`: it takes the files off the queue, sets their running keys and claims, writes the unfinished run row and commits the ledger. The record is written in that same transaction, as its last write, in a savepoint of its own (`store.transaction` nests as a savepoint). So:
@@ -105,3 +107,60 @@ On `306d1ce5d`. No `pnpm run build`, no full suite, no `squeal run --all`. Load 
 - Read the record with `readEditTimings` / `pastBound` / `worktreeMedians`; the shape is the contract's, unchanged.
 - Check-group tiers started by the slow lanes (`slow-tier.ts` `#start`) do not record (see "Decisions").
 - The probes in `probe/` can be rerun at a lower load; the paired whole-turn numbers here were taken at load 38 to 45.
+
+## Repair after review 0.1.535
+
+Review `../../../011-core/reviews/0.1.535.md` B1: a real `SQLITE_FULL` in the timing write ends the whole start transaction. The savepoint's `ROLLBACK TO` then fails, `recordEditTier` caught that, and `startTier`'s outer `COMMIT` threw `cannot commit - no transaction is active` after the ledger's in-memory moves. The file was off the queue with a running key, with no run row and no flight. Repair brief: `../../../011-core/tasks/wave-119.md`, "W1 repair: after review 0.1.535 (FAIL)".
+
+### Where the write goes now
+
+**After the flight owns the launch.** `startNext` (`tier-start.ts`) calls `recordEditTier(context, tier, grant)` right after `options.fly(tier)` returns. In the live scheduler `fly` is the step's `start-tier` decision, carried in the turn: `Scheduler.#fly` puts the tier in the in-flight map and starts its flight, whose error path puts the files back. So by the time the record writes, the launch has its owner. `act` returns the grant with the tier (`{ tier, grant }`), the same grant its batch estimate uses, now in `grantOf` (this also takes `act` from complexity 22 to 19). `startTier` is back to the base (no `started` mark).
+
+`recordEditTier` writes in a transaction of its own, under `withBusySliceSync(0, ...)`: it never waits on a busy store, so it cannot hold the step's turn or the flight back. It never throws. A busy store loses the sample silently (contract need 2 allows a lost sample under contention). Any other error loses the sample and adds a status note, `squeal: could not record an edit tier's timings: <message>`, once per text (it reads the worktree's stored notes first). A `SQLITE_FULL` now rolls back only the record's own transaction; nothing of the start is in it.
+
+The facts captured at the start are the tier's `startedAt` (on the tier) and its grant (from `act`). The rest is read at write time and does not change between the two: the revision's `createdAt` from the store, the tier size from the policy, widths and parts from the runner's traits.
+
+Conditions this needs: no store transaction is open around `startNext`'s fly in production (none is: `step-live.ts`, `step.ts` and `scheduler.ts` open none around the step's tier start; a step run from inside a lock turn with no reads never starts a tier). A `startNext` with no `fly` records nothing: its caller flies the tier. Every production caller passes `fly` (`step-live.ts`).
+
+### Regressions
+
+- **New, automatic rollback** (`tier-start-timings.test.ts`, "a write that SQLite rolls back whole (SQLITE_FULL) loses the sample, not the launch"): the review's probe, `PRAGMA max_page_count = page_count + 10` and a 200,000-character runner part. It asserts one flight, the run row unfinished, the file off the queue, no open transaction, no record. **On the candidate (`e3ac46929`) it failed** with `Error: cannot commit - no transaction is active`; on the repair it passes.
+- **Kept, competing writer** (R2-B1): the same two-connection setup. Now the record's write meets the held lock with a 0 ms slice and loses the sample with no note; the test asserts one flight, the run row unfinished, the file off the queue, no record and no note, then, with the writer gone, the next edit's tier records at its own start stamp (`delayMs` 700). This case also failed on the wip placement (first round).
+- **Kept, a throwing write**: two starts whose record write throws: both tiers fly, no record, exactly one note.
+- **New**: a `startNext` with no `fly` records nothing. The other cases (an unreadable row is replaced, a backlog tier records nothing, the estimate at the grant) now start with a `fly`.
+
+The contract's five needs: 1, freshness: the record holds the tier as soon as `startNext` returns from its flight (the estimate and replace tests read it right after); a lost sample under contention is allowed. 2, no stranded launch, a failed write loses at most the sample: the three failure tests (busy, thrown, `SQLITE_FULL`). 3, the start stamp: `tier.startedAt`, asserted in the competing-writer test; no clock read. 4, bounded and removed with the worktree: unchanged (`edit-timings.test.ts`, `worktree-meta.test.ts`). 5, only edit tiers: unchanged.
+
+### Agreed edit outside the file list
+
+`test/scheduler/busy-record.test.ts` line 159, in its own commit (`d177b3764`): the one-shot fault `"not a busy store"` meant for the tier's record now names its target, `"recordTier"`. The new write is the store's next transaction after the flight starts, so it took that untargeted fault first, the tier record never failed, and "starts nothing from a resume armed before a stall on another error" timed out at 30 s (twice). Targeted, the case passes, and it keeps its meaning: it was written to fail the tier's record, which the new timing write now precedes. The coordinator agreed (reply to request `3a18e67a`, 2026-11-17: "A: keep d177b3764"). `busy-record.test.ts` sits next to card 9's files; no `src` file of card 9 or 10 changed (`git diff 23f67d006 -- src/core/scheduler/busy-resume.ts src/core/store/busy.ts src/core/scheduler/local-permits.ts src/core/capacity/ src/core/scheduler/record-tier.ts` is empty). The row's whole `src` diff against the base: `late-bound.ts`, `late-timings.ts`, `edit-timings.ts` (new), `tier-start.ts`, `types/store.ts` (one line). The other scheduler tests that replace `store.transaction` pass unchanged (`adoption`, `busy-released`, `commit-transaction`, `full-suite-pass`, `runtime-files-rollback`, `superseded-claim`, every `busy*`: 14 files, 38 tests).
+
+### The lock turn, again
+
+The path changed (a second, short write transaction in the step's turn, after the flight), so both probes ran again. Load is the host's real one-minute load on 24 CPUs; other projects' work held it at 56 to 86, far above the CPU count. My Squeal daemon was stopped during the probes.
+
+**The record's own write after a start transaction** (`probe/record.test.ts`, now with the record in its own transaction; output `probe/record-own-write.txt`; 300 alternating iterations; load 86.0). Added cost, median / p95 / max, ms: **1 project 0.080 / 0.19 / 7.5; 12 projects 0.145 / 0.69 / 5.7; 100 projects 0.195 / 0.61 / 9.4**. The first round's in-transaction numbers (load 47.2) were 0.073 / 0.058 / 0.14 ms median (`probe/record-in-transaction.txt`). The own commit costs a few hundredths of a millisecond more at the median. Under contention it does not wait: a 0 ms busy slice.
+
+**The step's turn that starts an edit tier** (`probe/probe.test.ts`), paired on a detached tree at the base `23f67d006` (before) and this branch at `88ea38856` (after), alternately, 00:37 to 00:38 UTC. Median / p95 / max, ms:
+
+| projects | before 1 (load 84.3) | after 1 (load 81.0) | before 2 (load 79.6) | after 2 (load 79.6) |
+|---|---|---|---|---|
+| 1 | 3.9 / 10.0 / 27.2 | 4.4 / 9.4 / 16.6 | 7.4 / 13.0 / 15.2 | 3.9 / 5.6 / 6.2 |
+| 4 | 4.6 / 11.1 / 25.4 | 5.4 / 21.9 / 77.4 | 5.1 / 17.1 / 18.2 | 4.5 / 14.1 / 18.7 |
+| 12 | 6.6 / 18.2 / 29.1 | 6.4 / 15.1 / 27.0 | 5.9 / 16.0 / 30.5 | 6.5 / 14.5 / 53.5 |
+
+At this load the medians move by -3.6 to +0.8 ms between runs of the same kind of turn, in both directions; the whole-turn probe cannot see a 0.2 ms change here. The record was written in every after run (1.9 to 2.3 kB) and in no before run. The first round's paired files are `probe/paired-before-0.1.535-{1,2}.txt` and `probe/paired-after-in-transaction-{1,2}.txt`.
+
+So the growth stays about two tenths of a millisecond at the median, below the few milliseconds that would need the coordinator before landing.
+
+### Review N1, for row 005-97
+
+Normal-priority check-group lanes record nothing: `slow-tier.ts` `#start` starts edit-kind tiers through `startTier` and flies them without `startNext`, so no width, part, first start or overhead sample comes from them. The reader then uses width 1 for such a project and medians from the other tiers only. Row 005-97 decides: record at that start too (the same call after its flight), or state and test the fallback. This row leaves it, as the repair brief says.
+
+### Type changes in the repair
+
+- `tier-start.ts`: `Act`'s tier answer gains `grant: number` (internal). New internal `grantOf`.
+- `tiers.ts`: the first round's `started?` mark on `startTier` is gone; the file equals the base.
+- `edit-timings.ts`: `recordEditTier`'s signature is unchanged; it now owns its transaction and notes its failures.
+
+Not changed: `KEY_FORMAT_VERSION`, any key, tier order or width, status payload, CLI output. One new note text, only when a timing write fails for a reason other than a busy store.

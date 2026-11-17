@@ -1,0 +1,4 @@
+{"probe":"005-96 record cost","projects":1,"iterations":300,"cpus":24,"loadBefore":85.97,"loadAfter":85.97,"transactionWithout":{"medianMs":0.025,"p95Ms":0.038,"maxMs":0.691},"transactionWith":{"medianMs":0.107,"p95Ms":0.232,"maxMs":7.52},"added":{"medianMs":0.08,"p95Ms":0.187,"maxMs":7.491}}
+{"probe":"005-96 record cost","projects":12,"iterations":300,"cpus":24,"loadBefore":85.97,"loadAfter":85.97,"transactionWithout":{"medianMs":0.039,"p95Ms":0.227,"maxMs":13.439},"transactionWith":{"medianMs":0.187,"p95Ms":0.87,"maxMs":5.707},"added":{"medianMs":0.145,"p95Ms":0.686,"maxMs":5.666}}
+{"probe":"005-96 record cost","projects":100,"iterations":300,"cpus":24,"loadBefore":85.97,"loadAfter":85.97,"transactionWithout":{"medianMs":0.028,"p95Ms":0.086,"maxMs":6.786},"transactionWith":{"medianMs":0.224,"p95Ms":0.734,"maxMs":9.443},"added":{"medianMs":0.195,"p95Ms":0.608,"maxMs":9.417}}
+      Tests  3 passed (3)
