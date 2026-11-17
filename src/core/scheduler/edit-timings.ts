@@ -1,7 +1,9 @@
 import { isRecord } from "../fs/json.js";
+import { isBusy, withBusySliceSync } from "../store/connection.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
+import { persistedNoteTexts } from "./notes.js";
 import { estimateMs } from "./tier-width.js";
 import type { Tier } from "./tiers.js";
 
@@ -74,22 +76,37 @@ export function readEditTimings(store: Store, worktreeId: WorktreeId): EditTimin
 /**
  * Records an edit `tier` that started at `grant` workers: the tier size, its files' projects'
  * widths and parts, its revision's first start when none is recorded for it, and its run's
- * estimate. Any other kind records nothing. Row 005-96: `startTier` calls it last in the
- * transaction that starts the tier, so the record commits with the start and no second lock
- * turn stands between that commit and the flight (review 0.1.530-r2 R2-B1). Its own write is a
- * savepoint there; it never throws: a write that fails rolls back to the savepoint and loses
- * this tier's sample, and the start commits. The first start is the tier's own start stamp
- * (`newTier`'s `startedAt`, row 011-372); it reads no clock.
+ * estimate. Any other kind records nothing. Row 005-96: `startNext` calls it once the tier's
+ * flight owns the launch (review 0.1.535 B1), in a write transaction of its own, so no failure
+ * here, not even one SQLite ends the whole transaction for (`SQLITE_FULL`), can touch the start.
+ * It never throws and never waits on a busy store (a busy slice of 0 ms): a busy store loses the
+ * sample silently, as contention may (contract need 2); any other error loses it with a note,
+ * once per text. The first start is the tier's own start stamp (`newTier`'s `startedAt`, row
+ * 011-372), and `grant` is the one its start used; it reads no clock.
  */
 export function recordEditTier(context: SchedulerContext, tier: Tier, grant: number): void {
   if (tier.kind !== "edit" || tier.startedAt === undefined) return;
   const startedAt = tier.startedAt;
   try {
-    context.store.transaction(() => write(context, tier, startedAt, grant));
-  } catch {
-    // The sample is lost; the tier's start is not (contract need 2).
+    withBusySliceSync(0, () =>
+      context.store.transaction(() => write(context, tier, startedAt, grant)),
+    );
+  } catch (error) {
+    if (!isBusy(error))
+      noteOnce(context, `squeal: could not record an edit tier's timings: ${errorText(error)}`);
   }
 }
+
+/** Notes `text` unless a note of the worktree already says it; a failed read or note is dropped. */
+function noteOnce(context: SchedulerContext, text: string): void {
+  try {
+    if (!persistedNoteTexts(context.store, context.worktreeId).has(text)) context.note(text);
+  } catch {
+    // The sample and its note are lost; the tier runs on.
+  }
+}
+
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** `recordEditTier`'s read and write of the row. */
 function write(context: SchedulerContext, tier: Tier, startedAt: number, grant: number): void {
