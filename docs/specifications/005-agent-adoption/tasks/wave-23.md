@@ -41,3 +41,24 @@ Look in particular for, and judge each against `docs/vision.md` (also its paragr
 Write `docs/specifications/005-agent-adoption/quality/2026-11.md` and commit that file alone. Each finding names file and line and is exactly one of: a drop candidate with the vision clause it fails, a board row in the board's column shape with a one-worker scope, or one small slice in a sentence.
 
 Final message: the findings path first, then the counts.
+
+## Review brief: candidate 0.1.551
+
+Use /reviewer. Candidate `cand/0.1.551`, one row: 005-111 (section W1 above is its contract; `tasks/005-111/notes.md` has the texts before and after and the edits outside the listed files, which the coordinator agreed). Review the range `origin/main..cand/0.1.551` at the SHA your task names; the second commit is the version raise with the built bundles (CI checks that the bundles match the build: do not review bundle text).
+
+Check in particular:
+- every condition of W1's contract, each against a test you read: stopped while starting (one sentence, once), running slow start (as before), stopped then continued (no leftover notice, the slow start later), not Linux (as before), no second daemon spawned while the stopped process holds the lock;
+- `lifeOf`'s new field changes no other caller (`src/core/daemon/{terminate,escaped,outlived}.ts`, `src/core/runner-host/workers.ts`, `src/core/presence/lock-events.ts`);
+- review 0.1.403-r2 B2 still holds: a start the session was told of reads no lock marks inside its grace (`test/presence/reads.test.ts`);
+- the registration, PostToolBatch, Stop and `squeal status` agree in that state, and a session that joins later is told once (review 0.1.547 B1);
+- the hook sentence holds only what the agent can act on (the human, 2026-11-16): no pid, no `squeal start`;
+- the time format: hooks `HH:MM:SS UTC` (005-94 C4), also in 005-108's slow-start sentence now; `squeal status` keeps ISO;
+- every sentence changed is followed in `test/`, `test/e2e/**`, `evals/lib/squeal-text.mjs` and the skill copies.
+
+Test policy: no full suite. Read CI for `cand/0.1.551` for the full-suite result. Run single test files directly where you need them, one at a time, with `timeout 900`. Never run a script under `evals/bin`.
+
+Write `docs/specifications/005-agent-adoption/reviews/0.1.551.md`: PASS or FAIL first, then blocking findings (B), should-fix (S) and notes (N), each with file and line and a failing scenario.
+
+### Re-review after the repair of B1
+
+The first review (`reviews/0.1.551.md`) failed on B1 at `94a90a501`. The repair is the commit "fix(005-111)" on top of the row commit in this candidate; `tasks/005-111/notes.md` has the section "Repair: review 0.1.551 B1". Bounded re-review: B1 is closed (its steps, as a test, with a stopped and with a running process); the repair breaks no condition the first review passed; a running start after a rest stays quiet. Write `reviews/0.1.551-r2.md`: PASS or FAIL first.

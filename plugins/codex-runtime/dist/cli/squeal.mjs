@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.550";
+  if (true) return "0.1.551";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -631,7 +631,7 @@ function lifeOf(pid) {
     pgrp: Number(fields[2]),
     start: Number(fields[19])
   };
-  return { ...entry4, dying, zombie };
+  return { ...entry4, dying, zombie, stopped: fields[0] === "T" || fields[0] === "t" };
 }
 function exited(entry4) {
   const life = lifeOf(entry4.pid);
@@ -76871,20 +76871,28 @@ function readLockMarks(lockFile2, now) {
   return {
     start: once(() => {
       const pid = markedPid(lockFile2);
-      return pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile2), now) };
+      if (pid === null) return null;
+      const since = writtenAt(startMarkFor(lockFile2), now);
+      return { pid, since, stopped: processStopped(pid) };
     }),
     spawnedAt: once(() => spawnedAt(lockFile2))
   };
 }
 function startOf(marks, now, heartbeatAt = null) {
   const start2 = marks.start();
-  if (start2 !== null) return { kind: "locked", since: start2.since, pid: start2.pid };
+  if (start2 !== null) {
+    const { since, pid, stopped } = start2;
+    return { kind: "locked", since, pid, ...stopped ? { stopped: true } : {} };
+  }
   const at2 = marks.spawnedAt();
   if (at2 === null || Math.abs(now - at2) > DAEMON_START_GRACE_MS) return null;
   return heartbeatAt !== null && heartbeatAt >= at2 ? null : { kind: "spawned", since: at2 };
 }
 function daemonStart(lockFile2, now, heartbeatAt = null) {
   return startOf(readLockMarks(lockFile2, now), now, heartbeatAt);
+}
+function processStopped(pid, platform = process.platform, life = lifeOf) {
+  return platform === "linux" && life(pid)?.stopped === true;
 }
 function spawnedAt(lockFile2) {
   try {
@@ -77193,13 +77201,15 @@ init_json();
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
+  return withStartState(p, withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))));
 }
-function withSlowStart(live, at2) {
+function withStartState(p, live) {
   if (live.state !== "down" || live.startMark !== "start" || live.startingSince === void 0) {
     return live;
   }
-  return at2 - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
+  const marks = p.marks;
+  if (marks?.kind === "locked" && marks.stopped === true) return { ...live, startStopped: true };
+  return p.at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
 }
 function stopOf(live) {
   if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
@@ -77840,7 +77850,8 @@ function daemonLine(s, now, command) {
     return `Daemon: heartbeat late: ${lateHeartbeatDetail(s.daemon.heartbeatLate, s.daemon.since)}`;
   }
   const since = s.daemon.since === null ? "Daemon: no daemon running" : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
-  const down = s.daemon.startingSince === void 0 ? since : `${since}; a daemon is starting`;
+  const starting = s.daemon.startStopped === true ? startStoppedText(s.daemon.startingSince ?? null) : "a daemon is starting";
+  const down = s.daemon.startingSince === void 0 ? since : `${since}; ${starting}`;
   if (s.daemon.died === void 0) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
 }
@@ -77904,6 +77915,10 @@ function foldedText(what, list2, command) {
   const since = new Date(Math.min(...list2.map((note) => note.at))).toISOString();
   const processes2 = total === 1 ? "1 process" : `${total} processes`;
   return `stopped ${processes2} ${what}, in ${plural(list2.length, "note")} since ${since}: ${byCommand.join("; ")} (\`${command} status --notes\` lists each)`;
+}
+function startStoppedText(since, time = (at2) => new Date(at2).toISOString()) {
+  const at2 = since === null ? "" : ` since ${time(since)}`;
+  return `a daemon has been starting${at2}, and it may be stopped: no results come until it runs again`;
 }
 
 // src/core/delivery/header.ts
@@ -80078,6 +80093,9 @@ function daemonText(standing4, s, command, locked) {
   return `${reason2}; it ${deathText(s.daemon.died)}; ${start2}. ${DEATH_CAUSE}`;
 }
 function startText(daemon, locked = false) {
+  if (daemon.state === "down" && daemon.startStopped === true) {
+    return startStoppedText(daemon.startingSince ?? null);
+  }
   const marked4 = daemon.state === "down" && daemon.startingSince !== void 0;
   return locked || marked4 ? lockedText(daemon) : null;
 }

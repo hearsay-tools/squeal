@@ -6432,7 +6432,7 @@ function lifeOf(pid) {
     pgrp: Number(fields[2]),
     start: Number(fields[19])
   };
-  return { ...entry3, dying, zombie };
+  return { ...entry3, dying, zombie, stopped: fields[0] === "T" || fields[0] === "t" };
 }
 async function commandLine(pid) {
   try {
@@ -6492,17 +6492,25 @@ function readLockMarks(lockFile, now) {
   return {
     start: once(() => {
       const pid = markedPid(lockFile);
-      return pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) };
+      if (pid === null) return null;
+      const since = writtenAt(startMarkFor(lockFile), now);
+      return { pid, since, stopped: processStopped(pid) };
     }),
     spawnedAt: once(() => spawnedAt(lockFile))
   };
 }
 function startOf(marks, now, heartbeatAt = null) {
   const start = marks.start();
-  if (start !== null) return { kind: "locked", since: start.since, pid: start.pid };
+  if (start !== null) {
+    const { since, pid, stopped } = start;
+    return { kind: "locked", since, pid, ...stopped ? { stopped: true } : {} };
+  }
   const at = marks.spawnedAt();
   if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
   return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
+}
+function processStopped(pid, platform = process.platform, life = lifeOf) {
+  return platform === "linux" && life(pid)?.stopped === true;
 }
 function spawnedAt(lockFile) {
   try {
@@ -6861,7 +6869,8 @@ var NOTES = /* @__PURE__ */ new Set([
   "last one died",
   "handoff ended short",
   "change feed late",
-  "start slow"
+  "start slow",
+  "start stopped"
 ]);
 function readTold2(value) {
   if (value === "down") return "down";
@@ -6891,22 +6900,22 @@ function alreadyTold(told, now) {
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
+  return withStartState(p, withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))));
 }
 function headerView(p, told) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
   const rested = withRest(p, withStop(p, p.heartbeat));
   const live = withLateHeartbeat(p, withRecordFacts(p, rested));
-  return withSlowStart(told === void 0 ? live : withToldStart(live, told, p.at), p.at);
+  return withStartState(p, told === void 0 ? live : withToldStart(live, told, p.at));
 }
 function newsChange(p, told) {
-  const live = withSlowStart(newsView(p, told), p.at);
+  const live = withStartState(p, newsView(p, told));
   let forgetRest2 = false;
   if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== void 0 && live.startSlow !== true) {
+    if (live.startingSince !== void 0 && live.startSlow !== true && live.startStopped !== true) {
       return { change: null, forgetRest: forgetRest2 };
     }
-    if (p.rest?.kind === "quiet") return { change: null, forgetRest: forgetRest2 };
+    if (p.rest?.kind === "quiet" && live.startStopped !== true) return { change: null, forgetRest: forgetRest2 };
     forgetRest2 = p.rest?.kind === "overdue";
   }
   return { change: alreadyTold(told, toldOf(live)) ? null : live, forgetRest: forgetRest2 };
@@ -6920,11 +6929,13 @@ function withToldStart(live, told, at) {
   const { heartbeatLate: _late, ...starting } = withoutStop(live);
   return { ...starting, startingSince };
 }
-function withSlowStart(live, at) {
+function withStartState(p, live) {
   if (live.state !== "down" || live.startMark !== "start" || live.startingSince === void 0) {
     return live;
   }
-  return at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
+  const marks = p.marks;
+  if (marks?.kind === "locked" && marks.stopped === true) return { ...live, startStopped: true };
+  return p.at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
 }
 function withoutStop(live) {
   const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
@@ -6939,6 +6950,7 @@ function toldOf(live) {
   if (live.stopping !== void 0) return { state: "stopping", notes: [] };
   if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
   if (live.startingSince !== void 0) {
+    if (live.startStopped === true) return { state: "starting", notes: [...died, "start stopped"] };
     return { state: "starting", notes: live.startSlow === true ? [...died, "start slow"] : died };
   }
   if (live.resting === true) return { state: "resting", notes: [] };
@@ -8179,7 +8191,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.550";
+  if (true) return "0.1.551";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12610,7 +12622,7 @@ function createDelivery(store, options) {
 function tellAtRegistration(store, consumer, header, told, at) {
   const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
   const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-  const slow = header.daemon?.state === "down" && header.daemon.startSlow === true;
+  const slow = header.daemon?.state === "down" && (header.daemon.startSlow === true || header.daemon.startStopped === true);
   tellLiveness(store, consumer, starting && !slow ? told : daemon);
   tellRevision(store, consumer, header.revision);
   tellSlowTier(store, consumer, header.slowTier);
