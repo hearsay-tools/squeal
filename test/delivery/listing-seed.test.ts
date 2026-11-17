@@ -117,7 +117,7 @@ describe("the first delivery after the listing (row 005-113)", () => {
     list();
     const entry = (await delivery.onToolBoundary(C1))?.entries[0];
     expect(entry?.kind).toBe("first-seen-fail");
-    expect(entry?.origin.kind).toBe("inherited");
+    expect(entry !== undefined && "origin" in entry ? entry.origin.kind : null).toBe("inherited");
     land(MINE, "pass", "again");
     expect(await delivery.onToolBoundary(C1)).toBeNull();
   });
