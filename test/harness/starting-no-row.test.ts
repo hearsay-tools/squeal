@@ -77,8 +77,8 @@ function holdStart(lockFile: AbsolutePath): DaemonLock {
 describe.each(["none", "cleared"] as const)(
   "a daemon that holds its lock past the start's grace, worktree row %s (row 005-108)",
   (row) => {
-    it("is not told as no daemon running", async () => {
-      const { start, batch, lockFile } = await newWorktree(row);
+    it("is not told as no daemon running, and no boundary spawns a second daemon", async () => {
+      const { start, batch, spawns, lockFile } = await newWorktree(row);
       expect(start).toMatch(/still starting|daemon is starting/);
       holdStart(lockFile);
 
@@ -91,6 +91,8 @@ describe.each(["none", "cleared"] as const)(
         expect(line).not.toContain("no daemon is validating");
         expect(line).not.toContain("start` starts one");
       }
+      // Before row 005-108, with no row, each of these 4 boundaries spawned one more daemon.
+      expect(spawns).toEqual([0]);
     });
   },
 );
@@ -112,13 +114,15 @@ describe("a new worktree whose daemon holds its lock in its start (row 005-108)"
 });
 
 describe("a new worktree whose daemon never takes the lock (row 005-108: as before)", () => {
-  it("is starting within the spawn's grace, then no daemon is running", async () => {
-    const { batch } = await newWorktree();
+  it("is starting within the spawn's grace, then no daemon is running, and the next boundary spawns", async () => {
+    const { batch, spawns } = await newWorktree();
 
     expect(await batch(2_000)).not.toContain("no daemon is running");
     const after = await batch(DAEMON_START_GRACE_MS + 1_000);
 
     expect(after).toContain("no daemon is running; `squeal start` starts one");
+    // The spawn mark holds the next spawn back within its grace only.
+    expect(spawns).toEqual([0, DAEMON_START_GRACE_MS + 1_000]);
   });
 
   it("is told no daemon running past the grace when its start mark names a process that is gone", async () => {

@@ -12,10 +12,10 @@ import { readHookHandoff, readHookStop } from "../../core/presence/narrow.js";
 import { handoffFrom, SUCCESSOR_LOCK_WAIT_MS } from "../../core/presence/stored.js";
 import { lockFileFor } from "../../core/store/paths.js";
 import { readTransaction } from "../../core/store/store.js";
-import type { EpochMs, WorktreeId } from "../../core/types/common.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
 import type { DaemonRequest, EnsureDaemonResult } from "../../core/types/daemon.js";
 import type { Store } from "../../core/types/store.js";
-import type { DaemonRecord } from "../../core/types/store-records.js";
+import type { DaemonRecord, WorktreeRecord } from "../../core/types/store-records.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
 
@@ -57,7 +57,7 @@ export async function ensure(
   if (handoff === "claimed") return successor(location, deps);
   if (handoff === "joined") return "alive";
   const at = (deps.now ?? Date.now)();
-  if (spawnStartCurrent(worktree, at)) return "spawned";
+  if (startCurrent(location, worktree, at)) return "spawned";
   const ensured = spawnMarked(
     location,
     { at, heartbeat: lastHeartbeat(worktree) },
@@ -95,11 +95,27 @@ function spawnMarked(
   spawn: { readonly at: EpochMs; readonly heartbeat: EpochMs | null },
   ensured: EnsureDaemonResult,
 ): EnsureDaemonResult {
-  if (ensured === "spawned") {
-    const lockFile = lockFileFor(location.commonDir, worktreeIdFor(location.root));
-    markSpawn(lockFile, spawn.at, spawn.heartbeat);
-  }
+  if (ensured === "spawned") markSpawn(lockFileOf(location), spawn.at, spawn.heartbeat);
   return ensured;
+}
+
+/**
+ * Whether a daemon's start is current at `at` by the marks beside the lock
+ * (`spawnStartCurrent`, row 011-252). Row 005-108: a new worktree has no row
+ * until its daemon registers, so its lock is found by `location` then.
+ */
+function startCurrent(
+  location: HookLocation,
+  worktree: WorktreeRecord | null | undefined,
+  at: EpochMs,
+): boolean {
+  const rowless = worktree === null || worktree === undefined ? lockFileOf(location) : undefined;
+  return spawnStartCurrent(worktree, at, rowless);
+}
+
+/** The daemon lock file of the worktree at `location`. */
+function lockFileOf(location: HookLocation): AbsolutePath {
+  return lockFileFor(location.commonDir, worktreeIdFor(location.root));
 }
 
 /**
