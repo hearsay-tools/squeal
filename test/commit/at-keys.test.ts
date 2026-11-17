@@ -206,7 +206,11 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     expect(install.calls()).toBe(0);
     const keys = await keysAtCommit(options);
     expect(keys.files.get(testFileId(TEST))).toMatchObject({ notDetermined: { reason: "absent" } });
-    expect(keys.files.get(testFileId(PLAIN))).toMatchObject({ via: "unchanged" });
+    // B added files in `src` and `test`, where PLAIN's imports resolve: walked, to A's key.
+    expect(keys.files.get(testFileId(PLAIN))).toMatchObject({
+      key: await freshKey(f, a, PLAIN),
+      via: "walk",
+    });
     expect(install.calls()).toBe(1);
   });
 

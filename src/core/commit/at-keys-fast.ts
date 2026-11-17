@@ -10,15 +10,19 @@ import type { FileHash } from "../types/keys.js";
  * file whose every key input is unchanged at the commit keeps its current
  * key, with no checkout. It computes no key at the commit: it checks the
  * premise a daemon restart relies on, that equal inputs import the same
- * files (`research/keys-by-walk.md` 4, its nine conditions). Every check
+ * files (`research/keys-by-walk.md` 4, its nine conditions, with condition
+ * 6 made structural after review wave-5 B1 and its re-review). Every check
  * compares the commit's tree with this worktree's files as they are now, so
  * a dirty tree is compared by its current hashes, not by `HEAD`.
  */
 
-/** The current key's inputs of one test file: `WorktreeKeys.stabilityPaths`. */
+/** The current key's inputs of one test file. */
 export interface CurrentInputs {
   readonly path: RelativePath;
+  /** `WorktreeKeys.stabilityPaths`: the closure, the environment's files, the lockfile. */
   readonly paths: readonly RelativePath[];
+  /** The closure alone (`KeyIndex.closure(ref).paths`): its folders are guarded (condition 6). */
+  readonly closure: readonly RelativePath[];
 }
 
 /** The commit, from git objects. */
@@ -59,9 +63,6 @@ const INSTALLED: readonly { readonly installed: RegExp; readonly committed: stri
 
 /** A path that names files by pattern, not one file. */
 const PATTERN = /[*?{[]/;
-/** A file module resolution may reach: Vite's default extensions and Node's. */
-const MODULE = /\.([cm]?[jt]sx?|json|node)$/;
-const INDEX = /^index\.([cm]?[jt]sx?|json|node)$/;
 const TSCONFIG = /(^|\/)tsconfig[^/]*\.json$/;
 const MANIFEST = /(^|\/)package\.json$/;
 
@@ -85,29 +86,26 @@ export function changedInput(
   diff: Difference,
 ): string | null {
   if (!commit.blobs.has(file.path)) return `${file.path} is absent at the commit`;
-  const modules = new Set<string>();
   const folders = new Set<RelativePath>();
   for (const path of file.paths) {
     const why = inputChanged(path, commit, here, diff);
     if (why !== null) return why;
-    if (listedDirectory(path) === null && !PATTERN.test(path)) {
-      folders.add(folderOf(path));
-      if (MODULE.test(path)) for (const target of targets(path)) modules.add(target);
-    }
+    if (listedDirectory(path) === null && !PATTERN.test(path)) folders.add(folderOf(path));
   }
-  const inputs = new Set(file.paths);
+  const guarded = guardedFolders(file.closure);
   for (const path of diff.changed) {
     // The policy steers declared inputs and the environment's variables: its change moves keys
     // through paths the current inputs do not list.
     if (path === POLICY_FILE) return `${path} changed`;
     // 4: a changed path a declared pattern of the policy names.
     if (diff.declared(path)) return `${path} is a declared input and changed`;
-    // 6: an added or deleted resolution candidate of an input module's import, which
-    // resolution may take instead: an extension twin (`a.ts`, `a.js`), a file beside a folder
-    // (`a.ts`, `a/index.ts`), or a folder's own manifest (`a/package.json`).
-    const candidate = diff.addedOrDeleted.has(path) && !inputs.has(path);
-    if (candidate && targets(path).some((target) => modules.has(target)))
-      return `${path} was added or deleted where an input module's import may resolve`;
+    // 6: a file added or deleted, of any name, in a folder where the closure's imports
+    // resolve (review wave-5 B1, re-review B1).
+    if (diff.addedOrDeleted.has(path)) {
+      const folder = entryFolders(path, commit, here).find((f) => guarded.has(f));
+      if (folder !== undefined)
+        return `${path} was added or deleted in ${folder || "the root"}, where the closure's imports resolve`;
+    }
     // 7, 8: a manifest's resolution fields, or a tsconfig, on the inputs' path.
     const onPath = (MANIFEST.test(path) && diff.manifests.has(path)) || TSCONFIG.test(path);
     if (onPath && above(folderOf(path), folders))
@@ -175,22 +173,37 @@ function folderOf(path: RelativePath): RelativePath {
 }
 
 /**
- * The import targets, without extension, that may resolve to the module at
- * `path`: `src/a` for `src/a.ts`, and for an index or a folder's manifest
- * also the folder (`src/a` for `src/a/index.ts` and `src/a/package.json`).
- * A path that resolution never reaches has none.
+ * Condition 6's folders, by structure alone, with no name or extension
+ * rule, since a runner's configured extensions and resolution order are its
+ * own: the folder of each closure file, where a relative import of a
+ * sibling resolves, and that folder's parent, where an import of the folder
+ * itself (`../src/a` for `src/a/index.ts`) has a same-named file
+ * candidate (`src/a.*`). A closure path that does not exist (a candidate
+ * the runner tried) counts like a file.
  */
-function targets(path: RelativePath): string[] {
-  const name = posix.basename(path);
-  const folder = folderOf(path);
-  const out: string[] = [];
-  if (MODULE.test(name)) out.push(folder === "" ? stem(path) : `${folder}/${stem(path)}`);
-  if (folder !== "" && (INDEX.test(name) || name === "package.json")) out.push(folder);
-  return out;
+function guardedFolders(closure: readonly RelativePath[]): Set<RelativePath> {
+  const guarded = new Set<RelativePath>();
+  for (const path of closure) {
+    if (listedDirectory(path) !== null || PATTERN.test(path)) continue;
+    const folder = folderOf(path);
+    guarded.add(folder);
+    if (folder !== "") guarded.add(folderOf(folder));
+  }
+  return guarded;
 }
 
-function stem(path: RelativePath): string {
-  return posix.basename(path).replace(/\.[^.]+$/, "");
+/**
+ * The folders whose entries an add or delete of `path` changes: its own,
+ * and the parent of each folder above it that one side lacks (a folder
+ * added or removed with it is a new or gone entry there).
+ */
+function entryFolders(path: RelativePath, commit: CommitSide, here: HereSide): RelativePath[] {
+  const out = [folderOf(path)];
+  for (let folder = folderOf(path); folder !== ""; folder = folderOf(folder)) {
+    if (commit.names.has(folder) && here.names.has(folder)) break;
+    out.push(folderOf(folder));
+  }
+  return out;
 }
 
 function sameNames(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
