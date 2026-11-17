@@ -1,0 +1,11 @@
+# Wave 5 (row 023-16): keys at a commit, by the fast path and the gate's keyer in the checkout — Use /worker.
+
+Approved by the human 2026-11-17 ("A: runner in checkout"). Read `../spec.md` D2 (amended 2026-11-17), D4; `../research/keys-by-walk.md` (all; its Recommendation is the design); `../reviews/wave-3.md` (the failed git-only cases, now your regression list); `tasks/023-05-notes.md` (checkout API) and the parked code on branch `park/023-03-git-keys` (`untrackedInputs`, tree-listing helpers only).
+
+Outcome: one library entry, `keysAtCommit({ root, commit, files?, … })`, returning per test file the exact key a fresh walk at that commit gives, or `not determined` with a reason, plus the stored result at that key (read-only lookup). No CLI command yet (023-06 adds it).
+
+- Fast path (research Q4 conditions, all of them): a file whose every key input is unchanged at the commit keeps its current key with no checkout. Against a dirty tree, compare the commit's blobs with current file hashes.
+- The rest: D4's checkout at the commit (`src/core/checkout/`), warm frozen install, then the gate's keyer in-process (`openDaemonKeying`/`keyFiles`, as `squeal code --base` and `ci export` use) on only those files; look the keys up in the shared store read-only; remove the checkout. Never start a daemon there; write no `test_file_keys` for it; nothing shared changes.
+- Side keys for `squeal proof` (D5): the same keyer in a checkout at the side's code version with the side's test files copied in.
+- Owns: new `src/core/commit/at-keys*.ts` (fast path, orchestration), tests under `test/commit/`; may export helpers from the gate keyer without changing behaviour. Leaves alone: `src/core/checkout/**` beyond calling it, `src/cli/**`, delivery, scheduler.
+- Done when: real-adapter tests on `$TMPDIR` fixtures give the exact fresh-walk key or `not determined` for every case in `reviews/wave-1.md` B1, `wave-1-rereview.md` B1 and `wave-3.md` B1, B2 (shrinking closure, glob with a removed match, larger current closure, `package.json` `imports` retarget), plus an unchanged file taking the fast path with no checkout; a killed run leaves no checkout after the next sweep; lint, typecheck, key-format, version-sensitive, boundaries; `squeal status --wait 60000` on changed paths. No version raise, no build, no full suite; `timeout 600`; no daemon left running.
