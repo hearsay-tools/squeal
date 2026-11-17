@@ -1,0 +1,25 @@
+{"at":"2026-11-17T14:58:22.698Z","load":10.13,"cpus":24,"node":"v26.13.0"}
+Selected test files of group run-loop completed at revision 0: no known failures; 1 test file, 1 queued by this request
+Request receipt (synthetic)
+[probe queues the same file between verdict output and status read]
+Revision: 0
+Known failures: 0; not current: 1 of 1 test file (1 queued)
+Affected checks: 0 passed, 0 running, 1 queued (1 test file loaded)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Queued: 1 test file: test/a.test.ts
+Outstanding:
+  1 test file queued; no run is open and nothing recorded holds it: test/a.test.ts; the store records no reason the daemon has not taken it (`squeal status --json` lists each file's state)
+More: `squeal status --full` adds the worktree and daemon and 1 note
+exit=0
+CONTROL: same selected file pending before verdict read
+Selected test files of group run-loop have no verdict: the deadline passed with 1 test file pending at revision 0; their runs go on in the daemon
+Request receipt (synthetic)
+Revision: 0
+Known failures: 0; not current: 1 of 1 test file (1 queued)
+Affected checks: 0 passed, 0 running, 1 queued (1 test file loaded)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Queued: 1 test file: test/a.test.ts
+Outstanding:
+  1 test file queued; no run is open and nothing recorded holds it: test/a.test.ts; the store records no reason the daemon has not taken it (`squeal status --json` lists each file's state)
+More: `squeal status --full` adds the worktree and daemon and 1 note
+exit=3
