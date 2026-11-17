@@ -1,10 +1,14 @@
-import { writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type KeyAt, keysAtCommit, sideKeys } from "../../src/core/commit/at-keys.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { SLOW } from "../scheduler/cleanup.js";
+import { result } from "../store/helpers.js";
 import {
   type Fixture,
   fixture,
@@ -193,5 +197,46 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     expect(keys.files.get(testFileId(TEST))).toMatchObject({ notDetermined: { reason: "absent" } });
     expect(keys.files.get(testFileId(PLAIN))).toMatchObject({ via: "unchanged" });
     expect(install.calls()).toBe(0);
+  });
+
+  it("reads the store's results at the key at the commit, and writes nothing", async () => {
+    const f = fixture({
+      ...PLAIN_FILES,
+      "src/a.ts": "export const value = 1;\n",
+      [TEST.path]: testOf("a", 2),
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const value = 2;\n" });
+    const [failAtA, passNow, plainKey] = [
+      await freshKey(f, a, TEST),
+      await freshKey(f, "HEAD", TEST),
+      await freshKey(f, a, PLAIN),
+    ];
+    const check = (path: string) => ({ kind: "file", project: "", testPath: path }) as const;
+    const commonDir = join(f.root, ".git");
+    const store = openStore(commonDir);
+    if (isStoreOpenFailure(store)) throw new Error(store.reason);
+    store.results.putMany([
+      result(check(TEST.path), failAtA, { outcome: "fail" }),
+      result(check(TEST.path), passNow),
+      result(check(PLAIN.path), plainKey),
+    ]);
+    store.close();
+    const database = storePaths(commonDir).database;
+    const bytes = () => createHash("sha256").update(readFileSync(database)).digest("hex");
+    const before = bytes();
+
+    const options = { ...keying(f), root: f.root, commit: a, files: [TEST, PLAIN] };
+    const keys = await keysAtCommit(options);
+    expect(keys.store).toBe(true);
+    const atA = keys.files.get(testFileId(TEST));
+    expect(atA).toMatchObject({ key: failAtA, via: "walk" });
+    expect(atA !== undefined && "stored" in atA ? atA.stored.map((r) => r.outcome) : []).toEqual([
+      "fail",
+    ]);
+    const plain = keys.files.get(testFileId(PLAIN));
+    expect(plain).toMatchObject({ key: plainKey, via: "unchanged" });
+    expect(plain !== undefined && "stored" in plain ? plain.stored : []).toHaveLength(1);
+    expect(bytes()).toBe(before);
   });
 });
