@@ -63,16 +63,24 @@ function daemonSide(input: NowInput, main: Store): NowSide {
     input.paths,
   );
   const revision = rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
-  const state = (ref: TestFileRef): SideState => {
+  // Read now: the store closes when this side is returned.
+  const states = new Map<string, SideState>();
+  for (const ref of refs) {
     const row = byId.get(testFileId(ref));
-    if (row === undefined) return unlisted(input.root, ref, "the daemon lists no such test file");
-    if (row.key === null)
-      return { state: "not determined", reason: "the daemon has no key for it" };
+    if (row === undefined) continue;
+    if (row.key === null) {
+      states.set(testFileId(ref), {
+        state: "not determined",
+        reason: "the daemon has no key for it",
+      });
+      continue;
+    }
     const side = stateOf(row.key, resultsAt(main, ref, row.key), input.worktreeId);
-    if (side.state === "no result" && row.pending !== null)
-      return { ...side, pending: row.pending };
-    return side;
-  };
+    const pending = side.state === "no result" && row.pending !== null;
+    states.set(testFileId(ref), pending ? { ...side, pending: row.pending ?? undefined } : side);
+  }
+  const state = (ref: TestFileRef) =>
+    states.get(testFileId(ref)) ?? unlisted(input.root, ref, "the daemon lists no such test file");
   return { source: { kind: "daemon", revision }, refs, listed, state };
 }
 
@@ -96,7 +104,8 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
           stateOf(at.key, main === null ? [] : resultsAt(main, ref, at.key), input.worktreeId),
         );
     }
-    const state = (ref: TestFileRef) => states.get(testFileId(ref)) ?? { state: "absent" as const };
+    const state = (ref: TestFileRef) =>
+      states.get(testFileId(ref)) ?? unlisted(root, ref, "no runner lists it");
     return { source: { kind: "stored" }, refs, listed, state };
   });
 }
