@@ -30,6 +30,8 @@ export interface ServedWrites {
   readonly statements: () => number;
   /** Holds every batch until `release`; written in order once released. */
   pause(): void;
+  /** The batches `pause` holds now, in order. */
+  held(): readonly SentBatch[];
   release(): void;
   close(): Promise<void>;
 }
@@ -42,6 +44,7 @@ export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
   const batches: SentBatch[] = [];
   let statements = 0;
   let paused: (() => void)[] | null = null;
+  let held: SentBatch[] = [];
   const handle = createHandlers({
     worktreeId: r.worktreeId,
     root: r.root as AbsolutePath,
@@ -55,7 +58,10 @@ export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
     onStepDown: () => {},
     storeSchema: store.schemaVersion,
     requestWrite: async (batch) => {
-      if (paused !== null) await new Promise<void>((resolve) => paused?.push(resolve));
+      if (paused !== null) {
+        held.push(batch);
+        await new Promise<void>((resolve) => paused?.push(resolve));
+      }
       const decoded = decodeBatch(batch);
       writeBatch(store, decoded);
       batches.push(batch);
@@ -77,9 +83,11 @@ export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
     pause: () => {
       paused ??= [];
     },
+    held: () => held,
     release: () => {
       const waiting = paused ?? [];
       paused = null;
+      held = [];
       for (const resolve of waiting) resolve();
     },
     close: async () => {

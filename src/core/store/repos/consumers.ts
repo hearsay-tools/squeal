@@ -138,6 +138,16 @@ export function createViewRepo(conn: Connection): ViewRepo {
           );
         }
       }),
+    seed: (consumer, rows, toldAt) => {
+      conn.run(
+        `INSERT OR REPLACE INTO consumer_views
+           (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
+         SELECT ?, ?, ?, j.value ->> 0, j.value ->> 1, j.value ->> 2, ? FROM json_each(?) j`,
+        ...consumerParams(consumer),
+        toldAt,
+        JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint])),
+      );
+    },
     removeMany: (consumer, checks) =>
       conn.transaction(() => {
         for (const check of checks) {

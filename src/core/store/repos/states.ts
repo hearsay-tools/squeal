@@ -49,6 +49,13 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
         )
         .map(toKnownState);
     },
+    listWithIds: (worktreeId) => {
+      const rows = conn.all(
+        `${SELECT_STATES} WHERE s.worktree_id = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+        worktreeId,
+      );
+      return { states: rows.map(toKnownState), checkIds: rows.map((row) => num(row, "check_id")) };
+    },
     untold: (consumer) =>
       conn
         .all(

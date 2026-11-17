@@ -52,7 +52,7 @@ import type { CodeSource } from "./code-source.js";
 import { commitNews, tellCommit } from "./commit-told.js";
 import { recordVersion } from "./consumer-version.js";
 import { oweCounts, payCounts } from "./counts-owed.js";
-import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
+import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan } from "./delta.js";
 import {
   type Boundary,
   carriesEditResult,
@@ -556,14 +556,20 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       forgetStopWait(store, consumer);
       // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
       markLeaving(store, consumer, null);
-      const states = store.knownStates.list(consumer.worktreeId);
+      // Row 005-103: the view is seeded from this read, so it holds what the text is made from.
+      const { states, checkIds } = store.knownStates.listWithIds(consumer.worktreeId);
       // Review 0.1.538 B1: a still-registered consumer's registration (a resumed session's) that
       // reports a failure its view did not hold ends its late state, as any delivered new failure
       // does: no caught-up follows it. Read before the view is replaced.
       if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      store.views.writeMany(
+      store.views.seed(
         consumer,
-        states.map((s) => toView(s, at)),
+        states.map((s, i) => ({
+          checkId: checkIds[i] as number,
+          outcome: s.outcome,
+          fingerprint: s.fingerprint,
+        })),
+        at,
       );
       // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
       const told = startingSince === undefined ? null : { startingSince };
