@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.534";
+  if (true) return "0.1.535";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -221,6 +221,7 @@ var init_store = __esm({
       runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
       turn: { prefix: "turn:", owner: "delivery/turn" },
       edits: { prefix: "edits:", owner: "delivery/edits" },
+      editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
       harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
       departed: { prefix: "departed:", owner: "delivery/expiry" },
       consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
@@ -15544,7 +15545,7 @@ function createStateSink(store, options = {}) {
       return commit(revision, [...next.values()], provenance.checkpointId);
     }),
     setupOutcome: (worktreeId, revision, { check: check3, commit, error }) => store.transaction(() => {
-      const { commit: write3 } = begin2(worktreeId);
+      const { commit: write4 } = begin2(worktreeId);
       const failure2 = error === null ? null : describeFailure([error], error.location);
       const state = {
         worktreeId,
@@ -15560,7 +15561,7 @@ function createStateSink(store, options = {}) {
         summary: failure2?.summary ?? null,
         fingerprint: failure2?.fingerprint ?? null
       };
-      return write3(revision, [state], null);
+      return write4(revision, [state], null);
     }),
     // A told failure stays in the view: delivery reports it once as no longer reported (D6).
     retire: (worktreeId, checks) => store.transaction(() => {
@@ -19667,12 +19668,12 @@ function recordImportGraph(source2, fetched) {
   } catch {
     return;
   }
-  const write3 = { now: source2.now(), walks, environments: environments2 };
-  conn.transaction(() => writeImportGraph(conn, write3));
+  const write4 = { now: source2.now(), walks, environments: environments2 };
+  conn.transaction(() => writeImportGraph(conn, write4));
 }
-function writeImportGraph(conn, write3) {
+function writeImportGraph(conn, write4) {
   ensureTables(conn);
-  for (const env of write3.environments) {
+  for (const env of write4.environments) {
     conn.run(
       `INSERT INTO environment_walks (project, environment, files, roots, imports, recorded_at)
        VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (project, environment) DO NOTHING`,
@@ -19681,10 +19682,10 @@ function writeImportGraph(conn, write3) {
       JSON.stringify(env.files),
       JSON.stringify(env.roots),
       encodeImports(env.imports),
-      write3.now
+      write4.now
     );
   }
-  for (const walk7 of write3.walks) {
+  for (const walk7 of write4.walks) {
     const { project, path } = walk7.testFile;
     conn.run(
       `INSERT INTO test_file_imports (project, path, key, environment, imports, recorded_at)
@@ -19694,7 +19695,7 @@ function writeImportGraph(conn, write3) {
       walk7.key,
       walk7.environment,
       encodeImports(walk7.imports),
-      write3.now
+      write4.now
     );
     conn.run(
       `DELETE FROM test_file_imports WHERE project = ? AND path = ? AND key <> ? AND key NOT IN (
@@ -19708,10 +19709,10 @@ function writeImportGraph(conn, write3) {
       path
     );
   }
-  const read5 = new Set(write3.environments.map((env) => `${env.project}\0${env.hash}`));
+  const read5 = new Set(write4.environments.map((env) => `${env.project}\0${env.hash}`));
   const projects2 = /* @__PURE__ */ new Set([
-    ...write3.walks.map((w2) => w2.testFile.project),
-    ...write3.environments.map((e) => e.project)
+    ...write4.walks.map((w2) => w2.testFile.project),
+    ...write4.environments.map((e) => e.project)
   ]);
   for (const project of projects2) {
     for (const row2 of conn.all(
@@ -30776,10 +30777,10 @@ var init_busy = __esm({
 
 // src/core/store/sliced-write.ts
 import { setTimeout as sleep8 } from "node:timers/promises";
-async function slicedWrite(write3, giveUp2) {
+async function slicedWrite(write4, giveUp2) {
   for (let attempt = 0; ; attempt++) {
     try {
-      return withBusySliceSync(BUSY_SLICE_MS, write3);
+      return withBusySliceSync(BUSY_SLICE_MS, write4);
     } catch (error) {
       if (!isBusy(error)) throw error;
     }
@@ -53874,27 +53875,27 @@ var init_transfer_rekey = __esm({
 // src/core/store/transfer-import-slices.ts
 function* importSlices(store, bundle, options, tally2) {
   const conn = connectionOf(store);
-  const write3 = (what, fn) => ({
+  const write4 = (what, fn) => ({
     what,
     run: () => conn.transaction(fn)
   });
   for (const files5 of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
     let added = 0;
-    yield write3("an import's closure lists", () => {
+    yield write4("an import's closure lists", () => {
       added = addClosures(store, files5, options.importId, options.now);
     });
     tally2.closures += added;
   }
   for (const [project, files5] of groupBy(bundle.testFiles, (f) => f.project)) {
     let added = 0;
-    yield write3("an import's observed entries", () => {
+    yield write4("an import's observed entries", () => {
       added = addObserved(store, project, files5);
     });
     tally2.observed += added;
   }
   if (bundle.observedStartup.length > 0) {
     let added = 0;
-    yield write3("an import's start-up lists", () => {
+    yield write4("an import's start-up lists", () => {
       added = addStartup(store, bundle);
     });
     tally2.startup += added;
@@ -53903,20 +53904,20 @@ function* importSlices(store, bundle, options, tally2) {
   const rekeyed = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
   tally2.rekeyed = rekeyed.size;
   for (const files5 of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
-    yield write3("an import's files", () => {
+    yield write4("an import's files", () => {
       ensureImportTables(conn);
       recordFiles(store, bundle, files5, options.importId, rekeyed);
     });
   }
   for (const group of resultSlices(bundle, rekeyed)) {
     let counts = { results: 0, alreadyStored: 0 };
-    yield write3("an import's results", () => {
+    yield write4("an import's results", () => {
       counts = addResults(store, bundle, group, options);
     });
     tally2.results += counts.results;
     tally2.alreadyStored += counts.alreadyStored;
   }
-  yield write3("an import's record", () => {
+  yield write4("an import's record", () => {
     putEnvironments(
       store,
       bundle.environments.flatMap(
@@ -55775,10 +55776,10 @@ async function applyRefinement(host, context, ledger, part2, refined, carry) {
 }
 async function recordRefined(host, context, revision) {
   const { store, worktreeId } = context;
-  const write3 = async () => store.transaction(() => recordRefinedFailed(store, worktreeId, revision));
+  const write4 = async () => store.transaction(() => recordRefinedFailed(store, worktreeId, revision));
   const busy2 = host.busy?.();
-  if (busy2 === void 0) return write3();
-  await retryWhileBusy(write3, {
+  if (busy2 === void 0) return write4();
+  await retryWhileBusy(write4, {
     sliceMs: busy2.sliceMs,
     waits: busy2.waits,
     key: `${REFINE}:refined`,
@@ -59676,6 +59677,98 @@ var init_tier_live = __esm({
   }
 });
 
+// src/core/scheduler/edit-timings.ts
+function editTimingsMetaKey(worktreeId) {
+  return worktreeMetaKey("editTimings", worktreeId);
+}
+function readEditTimings(store, worktreeId) {
+  const raw = store.meta.get(editTimingsMetaKey(worktreeId));
+  let value = null;
+  try {
+    value = raw === null ? null : JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value) || !isNumber4(value.tierSize) || !isRecord(value.widths)) return null;
+  const widths = {};
+  for (const [project, w2] of Object.entries(value.widths)) {
+    if (isRecord(w2) && isNumber4(w2.width) && typeof w2.part === "string") {
+      widths[project] = { width: w2.width, part: w2.part };
+    }
+  }
+  const list2 = (v) => Array.isArray(v) ? v.filter(isRecord) : [];
+  return {
+    tierSize: value.tierSize,
+    widths,
+    firsts: list2(value.firsts).flatMap(
+      (f) => isNumber4(f.revision) && isNumber4(f.delayMs) ? [{ revision: f.revision, delayMs: f.delayMs }] : []
+    ),
+    tiers: list2(value.tiers).flatMap(
+      (t) => typeof t.runId === "string" && isNumber4(t.estimateMs) ? [{ runId: t.runId, estimateMs: t.estimateMs }] : []
+    )
+  };
+}
+function recordEditTier(context, tier, grant) {
+  if (tier.kind !== "edit" || tier.startedAt === void 0) return;
+  const startedAt = tier.startedAt;
+  try {
+    withBusySliceSync(
+      0,
+      () => context.store.transaction(() => write3(context, tier, startedAt, grant))
+    );
+  } catch (error) {
+    if (!isBusy(error))
+      noteOnce2(context, `squeal: could not record an edit tier's timings: ${errorText4(error)}`);
+  }
+}
+function noteOnce2(context, text3) {
+  try {
+    if (!persistedNoteTexts(context.store, context.worktreeId).has(text3)) context.note(text3);
+  } catch {
+  }
+}
+function write3(context, tier, startedAt, grant) {
+  const { store, worktreeId } = context;
+  const traits = context.runner.traits;
+  const tierSize = context.policy.runner.tierSize;
+  const was = readEditTimings(store, worktreeId);
+  const widths = { ...was?.widths };
+  for (const { file } of tier.files) {
+    widths[file.ref.project] = {
+      width: traits.tierWidth(file.ref, tierSize),
+      part: traits.tierPart(file.ref)
+    };
+  }
+  const revision = tier.revision.number;
+  const createdAt = store.revisions.get(worktreeId, revision)?.createdAt;
+  const firsts = was?.firsts ?? [];
+  const first2 = createdAt === void 0 || firsts.some((f) => f.revision === revision) ? [] : [{ revision, delayMs: Math.max(0, startedAt - createdAt) }];
+  const next = {
+    tierSize,
+    widths,
+    firsts: [...first2, ...firsts].slice(0, TIMINGS_KEPT),
+    tiers: [
+      { runId: tier.runId, estimateMs: estimateMs(traits, tier.files, grant) },
+      ...was?.tiers ?? []
+    ].slice(0, TIMINGS_KEPT)
+  };
+  store.meta.set(editTimingsMetaKey(worktreeId), JSON.stringify(next));
+}
+var TIMINGS_KEPT, isNumber4, errorText4;
+var init_edit_timings = __esm({
+  "src/core/scheduler/edit-timings.ts"() {
+    "use strict";
+    init_json();
+    init_connection();
+    init_store();
+    init_notes2();
+    init_tier_width();
+    TIMINGS_KEPT = 20;
+    isNumber4 = (v) => typeof v === "number" && Number.isFinite(v);
+    errorText4 = (error) => error instanceof Error ? error.message : String(error);
+  }
+});
+
 // src/core/scheduler/tier-start.ts
 function startNext(context, ledger, plan2, options = {}) {
   let step2 = plan2.first;
@@ -59696,6 +59789,7 @@ function startNext(context, ledger, plan2, options = {}) {
       first2 ??= done.tier;
       if (options.fly === void 0) return { tier: first2 };
       options.fly(done.tier);
+      recordEditTier(context, done.tier, done.grant);
       step2 = plan2.afterStart(done.tier);
     } else if ("refused" in done) {
       refused ||= done.refused === "pool";
@@ -59709,7 +59803,7 @@ function waitsFirst(idle2) {
 function act(context, ledger, candidate, at2) {
   if (candidate.focus !== null) {
     const tier2 = startFocusedTier(context, ledger, candidate.focus, candidate.files, at2);
-    return tier2 === null ? { unstarted: [] } : { tier: tier2 };
+    return tier2 === null ? { unstarted: [] } : { tier: tier2, grant: tier2.files.length };
   }
   const ask2 = candidate.width;
   const taken3 = ask2 === null ? null : context.capacity?.take(ask2.want, "fast", ask2.least, ask2.kind, ask2.lane, ask2.refusalWaits);
@@ -59732,10 +59826,13 @@ function act(context, ledger, candidate, at2) {
     if (tier === null) lease?.release();
   }
   if (tier === null) return { unstarted: files5 };
-  const grant = lease?.grant ?? (ask2 === null ? tier.files.length : ask2.offer);
+  const grant = grantOf2(lease, ask2, tier);
   if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at2);
   else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at2);
-  return { tier };
+  return { tier, grant };
+}
+function grantOf2(lease, ask2, tier) {
+  return lease?.grant ?? (ask2 === null ? tier.files.length : ask2.offer);
 }
 function batchStarted(context, ledger, tier, grant, at2) {
   const first2 = tier.files[0]?.file.ref;
@@ -59749,6 +59846,7 @@ var init_tier_start = __esm({
   "src/core/scheduler/tier-start.ts"() {
     "use strict";
     init_capacity();
+    init_edit_timings();
     init_focused();
     init_tier_plan();
     init_tier_width();
@@ -71187,7 +71285,7 @@ function batched(input, brought) {
   let added = 0;
   let written2 = 0;
   let transitions = 0;
-  const write3 = () => {
+  const write4 = () => {
     written2 += judged2.length;
     transitions += writeJudgement(input, judged2.splice(0), brought);
   };
@@ -71195,13 +71293,13 @@ function batched(input, brought) {
     add(j) {
       added++;
       judged2.push(j);
-      if (judged2.length === WRITE_FILES) write3();
+      if (judged2.length === WRITE_FILES) write4();
     },
     /** How many judgements were added. */
     added: () => added,
     /** The files judged, and the transitions their states made. */
     end() {
-      write3();
+      write4();
       return { judged: written2, transitions };
     }
   };
@@ -74607,23 +74705,23 @@ async function packFiles(read5) {
     gzip: packed2.toString("base64")
   };
 }
-async function unpackFiles(write3) {
-  for (const file of write3.files) {
+async function unpackFiles(write4) {
+  for (const file of write4.files) {
     if (!Number.isSafeInteger(file.size) || file.size < 0) {
       throw new Error(
         `runner host: the size of ${JSON.stringify(file.path)} is no byte count: ${file.size}`
       );
     }
   }
-  const total = write3.files.reduce((sum2, file) => sum2 + file.size, 0);
+  const total = write4.files.reduce((sum2, file) => sum2 + file.size, 0);
   if (!Number.isSafeInteger(total)) {
     throw new Error(`runner host: a write's sizes add up past a byte count: ${total}`);
   }
-  if (write3.files.length === 0) {
-    if (write3.gzip !== "") throw new Error("runner host: a write without files carries bytes");
+  if (write4.files.length === 0) {
+    if (write4.gzip !== "") throw new Error("runner host: a write without files carries bytes");
     return [];
   }
-  const all2 = await unzip(Buffer.from(write3.gzip, "base64"), {
+  const all2 = await unzip(Buffer.from(write4.gzip, "base64"), {
     maxOutputLength: Math.max(1, total)
   }).catch((error) => {
     throw new Error(`runner host: a write's bytes do not unpack: ${error.message}`);
@@ -74632,7 +74730,7 @@ async function unpackFiles(write3) {
     throw new Error(`runner host: a write holds ${all2.byteLength} bytes, its files ${total}`);
   }
   let at2 = 0;
-  return write3.files.map((file) => {
+  return write4.files.map((file) => {
     const bytes2 = all2.subarray(at2, at2 + file.size);
     at2 += file.size;
     return { file, bytes: bytes2 };
@@ -74904,10 +75002,10 @@ async function remoteHostOver(channel2, node2, options) {
       const paths = new Set(entries3.map((entry4) => entry4.path));
       let bytes2 = 0;
       let wire = 0;
-      for (const write3 of await writesFor(root, missing2, paths)) {
-        await on.request("write", [write3], callMs);
-        bytes2 += write3.files.reduce((sum2, file) => sum2 + file.size, 0);
-        wire += write3.gzip.length;
+      for (const write4 of await writesFor(root, missing2, paths)) {
+        await on.request("write", [write4], callMs);
+        bytes2 += write4.files.reduce((sum2, file) => sum2 + file.size, 0);
+        wire += write4.gzip.length;
       }
       log(
         `${target.destination}: tree of ${entries3.length} files, ${missing2.length} sent (${mib2(bytes2)}, ${mib2(wire)} on the wire)`
@@ -74923,7 +75021,7 @@ async function remoteHostOver(channel2, node2, options) {
         (path) => LOCKFILES4.includes(basename35(path))
       );
       if (writes.length === 1 && !lockfile) return writes[0];
-      for (const write3 of writes) await on.request("write", [write3], callMs);
+      for (const write4 of writes) await on.request("write", [write4], callMs);
       if (lockfile) await install(on);
       return void 0;
     }
@@ -84017,10 +84115,10 @@ function overlaidMeta(sql, params, pending) {
   if (sql !== READ || pending.length === 0) return void 0;
   const key3 = params[0];
   for (let i3 = pending.length - 1; i3 >= 0; i3--) {
-    const write3 = pending[i3];
-    if (write3.params[0] !== key3) continue;
-    if (SETS.has(write3.sql)) return { value: write3.params[1] };
-    if (write3.sql === DELETE) return null;
+    const write4 = pending[i3];
+    if (write4.params[0] !== key3) continue;
+    if (SETS.has(write4.sql)) return { value: write4.params[1] };
+    if (write4.sql === DELETE) return null;
   }
   return void 0;
 }
@@ -85119,7 +85217,7 @@ function publishRuntime(options) {
   return { root, version: version2 };
 }
 function stage(sourceRoot, source2, staged, data2) {
-  const write3 = (path, bytes2, mode) => {
+  const write4 = (path, bytes2, mode) => {
     try {
       mkdirSync15(dirname31(join59(staged, path)), { recursive: true });
       writeFileSync10(join59(staged, path), bytes2, { flag: "wx" });
@@ -85136,9 +85234,9 @@ function stage(sourceRoot, source2, staged, data2) {
       throw new RuntimeError("invalid-runtime", `${sourceRoot}: ${path}: ${errorText2(error)}`);
     }
     checkBytes(sourceRoot, source2.manifest, path, sha256(bytes2));
-    write3(path, bytes2, source2.manifest.files[path]?.mode ?? 420);
+    write4(path, bytes2, source2.manifest.files[path]?.mode ?? 420);
   }
-  write3(RUNTIME_MANIFEST, source2.text, 420);
+  write4(RUNTIME_MANIFEST, source2.text, 420);
 }
 function place(staged, root, manifest, node2, data2) {
   for (let attempt = 0; ; attempt++) {
@@ -86072,14 +86170,14 @@ function parseKeep(request) {
     return '"id" must be a non-empty string of 128 characters at most';
   if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  const write3 = parseKeepWrite(request.write, worktreeId);
-  if (typeof write3 === "string") return write3;
+  const write4 = parseKeepWrite(request.write, worktreeId);
+  if (typeof write4 === "string") return write4;
   return {
     type: "keep",
     id,
     worktreeId,
     storeSchema,
-    write: write3
+    write: write4
   };
 }
 function parseKeepWrite(value, worktreeId) {
@@ -89010,12 +89108,12 @@ function sessionOf(io) {
   const pi = env.PI_SESSION_ID === "" ? void 0 : env.PI_SESSION_ID;
   return waitConsumer(env).session ?? pi ?? "";
 }
-function whileBusy(store, deadline, write3) {
+function whileBusy(store, deadline, write4) {
   const started2 = Date.now();
   for (let attempt = 0; ; attempt++) {
     setBusyTimeout(store, Math.max(1, Math.min(CLI_SOCKET_TIMEOUT_MS, deadline - Date.now())));
     try {
-      return write3();
+      return write4();
     } catch (error) {
       if (!isBusy(error)) throw error;
     } finally {
@@ -89055,11 +89153,11 @@ function openCommandStore(root, options = {}) {
     store,
     commonDir,
     worktreeId,
-    write: async (write3, deadline) => {
+    write: async (write4, deadline) => {
       const started2 = Date.now();
       try {
         return await opened3.write(
-          () => connection2.direct ? whileBusy(store, deadline, write3) : write3()
+          () => connection2.direct ? whileBusy(store, deadline, write4) : write4()
         );
       } catch (error) {
         if (!isBusy(error)) throw error;
@@ -89074,7 +89172,7 @@ function openCommandStore(root, options = {}) {
   };
 }
 var NO_STORE = { not: "none", why: "no Squeal daemon has run in this worktree" };
-async function writeWithin(root, write3, options = {}) {
+async function writeWithin(root, write4, options = {}) {
   const started2 = Date.now();
   const boundMs = options.boundMs ?? BUSY_BOUND_MS;
   let commonDir = null;
@@ -89085,7 +89183,7 @@ async function writeWithin(root, write3, options = {}) {
     let answer4;
     try {
       answer4 = await opened3.write(
-        () => write3(opened3.store, opened3.worktreeId),
+        () => write4(opened3.store, opened3.worktreeId),
         started2 + boundMs
       );
     } finally {
@@ -90283,8 +90381,8 @@ var TeardownWarnings = class {
     for (const file of files5) this.#warned.add(file);
   };
   /** Writes each line of the files heard, given the final evidence, to `write`. */
-  tell(files5, write3) {
-    for (const line of teardownLines(this.#warned, files5)) write3(line);
+  tell(files5, write4) {
+    for (const line of teardownLines(this.#warned, files5)) write4(line);
   }
 };
 async function leftOutFiles(picked) {
@@ -93489,12 +93587,12 @@ function writeThroughDaemon(target) {
       await sleep13(RECONCILE_PAUSE_MS);
     }
   };
-  const tryOnce = async (write3) => {
+  const tryOnce = async (write4) => {
     const id = randomUUID9();
     let state;
     try {
-      const answer4 = await ask2({ type: "keep", id, worktreeId, storeSchema, write: write3 });
-      if (!isKeep(answer4)) throw refusal(answer4, write3.kind);
+      const answer4 = await ask2({ type: "keep", id, worktreeId, storeSchema, write: write4 });
+      if (!isKeep(answer4)) throw refusal(answer4, write4.kind);
       state = answer4;
     } catch (error) {
       if (error instanceof KeepRefused || error instanceof OlderDaemon) throw error;
@@ -93621,7 +93719,7 @@ function whyNot(answer4) {
 // src/core/code/gate/keep-here.ts
 function writeHere(stores, worktreeId, now, sliceMs = BUSY_SLICE_MS) {
   const { store, code } = stores;
-  const tried = (write3) => triedOnce(write3, sliceMs);
+  const tried = (write4) => triedOnce(write4, sliceMs);
   return {
     coverage: async (file) => {
       const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
@@ -93639,9 +93737,9 @@ function writeHere(stores, worktreeId, now, sliceMs = BUSY_SLICE_MS) {
   };
 }
 var EARLY_SLICE_MS = 20;
-function triedOnce(write3, sliceMs) {
+function triedOnce(write4, sliceMs) {
   try {
-    withBusySliceSync(sliceMs, write3);
+    withBusySliceSync(sliceMs, write4);
     return "kept";
   } catch (error) {
     if (!isBusy(error)) throw error;
@@ -97515,8 +97613,8 @@ var DaemonWrites = class {
    * busy store refuses it; `what` names it in the episode's note. A
    * refusal once `stopped` is thrown.
    */
-  write(what, write3, stopped) {
-    return retryWhileBusy(async () => write3(), {
+  write(what, write4, stopped) {
+    return retryWhileBusy(async () => write4(), {
       sliceMs: BUSY_SLICE_MS,
       waits: this.#waits,
       key: `daemon:${++this.#next}`,
@@ -98891,13 +98989,13 @@ var FullCheckOwner = class {
    * for a busy store; never throws. A claim kept whose holder row stays is
    * taken over once this daemon is gone: one more check, never a missed one.
    */
-  async #settle(claim, write3, what) {
+  async #settle(claim, write4, what) {
     const { store, log } = this.#context;
     const deadline = performance.now() + RELEASE_WITHIN_MS;
     try {
       const done = await slicedWrite(
         () => {
-          write3(store, claim);
+          write4(store, claim);
           return true;
         },
         () => performance.now() >= deadline
@@ -99191,11 +99289,11 @@ init_store_results();
 init_busy();
 init_connection();
 async function keepInDaemon(context, request) {
-  const { write: write3 } = request;
-  if (write3.kind === "seen") {
-    return once3(context, "the reads of a gate's runs", () => mergeSeen(context.store, write3.seen));
+  const { write: write4 } = request;
+  if (write4.kind === "seen") {
+    return once3(context, "the reads of a gate's runs", () => mergeSeen(context.store, write4.seen));
   }
-  if (write3.kind === "coverage") {
+  if (write4.kind === "coverage") {
     const code = openCodeStore(context.commonDir, context.policy(), {
       busyTimeoutMs: BUSY_SLICE_MS
     });
@@ -99203,8 +99301,8 @@ async function keepInDaemon(context, request) {
       return { failed: `the code store did not open: ${code.reason}` };
     }
     try {
-      const key3 = { resultKey: write3.key, providerVersion: COVERAGE_RECORD_VERSION };
-      const shared2 = shareRecord(write3.record, COVERAGE_RECORD_VERSION);
+      const key3 = { resultKey: write4.key, providerVersion: COVERAGE_RECORD_VERSION };
+      const shared2 = shareRecord(write4.record, COVERAGE_RECORD_VERSION);
       return await once3(
         context,
         "a kept file's coverage record",
@@ -99216,21 +99314,21 @@ async function keepInDaemon(context, request) {
   }
   const { store, worktreeId, now } = context;
   const keys = {
-    environmentFiles: () => write3.environmentFiles
+    environmentFiles: () => write4.environmentFiles
   };
   return once3(
     context,
     "a kept file's results",
     () => storeResults(
       { store, keys, worktreeId, now },
-      write3.records,
-      healsUnheld(store, write3.paths)
+      write4.records,
+      healsUnheld(store, write4.paths)
     )
   );
 }
-async function once3(context, what, write3) {
+async function once3(context, what, write4) {
   try {
-    await context.writes.write(what, write3, () => true);
+    await context.writes.write(what, write4, () => true);
     return { kept: true };
   } catch (error) {
     if (isBusy(error)) return { kept: false };
@@ -99576,10 +99674,10 @@ function startWrite(db) {
     });
   };
 }
-function longWriteLine(write3) {
-  const rows = `${write3.rows} ${write3.rows === 1 ? "row" : "rows"} written`;
-  const database = write3.database === "" ? "a database in memory" : write3.database;
-  return `long write: ${database} write lock held ${write3.ms} ms by ${write3.operation}; ${rows}`;
+function longWriteLine(write4) {
+  const rows = `${write4.rows} ${write4.rows === 1 ? "row" : "rows"} written`;
+  const database = write4.database === "" ? "a database in memory" : write4.database;
+  return `long write: ${database} write lock held ${write4.ms} ms by ${write4.operation}; ${rows}`;
 }
 var STORE_FRAME = /^(?:\w*Connection\d*\.|Object\.transaction$|transaction$|endWrite$)/;
 function operationOf(stack) {
@@ -99818,7 +99916,7 @@ function startTimers(context) {
     }
   };
   const retries = new SlicedWrites(context);
-  const unlog = logLongWrites((write3) => context.log(longWriteLine(write3)));
+  const unlog = logLongWrites((write4) => context.log(longWriteLine(write4)));
   const checkpoint = new IdleCheckpoint();
   const check3 = () => {
     if (!existsSync41(context.root)) {
@@ -109302,7 +109400,7 @@ ${USAGE8}`);
   const cwd = io.cwd ?? process.cwd();
   const load = (internal.hostLoad ?? hostLoad)();
   const deadline = Date.now() + boundMs;
-  const write3 = (fn) => opened3.write(fn, deadline);
+  const write4 = (fn) => opened3.write(fn, deadline);
   let refused = 0;
   let unlisted3 = 0;
   try {
@@ -109311,7 +109409,7 @@ ${USAGE8}`);
       const rel2 = inWorktree(root, cwd, path);
       const row2 = rel2 === null ? void 0 : keys.find((k) => k.testFile.path === rel2);
       const shown = rel2 ?? path;
-      const where3 = { root, worktreeId, shown, write: write3 };
+      const where3 = { root, worktreeId, shown, write: write4 };
       const answer4 = row2 === void 0 || row2.key === null ? { ok: false, ...notKeyed(store, { root, worktreeId, rel: rel2, shown, given: path }, keys) } : parsed3.kind === "cancel" ? await cancelLine(store, row2, where3) : await askLine(store, row2, where3, parsed3.reason, sessionOf(io), load);
       if (answer4.unlisted === true) unlisted3++;
       else if (!answer4.ok) refused++;
@@ -109356,7 +109454,7 @@ function busyLine(not, shown, { busyMs }) {
   );
 }
 async function askLine(store, row2, where3, reason2, asker, load) {
-  const { worktreeId, shown, write: write3 } = where3;
+  const { worktreeId, shown, write: write4 } = where3;
   const key3 = row2.key;
   const states = store.knownStates.list(worktreeId);
   const own = states.filter(
@@ -109381,7 +109479,7 @@ async function askLine(store, row2, where3, reason2, asker, load) {
     if (own.length > 0 && own.every((s) => s.validity === "current")) {
       return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
     }
-    const answer5 = await write3(() => askNoResultRun(store, ask2));
+    const answer5 = await write4(() => askNoResultRun(store, ask2));
     if (isBusyAnswer(answer5)) return busyLine("Not queued", shown, answer5);
     if (answer5.kind === "joined") {
       return {
@@ -109402,7 +109500,7 @@ async function askLine(store, row2, where3, reason2, asker, load) {
     );
   }
   const others = pendingOf(store, row2).filter((r) => r.session !== asker);
-  const answer4 = await write3(
+  const answer4 = await write4(
     () => askRetry(store, {
       testFile: row2.testFile,
       key: key3,
@@ -109442,8 +109540,8 @@ function spentLine(shown, record2) {
   const how2 = record2.end === null ? "it is still pending" : `${outcomeText(record2.end.outcome)}`;
   return `Not retried: ${shown} was already retried in this session at its current inputs (${record2.reason}; ${how2}). The failure stands.`;
 }
-async function cancelLine(store, row2, { worktreeId, shown, write: write3 }) {
-  const withdrawn = await write3(
+async function cancelLine(store, row2, { worktreeId, shown, write: write4 }) {
+  const withdrawn = await write4(
     () => cancelRetries(store, row2.testFile, row2.key, worktreeId, Date.now())
   );
   if (isBusyAnswer(withdrawn)) return busyLine("Not withdrawn", shown, withdrawn);
@@ -110673,8 +110771,8 @@ function createTreeHost(root, output, env = process.env) {
       await save();
       return { missing: missing2 };
     },
-    async write(write3) {
-      for (const { file, bytes: bytes2 } of await unpackFiles(write3)) {
+    async write(write4) {
+      for (const { file, bytes: bytes2 } of await unpackFiles(write4)) {
         if (treeBlob(bytes2) !== file.blob) {
           throw new Error(`runner host: the bytes of ${file.path} do not match their blob id`);
         }
@@ -110692,7 +110790,7 @@ function createTreeHost(root, output, env = process.env) {
           ...file.mode === void 0 ? {} : { mode: file.mode }
         };
       }
-      for (const path of write3.removed) await remove2(path);
+      for (const path of write4.removed) await remove2(path);
       await save();
     },
     async blobs(paths) {
@@ -110929,10 +111027,10 @@ async function runnerHostCommand(args2, io, options = {}) {
     return 2;
   }
   const owned = options.write === void 0;
-  const write3 = options.write ?? takeStdout();
+  const write4 = options.write ?? takeStdout();
   await serveRunnerHost({
     input: options.input ?? process.stdin,
-    write: write3,
+    write: write4,
     build: (start2, hooks) => {
       if (start2.runner !== parsed3.runner) {
         throw new Error(`runner host for ${parsed3.runner} asked to start ${start2.runner}`);
@@ -111413,20 +111511,20 @@ function stopTree(root) {
 }
 async function leaveStoppedMark(root, at2, tree, untilStart = false, busyBoundMs) {
   let until = false;
-  const write3 = (store, id) => {
+  const write4 = (store, id) => {
     until = markStopped(store, id, at2, tree, untilStart);
   };
   const create2 = untilStart && existsSync69(join179(root, POLICY_FILE));
-  const error = await withStore2(root, write3, { create: create2, boundMs: busyBoundMs });
+  const error = await withStore2(root, write4, { create: create2, boundMs: busyBoundMs });
   return { error, untilStart: error === null && (until || untilStart) };
 }
 function clearStoppedMark(root, busyBoundMs) {
   return withStore2(root, (store, id) => clearStopped(store, id), { boundMs: busyBoundMs });
 }
-async function withStore2(root, write3, options) {
+async function withStore2(root, write4, options) {
   const written2 = await writeWithin(
     root,
-    (store, id) => store.transaction(() => write3(store, id)),
+    (store, id) => store.transaction(() => write4(store, id)),
     options
   );
   return "not" in written2 && written2.not !== "none" ? written2.why : null;
@@ -112098,7 +112196,7 @@ async function answerPlan(plan2, given2, pick) {
       const by = readers.map((h) => HARNESS_NAMES[h]).join(" and ");
       const { block: block3 } = file;
       if (block3.state === "current" || block3.state === "unterminated") continue;
-      const write3 = block3.state === "outdated" ? await yes(
+      const write4 = block3.state === "outdated" ? await yes(
         `${file.path} (read by ${by}) holds the Squeal block v${block3.version}, which is outdated. Upgrade it?`,
         true,
         "upgrade it",
@@ -112109,7 +112207,7 @@ async function answerPlan(plan2, given2, pick) {
         "write it",
         "no block"
       );
-      if (write3) blocks.push(file.path);
+      if (write4) blocks.push(file.path);
     }
   }
   const gates = [...given2.gates];
