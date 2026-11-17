@@ -9,7 +9,7 @@ import { hostClock } from "../../src/core/scheduler/clock.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { storePaths } from "../../src/core/store/paths.js";
-import { timeText } from "../../src/core/text.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { WatcherBackend, WatchListener } from "../../src/core/types/watcher.js";
@@ -136,7 +136,8 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
       // Held: no batch for more than 60 s since the stored one.
       clock = since + 61_000;
       alive();
-      const sentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${loop.scheduler.status().revision} and earlier.`;
+      // Row 005-94: the clock in UTC, named, and the wait that reads the edits.
+      const sentence = `Squeal has not yet read edits made after ${utcTimeText(since)}; these results cover revision ${loop.scheduler.status().revision} and earlier. \`squeal status --wait 60000 <path>...\` asks it to read them and waits for the files your paths select.`;
       const held = outputs();
       expect(held.status.split("\n")).toContain(sentence);
       expect(held.stop).toContain(` ${sentence}`);

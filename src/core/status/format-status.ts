@@ -74,7 +74,7 @@ export function formatStatus(
     ...holdLines(result.holds, command),
     // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does; row
     // 011-311: so does the revision's listing, in the same sentence when both apply.
-    ...delaysLines(result),
+    ...delaysLines(result, command),
     // Row 005-90: before the listing, no count reads as all clear; one sentence says why.
     ...(result.testFilesListed === false ? [noResultsText(command)] : []),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.

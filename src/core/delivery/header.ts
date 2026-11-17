@@ -104,9 +104,9 @@ function changedText(header: StatusHeader): string {
  * yet, the edits a late change feed has not read, or both. A stopping daemon's own sentence says
  * what it does instead (`livenessSentence`). The worktree's listing not done is `unlistedLine`.
  */
-function incompleteText(header: StatusHeader): string {
+function incompleteText(header: StatusHeader, command: string): string {
   const late = header.daemon?.stopping === undefined ? lateOf(header.daemon) : undefined;
-  const delays = delaysText(header, late);
+  const delays = delaysText(header, late, command);
   return delays === null ? "" : ` ${delays}`;
 }
 
@@ -132,7 +132,7 @@ function daemonText(header: StatusHeader, command: string, unlisted = false): st
 function fullLine(header: StatusHeader, command: string): string | null {
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return `${unlisted}${holdsText(header, command)}`;
-  const rest = `${incompleteText(header)}${daemonText(header, command)}${holdsText(header, command)}`;
+  const rest = `${incompleteText(header, command)}${daemonText(header, command)}${holdsText(header, command)}`;
   const revision = revisionPrefix(header).slice(0, -2);
   if (rest !== "") return `${revision}:${rest}`;
   return changedText(header) === "" ? null : `${revision}.`;
@@ -195,11 +195,11 @@ function newsLine(
   if (told.countsOwed !== undefined) {
     const files = currentFilesText(header, command);
     const line = files === null ? `${revision.slice(0, -2)}.` : `${revision}${files}`;
-    return `${line}${incompleteText(header)}${daemonText(header, command)}`;
+    return `${line}${incompleteText(header, command)}${daemonText(header, command)}`;
   }
   const own = told.ownEdits;
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  return `${line}${incompleteText(header)}${daemonText(header, command)}`;
+  return `${line}${incompleteText(header, command)}${daemonText(header, command)}`;
 }
 
 /** `the 9 test files your edits affect`, `the 1 test file your edits affect`. */

@@ -15,11 +15,21 @@ export function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
 /** Local `HH:MM:SS`, as a human reads a clock. */
 export function timeText(at: number): string {
   const date = new Date(at);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
+/**
+ * `01:16:30 UTC`: the clock in UTC, named, for a text an agent reads while the host's zone is
+ * not known to it (row 005-94, C4).
+ */
+export function utcTimeText(at: number): string {
+  const date = new Date(at);
+  return `${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())} UTC`;
 }
 
 /**

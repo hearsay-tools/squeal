@@ -1,4 +1,4 @@
-import { timeText } from "../text.js";
+import { utcTimeText } from "../text.js";
 import type { RevisionNumber } from "../types/common.js";
 import type { DaemonLiveness, FeedLate, StatusHeader } from "../types/status.js";
 import { WATCHER_TIMINGS } from "../types/watcher.js";
@@ -55,30 +55,53 @@ export function unlistedClause(what: Unlisted): string {
   return unlisted(what, false);
 }
 
-/** `Squeal has not yet read edits made after 01:03:50; these counts cover revision 23 and earlier.` */
-export function lateText(late: FeedLate, revision: RevisionNumber): string {
-  return `Squeal has not yet read edits made after ${timeText(late.since)}; these counts cover revision ${revision} and earlier.`;
+/**
+ * Row 005-94 (finding 13): the next step after a late feed. A path wait asks the daemon to read
+ * the edits first (`statusWaitCommand`'s reconciliation pass), then waits for those files.
+ */
+function readWaitText(command: string): string {
+  return `\`${command} status --wait 60000 <path>...\` asks it to read them and waits for the files your paths select.`;
 }
 
-/** Both delays: `Squeal is behind: it has not read edits made after 00:29:56, and Vitest has …`. */
-function behindText(late: FeedLate, revision: RevisionNumber, runners?: readonly string[]): string {
+/**
+ * `Squeal has not yet read edits made after 01:03:50 UTC; these results cover revision 23 and
+ * earlier.`, then the wait that reads them. Row 005-94 (C4): the clock in UTC, named.
+ */
+export function lateText(late: FeedLate, revision: RevisionNumber, command: string): string {
+  return `Squeal has not yet read edits made after ${utcTimeText(late.since)}; these results cover revision ${revision} and earlier. ${readWaitText(command)}`;
+}
+
+/** Both delays: `Squeal is behind: it has not read edits made after 00:29:56 UTC, and Vitest …`. */
+function behindText(
+  late: FeedLate,
+  revision: RevisionNumber,
+  command: string,
+  runners?: readonly string[],
+): string {
   return (
-    `Squeal is behind: it has not read edits made after ${timeText(late.since)}, and ` +
-    `${runnersHave(runners, false)} not listed revision ${revision}'s test files yet, so new test files are not counted.`
+    `Squeal is behind: it has not read edits made after ${utcTimeText(late.since)}, and ` +
+    `${runnersHave(runners, false)} not listed revision ${revision}'s test files yet, so new test files are not counted. ${readWaitText(command)}`
   );
 }
 
 /**
  * The one sentence for what the counts leave out: edits not read while the feed is `late`, the
  * revision's test files not listed while its runner part is pending, or both; `null` for neither.
+ * `command` names the CLI in the wait a late feed's sentence ends with.
  */
-export function delaysText(header: DelayFields, late: FeedLate | undefined): string | null {
+export function delaysText(
+  header: DelayFields,
+  late: FeedLate | undefined,
+  command: string,
+): string | null {
   const { revision } = header;
   const pending = header.runnerPartPending === true;
   if (late === undefined) {
     return pending ? unlistedText({ revision, runners: header.listingRunners }) : null;
   }
-  return pending ? behindText(late, revision, header.listingRunners) : lateText(late, revision);
+  return pending
+    ? behindText(late, revision, command, header.listingRunners)
+    : lateText(late, revision, command);
 }
 
 /** The feed's lag while the daemon is alive (C6); none otherwise. */
@@ -87,7 +110,10 @@ export function lateOf(daemon: DaemonLiveness | undefined): FeedLate | undefined
 }
 
 /** Status's line after the revision line while the feed is late or the revision unlisted (C6). */
-export function delaysLines(header: DelayFields & Pick<StatusHeader, "daemon">): string[] {
-  const text = delaysText(header, lateOf(header.daemon));
+export function delaysLines(
+  header: DelayFields & Pick<StatusHeader, "daemon">,
+  command: string,
+): string[] {
+  const text = delaysText(header, lateOf(header.daemon), command);
   return text === null ? [] : [text];
 }

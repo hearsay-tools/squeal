@@ -11,7 +11,7 @@ import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { FEED_LATE_MS } from "../../src/core/status/feed-late.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
-import { timeText } from "../../src/core/text.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -28,6 +28,9 @@ import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } fro
  */
 
 const NOW = Date.UTC(2026, 9, 25, 1, 5, 0);
+/** Row 005-94 (C4, finding 13): the late sentences end with the wait that reads the edits. */
+const READ_WAIT =
+  "`squeal status --wait 60000 <path>...` asks it to read them and waits for the files your paths select.";
 const HEAD = 23;
 
 const LIVE: DaemonRecord = {
@@ -101,8 +104,10 @@ describe("a late change feed is said (011-200)", () => {
     const since = NOW - FEED_LATE_MS - 1_000;
     delivered(w, since);
     const out = await outputs(w);
-    // Row 011-311: the human's words, and no "current" for the revision the counts cover.
-    const sentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${HEAD} and earlier.`;
+    // Row 011-311: the human's words, and no "current" for the revision the counts cover. Row
+    // 005-94: the clock in UTC, named, and the next step.
+    const sentence = `Squeal has not yet read edits made after ${utcTimeText(since)}; these results cover revision ${HEAD} and earlier. ${READ_WAIT}`;
+    expect(utcTimeText(since)).toBe("01:03:59 UTC");
     expect(out.status.split("\n")[1]).toBe(sentence);
     expect(out.status).toContain("Known failures: 0; 2 test files current\n");
     expect(out.daemon).toEqual({
@@ -149,7 +154,7 @@ describe("a late change feed is said (011-200)", () => {
  */
 describe("a late feed and an unlisted revision are one sentence (011-311)", () => {
   const behind = (since: number, runners: string) =>
-    `Squeal is behind: it has not read edits made after ${timeText(since)}, and ${runners} not listed revision ${HEAD}'s test files yet, so new test files are not counted.`;
+    `Squeal is behind: it has not read edits made after ${utcTimeText(since)}, and ${runners} not listed revision ${HEAD}'s test files yet, so new test files are not counted. ${READ_WAIT}`;
   const unlisted = (w: Seeded) => recordRefinedApplied(w.store, w.wt, HEAD - 1);
   const occurrences = (text: string, part: string) => text.split(part).length - 1;
 
@@ -195,7 +200,7 @@ describe("a late feed and an unlisted revision are one sentence (011-311)", () =
     const late = worktree();
     delivered(late, since);
     const lateOut = await outputs(late);
-    const lateSentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${HEAD} and earlier.`;
+    const lateSentence = `Squeal has not yet read edits made after ${utcTimeText(since)}; these results cover revision ${HEAD} and earlier. ${READ_WAIT}`;
     expect(lateOut.status.split("\n")[1]).toBe(lateSentence);
     expect(lateOut.news).toBe(`Revision ${HEAD} (changed src/a.ts). ${lateSentence}`);
     const listing = worktree();
