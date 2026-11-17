@@ -245,7 +245,8 @@ export function formatAt(report: AtReport, nowMs: number): string {
   lines.push(
     `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown} unknown`,
   );
-  if (report.run !== undefined) lines.push(...runLines(report.run, at));
+  // A failed checkout ran nothing; its line above says why.
+  if (report.run !== undefined && report.failure === null) lines.push(...runLines(report.run, at));
   if (pastRetention(report.files, report.commitTimeMs, nowMs)) {
     const days = Math.floor((nowMs - report.commitTimeMs) / DAY_MS);
     lines.push(
