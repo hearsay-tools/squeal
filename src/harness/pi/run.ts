@@ -8,6 +8,7 @@ import { registerFirst } from "../shared/ensure.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
 import { registerOwing, sayOwed } from "../shared/owed.js";
 import { primer } from "../shared/primer.js";
+import { registerThenEnsure } from "../shared/session.js";
 import { stopTurn } from "../shared/stop.js";
 import { waitIdle } from "../shared/waiter.js";
 import type { PiSession, RunAnswer, SettleAnswer } from "./protocol.js";
@@ -54,11 +55,12 @@ export async function startRun(session: PiSession, deps: HookDeps): Promise<RunA
     const alive = daemonLiveness(record, now).state === "alive";
     const first = alive ? null : await registerFirst(location, deps, context);
     const startingSince = first?.startingSince;
-    const news = await registerOwing(context, deps, PI_OWED, {
-      inTurn: true,
-      ...(startingSince === undefined ? {} : { startingSince }),
-    });
-    await first?.ensure();
+    const news = await registerThenEnsure(first, () =>
+      registerOwing(context, deps, PI_OWED, {
+        inTurn: true,
+        ...(startingSince === undefined ? {} : { startingSince }),
+      }),
+    );
     await context.delivery.registrationSent(context.consumer);
     return { primer: section, news };
   });

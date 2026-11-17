@@ -1,7 +1,7 @@
 import type { EpochMs } from "../../core/types/common.js";
 import { type ConsumerInput, type HookContext, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
-import { ensure, registerFirst } from "./ensure.js";
+import { ensure, registerFirst, type StartFirst } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { registerOwing } from "./owed.js";
 import { primer } from "./primer.js";
@@ -19,7 +19,8 @@ const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
  * first and the daemon is ensured after, with no wait for a new daemon's
  * heartbeat, so a hook killed at its 2 s timeout while a daemon starts has
  * registered (`registerFirst`); the registration says a daemon is starting
- * when the store holds no fresh heartbeat (task 001-156).
+ * when the store holds no fresh heartbeat (task 001-156). Row 005-102: a
+ * registration that throws still ensures the daemon (`registerThenEnsure`).
  *
  * Lessons, defect 5: a session start (not a subagent's) with source `startup`
  * or `resume` means any earlier run of that session id is gone, so every
@@ -51,14 +52,36 @@ export async function startSession(
     ensured = true;
     // Row 005-98: the registration first, then the daemon's start, inside the hook's timeout.
     const first = await registerFirst(location, deps, context);
-    const text = await registerAtStart(input, context, deps, first.startingSince);
-    await first.ensure();
+    const text = await registerThenEnsure(first, () =>
+      registerAtStart(input, context, deps, first.startingSince),
+    );
     // Last: the text is handed over once the hook's output is written (decision C).
     if (text.owes) await context.delivery.registrationSent(context.consumer);
     return text.text;
   });
   if (!ensured) await ensure(location, deps);
   return text;
+}
+
+/**
+ * Row 005-102: `register`, then the daemon's start `first.ensure()`, also when `register` throws
+ * (a busy store, any error), as before 0.1.541, when the start came first; else the daemon would
+ * start only at the first tool boundary. The registration's error is the one thrown, and an
+ * ensure that fails after it is not said. `first` `null`: nothing to start (a daemon is alive).
+ */
+export async function registerThenEnsure<T>(
+  first: StartFirst | null,
+  register: () => Promise<T>,
+): Promise<T> {
+  let registered: T;
+  try {
+    registered = await register();
+  } catch (error) {
+    await first?.ensure().catch(() => undefined);
+    throw error;
+  }
+  await first?.ensure();
+  return registered;
 }
 
 /**

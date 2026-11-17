@@ -4,6 +4,7 @@ import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js"
 import { registerFirst } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { registerOwing, sayOwed } from "./owed.js";
+import { registerThenEnsure } from "./session.js";
 
 /**
  * A user prompt (task 001-47; lessons, defects 8 and 10). A prompt starts a
@@ -53,16 +54,17 @@ export function submitPrompt(
     const first = alive ? null : await registerFirst(location, deps, context);
     const startingSince = first?.startingSince;
     // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
-    const text = await registerOwing(
-      context,
-      deps,
-      { primer: true },
-      {
-        inTurn: true,
-        ...(startingSince === undefined ? {} : { startingSince }),
-      },
+    const text = await registerThenEnsure(first, () =>
+      registerOwing(
+        context,
+        deps,
+        { primer: true },
+        {
+          inTurn: true,
+          ...(startingSince === undefined ? {} : { startingSince }),
+        },
+      ),
     );
-    await first?.ensure();
     await context.delivery.registrationSent(context.consumer);
     return text;
   });

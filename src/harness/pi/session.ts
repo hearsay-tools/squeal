@@ -4,7 +4,7 @@ import { deliver } from "../shared/deliver.js";
 import { ensure, registerFirst } from "../shared/ensure.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { registerOwing } from "../shared/owed.js";
-import { endSession } from "../shared/session.js";
+import { endSession, registerThenEnsure } from "../shared/session.js";
 import { unregisterSession } from "../shared/sweep.js";
 import type { PiSession, StartReason } from "./protocol.js";
 
@@ -46,8 +46,9 @@ export async function startSession(
     ensured = true;
     // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
     const first = await registerFirst(location, deps, context);
-    const text = await registerAtStart(session, context, deps, first.startingSince);
-    await first.ensure();
+    const text = await registerThenEnsure(first, () =>
+      registerAtStart(session, context, deps, first.startingSince),
+    );
     // Last: the text is handed over once the host has the answer (decision C).
     if (text !== null) await context.delivery.registrationSent(context.consumer);
     return text;

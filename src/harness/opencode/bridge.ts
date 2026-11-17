@@ -11,7 +11,7 @@ import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { registerOwing } from "../shared/owed.js";
 import { primer } from "../shared/primer.js";
 import { submitPrompt } from "../shared/prompt.js";
-import { endSession } from "../shared/session.js";
+import { endSession, registerThenEnsure } from "../shared/session.js";
 import { type Ack, ackOf, awaitSignal, ignoreVerdictSignal } from "./bridge-verdict.js";
 import type { OcAnswer, OcAnswers, OcConsumer, OcHost, OcKind, OcRequest } from "./protocol.js";
 
@@ -85,16 +85,17 @@ export async function register(
       const first = await registerFirst(location, deps, context);
       const { startingSince } = first;
       // Row 005-98: it owes its header alone; the primer is the system prompt's (D3).
-      const header = await registerOwing(
-        context,
-        deps,
-        { primer: false },
-        {
-          atStart: true,
-          ...(startingSince === undefined ? {} : { startingSince }),
-        },
+      const header = await registerThenEnsure(first, () =>
+        registerOwing(
+          context,
+          deps,
+          { primer: false },
+          {
+            atStart: true,
+            ...(startingSince === undefined ? {} : { startingSince }),
+          },
+        ),
       );
-      await first.ensure();
       // Last: the header is handed over at the plugin's verdict (decision C).
       await context.delivery.registrationSent(context.consumer);
       return {
