@@ -38,10 +38,9 @@ describe("inherited counts and delivery titles (spec 005 D1, review wave 3 B1)",
     store.close();
 
     expect(header).toMatchObject({ inheritedCount: 2, inheritedFileLevelCount: 1 });
-    // Row 005-90: an unlisted header prints no counts; this store lists no test files.
-    expect(headerLines({ ...header, testFilesListed: true }, "squeal")[0]).toContain(
-      "Revision 1 · abcdef12 + 1: 2 current (1 test, 1 test file loaded), 0 pending, 0 stale, 0 unknown. " +
-        "Inherited: 2 of 2 current (1 test, 1 test file loaded).",
+    // Row 005-94: no hook says the inherited count; `squeal status --full` does, below.
+    expect(headerLines({ ...header, testFilesListed: true }, "squeal").join("\n")).not.toContain(
+      "Inherited",
     );
     const status = formatStatus(readStatus(b.root, { now: () => NOW }), NOW, "squeal", {
       full: true,

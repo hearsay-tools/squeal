@@ -1,10 +1,7 @@
 import { stopOf } from "../presence/views.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { groupTierLines } from "../state/group-text.js";
-import { fullSuiteText } from "../state/header.js";
-import { revisionText } from "../state/revision-commit.js";
 import { slowTierText } from "../state/slow-text.js";
-import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
 import { delaysText, lateOf } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
@@ -16,19 +13,23 @@ import {
 import { shortText, stoppingText } from "../status/stopping.js";
 import { plural } from "../text.js";
 import type { Delta, OwnEdits } from "../types/delivery.js";
-import type { DaemonLiveness, StatusHeader, ValidityCounts } from "../types/status.js";
+import type { DaemonLiveness, StatusHeader } from "../types/status.js";
 import { installSentences } from "./provenance.js";
 
 /*
- * The header a SQUEAL message, a Stop and `squeal status` start with (spec
- * 001 D6). Two forms, decided by the human (task 001-407): the full block at
- * registration, at Stop and in status; a change delivery sends the news,
- * only what needs attention, since the whole block on every tool call
- * buried it (Cezar session 74366d0f's feedback, item 6).
+ * The header a SQUEAL message and a Stop start with (spec 001 D6). Two forms, decided by the
+ * human (task 001-407): the registration's at registration and at Stop; a change delivery sends
+ * the news, only what needs attention, since the whole block on every tool call buried it (Cezar
+ * session 74366d0f's feedback, item 6). Row 005-94 (the human, 2026-11-17, R1 and C2): neither
+ * carries the worktree's counts, the inherited and imported counts, the test files without
+ * checks, the checkpoint or the commit; `squeal status` prints them, with its own lines.
  */
 
-/** `full`: registration, Stop and status. `news`: every other delivery. */
+/** `full`: the registration's form, at registration and Stop. `news`: every other delivery. */
 export type HeaderForm = "full" | "news";
+
+/** Row 005-94 (R1): the meaning of "current", said where a hook counts current test files. */
+const CURRENT_DEFINED = "(run on the files as they are now)";
 
 /**
  * Row 005-90 (amends 001 D7's "these counts are not complete"): before the daemon lists the
@@ -44,16 +45,28 @@ export function noResultsText(command: string): string {
 
 /**
  * Row 005-90: the line of either form while the test files are not listed: the sentence, then
- * the daemon's. No counts, no delay sentence and no checkpoint sentence, which name counts.
+ * the daemon's. No counts, no delay sentence and no checkpoint sentence, which name counts. Row
+ * 005-94 (texts.md 3): no sentence that results are as of a revision, since none exists; with
+ * no daemon running, one sentence says both and what starts one.
  */
 function unlistedLine(header: StatusHeader, command: string): string | null {
   if (header.testFilesListed !== false) return null;
-  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command)}`;
+  const { daemon } = header;
+  if (noneRunning(daemon)) {
+    return (
+      `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is ` +
+      `running; \`${command} start\` starts one.${diedText(daemon)}`
+    );
+  }
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
 }
 
-/** `Revision 12 (changed src/a.ts): `, which both forms start with. */
+/**
+ * `Revision 12 (changed src/a.ts): `, which both forms start with. Row 005-94: no `· sha + N,
+ * dirty` in a hook; `squeal status` names the commit.
+ */
 function revisionPrefix(header: StatusHeader): string {
-  return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: `;
+  return `Revision ${header.revision}${changedText(header)}: `;
 }
 
 /** Paths a header names before the rest is counted (task 001-85). */
@@ -97,49 +110,56 @@ function incompleteText(header: StatusHeader): string {
   return delays === null ? "" : ` ${delays}`;
 }
 
-/** What both forms end with: daemon liveness, then the install wait or the install sentences. */
-function daemonText(header: StatusHeader, command: string): string {
+/**
+ * What both forms end with: daemon liveness, then the install wait or the install sentences.
+ * `unlisted`: no result exists, so a starting daemon's sentence is left out (row 005-94).
+ */
+function daemonText(header: StatusHeader, command: string, unlisted = false): string {
   const awaiting = awaitingInstallText(header);
-  return (
-    livenessSentence(header.daemon, header.revision, command) +
-    (awaiting === null ? installSentences(header) : ` ${awaiting}`)
-  );
+  const { daemon } = header;
+  const liveness =
+    unlisted && daemon?.state === "down" && daemon.startingSince !== undefined
+      ? diedText(daemon)
+      : livenessSentence(daemon, header.revision, command);
+  return liveness + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 
 /**
- * The full form's counts: the four validities, the inherited and imported
- * sentences and the test files without checks. Row 011-205: `owed`, the counts a consumer
- * registered before the listing is owed, adds why no unknown one is queued.
+ * Row 005-94 (R1, C2): the registration's and Stop's line after the title, only when it has
+ * something to say: the changed paths, a delay, the daemon, an install or a hold. Without one
+ * the title names the revision, so `null`. `squeal status` keeps the counts this form leaves out.
  */
-function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
-  const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files } = header;
-  const inheritedCount = header.inheritedCount ?? 0;
-  const inherited =
-    inheritedCount === 0
-      ? ""
-      : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
-  // Spec 018 D4: beside the inherited count, the imported one.
-  const importedCount = header.importedCount ?? 0;
-  const imported =
-    importedCount === 0 ? "" : ` Imported: ${importedCount} of ${counts.current} current.`;
-  const queuedNone =
-    owed?.lookupOnly === true && files.unknown > 0
-      ? "; the baseline is lookup-only, so it queued none of them"
-      : "";
-  const withoutChecks =
-    files.pending + files.unknown === 0
-      ? ""
-      : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown${queuedNone}.`;
-  return `${countsText(counts, fileLevel)}.${inherited}${imported}${withoutChecks}`;
-}
-
-function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {
+function fullLine(header: StatusHeader, command: string): string | null {
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return `${unlisted}${holdsText(header, command)}`;
-  return (
-    `${revisionPrefix(header)}${fullCounts(header, owed)}${incompleteText(header)} ` +
-    `Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText(header, command)}`
-  );
+  const rest = `${incompleteText(header)}${daemonText(header, command)}${holdsText(header, command)}`;
+  const revision = revisionPrefix(header).slice(0, -2);
+  if (rest !== "") return `${revision}:${rest}`;
+  return changedText(header) === "" ? null : `${revision}.`;
+}
+
+/**
+ * Row 005-94 (R1): how many test files are current, the word defined in place, and where the
+ * rest is counted: `468 of 584 test files are current (run on the files as they are now), and
+ * \`squeal status\` counts the rest.`; `all` only while a live daemon has read every edit and
+ * listed the revision. `null` while the header counts no test files, or before the listing.
+ */
+export function currentFilesText(header: StatusHeader, command: string): string | null {
+  const files = header.testFileCounts;
+  if (files === undefined || header.testFilesListed === false) return null;
+  const total = files.current + files.pending + files.stale + files.unknown;
+  if (total === 0) return "the daemon listed no test files.";
+  // `1 of 2 test files is`, `0 of 1 test file is`, `0 of 5 test files are`.
+  const are = (...ns: number[]) => (ns.includes(1) ? "is" : "are");
+  if (files.current < total) {
+    return (
+      `${files.current} of ${plural(total, "test file")} ${are(files.current, total)} current ` +
+      `${CURRENT_DEFINED}, and \`${command} status\` counts the rest.`
+    );
+  }
+  const live = header.daemon?.state === "alive" && header.daemon.late === undefined;
+  const all = live && header.runnerPartPending !== true && header.awaitingInstall !== true;
+  return `${all ? "all " : ""}${plural(total, "test file")} ${are(total)} current ${CURRENT_DEFINED}.`;
 }
 
 /**
@@ -150,9 +170,6 @@ function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed
 function holdsText(header: StatusHeader, command: string): string {
   return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
 }
-
-/** The validities beside `current` the full form counts. */
-const ACTIONABLE = ["pending", "stale", "unknown"] as const;
 
 /**
  * Task 001-407: the news form drops the current count, the inherited
@@ -173,9 +190,12 @@ function newsLine(
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return unlisted;
   const revision = revisionPrefix(header);
-  // Row 011-205: the first delivery after the listing to a consumer registered before it.
+  // Row 011-205: the first delivery after the listing to a consumer registered before it. Row
+  // 005-94: how far the results reach, as the registration's `Known failures` line says it.
   if (told.countsOwed !== undefined) {
-    return `${revision}${fullCounts(header, told.countsOwed)}${incompleteText(header)}${daemonText(header, command)}`;
+    const files = currentFilesText(header, command);
+    const line = files === null ? `${revision.slice(0, -2)}.` : `${revision}${files}`;
+    return `${line}${incompleteText(header)}${daemonText(header, command)}`;
   }
   const own = told.ownEdits;
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
@@ -205,15 +225,25 @@ export function ownCountText({ files, owed, unknown = 0 }: OwnEdits): string {
   return unknown === 0 ? `${count}.` : `${count}; ${unknown} with no result (unknown).`;
 }
 
+/** The two parts of a header: its line after the title, and the tier lines after it. */
+export interface HeaderParts {
+  /** `null` when the registration's form has nothing to say there (`fullLine`). */
+  readonly line: string | null;
+  readonly tiers: readonly string[];
+}
+
+/** The header's lines, the line after the title first (`headerParts`). */
+export function headerLines(...args: Parameters<typeof headerParts>): string[] {
+  const { line, tiers } = headerParts(...args);
+  return line === null ? [...tiers] : [line, ...tiers];
+}
+
 /**
- * `12 current (9 tests, 3 test files loaded), 3 pending (2 tests, 1 test
- * file loaded), 0 stale, 0 unknown`: each count names its tests and
- * file-level checks apart (spec 005 D1).
+ * Spec 004 D8: the slow-tier line, while the repository declares slow files. Row 005-94 (C5):
+ * none in a hook while the listing counts no slow file; `squeal status` says so.
  */
-function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefined): string {
-  return (["current", ...ACTIONABLE] as const)
-    .map((validity) => countedText(counts[validity], validity, fileLevel?.[validity]))
-    .join(", ");
+function slowLine(header: StatusHeader, command: string): string | null {
+  return header.slowTier?.testFiles === 0 ? null : slowTierText(header, command);
 }
 
 /**
@@ -226,7 +256,7 @@ function countsText(counts: ValidityCounts, fileLevel: ValidityCounts | undefine
  * the news form carries when `told.groupTiersChanged`; then the newest
  * commit report's line, when `told.commitChanged` (status prints it always).
  */
-export function headerLines(
+export function headerParts(
   header: StatusHeader,
   command: string,
   form: HeaderForm = "full",
@@ -234,10 +264,9 @@ export function headerLines(
     Delta,
     "slowTierChanged" | "countsOwed" | "groupTiersChanged" | "commitChanged" | "ownEdits"
   > = {},
-): string[] {
-  const line =
-    form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told);
-  const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
+): HeaderParts {
+  const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
+  const slow = form === "full" || told.slowTierChanged ? slowLine(header, command) : null;
   const groups =
     form === "full"
       ? groupTierLines(header, command)
@@ -245,12 +274,10 @@ export function headerLines(
         ? []
         : groupTierLines(header, command, told.groupTiersChanged);
   const commit = told.commitChanged === true ? header.commitLine?.text : undefined;
-  return [
+  return {
     line,
-    ...(slow === null ? [] : [slow]),
-    ...groups,
-    ...(commit === undefined ? [] : [commit]),
-  ];
+    tiers: [...(slow === null ? [] : [slow]), ...groups, ...(commit === undefined ? [] : [commit])],
+  };
 }
 
 /** Task 011-08: why no daemon validates after `squeal stop`, and what starts one. */
@@ -290,8 +317,7 @@ function livenessSentence(
   if (stop === "until-edit")
     return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   // Task 001-263: the daemon that died without its stop note, and what it was running.
-  const died =
-    daemon.died === undefined ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
+  const died = diedText(daemon);
   // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
   if (daemon.startingSince !== undefined) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
@@ -309,4 +335,25 @@ function livenessSentence(
       ? "No daemon is running"
       : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
+}
+
+type Down = DaemonLiveness & { readonly state: "down" };
+
+/** Task 001-263: ` The last daemon died …`, when the daemon died without its stop note. */
+function diedText(daemon: Down): string {
+  return daemon.died === undefined
+    ? ""
+    : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
+}
+
+/** A down daemon with no stop, start, rest or late heartbeat recorded: none is running. */
+function noneRunning(daemon: DaemonLiveness | undefined): daemon is Down {
+  return (
+    daemon?.state === "down" &&
+    daemon.stopping === undefined &&
+    stopOf(daemon) === null &&
+    daemon.startingSince === undefined &&
+    daemon.resting !== true &&
+    daemon.heartbeatLate === undefined
+  );
 }

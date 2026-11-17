@@ -31,9 +31,9 @@ const SHARED = check("shared", INHERITED);
 const MINE = check("mine", OWN);
 // Row 005-90: the sentence an unlisted header says in place of its counts.
 const NOT_LISTED = "Squeal is still starting in this worktree and has no results yet.";
+// Row 005-94: how far the first results reach, in test files; `squeal status` counts the rest.
 const COUNTS =
-  "Revision 0: 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Inherited: 1 of 2 current (1 test). " +
-  "Test files without checks: 0 pending, 1 unknown; the baseline is lookup-only, so it queued none of them.";
+  "Revision 0: 2 of 3 test files are current (run on the files as they are now), and `squeal status` counts the rest.";
 
 let root: string;
 let store: Store;
@@ -133,29 +133,25 @@ describe("the counts after the listing (row 011-205)", () => {
     expect(headerLine(await boundary())).toBe(COUNTS);
   });
 
-  it("are carried by Stop's full header when Stop comes first, and spent by it", async () => {
+  it("are spent by Stop when Stop comes first, whose known failures line says how far results reach", async () => {
     await delivery.register(C1, { atStart: true });
     list();
     flip();
     const stop = await boundary(C1, true);
-    expect(formatDelta(stop, "squeal", 10_000, "full").split("\n")[1]).toMatch(
-      /^Revision 0: 2 current \(2 tests\), .* Test files without checks: 0 pending, 1 unknown; the baseline is lookup-only, so it queued none of them\. Full-suite checkpoint: /,
-    );
+    // Row 005-94 (C2): Stop's form has no counts; its `Known failures` line follows the delta.
+    expect(formatDelta(stop, "squeal", 10_000, "full")).not.toMatch(/\d+ current|without checks/);
     flip();
     expect((await boundary()).countsOwed).toBeUndefined();
   });
 
-  it("say nothing of the baseline when it is not lookup-only", async () => {
+  it("say the same words when the baseline is not lookup-only (row 005-94)", async () => {
     policy("lookup-then-run-missing");
     await delivery.register(C1, { atStart: true });
     list();
     flip();
     const first = await boundary();
     expect(first.countsOwed).toEqual({ lookupOnly: false });
-    expect(headerLine(first)).toBe(
-      "Revision 0: 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Inherited: 1 of 2 current (1 test). " +
-        "Test files without checks: 0 pending, 1 unknown.",
-    );
+    expect(headerLine(first)).toBe(COUNTS);
   });
 
   it("are not owed to a registration after the listing", async () => {

@@ -186,7 +186,8 @@ describe("a file the counter failed on at every attempt (row 015-18)", () => {
     const { code } = statusOf(s);
     expect(code).toMatchObject({ pending: 1, files: 2 });
     expect(code).not.toHaveProperty("uncountable");
-    expect(await registration(s)).toContain("\nComplexity: counting, 1 of 2 files.");
+    // Row 005-94: the count in progress is said by status (above), not by the registration.
+    expect(await registration(s)).not.toContain("Complexity:");
   });
 
   it("reads pending again once the file's bytes change", async () => {

@@ -95,7 +95,7 @@ describe("the SessionStart primer", () => {
     const text = context(await runHook("session-start", recorded("session-start", r.root), deps()));
     // Task 011-15: the 40 are stale after the edit, so none is counted as current.
     expect(text).toContain(
-      "Known failures: 0; not current: 1 of 1 test file (1 unknown), 40 tests (40 stale)\nEarlier failures: 0 pending rerun, 40 stale (not counted until a rerun fails)",
+      "Known failures: 0; 0 of 1 test file is current (run on the files as they are now), and `squeal status` counts the rest.\nEarlier failures: 0 pending rerun, 40 stale (not counted until a rerun fails)",
     );
     expect(text).toContain("Not shown: ");
     expect(text.length).toBeLessThanOrEqual(MESSAGE_CAP_CHARS);

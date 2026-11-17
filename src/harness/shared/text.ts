@@ -1,11 +1,10 @@
 import { checkName } from "../../core/delivery/collapse.js";
 import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
-import { headerLines } from "../../core/delivery/header.js";
+import { currentFilesText, headerParts } from "../../core/delivery/header.js";
 import { formatCheck } from "../../core/state/check-name.js";
 import {
   earlierFailuresLines,
   knownFailureCounts,
-  notCurrentText,
   splitByValidity,
 } from "../../core/status/checks.js";
 import { plural } from "../../core/text.js";
@@ -25,18 +24,22 @@ const LISTED_FAILURES = 10;
 const NAMED_FAILURES = 5;
 
 /**
- * Stop with no delta: the status header and the known failures.
- * `command` is how the header names the CLI (spec 002 D1 as amended).
+ * Stop with no delta: the registration's form (row 005-94, C2): the line after the title when
+ * it has something to say, the known failures, then the tier lines. `command` is how the header
+ * names the CLI (spec 002 D1 as amended).
  */
 export function statusText(
   header: StatusHeader,
   failures: readonly KnownFailure[],
   command: string = SQUEAL_COMMAND,
 ): string {
+  const { line, tiers } = headerParts(header, command);
+  const known = knownFailuresLine(failures, command, header);
   return [
     `SQUEAL · status at revision ${header.revision}`,
-    ...headerLines(header, command),
-    knownFailuresLine(failures, command, header),
+    ...(line === null ? [] : [line]),
+    ...(known === "" ? [] : [known]),
+    ...tiers,
   ].join("\n");
 }
 
@@ -45,7 +48,9 @@ export function statusText(
  * `NAMED_FAILURES` and where the rest are listed. Spec 011 C6 as amended
  * (gh-34): only current failures are counted and named; earlier ones pending
  * a rerun or stale get status's line after it. With `header`, the count ends
- * with what is not current (gh-45, row 011-26).
+ * with how many test files are current (row 005-94, R1), and no count is said
+ * while the test files are not listed and none failed (row 005-90's rule for
+ * the registration; C2): empty then.
  */
 export function knownFailuresLine(
   failures: readonly { readonly check: CheckId; readonly validity: Validity }[],
@@ -53,8 +58,11 @@ export function knownFailuresLine(
   header?: StatusHeader,
 ): string {
   const current = splitByValidity(failures).current.map((f) => f.check);
-  const count = `${countLine(current, command)}${header === undefined ? "" : notCurrentText(header)}`;
-  return [count, ...earlierFailuresLines(knownFailureCounts(failures))].join("\n");
+  const earlier = earlierFailuresLines(knownFailureCounts(failures));
+  if (header?.testFilesListed === false && failures.length === 0) return earlier.join("\n");
+  const files = header === undefined ? null : currentFilesText(header, command);
+  const count = `${countLine(current, command)}${files === null ? "" : `; ${files}`}`;
+  return [count, ...earlier].join("\n");
 }
 
 function countLine(failures: readonly CheckId[], command: string): string {

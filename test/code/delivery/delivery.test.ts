@@ -94,7 +94,9 @@ describe("code delivery (015 D6, goals 3, 4 and 7)", () => {
       },
     ]);
     const registration = await delivery().register(C1);
-    expect(formatRegistration(registration)).toContain("\nComplexity: counting, 1 of 2 files.");
+    // Row 005-94: the count in progress is the person's; `squeal status` says it, the hook not.
+    expect(registration.code?.counting).toEqual({ done: 1, total: 2 });
+    expect(formatRegistration(registration)).not.toContain("Complexity");
   });
 
   it.each([

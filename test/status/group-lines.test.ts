@@ -138,13 +138,8 @@ describe("a status line per group not all current (019 D6)", () => {
     const header: StatusHeader = readHeader(s.store, s.repo.mainId);
     s.store.close();
     const names = (lines: string[]) => lines.slice(1).map((l) => l.split(":")[0]);
-    expect(names(headerLines(header, "squeal"))).toEqual([
-      "Slow tier",
-      "e2e",
-      "unit",
-      "api",
-      "tree",
-    ]);
+    // Row 005-94 (C5): no slow-tier line in a hook while no slow file is listed.
+    expect(names(headerLines(header, "squeal"))).toEqual(["e2e", "unit", "api", "tree"]);
     expect(names(headerLines(header, "squeal", "news"))).toEqual([]);
     expect(
       names(

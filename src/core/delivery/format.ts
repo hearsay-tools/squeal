@@ -10,7 +10,6 @@ import {
   earlierFailuresLines,
   failureCountText,
   knownFailureCounts,
-  notCurrentText,
   splitByValidity,
 } from "../status/checks.js";
 import { deathText } from "../status/died.js";
@@ -41,7 +40,7 @@ import {
 import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
-import { type HeaderForm, headerLines } from "./header.js";
+import { currentFilesText, type HeaderForm, headerLines, headerParts } from "./header.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
 import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 
@@ -512,12 +511,38 @@ function livenessTitle(
 
 /**
  * The registration's `Known failures:` line. Row 005-90: while the test files are not listed,
- * none for zero failures, since the header says Squeal has no results yet.
+ * none for zero failures, since the header says Squeal has no results yet. Row 005-94 (R1): then
+ * how many test files are current (`currentFilesText`).
  */
-function knownFailuresLines(header: StatusHeader, failures: readonly KnownFailure[]): string[] {
+function knownFailuresLines(
+  header: StatusHeader,
+  failures: readonly KnownFailure[],
+  command: string,
+): string[] {
   const current = splitByValidity(failures).current.map((f) => f.check);
   if (header.testFilesListed === false && failures.length === 0) return [];
-  return [`Known failures: ${failureCountText(current)}${notCurrentText(header)}`];
+  const files = currentFilesText(header, command);
+  return [`Known failures: ${failureCountText(current)}${files === null ? "" : `; ${files}`}`];
+}
+
+/**
+ * Spec 015 D6 and 017 D8: the registration's code and lint lines. Row 005-94 (texts.md 1): a
+ * count still in progress is for the person, so `squeal status` says it and the hook does not.
+ */
+function codeAndLintLines(registration: Registration, command: string): string[] {
+  const { code, lint } = registration;
+  // `lintRegistrationLine` says off, unreadable and failed before the progress.
+  const linting =
+    lint?.linting !== undefined &&
+    lint.off === undefined &&
+    lint.unreadable === undefined &&
+    lint.failed === undefined;
+  return [
+    ...(code === undefined || code.counting !== undefined
+      ? []
+      : [codeRegistrationLine(code, command)]),
+    ...(lint === undefined || linting ? [] : [lintRegistrationLine(lint, command)]),
+  ];
 }
 
 /**
@@ -533,19 +558,19 @@ export function formatRegistration(
   now: number = Date.now(),
 ): string {
   const { header, knownFailures } = registration;
+  const { line, tiers } = headerParts(header, command);
   const head = [
     `SQUEAL · registered at revision ${header.revision}`,
-    ...headerLines(header, command),
+    ...(line === null ? [] : [line]),
+    // Spec 011 C6 as amended (gh-34): only current failures are counted; row 005-90: none while
+    // the test files are not listed, unless the store holds a failure; row 005-94: first.
+    ...knownFailuresLines(header, knownFailures, command),
+    ...earlierFailuresLines(knownFailureCounts(knownFailures)),
+    ...tiers,
     // Spec 001 D4 (task 001-176): said once, at registration; status lists it among the notes.
     ...(header.optimizerOff === undefined ? [] : [header.optimizerOff]),
-    // Spec 011 C6 as amended (gh-34, gh-45): status's count and words; row 005-90: none while
-    // the test files are not listed, unless the store holds a failure.
-    ...knownFailuresLines(header, knownFailures),
-    ...earlierFailuresLines(knownFailureCounts(knownFailures)),
-    // Spec 015 D6: a number and the command that lists them, never the list.
-    ...(registration.code === undefined ? [] : [codeRegistrationLine(registration.code, command)]),
-    // Spec 017 D8: one line, only while lint is on.
-    ...(registration.lint === undefined ? [] : [lintRegistrationLine(registration.lint, command)]),
+    // Spec 015 D6: a number and the command that lists them, never the list; spec 017 D8: one line.
+    ...codeAndLintLines(registration, command),
     // Row 011-275 (gh-120): the keys a runtime here leaves out, as status names them.
     ...ignoredConfigLines(registration, command),
   ].join("\n");

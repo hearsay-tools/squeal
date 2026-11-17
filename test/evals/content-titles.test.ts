@@ -24,6 +24,8 @@ const delta = (parts: Partial<Delta>): string =>
 const NEW = [
   delta({ sawEdit: { queued: 2 } }),
   delta({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } }),
+  // Row 005-94: the owed counts alone, titled "first results in this worktree".
+  delta({ countsOwed: { lookupOnly: false } }),
   // Review 0.1.527, B2: code lines that count no function change.
   delta({
     code: {
@@ -44,6 +46,8 @@ const NEW = [
 ];
 const OLD = [
   "SQUEAL · revision 4\nRevision 4: no check pending, stale or unknown.",
+  // The owed counts' title before row 005-94.
+  "SQUEAL · the counts after the listing at revision 4\nRevision 4: 31 current, 0 pending, 0 stale, 0 unknown.",
   // 0.1.527's settled line (001-223), which row 005-93 removed.
   "SQUEAL · your edits' test files are current at revision 4\nRevision 4: no check pending, stale or unknown.\nAll 2 test files your edits since revision 2 re-keyed are current.",
 ];

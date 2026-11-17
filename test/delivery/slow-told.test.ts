@@ -131,7 +131,8 @@ describe("the slow-tier line in a change delivery (task 001-407)", () => {
     flipUnit();
     const unchanged = await newsText(context, {});
     expect(slowLine(unchanged ?? "")).toMatch(/^Slow tier: 1 test file; 1 current/);
-    expect(unchanged).toContain("Full-suite checkpoint:");
+    // Row 005-94 (C2): Stop's form leaves the checkpoint to `squeal status`.
+    expect(unchanged).not.toContain("Full-suite checkpoint:");
     queueSlow();
     flipUnit();
     expect(slowLine((await newsText(context, {})) ?? "")).toMatch(

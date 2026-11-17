@@ -278,8 +278,9 @@ describe("the slow-tier line (spec 004 D8)", () => {
   it("says Squeal runs them after the fast tests with no slow files listed yet (001-317, 004-80)", () => {
     const s = seed({ ...SLOW_POLICY, slow: { include: ["test/none/**/*.test.ts"] } });
     expect(readHeader(s.store, s.repo.mainId).slowTier).toMatchObject({ testFiles: 0 });
-    expect(headerLines(readHeader(s.store, s.repo.mainId), "squeal")[1]).toBe(
-      "Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.",
+    // Row 005-94 (C5): no hook says it; status does.
+    expect(headerLines(readHeader(s.store, s.repo.mainId), "squeal").join("\n")).not.toContain(
+      "Slow tier",
     );
     expect(slowLine(status(s))).toBe(
       "Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.",
@@ -333,13 +334,15 @@ describe("the slow-tier line (spec 004 D8)", () => {
     const delivered = formatRegistration(registration);
     const lines = delivered.split("\n");
     expect(lines[0]).toBe("SQUEAL · registered at revision 2");
-    expect(lines[2]).toBe(
+    // Row 005-94: the known failures first, then the slow-tier line.
+    const known = lines.findIndex((l) => l.startsWith("Known failures:"));
+    expect(lines[known]).toBe(
+      "Known failures: 0; 0 of 3 test files are current (run on the files as they are now), and `squeal status` counts the rest.",
+    );
+    expect(lines[known + 1]).toBe(
       "Slow tier: 2 test files; 1 pending, waiting for the agent to pause; 1 not run at revision 2. Squeal runs the pending ones after the fast tests and has not queued the rest; `squeal run --slow --wait 60000` waits for their results.",
     );
-    expect(lines[3]).toBe(
-      "Known failures: 0; not current: 3 of 3 test files (1 queued, 2 unknown)",
-    );
-    expect(slowLine(status(s))).toBe(lines[2]);
+    expect(slowLine(status(s))).toBe(lines[known + 1]);
     const snapshot = readStatus(s.repo.main, { now: () => NOW }) as StatusSnapshot;
     expect(snapshot.slowTier).toEqual(registration.header.slowTier);
   });

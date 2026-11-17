@@ -48,7 +48,7 @@ describe("UserPromptSubmit", () => {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 0; all 1 test file current\n\nSqueal runs [^\n]*$/,
+          /^SQUEAL · registered at revision 1\n[\s\S]*Known failures: 0; all 1 test file is current \(run on the files as they are now\)\.\n\nSqueal runs [^\n]*$/,
         ),
       },
     });
@@ -72,7 +72,7 @@ describe("UserPromptSubmit", () => {
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
         additionalContext: expect.stringMatching(
-          /^SQUEAL · registered at revision 3\n[\s\S]*Known failures: 0; all 1 test file current\n\nSqueal runs [^\n]*$/,
+          /^SQUEAL · registered at revision 3\n[\s\S]*Known failures: 0; all 1 test file is current \(run on the files as they are now\)\.\n\nSqueal runs [^\n]*$/,
         ),
       },
     });

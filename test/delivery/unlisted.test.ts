@@ -7,7 +7,8 @@ import type { KnownFailure, StatusHeader } from "../../src/core/types/status.js"
  * Row 005-90: while the daemon has not listed the worktree's test files, the
  * registration, the news header and `squeal status` print no zero counts and
  * no known-failure count; they say that Squeal has no results yet, and the
- * wait that gives them.
+ * wait that gives them. Row 005-94 (texts.md 3): no sentence that results are as
+ * of a revision, since none exists; with no daemon, one sentence says both.
  */
 
 const NO_RESULTS =
@@ -42,19 +43,16 @@ const delta = (header: StatusHeader): Delta => ({
 });
 
 describe("a worktree with no listing (row 005-90)", () => {
-  it("registers with the no-results sentence, then the daemon sentence", () => {
+  it("registers with the no-results sentence, and no starting daemon's results revision", () => {
     expect(formatRegistration(registration(fresh))).toBe(
-      [
-        "SQUEAL · registered at revision 0",
-        `Revision 0: ${NO_RESULTS} A daemon is starting; results are as of revision 0.`,
-      ].join("\n"),
+      ["SQUEAL · registered at revision 0", `Revision 0: ${NO_RESULTS}`].join("\n"),
     );
   });
 
-  it("keeps the stopped and no-daemon sentences after it", () => {
+  it("says no daemon runs in the same sentence, and keeps the stopped sentence after it", () => {
     const none = { ...fresh, daemon: { state: "down" as const, since: null } };
     expect(formatRegistration(registration(none)).split("\n")[1]).toBe(
-      `Revision 0: ${NO_RESULTS} No daemon is running; results are as of revision 0.`,
+      "Revision 0: Squeal has no results in this worktree yet, and no daemon is running; `squeal start` starts one.",
     );
     const stopped = {
       ...fresh,
@@ -82,23 +80,21 @@ describe("a worktree with no listing (row 005-90)", () => {
     };
     const lines = formatRegistration(registration(fresh, [failure])).split("\n");
     expect(lines[1]).toContain(NO_RESULTS);
-    expect(lines[2]).toBe(
-      "Known failures: 1 (1 test); the daemon has not listed this worktree's test files yet",
-    );
+    // Row 005-94: the line above says Squeal has no results yet, so the count stands alone.
+    expect(lines[2]).toBe("Known failures: 1 (1 test)");
   });
 
   it("sends the same sentence in a news header", () => {
     const header = { ...fresh, revision: 2, changedPaths: ["src/a.ts"] };
     expect(formatDelta(delta(header)).split("\n")[1]).toBe(
-      `Revision 2 (changed src/a.ts): ${NO_RESULTS} A daemon is starting; results are as of revision 2.`,
+      `Revision 2 (changed src/a.ts): ${NO_RESULTS}`,
     );
   });
 
-  it("leaves a listed worktree's counts as they were", () => {
+  it("says a listed worktree's known failures and test files (row 005-94)", () => {
     const listed = { ...fresh, testFilesListed: true };
     const text = formatRegistration(registration(listed));
     expect(text).not.toContain(NO_RESULTS);
-    expect(text).toContain("Revision 0: 0 current, 0 pending, 0 stale, 0 unknown.");
-    expect(text).toContain("Known failures: 0");
+    expect(text).toContain("Known failures: 0; the daemon listed no test files.");
   });
 });

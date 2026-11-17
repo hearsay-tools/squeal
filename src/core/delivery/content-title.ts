@@ -18,7 +18,7 @@ export function contentWords(delta: Delta): string[] {
     const did = header.noTestsAtEdit === true ? "affects" : "queued";
     words.push(`your edit ${did} ${plural(sawEdit.queued, "test file")}`);
   }
-  if (delta.countsOwed !== undefined) words.push("the counts after the listing");
+  if (delta.countsOwed !== undefined) words.push("first results in this worktree");
   if (delta.groupTiersChanged !== undefined) {
     for (const group of header.groupTiers ?? []) {
       if (!delta.groupTiersChanged.includes(group.name)) continue;

@@ -258,36 +258,6 @@ describe("formatDelta", () => {
     );
   });
 
-  it("states the full-suite checkpoint as a request, not a coverage state (lessons, surprise 7; defect 27)", () => {
-    const at = (fullSuite: StatusHeader["fullSuite"], command?: string) =>
-      full({ ...delta([regression]), header: { ...header, fullSuite } }, command).split("\n")[1];
-    expect(at({ atCurrentRevision: true, lastCompletedRevision: 184 })).toContain(
-      "Full-suite checkpoint: completed at revision 184.",
-    );
-    expect(at({ atCurrentRevision: false, lastCompletedRevision: 170 })).toContain(
-      "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-    );
-    expect(at({ atCurrentRevision: false, lastCompletedRevision: null })).toContain(
-      "Full-suite checkpoint: none completed at any revision (the counts are for revision 184; `squeal run --all` requests one).",
-    );
-    expect(at({ atCurrentRevision: false, lastCompletedRevision: null }, "npx squeal")).toContain(
-      "`npx squeal run --all` requests one",
-    );
-  });
-
-  it("states test files without checks by class, only when there are any", () => {
-    const line = (testFilesWithoutChecks: StatusHeader["testFilesWithoutChecks"]) =>
-      full({ ...delta([regression]), header: { ...header, testFilesWithoutChecks } }).split(
-        "\n",
-      )[1];
-    expect(line({ pending: 0, unknown: 0 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-    );
-    expect(line({ pending: 2, unknown: 1 })).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Test files without checks: 2 pending, 1 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-    );
-  });
-
   it("says when the daemon has not listed the test files yet (lessons, defect 4)", () => {
     const line = (h: StatusHeader) => full({ ...delta([regression]), header: h }).split("\n")[1];
     const fresh: StatusHeader = {
@@ -302,21 +272,23 @@ describe("formatDelta", () => {
       "Revision 0: Squeal is still starting in this worktree and has no results yet. " +
         "`squeal status --wait 60000 <path>...` waits for the files you change.",
     );
-    expect(line({ ...header, testFilesListed: true })).toBe(line(header));
+    expect(line({ ...header, testFilesListed: true, changedPaths: ["a.ts"] })).toBe(
+      line({ ...header, changedPaths: ["a.ts"] }),
+    );
   });
 
   it("names the files the revision changed, three and a count of the rest (task 001-85)", () => {
     const line = (changedPaths: string[]) =>
       full({ ...delta([regression]), header: { ...header, changedPaths } }).split("\n")[1];
-    const counts =
-      ": 47 current, 3 pending, 0 stale, 12 unknown. " +
-      "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).";
+    // Row 005-94: the line names the changed paths and has no counts.
+    const counts = ".";
     expect(line(["src/auth.ts"])).toBe(`Revision 184 (changed src/auth.ts)${counts}`);
     expect(line(["a.ts", "b.ts", "c.ts"])).toBe(`Revision 184 (changed a.ts, b.ts, c.ts)${counts}`);
     expect(line(["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"])).toBe(
       `Revision 184 (changed a.ts, b.ts, c.ts and 2 more)${counts}`,
     );
-    expect(line([])).toBe(`Revision 184${counts}`);
+    // With no changed path and nothing else to say, no line: the title names the revision.
+    expect(line([])).toBe("");
     // A registration's header line is the same line.
     const registration = formatRegistration({
       schemaVersion: 1,
@@ -325,16 +297,6 @@ describe("formatDelta", () => {
       knownFailures: [],
     });
     expect(registration.split("\n")[1]).toBe(`Revision 184 (changed src/auth.ts)${counts}`);
-  });
-
-  it("counts inherited current results, only when there are any", () => {
-    const line = (inheritedCount: number) =>
-      full({ ...delta([regression]), header: { ...header, inheritedCount } }).split("\n")[1];
-    expect(line(30)).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Inherited: 30 of 47 current. " +
-        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-    );
-    expect(line(0)).toBe(full(delta([regression])).split("\n")[1]);
   });
 
   it(`caps the message at ${MESSAGE_CAP_CHARS} characters and counts what is left out`, () => {
@@ -394,9 +356,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
       knownFailures: [],
     });
     expect(text.split("\n")[1]).toBe(
-      "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. " +
-        "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one). " +
-        "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+      "Revision 184: No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
     );
   });
 
@@ -442,12 +402,12 @@ describe("formatRegistration", () => {
     knownFailures,
   });
 
-  it("names inherited results and unlisted test files in the registration header", () => {
+  it("names unlisted test files in the registration header, and no inherited count (row 005-94)", () => {
     const text = formatRegistration({
       ...registration([]),
       header: { ...header, inheritedCount: 47, testFilesListed: true },
     });
-    expect(text.split("\n")[1]).toContain(" Inherited: 47 of 47 current. ");
+    expect(text).not.toContain("Inherited");
     const fresh = formatRegistration({
       ...registration([]),
       header: { ...header, testFilesListed: false },
@@ -459,7 +419,6 @@ describe("formatRegistration", () => {
     expect(formatRegistration(registration([failure(1)]))).toBe(
       [
         "SQUEAL · registered at revision 184",
-        "Revision 184: 47 current, 3 pending, 0 stale, 12 unknown. Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
         "Known failures: 1 (1 test)",
         "",
         "FAIL  tests/f1.test.ts > case 1",
@@ -521,10 +480,7 @@ describe("formatRegistration", () => {
       ...registration([failure(1), fileLevel(2)]),
       header: split,
     });
-    expect(text.split("\n").slice(1, 3)).toEqual([
-      "Revision 184: 47 current (43 tests, 4 test files loaded), 3 pending (2 tests, 1 test file loaded), 0 stale, 12 unknown (10 tests, 2 test files loaded). Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).",
-      "Known failures: 2 (1 test, 1 test file that did not load)",
-    ]);
+    expect(text.split("\n")[1]).toBe("Known failures: 2 (1 test, 1 test file that did not load)");
     const many = Array.from({ length: 2_000 }, (_, i) =>
       i % 2 === 0 ? failure(i, "y".repeat(300)) : fileLevel(i),
     );

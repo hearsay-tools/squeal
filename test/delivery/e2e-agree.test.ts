@@ -4,8 +4,9 @@ import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees, headerRevision } from "../e2e/agree.js";
 import { settled } from "../evals/status-snapshot.js";
 
-// Review 0.1.318 N1: the e2e agreement helper reads each header form the product prints, so
-// a completed checkpoint beside owed news (row 011-205) is not taken for a full header.
+// Review 0.1.318 N1: the e2e agreement helper reads each header form the product prints. Row
+// 005-94: the registration, Stop and the first results in a worktree count current test files,
+// and no hook names the checkpoint or the commit.
 
 const completed: StatusSnapshot = {
   ...settled,
@@ -20,15 +21,16 @@ const ownNews = (s: StatusSnapshot) =>
 const owedNews = (s: StatusSnapshot) =>
   formatDelta({ header: s, entries: [], countsOwed: { lookupOnly: false } } as never);
 
-describe("e2e agreement: the header forms beside a completed checkpoint", () => {
-  it("accepts owed news, which has the full counts and no checkpoint sentence", () => {
+describe("e2e agreement: the header forms (rows 011-205, 005-93, 005-94)", () => {
+  it("accepts the first results in a worktree, which count current test files", () => {
     const text = owedNews(completed);
-    expect(text).toContain(`Revision ${settled.revision}: 31 current, 0 pending`);
-    expect(text).not.toContain("Full-suite checkpoint");
+    expect(text).toContain(
+      `Revision ${settled.revision}: all 6 test files are current (run on the files as they are now).`,
+    );
     expect(() => expectAgrees(text, completed)).not.toThrow();
   });
 
-  it("accepts ordinary news and a full header with the checkpoint", () => {
+  it("accepts ordinary news and the registration, and rejects a file owed at a quiet point", () => {
     expect(() => expectAgrees(news(completed), completed)).not.toThrow();
     expect(ownNews(completed)).toContain("the 2 test files your edits affect have all run.");
     expect(() => expectAgrees(ownNews(completed), completed)).not.toThrow();
@@ -38,16 +40,29 @@ describe("e2e agreement: the header forms beside a completed checkpoint", () => 
       ownEdits: { files: 2, owed: 1 },
     } as never);
     expect(() => expectAgrees(owing, completed)).toThrow();
-    expect(full(completed)).toContain(`Full-suite checkpoint: completed at revision 3.`);
+    expect(full(completed)).not.toContain("Full-suite checkpoint");
     expect(() => expectAgrees(full(completed), completed)).not.toThrow();
   });
 
-  it("still rejects a full header whose checkpoint disagrees with status", () => {
-    expect(() => expectAgrees(full(settled), completed)).toThrow();
+  it("rejects a registration whose test file counts disagree with status", () => {
+    const fewer = {
+      ...settled,
+      testFileCounts: { current: 5, pending: 0, stale: 0, unknown: 1 },
+    } as StatusSnapshot;
+    expect(() => expectAgrees(full(fewer), settled)).toThrow();
+    expect(() => expectAgrees(full(fewer), fewer)).not.toThrow();
+  });
+
+  it("rejects a header that names its commit or the checkpoint", () => {
+    const old =
+      "SQUEAL · registered at revision 3\nRevision 3 · 0123abcd + 2, dirty (changed a.ts).";
+    expect(() => expectAgrees(old, settled)).toThrow();
+    const checkpoint = `${full(settled)}\nFull-suite checkpoint: completed at revision 3.`;
+    expect(() => expectAgrees(checkpoint, settled)).toThrow();
   });
 });
 
-// Row 011-262: the news form names the changed paths after the revision and its commit.
+// Row 011-262: the news form names the changed paths after the revision.
 describe("e2e agreement: news that names the changed paths", () => {
   const changed = { ...settled, changedPaths: ["src/a.ts", ".ai/qa/env.json"] };
   const ignored = { ...changed, ignoredPaths: [".ai/qa/env.json"] };
@@ -56,7 +71,7 @@ describe("e2e agreement: news that names the changed paths", () => {
     commit: { head: "0123abcd".repeat(5), sinceHead: 2, dirty: true },
   };
 
-  it("reads the revision and the commit past the paths clause", () => {
+  it("reads the revision past the paths clause", () => {
     for (const s of [changed, ignored, committed]) {
       const text = news(s);
       expect(text).toContain(" (changed src/a.ts, ");
@@ -65,7 +80,7 @@ describe("e2e agreement: news that names the changed paths", () => {
     }
   });
 
-  // Review 0.1.379 S2: a route group's `)` is not the clause's end; the commit is still read.
+  // Review 0.1.379 S2: a route group's `)` is not the clause's end.
   it("reads past a path that holds a closing parenthesis, in either form", () => {
     const routed = { ...settled, changedPaths: ["src/app/(auth)/page.tsx"] };
     for (const s of [routed, { ...routed, commit: committed.commit }])
@@ -74,8 +89,10 @@ describe("e2e agreement: news that names the changed paths", () => {
         expect(() => expectAgrees(text, s)).not.toThrow();
         expect(headerRevision(text)).toBe(settled.revision);
       }
-    // The commit's captures stay where `expectAgrees` reads them: a wrong one disagrees.
-    const wrong = { ...routed, commit: { ...committed.commit, sinceHead: 3 } };
-    expect(() => expectAgrees(news({ ...routed, commit: committed.commit }), wrong)).toThrow();
+  });
+
+  it("reads the revision from the title when the registration has no revision line", () => {
+    expect(full(settled).split("\n")[1]).toMatch(/^Known failures: 0; /);
+    expect(headerRevision(full(settled))).toBe(settled.revision);
   });
 });

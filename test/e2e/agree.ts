@@ -8,17 +8,27 @@ import type { StatusSnapshot } from "../../src/core/types/status.js";
  * only at quiet points, where nothing is pending and no file is changing.
  */
 
-// 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)"; 005-21: a
-// count by "(9 tests, 3 test files loaded)"; 001-406: the revision by its commit,
-// "· 1bc146f0 + 3, dirty". Review 0.1.379 S2: the changed paths end at the ")" before ": ", so
-// a path's own ")" (`src/app/(auth)/page.tsx`) does not end them; the group captures nothing.
-const PARTS = String.raw`(?: \([^)]*\))?`;
-const COMMIT = String.raw`(?: · ([0-9a-f]{8}) \+ (\d+)(, dirty)?)?`;
+// 001-85: the revision may be followed by "(changed a.ts, b.ts and 2 more)". Review 0.1.379
+// S2: the changed paths end at the ")" before ": ", so a path's own ")"
+// (`src/app/(auth)/page.tsx`) does not end them; the group captures nothing. Row 005-94: no hook
+// names the revision's commit (001-406's "· 1bc146f0 + 3, dirty"); `squeal status` does.
 const CHANGED = String.raw`(?: \(changed (?:[^)\n]|\)(?!: ))*\))?`;
-const HEADER = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}${CHANGED}: (\d+) current${PARTS}, (\d+) pending${PARTS}, ` +
-    String.raw`(\d+) stale${PARTS}, (\d+) unknown${PARTS}\.`,
-);
+
+/**
+ * Row 005-94 (R1, C2): the registration and Stop have a `Revision` line only when it has
+ * something to say, the changed paths, a delay or the daemon: `Revision 12 (changed a.ts).`, or
+ * `Revision 12: No daemon is running; …`. Then the title names the revision alone.
+ */
+const REVISION = new RegExp(String.raw`^Revision (\d+)${CHANGED}[.:]`, "m");
+const TITLE = /^SQUEAL · .*\brevision (\d+)\b/m;
+
+/**
+ * Row 005-94 (R1): the `Known failures` line of the registration and Stop, and the line of the
+ * first results in a worktree (row 011-205), count the test files current: `468 of 584 test
+ * files are current (run on the files as they are now)`, or `all 484 test files are current (…)`.
+ */
+const FILES =
+  /(?:(\d+) of (\d+)|(?:all )?(\d+)) test files? (?:is|are) current \(run on the files as they are now\)/;
 
 /**
  * 001-407: a change delivery's news header has no checkpoint. Row 011-262: the revision names
@@ -27,7 +37,7 @@ const HEADER = new RegExp(
  * the line ends after the changed paths. The worktree's counts stay in status.
  */
 const NEWS = new RegExp(
-  String.raw`Revision (\d+)${COMMIT}${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run)(?:; \d+ with no result \(unknown\))?)?\.`,
+  String.raw`Revision (\d+)${CHANGED}(?:: (?:\d+ of )?the \d+ test files? your edits affect (has run|have all run|has not run|have not run)(?:; \d+ with no result \(unknown\))?)?\.`,
 );
 
 /** Check names of the `FAIL  <name>` or `PASS  <name>` blocks of a delivered text. */
@@ -35,56 +45,48 @@ export function blocks(text: string, outcome: "FAIL" | "PASS"): string[] {
   return [...text.matchAll(new RegExp(`^${outcome}  (.+)$`, "gm"))].map((m) => m[1] ?? "");
 }
 
-/** The revision a delivered header names. */
+/** The revision a delivered header names: its `Revision` line's, else its title's. */
 export function headerRevision(text: string): number {
-  const match = HEADER.exec(text) ?? NEWS.exec(text);
+  const match = REVISION.exec(text) ?? TITLE.exec(text);
   if (match === null) throw new Error(`no header line in:\n${text}`);
   return Number(match[1]);
 }
 
 export function expectAgrees(text: string | null, status: StatusSnapshot): void {
   if (text === null) throw new Error("nothing was delivered");
-  const full = HEADER.exec(text);
-  const news = full === null ? NEWS.exec(text) : null;
-  expect(full ?? news, `header line in:\n${text}`).not.toBeNull();
-  const [, revision, head, since, dirty] = full ?? news ?? [];
-  if (full !== null) {
-    const [current, pending, stale, unknown] = full.slice(5).map(Number);
-    expect({ revision: Number(revision), current, pending, stale, unknown }, text).toEqual({
-      revision: status.revision,
-      ...status.counts,
+  expect(Number(headerRevision(text)), text).toBe(status.revision);
+  // Row 005-94: no hook names the commit, the worktree's check counts or the checkpoint.
+  expect(text, text).not.toMatch(/^Revision \d+ · /m);
+  expect(text, text).not.toMatch(/^Revision \d+[^\n]*: \d+ current\b/m);
+  expect(text, text).not.toContain("Full-suite checkpoint");
+  const files = FILES.exec(text);
+  const counted = status.testFileCounts;
+  if (files !== null && counted !== undefined) {
+    const total = counted.current + counted.pending + counted.stale + counted.unknown;
+    const [current, of] = files[1] === undefined ? [files[3], files[3]] : [files[1], files[2]];
+    expect({ current: Number(current), total: Number(of) }, text).toEqual({
+      current: counted.current,
+      total,
     });
-  } else {
-    expect(Number(revision), text).toBe(status.revision);
+  }
+  const news = NEWS.exec(text);
+  if (news?.[2] !== undefined) {
     // At a quiet point nothing is pending, so no file the consumer's edits affect is owed.
-    const owed = (news?.[5] ?? "").includes("not run");
+    const owed = news[2].includes("not run");
     expect(owed, text).toBe(status.counts.pending + status.testFilesWithoutChecks.pending > 0);
   }
-  const commit = status.commit;
-  expect(
-    head === undefined ? undefined : { head, sinceHead: Number(since), dirty: dirty !== undefined },
-    text,
-  ).toEqual(
-    commit === undefined || commit.head === null
-      ? undefined
-      : { head: commit.head.slice(0, 8), sinceHead: commit.sinceHead, dirty: commit.dirty },
-  );
-  // Row 011-205: owed news carries the full counts but, as news, no checkpoint sentence, which
-  // every full header has (review 0.1.318 N1).
-  if (full !== null && text.includes("Full-suite checkpoint: ")) {
-    expect(
-      text.includes(`Full-suite checkpoint: completed at revision ${status.revision}.`),
-      text,
-    ).toBe(status.fullSuite.atCurrentRevision);
-  } else expect(text, text).not.toContain("Full-suite checkpoint");
   // Row 011-276: a late heartbeat is a down daemon that reads late, not "no daemon".
   expect(
-    /No daemon (has validated|is running)|[Tt]he daemon's heartbeat is late/.test(text),
+    /No daemon (has validated|is running)|no daemon is running; |[Tt]he daemon's heartbeat is late/.test(
+      text,
+    ),
     text,
   ).toBe(status.daemon.state === "down");
   const failing = new Set(status.knownFailures.map((f) => formatCheck(f.check)));
   for (const name of blocks(text, "FAIL")) expect(failing, text).toContain(name);
   for (const name of blocks(text, "PASS")) expect(failing, text).not.toContain(name);
-  const known = /^Known failures: (\d+)(?: \(.*\))?$/m.exec(text);
-  if (known !== null) expect(Number(known[1]), text).toBe(status.knownFailures.length);
+  // Spec 011 C6 (gh-34): the line counts the current failures only.
+  const known = /^Known failures: (\d+)\b/m.exec(text);
+  const current = status.knownFailures.filter((f) => f.validity === "current");
+  if (known !== null) expect(Number(known[1]), text).toBe(current.length);
 }

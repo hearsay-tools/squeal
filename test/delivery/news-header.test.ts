@@ -8,8 +8,9 @@ import type { SlowTierState, StatusHeader } from "../../src/core/types/status.js
  * drops the four-state split and the Inherited sentence (only non-zero
  * actionable counts stay), the full-suite checkpoint sentence, and the
  * slow-tier line unless the slow tier's state changed. The title, daemon
- * liveness, install notes, edit lines and FAIL/PASS blocks stay;
- * registration, Stop and status keep the full block. Row 011-262 (gh-105):
+ * liveness, install notes, edit lines and FAIL/PASS blocks stay. Row
+ * 005-94: the registration and Stop leave the counts to status too, and no
+ * hook names the commit. Row 011-262 (gh-105):
  * the changed paths stay too, as the full block names them. Row 005-93 (c):
  * the counts are the consumer's own, the test files its edits affect, in
  * place of the worktree's queue; with no edit since its count began, none.
@@ -105,10 +106,10 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     const ignored = ".ai/qa/test-env.json";
     const changedPaths = ["src/a.ts", ignored, "src/b.ts", ".ai/qa/build/out.txt"];
     const h = { ...header, changedPaths, ignoredPaths: [ignored, ".ai/qa/build/out.txt"] };
-    const named = `Revision 184 (changed src/a.ts, git-ignored ${ignored}, src/b.ts and 1 more): `;
-    expect(headerLine(h)?.slice(0, named.length)).toBe(named);
+    const named = `Revision 184 (changed src/a.ts, git-ignored ${ignored}, src/b.ts and 1 more)`;
+    expect(headerLine(h)).toBe(`${named}: ${COUNT}`);
     const full = lines(formatDelta(delta(h), "squeal", 10_000, "full"))[1];
-    expect(full?.slice(0, named.length)).toBe(named);
+    expect(full).toBe(`${named}.`);
   });
 
   it("drops the worktree's counts: current, pending, stale, unknown and the test files without checks", () => {
@@ -153,18 +154,20 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     expect(headerLine(completed)).not.toContain("checkpoint");
   });
 
-  it("keeps the full counts once when the consumer is owed them (row 011-205)", () => {
-    const h = { ...header, testFilesWithoutChecks: { pending: 1, unknown: 97 } };
+  it("says how far the first results reach once, when the consumer is owed them (rows 011-205, 005-94)", () => {
+    const h = {
+      ...header,
+      testFilesWithoutChecks: { pending: 1, unknown: 97 },
+      testFileCounts: { current: 5, pending: 1, stale: 0, unknown: 97 },
+    };
     expect(headerLine(h, { ...OWN, countsOwed: { lookupOnly: true } })).toBe(
-      `${REVISION} 47 current (43 tests, 4 test files loaded), 3 pending (2 tests, 1 test file loaded), 1 stale (1 test), 0 unknown. Inherited: 30 of 47 current. Test files without checks: 1 pending, 97 unknown; the baseline is lookup-only, so it queued none of them.`,
+      `${REVISION} 5 of 103 test files are current (run on the files as they are now), and \`squeal status\` counts the rest.`,
     );
   });
 
-  it("keeps the revision's commit", () => {
+  it("names no commit: `squeal status` does (row 005-94)", () => {
     const commit = { head: "0123456789abcdef", sinceHead: 2, dirty: true };
-    expect(headerLine({ ...header, commit })).toMatch(
-      /^Revision 184 · 01234567 \+ 2, dirty \(changed src\/auth\.ts, src\/parse\.ts\): /,
-    );
+    expect(headerLine({ ...header, commit })).toBe(`${REVISION} ${COUNT}`);
   });
 
   it("keeps the unlisted and the runner-part sentences, with or without owed files", () => {
@@ -227,12 +230,8 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
   });
 });
 
-describe("registration, Stop and status keep the full block (task 001-407)", () => {
-  const FULL =
-    "Revision 184 (changed src/auth.ts, src/parse.ts): 47 current (43 tests, 4 test files loaded), " +
-    "3 pending (2 tests, 1 test file loaded), 1 stale (1 test), 0 unknown. " +
-    "Inherited: 30 of 47 current. " +
-    "Full-suite checkpoint: none completed since revision 170 (the counts are for revision 184; `squeal run --all` requests one).";
+describe("registration and Stop keep the changed paths and the slow-tier line (task 001-407, row 005-94)", () => {
+  const FULL = "Revision 184 (changed src/auth.ts, src/parse.ts).";
 
   it("Stop's delta", () => {
     expect(lines(formatDelta(delta(), "squeal", 10_000, "full")).slice(1, 3)).toEqual([
@@ -243,6 +242,6 @@ describe("registration, Stop and status keep the full block (task 001-407)", () 
 
   it("the registration", () => {
     const text = formatRegistration({ schemaVersion: 1, consumer, header, knownFailures: [] });
-    expect(lines(text).slice(1, 3)).toEqual([FULL, SLOW_LINE]);
+    expect(lines(text).slice(1, 4)).toEqual([FULL, "Known failures: 0", SLOW_LINE]);
   });
 });

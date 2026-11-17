@@ -52,9 +52,10 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     );
   });
 
-  it("names the owed counts, a group's kind and a commit", () => {
+  it("names the first results in a worktree, a group's kind and a commit", () => {
+    // Row 005-94: the owed counts (row 011-205) are titled without the word "listing".
     expect(titleOf({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } })).toBe(
-      "SQUEAL · your edit queued 2 test files; the counts after the listing at revision 5",
+      "SQUEAL · your edit queued 2 test files; first results in this worktree at revision 5",
     );
     const groups = { ...header, groupTiers: [browser(2)] };
     expect(titleOf({ sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] }, groups)).toBe(

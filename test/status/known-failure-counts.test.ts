@@ -28,6 +28,9 @@ const EARLIER = "Earlier failures: 2 pending rerun, 1 stale (not counted until a
 /** Row 011-26 (gh-45): what is not current; `current`'s same-key re-run queues its file. */
 const NOT_CURRENT =
   "; not current: 4 of 4 test files (3 queued, 1 stale), 3 tests (2 queued, 1 stale)";
+/** Row 005-94 (R1): what the registration and Stop say in its place: how many are current. */
+const HOOK_FILES =
+  "; 0 of 4 test files are current (run on the files as they are now), and `squeal status` counts the rest.";
 
 const file = (name: string): TestFileRef => ({ project: "", path: `src/${name}.test.ts` });
 
@@ -132,7 +135,7 @@ describe("known failures by validity (task 011-15)", () => {
     const delivery = createDelivery(store, { status: fixedStatus() });
     const consumer: Consumer = { worktreeId: wt, sessionId: "s1", agentId: "main" };
     const text = formatRegistration(await delivery.register(consumer), undefined, "squeal", NOW);
-    expect(text).toContain(`\nKnown failures: 1 (1 test)${NOT_CURRENT}\n${EARLIER}\n`);
+    expect(text).toContain(`\nKnown failures: 1 (1 test)${HOOK_FILES}\n${EARLIER}\n`);
     expect(text).toContain("FAIL  src/stale.test.ts > stale");
   });
 
@@ -146,7 +149,7 @@ describe("known failures by validity (task 011-15)", () => {
     );
     const snapshot = snapshotOf(repo);
     expect(statusText(snapshot, snapshot.knownFailures).split("\n").slice(-2)).toEqual([
-      `Known failures: 1 (src/current.test.ts > current)${NOT_CURRENT}`,
+      `Known failures: 1 (src/current.test.ts > current)${HOOK_FILES}`,
       EARLIER,
     ]);
   });

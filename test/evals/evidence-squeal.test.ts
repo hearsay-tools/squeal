@@ -167,6 +167,31 @@ const slowCounted = (s: StatusSnapshot): StatusSnapshot => {
     testFilesByPhase: { running: 0, queued: (s.testFilesByPhase?.queued ?? 0) + slow },
   };
 };
+/**
+ * Row 005-94 (R1): the registration, Stop and the owed counts say how many test files are
+ * current, not which class the rest is in, so the parser reads the rest as unknown.
+ */
+const r1Of = (s: StatusSnapshot) => {
+  const files = s.testFileCounts ?? { current: 0, pending: 0, stale: 0, unknown: 0 };
+  return { pending: 0, stale: 0, unknown: files.pending + files.stale + files.unknown };
+};
+/** The forms that print row 005-94's `Known failures` line or the owed counts' line. */
+const r1 = (format: unknown) => format === header || format === stop || format === owedNews;
+
+/** What `format`'s text of `s` counts as pending, stale and unknown. */
+function expectedCounts(format: unknown, s: StatusSnapshot) {
+  if (format === status) return statusCounts(s);
+  // Row 005-93 (c): the own count's files not run read as pending.
+  if (format === news) return { pending: ownOf(s).owed, stale: 0, unknown: 0 };
+  return r1(format) ? r1Of(s) : countsOf(s);
+}
+/** Pending, stale and unknown together. */
+const sum = (c: { pending?: unknown; stale?: unknown; unknown?: unknown } | null | undefined) =>
+  [c?.pending, c?.stale, c?.unknown].reduce<number>(
+    (n, x) => n + (typeof x === "number" ? x : 0),
+    0,
+  );
+
 /** Whether anything in the snapshot is pending, stale or unknown, the slow tier included. */
 const owes = (s: StatusSnapshot) =>
   Object.values(countsOf(s)).some((n) => n > 0) || (s.slowTier?.pending ?? 0) > 0;
@@ -306,26 +331,26 @@ describe("squealEvidence", () => {
           const { failing, ...rest } = want as { failing?: string[] };
           const known = form === "status" ? 0 : s.knownFailures.length;
           const e = squealEvidence(wrap(format(s)), from, known);
-          // Row 005-93 (c): the own count's files not run read as pending.
-          const own = { pending: ownOf(s).owed, stale: 0, unknown: 0 };
           expect(e).toMatchObject({
             revision: 3,
-            ...(form === "status" ? statusCounts(s) : format === news ? own : countsOf(s)),
+            ...expectedCounts(format, s),
             ...rest,
             ...(form === "status" && failing ? { failing } : {}),
           });
           if (owes(s)) expect(e?.verdict).not.toBe("pass");
           // Review 001-423, B2: never more permissive than main's parser before 001-407, which
-          // reads no news header, so a news header is held to its reading of the full one.
-          const base = mainEvidence(wrap((form === "status" ? status : header)(s)), from, known);
+          // reads no news header. Row 005-94: nor any form main's parser reads the registration
+          // in, so every form is held to its reading of the status.
+          const base = mainEvidence(wrap(status(s)), "pull", 0);
           if (e?.verdict === "pass") expect(base?.verdict).toBe("pass");
-          // The own count does not split what is not run: its sum is held to the full header's.
-          const sum = (c: typeof e) => (c?.pending ?? 0) + (c?.stale ?? 0) + (c?.unknown ?? 0);
-          if (format === news) expect(sum(e)).toBeGreaterThanOrEqual(sum(base));
-          else
-            for (const count of ["pending", "stale", "unknown"] as const)
-              if (typeof base?.[count] === "number")
-                expect(e?.[count], count).toBeGreaterThanOrEqual(base[count]);
+          // The own count and the current test files (row 005-94) do not split what is not run.
+          if (format === news || r1(format)) {
+            if (sum(base) > 0) expect(sum(e)).toBeGreaterThan(0);
+            return;
+          }
+          for (const count of ["pending", "stale", "unknown"] as const)
+            if (typeof base?.[count] === "number")
+              expect(e?.[count], count).toBeGreaterThanOrEqual(base[count]);
         });
 
   // Row 011-10 (issue 26): a wait prints its verdict last, after the snapshot; its text says of
@@ -434,7 +459,9 @@ describe("squealEvidence", () => {
           for (const [, s] of variants) {
             const plain = { ...s, commit } as StatusSnapshot;
             const named = { ...plain, ...change } as StatusSnapshot;
-            expect(format(named)).toContain(`${clause}: `);
+            // Row 005-94: the registration's and Stop's line ends after the paths when it has
+            // nothing else to say, and no hook names the commit.
+            expect([".", ":"].some((end) => format(named).includes(`${clause}${end}`))).toBe(true);
             for (const [, wrap] of wrappings)
               expect(squealEvidence(wrap(format(named)), from, s.knownFailures.length)).toEqual(
                 squealEvidence(wrap(format(plain)), from, s.knownFailures.length),

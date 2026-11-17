@@ -39,6 +39,9 @@ const HEAD = 26;
 const ZERO =
   "Known failures: 0; not current: 8 of 10 test files (2 queued, 6 stale), 80 tests (20 queued, 60 stale)";
 const CLAUSE = ZERO.replace("Known failures: 0", "");
+/** Row 005-94 (R1): the registration's and Stop's line for the same worktree. */
+const HOOK_ZERO =
+  "Known failures: 0; 2 of 10 test files are current (run on the files as they are now), and `squeal status` counts the rest.";
 /** What a wait's verdict line says of the worktree, after its own part and before its next step (row 011-243). */
 const worktreePart = (line: string | undefined) =>
   line
@@ -173,12 +176,14 @@ describe("Known failures says what is not current (011-26, gh-45 zero)", () => {
     expect(snapshot.counts).toEqual({ current: 20, pending: 20, stale: 60, unknown: 0 });
   });
 
-  it("in the registration header and Stop", async () => {
+  it("in the registration header and Stop, as how many test files are current (row 005-94)", async () => {
     const w = zero();
-    expect(knownLine(await registrationText(w))).toBe(ZERO);
-    expect(knownLine(stopText(w))).toBe(ZERO);
+    expect(knownLine(await registrationText(w))).toBe(HOOK_ZERO);
+    expect(knownLine(stopText(w))).toBe(HOOK_ZERO);
     const failures: { check: CheckId; validity: Validity }[] = [];
-    expect(knownFailuresLine(failures, "squeal", readLiveHeader(w.store, w.wt, NOW))).toBe(ZERO);
+    expect(knownFailuresLine(failures, "squeal", readLiveHeader(w.store, w.wt, NOW))).toBe(
+      HOOK_ZERO,
+    );
   });
 
   it("at the end of both waits' verdict lines", () => {
@@ -266,7 +271,9 @@ describe("test files classed as a named wait classes them (011-26)", () => {
     const line =
       "Known failures: 0; not current: 1 of 2 test files (1 running), 2 tests (2 running)";
     expect(knownLine(formatStatus(snapshot, NOW))).toBe(line);
-    expect(knownLine(await registrationText(w))).toBe(line);
+    expect(knownLine(await registrationText(w))).toBe(
+      "Known failures: 0; 1 of 2 test files is current (run on the files as they are now), and `squeal status` counts the rest.",
+    );
     expect(classes(w).header).toEqual(classes(w).named);
   });
 
@@ -319,8 +326,10 @@ describe("all N test files current only with a live daemon, the files listed and
     const w = current();
     const line = "Known failures: 0; all 2 test files current";
     expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(line);
-    expect(knownLine(await registrationText(w))).toBe(line);
-    expect(knownLine(stopText(w))).toBe(line);
+    const hook =
+      "Known failures: 0; all 2 test files are current (run on the files as they are now).";
+    expect(knownLine(await registrationText(w))).toBe(hook);
+    expect(knownLine(stopText(w))).toBe(hook);
   });
 
   it("not while no daemon validates", async () => {
@@ -328,7 +337,9 @@ describe("all N test files current only with a live daemon, the files listed and
     // Row 011-311: no "current as of revision N"; the header's sentence names the revision.
     const line = "Known failures: 0; 2 test files current";
     expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(line);
-    expect(knownLine(await registrationText(w))).toBe(line);
+    expect(knownLine(await registrationText(w))).toBe(
+      "Known failures: 0; 2 test files are current (run on the files as they are now).",
+    );
   });
 
   it("not while the runner part of the revision is pending", () => {

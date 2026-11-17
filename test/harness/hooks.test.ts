@@ -236,13 +236,13 @@ describe("Stop and SubagentStop", () => {
     const text = (json(out) as { hookSpecificOutput: { additionalContext: string } })
       .hookSpecificOutput.additionalContext;
     expect(text).toMatch(
-      /^SQUEAL · 1 check changed \(1 test\) at revision 2\nRevision 2 \(changed src\/math\.ts\): /,
+      /^SQUEAL · 1 check changed \(1 test\) at revision 2\nRevision 2 \(changed src\/math\.ts\)\.\n/,
     );
     expect(text).toContain("PASS -> FAIL");
     // Task 001-222: the count names the failures.
-    // Row 011-26 (gh-45): then what is not current.
+    // Row 011-26 (gh-45): then what is not current; row 005-94 (R1): how many are current.
     expect(text).toMatch(
-      /\nKnown failures: 1 \(src\/math\.test\.ts > math > \w+\); all 1 test file current$/,
+      /\nKnown failures: 1 \(src\/math\.test\.ts > math > \w+\); all 1 test file is current \(run on the files as they are now\)\.$/,
     );
   });
 
@@ -259,8 +259,8 @@ describe("Stop and SubagentStop", () => {
       reason:
         "Squeal policy stop.blockOnKnownFailures is on and 1 known failure exists at revision 1: src/math.test.ts > math > subtracts.\n\n" +
         "SQUEAL · status at revision 1\n" +
-        "Revision 1 (changed src/math.ts): 2 current (2 tests), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one).\n" +
-        "Known failures: 1 (src/math.test.ts > math > subtracts); all 1 test file current",
+        "Revision 1 (changed src/math.ts).\n" +
+        "Known failures: 1 (src/math.test.ts > math > subtracts); all 1 test file is current (run on the files as they are now).",
     });
   });
 
@@ -326,7 +326,8 @@ describe("Stop and SubagentStop", () => {
 
     expect(waited).toBeGreaterThanOrEqual(250);
     expect(waited).toBeLessThan(1_000);
-    expect(out.stdout).toContain("1 current (1 test), 0 pending");
+    // Row 005-94: Stop counts current test files, after the wait for the pending one.
+    expect(out.stdout).toContain("all 1 test file is current (run on the files as they are now).");
     expect(out.stdout).toContain("PASS -> FAIL");
   });
 });

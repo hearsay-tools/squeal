@@ -1,12 +1,12 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { headerLines } from "../../src/core/delivery/header.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { recordHeadMove } from "../../src/core/scheduler/head-move.js";
 import { readHeadMove, writeHeadMove } from "../../src/core/scheduler/head-move-record.js";
 import type { Ledger } from "../../src/core/scheduler/ledger.js";
 import { readHeader } from "../../src/core/state/header.js";
+import { revisionText } from "../../src/core/state/revision-commit.js";
 import { readGitHead } from "../../src/core/status/git-head.js";
 import type { CommitSha } from "../../src/core/types/common.js";
 import type { HeadMove } from "../../src/core/types/scheduler.js";
@@ -60,8 +60,13 @@ function moved(move: HeadMove): void {
   writeHeadMove(store, WT, move);
 }
 
+/**
+ * The revision and its commit as `squeal status` names them (row 005-94: no hook header does),
+ * in the words a header used: `Revision 5 · 2cd257e1 + 3, dirty: `.
+ */
 function line(): string {
-  return headerLines(readHeader(store, WT), "squeal")[0] ?? "";
+  const header = readHeader(store, WT);
+  return `Revision ${revisionText(header.revision, header.commit)}: `;
 }
 
 describe("a revision shown with its commit (task 001-406)", () => {

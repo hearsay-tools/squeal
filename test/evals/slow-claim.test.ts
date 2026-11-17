@@ -100,6 +100,12 @@ describe("the parser keeps the count a real `Slow tier:` line states not current
         it(`${name}: ${form}, ${wrapped}`, () => {
           const s = held(3, { slow: t });
           const text = format(s);
+          // Row 005-94 (C5): a hook says no slow-tier line while no slow file is listed.
+          if (t.testFiles === 0 && form !== "status") {
+            expect(text).not.toMatch(/^Slow tier: /m);
+            expect(squealEvidence(wrap(text), from)?.slowNotCurrent).toBeUndefined();
+            return;
+          }
           expect(text).toMatch(/^Slow tier: /m);
           expect(squealEvidence(wrap(text), from)?.slowNotCurrent).toBe(want);
         });

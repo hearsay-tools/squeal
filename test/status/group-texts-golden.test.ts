@@ -28,6 +28,8 @@ import {
  * today's texts, recorded before the per-group lines, the moments sentence
  * and the commit line were written. With no `checks` key each must stay
  * byte-identical: the primer, the status text and the header's two forms.
+ * Row 005-94 (the human, 2026-11-17) changed the full form: no counts or
+ * checkpoint, and no line after the title with nothing to say.
  */
 
 let runtime: string;
@@ -71,7 +73,6 @@ describe("texts without a `checks` key are today's (019-16 golden)", () => {
     expect(texts(busy())).toMatchInlineSnapshot(`
       {
         "full": [
-          "Revision 3: 1 current (1 test), 0 pending, 0 stale, 0 unknown. Test files without checks: 2 pending, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 3; \`squeal run --all\` requests one).",
           "Slow tier: 2 test files; 1 current at revision 2; running test/e2e/b.test.ts since <clock> (last run 4 min). Squeal runs them after the fast tests; \`squeal run --slow --wait 60000\` waits for its result.",
         ],
         "news": [
@@ -97,9 +98,7 @@ describe("texts without a `checks` key are today's (019-16 golden)", () => {
   it("status and the header with no slow files", () => {
     expect(texts(busy(null))).toMatchInlineSnapshot(`
       {
-        "full": [
-          "Revision 3: 1 current (1 test), 0 pending, 0 stale, 0 unknown. Test files without checks: 2 pending, 0 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 3; \`squeal run --all\` requests one).",
-        ],
+        "full": [],
         "news": [
           "Revision 3.",
         ],

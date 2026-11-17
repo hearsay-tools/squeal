@@ -61,7 +61,12 @@ const FORMS = [
   ],
   [
     "registration",
-    (s: StatusSnapshot) => formatRegistration({ header: s, knownFailures: [] } as never),
+    // Row 005-94 (R1): the registration counts current test files, here 2 of 6 not current.
+    (s: StatusSnapshot) =>
+      formatRegistration({
+        header: { ...s, testFileCounts: { current: 4, pending: 2, stale: 0, unknown: 0 } },
+        knownFailures: [],
+      } as never),
     "push",
   ],
   [
@@ -105,7 +110,10 @@ describe("the parser reads 0.1.222's slow-file texts from the real formatters (r
             }
             const step = squealEvidence(wrap(text), from);
             expect(step).toMatchObject({ revision: 5, slow: false, slowNotCurrent: 2 });
-            expect(step?.pending).toBe(SLOW_CHECKS + 1);
+            // Row 005-94 (R1): the registration says how many test files are current, not which
+            // class the rest is in, so the parser reads the rest as unknown: not settled.
+            if (form === "registration") expect(step).toMatchObject({ pending: 0, unknown: 2 });
+            else expect(step?.pending).toBe(SLOW_CHECKS + 1);
           });
 });
 

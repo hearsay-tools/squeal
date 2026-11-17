@@ -361,7 +361,7 @@ describe("squeal import's environment line (018 D3)", () => {
 });
 
 describe("the imported origin in the hook header and provenance (018 D4)", () => {
-  it("the header counts imported results beside inherited ones", () => {
+  it("no hook header counts imported results: `squeal status --full` does (row 005-94)", () => {
     const header: StatusHeader = {
       revision: 7,
       counts: { current: 10, pending: 0, stale: 0, unknown: 0 },
@@ -370,8 +370,7 @@ describe("the imported origin in the hook header and provenance (018 D4)", () =>
       fullSuite: { atCurrentRevision: false, lastCompletedRevision: null },
       importedCount: 6,
     };
-    expect(headerLines(header, "squeal")[0]).toContain(" Imported: 6 of 10 current. ");
-    expect(headerLines({ ...header, importedCount: 0 }, "squeal")[0]).not.toContain("Imported");
+    expect(headerLines(header, "squeal").join("\n")).not.toContain("Imported");
   });
 
   it("a recovery to an imported pass names the import's source", () => {

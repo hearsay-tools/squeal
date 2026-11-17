@@ -15,7 +15,7 @@
  * validates nothing either.
  */
 export const NO_DAEMON =
-  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|no daemon is validating|[Tt]he daemon's heartbeat is late|^Daemon: heartbeat late|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered|(?:holds this worktree's lock but|a hook started a daemon that) does not serve yet/m;
+  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|and no daemon is running; |no daemon is validating|[Tt]he daemon's heartbeat is late|^Daemon: heartbeat late|A daemon is starting|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered|(?:holds this worktree's lock but|a hook started a daemon that) does not serve yet/m;
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the
@@ -339,6 +339,16 @@ const NONE_NOT_CURRENT =
   /known failures:? .*; (?:all \d+ test files? current|\d+ test files? current|the daemon (?:listed no test files|has not listed this worktree's test files))/im;
 
 /**
+ * From row 005-94 (R1), the registration's and Stop's `Known failures` line, and the line of the
+ * first results in a worktree (row 011-205), count the test files current with the word defined:
+ * `468 of 584 test files are current (run on the files as they are now), and \`squeal status\`
+ * counts the rest.`, or `all 484 test files are current (…)`. The line does not say whether the
+ * rest is pending, stale or unknown, so the rest reads as unknown: not settled.
+ */
+const CURRENT_FILES =
+  /(?:(\d+) of (\d+)|(?:all )?\d+) test files? (?:is|are) current \(run on the files as they are now\)/;
+
+/**
  * Status's default text from row 011-29 (011 C6 as amended 2026-10-20): its `More:` line names
  * what `--full` adds, the test files without checks among it.
  */
@@ -368,7 +378,8 @@ function headerCounts(t) {
 
 /**
  * The counts of a status's `Affected checks:` line, or of the not-current clause of a
- * `Known failures:` line or a wait's verdict line (row 011-26); `null` with neither.
+ * `Known failures:` line or a wait's verdict line (row 011-26), or of the current test files a
+ * hook counts (row 005-94); `null` with none.
  */
 function clauseCounts(t) {
   const affected = /^Affected checks: (.*)$/m.exec(t)?.[1];
@@ -390,6 +401,11 @@ function clauseCounts(t) {
       both(/(\d+) unknown/),
     ];
     return { counts, news: false };
+  }
+  const files = CURRENT_FILES.exec(t);
+  if (files !== null) {
+    const rest = files[1] === undefined ? 0 : Number(files[2]) - Number(files[1]);
+    return { counts: [0, 0, rest], news: false };
   }
   return NONE_NOT_CURRENT.test(t) ? { counts: [0, 0, 0], news: false } : null;
 }

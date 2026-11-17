@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { headerLines } from "../../src/core/delivery/header.js";
-import { readHeader } from "../../src/core/state/header.js";
+import { fullSuiteText, readHeader } from "../../src/core/state/header.js";
 import type { Store } from "../../src/core/types/store.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import type { CheckpointLane } from "../../src/core/types/store-records.js";
@@ -54,9 +53,9 @@ function expectNoFullSuite(): void {
   expect(store.checkpoints.lastCompletedFull(WT)).toBeNull();
   const header = readHeader(store, WT);
   expect(header.fullSuite.atCurrentRevision).toBe(false);
-  // Row 005-90: an unlisted header prints no checkpoint sentence; this store lists no test files.
-  expect(headerLines({ ...header, testFilesListed: true }, "squeal").join("\n")).toContain(
-    "Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 1",
+  // Row 005-94: status names the checkpoint, no hook does.
+  expect(fullSuiteText(header, "squeal")).toContain(
+    "none completed at any revision; only the fast lane completed, at revision 1",
   );
   expect(fullSuiteReason(header)).toContain("none completed at any revision");
 }

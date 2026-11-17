@@ -5,7 +5,6 @@ import {
   formatRegistration,
   MESSAGE_CAP_CHARS,
 } from "../../src/core/delivery/format.js";
-import { headerLines } from "../../src/core/delivery/header.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type {
   Delta,
@@ -165,14 +164,5 @@ describe("split counts in deliveries (spec 005 D1, review wave 3 B1)", () => {
     expect(squealEvidence(failed, "push")?.failures).toBe(failing.length);
     const recovered = formatDelta(delta(failing.map((c) => change(c, "fail", "pass"))));
     expect(squealEvidence(recovered, "push", failing.length)?.failures).toBe(0);
-  });
-
-  it("prints an inherited count whole from a header without its file-level part", () => {
-    const old = { ...header, inheritedCount: 4 };
-    expect(headerLines(old, "squeal")[0]).toContain(" Inherited: 4 of 10 current. ");
-    const split = { ...old, inheritedFileLevelCount: 1 };
-    expect(headerLines(split, "squeal")[0]).toContain(
-      " Inherited: 4 of 10 current (3 tests, 1 test file loaded). ",
-    );
   });
 });
