@@ -13,7 +13,7 @@ Board row 005-02. Claude Code 2.1.295 with `claude-sonnet-5-5`, Codex CLI 0.160.
 
 ## 1. Surfaces
 
-Method: each fixture's instruction files carried a unique word (`CORMORANT-CLAUDEMD`, `HERON-AGENTSMD`). The agent and one subagent were asked to quote what they received. Their answers were checked against the record of what actually reached the model: Claude Code transcript attachments and Codex rollout messages (`logs/canary-extracts.txt`). Compaction: Claude Code `-p --resume <id> /compact`, then re-asked; Codex `exec resume` with `-c model_auto_compact_token_limit=15000`, which compacted before the turn. Sessions `can-c`, `can-c2`, `can-c3`, `can-c4`, `can-x`, `can-x3`.
+Method: each fixture's instruction files carried a unique word (`CORMORANT-CLAUDEMD`, `HERON-AGENTSMD`). The agent and one subagent were asked to quote what they received. Their answers were checked against the record of what actually reached the model: Claude Code transcript attachments and Codex rollout messages (`logs/canary-extracts.txt` (raw logs removed)). Compaction: Claude Code `-p --resume <id> /compact`, then re-asked; Codex `exec resume` with `-c model_auto_compact_token_limit=15000`, which compacted before the turn. Sessions `can-c`, `can-c2`, `can-c3`, `can-c4`, `can-x`, `can-x3`.
 
 Table 1. Surfaces at Claude Code 2.1.295 (CC) and Codex 0.160.1 (CX).
 

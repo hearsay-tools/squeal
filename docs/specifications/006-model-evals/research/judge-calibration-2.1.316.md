@@ -43,7 +43,7 @@ Probe `history.mjs` gives these counts (verified by experiment). The Haiku sampl
 
 ### 2. t1-thousands: Sonnet writes the verdict before its reason
 
-**Measured** with probe `call.ts`, Sonnet 5.5 at medium effort, Claude Code 2.1.316, rubric `0f0deea1da13`. Six calls on the claude t1 reference. In every call, every verdict object arrived with `verdict` first: `verdict,reason,steps,evidence` 3 times and `verdict,steps,reason,evidence` 3 times. The raw `result` string has the same order as `structured_output`, with `thinking_tokens: 0` (`out/sonnet-5-5-claude-t1-*.json`). Two of the six were wrong, both `met`:
+**Measured** with probe `call.ts`, Sonnet 5.5 at medium effort, Claude Code 2.1.316, rubric `0f0deea1da13`. Six calls on the claude t1 reference. In every call, every verdict object arrived with `verdict` first: `verdict,reason,steps,evidence` 3 times and `verdict,steps,reason,evidence` 3 times. The raw `result` string has the same order as `structured_output`, with `thinking_tokens: 0` (`out/sonnet-5-5-claude-t1-*.json` (raw logs removed)). Two of the six were wrong, both `met`:
 - "…here it is explicitly 'revision 2 pending', so it does not qualify." Verdict `met`.
 - "…But the failure's own line says result came from revision 1 run with revision 2 pending, so it is not current at revision 2." Verdict `met`.
 

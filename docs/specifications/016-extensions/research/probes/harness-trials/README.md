@@ -17,16 +17,16 @@ Findings are in `../../harness-trials.md`. Everything here is throwaway and ran 
 | `shell-break.sh` | Control for omp3: breaks `sum.js` from a shell and reads Squeal's verdict, with no agent. |
 | `wake-direct.mjs` | Drives Squeal's Pi extension with a fake `pi` and context, with no agent session, under Node or `BUN_BE_BUN=1 omp`. |
 | `show-model-log.cjs` | Prints a fake-model log, request by request. |
-| `omp-sessions.txt` | The ten OMP sessions: model requests, RPC frames, events and shim trace, cut to size. |
-| `stray-session.txt` | The OMP session Squeal's daemon spawn started in omp2. |
+| `omp-sessions.txt` (raw logs removed) | The ten OMP sessions: model requests, RPC frames, events and shim trace, cut to size. |
+| `stray-session.txt` (raw logs removed) | The OMP session Squeal's daemon spawn started in omp2. |
 | `ps-omp7.txt` | The processes during omp7: one `omp`, and a daemon under Node. |
-| `omp-real-sessions.txt` | The three real-model OMP sessions: RPC frames, shim trace, the stored session's Squeal entries with their role, `ps` counts. |
+| `omp-real-sessions.txt` (raw logs removed) | The three real-model OMP sessions: RPC frames, shim trace, the stored session's Squeal entries with their role, `ps` counts. |
 | `cursor-source.txt` (raw logs removed) | Excerpts of the cursor-agent 2026.10.22-27dcf5f bundle. |
 | `cursor-hook.mjs`, `cursor-config.sh` | A logging hook for every Cursor event, registered in both formats, answering with nonce texts (the `user_email` field is never logged). `cursor-config.sh squeal` registers `cursor-squeal.sh` instead; `off` removes both. |
 | `cursor-squeal.sh`, `cursor-squeal.mjs` | A translator: Cursor's payload to Claude Code's hook input, Squeal's shipped bundle run as a child of the shell, its answer back to Cursor's fields. |
 | `run-cursor.sh`, `tty-cursor.mjs` | Run one Cursor session: print mode with stream-json, or interactive under `script`, quit after the stop follow-up. |
 | `cursor-summary.mjs`, `cursor-log.mjs` | Print a session's stream-json without account fields, and one line per hook call. |
-| `cursor-sessions.txt` | The six Cursor sessions, printed by those two. |
+| `cursor-sessions.txt` (raw logs removed) | The six Cursor sessions, printed by those two. |
 
 The fake-model OMP sessions, in order (10, the brief's cap):
 

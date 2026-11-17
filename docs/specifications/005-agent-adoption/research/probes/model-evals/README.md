@@ -33,7 +33,7 @@ Run 2026-10-10 on this host (24 CPUs, Linux 6.8, Node 24.21.0) against Claude Co
 - `bin/collect.mjs`: copies the trimmed evidence into `logs/` and fails if any copied text holds the provider URL or a token from the environment.
 - `bin/compare.mjs [--tasks a,b] <key>...`: shares of sessions per behaviour, grouped by variant, model, harness or task, and for two groups the repetitions per arm needed to separate them (`logs/compare-*.md`).
 - `plan-*.txt`: the plans run: `plan-pilot-1.txt` (16 sessions), then `plan-pilot-2.txt` (20).
-- `logs/`: `sessions.tsv` (one row per session), `summary.md` (cost, load), `cells/<id>.grade.json` and `cells/<id>.calls.txt` (tool calls, SQUEAL texts, final message), `attempts.txt` (cells that did not reach a model).
+- `logs/`: `sessions.tsv` (one row per session), `summary.md` (cost, load), `cells/<id>.grade.json` and `cells/<id>.calls.txt` (raw logs removed) (tool calls, SQUEAL texts, final message), `attempts.txt` (cells that did not reach a model).
 
 ## Replay
 

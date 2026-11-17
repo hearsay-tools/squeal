@@ -30,5 +30,5 @@ Run on 2026-10-09, 06:10 to 07:40 UTC, with Node 24.21.0, Codex CLI 0.160.1 (`gp
   - daemons: `sq.ready.txt`, `cz.ready.txt` (the first cezarion start died), `czb`/`czc`/`sqb` ready and status files, `cz.start1-notes.txt`, `cz.daemon-foreground.txt`, `cz.daemon-detached.txt`.
   - polls: `sq.poll.txt`, `cz.poll.txt`.
   - store: `sq.store-after-sq1.txt`, `sq.store-after-sq2.txt`, `cz.store-after-run-slow.txt`, `sq.slow-runs.txt`, `cz.slow-runs.txt`, `cz.keys.txt`, `cz.slow-run-argv.txt`.
-  - sessions: `*.timeline.txt`, `*.gaps.txt`, `*.squeal-commands.txt`, `*.times.txt` and `*.rollout-path.txt` per session; `sq2.tui.txt`, `cz1.tui.txt` (the TUI scrollback), `cz1.tui-events.txt` (the hook failures in order).
+  - sessions: `*.timeline.txt`, `*.gaps.txt`, `*.squeal-commands.txt`, `*.times.txt` and `*.rollout-path.txt` (raw logs removed) per session; `sq2.tui.txt`, `cz1.tui.txt` (raw logs removed) (the TUI scrollback), `cz1.tui-events.txt` (raw logs removed) (the hook failures in order).
   - other: `slow-deliveries.txt` (every Squeal message that carried a slow result), `cz.run-slow.txt`, `sq.slow-priority.txt` (nice and ionice of the slow lane's worker), `cz.A-src.diff` (what B got).

@@ -104,9 +104,9 @@ The subagent was its own consumer: its first request carried its own `SQUEAL · 
 Squeal runs the tests an edit touches first, so in ordinary edits the news was known before the turn ended and went out as the continuation (s2, s4). To get news after idle, s4b and s5 had the model write a test that waits 10 s and then fails.
 
 - s4b (`serve`, Cezar's runner). The turn ended at 01:54:18.55. Squeal saw the failure at 01:54:27.883 (`squeal why`). The next model request was at 01:54:28, a `user` message with the report, which nobody prompted. The model answered "Squeal reports it failed as expected", and nothing more came until the driver's next prompt 79 s later.
-- s5 (TUI, after `squeal update`, still on 0.1.184). After "DONE", the wake came about 10 s later, at 01:59:51. The TUI shows it as a user message headed `SQUEAL · 1 check changed (1 test) at revision 40` (`dogfood/logs/s5-tui.screens.txt`).
+- s5 (TUI, after `squeal update`, still on 0.1.184). After "DONE", the wake came about 10 s later, at 01:59:51. The TUI shows it as a user message headed `SQUEAL · 1 check changed (1 test) at revision 40` (`dogfood/logs/s5-tui.screens.txt` (raw logs removed)).
 
-In Cezar's runner the woken turn produced `text` events after the last `TURN-END`, with no `turn.started` or `turn-end` of its own (`dogfood/logs/s4b-luna-wake.cezar-events.txt`). This is what research 2 inferred for open question 5.
+In Cezar's runner the woken turn produced `text` events after the last `TURN-END`, with no `turn.started` or `turn-end` of its own (`dogfood/logs/s4b-luna-wake.cezar-events.txt` (raw logs removed)). This is what research 2 inferred for open question 5.
 
 ### Goal 8. OpenCode's own install, no trust step, no Squeal file under OpenCode's config: seen; the status line: misleading
 
@@ -209,7 +209,7 @@ Also kept: the npm prefix `.npm-global` and `.npm`, and the earlier probe direct
 
 ## 008-30: defect 1 re-checked on 0.1.186
 
-Task 008-30, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as above, with Squeal 0.1.186 (main `b4067d55`, whose product tree is `f555ac44`'s), gpt-6-luna only. Records: `dogfood/logs/030-*`, `install-0.1.186.txt`, `prep-0.1.186.txt`, `stats.txt`. Times are UTC.
+Task 008-30, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as above, with Squeal 0.1.186 (main `b4067d55`, whose product tree is `f555ac44`'s), gpt-6-luna only. Records: `dogfood/logs/030-*` (raw logs removed), `install-0.1.186.txt`, `prep-0.1.186.txt`, `stats.txt`. Times are UTC.
 
 ### Verdict
 
