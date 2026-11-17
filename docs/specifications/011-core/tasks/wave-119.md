@@ -41,3 +41,16 @@ Use /worker (worker 74012cb8, resumed). Shape: repair. Effort high. Read `review
 Repair: record the timing facts after the flight owns the launch, in their own short write, best-effort (every error caught and logged; no busy wait that holds the flight back), from facts captured at the start (the tier's `startedAt` and its grant). Then no timing failure of any kind can touch the launch. Keep the competing-writer regression; add a real automatic-rollback regression (the review's `PRAGMA max_page_count` probe) that fails on the candidate and passes on the repair. Measure the lock turn again if the path changes. Do not broaden into pool or busy-resume changes. Review N1 (group lanes record nothing) is row 005-97's decision: leave it, name it in the notes.
 
 Done when: both regressions pass and the new one failed before; the contract's five needs still hold; notes gain "Repair after review 0.1.535"; lint, typecheck, `key-format`, the model test once; `squeal status --wait 60000` on the changed paths (report pending as pending).
+
+## R2 (W1 repair): narrow re-review of cand/0.1.535
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.535` at `aad106e9272d0aa93ff60942ccf6333696f2c995`; candidate CI run 43993122038. Rebuilt on main `a5aa5584d` (0.1.534): worker 74012cb8's four first-round commits (unchanged), its repair (`88ea38856` the fix, `d177b3764` busy-record's fault target, `7192e4c0b`, `0ff4cc358` notes), then the 0.1.535 raise and bundles. Narrow: the repair, against `reviews/0.1.535.md` B1. Read that review and `docs/specifications/005-agent-adoption/tasks/005-96/notes.md` "Repair after review 0.1.535".
+
+Check, each as proven, plausible or unverified:
+
+1. **B1.** The timing record is written in `startNext` after the run has flown, in its own short write, from facts captured at the start (`startedAt`, the grant through `grantOf`); `startTier` is back to its base code; no timing failure of any kind (busy, throw, `SQLITE_FULL` with automatic rollback) can touch the launch. The review's `max_page_count` case failed on `91010bc4c` and passes now; the competing-writer case still passes; a busy store loses the sample silently and another error adds one note per distinct text.
+2. **The contract still holds** (freshness after the flight, 20 entries, one row per worktree, only edit tiers write `firsts` and `tiers`); the first-start delay still uses the tier's own start stamp.
+3. **`busy-record.test.ts`** line 159 now targets the one-shot fault at `recordTier`: the case keeps its meaning (it was written to fail the tier record), and no card 9 source changed.
+4. **Lock turn** measured again (the record's write 0.08 to 0.20 ms, outside the start's transaction now); `act` is at complexity 19.
+
+Coordinator at the candidate: lint, typecheck, `check:version origin/main` (0.1.534 to 0.1.535); `key-format` 12/12 alone; `version-sensitive`, `tier-start-timings`, `edit-timings`, `late-bound`, `worktree-meta`, `busy-record`, the model test, `untracked-promises` 49/49 at load 49. Worker: write-fault scheduler files 38/38; Squeal 504 current, 398 pending. CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running; write `~` for home paths. Write `reviews/0.1.535-r2.md` (under `011-core`) and commit it on your branch.
