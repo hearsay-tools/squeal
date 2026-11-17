@@ -4,6 +4,7 @@ import type { AbsolutePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
   absent,
+  type BeforeRemove,
   commonDirOf,
   inCheckout,
   type KeyAt,
@@ -67,6 +68,12 @@ export interface KeysAtOptions extends KeyingOptions, CheckoutOptions {
   readonly files?: readonly TestFileRef[];
   /** Row 023-17: CI's export of the commit settles files first; on by default, `false` turns it off. */
   readonly ci?: CiCall | false;
+  /**
+   * Row 023-07 (D4): runs in the checkout before it is removed, given the
+   * files it keyed that CI did not settle. Not called when no checkout is
+   * made, or it could not be made or installed.
+   */
+  readonly beforeRemove?: BeforeRemove;
 }
 
 /** D2 as amended: each test file's key at `options.commit`, by the keyer in a checkout there. */
@@ -97,7 +104,22 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
     const ciPart = ci === undefined ? {} : { ci };
     if (asked !== null && asked.length === 0)
       return { commit, files, failure: null, checkoutMs: null, store, ...ciPart };
-    const at = await inCheckout(main, { root, commonDir, commit }, asked, options);
+    const { beforeRemove } = options;
+    // Row 023-07: a file CI settled takes CI's answer, so the hook does not see it.
+    const hook: BeforeRemove | undefined =
+      beforeRemove === undefined
+        ? undefined
+        : (checkout, keyed) =>
+            beforeRemove(
+              checkout,
+              keyed.filter((f) => !files.has(testFileId(f.ref))),
+            );
+    const at = await inCheckout(
+      main,
+      { root, commonDir, commit },
+      asked,
+      hook === undefined ? options : { ...options, beforeRemove: hook },
+    );
     for (const [id, key] of at.files) if (!files.has(id)) files.set(id, key);
     return { commit, files, failure: at.failure, checkoutMs: at.ms, store, ...ciPart };
   });

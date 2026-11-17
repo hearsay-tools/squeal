@@ -1,3 +1,4 @@
+import type { Checkout } from "../checkout/checkout.js";
 import { readStores } from "../code/gate/stored.js";
 import { runGit } from "../fs/git.js";
 import { resolveCommonDir } from "../fs/git-layout.js";
@@ -44,8 +45,23 @@ export type KeyAt =
       readonly key: CheckKey;
       /** The shared store's results at the key for this file; empty when it holds none. */
       readonly stored: readonly ResultRecord[];
+      /** Row 023-07: the sources its runner's closure loads in the checkout, when it was keyed there. */
+      readonly loads?: readonly RelativePath[];
     }
   | { readonly notDetermined: NotDetermined };
+
+/** Row 023-07: one file the checkout keyed, as `beforeRemove` sees it. */
+export interface KeyedFile {
+  readonly ref: TestFileRef;
+  readonly at: KeyAt;
+}
+
+/**
+ * Row 023-07 (D4): runs in the checkout after its files are keyed and the
+ * keyer is closed, before the checkout is removed; given the keyed files.
+ * What it throws rejects the whole call, the checkout removed first.
+ */
+export type BeforeRemove = (checkout: Checkout, files: readonly KeyedFile[]) => Promise<void>;
 
 /** What the checkout step answered. */
 export interface Checked {
@@ -67,26 +83,36 @@ export async function inCheckout(
   main: Store | null,
   input: Parameters<typeof withCheckout>[0],
   files: readonly TestFileRef[] | null,
-  options: KeyingOptions & CheckoutOptions,
+  options: KeyingOptions & CheckoutOptions & { readonly beforeRemove?: BeforeRemove },
 ): Promise<Checked> {
   const out = new Map<string, KeyAt>();
   const started = performance.now();
   const ms = () => Math.round(performance.now() - started);
   try {
-    await withCheckout(input, options, async (checkout) =>
-      withKeyer(checkout.tree, input.commonDir, main ?? undefined, options, async (open) => {
-        const refs = files ?? [...open.listed.values()];
-        const keyed = await open.keyer.keyed(refs);
-        for (const ref of refs) {
-          const at = keyed.get(ref);
-          const id = testFileId(ref);
-          if (at === undefined) {
-            const detail = `no runner in the checkout keyed ${ref.path}`;
-            out.set(id, { notDetermined: { reason: "unlisted", detail } });
-          } else out.set(id, found(main, ref, at.key));
-        }
-      }),
-    );
+    await withCheckout(input, options, async (checkout) => {
+      const refs = await withKeyer(
+        checkout.tree,
+        input.commonDir,
+        main ?? undefined,
+        options,
+        async (open) => {
+          const refs = files ?? [...open.listed.values()];
+          const keyed = await open.keyer.keyed(refs);
+          for (const ref of refs) {
+            const at = keyed.get(ref);
+            const id = testFileId(ref);
+            if (at === undefined) {
+              const detail = `no runner in the checkout keyed ${ref.path}`;
+              out.set(id, { notDetermined: { reason: "unlisted", detail } });
+            } else out.set(id, { ...found(main, ref, at.key), loads: at.loads });
+          }
+          return refs;
+        },
+      );
+      // Row 023-07: the keyer's adapters are closed; the files run in this same checkout.
+      const keyed = refs.map((ref) => ({ ref, at: out.get(testFileId(ref)) as KeyAt }));
+      await options.beforeRemove?.(checkout, keyed);
+    });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
     const failure = { reason: error.reason, detail: error.message };
@@ -102,7 +128,11 @@ export function absent(path: RelativePath, where: string | null): KeyAt {
 }
 
 /** The key and the results `main` holds at it for `ref`. */
-function found(main: Store | null, ref: TestFileRef, key: CheckKey): KeyAt {
+function found(
+  main: Store | null,
+  ref: TestFileRef,
+  key: CheckKey,
+): { key: CheckKey; stored: readonly ResultRecord[] } {
   const stored =
     main === null
       ? []

@@ -14,14 +14,20 @@ import type { CliIo } from "./main.js";
 import { commitSide } from "./status-at-commit.js";
 import { nowSide, selects } from "./status-at-now.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
+import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
 
 /*
  * Spec 023 D1 and D3 (row 023-06): `squeal status --at <commit> [<path>...]
- * [--json]`, without `--run` (row 023-07). Each test file's result at the
- * commit's key, the keys from the gate's keyer in a temporary checkout
- * there (`keysAtCommit`, D2 as amended), beside its current state, and the
- * comparison. It runs no test and writes nothing shared.
+ * [--json]`. Each test file's result at the commit's key, the keys from the
+ * gate's keyer in a temporary checkout there (`keysAtCommit`, D2 as
+ * amended), beside its current state, and the comparison. It runs no test
+ * and writes nothing shared. Row 023-07 (D4): with `--run`, the files with
+ * no result run in that same checkout before it is removed
+ * (`status-at-run.ts`), and are stored at the commit's keys.
  */
+
+/** The checkout's own install budget (row 023-16), when `--run`'s is longer. */
+const INSTALL_TIMEOUT_MS = 300_000;
 
 /** What tests set beside the CLI's own: the checkout's place and install. */
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install">;
@@ -30,32 +36,61 @@ export interface AtArgs {
   readonly commit: string;
   readonly paths: readonly string[];
   readonly json: boolean;
+  /** Row 023-07: `--run [--all-missing] [--timeout <seconds>]`; absent or `null` without `--run`. */
+  readonly run?: RunArgs | null;
 }
+
+/** The options that take a value, and what their value is. */
+const VALUED = { "--at": "a commit", "--timeout": "whole seconds" } as const;
+type Valued = keyof typeof VALUED;
+const FLAGS = new Set(["--json", "--run", "--all-missing"]);
 
 /** `--at <commit>` and what may follow it; a usage problem as a string. */
 export function parseAt(args: readonly string[]): AtArgs | string {
-  let commit: string | null = null;
-  let json = false;
+  const values = new Map<Valued, string>();
+  const flags = new Set<string>();
   const paths: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] ?? "";
-    if (arg === "--at") {
-      const value = args[i + 1];
-      if (value === undefined || value.startsWith("--")) return "--at needs a commit";
-      if (commit !== null) return "--at is given twice";
-      commit = value;
-      i++;
-    } else if (arg.startsWith("--at=")) {
-      if (commit !== null) return "--at is given twice";
-      commit = arg.slice("--at=".length);
-      if (commit === "") return "--at needs a commit";
-    } else if (arg === "--json") json = true;
-    else if (arg === "--run") return "--run is not available yet";
+    const option = valuedOption(args, i);
+    if (typeof option === "string") return option;
+    if (option !== null) {
+      if (values.has(option.name)) return `${option.name} is given twice`;
+      values.set(option.name, option.value);
+      i += option.taken;
+    } else if (FLAGS.has(arg)) flags.add(arg);
     else if (arg.startsWith("--")) return `unknown option "${arg}" with --at`;
     else paths.push(arg);
   }
-  if (commit === null) return "--at needs a commit";
-  return { commit, paths, json };
+  const commit = values.get("--at");
+  if (commit === undefined || commit === "") return "--at needs a commit";
+  const run = flags.has("--run");
+  const allMissing = flags.has("--all-missing");
+  const timeout = values.get("--timeout");
+  if (!run && allMissing) return "--all-missing needs --run";
+  if (!run && timeout !== undefined) return "--timeout needs --run";
+  if (timeout !== undefined && !/^[1-9][0-9]*$/.test(timeout))
+    return "--timeout takes whole seconds above 0";
+  const timeoutSeconds = timeout === undefined ? RUN_TIMEOUT_SECONDS : Number(timeout);
+  const json = flags.has("--json");
+  return { commit, paths, json, run: run ? { allMissing, timeoutSeconds } : null };
+}
+
+/** The valued option at `args[i]`, with how many more words it took; `null` when it is none. */
+function valuedOption(
+  args: readonly string[],
+  i: number,
+): { readonly name: Valued; readonly value: string; readonly taken: 0 | 1 } | string | null {
+  const arg = args[i] ?? "";
+  for (const name of Object.keys(VALUED) as Valued[]) {
+    if (arg === name) {
+      const value = args[i + 1];
+      if (value === undefined || value.startsWith("--")) return `${name} needs ${VALUED[name]}`;
+      return { name, value, taken: 1 };
+    }
+    if (arg.startsWith(`${name}=`)) return { name, value: arg.slice(name.length + 1), taken: 0 };
+  }
+  return null;
 }
 
 /** Whether `args` ask for `status --at`. */
@@ -116,6 +151,22 @@ export async function statusAtCommand(
   const now = await withStores(commonDir, (main) => nowSide({ ...input, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
+  const note = (text: string) => io.stderr(`squeal: ${text}\n`);
+  const runArgs = args.run ?? null;
+  const ran: AtRun | null =
+    runArgs === null
+      ? null
+      : atRun({
+          args: runArgs,
+          root,
+          commit,
+          given: args.commit,
+          paths: args.paths,
+          env,
+          started: performance.now(),
+          // The gate's notes go to stderr in text mode; the estimate in both (D4.5).
+          note: (text) => (args.json && !text.startsWith("--all-missing") ? undefined : note(text)),
+        });
   const at = await commitSide({
     ...keying,
     ...options,
@@ -123,9 +174,17 @@ export async function statusAtCommand(
     commit,
     paths,
     worktreeId,
-    note: (text) => io.stderr(`squeal: ${text}\n`),
+    note,
+    ...(ran === null
+      ? {}
+      : {
+          beforeRemove: ran.beforeRemove,
+          // D4.6: the install is inside the one budget.
+          installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
+        }),
   });
-  const files = compareSides(unionRefs(now.refs, at.refs, paths), at.state, now.state);
+  const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref) ?? at.state(ref);
+  const files = compareSides(unionRefs(now.refs, at.refs, paths), state, now.state);
   const head = await readHead(root);
   const report: AtReport = {
     commit,
@@ -136,6 +195,7 @@ export async function statusAtCommand(
     checkoutMs: at.checkoutMs,
     failure: at.failure,
     files,
+    ...(ran === null ? {} : { run: ran.use() }),
   };
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.

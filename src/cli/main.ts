@@ -70,14 +70,19 @@ Usage:
                                 path whose name holds the text, and returns with their
                                 outcome, not the file's verdict: exit 1 when one
                                 failed, else 3 (--json: selection.focused)
-  squeal status --at <commit> [<path>...] [--json]
+  squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--json]
                                 Each test file's stored result at the commit's key
                                 (keyed in a temporary checkout there; nothing runs)
                                 beside its state now: pass, fail, no result, absent
                                 or not determined, with where the result came from;
                                 lists the files that changed or are unknown, then
                                 counts; exit 0 when every file is known on both
-                                sides, 3 when one is not, 2 on a usage or setup error
+                                sides, 3 when one is not, 2 on a usage or setup error.
+                                --run runs, in that checkout, the files with no result
+                                that the diff <commit>..HEAD selects (--all-missing:
+                                every one, after an estimate) and stores them at the
+                                commit's keys, within one --timeout (600 s, the
+                                checkout and install included)
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints

@@ -35,19 +35,44 @@ const fail: SideState = stateOf(
   OWN,
 );
 
-describe("status --at arguments (row 023-06)", () => {
+describe("status --at arguments (rows 023-06, 023-07)", () => {
   it("takes the commit, paths and --json, and refuses what it does not take", () => {
     expect(parseAt(["--at", "HEAD~1", "test/a.test.ts", "--json"])).toEqual({
       commit: "HEAD~1",
       paths: ["test/a.test.ts"],
       json: true,
+      run: null,
     });
-    expect(parseAt(["--at=abc"])).toEqual({ commit: "abc", paths: [], json: false });
+    expect(parseAt(["--at=abc"])).toEqual({ commit: "abc", paths: [], json: false, run: null });
     expect(parseAt(["--at"])).toBe("--at needs a commit");
     expect(parseAt(["--at", "--json"])).toBe("--at needs a commit");
     expect(parseAt(["--at", "a", "--at", "b"])).toBe("--at is given twice");
     expect(parseAt(["--at", "a", "--wait", "10"])).toBe('unknown option "--wait" with --at');
-    expect(parseAt(["--at", "a", "--run"])).toBe("--run is not available yet");
+    expect(parseAt(["--at=", "--json"])).toBe("--at needs a commit");
+  });
+
+  it("takes --run with --all-missing and one --timeout, 600 s by default (row 023-07, D4.6)", () => {
+    expect(parseAt(["--at", "a", "--run"])).toMatchObject({
+      run: { allMissing: false, timeoutSeconds: 600 },
+    });
+    expect(parseAt(["--run", "--all-missing", "--timeout", "90", "--at", "a", "x"])).toEqual({
+      commit: "a",
+      paths: ["x"],
+      json: false,
+      run: { allMissing: true, timeoutSeconds: 90 },
+    });
+    expect(parseAt(["--at", "a", "--run", "--timeout=30"])).toMatchObject({
+      run: { timeoutSeconds: 30 },
+    });
+    expect(parseAt(["--at", "a", "--all-missing"])).toBe("--all-missing needs --run");
+    expect(parseAt(["--at", "a", "--timeout", "5"])).toBe("--timeout needs --run");
+    expect(parseAt(["--at", "a", "--run", "--timeout", "0"])).toBe(
+      "--timeout takes whole seconds above 0",
+    );
+    expect(parseAt(["--at", "a", "--run", "--timeout"])).toBe("--timeout needs whole seconds");
+    expect(parseAt(["--at", "a", "--run", "--timeout=1", "--timeout=2"])).toBe(
+      "--timeout is given twice",
+    );
   });
 
   it("exits 2 on a usage error through main, and its help line is in status's help", async () => {
@@ -57,7 +82,9 @@ describe("status --at arguments (row 023-06)", () => {
     expect(err.join("")).toContain("squeal status: --at needs a commit");
     const out: string[] = [];
     expect(main(["status", "--help"], { stdout: (t) => out.push(t), stderr: () => {} })).toBe(0);
-    expect(out.join("")).toContain("squeal status --at <commit> [<path>...] [--json]");
+    expect(out.join("")).toContain(
+      "squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--json]",
+    );
   });
 });
 

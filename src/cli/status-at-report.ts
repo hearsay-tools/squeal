@@ -1,3 +1,4 @@
+import type { RunEstimate } from "../core/code/gate/estimate.js";
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { KeyAt } from "../core/commit/at-keys-checkout.js";
 import { compare } from "../core/fs/compare.js";
@@ -13,9 +14,13 @@ import type { ResultRecord } from "../core/types/store-records.js";
 
 /** Where a stored result came from (D3: local run, import from CI, or this command's run). */
 export interface Origin {
-  /** `ci`: CI's export for the commit (row 023-17); `import`: a `squeal import`; `own`: this worktree; `worktree`: another one. */
-  readonly kind: "ci" | "import" | "own" | "worktree";
-  /** The worktree that stored it; `null` for `ci`. */
+  /**
+   * `ci`: CI's export for the commit (row 023-17); `import`: a `squeal
+   * import`; `own`: this worktree; `worktree`: another one; `run`: this
+   * command's `--run`, in its checkout (row 023-07).
+   */
+  readonly kind: "ci" | "import" | "own" | "worktree" | "run";
+  /** The worktree that stored it; `null` for `ci` and `run`. */
   readonly worktreeId: WorktreeId | null;
   /** The commit its run recorded. */
   readonly commit: CommitSha;
@@ -38,7 +43,11 @@ export type SideState =
       readonly pending?: "queued" | "running";
     }
   | { readonly state: "absent" }
-  | { readonly state: "not determined"; readonly reason: string };
+  | { readonly state: "not determined"; readonly reason: string }
+  /** Row 023-07, D4.6: `--run` selected it and did not start it, for want of budget or of its `prepare`. */
+  | { readonly state: "not run"; readonly reason: "budget" | "prepare" }
+  /** Row 023-07, D4.9: its closure at the commit reads a path git does not hold there. */
+  | { readonly state: "not comparable"; readonly reason: string };
 
 /** D3's comparison. */
 export type Change = "pass -> fail" | "fail -> pass" | "unchanged" | "unknown";
@@ -138,6 +147,28 @@ export type NowSource =
   | { readonly kind: "daemon"; readonly revision: number | null }
   | { readonly kind: "stored" };
 
+/** Row 023-07, D1: what `--run` used of its budget, and what it ran. */
+export interface RunUse {
+  readonly timeoutSeconds: number;
+  /** From before the checkout to the end of the run, in ms. */
+  readonly usedMs: number;
+  /** The gate's own time in ms; `null` when it did not start. */
+  readonly gateMs: number | null;
+  /** The files with no result at their key that the selection chose to run. */
+  readonly selected: number;
+  /** Of those, the ones that ended with a pass or a fail. */
+  readonly ran: number;
+  /** Of those, the ones the budget left not run. */
+  readonly notRun: number;
+  /** Files with no result that were not run because their closure needs a path git does not hold. */
+  readonly notComparable: number;
+  readonly timedOut: boolean;
+  /** D17.1's estimate of the selected files; `null` when the checkout gave none. */
+  readonly estimate: RunEstimate | null;
+  /** 020's rerun line, with a `--timeout` that fits; `null` when every file ran. */
+  readonly rerun: string | null;
+}
+
 export interface AtReport {
   readonly commit: string;
   readonly commitTimeMs: number;
@@ -148,6 +179,8 @@ export interface AtReport {
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
   readonly files: readonly FileReport[];
+  /** Row 023-07: `--run`'s budget use; absent without `--run`. */
+  readonly run?: RunUse;
 }
 
 const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
@@ -156,11 +189,17 @@ export function originText(origin: Origin): string {
   if (origin.kind === "ci") return "from CI's export";
   if (origin.kind === "import") return `imported from CI at ${short(origin.commit)}`;
   if (origin.kind === "own") return "run in this worktree";
+  if (origin.kind === "run") return "run by this command";
   return `run in worktree ${(origin.worktreeId ?? "").slice(0, 8)}`;
 }
 
 function word(side: SideState): string {
-  if (side.state === "not determined") return `not determined (${side.reason})`;
+  if (
+    side.state === "not determined" ||
+    side.state === "not run" ||
+    side.state === "not comparable"
+  )
+    return `${side.state} (${side.reason})`;
   if (side.state === "no result" && side.pending !== undefined)
     return `no result (${side.pending})`;
   return side.state;
@@ -206,6 +245,7 @@ export function formatAt(report: AtReport, nowMs: number): string {
   lines.push(
     `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown} unknown`,
   );
+  if (report.run !== undefined) lines.push(...runLines(report.run, at));
   if (pastRetention(report.files, report.commitTimeMs, nowMs)) {
     const days = Math.floor((nowMs - report.commitTimeMs) / DAY_MS);
     lines.push(
@@ -213,6 +253,23 @@ export function formatAt(report: AtReport, nowMs: number): string {
     );
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** Row 023-07: what `--run` ran, of how much budget, and the rerun that fits. */
+function runLines(run: RunUse, at: string): string[] {
+  const used = `${(run.usedMs / 1000).toFixed(1)} s of the ${run.timeoutSeconds} s budget`;
+  const lines = [
+    run.selected === 0
+      ? `--run: no file with no result at ${at} to run (${used})`
+      : `--run: ${run.ran} of ${run.selected} test files with no result at ${at} ran in its checkout and are stored at its keys (${used})`,
+  ];
+  if (run.notComparable > 0)
+    lines.push(
+      `${run.notComparable} not run: their closure needs a path git does not hold at ${at}`,
+    );
+  if (run.rerun !== null)
+    lines.push(`${run.notRun} not run (budget). A rerun that fits: ${run.rerun}`);
+  return lines;
 }
 
 /** D1's versioned JSON report. */
@@ -229,6 +286,7 @@ export function jsonAt(report: AtReport): string {
     checkoutMs: report.checkoutMs,
     failure: report.failure,
     counts: countsOf(report.files),
+    run: report.run ?? null,
     files: report.files.map((f) => ({
       project: f.ref.project,
       path: f.ref.path,
