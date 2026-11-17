@@ -3,14 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import {
-  type Fixture,
-  fixture,
-  freshKey,
-  git,
-  passesAt,
-  ref,
-} from "../commit/at-keys-fixture.js";
+import { type Fixture, fixture, freshKey, git, passesAt, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
 import { check, clean, run, testCheck, testOf, withStore } from "./status-at-kit.js";
