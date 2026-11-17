@@ -1,15 +1,17 @@
 import { readPolicy } from "../../core/daemon/policy.js";
-import { formatDelta, formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
+import { formatDelta } from "../../core/delivery/format.js";
 import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { registerFirst } from "../shared/ensure.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
+import { registerOwing, sayOwed } from "../shared/owed.js";
 import { primer } from "../shared/primer.js";
 import { stopTurn } from "../shared/stop.js";
 import { waitIdle } from "../shared/waiter.js";
 import type { PiSession, RunAnswer, SettleAnswer } from "./protocol.js";
+import { PI_OWED } from "./session.js";
 
 /*
  * The worker's side of spec 009 D3 for one run, from its prompt to its
@@ -37,6 +39,12 @@ export async function startRun(session: PiSession, deps: HookDeps): Promise<RunA
   const answer = await withContext(consumerInput(session), location, deps, async (context) => {
     const section = primer(deps.command, coverageOf(context));
     if (context.store.consumers.get(context.consumer) !== null) {
+      // Row 005-98: a registration whose header never reached the host is the run's news.
+      const owed = await sayOwed(context, deps, { inTurn: true });
+      if (owed !== null) {
+        await context.delivery.registrationSent(context.consumer);
+        return { primer: section, news: owed };
+      }
       const delta = await context.delivery.startTurn(context.consumer);
       return { primer: section, news: delta === null ? null : formatDelta(delta, deps.command) };
     }
@@ -46,15 +54,13 @@ export async function startRun(session: PiSession, deps: HookDeps): Promise<RunA
     const alive = daemonLiveness(record, now).state === "alive";
     const first = alive ? null : await registerFirst(location, deps, context);
     const startingSince = first?.startingSince;
-    const registration = await context.delivery.register(context.consumer, {
+    const news = await registerOwing(context, deps, PI_OWED, {
       inTurn: true,
       ...(startingSince === undefined ? {} : { startingSince }),
     });
     await first?.ensure();
-    return {
-      primer: section,
-      news: formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command),
-    };
+    await context.delivery.registrationSent(context.consumer);
+    return { primer: section, news };
   });
   return answer ?? SILENT_RUN;
 }

@@ -63,11 +63,13 @@ Every path that registers and may start a daemon now registers first (`registerF
 | Claude Code SessionStart, SubagentStart; Codex SessionStart and subagent start | `startSession` | `src/harness/shared/session.ts` | the hook's 2 s timeout | yes |
 | Claude Code and Codex UserPromptSubmit that registers | `submitPrompt` | `src/harness/shared/prompt.ts` | 2 s | yes |
 | Claude Code PostToolBatch, Codex PostToolUse, Pi and OpenCode boundaries that register | `deliver` | `src/harness/shared/deliver.ts` | 2 s | yes (they already ensured before) |
-| OpenCode session register | `register` | `src/harness/opencode/bridge.ts` | the bridge's 2 s deadline (`EVENT_DEADLINE_MS`), which kills its process group | no |
-| Pi session start | `startSession` | `src/harness/pi/session.ts` | the worker's 2 s deadline, which ends the worker | no |
-| Pi run start | `startRun` | `src/harness/pi/run.ts` | 2 s | no |
+| OpenCode session register | `register` | `src/harness/opencode/bridge.ts` | the bridge's 2 s deadline (`EVENT_DEADLINE_MS`), which kills its process group | yes, header only |
+| Pi session start | `startSession` | `src/harness/pi/session.ts` | the worker's 2 s deadline, which ends the worker | yes, header only |
+| Pi run start | `startRun` | `src/harness/pi/run.ts` | 2 s | yes, header only; a registered run start says an owed header as its news first |
 
-OpenCode and Pi starts owe no text: their registration header is an answer to the extension, and Pi's primer goes in the system prompt at each run, so a lost answer loses no primer. Their boundaries share `deliver`, which clears any record. Tests: `test/harness/register-first-harnesses.test.ts`, one per path.
+Repair after review 0.1.541 B1: OpenCode and Pi owe their registration header too (`{ primer: false }`, `PI_OWED`), cleared last through the held hand-off (OpenCode's at the plugin's verdict, Pi's at the host's). Their primer stays on the system prompt, so the owed text never carries it. Pi's run start reads the owed header before `startTurn`; Pi's and OpenCode's tool boundaries use the shared `deliver`, and OpenCode's prompt the shared `submitPrompt`, which say it. Re-saying it re-registers a registered consumer, which keeps its own count's `since` (row 005-100). Tests: `test/harness/register-first-harnesses.test.ts` (order, one per path) and `test/harness/registration-owed-harnesses.test.ts` (kill during the ensure for Pi's session start, Pi's first run registration and OpenCode's register; the next delivery says the registration with its failure once, the one after only news; lost and taken hand-off controls). All six kill and lost-hand-off cases fail without the repair (checked by reverting the three source files).
+
+Other paths checked for the same gap: the shared prompt (`prompt.ts`, Claude Code and Codex, and OpenCode's prompt) registers owing its text and replays an owed one; Codex's SessionStart, subagent start, PostToolUse and prompt use the shared `startSession`, `deliver` and `submitPrompt`. Not covered: a Stop (`stop.ts`, every harness) and the idle waiter (`waiter.ts`) do not say an owed registration; it waits for the next tool boundary, prompt or Pi run start. Neither path drops it, so the text comes late, not never. They were outside this row's files.
 
 The Stop hook's registration (`src/harness/shared/stop.ts`) is unchanged: it ensures only when the heartbeat is stale and does not wait for one.
 

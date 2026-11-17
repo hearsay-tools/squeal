@@ -1,9 +1,9 @@
-import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
 import type { EpochMs } from "../../core/types/common.js";
 import { type HookContext, locate, usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
 import { ensure, registerFirst } from "../shared/ensure.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
+import { registerOwing } from "../shared/owed.js";
 import { endSession } from "../shared/session.js";
 import { unregisterSession } from "../shared/sweep.js";
 import type { PiSession, StartReason } from "./protocol.js";
@@ -17,6 +17,12 @@ import type { PiSession, StartReason } from "./protocol.js";
 const SWEEP_REASONS: ReadonlySet<StartReason> = new Set(["startup", "resume"]);
 
 const consumerInput = (session: PiSession) => ({ session_id: session.sessionId });
+
+/**
+ * Row 005-98: what a Pi registration owes until the host has its answer: the header alone,
+ * since the primer goes in the system prompt of every run (D3 `before_agent_start`).
+ */
+export const PI_OWED = { primer: false } as const;
 
 /**
  * `session_start`: ensure the daemon, register, and return the registration
@@ -42,6 +48,8 @@ export async function startSession(
     const first = await registerFirst(location, deps, context);
     const text = await registerAtStart(session, context, deps, first.startingSince);
     await first.ensure();
+    // Last: the text is handed over once the host has the answer (decision C).
+    if (text !== null) await context.delivery.registrationSent(context.consumer);
     return text;
   });
   if (!ensured) await ensure(location, deps);
@@ -64,11 +72,11 @@ async function registerAtStart(
     });
   }
   // After a reload the run may go on: its earlier tool calls may be in the registration revision.
-  const registration = await context.delivery.register(context.consumer, {
+  // Row 005-98: it owes its header, with no primer: Pi's primer is in each run's system prompt.
+  return registerOwing(context, deps, PI_OWED, {
     atStart: !reload,
     ...(startingSince === undefined ? {} : { startingSince }),
   });
-  return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
 }
 
 /** `session_shutdown`: unregister every consumer of the session, as 001's SessionEnd. */
