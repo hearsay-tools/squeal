@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { connect, createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync, StatementSync } from "node:sqlite";
@@ -33,10 +34,19 @@ export interface ServedWrites {
   /** The batches `pause` holds now, in order. */
   held(): readonly SentBatch[];
   release(): void;
+  /**
+   * Review 0.1.546 B1: the daemon stops answering at all, as one stopped with SIGSTOP: no
+   * lease, write or ping gets an answer until `thaw`. Only with `serveWrites`'s `freezable`.
+   */
+  freeze(): void;
+  thaw(): void;
   close(): Promise<void>;
 }
 
-export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
+export async function serveWrites(
+  r: SquealRepo,
+  { freezable = false }: { readonly freezable?: boolean } = {},
+): Promise<ServedWrites> {
   const dir = mkdtempSync(join(tmpdir(), "sq-w-"));
   const socketPath = join(dir, "d.sock") as AbsolutePath;
   const store = openStore(r.repo.commonDir as AbsolutePath);
@@ -69,8 +79,9 @@ export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
     },
   });
   const server = await createDaemonServer(socketPath, handle);
+  const gate = freezable ? await frozenGate(socketPath, join(dir, "f.sock") as AbsolutePath) : null;
   r.store.worktrees.setDaemon(r.worktreeId, {
-    socketPath,
+    socketPath: gate?.socketPath ?? socketPath,
     startedAt: 1 as EpochMs,
     heartbeatAt: Date.now() as EpochMs,
     heartbeatIntervalMs: 3_600_000,
@@ -90,12 +101,64 @@ export async function serveWrites(r: SquealRepo): Promise<ServedWrites> {
       held = [];
       for (const resolve of waiting) resolve();
     },
+    freeze: () => {
+      if (gate === null) throw new Error("serveWrites: not freezable");
+      gate.frozen = true;
+    },
+    thaw: () => gate?.thaw(),
     close: async () => {
+      gate?.thaw();
+      await gate?.close();
       await server.close();
       store.close();
       rmSync(dir, { recursive: true, force: true });
     },
   };
+}
+
+/**
+ * A socket at `socketPath` that passes each connection to `upstream`, and while `frozen` holds
+ * every byte both ways, as a stopped daemon's socket buffers them; `thaw` passes them on.
+ */
+async function frozenGate(upstream: AbsolutePath, socketPath: AbsolutePath) {
+  const held: (() => void)[] = [];
+  const sockets = new Set<Socket>();
+  const gate = {
+    socketPath,
+    frozen: false,
+    thaw: () => {
+      gate.frozen = false;
+      for (const pass of held.splice(0)) pass();
+    },
+    close: () => {
+      for (const socket of sockets) socket.destroy();
+      return new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+  const pass = (from: Socket, to: Socket) => {
+    from.on("data", (chunk) => {
+      const send = () => {
+        if (!to.destroyed) to.write(chunk);
+      };
+      if (gate.frozen) held.push(send);
+      else send();
+    });
+    from.on("end", () => {
+      const end = () => to.end();
+      if (gate.frozen) held.push(end);
+      else end();
+    });
+    from.on("error", () => to.destroy());
+    from.on("close", () => to.destroy());
+  };
+  const server: Server = createServer((client) => {
+    const daemon = connect(upstream);
+    for (const socket of [client, daemon]) sockets.add(socket);
+    pass(client, daemon);
+    pass(daemon, client);
+  });
+  await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+  return gate;
 }
 
 /** What this process wrote to `store.sqlite` files while it counted (`countWrites`). */

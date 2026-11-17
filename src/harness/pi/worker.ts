@@ -4,6 +4,7 @@ import { shellWord } from "../../core/text.js";
 import { HAND_OFF_BOUND_MS, HandOff } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import type { HookDeps } from "../shared/hook.js";
+import { HandedRegistrations, type PiDeps } from "./handed.js";
 import { awaitVerdict } from "./host.js";
 import type { FromWorker, PiAnswer, PiRequest, ToWorker } from "./protocol.js";
 import { endRun, idleWait, settle, startRun, toolCall } from "./run.js";
@@ -38,11 +39,7 @@ export function workerDeps(module: URL): HookDeps {
  * Runs one request on the shared code; the answer is of the request's kind
  * (`PiAnswers`). `signal` cancels a `wait`.
  */
-export function handle(
-  request: PiRequest,
-  deps: HookDeps,
-  signal?: AbortSignal,
-): Promise<PiAnswer> {
+export function handle(request: PiRequest, deps: PiDeps, signal?: AbortSignal): Promise<PiAnswer> {
   switch (request.kind) {
     case "start":
       return startSession(request, deps);
@@ -77,12 +74,14 @@ export function verdictsOf(data: unknown): SharedArrayBuffer | undefined {
  * the host's `verdicts` (row 011-288), an answer that carries a prepared
  * report is posted `held`, and the report commits only on the host's
  * verdict, which this thread waits for; a host without the slot gets each
- * report committed before its answer, as before.
+ * report committed before its answer, as before. A registration whose text
+ * the host has is not said again by this worker (`HandedRegistrations`).
  */
 export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayBuffer): void {
   const waits = new Map<number, AbortController>();
   const slot = verdicts === undefined ? null : new Int32Array(verdicts);
   const writes = new HandedWrites();
+  const handed = new HandedRegistrations();
   port.on("message", (message: ToWorker) => {
     if ("cancel" in message) {
       waits.get(message.cancel)?.abort();
@@ -93,15 +92,20 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
     if (cancel !== null) waits.set(id, cancel);
     const answer = (message: FromWorker) => port.postMessage(message);
     const handOff = slot === null ? null : new HandOff();
+    const handing = handed.request();
+    const requestDeps = { ...deps, handing, ...(handOff === null ? {} : { handOff }) };
     writes
-      .after(() => handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal))
+      .after(() => handle(request, requestDeps, cancel?.signal))
       .then(
         (result) => {
           if (slot === null || handOff === null || !handOff.pending) {
-            return answer({ id, ok: true, answer: result });
+            answer({ id, ok: true, answer: result });
+            return handing.keep();
           }
           const post = () => answer({ id, ok: true, answer: result, held: true });
-          handOff.settle(awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit");
+          const commit = awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit";
+          if (commit) handing.keep();
+          handOff.settle(commit);
           writes.add(handOff.sent());
         },
         () => {
@@ -121,7 +125,9 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
  * cleared header, for one, is not said again by the run Pi starts next.
  * The Claude Code and Codex wrappers wait for the same writes before their
  * process ends (`writeThenCommit`). With none pending, a request starts at
- * once, as before.
+ * once, as before. A write that failed or got no answer within its bound
+ * also opens the gate; a registration it left owed is not said again
+ * either (review 0.1.546 B1, `HandedRegistrations`).
  */
 class HandedWrites {
   #pending: Promise<void> | null = null;

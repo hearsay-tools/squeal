@@ -11,6 +11,7 @@ import { primer } from "../shared/primer.js";
 import { registerThenEnsure } from "../shared/session.js";
 import { stopTurn } from "../shared/stop.js";
 import { waitIdle } from "../shared/waiter.js";
+import { entered, type PiDeps } from "./handed.js";
 import type { PiSession, RunAnswer, SettleAnswer } from "./protocol.js";
 import { PI_OWED } from "./session.js";
 
@@ -34,10 +35,12 @@ const SILENT_RUN: RunAnswer = { primer: null, news: null };
  * 001's prompt registers. Nothing outside a repository that uses Squeal or
  * without a store the worker can open.
  */
-export async function startRun(session: PiSession, deps: HookDeps): Promise<RunAnswer> {
+export async function startRun(session: PiSession, deps: PiDeps): Promise<RunAnswer> {
   const location = locate(session.cwd);
   if (location === null || !usesSqueal(location)) return SILENT_RUN;
-  const answer = await withContext(consumerInput(session), location, deps, async (context) => {
+  const answer = await withContext(consumerInput(session), location, deps, async (opened) => {
+    // Review 0.1.546 B1: a registration this worker handed is not owed again.
+    const context = await entered(opened, deps);
     const section = primer(deps.command, coverageOf(context));
     if (context.store.consumers.get(context.consumer) !== null) {
       // Row 005-98: a registration whose header never reached the host is the run's news.

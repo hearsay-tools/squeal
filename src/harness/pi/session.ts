@@ -6,6 +6,7 @@ import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { registerOwing } from "../shared/owed.js";
 import { endSession, registerThenEnsure } from "../shared/session.js";
 import { unregisterSession } from "../shared/sweep.js";
+import { entered, type PiDeps } from "./handed.js";
 import type { PiSession, StartReason } from "./protocol.js";
 
 /*
@@ -37,13 +38,15 @@ export const PI_OWED = { primer: false } as const;
  */
 export async function startSession(
   session: PiSession & { readonly reason: StartReason },
-  deps: HookDeps,
+  deps: PiDeps,
 ): Promise<string | null> {
   const location = locate(session.cwd);
   if (location === null || !usesSqueal(location)) return null;
   let ensured = false;
-  const text = await withContext(consumerInput(session), location, deps, async (context) => {
+  const text = await withContext(consumerInput(session), location, deps, async (opened) => {
     ensured = true;
+    // Review 0.1.546 B1: the worker keeps the registration it hands here.
+    const context = await entered(opened, deps);
     // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
     const first = await registerFirst(location, deps, context);
     const text = await registerThenEnsure(first, () =>
@@ -93,12 +96,13 @@ export async function shutdownSession(session: PiSession, deps: HookDeps): Promi
  */
 export async function toolBoundary(
   session: PiSession,
-  deps: HookDeps,
+  deps: PiDeps,
   edited = true,
 ): Promise<string | null> {
   const location = locate(session.cwd);
   if (location === null) return null;
-  return withContext(consumerInput(session), location, deps, (context) =>
-    deliver(context, deps, edited),
+  // Review 0.1.546 B1: a registration this worker handed is not owed again.
+  return withContext(consumerInput(session), location, deps, async (context) =>
+    deliver(await entered(context, deps), deps, edited),
   );
 }
