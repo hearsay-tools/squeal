@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { WorktreeKeys } from "../../src/core/scheduler/keying.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { revisionText } from "../../src/core/state/revision-commit.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
@@ -44,8 +47,12 @@ describe("the descriptor git ignores, rewritten (row 011-262, findings E1)", () 
       expect.objectContaining({ path: DESCRIPTOR, ignored: true }),
     ]);
 
-    // `git status` is empty, so the tree is not dirty: only the path says what changed.
-    const named = `Revision 1 · ${git(repo.root, ["rev-parse", "--short=8", "HEAD"]).trim()} + 1 (changed git-ignored ${DESCRIPTOR}): `;
+    // `git status` is empty, so the tree is not dirty: only the path says what changed. Row
+    // 005-94: no hook names the commit; `squeal status` does, from the same header.
+    const short = git(repo.root, ["rev-parse", "--short=8", "HEAD"]).trim();
+    const header = readHeader(repo.store, worktreeIdFor(repo.root));
+    expect(revisionText(header.revision, header.commit)).toBe(`1 · ${short} + 1`);
+    const named = `Revision 1 (changed git-ignored ${DESCRIPTOR}): `;
     expect(headerLine("news")?.slice(0, named.length)).toBe(named);
     expect(headerLine("full")?.slice(0, named.length)).toBe(named);
   });
