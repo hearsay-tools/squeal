@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.540";
+  if (true) return "0.1.541";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -238,6 +238,7 @@ var init_store = __esm({
       countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
       holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
       leaving: { prefix: "leaving:", owner: "delivery/leaving" },
+      registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
       notes: { prefix: "notes.", owner: "notes" },
       refined: { prefix: "refined.", owner: "scheduler/refined" },
       awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -78184,7 +78185,7 @@ function seesEveryChange(store, worktreeId, r) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   return r.scanned !== void 0 && daemon?.startedAt === r.scanned;
 }
-function park(store, consumer, at2, { said, uncovered } = { said: false, uncovered: [] }) {
+function park(store, consumer, at2, { said, uncovered, editsSince } = { said: false, uncovered: [], editsSince: null }) {
   const key3 = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key3, consumer) !== void 0) writeSlot(store, key3, consumer, null);
@@ -78192,9 +78193,15 @@ function park(store, consumer, at2, { said, uncovered } = { said: false, uncover
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told3 = {
     ...said ? { said: true } : {},
-    ...uncovered.length > 0 ? { uncovered } : {}
+    ...uncovered.length > 0 ? { uncovered } : {},
+    ...editsSince === null ? {} : { editsSince }
   };
   writeParked(store, consumer, at2, { ...current2, leftAt, leftTime: at2, ...told3 });
+}
+function parkedEditsSinces(store, worktreeId) {
+  return Object.values(readAll(store, parkedMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && isNumber4(v.editsSince) ? [v.editsSince] : []
+  );
 }
 function writeParked(store, consumer, at2, value) {
   const key3 = parkedMetaKey(consumer.worktreeId);
@@ -99516,8 +99523,9 @@ function readState(store, consumer) {
 function writeState(store, consumer, state) {
   writeSlot(store, editsMetaKey(consumer.worktreeId), consumer, state);
 }
-function editsSaid(store, consumer) {
-  return readState(store, consumer)?.said === true;
+function editsToPark(store, consumer) {
+  const state = readState(store, consumer);
+  return { said: state?.said === true, editsSince: state?.since ?? null };
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
@@ -99528,6 +99536,7 @@ function prune4(store, worktreeId) {
   const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
     (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
   );
+  sinces.push(...parkedEditsSinces(store, worktreeId));
   pruneRekeyed(
     store,
     worktreeId,
@@ -99649,7 +99658,7 @@ function dropLeft(store, worktreeId, now, options) {
 }
 function drop(store, consumer, at2) {
   park(store, consumer, at2, {
-    said: editsSaid(store, consumer),
+    ...editsToPark(store, consumer),
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);

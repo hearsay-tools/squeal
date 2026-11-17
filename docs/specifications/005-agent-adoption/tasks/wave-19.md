@@ -37,3 +37,13 @@ Starting seam: where a registration writes the edits state. Lead: keep an existi
 Owns, in addition: `src/core/delivery/edits.ts` and its tests, the rows of the two path tables for "registration". Leave alone as before, and `evals/**` (the measure is the check; it does not change).
 
 Done when: tests for register, edit, register again, failure delivery (count present); the same through park and resume; a first registration and a new session (count starts at the registration); the late state rules of 005-97 hold (`late-paths.test.ts`); the path-table rows updated in your notes. The coordinator re-runs the eval scenario on the candidate.
+
+## Review brief: candidate 0.1.541
+
+Use /reviewer. Rows 005-98 and 005-100; the commit range is the candidate's commits over `origin/main` at its base. Decisions to hold the code to:
+
+- 005-98, option A (the human, 2026-11-17): a session start registers before it starts the daemon, in every harness that shares the start path (SessionStart, UserPromptSubmit, the OpenCode bridge, the Pi session start).
+- Decision C (coordinator, 2026-11-17): the start hook writes a "registration text sent" mark as its last step; a boundary or prompt that finds the consumer registered with no mark delivers the registration text (with the primer for a startup, without for a resume) and sets the mark. Twice at worst when the kill falls between output and mark; never zero times.
+- 005-100, option A on the eval flag (the human, 2026-11-17): a registration of a registered or parked consumer keeps its own count (`since`); a first registration and a new session start at the registration. The late and caught-up rules of 005-97 hold.
+
+Check each against `tasks/005-98/notes.md` and the worker's path-table rows: a hook killed at each point (before the registration, after it, after the output, after the mark); the hook's 2 s budget on a loaded host now that the registration comes first; a compaction; a subagent; two sessions in one worktree; the mark's lifetime and what removes it; that keeping `since` cannot hide a count the agent never saw or keep a late state open; new store lines have a validity case. No full suite; affected files directly; e2e files that read a changed path one at a time with `timeout 900`. Findings file: `reviews/0.1.541.md`, PASS or FAIL, committed. Write `~`, never a `/home/<user>/` path.

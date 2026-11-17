@@ -550,6 +550,7 @@ var WORKTREE_META_ROWS = {
   countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
+  registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -3241,7 +3242,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.540";
+  if (true) return "0.1.541";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4898,8 +4899,8 @@ var NO_EARLIER_RESULT_TEXT = "Squeal has no earlier result for this test, so it 
 function beforeEditsText(before) {
   switch (before?.outcome) {
     case "none": {
-      const settle3 = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
-      return `${NO_EARLIER_RESULT_TEXT}${settle3}`;
+      const settle2 = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
+      return `${NO_EARLIER_RESULT_TEXT}${settle2}`;
     }
     case "fail": {
       const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
@@ -10957,7 +10958,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
-    const settle3 = (error, response) => {
+    const settle2 = (error, response) => {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
@@ -10967,15 +10968,15 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
       else resolve10(response);
     };
     const timer = setTimeout(
-      () => settle3(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
-    const aborted = () => settle3(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    const aborted = () => settle2(failure("ABORT_ERR", `request to ${socketPath} aborted`));
     signal?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
-        settle3(failure("ESTALE", `${socketPath} is another daemon's socket now`));
+        settle2(failure("ESTALE", `${socketPath} is another daemon's socket now`));
         return;
       }
       socket.write(`${JSON.stringify(request)}
@@ -10986,18 +10987,18 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
       const end = buffer.indexOf("\n");
       if (end < 0) return;
       try {
-        settle3(null, JSON.parse(buffer.slice(0, end)));
+        settle2(null, JSON.parse(buffer.slice(0, end)));
       } catch {
-        settle3(failure("EPROTO", `malformed answer from ${socketPath}`));
+        settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
     });
     socket.on(
       "error",
-      (error) => settle3(failure(error.code ?? "EIO", error.message))
+      (error) => settle2(failure(error.code ?? "EIO", error.message))
     );
     socket.on(
       "close",
-      () => settle3(failure("ECONNRESET", `${socketPath} closed without an answer`))
+      () => settle2(failure("ECONNRESET", `${socketPath} closed without an answer`))
     );
   });
 }
@@ -12675,7 +12676,12 @@ function tellRegistered(store, consumer, revision, {
     resumed: parked !== null,
     kept: registeredSlots(store, consumer.worktreeId, at)
   });
-  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+  if (parked === null) return null;
+  return {
+    said: parked.said === true,
+    uncovered: parked.uncovered ?? [],
+    editsSince: parked.editsSince ?? null
+  };
 }
 function registeredSlots(store, worktreeId, at) {
   const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
@@ -12701,7 +12707,7 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at, { said, uncovered } = { said: false, uncovered: [] }) {
+function park(store, consumer, at, { said, uncovered, editsSince } = { said: false, uncovered: [], editsSince: null }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
@@ -12709,9 +12715,15 @@ function park(store, consumer, at, { said, uncovered } = { said: false, uncovere
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told = {
     ...said ? { said: true } : {},
-    ...uncovered.length > 0 ? { uncovered } : {}
+    ...uncovered.length > 0 ? { uncovered } : {},
+    ...editsSince === null ? {} : { editsSince }
   };
   writeParked(store, consumer, at, { ...current2, leftAt, leftTime: at, ...told });
+}
+function parkedEditsSinces(store, worktreeId) {
+  return Object.values(readAll(store, parkedMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && isNumber4(v.editsSince) ? [v.editsSince] : []
+  );
 }
 function unpark(store, consumer, at) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
@@ -12724,7 +12736,8 @@ function unpark(store, consumer, at) {
   if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
   const told = {
     ...value.said === true ? { said: true } : {},
-    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {}
+    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {},
+    ...isNumber4(value.editsSince) ? { editsSince: value.editsSince } : {}
   };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
@@ -13528,8 +13541,9 @@ function writeState(store, consumer, state) {
 function startEdits(store, consumer, revision, said) {
   writeState(store, consumer, { since: revision, said });
 }
-function editsSaid(store, consumer) {
-  return readState(store, consumer)?.said === true;
+function editsToPark(store, consumer) {
+  const state = readState(store, consumer);
+  return { said: state?.said === true, editsSince: state?.since ?? null };
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
@@ -13540,6 +13554,7 @@ function prune2(store, worktreeId) {
   const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
     (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
   );
+  sinces.push(...parkedEditsSinces(store, worktreeId));
   pruneRekeyed(
     store,
     worktreeId,
@@ -14042,7 +14057,7 @@ function readByTests(store, worktreeId) {
 // src/core/delivery/expiry.ts
 function drop(store, consumer, at) {
   park(store, consumer, at, {
-    said: editsSaid(store, consumer),
+    ...editsToPark(store, consumer),
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);
@@ -14088,6 +14103,21 @@ function ownEditUnknown(store, consumer, revision) {
     const paths = movedPaths(state.summary);
     return paths?.every((p) => changes().has(p)) === true;
   };
+}
+
+// src/core/delivery/registration-owed.ts
+function registrationOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("registrationOwed", worktreeId);
+}
+function oweRegistration(store, consumer, owed2) {
+  const key = registrationOwedMetaKey(consumer.worktreeId);
+  if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
+}
+function owedRegistration(store, consumer) {
+  if (store.consumers.get(consumer) === null) return null;
+  const value = readSlot(store, registrationOwedMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && typeof value.primer === "boolean" ? { primer: value.primer } : null;
 }
 
 // src/core/delivery/stop-news.ts
@@ -14300,6 +14330,12 @@ function createDelivery(store, options) {
   };
   return {
     register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    registrationSent: (consumer) => unit(() => {
+      const hold2 = startHold(options.prepare);
+      store.transaction(() => oweRegistration(store, consumer, null));
+      hold2.settle(consumer, () => {
+      });
+    }),
     unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
     onToolBoundary: (consumer, { stop = false, atRevision } = {}) => unit(
       () => deliver2(consumer, {
@@ -14352,12 +14388,13 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-  function registerNow(consumer, { inTurn = false, atStart = false, startingSince }) {
+  function registerNow(consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
     return store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
       const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
+      oweRegistration(store, consumer, owesText ?? null);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
@@ -14376,25 +14413,8 @@ function createDelivery(store, options) {
         live,
         knownFailures.map((f) => f.check)
       );
-      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-      tellLiveness(store, consumer, starting ? told : daemon);
-      tellRevision(store, consumer, header.revision);
-      tellSlowTier(store, consumer, header.slowTier);
-      tellGroupTiers(store, consumer, header.groupTiers);
-      tellCommit(store, consumer, header.commitLine);
-      oweCounts(store, consumer, header);
-      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-      if (!registered) {
-        const alive = atStart && header.daemon?.state === "alive";
-        const resumed = tellRegistered(store, consumer, header.revision, {
-          at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive),
-          head: options.root === void 0 ? null : registrationHead(options.root)
-        });
-        startEdits(store, consumer, header.revision, resumed?.said === true);
-        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-      }
+      tellAtRegistration(store, consumer, header, told, at);
+      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
@@ -14414,6 +14434,31 @@ function createDelivery(store, options) {
       };
     });
   }
+}
+function tellAtRegistration(store, consumer, header, told, at) {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
+  tellLiveness(store, consumer, starting ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+function seedRegistered(store, consumer, header, {
+  at,
+  atStart,
+  root
+}) {
+  const alive = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive),
+    head: root === void 0 ? null : registrationHead(root)
+  });
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 function ownNotes(store, consumer, states, {
   liveness,
@@ -17201,9 +17246,6 @@ function denyCurrentTestCommand(context, command, now) {
   );
 }
 
-// src/harness/shared/ensure.ts
-import { setTimeout as sleep3 } from "node:timers/promises";
-
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { closeSync as closeSync2, existsSync as existsSync12, mkdirSync as mkdirSync9 } from "node:fs";
@@ -17482,16 +17524,11 @@ function readHookHandoff(store, worktreeId, row, from, at) {
 
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
-var SPAWN_SETTLE_MS = 750;
-var SETTLE_POLL_MS = 25;
-async function ensure(location2, deps, context) {
+async function ensure(location2, deps, context, { stopRead = false } = {}) {
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
-  if (context !== void 0) {
-    const at2 = { id: context.consumer.worktreeId, root: location2.root };
-    const now = (deps.now ?? Date.now)();
-    const stop = readHookStop(context.store, at2.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at2, stop, context.write)) return "stopped";
+  if (context !== void 0 && !stopRead && await stopHeld2(location2, deps, context)) {
+    return "stopped";
   }
   const handoff = context === void 0 ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location2, deps);
@@ -17511,6 +17548,12 @@ async function ensure(location2, deps, context) {
     await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
+}
+async function stopHeld2(location2, deps, context) {
+  const id = context.consumer.worktreeId;
+  const worktree = context.store.worktrees.get(id);
+  const stop = readHookStop(context.store, id, worktree ?? null, (deps.now ?? Date.now)());
+  return stopHolds(context.store, { id, root: location2.root }, stop, context.write);
 }
 function spawnMarked(location2, spawn3, ensured) {
   if (ensured === "spawned") {
@@ -17599,21 +17642,16 @@ async function requestStepDown(record, version) {
     return false;
   }
 }
-async function settle(context, deps) {
-  const deadline = performance.now() + SPAWN_SETTLE_MS;
-  const now = deps.now ?? Date.now;
-  for (; ; ) {
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (record !== null && heartbeatFresh(record, now())) return true;
-    const left = deadline - performance.now();
-    if (left <= 0) return false;
-    await sleep3(Math.min(SETTLE_POLL_MS, left));
-  }
-}
-async function ensureToRegister(location2, deps, context) {
+async function registerFirst(location2, deps, context) {
   const at = (deps.now ?? Date.now)();
-  if (await ensure(location2, deps, context) !== "spawned") return void 0;
-  return await settle(context, deps) ? void 0 : at;
+  if (await stopHeld2(location2, deps, context)) {
+    return { startingSince: void 0, ensure: async () => "stopped" };
+  }
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  return {
+    startingSince: record !== null && heartbeatFresh(record, at) ? void 0 : at,
+    ensure: () => ensure(location2, deps, context, { stopRead: true })
+  };
 }
 function startingAfter(ensured, at) {
   return ensured === "spawned" ? { startingSince: at } : {};
@@ -17844,7 +17882,7 @@ ${tail}`;
 }
 
 // src/harness/shared/stop.ts
-import { setTimeout as sleep5 } from "node:timers/promises";
+import { setTimeout as sleep4 } from "node:timers/promises";
 
 // src/core/lint/pass/commit-news.ts
 function waitsToLint(state) {
@@ -17946,7 +17984,7 @@ async function treeNow(root, timeoutMs) {
 }
 
 // src/harness/shared/stop-decide.ts
-import { setTimeout as sleep4 } from "node:timers/promises";
+import { setTimeout as sleep3 } from "node:timers/promises";
 
 // src/harness/shared/stop-code.ts
 function measureWords(s) {
@@ -18327,7 +18365,7 @@ async function waitingEntryRecorded(context, harness, deps, deadline) {
     if (context.prepared?.pending === true) return false;
     const left = deadline - performance.now();
     if (left <= 0) return false;
-    await sleep4(Math.min(STOP_RECORD_POLL_MS, left));
+    await sleep3(Math.min(STOP_RECORD_POLL_MS, left));
   }
 }
 function holdsNow(context, { required }, now = Date.now()) {
@@ -18532,12 +18570,12 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
     if (!isFastPending(header) || held) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
-    await sleep5(Math.min(pollMs, left));
+    await sleep4(Math.min(pollMs, left));
   }
 }
 
 // src/harness/shared/waiter.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep5 } from "node:timers/promises";
 var REGISTRATION_GRACE_MS = 1e4;
 var WAIT_CHUNK_MS = 1e3;
 var REGISTRATION_POLL_MS = 100;
@@ -18569,7 +18607,7 @@ async function waitForDelta(context, timeoutMs, signal) {
     if (left <= 0 || signal?.aborted) return null;
     if (!isRegistered(context)) {
       if (seen || performance.now() - started >= REGISTRATION_GRACE_MS) return "unregistered";
-      await sleep6(Math.min(REGISTRATION_POLL_MS, left), void 0, signal ? { signal } : {}).catch(
+      await sleep5(Math.min(REGISTRATION_POLL_MS, left), void 0, signal ? { signal } : {}).catch(
         () => {
         }
       );
@@ -18599,11 +18637,14 @@ async function startRun(session, deps) {
     }
     const now = (deps.now ?? Date.now)();
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    const startingSince = daemonLiveness(record, now).state === "alive" ? void 0 : await ensureToRegister(location2, deps, context);
+    const alive = daemonLiveness(record, now).state === "alive";
+    const first = alive ? null : await registerFirst(location2, deps, context);
+    const startingSince = first?.startingSince;
     const registration2 = await context.delivery.register(context.consumer, {
       inTurn: true,
       ...startingSince === void 0 ? {} : { startingSince }
     });
+    await first?.ensure();
     return {
       primer: section,
       news: formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command)
@@ -18632,7 +18673,7 @@ async function toolCall(call, deps) {
     return denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)());
   });
 }
-async function settle2(session, deps) {
+async function settle(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null) return { report: null };
   const outcome = await stopTurn(
@@ -18666,7 +18707,7 @@ async function idleWait(session, deps, signal) {
 }
 
 // src/core/commit/boundary.ts
-import { setTimeout as sleep7 } from "node:timers/promises";
+import { setTimeout as sleep6 } from "node:timers/promises";
 var HEAD_MOVE_WAIT_MS = 500;
 var PASS_POLL_MS = 20;
 function headMovedSinceLook(store, worktreeId, root) {
@@ -18686,7 +18727,7 @@ async function syncOnHeadMove(store, worktreeId, root, bounds = {}) {
   const requestId = pending(await ask({ type: "sync" }, socketMs));
   if (requestId === null) return true;
   for (; ; ) {
-    await sleep7(Math.min(PASS_POLL_MS, Math.max(0, deadline - performance.now())));
+    await sleep6(Math.min(PASS_POLL_MS, Math.max(0, deadline - performance.now())));
     const left = deadline - performance.now();
     if (left <= 0) return true;
     const answer = await ask({ type: "sync-status", requestId }, Math.min(socketMs, left));
@@ -18696,6 +18737,19 @@ async function syncOnHeadMove(store, worktreeId, root, bounds = {}) {
 function pending(answer) {
   if (answer === null || !answer.ok || answer.type !== "sync") return null;
   return answer.revision === null && answer.error === null ? answer.requestId : null;
+}
+
+// src/harness/shared/owed.ts
+async function registerOwing(context, deps, owed2, options = {}) {
+  const registration2 = await context.delivery.register(context.consumer, {
+    ...options,
+    owesText: owed2
+  });
+  return owed2.primer ? withPrimer(registration2, deps.command, coverageOf(context)) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
+}
+async function sayOwed(context, deps, options) {
+  const owed2 = owedRegistration(context.store, context.consumer);
+  return owed2 === null ? null : registerOwing(context, deps, owed2, options);
 }
 
 // src/harness/shared/uncovered-edit.ts
@@ -18735,12 +18789,18 @@ function fitUncovered(paths) {
 async function deliver(context, deps, edited = true) {
   const at = (deps.now ?? Date.now)();
   const ensured = await ensureIfStale(context, deps);
-  if (!isRegistered(context)) {
-    const registration2 = await context.delivery.register(context.consumer, {
+  const owed2 = isRegistered(context) ? await sayOwed(context, deps, { inTurn: true, ...startingAfter(ensured, at) }) : await registerOwing(
+    context,
+    deps,
+    { primer: true },
+    {
       inTurn: true,
       ...startingAfter(ensured, at)
-    });
-    return withPrimer(registration2, deps.command, coverageOf(context));
+    }
+  );
+  if (owed2 !== null) {
+    await context.delivery.registrationSent(context.consumer);
+    return owed2;
   }
   if (edited && ensured === "fresh") {
     await syncOnHeadMove(context.store, context.consumer.worktreeId, context.root);
@@ -18822,23 +18882,28 @@ async function startSession(session, deps) {
   let ensured = false;
   const text2 = await withContext(consumerInput2(session), location2, deps, async (context) => {
     ensured = true;
-    const startingSince = await ensureToRegister(location2, deps, context);
-    const reload = session.reason === "reload";
-    if (reload && isRegistered(context)) return null;
-    if (SWEEP_REASONS.has(session.reason)) {
-      await unregisterSession(context, session.sessionId, {
-        removeLocks: false,
-        except: context.consumer
-      });
-    }
-    const registration2 = await context.delivery.register(context.consumer, {
-      atStart: !reload,
-      ...startingSince === void 0 ? {} : { startingSince }
-    });
-    return formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
+    const first = await registerFirst(location2, deps, context);
+    const text3 = await registerAtStart(session, context, deps, first.startingSince);
+    await first.ensure();
+    return text3;
   });
   if (!ensured) await ensure(location2, deps);
   return text2;
+}
+async function registerAtStart(session, context, deps, startingSince) {
+  const reload = session.reason === "reload";
+  if (reload && isRegistered(context)) return null;
+  if (SWEEP_REASONS.has(session.reason)) {
+    await unregisterSession(context, session.sessionId, {
+      removeLocks: false,
+      except: context.consumer
+    });
+  }
+  const registration2 = await context.delivery.register(context.consumer, {
+    atStart: !reload,
+    ...startingSince === void 0 ? {} : { startingSince }
+  });
+  return formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
 }
 async function shutdownSession(session, deps) {
   const location2 = locate(session.cwd);
@@ -18882,7 +18947,7 @@ function handle(request, deps, signal) {
     case "toolCall":
       return toolCall(request, deps);
     case "settle":
-      return settle2(request, deps);
+      return settle(request, deps);
     case "endTurn":
       return endRun(request, deps);
     case "wait":

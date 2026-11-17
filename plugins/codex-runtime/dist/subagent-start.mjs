@@ -51,6 +51,7 @@ var WORKTREE_META_ROWS = {
   countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
+  registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -7457,7 +7458,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
-    const settle2 = (error, response) => {
+    const settle = (error, response) => {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
@@ -7467,15 +7468,15 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
       else resolve9(response);
     };
     const timer = setTimeout(
-      () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
+      () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
-    const aborted = () => settle2(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    const aborted = () => settle(failure("ABORT_ERR", `request to ${socketPath} aborted`));
     signal?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
-        settle2(failure("ESTALE", `${socketPath} is another daemon's socket now`));
+        settle(failure("ESTALE", `${socketPath} is another daemon's socket now`));
         return;
       }
       socket.write(`${JSON.stringify(request)}
@@ -7486,18 +7487,18 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
       const end = buffer.indexOf("\n");
       if (end < 0) return;
       try {
-        settle2(null, JSON.parse(buffer.slice(0, end)));
+        settle(null, JSON.parse(buffer.slice(0, end)));
       } catch {
-        settle2(failure("EPROTO", `malformed answer from ${socketPath}`));
+        settle(failure("EPROTO", `malformed answer from ${socketPath}`));
       }
     });
     socket.on(
       "error",
-      (error) => settle2(failure(error.code ?? "EIO", error.message))
+      (error) => settle(failure(error.code ?? "EIO", error.message))
     );
     socket.on(
       "close",
-      () => settle2(failure("ECONNRESET", `${socketPath} closed without an answer`))
+      () => settle(failure("ECONNRESET", `${socketPath} closed without an answer`))
     );
   });
 }
@@ -8200,7 +8201,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.540";
+  if (true) return "0.1.541";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9647,7 +9648,12 @@ function tellRegistered(store, consumer, revision, {
     resumed: parked !== null,
     kept: registeredSlots(store, consumer.worktreeId, at)
   });
-  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+  if (parked === null) return null;
+  return {
+    said: parked.said === true,
+    uncovered: parked.uncovered ?? [],
+    editsSince: parked.editsSince ?? null
+  };
 }
 function registeredSlots(store, worktreeId, at) {
   const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
@@ -9673,7 +9679,7 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at, { said, uncovered } = { said: false, uncovered: [] }) {
+function park(store, consumer, at, { said, uncovered, editsSince } = { said: false, uncovered: [], editsSince: null }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
@@ -9681,9 +9687,15 @@ function park(store, consumer, at, { said, uncovered } = { said: false, uncovere
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told = {
     ...said ? { said: true } : {},
-    ...uncovered.length > 0 ? { uncovered } : {}
+    ...uncovered.length > 0 ? { uncovered } : {},
+    ...editsSince === null ? {} : { editsSince }
   };
   writeParked(store, consumer, at, { ...current2, leftAt, leftTime: at, ...told });
+}
+function parkedEditsSinces(store, worktreeId) {
+  return Object.values(readAll(store, parkedMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && isNumber3(v.editsSince) ? [v.editsSince] : []
+  );
 }
 function unpark(store, consumer, at) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
@@ -9696,7 +9708,8 @@ function unpark(store, consumer, at) {
   if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
   const told = {
     ...value.said === true ? { said: true } : {},
-    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {}
+    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {},
+    ...isNumber3(value.editsSince) ? { editsSince: value.editsSince } : {}
   };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
@@ -11708,8 +11721,9 @@ function writeState(store, consumer, state) {
 function startEdits(store, consumer, revision, said) {
   writeState(store, consumer, { since: revision, said });
 }
-function editsSaid(store, consumer) {
-  return readState(store, consumer)?.said === true;
+function editsToPark(store, consumer) {
+  const state = readState(store, consumer);
+  return { said: state?.said === true, editsSince: state?.since ?? null };
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
@@ -11720,6 +11734,7 @@ function prune2(store, worktreeId) {
   const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
     (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
   );
+  sinces.push(...parkedEditsSinces(store, worktreeId));
   pruneRekeyed(
     store,
     worktreeId,
@@ -12308,7 +12323,7 @@ function recordUncoveredTold(store, consumer, told) {
 // src/core/delivery/expiry.ts
 function drop(store, consumer, at) {
   park(store, consumer, at, {
-    said: editsSaid(store, consumer),
+    ...editsToPark(store, consumer),
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);
@@ -12459,6 +12474,16 @@ function startHold(prepare2) {
       return report;
     }
   };
+}
+
+// src/core/delivery/registration-owed.ts
+function registrationOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("registrationOwed", worktreeId);
+}
+function oweRegistration(store, consumer, owed2) {
+  const key = registrationOwedMetaKey(consumer.worktreeId);
+  if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
 }
 
 // src/core/delivery/stop-news.ts
@@ -12671,6 +12696,12 @@ function createDelivery(store, options) {
   };
   return {
     register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    registrationSent: (consumer) => unit(() => {
+      const hold = startHold(options.prepare);
+      store.transaction(() => oweRegistration(store, consumer, null));
+      hold.settle(consumer, () => {
+      });
+    }),
     unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
     onToolBoundary: (consumer, { stop = false, atRevision } = {}) => unit(
       () => deliver2(consumer, {
@@ -12723,12 +12754,13 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-  function registerNow(consumer, { inTurn = false, atStart = false, startingSince }) {
+  function registerNow(consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
     return store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
       const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
+      oweRegistration(store, consumer, owesText ?? null);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
@@ -12747,25 +12779,8 @@ function createDelivery(store, options) {
         live,
         knownFailures.map((f) => f.check)
       );
-      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-      tellLiveness(store, consumer, starting ? told : daemon);
-      tellRevision(store, consumer, header.revision);
-      tellSlowTier(store, consumer, header.slowTier);
-      tellGroupTiers(store, consumer, header.groupTiers);
-      tellCommit(store, consumer, header.commitLine);
-      oweCounts(store, consumer, header);
-      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-      if (!registered) {
-        const alive2 = atStart && header.daemon?.state === "alive";
-        const resumed = tellRegistered(store, consumer, header.revision, {
-          at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive2),
-          head: options.root === void 0 ? null : registrationHead(options.root)
-        });
-        startEdits(store, consumer, header.revision, resumed?.said === true);
-        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-      }
+      tellAtRegistration(store, consumer, header, told, at);
+      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
@@ -12785,6 +12800,31 @@ function createDelivery(store, options) {
       };
     });
   }
+}
+function tellAtRegistration(store, consumer, header, told, at) {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
+  tellLiveness(store, consumer, starting ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+function seedRegistered(store, consumer, header, {
+  at,
+  atStart,
+  root
+}) {
+  const alive2 = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive2),
+    head: root === void 0 ? null : registrationHead(root)
+  });
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 function ownNotes(store, consumer, states, {
   liveness,
@@ -15848,41 +15888,6 @@ function readHookHandoff(store, worktreeId, row, from, at) {
   return { alive: alive2, joined: joined2, stepping };
 }
 
-// src/harness/shared/coverage.ts
-var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
-function coverageOf(context) {
-  const policy = readPolicy(context.root);
-  const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
-  const runners = runnerCoverage(policy, context.root);
-  const configured = new Set(configuredProjects(policy).map((project) => project.name));
-  const fallback2 = DESCRIPTIONS.some((runner) => runner.fallback && runner.built(runners));
-  const listed4 = fallback2 ? keys : keys.filter((row) => configured.has(row.testFile.project));
-  const view = slowPolicyView(policy);
-  return {
-    ...runners,
-    ...policy.checks.length === 0 ? {} : { groups: groupsCoverage(policy, listed4) },
-    slow: view === null ? null : {
-      files: keys.length === 0 ? null : listed4.filter((row) => view.isSlow(row.testFile)).length,
-      requireSlowSuite: policy.stop.requireSlowSuite,
-      pausesOnly: policy.slow.trigger === "idle",
-      ...policy.stop.maxHolds > 1 ? { maxHolds: policy.stop.maxHolds } : {}
-    }
-  };
-}
-function groupsCoverage(policy, listed4) {
-  const view = groupView(policy);
-  const testsOwn = listed4.length === 0 || listed4.some((row) => view.of(row.testFile).name === TESTS_GROUP);
-  const moments = CHECK_MOMENTS.flatMap((at) => {
-    const names2 = view.groups.filter((group) => group.index !== null && group.at === at).map((group) => group.name);
-    if (at === "edit" && testsOwn) names2.push(TESTS_GROUP);
-    return names2.length === 0 ? [] : [{ at, names: names2 }];
-  });
-  return testsAtEdit(policy, listed4) ? { moments } : { moments, noTestsAtEdit: true };
-}
-
-// src/harness/shared/ensure.ts
-import { setTimeout as sleep3 } from "node:timers/promises";
-
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { closeSync as closeSync2, existsSync as existsSync12, mkdirSync as mkdirSync9 } from "node:fs";
@@ -16143,16 +16148,11 @@ function writeMark2(path, mark) {
 
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
-var SPAWN_SETTLE_MS = 750;
-var SETTLE_POLL_MS = 25;
-async function ensure(location2, deps, context) {
+async function ensure(location2, deps, context, { stopRead = false } = {}) {
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
-  if (context !== void 0) {
-    const at2 = { id: context.consumer.worktreeId, root: location2.root };
-    const now = (deps.now ?? Date.now)();
-    const stop = readHookStop(context.store, at2.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at2, stop, context.write)) return "stopped";
+  if (context !== void 0 && !stopRead && await stopHeld2(location2, deps, context)) {
+    return "stopped";
   }
   const handoff = context === void 0 ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location2, deps);
@@ -16172,6 +16172,12 @@ async function ensure(location2, deps, context) {
     await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
+}
+async function stopHeld2(location2, deps, context) {
+  const id = context.consumer.worktreeId;
+  const worktree = context.store.worktrees.get(id);
+  const stop = readHookStop(context.store, id, worktree ?? null, (deps.now ?? Date.now)());
+  return stopHolds(context.store, { id, root: location2.root }, stop, context.write);
 }
 function spawnMarked(location2, spawn3, ensured) {
   if (ensured === "spawned") {
@@ -16252,21 +16258,16 @@ async function requestStepDown(record, version) {
     return false;
   }
 }
-async function settle(context, deps) {
-  const deadline = performance.now() + SPAWN_SETTLE_MS;
-  const now = deps.now ?? Date.now;
-  for (; ; ) {
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (record !== null && heartbeatFresh(record, now())) return true;
-    const left = deadline - performance.now();
-    if (left <= 0) return false;
-    await sleep3(Math.min(SETTLE_POLL_MS, left));
-  }
-}
-async function ensureToRegister(location2, deps, context) {
+async function registerFirst(location2, deps, context) {
   const at = (deps.now ?? Date.now)();
-  if (await ensure(location2, deps, context) !== "spawned") return void 0;
-  return await settle(context, deps) ? void 0 : at;
+  if (await stopHeld2(location2, deps, context)) {
+    return { startingSince: void 0, ensure: async () => "stopped" };
+  }
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  return {
+    startingSince: record !== null && heartbeatFresh(record, at) ? void 0 : at,
+    ensure: () => ensure(location2, deps, context, { stopRead: true })
+  };
 }
 
 // src/harness/shared/harness-process.ts
@@ -16339,6 +16340,38 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 }
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
+}
+
+// src/harness/shared/coverage.ts
+var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
+function coverageOf(context) {
+  const policy = readPolicy(context.root);
+  const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
+  const runners = runnerCoverage(policy, context.root);
+  const configured = new Set(configuredProjects(policy).map((project) => project.name));
+  const fallback2 = DESCRIPTIONS.some((runner) => runner.fallback && runner.built(runners));
+  const listed4 = fallback2 ? keys : keys.filter((row) => configured.has(row.testFile.project));
+  const view = slowPolicyView(policy);
+  return {
+    ...runners,
+    ...policy.checks.length === 0 ? {} : { groups: groupsCoverage(policy, listed4) },
+    slow: view === null ? null : {
+      files: keys.length === 0 ? null : listed4.filter((row) => view.isSlow(row.testFile)).length,
+      requireSlowSuite: policy.stop.requireSlowSuite,
+      pausesOnly: policy.slow.trigger === "idle",
+      ...policy.stop.maxHolds > 1 ? { maxHolds: policy.stop.maxHolds } : {}
+    }
+  };
+}
+function groupsCoverage(policy, listed4) {
+  const view = groupView(policy);
+  const testsOwn = listed4.length === 0 || listed4.some((row) => view.of(row.testFile).name === TESTS_GROUP);
+  const moments = CHECK_MOMENTS.flatMap((at) => {
+    const names2 = view.groups.filter((group) => group.index !== null && group.at === at).map((group) => group.name);
+    if (at === "edit" && testsOwn) names2.push(TESTS_GROUP);
+    return names2.length === 0 ? [] : [{ at, names: names2 }];
+  });
+  return testsAtEdit(policy, listed4) ? { moments } : { moments, noTestsAtEdit: true };
 }
 
 // src/harness/shared/primer.ts
@@ -16535,6 +16568,15 @@ function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = DEFAULT_
 ${tail}`;
 }
 
+// src/harness/shared/owed.ts
+async function registerOwing(context, deps, owed2, options = {}) {
+  const registration2 = await context.delivery.register(context.consumer, {
+    ...options,
+    owesText: owed2
+  });
+  return owed2.primer ? withPrimer(registration2, deps.command, coverageOf(context)) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
+}
+
 // src/harness/shared/test-command.ts
 function bashCommand(input) {
   const toolInput = input.tool_input;
@@ -16593,28 +16635,31 @@ async function startSession(input, location2, deps) {
   let ensured = false;
   const text2 = await withContext(input, location2, deps, async (context) => {
     ensured = true;
-    const startingSince = await ensureToRegister(location2, deps, context);
-    const main = input.agent_id === void 0;
-    if (main && input.source === "compact" && isRegistered(context))
-      return primer(deps.command, coverageOf(context));
-    if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
-      await unregisterSession(context, input.session_id, {
-        removeLocks: false,
-        except: context.consumer
-      });
-    }
-    const atStart = input.source !== "compact";
-    const registration2 = await context.delivery.register(context.consumer, {
-      atStart,
-      ...startingSince === void 0 ? {} : { startingSince }
-    });
-    if (main && input.source === "resume") {
-      return formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
-    }
-    return withPrimer(registration2, deps.command, coverageOf(context));
+    const first = await registerFirst(location2, deps, context);
+    const text3 = await registerAtStart(input, context, deps, first.startingSince);
+    await first.ensure();
+    if (text3.owes) await context.delivery.registrationSent(context.consumer);
+    return text3.text;
   });
   if (!ensured) await ensure(location2, deps);
   return text2;
+}
+async function registerAtStart(input, context, deps, startingSince) {
+  const main = input.agent_id === void 0;
+  if (main && input.source === "compact" && isRegistered(context))
+    return { text: primer(deps.command, coverageOf(context)), owes: false };
+  if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
+    await unregisterSession(context, input.session_id, {
+      removeLocks: false,
+      except: context.consumer
+    });
+  }
+  const owed2 = { primer: !(main && input.source === "resume") };
+  const text2 = await registerOwing(context, deps, owed2, {
+    atStart: input.source !== "compact",
+    ...startingSince === void 0 ? {} : { startingSince }
+  });
+  return { text: text2, owes: true };
 }
 
 // src/harness/shared/stop-slow.ts

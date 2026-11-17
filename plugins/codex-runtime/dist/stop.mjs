@@ -51,6 +51,7 @@ var WORKTREE_META_ROWS = {
   countsOwed: { prefix: "counts-owed:", owner: "delivery/counts-owed" },
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
+  registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -8179,7 +8180,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.540";
+  if (true) return "0.1.541";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9626,7 +9627,12 @@ function tellRegistered(store, consumer, revision, {
     resumed: parked !== null,
     kept: registeredSlots(store, consumer.worktreeId, at)
   });
-  return parked === null ? null : { said: parked.said === true, uncovered: parked.uncovered ?? [] };
+  if (parked === null) return null;
+  return {
+    said: parked.said === true,
+    uncovered: parked.uncovered ?? [],
+    editsSince: parked.editsSince ?? null
+  };
 }
 function registeredSlots(store, worktreeId, at) {
   const slots = new Set(Object.keys(readAll(store, registeredMetaKey(worktreeId))));
@@ -9652,7 +9658,7 @@ function back(parked, revision, scanned) {
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
-function park(store, consumer, at, { said, uncovered } = { said: false, uncovered: [] }) {
+function park(store, consumer, at, { said, uncovered, editsSince } = { said: false, uncovered: [], editsSince: null }) {
   const key = registeredMetaKey(consumer.worktreeId);
   const current2 = registration(store, consumer);
   if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
@@ -9660,9 +9666,15 @@ function park(store, consumer, at, { said, uncovered } = { said: false, uncovere
   const leftAt = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
   const told = {
     ...said ? { said: true } : {},
-    ...uncovered.length > 0 ? { uncovered } : {}
+    ...uncovered.length > 0 ? { uncovered } : {},
+    ...editsSince === null ? {} : { editsSince }
   };
   writeParked(store, consumer, at, { ...current2, leftAt, leftTime: at, ...told });
+}
+function parkedEditsSinces(store, worktreeId) {
+  return Object.values(readAll(store, parkedMetaKey(worktreeId))).flatMap(
+    (v) => isRecord(v) && isNumber3(v.editsSince) ? [v.editsSince] : []
+  );
 }
 function unpark(store, consumer, at) {
   const value = readAll(store, parkedMetaKey(consumer.worktreeId))[slot(consumer)];
@@ -9675,7 +9687,8 @@ function unpark(store, consumer, at) {
   if (value.leftTime < at - CONSUMER_EXPIRY_MS) return null;
   const told = {
     ...value.said === true ? { said: true } : {},
-    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {}
+    ...Array.isArray(value.uncovered) ? { uncovered: value.uncovered.filter((p) => typeof p === "string") } : {},
+    ...isNumber3(value.editsSince) ? { editsSince: value.editsSince } : {}
   };
   return { ...r, leftAt: value.leftAt, leftTime: value.leftTime, ...told };
 }
@@ -11779,8 +11792,9 @@ function writeState(store, consumer, state) {
 function startEdits(store, consumer, revision, said) {
   writeState(store, consumer, { since: revision, said });
 }
-function editsSaid(store, consumer) {
-  return readState(store, consumer)?.said === true;
+function editsToPark(store, consumer) {
+  const state = readState(store, consumer);
+  return { said: state?.said === true, editsSince: state?.since ?? null };
 }
 function forgetEdits(store, consumer) {
   writeState(store, consumer, null);
@@ -11791,6 +11805,7 @@ function prune2(store, worktreeId) {
   const sinces = Object.values(readAll(store, editsMetaKey(worktreeId))).flatMap(
     (v) => isRecord(v) && typeof v.since === "number" ? [v.since] : []
   );
+  sinces.push(...parkedEditsSinces(store, worktreeId));
   pruneRekeyed(
     store,
     worktreeId,
@@ -12411,7 +12426,7 @@ function recordUncoveredTold(store, consumer, told) {
 // src/core/delivery/expiry.ts
 function drop(store, consumer, at) {
   park(store, consumer, at, {
-    said: editsSaid(store, consumer),
+    ...editsToPark(store, consumer),
     uncovered: uncoveredTold(store, consumer)
   });
   store.consumers.unregister(consumer);
@@ -12562,6 +12577,16 @@ function startHold(prepare2) {
       return report;
     }
   };
+}
+
+// src/core/delivery/registration-owed.ts
+function registrationOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("registrationOwed", worktreeId);
+}
+function oweRegistration(store, consumer, owed2) {
+  const key = registrationOwedMetaKey(consumer.worktreeId);
+  if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
 }
 
 // src/core/delivery/stop-news.ts
@@ -12774,6 +12799,12 @@ function createDelivery(store, options) {
   };
   return {
     register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    registrationSent: (consumer) => unit(() => {
+      const hold2 = startHold(options.prepare);
+      store.transaction(() => oweRegistration(store, consumer, null));
+      hold2.settle(consumer, () => {
+      });
+    }),
     unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
     onToolBoundary: (consumer, { stop: stop2 = false, atRevision } = {}) => unit(
       () => deliver2(consumer, {
@@ -12826,12 +12857,13 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-  function registerNow(consumer, { inTurn = false, atStart = false, startingSince }) {
+  function registerNow(consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
     return store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
       const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
+      oweRegistration(store, consumer, owesText ?? null);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
@@ -12850,25 +12882,8 @@ function createDelivery(store, options) {
         live,
         knownFailures.map((f) => f.check)
       );
-      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-      const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-      tellLiveness(store, consumer, starting ? told : daemon);
-      tellRevision(store, consumer, header.revision);
-      tellSlowTier(store, consumer, header.slowTier);
-      tellGroupTiers(store, consumer, header.groupTiers);
-      tellCommit(store, consumer, header.commitLine);
-      oweCounts(store, consumer, header);
-      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-      if (!registered) {
-        const alive2 = atStart && header.daemon?.state === "alive";
-        const resumed = tellRegistered(store, consumer, header.revision, {
-          at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive2),
-          head: options.root === void 0 ? null : registrationHead(options.root)
-        });
-        startEdits(store, consumer, header.revision, resumed?.said === true);
-        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-      }
+      tellAtRegistration(store, consumer, header, told, at);
+      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
@@ -12888,6 +12903,31 @@ function createDelivery(store, options) {
       };
     });
   }
+}
+function tellAtRegistration(store, consumer, header, told, at) {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
+  tellLiveness(store, consumer, starting ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+function seedRegistered(store, consumer, header, {
+  at,
+  atStart,
+  root
+}) {
+  const alive2 = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive2),
+    head: root === void 0 ? null : registrationHead(root)
+  });
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 function ownNotes(store, consumer, states, {
   liveness,
@@ -16648,9 +16688,6 @@ function readHookHandoff(store, worktreeId, row, from, at) {
   return { alive: alive2, joined: joined2, stepping };
 }
 
-// src/harness/shared/coverage.ts
-var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
-
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
 import { closeSync as closeSync2, existsSync as existsSync11, mkdirSync as mkdirSync9 } from "node:fs";
@@ -16911,14 +16948,11 @@ function writeMark2(path, mark) {
 
 // src/harness/shared/ensure.ts
 var SOCKET_TIMEOUT_MS = 100;
-async function ensure(location2, deps, context) {
+async function ensure(location2, deps, context, { stopRead = false } = {}) {
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === void 0 ? void 0 : worktree?.daemon ?? null;
-  if (context !== void 0) {
-    const at2 = { id: context.consumer.worktreeId, root: location2.root };
-    const now = (deps.now ?? Date.now)();
-    const stop2 = readHookStop(context.store, at2.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at2, stop2, context.write)) return "stopped";
+  if (context !== void 0 && !stopRead && await stopHeld2(location2, deps, context)) {
+    return "stopped";
   }
   const handoff = context === void 0 ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location2, deps);
@@ -16938,6 +16972,12 @@ async function ensure(location2, deps, context) {
     await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
+}
+async function stopHeld2(location2, deps, context) {
+  const id = context.consumer.worktreeId;
+  const worktree = context.store.worktrees.get(id);
+  const stop2 = readHookStop(context.store, id, worktree ?? null, (deps.now ?? Date.now)());
+  return stopHolds(context.store, { id, root: location2.root }, stop2, context.write);
 }
 function spawnMarked(location2, spawn3, ensured) {
   if (ensured === "spawned") {
@@ -17101,6 +17141,9 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
 function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
+
+// src/harness/shared/coverage.ts
+var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;
