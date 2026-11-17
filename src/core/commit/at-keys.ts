@@ -46,6 +46,12 @@ export interface KeysAt {
    * absent at the commit.
    */
   readonly checkoutMs: number | null;
+  /**
+   * Row 023-07 (re-review B5): the time of the check of the keyed files'
+   * inputs against the commit's tree, within `checkoutMs`; `null` when no
+   * file was keyed in a checkout.
+   */
+  readonly inputCheckMs?: number | null;
   /** Whether the shared store could be read; without it every `stored` is empty. */
   readonly store: boolean;
   /**
@@ -115,6 +121,7 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
     };
     const at = await inCheckout(main, { root, commonDir, commit }, asked, { ...options, ...hooks });
     for (const [id, key] of at.files) if (!files.has(id)) files.set(id, key);
-    return { commit, files, failure: at.failure, checkoutMs: at.ms, store, ...ciPart };
+    const timing = { checkoutMs: at.ms, inputCheckMs: at.inputCheckMs };
+    return { commit, files, failure: at.failure, ...timing, store, ...ciPart };
   });
 }

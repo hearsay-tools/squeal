@@ -17,7 +17,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { runGit } from "../fs/git.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { installCommand } from "../scheduler/install-command.js";
-import type { AbsolutePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { RunnerAdapter } from "../types/runner.js";
@@ -137,6 +137,11 @@ export async function withCheckout<T>(
     readonly commonDir: AbsolutePath;
     readonly commit: string;
     readonly prepare?: (checkout: Checkout) => Promise<void>;
+    /**
+     * The paths `prepare` writes in (D5.2's test versions): not the
+     * commit's by design, so the input check against the commit skips them.
+     */
+    readonly copied?: readonly RelativePath[];
   },
   options: CheckoutOptions,
   body: (checkout: Checkout, install: InstallResult) => Promise<T>,

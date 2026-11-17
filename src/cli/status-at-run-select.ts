@@ -73,12 +73,17 @@ async function refuse(
 ): Promise<Selection> {
   const needs = await needsOf(input);
   const states = new Map<string, SideState>();
-  const refused = new Map<RelativePath, { ref: TestFileRef; path: string }>();
+  const refused = new Map<RelativePath, { ref: TestFileRef; why: string }>();
   for (const file of keyed) {
-    const path = needs(file);
+    // Re-review B5: a file whose inputs the install changed has no key; its path runs for no project.
+    const changed = "notDetermined" in file.at && file.at.notDetermined.reason === "changed";
+    const path = changed ? null : needs(file);
+    if (changed && !refused.has(file.ref.path))
+      refused.set(file.ref.path, { ref: file.ref, why: file.at.notDetermined.detail });
     if (path === null) continue;
-    if (!refused.has(file.ref.path)) refused.set(file.ref.path, { ref: file.ref, path });
-    states.set(testFileId(file.ref), { state: "not comparable", reason: `needs ${path}` });
+    const why = `needs ${path}`;
+    if (!refused.has(file.ref.path)) refused.set(file.ref.path, { ref: file.ref, why });
+    states.set(testFileId(file.ref), { state: "not comparable", reason: why });
   }
   const run: KeyedFile[] = [];
   for (const file of wanted) {
@@ -89,7 +94,7 @@ async function refuse(
     else {
       const project =
         sibling.ref.project === "" ? "the default project" : `project ${sibling.ref.project}`;
-      const reason = `it runs with ${project}'s ${file.ref.path}, which needs ${sibling.path}`;
+      const reason = `it runs with ${project}'s ${file.ref.path}: ${sibling.why}`;
       states.set(id, { state: "not comparable", reason });
     }
   }

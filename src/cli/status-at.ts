@@ -202,6 +202,7 @@ export async function statusAtCommand(
     dirty: head.dirty,
     now: now.source,
     checkoutMs: at.checkoutMs,
+    inputCheckMs: at.inputCheckMs,
     failure: at.failure,
     files,
     ...(ran === null ? {} : { run: ran.use() }),

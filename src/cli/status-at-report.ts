@@ -87,6 +87,8 @@ export function commitState(at: KeyAt | undefined, own: WorktreeId): SideState {
   if ("key" in at) return stateOf(at.key, at.stored, own);
   const { reason, detail } = at.notDetermined;
   if (reason === "absent") return { state: "absent" };
+  // Row 023-07 (re-review B5): the checkout's file is not the commit's.
+  if (reason === "changed") return { state: "not comparable", reason: detail };
   return { state: "not determined", reason: `${reason}: ${detail}` };
 }
 
@@ -158,6 +160,8 @@ export interface AtReport {
   readonly dirty: boolean;
   readonly now: NowSource;
   readonly checkoutMs: number | null;
+  /** Row 023-07: the check of the keyed files' inputs against the commit, within `checkoutMs`. */
+  readonly inputCheckMs?: number | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
   readonly files: readonly FileReport[];
@@ -197,6 +201,10 @@ function detail(name: string, side: SideState): string | null {
   return null;
 }
 
+/** The input check's share of the checkout's time, when one ran. */
+const checkText = (ms: number | null | undefined) =>
+  ms === null || ms === undefined ? "" : ` (its inputs checked against the commit in ${ms} ms)`;
+
 /** D3's text: a header, each changed or unknown file on one line, the counts, the 7-day line. */
 export function formatAt(report: AtReport, nowMs: number): string {
   const at = short(report.commit);
@@ -214,7 +222,7 @@ export function formatAt(report: AtReport, nowMs: number): string {
   }
   if (report.checkoutMs !== null) {
     lines.push(
-      `Keys at ${at} from a temporary checkout, ${(report.checkoutMs / 1000).toFixed(1)} s.`,
+      `Keys at ${at} from a temporary checkout, ${(report.checkoutMs / 1000).toFixed(1)} s${checkText(report.inputCheckMs)}.`,
     );
   }
   if (report.failure !== null) lines.push(`The checkout gave no keys: ${report.failure}`);
@@ -253,6 +261,7 @@ export function jsonAt(report: AtReport): string {
     dirty: report.dirty,
     now: report.now,
     checkoutMs: report.checkoutMs,
+    inputCheckMs: report.inputCheckMs ?? null,
     failure: report.failure,
     counts: countsOf(report.files),
     run: report.run ?? null,

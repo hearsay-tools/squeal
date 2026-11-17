@@ -22,6 +22,7 @@ export interface CommitSide {
   readonly refs: readonly TestFileRef[];
   readonly state: (ref: TestFileRef) => SideState;
   readonly checkoutMs: number | null;
+  readonly inputCheckMs: number | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
 }
@@ -65,7 +66,7 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
     if (failure !== null) return { state: "not determined", reason: failure };
     return { state: "not determined", reason: `no runner lists it at ${commit.slice(0, 9)}` };
   };
-  return { refs, state, checkoutMs: at.checkoutMs, failure };
+  return { refs, state, checkoutMs: at.checkoutMs, inputCheckMs: at.inputCheckMs ?? null, failure };
 }
 
 /** `adapters`, each listing only the test files `paths` select; keying is theirs unchanged. */
