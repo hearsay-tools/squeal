@@ -2,7 +2,7 @@ import { stopOf } from "../presence/views.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { groupTierLines } from "../state/group-text.js";
 import { slowTierText } from "../state/slow-text.js";
-import { DEATH_CAUSE, deathText } from "../status/died.js";
+import { DEATH_CAUSE, deathHookText } from "../status/died.js";
 import { delaysText, lateOf } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
 import {
@@ -384,11 +384,14 @@ function stoppedStartText(daemon: Down): string {
   return `${text[0]?.toUpperCase()}${text.slice(1)}`;
 }
 
-/** Task 001-263: ` The last daemon died …`, when the daemon died without its stop note. */
+/**
+ * Task 001-263: ` The last daemon died …`, when the daemon died without its stop note. Row
+ * 005-116: the hook form, with its test files and the cause, never a run id or revision.
+ */
 function diedText(daemon: Down): string {
   return daemon.died === undefined
     ? ""
-    : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
+    : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
 }
 
 /** A down daemon with no stop, start, rest or late heartbeat recorded: none is running. */

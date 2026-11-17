@@ -12,7 +12,7 @@ import {
   knownFailureCounts,
   splitByValidity,
 } from "../status/checks.js";
-import { deathText } from "../status/died.js";
+import { deathHookText } from "../status/died.js";
 import { holdEndedText, holdEndText, holdStartText } from "../status/holds.js";
 import { ignoredConfigLines } from "../status/ignored-config.js";
 import { lateHeartbeatDetail } from "../status/status-detail.js";
@@ -125,7 +125,7 @@ export function notValidatedLine(
   const died =
     daemon.died === undefined
       ? ""
-      : `; the last daemon ${deathText(daemon.died)}; \`${command} start\` starts one`;
+      : `; the last daemon ${deathHookText(daemon.died)}; \`${command} start\` starts one`;
   return `Not validated: ${since}${died}; any change this call made has no result.`;
 }
 

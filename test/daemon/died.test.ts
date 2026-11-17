@@ -115,11 +115,11 @@ async function expectDeath(repo: FixtureRepo): Promise<void> {
       harnessProcess: () => null,
     },
   );
+  // Row 005-116: the hook names the test files and the cause, never the run id or revision.
   expect(context(out)).toMatch(
-    new RegExp(
-      `; results are as of revision \\d+\\. The last daemon died without shutting down, during run ${run?.id} \\(revision \\d+\\) of .*test/held\\.test\\.ts`,
-    ),
+    /; results are as of revision \d+\. The last daemon died without shutting down while running .*test\/held\.test\.ts.*\. A SIGKILL, or a test that signals its own process group/,
   );
+  expect(context(out)).not.toContain(`${run?.id}`);
 }
 
 describe.runIf(process.platform === "linux")(

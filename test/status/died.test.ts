@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDelta } from "../../src/core/delivery/format.js";
-import { DIED_FILES_SHOWN, deathText } from "../../src/core/status/died.js";
+import { DIED_FILES_SHOWN, deathHookText, deathText } from "../../src/core/status/died.js";
 import type { Delta } from "../../src/core/types/delivery.js";
 import type { DaemonLiveness } from "../../src/core/types/status.js";
 
@@ -47,10 +47,28 @@ describe("deathText (task 001-263)", () => {
   });
 });
 
-describe("a hook header naming a dead daemon (task 001-263)", () => {
+describe("deathHookText (row 005-116)", () => {
+  it("names the test files of every open run, with no run id or revision", () => {
+    expect(deathHookText({ runs: [] })).toBe("died without shutting down, between runs");
+    const runs = [
+      { id: "r1", revision: 3, testFiles: files(DIED_FILES_SHOWN - 1) },
+      {
+        id: "r2",
+        revision: 3,
+        testFiles: [{ project: "slow", path: "test/s.test.ts" }, ...files(2)],
+      },
+    ];
+    expect(deathHookText({ runs })).toBe(
+      "died without shutting down while running test/0.test.ts, test/1.test.ts, test/2.test.ts, " +
+        "test/3.test.ts, [slow] test/s.test.ts and 2 more",
+    );
+  });
+});
+
+describe("a hook header naming a dead daemon (task 001-263, row 005-116)", () => {
   const died = { runs: [{ id: "r1", revision: 3, testFiles: files(1) }] };
   const said =
-    "The last daemon died without shutting down, during run r1 (revision 3) of test/0.test.ts. " +
+    "The last daemon died without shutting down while running test/0.test.ts. " +
     "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
 
   it("says it died after since when none validated", () => {
@@ -58,6 +76,8 @@ describe("a hook header naming a dead daemon (task 001-263)", () => {
     expect(text).toContain(
       ` No daemon has validated since ${ISO}; results are as of revision 4. ${said}`,
     );
+    expect(text).not.toContain("r1");
+    expect(text).not.toContain("revision 3");
   });
 
   it("says it died after a successor that is starting", () => {

@@ -19,6 +19,17 @@ export function deathText(died: DaemonDeath): string {
   return `died without shutting down, ${during}`;
 }
 
+/**
+ * Row 005-116 (the human, 2026-11-17: "Drop run numbers, keep cause"): the hook form,
+ * "died without shutting down while running <files>", or "between runs" with none open. No run
+ * id and no revision: the agent cannot act on them, and `squeal status` and `squeal why` print
+ * them (`deathText`).
+ */
+export function deathHookText(died: DaemonDeath): string {
+  if (died.runs.length === 0) return "died without shutting down, between runs";
+  return `died without shutting down while running ${files(died.runs.flatMap((run) => run.testFiles))}`;
+}
+
 /** Why a daemon dies that way, for whoever reads the death. */
 export const DEATH_CAUSE =
   "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
