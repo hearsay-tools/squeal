@@ -30,3 +30,91 @@ hook ensure probes the socket, which the daemon binds only after its store check
 
 Control: the same sequence with a row whose record is cleared passes (the start mark is read,
 the daemon is told as starting, no second spawn).
+
+## Fix (coordinator decision (a), 2026-11-17)
+
+Three commits:
+
+1. Row-less marks: `readPresenceFacts(store, id, now, row?, commonDir?)` finds the lock by
+   `commonDir` only when the row is missing (`facts.ts`); `readPresence` passes it
+   (`decide.ts`); `startOfMarks` (`findings.ts`), `withRecordFacts` and `newsView` (`views.ts`)
+   read the marks without a row as with the record cleared.
+2. Spawn guard: `spawnStartCurrent(row, now, lockFile?)` (`findings.ts`), called from the hook's
+   `ensure` through `startCurrent` (`src/harness/shared/ensure.ts`), with the lock beside the
+   hook's common dir when the row is missing.
+3. Still starting: `DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS` (60 s,
+   `heartbeat.ts`), a plain multiple of the grace, not the store's start history (row 011-391
+   changes what a start costs). A down liveness with `startMark: "start"` older than it gets
+   `startSlow` (`withSlowStart`, `views.ts`); news tells it once (told note `start slow`,
+   `state.ts`, `told.ts`).
+
+A hook gets no slower: with a row, every reader reads the lock as before; the lock file is
+computed (hook ensure) or `resolveCommonDir` is read (status) only when the row is missing.
+
+### Edits outside `src/core/presence` (condition 1)
+
+- `src/core/delivery/delivery.ts`: `DeliveryOptions.commonDir` (new optional field after `root`);
+  the 4 calls of `livenessChange` / `readLiveHeader` pass `options.commonDir` (the one in
+  `registerNow`, near line 583, only gets the argument).
+- `src/core/delivery/liveness.ts`: `readLiveHeader` and `livenessChange` take an optional last
+  `commonDir` and pass it to `readPresence`.
+- `src/core/status/snapshot.ts`: lines 142-144 only (`rowless` by `resolveCommonDir(root)` when
+  `worktree === null`). Not `recoveryNote`, which cand/0.1.545 changes.
+- `src/harness/shared/context.ts`: `commonDir: location.commonDir` in `createDelivery`'s options.
+- `src/core/delivery/header.ts`, `src/core/delivery/format.ts`: the slow-start sentence and title.
+- `src/core/types/status.ts`: `DaemonLiveness` down gets `startSlow?: true` (additive).
+- `evals/lib/squeal-text.mjs`: `NO_DAEMON` reads `A daemon has been starting` and
+  `a daemon is still starting`.
+
+## Texts before and after
+
+New worktree, daemon holds its lock in its start (not registered), first boundary past the 10 s
+grace:
+
+- Before, tool boundary: `SQUEAL · no daemon is validating at revision 0` /
+  `Revision 0: Squeal has no results in this worktree yet, and no daemon is running; \`squeal start\` starts one.`
+- After, tool boundary: nothing (the session start said "still starting").
+- Before, `squeal status` Outstanding: `no daemon has validated; results are as of revision 0; \`squeal start\` starts one`
+- After, `squeal status` Outstanding: `no daemon has validated; results are as of revision 0; a daemon holds this worktree's lock but does not serve yet: it is starting or stopping`
+- Stop: nothing before the slow bound and after it (the news was told at a tool boundary).
+  Stop and status agree: both treat the daemon as starting, neither names `squeal start`.
+
+The same start past 60 s from its start mark (new), once:
+
+```
+SQUEAL · a daemon is still starting at revision 0
+Revision 0: A daemon has been starting since 2026-11-18T09:00:01.000Z, and Squeal has no results in this worktree yet.
+```
+
+With listed results (a worktree with a row whose record went stale), the sentence after the
+counts is ` A daemon has been starting since <time>; results are as of revision N.` in place of
+` A daemon is starting; results are as of revision N.`
+
+Unchanged ("told as now"):
+
+- A spawn that never takes the lock (died): starting within the 10 s spawn grace, then
+  `Squeal has no results in this worktree yet, and no daemon is running; \`squeal start\` starts one.`,
+  and the next boundary spawns again.
+- A start mark whose process is gone: the same "no daemon is running" past the grace.
+- A registered daemon that holds the lock and does not answer (SIGSTOP):
+  `SQUEAL · the daemon's heartbeat is late at revision 1` /
+  `Revision 1 (changed src/math.ts). The daemon's heartbeat is late: the last one was 6 min ago, at …; the daemon may be busy or stopped; results are as of revision 1.` /
+  `Not validated: the daemon's heartbeat is late: …; any change this call made has no result until it validates again.`
+  A daemon SIGSTOPped inside its start (lock and start mark held, not registered) reads as a
+  slow start: starting, then the one message at 60 s. Telling a stopped process apart needs
+  `lifeOf` to read the state `T` (`src/core/daemon/terminate.ts`), outside this row.
+
+## The extra daemons (condition 2)
+
+In the reproduction (boundaries at +2, +11, +30, +85 s during one held start, no row), the hooks
+spawned 4 extra daemons beside the first: `[0, 2000, 11000, 30000, 85000]`
+(`test/harness/starting-no-row.test.ts`, red before the spawn guard). Each extra loses the lock
+and waits up to `VACANT_LOCK_WAIT_MS` (30 s), polling the lock every 10 ms and opening the store
+every 250 ms to check for a serving daemon (`src/core/daemon/open.ts` `servedElsewhere`). It exits
+at once with no note when the first daemon registers within its wait, else at 30 s with the note
+`a daemon gave up: the lock was still held after 30000 ms with no daemon serving; the next hook
+boundary starts one` (`test/daemon/rowless-extra-spawn.test.ts`). In an 83 s start, every extra
+spawned before second 53 leaves that note. With the guard, none is spawned.
+
+Bundles: `plugins/*/dist` drift from these sources (the package tests fail on main's bundles
+until the coordinator builds); no build in this worktree per the wave rules.
