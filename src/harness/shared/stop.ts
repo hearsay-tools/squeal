@@ -33,6 +33,7 @@ import {
   waitingEntryRecorded,
 } from "./stop-decide.js";
 import { stoppedText } from "./stop-required.js";
+import { keepStates } from "./stop-states.js";
 import { knownFailuresLine, statusText } from "./text.js";
 
 /**
@@ -140,6 +141,8 @@ export function stopTurn(
     deps,
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
+      // Row 005-124: news, decision and turn end list the states once while no write moves them.
+      keepStates(context.store);
       const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
       // Row 011-312: Git for the no-edit proof leaves the wait for the record its time.
       const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
