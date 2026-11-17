@@ -22,4 +22,4 @@ Run on 2026-10-08 with Node 24.21.0, after the session they read had ended.
 - `gaps.mjs <rollout>`: for each Squeal message, the time since the tool item before it (PostToolUse) or since `session_meta` (SessionStart); an upper bound on the hook, which the rollout does not time.
 - `cli.mjs <rollout> [max]`: every command the agent ran that names `squeal`, with exit code, duration and output.
 - `store.mjs <store> <worktree-id> [t0]`: what the store still holds for a worktree id.
-- `logs/`: `timeline.txt`, `gaps.txt`, `squeal-commands.txt`, `store.txt`.
+- `logs/`: `timeline.txt` (raw logs removed), `gaps.txt`, `squeal-commands.txt`, `store.txt`.

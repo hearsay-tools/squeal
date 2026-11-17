@@ -124,5 +124,5 @@ All citations in this section are `dist/core/opencode-server-runner.js` unless n
   - `server/routes/instance/httpapi/groups/{session,tui,experimental}.ts`;
   - `packages/plugin/src/index.ts` (the `Hooks` and `PluginInput` types);
   - `packages/core/src/npm.ts`.
-- Probes: `probes/opencode-sessions-and-wake/README.md`, logs in `probes/opencode-sessions-and-wake/logs/raw/` (`events.jsonl`, `*.env`, `s1.messages.json`, `t1.pane.txt`).
+- Probes: `probes/opencode-sessions-and-wake/README.md`, logs in `probes/opencode-sessions-and-wake/logs/raw/` (`events.jsonl` (raw logs removed), `*.env`, `s1.messages.json` (raw logs removed), `t1.pane.txt` (raw logs removed)).
 - Squeal: spec 001 D9 and D10, spec 002 D1, spec 005 D3, `src/core/types/delivery.ts`.
