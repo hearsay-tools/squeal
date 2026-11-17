@@ -164,3 +164,14 @@ Normal-priority check-group lanes record nothing: `slow-tier.ts` `#start` starts
 - `edit-timings.ts`: `recordEditTier`'s signature is unchanged; it now owns its transaction and notes its failures.
 
 Not changed: `KEY_FORMAT_VERSION`, any key, tier order or width, status payload, CLI output. One new note text, only when a timing write fails for a reason other than a busy store.
+
+### Checks of the repair
+
+On `7192e4c0b` (code at `d177b3764`). No `pnpm run build`, no full suite, no `squeal run --all`. Load is the host's real one-minute load on 24 CPUs.
+
+- `pnpm run lint`: `Checked 3574 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
+- The model test once with key-format (direct, load 69 to 56): 2 files, 20 tests passed, 36 s. No `KEY_FORMAT_VERSION` raise.
+- Direct, the regressions and their neighbours (load 58 to 67): `tier-start-timings` (8 cases, the new `SQLITE_FULL` case failed on `e3ac46929` before the repair), `edit-timings`, `tier-start`, `tier-start-batch`, `step-reading`, `late-bound`, `worktree-meta`: 44 tests passed. The 16 files of the first round's direct set: 166 of 167 passed before the busy-record edit (the one failure was the untargeted fault, above); after it, `busy-record` 3 of 3 and the 14 write-fault scheduler files 38 of 38.
+- `squeal status --wait` over the changed `src/` and `test/` paths at revision 40, two waits of 540 s: 504 test files current, all pass among the selection; **398 pending** (queued, the host's load 30 to 50); known failures 0 in the selection. Among the current: `tier-start-timings`, `busy-record`, `edit-timings`, `tier-start`, `step`. Pending in Squeal at the end: `model-scheduler`, `key-format`, `worktree-meta` (each passed in the direct runs above).
+- One failure outside the selection, expected: `test/harness/pi/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them" (`cli/ps.mjs differs from the build`). The committed bundles are older than this row's `src`; the brief forbids `pnpm run build`, and the coordinator's release step rebuilds them.
+- Not run: `test/e2e/**` (excluded by `squeal.config.json`).
