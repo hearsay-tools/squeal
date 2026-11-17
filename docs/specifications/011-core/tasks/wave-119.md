@@ -33,3 +33,11 @@ Check, each as proven, plausible or unverified:
 5. **Behaviour preserved** apart from the new meta row: no tier, order, width, status payload, note text, CLI output or key change.
 
 Coordinator at the candidate: lint, typecheck, `check:version origin/main` (0.1.531 to 0.1.535); `key-format` 12/12 alone; `version-sensitive`, `tier-start-timings`, `edit-timings`, `late-bound`, `worktree-meta`, the model test, `one-loop-source`, `untracked-promises` 46/46 at load 54. Worker: 16 files reaching `startTier` 165/165. CI is the full suite. Coordinator 4d2ecbfc reviews the read-side seam separately. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout; leave nothing running. Write `reviews/0.1.535.md` (under `011-core`) and commit it on your branch; write `~` for home paths.
+
+## W1 repair: after review 0.1.535 (FAIL)
+
+Use /worker (worker 74012cb8, resumed). Shape: repair. Effort high. Read `reviews/0.1.535.md` (B1 and its fix scope). B1: a real `SQLITE_FULL` in the timing write rolls back the whole start transaction; `recordEditTier` catches it, the outer commit then throws, and the launch is stranded (no flight, a running key, no run row). Catching the sample's error cannot fix an automatic rollback.
+
+Repair: record the timing facts after the flight owns the launch, in their own short write, best-effort (every error caught and logged; no busy wait that holds the flight back), from facts captured at the start (the tier's `startedAt` and its grant). Then no timing failure of any kind can touch the launch. Keep the competing-writer regression; add a real automatic-rollback regression (the review's `PRAGMA max_page_count` probe) that fails on the candidate and passes on the repair. Measure the lock turn again if the path changes. Do not broaden into pool or busy-resume changes. Review N1 (group lanes record nothing) is row 005-97's decision: leave it, name it in the notes.
+
+Done when: both regressions pass and the new one failed before; the contract's five needs still hold; notes gain "Repair after review 0.1.535"; lint, typecheck, `key-format`, the model test once; `squeal status --wait 60000` on the changed paths (report pending as pending).
