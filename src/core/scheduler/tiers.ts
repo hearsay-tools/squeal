@@ -157,9 +157,7 @@ export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
  * rules of C4 step 5 may cancel it (`TierKind`, `newTier`). `lease` is a
  * backlog tier's grant, kept for as many files as start. `marks` sets
  * `Tier.promoted` and `Tier.beside`; its `at`, the step's reading (row
- * 011-372), is when a claim holds, else now. Its `started`, when a tier
- * starts, is called last in the start's transaction, so what it writes
- * commits with the start (row 005-96); it must not throw.
+ * 011-372), is when a claim holds, else now.
  */
 export function startTier(
   context: SchedulerContext,
@@ -171,13 +169,7 @@ export function startTier(
     promoted = false,
     beside = false,
     at,
-    started,
-  }: {
-    promoted?: boolean;
-    beside?: boolean;
-    at?: EpochMs | undefined;
-    started?: (tier: Tier) => void;
-  } = {},
+  }: { promoted?: boolean; beside?: boolean; at?: EpochMs | undefined } = {},
 ): Tier | null {
   const { store } = context;
   return store.transaction(() => {
@@ -211,7 +203,6 @@ export function startTier(
       startedAt: context.now(),
     });
     ledger.commit();
-    started?.(tier);
     return tier;
   });
 }

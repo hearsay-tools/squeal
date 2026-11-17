@@ -1,3 +1,4 @@
+import type { PoolLease } from "../capacity/pool.js";
 import type { EpochMs } from "../types/common.js";
 import { CAPACITY_RECHECK_MS, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import type { SchedulerContext } from "./context.js";
@@ -15,7 +16,9 @@ export interface StartOptions {
   /**
    * Flies each tier as it starts, before the plan goes on: with it, a lane
    * of slots fills every free slot in one turn (task 011-21 slice 2).
-   * Without it, `startNext` returns at the first start.
+   * Without it, `startNext` returns at the first start. After it, an edit
+   * tier's timings are recorded (`recordEditTier`, row 005-96); without it,
+   * none are: the caller owns that tier's flight.
    */
   readonly fly?: (tier: Tier) => void;
   /** The step's one reading (row 011-372): the started tier's count toward a batch or the turn reads it. */
@@ -24,7 +27,7 @@ export interface StartOptions {
 
 /** What starting one candidate did. */
 type Act =
-  | { readonly tier: Tier }
+  | { readonly tier: Tier; readonly grant: number }
   | { readonly refused: "pool" | "narrower" }
   | { readonly unstarted: readonly TierFile[] };
 
@@ -64,6 +67,9 @@ export function startNext(
       first ??= done.tier;
       if (options.fly === undefined) return { tier: first };
       options.fly(done.tier);
+      // Row 005-96: once its flight owns the launch, a write that fails loses only the sample
+      // (review 0.1.535 B1).
+      recordEditTier(context, done.tier, done.grant);
       step = plan.afterStart(done.tier);
     } else if ("refused" in done) {
       refused ||= done.refused === "pool";
@@ -86,7 +92,7 @@ function act(
 ): Act {
   if (candidate.focus !== null) {
     const tier = startFocusedTier(context, ledger, candidate.focus, candidate.files, at);
-    return tier === null ? { unstarted: [] } : { tier };
+    return tier === null ? { unstarted: [] } : { tier, grant: tier.files.length };
   }
   const ask = candidate.width;
   // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an edit's;
@@ -99,9 +105,6 @@ function act(
   const lease = taken ? widthLease(taken, ask?.want ?? 0) : taken;
   let files = candidate.files;
   let tier: Tier | null = null;
-  // An edit's tier of the batch runs as wide as its files, under the runner's own width.
-  const grantOf = (started: Tier) =>
-    lease?.grant ?? (ask === null ? started.files.length : ask.offer);
   try {
     if (lease && ask !== null) {
       const fits = ask.atGrant(lease.grant);
@@ -116,8 +119,6 @@ function act(
             promoted: candidate.promoted,
             beside: candidate.beside,
             at,
-            // Row 005-96: the late bound's facts commit with the start (review 0.1.530-r2 R2-B1).
-            started: (started) => recordEditTier(context, started, grantOf(started)),
           });
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
@@ -126,10 +127,18 @@ function act(
   if (tier === null) return { unstarted: files };
   // A batch's tier does not count toward the backlog's turn; the rest gets the next (row 011-268).
   // A tier beside it counts toward neither (row 011-269).
-  const grant = grantOf(tier);
+  const grant = grantOf(lease, ask, tier);
   if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at);
   else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at);
-  return { tier };
+  return { tier, grant };
+}
+
+/**
+ * The workers `tier` started with: its lease's grant. An edit's tier of the
+ * batch runs as wide as its files, under the runner's own width.
+ */
+function grantOf(lease: PoolLease | null | undefined, ask: Candidate["width"], tier: Tier): number {
+  return lease?.grant ?? (ask === null ? tier.files.length : ask.offer);
 }
 
 /**
