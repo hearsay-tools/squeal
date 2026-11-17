@@ -2,15 +2,14 @@ import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import { META_FULL_CHECK_HOLDER } from "../../src/core/daemon/full-check-claim.js";
 import type { DaemonTimings } from "../../src/core/daemon/lifecycle.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { readStoreMark } from "../../src/core/store/mark.js";
-import { META_FULL_CHECK, META_STORE_RECOVERED, openStore } from "../../src/core/store/open.js";
+import { META_STORE_RECOVERED, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
-import { damageHeader, damageOverflow, seedOverflow } from "../store/damage.js";
+import { damageHeader, damageTablePages, seedConsumer } from "../store/damage.js";
 import { childEnv, createFixtureRepo, type FixtureRepo, ping, SLOW, withStore } from "./helpers.js";
 
 /*
@@ -89,22 +88,20 @@ describe("damage a running daemon's read or write hits (row 011-391)", SLOW, () 
   it("serves until a read hits the damage, then marks the store; both daemons stop, and the next start moves it aside", async () => {
     const repo = fixture();
     const other = linked(repo);
-    // Claimed today, so a start's claim reads the holder row only.
-    const store = openStore(repo.commonDir);
-    if ("reason" in store) throw new Error(JSON.stringify(store));
-    store.meta.set(META_FULL_CHECK, String(Date.now()));
-    store.close();
-    const timings = { heartbeatMs: 200 };
-    const first = await start(other, timings);
+    seedKept(repo);
+    // Its lifecycle check, which expires consumers by a scan of them all, waits past the test.
+    const first = await start(other, { heartbeatMs: 200, checkMs: 600_000 });
     expect(await ping(other.socketPath, 2_000)).toMatchObject({ phase: "ready" });
 
-    // Damage under the serving daemon, in pages it never read: the holder row's value.
-    seedOverflow(repo.commonDir, META_FULL_CHECK_HOLDER);
-    expect(damageOverflow(repo.commonDir)).toBeGreaterThan(40);
+    // Damage beside the serving daemon, in a page only a read of this worktree's consumers loads:
+    // a start writes no consumer, and no read of another worktree's consumers loads it (row
+    // 011-391; on Node 22, a damaged meta value was read by the start's own meta write).
+    seedConsumer(repo.commonDir, repo.worktreeId);
+    expect(damageTablePages(repo.commonDir, "consumers")).toBe(1);
     expect(readStoreMark(repo.commonDir)).toBeNull();
 
-    // This start serves, and its full check's claim reads the holder row.
-    const second = await start(repo, timings);
+    // This start serves (it returns no exit); its departure check, 250 ms on, reads its consumers.
+    const second = await start(repo, { heartbeatMs: 200, checkMs: 600_000 });
     const [hit, beside] = await Promise.all([second.exited, first.exited]);
     expect(hit).toMatchObject({
       reason: "store-unusable",

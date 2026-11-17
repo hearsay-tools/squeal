@@ -14,8 +14,9 @@ import {
 } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { type Migration, migrate, SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
-import { damageHeader, damageOverflow, seedOverflow } from "./damage.js";
+import { damageHeader, damageTablePages, seedConsumer } from "./damage.js";
 import { fakeCommonDir, open, seedIndexFault } from "./helpers.js";
 
 const realPrepare = DatabaseSync.prototype.prepare;
@@ -241,9 +242,11 @@ describe("openStore", () => {
 
   it("opens a store with damaged pages on a checked open, reading none of them; the read that hits them throws corruption (row 011-391)", () => {
     const commonDir = fakeCommonDir();
-    seedOverflow(commonDir, "big");
     open(commonDir).meta.set("kept", "yes");
-    expect(damageOverflow(commonDir)).toBeGreaterThan(40);
+    // A table page no open reads; on Node 22 and 24 any meta read near a damaged meta value
+    // reads its overflow chain, so the damage is not in meta.
+    seedConsumer(commonDir, "w1");
+    expect(damageTablePages(commonDir, "consumers")).toBe(1);
 
     const sql: string[] = [];
     const prepare = vi.spyOn(DatabaseSync.prototype, "prepare");
@@ -271,7 +274,7 @@ describe("openStore", () => {
       expect(store.meta.get("kept")).toBe("yes");
       let thrown: unknown;
       try {
-        store.meta.get("big");
+        store.consumers.list("w1" as WorktreeId);
       } catch (error) {
         thrown = error;
       }

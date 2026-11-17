@@ -31,6 +31,25 @@ export function seedOverflow(commonDir: string, key: string): void {
 }
 
 /**
+ * Registers a consumer of `worktreeId`, the only row of the `consumers`
+ * table, and checkpoints it into the file. Another worktree's lookup goes
+ * through the primary key's index, finds no row, and never loads the
+ * table's page that `damageTablePages(commonDir, "consumers")` damages.
+ */
+export function seedConsumer(commonDir: string, worktreeId: string): void {
+  const db = new DatabaseSync(storePaths(commonDir).database);
+  try {
+    db.exec("PRAGMA busy_timeout = 10000");
+    db.prepare(
+      "INSERT INTO consumers (worktree_id, session_id, agent_id, registered_at, last_seen_at) VALUES (?, ?, 'main', ?, ?)",
+    ).run(worktreeId, "s1", Date.now(), Date.now());
+  } finally {
+    db.close();
+  }
+  checkpoint(commonDir);
+}
+
+/**
  * Overwrites every overflow page of `table` (default `meta`): the content of
  * values too long for their page, such as `seedOverflow` writes. Reading such
  * a value throws SQLITE_CORRUPT; no other read touches those pages. Returns
@@ -42,6 +61,23 @@ export function damageOverflow(commonDir: string, table = "meta"): number {
     `SELECT pgoffset, pgsize FROM dbstat WHERE name = '${table}' AND pagetype = 'overflow'`,
   );
   if (pages.length === 0) throw new Error(`the ${table} table has no overflow pages`);
+  overwrite(commonDir, pages);
+  return pages.length;
+}
+
+/**
+ * Overwrites every b-tree page of `table` itself (its leaves and interior
+ * pages, not its indexes' or its overflow pages). Loading such a page throws
+ * SQLITE_CORRUPT on every SQLite, wherever the read stops in a row; a lookup
+ * that an index answers with no row never loads it. Returns how many pages
+ * it damaged.
+ */
+export function damageTablePages(commonDir: string, table: string): number {
+  const pages = pagesOf(
+    commonDir,
+    `SELECT pgoffset, pgsize FROM dbstat WHERE name = '${table}' AND pagetype IN ('leaf', 'internal')`,
+  );
+  if (pages.length === 0) throw new Error(`the ${table} table has no pages`);
   overwrite(commonDir, pages);
   return pages.length;
 }
