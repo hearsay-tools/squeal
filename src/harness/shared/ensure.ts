@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { pinDaemon, requestDaemon } from "../../core/daemon/client.js";
 import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
@@ -22,15 +21,6 @@ import type { HookDeps } from "./hook.js";
 
 /** Spec 001 D9: "uses the socket only for liveness and nudges with a 100 ms timeout". */
 export const SOCKET_TIMEOUT_MS = 100;
-
-/**
- * How long SessionStart waits for the heartbeat of a daemon it just spawned
- * before it registers, so the registration does not report "no daemon" for a
- * daemon that answers 200 ms later. Within the 2 s hook timeout with Node
- * start, the probe and the registration.
- */
-export const SPAWN_SETTLE_MS = 750;
-const SETTLE_POLL_MS = 25;
 
 /**
  * What a hook's ensure did: `ensureDaemon`'s answer, or `stopped` when it
@@ -312,40 +302,6 @@ async function requestStepDown(record: DaemonRecord, version: string): Promise<b
   }
 }
 
-/**
- * Waits up to `SPAWN_SETTLE_MS` for a fresh heartbeat in the store. Not for
- * the daemon's start scan: attribution needs no wait (task 001-96, review
- * wave 10c S1). True when it came.
- */
-export async function settle(context: HookContext, deps: HookDeps): Promise<boolean> {
-  const deadline = performance.now() + SPAWN_SETTLE_MS;
-  const now = deps.now ?? Date.now;
-  for (;;) {
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    if (record !== null && heartbeatFresh(record, now())) return true;
-    const left = deadline - performance.now();
-    if (left <= 0) return false;
-    await sleep(Math.min(SETTLE_POLL_MS, left));
-  }
-}
-
-/**
- * `ensure` before a registration (SessionStart, a registering
- * UserPromptSubmit), then `settle` after a spawn. Task 001-156: on a loaded
- * host the spawned daemon's first heartbeat can come after the settle (1.5 s
- * at load 127); the time of the spawn then, as `RegisterOptions.startingSince`,
- * so the registration says a daemon is starting; `undefined` otherwise.
- */
-export async function ensureToRegister(
-  location: HookLocation,
-  deps: HookDeps,
-  context: HookContext,
-): Promise<EpochMs | undefined> {
-  const at = (deps.now ?? Date.now)();
-  if ((await ensure(location, deps, context)) !== "spawned") return undefined;
-  return (await settle(context, deps)) ? undefined : at;
-}
-
 /** What a session start registers with before it ensures the daemon (`registerFirst`). */
 export interface StartFirst {
   /** `RegisterOptions.startingSince` of the registration that comes first. */
@@ -358,7 +314,7 @@ export interface StartFirst {
  * Row 005-98 (option A, the human 2026-11-17): a session start registers
  * first and ensures the daemon after, so the hook's 2 s timeout cannot kill
  * it between a spawn and its registration (`tasks/005-95/notes.md`). There is
- * no wait for the new daemon's heartbeat (`settle`): unless a stop holds,
+ * no wait for the new daemon's heartbeat (0.1.538 waited up to 750 ms): unless a stop holds,
  * a daemon with no fresh heartbeat in the store is told as starting from
  * now, as after a settle that timed out (task 001-156). A daemon that then
  * answers without a heartbeat, or cannot be started, is told so once the

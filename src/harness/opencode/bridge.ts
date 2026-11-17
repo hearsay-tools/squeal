@@ -5,7 +5,7 @@ import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/forma
 import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
-import { ensure, ensureToRegister } from "../shared/ensure.js";
+import { ensure, registerFirst } from "../shared/ensure.js";
 import { HAND_OFF_BOUND_MS, HandOff, type OutputStream, written } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
@@ -81,11 +81,14 @@ export async function register(
     deps,
     async (context) => {
       ensured = true;
-      const startingSince = await ensureToRegister(location, deps, context);
+      // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
+      const first = await registerFirst(location, deps, context);
+      const { startingSince } = first;
       const registration = await context.delivery.register(context.consumer, {
         atStart: true,
         ...(startingSince === undefined ? {} : { startingSince }),
       });
+      await first.ensure();
       return {
         header: formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command),
         registered: true,

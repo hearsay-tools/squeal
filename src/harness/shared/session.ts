@@ -1,10 +1,10 @@
-import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
 import type { EpochMs } from "../../core/types/common.js";
 import { type ConsumerInput, type HookContext, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensure, registerFirst } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { primer, withPrimer } from "./primer.js";
+import { registerOwing } from "./owed.js";
+import { primer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
 
 /** Sources after which no earlier run of the session id goes on. */
@@ -53,42 +53,44 @@ export async function startSession(
     const first = await registerFirst(location, deps, context);
     const text = await registerAtStart(input, context, deps, first.startingSince);
     await first.ensure();
-    return text;
+    // Last: the text is handed over once the hook's output is written (decision C).
+    if (text.owes) await context.delivery.registrationSent(context.consumer);
+    return text.text;
   });
   if (!ensured) await ensure(location, deps);
   return text;
 }
 
-/** `startSession`'s registration of `context`'s consumer, and the text it says. */
+/**
+ * `startSession`'s registration of `context`'s consumer, and the text it says; `owes` when the
+ * registration owes that text until the hook's output is written (`registerOwing`).
+ */
 async function registerAtStart(
   input: ConsumerInput & { readonly source?: string },
   context: HookContext,
   deps: HookDeps,
   startingSince: EpochMs | undefined,
-): Promise<string | null> {
+): Promise<{ readonly text: string; readonly owes: boolean }> {
   // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
   // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
   // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
   const main = input.agent_id === undefined;
   if (main && input.source === "compact" && isRegistered(context))
-    return primer(deps.command, coverageOf(context));
+    return { text: primer(deps.command, coverageOf(context)), owes: false };
   if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
     await unregisterSession(context, input.session_id, {
       removeLocks: false,
       except: context.consumer,
     });
   }
+  // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
+  const owed = { primer: !(main && input.source === "resume") };
   // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
-  const atStart = input.source !== "compact";
-  const registration = await context.delivery.register(context.consumer, {
-    atStart,
+  const text = await registerOwing(context, deps, owed, {
+    atStart: input.source !== "compact",
     ...(startingSince === undefined ? {} : { startingSince }),
   });
-  // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
-  if (main && input.source === "resume") {
-    return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
-  }
-  return withPrimer(registration, deps.command, coverageOf(context));
+  return { text, owes: true };
 }
 
 /**

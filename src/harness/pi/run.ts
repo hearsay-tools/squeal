@@ -4,7 +4,7 @@ import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
-import { ensureToRegister } from "../shared/ensure.js";
+import { registerFirst } from "../shared/ensure.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
 import { stopTurn } from "../shared/stop.js";
@@ -42,14 +42,15 @@ export async function startRun(session: PiSession, deps: HookDeps): Promise<RunA
     }
     const now = (deps.now ?? Date.now)();
     const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    const startingSince =
-      daemonLiveness(record, now).state === "alive"
-        ? undefined
-        : await ensureToRegister(location, deps, context);
+    // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
+    const alive = daemonLiveness(record, now).state === "alive";
+    const first = alive ? null : await registerFirst(location, deps, context);
+    const startingSince = first?.startingSince;
     const registration = await context.delivery.register(context.consumer, {
       inTurn: true,
       ...(startingSince === undefined ? {} : { startingSince }),
     });
+    await first?.ensure();
     return {
       primer: section,
       news: formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command),

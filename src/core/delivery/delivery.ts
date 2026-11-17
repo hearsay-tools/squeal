@@ -82,6 +82,7 @@ import {
 import { ownEditUnknown } from "./own-edit.js";
 import { type Prepare, startHold } from "./prepared.js";
 import { registrationHead, scannedDaemon, tellRegistered } from "./registered.js";
+import { oweRegistration } from "./registration-owed.js";
 import { changedGroups, slowTierChanged, tellGroupTiers, tellSlowTier } from "./slow-told.js";
 import { toldAtStop } from "./stop-news.js";
 import {
@@ -469,6 +470,13 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
     register: (consumer, registerOptions: RegisterOptions = {}) =>
       unit(() => registerNow(consumer, registerOptions)),
 
+    registrationSent: (consumer) =>
+      unit(() => {
+        const hold = startHold(options.prepare);
+        store.transaction(() => oweRegistration(store, consumer, null));
+        hold.settle(consumer, () => {});
+      }),
+
     unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
 
     onToolBoundary: (consumer, { stop = false, atRevision }: ToolBoundaryOptions = {}) =>
@@ -534,7 +542,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
   function registerNow(
     consumer: Consumer,
-    { inTurn = false, atStart = false, startingSince }: RegisterOptions,
+    { inTurn = false, atStart = false, startingSince, owesText }: RegisterOptions,
   ): Registration {
     return store.transaction(() => {
       const at = now();
@@ -543,6 +551,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Read before the registration replaces it (review 0.1.538 B1).
       const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
+      oweRegistration(store, consumer, owesText ?? null);
       // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
       forgetStopWait(store, consumer);
       // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.

@@ -4,13 +4,12 @@ import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
-import { SPAWN_SETTLE_MS } from "../../src/harness/shared/ensure.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-156: on a loaded host a daemon SessionStart spawns can take more
- * than `SPAWN_SETTLE_MS` to heartbeat (1.1 s hook, first heartbeat at 1.5 s,
+ * than its 750 ms settle to heartbeat (1.1 s hook, first heartbeat at 1.5 s,
  * load 127). Its registration said "No daemon is running" and the next tool
  * boundary "a daemon is validating again", a pair an agent reads as an
  * outage. A registration after a spawn now says a daemon is starting, its
@@ -20,6 +19,8 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  */
 
 const T = Date.UTC(2026, 0, 2, 14, 2);
+/** Row 005-98: how long the registration waited for a spawned daemon's heartbeat before. */
+const SETTLE_BEFORE_MS = 750;
 const STARTING = "A daemon is starting; results are as of revision 1.";
 const context = (out: HookResult): string =>
   (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
@@ -62,7 +63,7 @@ const batch = (r: SquealRepo, now?: number) =>
 
 describe("SessionStart after spawning a daemon", () => {
   // Row 005-98 (option A): the registration comes before the spawn, and nothing waits for the
-  // new daemon's heartbeat (`SPAWN_SETTLE_MS` is for a prompt's and other harnesses' starts).
+  // new daemon's heartbeat (up to 750 ms before).
   it("registers before the spawn and says a daemon is starting, with no wait for its heartbeat", async () => {
     const r = squealRepo();
     r.apply(r.pass());
@@ -79,7 +80,7 @@ describe("SessionStart after spawning a daemon", () => {
     );
 
     expect(registeredAtSpawn).toBe(true);
-    expect(performance.now() - started).toBeLessThan(SPAWN_SETTLE_MS);
+    expect(performance.now() - started).toBeLessThan(SETTLE_BEFORE_MS);
     expect(context(out)).toMatch(/^SQUEAL · registered at revision 1\n/);
     expect(context(out)).toContain(` ${STARTING}`);
     expect(context(out)).not.toContain("No daemon");

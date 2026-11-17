@@ -1,7 +1,8 @@
 import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
-import { locate, usesSqueal } from "../shared/context.js";
+import type { EpochMs } from "../../core/types/common.js";
+import { type HookContext, locate, usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
-import { ensure, ensureToRegister } from "../shared/ensure.js";
+import { ensure, registerFirst } from "../shared/ensure.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
 import { endSession } from "../shared/session.js";
 import { unregisterSession } from "../shared/sweep.js";
@@ -37,24 +38,37 @@ export async function startSession(
   let ensured = false;
   const text = await withContext(consumerInput(session), location, deps, async (context) => {
     ensured = true;
-    const startingSince = await ensureToRegister(location, deps, context);
-    const reload = session.reason === "reload";
-    if (reload && isRegistered(context)) return null;
-    if (SWEEP_REASONS.has(session.reason)) {
-      await unregisterSession(context, session.sessionId, {
-        removeLocks: false,
-        except: context.consumer,
-      });
-    }
-    // After a reload the run may go on: its earlier tool calls may be in the registration revision.
-    const registration = await context.delivery.register(context.consumer, {
-      atStart: !reload,
-      ...(startingSince === undefined ? {} : { startingSince }),
-    });
-    return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
+    // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
+    const first = await registerFirst(location, deps, context);
+    const text = await registerAtStart(session, context, deps, first.startingSince);
+    await first.ensure();
+    return text;
   });
   if (!ensured) await ensure(location, deps);
   return text;
+}
+
+/** `startSession`'s registration of `context`'s consumer, and the text it says; `null` for none. */
+async function registerAtStart(
+  session: PiSession & { readonly reason: StartReason },
+  context: HookContext,
+  deps: HookDeps,
+  startingSince: EpochMs | undefined,
+): Promise<string | null> {
+  const reload = session.reason === "reload";
+  if (reload && isRegistered(context)) return null;
+  if (SWEEP_REASONS.has(session.reason)) {
+    await unregisterSession(context, session.sessionId, {
+      removeLocks: false,
+      except: context.consumer,
+    });
+  }
+  // After a reload the run may go on: its earlier tool calls may be in the registration revision.
+  const registration = await context.delivery.register(context.consumer, {
+    atStart: !reload,
+    ...(startingSince === undefined ? {} : { startingSince }),
+  });
+  return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
 }
 
 /** `session_shutdown`: unregister every consumer of the session, as 001's SessionEnd. */

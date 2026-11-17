@@ -451,6 +451,12 @@ export interface RegisterOptions {
    * is validating. Ignored while a daemon heartbeats.
    */
   readonly startingSince?: EpochMs;
+  /**
+   * Row 005-98: the text this registration owes its consumer until the hook
+   * that registered hands it over (`registrationSent`): with the primer or
+   * not. Default: none owed, and any owed before is cleared.
+   */
+  readonly owesText?: { readonly primer: boolean };
 }
 
 export interface WaitOptions {
@@ -472,6 +478,12 @@ export interface WaitOptions {
  */
 export interface HarnessDelivery {
   register(consumer: Consumer, options?: RegisterOptions): Promise<Registration>;
+  /**
+   * Row 005-98: clears the text `consumer`'s registration owes
+   * (`RegisterOptions.owesText`) in a write held, like a report (row
+   * 011-288), until the hook's output is written. Call last.
+   */
+  registrationSent(consumer: Consumer): Promise<void>;
   unregister(consumer: Consumer): Promise<void>;
 
   /**

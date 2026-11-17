@@ -20,31 +20,60 @@ Before: ensure, spawn, settle up to 750 ms, then register. The registration now 
 ## Decisions the spec did not settle
 
 - **Which registrations say "a daemon is starting".** Every one with no fresh heartbeat in the store and no held stop. The start probes no socket first: the probe is inside `ensureDaemon` (`src/core/daemon/**`, not this row's), and a probe here would answer differently from the tests' `ensureDaemon` stand-ins. Effect in two rare cases: a daemon that answers its socket with a heartbeat older than two intervals (busy), and a daemon that cannot be started (no CLI, a hung daemon holding the lock). Both are told "starting" at registration, and the truth once the start's grace passes (`DAEMON_START_GRACE_MS`, 10 s), as after a spawn that never heartbeats (task 001-156). Before, a short-late heartbeat read as validating at registration.
-- **No settle.** The registration says "starting" even when the daemon heartbeats 200 ms later. The first heartbeat after a told start is no news (task 001-156), so the next boundary stays silent. `SPAWN_SETTLE_MS` and `ensureToRegister` stay for the paths below.
+- **No settle.** The registration says "starting" even when the daemon heartbeats 200 ms later. The first heartbeat after a told start is no news (task 001-156), so the next boundary stays silent.
 
-## The boundary after a kill
+## The boundary after a kill (decision C, the coordinator 2026-11-17)
 
-If the hook is killed after step 3, the registration is committed and the hook's text is lost. The first tool boundary finds the consumer registered (`isRegistered`), so it does not register again and says no primer. It delivers what any registered consumer gets: the news since the registration's view. With nothing changed and the daemon's first heartbeat in, it is silent; a failure since then comes as a normal change delivery. Tests: `test/harness/register-first.test.ts`.
+Contract: a session reads its registration text once; a new session reads it with the primer, a resumed one without.
 
-For `resume` this is the intended result (0.1.527: no primer on resume). For `startup` it is a loss: a new session whose SessionStart is killed after step 3 never hears the registration or the primer, where before the kill made the boundary register with the primer. A kill after step 3 is now less likely (no 750 ms wait before the hook ends), but not impossible. Closing it needs a record that the registration's text reached the session, the "heard the primer" record row 005-95 holds; I did not build it.
+Built as a record of the text a registration still owes (`src/core/delivery/registration-owed.ts`, `meta` row `registration-owed:`):
 
-If the hook is killed before step 3 (store open slower than 2 s), nothing changed against before: the boundary registers with the primer.
+- Each registration writes it in its own transaction: `RegisterOptions.owesText` (`{ primer }`), or clears it when absent. SessionStart owes `{ primer: false }` on a main agent's `resume`, else `{ primer: true }`; a boundary's or a prompt's own registration owes `{ primer: true }`.
+- The hook clears it as its last step, in a write held until its output is written (`HarnessDelivery.registrationSent`, which opens a hold as a delivery's report does, row 011-288). A kill before the output, or an output that fails, rolls the clear back.
+- A tool boundary (`deliver.ts`) or a prompt (`prompt.ts`) that finds the consumer registered with its text still owed registers it again in the turn, owing the same text, says that text (with the primer or not) in place of its delta, and clears the record the same way.
+- The record is read only while the consumer is registered, and its slot is dropped at the next write after the consumer leaves, so it ends with the consumer.
 
-If the hook is killed during step 4, the daemon may not be spawned. The registration said "starting"; the next boundary's `ensureIfStale` spawns (stale heartbeat), and after 10 s with no heartbeat the header says no daemon is validating.
+The inverse of the coordinator's "sent" mark, on purpose: a consumer registered by an earlier version has no record and owes nothing, so an upgrade does not say every registration again. The meaning is the same: no record, nothing owed.
+
+Accepted: a kill after the output is written and before the clear commits gives the text twice.
+
+A compaction is unchanged: a `compact` SessionStart for a main agent still registered says the primer only and neither writes nor clears the record. A text still owed from before is said at the next boundary.
+
+What a boundary after a SessionStart killed after its registration delivers:
+
+| Case | That boundary | The next one |
+|---|---|---|
+| `startup`, killed before output | the registration and the primer | only news |
+| `resume`, killed before output | the registration, no primer | only news |
+| hook completed | only news | only news |
+| the boundary's own output lost too | the registration again (with the primer when owed) | only news |
+
+Tests: `test/harness/registration-owed.test.ts` (the hand-off's abandon stands for the kill, its commit for the written output), `test/harness/register-first.test.ts` (a daemon start that does not end within the hook's 2 s, with the registration in place before it).
+
+If the hook is killed before its registration (store open slower than 2 s), nothing changed against before: the boundary registers with the primer.
+
+If the hook is killed during the ensure, the daemon may not be spawned. The registration said "starting"; the next boundary's `ensureIfStale` spawns (stale heartbeat), and after 10 s with no heartbeat the header says no daemon is validating.
 
 ## What each harness does
 
-| Harness | Start path | Now |
-|---|---|---|
-| Claude Code SessionStart, SubagentStart | `startSession` | register first |
-| Codex SessionStart, subagent start | `startSession` (`src/harness/codex/handlers.ts`) | register first |
-| Claude Code and Codex UserPromptSubmit that registers | `src/harness/shared/prompt.ts`, `ensureToRegister` | unchanged: ensure, settle, register |
-| OpenCode | `register` in `src/harness/opencode/bridge.ts`, `ensureToRegister` | unchanged |
-| Pi | `startSession` in `src/harness/pi/session.ts`, `ensureToRegister` | unchanged |
+Every path that registers and may start a daemon now registers first (`registerFirst`), then ensures, with no heartbeat wait. `ensureToRegister`, `settle` and `SPAWN_SETTLE_MS` are removed.
 
-The three unchanged paths are outside this row's files. They have the same exposure: a registering UserPromptSubmit has the 2 s hook timeout (`plugins/claude-code/hooks/hooks.json`); OpenCode's bridge has a 2 s deadline that kills the bridge's process group (`EVENT_DEADLINE_MS`, `bridge-client.ts`); Pi's `session_start` has a 2 s deadline that terminates the worker (`src/harness/pi/extension.ts`). Each is a three-line change: call `registerFirst` before the registration and its `ensure()` after it, in place of `ensureToRegister`. Not measured how often they are killed; no evidence like 005-95's exists for them.
+| Harness | Path | File | Deadline that can cut it | Owed text |
+|---|---|---|---|---|
+| Claude Code SessionStart, SubagentStart; Codex SessionStart and subagent start | `startSession` | `src/harness/shared/session.ts` | the hook's 2 s timeout | yes |
+| Claude Code and Codex UserPromptSubmit that registers | `submitPrompt` | `src/harness/shared/prompt.ts` | 2 s | yes |
+| Claude Code PostToolBatch, Codex PostToolUse, Pi and OpenCode boundaries that register | `deliver` | `src/harness/shared/deliver.ts` | 2 s | yes (they already ensured before) |
+| OpenCode session register | `register` | `src/harness/opencode/bridge.ts` | the bridge's 2 s deadline (`EVENT_DEADLINE_MS`), which kills its process group | no |
+| Pi session start | `startSession` | `src/harness/pi/session.ts` | the worker's 2 s deadline, which ends the worker | no |
+| Pi run start | `startRun` | `src/harness/pi/run.ts` | 2 s | no |
+
+OpenCode and Pi starts owe no text: their registration header is an answer to the extension, and Pi's primer goes in the system prompt at each run, so a lost answer loses no primer. Their boundaries share `deliver`, which clears any record. Tests: `test/harness/register-first-harnesses.test.ts`, one per path.
+
+The Stop hook's registration (`src/harness/shared/stop.ts`) is unchanged: it ensures only when the heartbeat is stale and does not wait for one.
 
 ## Other changes
+
+- Type changes, all additive: `RegisterOptions.owesText`, `HarnessDelivery.registrationSent`, `WORKTREE_META_ROWS.registrationOwed`. Removed exports: `ensureToRegister`, `settle`, `SPAWN_SETTLE_MS` (`src/harness/shared/ensure.ts`); no other user. `test/keys/key-format.test.ts` and `test/store/worktree-meta.test.ts` pass with the new row; the row is in `src/core/types/store.ts`, not under `src/core/store/**`.
 
 - `ensure` takes `{ stopRead }` so the stop is not read twice; `stopHeld` is the old first block of `ensure`.
 - `registerNow` (`src/core/delivery/delivery.ts`): its transaction went from complexity 22 to 13. `tellAtRegistration` (5) and `seedRegistered` (6) take the tell part and the first-registration part. No behaviour change; `test/delivery/late-paths.test.ts` passes.

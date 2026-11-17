@@ -2,10 +2,9 @@ import { syncOnHeadMove } from "../../core/commit/boundary.js";
 import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/format.js";
 import { readEditLine } from "../../core/presence/narrow.js";
 import type { HookContext } from "./context.js";
-import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
-import { withPrimer } from "./primer.js";
+import { registerOwing, sayOwed } from "./owed.js";
 import { uncoveredEditLine } from "./uncovered-edit.js";
 
 /**
@@ -66,12 +65,22 @@ export async function deliver(
 ): Promise<string | null> {
   const at = (deps.now ?? Date.now)();
   const ensured = await ensureIfStale(context, deps);
-  if (!isRegistered(context)) {
-    const registration = await context.delivery.register(context.consumer, {
-      inTurn: true,
-      ...startingAfter(ensured, at),
-    });
-    return withPrimer(registration, deps.command, coverageOf(context));
+  // Row 005-98: a registration whose text was never handed over says it now, with the primer
+  // its first hook owed or without (a resume), and hands it over last.
+  const owed = isRegistered(context)
+    ? await sayOwed(context, deps, { inTurn: true, ...startingAfter(ensured, at) })
+    : await registerOwing(
+        context,
+        deps,
+        { primer: true },
+        {
+          inTurn: true,
+          ...startingAfter(ensured, at),
+        },
+      );
+  if (owed !== null) {
+    await context.delivery.registrationSent(context.consumer);
+    return owed;
   }
   if (edited && ensured === "fresh") {
     await syncOnHeadMove(context.store, context.consumer.worktreeId, context.root);

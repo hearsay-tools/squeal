@@ -76,7 +76,7 @@ describe("a SessionStart whose daemon start outlasts the hook's timeout (row 005
     },
   );
 
-  it("is followed by a tool boundary that does not register again or say the primer", async () => {
+  it("is followed by a tool boundary that says the registration once, with no primer on resume", async () => {
     const r = squealRepo();
     r.apply(r.pass());
     r.daemon("none");
@@ -86,13 +86,14 @@ describe("a SessionStart whose daemon start outlasts the hook's timeout (row 005
 
     // The hook is killed here: its output never reaches the session. The daemon comes up.
     r.daemon("alive");
+    const owed = context((await batch(r)).stdout);
+    expect(owed).toMatch(/^SQUEAL · registered at revision 1\n/);
+    expect(owed).not.toContain(PRIMER);
+    // Handed over: the next boundary says only news.
     expect((await batch(r)).stdout).toBe("");
-
-    // What the boundary delivers is the news since the registration, as for any registered session.
     r.apply(r.fail());
     const text = context((await batch(r)).stdout);
     expect(text).not.toMatch(/registered at revision/);
-    expect(text).not.toContain(PRIMER);
     expect(text).toContain("FAIL");
     start.release();
     await start.hook;
