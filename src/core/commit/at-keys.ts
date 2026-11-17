@@ -99,7 +99,12 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
           const why =
             paths === undefined || key === undefined
               ? `${ref.path} has no key here`
-              : changedInput({ path: ref.path, paths }, there, here, diff);
+              : changedInput(
+                  { path: ref.path, paths, closure: keyer.keys.index.closure(ref)?.paths ?? [] },
+                  there,
+                  here,
+                  diff,
+                );
           environments.set(ref.project, keyer.keys.index.environment(ref.project));
           if (why === null && key !== undefined) kept.set(id, { ref, key });
           else changed.set(id, why ?? "");

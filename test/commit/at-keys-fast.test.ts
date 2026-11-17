@@ -24,6 +24,7 @@ const FILES = {
 const INPUTS = {
   path: "test/a.test.ts",
   paths: ["test/a.test.ts", "src/a.ts", "src/a.json", "src/", "node_modules/.pnpm/lock.yaml"],
+  closure: ["test/a.test.ts", "src/a.ts", "src/a.json", "src/"],
 };
 
 function commitOf(files: Record<string, string>): CommitSide {
@@ -103,25 +104,39 @@ describe("the fast path (row 023-16)", () => {
     );
   });
 
-  it("6: refuses an added or deleted resolution candidate of an input module (review wave-5 B1)", () => {
-    const moved = (path: string, inputs = INPUTS) =>
-      check(FILES, FILES, diffOf([path], { addedOrDeleted: new Set([path]) }), [], inputs);
-    const reason = (path: string) =>
-      `${path} was added or deleted where an input module's import may resolve`;
-    // An extension twin.
-    expect(moved("src/a.tsx")).toBe(reason("src/a.tsx"));
-    // A folder index or a folder's manifest beside a file input.
-    expect(moved("src/a/index.ts")).toBe(reason("src/a/index.ts"));
-    expect(moved("src/a/package.json")).toBe(reason("src/a/package.json"));
-    // A file beside a folder index input, the review's case: `src/a.ts` deleted, `../src/a` now `src/a/index.ts`.
-    const index = { path: "test/a.test.ts", paths: ["test/a.test.ts", "src/a/index.ts"] };
-    const { "src/a.ts": _, ...rest } = FILES;
-    const here = { ...rest, "src/a/index.ts": "i1" };
-    const diff = diffOf(["src/a.ts"], { addedOrDeleted: new Set(["src/a.ts"]) });
-    expect(check({ ...here, "src/a.ts": "a1" }, here, diff, [], index)).toBe(reason("src/a.ts"));
-    // A file resolution never reaches, and a module of another name, keep the key.
-    expect(moved("src/a.md")).toBeNull();
-    expect(moved("src/c.ts")).toBeNull();
+  it("6: refuses a file of any name added or deleted where the closure's imports resolve (review wave-5 B1, re-review B1)", () => {
+    // `../../src/lib/a` resolves to a folder index under a configured extension.
+    const deep = {
+      "test/x/a.test.ts": "t1",
+      "src/lib/a/index.custom": "i1",
+      "src/lib/b.ts": "b1",
+      "src/other/c.ts": "c1",
+      "docs/a.md": "d1",
+    };
+    const closure = ["test/x/a.test.ts", "src/lib/a/index.custom"];
+    const inputs = { path: "test/x/a.test.ts", paths: closure, closure };
+    const moved = (path: string, commit: Record<string, string>, here: Record<string, string>) =>
+      check(commit, here, diffOf([path], { addedOrDeleted: new Set([path]) }), [], inputs);
+    const reason = (path: string, folder: string) =>
+      `${path} was added or deleted in ${folder}, where the closure's imports resolve`;
+    // The re-review's case: a same-named sibling of the folder, any extension, deleted since.
+    const sibling = { ...deep, "src/lib/a.custom": "a1" };
+    expect(moved("src/lib/a.custom", sibling, deep)).toBe(reason("src/lib/a.custom", "src/lib"));
+    // Any name, in the folder of a closure file.
+    expect(moved("src/lib/a/notes.md", deep, { ...deep, "src/lib/a/notes.md": "n" })).toBe(
+      reason("src/lib/a/notes.md", "src/lib/a"),
+    );
+    // A new folder is a new entry in its parent.
+    expect(moved("src/lib/new/x.ts", deep, { ...deep, "src/lib/new/x.ts": "x" })).toBe(
+      reason("src/lib/new/x.ts", "src/lib"),
+    );
+    // Elsewhere, the key holds: another folder, and a new folder under an unguarded one.
+    expect(moved("docs/b.md", deep, { ...deep, "docs/b.md": "b" })).toBeNull();
+    expect(moved("src/other/d.ts", deep, { ...deep, "src/other/d.ts": "d" })).toBeNull();
+    expect(moved("src/new/x.ts", deep, { ...deep, "src/new/x.ts": "x" })).toBeNull();
+    // The root is guarded when a closure file lies in a top-level folder.
+    const root = diffOf(["b.md"], { addedOrDeleted: new Set(["b.md"]) });
+    expect(check(FILES, { ...FILES, "b.md": "b" }, root)).toBe(reason("b.md", "the root"));
   });
 
   it("7, 8: refuses a manifest's resolution change or a tsconfig change on the inputs' path, not elsewhere", () => {

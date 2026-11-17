@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -151,6 +151,28 @@ export async function freshKey(f: Fixture, commit: string, file: TestFileRef): P
     } finally {
       await stored.close();
     }
+  } finally {
+    git(f.root, "worktree", "remove", "--force", tree);
+  }
+}
+
+/** Whether Vitest, run for real in a plain worktree at `commit`, passes `file`. */
+export function passesAt(f: Fixture, commit: string, file: TestFileRef): boolean {
+  const tree = join(f.dir, `run-${commit.slice(0, 8)}-${Date.now()}`);
+  git(f.root, "worktree", "add", "-q", "--detach", tree, commit);
+  try {
+    link(tree);
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter(([name]) => !/^(VITEST|NODE_OPTIONS$|TEST$)/.test(name)),
+    );
+    const vitest = join(tree, "node_modules/vitest/vitest.mjs");
+    const run = spawnSync(process.execPath, [vitest, "run", file.path], {
+      cwd: tree,
+      env,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+    return run.status === 0;
   } finally {
     git(f.root, "worktree", "remove", "--force", tree);
   }

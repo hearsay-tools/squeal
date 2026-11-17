@@ -17,6 +17,7 @@ import {
   git,
   keying,
   linkInstall,
+  passesAt,
   ref,
 } from "./at-keys-fixture.js";
 
@@ -80,7 +81,7 @@ describe("keys at a commit where resolution or the config moves (review wave-5)"
     await failAtA(
       f,
       a,
-      /^src\/a\.ts was added or deleted where an input module's import may resolve$/,
+      /^src\/a\.ts was added or deleted in src, where the closure's imports resolve$/,
     );
   });
 
@@ -93,7 +94,9 @@ describe("keys at a commit where resolution or the config moves (review wave-5)"
       key: await freshKey(f, a, TEST),
       via: "walk",
     });
-    expect(keys.changed.get(testFileId(TEST))).toMatch(/^src\/a\/index\.ts was added or deleted/);
+    expect(keys.changed.get(testFileId(TEST))).toMatch(
+      /^src\/a\/index\.ts was added or deleted in src, where/,
+    );
   });
 
   it("B2: a config that reads a file no key input lists sends the file to the walk", async () => {
@@ -115,5 +118,25 @@ describe("keys at a commit where resolution or the config moves (review wave-5)"
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "choice.txt": "2\n" });
     await failAtA(f, a, /^the environment of project "" differs at the commit$/);
+  });
+
+  it("re-review B1: a configured extension's sibling of a folder index, deleted since, sends the file to the walk", async () => {
+    const f = fixture({
+      "vitest.config.mjs":
+        'export default {\n  resolve: { extensions: [".custom", ".ts", ".js", ".json"] },\n  test: { include: ["test/*.test.ts"] },\n};\n',
+      "src/a.custom": "export const n = 1;\n",
+      "src/a/index.custom": "export const n = 2;\n",
+      [TEST.path]: testOf(2),
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    const b = f.commit({ "src/a.custom": null });
+    // The real runs: A loads the sibling and fails, B loads the folder index and passes.
+    expect(passesAt(f, a, TEST)).toBe(false);
+    expect(passesAt(f, b, TEST)).toBe(true);
+    await failAtA(
+      f,
+      a,
+      /^src\/a\.custom was added or deleted in src, where the closure's imports resolve$/,
+    );
   });
 });
