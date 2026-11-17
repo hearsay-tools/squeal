@@ -1757,10 +1757,6 @@ function digest(text) {
 var ONLY_REJECTED = configFieldHash(false);
 var ONLY_ALLOWED = configFieldHash(true);
 
-// src/core/scheduler/calendar-steps.ts
-var CALENDAR_STEP_MS = 100;
-var SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
-
 // src/core/scheduler/pool-wait.ts
 var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 

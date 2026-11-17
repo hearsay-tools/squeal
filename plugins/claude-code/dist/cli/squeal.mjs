@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.539";
+  if (true) return "0.1.540";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -20855,110 +20855,6 @@ var init_source2 = __esm({
   }
 });
 
-// src/core/scheduler/calendar-steps.ts
-function steppedClock(clock, steps) {
-  return new SteppedClock(clock, steps);
-}
-var CALENDAR_STEP_MS, SURE_SAMPLE_MS, CalendarSteps, SteppedClock;
-var init_calendar_steps = __esm({
-  "src/core/scheduler/calendar-steps.ts"() {
-    "use strict";
-    CALENDAR_STEP_MS = 100;
-    SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
-    CalendarSteps = class {
-      /**
-       * `startedAt`: the start this daemon stored on its worktree, `null` while
-       * it is not known (review 0.1.524 B1, `stamp`).
-       */
-      constructor(startedAt = () => null) {
-        this.startedAt = startedAt;
-      }
-      startedAt;
-      /** `calendar - elapsed` as of the last step; `null` before the first reading. */
-      #offset = null;
-      #total = 0;
-      #listeners = /* @__PURE__ */ new Set();
-      /** What `local` saw first, by kind: the stamp's id and `total` then. */
-      #seen = /* @__PURE__ */ new Map();
-      /** The sum of the steps seen: a stamp kept from before a step is behind by the steps after it. */
-      get total() {
-        return this.#total;
-      }
-      /**
-       * Tells `shift` each step, in ms (back when negative), with the calendar
-       * reading that saw it, until the returned function is called.
-       */
-      onStep(shift) {
-        this.#listeners.add(shift);
-        return () => this.#listeners.delete(shift);
-      }
-      /**
-       * A calendar reading taken between the elapsed readings `before` and
-       * `after`: a step since the last sample is told to each listener before
-       * this returns. A sample whose span is wider than `SURE_SAMPLE_MS` is
-       * not sure and is left out (review 0.1.524 S1).
-       */
-      observe(calendar, before4, after3 = before4) {
-        if (after3 - before4 > SURE_SAMPLE_MS) return;
-        const offset2 = calendar - (before4 + after3) / 2;
-        if (this.#offset === null) {
-          this.#offset = offset2;
-          return;
-        }
-        const ms2 = Math.round(offset2 - this.#offset);
-        if (Math.abs(ms2) < CALENDAR_STEP_MS) return;
-        this.#offset += ms2;
-        this.#total += ms2;
-        for (const shift of [...this.#listeners]) shift(ms2, calendar);
-      }
-      /**
-       * `stamp`, a stored calendar time of `kind` with `id`, in today's
-       * calendar: moved by the steps since this daemon first saw `id`. One id
-       * is kept for each kind; a new id is first seen now.
-       */
-      local(kind, id, stamp2) {
-        let seen = this.#seen.get(kind);
-        if (seen?.id !== id) {
-          seen = { id, mark: this.#total };
-          this.#seen.set(kind, seen);
-        }
-        return stamp2 + this.#total - seen.mark;
-      }
-      /**
-       * Review 0.1.524 B1: the time to stamp a row this daemon publishes for
-       * status, read at `at`: `at`, but never before this daemon's stored start.
-       * A reader takes a row stamped before the live daemon's start as a
-       * predecessor's (`publishedWaits`, `publishedBatches`); after a set-back
-       * past its start, the live daemon's rows show its start instead.
-       */
-      stamp(at2) {
-        const startedAt = this.startedAt();
-        return startedAt === null ? at2 : Math.max(at2, startedAt);
-      }
-      /** `stamp`, taken when `total` was `mark`, in today's calendar. */
-      since(stamp2, mark) {
-        return stamp2 + this.#total - mark;
-      }
-    };
-    SteppedClock = class {
-      constructor(clock, steps) {
-        this.clock = clock;
-        this.steps = steps;
-      }
-      clock;
-      steps;
-      now = () => {
-        const before4 = this.clock.elapsed();
-        const at2 = this.clock.now();
-        this.steps.observe(at2, before4, this.clock.elapsed());
-        return at2;
-      };
-      elapsed = () => this.clock.elapsed();
-      arm = (ms2, fire) => this.clock.arm(ms2, fire);
-    };
-  }
-});
-
 // src/core/scheduler/pool-wait.ts
 function poolWaitMetaKey(worktreeId) {
   return worktreeMetaKey("poolWait", worktreeId);
@@ -21005,7 +20901,6 @@ var init_pool_wait = __esm({
     "use strict";
     init_slot_files();
     init_store();
-    init_calendar_steps();
     init_capacity();
     POOL_WAIT_REFRESH_MS = 1e4;
     NO_WAITS = /* @__PURE__ */ new Map();
@@ -21015,8 +20910,8 @@ var init_pool_wait = __esm({
       #lanes = /* @__PURE__ */ new Map();
       /** When the row was last written, in elapsed time; `null` before, or after a write that failed. */
       #publishedAt = null;
-      /** `calendar - elapsed` at the last write: a change of it is a calendar step since. */
-      #publishedOffset = 0;
+      /** `steps.total` at the last write: a change of it is a calendar step since. */
+      #publishedSteps = 0;
       /** The row may hold a wait: the last write had one, or failed. */
       #written = false;
       #elapsed;
@@ -21036,7 +20931,7 @@ var init_pool_wait = __esm({
             `the pool refused the ${laneName(lane)} lane's tier: it waits for CPU (${gateText(gate2)}); ${ASKS_AGAIN}`
           );
           this.#publish(now, elapsed);
-        } else if (this.#publishedAt === null || elapsed - this.#publishedAt >= POOL_WAIT_REFRESH_MS || Math.abs(now - elapsed - this.#publishedOffset) >= CALENDAR_STEP_MS) {
+        } else if (this.#publishedAt === null || elapsed - this.#publishedAt >= POOL_WAIT_REFRESH_MS || this.#steps() !== this.#publishedSteps) {
           this.#publish(now, elapsed);
         }
       }
@@ -21059,6 +20954,10 @@ var init_pool_wait = __esm({
         this.#lanes.clear();
         if (this.#written) this.#publish(this.#options.now(), this.#elapsed());
       }
+      /** The sum of the calendar steps told so far; 0 without `steps`. */
+      #steps() {
+        return this.#options.steps?.total ?? 0;
+      }
       /** `lane`'s wait, if its last refusal is within the freshness at `elapsed`. */
       #live(lane, elapsed) {
         const entry4 = this.#lanes.get(lane);
@@ -21072,7 +20971,7 @@ var init_pool_wait = __esm({
         try {
           this.#options.publish(waits2, now);
           this.#publishedAt = elapsed;
-          this.#publishedOffset = now - elapsed;
+          this.#publishedSteps = this.#steps();
           this.#written = waits2.size > 0;
         } catch {
           this.#publishedAt = null;
@@ -56416,6 +56315,110 @@ var init_busy_resume = __esm({
   }
 });
 
+// src/core/scheduler/calendar-steps.ts
+function steppedClock(clock, steps) {
+  return new SteppedClock(clock, steps);
+}
+var CALENDAR_STEP_MS, SURE_SAMPLE_MS, CalendarSteps, SteppedClock;
+var init_calendar_steps = __esm({
+  "src/core/scheduler/calendar-steps.ts"() {
+    "use strict";
+    CALENDAR_STEP_MS = 100;
+    SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
+    CalendarSteps = class {
+      /**
+       * `startedAt`: the start this daemon stored on its worktree, `null` while
+       * it is not known (review 0.1.524 B1, `stamp`).
+       */
+      constructor(startedAt = () => null) {
+        this.startedAt = startedAt;
+      }
+      startedAt;
+      /** `calendar - elapsed` as of the last step; `null` before the first reading. */
+      #offset = null;
+      #total = 0;
+      #listeners = /* @__PURE__ */ new Set();
+      /** What `local` saw first, by kind: the stamp's id and `total` then. */
+      #seen = /* @__PURE__ */ new Map();
+      /** The sum of the steps seen: a stamp kept from before a step is behind by the steps after it. */
+      get total() {
+        return this.#total;
+      }
+      /**
+       * Tells `shift` each step, in ms (back when negative), with the calendar
+       * reading that saw it, until the returned function is called.
+       */
+      onStep(shift) {
+        this.#listeners.add(shift);
+        return () => this.#listeners.delete(shift);
+      }
+      /**
+       * A calendar reading taken between the elapsed readings `before` and
+       * `after`: a step since the last sample is told to each listener before
+       * this returns. A sample whose span is wider than `SURE_SAMPLE_MS` is
+       * not sure and is left out (review 0.1.524 S1).
+       */
+      observe(calendar, before4, after3 = before4) {
+        if (after3 - before4 > SURE_SAMPLE_MS) return;
+        const offset2 = calendar - (before4 + after3) / 2;
+        if (this.#offset === null) {
+          this.#offset = offset2;
+          return;
+        }
+        const ms2 = Math.round(offset2 - this.#offset);
+        if (Math.abs(ms2) < CALENDAR_STEP_MS) return;
+        this.#offset += ms2;
+        this.#total += ms2;
+        for (const shift of [...this.#listeners]) shift(ms2, calendar);
+      }
+      /**
+       * `stamp`, a stored calendar time of `kind` with `id`, in today's
+       * calendar: moved by the steps since this daemon first saw `id`. One id
+       * is kept for each kind; a new id is first seen now.
+       */
+      local(kind, id, stamp2) {
+        let seen = this.#seen.get(kind);
+        if (seen?.id !== id) {
+          seen = { id, mark: this.#total };
+          this.#seen.set(kind, seen);
+        }
+        return stamp2 + this.#total - seen.mark;
+      }
+      /**
+       * Review 0.1.524 B1: the time to stamp a row this daemon publishes for
+       * status, read at `at`: `at`, but never before this daemon's stored start.
+       * A reader takes a row stamped before the live daemon's start as a
+       * predecessor's (`publishedWaits`, `publishedBatches`); after a set-back
+       * past its start, the live daemon's rows show its start instead.
+       */
+      stamp(at2) {
+        const startedAt = this.startedAt();
+        return startedAt === null ? at2 : Math.max(at2, startedAt);
+      }
+      /** `stamp`, taken when `total` was `mark`, in today's calendar. */
+      since(stamp2, mark) {
+        return stamp2 + this.#total - mark;
+      }
+    };
+    SteppedClock = class {
+      constructor(clock, steps) {
+        this.clock = clock;
+        this.steps = steps;
+      }
+      clock;
+      steps;
+      now = () => {
+        const before4 = this.clock.elapsed();
+        const at2 = this.clock.now();
+        this.steps.observe(at2, before4, this.clock.elapsed());
+        return at2;
+      };
+      elapsed = () => this.clock.elapsed();
+      arm = (ms2, fire) => this.clock.arm(ms2, fire);
+    };
+  }
+});
+
 // src/core/scheduler/command-hold.ts
 function processIdentity(pid) {
   const namespace2 = pidNamespace();
@@ -60625,6 +60628,7 @@ var init_scheduler2 = __esm({
         const waits2 = new PoolWaits({
           now: this.#now,
           elapsed: this.#clock.elapsed,
+          steps: this.#steps,
           log: options.log ?? (() => {
           }),
           publish: poolWaitsPublish(options.store, options.worktreeId, this.#steps)
