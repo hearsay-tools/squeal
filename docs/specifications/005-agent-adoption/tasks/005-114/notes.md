@@ -49,3 +49,38 @@ The design's copies in `tasks/005-93/design.md` and `tasks/005-97/notes.md` are 
 `test/delivery/late.test.ts`: the unlisted case asserts the header's "so new test files are not
 counted" is absent and no "yourself"; a new unread case with no owed file asserts the header's
 "Squeal has not yet read edits" is absent and one path wait. Both failed on the old `newsLine`.
+
+## Repair, review 0.1.554 (the counts after the listing)
+
+The review proved a double: a consumer registered before the listing is owed the counts (row
+011-205). If its first boundary after the listing also carries the late line, `newsLine`'s
+`countsOwed` branch said the header's delay sentence anyway, since it did not ask
+`lateCarriesDelay`. With a late feed it also said the path wait twice. A second double of the
+same kind: before the worktree's listing, the header's "still starting" sentence carries a path
+wait, and an unlisted late line could add a second one.
+
+Each branch of the news header that can say a delay sentence or the path wait:
+
+| Branch | Says | Why it cannot double now |
+|---|---|---|
+| `unlistedLine` (test files of the worktree not listed) | `noResultsText`'s path wait, or a stopped, slow or absent daemon's sentence; never the delay sentence | `lateNotes` says no late line in this state: `quietFor` holds while `testFilesListed === false`, so `lateMaySay` is false too. With a down daemon no late line is said anyway. |
+| `countsOwed` (first delivery after the listing) | `incompleteText`: the delay sentence, with its path wait when the feed is late | It now asks `lateCarriesDelay` as the own-count branch does. |
+| Own count, or no count | `incompleteText` | Asks `lateCarriesDelay` (first commit). |
+| `daemonText` in every branch | liveness and install sentences; no delay sentence, no path wait | A stopping or down daemon gets no late line (`lateNotes`). |
+
+Before (registered before the listing, unlisted edit, 61 s, no late feed):
+
+> Revision 1 (changed src/a.ts): 2 test files are current (run on the files as they are now). Vitest has not yet listed the test files of revision 1, so new test files are not counted.
+> Vitest has not yet listed the test files of revision 1, so Squeal has not queued them. `squeal status --wait 60000 <path>...` waits until they are listed, then for the files your paths select.
+
+After: the header line ends after "(run on the files as they are now)."; the late line is the
+same. With a late feed, the header's "Squeal is behind: …" sentence and its path wait go; the
+late line says the unread delay and the one path wait.
+
+Known loss, as before this row while files were owed: with a late feed and the revision not
+listed, the `unread` late line names only the unread edits, not the listing. Its path wait
+covers both. Naming both would add a field to `EditsLate` (`src/core/types/delivery.ts`),
+outside this row's files.
+
+Tests: `test/delivery/late-one-delay.test.ts`, the three cases, each counting the delay sentence
+and `status --wait 60000` in the whole message. All three fail on b45d6d0a7.

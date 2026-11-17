@@ -195,10 +195,16 @@ function lateNow(
 /**
  * Whether a late notice is not said beside what `header` says: a hold on validation says no
  * test runs until it ends (row 011-73); with no test group at `edit`, the files wait for their
- * groups' moments (row 019-49), so no form of it is said (review 0.1.530 B5).
+ * groups' moments (row 019-49), so no form of it is said (review 0.1.530 B5). Row 005-114
+ * (review 0.1.554): before the worktree's test files are listed, the header says Squeal is still
+ * starting, with its path wait (`noResultsText`); a late notice would say a second one.
  */
 function quietFor(header: StatusHeader): boolean {
-  return (header.holds?.length ?? 0) > 0 || header.noTestsAtEdit === true;
+  return (
+    (header.holds?.length ?? 0) > 0 ||
+    header.noTestsAtEdit === true ||
+    header.testFilesListed === false
+  );
 }
 
 /**

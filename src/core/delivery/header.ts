@@ -201,17 +201,20 @@ function newsLine(
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return unlisted;
   const revision = revisionPrefix(header);
+  const own = told.ownEdits;
+  // Rows 005-97 and 005-114: the delay sentence, and its path wait, once per message.
+  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate)
+    ? ""
+    : incompleteText(header, command);
   // Row 011-205: the first delivery after the listing to a consumer registered before it. Row
   // 005-94: how far the results reach, as the registration's `Known failures` line says it.
   if (told.countsOwed !== undefined) {
     const files = currentFilesText(header, command);
     const line = files === null ? `${revision.slice(0, -2)}.` : `${revision}${files}`;
-    return `${line}${incompleteText(header, command)}${daemonText(header, command)}`;
+    return `${line}${delays}${daemonText(header, command)}`;
   }
-  const own = told.ownEdits;
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  const latePart = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate);
-  return `${line}${latePart ? "" : incompleteText(header, command)}${daemonText(header, command)}`;
+  return `${line}${delays}${daemonText(header, command)}`;
 }
 
 /** `the 9 test files your edits affect`, `the 1 test file your edits affect`. */
