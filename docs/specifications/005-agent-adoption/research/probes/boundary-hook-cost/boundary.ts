@@ -173,8 +173,8 @@ try {
 const total = performance.now() - t0;
 const sql = [...trace.entries()].sort((a, b) => b[1].ms - a[1].ms);
 const text = out === null ? "" : typeof out === "string" ? out : JSON.stringify(out);
-const row = { src: SRC.includes("0.1.546") ? "0.1.546" : "main", repo: COMMON.split("/").pop(), hook: HOOK, daemon: DAEMON, lock: LOCK, news: flipped,
-  ...(env.FIRST ? { first: Number(env.FIRST) } : {}), ...(env.STUBDELAY ? { stubDelay: Number(env.STUBDELAY) } : {}),
+const row = { src: SRC.includes("0.1.546") ? "0.1.546" : SRC.includes("src-lazy") ? "lazy" : SRC.includes("src-r1") ? "r1" : "main", repo: COMMON.split("/").pop(), hook: HOOK, daemon: DAEMON, lock: LOCK, news: flipped,
+  ...(env.FIRST ? { first: Number(env.FIRST) } : {}), ...(env.R1 ? { r1: true } : {}), ...(env.STUBDELAY ? { stubDelay: Number(env.STUBDELAY) } : {}),
   at: new Date().toISOString(), load1: +loadavg()[0].toFixed(1), importMs: +importMs.toFixed(0), total: +total.toFixed(1), marks, spawned, error,
   textLen: text.length, text: text.slice(0, 300), sqlMs: +sql.reduce((s, [, v]) => s + v.ms, 0).toFixed(1),
   top: TRACE ? sql.slice(0, 20).map(([k, v]) => ({ sql: k, db: v.db, n: v.n, ms: +v.ms.toFixed(1), rows: v.rows })) : undefined };
