@@ -162,6 +162,8 @@ export function openContext(
       ...(prepare === undefined ? {} : { prepare }),
       // Row 011-312: a registration records the commit `HEAD` names here.
       root: location.root,
+      // Row 005-108: a worktree with no row yet reads its daemon's start by this lock.
+      commonDir: location.commonDir,
     });
     const close = () => store.close();
     const prepared = prepare === undefined ? {} : { prepared: prepare.reports };

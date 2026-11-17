@@ -1,6 +1,6 @@
 import { readDaemonNotes } from "../notes.js";
 import { lockFileFor } from "../store/paths.js";
-import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
 import type { InFlightRun } from "../types/status.js";
 import type { Store } from "../types/store.js";
@@ -50,7 +50,10 @@ export interface PresenceFacts {
   readonly stop: () => StopMark | null;
   /** When the last batch the change feed delivered started, as stored (row 011-200). */
   readonly feedDelivered: () => EpochMs | null;
-  /** The marks beside the worktree's lock, each read when asked; `null` without a row. */
+  /**
+   * The marks beside the worktree's lock, each read when asked; `null` without a row and
+   * without the common dir to find its lock by (row 005-108).
+   */
   readonly marks: () => LockMarks | null;
   /** Whether no process holds the worktree's lock (`lockFree`). */
   readonly lockFree: () => boolean;
@@ -61,13 +64,16 @@ export interface PresenceFacts {
 /**
  * The facts of `worktreeId`'s daemon at `now`. Its row is `row` when given,
  * else read from the store at the first use. Reads nothing itself; call the
- * readers inside a read transaction to read them as one.
+ * readers inside a read transaction to read them as one. Row 005-108: a new
+ * worktree has no row until its daemon registers, so its lock is found by
+ * `commonDir` then, the caller's; without either, no marks are read.
  */
 export function readPresenceFacts(
   store: Store,
   worktreeId: WorktreeId,
   now: EpochMs,
   row?: WorktreeRecord | null,
+  commonDir?: AbsolutePath,
 ): PresenceFacts {
   const worktree = once(() => (row === undefined ? store.worktrees.get(worktreeId) : row));
   const self = once(() => daemonIncarnation(worktree()?.daemon ?? null));
@@ -78,7 +84,8 @@ export function readPresenceFacts(
   });
   const lockFile = once(() => {
     const w = worktree();
-    return w === null ? null : lockFileFor(w.commonDir, w.id);
+    if (w !== null) return lockFileFor(w.commonDir, w.id);
+    return commonDir === undefined ? null : lockFileFor(commonDir, worktreeId);
   });
   return {
     worktreeId,

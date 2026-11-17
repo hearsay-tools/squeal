@@ -1,4 +1,4 @@
-import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
 import type {
   DaemonDeath,
@@ -54,7 +54,7 @@ export interface Presence {
   readonly heartbeat: DaemonLiveness;
   /** Its shutdown began (`PresenceFacts.shutDown`). */
   readonly shutDown: boolean;
-  /** The marks beside the lock with the last heartbeat (row 011-251); `null` without a row. */
+  /** The marks beside the lock with the last heartbeat (row 011-251); `null` with no lock to read. */
   readonly marks: DaemonStart | null;
   /**
    * A start is current: a start mark that names a live process, with any
@@ -82,14 +82,18 @@ export interface Presence {
   readonly heartbeatLate: () => HeartbeatLate | null;
 }
 
-/** The presence of `worktreeId`'s daemon at `now` from the store (`readPresenceFacts`, `decidePresence`). */
+/**
+ * The presence of `worktreeId`'s daemon at `now` from the store (`readPresenceFacts`,
+ * `decidePresence`); `commonDir` finds its lock while it has no row (row 005-108).
+ */
 export function readPresence(
   store: Store,
   worktreeId: WorktreeId,
   now: EpochMs,
   row?: WorktreeRecord | null,
+  commonDir?: AbsolutePath,
 ): Presence {
-  return decidePresence(readPresenceFacts(store, worktreeId, now, row), now);
+  return decidePresence(readPresenceFacts(store, worktreeId, now, row, commonDir), now);
 }
 
 /**
@@ -111,7 +115,7 @@ export function decidePresence(facts: PresenceFacts, at: EpochMs): Presence {
   // Review 0.1.403-r2 B2: a current start settles it before the stop mark is read, as `asStopped` did.
   const stopped = once(() => !startCurrent() && stop() !== null);
   const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at));
-  const start = once(() => startOfMarks(facts, record(), down(), stopping, marks));
+  const start = once(() => startOfMarks(record(), down(), stopping, marks));
   const died = once((): DaemonDeath | null => {
     if (!down() || record() === null || shutDown() || marks() !== null) return null;
     return facts.lockFree() ? { runs: facts.inFlight() } : null;

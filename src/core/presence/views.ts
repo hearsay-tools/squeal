@@ -184,12 +184,12 @@ function withRest(p: Presence, live: Down): Down {
 }
 
 /**
- * With the record cleared: a handoff under way, else a start the marks say.
- * With a record: a start marked in its place, else its death when its
+ * With the record cleared or no row: a handoff under way, else a start the
+ * marks say. With a record: a start marked in its place, else its death when its
  * shutdown never began, else its stopping.
  */
 function withRecordFacts(p: Presence, live: Down): Down {
-  if (p.facts.row() === null) return live;
+  // Row 005-108: with no row, as with the record cleared: a start the marks say.
   // Each finding is asked for in the order the old layers read it (review 0.1.403-r2 B2).
   if (p.record === null) {
     const stopping = p.stopping;
@@ -231,7 +231,7 @@ function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === undefined ? withStop(p, live) : live;
-  if (p.facts.row() === null) return stopped;
+  // Row 005-108: with no row, as with the record cleared: a start the marks say.
   if (p.record === null) {
     const stopping = p.stopping;
     if (stopping !== null) return { ...stopped, stopping };

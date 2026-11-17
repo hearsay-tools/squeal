@@ -139,7 +139,9 @@ function snapshot(
   if (recovered !== null) notes.push(recovered);
 
   // Row 011-293: daemon presence as status and its JSON payload say it.
-  const daemon = statusView(readPresence(store, worktreeId, now, worktree));
+  // Row 005-108: a worktree with no row yet finds its daemon's start by its lock.
+  const rowless = worktree === null ? (resolveCommonDir(root) ?? undefined) : undefined;
+  const daemon = statusView(readPresence(store, worktreeId, now, worktree, rowless));
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   // Row 011-73 (C6, C9): the holds on its validation, which the queued files wait for.

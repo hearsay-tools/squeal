@@ -1,6 +1,6 @@
 import { FEED_LATE_MS } from "../status/feed-late.js";
 import { lockFileFor } from "../store/paths.js";
-import type { EpochMs } from "../types/common.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
 import type { DaemonLiveness, DaemonShort, DaemonStopping, FeedLate } from "../types/status.js";
 import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
@@ -24,13 +24,19 @@ export function liveOf(facts: PresenceFacts, at: EpochMs): DaemonLiveness {
 /**
  * Row 011-252, the hook spawn's view: whether a daemon's start is current at
  * `now` by the marks beside `row`'s lock alone (`Presence.startCurrent`), so
- * a hook spawns no second daemon. No row read, no start. Reads no store and
- * takes no lock.
+ * a hook spawns no second daemon. Row 005-108: a worktree with no row yet (a
+ * new one, before its daemon registers) reads the marks beside `lockFile`;
+ * with neither, no start. Reads no store and takes no lock.
  */
-export function spawnStartCurrent(row: WorktreeRecord | null | undefined, now: EpochMs): boolean {
-  if (row === null || row === undefined) return false;
-  const marks = readLockMarks(lockFileFor(row.commonDir, row.id), now);
-  return startCurrentOf(startOf(marks, now, lastHeartbeat(row)), row.daemon);
+export function spawnStartCurrent(
+  row: WorktreeRecord | null | undefined,
+  now: EpochMs,
+  lockFile?: AbsolutePath,
+): boolean {
+  const file = row === null || row === undefined ? lockFile : lockFileFor(row.commonDir, row.id);
+  if (file === undefined) return false;
+  const marks = readLockMarks(file, now);
+  return startCurrentOf(startOf(marks, now, lastHeartbeat(row)), row?.daemon ?? null);
 }
 
 /** A start mark that names a live process, with any record; a spawn mark, with the record cleared. */
@@ -114,13 +120,13 @@ export function stoppingOf(
  * (F4, review 0.1.355 B1), since a busy daemon may hold the lock.
  */
 export function startOfMarks(
-  facts: PresenceFacts,
   record: DaemonRecord | null,
   down: boolean,
   stopping: () => DaemonStopping | null,
   marks: () => DaemonStart | null,
 ): MarkedStart | null {
-  if (!down || facts.row() === null) return null;
+  // Row 005-108: a worktree with no row reads its marks too, by the lock its facts found.
+  if (!down) return null;
   const start = marks();
   if (start === null) return null;
   const mark = start.kind === "locked" ? "start" : "spawn";

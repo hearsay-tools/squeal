@@ -7,7 +7,13 @@ import { headerView, newsChange, toldOf, withToldStart } from "../presence/views
 import { readHeader } from "../state/header.js";
 import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
-import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../types/common.js";
 import type { Consumer } from "../types/delivery.js";
 import type { FileChange } from "../types/revision.js";
 import type { KnownState } from "../types/state.js";
@@ -25,7 +31,8 @@ export type { ToldLiveness } from "../presence/told.js";
  * changed since revision `since` (`changedSince`), which every delivered
  * message names (task 001-85; task 001-89, review wave 10 S4 (b)), those
  * of them git ignores (row 011-262), and the installed lockfile those
- * changes wrote, if any (task 001-94, S1).
+ * changes wrote, if any (task 001-94, S1). `commonDir` finds the lock of a
+ * worktree with no row (row 005-108).
  */
 export function readLiveHeader(
   store: Store,
@@ -34,9 +41,10 @@ export function readLiveHeader(
   states?: readonly KnownState[],
   since: RevisionNumber | null = null,
   keys?: readonly TestFileKeyRecord[],
+  commonDir?: AbsolutePath,
 ): StatusHeader {
   const worktree = store.worktrees.get(worktreeId);
-  const presence = readPresence(store, worktreeId, now, worktree);
+  const presence = readPresence(store, worktreeId, now, worktree, commonDir);
   // Row 011-26: the files the live daemon's open runs hold count running, as status counts them (C15).
   const runs = openRuns(store, worktree, presence.heartbeat);
   const open = new Set(runs.flatMap((run) => run.testFiles.map(testFileId)));
@@ -144,15 +152,17 @@ export function toldAtRegistration(live: DaemonLiveness): ToldPresence {
  * overdue is forgotten here, so this and every later boundary report the
  * daemon down as before. Row 005-91 (a): a short late heartbeat is no change,
  * so it is not told and its recovery is no change either; one that reaches
- * `LATE_HEARTBEAT_NEWS_MS` is told once, and its recovery once. Call inside a
+ * `LATE_HEARTBEAT_NEWS_MS` is told once, and its recovery once. `commonDir`
+ * finds the lock of a worktree with no row (row 005-108). Call inside a
  * transaction.
  */
 export function livenessChange(
   store: Store,
   consumer: Consumer,
   at: EpochMs,
+  commonDir?: AbsolutePath,
 ): DaemonLiveness | null {
-  const presence = readPresence(store, consumer.worktreeId, at);
+  const presence = readPresence(store, consumer.worktreeId, at, undefined, commonDir);
   const { change, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
   return change !== null && shortLate(change) ? null : change;

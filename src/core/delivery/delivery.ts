@@ -131,6 +131,12 @@ export interface DeliveryOptions {
    * `HEAD` names (`registrationHead`). Default: none, so it records none.
    */
   readonly root?: AbsolutePath;
+  /**
+   * Row 005-108: the worktree's git common dir, where the lock of a worktree
+   * with no row yet is found, so a daemon in its start is told as starting.
+   * Default: none, so such a worktree reads no start.
+   */
+  readonly commonDir?: AbsolutePath;
 }
 
 /**
@@ -283,7 +289,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (selection === "silent") return null;
       const quiet =
         !liveness ||
-        (livenessChange(store, consumer, now()) === null &&
+        (livenessChange(store, consumer, now(), options.commonDir) === null &&
           holdsChange(store, consumer, now()) === null);
       const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
@@ -310,7 +316,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const { live: changed, held: holds } = toldAtStop(
         { stop, transitions: delta.entries.length > 0 },
         {
-          live: liveness ? livenessChange(store, consumer, at) : null,
+          live: liveness ? livenessChange(store, consumer, at, options.commonDir) : null,
           held: liveness ? holdsChange(store, consumer, at) : null,
         },
       );
@@ -340,7 +346,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Row 005-97: the live header is read once, and only when late may be said or news goes out.
       const live = once(() =>
         withTold(
-          readLiveHeader(store, consumer.worktreeId, at, states, toldRevision(store, consumer)),
+          readLiveHeader(
+            store,
+            consumer.worktreeId,
+            at,
+            states,
+            toldRevision(store, consumer),
+            undefined,
+            options.commonDir,
+          ),
           toldLiveness(store, consumer),
           at,
         ),
@@ -566,7 +580,15 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       seedView(store, consumer, seed, at);
       // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
       const told = startingSince === undefined ? null : { startingSince };
-      const read = readLiveHeader(store, consumer.worktreeId, at, states);
+      const read = readLiveHeader(
+        store,
+        consumer.worktreeId,
+        at,
+        states,
+        null,
+        undefined,
+        options.commonDir,
+      );
       const live = told === null ? read : withTold(read, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
