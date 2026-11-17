@@ -128,6 +128,20 @@ describe("privateReport", () => {
     ]);
   });
 
+  it("reads /./ and // as /, so a dot or doubled slash does not hide a home (review r2 B4)", () => {
+    const { root, base } = repo();
+    commit(root, {
+      "src/b.ts": "a /home/./alice/project\nb /Users/./bob/x\nc /home//carol/x\nd /home/././dave\n",
+      "src/c.ts": "https://example.com//home/./carol/ /Users/.localized /home/./user/x\n",
+    });
+    expect(problems(root, base)).toEqual([
+      "src/b.ts:1: holds an absolute home path",
+      "src/b.ts:2: holds an absolute home path",
+      "src/b.ts:3: holds an absolute home path",
+      "src/b.ts:4: holds an absolute home path",
+    ]);
+  });
+
   it("undoes JSON string escapes, nested up to three times, before each rule, never printing them", () => {
     const { root, base } = repo();
     const hook = { session_id: "abc", cwd: "/tmp/x" };
