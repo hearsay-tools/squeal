@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
@@ -15,6 +14,7 @@ import {
   squealMessages,
 } from "../harness/pi/real-pi.js";
 import { type PiRun, type PiRunOptions, piUnavailable, textOf } from "../helpers/pi.js";
+import { awaitArmed, type WakeTrace, wakeTrace } from "../helpers/pi-wake-trace.js";
 
 /*
  * Spec 009 goal 7 and D5 against the real Pi 1.0.4 and the shipped bundle:
@@ -36,8 +36,10 @@ beforeAll(async () => {
 afterAll(() => cleanup());
 
 const runs: PiRun[] = [];
+const traces: WakeTrace[] = [];
 afterEach(() => {
   for (const run of runs.splice(0)) run.cleanup();
+  for (const trace of traces.splice(0)) trace.cleanup();
 });
 
 const FAIL = "PASS -> FAIL";
@@ -59,13 +61,26 @@ function lockState(r: SquealRepo, consumer = piConsumer(r)): WaiterLockState | n
     : waiterLockState(storePaths(r.repo.commonDir).locksDir, consumer);
 }
 
-/** Until the wake holds its consumer's waiter lock. */
-async function armed(r: SquealRepo): Promise<void> {
-  const deadline = performance.now() + 10_000;
-  while (lockState(r) !== "held") {
-    if (performance.now() > deadline) throw new Error("the idle wake was never armed");
-    await sleep(20);
-  }
+/**
+ * Until the wake holds its consumer's waiter lock; at 10 s, throws what it saw and what Pi's
+ * trace recorded (row 009-30).
+ */
+async function armed(r: SquealRepo, trace: WakeTrace): Promise<void> {
+  await awaitArmed({
+    headline: "the idle wake was never armed",
+    boundMs: 10_000,
+    pollMs: 20,
+    probe: () => {
+      const consumers = r.store.consumers.list(r.worktreeId).map((c) => c.consumer);
+      const lock = lockState(r);
+      return {
+        consumers: consumers.map((c) => `${c.sessionId}/${c.agentId}`),
+        lock: lock ?? `not read: ${consumers.length} consumers, not one`,
+      };
+    },
+    trace,
+    piCwd: r.root,
+  });
 }
 
 function passing(): SquealRepo {
@@ -79,12 +94,13 @@ async function inRepo(
   r: SquealRepo,
   options: Pick<PiRunOptions, "mode" | "prompts" | "plan">,
   gates: readonly (() => void)[],
+  trace?: WakeTrace,
 ): Promise<[PiRun, number]> {
   const world = await piWorld(r);
   const started = performance.now();
   const run = await runWithExtension(
     extension,
-    { ...options, cwd: r.root, env: world.env },
+    { ...options, cwd: r.root, env: { ...trace?.env, ...world.env } },
     async (done) => {
       for (const [n, then] of gates.entries()) await atGate(world, n, done, then);
     },
@@ -100,6 +116,8 @@ describe.skipIf(unavailable !== undefined)("the idle wake with real Pi", () => {
     timeout: 60_000,
   }, async () => {
     const r = passing();
+    const trace = wakeTrace();
+    traces.push(trace);
     const [run] = await inRepo(
       r,
       {
@@ -109,7 +127,7 @@ describe.skipIf(unavailable !== undefined)("the idle wake with real Pi", () => {
           {
             type: "idle",
             land: async () => {
-              await armed(r);
+              await armed(r, trace);
               r.apply(r.fail());
             },
           },
@@ -118,6 +136,7 @@ describe.skipIf(unavailable !== undefined)("the idle wake with real Pi", () => {
         plan: [{ tools: [WRITE, gateCall(0)] }, { text: "done" }, { text: "seen" }],
       },
       [() => r.queue("k2")],
+      trace,
     );
 
     expect(run.exitCode, run.stderr).toBe(0);
