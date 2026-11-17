@@ -37,7 +37,7 @@ import type {
 } from "../types/delivery.js";
 import type { LintNews } from "../types/lint-delivery.js";
 import type { KnownState } from "../types/state.js";
-import type { StatusBuilder } from "../types/status.js";
+import type { StatusBuilder, StatusHeader } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import {
   type HarnessProcess,
@@ -71,6 +71,7 @@ import { markLeaving } from "./leaving.js";
 import {
   livenessChange,
   readLiveHeader,
+  type ToldLiveness,
   tellLiveness,
   tellRevision,
   toldAtRegistration,
@@ -566,28 +567,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         live,
         knownFailures.map((f) => f.check),
       );
-      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
-      const daemon = header.daemon === undefined ? null : toldAtRegistration(header.daemon);
-      tellLiveness(store, consumer, starting ? told : daemon);
-      tellRevision(store, consumer, header.revision);
-      tellSlowTier(store, consumer, header.slowTier);
-      tellGroupTiers(store, consumer, header.groupTiers);
-      tellCommit(store, consumer, header.commitLine);
-      oweCounts(store, consumer, header);
-      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-      if (!registered) {
-        // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
-        const alive = atStart && header.daemon?.state === "alive";
-        const resumed = tellRegistered(store, consumer, header.revision, {
-          at,
-          scanned: scannedDaemon(store, consumer.worktreeId, alive),
-          head: options.root === undefined ? null : registrationHead(options.root),
-        });
-        // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
-        startEdits(store, consumer, header.revision, resumed?.said === true);
-        // Review wave 13as, B2: a path told before it left is not told again.
-        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-      }
+      tellAtRegistration(store, consumer, header, told, at);
+      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
       if (inTurn) startTurn(store, consumer);
       else writeTurn(store, consumer, null);
       recordHarness(store, consumer, options.harnessProcess?.() ?? null);
@@ -607,6 +588,57 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       };
     });
   }
+}
+
+/**
+ * What a registration tells `consumer` of `header` (`registerNow`): the daemon, the revision,
+ * the tiers, the commit, the owed counts and the holds at `at`. Task 001-156: a daemon the hook
+ * spawned and that has not heartbeat yet (`told`) is told as starting while the header reads it.
+ */
+function tellAtRegistration(
+  store: Store,
+  consumer: Consumer,
+  header: StatusHeader,
+  told: ToldLiveness | null,
+  at: EpochMs,
+): void {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
+  const daemon = header.daemon === undefined ? null : toldAtRegistration(header.daemon);
+  tellLiveness(store, consumer, starting ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+
+/**
+ * The records a registration of a consumer not yet registered starts (`registerNow`): its
+ * registration revision, the count of its edits, and the uncovered paths a resumed session
+ * was told before it left.
+ */
+function seedRegistered(
+  store: Store,
+  consumer: Consumer,
+  header: StatusHeader,
+  {
+    at,
+    atStart,
+    root,
+  }: { readonly at: EpochMs; readonly atStart: boolean; readonly root: AbsolutePath | undefined },
+): void {
+  // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
+  const alive = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive),
+    head: root === undefined ? null : registrationHead(root),
+  });
+  // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
+  startEdits(store, consumer, header.revision, resumed?.said === true);
+  // Review wave 13as, B2: a path told before it left is not told again.
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 
 /**
