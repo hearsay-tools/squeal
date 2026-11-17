@@ -15,3 +15,17 @@ Owns: `test/integration/pi-wake.test.ts`, `test/e2e/pi.test.ts`, a helper under 
 Done when: a forced timeout (in a test of the helper, not by breaking the product) shows every fact above in the message; both test files pass, each run directly once with `timeout 900` (the e2e file is outside Squeal's coverage); lint and typecheck pass; write `~`, never a `/home/<user>/` path.
 
 Final message: the message a timeout now prints, in full; facts that need a product change; check results.
+
+## W2: 009-30, the report prints fixed facts only
+
+Use /worker. Shape: repair. Decided by the human 2026-11-17 after two failed reviews (`reviews/009-30.md`, `reviews/009-30-r2.md`; B2 stayed open): the timeout report prints no free text from Pi. Start from `origin/wip/009-30`.
+
+Rule, one owner (`describeTimeout` in `test/helpers/pi-wake-trace.ts`): every printed value is a fact the test side produces itself or a value from a closed set: pids, alive or not, exit code, signal name, counts, step names from a fixed list, times in ms, byte counts. Never a string that Pi, a worker, an error or the environment wrote. Stderr becomes "wrote N bytes in M writes, first at +T ms, last at +T ms". A probe error becomes its error code when it is in a known set (`ENOENT`, `EACCES`, …), else "other". An unknown event or step name becomes "other".
+
+First edit: remove `safeText` and its tests; the preload stops recording stderr text (sizes and times only), so the text is not on disk either. Keep B1 (Pi's run, not the installer), B3 (the exit of a terminated worker) and S1 as repaired.
+
+Owns: `test/helpers/pi-wake-trace.ts`, `pi-wake-trace.test.ts`, `pi-trace-preload.mjs`, and the two Pi test files only if a call changes. Leave alone: `src/**`, `plugins/**`, `test/e2e/pi-fixture.ts`.
+
+Done when: a test that feeds home paths, secrets in every form the two reviews used, and arbitrary text through stderr, a probe error, an event name and a worker message, and asserts that the report matches a strict pattern of allowed tokens (not that markers are absent); each changed test file run directly once, `timeout 900`; lint, typecheck; `squeal status --wait 60000` on the changed paths. No version raise, no build, no full suite. Write `~`, never a `/home/<user>/` path.
+
+Final message: the report a timeout prints, in full; the allowed-token pattern; check results.
