@@ -133,12 +133,20 @@ export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
  * read (`files.uncounted`) looks each file up in narrow pages, not in the
  * table's rows of 3.5 to 7.9 KB of `functions` (row 005-103: 193 to 3.1 ms
  * on a copy); the planner keeps the primary key unless the read names it.
+ * `states_failing` and `states_edited` hold only a worktree's failing and
+ * edited states, the two sets each tool boundary reads (`states.list` with
+ * the `fail` outcome, `states.edits`; row 015-127), so neither scans the
+ * worktree's every state, 260,000 on 005-110's copy; the reads name them.
  */
 export const CODE_INDEXES: Readonly<Record<string, string>> = {
   coverage_stored:
     "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
   coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
   counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
+  states_failing:
+    "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
+  states_edited:
+    "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
 };
 
 /**

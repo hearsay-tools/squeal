@@ -20,12 +20,18 @@ import { type CodeBound, codeKey, isOwn } from "./code-delta.js";
  * Row 015-49: the files the session changed that are not judged, the same way.
  */
 
-/** The failing states of `measures` in `worktreeId` that any of `consumers` was told of in full. */
+/**
+ * The failing states of `measures` in `worktreeId` that any of `consumers`
+ * was told of in full. `failing`, when given, holds the failing states of
+ * at least `measures` as the caller's transaction read them, so they are
+ * not read again (row 015-127).
+ */
 export function toldOver(
   store: CodeStore,
   worktreeId: WorktreeId,
   consumers: readonly Consumer[],
   measures: readonly CodeMeasure[] = ["complexity"],
+  failing?: readonly CodeKnownState[],
 ): CodeKnownState[] {
   const told = new Set(
     consumers.flatMap((c) =>
@@ -37,7 +43,10 @@ export function toldOver(
   );
   if (told.size === 0) return [];
   return measures.flatMap((measure) =>
-    store.states.list(worktreeId, { measure, outcome: "fail" }).filter((s) => told.has(codeKey(s))),
+    (failing === undefined
+      ? store.states.list(worktreeId, { measure, outcome: "fail" })
+      : failing.filter((s) => s.measure === measure)
+    ).filter((s) => told.has(codeKey(s))),
   );
 }
 
@@ -149,17 +158,18 @@ interface Standing {
  * registration is recorded (`since` `null`). Row 015-84: the signature
  * holds the counts and thresholds, and every such file with its reason,
  * not only those the line names, so other files of the same number are a
- * change.
+ * change. `failing` as `toldOver`'s.
  */
 function standing(
   store: CodeStore,
   consumer: Consumer,
   { threshold, maxFileBytes }: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
   since: CodeBound | null,
+  failing: readonly CodeKnownState[] | undefined,
 ): Standing | null {
   const { worktreeId } = consumer;
   const measures = ["complexity", ...coverageMeasures(store, worktreeId)] as const;
-  const over = toldOver(store, worktreeId, [consumer], measures);
+  const over = toldOver(store, worktreeId, [consumer], measures, failing);
   const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
   if (over.length === 0 && changed.length === 0) return null;
   const told = over.length === 0 ? null : toldOf(over, threshold);
@@ -182,17 +192,17 @@ function standing(
 /**
  * Row 015-84: whether `consumer`'s standing summary is not the one it was
  * last sent, so a delivery that tells it has something to write. Read
- * only.
+ * only. `failing` as `toldOver`'s.
  */
 export function summaryChanged(
   store: CodeStore,
   consumer: Consumer,
   policy: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
   since: CodeBound | null,
+  failing?: readonly CodeKnownState[],
 ): boolean {
-  return (
-    readSent(store.meta, consumer) !== (standing(store, consumer, policy, since)?.signature ?? null)
-  );
+  const now = standing(store, consumer, policy, since, failing);
+  return readSent(store.meta, consumer) !== (now?.signature ?? null);
 }
 
 /**
@@ -202,7 +212,8 @@ export function summaryChanged(
  * that went is forgotten, so its return is a change. The record is the
  * consumer's own and stays when its session ends, so a resumed session is
  * not told it again; a registration leaves it. Writes: only a delivery
- * that tells test news calls it, in its transaction.
+ * that tells test news calls it, in its transaction. `failing` as
+ * `toldOver`'s.
  */
 export function withToldOver(
   store: CodeStore,
@@ -210,8 +221,9 @@ export function withToldOver(
   news: CodeNews | null,
   policy: Pick<Policy["complexity"], "threshold" | "maxFileBytes">,
   since: CodeBound | null,
+  failing?: readonly CodeKnownState[],
 ): CodeNews | null {
-  const now = standing(store, consumer, policy, since);
+  const now = standing(store, consumer, policy, since, failing);
   const sent = readSent(store.meta, consumer);
   if (sent === (now?.signature ?? null)) return news;
   writeSent(store.meta, consumer, now?.signature ?? null);
