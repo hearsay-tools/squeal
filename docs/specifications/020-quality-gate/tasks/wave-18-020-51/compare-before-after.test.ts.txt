@@ -1,7 +1,7 @@
 // Row 020-51: the one-off before/after comparison (notes.md, section 6). Not a suite test.
 // To run it again: copy the base's `src/core/ci/export.ts` to `src/core/ci/export-before.ts`
 // and `src/core/code/gate/stored.ts` to `src/core/code/gate/stored-before.ts`
-// (`git show c5cefb465:<path>`), put this file as `compare.test.ts` in a scratch directory with
+// (`git show d5f008d44:<path>`), put this file as `compare.test.ts` in a scratch directory with
 // a `node_modules` symlink to the worktree's and a `vitest.config.mjs` of
 // `export default { test: { include: ["compare.test.ts"] } };`, set `W` to the worktree, run
 // `node_modules/.bin/vitest run --root <scratch> --config <scratch>/vitest.config.mjs`,

@@ -30,7 +30,7 @@ Back to back, 4 of 36 first misses were missed again: about 11%, against about 0
 
 ## Cost test
 
-`test/ps/snapshot-cost.test.ts` on its 650-process, 25-daemon fixture, as a copy that prints its three numbers. Base 826972470 and this branch, in throwaway worktrees, 15 interleaved pairs at load 57 to 71 (1-minute):
+`test/ps/snapshot-cost.test.ts` on its 650-process, 25-daemon fixture, as a copy that prints its three numbers. Base de43c13ad and this branch, in throwaway worktrees, 15 interleaved pairs at load 57 to 71 (1-minute):
 
 | | Inside the window | After it | CPU |
 |---|---|---|---|

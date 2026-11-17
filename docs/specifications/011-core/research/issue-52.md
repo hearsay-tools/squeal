@@ -4,7 +4,7 @@ Researcher, 2026-10-20. Brief: reproduce hearsay-tools/squeal#52 cheaply. In the
 recorded at 3.33 load per CPU stays a known failure with "no retry asked at these inputs" until the
 agent runs `squeal retry <file> --reason load` by hand. Documentation only. Existing holds stand.
 
-**Versions and host.** The checkout is `ea76593b` on `cez/25b3b056`, `package.json` 0.1.228, and
+**Versions and host.** The checkout is `59913217` on `cez/25b3b056`, `package.json` 0.1.228, and
 `squeal --version` reports 0.1.228. The incident ran 0.1.226 (the issue's comment).
 `git diff --stat squeal--v0.1.226 HEAD -- src/core/retry src/core/scheduler/retries.ts
 src/cli/retry.ts src/core/delivery` is empty, so the retry and delivery code is the code of the
@@ -104,6 +104,6 @@ npx vitest run --config docs/specifications/011-core/research/probes/issue-52/vi
 
 - hearsay-tools/squeal#52 and its comment ("Squeal version: 0.1.226"), read with `gh issue view 52 -R hearsay-tools/squeal`, 2026-10-20.
 - `docs/specifications/011-core/spec.md` C5 (001-348/001-368 retry paragraph, consumer-view recorded facts, 011-15 and 011-16 amendments), C6; `docs/board.md` rows gh-43, gh-49.
-- Source at `ea76593b`: `src/core/retry/{load,recorded,pending,records}.ts`, `src/core/scheduler/retries.ts`, `src/core/scheduler/tiers.ts:364,614`, `src/cli/retry.ts:200`.
+- Source at `59913217`: `src/core/retry/{load,recorded,pending,records}.ts`, `src/core/scheduler/retries.ts`, `src/core/scheduler/tiers.ts:364,614`, `src/cli/retry.ts:200`.
 - Tests read as leads: `test/scheduler/retry-delivery.test.ts`, `test/scheduler/retry-fixture.ts`, `test/status/pending-retries.test.ts`.
 - Probe: `research/probes/issue-52/` (throwaway).

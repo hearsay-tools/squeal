@@ -8,7 +8,7 @@ The brief said "starts from main 0.1.345" and gave option A of the research as t
 
 With the parent's agreement (coordinator 52e58f23, 2026-10-26), this row:
 
-- is based on `origin/cand/0.1.347` at **`664494b46`** ("docs(013): pass held-test fixture repair review"), the candidate as rebuilt on main 0.1.346. The commits were first made on `ab0ca19b5` and rebased without conflict;
+- is based on `origin/cand/0.1.347` at **`ab1bf83b3`** ("docs(013): pass held-test fixture repair review"), the candidate as rebuilt on main 0.1.346. The commits were first made on `ab0ca19b5` and rebased without conflict;
 - does not repeat the lead and leaves 013-08's `allow`, `errorText` and `own-provider-client.test.ts` as they are;
 - adds only the fallback, the research's Q4 steps 1 to 3.
 
@@ -70,9 +70,9 @@ Here `recheck` answers `[]`, because the case does not read the environment (`en
 - `npm run lint`: `Checked 2256 files … No fixes applied.` `npm run typecheck`: no errors.
 - `squeal status --wait 600000` on every changed path, at revision 32: 412 test files, each with a current result, and 5 known failures:
   - Four bundle tests, as expected, because `cli/squeal.mjs` differs from the build and this row does not build bundles: `test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`. The version owner rebuilds them.
-  - `test/keys/validity/compare.test.ts` (on `ab0ca19b5`, before the rebase): 013-08's case "failing tests whose errors have nested, looping and deep causes" times out at both trees ("timed out waiting for a held test file to start"). Its run holds only `test/caused.test.ts`, which never writes `$STARTED`. It is not this row's case. The parent passed it to 0.1.347's owner, and `4b5ec844d` on the candidate fixes it.
+  - `test/keys/validity/compare.test.ts` (on `ab0ca19b5`, before the rebase): 013-08's case "failing tests whose errors have nested, looping and deep causes" times out at both trees ("timed out waiting for a held test file to start"). Its run holds only `test/caused.test.ts`, which never writes `$STARTED`. It is not this row's case. The parent passed it to 0.1.347's owner, and `9e3fd320c` on the candidate fixes it.
 - `test/keys/key-format.test.ts` passes.
-- After the rebase onto `664494b46`, `squeal status --wait` on every changed path at revision 35 (`c846e182`) gives 412 test files, each with a current result, in 761.7 s. The only failures are the four bundle tests above. `test/keys/validity/compare.test.ts` and `test/keys/key-format.test.ts` pass, and all 1176 test files of the worktree are current. Lint and typecheck pass again.
+- After the rebase onto `ab1bf83b3`, `squeal status --wait` on every changed path at revision 35 (`c846e182`) gives 412 test files, each with a current result, in 761.7 s. The only failures are the four bundle tests above. `test/keys/validity/compare.test.ts` and `test/keys/key-format.test.ts` pass, and all 1176 test files of the worktree are current. Lint and typecheck pass again.
 - Squeal names `unloadable` and `recheckAfter` in `harness/vitest.ts` "untested": the validity harness runs in its driver bundle, which no recorder sees (011 C12). The comparison runs both.
 
 ## Left open, for the coordinator

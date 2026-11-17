@@ -16,7 +16,7 @@ test/reach/setup-chains.test.ts 2 | Error: squeal: git rev-parse --show-object-f
 test/slow/slot.test.ts 1 | Error: Test timed out in 5000ms.
 test/store/import-graph-aliases.test.ts 3 | Error: squeal: git rev-parse --show-object-format exited 128 in /home/user/fullrun/test/fixtures/vitest/.tmp/basic-947dc0a6-d9d6-49df-a35f-e
 test/store/key-shadow.test.ts 2 | Error: squeal: git rev-parse --show-object-format exited 128 in /home/user/fullrun/test/fixtures/vitest/.tmp/basic-6f3339f1-ecb6-462a-a2f2-8
-test/code/count/corpus.test.ts 2 | Error: Command failed: git -C /home/user/fullrun ls-tree -r --name-only e90e0030ccfef2ee90eabe9db3046c398ebdd3e5 src
+test/code/count/corpus.test.ts 2 | Error: Command failed: git -C /home/user/fullrun ls-tree -r --name-only 7517daa5d41ea0d90304efc0aef9b94eeaf3f23a src
 test/keys/validity/adapters.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
 test/keys/validity/compare.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
 test/keys/validity/lock.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)

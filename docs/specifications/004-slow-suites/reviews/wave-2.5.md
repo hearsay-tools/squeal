@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `068f6de4bca33f71761167569d75fd3958034010`, version 0.1.52. Supplied HEAD was `2e6bf6d`, a brief-only correction after the candidate. Executable checks and final probes ran detached at the named candidate, with no tracked changes. The worker branch was restored before writing this report.
+Candidate: `ac105185d471a7e9a35b4ccacc461dc72919b345`, version 0.1.52. Supplied HEAD was `2e6bf6d`, a brief-only correction after the candidate. Executable checks and final probes ran detached at the named candidate, with no tracked changes. The worker branch was restored before writing this report.
 
 Range: `d882196..068f6de`. In scope: 004-23 and the rebuilt bundles; 003-26's observed timer, scheduler entry point and runner-only refinement as a first review. The adjacent 001 work, including the signal identity repair, is excluded. This is the second and last review of 004-23; remaining blockers go to the human through the coordinator.
 

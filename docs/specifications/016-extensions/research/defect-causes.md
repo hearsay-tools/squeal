@@ -1,6 +1,6 @@
 # 016-09 What caused our defects
 
-Brief: `defect-causes-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24. Examined: this repository at `f6320cd7e` (0.1.298 on the board), and `gh issue list --state all` for `hearsay-tools/squeal` read the same day (93 issues). Probe: `probes/defect-causes/` (scripts that list the items, `classes.tsv` with the reading, and the output of the counts).
+Brief: `defect-causes-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24. Examined: this repository at `acb96dfa6` (0.1.298 on the board), and `gh issue list --state all` for `hearsay-tools/squeal` read the same day (93 issues). Probe: `probes/defect-causes/` (scripts that list the items, `classes.tsv` with the reading, and the output of the counts).
 
 Every class below is `inferred`. One reader (this researcher) classed every item from its title, its first cited paths and an excerpt of up to 900 characters. Nobody else classed them. A second reader could move items between C and B, or between E and A (see Limits).
 
@@ -158,7 +158,7 @@ Limits: one reader classed every item. The excerpts were short, and the residual
 
 ## Sources
 
-All read at `f6320cd7e`, 2026-10-24:
+All read at `acb96dfa6`, 2026-10-24:
 
 - `docs/specifications/*/reviews/*.md` (313 files), `docs/board.md`, `docs/specifications/001-core-loop/board-archive.md`, `docs/process.md` (roles, step 6), `docs/specifications/016-extensions/status.md` (entries of 2026-10-24), `research/seams.md` (S1 to S10, missed groups, F1.2, F4.3).
 - GitHub issues of `hearsay-tools/squeal`, `gh issue list --state all --limit 1000`, read 2026-10-24: 93 issues, 23 open.

@@ -2,7 +2,7 @@
 
 **Throwaway.** Nothing here is product code. These files only produce the evidence cited in `../../revert-restore-pass.md`. Delete them freely.
 
-They ran on a scratch copy of the repository at `dfee8c70` (`git archive`, then `npm ci`), outside every worktree, so no Squeal daemon watched the edits.
+They ran on a scratch copy of the repository at `661aa181` (`git archive`, then `npm ci`), outside every worktree, so no Squeal daemon watched the edits.
 
 - `instrument.patch` plus `probe-log.ts.txt` (as `src/probe-log.ts`): with `SQ_PROBE_LOG` set, the daemon appends one JSON line per stamp of `src/mod.ts`, `stale()` check, adapter `invalidate`, run start and end, watcher batch, and tier record (`#fly`).
 - `rr-probe.test.ts.txt`: `test/integration/revert-restore.test.ts` with probe logging. Each copy dumps the fixture store's revisions, runs, results and known states, plus its probe log, to `$SQ_PROBE_OUT/<id>/`. Ran as `test/probe/rr-{1..4}.test.ts`.

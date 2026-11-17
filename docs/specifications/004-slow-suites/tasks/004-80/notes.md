@@ -1,6 +1,6 @@
 # 004-80 the slow lane runs continuously: worker notes
 
-Worker 6470300b, coordinator 8f17c7ea, 2026-10-19. Brief: `../wave-13.md` § 004-80. Branch `cez/6470300b`, base `ad5dd720`.
+Worker 6470300b, coordinator 8f17c7ea, 2026-10-19. Brief: `../wave-13.md` § 004-80. Branch `cez/6470300b`, base `fcdd83fe`.
 
 ## What changed
 
@@ -205,7 +205,7 @@ exit 1
 - **Confirm eval** (a2, a3, a8, a11): under the continuous default a path wait on the fixture's slow file now holds about 15 s and returns its verdict. The plain wait still returns on quiet, now saying "Squeal runs it after the fast tests". `evals/lib` does not parse either ending (checked: no match for "pauses" or "after the fast" there).
 - **D9**: no change was needed in `stop.ts` or `stop-slow.ts`. The waiting Stop entry already waits for the tier to settle, and under a continuous lane the tier is usually already running at Stop.
 
-## Commits (base `ad5dd720`)
+## Commits (base `fcdd83fe`)
 
 - `d48a96ef` feat(004-80): slow.trigger continuous by default; a slow file starts slow.quietMs after the revision, mid-turn
 - `47b64b6c` test(004-80): idle-trigger tests pin slow.trigger "idle", so today's behaviour stays covered

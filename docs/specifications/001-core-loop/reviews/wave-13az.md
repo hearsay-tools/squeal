@@ -2,12 +2,12 @@
 
 ## Verdict and verification
 
-**PASS `c1ed4ede4b5e82779b77e361fe267d8d1372c0ca`**. Zero blockers, zero should-fix findings, zero nits. Repair range: `27bb50d2..c1ed4ede`. This re-review is bounded by B1 in `wave-13ax.md`, with the repair delta and every `stopText` branch checked. Evidence below was collected at the clean candidate before this findings file existed. No product or board edits; no evals.
+**PASS `a79a64b849c942a9dd5b558a5fbe962c903942e9`**. Zero blockers, zero should-fix findings, zero nits. Repair range: `9093567f..a79a64b8`. This re-review is bounded by B1 in `wave-13ax.md`, with the repair delta and every `stopText` branch checked. Evidence below was collected at the clean candidate before this findings file existed. No product or board edits; no evals.
 
 `git rev-parse HEAD` returned the assigned candidate:
 
 ```text
-c1ed4ede4b5e82779b77e361fe267d8d1372c0ca
+a79a64b849c942a9dd5b558a5fbe962c903942e9
 ```
 
 `npm ci` (exit 0):

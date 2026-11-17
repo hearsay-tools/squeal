@@ -6,7 +6,7 @@ One proven blocker in 001-438. 011-13 passes this review. No should-fix findings
 
 ## Verification
 
-Reviewed detached HEAD `04edaa09b4a0955cd459abf44f346788a4090e5a`, fetched from `cand/0.1.212`. Base `origin/main` was `0c599161886a096c8c0d1fd86a31e46ac1c5c93e`; the range contains seven commits. Node v24.21.0, Linux, uid 1001. Product, tests and committed bundles stayed unchanged throughout verification. The only committed review change is this file. `npm run build` was deliberately omitted as instructed.
+Reviewed detached HEAD `04edaa09b4a0955cd459abf44f346788a4090e5a`, fetched from `cand/0.1.212`. Base `origin/main` was `f82b76de6f6ec1097baf2c28f038fcaa1a81923b`; the range contains seven commits. Node v24.21.0, Linux, uid 1001. Product, tests and committed bundles stayed unchanged throughout verification. The only committed review change is this file. `npm run build` was deliberately omitted as instructed.
 
 ```text
 npm ci
@@ -184,13 +184,13 @@ it("does not retry an identity whose pid now names a stranger", async () => {
 
 ## Re-review
 
-PASS 6902104ff49479a3797ab779f6e187f548670547
+PASS 01098cee27a7f315a701c269a299a91e84a4ea5e
 
 B1 is closed. Zero blockers, should-fix findings or nits in the repair scope. 011-13 remains passed and was not re-prosecuted.
 
 ### Verification
 
-Reviewed detached HEAD `6902104ff49479a3797ab779f6e187f548670547`, fetched from `cand/0.1.212`. The rebased repair range is `e9d71373` (first review), `faf4ab04` (repair and regression), `1bdd1235` (key re-pin), `6902104f` (bundles). The red baseline is `00232cc2`, the rebased first-reviewed code; its `low-priority.ts` is byte-identical to `04edaa09`'s. Fetched `origin/main` was `4ffd501b`. Node v24.21.0, Linux. Product, tests, keys and bundles stayed unchanged throughout verification; only this review file is committed. No `npm run build`, as instructed.
+Reviewed detached HEAD `01098cee27a7f315a701c269a299a91e84a4ea5e`, fetched from `cand/0.1.212`. The rebased repair range is `979e6f60` (first review), `9ebfb048` (repair and regression), `72039e55` (key re-pin), `01098cee` (bundles). The red baseline is `824eda3d`, the rebased first-reviewed code; its `low-priority.ts` is byte-identical to `04edaa09`'s. Fetched `origin/main` was `1149e9bc`. Node v24.21.0, Linux. Product, tests, keys and bundles stayed unchanged throughout verification; only this review file is committed. No `npm run build`, as instructed.
 
 ```text
 npm ci
@@ -230,14 +230,14 @@ CI run `39063256164` targets the exact pinned SHA. At 2026-10-17 19:41 UTC, its 
 ### B1 closure and boundaries
 
 - **Proven:** `src/core/daemon/low-priority.ts:133-142` retains the selected identities in `live`. The error callback calls `same(process)` inside the loop immediately before each `idleIo([process.pid], ...)`; it does not pre-filter the whole retry list. Each attempted retry therefore re-reads that pid's start, including after an earlier retry has been submitted.
-- **Proven by red/green:** ran the first review's preserved B1 probe and the new `test/daemon/low-priority-retry.test.ts` against an archived, unmodified `00232cc2` source tree and the actual pinned candidate sources. Only import paths changed. Both tests fail the old code and pass the repair. All probe processes used temporary HOME, XDG_CONFIG_HOME and XDG_RUNTIME_DIR. No priority commands or real process identity changes were executed by these probes.
+- **Proven by red/green:** ran the first review's preserved B1 probe and the new `test/daemon/low-priority-retry.test.ts` against an archived, unmodified `824eda3d` source tree and the actual pinned candidate sources. Only import paths changed. Both tests fail the old code and pass the repair. All probe processes used temporary HOME, XDG_CONFIG_HOME and XDG_RUNTIME_DIR. No priority commands or real process identity changes were executed by these probes.
 
   ```text
-  00232cc2: Test Files 2 failed (2); Tests 2 failed (2); exit 1
+  824eda3d: Test Files 2 failed (2); Tests 2 failed (2); exit 1
   Original B1 probe: singles [101,202,303], readsDuringRetry []
   New regression: expected [101,303], received [101,202,303,404]
 
-  6902104f: Test Files 2 passed (2); Tests 2 passed (2); exit 0
+  01098cee: Test Files 2 passed (2); Tests 2 passed (2); exit 0
   ```
 
 - **Proven, non-vacuous regression:** the new test calls production `lowerWhile`, holds the initial multi-pid batch's callback, replaces 202's start, removes 404, and releases a failed callback. It requires exactly `[101,303]`, so a later matching live identity must still be retried. Its only substitutions are `node:os`'s priority calls, `node:child_process.execFile`, and `terminate.js`'s `statOf`; other exports are the real modules. The public `walk` seam supplies known descendants. It does not mock `lowerWhile`, the callback, identity selection or retry logic. The observed failure on the old implementation confirms that the regression exercises B1.

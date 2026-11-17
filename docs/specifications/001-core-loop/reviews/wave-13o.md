@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `b5116aaf` (0.1.93), range `607d9d8684637c8bd2fc4a818e22e027725376aa..b5116aaf`. The twelve worker commits end at `1f91fd86`; `122bac3d` rebuilds and re-pins unreleased key format 1; `b5116aaf` names the heartbeat seam. Initial HEAD was `185c01af`, a descendant changing only `docs/board.md`. The parent authorized that descendant, but the reviewer detached at the exact candidate before installation and verification. Candidate checks and private-store probes ran before this findings file was written; the tracked candidate stayed clean. The task branch is restored before committing the report alone.
+Candidate: `bae2008c` (0.1.93), range `fa65b84442721257940c6c701b7bdfe61184694b..bae2008c`. The twelve worker commits end at `0320b9bf`; `5ab89563` rebuilds and re-pins unreleased key format 1; `bae2008c` names the heartbeat seam. Initial HEAD was `018ec258`, a descendant changing only `docs/board.md`. The parent authorized that descendant, but the reviewer detached at the exact candidate before installation and verification. Candidate checks and private-store probes ran before this findings file was written; the tracked candidate stayed clean. The task branch is restored before committing the report alone.
 
 Linux, Node 24.21.0. The discriminating probes also ran on Node 22.23.3. Build reproducibility is **unverified**: `npm run build` was explicitly forbidden and was not run. The shipped CLI bundles contain the claim queries, transaction recheck and startup reset; no bundle was edited.
 
 ```text
 $ git rev-parse HEAD
-b5116aaf813ce1aacf15fb3c2b3d2bf1183188fc
+bae2008cc57396f35a5742db67204a4b2e9d0925
 $ git status --short
 (no output)
 
@@ -83,7 +83,7 @@ Squeal is separate evidence, from the auto-started installed 0.1.86 daemon. Its 
 
 ## Verdict
 
-**FAIL `b5116aaf`: 2 proven blockers, 1 nonblocking should-fix, 1 nit.** Claims preserve the inheritance and confirmation gates, and release is bounded. The atomic start is incomplete when the competing tier has already finished, and partial slow selection holds an unused slot permit. Per the brief, the blockers go to the human through the parent. No product code or board change is made by this review.
+**FAIL `bae2008c`: 2 proven blockers, 1 nonblocking should-fix, 1 nit.** Claims preserve the inheritance and confirmation gates, and release is bounded. The atomic start is incomplete when the competing tier has already finished, and partial slow selection holds an unused slot permit. Per the brief, the blockers go to the human through the parent. No product code or board change is made by this review.
 
 ## Blockers
 
@@ -156,7 +156,7 @@ Location: `docs/specifications/001-core-loop/status.md:153`; also the 004 amendm
 
 ### Key guard and rebuild
 
-The `claims.ts -> status/snapshot.ts` exemption added by `b5116aaf` is **safe for its current use**. The sole imported value is `HEARTBEAT_GRACE_INTERVALS`. It chooses when to stop waiting; it does not choose key inputs, transform outcomes, store a result, or accept a withheld result. The imported module has no top-level store writes. The guarded `Claims`, start/record path, `Ledger.probe`, inheritance rule and completion/stability checks still determine validity. Changing only grace 2 to 3 leaves the format guard unchanged, as this named exemption intends; it changes timing rather than whether an old result is sound. This judgment does not authorize future result-processing imports from that exempt directory.
+The `claims.ts -> status/snapshot.ts` exemption added by `bae2008c` is **safe for its current use**. The sole imported value is `HEARTBEAT_GRACE_INTERVALS`. It chooses when to stop waiting; it does not choose key inputs, transform outcomes, store a result, or accept a withheld result. The imported module has no top-level store writes. The guarded `Claims`, start/record path, `Ledger.probe`, inheritance rule and completion/stability checks still determine validity. Changing only grace 2 to 3 leaves the format guard unchanged, as this named exemption intends; it changes timing rather than whether an old result is sound. This judgment does not authorize future result-processing imports from that exempt directory.
 
 The hash at format 1 equals the candidate's re-pin. Re-pinning in place relies on the task's explicit statement that format 1 is unreleased; a released format must be bumped. The version manifests are 0.1.93 and both CLI bundles contain the source change. No claim of build reproducibility is made without the forbidden build.
 

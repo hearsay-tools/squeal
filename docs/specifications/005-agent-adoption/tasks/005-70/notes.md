@@ -89,7 +89,7 @@ Known failures, all six outside this row's code: the four bundle-drift tests (no
 
 ## Repair B1
 
-Review: `../../../004-slow-suites/reviews/wave-13.md` B1 (on main). Baseline `cand/0.1.221` (`14a31e2c`), branch `cez/efdebc9d`. Shape: repair. Outcome: a default-yes exclude never drops a source test.
+Review: `../../../004-slow-suites/reviews/wave-13.md` B1 (on main). Baseline `cand/0.1.221` (`2a9ab0f1`), branch `cez/efdebc9d`. Shape: repair. Outcome: a default-yes exclude never drops a source test.
 
 ### What changed
 
@@ -177,4 +177,4 @@ Known failures, none in this row's code:
 
 - The four bundle-drift tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`): `src/cli/setup` changed and the brief says no `npm run build`. The coordinator rebuilds.
 - **Fail under load, pass alone:** `test/runners/node-test/run-reads-fidelity.test.ts` and `test/runners/vitest/observe-fidelity.test.ts` (same pair as the first 005-70 checkpoint). Alone right after the checkpoint (`npx vitest run` on both, load average 3.76): 5 passed.
-- **Load-sensitive at its bound:** `test/harness/pi/latency.test.ts`, "boundary on a fresh worker" p95 against the 80 ms budget (85.2 and 83.6 ms in the checkpoint). Alone, below load average 4 where it asserts: 82.4, 82.4, then a pass. Alternated with a detached worktree at the baseline `14a31e2c` at load 4.3 to 4.7 (reported only), the fresh-worker p95 was mine 89.5 / 91.3 / 82.3 ms and baseline 79.3 / 97.7 / 84.5 ms: the baseline crosses 80 ms too, at the same load. This diff touches only `src/cli/setup`: `src/harness/pi` imports nothing from `src/cli`, and the CLI bundle the test builds and starts grows only by this row's few setup lines.
+- **Load-sensitive at its bound:** `test/harness/pi/latency.test.ts`, "boundary on a fresh worker" p95 against the 80 ms budget (85.2 and 83.6 ms in the checkpoint). Alone, below load average 4 where it asserts: 82.4, 82.4, then a pass. Alternated with a detached worktree at the baseline `2a9ab0f1` at load 4.3 to 4.7 (reported only), the fresh-worker p95 was mine 89.5 / 91.3 / 82.3 ms and baseline 79.3 / 97.7 / 84.5 ms: the baseline crosses 80 ms too, at the same load. This diff touches only `src/cli/setup`: `src/harness/pi` imports nothing from `src/cli`, and the CLI bundle the test builds and starts grows only by this row's few setup lines.

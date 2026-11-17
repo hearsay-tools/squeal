@@ -1,6 +1,6 @@
 # Issue 34: pending reruns counted among known failures
 
-Date: 2026-10-18. Issue: https://github.com/hearsay-tools/squeal/issues/34. Checkout: `cez/b0279ef7` at `905b7b6c`, package 0.1.213. Installed plugin: 0.1.199 (`squeal--v0.1.199`, `e36fea56`).
+Date: 2026-10-18. Issue: https://github.com/hearsay-tools/squeal/issues/34. Checkout: `cez/b0279ef7` at `29eb7d5c`, package 0.1.213. Installed plugin: 0.1.199 (`squeal--v0.1.199`, `c5a4c70c`).
 
 ## Reproduction verdict
 
@@ -44,7 +44,7 @@ Known failures: 4 (4 tests)
 Store schema: 1
 ```
 
-`read in source code`: at the tag, `format-status.ts:44`, `delivery/format.ts:349` and `stop.ts:299` build the line the same way. `state/header.ts`, `status/checks.ts` and `retry/recorded.ts` are unchanged between the tag and `905b7b6c`.
+`read in source code`: at the tag, `format-status.ts:44`, `delivery/format.ts:349` and `stop.ts:299` build the line the same way. `state/header.ts`, `status/checks.ts` and `retry/recorded.ts` are unchanged between the tag and `29eb7d5c`.
 
 **F3. Code paths.** `read in source code` (0.1.213):
 
@@ -107,5 +107,5 @@ git diff 'squeal--v0.1.199' HEAD --stat -- src/core/state/header.ts src/core/sta
 
 - https://github.com/hearsay-tools/squeal/issues/34 (read 2026-10-18)
 - `docs/specifications/011-core/spec.md` C4, C5, C6; `docs/vision.md` "2. Results are tied to code state" and "The desired experience"
-- `src/core/state/header.ts`, `src/core/state/derive.ts`, `src/core/retry/recorded.ts`, `src/core/status/checks.ts`, `src/core/status/format-status.ts`, `src/core/delivery/format.ts`, `src/harness/shared/stop.ts`, `src/harness/shared/text.ts`, `src/cli/run.ts` at `905b7b6c`, and the same files at `squeal--v0.1.199`
+- `src/core/state/header.ts`, `src/core/state/derive.ts`, `src/core/retry/recorded.ts`, `src/core/status/checks.ts`, `src/core/status/format-status.ts`, `src/core/delivery/format.ts`, `src/harness/shared/stop.ts`, `src/harness/shared/text.ts`, `src/cli/run.ts` at `29eb7d5c`, and the same files at `squeal--v0.1.199`
 - `research/probes/issue-34/` (throwaway probes, README)

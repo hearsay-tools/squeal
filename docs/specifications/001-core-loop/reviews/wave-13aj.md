@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `466bb30b56b829e1a12c074a4a7fe25d95c008d3`, package and both plugins 0.1.124, `KEY_FORMAT_VERSION = 7`. Range: `bca8b06d..466bb30b`. Initial HEAD was `e61b3d7c6a777eac1adc0c8ac200a4b68c1afcc7`; only `docs/board.md` differed. Before verification, the reviewer checked out the exact candidate on `cez/95c01a17-review`. The tree stayed clean during all executable checks and external probes. Linux, Node 24.21.0, Vitest 5.0.3.
+Candidate: `810768bde86ba766f80a8c36e8a539c28ade8a78`, package and both plugins 0.1.124, `KEY_FORMAT_VERSION = 7`. Range: `d2274941..810768bd`. Initial HEAD was `81a6a27d0627f0814235638ee5e259d44ab5679c`; only `docs/board.md` differed. Before verification, the reviewer checked out the exact candidate on `cez/95c01a17-review`. The tree stayed clean during all executable checks and external probes. Linux, Node 24.21.0, Vitest 5.0.3.
 
 Bounded by 001-278, wave-13ai N1 and the brief's pruning, exit, death and succession questions. No product, test, board, spec, status or distribution file was edited. The explicitly forbidden `npm run build`, eval runner and repository scripts to check evals were not run. Existing daemon test helpers compile private source fixtures with `tsc`. Bundle reproducibility and macOS remain **unverified**, not findings. Spec 006's unit tests are included in the independent suite; its implementation is outside this review.
 
@@ -56,13 +56,13 @@ $ env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null npx vitest run --config /t
 | `crash-orders` | 1 file passed; 4 tests passed | 6.05 s | 0 |
 | `stop-timing` | 1 file passed; 2 tests passed, 12 measured exits | 10.35 s | 0 |
 
-**87 passed, 4 skipped across 14 configurations.** The earlier probe sources were restored from wave-13ai's published snapshot. Only candidate paths and simulated candidate identities were updated to this checkout and 0.1.124. Historical sources remain unchanged: 0.1.112 from `cf7e8a2c`, the base wait from `6864b726`, 0.1.115 from `2ec0efa1`, tokenless 0.1.116 from `d9fe66ba`, the pre-durable-row control from `3ee7d64d`, and the pre-registration-fix control from `be1aad84`. The prune regression and bundle timings use the actual immediate range base `bca8b06d`, version 0.1.123. New ordering controls use public daemon/store calls, real linked worktrees and real crashes. The retained gap probe forces desk-open and cleanup timing with Node load hooks; daemon source, SQLite semantics, keys and status stay unchanged.
+**87 passed, 4 skipped across 14 configurations.** The earlier probe sources were restored from wave-13ai's published snapshot. Only candidate paths and simulated candidate identities were updated to this checkout and 0.1.124. Historical sources remain unchanged: 0.1.112 from `d58dd59c`, the base wait from `860f6464`, 0.1.115 from `eecab4cb`, tokenless 0.1.116 from `7481623e`, the pre-durable-row control from `642cc337`, and the pre-registration-fix control from `a2a7612d`. The prune regression and bundle timings use the actual immediate range base `d2274941`, version 0.1.123. New ordering controls use public daemon/store calls, real linked worktrees and real crashes. The retained gap probe forces desk-open and cleanup timing with Node load hooks; daemon source, SQLite semantics, keys and status stay unchanged.
 
 Replayable [probe source snapshot](/p/squeal/tasks/95c01a17-e049-4c7d-9305-f20f3062598f/files?artifact=e059adc1-bf72-4403-8b90-2becd69ef9be). Full suite and probe [verification output snapshot](/p/squeal/tasks/95c01a17-e049-4c7d-9305-f20f3062598f/files?artifact=dea90091-7dad-4cae-abbc-89ea70642751).
 
 ## Verdict
 
-**PASS 466bb30b: 0 proven blockers, 0 should-fix, 0 nits.**
+**PASS 810768bd: 0 proven blockers, 0 should-fix, 0 nits.**
 
 Wave-13ai N1 closes for this candidate. Pruning a running daemon's owner before stopping it no longer recreates an unreachable `daemon-exit:` row. Requested startup, death, succession and virtual-read replays retain their distinctions. No candidate-created orphan or loss of needed shutdown evidence was found in the tested orders.
 

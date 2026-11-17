@@ -1,6 +1,6 @@
 # Research: wave-0 checks
 
-Board row 005-04, 2026-10-12 and 13. Claude Code 2.1.296, Codex CLI 0.160.1 (source `rust-v0.160.1`, `d27764b`), Node 24.21.0, dash as `/bin/sh`, curl 8.5.0, Linux. Plugins pinned from this repository: `squeal--v0.1.131` and HEAD `2513bbdc` (0.1.132), served by a scratch hub `hearsay` (`git-subdir`, `file://`). Probes: `probes/wave-0-checks/` (README, scripts, `logs/`), run under `/tmp/wave0-checks` with a scratch `HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_RUNTIME_DIR`. 12 subject sessions of 20 allowed: 8 Claude Code Haiku 5.5, 3 Codex `gpt-6-luna`, and 1 interactive run that stopped at the trust dialog before any model turn. Each batch started at a one-minute load of 3.1 to 8.0 on 24 CPUs (`logs/sessions-load.txt`).
+Board row 005-04, 2026-10-12 and 13. Claude Code 2.1.296, Codex CLI 0.160.1 (source `rust-v0.160.1`, `d27764b`), Node 24.21.0, dash as `/bin/sh`, curl 8.5.0, Linux. Plugins pinned from this repository: `squeal--v0.1.131` and HEAD `978a8a48` (0.1.132), served by a scratch hub `hearsay` (`git-subdir`, `file://`). Probes: `probes/wave-0-checks/` (README, scripts, `logs/`), run under `/tmp/wave0-checks` with a scratch `HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `XDG_RUNTIME_DIR`. 12 subject sessions of 20 allowed: 8 Claude Code Haiku 5.5, 3 Codex `gpt-6-luna`, and 1 interactive run that stopped at the trust dialog before any model turn. Each batch started at a one-minute load of 3.1 to 8.0 on 24 CPUs (`logs/sessions-load.txt`).
 
 Real files, sha256 before (2026-10-12 23:56) and after (2026-10-13 00:13), identical:
 
@@ -61,7 +61,7 @@ So D5's `<ms>` has a hard bound only in Claude Code: under 120 s, unless the gat
 
 | Repository | Group (files) | Found by | Artifact candidates (evidence) | Declared by hand | Verdict |
 |---|---|---|---|---|---|
-| this one, `2513bbdc`, 430 Vitest files | `test/e2e` (10) | directory `e2e` | `dist` (`bin`, `files`, `tsc -p tsconfig.build.json` outDir); `plugins` (`files`) | slow `test/e2e/**/*.test.ts`; inputs `plugins/claude-code/**`, `plugins/codex/**`, fixtures (004 dogfooding, `squeal.config.json`) | group exact; `plugins` right (it holds only those two); `dist` wrong |
+| this one, `978a8a48`, 430 Vitest files | `test/e2e` (10) | directory `e2e` | `dist` (`bin`, `files`, `tsc -p tsconfig.build.json` outDir); `plugins` (`files`) | slow `test/e2e/**/*.test.ts`; inputs `plugins/claude-code/**`, `plugins/codex/**`, fixtures (004 dogfooding, `squeal.config.json`) | group exact; `plugins` right (it holds only those two); `dist` wrong |
 | cezarion `~/projects/checkout` `c07b0bf`, 651 Vitest + 23 node:test files | `packages/cezar/test/e2e` (13) | directory `e2e`; root and package `test:package`; node:test project | `packages/cezar/dist` (`bin`, `exports`, `files`, `tsc` outDir); `packages/cezar/web/dist` (`files`); `packages/cezar/scripts` (`files`) | `test:package` slow, `packages/cezar/dist/**` (004 lessons) | group exact; `dist` right; `web/dist` probably right; `scripts` is source |
 | cezarion | `packages/cezar/test/unit` (10) | node:test project only | as above | not slow | false group |
 

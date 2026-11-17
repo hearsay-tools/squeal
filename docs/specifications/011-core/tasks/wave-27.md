@@ -1,6 +1,6 @@
 # Wave 27
 
-From main `ac53bf2bf` (0.1.284). Two rows on disjoint seams, run side by side. Each ships through its own candidate, review and version raise; the coordinator integrates.
+From main `21e6060d3` (0.1.284). Two rows on disjoint seams, run side by side. Each ships through its own candidate, review and version raise; the coordinator integrates.
 
 ## W1: 011-146, focused checks R3: `status --check`, the focused wait, status and `why` lines
 

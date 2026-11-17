@@ -1,6 +1,6 @@
 # Row 011-325 notes: the intake records each request's covered files
 
-Worker 2498379c, 2026-11-13. Brief: `tasks/wave-81.md`, W2. Design: `research/request-intake.md`, "Covered files (011-325)", with card 3's five conditions. Rebased on `origin/main` at `371cc8f8c`.
+Worker 2498379c, 2026-11-13. Brief: `tasks/wave-81.md`, W2. Design: `research/request-intake.md`, "Covered files (011-325)", with card 3's five conditions. Rebased on `origin/main` at `39eec1f1d`.
 
 ## For card 3 (row 011-328): what to read
 
@@ -62,7 +62,7 @@ Not recorded: promote and focus (`covers: { skip }`, they queue no file), an imp
 
 ## Repair of B1 (review 0.1.478, brief `tasks/wave-81.5.md` W2.5)
 
-The first version set `idle_since` once, never cleared it, and deleted idle records without looking at their files again, so a file queued again after its record went idle did not keep it (the review's reproduction). Repaired on `cand/0.1.478` (`ee2d2827f`):
+The first version set `idle_since` once, never cleared it, and deleted idle records without looking at their files again, so a file queued again after its record went idle did not keep it (the review's reproduction). Repaired on `cand/0.1.478` (`512692bab`):
 
 - **The source of "when a file last left queued or running": `FileState.leftPendingAt`**, set in `Ledger.#syncPhase` to `context.now()` when a file's phase becomes `null`, and nowhere else (coordinator 9ddca779, request `8058bbb3`, option A). Memory only: never persisted, no store or schema change, no key change. `Ledger.hold` copies it with the rest of the file, so a rolled-back stage leaves no false exit. Only `recordCovered` reads it: `grep -rn leftPendingAt src test` names `files.ts` (the field and its `null`), `ledger.ts:885` (the one assignment) and `scheduler/covered-files.ts` (the read and two comments).
 - **Why not the store:** it holds no exit time for every exit. `runs.ended_at` covers an exit through a run (a result, a crash, a timeout) and `results.last_used_at` a lookup hit, but a queued file can leave with neither: `Ledger.settle` drops a non-forced queued file whose key is back at its `resultKey` (row 011-118: an edit, then its revert), and a withdrawn retry or a runner failure (`block`) dequeue it with no time either.
@@ -71,7 +71,7 @@ The first version set `idle_since` once, never cleared it, and deleted idle reco
 - **A file the scheduler lists no more** (`CoveredActivity.listed`): when a write last found its record busy, the record counts as idle from the current write, since that file's exit is held nowhere and came no later.
 - **A limit left:** a file removed from the listing and listed again between two writes, while it was the record's only queued file, comes back as a new `FileState` with no exit time; its record counts from the latest other bound. No test covers this case.
 
-Rows (`request-covered.test.ts`), each failing on `ee2d2827f` and passing after the repair:
+Rows (`request-covered.test.ts`), each failing on `512692bab` and passing after the repair:
 
 | Row | What it shows |
 |---|---|
@@ -81,7 +81,7 @@ Rows (`request-covered.test.ts`), each failing on `ee2d2827f` and passing after 
 | "counts a run that began and ended between two writes" | a running exit between two writes |
 | "after a daemon handoff, counts an idle record from the next daemon's first write" | the handoff bound |
 
-The older row "is pruned only once none of its files is queued or running and 10 minutes passed" now expects deletion exactly 10 minutes after the end (minute 21, was 22), since the exit time is known; it fails on `ee2d2827f` for that reason only. Mutations checked by hand: with `knownSince` at 0 the handoff row fails; with `leftAt` always `null` the five exit rows fail.
+The older row "is pruned only once none of its files is queued or running and 10 minutes passed" now expects deletion exactly 10 minutes after the end (minute 21, was 22), since the exit time is known; it fails on `512692bab` for that reason only. Mutations checked by hand: with `knownSince` at 0 the handoff row fails; with `leftAt` always `null` the five exit rows fail.
 
 ## Review 0.1.470 S1, folded in
 
@@ -114,7 +114,7 @@ All additive except the intake's own declaration types:
 
 `src/core/store/covered-files.ts` (new), `src/core/scheduler/covered-files.ts` (new), `request-intake.ts`, `request-intake-types.ts`, `checkpoint-requests.ts`, `request-intake-requests.ts`, `narrow-run.ts`, `retries.ts` (doc only), `src/core/types/scheduler.ts`, `src/core/types/daemon.ts`, `src/core/daemon/run-group.ts`, `src/core/daemon/handlers.ts` (by agreement); tests `test/scheduler/request-intake-probe.ts` (new, moved), `request-intake.test.ts`, `request-covered.test.ts` (new), `test/daemon/covered-id.test.ts` (new), `test/cli/covered-id-ignored.test.ts` (new), and one expectation in `test/scheduler/slow-tier.test.ts` (the `run --slow` answer's `coveredId`; outside the brief's list, required by the row, its own commit).
 
-## Checks (2026-11-13, rebased on `origin/main` `371cc8f8c`; host load 42 to 78 on 24 CPUs, another project's)
+## Checks (2026-11-13, rebased on `origin/main` `39eec1f1d`; host load 42 to 78 on 24 CPUs, another project's)
 
 - `pnpm run lint`: "Checked 3383 files ... No fixes applied." `pnpm run typecheck`: no errors.
 - Direct runs (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run <paths>`), because Squeal had over 1,200 files queued behind the host's load: `request-intake`, `request-covered`, `retry-claims`, `test/daemon/covered-id`, `run-all-owner`, `run-all-warm-up`, `test/cli/covered-id-ignored`, `run-group`, `run-group-narrow`, `run-slow`: 10 files, 82 tests pass. `test/daemon/run-all-owner`, `test/scheduler/checkpoint-tracker`, `focused-outcomes`: 3 files, 12 tests pass (Squeal's tier for them stalled under load).
@@ -122,9 +122,9 @@ All additive except the intake's own declaration types:
 - `test/scheduler/tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key" failed once at revision 32 (4.5 s against a 1.8 s median, load 2.2 per CPU; it reads clock skew and a settle pause, and promote and focus take no record); `squeal retry --reason load`: FAIL -> PASS.
 - Not run to a verdict: the rest of the affected set, about 1,220 test files queued in Squeal at revision 32 (types imported widely), known failures 0 when last read. No `pnpm run build` and no full suite, as the brief says.
 
-### Checks of the B1 repair (2026-11-14, on `cand/0.1.478` `ee2d2827f`; host load 74 to 91 on 24 CPUs)
+### Checks of the B1 repair (2026-11-14, on `cand/0.1.478` `512692bab`; host load 74 to 91 on 24 CPUs)
 
 - `pnpm run lint`: "Checked 3386 files ... No fixes applied." `pnpm run typecheck`: no errors.
-- Direct: `env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/scheduler/request-covered.test.ts test/scheduler/request-intake.test.ts test/daemon/covered-id.test.ts`: 3 files, 51 tests pass. With `ee2d2827f`'s four source files put back in place: `request-covered.test.ts` 6 failed, 13 passed (the five new rows and the older lifetime row, as above).
+- Direct: `env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/scheduler/request-covered.test.ts test/scheduler/request-intake.test.ts test/daemon/covered-id.test.ts`: 3 files, 51 tests pass. With `512692bab`'s four source files put back in place: `request-covered.test.ts` 6 failed, 13 passed (the five new rows and the older lifetime row, as above).
 - Squeal, named, revision 52: `request-covered`, `request-intake`, `covered-id`, the `ledger*` and `request-progress*` scheduler tests: current, pass. `test/scheduler/fresh-worktree-durations.test.ts` timed out at 5 s at revisions 41 (before this repair's source edit) and 52, at load 91 per 24 CPUs; it passed alone directly (1 test, 9.9 s); `squeal retry --reason load` queued behind the load gate.
 - Not run to a verdict: the rest of the affected set, left to CI as the coordinator said for this row.

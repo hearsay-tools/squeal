@@ -1,6 +1,6 @@
 # 011-244 notes: a flaky note names only the inputs Squeal tracks
 
-Row 011-244 (gh-98; wave 51 W1, `tasks/wave-51.md`; triage `research/issue-98.md`; 011 C5). Worker run `f7979153`, 2026-10-26. Baseline `0885eec11`.
+Row 011-244 (gh-98; wave 51 W1, `tasks/wave-51.md`; triage `research/issue-98.md`; 011 C5). Worker run `f7979153`, 2026-10-26. Baseline `ba25017ad`.
 
 ## Cause
 
@@ -35,7 +35,7 @@ The three `SKILL.md` copies quote the new line. The Claude Code copy has a 5,000
 - `plugins/*/dist` hold the old text until the coordinator rebuilds at integration. The four bundle-drift tests (Claude Code, Codex, OpenCode, Pi) fail until then.
 - 011 C5's wording ("Flaky: FAIL -> PASS under the same inputs") is the coordinator's to amend.
 - Doc comments that say "the same inputs both failed and passed" stay in files outside this row: `src/core/delivery/attribution.ts:231`, `src/core/types/delivery.ts:120`, `src/core/types/state.ts:86`.
-- `test/evals/transcripts/*` and `test/evals/fixtures/squeal-text-c6320866.mjs` are recorded history and keep the old line.
+- `test/evals/transcripts/*` and `test/evals/fixtures/squeal-text-beb3eb8c.mjs` are recorded history and keep the old line.
 - Tracking node:test data reads, the other option of the human's card, is not done.
 
 ## Commits

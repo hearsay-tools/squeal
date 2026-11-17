@@ -4,7 +4,7 @@
 
 **PASS dc55714**. No blockers, one proven should-fix, no new nits. `reviews/wave-2.6.md` B1 and S1 are closed: quoted `NODE_OPTIONS` requires are observed and keyed, and identity and transforming async loaders run on Node 22 and 24. The remaining should-fix concerns the warning for the accepted loader-thread observation boundary, not a demand to model arbitrary custom loaders.
 
-Reviewed `bfccdff^..2cafe6f`, the 003-30 repairs, adapter version 4, Codex command flag and 0.1.30 bundles. Candidate HEAD is `dc55714b7653b06860939511f9cbbf9685a4e7df`, rather than the brief's endpoint `2cafe6f`. `2cafe6f..HEAD` changes only board, spec, status and task documentation; product and bundle content match. This is a bounded re-review of the preload slice. Previously settled project isolation, observation merge, reconciliation and recorder cost conclusions were not re-prosecuted.
+Reviewed `bfccdff^..2cafe6f`, the 003-30 repairs, adapter version 4, Codex command flag and 0.1.30 bundles. Candidate HEAD is `3c6736e52c4989eb2f2f7cad1335d8dc367fdafe`, rather than the brief's endpoint `2cafe6f`. `2cafe6f..HEAD` changes only board, spec, status and task documentation; product and bundle content match. This is a bounded re-review of the preload slice. Previously settled project isolation, observation merge, reconciliation and recorder cost conclusions were not re-prosecuted.
 
 ## Verification output
 
@@ -14,7 +14,7 @@ All independent probes, logs and fixtures were under `/tmp/squeal-review-003-31-
 
 ```text
 $ git rev-parse HEAD
-dc55714b7653b06860939511f9cbbf9685a4e7df
+3c6736e52c4989eb2f2f7cad1335d8dc367fdafe
 $ node --version
 v24.21.0
 $ npm ci

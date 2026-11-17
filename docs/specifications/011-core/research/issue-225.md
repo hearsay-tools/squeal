@@ -4,7 +4,7 @@ Recommend treating #225 as confirmed by mechanism: a load retry that passes its 
 
 ## Scope and versions
 
-- Examined Squeal **0.1.512** (`package.json`), commit `6375287b773c62fa6dffe3728783b2373fd08ab6` (branch `cez/99bd5c88`, from main `6375287b7`). Node v26.13.0.
+- Examined Squeal **0.1.512** (`package.json`), commit `eceb95b38e655a78074294ebc13bf8a73e516800` (branch `cez/99bd5c88`, from main `eceb95b38`). Node v26.13.0.
 - Research started 2026-11-15 13:24 UTC. Host: **24 CPUs** (`nproc`, `os.availableParallelism()`). Load at start **7.90 7.30 6.64**; before the probe 7.49; at the live read 6.81 and 7.23. A 3 s `/proc/stat` sample read **7.34 busy cores**. One-minute load stayed far below 24, so live reads were allowed. No host load was generated. No daemon was started, no full suite, install or build ran.
 - User capacity config on this host: `~/.config/squeal/config.json` = `{"capacity":{"hostSlots":6}}`.
 - The issue reports 0.1.506, Codex workers in hearsay-tools/cezarion, 20–23 and 17 of 24 cores busy, 0–1 of 6 slots in use. No JSON, revision or daemon log was kept. These are reporter claims.
@@ -69,7 +69,7 @@ Relations: #127 (retry priority, held), #214 (eligibility versus start, F1 there
 
 ## Commands and sources
 
-- `date -u; cat /proc/loadavg; nproc; git rev-parse HEAD; node -p "require('./package.json').version"`: 13:24:26 UTC, `7.90 7.30 6.64`, 24, `6375287b7…`, 0.1.512.
+- `date -u; cat /proc/loadavg; nproc; git rev-parse HEAD; node -p "require('./package.json').version"`: 13:24:26 UTC, `7.90 7.30 6.64`, 24, `eceb95b38…`, 0.1.512.
 - `gh issue view 225 --repo hearsay-tools/squeal`: OPEN, no comments. `gh issue list --repo hearsay-tools/squeal --state open --limit 60`: related #127, #139, #179, #214 (board), #216, #222.
 - `cat ~/.config/squeal/config.json`: `hostSlots: 6`.
 - `pnpm exec tsx docs/specifications/011-core/research/probes/issue-225/probe.ts`: exit 0, [output](probes/issue-225/output.txt). `pnpm exec tsx …/live-marks.ts` twice with a 3 s busy-core sample: [output](probes/issue-225/live-marks-output.txt). [Probe README and limits](probes/issue-225/README.md).

@@ -1,8 +1,8 @@
 # Wave 13bf: second review of 001-320 after 001-331
 
-**PASS 914258675bed41a898a8cd86c38b267acb912b51**
+**PASS 6af5b5dd6e751224de0052b6eeeb8fec9492b474**
 
-Range: `cf0eb979..91425867`, pinned exactly. Reviewer row: 001-339. Bounded by `reviews/wave-13bb.md`: re-check B1, N1 and N2, inspect the repair delta, and leave new observations as notes. Counts: zero blockers; one plausible should-fix note; one proven nit.
+Range: `658001c1..6af5b5dd`, pinned exactly. Reviewer row: 001-339. Bounded by `reviews/wave-13bb.md`: re-check B1, N1 and N2, inspect the repair delta, and leave new observations as notes. Counts: zero blockers; one plausible should-fix note; one proven nit.
 
 ## Verification
 
@@ -21,7 +21,7 @@ The independent Vitest run kept `--maxWorkers=4`. No Squeal checkpoint replaced 
 
 ```text
 $ git rev-parse HEAD
-914258675bed41a898a8cd86c38b267acb912b51
+6af5b5dd6e751224de0052b6eeeb8fec9492b474
 $ git status --porcelain
 [no output]
 

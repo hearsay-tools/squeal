@@ -1,10 +1,10 @@
 # Wave 1.6 review: 005-69, 011-05, 011-02 and 011-06
 
-PASS `6cf206037eba171a8ca8328cff7b86cacb139f36`: 0 blockers, 1 should-fix (documentation, S1), 0 additional product notes.
+PASS `373dd4c8dca7c8aaee262a768398f2939a679a45`: 0 blockers, 1 should-fix (documentation, S1), 0 additional product notes.
 
 ## Verification
 
-Reviewed `cand/0.1.205`, range `353b0ba4..6cf20603`, against the board Done-when clauses and `005-agent-adoption/tasks/wave-8.md` (005-69) and `011-core/tasks/wave-1.md` (011-02, 011-05, 011-06 and repair 1). `git rev-parse HEAD` returned the pinned SHA above. The tracked tree was clean throughout the independent checks. No product code was edited.
+Reviewed `cand/0.1.205`, range `b9e2cbdb..373dd4c8`, against the board Done-when clauses and `005-agent-adoption/tasks/wave-8.md` (005-69) and `011-core/tasks/wave-1.md` (011-02, 011-05, 011-06 and repair 1). `git rev-parse HEAD` returned the pinned SHA above. The tracked tree was clean throughout the independent checks. No product code was edited.
 
 ```text
 $ npm ci
@@ -31,7 +31,7 @@ $ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
    Duration  762.25s (tests 98%, import 2%)
 exit 0
 
-$ git diff --check 353b0ba4..6cf20603
+$ git diff --check b9e2cbdb..373dd4c8
 (no output)
 exit 0
 

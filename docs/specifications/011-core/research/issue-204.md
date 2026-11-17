@@ -1,6 +1,6 @@
 # Issue 204: a rebase onto a newer base queues the whole suite
 
-Researcher findings, 2026-11-12, for issue #204 (hearsay-tools/squeal). Squeal 0.1.457 installed (`squeal --version`), the version the reporter inferred. Source and spec read at `c2a6d3718`. Probe: `research/probes/issue-204/` (throwaway). Time box 20 minutes.
+Researcher findings, 2026-11-12, for issue #204 (hearsay-tools/squeal). Squeal 0.1.457 installed (`squeal --version`), the version the reporter inferred. Source and spec read at `53696af73`. Probe: `research/probes/issue-204/` (throwaway). Time box 20 minutes.
 
 ## Answers
 
@@ -33,7 +33,7 @@ Files: `out/A-after-1.json`, `out/B-after-1.json`, `out/C-after-1.json` (`testFi
 
 ## The reporter's day, read from this repository's history
 
-`git diff --name-only 9995fd409 origin/main` (the last `main` commit before 2026-11-12 00:00 UTC, to `origin/main` at 22:24 UTC): 677 paths, of which 160 under `src/`, 148 under `test/`, plus `package.json`, `pnpm-lock.yaml` and `squeal.config.json`. In `package.json` the version moved 0.1.440 to 0.1.459 and a dev dependency `@vitest/coverage-v8` 5.0.3 was added. `squeal.config.json` added one `inputs` entry (`test/ci-action/**/*.test.ts` to `ci/**`). Read with `git diff`; `inferred` as to their effect:
+`git diff --name-only f218f9b11 origin/main` (the last `main` commit before 2026-11-12 00:00 UTC, to `origin/main` at 22:24 UTC): 677 paths, of which 160 under `src/`, 148 under `test/`, plus `package.json`, `pnpm-lock.yaml` and `squeal.config.json`. In `package.json` the version moved 0.1.440 to 0.1.459 and a dev dependency `@vitest/coverage-v8` 5.0.3 was added. `squeal.config.json` added one `inputs` entry (`test/ci-action/**/*.test.ts` to `ci/**`). Read with `git diff`; `inferred` as to their effect:
 
 - A changed dependency set can re-key every file through the installed-dependency segment or the environment hash (C3, C11), but only once `node_modules` changes. Whether the worker reinstalled after the rebase is not known.
 - 160 changed sources include widely imported modules (for example `src/cli/main.ts` and `src/core/capacity/*`). Through static closures and the declared `inputs` (several entries name `src/**/*.ts`), these alone can re-key a large share of the suite. Each such re-key is a valid key change, not an invalidation.
@@ -54,7 +54,7 @@ The probe supports treating #204 as a scheduling policy question; it does not es
 ## Sources
 
 - Issue: `gh issue view 204 -R hearsay-tools/squeal`, created 2026-11-12T21:27:19Z.
-- Spec: `docs/specifications/011-core/spec.md` C3 (keys, environment hash), C4 steps 3 and 4 (lookup, catch-up threshold 10, lookup-only scope), at `c2a6d3718`.
+- Spec: `docs/specifications/011-core/spec.md` C3 (keys, environment hash), C4 steps 3 and 4 (lookup, catch-up threshold 10, lookup-only scope), at `53696af73`.
 - Status log: `docs/specifications/011-core/status.md` entries of 2026-10-20 (lookup-only scope) and 2026-10-23/24 (011-159).
-- Source: `src/core/scheduler/revision.ts:48`, `src/core/scheduler/queue.ts:77`, `src/core/store/paths.ts:12` (store under `<git-common-dir>/squeal/`), at `c2a6d3718`.
+- Source: `src/core/scheduler/revision.ts:48`, `src/core/scheduler/queue.ts:77`, `src/core/store/paths.ts:12` (store under `<git-common-dir>/squeal/`), at `53696af73`.
 - Probe: `research/probes/issue-204/run.sh`, `research/probes/issue-204/out/`.

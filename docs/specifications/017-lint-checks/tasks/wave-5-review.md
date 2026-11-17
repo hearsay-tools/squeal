@@ -1,6 +1,6 @@
 # Wave 5 review: cand/0.1.392
 
-Use /reviewer. Shape: review. Review `cand/0.1.392` at `baa9cb628` exactly, against main `ee85e1270`. Own only `reviews/0.1.392.md`.
+Use /reviewer. Shape: review. Review `cand/0.1.392` at `d2aed6664` exactly, against main `fe6f20c15`. Own only `reviews/0.1.392.md`.
 
 **Rows:** 017-15 (oxlint in the daemon: one lint pass per tool, `lint.tools`, oxlint lines name the tool), 017-23 (a lint change is news at Stop by itself; code news rides beside it), 017-24 (ESLint 9 with nested configs uses each file's nearest config; `ESLINT_FLAGS` keyed), 017-27 (relative fs calls in the ESLint worker resolve against the root). Research 017-26 (`research/lint-memory.md`) is docs only.
 

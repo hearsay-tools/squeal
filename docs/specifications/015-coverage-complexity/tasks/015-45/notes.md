@@ -1,6 +1,6 @@
 # 015-45 notes: coverage's share of the main thread holds for the writer and the judge together; the cold loader read is sliced
 
-Worker 40cd05f1, 2026-10-25. Brief: `tasks/wave-5.md` W1, from review 0.1.305 S1 and S2. Starts from main at 0.1.305 (`641191664`). The three-line wiring in `src/core/daemon/daemon.ts` was agreed with the coordinator (reply to request `c0917dfc`, option a) and is its own commit.
+Worker 40cd05f1, 2026-10-25. Brief: `tasks/wave-5.md` W1, from review 0.1.305 S1 and S2. Starts from main at 0.1.305 (`6d0a4c4a1`). The three-line wiring in `src/core/daemon/daemon.ts` was agreed with the coordinator (reply to request `c0917dfc`, option a) and is its own commit.
 
 ## What changed
 
@@ -37,7 +37,7 @@ Parts of the cold map before, in one process at load 26: the listing 13.5 ms, `r
 | `pace-shared.test.ts` (fake clock) | a step 40 ms after a 60 ms writer job (red) | each unit at least its predecessor's time after it; share under 0.55 | — |
 | `sliced.test.ts` (fake clock) | 9 rows read in one step (red) | at most 3 rows a step at 20 ms each; no judgement before the last row | — |
 
-The red runs on the baseline used a detached worktree of `641191664` in scratch with the new test files copied in.
+The red runs on the baseline used a detached worktree of `6d0a4c4a1` in scratch with the new test files copied in.
 
 What else is in a 100 ms turn of `chain-load.test.ts`: the step itself is 51 to 69 ms (50 ms budget, one unit past it, then 5 to 20 ms of writes); V8 scavenges reached 21 ms and mark-compacts 6 ms (`--trace-gc`, threads pool, load 4.9).
 

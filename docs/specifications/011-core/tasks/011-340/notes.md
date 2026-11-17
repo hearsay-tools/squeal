@@ -1,6 +1,6 @@
 # 011-340: one admission answer, behaviour preserved (worker notes)
 
-Worker 29e1f6d0, wave 92 W1, 2026-11-14. Design: `research/admission.md`. Branch `cez/29e1f6d0`, base `64cbaa996`.
+Worker 29e1f6d0, wave 92 W1, 2026-11-14. Design: `research/admission.md`. Branch `cez/29e1f6d0`, base `57b0eb3fe`.
 
 ## What moved
 

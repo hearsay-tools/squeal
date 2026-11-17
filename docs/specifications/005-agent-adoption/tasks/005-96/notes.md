@@ -1,6 +1,6 @@
 # Row 005-96: the scheduler records what the late bound reads
 
-Worker 74012cb8, wave 119 W1 (`../../../011-core/tasks/wave-119.md`), 2026-11-17. Base: main at 0.1.531 (`23f67d006`). Read-side contract: `contract.md` (this folder). Why: `../../reviews/0.1.530.md` B2, B3; `../../reviews/0.1.530-r2.md` R2-B1.
+Worker 74012cb8, wave 119 W1 (`../../../011-core/tasks/wave-119.md`), 2026-11-17. Base: main at 0.1.531 (`61904d31b`). Read-side contract: `contract.md` (this folder). Why: `../../reviews/0.1.530.md` B2, B3; `../../reviews/0.1.530-r2.md` R2-B1.
 
 ## Design (written before the code)
 
@@ -62,7 +62,7 @@ The contract's five needs: 1, freshness: the record commits with the start (R2-B
 
 Two probes in `probe/` (README there). Load is the host's real load, one minute, on 24 CPUs; other projects' processes were running and it was far above the CPU count (34 to 52). Not made on purpose.
 
-**The step's turn that starts an edit tier** (`probe.test.ts`; catch-up fake runner, 2 files per project, 30 rounds of one edit of the source every file imports, `selecting the next tier [start-tier]`). Paired runs on a detached tree at the base `23f67d006` (before) and this branch at `e0d52baec` (after), alternately, 00:10 to 00:11 UTC. Median / p95 / max, ms:
+**The step's turn that starts an edit tier** (`probe.test.ts`; catch-up fake runner, 2 files per project, 30 rounds of one edit of the source every file imports, `selecting the next tier [start-tier]`). Paired runs on a detached tree at the base `61904d31b` (before) and this branch at `e0d52baec` (after), alternately, 00:10 to 00:11 UTC. Median / p95 / max, ms:
 
 | projects | before 1 (load 37.8) | after 1 (load 41.2) | before 2 (load 41.4) | after 2 (load 42.8) |
 |---|---|---|---|---|
@@ -133,7 +133,7 @@ The contract's five needs: 1, freshness: the record holds the tier as soon as `s
 
 ### Agreed edit outside the file list
 
-`test/scheduler/busy-record.test.ts` line 159, in its own commit (`d177b3764`): the one-shot fault `"not a busy store"` meant for the tier's record now names its target, `"recordTier"`. The new write is the store's next transaction after the flight starts, so it took that untargeted fault first, the tier record never failed, and "starts nothing from a resume armed before a stall on another error" timed out at 30 s (twice). Targeted, the case passes, and it keeps its meaning: it was written to fail the tier's record, which the new timing write now precedes. The coordinator agreed (reply to request `3a18e67a`, 2026-11-17: "A: keep d177b3764"). `busy-record.test.ts` sits next to card 9's files; no `src` file of card 9 or 10 changed (`git diff 23f67d006 -- src/core/scheduler/busy-resume.ts src/core/store/busy.ts src/core/scheduler/local-permits.ts src/core/capacity/ src/core/scheduler/record-tier.ts` is empty). The row's whole `src` diff against the base: `late-bound.ts`, `late-timings.ts`, `edit-timings.ts` (new), `tier-start.ts`, `types/store.ts` (one line). The other scheduler tests that replace `store.transaction` pass unchanged (`adoption`, `busy-released`, `commit-transaction`, `full-suite-pass`, `runtime-files-rollback`, `superseded-claim`, every `busy*`: 14 files, 38 tests).
+`test/scheduler/busy-record.test.ts` line 159, in its own commit (`d177b3764`): the one-shot fault `"not a busy store"` meant for the tier's record now names its target, `"recordTier"`. The new write is the store's next transaction after the flight starts, so it took that untargeted fault first, the tier record never failed, and "starts nothing from a resume armed before a stall on another error" timed out at 30 s (twice). Targeted, the case passes, and it keeps its meaning: it was written to fail the tier's record, which the new timing write now precedes. The coordinator agreed (reply to request `3a18e67a`, 2026-11-17: "A: keep d177b3764"). `busy-record.test.ts` sits next to card 9's files; no `src` file of card 9 or 10 changed (`git diff 61904d31b -- src/core/scheduler/busy-resume.ts src/core/store/busy.ts src/core/scheduler/local-permits.ts src/core/capacity/ src/core/scheduler/record-tier.ts` is empty). The row's whole `src` diff against the base: `late-bound.ts`, `late-timings.ts`, `edit-timings.ts` (new), `tier-start.ts`, `types/store.ts` (one line). The other scheduler tests that replace `store.transaction` pass unchanged (`adoption`, `busy-released`, `commit-transaction`, `full-suite-pass`, `runtime-files-rollback`, `superseded-claim`, every `busy*`: 14 files, 38 tests).
 
 ### The lock turn, again
 
@@ -141,7 +141,7 @@ The path changed (a second, short write transaction in the step's turn, after th
 
 **The record's own write after a start transaction** (`probe/record.test.ts`, now with the record in its own transaction; output `probe/record-own-write.txt`; 300 alternating iterations; load 86.0). Added cost, median / p95 / max, ms: **1 project 0.080 / 0.19 / 7.5; 12 projects 0.145 / 0.69 / 5.7; 100 projects 0.195 / 0.61 / 9.4**. The first round's in-transaction numbers (load 47.2) were 0.073 / 0.058 / 0.14 ms median (`probe/record-in-transaction.txt`). The own commit costs a few hundredths of a millisecond more at the median. Under contention it does not wait: a 0 ms busy slice.
 
-**The step's turn that starts an edit tier** (`probe/probe.test.ts`), paired on a detached tree at the base `23f67d006` (before) and this branch at `88ea38856` (after), alternately, 00:37 to 00:38 UTC. Median / p95 / max, ms:
+**The step's turn that starts an edit tier** (`probe/probe.test.ts`), paired on a detached tree at the base `61904d31b` (before) and this branch at `88ea38856` (after), alternately, 00:37 to 00:38 UTC. Median / p95 / max, ms:
 
 | projects | before 1 (load 84.3) | after 1 (load 81.0) | before 2 (load 79.6) | after 2 (load 79.6) |
 |---|---|---|---|---|

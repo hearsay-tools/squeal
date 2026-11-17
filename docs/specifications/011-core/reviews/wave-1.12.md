@@ -2,7 +2,7 @@
 
 FAIL 09956c8fbf01fef56579c13a53ea13b3bbc9847b — three proven blockers, one should-fix, one nit.
 
-Reviewed detached candidate `cand/0.1.212` at exactly `09956c8f`, range `e59bdd76..09956c8f` (eight commits). Product tree clean during verification. This review changes no product code. Contract: board 011-14; spec C5/C6; the 2026-10-17 amendment and accepted defaults in `tasks/011-14/notes.md`.
+Reviewed detached candidate `cand/0.1.212` at exactly `09956c8f`, range `fa3a0679..09956c8f` (eight commits). Product tree clean during verification. This review changes no product code. Contract: board 011-14; spec C5/C6; the 2026-10-17 amendment and accepted defaults in `tasks/011-14/notes.md`.
 
 ## Verification output
 
@@ -23,7 +23,7 @@ npm run check:version -- origin/main — exit 0
 version bump: 0.1.211 -> 0.1.212, ok
 ```
 
-`origin/main` for the version check was `62254a2a68d132677251858cc7314357f8847997`.
+`origin/main` for the version check was `6503030614321ea7eeb8cb4e3c199b110c53cacb`.
 
 ```text
 npx vitest run test/state/fingerprint-volatile.test.ts test/state/refingerprint.test.ts test/daemon/refingerprint-start.test.ts test/integration/fingerprint-two-worktrees.test.ts test/store/worktree-meta.test.ts --maxWorkers=4
@@ -43,7 +43,7 @@ exit 0
 
 The existing issue-28 probe, run against this candidate, reports A/B/C/F equal and D/E distinct. The issue's two pairs are fixed and the assertion-value and changed-filename controls survive.
 
-For red/green, archived `e59bdd76` outside this checkout, linked the installed dependencies, and copied only the two new test files `fingerprint-volatile.test.ts` and `fingerprint-two-worktrees.test.ts`. Ran:
+For red/green, archived `fa3a0679` outside this checkout, linked the installed dependencies, and copied only the two new test files `fingerprint-volatile.test.ts` and `fingerprint-two-worktrees.test.ts`. Ran:
 
 ```text
 node node_modules/vitest/vitest.mjs run test/state/fingerprint-volatile.test.ts test/integration/fingerprint-two-worktrees.test.ts -t 'fingerprint of|a heal from' --maxWorkers=4
@@ -57,7 +57,7 @@ Five masking assertions and the real-runner, two-worktree inherited regression f
 
 Squeal’s separate background baseline reported failures in `test/runners/node-test/run-reads-fidelity.test.ts:116` and `test/runners/vitest/observe-fidelity.test.ts:119`. Its `why` history includes the same node:test assertion failing on earlier commits (`d831ece`, `bbf5722`); those files are unchanged in this range. These background reports do not replace the independent full-run result above or establish a blocker against this row.
 
-Additional probes imported the current source and the actual `e59bdd76` fingerprint source, and exercised isolated SQLite stores through the public store/sink/delta interfaces. Their discriminating outputs are preserved below; no probe source is part of this commit.
+Additional probes imported the current source and the actual `fa3a0679` fingerprint source, and exercised isolated SQLite stores through the public store/sink/delta interfaces. Their discriminating outputs are preserved below; no probe source is part of this commit.
 
 ## Blockers
 
@@ -175,7 +175,7 @@ One bounded re-review on 2026-10-17, detached at the requested SHA after fetchin
 
 ### Verification output
 
-The following checks ran on the pinned candidate with a clean tree. Node `v24.21.0`. `origin/main` for the version check was `f74ccc4a1d68f210114c325593af8ff4cb6a6ec0`.
+The following checks ran on the pinned candidate with a clean tree. Node `v24.21.0`. `origin/main` for the version check was `5bbde9bd4f2b95e5881ab71b6049c17beccb670e`.
 
 ```text
 npm ci — exit 0
@@ -293,13 +293,13 @@ The exact original B1/B2/S1/N1 cases need not be re-prosecuted. B3 is not fully 
 
 ## Third round
 
-PASS 5f060c6915c7933ad7d7f76bdc2e4607e8addb5c; zero blockers, should-fix items or nits in the authorized scope.
+PASS 83ac567cfc0f30d6293f038c8b7c7d6c15f4a5d9; zero blockers, should-fix items or nits in the authorized scope.
 
-The human's final, narrow third round, 2026-10-17. Fetched `cand/0.1.213` and checked out detached at exactly the pinned SHA. Scope is R1/R2 above and the repair's blast radius: `660d5738`, the Repair 2 cost statement, the last status amendment and their callers. B1/B2/S1/N1 and the ordinary B3 sequence remain closed; this delta does not reopen them. Product tree remained clean. This review changes only this file.
+The human's final, narrow third round, 2026-10-17. Fetched `cand/0.1.213` and checked out detached at exactly the pinned SHA. Scope is R1/R2 above and the repair's blast radius: `2cf12a47`, the Repair 2 cost statement, the last status amendment and their callers. B1/B2/S1/N1 and the ordinary B3 sequence remain closed; this delta does not reopen them. Product tree remained clean. This review changes only this file.
 
 ### Verification output
 
-Node `v24.21.0`; installed from the pinned lockfile. `origin/main` was `82d8266113f4a998b8dca38e89678028f7d6b74f`.
+Node `v24.21.0`; installed from the pinned lockfile. `origin/main` was `ded00675e6313a04677b62f5fbd83e97ba264cfd`.
 
 ```text
 npm ci — exit 0
@@ -324,7 +324,7 @@ Test Files  1 failed | 155 passed (156)
 exit 1
 ```
 
-The broader selection's sole failure was the unchanged OpenCode dispose test, `test/harness/opencode-dispose.test.ts:170`, "serve: an abort of the new turn, then the old Stop's answer, stores nothing". Its three attempts missed the new-turn barrier before the held Stop's 2-second idle deadline; the final kill was at +2009 ms, deadline +2000. The preceding attempts ended at +2265 and +2031 ms. The board's Later entry and the test's own comments already identify this loaded-host barrier miss. Load immediately after the run was `61.95 46.26 34.15` on 24 CPUs. This file and the OpenCode implementation are unchanged by 011-14 and by `660d5738`; the fixture's held Stop is a stand-in, not the changed shared waiting Stop. This does not prove an R1/R2 regression, and is not a blocker in the authorized scope. It is retained here as a failed independent check, not reported as an all-green run.
+The broader selection's sole failure was the unchanged OpenCode dispose test, `test/harness/opencode-dispose.test.ts:170`, "serve: an abort of the new turn, then the old Stop's answer, stores nothing". Its three attempts missed the new-turn barrier before the held Stop's 2-second idle deadline; the final kill was at +2009 ms, deadline +2000. The preceding attempts ended at +2265 and +2031 ms. The board's Later entry and the test's own comments already identify this loaded-host barrier miss. Load immediately after the run was `61.95 46.26 34.15` on 24 CPUs. This file and the OpenCode implementation are unchanged by 011-14 and by `2cf12a47`; the fixture's held Stop is a stand-in, not the changed shared waiting Stop. This does not prove an R1/R2 regression, and is not a blocker in the authorized scope. It is retained here as a failed independent check, not reported as an all-green run.
 
 ```text
 node node_modules/vitest/vitest.mjs run test/state test/delivery test/store test/harness/stop-slow*.test.ts test/integration/fingerprint-two-worktrees.test.ts test/keys/key-format.test.ts --maxWorkers=4

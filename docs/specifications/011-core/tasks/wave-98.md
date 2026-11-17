@@ -24,7 +24,7 @@ Done when: the row's done-when holds: `grep -rn "setTimeout\|setInterval\|timers
 
 ## R1 (W1): review of cand/0.1.513
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.513` at `cceb500f0e644899fe3090b82bf9a0cb40f1d78b`; candidate CI run 43713819243. Range `1df9818ae..cceb500f0`: three commits of worker 9b8a107e (cherry-picked from `c5f167179..e0b5e2f40` without conflict), then the 0.1.513 raise and bundles. Read: board row 011-352, this file's W1, `tasks/011-352/notes.md`, `../research/scheduler-step.md` ("The wake loop", "Timing differences").
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.513` at `cceb500f0e644899fe3090b82bf9a0cb40f1d78b`; candidate CI run 43713819243. Range `0af44bcc0..cceb500f0`: three commits of worker 9b8a107e (cherry-picked from `c5f167179..e0b5e2f40` without conflict), then the 0.1.513 raise and bundles. Read: board row 011-352, this file's W1, `tasks/011-352/notes.md`, `../research/scheduler-step.md` ("The wake loop", "Timing differences").
 
 Check, each as proven, plausible or unverified:
 
@@ -39,7 +39,7 @@ The coordinator's tree passed lint, typecheck, `check:version origin/main` and `
 
 ## R2 (W1 repair): re-review of cand/0.1.513 after `reviews/0.1.513.md`
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.513` at `d77d1f9d89699972800f1acfade3de9096cb9c74`; candidate CI run 43718202283. The branch was rebuilt on main `c440f8cf1`: the three first-round commits of worker 9b8a107e (unchanged), then its six repair commits (picked from `e6d3a470a..46877b326`), then the 0.1.513 raise and bundles. Narrow re-review: the repair range `aa2718f76..f3c2fcd87` and how it meets `reviews/0.1.513.md`. Read that review, `tasks/011-352/notes.md` "Repair after review 0.1.513".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.513` at `d77d1f9d89699972800f1acfade3de9096cb9c74`; candidate CI run 43718202283. The branch was rebuilt on main `7821220fe`: the three first-round commits of worker 9b8a107e (unchanged), then its six repair commits (picked from `e6d3a470a..46877b326`), then the 0.1.513 raise and bundles. Narrow re-review: the repair range `aa2718f76..f3c2fcd87` and how it meets `reviews/0.1.513.md`. Read that review, `tasks/011-352/notes.md` "Repair after review 0.1.513".
 
 Check, each as proven, plausible or unverified:
 
@@ -65,7 +65,7 @@ Done when: the review `0.1.513-r2.md` B4 reproduction passes as a test (rest sta
 
 ## R3 (W1 after repair 3): review of cand/0.1.513
 
-Use /reviewer (codex gpt-6.1-sol high). A fresh review, the human's choice after two failed rounds ("Rest signal: 1: one rule, third repair"). Pinned to `cand/0.1.513` at `6c784dfd684b0fe5493304bcde479cc25d3a1b39`; candidate CI run 43724573290. Range `0d3157e63..6c784dfd6`: all fourteen commits of worker 9b8a107e for row 011-352 (first round, repair 1, the slot-gather repair, repair 3), cherry-picked without conflict, then the 0.1.513 raise and bundles. Read: board row 011-352, this file's W1 and "W1 repair 3", `tasks/011-352/notes.md` (all repair sections), `reviews/0.1.513.md` and `reviews/0.1.513-r2.md`, `../research/scheduler-step.md` ("The wake loop", "Timing differences").
+Use /reviewer (codex gpt-6.1-sol high). A fresh review, the human's choice after two failed rounds ("Rest signal: 1: one rule, third repair"). Pinned to `cand/0.1.513` at `792163d2c6c216b524728aa2f449374f18ce5dba`; candidate CI run 43724573290. Range `d6b756c8a..792163d2c`: all fourteen commits of worker 9b8a107e for row 011-352 (first round, repair 1, the slot-gather repair, repair 3), cherry-picked without conflict, then the 0.1.513 raise and bundles. Read: board row 011-352, this file's W1 and "W1 repair 3", `tasks/011-352/notes.md` (all repair sections), `reviews/0.1.513.md` and `reviews/0.1.513-r2.md`, `../research/scheduler-step.md` ("The wake loop", "Timing differences").
 
 Check, each as proven, plausible or unverified:
 

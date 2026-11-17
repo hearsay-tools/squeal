@@ -16,7 +16,7 @@ the 20-minute bound; no product, spec, board, skill or existing hold changed.
 | 1. Does a newly added included test stay `not-run`? | No in these probes. The first query selected its own file, already listed and pending, then it passed. **verified by experiment; 0.1.414 / Vitest 5.0.3**. |
 | 2. Does committing it change or lose discovery? | No. Own-file selection and current pass survived commit and a further 32-second wait in both included cases. **verified by experiment; 0.1.414 / Vitest 5.0.3**. |
 | 3. Can named status select a reader without giving the named test's own verdict? | Yes. With explicit Vitest exclusion, it selected the passing reader but returned exit 3, `none/not-run`, before and after commit. **verified by experiment; 0.1.414 / Vitest 5.0.3**. |
-| 4. Is this the same as #142 pending discovery? | Not necessarily. #142's prior synthetic case had an unrefined revision. Our excluded control had `revision = refinedRevision = 1`, `runnerPartPending: false`, and `unlisted: false`. **verified by experiment; 0.1.414**, compared with the **read in official docs; issue-142.md at d3f36305**, which reports 0.1.390 synthetic evidence. |
+| 4. Is this the same as #142 pending discovery? | Not necessarily. #142's prior synthetic case had an unrefined revision. Our excluded control had `revision = refinedRevision = 1`, `runnerPartPending: false`, and `unlisted: false`. **verified by experiment; 0.1.414**, compared with the **read in official docs; issue-142.md at b598e5dc**, which reports 0.1.390 synthetic evidence. |
 | 5. What caused the original included file to remain absent? | **Not determined, because** its store, discovery trace and resolved runner configuration were not supplied, and GitHub returned 404 for its named commit. The reported 0.1.410 result is not a local reproduction. |
 
 ## Method and measured results
@@ -60,7 +60,7 @@ pass occurred. This demonstrates why a reader pass cannot establish discovery.
 
 ## Source findings and interpretation
 
-**read in official docs; specifications at d3f363054fbe5d30e6e11bf8f212e1ac74d567e1.**
+**read in official docs; specifications at b598e5dc8129c5c7848b9c5ace2887a03e9ab12a.**
 011 C2 makes revisions independent of runner refinement and says an unrefined
 revision stays pending. C4 orders added/edited tests as edit work. C6/C9 require
 honest incomplete status and preserve holds. C15 distinguishes an own test from
@@ -68,7 +68,7 @@ readers and orders `unsynced`/`unlisted` before `not-run`. A `kind: not-run` pat
 alone therefore does not prove completed discovery. The issue body's excerpt
 has `reason: unsynced`, not a completed-listing witness.
 
-**read in source code; checkout 0.1.414 at d3f36305.**
+**read in source code; checkout 0.1.414 at b598e5dc.**
 `src/runners/vitest/stale.ts:72` matches added/deleted paths against project test
 globs and calls `clearSpecificationsCache()`. `adapter.ts:523` lists through
 `globTestSpecifications()`. `src/cli/named-selection.ts:105` selects the own row
@@ -113,7 +113,7 @@ open, including whether exclusion, unresolved discovery, or lost inventory appli
 - [011 C2/C4/C6/C9/C15](../spec.md), [011 amendments](../status.md),
   [013 V2/V3/V7](../../013-vitest-runner/spec.md),
   [013 amendments](../../013-vitest-runner/status.md), [#142 research](issue-142.md).
-- [Squeal source at examined commit](https://github.com/hearsay-tools/squeal/tree/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1).
+- [Squeal source at examined commit](https://github.com/hearsay-tools/squeal/tree/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a).
   Source comparison: `git diff squeal--v0.1.410 HEAD -- src/runners/vitest/stale.ts src/runners/vitest/adapter.ts src/cli/named-selection.ts`.
 
 Verification: `node --check` on the probe, parsing all three JSONL captures, and

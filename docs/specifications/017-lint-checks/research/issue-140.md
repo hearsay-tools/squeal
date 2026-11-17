@@ -38,7 +38,7 @@ node --check research/probes/issue-140/probe.mjs
 
 The installed bundle and release tag both have blob
 `f5eb36f0a519712fe5c806f6e94878ff46f88099`. The release commit is
-`56764d5455ddae8e9090a6492dc3959574d13cc9`. Runtime: Node **v24.22.1**;
+`9dfbba0f421c5891328faf5ac4fcc1238d60b660`. Runtime: Node **v24.22.1**;
 oxlint **1.90.0**; oxlint provider version **1**. The probe exports the unchanged
 provider and pass from a disposable bundle copy instead of invoking CLI `main`.
 The harness supplies disk listings and an isolated lint store. It does not run the
@@ -88,7 +88,7 @@ write this key. With no prior states, `failKeying` does not create unknown rows
 for every candidate. Thus the reported 2,279 unknown rows and `failed` reason
 fit a failed keying over existing states. They do not establish that one lint
 execution contained 2,279 files. These source files are unchanged between the
-release and examined checkout `719bd678fe72e340daf68fe1e3af775f2031c0db`.
+release and examined checkout `f88f140d920b753dcb11a107aa80f554389b5bef`.
 
 **inferred, 0.1.392:** the direct 8,732 ms run reported in the issue measures lint
 execution, so it cannot by itself explain a discovery timeout. A fresh process is
@@ -149,12 +149,12 @@ its evidence. No product code, board, spec, status or skill changed.
 
 - [Issue #140](https://github.com/hearsay-tools/squeal/issues/140), fetched with
   `gh` above. Its timings are reporter observations, not independently verified.
-- [Released source](https://github.com/hearsay-tools/squeal/tree/56764d5455ddae8e9090a6492dc3959574d13cc9/src/core/lint):
+- [Released source](https://github.com/hearsay-tools/squeal/tree/9dfbba0f421c5891328faf5ac4fcc1238d60b660/src/core/lint):
   `provider/oxlint/{provider,run,spawn}.ts`, `pass/{parts,rekey}.ts`,
   `surface/snapshot.ts`. Read locally and checked against the tag; the installed
   bundle matches its committed release blob.
 - [Spec](../spec.md), D2/D3/D7/D9/D11, and [decisions](../status.md), read at
-  checkout `719bd678`; these are policy sources, not runtime proof.
+  checkout `f88f140d`; these are policy sources, not runtime proof.
 - [Throwaway probe](probes/issue-140/probe.mjs),
   [instructions](probes/issue-140/README.md), and
   [recorded output](probes/issue-140/observations.json).

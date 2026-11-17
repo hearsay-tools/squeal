@@ -1,6 +1,6 @@
 # 011-124: status names a claim only for a file that waits on it, worker notes (2026-10-23)
 
-Brief W1 of `../wave-19.md`; spec 011 C7 (claims) and C15 (the queued reasons); `../011-55/notes.md`, "Open for later rows" 2. Base `f9e09794e` (0.1.271). Commit `ad0aa0eb4` is the row.
+Brief W1 of `../wave-19.md`; spec 011 C7 (claims) and C15 (the queued reasons); `../011-55/notes.md`, "Open for later rows" 2. Base `e52e5dcae` (0.1.271). Commit `ad0aa0eb4` is the row.
 
 ## What changed
 
@@ -35,7 +35,7 @@ What a later row needs: the daemon to publish the claim-exempt classes or its cl
 2. A pass the other worktree stored at K before: `queued`, nothing recorded holds it; no claim.
 3. The other worktree's failure at K, which this worktree holds, and a tier of this worktree running in the vitest lane: queued behind that tier; no claim.
 
-Red before: tests 2 and 3 failed on `f9e09794e` with `kind: "claim"`. Test 1 passes on the base by nature: it pins the reading the row keeps. The existing claim tests (`test/cli/status-wait-reasons.test.ts`, `test/status/outstanding.test.ts`, `next-step.test.ts`) store no result at the claimed key and read as before.
+Red before: tests 2 and 3 failed on `e52e5dcae` with `kind: "claim"`. Test 1 passes on the base by nature: it pins the reading the row keeps. The existing claim tests (`test/cli/status-wait-reasons.test.ts`, `test/status/outstanding.test.ts`, `next-step.test.ts`) store no result at the claimed key and read as before.
 
 ## Open for later rows
 

@@ -59,7 +59,7 @@ Use /reviewer. Range: the 005-14a, 005-14b and 005-20 commits and the 0.1.135 bu
 
 **Rules:** probe with stub harness CLIs in scratch homes only. Never run the real `claude` or `codex`, and run no model session (006 holds the eval slot). Output `reviews/wave-2.md`, committed on your branch; change no source.
 
-# Wave 2.5: repairs from `reviews/wave-2.md` (FAIL at `2b0c5532`)
+# Wave 2.5: repairs from `reviews/wave-2.md` (FAIL at `f68ff976`)
 
 Three workers on disjoint files, then one narrow re-review. Code only: run no model session and no real `claude` or `codex` (006 holds the eval slot). Scratch homes, stub harness CLIs, `file://` hubs. Leave bundles, `package.json`'s version and `docs/board.md` to the coordinator.
 

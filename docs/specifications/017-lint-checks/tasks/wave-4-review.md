@@ -1,6 +1,6 @@
 # Wave 4 review: cand/0.1.391
 
-Use /reviewer. Shape: review. Review `cand/0.1.391` at `a165b36b4` exactly, against main `927669e7c`. Own only `reviews/0.1.391.md`.
+Use /reviewer. Shape: review. Review `cand/0.1.391` at `4ed116222` exactly, against main `1e467428f`. Own only `reviews/0.1.391.md`.
 
 **Rows:** 017-17 to 017-20 (the ESLint worker: process directory, a cold typed start, pnpm's shim, an install after a failed config load), 017-22 (a line number inside a message), and 017-14 (the oxlint provider; the pass does not call it yet).
 

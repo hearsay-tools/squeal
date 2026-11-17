@@ -1,7 +1,7 @@
 # Probes for ci-evidence.md (survey-020-08)
 
 Throwaway. Not product code, not tests. Kept only as the evidence of
-`../../ci-evidence.md`. Run 2026-11-10 at Squeal `bba538f1b` (0.1.425 on
+`../../ci-evidence.md`. Run 2026-11-10 at Squeal `5c6ef27d8` (0.1.425 on
 main), Node v24.22.1, Vitest 5.0.3 (this repository's lockfile) and Vitest
 4.1.10 with `@vitest/coverage-v8` 4.1.10 (cezar's checkout at `7b726e2a2`,
 linked read-only as `node_modules`).

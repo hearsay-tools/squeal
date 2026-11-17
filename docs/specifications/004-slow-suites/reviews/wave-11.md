@@ -2,7 +2,7 @@ FAIL f79f00ac1cb0b05ae64747819855d84a4e0896f7
 
 # Wave 11 review: named waits and policy-off unknown claims
 
-One proven blocker, one proven nonblocking documentation finding, no nits. Candidate 0.1.219, rows 004-78 and 006-91, including the coordinator's final parser repair. HEAD matched the requested SHA. Compared against `origin/main` at `349d0c3fb0dcd30a8e6d69c49100ff5cb1a9ba36`; the merge base is `0ff8efd6b63d022b801e00bec373afc34459bbaa`. The tracked checkout stayed clean through verification and external probes. Only this review is committed.
+One proven blocker, one proven nonblocking documentation finding, no nits. Candidate 0.1.219, rows 004-78 and 006-91, including the coordinator's final parser repair. HEAD matched the requested SHA. Compared against `origin/main` at `5fb1312166ecc95278f21c118a7ff8a0f09de355`; the merge base is `02c5ebbd2d0199e03045e65d0a3db556d251d92e`. The tracked checkout stayed clean through verification and external probes. Only this review is committed.
 
 ## Verification
 
@@ -102,7 +102,7 @@ BLOCKER reproduced end to end, claude: unnumbered plural yields count 1 and clai
 Flags and alarms identical to origin/main: one accepted flag, 32 retained alarms
 ```
 
-The formatter probe used actual `formatStatus`, `formatRegistration` and news `formatDelta` outputs. For legacy cases it replaced only the shared slow-tier line with the actual `slowTierText` implementation from `98beb8cd` (0.1.216). Six tier states covered zero files, pending, current, stale sources and mixed current/pending/not-run counts. Both policies and plain/additionalContext hook JSON were exercised. The probe files were removed before this commit.
+The formatter probe used actual `formatStatus`, `formatRegistration` and news `formatDelta` outputs. For legacy cases it replaced only the shared slow-tier line with the actual `slowTierText` implementation from `e99ffa66` (0.1.216). Six tier states covered zero files, pending, current, stale sources and mixed current/pending/not-run counts. Both policies and plain/additionalContext hook JSON were exercised. The probe files were removed before this commit.
 
 ## Blockers
 
@@ -159,9 +159,9 @@ Repair B1 on the candidate and request a narrow re-review of the count grammar, 
 
 ## Re-review, 2026-10-18
 
-PASS 806590dfdc4a23c02d47db08a7492d11426bd1a7
+PASS 8d47358148f6718b4f43e6bce9c192e9f0d50082
 
-Narrow re-review of B1 and S1 against candidate 0.1.219. HEAD matched the requested SHA. The rebased repair delta after `2d46e5c6` contains the singular guard (`a3a8e448`), count and two-harness reference regressions (`a3a8e448`, `806590df`), and the tally correction (`f57ee77c`), plus the original review. No source, plugin bundle or committed result outside that boundary changed. Compared S1 with `origin/main` at `142e3183f30c8cc722d37f9846463d38dd9f1d11`; the changes on main since the first review's `349d0c3f` are documentation only. The tracked tree stayed clean through verification and the external probes. Only this review is committed.
+Narrow re-review of B1 and S1 against candidate 0.1.219. HEAD matched the requested SHA. The rebased repair delta after `763c5db2` contains the singular guard (`f9818817`), count and two-harness reference regressions (`f9818817`, `8d473581`), and the tally correction (`7876e899`), plus the original review. No source, plugin bundle or committed result outside that boundary changed. Compared S1 with `origin/main` at `87ff8bb6378cb15ab349ee09c0671022a79afc0e`; the changes on main since the first review's `5fb13121` are documentation only. The tracked tree stayed clean through verification and the external probes. Only this review is committed.
 
 ### Re-review verification
 
@@ -169,7 +169,7 @@ Node 24.21.0, Vitest 5.0.3. No build, as directed. The independent full suite, r
 
 ```text
 $ git rev-parse HEAD
-806590dfdc4a23c02d47db08a7492d11426bd1a7
+8d47358148f6718b4f43e6bce9c192e9f0d50082
 
 $ npm ci
 added 196 packages, and audited 197 packages in 7s

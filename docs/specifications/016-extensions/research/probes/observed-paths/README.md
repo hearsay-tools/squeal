@@ -7,4 +7,4 @@ Not product code. Delete freely. It supports `../../observed-paths.md`.
     SCRATCH=$(mktemp -d /tmp/obs-probe.XXXX)
     HOME=$SCRATCH TMPDIR=$SCRATCH XDG_RUNTIME_DIR=$SCRATCH XDG_CONFIG_HOME=$SCRATCH SCRATCH=$SCRATCH npx tsx probe.ts
 
-`output.txt` is the run of 2026-10-25 (Node 24.21.0) at `793dfc3d4`.
+`output.txt` is the run of 2026-10-25 (Node 24.21.0) at `7a919c957`.

@@ -1,6 +1,6 @@
 FAIL d25962b0c4cb02ff5e84dbdb5ce3da591074d053 — 3 blockers, 2 should-fix items.
 
-Reviewed `bda5cb466..d25962b0c4cb02ff5e84dbdb5ce3da591074d053`, candidate `cand/0.1.533`. HEAD matched the candidate. The tree was clean during verification and after the build. Contracts: board rows `private-material-guard` and `private-material-scrub`, plus the review brief. No product code was changed for this review.
+Reviewed `5e485fc1a..d25962b0c4cb02ff5e84dbdb5ce3da591074d053`, candidate `cand/0.1.533`. HEAD matched the candidate. The tree was clean during verification and after the build. Contracts: board rows `private-material-guard` and `private-material-scrub`, plus the review brief. No product code was changed for this review.
 
 ## Verification
 

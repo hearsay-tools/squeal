@@ -2,7 +2,7 @@
 
 Use `retry <test file>` followed by `status --wait <ms> <test file>` today; Squeal 0.1.276 has no documented single invocation that both refreshes and waits only for that selection.
 
-Researcher, 2026-10-23. Scope: [hearsay-tools/squeal#82](https://github.com/hearsay-tools/squeal/issues/82). Source commit: `ed9c18b644816064a2d98a4bcb9a8edc1b34d77e`. Package, committed CLI bundle and installed launcher all report **0.1.276**. The issue does not name its incident's Squeal version.
+Researcher, 2026-10-23. Scope: [hearsay-tools/squeal#82](https://github.com/hearsay-tools/squeal/issues/82). Source commit: `9569210145b6fb91abb6bdac7dbe61bdce6c64e6`. Package, committed CLI bundle and installed launcher all report **0.1.276**. The issue does not name its incident's Squeal version.
 
 ## Verdict and evidence limits
 

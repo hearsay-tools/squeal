@@ -1,13 +1,13 @@
-PASS 2d4cd0dee7a36c35de327f64a2e0898779286449
+PASS 6bc15593eae5dce4b204fcf4438b5ad201f6e215
 
 Zero remaining blockers, zero should-fix items, zero new findings in the bounded re-review.
 
-Candidate: `cand/0.1.238`, pinned to `2d4cd0dee7a36c35de327f64a2e0898779286449`.
+Candidate: `cand/0.1.238`, pinned to `6bc15593eae5dce4b204fcf4438b5ad201f6e215`.
 This re-review is bounded by B1 and B2 in `reviews/wave-1.md`, the repair delta since `5bbc50709`, and the two conflict merges named in the dispatch. The separately reviewed 011-51 scheduler change is outside this re-review. The first review's inputs 2 to 5 remain inputs for wave 2 and are not reopened here.
 
 ## Verification output
 
-Checks ran at the pinned candidate with a clean tracked tree. `git rev-parse HEAD` returned `2d4cd0dee7a36c35de327f64a2e0898779286449` before review and after verification.
+Checks ran at the pinned candidate with a clean tracked tree. `git rev-parse HEAD` returned `6bc15593eae5dce4b204fcf4438b5ad201f6e215` before review and after verification.
 
 - `npm ci`: exit 0; `added 196 packages, and audited 197 packages in 9s`.
 - `npm run lint`: exit 0; `Checked 1610 files in 3s. No fixes applied.`
@@ -99,11 +99,11 @@ I reran the original probe using the real `pytestArgs` builder, the runner's app
 
 ### N1 resolved note / proven: the board records the implementation in review
 
-The board update from main, `36c13b076`, is present. Rows 014-06 to 014-08 now say `in review`; row 014-09 says `running`. The initial finding concerned these rows remaining `running` and `planned` during the first review. No board file was edited by the reviewer.
+The board update from main, `a4f3aea53`, is present. Rows 014-06 to 014-08 now say `in review`; row 014-09 says `running`. The initial finding concerned these rows remaining `running` and `planned` during the first review. No board file was edited by the reviewer.
 
 ## Conflict merges and scope
 
-- `src/core/types/store.ts` retains both `daemonUsed` (`daemon-used:`, owner `daemon/last-use`) and `yields` (`yields:`, owner `scheduler/yields`). Against the first reviewed candidate, the registry delta adds only `yields`; against `0dacd9a68`, it adds only `daemonUsed`. Neither side was overwritten.
-- `docs/specifications/011-core/status.md` retains all three 011-51 amendment lines from main and the 014-08 last-use amendment from the first candidate. Against `0dacd9a68`, the only change is the appended 014-08 line. Against the first candidate, only the three 011-51 lines were added.
+- `src/core/types/store.ts` retains both `daemonUsed` (`daemon-used:`, owner `daemon/last-use`) and `yields` (`yields:`, owner `scheduler/yields`). Against the first reviewed candidate, the registry delta adds only `yields`; against `b20446837`, it adds only `daemonUsed`. Neither side was overwritten.
+- `docs/specifications/011-core/status.md` retains all three 011-51 amendment lines from main and the 014-08 last-use amendment from the first candidate. Against `b20446837`, the only change is the appended 014-08 line. Against the first candidate, only the three 011-51 lines were added.
 - Under `src/core/ps`, the only changed files since `5bbc50709` are `discover.ts`, `work.ts` and `processes.ts`. Their delta contains the shared start exclusion and B1 field rejection, plus B2's last-basetemp selection. Only `test/ps/work.test.ts` and `test/ps/processes.test.ts` changed under `test/ps`. The source interface, public shape, model, measurement, host and Linux source remain unchanged.
 - The rebuilt release bundles and the separately reviewed 011-51 implementation are not independently re-reviewed here. No build was run, as instructed. The first review's settled checks and later-wave inputs remain in `wave-1.md`.

@@ -2,12 +2,12 @@
 
 ## Verdict and verification
 
-**FAIL `8ac219c82c4b8f1ce83124c8b2d874ab7164c096`**. One proven blocker; zero should-fix findings; zero nits. Range: `691fe1d3..8ac219c8`. Review is against the clean candidate, not the later findings commit. No product or board edits, and no eval sessions.
+**FAIL `d08932c28591ed3dd52774076c1a8e23b863b3dd`**. One proven blocker; zero should-fix findings; zero nits. Range: `b1dc6b27..d08932c2`. Review is against the clean candidate, not the later findings commit. No product or board edits, and no eval sessions.
 
 Verification output opens this report. `git rev-parse HEAD` returned the exact candidate:
 
 ```text
-8ac219c82c4b8f1ce83124c8b2d874ab7164c096
+d08932c28591ed3dd52774076c1a8e23b863b3dd
 ```
 
 `npm ci` completed (exit 0):

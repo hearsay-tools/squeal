@@ -1,6 +1,6 @@
 # 011-177: `waste.mjs` counts a module the cancel cut in its grace as cut
 
-Worker 915a84f4, wave 32 W11 (`tasks/wave-32.md`), from main at 2a084c0fa, 2026-10-24. Shape: repair (probe). No product change.
+Worker 915a84f4, wave 32 W11 (`tasks/wave-32.md`), from main at 21dcee463, 2026-10-24. Shape: repair (probe). No product change.
 
 ## Answers
 
@@ -14,7 +14,7 @@ Worker 915a84f4, wave 32 W11 (`tasks/wave-32.md`), from main at 2a084c0fa, 2026-
 - Copies of the two stores, each with its `-wal` and `-shm`, then its run logs, back to back, under `nice -n 10 ionice -c3`: squeal's copy ended at 13:29:01Z, cezar's at 13:29:04Z (`~/projects/{squeal,cezar}/.git/squeal/`). Read only, in the worker's scratch folder. No live store or socket was opened; no test, eval or `evals/bin/` script ran; no build ran.
 - Load (`/proc/loadavg`, 24 CPUs): 7.16, 8.26, 20.22 before the copies and 7.16 after them; 7.00 to 6.48 while today's `waste.mjs` and `cut.mjs` ran (13:29:14Z to 13:29:25Z); 6.50 to 6.70 while the new `waste.mjs` ran (13:30:38Z to 13:30:41Z).
 - Each script ran under `nice -n 10 ionice -c3`. Wall and peak memory: today's `waste.mjs` 3.2 s and 5.8 s, 177 and 200 MB; `cut.mjs` 0.8 s and 1.3 s, 178 and 200 MB; the new `waste.mjs` 1.0 s and 2.0 s, 195 and 217 MB (squeal, cezar; the first runs read the logs cold, *inferred*).
-- Outputs in `results/`: `waste-before-*.json` (the script at main 2a084c0fa), `waste-*.json` (this row's), `cut-*.jsonl` (`cut.mjs`, unchanged). Same window for all three: `24` hours, end `2026-10-24T13:28:55Z`.
+- Outputs in `results/`: `waste-before-*.json` (the script at main 21dcee463), `waste-*.json` (this row's), `cut-*.jsonl` (`cut.mjs`, unchanged). Same window for all three: `24` hours, end `2026-10-24T13:28:55Z`.
 
 ## 2. The cause "an edit arrived during a backlog tier"
 

@@ -1,7 +1,7 @@
 # Wave 13av review
 
-Candidate: `4889ba223df3b1936382c7ee595c789c36901891` (0.1.143).
-Range: `5378abd3..4889ba22`.
+Candidate: `163c82ac697a628d2e8829a9663a10e38702fa34` (0.1.143).
+Range: `7cfc7bee..163c82ac`.
 Implementation row: 001-304. Reviewer row: 001-318.
 Source: `reviews/wave-13ao.md` S1 and `docs/board.md:406`.
 
@@ -11,7 +11,7 @@ HEAD matched the assigned candidate. Node v24.21.0, git 2.43.0, Linux. Installat
 
 ```text
 $ git rev-parse HEAD
-4889ba223df3b1936382c7ee595c789c36901891
+163c82ac697a628d2e8829a9663a10e38702fa34
 $ git status --short
 [empty]
 
@@ -152,7 +152,7 @@ None.
 
 ### N1. The board still calls the landed implementation running
 
-**Proven, non-blocking.** `docs/board.md:406` still reads `running (worker 9c983704, opus)` for 001-304, although this candidate includes its implementation (`34aeed5a`), completed regression test (`91263dfb`), key pin (`ffa9ed30`) and plugin landing (`4889ba22`). The done-when is demonstrated by the candidate's passing regression and the independent probe. The board therefore does not describe the landed implementation's state.
+**Proven, non-blocking.** `docs/board.md:406` still reads `running (worker 9c983704, opus)` for 001-304, although this candidate includes its implementation (`9ee4c2aa`), completed regression test (`afa5f29f`), key pin (`747e8bf2`) and plugin landing (`163c82ac`). The done-when is demonstrated by the candidate's passing regression and the independent probe. The board therefore does not describe the landed implementation's state.
 
 Coordinator-sized fix: after deciding whether to accept this landing, update 001-304 to the appropriate landed/reviewed state and cite this verdict and the candidate. Preserve the distinction between the PASS review and the failed full-suite gate. The reviewer did not edit the board.
 
@@ -174,7 +174,7 @@ This satisfies D2's requirement that target exclusions be recomputed “on each 
 
 ### Landing artifacts and conventions
 
-The root package, both plugin manifests and the Claude plugin package agree on 0.1.143. Building reproduces both committed plugin distributions. The key-format guard passed in the independent suite; the range re-pins format 9, described as unreleased in `ffa9ed30`, while the status log's last recorded hub release shipped format 8. This review claims no release verification. The change introduces no dependency or public type change. The focused fake backend implements both required subscription methods, and lint/typecheck pass.
+The root package, both plugin manifests and the Claude plugin package agree on 0.1.143. Building reproduces both committed plugin distributions. The key-format guard passed in the independent suite; the range re-pins format 9, described as unreleased in `747e8bf2`, while the status log's last recorded hub release shipped format 8. This review claims no release verification. The change introduces no dependency or public type change. The focused fake backend implements both required subscription methods, and lint/typecheck pass.
 
 ## Inputs for the next wave
 

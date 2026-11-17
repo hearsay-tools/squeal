@@ -2,7 +2,7 @@
 
 Short answer: the checkout and the install are cheap; the test run is the cost. A detached `git worktree add` plus a frozen install takes 1 to 2 s with a warm package store and 7 to 8 s cold, and adds 15 MB (Squeal) or 1 MB (squawk) of disk beyond the checkout itself. 020's gate runs unchanged inside the checkout and writes its completed files to the shared store at X's keys. Running every missing file at X would take 5 to 12 minutes at width 12. So the default should run what the diff X..HEAD selects, within 020's 600 s budget. Three things need work before Squeal can own the checkout. A killed gate leaves its child process running and writing. `squeal ps` does not see that child. An overlay (red proofs) widens the gate's selection.
 
-Examined: Squeal source and the released bundle 0.1.523 (`d2678e570`; `origin/main` was `5150132e3` for the probes), squawk `3e458b236`. Node 26.13.0, git 2.43.0, pnpm 12.15.0 (Squeal) and 12.11.2 (squawk), npm 11.20.0, 24 vCPUs. Probes ran 15:43Z to 16:08Z at a one-minute load of 9.5 to 35.2, stated beside each timing. Probes and outputs: `probes/temp-checkout/` (README).
+Examined: Squeal source and the released bundle 0.1.523 (`c13564931`; `origin/main` was `40efe47f5` for the probes), squawk `3e458b236`. Node 26.13.0, git 2.43.0, pnpm 12.15.0 (Squeal) and 12.11.2 (squawk), npm 11.20.0, 24 vCPUs. Probes ran 15:43Z to 16:08Z at a one-minute load of 9.5 to 35.2, stated beside each timing. Probes and outputs: `probes/temp-checkout/` (README).
 
 ## Questions answered
 
@@ -24,7 +24,7 @@ Each run: a detached `git worktree add` at a main commit in a clone under `$TMPD
 
 | Project | Packages | Worktree add | Checkout | Warm install | Warm new disk | Cold install | Cold download | Cold store and cache |
 |---|---|---|---|---|---|---|---|---|
-| Squeal `5150132e3` | 321 | 1.4 to 1.7 s | 13,186 files, 264 MB | 0.65 s (load 31) | 15 MB (+797 MB linked) | 6.2 s (load 22) | 304 MB | 645 + 178 MB |
+| Squeal `40efe47f5` | 321 | 1.4 to 1.7 s | 13,186 files, 264 MB | 0.65 s (load 31) | 15 MB (+797 MB linked) | 6.2 s (load 22) | 304 MB | 645 + 178 MB |
 | squawk `3e458b236` | 702 | 0.4 to 0.5 s | 4,729 files, 64 MB | 0.67 s (load 15) | 1 MB (+506 MB linked) | 5.3 s (load 16) | 163 MB | 551 + 124 MB |
 | npm lock fixture (`test/fixtures/keys/locks/npm`) | 8 | 0.01 s | 2 files | 0.77 s (load 15) | 25 MB, plus 23 MB in files with several links inside node_modules (npm copies) | 0.81 s (load 14) | 9.8 MB | 9 MB |
 
@@ -122,8 +122,8 @@ The tradeoff: Squeal owning the checkout costs 2 to 8 s and a cleanup path. A pr
 
 ## Sources
 
-- Squeal at `d2678e570` and bundle 0.1.523: `src/core/store/paths.ts`, `repos/worktrees.ts:19`, `prune.ts`, `prune-rules.ts`; `src/core/fs/git-layout.ts:48`; `src/core/daemon/paths.ts:113`; `src/cli/code-gate.ts:131`; `src/core/ps/flags-processes.ts`; `test/global-teardown.ts`; `vitest.config.ts`, `squeal.config.json`.
-- Specs: 020 D1, D3, D11.7, D14, D15, D17 (`../../020-quality-gate/spec.md`); 001 D8 as amended; first finding `../../018-ci-and-shared-results/research/results-at-commit.md`; hand runs `../../011-core/research/hand-runs-2026-11-16.md` item 4 (on `origin/main` `314d8c1aa`).
+- Squeal at `c13564931` and bundle 0.1.523: `src/core/store/paths.ts`, `repos/worktrees.ts:19`, `prune.ts`, `prune-rules.ts`; `src/core/fs/git-layout.ts:48`; `src/core/daemon/paths.ts:113`; `src/cli/code-gate.ts:131`; `src/core/ps/flags-processes.ts`; `test/global-teardown.ts`; `vitest.config.ts`, `squeal.config.json`.
+- Specs: 020 D1, D3, D11.7, D14, D15, D17 (`../../020-quality-gate/spec.md`); 001 D8 as amended; first finding `../../018-ci-and-shared-results/research/results-at-commit.md`; hand runs `../../011-core/research/hand-runs-2026-11-16.md` item 4 (on `origin/main` `f6c03b822`).
 - squawk at `3e458b236` (read-only clone): `vitest.config.ts`, `packages/*/vitest.config.ts`, `packages/web/e2e/vitest.config.ts`, `.ai/scripts/test-env-up.sh`, `squeal.config.json`, `pnpm-workspace.yaml`, `packages/cezar/src/git-worktree.ts`, `git-worktree-release.ts`.
 - Stores, as `VACUUM INTO` copies: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`.
 - Tools: `pnpm install --help` (12.15.0), `git worktree add -h` (2.43.0), Node 26.13.0 module resolution (shown by experiment).

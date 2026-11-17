@@ -1,6 +1,6 @@
 # 011-188: `stop-cancel.test.ts:170` finds the holding test's child gone right after it wrote its pid
 
-Worker 9a2d649e, from main at d0efe8dd4, 2026-10-25. Shape: slice. Parent coordinator 04a258b0.
+Worker 9a2d649e, from main at fe841fa68, 2026-10-25. Shape: slice. Parent coordinator 04a258b0.
 
 ## The cause
 

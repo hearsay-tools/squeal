@@ -18,7 +18,7 @@ Use /worker.
 
 ## 007-59 repair after review FAIL (`reviews/0.1.376.md`, B1 and B2)
 
-Use /worker. Shape: repair, on the candidate `cand/0.1.376` (start from `8510d281d`; do not touch the release commit's bundles or versions).
+Use /worker. Shape: repair, on the candidate `cand/0.1.376` (start from `fa5cfbdc4`; do not touch the release commit's bundles or versions).
 
 **Outcome:** the note is true in every state where it appears. B1: with PDM's `venv.in_project = false` (local or global config), the named commands must still create `<cwd>/.venv`, or the note must not promise it; `PDM_VENV_IN_PROJECT=true` is PDM's override (`pdm/project/config.py`). Also check that `pdm use -f` cannot select an existing virtual environment outside the project (the reviewer's warning), and that the sequence works with `__pypackages__` present and with a non-venv `.pdm-python`. B2: when the project declares `python` in `squeal.config.json` and that path is missing, the note says the declared path is missing and that it must name the new `.venv/bin/python` or be created; it does not promise that the PDM commands alone are enough.
 

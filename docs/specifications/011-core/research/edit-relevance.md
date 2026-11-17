@@ -2,7 +2,7 @@
 
 Researcher, 2026-11-07, 13:05Z to 13:45Z. The human (task 7d611fc4) asked whether Squeal should run tests that do not run the edited code. Two changes are studied here. Change 1: tests whose coverage shows they called the edited file run first, as the edit's own work, and the rest go to catch-up; nothing is skipped. Change 2: an edit that changes only types, comments or formatting keeps the key. Read: `docs/vision.md`, `docs/styleguide.md`, `status.md` (011-22, 011-25, 016-17), 015 `status.md` (D1), `research/edit-load.md`, `research/type-only-edits.md` (011-149), `research/edit-cut.md`, 015 `research/edit-reach.md`.
 
-Versions: squeal `31e9dd7bd`, cezar `84e1fd9c9` (main at the copy), read-only clones. Store, coverage and run-report copies taken 2026-11-07 13:25Z. Vite 8.3.2 (oxc via rolldown 1.2.16), esbuild 0.28.2, Node 24.22.1. No test, build or benchmark ran. Probes and how to re-run: `probes/edit-relevance/README.md`.
+Versions: squeal `31f7d595f`, cezar `84e1fd9c9` (main at the copy), read-only clones. Store, coverage and run-report copies taken 2026-11-07 13:25Z. Vite 8.3.2 (oxc via rolldown 1.2.16), esbuild 0.28.2, Node 24.22.1. No test, build or benchmark ran. Probes and how to re-run: `probes/edit-relevance/README.md`.
 
 **Terms.** An *agent edit* is a `watch` revision of 1 to 3 paths. *Work ahead* of a test file is the recorded seconds (median `fileDurations`) of the files the queue runs before it, plus its own. Wall time is work ahead divided by the parallel workers, and catch-up also waits for the 20 s quiet. A *new failure* is a store transition to FAIL (from PASS, none or unknown) in that worktree before the next revision that changes a path the file holds. *Called*: the file's coverage record shows a function of the edited file ran. *Loaded only*: the module loaded and no function ran. *Not loaded*: the record does not hold the module.
 
@@ -106,7 +106,7 @@ Both type-only source edits in squeal are to type modules that `test/global-tear
 
 ## Sources
 
-- Squeal source at `6dc634687` (this worktree): `src/core/scheduler/edit-cut.ts` (`editWork`, `fetchEditCut`), `queue.ts` (`sorted`, `Priority`), `namesakes.ts`, `quiet.ts`; `src/core/types/policy.ts:389`; `src/core/code/crap/file.ts:142`; `src/core/state/fingerprint.ts`; `src/runners/vitest/{graph,touched}.ts`; `src/runners/node-test/adapter-project.ts`, `src/runners/pytest/adapter.ts`; `src/harness/build.ts`.
+- Squeal source at `13f809435` (this worktree): `src/core/scheduler/edit-cut.ts` (`editWork`, `fetchEditCut`), `queue.ts` (`sorted`, `Priority`), `namesakes.ts`, `quiet.ts`; `src/core/types/policy.ts:389`; `src/core/code/crap/file.ts:142`; `src/core/state/fingerprint.ts`; `src/runners/vitest/{graph,touched}.ts`; `src/runners/node-test/adapter-project.ts`, `src/runners/pytest/adapter.ts`; `src/harness/build.ts`.
 - Vite 8.3.2 `dist/node/chunks/node.js` (`transformWithOxc`), rolldown 1.2.16 binding types (`emitDecoratorMetadata`), esbuild 0.28.2.
 - Store copies: `~/projects/{squeal,cezar}/.git/squeal/{store,code}.sqlite` with `-wal` and `-shm`, and `runs/*/report.json`, 2026-11-07 13:25Z. Blobs from each repository's `.git`.
 - Earlier research: `research/edit-load.md` (finding 3), `research/type-only-edits.md`, `research/edit-cut.md`, 015 `research/edit-reach.md`; `status.md` 011-22, 011-25; 015 `status.md` D1 (2026-11-06).

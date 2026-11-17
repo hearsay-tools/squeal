@@ -1,21 +1,21 @@
 # 009 wave 1 review
 
-Candidate: `502eb7f1..7ac131dfa34fd26df129479daa6f633cb00efb65`. Row: 009-17.
+Candidate: `1a2889f6..60dd516dd841f9d5be9ce81516dacc80e4ee133b`. Row: 009-17.
 Reviewed against spec 009 D3, D4, D7 and D9, D1 as amended in `status.md` on 2026-10-14, spec 005 D3 and the wave-1 done-when clauses. Wave-0 findings were read first. Idle wake and the fixture repairs are wave 2, not missing wave-1 work.
 
 ## Verdict
 
-FAIL `7ac131df`: 1 proven blocker, 0 should-fix notes, 0 nits. Streaming input clears the continuation guard inside an existing run, allowing Squeal to continue it twice. The failure is reproduced with real Pi 1.0.4 over RPC through `runPi` and the candidate's committed extension bundle.
+FAIL `60dd516d`: 1 proven blocker, 0 should-fix notes, 0 nits. Streaming input clears the continuation guard inside an existing run, allowing Squeal to continue it twice. The failure is reproduced with real Pi 1.0.4 over RPC through `runPi` and the candidate's committed extension bundle.
 
 ## Verification output
 
-**Proven provenance mismatch, resolved for verification:** the dispatched checkout is `029e1d24c32b6ca86989511166efa38ab047e019`, two documentation commits after the candidate. The task explicitly authorizes building in a detached candidate worktree. All verification and probes below use `/tmp/review-009-w1` at `7ac131df`, Node 24.21.0. Only this review file is committed on the dispatched branch.
+**Proven provenance mismatch, resolved for verification:** the dispatched checkout is `029e1d24c32b6ca86989511166efa38ab047e019`, two documentation commits after the candidate. The task explicitly authorizes building in a detached candidate worktree. All verification and probes below use `/tmp/review-009-w1` at `60dd516d`, Node 24.21.0. Only this review file is committed on the dispatched branch.
 
 ```text
-$ git worktree add --detach /tmp/review-009-w1 7ac131df
-HEAD is now at 7ac131df
+$ git worktree add --detach /tmp/review-009-w1 60dd516d
+HEAD is now at 60dd516d
 $ git rev-parse HEAD
-7ac131dfa34fd26df129479daa6f633cb00efb65
+60dd516dd841f9d5be9ce81516dacc80e4ee133b
 $ npm ci
 added 174 packages, and audited 175 packages in 5s
 found 0 vulnerabilities

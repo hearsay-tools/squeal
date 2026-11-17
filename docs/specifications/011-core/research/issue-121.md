@@ -2,7 +2,7 @@
 
 Recommendation: treat this as overlapping named-wait friction related to gh-79; the reported cut from repeating an identical selection after 133 seconds is not reproduced.
 
-Researcher, 2026-10-28. Source: `23e188b110b0c5a98478dcafe7b07c3f458d7d9c`, Squeal **0.1.374**; incident **0.1.372**, revision 10. Installed session runtime: 0.1.374; Node v24.22.1, Vitest 5.0.3. `git diff --name-only squeal--v0.1.372 HEAD -- src/core/scheduler src/cli/status-wait-paths.ts` returned no paths. The examined scheduler and named-wait source match the incident release (read in source code). This does not establish identical runtime state or configuration.
+Researcher, 2026-10-28. Source: `897a2a7108081282028ae75459228b79924d648a`, Squeal **0.1.374**; incident **0.1.372**, revision 10. Installed session runtime: 0.1.374; Node v24.22.1, Vitest 5.0.3. `git diff --name-only squeal--v0.1.372 HEAD -- src/core/scheduler src/cli/status-wait-paths.ts` returned no paths. The examined scheduler and named-wait source match the incident release (read in source code). This does not establish identical runtime state or configuration.
 
 ## Questions and verdicts
 

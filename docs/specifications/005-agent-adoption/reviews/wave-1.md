@@ -1,18 +1,18 @@
 # 005 wave 1 review
 
-FAIL `d1d3522ab051804971b30adc6eb3e473b92ee93e`: **3 proven blockers**, 2 proven should-fix items, 2 notes (1 proven, 1 plausible), no nits.
+FAIL `1c80372b76749a0ef1fb12a3d0d32bc7c69a6ee1`: **3 proven blockers**, 2 proven should-fix items, 2 notes (1 proven, 1 plausible), no nits.
 
 ## Verification
 
-Range: `ce1425a1^..d1d3522a`. Reviewed 005-10, 005-11, 005-12, their integration and bundles. Other coordinators' 001/006 commits and this spec's reviews/lessons are outside scope. Inputs: D1–D5, the accepted choices in `status.md`, and the wave-1 briefs.
+Range: `bc01e70f^..1c80372b`. Reviewed 005-10, 005-11, 005-12, their integration and bundles. Other coordinators' 001/006 commits and this spec's reviews/lessons are outside scope. Inputs: D1–D5, the accepted choices in `status.md`, and the wave-1 briefs.
 
-Initial `git rev-parse HEAD` was `5a8a585a3cf8280584cce1b8e21c1e39121aec0f`, the review-brief-only child of the candidate. This is a **proven, nonblocking checkout mismatch**, resolved for verification by temporarily checking out the exact candidate. The report is committed back on `cez/755e5d81`. Product source and committed bundles are identical on those two commits.
+Initial `git rev-parse HEAD` was `bdf1c1c61669b4f20ff2d459a9a96de8eed1db41`, the review-brief-only child of the candidate. This is a **proven, nonblocking checkout mismatch**, resolved for verification by temporarily checking out the exact candidate. The report is committed back on `cez/755e5d81`. Product source and committed bundles are identical on those two commits.
 
-Verification output is condensed to the substantive command results. Commands below ran on a clean tree at `d1d3522ab051804971b30adc6eb3e473b92ee93e`. No Claude or Codex subject session ran. The independent suite is `npx vitest run`, not Squeal's checkpoint.
+Verification output is condensed to the substantive command results. Commands below ran on a clean tree at `1c80372b76749a0ef1fb12a3d0d32bc7c69a6ee1`. No Claude or Codex subject session ran. The independent suite is `npx vitest run`, not Squeal's checkpoint.
 
 ```text
 $ git rev-parse HEAD
-d1d3522ab051804971b30adc6eb3e473b92ee93e
+1c80372b76749a0ef1fb12a3d0d32bc7c69a6ee1
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 18 packages are looking for funding

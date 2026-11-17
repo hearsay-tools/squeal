@@ -18,7 +18,7 @@ source, collector, source maps, daemon timing, revision 7 or bundled fallback.
 The original producer version was not recorded; the issue names 0.1.378 as the
 current version. No original task or shared store was inspected.
 
-Examined checkout: `d81ad16fbe282000f778f39cacd02f67235af5e3`, package 0.1.378,
+Examined checkout: `ba4ac2469b5827ae65eb2aa2c0383fc9f1bce81e`, package 0.1.378,
 Node v24.22.1, Vitest 5.0.3. Initial one-minute load: 5.16, 24 CPUs. Immediately
 before the first probe at 2026-10-30T10:24:51Z: 4.72/24; before the recorded
 repeat at 10:25:30Z: 5.07/24. Both passed the load gate. Product stayed read-only;
@@ -133,7 +133,7 @@ those tools. Evidence from the original task would decide attribution.
   user report, not independent proof of its historical cause.
 - Repository [D6 and D9](../spec.md), [decision log](../status.md), at the checkout
   above; especially D9's 015-57, 015-75 and 015-78 amendments.
-- [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/d81ad16fbe282000f778f39cacd02f67235af5e3):
+- [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/ba4ac2469b5827ae65eb2aa2c0383fc9f1bce81e):
   `src/core/code/crap/{loaders,file,join,walk,judge,summary,status}.ts`,
   `src/cli/{code,code-report,code-coverage}.ts`, and
   `test/code/crap/rig.ts`, `test/code/crap/skipped-pass.test.ts`, and

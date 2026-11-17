@@ -3,7 +3,7 @@
  "kind": "baseline",
  "date": "2026-10-10",
  "squealVersion": "0.1.101",
- "commit": "8c11e5b3",
+ "commit": "86806cf3",
  "source": "Imported from 005-07 (docs/specifications/005-agent-adoption/research/model-evals-baseline.md, probes/model-evals/logs/baseline-2026-10-10/cells), graded by the prototype's grade.mjs: a command chained after a Squeal call was not counted as a run, and refused commands were matched by text. vitestAfterSquealAnswered and nodeTestAfterScriptEdit are recomputed from each cell's timeline by evals/bin/import-005-07.mjs. T3's 4 cells are left out (one repetition).",
  "conditions": {
   "fixture": "cbfaa0a7c927f343b6f46832dd7e8440b0bf4ee5",

@@ -99,7 +99,7 @@ What C6 built, all under `test/keys/validity` (validity `notes.md`, decision 17)
 
 `StartupSets.add` had no caller but a test: it is gone, and `test/keys/observed.test.ts` calls `see` and `write`.
 
-After the rebase onto `d81a46ec2` the last release is `squeal--v0.1.309`. Between the two releases only `src/core/code/**` and `src/core/daemon/daemon.ts` changed, no runner or keys code. `test/keys/key-format.test.ts` passes against 0.1.309 too, 12 of 12, with the same three raise cases.
+After the rebase onto `17e9e63eb` the last release is `squeal--v0.1.309`. Between the two releases only `src/core/code/**` and `src/core/daemon/daemon.ts` changed, no runner or keys code. `test/keys/key-format.test.ts` passes against 0.1.309 too, 12 of 12, with the same three raise cases.
 
 ## The last commit: the stores gone, the kit on the core
 

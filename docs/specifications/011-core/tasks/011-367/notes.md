@@ -27,7 +27,7 @@ None dropped. Stronger, by the move:
 
 ## Row 011-360: the cause
 
-`squeal failures test/scheduler/runner-part-bound.test.ts --all-worktrees` holds three failures, all in case 1 ("abandons a stalled invalidate past its bound…") and all `expected 0 to be greater than 0` on `counts.unknown`: 2026-11-15 16:57Z (load 1.68 per CPU), 21:57Z and 22:32Z (8.8 s and 13.3 s runs). All three ran on uncommitted work in other rows' worktrees (commits `8bf7a3b`, `771ef9b`, `133ec2d`, none on main) and **before** row 011-362's fix (`a7cb17f00`, 2026-11-15 23:02Z). Before that fix the revision's `RunnerPartBound` ran its own wake loop on the host clock, outside the scheduler's loop (`board.md` row 011-362). The case's 400 ms bound was therefore a host-time race against real Vitest work.
+`squeal failures test/scheduler/runner-part-bound.test.ts --all-worktrees` holds three failures, all in case 1 ("abandons a stalled invalidate past its bound…") and all `expected 0 to be greater than 0` on `counts.unknown`: 2026-11-15 16:57Z (load 1.68 per CPU), 21:57Z and 22:32Z (8.8 s and 13.3 s runs). All three ran on uncommitted work in other rows' worktrees (commits `8bf7a3b`, `771ef9b`, `133ec2d`, none on main) and **before** row 011-362's fix (`b888d9005`, 2026-11-15 23:02Z). Before that fix the revision's `RunnerPartBound` ran its own wake loop on the host clock, outside the scheduler's loop (`board.md` row 011-362). The case's 400 ms bound was therefore a host-time race against real Vitest work.
 
 Verdict: **fixed by the move, cause not proven.** The case no longer reads host time: the bound fires only on `advance`, after `rest()` shows its wake. I did not find the path by which a host-time bound left no unknowns. The unchanged case passed 4 of 4 alone at load 69–73 (2.9–3.0 per CPU), and no failure is stored after 0.1.517. After the move: 3 of 3 alone (load 44–48 and 40–45), plus each run in the timing table.
 
@@ -41,7 +41,7 @@ One run of the moved `fresh-worktree-durations` failed at load 85: `idleOn` spen
 
 ## Timings
 
-Before = the base commit `0535d8465` in a temporary worktree; after = this branch. Before and after alternate, so each pair ran at about the same load (one-minute load average on 24 CPUs). Wall time is the whole `vitest run` of one file; "tests" is Vitest's Duration × its tests share.
+Before = the base commit `62dcae8e2` in a temporary worktree; after = this branch. Before and after alternate, so each pair ran at about the same load (one-minute load average on 24 CPUs). Wall time is the whole `vitest run` of one file; "tests" is Vitest's Duration × its tests share.
 
 | File | Before wall (load) | After wall (load) | Before tests | After tests |
 |---|---|---|---|---|

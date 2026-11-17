@@ -1,6 +1,6 @@
 # Wave 77: row 011-320 (`squeal code` applies the runtime, merge-hold and editor-scratch checks)
 
-Coordinator bef76bfb, 2026-11-12. The human approved row 011-320 (architecture review task af6c0b3f, "B: move, then checks 2-4"). Row 011-319 landed on main as 0.1.453 (`c6d2f2db9`); this wave builds on its module. One worker; review before main.
+Coordinator bef76bfb, 2026-11-12. The human approved row 011-320 (architecture review task af6c0b3f, "B: move, then checks 2-4"). Row 011-319 landed on main as 0.1.453 (`892a1431e`); this wave builds on its module. One worker; review before main.
 
 Host policy and "not yours" as in `wave-76.md`. Spec 020's D17.3 text is the coordinator's edit: put your proposed wording in your notes.
 
@@ -34,7 +34,7 @@ Done when: the table's keeper column equals the daemon's for differences 2 to 4,
 
 ## R1: review of cand/0.1.458
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.458` at `c4593e4c2dfdc40b744eab74968ff80a0aa97716`; range `8f945a59b..c4593e4c2` (nine worker commits of ea62d171, cherry-picked onto 0.1.456 with one resolved conflict in `test/cli/code-gate-children.test.ts`, then the 0.1.458 bundles). Read: board row 011-320 (widened by the human), `research/run-evidence.md` differences 2 to 4, `tasks/011-320/notes.md`, this file's W1 and "W1 widened". Candidate CI: run 43262584600.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.458` at `c4593e4c2dfdc40b744eab74968ff80a0aa97716`; range `dfe2562ef..c4593e4c2` (nine worker commits of ea62d171, cherry-picked onto 0.1.456 with one resolved conflict in `test/cli/code-gate-children.test.ts`, then the 0.1.458 bundles). Read: board row 011-320 (widened by the human), `research/run-evidence.md` differences 2 to 4, `tasks/011-320/notes.md`, this file's W1 and "W1 widened". Candidate CI: run 43262584600.
 
 Check, each as proven, plausible or unverified:
 

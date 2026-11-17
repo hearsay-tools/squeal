@@ -6,7 +6,7 @@ One proven blocker (B1), one proven should-fix note (S1), no nits. The prior wav
 
 ## Verification
 
-Node 24.21.0, Linux, Vitest 5.0.3. All commands below ran at exact candidate `b4ad590180e3bd720b2b87a41de1d51e0fa15dde` with a clean tracked tree. AGENTS.md and the reviewer skill require the build check; rebuilding changed neither plugin bundle. One full gate ran, with the brief's worker cap.
+Node 24.21.0, Linux, Vitest 5.0.3. All commands below ran at exact candidate `37aed8a0a576656f3406ab99188f85204427cd51` with a clean tracked tree. AGENTS.md and the reviewer skill require the build check; rebuilding changed neither plugin bundle. One full gate ran, with the brief's worker cap.
 
 ```text
 $ npm ci

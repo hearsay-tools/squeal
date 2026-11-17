@@ -1,6 +1,6 @@
 # 011-32 notes (W1 of wave 12, 2026-10-22)
 
-One successor per handoff: 011 C9 as amended 2026-10-20, design `tasks/011-30/design.md` section 2 and R2. Base main at db1b15068 (0.1.256). Brief `tasks/wave-12.md`, W1.
+One successor per handoff: 011 C9 as amended 2026-10-20, design `tasks/011-30/design.md` section 2 and R2. Base main at cebd16f98 (0.1.256). Brief `tasks/wave-12.md`, W1.
 
 ## What changed
 

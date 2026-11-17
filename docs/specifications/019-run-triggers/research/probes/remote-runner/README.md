@@ -6,6 +6,6 @@ Throwaway. These scripts measured one question once, on 2026-11-03. They are evi
 - `make-fixture.sh <dir>`: a 81-file repository (40 modules, 40 tests, a `package.json`) with 12 commits of one to three edited files.
 - `store-revisions.mjs <store> <checkout> [days]`: opens a Squeal store read-only. Paths per watch revision, whole-file bytes of those paths (current sizes in `<checkout>`), and wall time of edit runs (no checkpoint).
 
-Outputs: `sync-squeal.txt` (this repository at `e571d02fb`, 20 commits), `sync-fixture.txt` (fixture, 12 commits), `store-revisions-squeal.txt` (this repository's store, 30 days).
+Outputs: `sync-squeal.txt` (this repository at `15133488e`, 20 commits), `sync-fixture.txt` (fixture, 12 commits), `store-revisions-squeal.txt` (this repository's store, 30 days).
 
 Everything else lived under `$TMPDIR/remote-runner` (clones, the synced copy with its offline install, fetched docs pages, the text-extraction helpers) and was removed.

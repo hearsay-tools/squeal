@@ -1,6 +1,6 @@
 # 015-69 notes: a change of the checks during coverage's first seed leaves no pending state behind
 
-Worker a89b5258, 2026-10-26. Brief: `tasks/wave-15.md` W2. Shape: repair. Starts from main 0.1.349 (`b61615309`). Finding: `reviews/0.1.345.md` N2, from `tasks/015-67/notes.md` Residue.
+Worker a89b5258, 2026-10-26. Brief: `tasks/wave-15.md` W2. Shape: repair. Starts from main 0.1.349 (`d03df26fc`). Finding: `reviews/0.1.345.md` N2, from `tasks/015-67/notes.md` Residue.
 
 ## N2: reproduced
 

@@ -1,6 +1,6 @@
 # 011-120: a cancelled forced run stays forced only while what forced it still holds
 
-Worker notes, wave 21 (W1), from main `7580d1a1d` (0.1.273). Commits `4648de5e4`, `1427c1f73`, `786599d5e`.
+Worker notes, wave 21 (W1), from main `a7c9e0ea7` (0.1.273). Commits `4648de5e4`, `1427c1f73`, `786599d5e`.
 
 ## 1. The row's defect, reproduced and fixed
 

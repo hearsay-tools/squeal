@@ -1,6 +1,6 @@
 # Wave 76: row 011-319 (one run evidence module, behaviour preserved)
 
-Coordinator bef76bfb, 2026-11-12. The human approved rows 011-319 and 011-320 (architecture review task af6c0b3f, "A: approve, land, start"). This wave is 011-319 alone. Spec 021's row 021-20 part two, which owned `keep.ts` until then, landed on main as 0.1.450 (130a19fd7) before dispatch. 011-320 follows in wave 77, briefed from this wave's module.
+Coordinator bef76bfb, 2026-11-12. The human approved rows 011-319 and 011-320 (architecture review task af6c0b3f, "A: approve, land, start"). This wave is 011-319 alone. Spec 021's row 021-20 part two, which owned `keep.ts` until then, landed on main as 0.1.450 (3c69c935d) before dispatch. 011-320 follows in wave 77, briefed from this wave's module.
 
 Host policy, as in `wave-75.md`: no local full suite, no `squeal run --all`, no `pnpm run build`; `env -u PLUGIN_ROOT -u PLUGIN_DATA` on every test command; private `/tmp` fixtures; never make CPU load on purpose; no real harness session under the real HOME. Not yours: the board, `spec.md`, `status.md`, `plugins/*/dist`, the `package.json` version.
 
@@ -29,14 +29,14 @@ Done when: the row's done-when holds; `git diff <base> -- src/core/scheduler/sto
 
 ## R1: review of cand/0.1.452
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.452` at `360021aa8b8f1f1ca51bfc485d5b5ea36d7e5ebd`; range `a9da4ff43..360021aa8` (four worker commits of 65662af4, cherry-picked, then the 0.1.452 bundles). Read: board row 011-319, `research/run-evidence.md`, `tasks/011-319/notes.md`, this file's W1. Candidate CI: run 43236889748.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.452` at `360021aa8b8f1f1ca51bfc485d5b5ea36d7e5ebd`; range `5e66b8c21..360021aa8` (four worker commits of 65662af4, cherry-picked, then the 0.1.452 bundles). Read: board row 011-319, `research/run-evidence.md`, `tasks/011-319/notes.md`, this file's W1. Candidate CI: run 43236889748.
 
 Check, each as proven, plausible or unverified:
 
-1. No keep changed. For every combination of evidence (completed or not, record or not, observed growth, changed or touched input, environment file the keys lack, listing paths among the inputs), the keeper's old filter at `a9da4ff43` (`#keepable`, `steadyOf`) and the new `keeps`/`keepDecisions`/`stillAsRead` keep the same files. The notes claim that leaving listing paths out of the keeper's check has no effect: verify it.
+1. No keep changed. For every combination of evidence (completed or not, record or not, observed growth, changed or touched input, environment file the keys lack, listing paths among the inputs), the keeper's old filter at `5e66b8c21` (`#keepable`, `steadyOf`) and the new `keeps`/`keepDecisions`/`stillAsRead` keep the same files. The notes claim that leaving listing paths out of the keeper's check has no effect: verify it.
 2. No daemon store decision changed. `record.ts` (`#ended`, `#focused`, `#prepare`, `#heldNow`, `#barrier`) and `recordTier` make the same calls in the same order with the same arguments, under the same lock. The table's daemon column must describe what the daemon does, not a copy that can drift: say whether `decideFiles` is the daemon's own path or a parallel one.
 3. The table test replaces the deleted cases, not an addition. Each deleted case maps to a table row that proves the same thing; each case the notes keep is justified.
-4. `src/core/scheduler/store-decision.ts` is byte for byte as at `a9da4ff43`; `test/keys/key-format.test.ts` passes against `squeal--v0.1.451` with no version raise.
+4. `src/core/scheduler/store-decision.ts` is byte for byte as at `5e66b8c21`; `test/keys/key-format.test.ts` passes against `squeal--v0.1.451` with no version raise.
 5. Judge the three deviations in the notes ("Where the design's calls did not hold") against the row's done-when.
 
 Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`; affected results through `squeal status --wait 60000 <paths>`. Write `reviews/0.1.452.md` and commit it on your branch.

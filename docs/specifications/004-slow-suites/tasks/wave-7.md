@@ -37,7 +37,7 @@ Write `reviews/wave-7.md`; commit it.
 
 ## W3: 004-64, re-review of the repair
 
-Use /reviewer. Shape: review, narrow, second and last round for this slice. Pinned to the repaired `cand/0.1.202` SHA named in the spawn, over `512eb255..<sha>`: the coordinator's repair `920828b6`, its bundles, and the round-one review file. Read `reviews/wave-7.md` B1 and S1. Check only that:
+Use /reviewer. Shape: review, narrow, second and last round for this slice. Pinned to the repaired `cand/0.1.202` SHA named in the spawn, over `35f66498..<sha>`: the coordinator's repair `ea897e89`, its bundles, and the round-one review file. Read `reviews/wave-7.md` B1 and S1. Check only that:
 - the policy-on primer's ending is true where a waiting entry runs and where Stop holds at once (Pi, OpenCode, an untrusted Codex hook), in all four harness forms, within `PRIMER_CAP_CHARS`;
 - the policy-off primer still names no completion requirement and no Stop;
 - step 4's policy-off branch can no longer bind to the inner `while`, the three copies agree, and the skill is under its 5,000-character budget;

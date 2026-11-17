@@ -1,6 +1,6 @@
 # 011-33: a restart hands the queued work over, worker notes
 
-Row 011-33 (011-30 R3, gh-47), brief W2 of `tasks/wave-6.md`. Base ec6337e6. Spec: 011 C4, "Explicit checkpoints" as amended 2026-10-20 (Q3 (a), Q5 (a)).
+Row 011-33 (011-30 R3, gh-47), brief W2 of `tasks/wave-6.md`. Base 1f951801. Spec: 011 C4, "Explicit checkpoints" as amended 2026-10-20 (Q3 (a), Q5 (a)).
 
 ## Seams
 
@@ -11,14 +11,14 @@ Row 011-33 (011-30 R3, gh-47), brief W2 of `tasks/wave-6.md`. Base ec6337e6. Spe
 
 ## Tests
 
-- `test/scheduler/handover-queued.test.ts` (new), over the catch-up fixture (real store, fake runner whose runs honour a cancel). A predecessor runs everything, then a `lookup-only` daemon holds an edit's tier and closes with `cancel` (as `squeal stop` does), so the rows stay `queued`. Five cases, all red on ec6337e6:
+- `test/scheduler/handover-queued.test.ts` (new), over the catch-up fixture (real store, fake runner whose runs honour a cancel). A predecessor runs everything, then a `lookup-only` daemon holds an edit's tier and closes with `cancel` (as `squeal stop` does), so the rows stay `queued`. Five cases, all red on 1f951801:
   1. `lookup-only`: the edit's two importers run in one edit's tier (not granted) and are current.
   2. `lookup-only`, `config.json` (an environment-only re-key): all eight run in granted tiers.
   3. `lookup-only`, a 12-source catch-up revision, then `config.json`: the 24 catch-up files run before the 4 that only the environment re-keyed, all granted. This case is not in the design's four. The spec names the catch-up group, so it is tested.
   4. `lookup-only`, every key moved while no daemon ran (the runner's `adapterVersion`, which stands in for a key-format change): only the queued file runs, at its new key. The other 22 stay stale.
-  5. Default baseline, keys moved the same way: the handed-over files lead an edit's tier and run nowhere else. The 22 misses follow in granted tiers. On ec6337e6 the first run was a granted backlog tier.
-- `test/scheduler/rerun-restart.test.ts`: a new case. A new failure's pending re-run is run by a `lookup-only` successor. Red on ec6337e6: no run.
-- `test/daemon/restart-handover.test.ts` (new), run 5's shape with the real CLI. The fixture is `lookup-only` with a held `test/hold.test.ts`. Steps: `start`, `run --all --wait`, hold on, edit, `stop` with the tier held, `start`. `status --wait 60000 test/hold.test.ts` is still waiting at 5 s. The successor runs the file. Once the hold is released the wait exits 0 with `Named test files at revision 1: no known failures; 1 test file, each with a current result`, about 0.6 s after the release. Red on ec6337e6: the wait returned within 5 s.
+  5. Default baseline, keys moved the same way: the handed-over files lead an edit's tier and run nowhere else. The 22 misses follow in granted tiers. On 1f951801 the first run was a granted backlog tier.
+- `test/scheduler/rerun-restart.test.ts`: a new case. A new failure's pending re-run is run by a `lookup-only` successor. Red on 1f951801: no run.
+- `test/daemon/restart-handover.test.ts` (new), run 5's shape with the real CLI. The fixture is `lookup-only` with a held `test/hold.test.ts`. Steps: `start`, `run --all --wait`, hold on, edit, `stop` with the tier held, `start`. `status --wait 60000 test/hold.test.ts` is still waiting at 5 s. The successor runs the file. Once the hold is released the wait exits 0 with `Named test files at revision 1: no known failures; 1 test file, each with a current result`, about 0.6 s after the release. Red on 1f951801: the wait returned within 5 s.
 
 ## What the design did not foresee
 

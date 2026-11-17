@@ -79,12 +79,12 @@ Done when:
 
 ## Review of the wave 1 candidate (017-04, 017-05)
 
-Use /reviewer. The candidate is `cand/0.1.348` at `6e24679fa`. The range is `bf140a5b2..6e24679fa`: the five commits of worker 2e373245 (017-04), the eleven of worker 8f337351 (017-05), the coordinator's integration commit `c63cd9a61` (one interface file, and the `squeal daemon` command gives the ESLint provider) and the version raise with the bundle commit. `bf140a5b2` is 0.1.346 (017-03, review `reviews/0.1.344.md` PASS). Write `docs/specifications/017-lint-checks/reviews/0.1.348.md` and commit it alone on your branch.
+Use /reviewer. The candidate is `cand/0.1.348` at `6e24679fa`. The range is `da95ff911..6e24679fa`: the five commits of worker 2e373245 (017-04), the eleven of worker 8f337351 (017-05), the coordinator's integration commit `c63cd9a61` (one interface file, and the `squeal daemon` command gives the ESLint provider) and the version raise with the bundle commit. `da95ff911` is 0.1.346 (017-03, review `reviews/0.1.344.md` PASS). Write `docs/specifications/017-lint-checks/reviews/0.1.348.md` and commit it alone on your branch.
 
 Read: spec 017 goals 1, 3, 5, 6, 7 and 9, D3 to D7 and D9, as amended (`status.md`, 2026-10-26); this file's briefs; `tasks/017-04/notes.md`, `tasks/017-05/notes.md`; `research/eslint-provider.md` Q2 to Q4.
 
 Check, with proof where you can:
-1. Off by default: with no `lint` section, no pass starts, no worker thread or ESLint loads, no `lint.sqlite` appears, and status and delivery are as at `bf140a5b2`.
+1. Off by default: with no `lint` section, no pass starts, no worker thread or ESLint loads, no `lint.sqlite` appears, and status and delivery are as at `da95ff911`.
 2. Containment: ESLint runs only in the worker thread, from the project's own install, never Squeal's; `cli/lint-worker.mjs` bundles no package. A plugin that blocks, throws or exits gives `unknown` and the host's timers keep running; the third failure in 10 minutes gives `off`.
 3. Keys: each D5 part re-keys its file, `<root>` makes keys equal across worktrees, and the program segment covers the program, every linted file and the tsconfigs before any lint. Name every input that can change a file's findings without moving its key: that is the expensive failure. The notes name two known gaps (the policy narrows the program segment; modules that `eslint.config.ts` loads through jiti); say whether either is a break.
 4. Whole-program files: the changed ones lint at once with changed program files fed, hits included; the rest read `stale` until idle.

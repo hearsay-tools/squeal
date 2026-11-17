@@ -1,6 +1,6 @@
 # Issue 18: discovering the named wait
 
-Reviewed 2026-10-16 at commit `41718275`. Source: [hearsay-tools/squeal#18](https://github.com/hearsay-tools/squeal/issues/18), labelled `friction` (an agent session report).
+Reviewed 2026-10-16 at commit `c784702b`. Source: [hearsay-tools/squeal#18](https://github.com/hearsay-tools/squeal/issues/18), labelled `friction` (an agent session report).
 
 ## Fit and existing work
 

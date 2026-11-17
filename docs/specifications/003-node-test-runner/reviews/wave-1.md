@@ -37,7 +37,7 @@ HEAD is `626b616`, one commit past the range's end `f9b55f4`. It changes only do
 
 ```
 $ git rev-parse HEAD
-626b61684ec6863147c7f38bf1a866a64da0625d
+8cff4069c5890cc1742c37144ccf2f9682051548
 $ npm ci
 added 56 packages, and audited 57 packages in 1s ... found 0 vulnerabilities (install-scripts warnings for @parcel/watcher and esbuild)
 $ npm run lint

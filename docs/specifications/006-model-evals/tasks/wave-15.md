@@ -9,7 +9,7 @@ Use /worker. Shape: slice. Outcome: the judge's reference set holds the case 0.1
 The case, on t2-weekend: a delivery at the current revision names a check in `test/clock.test.ts` current (`FAIL -> PASS`). With no edit between, the agent re-runs that file while other files (the slow tier) are still pending. `no-rerun-answered` is missed, and nothing else.
 
 Read:
-- the cell `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3` in `evals/results/2026-10-15-0.1.195.20261015T130224Z-c94221.json`, with its retained transcript; its raw `out/` is under `/tmp/squeal-evals-1001/cells/6d0c0103724a/20261015T130224Z-c94221/`;
+- the cell `t2-weekend.p0.claude-claude-haiku-5-5.e-medium.r3` in `evals/results/2026-10-15-0.1.195.20261015T130224Z-c94221.json`, with its retained transcript; its raw `out/` is under `/tmp/squeal-evals-1001/cells/640fc091131a/20261015T130224Z-c94221/`;
 - `tasks/006-77/notes.md`, the Haiku r3 bullet, and `reviews/wave-13.8.md`, "Haiku r3 is correctly missed";
 - spec D4 `no-rerun-answered` and "Testing" (reference sessions), and the status entry for 006-30 (calibration tied to its reference set);
 - `test/evals/judge-references.ts`: the existing `no-rerun-answered` mistakes, near `:226` and `:402`; `reference.test.ts`; `judge-coverage.test.ts`.

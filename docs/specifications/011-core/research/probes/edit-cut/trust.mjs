@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { matchesGlob } from "node:path";
 import { depths, graphAt, openStore, REPOS } from "./lib.mjs";
 
-const sha = process.argv[2] ?? "b3e190d6";
+const sha = process.argv[2] ?? "7d729f61";
 const g = graphAt("squeal", sha);
 const config = JSON.parse(execFileSync("git", ["-C", REPOS.squeal.git, "show", `${sha}:squeal.config.json`], { encoding: "utf8" }));
 const inputs = Object.entries(config.inputs ?? {});

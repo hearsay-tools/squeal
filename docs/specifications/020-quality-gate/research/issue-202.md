@@ -9,8 +9,8 @@ The original other-worktree daemon and approximately one-minute delay remain
 unverified. Earlier report delivery does not make the command return earlier.
 
 Examined 2026-11-12. Reported and installed version: **0.1.457**, release commit
-`49557fe0facdbe670664ed5e0146b662e346f169`. Fetched `origin/main` and research
-checkout: `15c14ea2d8e3f77e3395a693a623f7bea5c883f4`, package **0.1.459**.
+`2f459c321dd408c968a9f60ff37451e923f7d3ac`. Fetched `origin/main` and research
+checkout: `1ed65ddcdbed9fdab9c0ca6c134991a7e24177bd`, package **0.1.459**.
 Owner: 020 D11.7/D17.3/D17.5; shared: 021 D1/D5/D15 and 011 C7.
 
 ## Questions and findings
@@ -54,7 +54,7 @@ a singleton-lock fault nor identifies the operation responsible for contention.
 ### Prior experiment reused, new experiment skipped
 
 **Verified by experiment, prior source 0.1.459 at
-`d3d40f583e22c2149469d6751ed6837a63072575`.** [Issue 201](issue-201.md)
+`488190632c3cc5f1ac3c5d6e18b6d46c330572ef`.** [Issue 201](issue-201.md)
 ran five tiny node:test files with temporary repositories and stores. A child
 held `BEGIN IMMEDIATE` on the scratch store. The measurements below are from
 its committed [raw evidence](probes/issue-201/evidence-2026-11-12.txt), not a
@@ -127,6 +127,6 @@ not a passing affected-test verdict.
 - [Reported incident #202](https://github.com/hearsay-tools/squeal/issues/202): reported 0.1.457, pass/0, other-worktree holder, about one extra minute. This is reported evidence, not independently observed host history.
 - [Related incident #201](https://github.com/hearsay-tools/squeal/issues/201), [research](issue-201.md) and [probe method](probes/issue-201/README.md): retained measurements, failure caveat and source lineage.
 - [020 spec](../spec.md) D11.7/D17.3/D17.5 and [status](../status.md); [021 spec](../../021-remote-store-and-execution/spec.md) D1/D5/D15; [011 spec](../../011-core/spec.md) C7. D17.5's last sentence describes daemon routing as later; 021-20's release record and current source establish that it shipped in 0.1.450.
-- Source at [0.1.457](https://github.com/hearsay-tools/squeal/tree/49557fe0facdbe670664ed5e0146b662e346f169): `src/cli/code-gate{,-stored,-relaunch}.ts`, `src/core/code/gate/{keep,keep-write,keep-here,keep-sent}.ts`, `src/core/store/paths.ts`.
+- Source at [0.1.457](https://github.com/hearsay-tools/squeal/tree/2f459c321dd408c968a9f60ff37451e923f7d3ac): `src/cli/code-gate{,-stored,-relaunch}.ts`, `src/core/code/gate/{keep,keep-write,keep-here,keep-sent}.ts`, `src/core/store/paths.ts`.
 
 Coordinator note: the worker ran the new probe at repository-root `research/probes/issue-202/`. Integration moved its files into this spec’s `research/probes/issue-202/`; commands above show the final location. No live probe was rerun.

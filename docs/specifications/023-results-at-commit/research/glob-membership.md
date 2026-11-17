@@ -4,7 +4,7 @@ A module that uses `import.meta.glob` or a template-literal `import()` loads the
 
 Short answer: the gap is not specific to 023. With the real Vitest adapter, a daemon restart, a second worktree and a CI import each report a PASS that `vitest run` fails. All four paths key a test file from a stored closure list. Fix A closes all four, and no other change is needed: it records a listing entry for each glob, using the `dir/` entries Squeal already hashes, both on disk and from a commit's tree. An emulation of fix A turns each false PASS into `stale`. Fix A re-keys 0 test files in Squeal and 0 in squawk today, because neither repository's Vitest closures hold a real glob. Fix B as written is a bad trade. Its regex matches comments and strings, so 43.4% of Squeal's and 11.2% of squawk's test files would read `not determined (closure)`, and every one of those matches is false.
 
-Versions. Source read at `75e44e78f` (Squeal 0.1.527), with the held 023-03 code at `990b60650`. The experiments ran the 0.1.527 bundle of this worktree with Vitest 5.0.3 and Vite 8.3.2 on Node v26.13.0. Stores were copied read-only on 2026-11-16 at 22:31Z. Probes and the scenario log are in `probes/glob-membership/`; its README lists each script.
+Versions. Source read at `d1337f9f2` (Squeal 0.1.527), with the held 023-03 code at `990b60650`. The experiments ran the 0.1.527 bundle of this worktree with Vitest 5.0.3 and Vite 8.3.2 on Node v26.13.0. Stores were copied read-only on 2026-11-16 at 22:31Z. Probes and the scenario log are in `probes/glob-membership/`; its README lists each script.
 
 ## Questions answered
 
@@ -78,7 +78,7 @@ Shadowing adds are rare. 0 of 2,078 Squeal and 0 of 338 squawk first-parent main
 
 ## 4. Frequency
 
-| | Squeal (`aaa03f8c8`) | squawk (`8599516b2`) |
+| | Squeal (`35b806131`) | squawk (`8599516b2`) |
 |---|---|---|
 | Stored closure lists, test files at main | 2,177, 1,900 | 2,573, 1,922 (9 projects) |
 | Test files with a regex-matching module | 825 (43.4%) | 215 (11.2%; `server` 14, `e2e` 97, root unit 104) |
@@ -101,7 +101,7 @@ Shadowing adds are rare. 0 of 2,078 Squeal and 0 of 338 squawk first-parent main
 ## Sources
 
 - Reviews: `reviews/wave-1.md` B1, `reviews/wave-1-rereview.md` B1; spec 001 `reviews/wave-1.md` B1 (research R4 quote).
-- Squeal source at `75e44e78f`: `src/core/scheduler/bootstrap.ts`, `src/core/scheduler/keying.ts`, `src/core/keys/observed.ts`, `src/core/keys/resolution.ts`, `src/core/keys/key-format.ts`, `src/core/store/transfer-rekey.ts`, `src/core/store/transfer-rows.ts`, `src/runners/vitest/dynamic.ts`, `src/runners/vitest/project.ts`, `src/runners/vitest/version.ts`; held 023-03 at `990b60650`: `src/core/commit/at-keys-coverage.ts`.
+- Squeal source at `d1337f9f2`: `src/core/scheduler/bootstrap.ts`, `src/core/scheduler/keying.ts`, `src/core/keys/observed.ts`, `src/core/keys/resolution.ts`, `src/core/keys/key-format.ts`, `src/core/store/transfer-rekey.ts`, `src/core/store/transfer-rows.ts`, `src/runners/vitest/dynamic.ts`, `src/runners/vitest/project.ts`, `src/runners/vitest/version.ts`; held 023-03 at `990b60650`: `src/core/commit/at-keys-coverage.ts`.
 - Vite 8.3.2, `node_modules/.pnpm/vite@8.3.2_*/node_modules/vite/dist/node/chunks/node.js`: `parseImportGlob` (27542), `toAbsoluteGlob` (27732), `dynamicImportToGlob` (32563).
 - Probes: `probes/glob-membership/` (`scenarios.sh` and `out/scenarios.log`, `modules.mjs`, `adds.mjs`, `copy.mjs`).
 - Stores: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite` (squawk), read-only table copies.

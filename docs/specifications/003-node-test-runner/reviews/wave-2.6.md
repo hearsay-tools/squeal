@@ -4,7 +4,7 @@
 
 **FAIL dd4be01**. One proven blocker, one proven should-fix, no new nits. Wave 2.5 B1 is closed for ordinary argv `--require`, nested and package require preloads, and ordinary `NODE_OPTIONS`. It remains for quoted option names in `NODE_OPTIONS`: their computed dependencies are still unobserved and a stale pass remains current and inherits. The earlier recorder also introduces a Node 22 async-loader regression (S1).
 
-Reviewed `647f6ce^..e9e36d2`: the 003-28 repair, integration test, runtime-copy fixes and 0.1.28 bundles. Candidate HEAD is `dd4be01a04285c482e31917e362f3bdaa320f145`; `e9e36d2..HEAD` changes only board, spec, status and brief documentation. Product and bundle content match the named endpoint. Prior wave 2.5 conclusions outside the preload slice were not re-prosecuted.
+Reviewed `647f6ce^..e9e36d2`: the 003-28 repair, integration test, runtime-copy fixes and 0.1.28 bundles. Candidate HEAD is `cbd82c2a3b60cbd259c30463cb1caa192cb9324a`; `e9e36d2..HEAD` changes only board, spec, status and brief documentation. Product and bundle content match the named endpoint. Prior wave 2.5 conclusions outside the preload slice were not re-prosecuted.
 
 ## Verification output
 
@@ -12,7 +12,7 @@ Commands ran at the clean candidate before this report was added. `npm run build
 
 ```text
 $ git rev-parse HEAD
-dd4be01a04285c482e31917e362f3bdaa320f145
+cbd82c2a3b60cbd259c30463cb1caa192cb9324a
 $ node --version
 v24.21.0
 $ npm ci

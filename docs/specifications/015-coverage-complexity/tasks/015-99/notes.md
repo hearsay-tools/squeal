@@ -73,4 +73,4 @@ Until the integration build, these fail as expected drift:
 
 Brief path defect: `test/delivery/` does not exist; the delivery tests are in `test/code/delivery/` (parent confirmed).
 
-Not in scope, seen in passing: the policy reference says "Coverage is on by default". That matches `DEFAULT_POLICY` since `a6741966c` (2026-10-28), but spec D1 and the brief still say coverage is opt-in.
+Not in scope, seen in passing: the policy reference says "Coverage is on by default". That matches `DEFAULT_POLICY` since `410393d85` (2026-10-28), but spec D1 and the brief still say coverage is opt-in.

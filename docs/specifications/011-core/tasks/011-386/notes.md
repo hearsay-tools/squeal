@@ -1,6 +1,6 @@
 # 011-386: the yield and pool-wait rows across a calendar step
 
-Wave 117 W2, worker ede0d6d2, 2026-11-16. Brief: `tasks/wave-117.md`, "W2: row 011-386". Base: main `2ca6a943c` (0.1.526).
+Wave 117 W2, worker ede0d6d2, 2026-11-16. Brief: `tasks/wave-117.md`, "W2: row 011-386". Base: main `161b1ed9f` (0.1.526).
 
 ## Change
 

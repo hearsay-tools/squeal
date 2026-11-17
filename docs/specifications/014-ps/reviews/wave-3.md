@@ -1,8 +1,8 @@
-PASS 7b8669b57e0bf31ebeaa8b8791011837ae3c9e20
+PASS c47d7f822ae971b15b88ef1020be3587b76fbae0
 
 Zero blockers. One proven should-fix item. Two notes, one proven and one unverified. Two proven nits. The independent full suite failed in an unchanged OpenCode test, and that file failed alone too. This verdict does not claim a passing full suite.
 
-Row 014-16 reviews `de6a8dd19..7b8669b57`, pinned to `cand/014-14`. The range contains the Rolldown pin (`cd8bae31b`), the ps e2e tests (`97d7018e0`, `e5adc25f0`) and the accepted amendment in `status.md`. Inputs: amended spec 014, the wave 3 introduction and 014-14/014-16 briefs, `research/shipped-plugin-timeout.md`, and the wave 2 reviews. No product code, test, board or status file was changed by this reviewer.
+Row 014-16 reviews `7f8b0376c..c47d7f822`, pinned to `cand/014-14`. The range contains the Rolldown pin (`f63b44324`), the ps e2e tests (`1a6b26348`, `851476c2b`) and the accepted amendment in `status.md`. Inputs: amended spec 014, the wave 3 introduction and 014-14/014-16 briefs, `research/shipped-plugin-timeout.md`, and the wave 2 reviews. No product code, test, board or status file was changed by this reviewer.
 
 ## Verification output
 
@@ -10,7 +10,7 @@ All normal checks ran at the pinned commit with a clean tracked tree. The review
 
 ```text
 $ git rev-parse HEAD
-7b8669b57e0bf31ebeaa8b8791011837ae3c9e20
+c47d7f822ae971b15b88ef1020be3587b76fbae0
 $ git status --short
 (no output)
 

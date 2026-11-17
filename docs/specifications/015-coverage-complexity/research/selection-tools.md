@@ -2,7 +2,7 @@
 
 **Adapt Testmon's structural method inside runner adapters; do not reuse old results at changed keys.** The probes show useful skips on ordinary function edits, including real warm Vitest with Squeal's provider. They also prove remaining misses. A project could opt into fewer background runs with explicit validation debt. This is not evidence for unconditional current-result reuse.
 
-015-96 R1, 2026-10-27. Squeal baseline `d6d75dbe63ee60ec072af547a1d08911f6678a09`. Research only. No product, configuration, live-store or existing findings changes. No repository full suite, paid service or upload. [Reproduction and complete evidence](probes/selection-tools/README.md).
+015-96 R1, 2026-10-27. Squeal baseline `5e0f51f4e949223f39ecac287318a806ace849ac`. Research only. No product, configuration, live-store or existing findings changes. No repository full suite, paid service or upload. [Reproduction and complete evidence](probes/selection-tools/README.md).
 
 | Question | Answer |
 | --- | --- |

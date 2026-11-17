@@ -25,14 +25,14 @@ Done when:
 
 ## W2: 001-432, review of cand/0.1.201
 
-Use /reviewer. Shape: review. Pinned to the `cand/0.1.201` SHA named in the spawn; the range is `8737cdc0..<sha>`: W1's commits, the bundles and version 0.1.201.
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.201` SHA named in the spawn; the range is `cfb3b034..<sha>`: W1's commits, the bundles and version 0.1.201.
 
 Read W1 above, issue #1, spec 001 D8, D10 and D12, and `tasks/001-422/notes.md`. Check that:
 - no write outside the pass and the timers changes its busy wait, and a slice override cannot leak to another statement;
 - a retried pass loses no edit and stores no revision twice, and a close during a backoff ends it;
 - a busy episode notes once, and a non-busy error still notes as before;
 - the pump resumes after a busy error without spinning, and a non-busy stall still waits for the next batch;
-- each test fails on `8737cdc0`.
+- each test fails on `cfb3b034`.
 
 Write `reviews/wave-17.md`; commit it.
 
@@ -40,7 +40,7 @@ Write `reviews/wave-17.md`; commit it.
 
 Use /reviewer. Shape: review, narrow. Pinned to the `cand/0.1.203` SHA named in the spawn. Round 2 of `reviews/wave-17.md`: B1 only, plus the rebase.
 
-The candidate is 001-422's four commits, the coordinator's B1 repair (`fix(001-432): a busy resume runs only for the stall it was armed for`) and the build (0.1.203 above main's 0.1.202, key format 11 re-pinned in place). Round 1 covered the rest at `f9c29e11`.
+The candidate is 001-422's four commits, the coordinator's B1 repair (`fix(001-432): a busy resume runs only for the stall it was armed for`) and the build (0.1.203 above main's 0.1.202, key format 11 re-pinned in place). Round 1 covered the rest at `b8b1a21a`.
 
 Check that:
 - the round-1 probe passes, and both orderings in `test/scheduler/busy-record.test.ts` fail without the repair;

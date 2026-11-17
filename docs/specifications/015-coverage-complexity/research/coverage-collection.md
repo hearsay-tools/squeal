@@ -1,6 +1,6 @@
 # 015-01: coverage from Squeal's own runs
 
-Researcher, 2026-10-23. Brief: `coverage-collection-brief.md`. Probes: `probes/coverage-collection/` (throwaway; every run under `/tmp`, no daemon, no agent session). Versions examined: Vitest 5.0.3, `@vitest/coverage-v8` and `@vitest/coverage-istanbul` 5.0.3, Node 24.21.0, coverage.py 7.17.0 with pytest 9.1.1 on Python 3.12.3, this repository at f6f44e03.
+Researcher, 2026-10-23. Brief: `coverage-collection-brief.md`. Probes: `probes/coverage-collection/` (throwaway; every run under `/tmp`, no daemon, no agent session). Versions examined: Vitest 5.0.3, `@vitest/coverage-v8` and `@vitest/coverage-istanbul` 5.0.3, Node 24.21.0, coverage.py 7.17.0 with pytest 9.1.1 on Python 3.12.3, this repository at 963baee3.
 
 The parent's note of 2026-10-23 (the human: "the code can squeal as well, not just tests", a feasibility question, open question 1 in `../status.md`) is answered for coverage under Q6: where a per-function state with transitions holds and where it does not.
 
@@ -94,5 +94,5 @@ Bytes per test file (v8 round 0): raw 436 KiB on average (median 477), 404 MiB f
 
 - Vitest 5.0.3, installed under `/tmp/sq015-cov/node_modules/vitest/dist/chunks/`: `index.DpLw24bj.js` (`BaseCoverageProvider.onAfterSuiteRun` line 15076, `reportThresholdViolations` 15228 to 15250, `thresholds.autoUpdate` 15142, `runFiles` 21107 to 21148, `reportCoverage` 21459, `standalone` 21034, `enableCoverage`/`disableCoverage` 20741 to 20754, `groupSpecs` 11866 to 11920, serialized `coverage` config 9879 to 9890), `index.ggMXe2IF.js` lines 181 to 191 (worker `onAfterRunFiles` -> `takeCoverage` -> `onAfterSuiteRun`), `coverage._yXj5zeb.js` (provider resolution, `custom`), `base.DhkQeZwd.js` lines 70 and 103 (start and stop per worker run).
 - `@vitest/coverage-v8` 5.0.3: `dist/index.js` (worker side over `node:inspector/promises`, `Profiler.startPreciseCoverage { callCount: true, detailed: true }`, `takePreciseCoverage`), `dist/provider.js` (`generateCoverage` 46 to 91, `remapCoverage` 153, `convertCoverage` 249, `ast-v8-to-istanbul`).
-- Squeal at f6f44e03: `src/runners/vitest/adapter.ts` `#start` (the `createVitest` options, no `coverage` key), `src/runners/vitest/run.ts` line 80 (`runTestSpecifications` with the default `allTestsRun = false`), `docs/specifications/011-core/spec.md` C3, C4, C7, C10 Fidelity, C12; 003 D5; 007 D6; `test/keys/validity/coverage.ts`.
+- Squeal at 963baee3: `src/runners/vitest/adapter.ts` `#start` (the `createVitest` options, no `coverage` key), `src/runners/vitest/run.ts` line 80 (`runTestSpecifications` with the default `allTestsRun = false`), `docs/specifications/011-core/spec.md` C3, C4, C7, C10 Fidelity, C12; 003 D5; 007 D6; `test/keys/validity/coverage.ts`.
 - Node 24.21.0 and coverage.py 7.17.0: run, not read; see Q3.

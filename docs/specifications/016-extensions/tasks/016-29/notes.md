@@ -1,6 +1,6 @@
 # 016-29 and 016-30 one owner for the shared observed sets, and two kit-proven cases out: notes
 
-Worker 00f19154, 2026-10-25. Brief: `tasks/wave-6.md`. Shape: repair. Code read at `85e43bdc9`. The coordinator approved the design before the first product edit (request 000ce078, reply 589bedbb). 011's coordinator accepted the invariant below in place of its condition (1), with no closure re-assembly in `record.ts`. Slice 2 was dropped on the coordinator's decision C (request 79af861d).
+Worker 00f19154, 2026-10-25. Brief: `tasks/wave-6.md`. Shape: repair. Code read at `ea473a3f9`. The coordinator approved the design before the first product edit (request 000ce078, reply 589bedbb). 011's coordinator accepted the invariant below in place of its condition (1), with no closure re-assembly in `record.ts`. Slice 2 was dropped on the coordinator's decision C (request 79af861d).
 
 ## Cause
 

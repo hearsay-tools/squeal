@@ -1,10 +1,10 @@
 # 011-110 notes (W6 of wave 13, 2026-10-22)
 
-The stopping reading: 011 C9 as amended 2026-10-22 (repair W3 and row 011-110), `tasks/011-32/notes.md`, `tasks/011-34/notes.md`. Base: `c30f5181a` (cand/0.1.262). Brief `tasks/wave-13.md`, W6.
+The stopping reading: 011 C9 as amended 2026-10-22 (repair W3 and row 011-110), `tasks/011-32/notes.md`, `tasks/011-34/notes.md`. Base: `bb6a8db72` (cand/0.1.262). Brief `tasks/wave-13.md`, W6.
 
 ## The second source
 
-CI 39769624080 (Node 22 1/3), on `c30f5181a` with this row's first fix in, failed `test/daemon/handover-tier.test.ts:161`: two `--await-lock` daemons, with `lockWaits` 1. The hooks spawned one; `squeal start` spawned the other.
+CI 39769624080 (Node 22 1/3), on `bb6a8db72` with this row's first fix in, failed `test/daemon/handover-tier.test.ts:161`: two `--await-lock` daemons, with `lockWaits` 1. The hooks spawned one; `squeal start` spawned the other.
 
 The coordinator's hypothesis holds. `finishHandoff` passed `claims()` the record that `stoppingDaemon` read before `start` sent `stop`. A successor that registers in between clears the claim and writes its record in one transaction (`#register`). Then:
 

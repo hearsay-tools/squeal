@@ -6,6 +6,6 @@ function walk(sha) { const t = blobs(sha); const seen = new Set(); const todo = 
   while (todo.length) { const p = todo.pop(); if (seen.has(p) || !t.has(p)) continue; seen.add(p); const dir = p.split("/").slice(0, -1).join("/");
     for (const m of git("cat-file", "-p", t.get(p)).matchAll(/from\s+"(\.{1,2}\/[^"]+)"/g)) { const out = []; for (const s of `${dir}/${m[1]}`.replace(/\.js$/, ".ts").split("/")) { if (s === "..") out.pop(); else if (s !== ".") out.push(s); } todo.push(out.join("/")); } }
   return [seen, t]; }
-for (const [a, b] of [["02b4b92f5","768ff4a49"],["3140f7c01","d3535c720"],["d3535c720","2e62ee7c3"],["1a0af263a","e59ed2260"]]) {
+for (const [a, b] of [["178e1fbfe","307bba701"],["815017945","636c94708"],["636c94708","2ac244a70"],["dac644d00","0bfafb150"]]) {
   const [s, tb] = walk(b); const ta = blobs(a); console.log(a, b, "setup closure", s.size, "changed:", [...s].filter((p) => ta.get(p) !== tb.get(p)).join(" "));
 }

@@ -44,7 +44,7 @@ All: lint, typecheck, `key-format` without a raise for W1 and W2, and `squeal st
 
 ## R1 (W3, W4): review of cand/011-387-388
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-387-388` at `a96399becd55be2f8541ccb6deab1ac3dfb816e3`; candidate CI run 43961834724. Test files and notes only: no `src/` change, no version raise. Range `2ca6a943c..a96399becd55be2f8541ccb6deab1ac3dfb816e3`: worker 55f47307's commit (row 011-388) and worker bdd420d0's two (row 011-387), cherry-picked without conflict. Read: board rows 011-387, 011-388, 011-374; this file's W3 and W4; `tasks/011-387/notes.md`, `tasks/011-388/notes.md`; `tasks/011-374/notes.md`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-387-388` at `46eb6fcae01c345238a8e2bff240734a775e1559`; candidate CI run 43961834724. Test files and notes only: no `src/` change, no version raise. Range `161b1ed9f..46eb6fcae01c345238a8e2bff240734a775e1559`: worker 55f47307's commit (row 011-388) and worker bdd420d0's two (row 011-387), cherry-picked without conflict. Read: board rows 011-387, 011-388, 011-374; this file's W3 and W4; `tasks/011-387/notes.md`, `tasks/011-388/notes.md`; `tasks/011-374/notes.md`.
 
 Check, each as proven, plausible or unverified:
 
@@ -55,7 +55,7 @@ Coordinator at the candidate: lint and typecheck pass; both files pass (7 tests,
 
 ## R2 (W1, W2): review of cand/0.1.529
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.529` at `2fa68aa8d6862f662f472fc641bb271591e6a2e8`; candidate CI run 43968493359. Range `6f9f051be..2fa68aa8d6862f662f472fc641bb271591e6a2e8` (main at 0.1.527): worker ede0d6d2's two commits (row 011-386), worker 54a85ba0's three (row 011-382), cherry-picked without conflict, then the 0.1.529 raise and bundles (0.1.528 is coordinator d36c4d53's, not on main). Read: board rows 011-382 and 011-386; this file's W1 and W2; `tasks/011-382/notes.md`, `tasks/011-386/notes.md`; `tasks/011-377/notes.md` "Repair after review 0.1.524"; `reviews/0.1.524.md` B1 and "Inputs for the coordinator".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.529` at `2fa68aa8d6862f662f472fc641bb271591e6a2e8`; candidate CI run 43968493359. Range `b68585a0b..2fa68aa8d6862f662f472fc641bb271591e6a2e8` (main at 0.1.527): worker ede0d6d2's two commits (row 011-386), worker 54a85ba0's three (row 011-382), cherry-picked without conflict, then the 0.1.529 raise and bundles (0.1.528 is coordinator d36c4d53's, not on main). Read: board rows 011-382 and 011-386; this file's W1 and W2; `tasks/011-382/notes.md`, `tasks/011-386/notes.md`; `tasks/011-377/notes.md` "Repair after review 0.1.524"; `reviews/0.1.524.md` B1 and "Inputs for the coordinator".
 
 Check, each as proven, plausible or unverified:
 

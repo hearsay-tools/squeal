@@ -1,6 +1,6 @@
 # 015-76: coverage under node:test
 
-Researcher, 2026-10-26. Brief: R1 in `../tasks/wave-16.md`. Probes: `probes/node-test-coverage/` (throwaway; `HOME=/tmp/r-015-76/home`, all output under `/tmp/r-015-76/`, no daemon, no agent session, no `evals/bin` script). Versions examined: Node 24.21.0 and 22.23.3, tsx 4.23.15 (esbuild 0.28.2), Node's source at tag v24.21.0 (`lib/child_process.js`, `lib/internal/process/pre_execution.js`, `lib/internal/test_runner/coverage.js`), this repository at b062c9832. Every probe runs a file with Squeal's own command line (`src/runners/node-test/run/run.ts`): `--enable-source-maps`, the recorder as first `--require`, the project's argv, `--test`, Squeal's reporter.
+Researcher, 2026-10-26. Brief: R1 in `../tasks/wave-16.md`. Probes: `probes/node-test-coverage/` (throwaway; `HOME=/tmp/r-015-76/home`, all output under `/tmp/r-015-76/`, no daemon, no agent session, no `evals/bin` script). Versions examined: Node 24.21.0 and 22.23.3, tsx 4.23.15 (esbuild 0.28.2), Node's source at tag v24.21.0 (`lib/child_process.js`, `lib/internal/process/pre_execution.js`, `lib/internal/test_runner/coverage.js`), this repository at 7a2095f95. Every probe runs a file with Squeal's own command line (`src/runners/node-test/run/run.ts`): `--enable-source-maps`, the recorder as first `--require`, the project's argv, `--test`, Squeal's reporter.
 
 ## Questions answered
 

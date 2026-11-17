@@ -101,7 +101,7 @@ Outcome: a verdict, PASS or FAIL, on whether wave 4 repairs lessons defects 1 to
 
 Shape: review. Ranges:
 - the candidate, `origin/main..cand/0.1.181`: 007-37 and 007-39, including `85aa5c21` and `e4871cd6` in core notes and the daemon;
-- the landed 0.1.178 commits `c84f3720^..a2904a98`: 007-35, 007-36 and 007-38.
+- the landed 0.1.178 commits `ba05110a^..9e020c2c`: 007-35, 007-36 and 007-38.
 Read `docs/vision.md`, `docs/styleguide.md`, spec 007 with its `status.md`, `lessons.md` and these briefs, and 001 D7 and D12.
 
 Look hardest at four things:

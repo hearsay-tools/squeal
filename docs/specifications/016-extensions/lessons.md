@@ -1,6 +1,6 @@
 # 016 Extensions: D4 and 016-23 in real use
 
-Row 016-27, researcher 2d61d0a8, 2026-10-25, 18:32Z to 18:56Z. Brief: `tasks/wave-4.md`, section 016-27, questions 1 to 5. Code read at `533929e94`. Probes: `research/probes/016-27/` (read-only; see its README).
+Row 016-27, researcher 2d61d0a8, 2026-10-25, 18:32Z to 18:56Z. Brief: `tasks/wave-4.md`, section 016-27, questions 1 to 5. Code read at `a33127fc1`. Probes: `research/probes/016-27/` (read-only; see its README).
 
 ## Verdict
 
@@ -109,7 +109,7 @@ That is 6 test files in squeal and 16 in cezar. **None ran once more because of 
 
 Source: `inherited.mjs`. **No.** For each reader of a non-watched listing, the probe compared the origin worktree's directory with this worktree's.
 
-- squeal: 23 inherited reader states. 21 were compared, and all had the same state. In 1 (2fa11272, `test/keys/validity/cases/listing/`) the directory is absent here and tracked in the origin today, but it is absent too at the result's commit `b44e3cc90` (`git ls-tree`). 2 origins are removed worktrees (fcdb871e, a01749ca); both directories are absent everywhere today.
+- squeal: 23 inherited reader states. 21 were compared, and all had the same state. In 1 (2fa11272, `test/keys/validity/cases/listing/`) the directory is absent here and tracked in the origin today, but it is absent too at the result's commit `8b823a2ba` (`git ls-tree`). 2 origins are removed worktrees (fcdb871e, a01749ca); both directories are absent everywhere today.
 - cezar: 16 inherited reader states, all in the main checkout, all `stale` (not shown as current), and all from removed worktrees.
 
 Removed worktrees cannot be read, so their names stay unproven. Tag: verified in the store and on disk.
@@ -130,23 +130,23 @@ squeal's single reader is `test/version-sensitive.test.ts`. `.tmp` is the fixtur
 
 Three current results already cross differing ignored names:
 
-1. squeal 2fa11272 (0.1.316) holds 7 checks of `test/version-sensitive.test.ts` inherited from 95f83469, recorded at 15:48:56Z at commit `b44e3cc90` by a 0.1.313 daemon. `test/fixtures/node-test/` and `test/fixtures/vitest/` hold `{.tmp}` there and `{}` here.
+1. squeal 2fa11272 (0.1.316) holds 7 checks of `test/version-sensitive.test.ts` inherited from 95f83469, recorded at 15:48:56Z at commit `8b823a2ba` by a 0.1.313 daemon. `test/fixtures/node-test/` and `test/fixtures/vitest/` hold `{.tmp}` there and `{}` here.
 2. cezar ee1ae15d holds 34 checks of `packages/web/src/test/e2e-wait-discipline.test.ts` inherited from 4d3b3189. `packages/web/e2e/` holds `{node_modules}` there and `{}` here. Both daemons ran 0.1.309, before the update.
 
 **Neither result can be wrong.**
 
-- `test/version-sensitive.test.ts` never lists `test/fixtures/`. Its walk skips that directory (`if (path !== "test/fixtures") walk(path)`) since `6144d939a` (2026-10-21, row 014-18), at `b44e3cc90` and at 2fa11272's head `d8d93d4d0` alike. Its three stored listings come from runs before that change, because observed maps are merged and never pruned. They cost key inputs, never correctness.
+- `test/version-sensitive.test.ts` never lists `test/fixtures/`. Its walk skips that directory (`if (path !== "test/fixtures") walk(path)`) since `ddae1e21b` (2026-10-21, row 014-18), at `8b823a2ba` and at 2fa11272's head `bfb79fac8` alike. Its three stored listings come from runs before that change, because observed maps are merged and never pruned. They cost key inputs, never correctness.
 - `e2e-wait-discipline.test.ts` lists `packages/web/e2e/` and keeps only names that end in `.e2e.ts` (read at cezar's main checkout). A `node_modules` entry cannot change its verdict.
 
 Tag: verified on disk and in the store; the two tests read in source.
 
 ## 6. Goal 5: one write path for node:test and pytest
 
-Reading at 19:05Z, load 47.6. Source: `node-test-observed.mjs` and `reach.mjs`. Code read at `533929e94`.
+Reading at 19:05Z, load 47.6. Source: `node-test-observed.mjs` and `reach.mjs`. Code read at `a33127fc1`.
 
 - **The core's keys.** cezar's two node:test projects ran 531 file runs from 16:00Z, under 0.1.314 and 0.1.318 daemons. `observed.test:unit` holds 1 file with 1 path: `resolve-browser-launch.test.ts` and `.ai/scripts/resolve-browser-launch.mjs`. `observed.root:test:unit`, both projects' `observedStartup.*` and their `observedDirect.*` hold nothing. The core stores only paths beyond a file's closure, and the closures that 0.1.319 stored at 18:58Z already hold what these files load.
 - **The legacy rows.** cezar still holds `nodeTest.observed.test:unit` (3 files, 60 paths), `nodeTest.observed.root:test:unit` (5 files, 18 paths) and `nodeTest.observed.test:package` (9 files, 1,490 paths; that project is no longer in `squeal.config.json`). The client monorepo holds `pytest.observed.pytest` (82 files, 1,441 paths) and `pytest.observedSession.pytest` (4 paths), but its newest daemon is 0.1.273. squeal and project-a hold none.
-- **Who reads them.** Nobody at 0.1.313 or later. 016-17 (`52699c24d`) deleted the four `nodeTest.observed*` and `pytest.observed*` key functions. `lifecycle.ts` polls only `observed.`, `observedDirect.` and `observedStartup.<project>` for each node:test and pytest project. A grep of `src/` finds no other reader. Tag: read in source code.
+- **Who reads them.** Nobody at 0.1.313 or later. 016-17 (`9eb2854dd`) deleted the four `nodeTest.observed*` and `pytest.observed*` key functions. `lifecycle.ts` polls only `observed.`, `observedDirect.` and `observedStartup.<project>` for each node:test and pytest project. A grep of `src/` finds no other reader. Tag: read in source code.
 - **Is anything lost?** 41 of the 60 legacy `test:unit` paths are in today's closures, and so are all 18 `root:test:unit` paths. The other 19 are `packages/contract/src/*.ts` files that `codex-reasoning-summary.test.ts` and `planner.test.ts` once loaded. A static walk that leaves out type-only imports reaches none of them now, and one that keeps type-only imports reaches all 19. They are stale entries of a map that was never pruned, not loads the core dropped. Tag: inferred from a static walk; no cezar test was run.
 - **The older daemons.** At 18:32Z, `squeal ps` showed 10 cezar daemons, all at 0.1.318, so no live daemon writes the legacy keys. D4's adapter version raise keeps any result that such a daemon stored apart from a new key.
 

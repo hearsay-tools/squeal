@@ -1,6 +1,6 @@
 # Wave 13bs: candidate 0.1.187, row 001-368
 
-FAIL `36c975413b0f765cd59c6ef736825a0ccfe3731b`: **1 blocker, 2 should-fix, 0 nits**. Review row 001-398; range `209dd922..36c97541`. Product files were not edited.
+FAIL `36c975413b0f765cd59c6ef736825a0ccfe3731b`: **1 blocker, 2 should-fix, 0 nits**. Review row 001-398; range `ad7bc0af..36c97541`. Product files were not edited.
 
 ## Verification output
 
@@ -143,7 +143,7 @@ None.
 - Retry results use `storeResults`, replacing the shared check/key rows. Its heal updates other worktrees' states; the added cross-worktree test asserts the asking worktree becomes PASS after the other worktree's retry. A failed retry leaves the counted FAIL.
 - Stop uses current known-state validity, not the forced queue as pending work; retry admission does not alter that rule. The added Stop test pins it. Pending retry records do not enter daemon owed work.
 - Both shared meta entries retain at most 1,024 items and survive worktree removal. The focused load probe wrote 1,025 distinct runs and returned `run load cap: 1024 oldest: r1`. Retry retention uses `slice(-1024)` and has a 1,025-request regression; the removal test names both shared constants.
-- The old-protocol probe used `parseRequest`/`errorResponse` from base commit `209dd922` behind a real temporary socket and called the new `retryCommand`: `older parser/socket: ["ping","unknown request type \"retry\""]`, `exit: 0`, `fallback text: true`, `request stays pending: true`. An older daemon's rejection does not erase the request or pretend it took it.
+- The old-protocol probe used `parseRequest`/`errorResponse` from base commit `ad7bc0af` behind a real temporary socket and called the new `retryCommand`: `older parser/socket: ["ping","unknown request type \"retry\""]`, `exit: 0`, `fallback text: true`, `request stays pending: true`. An older daemon's rejection does not erase the request or pretend it took it.
 - The shared primer includes retry guidance for every harness. With a 700-character command-path segment, Vitest/node:test/slow coverage was 1,409 characters; adding pytest was 1,466. Both retained the retry sentence and the complete not-covered closing sentence, below 1,500. The Codex retry reference folds to “the CLI's”.
 - Registration reports recording worktree, revision, load and retry history as facts. Normal retry recovery includes the flaky line and reason. It does not decide whether the failure is environmental. S2 bounds the historical-success association.
 - Key format remains 10, explicitly unreleased; its hash was re-pinned in the candidate. The guard result is included in the independent suite. All four plugin builds reproduce committed files.
@@ -156,9 +156,9 @@ B1's done-when is one invocation with A held and B seeing a newly joined request
 
 ---
 
-## Second-round addendum: ff4c3191, row 001-398
+## Second-round addendum: 0c5af3ef, row 001-398
 
-PASS `ff4c319134f05210a1559950fb1b8b2faffae95e`: **0 blockers, 0 should-fix, 0 nits**. B1, S1 and S2 above are resolved in this candidate. This judgment supersedes the first round's verdict for the rebuilt candidate only. Product files were not edited.
+PASS `0c5af3ef9a02717144e268369e5b66c556ff61c3`: **0 blockers, 0 should-fix, 0 nits**. B1, S1 and S2 above are resolved in this candidate. This judgment supersedes the first round's verdict for the rebuilt candidate only. Product files were not edited.
 
 ### Verification output
 
@@ -166,7 +166,7 @@ All commands and probes below ran with HEAD at the requested candidate, on a cle
 
 ```text
 $ git rev-parse HEAD
-ff4c319134f05210a1559950fb1b8b2faffae95e
+0c5af3ef9a02717144e268369e5b66c556ff61c3
 $ git status --short
 (no output)
 
@@ -209,7 +209,7 @@ RUN  v5.0.3 ~/projects/squeal/.ai/cezar/worktrees/6b713756-b550-403a-8012-dd930a
 (exit 0; npm also printed an update notice)
 
 $ git rev-parse HEAD
-ff4c319134f05210a1559950fb1b8b2faffae95e
+0c5af3ef9a02717144e268369e5b66c556ff61c3
 $ git status --short
 (no output)
 $ git diff --exit-code
@@ -220,7 +220,7 @@ The scoped Vitest process ran with `CODEX_SESSION_ID` unset, `GIT_CONFIG_GLOBAL=
 
 Per the re-review brief, no second independent full-suite run or Squeal checkpoint was requested: the coordinator was already running the flock-protected gate. This round's evidence is the scoped run and probes above, not a claim that this reviewer ran the complete suite at the new SHA. The first round's full-suite evidence remains specific to `36c97541`.
 
-`git range-diff 209dd922..edd26d54 6a16fb20..1dbc0bd8` returned twelve `=` matches, with no changed, added or omitted commits. The original 001-368 implementation and notes are unchanged picks. The new product delta is the three repairs in `9e3cdb7c`, `b792a5e7`, `d50c483a`, the key re-pin/version/bundles, plus test-only row 001-395 and its notes. Main's unrelated OpenCode/update changes were not re-prosecuted.
+`git range-diff ad7bc0af..edd26d54 79f68114..5c7e01dd` returned twelve `=` matches, with no changed, added or omitted commits. The original 001-368 implementation and notes are unchanged picks. The new product delta is the three repairs in `1da59e50`, `76611d5f`, `416e447f`, the key re-pin/version/bundles, plus test-only row 001-395 and its notes. Main's unrelated OpenCode/update changes were not re-prosecuted.
 
 ### B1 resolved: one claimant for the file and key
 

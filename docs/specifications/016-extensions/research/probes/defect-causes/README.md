@@ -6,7 +6,7 @@ Throwaway. These scripts read this repository's docs and the GitHub issue list, 
 - `rows.mjs <repo-root>`: every board row in `docs/board.md` and 001's `board-archive.md`, with its section and a first guess at its origin.
 - `items.mjs <repo-root> <reviews.jsonl> <rows.jsonl> <issues.json>`: one item list. FAIL-review items, escaped-defect rows, the board's Later list, and GitHub issues no row names.
 - `classes.tsv`: the researcher's reading. One primary class per item, an optional secondary, and a reason for A and B. This file is the judgement; the scripts only count it.
-- `tally.mjs`, `cost.mjs`, `location.mjs`: counts, cost and a cross-check by cited path. Their output at `f6320cd7e` is in `*-output.txt`.
+- `tally.mjs`, `cost.mjs`, `location.mjs`: counts, cost and a cross-check by cited path. Their output at `acb96dfa6` is in `*-output.txt`.
 
 Rerun, from this directory:
 
@@ -23,4 +23,4 @@ node location.mjs /tmp/dc-items.jsonl classes.tsv
 
 `rows2.mjs` drops `origin: feature` rows and sets `kind`: `process-row` when the title names a review, research, survey, proof, probe, measure, release, eval or design; `review-repair-row` when it names a repair, a fix of, B<n> or S<n>; otherwise `defect-row`.
 
-Item ids depend on file order at `f6320cd7e`. A later board or review changes them, so `classes.tsv` matches only that commit.
+Item ids depend on file order at `acb96dfa6`. A later board or review changes them, so `classes.tsv` matches only that commit.

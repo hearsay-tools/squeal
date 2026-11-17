@@ -46,7 +46,7 @@ Done when: the notes give the phases and their times from at least 10 runs besid
 
 ## R1: review of cand/0.1.272
 
-Use /reviewer. Shape: review. Pinned to `cand/0.1.272` at e95d2b1c30d41e1eb3c5ee2eebc333c32215f126; the range is `1fa750ba5..e95d2b1c3` (`origin/main` at 1fa750ba5): W1's two commits (011-124, worker 4d01c305), W2's three (006-97, worker 720c25d1), one docs commit (011 C15, 006 D3, both `status.md` files), W3's three (011-122, worker 61519d18), its docs commit (011 C7, `status.md`) and the release commit (0.1.272, bundles).
+Use /reviewer. Shape: review. Pinned to `cand/0.1.272` at fe276dd216462753f518dc01937075b81d5e0b1a; the range is `75a3d45cf..fe276dd21` (`origin/main` at 75a3d45cf): W1's two commits (011-124, worker 4d01c305), W2's three (006-97, worker 720c25d1), one docs commit (011 C15, 006 D3, both `status.md` files), W3's three (011-122, worker 61519d18), its docs commit (011 C7, `status.md`) and the release commit (0.1.272, bundles).
 
 Read this file (W1 to W3), the notes under `011-core/tasks/011-124/`, `006-model-evals/tasks/006-97/` and `011-core/tasks/011-122/`, board rows 011-124, 006-97 and 011-122 (and the rows they filed: 011-125, 006-98, 011-126), the amended 011 C7 and C15 and 006 D3 sentences, and the three new `status.md` lines. Check that:
 - 011-124 (narrowed by the coordinator to option C, request 21691955): a queued file under another worktree's claim names the claim only with no result stored at its key; the store read writes no last use; a stale or unknown file keeps the claim; `pauseOnlyIds` follows; no type changed;

@@ -1,11 +1,11 @@
 # Wave 0 review: Linux source and shared types
 
-FAIL 4b5d200a7aa402df9e9bae5f76f0377a1467b09a
+FAIL 96d0a34c0c65e0d714299e270b5b1913a84975df
 
 One proven blocker, one plausible should-fix, one proven documentation nit.
 
-Candidate: `cand/014-04`, pinned to `4b5d200a7aa402df9e9bae5f76f0377a1467b09a`.
-Range: `8abf2531c..4b5d200a7`. Reviewed against D1 to D11 and the two accepted 014-04 amendments. No product code changed.
+Candidate: `cand/014-04`, pinned to `96d0a34c0c65e0d714299e270b5b1913a84975df`.
+Range: `9f57a9523..96d0a34c0`. Reviewed against D1 to D11 and the two accepted 014-04 amendments. No product code changed.
 
 ## Verification output
 
@@ -13,7 +13,7 @@ Checks ran on the exact pinned commit, with no tracked changes before, during or
 
 ```text
 $ git rev-parse HEAD
-4b5d200a7aa402df9e9bae5f76f0377a1467b09a
+96d0a34c0c65e0d714299e270b5b1913a84975df
 $ git status --short
 (no output)
 

@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `adcd991623801b86a67b8f652d606ba187523d4c`, version 0.1.84. Scope: `fefaa9d7` (growth settle and its regression test) and `adcd9916` (version and both plugin bundles). Second and last round for 003-43. The prior findings are `reviews/wave-4.md`. 001-194 is outside this review; no result below credits its later changes.
+Candidate: `77a403879605890a3c323deca4473c8a3abdcd57`, version 0.1.84. Scope: `d104695e` (growth settle and its regression test) and `77a40387` (version and both plugin bundles). Second and last round for 003-43. The prior findings are `reviews/wave-4.md`. 001-194 is outside this review; no result below credits its later changes.
 
-The assigned checkout started at `9df47642`, two documentation commits after the candidate. Only `docs/board.md`, this spec's `status.md` and its brief differ. Verification ran in a separate detached `/tmp` worktree at the exact candidate, clean before and after the checks. Only this report is committed in the assigned checkout. Node 24.21.0 and 22.23.3, Linux.
+The assigned checkout started at `6c58066b`, two documentation commits after the candidate. Only `docs/board.md`, this spec's `status.md` and its brief differ. Verification ran in a separate detached `/tmp` worktree at the exact candidate, clean before and after the checks. Only this report is committed in the assigned checkout. Node 24.21.0 and 22.23.3, Linux.
 
 ```text
 $ git rev-parse HEAD  # detached verification checkout
-adcd991623801b86a67b8f652d606ba187523d4c
+77a403879605890a3c323deca4473c8a3abdcd57
 
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
@@ -68,7 +68,7 @@ This is the reviewer's independent Vitest gate, as the repository requires, not 
 
 ### Discriminating probe and pre-fix control
 
-One external test uses the exact candidate's real node:test adapter, scheduler, store and state sink, plus public `waitForStatus`. It asserts the bad behavior described in B1 below. A corresponding test imports exact pre-fix `7c0461ea` sources and asserts the correct wait in the same sequence. The injected sync follows the daemon's capture-revision -> `refined()` -> `rekeyedSince(after, captured)` sequence. No socket transport is exercised. The candidate uses the adapter's ordinary lane and real per-file durations.
+One external test uses the exact candidate's real node:test adapter, scheduler, store and state sink, plus public `waitForStatus`. It asserts the bad behavior described in B1 below. A corresponding test imports exact pre-fix `b7bae0a6` sources and asserts the correct wait in the same sequence. The injected sync follows the daemon's capture-revision -> `refined()` -> `rekeyedSince(after, captured)` sequence. No socket transport is exercised. The candidate uses the adapter's ordinary lane and real per-file durations.
 
 ```text
 $ node ./node_modules/vitest/vitest.mjs run --config <external>/vitest.config.mts
@@ -87,7 +87,7 @@ Duration  7.95s (tests 84%, transform 14%, import 3%)
 (exit 0)
 
 $ node ./node_modules/vitest/vitest.mjs run --config <external>/before.config.mts
-Node 24.21.0, pre-fix 7c0461ea
+Node 24.21.0, pre-fix b7bae0a6
 Test Files  1 passed (1)
      Tests  1 passed (1)
 Duration  8.13s (tests 87%, transform 11%, import 2%)
@@ -95,7 +95,7 @@ Duration  8.13s (tests 87%, transform 11%, import 2%)
 
 $ ~/.nvm/versions/node/v22.23.3/bin/node \
     ./node_modules/vitest/vitest.mjs run --config <external>/before.config.mts
-Node 22.23.3, pre-fix 7c0461ea
+Node 22.23.3, pre-fix b7bae0a6
 Test Files  1 passed (1)
      Tests  1 passed (1)
 Duration  8.18s (tests 86%, transform 11%, import 2%)
@@ -106,7 +106,7 @@ An initial config import failed before running a test and was corrected. The ini
 
 ## Verdict
 
-**FAIL adcd9916**. One proven remaining blocker in growth-window attribution. No should-fix findings. One resolved provenance nit. The original seven-step B1 reproduction is closed on Node 22 and 24: an outstanding edit keeps its revision through later unrelated growth. The converse boundary is broken by this delta: an already completed attribution is also preserved, so later growth is assigned to a completed window instead of the current one. The wait can still report quiet while the regrown files need results.
+**FAIL 77a40387**. One proven remaining blocker in growth-window attribution. No should-fix findings. One resolved provenance nit. The original seven-step B1 reproduction is closed on Node 22 and 24: an outstanding edit keeps its revision through later unrelated growth. The converse boundary is broken by this delta: an already completed attribution is also preserved, so later growth is assigned to a completed window instead of the current one. The wait can still report quiet while the regrown files need results.
 
 ## Blockers
 
@@ -114,7 +114,7 @@ An initial config import failed before running a test and was corrected. The ini
 
 **Proven on Node 24.21.0 and 22.23.3, with a passing pre-fix control on both.** The new partition at `src/core/scheduler/tiers.ts:380` treats every non-null `keyedAt` as an outstanding edit and settles it without a new attribution at `:383`. At this candidate, `Ledger.applyResults` (`src/core/scheduler/ledger.ts:236`) does not clear `keyedAt`. A completed edit, or even the first baseline growth at revision 0, therefore leaves a non-null historical value.
 
-This is a regression in the changed boundary, not a request to review pre-existing ledger behavior in general. Before `fefaa9d7`, growth assigned the latest revision and handled these completed files correctly. Preserving an outstanding earlier revision repairs the prior reproduction, but preserving a completed one assigns new work to a window the file has already discharged.
+This is a regression in the changed boundary, not a request to review pre-existing ledger behavior in general. Before `d104695e`, growth assigned the latest revision and handled these completed files correctly. Preserving an outstanding earlier revision repairs the prior reproduction, but preserving a completed one assigns new work to a window the file has already discharged.
 
 The brief asks whether “no growth move [...] attribute[s] a file to a window it does not owe.” The growth contract in `tiers.ts:375` also puts a file with no outstanding edit into the latest revision's window. Spec 001's wait contract, quoted by `src/cli/status-wait-edit.ts:15`, holds for a window's rekeyed files until they have results under their new keys; completed windows no longer own later work. `Scheduler.rekeyedSince` at `scheduler.ts:307` reports the retained historical revision. `unseenRevisions` at `status-wait-edit.ts:115` sees that the prior result already discharged it and excludes the still-pending file.
 
@@ -129,7 +129,7 @@ Reproduction:
 7. Release the held siblings only after recording the result, then drain and close the scheduler.
 
 ```text
-                                     adcd9916             pre-fix 7c0461ea
+                                     77a40387             pre-fix b7bae0a6
 workspace / captured revision        2 / 2                2 / 2
 attribution a / b / c                 1 / 2 / 0            2 / 2 / 2
 actual a / b / c pending              held / none / held   held / none / held
@@ -151,7 +151,7 @@ None.
 
 ### N1. The assigned checkout was ahead of the named candidate
 
-**Proven, resolved for this review.** `HEAD` initially was `9df47642`; executable files match `adcd9916`. Exact-candidate verification in the detached checkout resolves the provenance mismatch. No product change is needed.
+**Proven, resolved for this review.** `HEAD` initially was `6c58066b`; executable files match `77a40387`. Exact-candidate verification in the detached checkout resolves the provenance mismatch. No product change is needed.
 
 ## What fits
 

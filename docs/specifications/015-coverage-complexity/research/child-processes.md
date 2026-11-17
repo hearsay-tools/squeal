@@ -1,6 +1,6 @@
 # R3: code that tests reach only through child processes
 
-Researcher, 2026-10-24. Brief: R3 in `../tasks/wave-2.md` (spec open question 3). Probes: `probes/child-processes/` (throwaway; all runs in a scratch copy under `/tmp`; no agent session, no live daemon). Versions examined: this repository at 2e36f1ed2, Node 24.21.0, Vitest 5.0.3, `@vitest/coverage-v8` 5.0.3, tsx 4.23.15, v8-to-istanbul 9.3.0, Squeal's counter version 2.
+Researcher, 2026-10-24. Brief: R3 in `../tasks/wave-2.md` (spec open question 3). Probes: `probes/child-processes/` (throwaway; all runs in a scratch copy under `/tmp`; no agent session, no live daemon). Versions examined: this repository at 4f6e615e6, Node 24.21.0, Vitest 5.0.3, `@vitest/coverage-v8` 5.0.3, tsx 4.23.15, v8-to-istanbul 9.3.0, Squeal's counter version 2.
 
 Runs, under the full-run lock at `--maxWorkers=4`: run 1, the full suite with child coverage; run 2, the full suite with in-process coverage. The parent allowed run 2 because run 1 wrote no in-process report: 8 files failed, and `coverage.reportOnFailure` is false by default. Run 3 re-ran the 36 pytest-related test files, which runs 1 and 2 skipped because the scratch `HOME` hid uv's Pythons.
 

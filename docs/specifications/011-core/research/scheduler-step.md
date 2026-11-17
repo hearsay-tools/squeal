@@ -1,10 +1,10 @@
 # Scheduler step: one place that decides what runs next
 
-Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 7). Rechecked on main at `524c63be3` (0.1.511) on 2026-11-15 by design session 1610b2d4. Terms: `GLOSSARY.md` (Scheduler step, Scheduler event, Scheduler decision, Wake, Rest; Admission, Tier plan, Yield, Lane). The decisions below are the human's, taken one at a time on 2026-11-15. Rows 011-351 to 011-357. This is the last card of the scheduler lane, after cards 2 (`request-intake.md`), 5 (`admission.md`) and 6 (`tier-plan.md`), which left it the order in which the lanes are asked, the yield's events, timers and record, and every decision as one step.
+Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 7). Rechecked on main at `e46e8261e` (0.1.511) on 2026-11-15 by design session 1610b2d4. Terms: `GLOSSARY.md` (Scheduler step, Scheduler event, Scheduler decision, Wake, Rest; Admission, Tier plan, Yield, Lane). The decisions below are the human's, taken one at a time on 2026-11-15. Rows 011-351 to 011-357. This is the last card of the scheduler lane, after cards 2 (`request-intake.md`), 5 (`admission.md`) and 6 (`tier-plan.md`), which left it the order in which the lanes are asked, the yield's events, timers and record, and every decision as one step.
 
 ## Problem
 
-What the scheduler does next is decided inside one async loop, the pump (`src/core/scheduler/scheduler.ts` `#pump`, about line 1053; the file has 1,578 lines and the class about 77 methods). Many owners wake it, and its decisions are mixed with store writes, runner calls and timers. Read in source code at `524c63be3`:
+What the scheduler does next is decided inside one async loop, the pump (`src/core/scheduler/scheduler.ts` `#pump`, about line 1053; the file has 1,578 lines and the class about 77 methods). Many owners wake it, and its decisions are mixed with store writes, runner calls and timers. Read in source code at `e46e8261e`:
 
 **Timers.** 13 owners arm their own timer, sleep or poll:
 
@@ -34,7 +34,7 @@ What the scheduler does next is decided inside one async loop, the pump (`src/co
 | Fix commits in those files | 43 | 21 |
 | Of those fixes, clocks or timers | 3 | 1 |
 
-Of the 21 recent fixes, about 9 had a cause a single step would plausibly prevent: facts or events read at different moments, a wake owned outside the decision, a rule applied to only some lanes. Rows of cards 2, 5 and 6 already fixed 5 of those 9. The other 12 (busy-store writes 3, status wording 3, ownership 2, rule content 4) a restructure would not prevent. Of the 7 recent blockers, the step would plausibly have caught 1 to 3. Three slow-lane blockers came from the waits inside a lane's decision: a fact checked before a wait and not after (0.1.262 B3, 0.1.269 B1) and one group's load wait holding back another (019 `reviews/0.1.396.md` B1, fixed 2026-11-03 by `2042d3781`); none since 2026-11-04. The shape that produced 0.1.396 B1 is still there: the lanes are asked one at a time, each with its own timer on its own clock.
+Of the 21 recent fixes, about 9 had a cause a single step would plausibly prevent: facts or events read at different moments, a wake owned outside the decision, a rule applied to only some lanes. Rows of cards 2, 5 and 6 already fixed 5 of those 9. The other 12 (busy-store writes 3, status wording 3, ownership 2, rule content 4) a restructure would not prevent. Of the 7 recent blockers, the step would plausibly have caught 1 to 3. Three slow-lane blockers came from the waits inside a lane's decision: a fact checked before a wait and not after (0.1.262 B3, 0.1.269 B1) and one group's load wait holding back another (019 `reviews/0.1.396.md` B1, fixed 2026-11-03 by `2d6ea5c44`); none since 2026-11-04. The shape that produced 0.1.396 B1 is still there: the lanes are asked one at a time, each with its own timer on its own clock.
 
 **The test picture** (estimated by grep):
 - 229 of 298 files in `test/scheduler/` wait in real time (`expect.poll` in 99 files, `waitFor` in 31, sleeps in 59, `scheduler.idle()` only in 81 more). 5 use fake timers, each on one module. The injected clock (`SchedulerOptions.now`) changes readings only; timers stay real.

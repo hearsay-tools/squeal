@@ -8,14 +8,14 @@ that previously ran after a warning. Implementation is not authorized here.
 
 **Reproduced**, with the exact reported warning, on installed Squeal **0.1.414**.
 The child ran with no hold row and the wrapper exited **0**. Research date:
-2026-11-07. Source commit: `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`.
+2026-11-07. Source commit: `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`.
 Node: `v24.22.1`. No product code, spec, status, skill or board changed.
 
 | Question from the brief | Answer and evidence |
 | --- | --- |
 | 1. Does a locked store still permit the command? | **verified by experiment, 0.1.414**: exact warning; child marker present; zero hold rows at child start; exit 0. |
 | 2. Which source path causes it? | **read in source code, 0.1.414 and 0.1.407**: `withStore` converts the write error to a string; `holdCommand` prints it and proceeds to `run`. |
-| 3. How does it relate to C9/C10? | **read in source code, spec at d3f363054**: C9 promises a worktree hold and explicitly permits running without a store; it does not expressly permit running after an existing store's write fails. C10 capacity does not provide a substitute for a hold. |
+| 3. How does it relate to C9/C10? | **read in source code, spec at b598e5dc8**: C9 promises a worktree hold and explicitly permits running without a store; it does not expressly permit running after an existing store's write fails. C10 capacity does not provide a substitute for a hold. |
 | 4. What do the reported versions establish? | **read in source code, 0.1.407/0.1.414**: the relevant hold files changed only their imports. The issue reports 0.1.407 and an unspecified 0.1.41x; those incident runtimes were not replayed. The tested runtime identifies itself as 0.1.414. |
 
 ## 1. Isolated reproduction
@@ -98,7 +98,7 @@ git diff squeal--v0.1.407 HEAD -- src/cli/hold.ts src/core/scheduler/hold-rows.t
 sha256sum plugins/claude-code/dist/cli/squeal.mjs ~/.codex/plugins/data/squeal-hearsay/versions/0.1.414/dist/cli/squeal.mjs
 ```
 
-The 0.1.407 tag resolves to `7fd4a39c9cd0e904973efb453edf3f4cf17d6d44`.
+The 0.1.407 tag resolves to `41b6a48fb29744fdb1aa40648a324c1c225f66f0`.
 The two hold files differ only in imports. Both current CLI bundles hash to
 `c44681839af3b88b9056327d1837c4bc7407c7e4b876d756991407cedfbba596`.
 The probe runs the installed version's CLI directly and records its `--version`
@@ -106,7 +106,7 @@ output. The issue's `0.1.41x` is not an exact version and remains unspecified.
 
 ## 3. Contract and open questions
 
-**read in source code, spec at d3f363054.** C9 says: “Without a store,
+**read in source code, spec at b598e5dc8.** C9 says: “Without a store,
 `squeal hold` runs the command and says that nothing is on hold.”
 `test/cli/hold.test.ts` explicitly covers that fallback and a daemon refusing
 the hold. The current branch conflates missing store, failed opening and failed
@@ -126,9 +126,9 @@ are not determined because the report supplies neither.
 - [Issue 162](https://github.com/hearsay-tools/squeal/issues/162), fetched with
   `gh issue view 162 --repo hearsay-tools/squeal --json title,body,comments,url`;
   incident claims remain reporter evidence, not replayed benchmark results.
-- [Current hold source](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/cli/hold.ts),
+- [Current hold source](https://github.com/hearsay-tools/squeal/blob/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a/src/cli/hold.ts),
   plus the store and hold-row paths above, read from this checkout.
-- [0.1.407 hold source](https://github.com/hearsay-tools/squeal/blob/7fd4a39c9cd0e904973efb453edf3f4cf17d6d44/src/cli/hold.ts),
+- [0.1.407 hold source](https://github.com/hearsay-tools/squeal/blob/41b6a48fb29744fdb1aa40648a324c1c225f66f0/src/cli/hold.ts),
   read through the local release tag and compared with this checkout.
 - [Spec C9/C10](../spec.md), [amendments](../status.md) for rows 011-61,
   011-74 and 011-211, and [original design](../tasks/011-61/design.md).

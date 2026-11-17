@@ -1,6 +1,6 @@
 # Row 020-49 notes: the gate says why it reran a file a usable part held (#205)
 
-Worker acd0aae8, 2026-11-13. Shape: slice. Base: main at f15692098 (0.1.464).
+Worker acd0aae8, 2026-11-13. Shape: slice. Base: main at e5d25a9eb (0.1.464).
 
 ## What changed
 
@@ -109,7 +109,7 @@ The done-when line most likely to be false was "a later store hit reads apart fr
 - `squeal code` on the changed source files: every function at or under complexity 20 (`gate` 19 after `afterVerdict`, `partsEvidence`'s lookup 17, `taken` 12). CRAP unknown while the affected tests are queued.
 - Expected failures: the four bundle tests above fail from revision 27 on. This is bundle drift: the source changed and the wave forbids `pnpm run build` in a worker tree. The coordinator's rebuild at integration clears them.
 - `test/cli/code-gate-parts-environment.test.ts`: two cases failed at revision 28. They compare a gate with parts to one without, through `sameApartFromSource`, which left out `from` but not the new `refused`. The helper now leaves out `refused` too, and both cases assert the `environment` reason. They pass at revision 29.
-- Affected-test verdict: `squeal status --wait 60000 $(git diff --name-only f15692098..HEAD -- src test)` at revision 30 (commit `dabadaf5e`): 372 test files selected, each with a current result. 368 pass. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. 9 test files elsewhere in the worktree are unknown (never run here; the baseline is lookup-only); none is in this selection.
+- Affected-test verdict: `squeal status --wait 60000 $(git diff --name-only e5d25a9eb..HEAD -- src test)` at revision 30 (commit `dabadaf5e`): 372 test files selected, each with a current result. 368 pass. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. 9 test files elsewhere in the worktree are unknown (never run here; the baseline is lookup-only); none is in this selection.
 
 ## Checks not run
 
@@ -188,5 +188,5 @@ Replace the example `` `Vitest: 2 test files not taken from the parts, 2 run her
 - `pnpm exec vitest run test/cli/code-gate-parts-unstarted.test.ts`: 1 passed in 9.84 s, load 3.70 on 24 CPUs. With `parts-refused.ts` from `d6ec89d20` put back for one run, it fails on the expected line and prints `1 run here`; the fix was then restored.
 - `squeal status --wait 60000 test/code/gate/report-refused.test.ts`: pass at revision 33.
 - Not run: the full suite and `pnpm run build` (wave rule). The bundles still drift until the coordinator rebuilds.
-- `git fetch origin` failed twice with HTTP 502 from GitHub; the repair brief and review were read from the local `origin/main` ref at `2ab1588ff` (2026-11-13 11:01 +0100), which already holds both.
+- `git fetch origin` failed twice with HTTP 502 from GitHub; the repair brief and review were read from the local `origin/main` ref at `e4fabf191` (2026-11-13 11:01 +0100), which already holds both.
 

@@ -2,7 +2,7 @@
 
 Recommendation: do not treat #39 as a path-resolution bug. Named paths already resolve against the caller's working directory on every version examined. The second symptom is #6/#30's selector, fixed in 0.1.204, on a plugin that was 0.1.199 until 12:50Z on the day the issue was filed. What is left is a human scope decision about guidance for an unmatched path that would match from the worktree root.
 
-Examined 2026-10-19, 16:11 to 16:24 CEST. Checkout `036be0a0` (package 0.1.222). Installed Claude Code and Codex plugins are both 0.1.222 (`installed_plugins.json`: user scope `lastUpdated 2026-10-19T12:50:15Z`, commit `1612b9e0`), and `squeal --version` prints 0.1.222. Cached 0.1.199 was examined too. The checkout bundle and the installed 0.1.222 bundle hash the same (`94380a2e…`). Load before work was 3.60 / 4.36 / 4.64 on 24 CPUs (`uptime`, `nproc`). The probe ran at 3.2, and the live calls at 2.57 to 4.12. The load stayed below the CPU count throughout, so the live attempt was allowed. Documentation only: no product, board, spec, status or skill edits.
+Examined 2026-10-19, 16:11 to 16:24 CEST. Checkout `a9156c90` (package 0.1.222). Installed Claude Code and Codex plugins are both 0.1.222 (`installed_plugins.json`: user scope `lastUpdated 2026-10-19T12:50:15Z`, commit `4e4f2a36`), and `squeal --version` prints 0.1.222. Cached 0.1.199 was examined too. The checkout bundle and the installed 0.1.222 bundle hash the same (`94380a2e…`). Load before work was 3.60 / 4.36 / 4.64 on 24 CPUs (`uptime`, `nproc`). The probe ran at 3.2, and the live calls at 2.57 to 4.12. The load stayed below the CPU count throughout, so the live attempt was allowed. Documentation only: no product, board, spec, status or skill edits.
 
 ## Questions answered
 
@@ -15,7 +15,7 @@ Examined 2026-10-19, 16:11 to 16:24 CEST. Checkout `036be0a0` (package 0.1.222).
 
 ## Findings
 
-1. **Resolution is cwd-based, as git and vitest do it.** `worktreePath` (`src/cli/status-wait-paths.ts:120`) returns `relative(root, resolve(base, path))` for `base` in `[cwd, realpath(cwd)]`, with `null` outside the root. `cwd` is `io.cwd ?? process.cwd()` (`:345`, `src/cli/index.ts:13`). The plugin's `bin/squeal` only `exec`s node and changes no directory. It has been this way since 005-11 (`9048e3d2`). *read in source code, checkout 0.1.222.* Issue #39's suggested fix ("resolve against the caller's working directory") is therefore already the behaviour. Its first case is a repo-relative path typed from a subdirectory. git, vitest and Squeal all treat that as cwd-relative. *inferred.*
+1. **Resolution is cwd-based, as git and vitest do it.** `worktreePath` (`src/cli/status-wait-paths.ts:120`) returns `relative(root, resolve(base, path))` for `base` in `[cwd, realpath(cwd)]`, with `null` outside the root. `cwd` is `io.cwd ?? process.cwd()` (`:345`, `src/cli/index.ts:13`). The plugin's `bin/squeal` only `exec`s node and changes no directory. It has been this way since 005-11 (`6f5c41b0`). *read in source code, checkout 0.1.222.* Issue #39's suggested fix ("resolve against the caller's working directory") is therefore already the behaviour. Its first case is a repo-relative path typed from a subdirectory. git, vitest and Squeal all treat that as cwd-relative. *inferred.*
 2. **Probe output.** In the summary, each cell is selected/browsers:
 
    | Case (cwd) | 0.1.222 / checkout | 0.1.199 |
@@ -50,7 +50,7 @@ Examined 2026-10-19, 16:11 to 16:24 CEST. Checkout `036be0a0` (package 0.1.222).
 ## Sources
 
 - https://github.com/hearsay-tools/squeal/issues/39 (`gh issue view 39 -R hearsay-tools/squeal --json …`, 2026-10-19)
-- `src/cli/status-wait-paths.ts` (`selectNamedFiles`, `worktreePath`, `waitForNamed`), `src/cli/status-wait-lines.ts:179-180`, `src/cli/index.ts:13`, `src/core/keys/closure.ts`, `plugins/claude-code/bin/squeal`, checkout `036be0a0`
+- `src/cli/status-wait-paths.ts` (`selectNamedFiles`, `worktreePath`, `waitForNamed`), `src/cli/status-wait-lines.ts:179-180`, `src/cli/index.ts:13`, `src/core/keys/closure.ts`, `plugins/claude-code/bin/squeal`, checkout `a9156c90`
 - Installed bundles `~/.claude/plugins/cache/hearsay/squeal/{0.1.222,0.1.199}/dist/cli/squeal.mjs`, and `~/.claude/plugins/installed_plugins.json`
 - `../../005-agent-adoption/spec.md` D2. `../../005-agent-adoption/research/issue-30.md` and its probe, whose method is reused here. Board row 005-67 in `docs/board.md`
 - `spec.md` C6 and C15, and `status.md` (amendments through 2026-10-18)

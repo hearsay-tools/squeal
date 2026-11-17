@@ -2,7 +2,7 @@
 
 **Throwaway.** Nothing here is product code. These files exist only to produce the evidence in `../../wait-from-store.md` (task 001-256). Delete them freely.
 
-They run the real scheduler, Vitest adapter, store and sink (`test/scheduler/helpers.ts`) and the real `waitForStatus`, at commit 8e5e5462. Only the wait's `sync` is replaced:
+They run the real scheduler, Vitest adapter, store and sink (`test/scheduler/helpers.ts`) and the real `waitForStatus`, at commit dad7edbd. Only the wait's `sync` is replaced:
 
 - `shadow.ts`: a prototype store record, one entry per test file and re-key revision, open or resolved at a commit sequence number, plus `caughtUpAt` and a `dropped` watermark. Knobs: `perFile`, `openOnly`, `noReopen` and `ageOnly` are the controls; `now` shifts the commit clock.
 - `mock.ts`: the `vi.mock` factory that wraps `recordRekeyed`, so every `Ledger.commit` writes the prototype in its own transaction, after the real record.

@@ -16,7 +16,7 @@ These probes inspect coverage without changing product code. They create a uniqu
 Run from this research checkout, with its existing pnpm-installed dependencies. The recorded scratch paths were `/tmp/squeal-002-42-main` and `/tmp/squeal-002-42-candidate`; both were removed after research. Use unused paths if reproducing alongside other work.
 
 ```sh
-git worktree add --detach /tmp/squeal-002-42-main 40259a9e4
+git worktree add --detach /tmp/squeal-002-42-main 1876b58e3
 git worktree add --detach /tmp/squeal-002-42-candidate 9401c1d08
 ln -s "$PWD/node_modules" /tmp/squeal-002-42-main/node_modules
 ln -s "$PWD/node_modules" /tmp/squeal-002-42-candidate/node_modules

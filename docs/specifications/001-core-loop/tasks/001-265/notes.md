@@ -19,8 +19,8 @@ The row revision is compared beside the key. An ABA move by another writer (K to
 
 | Succession | Result |
 | --- | --- |
-| New answers the sync, old refines the capture (the review's case) | The row differs, so `incomplete` and the fallback. `status-wait-successor.test.ts`, red at 6864b726. |
-| New's window is built, then old moves a key at a captured revision | The poll after drops the window and falls back. Same file, red at 6864b726. |
+| New answers the sync, old refines the capture (the review's case) | The row differs, so `incomplete` and the fallback. `status-wait-successor.test.ts`, red at 860f6464. |
+| New's window is built, then old moves a key at a captured revision | The poll after drops the window and falls back. Same file, red at 860f6464. |
 | Old moved keys, then new replaces it and answers | The new ledger's first commit takes the queued rows in as open moves. A wait from before falls back; a later one holds for them. `unrecorded-rows.test.ts`, red with the adoption removed. |
 | 0.1.113/0.1.114 (moves without keys) before or after this | It drops `keys` when it rewrites the record, so the record vouches for nothing; the next new ledger takes every row in. |
 | New after new | The marks match and nothing is taken in. No extra hold. |

@@ -1,6 +1,6 @@
 # Progress records: each of the daemon's progress records has one owner beside its writer
 
-This is the design brief from the architecture review of 2026-11-12, report card 4. Sources: main at `6eb3c3a0a`, rechecked at `cda899453` on 2026-11-14; Cezar task af6c0b3f, report artifact d8b46fe2. The design session is task 6f1379b9.
+This is the design brief from the architecture review of 2026-11-12, report card 4. Sources: main at `4cdedf4ae`, rechecked at `3843270a3` on 2026-11-14; Cezar task af6c0b3f, report artifact d8b46fe2. The design session is task 6f1379b9.
 
 - Terms are in `GLOSSARY.md`: Progress record, Refined revision.
 - The decisions below are the human's, taken on 2026-11-14.
@@ -10,7 +10,7 @@ This is the design brief from the architecture review of 2026-11-12, report card
 
 The daemon keeps six small records per worktree that say how far it has got. Spec 001 D2, D5 and D6 and task 001-406 define them.
 
-| Record | What it says | Writers | Readers (source files, at `cda899453`) |
+| Record | What it says | Writers | Readers (source files, at `3843270a3`) |
 |---|---|---|---|
 | refined revision | the newest revision whose runner part the daemon applied | `scheduler/ledger.ts` (commit), `scheduler/refine-apply.ts` (after a failed refinement) | `state/header.ts`, `delivery/edits.ts`, `scheduler/bootstrap.ts`, `scheduler/rekeyed-moves.ts` |
 | install wait, with its command | the worktree waits for a package install, and the command that ends it | `scheduler/install.ts` | `state/header.ts`, `cli/wait/progress.ts` |
@@ -25,21 +25,21 @@ Their key builders and parsers sit in `types/scheduler.ts` and `types/daemon.ts`
 
 | First written | Reader | Shape | A missing record becomes |
 |---|---|---|---|
-| 2026-10-06 `4cd3979eb` | header | is the runner part pending | `null`, so not pending |
-| 2026-10-08 `5ccb6d4ab` | start scan | where the re-scan starts | the latest revision, so nothing to re-scan ("as the header reads it": a copy) |
-| 2026-10-10 `86a80df3d` | edit notes in a delivery | a number to compare | +Infinity, so every revision is refined |
-| 2026-10-11 `9d070a223` | re-key moves | is it caught up | `null`, so caught up |
+| 2026-10-06 `7b1ec9685` | header | is the runner part pending | `null`, so not pending |
+| 2026-10-08 `4b4bee998` | start scan | where the re-scan starts | the latest revision, so nothing to re-scan ("as the header reads it": a copy) |
+| 2026-10-10 `9dc5bb3b6` | edit notes in a delivery | a number to compare | +Infinity, so every revision is refined |
+| 2026-10-11 `df2124b2b` | re-key moves | is it caught up | `null`, so caught up |
 
 All four mean the same: with no refined revision recorded, no revision counts as pending. The card said they mean three different things; read in source code, they do not. No new copy has been written since 2026-10-11. The other records already have one shared parser each, which every reader uses.
 
-The two writers of the refined revision record two events: the runner part was applied (the ledger's commit, in the transaction that applies it), and a refinement failed and counts as refined so no wait hangs (since 2026-11-11, `12fb9ac35`). The ledger sets the value; the failure path only raises it. Refinements run one revision after the next, so the value never goes down today (read in source code, not run).
+The two writers of the refined revision record two events: the runner part was applied (the ledger's commit, in the transaction that applies it), and a refinement failed and counts as refined so no wait hangs (since 2026-11-11, `5316d2a3e`). The ledger sets the value; the failure path only raises it. Refinements run one revision after the next, so the value never goes down today (read in source code, not run).
 
 ### What the history shows
 
-Counted on 2026-11-14 at `cda899453`.
+Counted on 2026-11-14 at `3843270a3`.
 
 - **Review blockers since 2026-11-04:** 0 of 174 blocker headings in the review files added since then concern these records.
-- **Fix commits since 2026-10-20 that changed a line naming these keys or parsers:** 17 commits, 4 of them fixes (`16e27c590`, `4683a0106`, `544860ee1`, `f55dfbb17`). About 2 have the shape "a fact reached some readers and not others": `16e27c590` (a group wait's deadline did not name the install wait the header named) and `4683a0106` (review 0.1.315 B2: the code pass read the refined revision where it needed the listing). The card's 97 commits and 28 fixes counted every change to the readers' whole files.
+- **Fix commits since 2026-10-20 that changed a line naming these keys or parsers:** 17 commits, 4 of them fixes (`e07ffcdcb`, `ddd416833`, `f14b88b75`, `05c81234f`). About 2 have the shape "a fact reached some readers and not others": `e07ffcdcb` (a group wait's deadline did not name the install wait the header named) and `ddd416833` (review 0.1.315 B2: the code pass read the refined revision where it needed the listing). The card's 97 commits and 28 fixes counted every change to the readers' whole files.
 - **Tests:** 43 test files write these records raw, with 53 raw writes of the refined revision; 11 raw reads.
 
 These are small counts. The case for the row is the cause, not the defect rate: with no owner, the next reader writes its own read again.

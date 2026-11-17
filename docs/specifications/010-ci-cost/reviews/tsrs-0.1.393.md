@@ -6,9 +6,9 @@ Reviewed on 2026-11-02, against D13, ADR 0005, row 010-34 and `tasks/tsrs-review
 
 ```text
 git rev-parse HEAD
-8ca0eead0948e90ff70560fa9ae70e0c321f5fbe
-git rev-parse 6fa27aa86
-6fa27aa868b98fbef6c5d5caa6dcdc6982c474d3
+243fcc4b702e9bd4629ab1e9af6cd72f2d2b71cd
+git rev-parse 88138d03f
+88138d03f816dc0a11410bdf373fcd7d948cbd3d
 git status --short
 (empty before verification and after build)
 node --version
@@ -85,13 +85,13 @@ The build-inputs test runs the failed-compile fixture through its nested recorde
 
 ### CI and limits
 
-Commands: `gh run list --commit 8ca0eead0948e90ff70560fa9ae70e0c321f5fbe --json databaseId,name,status,conclusion,headSha,url`, then `gh run view 41433585897 --json headSha,status,conclusion,jobs`.
+Commands: `gh run list --commit 243fcc4b702e9bd4629ab1e9af6cd72f2d2b71cd --json databaseId,name,status,conclusion,headSha,url`, then `gh run view 41433585897 --json headSha,status,conclusion,jobs`.
 
 [CI run 41433585897](https://github.com/hearsay-tools/squeal/actions/runs/41433585897) is for the exact candidate. At inspection it was **in_progress**: all three Node 22 shards were in their Test step; Node 24 had passed frozen install, lint and typecheck, and was running its version-sensitive tests. Build and bundle checks had not yet run. Nightly and version jobs were skipped as expected on a candidate push. Full-suite CI and cross-Node build reproduction remain **unverified**, not findings. Non-Linux platform execution was not performed locally.
 
 ## Verdict
 
-**PASS 8ca0eead0948e90ff70560fa9ae70e0c321f5fbe**
+**PASS 243fcc4b702e9bd4629ab1e9af6cd72f2d2b71cd**
 
 0 blockers, 0 should-fix findings, 0 nits. CI remains pending as recorded above. This review does not supply the exact-release full-suite evidence required by the release policy.
 

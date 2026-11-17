@@ -2,7 +2,7 @@
 
 ## Verification
 
-Tested HEAD: `96cb80744a0b90f621ef316131174887ec5fdb57`, version 0.1.61. The brief pins `4c7e1eb^..21cd841`: 004-28, 004-30, 004-31, 004-32, 004-29, 004-34 and their 0.1.60/0.1.61 bundles. HEAD is the subsequent documentation-only landing record. `git diff --name-only 21cd841..HEAD -- src plugins package.json` returned nothing. The executable candidate therefore matches the brief. The intervening 001 documentation commits are outside this review.
+Tested HEAD: `ed5eb767000e9987e1798927509bdd8bbe34ba94`, version 0.1.61. The brief pins `4c7e1eb^..21cd841`: 004-28, 004-30, 004-31, 004-32, 004-29, 004-34 and their 0.1.60/0.1.61 bundles. HEAD is the subsequent documentation-only landing record. `git diff --name-only 21cd841..HEAD -- src plugins package.json` returned nothing. The executable candidate therefore matches the brief. The intervening 001 documentation commits are outside this review.
 
 The tracked tree was clean before and throughout executable verification, including after the build. No product code was changed. All probes used one private directory under `/tmp`, fixture repositories and fixture stores; no probe opened this repository's store or the cezar checkout. Probes and their scratch were removed before the review commit.
 

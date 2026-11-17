@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import tempfile
 
-candidate = "d975d2b0d14d141255b0145877ca3fd536cf688a"
+candidate = "c51050081ca532c71cdac7b47d1c2c6c493e0de8"
 repo = Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 source = Path(__file__).resolve().parent
 root = Path(tempfile.mkdtemp(prefix="squeal-review-016-12-"))

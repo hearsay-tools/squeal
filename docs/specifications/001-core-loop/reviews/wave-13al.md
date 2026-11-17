@@ -1,16 +1,16 @@
 # Wave 13al review
 
-Candidate: `88abeaa44469cd2844b2d078a3f7d4369a12d75a`.
-Range: `cd1cdeb4..88abeaa4`.
+Candidate: `4f3820c573b5f55734ddd55148b3e39740bad937`.
+Range: `4ea2adb3..4f3820c5`.
 Row: 001-287; review 001-288, the second round on `reviews/wave-13ak.md` B1, B2 and S1. Contracts: 001 goal 3, D7, D9 and D10; 004 D2, D3 and D9; `research/slow-claims.md` sections 2 and 4.
 
 ## Verification output
 
-The assigned checkout initially contained `d029c85b`, whose only change after the candidate was `docs/board.md`. I detached at the exact candidate before installing or checking it. The tracked tree was clean throughout verification and the probes. Node v24.21.0. The brief excludes `npm run build`, so regeneration and build drift are **unverified** by this reviewer. No eval runner, agent session or repository verification script was invoked. The full suite includes its existing eval unit tests; it does not repeat retained calibration sessions.
+The assigned checkout initially contained `31565915`, whose only change after the candidate was `docs/board.md`. I detached at the exact candidate before installing or checking it. The tracked tree was clean throughout verification and the probes. Node v24.21.0. The brief excludes `npm run build`, so regeneration and build drift are **unverified** by this reviewer. No eval runner, agent session or repository verification script was invoked. The full suite includes its existing eval unit tests; it does not repeat retained calibration sessions.
 
 ```text
 $ git rev-parse HEAD
-88abeaa44469cd2844b2d078a3f7d4369a12d75a
+4f3820c573b5f55734ddd55148b3e39740bad937
 
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
@@ -38,7 +38,7 @@ Test Files  414 passed | 1 skipped (415)
 
 `npm ci` warned that the installed parcel and esbuild packages have install scripts outside `allowScripts`; it exited 0. The suite printed two scratch-fixture `git worktree repair` notices and cleanup of one process left by an earlier run. It exited 0, with no failed tests or cleanup errors.
 
-The probes were standalone scratch programs bundled through the installed esbuild API. They used product source modules, private scratch stores/repositories and the committed worker bundles, with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Servers, workers and stores were closed and fixture directories removed. The before comparison loaded source files and the committed front-desk bundle from `cd1cdeb4` without changing this checkout. No product code was edited.
+The probes were standalone scratch programs bundled through the installed esbuild API. They used product source modules, private scratch stores/repositories and the committed worker bundles, with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset. Servers, workers and stores were closed and fixture directories removed. The before comparison loaded source files and the committed front-desk bundle from `4ea2adb3` without changing this checkout. No product code was edited.
 
 ## Verdict
 
@@ -55,12 +55,12 @@ None.
 I held the real scheduler inside its first `runner.environment()` call, after ledger initialization and before context publication, then invoked the direct entry and the shipped Claude Code socket worker wired to it:
 
 ```text
-Before, cd1cdeb4:
+Before, 4ea2adb3:
 B1 startup nudge: squeal scheduler: not started
 B1 worker nudge uncaught: ["Error: squeal scheduler: not started"]
 B1 ready nudge: returned
 
-Candidate, 88abeaa4:
+Candidate, 4f3820c5:
 B1 startup nudge: returned
 B1 worker nudge uncaught: none; ping: true
 B1 ready nudge: returned
@@ -79,11 +79,11 @@ The startup scheduler test now holds the baseline, proves a pre-start nudge is h
 The original discriminator removes the slow glob 100 ms after the first read while its row and check remain running:
 
 ```text
-Before, cd1cdeb4:
+Before, 4ea2adb3:
 B2 glob: quiet; held pending []; stored phase running
 B2 node: quiet; held pending []; stored phase running
 
-Candidate, 88abeaa4:
+Candidate, 4f3820c5:
 B2 glob: timeout; held running file remains pending
 B2 node: timeout; held running file remains pending
 ```
@@ -99,10 +99,10 @@ Retirement is distinct: removing a held row and retiring its checks together, as
 The original empty-window failure probe now prints:
 
 ```text
-Before, cd1cdeb4:
+Before, 4ea2adb3:
 Returned on news: 1 transition in the 0 test files the edits since revision 1 re-keyed, at revision 1 after 0.1 s; the 1 slow file run --slow queued has its result
 
-Candidate, 88abeaa4:
+Candidate, 4f3820c5:
 Returned on news: 1 transition in the 1 slow file run --slow queued, at revision 1 after 0.1 s; the 1 slow file run --slow queued has its result
 ```
 

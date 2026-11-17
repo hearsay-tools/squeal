@@ -6,7 +6,7 @@ One proven blocker remains from wave 4 B1. B2 is repaired. S2 is resolved by sup
 
 ## Verification output
 
-The reviewed HEAD was `6b43de6729a6705c3c4dfbb8bd3f20c302ff84a1`. The worktree stayed clean during checks and probes. Scope is the two repair commits, the unchanged pytest e2e file, and the rebase from `bd86815c` onto `ef4e5c78`. S1 stays with 007-42; the remainder of wave 4 was not re-reviewed.
+The reviewed HEAD was `6b43de6729a6705c3c4dfbb8bd3f20c302ff84a1`. The worktree stayed clean during checks and probes. Scope is the two repair commits, the unchanged pytest e2e file, and the rebase from `bd86815c` onto `8373e168`. S1 stays with 007-42; the remainder of wave 4 was not re-reviewed.
 
 ```text
 $ git rev-parse HEAD
@@ -128,7 +128,7 @@ The startup behavior therefore satisfies the status amendment in the live probe.
 ### Rebase comparison: no original implementation patch lost
 
 ```text
-$ git range-diff cffbb8af..bd86815c ef4e5c78..6b43de67
+$ git range-diff 438c6664..bd86815c 8373e168..6b43de67
 3e931a4a -> 2c883cbb  007-37 basetemp
 41e9a9b6 -> f47754ed  pytest[].batchSize
 5549816c -> 4b8ccaf6  environment install guidance

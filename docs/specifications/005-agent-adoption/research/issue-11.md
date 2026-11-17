@@ -2,7 +2,7 @@
 
 Brief: `research/issue-11-brief.md`, 2026-10-16. [GitHub issue #11](https://github.com/hearsay-tools/squeal/issues/11) (label `friction`, filed during hearsay-tools/cezarion#1142) says Squeal 0.1.199 rejects `node <plugin>/dist/cli/squeal.mjs run --help` as an unknown argument with exit 2. It asks that subcommands accept `--help`, print their flags, exit 0 and start no work. This report reproduces the issue and does not fix it.
 
-Examined: the installed 0.1.199 bundles in Claude Code (`~/.claude/plugins/cache/hearsay/squeal/0.1.199`) and Codex (`~/.codex/plugins/cache/hearsay/squeal/0.1.199`). Both files have sha256 `6869478e…5ae31f`. Also examined: this checkout's bundle `plugins/claude-code/dist/cli/squeal.mjs` at HEAD `113613d0`, which reports `0.1.200` (unreleased), sha256 `a51e3509…6f14`, last built at `30ec91a2`. The source is `src/cli/` at the same HEAD. Tag `squeal--v0.1.199` is `e36fea56`. `git diff squeal--v0.1.199 HEAD` over `main.ts`, `run.ts`, `run-slow.ts`, `run-lanes.ts` and `wait-arg.ts` is empty. Node 24.21.0, Linux.
+Examined: the installed 0.1.199 bundles in Claude Code (`~/.claude/plugins/cache/hearsay/squeal/0.1.199`) and Codex (`~/.codex/plugins/cache/hearsay/squeal/0.1.199`). Both files have sha256 `6869478e…5ae31f`. Also examined: this checkout's bundle `plugins/claude-code/dist/cli/squeal.mjs` at HEAD `113613d0`, which reports `0.1.200` (unreleased), sha256 `a51e3509…6f14`, last built at `77d486ac`. The source is `src/cli/` at the same HEAD. Tag `squeal--v0.1.199` is `c5a4c70c`. `git diff squeal--v0.1.199 HEAD` over `main.ts`, `run.ts`, `run-slow.ts`, `run-lanes.ts` and `wait-arg.ts` is empty. Node 24.21.0, Linux.
 
 ## Questions answered
 

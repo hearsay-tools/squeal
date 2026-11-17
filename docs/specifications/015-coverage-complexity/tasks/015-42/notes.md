@@ -1,6 +1,6 @@
 # 015-42 notes: coverage work caps its share of the daemon's main thread
 
-Worker c9034b32, 2026-10-25. Brief: `tasks/wave-4.md` W1, from 011-197's findings (`docs/specifications/011-core/tasks/011-197/findings.md`, recommendation 2). Starts from main after 0.1.302 (`199b4e89b`), coverage off in `squeal.config.json`. The line in `src/harness/build.ts` and the bundle tests' new file were agreed with the coordinator (reply to request `2a2bc9ee`, option a).
+Worker c9034b32, 2026-10-25. Brief: `tasks/wave-4.md` W1, from 011-197's findings (`docs/specifications/011-core/tasks/011-197/findings.md`, recommendation 2). Starts from main after 0.1.302 (`802cdc0a8`), coverage off in `squeal.config.json`. The line in `src/harness/build.ts` and the bundle tests' new file were agreed with the coordinator (reply to request `2a2bc9ee`, option a).
 
 ## What changed
 
@@ -32,7 +32,7 @@ All runs at `nice -n 10`, on a host with 24 CPUs that other coordinators loaded.
 | `writer-turns.test.ts`: one 26.9 MiB payload stored, longest main-thread turn | 747 ms | 54 ms (an earlier run: 58 ms) | 28.4 / 28.4 (40.2) |
 | `writer-feed.test.ts` (011-197's test): reconciliation pass of 2,000 tracked paths, alone and beside 12 payloads of 421 to 531 ms each | 164 ms alone, 2,036 ms beside (12.4×) | 135 ms alone, 223 ms beside (1.65×; the bound is 3×) | 31.0 / 30.6 |
 
-The red runs of each new test on the baseline used a detached copy of `199b4e89b` in scratch: `chain.test.ts` (3 of 3 fail), `writer-pace.test.ts` and the timing tests above. `writer-worker.test.ts`'s byte-identity test is green on both by design. Its second test, the failing worker, is red on the baseline, which has no worker to fail.
+The red runs of each new test on the baseline used a detached copy of `802cdc0a8` in scratch: `chain.test.ts` (3 of 3 fail), `writer-pace.test.ts` and the timing tests above. `writer-worker.test.ts`'s byte-identity test is green on both by design. Its second test, the failing worker, is red on the baseline, which has no worker to fail.
 
 ## Tests
 

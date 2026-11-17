@@ -4,7 +4,7 @@
 import json, re
 
 RUNS = [
-    ("98beb8cd9f3b/20261018T184306Z-4fc7da", "/tmp/rel-0216-results/regraded/2026-10-18-0.1.216.20261018T184306Z-4fc7da.atomic.json"),
+    ("e99ffa66dc68/20261018T184306Z-4fc7da", "/tmp/rel-0216-results/regraded/2026-10-18-0.1.216.20261018T184306Z-4fc7da.atomic.json"),
     ("9902354698a8/20261018T211619Z-cd33f5", "/tmp/rel-0219-results/2026-10-18-0.1.219.20261018T211619Z-cd33f5.atomic.json"),
 ]
 for cells, results in RUNS:

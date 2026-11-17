@@ -2,7 +2,7 @@
 
 Treat preparation freshness as a validity requirement before accepting results for changed declared inputs.
 
-Research, 2026-10-20 UTC. **Reproduced** with shipped Squeal **0.1.233**, Node **24.21.0**, Vitest **5.0.3**, Vite **8.3.4**. Product source read at `cc7047f2b232df419cd6025841c5005d38aece34`. Owner: 013 V1/V3/V5/V6/V8, with 011 C3/C12/C13. Both status logs were read; no decision or existing hold changed. No product fix is included or authorized.
+Research, 2026-10-20 UTC. **Reproduced** with shipped Squeal **0.1.233**, Node **24.21.0**, Vitest **5.0.3**, Vite **8.3.4**. Product source read at `a8b9c04d088ea27bb071e04756bba82cf5c67498`. Owner: 013 V1/V3/V5/V6/V8, with 011 C3/C12/C13. Both status logs were read; no decision or existing hold changed. No product fix is included or authorized.
 
 ## Questions and verdicts
 
@@ -61,7 +61,7 @@ Repository gates were attempted in this dependency-free worktree: `npm run lint`
 ## Sources
 
 - [Issue 60](https://github.com/hearsay-tools/squeal/issues/60), read with `gh issue view 60 --repo hearsay-tools/squeal --json number,title,body,url,comments`; comments [incident](https://github.com/hearsay-tools/squeal/issues/60#issuecomment-6302454362) and [recovery](https://github.com/hearsay-tools/squeal/issues/60#issuecomment-6302569352).
-- Squeal source at [cc7047f2](https://github.com/hearsay-tools/squeal/tree/cc7047f2b232df419cd6025841c5005d38aece34): paths and lines above; 013 spec/status and 011 C3/C12/C13/status; prior `001-core-loop/research/cezar-e2e-setup.md` (failed setup, a different trigger).
+- Squeal source at [a8b9c04d](https://github.com/hearsay-tools/squeal/tree/a8b9c04d088ea27bb071e04756bba82cf5c67498): paths and lines above; 013 spec/status and 011 C3/C12/C13/status; prior `001-core-loop/research/cezar-e2e-setup.md` (failed setup, a different trigger).
 - [Vitest 5.0.3 npm source](https://registry.npmjs.org/vitest/-/vitest-5.0.3.tgz), fetched by the probe install; exact paths, extracts and fetch commands in [source-evidence.txt](probes/issue-60/source-evidence.txt).
 - [Cezar source at the incident commit](https://github.com/hearsay-tools/cezarion/tree/5fb37b19b93d6401eb1c41cfbc110ccdc092456e): three files fetched through `gh api`, paths and commands in the same evidence file.
 - [Probe transcript](probes/issue-60/output.txt) and [probe script](probes/issue-60/probe.mjs).

@@ -1,6 +1,6 @@
 # Research: the primer names the suites Squeal does not cover
 
-Board row 001-290. Read: `src/harness/shared/primer.ts` and `coverage.ts` at main `ba74d3ad` (0.1.127), the 001-283 primer at `ccdfa6b7`, spec 001 D9 and D11, 004 D8, `research/primer-skill-writing.md`, 005's `model-evals.md` and `model-evals-baseline.md`, `evals/results/TREND.md`, `src/cli/node-test-seed.ts`, `src/core/daemon/policy.ts`. Node v24.21.0, host load 9 to 11 on 24 CPUs.
+Board row 001-290. Read: `src/harness/shared/primer.ts` and `coverage.ts` at main `212d0e06` (0.1.127), the 001-283 primer at `ccdfa6b7`, spec 001 D9 and D11, 004 D8, `research/primer-skill-writing.md`, 005's `model-evals.md` and `model-evals-baseline.md`, `evals/results/TREND.md`, `src/cli/node-test-seed.ts`, `src/core/daemon/policy.ts`. Node v24.21.0, host load 9 to 11 on 24 CPUs.
 
 Probes, throwaway and kept out of the tree because this row commits one file (published as task artifacts, see Sources): `detect.mjs`, every lens at once; `gaps.mjs`, one candidate rule that writes the sentence; `room.ts`, the primer's length per scenario through the real `primer()`. They read files only and run nothing in the target. Corpus: Squeal, `evals/ledgerline` (the T2 trap), five local repositories read in place (cezar: pnpm + Vitest projects + node:test; project-d: nx + Jest, no root scripts; the client monorepo: npm + node:test + pytest; project-a: bun workspaces + Playwright; project-c: Python only), and nine scratch repositories (a to i) for Playwright, Jest, Cypress, Mocha, pytest, cargo, go, a second Vitest config, node:test inside and outside `nodeTest`, and nothing at all.
 
@@ -98,7 +98,7 @@ Rows, in the board's shape:
 
 ## Sources
 
-- Squeal main `ba74d3ad`: `src/harness/shared/{primer,coverage,session,deliver,prompt}.ts`, `src/harness/codex/handlers.ts`, `src/cli/{init,node-test-seed}.ts`, `src/core/daemon/policy.ts`, `src/runners/vitest/adapter.ts`, `evals/variants/slow-step.json`, `evals/ledgerline/package.json`, `evals/results/TREND.md`.
+- Squeal main `212d0e06`: `src/harness/shared/{primer,coverage,session,deliver,prompt}.ts`, `src/harness/codex/handlers.ts`, `src/cli/{init,node-test-seed}.ts`, `src/core/daemon/policy.ts`, `src/runners/vitest/adapter.ts`, `evals/variants/slow-step.json`, `evals/ledgerline/package.json`, `evals/results/TREND.md`.
 - 001-283 at `ccdfa6b7`: `src/harness/shared/primer.ts`, `docs/specifications/001-core-loop/research/primer-skill-writing.md`.
 - Specs: 001 D9, D11; 002 D3, D4; 004 D8; 005 `research/model-evals.md` (finding 6, recommendation 4), `research/model-evals-baseline.md`.
 - Corpus, read only: `~/projects/{cezar,project-d,client-monorepo,project-a,project-c}` as of 2026-10-12.

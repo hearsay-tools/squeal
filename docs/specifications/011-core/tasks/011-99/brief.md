@@ -18,7 +18,7 @@ Done when each file passes 10 runs in a row at `taskset -c 0-1`, and 10 runs at 
 
 ## R1: review of cand/0.1.260
 
-Use /reviewer. Shape: review. Pinned to `791ca37dc` (cand/0.1.260: main `e9d907981`, worker 796bfe06's four commits picked as `b1420366d` to `d66e904ff`, a release commit). Read this brief and the board row 011-99.
+Use /reviewer. Shape: review. Pinned to `e7e50a0fd` (cand/0.1.260: main `a7833bb15`, worker 796bfe06's four commits picked as `6e6f63488` to `e93460ba6`, a release commit). Read this brief and the board row 011-99.
 
 Check:
 - `src/core/scheduler/slow-tier.ts`: a close before `SlowTier.next()` reads the preemption count starts no guard wait; a close during a guard wait still aborts it; a pass not closed is unchanged.
@@ -27,11 +27,11 @@ Check:
 - `test/runners/node-test/run.test.ts`: the case's premise check and failure text weaken no assertion of the 001-421 case it shares a helper with.
 - The release commit: eight version places, bundles match the tree.
 
-`backlog-slots-overhead.test.ts` test 3 is unchanged on purpose; its bound is the human's decision. Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main: `backlog-slots-overhead.test.ts` test 3 and `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.260.md` with PASS or FAIL on `791ca37dc` and commit it. A finding that is not a proven break goes to "Inputs for the next wave".
+`backlog-slots-overhead.test.ts` test 3 is unchanged on purpose; its bound is the human's decision. Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once. Known red on main: `backlog-slots-overhead.test.ts` test 3 and `opencode-dispose.test.ts` (008-38). Write `reviews/0.1.260.md` with PASS or FAIL on `e7e50a0fd` and commit it. A finding that is not a proven break goes to "Inputs for the next wave".
 
 ## W2: option (c) for test 3
 
-The human chose (c) on 2026-10-22. Use /worker. Shape: repair, one commit. Base: cand/0.1.260 (`791ca37dc`). Worker 796bfe06's measurements are in `.ai/cezar/t/796bfe06/` (`cpu.out`, `tree-*/test/scheduler/zz-cpu.test.ts`, `repro.sh`, `ratio.sh`); read them, never edit them.
+The human chose (c) on 2026-10-22. Use /worker. Shape: repair, one commit. Base: cand/0.1.260 (`e7e50a0fd`). Worker 796bfe06's measurements are in `.ai/cezar/t/796bfe06/` (`cpu.out`, `tree-*/test/scheduler/zz-cpu.test.ts`, `repro.sh`, `ratio.sh`); read them, never edit them.
 
 Outcome: `backlog-slots-overhead.test.ts` test 3 checks per-file overhead with bounds that a loaded host does not trip.
 1. Replace the wall-clock ratio with a bound on the slot pass's daemon CPU per file (`process.cpuUsage()`), net of the commit busy-waits. Prefer a ceiling relative to the tier pass's CPU per file in the same harness, so a slower CI CPU moves both; use an absolute ceiling only if the spread makes the relative one worse, and say why. Set it from main's numbers with a margin; the comment names both.
@@ -44,7 +44,7 @@ Done when 10 runs pass at `taskset -c 0-1` and 10 at `taskset -c 0-3` with 3 pin
 
 ## R2: review of cand/011-99-w2
 
-Use /reviewer. Shape: review. Pinned to `b428e4308` (cand/011-99-w2: main `d69c8611b` and worker 760d185f's W2 commit, picked from `444a41dbd`). Test files only; the bundles do not change, so there is no version raise and no release. Read W2 above and the board row 011-99.
+Use /reviewer. Shape: review. Pinned to `ff1fdb097` (cand/011-99-w2: main `bdc98409c` and worker 760d185f's W2 commit, picked from `444a41dbd`). Test files only; the bundles do not change, so there is no version raise and no release. Read W2 above and the board row 011-99.
 
 Check:
 - Test 3 bounds the best slot pass's daemon CPU per file, net of the sink's busy-waits, at 5 times the best tier pass's, with no `process.env.CI` case; the comment's numbers match the worker's runs.
@@ -52,4 +52,4 @@ Check:
 - `slots-fixture.ts`'s `applyCpuMs()` measures the CPU of the busy-waits it subtracts, and changes no other harness behaviour.
 - A 20 ms CPU cost per slot would fail the CPU bound, and a commit per slot without the gather would fail the budget (reason from the code or re-run in a scratch copy; never edit `src` in your tree).
 
-Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once; that run is the gate. Known red on main: `handover-tier.test.ts` (row 011-110) and `opencode-dispose.test.ts` (008-38). Write `reviews/011-99-w2.md` with PASS or FAIL on `b428e4308` and commit it.
+Run `npm ci`, then `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` once; that run is the gate. Known red on main: `handover-tier.test.ts` (row 011-110) and `opencode-dispose.test.ts` (008-38). Write `reviews/011-99-w2.md` with PASS or FAIL on `ff1fdb097` and commit it.

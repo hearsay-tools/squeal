@@ -2,15 +2,15 @@
 
 ## Verification output
 
-Candidate: `38f2aadb8858628bb04a43e0fdc70a04c1c9eb9a`, package 0.1.94, the assigned HEAD. Reviewed range: `b7c0206a^..f8f99207`, 001-202 and its 0.1.90 rebuild, read against today's main. The later scheduler delta through 001-205 and 001-210 is inspected for effects on this attribution contract. This is bounded by `reviews/wave-13l.md` S1 and the three questions in row 001-213. No product code changed. The tracked tree was clean for all checks and probes, before this report was written.
+Candidate: `1360d9062da33220f2dc54419787981bca18c842`, package 0.1.94, the assigned HEAD. Reviewed range: `58a1146c^..fec3e51f`, 001-202 and its 0.1.90 rebuild, read against today's main. The later scheduler delta through 001-205 and 001-210 is inspected for effects on this attribution contract. This is bounded by `reviews/wave-13l.md` S1 and the three questions in row 001-213. No product code changed. The tracked tree was clean for all checks and probes, before this report was written.
 
 Linux; Node 24.21.0 and 22.23.3. The human explicitly forbade the build and then waived this reviewer's independent full suite. The already-running full suite was stopped with SIGINT, its process exit was 130, and its processes exited. It produced no final summary and supports no verdict. Build reproducibility is **unverified**. Both committed CLI bundles contain the per-revision map and the same pruning logic as the sources; this source inspection is not a build check.
 
-Whole-tree evidence supplied by the human for the coordinator's gate at executable commit `89429af0` (0.1.94): **2,407 passed; three load timeouts in turn, user-prompt-submit and graph-cost passed alone**. This is coordinator evidence, not an independent run by this reviewer. `git diff 89429af0..38f2aadb --stat` names documentation only.
+Whole-tree evidence supplied by the human for the coordinator's gate at executable commit `ecce408b` (0.1.94): **2,407 passed; three load timeouts in turn, user-prompt-submit and graph-cost passed alone**. This is coordinator evidence, not an independent run by this reviewer. `git diff ecce408b..1360d906 --stat` names documentation only.
 
 ```text
 $ git rev-parse HEAD
-38f2aadb8858628bb04a43e0fdc70a04c1c9eb9a
+1360d9062da33220f2dc54419787981bca18c842
 $ git status --short
 (no output)
 
@@ -81,7 +81,7 @@ Duration 18.25s
 
 The nine scheduler/sync files are `test/scheduler/{discharges,later-discharge-wait,resolved-wait,environment-growth-same-revision,environment-growth-wait,environment-growth-siblings,rekeyed,claims-finished}.test.ts` and `test/daemon/sync.test.ts`. The three CLI files are `test/cli/{status-wait,status-wait-window,status-wait-edit}.test.ts`. Thus both Nodes ran the same 12 files and 60 tests. Node 22 emitted experimental SQLite and proxy-agent warnings.
 
-The fix-removal mutation ran the existing later-discharge test's two cases from an external copy. It replaced `Discharges.note` and `since` in that process with the pre-fix last-entry-per-file behavior from `b7c0206a^`, retaining the same earliest/latest revisions and time filters. No repository source or bundle was reverted. Both Nodes reproduced quiet, zero own transitions, two edit files and one other transition for the cached case; the control returned news, one own transition, three edit files and zero other transitions. The unmodified implementation passes both cases in each Node's scope gate. This isolates per-revision retention from all later scheduler changes.
+The fix-removal mutation ran the existing later-discharge test's two cases from an external copy. It replaced `Discharges.note` and `since` in that process with the pre-fix last-entry-per-file behavior from `58a1146c^`, retaining the same earliest/latest revisions and time filters. No repository source or bundle was reverted. Both Nodes reproduced quiet, zero own transitions, two edit files and one other transition for the cached case; the control returned news, one own transition, three edit files and zero other transitions. The unmodified implementation passes both cases in each Node's scope gate. This isolates per-revision retention from all later scheduler changes.
 
 The eviction probes use the real adapter, scheduler, store, sink and public `waitForStatus`, with the daemon's capture/refined/rekeyed sequence from the existing regression. They instrument `Discharges.note` to obtain the live instance, then feed synthetic discharge entries to that instance while strings' refinement is held. The age probes advance discharge timestamps; they do not spend an actual hour waiting. The count probes use the real default 10,000-entry bound, not a reduced test cap. They prove the pruning and consumer effect, not that a 10,000-file project or an hour-long sync was run. The exact inputs and observations are below. All temporary probes were outside the repository and removed before the report commit.
 
@@ -101,7 +101,7 @@ The background baseline checkpoint completed at revision 0; no new checkpoint wa
 
 ## Verdict
 
-**PASS 38f2aadb: 0 blockers, 1 proven should-fix note, 0 nits.** Wave 13l S1's literal later-cache-hit sequence is closed on both Nodes and fails with the retention fix removed. Memory has the requested entry cap. The stronger claim that a later discharge can never erase news needed by a live wait is still false at either eviction bound. This retains the original S1's nonblocking severity: the snapshot still shows the failure, and no premature quiet over an unobserved current key is proven.
+**PASS 1360d906: 0 blockers, 1 proven should-fix note, 0 nits.** Wave 13l S1's literal later-cache-hit sequence is closed on both Nodes and fails with the retention fix removed. Memory has the requested entry cap. The stronger claim that a later discharge can never erase news needed by a live wait is still false at either eviction bound. This retains the original S1's nonblocking severity: the snapshot still shows the failure, and no premature quiet over an unobserved current key is proven.
 
 ## Blockers
 

@@ -1,6 +1,6 @@
-PASS c33b55faa8cb23158642e76a49c277d6a8a6d08d — 0 blockers, 1 nonblocking note.
+PASS f40719a3e274a0414cfd929cddeed8de4ba994f1 — 0 blockers, 1 nonblocking note.
 
-Narrow round-3 re-review, authorized by the human on 2026-11-17 after round 2. Candidate `cand/0.1.539`, based on main `0f8b16228`. HEAD matched the pinned SHA above. Scope: B4, regressions in its repair, the rebase conflict and the new styleguide line. Earlier settled findings were not reopened. No product code was changed for this review.
+Narrow round-3 re-review, authorized by the human on 2026-11-17 after round 2. Candidate `cand/0.1.539`, based on main `e3ed397fb`. HEAD matched the pinned SHA above. Scope: B4, regressions in its repair, the rebase conflict and the new styleguide line. Earlier settled findings were not reopened. No product code was changed for this review.
 
 ## Verification
 
@@ -8,11 +8,11 @@ Narrow round-3 re-review, authorized by the human on 2026-11-17 after round 2. C
 - `pnpm run typecheck`: exit 0.
 - `pnpm run build`: exit 0. `git status --short` remained empty after the build.
 - `squeal status --wait 60000 test/harness/check-private.test.ts test/harness/primer-wait.test.ts`: exit 0 at revision 10, `Named test files at revision 10: no known failures; 2 test files, each with a current result`. Here `squeal` abbreviates the session's absolute launcher. An earlier wait expired while the daemon enumerated the new checkout; that result was not treated as a current verdict. Unrelated checks remained queued. No local full suite was run.
-- The new B4 test was run in an isolated temporary harness with unchanged candidate tests/helpers, changing only the guard source. Command: `pnpm --config.verify-deps-before-run=false exec vitest run test/harness/check-private.test.ts -t 'review r2 B4'`. Round-2 guard from `b646f4618`: exit 1, **1 failed, 22 skipped**. Candidate guard: exit 0, **1 passed, 22 skipped**. The temporary harness was removed.
+- The new B4 test was run in an isolated temporary harness with unchanged candidate tests/helpers, changing only the guard source. Command: `pnpm --config.verify-deps-before-run=false exec vitest run test/harness/check-private.test.ts -t 'review r2 B4'`. Round-2 guard from `e9e9f8bfe`: exit 1, **1 failed, 22 skipped**. Candidate guard: exit 0, **1 passed, 22 skipped**. The temporary harness was removed.
 - Direct temporary-repository probes: **16 cases, 0 mismatches**, covering both original B4 roots, a non-ASCII name, repeated dots/slashes, JSON slash escapes, URLs, local file URLs, placeholders and all three exempt names. Temporary repositories were removed.
 - `gh run view 44032823841 --json headSha,status,conclusion`: Private material **success**, exact candidate SHA.
 - `gh run view 44032823785 --json headSha,status,conclusion`: full CI **in_progress**, exact candidate SHA at the last read. Its final result is unverified here.
-- Squeal also emitted a complexity signal for `createDelivery.registerNow.<transaction>` in `src/core/delivery/delivery.ts` (22 against 20). That file is unchanged by this candidate relative to main `0f8b16228`; the signal is outside this narrow review, not a finding against the B4 repair.
+- Squeal also emitted a complexity signal for `createDelivery.registerNow.<transaction>` in `src/core/delivery/delivery.ts` (22 against 20). That file is unchanged by this candidate relative to main `e3ed397fb`; the signal is outside this narrow review, not a finding against the B4 repair.
 
 ## B4: resolved
 
@@ -29,9 +29,9 @@ No new bypass or false alarm was found in these scoped cases. The comment-only f
 
 ## Rebase: no scoped regression found
 
-`git range-diff --no-patch 23f67d006..b646f4618 0f8b16228..c33b55faa` maps eleven earlier commits unchanged. Two mapped patches differ: the test scrub and the version/bundle rebuild. Three additional commits contain B4, the styleguide/review-text update and the exempt comment example.
+`git range-diff --no-patch 61904d31b..e9e9f8bfe e3ed397fb..f40719a3e` maps eleven earlier commits unchanged. Two mapped patches differ: the test scrub and the version/bundle rebuild. Three additional commits contain B4, the styleguide/review-text update and the exempt comment example.
 
-The detailed range comparison of the test-scrub commits (`67f6ff93d` and `87008ee8f`) shows only the expected `primer-wait` context change. Main's newer test description, 1,000-character component, expected wait sentence and assertions are retained. Against main `0f8b16228`, the final `test/harness/primer-wait.test.ts` changes only the recording-host home example to `/home/user`. Its targeted tests pass.
+The detailed range comparison of the test-scrub commits (`93636e638` and `3e2408ade`) shows only the expected `primer-wait` context change. Main's newer test description, 1,000-character component, expected wait sentence and assertions are retained. Against main `e3ed397fb`, the final `test/harness/primer-wait.test.ts` changes only the recording-host home example to `/home/user`. Its targeted tests pass.
 
 The previously reviewed guard/scrub repair patches are preserved. Comparing the round-2 and current guard sources shows only the separator-collapse helper, its use by the home-path rule and its explanatory comment. The guard test file adds only the B4 case. The rebuild leaves no tracked drift.
 

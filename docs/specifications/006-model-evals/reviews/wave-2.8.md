@@ -1,14 +1,14 @@
 # Wave 2.8 narrow review: 006-22
 
-Verdict: **FAIL** at `038fdd04a81b73f5b1c96af2fd2b0787fdedc2b6`. Two proven blockers: residual B3, an unresolvable pipe-alternation exclusion still earns coverage; new B6, the claim guard throws when the agent saw no Squeal evidence. The original brace-exclusion and changed-failure overflow reproductions close. One proven pre-existing scope note, no nits. This review authorizes no repair or subject session.
+Verdict: **FAIL** at `4f4f3110913150cf7682b3cc1986cac1871afbdc`. Two proven blockers: residual B3, an unresolvable pipe-alternation exclusion still earns coverage; new B6, the claim guard throws when the agent saw no Squeal evidence. The original brace-exclusion and changed-failure overflow reproductions close. One proven pre-existing scope note, no nits. This review authorizes no repair or subject session.
 
 ## Verification
 
-Range: `038fdd04^..038fdd04`, bounded by `tasks/wave-2.7.md` row 006-22 and `reviews/wave-2.7.md` B3/S2. Only the two fail-closed rules and their nearest variants were examined. The review-writing worktree started at `2c751cb4125e11d813a05c45386b4c3c9106242f`. Its difference from the candidate is recorded, not charged as a defect. Executable checks used a scratch clone at `/tmp/squeal-review-006-22-OpEzxg/repo`, created with `git clone --local --no-checkout . <path>` and `git checkout --detach 038fdd04`. Every candidate check below ran there, including the build. No build ran in the review-writing worktree.
+Range: `4f4f3110^..4f4f3110`, bounded by `tasks/wave-2.7.md` row 006-22 and `reviews/wave-2.7.md` B3/S2. Only the two fail-closed rules and their nearest variants were examined. The review-writing worktree started at `221df8e94f1f3323867256a4589d48aae2a5fb48`. Its difference from the candidate is recorded, not charged as a defect. Executable checks used a scratch clone at `/tmp/squeal-review-006-22-OpEzxg/repo`, created with `git clone --local --no-checkout . <path>` and `git checkout --detach 4f4f3110`. Every candidate check below ran there, including the build. No build ran in the review-writing worktree.
 
 ```text
 $ git rev-parse HEAD
-038fdd04a81b73f5b1c96af2fd2b0787fdedc2b6
+4f4f3110913150cf7682b3cc1986cac1871afbdc
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities

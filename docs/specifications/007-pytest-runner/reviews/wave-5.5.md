@@ -4,7 +4,7 @@
 
 **FAIL fa444c86a05504c1eceecc60c62ab5bc278403d4** (`cand/0.1.195`). One proven blocker, medium severity. No other should-fix items or nits.
 
-Scope: `0d2fa0c6` (delivery attribution), `bf27a21d` (no-environment note), their callers and tests, and the integrated candidate's verification. The rest of spec 007 is outside this review.
+Scope: `c8753d7d` (delivery attribution), `ff23ce07` (no-environment note), their callers and tests, and the integrated candidate's verification. The rest of spec 007 is outside this review.
 
 ## Verification
 

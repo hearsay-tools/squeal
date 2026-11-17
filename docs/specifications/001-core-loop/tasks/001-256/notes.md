@@ -1,6 +1,6 @@
 # 001-256 notes: `status --wait` from the store's re-key record
 
-Survey, no code change. The full findings, the lines and tests a switch removes, the store change and the one-worker row text are in `research/wait-from-store.md`. Probes: `research/probes/wait-from-store/` (5 files, 13 tests, all passing at 8e5e5462; each case has a control that fails as the review found).
+Survey, no code change. The full findings, the lines and tests a switch removes, the store change and the one-worker row text are in `research/wait-from-store.md`. Probes: `research/probes/wait-from-store/` (5 files, 13 tests, all passing at dad7edbd; each case has a control that fails as the review found).
 
 ## Per probe
 

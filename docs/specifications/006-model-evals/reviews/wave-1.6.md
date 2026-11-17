@@ -1,14 +1,14 @@
 # 006 wave 1.6: narrow review of 006-08
 
-Candidate checked: `83cb575cdcffb2d24575be3bce0abba051c4f3a3`. Range: `5912a6bc^..83cb575c`. Board row: 006-09. Prior findings: `wave-1.5.md`. Third and last round bought by the human, limited to B1, B2, SF1, SF2 and their nearest variants.
+Candidate checked: `70a290d9b83472c36488e0758679c2be7ba735fc`. Range: `6ec5a95d^..70a290d9`. Board row: 006-09. Prior findings: `wave-1.5.md`. Third and last round bought by the human, limited to B1, B2, SF1, SF2 and their nearest variants.
 
 ## Verification
 
-The report checkout started at `fb41a491a48a070eb8adf55f8e7785d98a5cb299`, beyond the range in docs-only commits. Verification ran in a separate `/tmp/squeal-review-006-09-*` Git checkout detached at the candidate below. The build ran only there. No board, spec, product or repository test file was edited. Candidate tracked files stayed clean.
+The report checkout started at `14226d22d678778d7d91c2262b3ccbcb7d2c8b74`, beyond the range in docs-only commits. Verification ran in a separate `/tmp/squeal-review-006-09-*` Git checkout detached at the candidate below. The build ran only there. No board, spec, product or repository test file was edited. Candidate tracked files stayed clean.
 
 ```text
 $ git rev-parse HEAD
-83cb575cdcffb2d24575be3bce0abba051c4f3a3
+70a290d9b83472c36488e0758679c2be7ba735fc
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities
@@ -44,7 +44,7 @@ The exact prior probes close, but nearest variants of B1 and B2 remain. A symlin
 
 ## Prior findings checked
 
-| Finding | Evidence at `83cb575c` | Disposition |
+| Finding | Evidence at `70a290d9` | Disposition |
 | --- | --- | --- |
 | B1 nested dependency evidence | The original `work/packages/a/node_modules/leak.txt` is removed. Independent disk inspection finds no retained token or link after cleanup. `node_modules` and `.git/objects` at different depths under both `work/` and `out/` are removed; ordinary text is redacted. Removable dangling, looping and external symlinks are removed. A symlink in a non-writable directory survives and receives a false clean verdict, below. A hard link is replaced without modifying the external file. The regression tests also exercise the runner's success and survivor/fail paths. | Original probe closed; residual blocker B1 |
 | B2 shell termination | The three original commands are uncredited when Bash skips them. `exec true`, `set -o errexit`, `bash -e -c`, subshell-local `exit`, and `||` after `set -e` agree with Bash controls. Ordinary `false &&`, shell versus text heredocs, and edit/run order remain correct. Failed redirections and builtin argument errors still receive false execution credit, below. | Original probes closed; residual blocker B2 |

@@ -1,6 +1,6 @@
 # The Pi idle wake not armed in time (board row ci-43987606521)
 
-Researcher, 2026-11-17, for coordinator 4d2ecbfc. Squeal at `a9061f90d`, Pi 1.0.4 (`node_modules/@earendil-works/pi-coding-agent`). Probes: `probes/idle-wake/`.
+Researcher, 2026-11-17, for coordinator 4d2ecbfc. Squeal at `edc03d0d9`, Pi 1.0.4 (`node_modules/@earendil-works/pi-coding-agent`). Probes: `probes/idle-wake/`.
 
 **Verdict.** The wake is lost, not late. In all nine CI sightings, the wait did not hold its lock even once in 10 s or 20 s. In the probe, a normal arm holds it 21 ms after `agent_settled`. A wider test bound would not fix this. The logs cannot show which step lost the wake: the tests print no Pi stderr, no lock history and no consumer list, and CI keeps no artifacts. Two causes are ruled out by experiment: the tests' own lock probe, and one 2 s deadline miss before the arm. One way to lose the wake was reproduced: the arm is single-shot. A wait that ends with no answer is never re-armed. The defect is not new. The first sighting was on 2026-10-15, the day after the e2e test landed. Row 009-30 has tracked it since 2026-10-17.
 
@@ -10,7 +10,7 @@ Researcher, 2026-11-17, for coordinator 4d2ecbfc. Squeal at `a9061f90d`, Pi 1.0.
 |---|---|---|
 | 1 | Arm path: Pi awaits the extension's `agent_settled` handler, then prints the event. The handler runs `endTurn` if needed, then `armWait`, which posts a `wait` to the delivery worker. The worker opens the store context, then takes the SQLite waiter lock. Both tests wait for "a registered consumer, and its lock held". | read in source code |
 | 2 | Not determined from the logs, because they hold only the deadline message and timings. Timings: the integration case took 13,040 ms (it passes in 1,011 ms on re-run), so about 2 s of extra time came before the 10 s wait. | read in CI logs; inferred |
-| 3 | First sighting: 2026-10-15, run 38713491647, main `89cc58a9c`, Node 24, one day after `199be59b7` added the test. Nine sightings in all, eight of them e2e. Not a regression: the brief's candidate range (0.1.524 to 0.1.534) is a month later, and no wake-path file changed after 2026-11-12. | read in CI history and git |
+| 3 | First sighting: 2026-10-15, run 38713491647, main `6a9572827`, Node 24, one day after `ae1493aa3` added the test. Nine sightings in all, eight of them e2e. Not a regression: the brief's candidate range (0.1.524 to 0.1.534) is a month later, and no wake-path file changed after 2026-11-12. | read in CI history and git |
 | 4 | A real product loss, not a tight bound. Which event loses the wake in CI is not determined. One mechanism reproduced: if the worker dies with the wait, the wake is lost and nothing re-arms it. Ruled out: the tests' lock probe (0 of 3,300 lost) and one late answer before the arm (6 of 6 armed in about 21 ms). | verified by experiment |
 | 5 | Re-scope row 009-30 (spec 009, D5). Step 1: make a timeout self-describing (test-side), plus a host trace that is off by default. Step 2: re-arm a wait that ends `null` without a cancel. Do not widen the bounds. | inferred |
 
@@ -37,17 +37,17 @@ Researcher, 2026-11-17, for coordinator 4d2ecbfc. Squeal at `a9061f90d`, Pi 1.0.
 
 | Run | Date (UTC) | Ref, commit | Job | Test |
 |---|---|---|---|---|
-| 38713491647 | 2026-10-15 09:30 | main `89cc58a9c` | Node 24 | e2e |
-| 39024572231 | 2026-10-17 10:21 | main `5fe789539` | Node 22 (2/3) | e2e |
-| 39621661176 | 2026-10-21 14:59 | main `8a42a1c74` | Node 22 (2/3) | e2e |
-| 39659860143 | 2026-10-21 19:14 | cand/0.1.245 `1be8585cd` | Node 22 (2/3) | e2e |
-| 43340285158 | 2026-11-13 00:50 | main `39bfe8f88` | Node 22 (2/3) | e2e |
-| 43946095378 | 2026-11-16 20:05 | cand/0.1.526 `fbaf4c1b5` | Node 26 (2/3) | e2e |
+| 38713491647 | 2026-10-15 09:30 | main `6a9572827` | Node 24 | e2e |
+| 39024572231 | 2026-10-17 10:21 | main `831cb0719` | Node 22 (2/3) | e2e |
+| 39621661176 | 2026-10-21 14:59 | main `ac39a436e` | Node 22 (2/3) | e2e |
+| 39659860143 | 2026-10-21 19:14 | cand/0.1.245 `2419fac59` | Node 22 (2/3) | e2e |
+| 43340285158 | 2026-11-13 00:50 | main `3188f1722` | Node 22 (2/3) | e2e |
+| 43946095378 | 2026-11-16 20:05 | cand/0.1.526 `461692342` | Node 26 (2/3) | e2e |
 | 43987606521 | 2026-11-17 00:26 | cand/0.1.534 `bb8c83bbe` | Node 22 (1/3) | integration, the first time |
 | 43988875490 | 2026-11-17 00:35 | cand/023-03 `f94f09f71` | Node 26 (2/3) | e2e (not in the brief) |
-| 43992379130 | 2026-11-17 01:01 | main `35630aa4d` | Node 22 (2/3) | e2e |
+| 43992379130 | 2026-11-17 01:01 | main `3478e3e7f` | Node 22 (2/3) | e2e |
 
-- The e2e case landed in `199be59b7` (2026-10-14). Its wake lines have not changed since then. The only later change to the file was an import refactor (`8201b4059`, 2026-11-07). The integration case dates from `67759797c` (2026-10-14).
+- The e2e case landed in `ae1493aa3` (2026-10-14). Its wake lines have not changed since then. The only later change to the file was an import refactor (`4ba2dacae`, 2026-11-07). The integration case dates from `3e43aa107` (2026-10-14).
 - The run list reaches back only to 2026-10-15 07:45Z, so a sighting on 2026-10-14 is **not determined**.
 - `git log --since=2026-11-12` shows no commit to `src/harness/pi`, `src/harness/shared/{waiter,hook,context}.ts` or `src/core/delivery/{sent-store,daemon-writer,sending-connection}.ts`. The brief's candidates (rows 005-89 to 005-93 and 011-371 to 011-389) therefore did not start it.
 - Pi stays pinned at 1.0.4 (`CHECKED_VERSION`). A runner-image change was **not determined**: I did not check it, and the defect predates the cluster anyway.
@@ -94,7 +94,7 @@ Re-scope **row 009-30** (owner spec 009, D5; one worker) and close ci-4398760652
 
 ## Sources
 
-- Code at `a9061f90d`: `src/harness/pi/{extension,host,worker,run}.ts`, `src/harness/shared/{waiter,hook,context}.ts`, `src/core/waiter-lock/waiter-lock.ts`, `src/core/delivery/{expiry,sent-store}.ts`; tests `test/integration/pi-wake.test.ts`, `test/e2e/pi.test.ts`, `test/e2e/support.ts`, `test/helpers/pi.ts`.
+- Code at `edc03d0d9`: `src/harness/pi/{extension,host,worker,run}.ts`, `src/harness/shared/{waiter,hook,context}.ts`, `src/core/waiter-lock/waiter-lock.ts`, `src/core/delivery/{expiry,sent-store}.ts`; tests `test/integration/pi-wake.test.ts`, `test/e2e/pi.test.ts`, `test/e2e/support.ts`, `test/helpers/pi.ts`.
 - Pi 1.0.4: `node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js:681-700`.
 - CI: `gh run view <id> --attempt 1 --log-failed` for 43946095378, 43987606521 and 43992379130; `gh run view 43987606521 --attempt 2 --log` for the re-run timings; `gh run list --workflow ci.yml --limit 1600`; check-run annotations through `probes/idle-wake/ci-scan.sh`. Runs at https://github.com/hearsay-tools/squeal/actions/runs/<id>.
 - Board: rows 009-24 and 009-30 (`docs/board.md`); spec 009 D5 and its `status.md` amendments of 2026-10-14.

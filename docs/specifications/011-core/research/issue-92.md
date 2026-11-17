@@ -1,6 +1,6 @@
 # gh-92: load retries never run on a host that stays above one load per CPU
 
-Researcher reproduction for [#92](https://github.com/hearsay-tools/squeal/issues/92), 2026-10-24. Documentation only. Worktree `cez/777777f6` at commit `9b48fa424` (`package.json` 0.1.292). The gate code is the same as in release `squeal--v0.1.291` (`39bca22e7`), the version the issue names: `git diff --stat squeal--v0.1.291 HEAD -- src/core/retry src/core/scheduler/retries.ts src/cli/retry.ts` prints nothing.
+Researcher reproduction for [#92](https://github.com/hearsay-tools/squeal/issues/92), 2026-10-24. Documentation only. Worktree `cez/777777f6` at commit `9fda882b0` (`package.json` 0.1.292). The gate code is the same as in release `squeal--v0.1.291` (`9b14be370`), the version the issue names: `git diff --stat squeal--v0.1.291 HEAD -- src/core/retry src/core/scheduler/retries.ts src/cli/retry.ts` prints nothing.
 
 Host load at each probe start: `6.87 6.71 8.50` (one-minute 6.87, then 7.40 at the first run) on `nproc` 24. Both below the CPU count, so the live probe ran. The probe never loads the host: it mocks the load through `SchedulerOptions.hostLoad`.
 
@@ -77,6 +77,6 @@ Option 2 is the smallest change and fits C5's "never on a timer" for runs. Optio
 
 - Issue: `gh issue view 92 -R hearsay-tools/squeal` (opened 2026-10-24 11:48 UTC, reported on 0.1.291).
 - Spec: `docs/specifications/011-core/spec.md` C5 (line 176, retry; line 186, gh-36 amendment; line 179, recorded load facts, gh-52), C6 (line 205, `Known failures`), C10 (line 308, slots), C15 (line 402, next-step commands). `status.md` 2026-10-23 entry for 011-67 (`loadAllows` on one CPU's share).
-- Source at `9b48fa424`: `src/core/retry/load.ts`, `src/core/retry/records.ts`, `src/core/retry/text.ts`, `src/core/scheduler/retries.ts`, `src/cli/retry.ts:230-243`.
+- Source at `9fda882b0`: `src/core/retry/load.ts`, `src/core/retry/records.ts`, `src/core/retry/text.ts`, `src/core/scheduler/retries.ts`, `src/cli/retry.ts:230-243`.
 - Related: board rows gh-52 / 011-67 (done, 0.1.271), gh-82 (proposed, `retry --wait`).
 - Probe: `docs/specifications/011-core/research/probes/issue-92/` (README, `vitest.config.ts`, `load-retry.probe.test.ts`, `run-output.txt`).

@@ -36,6 +36,6 @@ tests are not counted; explicit `test/e2e/**` coverage exclusion matches the tes
 file but not the product helper; discovery with no result stays pending; an
 unavailable record gives unknown. These last condition inputs are synthetic.
 
-Runtime: Squeal source 0.1.374 at `15f73a3110c4f6aaa85171ac0dffdbb8575dff5a`,
+Runtime: Squeal source 0.1.374 at `e35aac4bd2b74ba82356dac5e679deb67e1af5e8`,
 Node 24.22.1. Start time, host load, output, records and states are in `result.json`.
 No repository test suite is invoked by this command.

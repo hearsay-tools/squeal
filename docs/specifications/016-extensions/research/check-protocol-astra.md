@@ -2,7 +2,7 @@
 
 **Recommendation [inferred]: use a small Squeal contract over persistent JSON-RPC for providers in other languages, with existing result formats read by adapters.** No candidate supplies the complete validity contract. BSP offers the nearest build-oriented control model; MTP offers the nearest test-oriented one. Neither removes the need for Squeal-specific input and completion evidence.
 
-Research 016-07, 2026-10-24. Squeal examined at `ef41742aae3e5600e61e3d9ac556c6f5ab88a112`. No spec exists yet. This report follows 011 C3/C4/C14, 013 V4, and `RunnerAdapter`. It did not read or fetch `check-protocol.md`. Tags below: **D** = `read in official docs`; **S** = `read in source code`; **E** = `verified by experiment`; **I** = `inferred`. Source IDs give the version or dated snapshot for each finding.
+Research 016-07, 2026-10-24. Squeal examined at `88b4d7554538b5200395d9a3d102155b0a4920e8`. No spec exists yet. This report follows 011 C3/C4/C14, 013 V4, and `RunnerAdapter`. It did not read or fetch `check-protocol.md`. Tags below: **D** = `read in official docs`; **S** = `read in source code`; **E** = `verified by experiment`; **I** = `inferred`. Source IDs give the version or dated snapshot for each finding.
 
 ## Questions answered
 

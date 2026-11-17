@@ -1,6 +1,6 @@
 # 019-24 notes: wording and edge cases left from wave 2
 
-Worker 68f6aed7, 2026-11-04. Brief `tasks/wave-3.md`. Baseline main at 0.1.397 (`6d265bb84`). Commits `5750bae7c` (item 1), `7d8098a3f` (item 2), `f8c04258e` (item 3), `55eea438f` (item 4).
+Worker 68f6aed7, 2026-11-04. Brief `tasks/wave-3.md`. Baseline main at 0.1.397 (`0a9a2560d`). Commits `5750bae7c` (item 1), `7d8098a3f` (item 2), `f8c04258e` (item 3), `55eea438f` (item 4).
 
 ## What changed
 

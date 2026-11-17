@@ -1,6 +1,6 @@
 # 011-234: a source path selects the readers from this worktree's own closures
 
-Worker 95e58f1f, wave 49 W1, 2026-10-26. Baseline `89f458320`. Brief `tasks/wave-49.md` W1; research `research/source-path-selection.md` (findings 1 and 3).
+Worker 95e58f1f, wave 49 W1, 2026-10-26. Baseline `ca405690d`. Brief `tasks/wave-49.md` W1; research `research/source-path-selection.md` (findings 1 and 3).
 
 ## Cause
 

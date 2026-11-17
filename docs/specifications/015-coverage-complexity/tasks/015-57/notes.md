@@ -1,6 +1,6 @@
 # 015-57 notes: CRAP tells a pass as soon as the records in hand prove it
 
-Worker ad47a8ec, 2026-10-25. Brief: `tasks/wave-10.md` W1. Starts from main at `d8de0754a` (0.1.321). Shape: slice. Every code change is inside `src/core/code/crap/**` and `test/code/crap/**`; `test/code/crap/chain-load.test.ts` and `src/core/code/pass/**` (W2) are untouched. No delivered text, store query, table, index, `user_version`, coverage record or result key changed. Bundles are not built (the brief), so the committed-bundle tests fail until the coordinator builds.
+Worker ad47a8ec, 2026-10-25. Brief: `tasks/wave-10.md` W1. Starts from main at `53af645ae` (0.1.321). Shape: slice. Every code change is inside `src/core/code/crap/**` and `test/code/crap/**`; `test/code/crap/chain-load.test.ts` and `src/core/code/pass/**` (W2) are untouched. No delivered text, store query, table, index, `user_version`, coverage record or result key changed. Bundles are not built (the brief), so the committed-bundle tests fail until the coordinator builds.
 
 ## What changed
 

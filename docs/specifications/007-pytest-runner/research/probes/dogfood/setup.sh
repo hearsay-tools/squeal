@@ -21,7 +21,7 @@
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 R=/home/squeal-e2e/runs/sq07-18
-SQ=7debdef9
+SQ=6f43184d
 BC=bffc7303f605bbe8e8d079ace3292effeb6b9953
 WT=~/projects/squeal/.ai/cezar/worktrees/c93d1ae0-75c1-40b2-87d5-784d9bc9e190
 as() { dir=$1; shift; node "$here/as-e2e.mjs" "$R" "$R/$dir" "$@"; }

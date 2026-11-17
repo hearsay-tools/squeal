@@ -1,5 +1,5 @@
 
-every source once, all sources (before 6db9fcb7b, after 963aff844)
+every source once, all sources (before 2e9835d1d, after 963aff844)
 | Measure | Before | After | Change |
 |---|---|---|---|
 | pair-seconds | 3118856 | 2722219 | -12.7% |
@@ -16,7 +16,7 @@ every source once, all sources (before 6db9fcb7b, after 963aff844)
 | kind typeImport | 76114 | 82477 | 8.4% |
 | kind typesModule | 5772 | 0 | -100.0% |
 
-every source once, sources at both commits (before 6db9fcb7b, after 963aff844)
+every source once, sources at both commits (before 2e9835d1d, after 963aff844)
 | Measure | Before | After | Change |
 |---|---|---|---|
 | pair-seconds | 3008426 | 2715930 | -9.7% |
@@ -33,7 +33,7 @@ every source once, sources at both commits (before 6db9fcb7b, after 963aff844)
 | kind typeImport | 74770 | 82477 | 10.3% |
 | kind typesModule | 5772 | 0 | -100.0% |
 
-real edits, all sources (before 6db9fcb7b, after 963aff844)
+real edits, all sources (before 2e9835d1d, after 963aff844)
 | Measure | Before | After | Change |
 |---|---|---|---|
 | pair-seconds | 198536 | 178661 | -10.0% |
@@ -48,7 +48,7 @@ real edits, all sources (before 6db9fcb7b, after 963aff844)
 | kind helper | 26816 | 60489 | 125.6% |
 | kind childProcess | 5504 | 5575 | 1.3% |
 
-real edits, sources at both commits (before 6db9fcb7b, after 963aff844)
+real edits, sources at both commits (before 2e9835d1d, after 963aff844)
 | Measure | Before | After | Change |
 |---|---|---|---|
 | pair-seconds | 193347 | 178661 | -7.6% |

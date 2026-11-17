@@ -1,6 +1,6 @@
 # 011-262 notes: the change notice names its paths and marks the ones git ignores
 
-Row 011-262 (`tasks/wave-56.md` W1, gh-105). Worker run `10635869`, 2026-10-26/27. Baseline: `c1018ea66`.
+Row 011-262 (`tasks/wave-56.md` W1, gh-105). Worker run `10635869`, 2026-10-26/27. Baseline: `b0e36b2fa`.
 
 ## What changed
 
@@ -73,7 +73,7 @@ Both checks passed, so (1) was committed.
 
 ## 2026-10-30: W1b finish (worker 408523d6, coordinator cbd3888a)
 
-The five commits above were rebased with no conflict onto main `093f29861` (about 500 commits later, 0.1.369's `runtimeFiles` among them). Their new hashes: `a3a8fe024`, `1cf5b503c`, `8dc4010d7`, `1b3cf19c0`, `67cb472b8`, in the order of "Commits" above. The shape is unchanged.
+The five commits above were rebased with no conflict onto main `b66c411e2` (about 500 commits later, 0.1.369's `runtimeFiles` among them). Their new hashes: `a3a8fe024`, `1cf5b503c`, `8dc4010d7`, `1b3cf19c0`, `67cb472b8`, in the order of "Commits" above. The shape is unchanged.
 
 ### `runtimeFiles` and the mark
 
@@ -111,7 +111,7 @@ Result at revision 2: 159 current, 152 pass, 7 fail: the six above and the bundl
 - `pnpm run lint`: `Checked 2562 files in 812ms. No fixes applied.` at `67cb472b8`; `Checked 2562 files in 889ms. No fixes applied.` at `7b73b8779`.
 - `pnpm run typecheck`: `tsc --noEmit`, no output, exit 0, at `67cb472b8` and at `7b73b8779`.
 - `squeal status --wait 60000` on the 8 named test files at revision 0 (the wait asked one run each): 8 pass, among them `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`.
-- `squeal status --wait 60000` on every changed file of `093f29861..7b73b8779` and the two above, at revision 11 (`7b73b877 + 0`): 902 test files selected; current 223: 222 pass, 1 fail (`test/harness/plugin.test.ts > bundles > are committed exactly as \`npm run build\` produces them`, `cli/squeal.mjs differs from the build`, the expected drift); pending 0; unknown 679, never run at their inputs, left for CI. `test/e2e/agree.ts` is no test file Squeal lists.
+- `squeal status --wait 60000` on every changed file of `b66c411e2..7b73b8779` and the two above, at revision 11 (`7b73b877 + 0`): 902 test files selected; current 223: 222 pass, 1 fail (`test/harness/plugin.test.ts > bundles > are committed exactly as \`npm run build\` produces them`, `cli/squeal.mjs differs from the build`, the expected drift); pending 0; unknown 679, never run at their inputs, left for CI. `test/e2e/agree.ts` is no test file Squeal lists.
 - Not run: `pnpm run build` (brief), the e2e tests (above), a full suite (policy).
 
 ### Commits (W1b)
@@ -125,7 +125,7 @@ Result at revision 2: 159 current, 152 pass, 7 fail: the six above and the bundl
 
 - No type change in W1b. The row's type changes stay as above: `FileChange.ignored?: true`, `StatusHeader.ignoredPaths?`, `WorktreeKeys.isExtra`, `ReconcileContext.ignored`, `commitBatch`'s optional `ignored`.
 - `docs/specifications/005-agent-adoption/research/probes/adoption-baseline/metric.mjs` reads `Revision (\d+)[^:]*: (\d+) current, ...`, which takes the clause; not changed.
-- `test/evals/fixtures/squeal-text-c6320866.mjs` is main's parser frozen before 001-407, the gate's floor; not changed.
+- `test/evals/fixtures/squeal-text-beb3eb8c.mjs` is main's parser frozen before 001-407, the gate's floor; not changed.
 - The spec and `status.md` amendment and the bundles are still to do, as "For the next worker or the coordinator" says.
 
 ## 2026-10-30: R1, repair of review 0.1.379 (worker 408523d6, coordinator cbd3888a)

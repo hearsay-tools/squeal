@@ -1,6 +1,6 @@
 # 011-270 notes: a path git stops ignoring leaves the extra-file set
 
-Row 011-270 (`tasks/wave-66.md` W2; review 0.1.379 B1). Worker run `61cb171d`, 2026-10-31. Baseline: `3edfabbe0`.
+Row 011-270 (`tasks/wave-66.md` W2; review 0.1.379 B1). Worker run `61cb171d`, 2026-10-31. Baseline: `15d98905d`.
 
 ## What changed
 

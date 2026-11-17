@@ -1,6 +1,6 @@
 # 009-31: where a fresh Pi delivery worker spends its first call
 
-Wave 20 W3 of spec 011, worker a6a03320, from main 56c542f86 (0.1.272). Shape: survey, then repair. Spec 009 D4: "Wave 0 measures the worker's round trip per tool call against 002's 80 ms p95."
+Wave 20 W3 of spec 011, worker a6a03320, from main 96c7a07e6 (0.1.272). Shape: survey, then repair. Spec 009 D4: "Wave 0 measures the worker's round trip per tool call against 002's 80 ms p95."
 
 ## Answer
 
@@ -59,7 +59,7 @@ The bound stays 80 ms: D4's promise is per tool call, and a fresh worker's call 
 
 ## Verification
 
-- First locked full suite, `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` in this worktree at 56c542f86, 04:28:14Z to 04:47:35Z, 1,160 s: 940 files passed, 2 skipped, 0 failed. The probe ran beside it (the phases above). I committed the repair at 04:36Z, so `latency.test.ts` may have run in either form in this suite.
+- First locked full suite, `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` in this worktree at 96c7a07e6, 04:28:14Z to 04:47:35Z, 1,160 s: 940 files passed, 2 skipped, 0 failed. The probe ran beside it (the phases above). I committed the repair at 04:36Z, so `latency.test.ts` may have run in either form in this suite.
 - Second locked full suite, the same command at 45f62ac15 (the repair), 04:47:53Z to 05:07:27Z, 1,173 s: 940 files passed, 2 skipped, 0 failed (7,927 tests passed, 10 skipped).
 - Beside the second suite, 20 rounds (`probe/verify-loop.sh`, `data/verify-beside-suite.txt`), each one run of the repaired `latency.test.ts` in this worktree and one of `latency-lifted.test.ts` in the copy (the same test with `MAX_LOAD` lifted, so it asserts at any load):
   - The repaired test: 20 of 20 passed. The host's load was 3.4 to 41 in these rounds (median 9.6 over the suite), mostly from other coordinators' work, so its guard asserted in 1 round (load 3.5, fresh p95 57.0 ms) and reported in 19.

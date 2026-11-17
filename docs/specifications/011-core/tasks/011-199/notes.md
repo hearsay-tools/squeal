@@ -1,6 +1,6 @@
 # 011-199 notes: a pass checks the files committed since the last pass
 
-Worker W2 of wave 35, 2026-10-25. Commits `0b8d07d9d` and `79b1676e0`, from main `b8708e6dc`.
+Worker W2 of wave 35, 2026-10-25. Commits `0b8d07d9d` and `79b1676e0`, from main `e26c3d726`.
 
 ## The change
 
@@ -26,7 +26,7 @@ Watch batches do not move the pass head; only a pass does. A pass after a rewatc
 
 ## Cost on this repository
 
-A clone of this worktree at `b8708e6dc` in `/tmp`: 7,697 tracked files, 7,720 pass candidates. Throwaway benches run with `tsx` at `nice -n 10`, with `HOME`, `XDG_*` and `TMPDIR` under the scratch directory, and no daemon. The host's load average was 35 to 39 on 24 cores.
+A clone of this worktree at `e26c3d726` in `/tmp`: 7,697 tracked files, 7,720 pass candidates. Throwaway benches run with `tsx` at `nice -n 10`, with `HOME`, `XDG_*` and `TMPDIR` under the scratch directory, and no daemon. The host's load average was 35 to 39 on 24 cores.
 
 The added calls alone (40 runs each; `readGitHead` 1,000 runs):
 

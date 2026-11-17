@@ -1,6 +1,6 @@
 # Row 011-352: one wake and the rest signal
 
-Worker 9b8a107e, wave 98 (`tasks/wave-98.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 2, "The wake loop", "Timing differences", "Tests: replace, don't layer". Baseline: 011-351 (`dc62e4289`, 0.1.512). The row was done whole; no split.
+Worker 9b8a107e, wave 98 (`tasks/wave-98.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 2, "The wake loop", "Timing differences", "Tests: replace, don't layer". Baseline: 011-351 (`65e292edb`, 0.1.512). The row was done whole; no split.
 
 ## What changed
 

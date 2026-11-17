@@ -9,9 +9,9 @@ then discards completed results when its 30 s keep bound expires. This matches
 retention beyond that bound. Preserving expensive completed runs versus bounding
 command lifetime is the unresolved tradeoff; this report proposes no design.
 
-Examined 2026-11-12 at `d3d40f583e22c2149469d6751ed6837a63072575`
+Examined 2026-11-12 at `488190632c3cc5f1ac3c5d6e18b6d46c330572ef`
 (`origin/main`, package 0.1.459). Release 0.1.457 is
-`49557fe0facdbe670664ed5e0146b662e346f169`. The gate directory,
+`2f459c321dd408c968a9f60ff37451e923f7d3ac`. The gate directory,
 `keep-request.ts`, `daemon/lock.ts` and `store/busy.ts` have no diff between
 them. Experiments ran current source, not the installed 0.1.457 executable.
 

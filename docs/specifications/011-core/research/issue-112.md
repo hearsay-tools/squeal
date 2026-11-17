@@ -8,7 +8,7 @@ Treat fixture isolation as a Cezarion repair and a retained per-file blocked sta
 
 The [issue](https://github.com/hearsay-tools/squeal/issues/112) reports an extra `cez-agent-*` entry returned by Cezarion's cleanup test at revision 159. Its repository head was `f765ca0de271fb953f7ec2b03c66fb7e5b7a7221`, with uncommitted changes. The investigation launcher was Squeal 0.1.368; the daemon version at the original failure is unknown.
 
-This probe ran Squeal **0.1.368**, Node **24.22.1**, Vitest **5.0.3**. The checkout was **0.1.369**, commit `cd8f30be44eba75a54e2e781a16f9d42c141b44a`. The CLI, hold, stop, verdict, Vitest adapter and command-hold source files cited below have no diff from tag `squeal--v0.1.368`. Initial assigned load was 14.93 on 24 CPUs; inspection measured 15.36; immediately before live work it was **11.58** (five/fifteen-minute: 14.02/13.80) on **24 CPUs**, at 22:01:40 UTC. The load gate allowed the probe.
+This probe ran Squeal **0.1.368**, Node **24.22.1**, Vitest **5.0.3**. The checkout was **0.1.369**, commit `fcc69f4f021bd6af16061df94f31a70020f284dc`. The CLI, hold, stop, verdict, Vitest adapter and command-hold source files cited below have no diff from tag `squeal--v0.1.368`. Initial assigned load was 14.93 on 24 CPUs; inspection measured 15.36; immediately before live work it was **11.58** (five/fifteen-minute: 14.02/13.80) on **24 CPUs**, at 22:01:40 UTC. The load gate allowed the probe.
 
 The capability gap is reproduced: the available hold stops unrelated validation, while exclusion continues it but removes the selected file from coverage. The original shared-directory removal was deliberately not reproduced.
 

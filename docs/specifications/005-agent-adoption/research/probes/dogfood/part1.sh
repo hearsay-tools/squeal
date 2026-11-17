@@ -1,7 +1,7 @@
 #!/bin/sh
 # Throwaway probe for 005-18 part 1: 006's atomic tier with D8 (variant d8-deny) against p0, as
 # squeal-e2e, in the case root /home/squeal-e2e/runs/sq18-p1 (a clone of a `git bundle` of
-# f8d3c10a, the coordinator's Q1). The coordinator's cells (2026-10-14):
+# 7f96063a, the coordinator's Q1). The coordinator's cells (2026-10-14):
 #   R1 warm, through run-baseline.mjs --atomic --variant d8-deny (p0 and d8-deny side by side):
 #     Haiku a2-slow 4 reps, Haiku a1-break 2 reps, Luna a2-slow and a1-break 1 rep: 16 sessions.
 #   R2 cold, a2-slow, through run-cell.mjs --cold under one --run id: Haiku 4 reps and Luna 2

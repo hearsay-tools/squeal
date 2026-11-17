@@ -1,6 +1,6 @@
 # Wave 48
 
-From main after the quality scans of 2026-10-26 (`83b5f8de9`), 2026-10-26. Two rows on disjoint seams, both from `quality/2026-10-26-a.md` and `-b.md`. Rows 011-234, 011-235 and gh-99 wait for the human; 011-238 and 011-241 touch the named wait and wait for 011-234's decision; 011-240 may wait for a key-format raise. Host load is about 4 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after the quality scans of 2026-10-26 (`0053a1725`), 2026-10-26. Two rows on disjoint seams, both from `quality/2026-10-26-a.md` and `-b.md`. Rows 011-234, 011-235 and gh-99 wait for the human; 011-238 and 011-241 touch the named wait and wait for 011-234's decision; 011-240 may wait for a key-format raise. Host load is about 4 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-239, one HEAD reader, and the idle pass reads HEAD in reftable repositories
 

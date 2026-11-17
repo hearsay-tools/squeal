@@ -6,7 +6,7 @@ gap, reproduced with a forced short teardown threshold. It is not evidence
 that every teardown warning is harmless. No product change is proposed here.
 
 Examined 2026-11-13: Squeal **0.1.463**, installed Codex runtime, source checkout
-`1eeeb9186a0dc2cfed419aaa516af0b3af2ccd36`; Vitest **5.0.3**, Vite **8.3.2**,
+`40066915b43d26e5f4bbac42b553aaa1bf257206`; Vitest **5.0.3**, Vite **8.3.2**,
 Node **26.13.0**, Linux, **24 CPUs**. The issue reports Squeal 0.1.460; that
 version and the original Squawk test were not run. Initial measured load was
 10.33. Every live probe checked one-minute load again and ran below 24.
@@ -127,7 +127,7 @@ probes are the validation evidence; no worktree-suite pass is claimed.
 
 - [Issue #207](https://github.com/hearsay-tools/squeal/issues/207), fetched with
   `gh issue view 207 --repo hearsay-tools/squeal --json title,body,comments,url`.
-- [Squeal source revision](https://github.com/hearsay-tools/squeal/tree/1eeeb9186a0dc2cfed419aaa516af0b3af2ccd36),
+- [Squeal source revision](https://github.com/hearsay-tools/squeal/tree/40066915b43d26e5f4bbac42b553aaa1bf257206),
   local paths and lines above; [spec 013](../spec.md) V4/V8 and
   [spec 020](../../020-quality-gate/spec.md) D7/D11/D17.
 - [Vitest 5.0.3 package](https://www.npmjs.com/package/vitest/v/5.0.3): installed

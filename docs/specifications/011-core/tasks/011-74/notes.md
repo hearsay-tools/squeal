@@ -1,6 +1,6 @@
 # 011-74: `squeal hold [--max <d>] -- <command>` (notes)
 
-Board row 011-74, R3 of `tasks/011-61/design.md` (sections 3 and 4), spec 011 C9 (*Hold command*) as amended 2026-10-21. Brief: `tasks/wave-16.md`, W2. Baseline `009ccbb49` (0.1.268). The type changes are by coordinator agreement, request 96fa359a.
+Board row 011-74, R3 of `tasks/011-61/design.md` (sections 3 and 4), spec 011 C9 (*Hold command*) as amended 2026-10-21. Brief: `tasks/wave-16.md`, W2. Baseline `080fdfedd` (0.1.268). The type changes are by coordinator agreement, request 96fa359a.
 
 ## Seam map
 

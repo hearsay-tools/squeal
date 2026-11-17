@@ -2,7 +2,7 @@
 
 ## Verification
 
-Reviewed `73524259454b1b77efcfae0f2f679b7d0b7a0603`, range `005e0d7f3..73524259454b1b77efcfae0f2f679b7d0b7a0603`, on 2026-11-09. `git rev-parse HEAD` returned that exact SHA. `git status --short` was empty before and after verification. No product file was changed. External throwaway probes used ignored fixture directories; both removed their fixtures, and the probe scripts were deleted before committing this file. Dependencies were already installed by Cezar; the brief says not to repeat installation. No local build or full suite, as the brief requires.
+Reviewed `73524259454b1b77efcfae0f2f679b7d0b7a0603`, range `83964e9c0..73524259454b1b77efcfae0f2f679b7d0b7a0603`, on 2026-11-09. `git rev-parse HEAD` returned that exact SHA. `git status --short` was empty before and after verification. No product file was changed. External throwaway probes used ignored fixture directories; both removed their fixtures, and the probe scripts were deleted before committing this file. Dependencies were already installed by Cezar; the brief says not to repeat installation. No local build or full suite, as the brief requires.
 
 | Command | Actual result at the candidate |
 |---|---|

@@ -2,7 +2,7 @@
 
 **Recommendation: move generated bundles off development main into release-only commits in the same repository; keep the hub as a catalog.** This is an **inferred** recommendation, conditional on the CI and baseline changes below. Keep today's layout until those changes pass review. Release assets can supplement this path. They are not yet a demonstrated replacement for every harness.
 
-Research date: 2026-10-27. Source: `181054dd748f2834b423a23b1cababd0d520dd5d`, Squeal 0.1.367. Build probe: Node 24.22.1, installed frozen pnpm lock. Official documentation was fetched on this date; Pi package docs are from 1.0.4, OpenCode source from `v1.18.35` (`53d1eabb61e21162157817bf677da0a4ad3332e3`). [Probe commands, results and limits](probes/dist-distribution/README.md). Research only: no product edits, harness installs, publishing, model sessions or full suites.
+Research date: 2026-10-27. Source: `f7aed802784d33b09af23a1c525f7a0b76d3f797`, Squeal 0.1.367. Build probe: Node 24.22.1, installed frozen pnpm lock. Official documentation was fetched on this date; Pi package docs are from 1.0.4, OpenCode source from `v1.18.35` (`53d1eabb61e21162157817bf677da0a4ad3332e3`). [Probe commands, results and limits](probes/dist-distribution/README.md). Research only: no product edits, harness installs, publishing, model sessions or full suites.
 
 ## Questions answered
 
@@ -27,13 +27,13 @@ Research date: 2026-10-27. Source: `181054dd748f2834b423a23b1cababd0d520dd5d`, S
 
 The total is 34.0 MiB, 22.8% of the 155,952,567 tracked blob bytes. Identical blobs reduce these dist trees to 18,815,985 unique blob bytes before compression. This is **not** pack size or network transfer size.
 
-The last 100 first-parent commits, `(f67bd9a3e, 181054dd7]`, span part of 2026-10-27. Only three touch dist, but they produce 102 dist file changes and 22,520 added/deleted text lines out of 45,852 overall. Binary sizes are excluded from line counts. This is a bounded sample, not a long-term rate or a measurement of conflict time. Deleting outputs now does not reclaim old history; Git also deduplicates repeated blobs.
+The last 100 first-parent commits, `(fc87b6f90, f7aed8027]`, span part of 2026-10-27. Only three touch dist, but they produce 102 dist file changes and 22,520 added/deleted text lines out of 45,852 overall. Binary sizes are excluded from line counts. This is a bounded sample, not a long-term rate or a measurement of conflict time. Deleting outputs now does not reclaim old history; Git also deduplicates repeated blobs.
 
 **Read in source code, same commit:** root `dist/` is ignored TypeScript output. Each plugin's `.gitignore` explicitly retains its own dist. Shared build code also copies the Claude launcher's source into the other three `bin/` directories, and the Claude skill into Codex/Pi with harness notes. Those generated copies and manifest versions sit outside dist and must remain in release packages. The Python/TSX grammar sources under `src/` are inputs, not candidates for deletion.
 
 ## 2. Installed bytes and supported storage
 
-**Read in source code, same commit and local hub `5fb7ee04e`:** both hub entries pin `squeal--v0.1.367`, SHA `6709eb4d72d51d472a02602839c4d6d0c1f4c629`, in `hearsay-tools/squeal`. The local snapshot is [hub.json](probes/dist-distribution/hub.json); it does not prove remote-head state.
+**Read in source code, same commit and local hub `5fb7ee04e`:** both hub entries pin `squeal--v0.1.367`, SHA `5ba42a5a4dc2f9b5bc7eaac99422704aa5ce7069`, in `hearsay-tools/squeal`. The local snapshot is [hub.json](probes/dist-distribution/hub.json); it does not prove remote-head state.
 
 | Consumer | Fetch to entry point | Other storage compatibility |
 |---|---|---|

@@ -23,9 +23,9 @@ Done when the review's three reproductions are tests that pass, `test/lint/` pas
 
 ## Re-review of the repaired candidate
 
-Use /reviewer. Re-review against `reviews/0.1.348.md`. The candidate is `cand/0.1.348` at `983e6820d`, on main `3c6c72b52` (0.1.346). The whole wave 1 range is `3c6c72b52..983e6820d`; the repair is `e397bde0f..983e6820d`: R2's B2, B3 and `PROVIDER_VERSION` 2 (worker 2e373245), R1's B1 and B3 at the pass (worker 8f337351, cherry-picked), the incremental program walk and the pass's refresh after a module-file change (the coordinator's decision on R2's finding), a `squeal.config.json` `inputs` entry for the bundled worker's sources, and the version raise with the bundle commit. Write `docs/specifications/017-lint-checks/reviews/0.1.348-r2.md` and commit it alone on your branch.
+Use /reviewer. Re-review against `reviews/0.1.348.md`. The candidate is `cand/0.1.348` at `a7c9c13f8`, on main `b5318480e` (0.1.346). The whole wave 1 range is `b5318480e..a7c9c13f8`; the repair is `7692a5268..a7c9c13f8`: R2's B2, B3 and `PROVIDER_VERSION` 2 (worker 2e373245), R1's B1 and B3 at the pass (worker 8f337351, cherry-picked), the incremental program walk and the pass's refresh after a module-file change (the coordinator's decision on R2's finding), a `squeal.config.json` `inputs` entry for the bundled worker's sources, and the version raise with the bundle commit. Write `docs/specifications/017-lint-checks/reviews/0.1.348-r2.md` and commit it alone on your branch.
 
-Read: your first review; D5 as amended at `e397bde0f`; this file's R1 and R2 sections; `tasks/017-04/notes.md` and `tasks/017-05/notes.md`, their R1 and R2 sections.
+Read: your first review; D5 as amended at `7692a5268`; this file's R1 and R2 sections; `tasks/017-04/notes.md` and `tasks/017-05/notes.md`, their R1 and R2 sections.
 
 Check, with proof where you can:
 1. B1, B2 and B3: each of your reproductions now fails to reproduce, with the real provider and pass. Say whether the new tests would have caught each.

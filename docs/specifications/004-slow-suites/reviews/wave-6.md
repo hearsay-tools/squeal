@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate verified: `17b0c227f13e03fa950635d5ca5a6c65ee378eae`, version 0.1.88. The worker initially started at `a46e09fc`, two documentation-only commits beyond the candidate (`docs/board.md`, `status.md`, `tasks/wave-6.md`). Verification below ran after checking out the exact candidate, on a clean tracked tree. The final review commit is based on the assigned worker branch, retaining those task instructions. There is no executable mismatch. 001-196 (0.1.87) underneath the pinned range is out of scope.
+Candidate verified: `48aa3d0a38799070c19c9153202ea71507933b45`, version 0.1.88. The worker initially started at `2727756a`, two documentation-only commits beyond the candidate (`docs/board.md`, `status.md`, `tasks/wave-6.md`). Verification below ran after checking out the exact candidate, on a clean tracked tree. The final review commit is based on the assigned worker branch, retaining those task instructions. There is no executable mismatch. 001-196 (0.1.87) underneath the pinned range is out of scope.
 
 The review uses direct Vitest runs as its required independent check. The separate Squeal checkpoint does not replace them. The old wave-1 implementation brief's no-build instruction is superseded here by the repository and reviewer build gate; the build reproduced both committed plugins without drift.
 
@@ -119,7 +119,7 @@ Both confirmation-run assertions pass in isolation. The unhandled `write EPIPE` 
 
 ## Verdict
 
-**PASS at `17b0c227` (0.1.88).** Zero blockers, one nonblocking policy note, zero new nits. This first review covers `3040e11d^..17b0c227`: 004-52, 004-54, 004-55, the accepted D8 amendment and both plugin bundles. Underlying 001-196 and earlier settled review findings are outside the slice. PASS is the bounded code-review verdict; it does not turn failed verification gates into passing ones.
+**PASS at `48aa3d0a` (0.1.88).** Zero blockers, one nonblocking policy note, zero new nits. This first review covers `7809fdc1^..48aa3d0a`: 004-52, 004-54, 004-55, the accepted D8 amendment and both plugin bundles. Underlying 001-196 and earlier settled review findings are outside the slice. PASS is the bounded code-review verdict; it does not turn failed verification gates into passing ones.
 
 ## Blockers
 

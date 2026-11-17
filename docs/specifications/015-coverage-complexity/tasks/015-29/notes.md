@@ -1,6 +1,6 @@
 # 015-29 notes: `import(…)` in a type argument parses
 
-Worker e2116809, 2026-10-24. From `main` at `5b7c15914`. Brief: `tasks/wave-2.md` W2. Research: `research/typeof-import.md` (r2).
+Worker e2116809, 2026-10-24. From `main` at `a9d088c2d`. Brief: `tasks/wave-2.md` W2. Research: `research/typeof-import.md` (r2).
 
 ## Seam map
 
@@ -28,11 +28,11 @@ The third test fails when `source` returns `node.text` (mutation checked): the q
 
 ## Measured here
 
-Every git-listed JS and TS file outside `docs/`, `fixtures/` and `dist/` (1,972 files), counted by the counter at `5b7c15914` and by this row's, with 015-23's probe:
+Every git-listed JS and TS file outside `docs/`, `fixtures/` and `dist/` (1,972 files), counted by the counter at `a9d088c2d` and by this row's, with 015-23's probe:
 
 | Counter | Files with errors | Functions | Files whose functions changed (name, occurrence, CC, start, body hash) |
 |---|---|---|---|
-| `5b7c15914` | 16 | 31,063 | |
+| `a9d088c2d` | 16 | 31,063 | |
 | this row | 0 | 31,063 | 0 |
 
 The 16 were all test files with `<typeof import(`. In this repository the misparse only marked functions `unknown`; it changed no count or name, as the research found. The fixtures in `type-import.test.ts` do change: `vi.importActual<typeof import('x')>('x', (m) => …)` names its arrow `<anonymous>` before and `<importActual>` after.

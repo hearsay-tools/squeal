@@ -2,7 +2,7 @@
 # Throwaway probe for research 021-27. Makes a scratch under $SCRATCH_ROOT (the task's $TMPDIR):
 #   home/ run/ config/ cache/ tmp/   HOME, XDG_RUNTIME_DIR, XDG_CONFIG_HOME, XDG_CACHE_HOME, TMPDIR
 #   <repo>/                          a shallow `git clone` of the named repository (never a worktree)
-#   bundle/                          a copy of this worktree's committed Claude Code bundle (main 5cc5624e2, 0.1.459)
+#   bundle/                          a copy of this worktree's committed Claude Code bundle (main 0fb3f8ccd, 0.1.459)
 #   log/                             what the probes write
 # Usage: setup.sh <repo name: cezar|squeal> <source path>. Installs offline from the host's
 # pnpm store, copying files (no hardlinks into the shared store). Prints the scratch path.

@@ -5,14 +5,14 @@ Each checkout was a detached `git worktree add` in a clone under $TMPDIR, so the
 `.git/squeal/store.sqlite`. Stderr lines below are copied from the runs, cut at 250 characters. The raw
 JSON reports were in $TMPDIR and were deleted with it.
 
-1. Squeal at 5150132e3, 3 Vitest files, fresh store. rc=0, 10.5 s, load 17.4 -> 21.1.
+1. Squeal at 40efe47f5, 3 Vitest files, fresh store. rc=0, 10.5 s, load 17.4 -> 21.1.
    squeal code: Vitest: 3 test files to run (tests 3)
    squeal code: global setup runs for: the root project (any selection)
    squeal code: Vitest: 3 test files to run here, up to 23 at once; no stored duration, so the time is unknown
    squeal code: 1 completed test file was not kept in the stores, because it read paths first seen during the run (src/core/daemon/package.json, src/core/package.json, src/package.json): test/cli/main.test.ts; the next run will run it again
    squeal code: 2 of 3 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes runs the other 1
    Store after: tables meta 2, checks 13, results 13. worktrees 0 rows, runs 0 rows, test_file_keys 0 rows.
-   results: commit_sha 5150132e37d6..., dirty 0, worktree_id f2686bc48755ed28 = sha256(realpath(checkout))[0:16].
+   results: commit_sha 40efe47f5c4b..., dirty 0, worktree_id f2686bc48755ed28 = sha256(realpath(checkout))[0:16].
    `git status --short` in the checkout: empty.
 
 2. The same command again. rc=0, 10.3 s, load 17.8 -> 19.0.

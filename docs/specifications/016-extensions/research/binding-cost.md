@@ -1,6 +1,6 @@
 # 016-34: the per-edit cost of three ways to connect a check provider
 
-Researcher: Opus 5.5, 2026-10-26, HEAD `6f8a579a1`, Node v24.21.0, ESLint 9.39.5, 24 CPUs. Brief: [binding-cost-brief.md](binding-cost-brief.md). Probe: [probes/binding-cost/](probes/binding-cost/README.md), results under [probes/binding-cost/results/](probes/binding-cost/results/summary.md).
+Researcher: Opus 5.5, 2026-10-26, HEAD `16bbad788`, Node v24.21.0, ESLint 9.39.5, 24 CPUs. Brief: [binding-cost-brief.md](binding-cost-brief.md). Probe: [probes/binding-cost/](probes/binding-cost/README.md), results under [probes/binding-cost/results/](probes/binding-cost/results/summary.md).
 
 Timed turn: 10:32 to 10:38 UTC, on the coordinator's go. 625 timed samples and 16 containment cases. Every sample started below a one-minute load of 24 and recorded it: 17.1 to 23.7. The gate held three samples (135 s, 15 s, 15 s) while the load stood at 24 or more. Other sessions ran beside the probe, a code reviewer's targeted tests among them, so every figure is "beside the host's real load". Bindings were interleaved round by round, so they shared conditions within a mode. Everything ran at `nice -n 10`.
 
@@ -66,7 +66,7 @@ What the numbers say:
 
 ### 3. Scheduler calls
 
-Counts come from the real `createScheduler` at `6f8a579a1`, with a counting runner that defines every hint and the 016-18 probe's virtual clock (`count.probe.ts`, `results/count-*.jsonl`; verified by experiment). The daemon's `afterEachRun` wrapper defines every hint for every adapter in the same way (`src/core/daemon/escaped.ts` lines 397 to 409). Three repeats gave the same counts, except for a drift of one or two `backlogSlot` calls in the 60-file slots shape. The load was 25.2 before these runs; they count calls, so it does not change them.
+Counts come from the real `createScheduler` at `16bbad788`, with a counting runner that defines every hint and the 016-18 probe's virtual clock (`count.probe.ts`, `results/count-*.jsonl`; verified by experiment). The daemon's `afterEachRun` wrapper defines every hint for every adapter in the same way (`src/core/daemon/escaped.ts` lines 397 to 409). Three repeats gave the same counts, except for a drift of one or two `backlogSlot` calls in the 60-file slots shape. The load was 25.2 before these runs; they count calls, so it does not change them.
 
 | Edit | Shape | Awaited calls | Synchronous hints | Runs (files) |
 |---|---|---|---|---|
@@ -121,7 +121,7 @@ Outside in-thread, the largest heartbeat gap was 62 ms. A fresh provider ran cor
 
 The in-thread block reproduces what the core does. `RunnerPartBound.call` starts the call first and its `setTimeout` second (`src/core/scheduler/runner-work-bound.ts` lines 47 and 52; read in source code). A provider that blocks synchronously therefore finishes or fails before the bound's timer even exists.
 
-The in-thread `throw-async` ended the host because no file under `src/` installs an `uncaughtException` or `unhandledRejection` handler (grep at `6f8a579a1`; read in source code).
+The in-thread `throw-async` ended the host because no file under `src/` installs an `uncaughtException` or `unhandledRejection` handler (grep at `16bbad788`; read in source code).
 
 These results extend 016-02's p1 (a busy loop) to a sleeping block and to an asynchronous throw.
 
@@ -147,7 +147,7 @@ Limits:
 
 ## Sources
 
-- Source at `6f8a579a1`:
+- Source at `16bbad788`:
   - `src/core/types/runner.ts`
   - `src/core/scheduler/refinement.ts` (the per-revision calls)
   - `src/core/scheduler/tiers.ts`

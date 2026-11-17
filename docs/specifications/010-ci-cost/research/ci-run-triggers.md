@@ -32,17 +32,17 @@ Researcher, Opus 5.5, 2026-10-15. Read-only on GitHub. Window: all 951 runs of w
 - Duplicate pairs are created 1 s apart at the median (p90 3 s, max 77 s), so neither run of a pair has finished when the other starts. Example: runs 38209078365 (`cez/87218933`) and 38209079948 (`main`), same SHA, same second. 24 duplicate runs ended with a different conclusion from the earlier run of their SHA (e.g. 38223426144 success, 38230186654 failure), which marks those tests as flaky.
 - Docs-only runs re-test code that is already tested, yet 106 of 594 (18%) failed. Example: run 38230186654, `docs(005): the human keeps 005 held`.
 - Main receives a push every 136 s at the median (p25 30 s, p75 538 s). A run takes about 15 min, so 494 of 560 main runs were overtaken before they finished.
-- Rates changed with the process. After 2026-10-14 22:38 UTC (commit 81f80792, review before main), 255 runs in 16.2 h: main 156, cand 48, cez 46, hold 4. That is 572 job-min/h, against 286 job-min/h before.
-- What would remain under these filters (whole window, then post-81f80792):
-  - Pushes to `main` and `cand/**` only: 609 runs, 18,301 job-min. Post-81f80792, 460 job-min/h.
-  - Plus skipping docs-only pushes: 174 runs, 5,352 job-min (−81%), split main 131 and cand 43. Post-81f80792, 150 job-min/h.
+- Rates changed with the process. After 2026-10-14 22:38 UTC (commit 7df5d74c, review before main), 255 runs in 16.2 h: main 156, cand 48, cez 46, hold 4. That is 572 job-min/h, against 286 job-min/h before.
+- What would remain under these filters (whole window, then post-7df5d74c):
+  - Pushes to `main` and `cand/**` only: 609 runs, 18,301 job-min. Post-7df5d74c, 460 job-min/h.
+  - Plus skipping docs-only pushes: 174 runs, 5,352 job-min (−81%), split main 131 and cand 43. Post-7df5d74c, 150 job-min/h.
   - The docs-only filter alone on every branch: 357 runs, 10,444 job-min.
 
 ## 2. Who pushes, who reads
 
 - Every run's `actor` is `wjarka`: all sessions push with one credential, so the record cannot tell sessions apart (verified, run record).
 - **cez/***. These are Cezar task branches. Each `cez/<id8>` branch is the worktree branch of one task. The three busiest are coordinator sessions: `cez/32f44487` (spec 005 coordinator, 90 runs), `cez/49978180` (86) and `cez/2ab5b448` (52). Their handoffs are in `.ai/cezar/runs/<id>.handoff.md`.
-  - The coordinator skill told them to push both refs until commit 81f80792 (2026-10-14 22:37 UTC): `git push origin <branch> && git push origin HEAD:main` (read in source code). This explains the 1-second cez/main pairs. Session transcripts quote that line 188 times.
+  - The coordinator skill told them to push both refs until commit 7df5d74c (2026-10-14 22:37 UTC): `git push origin <branch> && git push origin HEAD:main` (read in source code). This explains the 1-second cez/main pairs. Session transcripts quote that line 188 times.
   - 46 cez runs came after the change, on `cez/2841c17b`, `cez/2ab5b448` and `cez/49978180`. Sessions started before the edit keep the old text, so the old pushes continue (inferred).
   - Cezar also pushes the task branch from the cockpit (`dist/server/git-changes.js:549`) and when it opens a PR (`dist/server/forge/github.js:2440`, installed cezarion; read in source code).
 - **exp/***. Coordinators push the eval arms of 001-292 (`docs/specifications/001-core-loop/status.md:224-227`; transcripts show `git push -q origin HEAD:refs/heads/exp/...`). 17 of 19 runs failed and no one reads them.
@@ -116,13 +116,13 @@ Wave-0 measurement, after (1) and (2) land, over 3 days:
 - Squeal Node job queue p90;
 - that every `cand/*` push got a run.
 
-Also stop the cez/main double push in long-lived coordinator sessions: their skill text predates 81f80792.
+Also stop the cez/main double push in long-lived coordinator sessions: their skill text predates 7df5d74c.
 
 ## Open questions
 
 - **The binding cap.** The combined peaks of 38 contradict a hard limit of 20. Reading the real limit needs `admin:org` or a support answer.
 - **New branches on existing commits.** A new branch whose tip commit is already on GitHub (a `cand/*` pushed at a SHA a `cez/*` already carries) has an undocumented new-branch diff. Under "no files changed", it may not run at all. None of the 49 cand runs had a SHA that had already run. Wave 0 should check it, or the process should keep candidate commits new.
-- **The landing re-test.** Main's landing run repeats the candidate's tests whenever the commits since are docs only (48 cand runs post-81f80792). No GitHub mechanism reuses a result across differing trees. Whether a docs-only rebase may inherit the candidate's verdict is the human's process call.
+- **The landing re-test.** Main's landing run repeats the candidate's tests whenever the commits since are docs only (48 cand runs post-7df5d74c). No GitHub mechanism reuses a result across differing trees. Whether a docs-only rebase may inherit the candidate's verdict is the human's process call.
 - **The pull_request trigger.** It created 0 runs in the window, so keeping or dropping it is not evidenced here.
 - **Old branch heads** keep firing the unfiltered workflow until they are rebased. How many stay alive is unmeasured.
 
@@ -142,6 +142,6 @@ Also stop the cez/main double push in long-lived coordinator sessions: their ski
   - Runs cited: 38209078365, 38209079948, 38223426144, 38230186654, 38372081991, 38684898492, 38701404825, and cezarion 38738816302.
 - Repository at 811efaed:
   - `.github/workflows/ci.yml`, `scripts/check-version-bump.ts`, `test/cli/codex-hash.test.ts`, `biome.json`, `tsconfig.json`, `vitest.config.ts`;
-  - `docs/process.md`, `.agents/skills/coordinator/SKILL.md`, and commit 81f80792 (coordinator push line);
+  - `docs/process.md`, `.agents/skills/coordinator/SKILL.md`, and commit 7df5d74c (coordinator push line);
   - `docs/specifications/001-core-loop/status.md:224-227`.
 - Installed cezarion: `dist/server/git-changes.js`, `dist/server/forge/github.js`. Coordinator session transcripts under `~/.claude/projects/-home-user-projects-squeal*/`.

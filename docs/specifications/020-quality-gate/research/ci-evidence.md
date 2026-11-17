@@ -1,6 +1,6 @@
 # CI evidence for the gate (survey-020-08)
 
-Researcher 8b430302, 2026-11-10, at Squeal `bba538f1b` (0.1.425). Brief: `tasks/wave-2.md`, "survey-020-08". Probes: `probes/ci-evidence/` (README lists every command). Every timing names the host's one-minute load. The host has 24 vCPUs, and the load was 24 to 35 during the runs, above the 14 to 16 knee. Ratios are paired by round. Absolute seconds are high.
+Researcher 8b430302, 2026-11-10, at Squeal `5c6ef27d8` (0.1.425). Brief: `tasks/wave-2.md`, "survey-020-08". Probes: `probes/ci-evidence/` (README lists every command). Every timing names the host's one-minute load. The host has 24 vCPUs, and the load was 24 to 35 during the runs, above the 14 to 16 knee. Ratios are paired by round. Absolute seconds are high.
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
@@ -120,7 +120,7 @@ cezar (read with `git show origin/main:.github/workflows/ci.yml`, `5621be917`): 
 
 ## Sources
 
-- Squeal `bba538f1b`: spec 020 (D3, D5, D7, D10, D11) and `status.md`; spec 018 (D8 to D17) and `status.md` (018-23, 018-26); `tasks/wave-2.md`; `../../015-coverage-complexity/research/quality-gate.md` (Q2, open question 2) and `probes/quality-gate/{timing.sh,sample.txt}`; `research/daemon-parity.md` Q5; `src/runners/vitest/{ci-record,ci-runs,coverage,sources,stale,environment}.ts`, `ci-runtime/vitest-ci.cjs`; `src/core/ci/{parts,export,export-check,export-inputs,inputs}.ts`; `src/cli/ci.ts`; `src/core/code/coverage/{provider.mjs,record,mapper,parts,types}.ts`; `src/core/code/gate/{collect,types}.ts`; `src/core/keys/environment-descriptor.ts` (`importDifferences`); `src/harness/build.ts`.
+- Squeal `5c6ef27d8`: spec 020 (D3, D5, D7, D10, D11) and `status.md`; spec 018 (D8 to D17) and `status.md` (018-23, 018-26); `tasks/wave-2.md`; `../../015-coverage-complexity/research/quality-gate.md` (Q2, open question 2) and `probes/quality-gate/{timing.sh,sample.txt}`; `research/daemon-parity.md` Q5; `src/runners/vitest/{ci-record,ci-runs,coverage,sources,stale,environment}.ts`, `ci-runtime/vitest-ci.cjs`; `src/core/ci/{parts,export,export-check,export-inputs,inputs}.ts`; `src/cli/ci.ts`; `src/core/code/coverage/{provider.mjs,record,mapper,parts,types}.ts`; `src/core/code/gate/{collect,types}.ts`; `src/core/keys/environment-descriptor.ts` (`importDifferences`); `src/harness/build.ts`.
 - Vitest 5.0.3 (this lockfile): `dist/chunks/index.DpLw24bj.js` (`start`, `initCoverageProvider`, `_coverageOptions`, `serializeConfig`, `_serializeOverriddenConfig`). Vitest 4.1.10 and `@vitest/coverage-v8` 4.1.10 (`~/projects/cezar/node_modules`, read-only): `dist/chunks/cli-api.BK8pd4xc.js` (the same methods, `enableCoverage`).
 - cezar `origin/main` `5621be917`: `.github/workflows/ci.yml` lines 712 to 849 (shards, PR coverage, `ci record`, the 0.1.423 pin); `git ls-remote origin 'refs/squeal/*'` (none).
 - Probes: `probes/ci-evidence/README.md`, `runs.out.txt`, `compare.out.txt`, `timing.out.tsv`.

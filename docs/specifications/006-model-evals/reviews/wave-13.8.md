@@ -4,7 +4,7 @@ FAIL `7da121b6bfd4cb8a9cdf995e9f46e919c6c8d609`: 1 proven blocker, no separate s
 
 ## Verification
 
-Reviewed `origin/main..7da121b6`, with `origin/main` at `a8fedcc15c3c1d363bdcdce1e8a7f9a20694a50a`.
+Reviewed `origin/main..7da121b6`, with `origin/main` at `ae5835019203d9b06dd8cae8ce93d836ffa7ff42`.
 The detached candidate worktree is `/tmp/squeal-review-006-81`. The report alone is written in the reviewer's worktree.
 
 ```text
@@ -148,7 +148,7 @@ PASS `98e4b67dbcbe6cf46646606bd55b182ea0236eb7`. B1 is resolved. No blocking or 
 
 ### Verification
 
-The report branch starts at `origin/main` `5c6dafc3ae2b67262c394214223c4072e59a68d4`. Main gained no product code after the base of 006-81. This review covers only repair commit `98e4b67d`, in detached worktree `/tmp/squeal-review-006-83`; it does not re-open the earlier review's settled count, revision or metric findings.
+The report branch starts at `origin/main` `ba2a69294ac551d2b8b632afdbbbc0f9069c5c68`. Main gained no product code after the base of 006-81. This review covers only repair commit `98e4b67d`, in detached worktree `/tmp/squeal-review-006-83`; it does not re-open the earlier review's settled count, revision or metric findings.
 
 ```text
 $ git rev-parse HEAD

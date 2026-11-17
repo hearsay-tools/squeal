@@ -34,7 +34,7 @@ Stop and report if the rule needs a daemon or store change, or changes any exit 
 
 Use /researcher. Shape: research, diagnosis only, about 30 minutes.
 
-Question: why `test/harness/opencode-continued.test.ts` "serve: a continued turn whose edit flips a check before its idle ends silent" failed `expected 1 to be 2` after "Matcher did not succeed in time" (38.9 s) in Node 24 nightly CI 41190295201 on `6ceaf9b85`, once; the push run and other nightlies passed.
+Question: why `test/harness/opencode-continued.test.ts` "serve: a continued turn whose edit flips a check before its idle ends silent" failed `expected 1 to be 2` after "Matcher did not succeed in time" (38.9 s) in Node 24 nightly CI 41190295201 on `e5a0ce991`, once; the push run and other nightlies passed.
 
 Read: the failed job's log (`gh run view 41190295201 --log-failed`, and the full log around the test), the test, its fixture and the OpenCode plugin seam it drives (`plugins/opencode`, `src/harness/opencode*`); board row 011-284.
 

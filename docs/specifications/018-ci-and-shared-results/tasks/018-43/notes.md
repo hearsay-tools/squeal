@@ -23,7 +23,7 @@ The coordinator chose, on 2026-11-12: single-file records now, a modelled export
 
 ### Single-file records (measured)
 
-`probes/rec.sh`: one file under `ci record` (shard 1/1), then `ci export` of that part, in a clone at `cc3cead4`, `CI=true`, `HOME` and `TMPDIR` in scratch. "base" is this branch's base `b3a5b0a25`, "new" is `b41252e89`, both run from source (`probes/squeal-ci.mts`).
+`probes/rec.sh`: one file under `ci record` (shard 1/1), then `ci export` of that part, in a clone at `cc3cead4`, `CI=true`, `HOME` and `TMPDIR` in scratch. "base" is this branch's base `5e9ab565b`, "new" is `b41252e89`, both run from source (`probes/squeal-ci.mts`).
 
 | File | Cause | base | new |
 |---|---|---|---|

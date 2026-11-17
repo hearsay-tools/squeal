@@ -1,6 +1,6 @@
 # Wave 81.5: repair of review 0.1.478 B1 (covered-files retention)
 
-Coordinator 9ddca779, 2026-11-14. Review `reviews/0.1.478.md` failed `cand/0.1.478` (`ee2d2827f`, rows 011-323 and 011-325) on one proven blocker, B1. Everything else in the candidate passed. Host policy and "not yours" as in `wave-81.md`.
+Coordinator 9ddca779, 2026-11-14. Review `reviews/0.1.478.md` failed `cand/0.1.478` (`512692bab`, rows 011-323 and 011-325) on one proven blocker, B1. Everything else in the candidate passed. Host policy and "not yours" as in `wave-81.md`.
 
 ## W2.5: repair B1 (row 011-325)
 
@@ -20,8 +20,8 @@ Leave alone: everything else; the record stays written in the request's transact
 
 Stop and ask the coordinator if the repair needs a schema step, a new `FileState` field used outside these files, or a change to the reader's shape.
 
-Done when: the new tests fail on `ee2d2827f` and pass after the repair; `request-covered.test.ts`, `request-intake.test.ts` and `test/daemon/covered-id.test.ts` pass; lint and typecheck pass. Commit on your branch; your final message names the commits and the source of "last left queued or running".
+Done when: the new tests fail on `512692bab` and pass after the repair; `request-covered.test.ts`, `request-intake.test.ts` and `test/daemon/covered-id.test.ts` pass; lint and typecheck pass. Commit on your branch; your final message names the commits and the source of "last left queued or running".
 
 ## R2: narrow re-review
 
-After the repair lands on the candidate: the same reviewer role, pinned to the repaired candidate, checks only B1's repair against condition 3 and the review's reproduction, and that nothing else in `96e9fad22..` changed beyond the repair commits and the version bundles.
+After the repair lands on the candidate: the same reviewer role, pinned to the repaired candidate, checks only B1's repair against condition 3 and the review's reproduction, and that nothing else in `f2bf1bcc6..` changed beyond the repair commits and the version bundles.

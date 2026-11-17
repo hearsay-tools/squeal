@@ -2,11 +2,11 @@
 
 ## Verification output
 
-Clean candidate HEAD: `42b1aee9314d12646c5e47f82d32fac4aaa18136`, package 0.1.103. Reviewed repair range: `1f4905e9..e7a2a16b`, second round on `reviews/wave-13u.md`. The only subsequent change is `docs/board.md`, as the dispatch permits. Product and test sources at HEAD equal `e7a2a16b`. Linux, Node 24.21.0. All checks and probes below completed on the clean candidate before writing this report. The reviewer changed no product, test, bundle or board file.
+Clean candidate HEAD: `34ed2369181b2d09ef849e2830617b24e6d0d7cf`, package 0.1.103. Reviewed repair range: `f43b312d..f6b3f842`, second round on `reviews/wave-13u.md`. The only subsequent change is `docs/board.md`, as the dispatch permits. Product and test sources at HEAD equal `f6b3f842`. Linux, Node 24.21.0. All checks and probes below completed on the clean candidate before writing this report. The reviewer changed no product, test, bundle or board file.
 
 ```text
 $ git rev-parse HEAD
-42b1aee9314d12646c5e47f82d32fac4aaa18136
+34ed2369181b2d09ef849e2830617b24e6d0d7cf
 $ git status --short
 (no output)
 
@@ -57,7 +57,7 @@ Two throwaway TypeScript probes ran with `node_modules/.bin/tsx` outside the che
 
 ## Verdict
 
-**FAIL** `42b1aee9314d12646c5e47f82d32fac4aaa18136`: **1 proven blocker, 1 proven should-fix finding, 0 nits**.
+**FAIL** `34ed2369181b2d09ef849e2830617b24e6d0d7cf`: **1 proven blocker, 1 proven should-fix finding, 0 nits**.
 
 The previous review's two B1 reproductions and its B2, S1 and S2 are repaired. The new settlement predicate reopens 001-223's explicit “No line while any is pending” contract when an edited file has a confirmation run pending. The blocker was sent to the coordinator for routing to the human.
 

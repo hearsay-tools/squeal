@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `25c940f39e4514626c570e88c90cb261126ad7f4`, package 0.1.98. Executable range: `afe8d2b0..81ec9101`; HEAD adds only the coordinator's documentation commit `25c940f3`, as allowed in the brief. HEAD matched that permitted candidate. The tracked tree was clean throughout the checks and external probes, before this report. This is the second round on `wave-13r.md`, bounded to B1, B2 as amended by the human, S1, N1 and the repair delta.
+Candidate: `1413491485b6ddbbefe70f3ddb61e90913487553`, package 0.1.98. Executable range: `0282cd55..3bb04954`; HEAD adds only the coordinator's documentation commit `14134914`, as allowed in the brief. HEAD matched that permitted candidate. The tracked tree was clean throughout the checks and external probes, before this report. This is the second round on `wave-13r.md`, bounded to B1, B2 as amended by the human, S1, N1 and the repair delta.
 
 Linux, Node 24.21.0. The assigned independent Vitest suite was run directly, not replaced by a Squeal checkpoint. `npm run build` was forbidden and was not run. Build reproducibility is **unverified**, not a blocker. Both committed CLI bundles contain the repair, including the lazy deadline behavior described in B2; both front-desk bundles carry `sync-forget`. Source inspection is not a rebuild.
 
 ```text
 $ git rev-parse HEAD
-25c940f39e4514626c570e88c90cb261126ad7f4
+1413491485b6ddbbefe70f3ddb61e90913487553
 $ git status --short
 (no output)
 
@@ -72,7 +72,7 @@ The race probe uses the actual initialized scheduler and its actual discharge le
 
 ## Verdict
 
-**FAIL 25c940f3: 1 proven blocker, 0 should-fix, 0 nits.** Prior B1, S1 and N1 are closed. Prior B2 is partially closed: eviction is connected to the actual request ID, forgetting releases the hold while refinement stalls, and detected incompleteness fails safely. Its required one-hour backstop is still lazy and can be exceeded indefinitely. The blocker was sent to the parent for the human's decision.
+**FAIL 14134914: 1 proven blocker, 0 should-fix, 0 nits.** Prior B1, S1 and N1 are closed. Prior B2 is partially closed: eviction is connected to the actual request ID, forgetting releases the hold while refinement stalls, and detected incompleteness fails safely. Its required one-hour backstop is still lazy and can be exceeded indefinitely. The blocker was sent to the parent for the human's decision.
 
 ## Blockers
 

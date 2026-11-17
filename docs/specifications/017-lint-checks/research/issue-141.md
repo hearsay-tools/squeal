@@ -2,7 +2,7 @@
 
 Keep session pinning and make the oxlint runtime requirement explicit: use a new session on Squeal 0.1.392 or later.
 
-Research on 2026-11-03 for [issue 141](https://github.com/hearsay-tools/squeal/issues/141). Documentation only. Spec baseline: `origin/main` at `e698efd14cf5387c76455072dd5dbee2e335e7cc`. The issue's exact repository config was not supplied; the experiment uses the smallest oxlint-only config.
+Research on 2026-11-03 for [issue 141](https://github.com/hearsay-tools/squeal/issues/141). Documentation only. Spec baseline: `origin/main` at `67b2e4957d0058cab29cdf1e73521f92bbac4831`. The issue's exact repository config was not supplied; the experiment uses the smallest oxlint-only config.
 
 ## Questions answered
 
@@ -44,13 +44,13 @@ The full line continues with `setup --check`, `update`, and the session restart 
 
 **Read in source code, 0.1.390.** The launcher reads the session record, validates that version's retained runtime, and selects `pinned ?? ...`. It prints the reported “this Codex session started on … and keeps it until it restarts” notice when the installed newest version is ahead. A missing pinned runtime is an error, not permission to choose another version.
 
-**Read in official docs, origin/main `e698efd14`.** Spec 002 D8 says an update applies to new sessions only; D9 says later hooks use the pinned version. Spec 005 D3 documents the version-skew advisory and defers to 002 for the runtime lifecycle. The more specific ignored-key implementation belongs to 011-275, not a new 005 policy.
+**Read in official docs, origin/main `67b2e4957`.** Spec 002 D8 says an update applies to new sessions only; D9 says later hooks use the pinned version. Spec 005 D3 documents the version-skew advisory and defers to 002 for the runtime lifecycle. The more specific ignored-key implementation belongs to 011-275, not a new 005 policy.
 
 **Read in source code, both releases.** `core/status/ignored-config.ts` has known introduction/cost metadata only for `runtimeFiles`. Unknown keys use the reader's version and generic guidance. It has no `lint.tools` minimum-version metadata. **Inferred:** the existing diagnostic prevents a claim that lint passed, but does not establish that configured oxlint checks will run before work begins. A compatibility requirement is separate work from the released oxlint provider; this research does not define its implementation.
 
 ## Method and limits
 
-- Release commits: 0.1.390 `5d93ab1720d4e457739168e8b59cf2ae113f22c1`; 0.1.392 `56764d5455ddae8e9090a6492dc3959574d13cc9`.
+- Release commits: 0.1.390 `62f1dc7e74a5c490e0bbbb4afd10036dbe2165b7`; 0.1.392 `9dfbba0f421c5891328faf5ac4fcc1238d60b660`.
 - Ran committed `plugins/claude-code/dist` bundles extracted with `git archive`, without a build. Their CLI blobs are identical to `plugins/codex-runtime/dist/cli/squeal.mjs` at each tag: respectively `475df6f96f7a5cdd5a78be407e4cca0b8ad69433` and `f5eb36f0a519712fe5c806f6e94878ff46f88099`. This tests runtime behavior, not a live Codex registration or launcher invocation.
 - Linux, Node 24.22.1, oxlint 1.90.0, 24 CPUs (`getconf _NPROCESSORS_ONLN`, `nproc`, Python `os.cpu_count`). Initial load was 8.46; final probe gates were 4.52 and 4.80, below 24. The full three load averages are preserved. No performance conclusion follows.
 - Separate scratch repositories under `/tmp`; isolated `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `TMPDIR`; no inherited plugin/session variables. Only the existing oxlint package was linked, read-only. No install, full suite, build, release, live-store access, plugin/config change, or hold change.
@@ -67,6 +67,6 @@ Not determined: the original cezarion config's exact tool values, whether a fres
 ## Sources and reproduction
 
 - [Issue 141](https://github.com/hearsay-tools/squeal/issues/141), fetched with `gh issue view 141 --repo hearsay-tools/squeal --json title,body,url,comments`.
-- [0.1.390 source](https://github.com/hearsay-tools/squeal/tree/5d93ab1720d4e457739168e8b59cf2ae113f22c1) and [0.1.392 source](https://github.com/hearsay-tools/squeal/tree/56764d5455ddae8e9090a6492dc3959574d13cc9): `src/core/daemon/policy-lint.ts`, `src/cli/daemon.ts`, `src/core/status/ignored-config.ts`, `plugins/claude-code/bin/squeal-launcher`, fetched through `git show <tag>:<path>`.
+- [0.1.390 source](https://github.com/hearsay-tools/squeal/tree/62f1dc7e74a5c490e0bbbb4afd10036dbe2165b7) and [0.1.392 source](https://github.com/hearsay-tools/squeal/tree/9dfbba0f421c5891328faf5ac4fcc1238d60b660): `src/core/daemon/policy-lint.ts`, `src/cli/daemon.ts`, `src/core/status/ignored-config.ts`, `plugins/claude-code/bin/squeal-launcher`, fetched through `git show <tag>:<path>`.
 - Specs at the recorded `origin/main`: [017](../spec.md) D1/D8/D9/D11 and [status](../status.md); [002](../../002-codex-adapter/spec.md) D7–D9; [005](../../005-agent-adoption/spec.md) D3. Read through `git show origin/main:<path>` with their status logs.
 - [Throwaway probe and exact commands](probes/issue-141/README.md), [script](probes/issue-141/probe.py), [captured output](probes/issue-141/results.json).

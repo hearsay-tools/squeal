@@ -14,4 +14,4 @@ One worker, shape: repair. Use /worker.
 
 **Owns.** `src/cli/status-wait-groups.ts`, `src/cli/status-paths.ts`, `src/cli/status-wait-paths.ts`, `src/cli/status-wait-lines.ts`, `src/cli/main.ts`, their tests. **Leave alone:** `docs/`, versions, bundles, `test/hash`, `test/keys`. No `pnpm run build`.
 
-**Done when.** The source-reader test fails on 68924c8ef and passes after. Lint, typecheck, `squeal status --wait 60000 <changed paths>` reported; do not wait past the files the change reaches.
+**Done when.** The source-reader test fails on fdae5af0e and passes after. Lint, typecheck, `squeal status --wait 60000 <changed paths>` reported; do not wait past the files the change reaches.

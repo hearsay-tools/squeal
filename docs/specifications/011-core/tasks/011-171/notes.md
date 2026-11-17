@@ -1,6 +1,6 @@
 # 011-171: a focused wait decides in one place, and one reader says when a focused run applies
 
-Worker 9354f23b, wave 29 W3, from main 897e3e357, 2026-10-24. Shape: slice (subtraction). With slices 1, 3, 4, 5 and 11 of `quality/2026-10-24.md`, and slice 6 of row 011-172. No behaviour or printed text changes, and no test changed.
+Worker 9354f23b, wave 29 W3, from main 37e56d09a, 2026-10-24. Shape: slice (subtraction). With slices 1, 3, 4, 5 and 11 of `quality/2026-10-24.md`, and slice 6 of row 011-172. No behaviour or printed text changes, and no test changed.
 
 ## 1. What changed
 

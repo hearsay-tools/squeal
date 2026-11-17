@@ -12,10 +12,10 @@ gh issue view 75 --repo hearsay-tools/squeal --json number,title,body,comments,u
 
 Research ran on 2026-10-22, starting at 13:07 UTC. The first safety check was `cat /proc/loadavg; getconf _NPROCESSORS_ONLN`: **11.79 10.91 12.58**, **24 CPUs**. The one-minute load was below the CPU count. Each probe checked it again. No dependency setup, product build, broad test run or product change was made.
 
-The checkout and `origin/main` were `8e38d7dc3dcfcd696bdacb2571e59a1cfa3dda8c`, package version **0.1.263**. The experiment used the actual committed Codex bundles from:
+The checkout and `origin/main` were `83415171c6d8ef5f61f66116bea228eabc8623bc`, package version **0.1.263**. The experiment used the actual committed Codex bundles from:
 
-- **0.1.260**, tag `squeal--v0.1.260`, commit `0f4cd7bb3f0478e78496d11eae86b1bd5dfec649`.
-- **0.1.261**, tag `squeal--v0.1.261`, commit `40b721f0967ed4f32cefd6075680cfaa195eaff4`.
+- **0.1.260**, tag `squeal--v0.1.260`, commit `24715ac3e29c775df339cc4ebbb6fe779dde5b3d`.
+- **0.1.261**, tag `squeal--v0.1.261`, commit `d9fb1322b5907c238d2f315c1b7895a0001fd540`.
 
 Host runtime: **Node v24.21.0, Linux**. Each experiment had its own scratch Git repository, store, lock, session ID, runtime directory and config directory. Environment variables were limited to PATH and those scratch directories. Squeal used its normal socket fallback under `/tmp/squeal-1001`, keyed to the unique fixture root. Cleanup selected only daemon argv containing that exact root. It did not stop or alter other sessions.
 
@@ -76,4 +76,4 @@ The probe did not run a real Codex session, install an upgrade, delete a runtime
 - `docs/process.md` (bounded documentation-only triage), `docs/vision.md` (silence, trustworthy state), `docs/styleguide.md`, and `git show origin/main:docs/board.md`.
 - [011 spec](../spec.md), C5/C6/C8/C9/C10, and [status amendments](../status.md), notably 011-32/011-34 and 011-110. C8 says “liveness is told once per change”; C9 requires one claim per handoff.
 - [002 Codex adapter](../../002-codex-adapter/spec.md), D3–D5: PostToolUse shares the core delivery view; concurrent boundaries must consume news once. [005 adoption](../../005-agent-adoption/spec.md), D3: retained runtime copies are an untested upgrade path here.
-- [0.1.261 source](https://github.com/hearsay-tools/squeal/tree/40b721f0967ed4f32cefd6075680cfaa195eaff4): `src/harness/shared/ensure.ts` (`handOver`), `src/core/delivery/handoff.ts` (`claimHandoff`), `src/core/delivery/liveness.ts` (`livenessChange`), `src/core/delivery/delivery.ts` (transactional delivery), `src/core/status/stopping.ts` (`withStopping`, `claimed`), and `src/harness/codex/kept.ts` (version-specific CLI selection).
+- [0.1.261 source](https://github.com/hearsay-tools/squeal/tree/d9fb1322b5907c238d2f315c1b7895a0001fd540): `src/harness/shared/ensure.ts` (`handOver`), `src/core/delivery/handoff.ts` (`claimHandoff`), `src/core/delivery/liveness.ts` (`livenessChange`), `src/core/delivery/delivery.ts` (transactional delivery), `src/core/status/stopping.ts` (`withStopping`, `claimed`), and `src/harness/codex/kept.ts` (version-specific CLI selection).

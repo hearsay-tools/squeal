@@ -1,6 +1,6 @@
 # 015-65 notes: coverage lines lead with their reason, say `untested`, and share one block per function
 
-Worker 50124af4, wave 12 W2, 2026-10-26. Brief: `../wave-12.md`, section "W2: 015-65". Starts from main `1ddf0eaf4`.
+Worker 50124af4, wave 12 W2, 2026-10-26. Brief: `../wave-12.md`, section "W2: 015-65". Starts from main `1766a8249`.
 
 ## What changed
 

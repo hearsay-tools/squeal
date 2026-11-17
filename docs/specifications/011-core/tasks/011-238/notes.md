@@ -2,7 +2,7 @@
 
 ## Slices 3 to 5 (wave 50 W2)
 
-Brief: `tasks/wave-50.md` W2, baseline `00daa15e5`. Source: `quality/2026-10-26-a.md` slices 3, 4 and 5. Each slice is a rename or a move with no change in behaviour: no line, header, JSON field or key changes.
+Brief: `tasks/wave-50.md` W2, baseline `193902975`. Source: `quality/2026-10-26-a.md` slices 3, 4 and 5. Each slice is a rename or a move with no change in behaviour: no line, header, JSON field or key changes.
 
 ### Slice 3: the change feed's last delivered pass is `deliveredPass`
 

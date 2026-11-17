@@ -1,8 +1,8 @@
 # Issue 38: do stale selected files have a focused refresh path under a lookup-only baseline?
 
-Researcher, 2026-10-19, 20-minute time box, documentation only. Issue: hearsay-tools/squeal#38 (`gh issue view 38`). Read: `docs/vision.md`, 011 C4, C5, C6, C9, C15 and `status.md` at `85f94301`.
+Researcher, 2026-10-19, 20-minute time box, documentation only. Issue: hearsay-tools/squeal#38 (`gh issue view 38`). Read: `docs/vision.md`, 011 C4, C5, C6, C9, C15 and `status.md` at `c4c4b9c9`.
 
-Versions: this worktree's HEAD `85f94301`, **0.1.222** (`package.json`), run from its committed bundle `plugins/claude-code/dist/cli/squeal.mjs` without a build. That is the incident's version. The installed `squeal --version` also prints 0.1.222. Vitest 4.1.10 is symlinked read-only from `~/projects/cezar/node_modules`. The retry path for a file with no result came from 011-16 (`f8f7c726`, `68e8a1a5`), whose `package.json` reads 0.1.216.
+Versions: this worktree's HEAD `c4c4b9c9`, **0.1.222** (`package.json`), run from its committed bundle `plugins/claude-code/dist/cli/squeal.mjs` without a build. That is the incident's version. The installed `squeal --version` also prints 0.1.222. Vitest 4.1.10 is symlinked read-only from `~/projects/cezar/node_modules`. The retry path for a file with no result came from 011-16 (`b148a96c`, `fd844108`), whose `package.json` reads 0.1.216.
 
 Host load: the one-minute load was 4.42 on 24 CPUs at the start (`/proc/loadavg`, `nproc`), 5.00 and 5.97 at each probe's start, and 6.05 at the end. That is below the CPU count throughout, so the live probe ran. The probe ran in its own `/tmp/issue38.XXXX` with HOME and XDG_* inside it, and its own daemon, which `squeal stop` ended. No shared daemon or other worktree was touched.
 
@@ -18,7 +18,7 @@ A focused path already exists for an **exact test path**. Since 0.1.216, `squeal
 |---|---|---|---|
 | 1 | Does the issue's state reproduce? | Yes, when the edit lands while no daemon runs and a lookup-only daemon then starts: `4 stale ... 0 queued`. A whitespace-only `squeal.config.json` edit made while the daemon ran left the input-declared file current (B below). | verified by experiment |
 | 2 | Why is nothing queued? | The start's baseline checkpoint covers the misses, and with `lookup-only` it is `finish("abandoned")` without enqueueing them (`src/core/scheduler/bootstrap.ts:178-186`). This follows C4: "the baseline is a lookup ... followed by a run of the misses, or lookup only, per policy". | read in source code; verified by experiment |
-| 3 | Does `retry` refresh a stale file named by its exact path? | Yes. `Run queued: tests/a.test.ts has no result at its inputs (stale: its last result is at other inputs). It runs once now ...`. A second ask queues nothing. Then `status --wait 60000 src/lib.js` gives `each with a current result`, exit 0. | verified by experiment; read in source code (`src/cli/retry.ts:172-200`, 011-16 repair `68e8a1a5`) |
+| 3 | Does `retry` refresh a stale file named by its exact path? | Yes. `Run queued: tests/a.test.ts has no result at its inputs (stale: its last result is at other inputs). It runs once now ...`. A second ask queues nothing. Then `status --wait 60000 src/lib.js` gives `each with a current result`, exit 0. | verified by experiment; read in source code (`src/cli/retry.ts:172-200`, 011-16 repair `fd844108`) |
 | 4 | Does `retry` accept a source path? | No: `Not retried: src/lib.js is not a test file Squeal has keyed in this worktree.`, exit 1. It does not expand to the selection. | verified by experiment |
 | 5 | Is `run --all` the only refresh for a source selection? | Yes. It printed `3 test files, 1 already current, 2 run now`, so it ran every stale file, the selected one and the unselected one, but not the current file. C4 says it "queues every test file whose key has no result". | verified by experiment; read in official docs (spec C4) |
 | 6 | Does any output name a refresh command for stale files with nothing queued? | No. The named line's `settled` case prints `none(why)` with no command (`src/cli/status-wait-lines.ts:200-205`). The `Idle:` line counts only `unknownTestFiles` (`src/core/status/work-line.ts:33-34`), so with `4 stale, 0 queued` no `Idle:` line appeared. `squeal --help` still describes `retry` as for failures only (`src/cli/main.ts:83-88`). The plugin skill under `plugins/claude-code/skills/squeal/` has no `retry` match. | verified by experiment; read in source code |
@@ -76,7 +76,7 @@ In the first full run, `run --all --wait` came before any retry and printed `3 t
 
 ## Related sections and issues
 
-- C4 (explicit checkpoints, baseline `lookup-only`), C5 011-16 amendment ("`retry <file>` given a test file with no result at its current key ... queues one run"; the repair `68e8a1a5` covers a stale FAIL), C6 (status read-only, wording), C9 (start, stop), C15 (named line, promotion: retry's queued file is promoted by the named exact-path wait).
+- C4 (explicit checkpoints, baseline `lookup-only`), C5 011-16 amendment ("`retry <file>` given a test file with no result at its current key ... queues one run"; the repair `fd844108` covers a stale FAIL), C6 (status read-only, wording), C9 (start, stop), C15 (named line, promotion: retry's queued file is promoted by the named exact-path wait).
 - gh-36 / `research/issue-36.md` / row 011-16: the same gap for `unknown` files, which 0.1.216 closed in `retry`. Its recommendation to name a command in refusals was carried into `retry`'s own reply (`waitText`), but not into the named no-verdict line or `Idle:`.
 - 011-12 (`work-line.ts`): the `Idle:` line names `run --all --wait` for unknown files but counts no stale ones.
 
@@ -98,7 +98,7 @@ The source-path half is a design choice for the human. `retry <source path>` cou
 ## Sources
 
 - `gh issue view 38` (hearsay-tools/squeal#38), and the cezarion PR it links, which was not opened.
-- `docs/specifications/011-core/spec.md` C4, C5, C6, C15 at `85f94301`; `status.md` (2026-10-18 triage round 6, row 011-16).
-- `src/cli/retry.ts:160-246`, `src/cli/status-wait-lines.ts:172-213`, `src/core/status/work-line.ts:13-43`, `src/core/status/unknown-files.ts:77-108`, `src/core/scheduler/bootstrap.ts:165-190`, `src/cli/main.ts:83-90`, at `85f94301`.
+- `docs/specifications/011-core/spec.md` C4, C5, C6, C15 at `c4c4b9c9`; `status.md` (2026-10-18 triage round 6, row 011-16).
+- `src/cli/retry.ts:160-246`, `src/cli/status-wait-lines.ts:172-213`, `src/core/status/work-line.ts:13-43`, `src/core/status/unknown-files.ts:77-108`, `src/core/scheduler/bootstrap.ts:165-190`, `src/cli/main.ts:83-90`, at `c4c4b9c9`.
 - `docs/specifications/011-core/research/issue-36.md`.
 - Probe: `docs/specifications/011-core/research/probes/issue-38/probe.sh` and `README.md`. Its outputs stayed in `/tmp` and are not committed.

@@ -11,7 +11,7 @@ Wave 5 W3, 2026-10-27. Spec 002 D7 to D9, `../wave-5.md` W3, `../wave-5-contract
   A legacy Codex plugin (no `seed/`) gets neither. `installed` has a new mode, `adapter`, and `installed any` puts the Codex runtime in place of a fixed plugin's adapter version.
 - `plugins/claude-code/bin/squeal-launcher`: format 8. It resolves a fixed Codex plugin's runtime (below). Claude Code, Pi, OpenCode, the legacy Codex cache and the 005 D3 kept copies work as before when there is no managed state.
 - `README.md` "Install": the one fixed plugin, the two provisioning steps, the failure exit, runtime updates, session pins in the launcher, and the runtimes that uninstall leaves.
-- Tests: `test/cli/install-sh-codex.test.ts` (9) and `test/cli/launcher-codex-runtime.test.ts` (11). The fixtures are the new `test/cli/codex-runtime-fixture.ts`, additions to `install-fixture.ts`, and `test/fixtures/codex/launcher-format-7`, the format-7 launcher of 005-84 (f0c99a2e7) as `install.sh` copied it before this row.
+- Tests: `test/cli/install-sh-codex.test.ts` (9) and `test/cli/launcher-codex-runtime.test.ts` (11). The fixtures are the new `test/cli/codex-runtime-fixture.ts`, additions to `install-fixture.ts`, and `test/fixtures/codex/launcher-format-7`, the format-7 launcher of 005-84 (98c5c9565) as `install.sh` copied it before this row.
 
 ## Seam map: how the launcher finds a Codex runtime
 

@@ -1,6 +1,6 @@
 # Run evidence: one module for what decides whether a run's result is saved
 
-Design brief from the architecture review of 2026-11-12 (main at `099a1b0a9`, 0.1.448; Cezar task af6c0b3f, report artifact d8b46fe2, card 1). Terms: `GLOSSARY.md` (Run evidence, Store decision, Observed read, Touched input, Keep). The decisions below are the human's, taken one at a time on 2026-11-12. Rows 011-319 and 011-320.
+Design brief from the architecture review of 2026-11-12 (main at `cb7e9d22e`, 0.1.448; Cezar task af6c0b3f, report artifact d8b46fe2, card 1). Terms: `GLOSSARY.md` (Run evidence, Store decision, Observed read, Touched input, Keep). The decisions below are the human's, taken one at a time on 2026-11-12. Rows 011-319 and 011-320.
 
 ## Problem
 

@@ -95,7 +95,7 @@ The eval slot is shared with the other coordinators. Start each session only whi
 
 Use /reviewer.
 
-**Outcome.** A findings file, `reviews/wave-4-6.md`, on 005's commits from `00c98842` to `8dfe244d`. It must be written within 15 minutes of starting, then extended.
+**Outcome.** A findings file, `reviews/wave-4-6.md`, on 005's commits from `00c98842` to `e36698ee`. It must be written within 15 minutes of starting, then extended.
 
 **Scope.** Only 005's commits in that range, listed with `git log --grep '00[5]-'`:
 - 005-17, the real-CLI suite and its isolation;
@@ -150,13 +150,13 @@ Use /worker.
 
 Use /reviewer.
 
-**Outcome.** `reviews/wave-6.5.md`, written within 15 minutes of starting, then extended. It covers `d967555b`, `f83fc7fa`, `b2c28837` and `f5d64f5f`, at `309fc44a` and later (0.1.159).
+**Outcome.** `reviews/wave-6.5.md`, written within 15 minutes of starting, then extended. It covers `84c26fe0`, `0a5c434f`, `623a15ac` and `1a1ce2de`, at `0430e273` and later (0.1.159).
 
 **Scope.** Only these four items:
 - B1: node:test exclusions in setup's validation and in `--check`;
 - B2: an explicit relative path keeps its named evidence, and the bare-string negative still holds;
 - S1: the real-CLI guard checks argv;
-- the coordinator's correction of the 005-39 warm-up test premise (`f5d64f5f`).
+- the coordinator's correction of the 005-39 warm-up test premise (`1a1ce2de`).
 
 Re-run the review's own two reproductions on the candidate. Anything new outside the scope goes under "Next", not as a blocker.
 

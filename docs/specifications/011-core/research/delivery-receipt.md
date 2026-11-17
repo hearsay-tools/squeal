@@ -1,6 +1,6 @@
 # Keep a notice owed while its receipt is unknown
 
-Row 011-288, wave 63 R3. Examined 2026-10-31 at Squeal `ecf1d10b4` (0.1.384).
+Row 011-288, wave 63 R3. Examined 2026-10-31 at Squeal `b30f1df7c` (0.1.384).
 **Recommendation: deliver again at the next eligible boundary when receipt is
 unknown.** All four adapters can lose a notice after committing its delivery.
 Accept possible duplicates rather than silently retiring an unreceived transition.
@@ -11,23 +11,23 @@ Versions: probes use Node 24.22.1 and Vitest 5.0.3; Pi host source is installed
 `rust-v0.160.1` (`d27764b`, the version named by spec 002's research); Claude Code
 and Codex official hook docs are unversioned pages fetched 2026-10-31. No live
 Claude Code, Codex or Pi session was started. The prior OpenCode experiment used
-OpenCode 1.18.35 and Squeal `33cdf29a1`; its relevant delivery/adapter sources are
+OpenCode 1.18.35 and Squeal `a8905870d`; its relevant delivery/adapter sources are
 unchanged at this research commit.
 
 ## Questions answered
 
 | Harness / question | Gap from committed delivery to agent text | Evidence and deadline exposure |
 | --- | --- | --- |
-| Claude Code | Core commit → format/close store → hook JSON on stdout → hook completion and host parsing → model context. Idle waiter instead writes stderr and exits 2 → `asyncRewake` system reminder. | **read in source code**, Squeal `ecf1d10b4`; **read in official docs**, fetched 2026-10-31: a timed-out hook's output is discarded. Normal hooks have 2 s; slow Stop 630 s; waiter 3,600 s. A kill can fall after commit on any path. |
-| Codex | Core commit → format/close store → JSON stdout → process/pipe completion → host context or Stop continuation. No idle wake. | **read in source code**, Squeal `ecf1d10b4`, Codex 0.160.1: the 2 s bound covers stdin and `wait_with_output`; timeout gives empty stdout and process-group kill. **read in official docs**, fetched 2026-10-31: timeout is seconds. Slow Stop is 630 s. |
-| Pi | Core commit in worker → format/close store → worker `postMessage` → host pending-call resolution → extension result or `sendMessage` → Pi queues/appends the entry → model request. | **verified by experiment**, Squeal `ecf1d10b4`: real `DeliveryHost` drops the answer and terminates the worker at 2 s after commit. **read in source code**, same Squeal and Pi 1.0.4: a canceled idle wait drops a pending answer even without this deadline; queued text is not proof of model receipt. |
-| OpenCode | Core commit → bridge stdout/exit → plugin parses answer → tool result/text part, or `promptAsync` acceptance → model request. | **verified by experiment**, prior OpenCode 1.18.35 probe at `33cdf29a1`: default idle 500 ms expires after commit, before stdout; next prompt lacks the transition. **read in source code**, `ecf1d10b4`: tool/prompt bridge bound 2 s; idle `stop.waitMs + 500 ms`; canceled waiter kills bridge. |
+| Claude Code | Core commit → format/close store → hook JSON on stdout → hook completion and host parsing → model context. Idle waiter instead writes stderr and exits 2 → `asyncRewake` system reminder. | **read in source code**, Squeal `b30f1df7c`; **read in official docs**, fetched 2026-10-31: a timed-out hook's output is discarded. Normal hooks have 2 s; slow Stop 630 s; waiter 3,600 s. A kill can fall after commit on any path. |
+| Codex | Core commit → format/close store → JSON stdout → process/pipe completion → host context or Stop continuation. No idle wake. | **read in source code**, Squeal `b30f1df7c`, Codex 0.160.1: the 2 s bound covers stdin and `wait_with_output`; timeout gives empty stdout and process-group kill. **read in official docs**, fetched 2026-10-31: timeout is seconds. Slow Stop is 630 s. |
+| Pi | Core commit in worker → format/close store → worker `postMessage` → host pending-call resolution → extension result or `sendMessage` → Pi queues/appends the entry → model request. | **verified by experiment**, Squeal `b30f1df7c`: real `DeliveryHost` drops the answer and terminates the worker at 2 s after commit. **read in source code**, same Squeal and Pi 1.0.4: a canceled idle wait drops a pending answer even without this deadline; queued text is not proof of model receipt. |
+| OpenCode | Core commit → bridge stdout/exit → plugin parses answer → tool result/text part, or `promptAsync` acceptance → model request. | **verified by experiment**, prior OpenCode 1.18.35 probe at `a8905870d`: default idle 500 ms expires after commit, before stdout; next prompt lacks the transition. **read in source code**, `b30f1df7c`: tool/prompt bridge bound 2 s; idle `stop.waitMs + 500 ms`; canceled waiter kills bridge. |
 | Smallest common rule | Receipt unknown means report still owed; try at the next eligible boundary. Only confirmed acceptance can retire it. | **inferred**, from all four paths above. Merely moving the write after stdout does not establish acceptance. |
 | Duplicate cost | A repeated SQUEAL report, possibly a second denial or continuation, depending on delivery path. | **inferred**, from the output contracts below at the examined versions. No duplicate-replay repair was implemented or tested. |
 
 ## What the evidence establishes
 
-**read in source code**, Squeal `ecf1d10b4`. `delivery.ts:260` writes the
+**read in source code**, Squeal `b30f1df7c`. `delivery.ts:260` writes the
 consumer view inside the transaction, before returning its delta. The same rule
 covers `onToolBoundary`, `startTurn`, regression `peek`, and idle `waitForDelta`.
 Registration also seeds the view before returning the header. Liveness, holds,
@@ -36,7 +36,7 @@ revision, counts, edit notes and code/lint acknowledgements have similar local
 for every part of a report. The store transaction prevents competing deliveries
 from consuming the same transition; it is not a transaction with the harness.
 
-**verified by experiment**, Squeal `ecf1d10b4`, Node 24.22.1. The [six-case
+**verified by experiment**, Squeal `b30f1df7c`, Node 24.22.1. The [six-case
 probe](probes/delivery-receipt/README.md) used real stores and handlers. A private
 marker proves that each failing view committed and its report contained
 `PASS -> FAIL` before a 3 s asynchronous pause. Claude/Codex used a modeled 2 s
@@ -58,7 +58,7 @@ stdout, and drops a guard that kills the process group. Both hooks' own wrappers
 also turn a post-commit exception into silence. No successful write callback is
 an acknowledgement from either model context.
 
-**read in source code**, Squeal `ecf1d10b4`, Pi 1.0.4. Pi's `host.ts` resolves a
+**read in source code**, Squeal `b30f1df7c`, Pi 1.0.4. Pi's `host.ts` resolves a
 canceled wait as null immediately and removes its pending id. A later worker
 message cannot restore it. `extension.ts` also drops an answer after shutdown or
 a replaced wait. Its idle `sendMessage` catch says “the news waits for the next
@@ -67,7 +67,7 @@ prompt”, but the already-committed view cannot provide that guarantee. Pi's
 after handlers return. A worker reply or queue insertion is still earlier than
 model receipt. These additional cancel/shutdown paths were read, not exercised.
 
-**read in source code**, Squeal `ecf1d10b4`. OpenCode already holds an unsuccessful
+**read in source code**, Squeal `b30f1df7c`. OpenCode already holds an unsuccessful
 `promptAsync` report in `turn.held` for another prompt/tool boundary and recognizes
 its own late-arriving message. That helps only after the bridge returned the
 text; it cannot recover the report lost before stdout. Its held array is also
@@ -88,7 +88,7 @@ between commit and exit. No production loss rate, post-commit duration distribut
 or measured ranking among the three 2 s paths is determined. The forced pauses
 prove possibility, not frequency. No CPU load was generated.
 
-**inferred**, from Squeal's output mappings at `ecf1d10b4` and Pi 1.0.4. A duplicate
+**inferred**, from Squeal's output mappings at `b30f1df7c` and Pi 1.0.4. A duplicate
 would repeat the same revision/check/transition facts, not mean another test run:
 
 - Claude Code: another `additionalContext` report; an idle system reminder; at
@@ -146,7 +146,7 @@ probe run verifies the research code. `git diff --check` passed.
   1.0.4: `node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js`
   (`_applyBoundaryDrafts`, `sendCustomMessage`) and `dist/core/messages.js`
   (`convertToLlm`, custom-to-user conversion).
-- Squeal at `ecf1d10b4`: `src/core/delivery/delivery.ts`; `src/harness/shared/{deliver,stop,waiter,hook}.ts`;
+- Squeal at `b30f1df7c`: `src/core/delivery/delivery.ts`; `src/harness/shared/{deliver,stop,waiter,hook}.ts`;
   `src/harness/claude-code/{main,run}.ts`, `hooks/{stop,waiter}.ts`;
   `src/harness/codex/{main,run,output,handlers}.ts`;
   `src/harness/pi/{host,worker,extension,run}.ts`;

@@ -1,6 +1,6 @@
 # Wave 33
 
-From main `d0efe8dd4` after 0.1.298 (011-183), 2026-10-24. W1 and W2 run on disjoint seams (the change feed; the stop-cancel test) and ship together in one release; Q1 is the quality scan due after about ten landed rows.
+From main `fe841fa68` after 0.1.298 (011-183), 2026-10-24. W1 and W2 run on disjoint seams (the change feed; the stop-cancel test) and ship together in one release; Q1 is the quality scan due after about ten landed rows.
 
 ## W1: 011-187, a change of the extra files alone reconciles too
 

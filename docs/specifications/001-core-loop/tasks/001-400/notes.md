@@ -29,9 +29,9 @@ Worst case, added to a tier's stop: up to 1 s per round for a process that will 
 
 ## The reproduction
 
-`repro.sh <tree> <runs> <heap MB> [log dir]` copies `escaped.test.ts` to `test/daemon/escaped-heap.repro.ts`, outside the suite's include, and runs it with Vitest on `taskset -c 0-1` beside 2 busy loops. In the copy, the fixture's test holds a touched 400 MB `Buffer`, so the fork's exit runs long. The before tree is `git archive` of 956cba88 with `node_modules` linked. `arms.sh` alternates the two trees run by run, so both see the same host load.
+`repro.sh <tree> <runs> <heap MB> [log dir]` copies `escaped.test.ts` to `test/daemon/escaped-heap.repro.ts`, outside the suite's include, and runs it with Vitest on `taskset -c 0-1` beside 2 busy loops. In the copy, the fixture's test holds a touched 400 MB `Buffer`, so the fork's exit runs long. The before tree is `git archive` of 4aad2d17 with `node_modules` linked. `arms.sh` alternates the two trees run by run, so both see the same host load.
 
-| arm | host load | before (956cba88) | after |
+| arm | host load | before (4aad2d17) | after |
 |---|---|---|---|
 | sequential | 57 to 94 / 44 to 75 | 8 of 12 failed (4 "both sleepers gone after the tier not met", 4 reason not kept) | 0 of 12 |
 | before alone, logs kept | 28 to 52 | 1 of 8 failed ("not met") | |

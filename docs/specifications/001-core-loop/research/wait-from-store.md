@@ -7,7 +7,7 @@
 3. A move back to a resolved revision reopens it.
 4. A prune that never runs while a runner part is outstanding.
 
-Examined at commit 8e5e5462 (0.1.110, `KEY_FORMAT_VERSION` 4), Node 24.21.0, Vitest 5.0.3. Probes: `probes/wait-from-store/` (5 files, 13 tests, all passing, at load average 54 to 75).
+Examined at commit dad7edbd (0.1.110, `KEY_FORMAT_VERSION` 4), Node 24.21.0, Vitest 5.0.3. Probes: `probes/wait-from-store/` (5 files, 13 tests, all passing, at load average 54 to 75).
 
 ## Questions answered
 
@@ -121,6 +121,6 @@ The one-worker row: "001-2xx `status --wait` from the store. Add `rekeyed-moves.
 ## Sources
 
 - Reviews: `reviews/wave-13k.md` (B1, S1), `wave-13l.md` (S1), `wave-13q.md` (S1), `wave-13r.md` (B2), `wave-13s.md` (B2), `wave-13t.md` (S1).
-- Source at 8e5e5462: `src/core/scheduler/{discharges,rekeyed-record,ledger,scheduler,runner-work,revision,tiers,files}.ts`, `src/core/daemon/{daemon,handlers,desk,front-desk,desk-messages,protocol,sync-requests}.ts`, `src/cli/{status-wait,status-wait-edit,status-sync}.ts`, `src/core/delivery/edits.ts`, `src/core/store/{schema,open}.ts`, `spec.md` D5 (line 116) and D7 (line 144).
+- Source at dad7edbd: `src/core/scheduler/{discharges,rekeyed-record,ledger,scheduler,runner-work,revision,tiers,files}.ts`, `src/core/daemon/{daemon,handlers,desk,front-desk,desk-messages,protocol,sync-requests}.ts`, `src/cli/{status-wait,status-wait-edit,status-sync}.ts`, `src/core/delivery/edits.ts`, `src/core/store/{schema,open}.ts`, `spec.md` D5 (line 116) and D7 (line 144).
 - Existing tests the probes copy: `test/scheduler/{resolved-wait,later-discharge-wait,environment-growth-same-revision,held-socket}.test.ts`.
 - Probes: `research/probes/wait-from-store/` (README has the command and the recorded run).

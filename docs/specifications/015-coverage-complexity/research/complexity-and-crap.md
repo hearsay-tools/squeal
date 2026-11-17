@@ -1,6 +1,6 @@
 # 015-02: complexity and CRAP
 
-Brief: `complexity-and-crap-brief.md`. Researcher, 2026-10-23. Evidence: tool sources read at the versions named, a fixture with one construct per function, every engine run over this repository's `src/` at `f6f44e03` (605 JS/TS files, 3.5 MB), a coverage-v8 map of `src/core/delivery/` from its own 34 test files in a `/tmp` copy, and a replay of the last 300 commits that touch `src/*.ts` (2026-10-20 to 2026-10-23). Host load was 28 to 62 during the timings. Probes and outputs: `probes/complexity-and-crap/`. Added during the work (coordinator, 2026-10-23): test the reading that "the code can squeal", complexity and CRAP as a check type with a state per function. Section 8 answers it.
+Brief: `complexity-and-crap-brief.md`. Researcher, 2026-10-23. Evidence: tool sources read at the versions named, a fixture with one construct per function, every engine run over this repository's `src/` at `963baee3` (605 JS/TS files, 3.5 MB), a coverage-v8 map of `src/core/delivery/` from its own 34 test files in a `/tmp` copy, and a replay of the last 300 commits that touch `src/*.ts` (2026-10-20 to 2026-10-23). Host load was 28 to 62 during the timings. Probes and outputs: `probes/complexity-and-crap/`. Added during the work (coordinator, 2026-10-23): test the reading that "the code can squeal", complexity and CRAP as a check type with a state per function. Section 8 answers it.
 
 ## Answers
 

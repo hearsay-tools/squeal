@@ -1,6 +1,6 @@
 # Wave 83: row 011-327 (the run waits take the status waits' rules)
 
-Coordinator cdd216e5, 2026-11-13. Row 011-326 (`src/cli/wait/`, behaviour preserved) landed as 0.1.471 (`44cfe080d`); its review is `reviews/0.1.469.md` (PASS; N2 is this row's first step). This wave is 011-327 alone. 011-328 follows once card 2's row 011-325 lands (wave 81, coordinator 9ddca779).
+Coordinator cdd216e5, 2026-11-13. Row 011-326 (`src/cli/wait/`, behaviour preserved) landed as 0.1.471 (`e776642b0`); its review is `reviews/0.1.469.md` (PASS; N2 is this row's first step). This wave is 011-327 alone. 011-328 follows once card 2's row 011-325 lands (wave 81, coordinator 9ddca779).
 
 Host policy, as in `wave-79.md`: no local full suite, no `squeal run --all`, no `pnpm run build`; `env -u PLUGIN_ROOT -u PLUGIN_DATA` on every test command; private `/tmp` fixtures; never make CPU load on purpose; no probe or harness session under the real `HOME`. Not yours: the board, `spec.md`, `status.md`, `plugins/*/dist`, the `package.json` version.
 
@@ -31,7 +31,7 @@ Done when: the row's done-when holds; each changed cell names the status wait it
 
 ## R1: review of cand/0.1.474
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43511701813. Pinned to `cand/0.1.474` at `9d70cdb1f0c04c7226682b53cba61f4718944b7a`; range `5042e9b67..9d70cdb1f`: eight worker commits of 664d4f3e, cherry-picked (`dfe5212dc..d7c6ccbe7`), then the 0.1.474 version raise and bundles. The behaviour to compare against is `5042e9b67` (0.1.471 with docs). Read: board row 011-327, `research/waits.md` decision 4, `tasks/011-327/notes.md`, `reviews/0.1.469.md` (N1, N2), this file's W1.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43511701813. Pinned to `cand/0.1.474` at `6399201b60a07d674650b88148f87e62c5662a68`; range `b0dd644b9..6399201b6`: eight worker commits of 664d4f3e, cherry-picked (`da89f33ee..163ab741e`), then the 0.1.474 version raise and bundles. The behaviour to compare against is `b0dd644b9` (0.1.471 with docs). Read: board row 011-327, `research/waits.md` decision 4, `tasks/011-327/notes.md`, `reviews/0.1.469.md` (N1, N2), this file's W1.
 
 Check, each as proven, plausible or unverified:
 

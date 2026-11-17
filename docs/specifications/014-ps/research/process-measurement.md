@@ -85,7 +85,7 @@ Research for spec 014 (`squeal ps`), brief `process-measurement-brief.md`, 2026-
 
 ## Sources
 
-- Squeal at `9060a96c9`: `src/core/daemon/{escaped,terminate,leftovers,low-priority}.ts`, `src/core/capacity/{pool,marks}.ts`, `src/runners/node-test/run/{run,process}.ts`, `src/runners/pytest/run/run.ts`, `src/runners/vitest/{adapter,environment}.ts`; spec 011 C10 (Capacity, Priority) and C13; 001 `research/host-capacity.md`, `research/process-group-tests-under-squeal.md`.
+- Squeal at `0547eee7f`: `src/core/daemon/{escaped,terminate,leftovers,low-priority}.ts`, `src/core/capacity/{pool,marks}.ts`, `src/runners/node-test/run/{run,process}.ts`, `src/runners/pytest/run/run.ts`, `src/runners/vitest/{adapter,environment}.ts`; spec 011 C10 (Capacity, Priority) and C13; 001 `research/host-capacity.md`, `research/process-group-tests-under-squeal.md`.
 - Vitest 4.1.10: `~/projects/cezar/node_modules/.pnpm/vitest@4.1.10_…/node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js`, lines 3084 (forks) and 3162 (threads).
 - Live host, read-only: `/proc/<pid>/{stat,status,smaps_rollup,smaps,cmdline,environ,cgroup,task/*/comm}`, `/proc/{loadavg,meminfo,stat,pressure/*}`, `/sys/fs/cgroup/…/cezar.service/*`; `~/projects/cezar/.git/squeal/store.sqlite` (`readOnly`).
 - Probes and logs: `probes/process-measurement/` (README lists each script and log).

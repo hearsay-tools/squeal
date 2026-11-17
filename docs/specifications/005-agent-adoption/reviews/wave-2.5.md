@@ -1,16 +1,16 @@
 # 005 wave 2.5 re-review
 
-PASS `3dc61b4d5774a224d43d68320707290983d9e3dc`: **0 blockers**, **1 proven nonblocking should-fix**, **0 nits**. Wave 2 B1, B2, B3 and S1 are closed. The remaining note is in 005-29: ignored-read suggestions discard another project's entry when two projects run the same file.
+PASS `cd070c725f3bef82a949a23fdcb5935bd544971a`: **0 blockers**, **1 proven nonblocking should-fix**, **0 nits**. Wave 2 B1, B2, B3 and S1 are closed. The remaining note is in 005-29: ignored-read suggestions discard another project's entry when two projects run the same file.
 
 ## Verification
 
-HEAD matches the assigned HEAD candidate. This is the bounded 005-30 re-review against `reviews/wave-2.md`, `tasks/wave-2.md`, D3/D8 and the 2026-10-13 wave 2.5 amendment. Compared `6629ba45..3dc61b4d`, and inspected the named repairs individually: `72ebee8e`, `56f1353c`, `09f5ceb2`, `ca404d32`, `83f7f739`, `6f417490`, `27e0ec87`, `a775a730`, and the 0.1.138 build `60c12a0c`. Some installer/listing repair content is already present at the left endpoint; the named commits and HEAD probes cover those repairs too. Intervening 001/006 work is excluded.
+HEAD matches the assigned HEAD candidate. This is the bounded 005-30 re-review against `reviews/wave-2.md`, `tasks/wave-2.md`, D3/D8 and the 2026-10-13 wave 2.5 amendment. Compared `6629ba45..cd070c72`, and inspected the named repairs individually: `1ac961fc`, `64817b35`, `7d01fd1a`, `8e289e55`, `ab2d961c`, `ec87c3c5`, `bed4d29a`, `c8ef8b90`, and the 0.1.138 build `8edbfe3e`. Some installer/listing repair content is already present at the left endpoint; the named commits and HEAD probes cover those repairs too. Intervening 001/006 work is excluded.
 
 All checks ran at that commit with a clean tracked tree, before writing this review. `npm run build` left both committed plugin distributions unchanged. No source or board edits, no delegation, no real Claude/Codex CLI and no model session. The independent probes used scratch homes, stub CLIs and file:// hubs. Their Vitest root/config/cache lived in `~/.cache/review-005-30`, never `/tmp`. Fixture helpers create their own isolated scratch directories. `/tmp/node_modules` was absent before and after the probes.
 
 ```text
 $ git rev-parse HEAD
-3dc61b4d5774a224d43d68320707290983d9e3dc
+cd070c725f3bef82a949a23fdcb5935bd544971a
 (exit 0)
 
 $ npm ci

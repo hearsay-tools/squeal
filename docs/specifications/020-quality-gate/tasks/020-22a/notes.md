@@ -1,6 +1,6 @@
 # 020-22a worker notes: the gate's own files
 
-Brief: `tasks/wave-8.md`, section "020-22a". Findings: `quality/2026-11.md`, row `proposed-collect-split` and slices 3, 4, 5, 6, 7, 12, 13, 14, 15, 19. No behavior change. Branch `cez/dfe5e059`, from `995cc0a9b`.
+Brief: `tasks/wave-8.md`, section "020-22a". Findings: `quality/2026-11.md`, row `proposed-collect-split` and slices 3, 4, 5, 6, 7, 12, 13, 14, 15, 19. No behavior change. Branch `cez/dfe5e059`, from `debdf18d0`.
 
 ## Where each part lives now
 

@@ -1,5 +1,5 @@
 # 011-150 probe (throwaway): policy `inputs` glob, copied from squeal src/core/keys/glob.ts at
-# 4e1ba068a (same semantics: *, ?, ** across segments, {a,b}, [abc]; no negation).
+# 592b292f2 (same semantics: *, ?, ** across segments, {a,b}, [abc]; no negation).
 import re
 def _brace(g, i):
     d = 0

@@ -2,7 +2,7 @@
 
 **Verdict:** this is a defect in revision latency, not in keying or the lookup. The daemon cut no revision for the fixing edits for 23.5 minutes. Its change feed did not complete a pass while the main thread was busy with coverage work. Then `run --all` planned its checkpoint without a pass and certified revision 23 as "all current". The history rewrite plays no part. A stale PASS results the same way.
 
-Worktree `35f92bc7` (id `855eb07205812fa5`), daemon 0.1.301 (PID 2613358, started 00:15:08Z). Sources at main `50b7e2822`: `src/core/watcher`, `src/core/scheduler/revision.ts`, `src/core/revision`, `src/core/code` and `keying.ts` are unchanged since `squeal--v0.1.301`. Store copies: `/tmp/r197/store` (01:25Z), `store2` (01:29Z), `store3` (01:44Z), `code` (01:31Z). All times are UTC. The tree's reflog mixes +02:00 and +01:00 because DST ended that night.
+Worktree `35f92bc7` (id `855eb07205812fa5`), daemon 0.1.301 (PID 2613358, started 00:15:08Z). Sources at main `5b9b65cea`: `src/core/watcher`, `src/core/scheduler/revision.ts`, `src/core/revision`, `src/core/code` and `keying.ts` are unchanged since `squeal--v0.1.301`. Store copies: `/tmp/r197/store` (01:25Z), `store2` (01:29Z), `store3` (01:44Z), `code` (01:31Z). All times are UTC. The tree's reflog mixes +02:00 and +01:00 because DST ended that night.
 
 ## Questions answered
 
@@ -76,6 +76,6 @@ Fix 1 alone removes the false verdict. Fix 2 removes the lag that `status` (with
 - Store and code store copies under `/tmp/r197/` (tables `revisions`, `results`, `known_states`, `test_file_keys`, `checkpoints`, `runs`, `meta`, and `coverage` in `code.sqlite`).
 - `git -C <tree> reflog`, `git diff aab479dbd f6fa304d4`, `git diff f6fa304d4 e1e67019a`, `stat` of the 9 edited files, `/proc/2613358/{stat,status,fdinfo/36}`.
 - The worker's transcript, entries 00:40 to 01:30.
-- Source at `50b7e2822`: `watcher/change-feed.ts` (`reconcile`, `armIdle`, `enqueue`), `watcher/candidates.ts` (`candidatesForReconcile`), `scheduler/scheduler.ts` (`#handleBatch`, `requestFullSuite`), `scheduler/batch.ts`, `scheduler/head-move.ts`, `daemon/daemon.ts` (`#requestSync`, `#requestFullSuite`, the coverage wiring), `code/coverage/writer.ts`, `code/pass/index.ts` (`coverageStep`, `soon`), `code/crap/step.ts`, `code/crap/loaders.ts`, `cli/run.ts`.
+- Source at `5b9b65cea`: `watcher/change-feed.ts` (`reconcile`, `armIdle`, `enqueue`), `watcher/candidates.ts` (`candidatesForReconcile`), `scheduler/scheduler.ts` (`#handleBatch`, `requestFullSuite`), `scheduler/batch.ts`, `scheduler/head-move.ts`, `daemon/daemon.ts` (`#requestSync`, `#requestFullSuite`, the coverage wiring), `code/coverage/writer.ts`, `code/pass/index.ts` (`coverageStep`, `soon`), `code/crap/step.ts`, `code/crap/loaders.ts`, `cli/run.ts`.
 - Spec 011 `spec.md:84` (D2 pass: "bounds the damage of a lost event to latency, never to a false 'current'") and its D5 rule that a revision never waits on the runner.
 - Benches: `/tmp/r197/bench/{step,feed,rewatch,added}.ts`.

@@ -1,6 +1,6 @@
 # 020-26c: the cezar proof of records beside the project's V8 coverage (draft diff only)
 
-Use /worker. Shape: survey, then a draft. Approved by the human on 2026-11-12 (#189, "Cezar proof: Yes, after release"). Squeal 0.1.443 ships row 020-26ab. Coordinator 3739e45a opens and owns the cezar PR, which also moves the pin to `squeal--v0.1.443` (`ebd52be86`); this row writes only the diff they include, as 020-08c did (`tasks/020-08c/`).
+Use /worker. Shape: survey, then a draft. Approved by the human on 2026-11-12 (#189, "Cezar proof: Yes, after release"). Squeal 0.1.443 ships row 020-26ab. Coordinator 3739e45a opens and owns the cezar PR, which also moves the pin to `squeal--v0.1.443` (`4d4e8f1f0`); this row writes only the diff they include, as 020-08c did (`tasks/020-08c/`).
 
 Outcome: a unified diff against cezar's `origin/main` `.github/workflows/ci.yml` (plus any workflow test or small script it needs) in `docs/specifications/020-quality-gate/tasks/020-26c/cezar-ci.diff`, with a `README.md` beside it. The diff adds a proof that runs only on `workflow_dispatch` with a new boolean input (default false), never on a PR or in the merge queue:
 - One Vitest shard (the 1/4 shard of the existing matrix is enough), three ways, as parallel jobs on the same commit: (a) under `squeal ci record` with `--coverage.enabled` (V8, Squeal wraps it); (b) and (c) plain `vitest --coverage.enabled`, twice, the second as the run-to-run control. Each uploads its `coverage-final.json` (json reporter) and its wall and CPU time; (a) also uploads its parts.

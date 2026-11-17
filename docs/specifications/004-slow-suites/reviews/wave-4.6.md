@@ -2,7 +2,7 @@
 
 ## Verification
 
-Tested HEAD: `1c9189fb5bfb5ce5fc0002992e64860f99bafd2b`, version 0.1.67. The 004-43 brief names `aadc80b` (004-42), `f70fd92` and `435c695` (004-41 with 004-33), `92b2083` (004-35) and bundle commit `9833c33`. `git diff --name-only 9833c33..HEAD` lists only the board, status and task brief. The executable candidate matches `9833c33`; there is no candidate mismatch. The intervening 001 work is outside scope except checking 004-42's reliance on 001-166 (`4d7c203`).
+Tested HEAD: `b20c7e35c10f499505804feec7c140c7531ca663`, version 0.1.67. The 004-43 brief names `aadc80b` (004-42), `f70fd92` and `435c695` (004-41 with 004-33), `92b2083` (004-35) and bundle commit `9833c33`. `git diff --name-only 9833c33..HEAD` lists only the board, status and task brief. The executable candidate matches `9833c33`; there is no candidate mismatch. The intervening 001 work is outside scope except checking 004-42's reliance on 001-166 (`4d7c203`).
 
 This is the human-approved fourth and last review of `reviews/wave-4.5.md` B1 and B2, limited to those cases and what their fixes touch, and the first review of 004-33 and 004-35. Earlier wave-4.5 closures were not re-prosecuted. Executable verification used the clean tracked candidate, including after building both committed plugin bundles. Independent probes imported its freshly built `dist`, used one private `/tmp` directory, and opened only fixture repositories, worktrees, stores and permit directories. They used a deterministic adapter, the real scheduler, state sink, hasher and change feed. A deaf controlled watcher isolates reconciliation behavior; it does not claim this host's real backend loses a particular event. No product code was changed; scratch was removed before the review commit.
 

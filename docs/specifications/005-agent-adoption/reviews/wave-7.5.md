@@ -4,13 +4,13 @@
 
 Started 2026-10-14 about 10:44 UTC. Initial findings written 2026-10-14 10:52 UTC, within 15 minutes. Extended 2026-10-14 11:02 UTC with the completed independent suite output.
 
-Named candidate: `f6f75749f2af549afd662c32f820c7456c459eea`. Actual checkout: `461ae5e01f641e4051715271ae72d9444694745b`, initially clean, package version 0.1.162. The later commits rebuild the plugins and add the brief/board. `git diff --exit-code f6f75749 HEAD -- src/cli/setup test/cli/setup plugins/claude-code/skills/setup plugins/codex/skills/setup test/harness/setup-skill.test.ts` exits 0. Review source is identical. HEAD mismatch is recorded under Next; the reviewer changes no candidate code.
+Named candidate: `3422736754389986e47d4a0b00454715416635c1`. Actual checkout: `87457f6d46397ef2fa6ba9238e4eea94818ce90b`, initially clean, package version 0.1.162. The later commits rebuild the plugins and add the brief/board. `git diff --exit-code 34227367 HEAD -- src/cli/setup test/cli/setup plugins/claude-code/skills/setup plugins/codex/skills/setup test/harness/setup-skill.test.ts` exits 0. Review source is identical. HEAD mismatch is recorded under Next; the reviewer changes no candidate code.
 
-All checks started on clean `461ae5e0`, rather than the exact named endpoint. The reviewer skill therefore labels their exact-candidate verification **unverified**. Only this findings file is added while Vitest runs, so the full-suite evidence additionally has a documentation-only dirty-tree qualification. Neither qualification blocks the wave. Build is deliberately omitted under the explicit 005-56 brief.
+All checks started on clean `87457f6d`, rather than the exact named endpoint. The reviewer skill therefore labels their exact-candidate verification **unverified**. Only this findings file is added while Vitest runs, so the full-suite evidence additionally has a documentation-only dirty-tree qualification. Neither qualification blocks the wave. Build is deliberately omitted under the explicit 005-56 brief.
 
 ```text
 $ git rev-parse HEAD
-461ae5e01f641e4051715271ae72d9444694745b
+87457f6d46397ef2fa6ba9238e4eea94818ce90b
 $ git status --short
 [no output before checks]
 $ npm ci
@@ -136,7 +136,7 @@ If a repair is authorized, one worker can own `src/cli/setup/gates.ts` and its g
 
 ## Next
 
-- **Proven provenance note:** HEAD is `461ae5e0`, not the brief's `f6f75749`, as recorded above. Name the rebuilt integrated candidate explicitly in a future brief. This repeats the known prior S1 pattern and is nonblocking. Board/status are left unchanged.
+- **Proven provenance note:** HEAD is `87457f6d`, not the brief's `34227367`, as recorded above. Name the rebuilt integrated candidate explicitly in a future brief. This repeats the known prior S1 pattern and is nonblocking. Board/status are left unchanged.
 - Build and unrelated architecture, installer, warm-up, D8, real-CLI sessions, and the spec folder's review/lessons content are outside this narrow review. Corpus inclusion is evidence about the scanner, not an audit of those files.
 - The background Squeal baseline reported an unchanged `test/evals/arms.test.ts:24` 5-second timeout at load 77.57, then a PASS under the same inputs. This is not independent verification or a finding against 005-55. The independent suite subsequently passed, including this file.
 

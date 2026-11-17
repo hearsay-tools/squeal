@@ -2,11 +2,11 @@
 
 ## Verification output
 
-Clean tested HEAD: `3c94e5a9f19c51fbf4e06babeaa26705c23c16c6`, package 0.1.104. Reviewed range: `160bb5c9..97e05822`, third round on `reviews/wave-13v.md` **B1 and S1 only**. HEAD follows the product candidate `97e05822` by two documentation commits. `git diff 97e05822..HEAD --name-only` reports only `docs/board.md`, as the dispatch permits; product, test and bundle sources equal the candidate. Linux, Node 24.21.0. All execution evidence below was collected on the clean tree before writing this report. No product, test, bundle or board file was edited.
+Clean tested HEAD: `ae9edb5edb862253742bff47c8a1c9939a20eb11`, package 0.1.104. Reviewed range: `b1f27255..2d064120`, third round on `reviews/wave-13v.md` **B1 and S1 only**. HEAD follows the product candidate `2d064120` by two documentation commits. `git diff 2d064120..HEAD --name-only` reports only `docs/board.md`, as the dispatch permits; product, test and bundle sources equal the candidate. Linux, Node 24.21.0. All execution evidence below was collected on the clean tree before writing this report. No product, test, bundle or board file was edited.
 
 ```text
 $ git rev-parse HEAD
-3c94e5a9f19c51fbf4e06babeaa26705c23c16c6
+ae9edb5edb862253742bff47c8a1c9939a20eb11
 $ git status --short
 (no output)
 
@@ -71,7 +71,7 @@ That checkpoint is not the independent gate above.
 
 ## Verdict
 
-**PASS** `3c94e5a9f19c51fbf4e06babeaa26705c23c16c6` (product candidate `97e05822`): **0 blockers, 0 should-fix findings, 0 nits** in this bounded re-review.
+**PASS** `ae9edb5edb862253742bff47c8a1c9939a20eb11` (product candidate `2d064120`): **0 blockers, 0 should-fix findings, 0 nits** in this bounded re-review.
 
 Wave 13v B1 and S1 are repaired. This verdict concerns those findings; it does not claim a green independent full suite or verified build reproducibility.
 

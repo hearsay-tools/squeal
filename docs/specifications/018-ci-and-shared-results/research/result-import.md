@@ -1,6 +1,6 @@
 # Research: result-import (row 018-02)
 
-Researcher, 2026-10-31. Source read at commit `6053220eb` (Squeal 0.1.387, `KEY_FORMAT_VERSION` 20, Vitest adapter version 3). Experiments ran Squeal 0.1.387 (the installed plugin) on a seven-file Vitest 5.0.3 fixture, Node v24.22.1, pnpm 12.15.0, Linux x64, load 8 to 11 on 24 CPUs. Probes: `probes/result-import/` (throwaway). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
+Researcher, 2026-10-31. Source read at commit `9beda4d78` (Squeal 0.1.387, `KEY_FORMAT_VERSION` 20, Vitest adapter version 3). Experiments ran Squeal 0.1.387 (the installed plugin) on a seven-file Vitest 5.0.3 fixture, Node v24.22.1, pnpm 12.15.0, Linux x64, load 8 to 11 on 24 CPUs. Probes: `probes/result-import/` (throwaway). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
 ## Questions answered
 
@@ -52,7 +52,7 @@ Not in any key: the absolute root, the user, HOME, the working directory, the co
 
 `test/machine.test.ts` reads HOME and cwd, and its key was equal for both users. A result that depends on such a value is a false hit across machines. This is the known incomplete closure (decision 0002), not new.
 
-**This repository [src].** `.github/workflows/ci.yml` (last changed `9958710a9`) runs the sharded suite on Node `22.19` and the nightly suite on `node-version: 24`, which floats. GitHub Actions sets `CI=true`. Developers here run Node v24.22.1. So even with Squeal in CI, no CI key would equal a local key today **[inf]**. In the store copy, 9 of 1,557 test files observe `.git` (for example `test/daemon/drain.test.ts`, `test/kit/vitest.test.ts`); they would not match between CI's clone and an agent's linked worktree **[exp]**. CI also runs `vitest` directly, so it computes no keys today (topic `ci-run`).
+**This repository [src].** `.github/workflows/ci.yml` (last changed `d4efe5a6f`) runs the sharded suite on Node `22.19` and the nightly suite on `node-version: 24`, which floats. GitHub Actions sets `CI=true`. Developers here run Node v24.22.1. So even with Squeal in CI, no CI key would equal a local key today **[inf]**. In the store copy, 9 of 1,557 test files observe `.git` (for example `test/daemon/drain.test.ts`, `test/kit/vitest.test.ts`); they would not match between CI's clone and an agent's linked worktree **[exp]**. CI also runs `vitest` directly, so it computes no keys today (topic `ci-run`).
 
 **The closures must travel too [src].** A daemon computes a key from the closure list stored for the test file (`test_files.closure_paths` plus the `observed.<project>` map). A fresh clone has no store, so it has no closure to key with until it runs the file. The fixture clones got equal keys only because each one ran its tests first. An export must carry the closure lists and observed sets, or it is useless to a fresh clone. It is still useful to a store that already knows the closures.
 
@@ -90,7 +90,7 @@ Prior art **[docs]**:
 
 ### Q5. Format and size
 
-From a copy of this repository's store (`.git/squeal/store.sqlite`, 1.3 GB, 1,826,446 results, plus 446 MB of run logs), read only: the export of the current keys of this worktree at main `6053220eb` (`export-size.mjs`) **[exp]**:
+From a copy of this repository's store (`.git/squeal/store.sqlite`, 1.3 GB, 1,826,446 results, plus 446 MB of run logs), read only: the export of the current keys of this worktree at main `9beda4d78` (`export-size.mjs`) **[exp]**:
 
 | Part | Rows | JSON | gzip |
 |---|---|---|---|
@@ -102,7 +102,7 @@ From a copy of this repository's store (`.git/squeal/store.sqlite`, 1.3 GB, 1,82
 | Observed maps (`observed`, `observedDirect`, `observedModules`) | 3 | 3.55 MB | 0.15 MB |
 | **All** | | **29.6 MB** | **1.6 MB** |
 
-The results "of" main `6053220eb` were recorded at many commits (5,809 at `20f31004e`, 2,471 at `fff846aca`, and so on), because keys are content. An export for a commit is "the results at the keys that commit's tree gives", not the results tagged with that commit **[exp]**. Run logs, `known_states`, transitions, consumers, revisions and file hashes are local state and stay out **[src]**. Coverage records (`code.sqlite`, 3.6 GB) were not measured.
+The results "of" main `9beda4d78` were recorded at many commits (5,809 at `8fed0392a`, 2,471 at `fff846aca`, and so on), because keys are content. An export for a commit is "the results at the keys that commit's tree gives", not the results tagged with that commit **[exp]**. Run logs, `known_states`, transitions, consumers, revisions and file hashes are local state and stay out **[src]**. Coverage records (`code.sqlite`, 3.6 GB) were not measured.
 
 ### Q6. Relation to existing rules
 
@@ -125,7 +125,7 @@ Not determined: macOS and Windows (not tested; platform and arch are in the key,
 
 ## Sources
 
-- Squeal source at `6053220eb`: `src/core/keys/environment.ts`, `check-key.ts`, `key-format.ts`, `dependencies.ts`, `packages.ts`, `pnpm-install.ts`, `closure.ts`, `observed.ts`, `runtime-files.ts`; `src/runners/vitest/environment.ts`; `src/core/fs/worktree-paths.ts`; `src/core/hash/git-index.ts`; `src/core/store/schema.ts`; `src/core/state/derive.ts`; `src/core/delivery/provenance.ts`; `.github/workflows/ci.yml`; `docs/specifications/011-core/spec.md` C4; `docs/decisions/0002-content-keyed-shared-store.md`.
+- Squeal source at `9beda4d78`: `src/core/keys/environment.ts`, `check-key.ts`, `key-format.ts`, `dependencies.ts`, `packages.ts`, `pnpm-install.ts`, `closure.ts`, `observed.ts`, `runtime-files.ts`; `src/runners/vitest/environment.ts`; `src/core/fs/worktree-paths.ts`; `src/core/hash/git-index.ts`; `src/core/store/schema.ts`; `src/core/state/derive.ts`; `src/core/delivery/provenance.ts`; `.github/workflows/ci.yml`; `docs/specifications/011-core/spec.md` C4; `docs/decisions/0002-content-keyed-shared-store.md`.
 - Probes: `probes/result-import/` (`make-fixture.sh`, `run-clone.sh`, `run-variant.sh`, `other-user.sh`, `serialized-config.mjs`, `dump-keys.mjs`, `compare.mjs`, `export-size.mjs`, `import-time.mjs`). The clones, store copies and fetched pages lived under `$TMPDIR` and were removed.
 - Turborepo docs (3.0), retrieved 2026-10-31: https://turborepo.com/docs/core-concepts/remote-caching, https://turborepo.com/docs/reference/configuration (`remoteCache.signature`, `errorsOnlyShowHash`, run metrics), https://turborepo.com/docs/reference/run (`--cache`).
 - Nx docs (v24, page updated 2026-10-30), retrieved 2026-10-31: https://nx.dev/docs/concepts/ci-concepts/cache-security, https://nx.dev/docs/features/ci-features/remote-cache, https://nx.dev/docs/concepts/how-caching-works.

@@ -1,6 +1,6 @@
 # 011-40: the validity path's three refactors, notes
 
-Row 011-40 is R3 of task 011-37's design (`../011-37/design.md`, section 5; brief `../011-37/briefs.md`). It makes three moves, each in its own commit, and each is proven by 011-39's comparison (`test/keys/validity/`): "the candidate against the last release" passes with no differing output and no uncovered line. The last release is `squeal--v0.1.231` (key format 20, with 19 read as one). Its `src/` equals this branch's base, `5c5aadea`.
+Row 011-40 is R3 of task 011-37's design (`../011-37/design.md`, section 5; brief `../011-37/briefs.md`). It makes three moves, each in its own commit, and each is proven by 011-39's comparison (`test/keys/validity/`): "the candidate against the last release" passes with no differing output and no uncovered line. The last release is `squeal--v0.1.231` (key format 20, with 19 read as one). Its `src/` equals this branch's base, `1de91d69`.
 
 ## Commits
 

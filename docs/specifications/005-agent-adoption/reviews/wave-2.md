@@ -1,16 +1,16 @@
 # 005 wave 2 review
 
-FAIL `2b0c55329395f02015f925852a0a7d6f0127dd5f`: **3 proven blockers**, **1 proven nonblocking should-fix**, no nits. The blockers are an incomplete D8 answer, execution of a truncated installer, and uninstalling a pre-existing plugin.
+FAIL `f68ff9769f0783d77a23b07efc36940325ff9187`: **3 proven blockers**, **1 proven nonblocking should-fix**, no nits. The blockers are an incomplete D8 answer, execution of a truncated installer, and uninstalling a pre-existing plugin.
 
 ## Verification
 
-HEAD matches the assigned candidate. Reviewed 005-14a, 005-14b, 005-20 and the 0.1.135 build in `7ca350ee..2b0c5532`, against brief 005-16, D3, D4, D5, D8 and their amendments. Intervening 001/006 work and previous review findings are outside this prosecution. No source or board changes, no delegation, no real Claude or Codex CLI, and no model session. Harness commands in probes use scratch homes and the existing stub harness executables.
+HEAD matches the assigned candidate. Reviewed 005-14a, 005-14b, 005-20 and the 0.1.135 build in `98028564..f68ff976`, against brief 005-16, D3, D4, D5, D8 and their amendments. Intervening 001/006 work and previous review findings are outside this prosecution. No source or board changes, no delegation, no real Claude or Codex CLI, and no model session. Harness commands in probes use scratch homes and the existing stub harness executables.
 
 Checks and probes ran at the exact candidate with a clean tracked tree, before writing this file. Build left both committed plugin distributions unchanged. This is the independent Vitest run, not Squeal's checkpoint.
 
 ```text
 $ git rev-parse HEAD
-2b0c55329395f02015f925852a0a7d6f0127dd5f
+f68ff9769f0783d77a23b07efc36940325ff9187
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
 18 packages are looking for funding

@@ -2,7 +2,7 @@
 
 Researcher, 2026-11-13. Issue [hearsay-tools/squeal#206](https://github.com/hearsay-tools/squeal/issues/206), reported on Squeal 0.1.460 from a Codex worker in hearsay-tools/squawk. Owner: spec 020 D17.3, with spec 016 D4 (one write path for observed paths). Prior research: `no-daemon-reuse.md` (row 020-38). Fix row: 020-39, released in 0.1.462.
 
-Installed Squeal **0.1.463** (`~/.claude/plugins/cache/hearsay/squeal/0.1.463/dist/cli/squeal.mjs`, tag `squeal--v0.1.463` at `a8487146a`; `src/core/code/gate/` and `src/core/daemon/keep-request.ts` are the same at HEAD `1eeeb9186`). Control: installed **0.1.460** from the same cache. Node v26.13.0, Vitest 5.0.3. All live runs between 02:30:25Z and 02:31:40Z, one-minute load 9.42 to 11.44 on 24 CPUs, below the limit at every check. Probe: `probes/issue-206/` (README there).
+Installed Squeal **0.1.463** (`~/.claude/plugins/cache/hearsay/squeal/0.1.463/dist/cli/squeal.mjs`, tag `squeal--v0.1.463` at `a8487146a`; `src/core/code/gate/` and `src/core/daemon/keep-request.ts` are the same at HEAD `40066915b`). Control: installed **0.1.460** from the same cache. Node v26.13.0, Vitest 5.0.3. All live runs between 02:30:25Z and 02:31:40Z, one-minute load 9.42 to 11.44 on 24 CPUs, below the limit at every check. Probe: `probes/issue-206/` (README there).
 
 This file proposes; it does not decide.
 

@@ -78,7 +78,7 @@
     "esbuild": "0.28.2"
   },
   "commits": {
-    "main": "40259a9e48f76a6fd5fd128c6e6efb37bcbf771e",
+    "main": "1876b58e3be58bfbb47d8d6a7ba1b293a78c7648",
     "candidate": "9401c1d083df042fe85a44d66d73495515bf0ebe"
   },
   "coveragePathDiff": ""

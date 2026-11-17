@@ -253,7 +253,7 @@ One line per test file, or per shared helper whose own contract is the start bas
 
 ## Rebase onto 0.1.280
 
-On the coordinator's choice (2026-10-24, reply to request 3721b345), the wip commits were rebased onto origin/main `ab48c6833` (0.1.280 and docs) before the full run ended, so one run on the rebased tree found the rest. The rebase had no conflict. Of 0.1.280's new tests, `test/store/prune-removed.test.ts` (row 011-160) needed a pin of its first worktree; `focused*.test.ts`, `drain-wait`, `focus`, `focuses-file`, `slow-waiting` and `run-summary` pass on the new default.
+On the coordinator's choice (2026-10-24, reply to request 3721b345), the wip commits were rebased onto origin/main `729d5be67` (0.1.280 and docs) before the full run ended, so one run on the rebased tree found the rest. The rebase had no conflict. Of 0.1.280's new tests, `test/store/prune-removed.test.ts` (row 011-160) needed a pin of its first worktree; `focused*.test.ts`, `drain-wait`, `focus`, `focuses-file`, `slow-waiting` and `run-summary` pass on the new default.
 
 ## Expected failures: the bundles
 

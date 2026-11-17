@@ -36,7 +36,7 @@ Use /worker, resumed (worker 34afe933). Shape: repair. On your branch `cez/34afe
 
 ## 015-50 round 2: re-review of candidate 0.1.311 after R10
 
-Use /reviewer, resumed (reviewer 48c4dcd1). Candidate `cand/0.1.311`, now pinned to the SHA named in the message, rebuilt on a newer `origin/main` (docs only in between). The first round's candidate stays as `cand/0.1.311-r1` (ce2e5944c). `git range-diff de18c4d7a..ce2e5944c origin/main..<SHA>` shows the five reviewed commits unchanged, three R10 commits added (the agreed `PassReport.moves` and `removed`, the seed following them, notes) and the build commit rebuilt. Write `reviews/0.1.311-r2.md` and commit it on your branch.
+Use /reviewer, resumed (reviewer 48c4dcd1). Candidate `cand/0.1.311`, now pinned to the SHA named in the message, rebuilt on a newer `origin/main` (docs only in between). The first round's candidate stays as `cand/0.1.311-r1` (dee18e115). `git range-diff 148b3d1b4..dee18e115 origin/main..<SHA>` shows the five reviewed commits unchanged, three R10 commits added (the agreed `PassReport.moves` and `removed`, the seed following them, notes) and the build commit rebuilt. Write `reviews/0.1.311-r2.md` and commit it on your branch.
 
 Check, with proof where you can:
 1. **B1.** Your round-1 reproduction, through `createCodePass`, is now quiet; a cross-file move before seeding and the same after seeding are quiet; a function an edit adds, or removes and adds again under its name, is still a first-seen fail. The seed does not seed every current function after an edit.

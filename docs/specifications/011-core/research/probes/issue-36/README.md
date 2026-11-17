@@ -17,5 +17,5 @@ Runs kept:
 - `output-0.1.199-edit.txt`, `output-0.1.213-edit.txt`: the narrow case, 2 current and 1 unknown.
 
 CLIs: installed `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, and the
-committed `plugins/claude-code/dist/cli/squeal.mjs` at `8ec92f9b` (0.1.213, not rebuilt). Vitest
+committed `plugins/claude-code/dist/cli/squeal.mjs` at `32795e5a` (0.1.213, not rebuilt). Vitest
 4.1.10 from `~/projects/cezar/node_modules`, symlinked read-only.

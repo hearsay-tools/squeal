@@ -1,6 +1,6 @@
 # Wave 50
 
-From main after 0.1.335 (`5b3af3f0d`), 2026-10-26. Two repo-local refactor rows on disjoint seams; no line, JSON field, exit code or key changes. Row 011-238's slice 1 shipped with 011-243 (0.1.335), and its slice 2 goes with 011-241 because both edit the named wait. Host load is about 3 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after 0.1.335 (`b3002f8a6`), 2026-10-26. Two repo-local refactor rows on disjoint seams; no line, JSON field, exit code or key changes. Row 011-238's slice 1 shipped with 011-243 (0.1.335), and its slice 2 goes with 011-241 because both edit the named wait. Host load is about 3 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-241 with 011-238 slice 2, the named wait's asked runs have one owner
 

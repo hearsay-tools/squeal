@@ -4,7 +4,7 @@ Throwaway scripts for row 022-01 (topic loaded-modules), Vitest part. They answe
 "loaded set" (the modules a test file's worker evaluated) is sound for selection, and how to record it.
 Not product code; nothing imports them. Results: `results.md` (tables) and `results.json` (raw).
 
-Measured with Vitest 5.0.3, Vite 8.3.2, Node v26.13.0, at Squeal commit 2856d26e8, 2026-11-14.
+Measured with Vitest 5.0.3, Vite 8.3.2, Node v26.13.0, at Squeal commit 9aef0ef9e, 2026-11-14.
 
 ## Files
 

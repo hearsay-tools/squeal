@@ -1,6 +1,6 @@
 # The revert-restore current PASS seen once in a full gate
 
-Research task 001-182 for spec 001, 2026-10-11, from `reviews/wave-13h.md` Verification. In that review's single full gate (78f51e6, `--maxWorkers=4`, 915 s), `test/integration/revert-restore.test.ts:195` read `[ 'current pass', 'current pass' ]` for `test/reverting.test.ts` after a run had loaded the reverted `src/mod.ts` and no revision named it. Linux 6.8, 24 CPUs, Node 24.21.0, Vitest 5.0.3, Vite 8.3.2. Experiments ran on an instrumented copy of `dfee8c70` (this branch's base) in a scratch directory outside every worktree. `src/runners/vitest/sources.ts` and `moved.ts` are byte-identical at 78f51e6 and `dfee8c70` (`git diff 78f51e6 HEAD` is empty for both), and `adapter.ts` differs only in the optimizer note (001-181) and the version constant's file. Probe: `probes/revert-restore-pass/` (throwaway). Every repetition records the load average beside it.
+Research task 001-182 for spec 001, 2026-10-11, from `reviews/wave-13h.md` Verification. In that review's single full gate (78f51e6, `--maxWorkers=4`, 915 s), `test/integration/revert-restore.test.ts:195` read `[ 'current pass', 'current pass' ]` for `test/reverting.test.ts` after a run had loaded the reverted `src/mod.ts` and no revision named it. Linux 6.8, 24 CPUs, Node 24.21.0, Vitest 5.0.3, Vite 8.3.2. Experiments ran on an instrumented copy of `661aa181` (this branch's base) in a scratch directory outside every worktree. `src/runners/vitest/sources.ts` and `moved.ts` are byte-identical at 78f51e6 and `661aa181` (`git diff 78f51e6 HEAD` is empty for both), and `adapter.ts` differs only in the optimizer note (001-181) and the version constant's file. Probe: `probes/revert-restore-pass/` (throwaway). Every repetition records the load average beside it.
 
 ## Questions answered
 
@@ -16,7 +16,7 @@ Research task 001-182 for spec 001, 2026-10-11, from `reviews/wave-13h.md` Verif
 
 ### 1. The run's own check loses a stamp a mid-run invalidate drops
 
-`SourceStamps` (001-146) stamps each project file in Vite's `load` hook. After a run, `stale(vitest, loadedSince)` checks every *cached* module loaded since the run began, and names a file whose bytes on disk differ from its stamp (`sources.ts:136-210`). A runner-part `invalidate` during the run (001-150) first calls `stale()` to log what moved (`adapter.ts:283-285`), then `vitest.invalidateFile` for each changed path (`adapter.ts:288`). *Read in source code, `dfee8c70`.*
+`SourceStamps` (001-146) stamps each project file in Vite's `load` hook. After a run, `stale(vitest, loadedSince)` checks every *cached* module loaded since the run began, and names a file whose bytes on disk differ from its stamp (`sources.ts:136-210`). A runner-part `invalidate` during the run (001-150) first calls `stale()` to log what moved (`adapter.ts:283-285`), then `vitest.invalidateFile` for each changed path (`adapter.ts:288`). *Read in source code, `661aa181`.*
 
 If that `invalidate` lands after the run read the reverted bytes and before the test file restores them, the pre-check compares the stamp to a disk that still holds the same bytes, so it logs nothing. `invalidateFile` then hard-invalidates the module: `invalidationState` becomes the string `HARD_INVALIDATED`, so `cachedTransform` returns `null` and `cachedModules` skips it. The end check has nothing to compare, `#moved` is empty, and `ran` is `[]`. The run's report keeps the file. The scheduler stores it, because the file's inputs (`snap`, the test file, `vitest.config.ts`) do not include `src/mod.ts`. The revision during the run (`Tier.changes`) therefore never matches an input. *Verified by experiment.*
 
@@ -80,8 +80,8 @@ Across all sets, 247 armed runs, a run was kept exactly when a mid-window `chang
 
 ## Sources
 
-- `src/runners/vitest/sources.ts` (`SourceStamps.stale`, `cachedModules`), `src/runners/vitest/adapter.ts:256-296` (`invalidate`, `#invalidate`), `:366-447` (`run`), `src/runners/vitest/stale.ts:301` (`cachedTransform`), `src/runners/vitest/moved.ts`, `src/core/scheduler/tiers.ts` (`recordTier`), `src/core/scheduler/scheduler.ts` (`#fly`), `src/core/scheduler/ledger.ts` (`markUnknown`), all at `dfee8c70`.
+- `src/runners/vitest/sources.ts` (`SourceStamps.stale`, `cachedModules`), `src/runners/vitest/adapter.ts:256-296` (`invalidate`, `#invalidate`), `:366-447` (`run`), `src/runners/vitest/stale.ts:301` (`cachedTransform`), `src/runners/vitest/moved.ts`, `src/core/scheduler/tiers.ts` (`recordTier`), `src/core/scheduler/scheduler.ts` (`#fly`), `src/core/scheduler/ledger.ts` (`markUnknown`), all at `661aa181`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/index.DpLw24bj.js:9466, 9730, 20650` (`server.watch = null`, the watcher closed when `watch` is off).
-- `test/integration/revert-restore.test.ts` (unchanged since `f2a59664`), `test/e2e/support.ts` (`POLL_MS = 150`).
+- `test/integration/revert-restore.test.ts` (unchanged since `8350c114`), `test/e2e/support.ts` (`POLL_MS = 150`).
 - `reviews/wave-13h.md` Verification; `tasks/001-146/notes.md`.
 - Probes: `probes/revert-restore-pass/` (`instrument.patch`, `probe-log.ts.txt`, `rr-probe.test.ts.txt`, `rr-split.test.ts.txt`, `midrun-182.test.ts.txt`, `rounds.sh`, `gates.sh`, `analyze.py`, `analyze2.py`, `results/`).

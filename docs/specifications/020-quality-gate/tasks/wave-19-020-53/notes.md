@@ -1,6 +1,6 @@
 # Row 020-53 notes: a `test-failed` gap names the failed test and whether it loads the function (#210)
 
-Worker f3c22710, 2026-11-13. Shape: slice. Base: main at `029499709`.
+Worker f3c22710, 2026-11-13. Shape: slice. Base: main at `a836b4884`.
 
 ## What changed
 
@@ -83,7 +83,7 @@ Replace "Without `--json` it prints the verdict line, then the functions that ar
 8. **Grouping key**: the same files with the same tests (`path` and `tests`). `from` is per file, so it adds nothing to the key. In one report every function with no failed loader has the same set, so in practice there is one folded line.
 9. **The folded line names the first function** (`first: <path>:<line> <name>`), so a reader can find the group in the JSON. The parent's conditions did not ask for it and do not forbid it.
 10. **Two new modules**, beside owned files: `src/core/code/gate/failed-tests.ts` (35 lines) and `src/cli/code-gate-text-failed.ts` (69 lines). `evaluate.ts` was already 321 lines and `report.ts` 335; the styleguide splits past about 300. No sibling owns them, so they cannot overlap. `evaluate.ts` grew by 4 lines and `report.ts` by 17 (the type and field).
-11. **`test/version-sensitive.txt`** (shared, not owned): the new CLI test runs real `node --test` with V8 coverage, so `test/version-sensitive.test.ts` requires it in the list. Two lines in their own commit, as row 020-44 did (`c59b37487`). The parent was told (progress message).
+11. **`test/version-sensitive.txt`** (shared, not owned): the new CLI test runs real `node --test` with V8 coverage, so `test/version-sensitive.test.ts` requires it in the list. Two lines in their own commit, as row 020-44 did (`b6e449d6f`). The parent was told (progress message).
 
 ## Type changes (all additive)
 
@@ -112,7 +112,7 @@ The done-when line most likely to be false was "stored failures name their origi
 - `squeal status --wait` on each new test at its revision, red first: `evaluate-failed-tests.test.ts` failed 3 of 4 at revision 2 (no field), passed at revision 4 and with the exception case at revision 6; `code-gate-text-failed.test.ts` failed 3 at revision 7 (no wiring), passed at revision 10; `code-gate-failed-outside.test.ts` passed at revision 12 (a real two-run node:test gate, 5.4 s).
 - `test/version-sensitive.test.ts` failed at revision 12: the new CLI test runs node:test and was not in `test/version-sensitive.txt`. Listed (commit 5), it passed at revision 13.
 - `squeal code` on the changed sources: every function at CC 8 or under; the new ones at CC 5 or under.
-- Affected-test verdict: `squeal status --wait 280000 $(git diff --name-only 029499709..HEAD -- src test)` at revision 15 (commit `e9b7da38e`; the only later change is this notes file): 348 test files selected. 342 pass at first reading. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`, seen at revision 14): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. Re-read at 19:03 (local, revision 17, notes only since revision 15): 343 pass, `test/cli/code-gate-keep.test.ts` among them. Still pending, queued for CPU at load 59 on 24 CPUs (23 of 24 cores in use): `test/daemon/drain-wait.test.ts` and the four bundle tests' rerun. No pending file is reported as passing here.
+- Affected-test verdict: `squeal status --wait 280000 $(git diff --name-only a836b4884..HEAD -- src test)` at revision 15 (commit `e9b7da38e`; the only later change is this notes file): 348 test files selected. 342 pass at first reading. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`, seen at revision 14): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. Re-read at 19:03 (local, revision 17, notes only since revision 15): 343 pass, `test/cli/code-gate-keep.test.ts` among them. Still pending, queued for CPU at load 59 on 24 CPUs (23 of 24 cores in use): `test/daemon/drain-wait.test.ts` and the four bundle tests' rerun. No pending file is reported as passing here.
 
 ## Checks not run
 

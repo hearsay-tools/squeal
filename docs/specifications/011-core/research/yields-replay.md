@@ -91,7 +91,7 @@ The named verdict's remaining wait is not the blocking tier. Behind a tier of up
 
 ## Sources
 
-- Squeal at `squeal--v0.1.237` (0dacd9a6) and 5824e355: `src/core/scheduler/{yields,tiers,backlog,files,records}.ts`, `src/runners/vitest/run.ts` (`CANCELLED`).
+- Squeal at `squeal--v0.1.237` (b2044683) and 5824e355: `src/core/scheduler/{yields,tiers,backlog,files,records}.ts`, `src/runners/vitest/run.ts` (`CANCELLED`).
 - Cezar: `.git/squeal/store.sqlite` (copied read-only 2026-10-21T14:53:13Z), `.git/squeal/runs/*/report.json`, `squeal.config.json` (`tierSize` 4).
 - Transcripts, read only: `~/.claude/projects/-home-user-projects-cezar*/*.jsonl`, `~/.codex/sessions/2026/10/*/*.jsonl` (1,782 status waits, 1,000 naming a test path).
 - Load: `/proc/loadavg`, `/var/log/sysstat/sa14` to `sa21`.

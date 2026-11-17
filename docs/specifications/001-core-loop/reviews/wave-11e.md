@@ -2,11 +2,11 @@
 
 ## Verification
 
-Candidate: `581f5022c4a0d519b3070e9857f232d7452513f0` (0.1.25). Checks ran at clean HEAD `3911ad08c0f741d25afda3b43e391c9760365ba8`. The coordinator explicitly authorized that successor: its only differences from the candidate are `docs/board.md` and this review's brief in `tasks/wave-11.md`. No candidate mismatch finding. Build reproduced both plugins byte for byte. No product files changed during verification or review.
+Candidate: `a2ad8978df6a19bbdc2c3a6a67365743eb9adc44` (0.1.25). Checks ran at clean HEAD `2f9097145110c1a0b9a7d9c17328e27aaf058b50`. The coordinator explicitly authorized that successor: its only differences from the candidate are `docs/board.md` and this review's brief in `tasks/wave-11.md`. No candidate mismatch finding. Build reproduced both plugins byte for byte. No product files changed during verification or review.
 
 ```text
 $ git rev-parse HEAD
-3911ad08c0f741d25afda3b43e391c9760365ba8
+2f9097145110c1a0b9a7d9c17328e27aaf058b50
 $ npm ci
 
 added 56 packages, and audited 57 packages in 2s

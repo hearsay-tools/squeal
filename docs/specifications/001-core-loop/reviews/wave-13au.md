@@ -1,7 +1,7 @@
 # Wave 13au: second review of 001-307 after 001-312
 
-Candidate: `25faa1b052ccb24fbed1f903310c0ea3aa064131`.
-Repair range: `bdd40f51..25faa1b0`. Board row: 001-316.
+Candidate: `69bfb09c5f3464a6990b7ad4c41d9f39ceb1219c`.
+Repair range: `63ab0d28..69bfb09c`. Board row: 001-316.
 Bounded by `reviews/wave-13ar.md`: re-check B1, inspect the repair delta and the agreed additions. Contracts: 001 D4, D5, D7; 005 D3 and the agreed empty-entry contract.
 
 ## Verdict
@@ -10,11 +10,11 @@ Bounded by `reviews/wave-13ar.md`: re-check B1, inspect the repair delta and the
 
 ## Verification output
 
-All checks below ran at exact candidate `25faa1b052ccb24fbed1f903310c0ea3aa064131` with a clean tracked tree. `git status --porcelain` was empty before the gates, after the build, after the full suite and after the isolated retry. The findings file was written afterwards. The build reproduced both committed plugin distributions. This is the independent reviewer run, not Squeal's checkpoint. No eval sessions were run.
+All checks below ran at exact candidate `69bfb09c5f3464a6990b7ad4c41d9f39ceb1219c` with a clean tracked tree. `git status --porcelain` was empty before the gates, after the build, after the full suite and after the isolated retry. The findings file was written afterwards. The build reproduced both committed plugin distributions. This is the independent reviewer run, not Squeal's checkpoint. No eval sessions were run.
 
 ```text
 $ git rev-parse HEAD
-25faa1b052ccb24fbed1f903310c0ea3aa064131
+69bfb09c5f3464a6990b7ad4c41d9f39ceb1219c
 $ git status --porcelain
 (no output)
 

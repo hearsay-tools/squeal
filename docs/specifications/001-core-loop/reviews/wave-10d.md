@@ -31,7 +31,7 @@ HEAD is `84188de`, one commit past the candidate, and it changes only `docs/boar
 
 ```
 $ git rev-parse HEAD
-84188de32fd42e7d938d39d998faa9d5ef3f864f
+890af6c067fcae42209271c221bef7256a68fdce
 $ npm ci
 added 50 packages, and audited 51 packages in 2s ... found 0 vulnerabilities (install-scripts warnings for @parcel/watcher and esbuild)
 $ npm run lint

@@ -1,6 +1,6 @@
 # Row 011-324 notes: `squeal run <group>` names the install wait
 
-Worker 99f00902, 2026-11-14. Brief: `tasks/wave-82.md`, W1 (with part 2, row 011-335, from `2f0d863d6`). Design: `research/request-intake.md`, difference 3.
+Worker 99f00902, 2026-11-14. Brief: `tasks/wave-82.md`, W1 (with part 2, row 011-335, from `f32ad403d`). Design: `research/request-intake.md`, difference 3.
 
 ## What changed
 

@@ -12,7 +12,7 @@ import tempfile
 
 
 CANDIDATE = "1a208e9c065fd024a266d76ad2154f8f40a8b1fa"
-BASELINE = "9584ce6f1f20c672b0599593c96f3f3d411f4d6d"
+BASELINE = "8a3904b3045a3d4fb1d8667c78c8c51186acb3c2"
 REPO = Path.cwd()
 HERE = Path(__file__).resolve().parent
 WORK = Path(tempfile.mkdtemp(prefix="squeal-review-0.1.303-"))

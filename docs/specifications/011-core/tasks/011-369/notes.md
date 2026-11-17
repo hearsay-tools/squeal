@@ -145,7 +145,7 @@ Moving any of these to elapsed time would change what is stored or published (an
 
 ## Rebase onto 0.1.521
 
-The two commits were rebased onto cand/0.1.521 at `42acd3b9c`, which holds row 011-372 (every decision in a step reads the step reading `at`) and row 011-375. Each change keeps both intents: row 011-372's decisions read the step's calendar reading, and row 011-369's wakes are delays kept on elapsed time.
+The two commits were rebased onto cand/0.1.521 at `34fa198f8`, which holds row 011-372 (every decision in a step reads the step reading `at`) and row 011-375. Each change keeps both intents: row 011-372's decisions read the step's calendar reading, and row 011-369's wakes are delays kept on elapsed time.
 
 - `slow-tier.ts`, `#candidates`: a text conflict. Row 011-372 reads the queue at the step's reading (`const { at, context, ledger } = view; this.#queued(ledger, at)`). I keep that, so `at` stays in the destructuring that this row had dropped.
 - `slow-tier.ts`, the trigger's quiet wait: a text conflict. Row 011-372's `quietLeftMs(context, group, at)` stays, a decision on calendar time. This row's `this.#arm(ms)` stays, a delay on elapsed time without `at`.

@@ -10,7 +10,7 @@ pnpm exec biome check docs/specifications/011-core/research/probes/issue-209/pro
 git diff --exit-code squeal--v0.1.464 HEAD -- src/core/scheduler src/core/slow/classify.ts src/cli/status-wait.ts src/cli/status-wait-lines.ts
 ```
 
-The saved output comes from commit `b5eba8432c317fa259495873e6a223d4501cf142`
+The saved output comes from commit `f694fb22174a13765ee696ec7aa1b5b4360f26be`
 (package 0.1.465). The diff command exited 0 with no output: examined source
 matches reported release 0.1.464, tag commit
 `ff4c9c2f1608ec88c79c77481b976ba5e5be7575`.

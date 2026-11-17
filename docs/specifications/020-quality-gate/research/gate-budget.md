@@ -2,7 +2,7 @@
 
 Recommendation: run the gate's Vitest lane and its node:test lane at the same time, as the daemon's lanes already run, and let the node:test entries share one pool of `runner.tierSize` processes. Never stop a running file to make room. Name the files that hold the budget while they run and in the report. Keep "the run starts", but end every over-budget report with one rerun command with a fitted `--timeout`. Stopping early, before the files that load no changed path, is an option for the human.
 
-Examined 2026-11-12: Squeal main `52534310d` (0.1.457), the released 0.1.457 bundle for probes, Vitest 5.0.3 in this repository and 4.1.10 in `~/projects/cezar/node_modules` (read only), Node 26.13.0, 24 vCPUs. The one-minute load was 76 to 98 from 17:30Z. The live probes ran from 22:42Z to 22:44Z at a one-minute load of 21.1 to 22.7, under the guard's limit of 24 (`probes/gate-budget/guard.sh`); see "Live probes".
+Examined 2026-11-12: Squeal main `59248de22` (0.1.457), the released 0.1.457 bundle for probes, Vitest 5.0.3 in this repository and 4.1.10 in `~/projects/cezar/node_modules` (read only), Node 26.13.0, 24 vCPUs. The one-minute load was 76 to 98 from 17:30Z. The live probes ran from 22:42Z to 22:44Z at a one-minute load of 21.1 to 22.7, under the guard's limit of 24 (`probes/gate-budget/guard.sh`); see "Live probes".
 
 | # | Question | Answer | Tag |
 | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ Examined 2026-11-12: Squeal main `52534310d` (0.1.457), the released 0.1.457 bun
 
 ## Q1. Sharing the budget across runners
 
-**What happens today. read in source code** (`52534310d`):
+**What happens today. read in source code** (`59248de22`):
 
 - The collector runs one pick after another: Vitest, then each node:test entry, in D18's estimate order (`collect.ts:190-214`, `plan.ts:54-77`). Each run gets what is left of the one deadline as `timeoutMs` (`collect.ts:200-204`). A pick reached after the deadline runs nothing.
 - Each node:test entry is its own pick, so its own run. The entries run in turn.
@@ -121,7 +121,7 @@ What the runs show:
 
 - Issues: https://github.com/hearsay-tools/squeal/issues/196 (body and the 0.1.447 comment), https://github.com/hearsay-tools/squeal/issues/198 (read with `gh issue view`, 2026-11-12).
 - Spec 020 D3.2, D3.4, D14.4, D15, D17, D18 and `status.md`; spec 011 line 136 and spec 001 line 110 (lanes); `research/issue-196.md`, `research/issue-198.md`, `research/wide-import.md`.
-- Squeal `52534310d`: `src/core/code/gate/{collect,plan,order,estimate,runner-order,steps,runners,keep,keep-sent}.ts`, `src/cli/code-gate-text.ts`, `src/cli/code-gate-args.ts`, `src/core/types/runner.ts`, `src/runners/node-test/run/run.ts`, `src/runners/node-test/adapter-project.ts`, `src/runners/vitest/{reporter,adapter,width}.ts`.
+- Squeal `59248de22`: `src/core/code/gate/{collect,plan,order,estimate,runner-order,steps,runners,keep,keep-sent}.ts`, `src/cli/code-gate-text.ts`, `src/cli/code-gate-args.ts`, `src/core/types/runner.ts`, `src/runners/node-test/run/run.ts`, `src/runners/node-test/adapter-project.ts`, `src/runners/vitest/{reporter,adapter,width}.ts`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/index.ggMXe2IF.js`, `index.DpLw24bj.js` (`enqueued` 19996, `onQueued` 10677), `plugin.d.BsjqSb4-.d.ts`; Vitest 4.1.10 `~/projects/cezar/node_modules/vitest/dist/chunks/index.DXx9Dtk7.js`.
 - Store history: `~/projects/squeal/.git/squeal/runs/*/report.json`, read only.
 - Probes: `probes/gate-budget/` (README); live outputs `probes/gate-budget/out/` (`*.stdout` JSON reports, `*.stderr` with seconds, `*.load` load and exit, `queue.log`).

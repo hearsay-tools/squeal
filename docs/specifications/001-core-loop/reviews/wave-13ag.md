@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `4ab06fb8`, package 0.1.121. Range: `781a7b87..4ab06fb8`. Actual initial HEAD: `61566daa8d7d61ab6f23a405f300c6c4e0cd226c`. As the assignment allows, documentation follows the candidate: `git diff --name-only 4ab06fb8..61566daa` lists only `docs/board.md`. All executable files match the candidate. Linux, Node 24.21.0, Vitest 5.0.3. The checkout was clean during verification and the external probes.
+Candidate: `286de2f9`, package 0.1.121. Range: `e3303375..286de2f9`. Actual initial HEAD: `ce276d0635470ce1aac7052e806bec34881134ec`. As the assignment allows, documentation follows the candidate: `git diff --name-only 286de2f9..ce276d06` lists only `docs/board.md`. All executable files match the candidate. Linux, Node 24.21.0, Vitest 5.0.3. The checkout was clean during verification and the external probes.
 
 This re-review is bounded by `reviews/wave-13af.md` B1, B2 and S1. Interleaved spec 006 changes are outside that scope; their unit tests are included in the independent suite. No eval runner or repository script was run to check evals. The explicitly forbidden `npm run build` was not run. Bundle reproducibility and macOS remain **unverified**, not findings. Existing daemon test helpers compile private source fixtures; no committed distribution was rebuilt. No product, test, board, spec, status or distribution file was edited.
 
@@ -89,13 +89,13 @@ $ cmp plugins/claude-code/dist/cli/squeal.mjs plugins/codex/dist/cli/squeal.mjs
 
 The independent full suite is **not green**. Its one failure is a 5 s timeout, not an assertion failure; the unchanged file passes three independent targeted runs without changing its timeout. Load sensitivity is **plausible**, not established as the cause. This is not a proven break of the assigned repair. The coordinator's reported slow/permits timeout did not recur. The full run printed two fixture gitdir-repair notices and one earlier-run process cleanup. None caused another failure. These retries do not replace the failed full gate. No second full suite was run.
 
-The 35-probe replay restores the published first-round source, updates simulated candidate versions to 0.1.121 and raises the real step-down request above that version. It preserves actual 0.1.112 ledger/handler/CLI sources from `cf7e8a2c`, the base wait from `6864b726`, and the actual 0.1.115 CLI from `2ec0efa1`. The supplementary compatibility and mid-shutdown probes use the actual 0.1.116 CLI/registration sources from `d9fe66ba`. Historical sources are unchanged. Production keys, ledgers, store, sockets and waits are used with controlled mutation schedules; real candidate stop, step-down and restart remain in the replay.
+The 35-probe replay restores the published first-round source, updates simulated candidate versions to 0.1.121 and raises the real step-down request above that version. It preserves actual 0.1.112 ledger/handler/CLI sources from `d58dd59c`, the base wait from `860f6464`, and the actual 0.1.115 CLI from `eecab4cb`. The supplementary compatibility and mid-shutdown probes use the actual 0.1.116 CLI/registration sources from `7481623e`. Historical sources are unchanged. Production keys, ledgers, store, sockets and waits are used with controlled mutation schedules; real candidate stop, step-down and restart remain in the replay.
 
 Replayable [probe source snapshot](/p/squeal/tasks/7ac973ae-08f5-49c6-ac59-0ceb2f9028a8/files?artifact=09001cf6-200e-4c1f-aaef-980cbe390e0f). Complete captured [verification output snapshot](/p/squeal/tasks/7ac973ae-08f5-49c6-ac59-0ceb2f9028a8/files?artifact=72c21793-d09f-4220-9fdc-341905dc0cdc).
 
 ## Verdict
 
-**FAIL 4ab06fb8: 1 proven blocker, 0 should-fix, 0 nits.**
+**FAIL 286de2f9: 1 proven blocker, 0 should-fix, 0 nits.**
 
 B2 and S1 close. B1's original ordinary-note-before-SIGKILL failure closes, but its replacement shutdown evidence can be erased by ordinary diagnostics during shutdown. A real candidate then falsely tells status and the next hook that it died without shutting down. This is a variant opened by the B1 repair, not a reopening of settled succession or key semantics. Second-round blocker: the human decides the next step.
 

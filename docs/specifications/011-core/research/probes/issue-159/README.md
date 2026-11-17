@@ -33,7 +33,7 @@ cases reach a pending-lint block. A control with unchanged revision and scan
 evidence returns without a lint request. Every case checks that the waiting entry
 is silent on its next invocation in the same turn. `lint.blocking` is false.
 
-Recorded at checkout `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`, Squeal 0.1.414,
+Recorded at checkout `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`, Squeal 0.1.414,
 Node 24.22.1, Vitest 5.0.3. [output.txt](output.txt) preserves the final run:
 5 passed, 4.88 seconds, load 16.85 on 24 CPUs. The first run also passed all five
 cases (4.06 seconds), but Vitest hid console output on success. The final run

@@ -2,10 +2,10 @@
 
 ## Verdict and verification
 
-**FAIL** at `dcff0cf9`: **1 proven blocker, 0 should-fix, 0 nits**.
-Range: `1705edbd^..dcff0cf9`. Bounded second round on `reviews/wave-13x.md` B1 and S1, covering 001-245, its regressions, the 0.1.106 bundles and the unreleased key-format 3 re-pin. The previous B1 is closed. S1 is repaired for stable-size files, but its budget can still be exceeded by a file growing between stat and read.
+**FAIL** at `b1b32bd3`: **1 proven blocker, 0 should-fix, 0 nits**.
+Range: `773109e6^..b1b32bd3`. Bounded second round on `reviews/wave-13x.md` B1 and S1, covering 001-245, its regressions, the 0.1.106 bundles and the unreleased key-format 3 re-pin. The previous B1 is closed. S1 is repaired for stable-size files, but its budget can still be exceeded by a file growing between stat and read.
 
-The assigned worker initially had `ce713d1d`, one documentation-only commit after the candidate. All product verification and probes below ran detached at **exactly `dcff0cf9`**, with no tracked changes. The worker branch was restored before writing and committing this report. No product, board or spec edits were made.
+The assigned worker initially had `265cbfa7`, one documentation-only commit after the candidate. All product verification and probes below ran detached at **exactly `b1b32bd3`**, with no tracked changes. The worker branch was restored before writing and committing this report. No product, board or spec edits were made.
 
 ```text
 env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null npm ci

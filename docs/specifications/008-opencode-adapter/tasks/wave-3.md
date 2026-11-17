@@ -94,9 +94,9 @@ Use /reviewer. Outcome: `reviews/wave-3b.md` committed with a verdict on the exa
 
 ### 008-33 repair of `reviews/wave-3b.md`
 
-Use /worker, on `cand/0.1.188` at d3978509. The coordinator has already made the product fix for B1: `turns.ts` ends a continued turn as continued even when it was aborted, with a hook regression and the bundle rebuilt. It also removed the 250 ms slack from the e2e timeline's deadline checks (B2, in part). Outcome: both blockers fully repaired as the review's repair notes ask.
+Use /worker, on `cand/0.1.188` at babed404. The coordinator has already made the product fix for B1: `turns.ts` ends a continued turn as continued even when it was aborted, with a hook regression and the bundle rebuilt. It also removed the 250 ms slack from the e2e timeline's deadline checks (B2, in part). Outcome: both blockers fully repaired as the review's repair notes ask.
 
-- B1: the review's barrier-ordered real-OpenCode test (the first continuation held by a provider barrier, the recovery applied, the abort event marked, then the reply released). It asserts no third Squeal request, and that the `FAIL -> PASS` reaches the model at the next real user prompt. It must fail at 5f425783 and pass at d3978509.
+- B1: the review's barrier-ordered real-OpenCode test (the first continuation held by a provider barrier, the recovery applied, the abort event marked, then the reply released). It asserts no third Squeal request, and that the `FAIL -> PASS` reaches the model at the next real user prompt. It must fail at 9a48aae1 and pass at babed404.
 - B2: in `test/harness/opencode-dispose.test.ts`, `stopGone()` retries only when the held Stop died at or after its idle deadline. Uncertain causes fail with their observations, or are labelled unresolved without a retry. Add small timeline tests in `test/e2e/` (pure, with no OpenCode) for an early report loss, a genuine expiry, and missing timing evidence.
 - Owns: `test/harness/opencode-*.test.ts`, `test/harness/opencode/**`, `test/e2e/opencode*`. No `src`, dist or version.
 - Done when: each new test discriminates as stated; lint, typecheck and `npx vitest run test/harness/opencode/ test/harness/opencode-*.test.ts test/e2e/opencode*.test.ts` green.
@@ -105,13 +105,13 @@ Use /worker, on `cand/0.1.188` at d3978509. The coordinator has already made the
 
 Use /reviewer, pinned to `cand/0.1.192` (63289a86). Outcome: `reviews/wave-3b.md` gains a Round 4 with a verdict on that SHA, for the files it shares with main's code since review 008-32 passed (process step 6).
 
-- Context: 0.1.192 is `cand/0.1.188` (round 3 PASS at 854d66ae) cherry-picked onto main at 0.1.190 (007's 007-37 to 007-43, 006's 006-53 and 006-56), with no build commit carried, then one build commit. Main's commits and the candidate share no source or test file; only the eight version places and 31 bundles under `plugins/*/dist`.
-- Questions: is the version 0.1.192 in all eight places (`package.json`, `plugins/{claude-code,pi,opencode}/package.json`, both plugin manifests, `install.sh` `SQUEAL_VERSION`, `package-lock.json` root and `packages[""]`), and does `npm run check:version -- origin/main` pass? Does a clean `npm ci` and `npm run build` leave no tracked drift? Do the cherry-picked commits match round 3's `74f093ba..854d66ae` and earlier range by content (`git range-diff`)? Does `npx vitest run test/keys/key-format.test.ts` pass with format 10 unchanged?
+- Context: 0.1.192 is `cand/0.1.188` (round 3 PASS at 6634e809) cherry-picked onto main at 0.1.190 (007's 007-37 to 007-43, 006's 006-53 and 006-56), with no build commit carried, then one build commit. Main's commits and the candidate share no source or test file; only the eight version places and 31 bundles under `plugins/*/dist`.
+- Questions: is the version 0.1.192 in all eight places (`package.json`, `plugins/{claude-code,pi,opencode}/package.json`, both plugin manifests, `install.sh` `SQUEAL_VERSION`, `package-lock.json` root and `packages[""]`), and does `npm run check:version -- origin/main` pass? Does a clean `npm ci` and `npm run build` leave no tracked drift? Do the cherry-picked commits match round 3's `a6bf2e4f..6634e809` and earlier range by content (`git range-diff`)? Does `npx vitest run test/keys/key-format.test.ts` pass with format 10 unchanged?
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite: the coordinator's gate runs under the host lock.
 
 ## 008-36 re-review of `cand/0.1.192` rebased onto 0.1.191
 
-Use /reviewer, pinned to `cand/0.1.192` at 9ffd66f4. Outcome: `reviews/wave-3b.md` gains a Round 5 with a verdict on that SHA. 007's 0.1.191 (007-42: `src/runners/pytest/adapter.ts`, its test, key format 10 re-pinned) landed after 008-35 passed 63289a86, so the candidate was rebuilt on it (process step 6).
+Use /reviewer, pinned to `cand/0.1.192` at 8942d0fe. Outcome: `reviews/wave-3b.md` gains a Round 5 with a verdict on that SHA. 007's 0.1.191 (007-42: `src/runners/pytest/adapter.ts`, its test, key format 10 re-pinned) landed after 008-35 passed 63289a86, so the candidate was rebuilt on it (process step 6).
 - Same questions as 008-35, against main at 0.1.191: the 14 non-build commits identical to 63289a86's by `git range-diff`; no shared source or test file; version 0.1.192 in all eight places and `check:version` passes; a clean `npm ci` and build leave no drift; the key-format test passes with 007's pin.
 - Writes only `docs/specifications/008-opencode-adapter/reviews/wave-3b.md`. No full suite.
 

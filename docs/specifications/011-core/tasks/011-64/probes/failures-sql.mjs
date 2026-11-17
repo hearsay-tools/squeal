@@ -15,7 +15,7 @@ const CHECK = process.env.CHECK ?? "autosave";
 const SELECT = `SELECT r.*, c.project AS check_project, c.test_path AS check_test_path,
   c.kind AS check_kind, c.full_name AS check_full_name, f.summary, f.errors
   FROM results r JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id`;
-// Today's (src/core/store/repos/results.ts at 775dfe14f).
+// Today's (src/core/store/repos/results.ts at 61c226005).
 const TODAY = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
 // Proposed: the failure text column drives the plan; the filters are optional, as today's.
 const FAILED = `r.failure_id IS NOT NULL AND r.outcome = 'fail'

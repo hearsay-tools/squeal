@@ -1,6 +1,6 @@
 # 011-241 notes: a named wait's asked runs have one owner, with 011-238 slice 2
 
-Worker 659c8da3, wave 50 W1, 2026-10-26, from baseline `00daa15e5`. Rows 011-241 (with `quality/2026-10-26-b.md` slice 3) and 011-238 slice 2 (`quality/2026-10-26-a.md`). Slice 2's notes are here, not in `tasks/011-238/`, because W2 writes that file for slices 3 to 5.
+Worker 659c8da3, wave 50 W1, 2026-10-26, from baseline `193902975`. Rows 011-241 (with `quality/2026-10-26-b.md` slice 3) and 011-238 slice 2 (`quality/2026-10-26-a.md`). Slice 2's notes are here, not in `tasks/011-238/`, because W2 writes that file for slices 3 to 5.
 
 ## Cause
 

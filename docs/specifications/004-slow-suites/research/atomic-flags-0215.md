@@ -1,6 +1,6 @@
 # The six atomic flags of 0.1.215 (row 004-77)
 
-Researcher, 2026-10-18, against the brief `atomic-flags-0215-brief.md`. Cells read only: run `20261018T125937Z-bcdbec` (0.1.215, `581f1772`) and run `20261016T061730Z-07d7ab` (0.1.199, `e77eff42`) under `/tmp/squeal-evals-1001/cells/`. Every count below comes from each cell's `out/grade.json` (its `transcript`, `claimLine`, `atomic.measures`), with `out/events.jsonl` read where a call never returned. The scripts that produced the counts are in `probes/atomic-flags-0215/`.
+Researcher, 2026-10-18, against the brief `atomic-flags-0215-brief.md`. Cells read only: run `20261018T125937Z-bcdbec` (0.1.215, `6faa3f32`) and run `20261016T061730Z-07d7ab` (0.1.199, `0b91ce0b`) under `/tmp/squeal-evals-1001/cells/`. Every count below comes from each cell's `out/grade.json` (its `transcript`, `claimLine`, `atomic.measures`), with `out/events.jsonl` read where a call never returned. The scripts that produced the counts are in `probes/atomic-flags-0215/`.
 
 ## Answers
 
@@ -13,7 +13,7 @@ Researcher, 2026-10-18, against the brief `atomic-flags-0215-brief.md`. Cells re
 
 ## 1. What each flagged session read and did
 
-The flagged measures, per run (from `ATOMIC.md` in `2b589f95`):
+The flagged measures, per run (from `ATOMIC.md` in `05dca6c3`):
 
 | Model, scenario, measure | 0.1.199 | 0.1.215 | Points | One-sided Fisher p |
 | --- | --- | --- | --- | --- |
@@ -62,11 +62,11 @@ The fourth line Luna read before an `unknown` claim is unchanged since 0.1.199: 
 
 ## 2. Cause per flag
 
-- **Luna, a2-slow `claim-true` (−60):** line 1, then line 2 (read in source code: `src/harness/shared/primer.ts` `slowSentences`, 004-62 in `b83c3ea0`; `waitSentence`, 005-68 in `a68e228f`). Told the slow tier is not required, Luna counted the pending file and said `unknown`. It did what the policy-off sentence asks ("else say how many are not"), and the measure scores that as a miss. 004's status line of 2026-10-16 anticipated exactly this reading: "whether fewer agents claim on `a2-slow` is read at the next release's atomic tier". This is that reading. The 4 true claims are the 4 sessions that ran `run --slow` or `run --all` anyway.
+- **Luna, a2-slow `claim-true` (−60):** line 1, then line 2 (read in source code: `src/harness/shared/primer.ts` `slowSentences`, 004-62 in `1c23366d`; `waitSentence`, 005-68 in `7e3b075a`). Told the slow tier is not required, Luna counted the pending file and said `unknown`. It did what the policy-off sentence asks ("else say how many are not"), and the measure scores that as a miss. 004's status line of 2026-10-16 anticipated exactly this reading: "whether fewer agents claim on `a2-slow` is read at the next release's atomic tier". This is that reading. The 4 true claims are the 4 sessions that ran `run --slow` or `run --all` anyway.
 - **Luna, a3-harmless `claim-true` (−90):** the same two lines on a scenario whose truth is `pass`, because `src/money.ts` is read by the slow ledger test. Line 3 adds to it: 3 of 10 sessions ran the wait without the CLI (`status --wait …`, exit 127; `npx squeal status`, "could not determine executable to run"). No session claimed `pass` with the slow file pending, so the measure misses only by `unknown`.
 - **Luna, a8-load-hold `claim-true` and `slow-through-squeal` (−90 each):** lines 1 to 3, plus the checkpoint line 2 offers. Under a8's load hold (`maxLoadPerCpu` 0.0001), a `run --all --wait` checkpoint waits on the deferred slow lane ("Checkpoint in progress … 0 of 1 test file done … waiting for host load to drop", r8). Only `run --slow` forces it. On 0.1.199 all 10 sessions ran `run --slow`; on 0.1.215 one did.
 - **Sonnet, a11-inherited-flake `claim-true` and `retry-for-environment` (−78, −80):** line 2. 9 of 10 sessions ran the path wait first, lost 60 s to the slow file it selected, then took the checkpoint the same sentence offers. "Checkpoint … completed at revision 1: 1 known failure" closed the session with `fail`. The inherited FAIL text is the same in both versions ("load 2.40 per CPU when it ran; no retry asked at these inputs"). Both sessions that did retry on 0.1.215 had read that FAIL after the checkpoint too. Why the other 8 stopped at the checkpoint is not determined: the transcripts show the order, not the reason (inferred: a completed checkpoint reads as the finish line the primer names).
-- **Line 3 is partly the eval's own artefact** (verified by experiment, `probes/atomic-flags-0215/primer-length.ts`, run on main, whose `primer.ts` is unchanged since `581f1772`). The primer folds its naming of the CLI until it fits 1,500 characters. With the cell's 217-character CLI it names no CLI path and keeps the path wait. With a typical `~/.codex` path (122 characters) it names the CLI at the wait and drops the path wait, under either policy value. The rendered text for the cell's path matches the a3 r3 cell's primer byte for byte. So a real Codex user with a short home path reads the 0.1.199 wait sentence plus 004-62's slow sentence. That user still meets line 1, but not lines 2 and 3. The eval cell meets all three.
+- **Line 3 is partly the eval's own artefact** (verified by experiment, `probes/atomic-flags-0215/primer-length.ts`, run on main, whose `primer.ts` is unchanged since `6faa3f32`). The primer folds its naming of the CLI until it fits 1,500 characters. With the cell's 217-character CLI it names no CLI path and keeps the path wait. With a typical `~/.codex` path (122 characters) it names the CLI at the wait and drops the path wait, under either policy value. The rendered text for the cell's path matches the a3 r3 cell's primer byte for byte. So a real Codex user with a short home path reads the 0.1.199 wait sentence plus 004-62's slow sentence. That user still meets line 1, but not lines 2 and 3. The eval cell meets all three.
 
 Grader and scenario: unchanged between the runs. `evals/atomic/atomic.json` gives a2, a3 and a8 the same prompts, knobs and `breaks` as before (the revision `ATOMIC.md` compares within). On 0.1.215 the other models held where these two dropped: Haiku and Sonnet on a2, a3 and a8, Sol on all four (`claim-true` 9/10 or 10/10 each, Sonnet a3 4/4 where a claim line was given). The text is the same for them, so this is a regression in how two models read the new text, not a broken measure. One measure question stays open for the coordinator: whether `claim-true` should accept `unknown` with an exact count of pending slow files under policy off, which is what 004-62 asks agents to say.
 
@@ -85,13 +85,13 @@ Not flagged but moving the same way, large and unconfirmed: Haiku a2-slow `slow-
 
 ## 3. Whether 0.1.216 changes it
 
-By its text, no (read in source code, `git diff 581f1772 98beb8cd -- src`):
+By its text, no (read in source code, `git diff 6faa3f32 e99ffa66 -- src`):
 
-- 004-71 (`1eb752f0`, `src/cli/status-wait-lines.ts` `slowTierText`) changes only the pathless wait's quiet line under policy off, to "…; this repository does not require it before you finish (`… run --slow` runs it)". None of the 34 path-wait sessions reached that line. The Luna sessions that ran the pathless wait read its old ending, "which this wait does not hold for: `run --slow --wait 60000` runs and waits for it", and still said `unknown`. The new wording drops the instruction that line carried, so if it moves anything it moves the same way.
-- 011-15 (`7479e07e`, `eae5891e`) counts current failures only. The a11 FAIL is current at revision 1 ("observed at revision 0, current"), so Sonnet's text does not change.
+- 004-71 (`52eb345c`, `src/cli/status-wait-lines.ts` `slowTierText`) changes only the pathless wait's quiet line under policy off, to "…; this repository does not require it before you finish (`… run --slow` runs it)". None of the 34 path-wait sessions reached that line. The Luna sessions that ran the pathless wait read its old ending, "which this wait does not hold for: `run --slow --wait 60000` runs and waits for it", and still said `unknown`. The new wording drops the instruction that line carried, so if it moves anything it moves the same way.
+- 011-15 (`6d49542f`, `70ce6088`) counts current failures only. The a11 FAIL is current at revision 1 ("observed at revision 0, current"), so Sonnet's text does not change.
 - Unchanged on main: `primer.ts` (the rendered Codex primer is byte-identical), the named wait's selection of slow files and its deadline (`src/cli/named-files.ts`, `status-wait.ts`), and the checkpoint's wait on a deferred slow lane.
 
-The re-run on main is evidence apart from the cells above (verified by experiment). Run `20261018T184306Z-4fc7da`, Squeal 0.1.216 at `98beb8cd`, 80 cells: Luna and Sonnet × a2, a3, a8, a11 × 10. Started 18:43 UTC once the coordinator's gate had logged `exit=0`, ended 19:28; 0 cells failed. Results file: `evals/results/2026-10-18-0.1.216.20261018T184306Z-4fc7da.atomic.json`, left uncommitted in this worktree. The `ATOMIC.md` the run regenerated was restored to main's; its flags are quoted below from a copy. Counts come from `probes/atomic-flags-0215/rerun.py`; the load at start is each cell's first `out/load.tsv` row (one-minute load, 24 CPUs).
+The re-run on main is evidence apart from the cells above (verified by experiment). Run `20261018T184306Z-4fc7da`, Squeal 0.1.216 at `e99ffa66`, 80 cells: Luna and Sonnet × a2, a3, a8, a11 × 10. Started 18:43 UTC once the coordinator's gate had logged `exit=0`, ended 19:28; 0 cells failed. Results file: `evals/results/2026-10-18-0.1.216.20261018T184306Z-4fc7da.atomic.json`, left uncommitted in this worktree. The `ATOMIC.md` the run regenerated was restored to main's; its flags are quoted below from a copy. Counts come from `probes/atomic-flags-0215/rerun.py`; the load at start is each cell's first `out/load.tsv` row (one-minute load, 24 CPUs).
 
 | Group | Measure | 0.1.199 | 0.1.215 | 0.1.216 | Load at start, 0.1.216 cells (median; max during) |
 | --- | --- | --- | --- | --- | --- |
@@ -148,9 +148,9 @@ Then re-run only these four scenarios for Luna and Sonnet on the fix's candidate
 
 ## Sources
 
-- Cells: `/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec/{a2-slow,a3-harmless,a8-load-hold}.p0.codex-gpt-6-luna.e-medium.r{1..10}/out/` and `a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r{1..10}/out/`, and the same names under `/tmp/squeal-evals-1001/cells/e77eff42453e/20261016T061730Z-07d7ab/`.
-- `git show 2b589f95:evals/results/ATOMIC.md` (the flags and their p values).
-- `src/harness/shared/primer.ts` at `581f1772` and `98beb8cd` (identical); commits `b83c3ea0` (004-62), `a68e228f` (005-68), `1eb752f0` (004-71), `7479e07e` and `eae5891e` (011-15).
-- `src/cli/status-wait-lines.ts`, `src/cli/named-file-lines.ts` at `98beb8cd`.
+- Cells: `/tmp/squeal-evals-1001/cells/6faa3f32d500/20261018T125937Z-bcdbec/{a2-slow,a3-harmless,a8-load-hold}.p0.codex-gpt-6-luna.e-medium.r{1..10}/out/` and `a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r{1..10}/out/`, and the same names under `/tmp/squeal-evals-1001/cells/0b91ce0bf4ca/20261016T061730Z-07d7ab/`.
+- `git show 05dca6c3:evals/results/ATOMIC.md` (the flags and their p values).
+- `src/harness/shared/primer.ts` at `6faa3f32` and `e99ffa66` (identical); commits `1c23366d` (004-62), `7e3b075a` (005-68), `52eb345c` (004-71), `6d49542f` and `70ce6088` (011-15).
+- `src/cli/status-wait-lines.ts`, `src/cli/named-file-lines.ts` at `e99ffa66`.
 - `docs/specifications/004-slow-suites/status.md`, entries of 2026-10-16 (004-62) and 2026-10-18 (004-71); `docs/specifications/005-agent-adoption/status.md`, entry of 2026-10-17 (005-68).
 - Probe: `probes/atomic-flags-0215/primer-length.ts` (throwaway; run with this repository's `tsx`).

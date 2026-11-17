@@ -16,7 +16,7 @@ Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
 
 ## Re-review after the coordinator repair (2026-10-21)
 
-Use /reviewer. Shape: review, narrow. Pinned to the repaired `cand/0.1.234` SHA named in the spawn; the delta is `2e0f83b6b..` that SHA: the repair of `reviews/0.1.234.md` B1 (`17af2b302`, bundles `a2ade87aa`, tests `b6a2ad300` and `013dec0b9`), S1 (`0c4a4ad5d`), S2 (`314eeeec4`), your review file and this section. Check that:
+Use /reviewer. Shape: review, narrow. Pinned to the repaired `cand/0.1.234` SHA named in the spawn; the delta is `dd1223f30..` that SHA: the repair of `reviews/0.1.234.md` B1 (`53ff693c1`, bundles `304526168`, tests `f2b22d8a2` and `82bd66d65`), S1 (`90064b5b8`), S2 (`3d81a2bec`), your review file and this section. Check that:
 - B1 is closed: `status <path> --full`, `--notes` and a named wait with either print the full status, detail included and no `More:` line, and their commands resolve from the caller's directory, including a file outside it; the pathless forms are unchanged;
 - S1's two tests pass with `CODEX_SESSION_ID` set and without it; S2's parser returns bare paths for a named project's retry group, plain and in hook JSON, and an empty-project group as before;
 - the rebuilt bundles match `npm run build`.

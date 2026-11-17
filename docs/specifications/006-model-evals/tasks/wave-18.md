@@ -1,6 +1,6 @@
 # Wave 18: why no judge passes calibration on Claude Code 2.1.316 (row 006-101)
 
-Coordinator 6e3bce1c, 2026-11-01. The human chose "A: researcher first" (decision card in task 6e3bce1c, 2026-11-01). The long baseline on `squeal--v0.1.387` ran no session: no judge passed calibration on Claude Code 2.1.316, rubric `0f0deea1da13` (commit `7c7dc5342`). Host policy as in `011-core/tasks/wave-60.md`. **Never run `evals/bin/*.mjs`, not even with `--help`: that starts a real run.** No real `claude` or `codex` session under the real HOME.
+Coordinator 6e3bce1c, 2026-11-01. The human chose "A: researcher first" (decision card in task 6e3bce1c, 2026-11-01). The long baseline on `squeal--v0.1.387` ran no session: no judge passed calibration on Claude Code 2.1.316, rubric `0f0deea1da13` (commit `e25a4908d`). Host policy as in `011-core/tasks/wave-60.md`. **Never run `evals/bin/*.mjs`, not even with `--help`: that starts a real run.** No real `claude` or `codex` session under the real HOME.
 
 ## 006-101
 
@@ -23,6 +23,6 @@ Done when: the findings file is committed alone, with one table row per miss (re
 
 ## R1: review of cand/006-101
 
-Use /reviewer. Shape: review. Candidate `cand/006-101` at `f726f23dfa8621beee57a9f87afa18e252e7d271`: main `e4586d9fa` plus `ab0188ed8` (the rubric sentence of `research/judge-calibration-2.1.316.md`, its D4 line and the pinned rubric revision `b0f50dbca2e2`) and `f726f23df` (the passing Haiku calibration on Claude Code 2.1.316, the long baseline results `2026-11-01-0.1.387.20261101T092538Z-135e02.json` and `TREND.md`). CI run 41295016618.
+Use /reviewer. Shape: review. Candidate `cand/006-101` at `b2b76e52c2a832381c058aa0ce27eda7e2c49fe4`: main `10985c337` plus `7b208c6ba` (the rubric sentence of `research/judge-calibration-2.1.316.md`, its D4 line and the pinned rubric revision `b0f50dbca2e2`) and `b2b76e52c` (the passing Haiku calibration on Claude Code 2.1.316, the long baseline results `2026-11-01-0.1.387.20261101T092538Z-135e02.json` and `TREND.md`). CI run 41295016618.
 
 Check: (1) the sentence says what the findings recommend, in `evals/lib/rubric.mjs` and spec 006 D4 alike, and changes no other expectation; (2) the calibration file is for this rubric revision and Claude Code version, passed, and `judge-coverage.test.ts` holds; (3) the results file and `TREND.md` come from the tooling unchanged (no hand edit), and the grades of the 0.1.387 run used the new rubric; (4) the one alarm, false pass `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3`, is shown, not hidden or accepted by any test. The coordinator reports it to the human; do not judge its cause. **Never run `evals/bin/*.mjs`, not even `--help`.** No full suite, no build. Write `reviews/006-101.md` with PASS or FAIL and commit it alone.

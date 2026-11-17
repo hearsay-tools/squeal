@@ -2,11 +2,11 @@
 
 ## Verification
 
-Candidate: `9cbf461dd01b36894888770ea055b85eaf1aa1d5` (`cand/0.1.199`). Base: `b0830050`. Reviewed range: `b0830050..9cbf461d`. HEAD matched the candidate and the tree was clean. Product files and `docs/board.md` were not edited. The build left all committed bundles unchanged.
+Candidate: `898e486547b39d8668a297272a9739a9667086be` (`cand/0.1.199`). Base: `11928327`. Reviewed range: `11928327..898e4865`. HEAD matched the candidate and the tree was clean. Product files and `docs/board.md` were not edited. The build left all committed bundles unchanged.
 
 ```text
 $ git rev-parse HEAD
-9cbf461dd01b36894888770ea055b85eaf1aa1d5
+898e486547b39d8668a297272a9739a9667086be
 $ npm ci
 added 196 packages, and audited 197 packages in 7s
 found 0 vulnerabilities
@@ -126,7 +126,7 @@ Squeal's separate background baseline also reported two OpenCode idle-deadline f
 
 ## Verdict
 
-**PASS 9cbf461dd01b36894888770ea055b85eaf1aa1d5**. Zero blockers, zero should-fix items and zero nits in the reviewed range. Two nonblocking notes and the requested coverage limits follow. The independent suite completed with two failures in unchanged execution paths, documented above; this verdict does not claim a green full suite.
+**PASS 898e486547b39d8668a297272a9739a9667086be**. Zero blockers, zero should-fix items and zero nits in the reviewed range. Two nonblocking notes and the requested coverage limits follow. The independent suite completed with two failures in unchanged execution paths, documented above; this verdict does not claim a green full suite.
 
 ## Blockers
 
@@ -162,7 +162,7 @@ This is a tiny-fixture observation under shared-host load, not a large-project b
 
 ### N2. The daemon regression's intermittent baseline recovery is still unexplained
 
-**Unverified recovery path; nonblocking.** `test/integration/setup-missing-import.test.ts:47`, worker `tasks/001-424/notes.md`, section "Cases ruled out". To check the test independently, an isolated archive of baseline `b0830050` used the same installed dependencies and copied only the new client fixture and tests. The unmodified daemon integration test was run twice:
+**Unverified recovery path; nonblocking.** `test/integration/setup-missing-import.test.ts:47`, worker `tasks/001-424/notes.md`, section "Cases ruled out". To check the test independently, an isolated archive of baseline `11928327` used the same installed dependencies and copied only the new client fixture and tests. The unmodified daemon integration test was run twice:
 
 ```text
 $ npx vitest run test/integration/setup-missing-import.test.ts --maxWorkers=1 --reporter=verbose

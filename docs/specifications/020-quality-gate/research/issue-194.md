@@ -1,6 +1,6 @@
 # Issue 194: code that only a project-specific suite loads (packaged CLI tests)
 
-Researcher, 2026-11-12. Squeal **0.1.443** (released, `~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`), with the reported **0.1.440** for case 1. Worktree at `4d758d722`. Node v26.13.0. One-minute load 3.32 at start, 2.69 at end, on 24 CPUs (limit: the CPU count), so the live probes ran. All evidence is from a **synthetic** fixture (`probes/issue-194/`). The original cezarion task (cezarion#3212, PR cezarion#3297) was not replayed.
+Researcher, 2026-11-12. Squeal **0.1.443** (released, `~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`), with the reported **0.1.440** for case 1. Worktree at `21660b97f`. Node v26.13.0. One-minute load 3.32 at start, 2.69 at end, on 24 CPUs (limit: the CPU count), so the live probes ran. All evidence is from a **synthetic** fixture (`probes/issue-194/`). The original cezarion task (cezarion#3212, PR cezarion#3297) was not replayed.
 
 ## Answers
 
@@ -63,6 +63,6 @@ The coordinator triages #194 as answered by existing D15 and D12 configuration f
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/194 (read with `gh issue view 194`); #174, #144, #122 states read with `gh issue view`.
 - `docs/specifications/020-quality-gate/spec.md` D1, D3, D5, D7, D12, D14, D15; `status.md` lines 35 to 43; `research/issue-174.md`; `research/build-wrapper.md`.
-- `src/cli/code-gate-prerun.ts:56`, `src/core/code/gate/prerun.ts:100-190` at `4d758d722`.
+- `src/cli/code-gate-prerun.ts:56`, `src/core/code/gate/prerun.ts:100-190` at `21660b97f`.
 - Probe: `probes/issue-194/run.sh`, `probes/issue-194/fixture/`, output `probes/issue-194/run.out.txt`. Command:
   `sh run.sh $C/0.1.443/dist/cli/squeal.mjs $C/0.1.440/dist/cli/squeal.mjs` with `C=~/.claude/plugins/cache/hearsay/squeal`.

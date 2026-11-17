@@ -15,13 +15,13 @@ const followTypes = process.argv.includes("--types");
 
 // Same windows as raises.sh: release carrying N-1 .. first version commit carrying N.
 const WINDOWS = [
-  [10, "squeal--v0.1.168", "6c9fed9e"],
-  [11, "squeal--v0.1.199", "a6c50b6e"],
-  [12, "squeal--v0.1.215", "35abdccc"],
-  [13, "2639208a", "87d7ced6"],
-  [14, "squeal--v0.1.222", "05958848"],
-  [15, "squeal--v0.1.223", "8515e737"],
-  [16, "squeal--v0.1.224", "70759ddf"],
+  [10, "squeal--v0.1.168", "7af3462a"],
+  [11, "squeal--v0.1.199", "236fdad9"],
+  [12, "squeal--v0.1.215", "9d2d558f"],
+  [13, "3433ae62", "325022b0"],
+  [14, "squeal--v0.1.222", "f83116aa"],
+  [15, "squeal--v0.1.223", "8c805e19"],
+  [16, "squeal--v0.1.224", "4e855627"],
   [17, "squeal--v0.1.225", "d3014a3e"],
 ];
 

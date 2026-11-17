@@ -1,6 +1,6 @@
 # Helpers behind a build wrapper (survey-020-16, #174)
 
-Researcher 82831d89, 2026-11-10, at Squeal `919f108ca` (after 0.1.427). Brief: `tasks/wave-4.md`, "survey-020-16". Start: `issue-174.md`. Read-only on the product. Probes: `probes/build-wrapper/` (throwaway; the README lists each script). Versions: Node 24.22.1 (host), Node docs `latest-v24.x`, cezar at the issue's head `c817e1302` and base `a015077ac` (read with `git show` in `~/projects/cezar`, nothing written there).
+Researcher 82831d89, 2026-11-10, at Squeal `eef44fa6f` (after 0.1.427). Brief: `tasks/wave-4.md`, "survey-020-16". Start: `issue-174.md`. Read-only on the product. Probes: `probes/build-wrapper/` (throwaway; the README lists each script). Versions: Node 24.22.1 (host), Node docs `latest-v24.x`, cezar at the issue's head `c817e1302` and base `a015077ac` (read with `git show` in `~/projects/cezar`, nothing written there).
 
 **No probe ran.** The host has 24 vCPUs. The one-minute load was 35 to 63 from 21:55Z to the end of the survey window, always above the brief's limit of 24 (samples: 49.18, 53.33, 50.49, 42.39, 35.48, 39.72, 36.04, 57.70). A waiter (`probes/build-wrapper/README.md`) was set to start the probes when the load reached 24; it never did. Every "experiment" below is a probe written and not run. Its expected result is marked `inferred`.
 
@@ -105,7 +105,7 @@ Decisions for the human: the gate runs a command declared in `squeal.config.json
 
 ## Sources
 
-- Squeal `919f108ca`: spec 020 (D1, D3, D5, D6, D7, D11, D12, D13) and `status.md`; spec 011 (the line "never runs arbitrary commands", `squeal hold`); spec 019 D1, D6; `research/issue-174.md`, `ci-evidence.md`, `child-coverage.md`; `../../015-coverage-complexity/research/node-test-coverage.md`; `src/core/code/gate/{collect,evaluate,types,report}.ts`; `src/cli/{code-gate,code-gate-text}.ts`; `src/runners/node-test/{coverage.ts,run/coverage.ts,run/run.ts,runtime/recorder.cjs,runtime/reporter.mjs,graph/index.ts}`; `src/runners/vitest/{ci-record.ts,ci-runtime/vitest-ci.cjs}`; `src/core/types/{policy,check-groups}.ts`.
+- Squeal `eef44fa6f`: spec 020 (D1, D3, D5, D6, D7, D11, D12, D13) and `status.md`; spec 011 (the line "never runs arbitrary commands", `squeal hold`); spec 019 D1, D6; `research/issue-174.md`, `ci-evidence.md`, `child-coverage.md`; `../../015-coverage-complexity/research/node-test-coverage.md`; `src/core/code/gate/{collect,evaluate,types,report}.ts`; `src/cli/{code-gate,code-gate-text}.ts`; `src/runners/node-test/{coverage.ts,run/coverage.ts,run/run.ts,runtime/recorder.cjs,runtime/reporter.mjs,graph/index.ts}`; `src/runners/vitest/{ci-record.ts,ci-runtime/vitest-ci.cjs}`; `src/core/types/{policy,check-groups}.ts`.
 - cezar (`~/projects/cezar`, read with `git show`): `c817e1302` `squeal.config.json`, `scripts/test-package.mjs`, `package.json`, `packages/cezar/package.json`, `packages/cezar/test/e2e/binary-names.test.ts`; `origin/main` `1ed7d04fe` for the same wrapper.
 - Node.js docs, v24: https://nodejs.org/docs/latest-v24.x/api/cli.md (`NODE_OPTIONS`, `NODE_V8_COVERAGE`, `--test-reporter`, `--test-reporter-destination`); https://nodejs.org/docs/latest-v24.x/api/test.md ("Test reporters").
 - Issue: https://github.com/hearsay-tools/squeal/issues/174 (through `issue-174.md`).

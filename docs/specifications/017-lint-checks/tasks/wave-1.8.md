@@ -27,7 +27,7 @@ Anything new that lets a stored result differ from fresh ESLint, in ESLint itsel
 
 ## Review of cand/0.1.356
 
-Use /reviewer. Candidate `cand/0.1.356` `d9519b6c2` on main `2df8e7feb` (0.1.355). Whole range `2df8e7feb..d9519b6c2`. This repair is the R5 commits (`git log --grep "017 R5" 2df8e7feb..d9519b6c2`). Re-review against `reviews/0.1.353.md`: B1-R4 must fail to break, and the six earlier reproductions stay fixed (their tests are in `test/lint/integration/`).
+Use /reviewer. Candidate `cand/0.1.356` `aca34e557` on main `fe65ef970` (0.1.355). Whole range `fe65ef970..aca34e557`. This repair is the R5 commits (`git log --grep "017 R5" fe65ef970..aca34e557`). Re-review against `reviews/0.1.353.md`: B1-R4 must fail to break, and the six earlier reproductions stay fixed (their tests are in `test/lint/integration/`).
 
 The human's bar (2026-10-26): check the fix, then how ESLint itself and published plugins read files. A blocker is a proven wrong stored result through ESLint, a published plugin at a released version (name it), or a broken earlier reproduction. A project-local rule written to read files in an unusual way is a note under D5 boundary 6. A published plugin that starts a worker thread reads `unknown` by design (row 017-07). For any other plugin, say which plugins you checked and how.
 

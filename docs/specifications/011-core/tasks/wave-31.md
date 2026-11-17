@@ -46,7 +46,7 @@ Done when the file names, per sample, the permits and cores each project's edit 
 
 ## W10: 011-179, the validity comparison runs in time and cleans up inside its hook under load
 
-Use /worker. Shape: repair (test). Added 2026-10-24 from W8's report; starts from `cand/w31` (`5c8610e0d`), which holds W8's new comparison.
+Use /worker. Shape: repair (test). Added 2026-10-24 from W8's report; starts from `cand/w31` (`21e1294b7`), which holds W8's new comparison.
 
 Outcome: `test/keys/validity/pytest.test.ts:34` takes under half its 300 s timeout at load 50, with the same outputs, and its work directory's removal never times out a passing file.
 

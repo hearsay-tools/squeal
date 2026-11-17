@@ -2,7 +2,7 @@
 
 Researcher of row 011-143, 2026-10-23, 10:46Z to 12:35Z. Brief: `research/edit-load-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `docs/process.md`, spec 011 C3, C4, C5, C10, `research/host-load.md` and its probes, `research/central-edits.md`, `research/edit-cut.md`.
 
-Versions: Squeal 0.1.274, the committed `plugins/claude-code/dist` of squeal `800cb629d`. Clones under `/tmp/el143`: squeal `800cb629d`, cezar `f99cd1e24`, the client monorepo `7f939fb9`. Vitest 5.0.3 (squeal), 4.1.10 (cezar), 4.1.11 (toolkit). Store copies taken 2026-10-23 10:47Z (cezar again at 11:35Z). Host: 24 CPUs, one-minute load 25 to 99 during the probes; every timing below names its load. Probes and how to re-run each: `probes/edit-load/README.md`.
+Versions: Squeal 0.1.274, the committed `plugins/claude-code/dist` of squeal `3873532fd`. Clones under `/tmp/el143`: squeal `3873532fd`, cezar `f99cd1e24`, the client monorepo `7f939fb9`. Vitest 5.0.3 (squeal), 4.1.10 (cezar), 4.1.11 (toolkit). Store copies taken 2026-10-23 10:47Z (cezar again at 11:35Z). Host: 24 CPUs, one-minute load 25 to 99 during the probes; every timing below names its load. Probes and how to re-run each: `probes/edit-load/README.md`.
 
 **Units.** *CPU-seconds* are user plus system time of every process in a probe's cgroup scope, exited children included (`cpu.stat`), measured. *Recorded seconds* are the per-file durations the host stores hold (`results`, `report.json` `fileDurations`), recorded on this loaded host. One recorded second cost 0.32 to 0.59 CPU-seconds in four calibrations (finding 0). Shares are of recorded seconds.
 
@@ -58,7 +58,7 @@ Findings:
 - **Cezar's browser tests ride on every edit.** `squeal.config.json` gives `packages/web/e2e/*.e2e.ts` all of `packages/cezar/src/**`, which holds test files too, so even a test-file edit re-keys the 82 e2e files: 5,211 recorded s on the slow lane. Without them, Squeal's fast lane did what `vitest related` does (329 against 296 CPU-s). *read in config, verified by experiment.*
 - **The daemon's own CPU** is 1 to 4 s per small edit and 10 to 20% of a large one (25 of 226, 41 of 329, 33 of 167 CPU-s). *verified by experiment.*
 - **Without Squeal** an agent that runs the edited test file spends 3 to 7 CPU-s. One that runs `vitest related` runs no file for the types-only module (12 to 15 CPU-s to select) and spends 2,340 CPU-s on the mid module. One that runs the whole suite spends about 5,000 CPU-s in squeal and, by the same ratio, about 9,000 to 17,000 in cezar (28,200 recorded fast seconds plus 5,336 e2e). *verified by experiment for squeal, inferred for cezar.*
-- **A share that is coming in squeal: build tests on every `src/` edit.** Row 011-141 (wave 23, not on main at `800cb629d`, so not in any number here) makes about 58 build tests (`tsc` or esbuild of the CLI and bundles) re-key on every `src/` edit, in the fast lane. Its worker measured on this host: one `src/core/scheduler/scheduler.ts` edit re-keyed 364 files (306 fast, 58 build); the 58 alone took 1,358 CPU-s summed, 557 s wall at 4 workers, load median 58; `test/daemon/hold.test.ts` alone 279 s. That is about a quarter of the whole suite's 5,514 CPU-s, added to every source edit. *reported by the coordinator on 2026-10-23 from row 011-141's measurement; not verified here.*
+- **A share that is coming in squeal: build tests on every `src/` edit.** Row 011-141 (wave 23, not on main at `3873532fd`, so not in any number here) makes about 58 build tests (`tsc` or esbuild of the CLI and bundles) re-key on every `src/` edit, in the fast lane. Its worker measured on this host: one `src/core/scheduler/scheduler.ts` edit re-keyed 364 files (306 fast, 58 build); the 58 alone took 1,358 CPU-s summed, 557 s wall at 4 workers, load median 58; `test/daemon/hold.test.ts` alone 279 s. That is about a quarter of the whole suite's 5,514 CPU-s, added to every source edit. *reported by the coordinator on 2026-10-23 from row 011-141's measurement; not verified here.*
 
 ## 2. One hour of work
 
@@ -95,7 +95,7 @@ Other findings:
 
 ## 3. The part no change reached
 
-Method. `cov-setup.ts` starts V8 precise block coverage in each Vitest worker before a test file loads and writes it, with every transformed script's source, in `afterAll`; `cov-lines.mjs` maps executed ranges back to source lines through the inline source maps. The whole squeal suite ran once this way at `800cb629d` (949 of 951 files recorded). `cand.cjs` takes real agent edits from the squeal store: watch revisions of 1 to 3 paths whose old and new blobs are both in git, 138 path edits in 102 revisions. `reach.py` takes the changed code lines (comments and blank lines left out; an insertion counts its neighbours), maps them to the coverage commit by diff, and judges each re-keyed file (warm closures, e2e excluded): reached (executed a changed line), not reached (the module did not load, or loaded and no changed line ran, or only types changed), or not evaluable (no coverage record, or the changed lines are not at the coverage commit). A revision's file is reached when any of its paths reached it. The true result is the store's transitions in that worktree from the revision until the next revision that touched the file's closure. *verified by experiment; true results read from store.*
+Method. `cov-setup.ts` starts V8 precise block coverage in each Vitest worker before a test file loads and writes it, with every transformed script's source, in `afterAll`; `cov-lines.mjs` maps executed ranges back to source lines through the inline source maps. The whole squeal suite ran once this way at `3873532fd` (949 of 951 files recorded). `cand.cjs` takes real agent edits from the squeal store: watch revisions of 1 to 3 paths whose old and new blobs are both in git, 138 path edits in 102 revisions. `reach.py` takes the changed code lines (comments and blank lines left out; an insertion counts its neighbours), maps them to the coverage commit by diff, and judges each re-keyed file (warm closures, e2e excluded): reached (executed a changed line), not reached (the module did not load, or loaded and no changed line ran, or only types changed), or not evaluable (no coverage record, or the changed lines are not at the coverage commit). A revision's file is reached when any of its paths reached it. The true result is the store's transitions in that worktree from the revision until the next revision that touched the file's closure. *verified by experiment; true results read from store.*
 
 | Revisions (real) | Re-run recorded s | Reached | Not reached | Not evaluable | Not reached / evaluable |
 |---|---|---|---|---|---|
@@ -195,13 +195,13 @@ None: the brief asks for numbers, not design. The shares that are large and buy 
 4. Squeal mid and hub edits and all cezar mid and hub edits were not run live (an hour or more each at 4 workers on this host); their CPU is recorded seconds times 0.32 to 0.6.
 5. Toolkit's live cells ran in a clone missing three nested `node_modules` and six tool environments on the first pass; the table shows the second pass after they were copied.
 6. Question 4 on a free 8-CPU machine: not determined, because no CPUs of this host were free; other work kept the pinned CPUs 86 to 96% busy. The cezar burst's drain did not end in 2,400 s, so its total and its time to idle are floors.
-7. Row 011-141's build tests (finding 1): not measured here, because they are not on main at `800cb629d`.
+7. Row 011-141's build tests (finding 1): not measured here, because they are not on main at `3873532fd`.
 
 ## Sources
 
 - Store copies: `~/projects/{squeal,cezar,client-monorepo}/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-10-23 10:47Z; cezar again 11:35Z. Run logs `report.json` read in place.
-- Source at `800cb629d`: `src/core/scheduler/edit-cut.ts`, `src/core/scheduler/quiet.ts`, `src/core/capacity/pool.ts`, `src/core/daemon/user-config.ts`; spec 011 C4, C5, C10.
-- `squeal.config.json` of squeal (`800cb629d`), cezar (`f99cd1e24`), the client monorepo (untracked, copied 10:58Z).
+- Source at `3873532fd`: `src/core/scheduler/edit-cut.ts`, `src/core/scheduler/quiet.ts`, `src/core/capacity/pool.ts`, `src/core/daemon/user-config.ts`; spec 011 C4, C5, C10.
+- `squeal.config.json` of squeal (`3873532fd`), cezar (`f99cd1e24`), the client monorepo (untracked, copied 10:58Z).
 - `sar` files `/var/log/sysstat/sa20` to `sa22` through `probes/host-load/sar-day.sh`.
 - man-pages 6.7: `proc_loadavg(5)`, `nice(2)`.
 - Question 4: the probe daemons' stores (copied after each burst) and the `burst.sh` logs of 2026-10-23, squeal 11:29Z to 11:44Z, cezar 11:46Z to 12:26Z, summarized by `burst-sum.cjs`; the clones and logs are removed (the brief's cleanup rule), the numbers are in finding 4.

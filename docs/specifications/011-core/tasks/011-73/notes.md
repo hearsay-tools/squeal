@@ -1,6 +1,6 @@
 # 011-73: status, the hooks and the waits say a hold (notes)
 
-Board row 011-73, R2 of `tasks/011-61/design.md` (section 4), spec 011 C6, C8, C9 and C15 as amended 2026-10-21. Brief: `tasks/wave-16.md`, W1. Baseline `009ccbb49` (0.1.268). Sibling: W2 (011-74, the hold command), in parallel.
+Board row 011-73, R2 of `tasks/011-61/design.md` (section 4), spec 011 C6, C8, C9 and C15 as amended 2026-10-21. Brief: `tasks/wave-16.md`, W1. Baseline `080fdfedd` (0.1.268). Sibling: W2 (011-74, the hold command), in parallel.
 
 ## Seam map
 

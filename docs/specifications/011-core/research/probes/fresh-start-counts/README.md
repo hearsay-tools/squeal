@@ -43,6 +43,6 @@ node $P/same-content.mjs stores/cezar/store.sqlite ~/projects/cezar/.git $T
 # Clean up: squeal stop in each clone (series does it), then rm -rf /tmp/fsc223.
 ```
 
-This run used squeal at `c696096a9` (the commit two host worktrees, 26a6ad36 and 017527fd, started at) and cezar at `fe61be8c4` (origin/main at the copy).
+This run used squeal at `41cc39977` (the commit two host worktrees, 26a6ad36 and 017527fd, started at) and cezar at `fe61be8c4` (origin/main at the copy).
 
 The cezar starts (`cz-c1`, `cz-d1`) never ran: `series.sh` waited from 21:20Z for a load at or below 24, the load stayed at 36 to 63, and the script was stopped at 22:38Z. `results/steps.txt` therefore holds the two squeal starts only.

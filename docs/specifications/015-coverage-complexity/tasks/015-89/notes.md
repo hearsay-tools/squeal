@@ -1,6 +1,6 @@
 # 015-89 notes: coverage off by default again
 
-Worker d5585ef2 (slice, cut short by usage limits) and finishing worker 98cabe1f, 2026-10-26 to 2026-10-27, from `tasks/wave-18.md` W1. Baseline `3c6d3201b` (main after 0.1.359; the brief said 0.1.358, and 0.1.359 changed no coverage code). The human, 2026-10-26: "OK, off by default for now".
+Worker d5585ef2 (slice, cut short by usage limits) and finishing worker 98cabe1f, 2026-10-26 to 2026-10-27, from `tasks/wave-18.md` W1. Baseline `ee07d24fb` (main after 0.1.359; the brief said 0.1.358, and 0.1.359 changed no coverage code). The human, 2026-10-26: "OK, off by default for now".
 
 ## What changed
 
@@ -34,11 +34,11 @@ D1, after the table's paragraph on checks set while coverage is off, no change: 
 - **One re-key at upgrade.** A project that does not set `coverage.enabled` held Squeal's marker in its Vitest and node:test keys from 0.1.341 (node:test from 0.1.358). Upgrading to this release turns its coverage off, so every Vitest and node:test check of such a project re-keys once and its files run again (D8 **Keys**: turning coverage on or off re-keys once). Keys return to their form before 0.1.341, so results stored then at the same content would match again, but `store.retentionDays` (7) has likely pruned most. This repository sets `coverage.enabled: true`, so here nothing re-keys. The release notice could say so.
 - **Bundles.** `test/harness/{codex/plugin,opencode/package,pi/package}.test.ts` fail "has the bundles exactly as `npm run build:plugin` produces them" (`cli/ps.mjs differs from the build`), since the bundles hold `DEFAULT_POLICY`. The brief says no bundles; the release build fixes it.
 - **Spec Goal 1** still reads "Off by default. With `complexity.enabled` unset or `false`, Squeal counts nothing …", which has been wrong for complexity since 015-64. Not this row's text; named for the next spec edit.
-- **History.** The previous worker's skill copies were saved by cezar's autosave `a638df354` (still on `origin/wip/015-89`). This branch replaces it with `04e3659f2`, a commit with the same content and a row-named message.
+- **History.** The previous worker's skill copies were saved by cezar's autosave `8ddec7c18` (still on `origin/wip/015-89`). This branch replaces it with `04e3659f2`, a commit with the same content and a row-named message.
 
 ## Coordinator release verification (2026-10-27)
 
-Released `squeal--v0.1.361` from `1815c57e5b2e00f55aa001fb1349cec5b31ca0f3`. Candidate `bf344940c` passed review with zero findings (`reviews/0.1.361.md`); its product files equal the release commit's. Intervening changes were documentation only.
+Released `squeal--v0.1.361` from `5de73dd8fa313c043fb4021fca3d8820079e1513`. Candidate `a3a0f6dd3` passed review with zero findings (`reviews/0.1.361.md`); its product files equal the release commit's. Intervening changes were documentation only.
 
 | Command or evidence | Actual result |
 | --- | --- |
@@ -48,9 +48,9 @@ Released `squeal--v0.1.361` from `1815c57e5b2e00f55aa001fb1349cec5b31ca0f3`. Can
 | `npx vitest run` with `test/keys/key-format.test.ts`, `test/version-sensitive.test.ts`, `test/harness/plugin.test.ts`, `test/harness/codex/plugin.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/opencode/package.test.ts`, `test/code/crap/default-off.test.ts`, `test/code/policy.test.ts`, `test/code/crap/status.test.ts`, `test/runners/node-test/coverage-default.test.ts`, `test/runners/vitest/coverage-default.test.ts`, `test/types.test.ts` | 12 files, 95 tests passed. |
 | Reviewer targeted commands in `reviews/0.1.361.md` | Node 24: 10 files, 83 tests passed. Node 22.19.0: 2 files, 8 tests passed. |
 | Pre-tag `npx vitest run test/keys/key-format.test.ts` | 1 file, 12 tests passed. |
-| Candidate full CI 40420823494 | Passed on exact candidate `bf344940c`. |
-| [Main full CI 40424484690](https://github.com/hearsay-tools/squeal/actions/runs/40424484690) | Passed all required jobs on exact release `1815c57e5`; Node 22 full-suite shards, Node 24 version-sensitive checks, lint, typecheck, build, bundle drift and version guard. |
-| Final `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 src/core/types/policy.ts test/code/crap/default-off.test.ts test/runners/node-test/coverage-default.test.ts test/runners/vitest/coverage-default.test.ts test/harness/opencode-dispose.test.ts` | Exit 3 at revision 9 (`be58dcc5`): 1,013 selected files; 1,007 pass, 1 fail, 5 pending. Whole worktree: 18 of 1,232 files not current. The failure is the OpenCode dispose deadline race (+2003 ms at a 2000 ms deadline), fail/pass/fail under the same tracked inputs. Its load retry passed, then another background run failed. Candidate and exact-release CI passed that file in its separate step. No clean local broad pass is claimed. |
+| Candidate full CI 40420823494 | Passed on exact candidate `a3a0f6dd3`. |
+| [Main full CI 40424484690](https://github.com/hearsay-tools/squeal/actions/runs/40424484690) | Passed all required jobs on exact release `5de73dd8f`; Node 22 full-suite shards, Node 24 version-sensitive checks, lint, typecheck, build, bundle drift and version guard. |
+| Final `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 src/core/types/policy.ts test/code/crap/default-off.test.ts test/runners/node-test/coverage-default.test.ts test/runners/vitest/coverage-default.test.ts test/harness/opencode-dispose.test.ts` | Exit 3 at revision 9 (`f080e3ec`): 1,013 selected files; 1,007 pass, 1 fail, 5 pending. Whole worktree: 18 of 1,232 files not current. The failure is the OpenCode dispose deadline race (+2003 ms at a 2000 ms deadline), fail/pass/fail under the same tracked inputs. Its load retry passed, then another background run failed. Candidate and exact-release CI passed that file in its separate step. No clean local broad pass is claimed. |
 | `claude plugin tag plugins/claude-code --push` | Tag pushed at exact release SHA. |
 | Hub `claude plugin validate .` | Passed; both manifest pins pushed as `22a78ad`. |
 | `gh release create squeal--v0.1.361 … --verify-tag --latest` | Published latest release with `install.sh` from the tag. Asset SHA-256 `76764c47f543e379312b67c26e03366d2bfe14f0d7ed00b70a80fa6945dcd527` matches the tagged file. |

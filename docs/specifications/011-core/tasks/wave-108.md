@@ -20,7 +20,7 @@ Done when: row 011-369's done-when; `grep -rn "ticks\|#steady\|SchedulerOptions.
 
 ## R1 (W1): review of cand/0.1.520
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `cbbeda6d1cd78c608e333dde0798dd5c3ac71dcc`; candidate CI run 43798694402. Range `1c3719de1..cbbeda6d1cd78c608e333dde0798dd5c3ac71dcc`: worker 53e1f045's two commits (row 011-369), cherry-picked without conflict, then the 0.1.520 raise and bundles. Read: board row 011-369; this file's W1; `tasks/011-369/notes.md`; `status.md` line of 2026-11-15 for row 011-352 (why the steady time existed); `../quality/2026-11-15-card-7.md` R4.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `cbbeda6d1cd78c608e333dde0798dd5c3ac71dcc`; candidate CI run 43798694402. Range `1feb7588e..cbbeda6d1cd78c608e333dde0798dd5c3ac71dcc`: worker 53e1f045's two commits (row 011-369), cherry-picked without conflict, then the 0.1.520 raise and bundles. Read: board row 011-369; this file's W1; `tasks/011-369/notes.md`; `status.md` line of 2026-11-15 for row 011-352 (why the steady time existed); `../quality/2026-11-15-card-7.md` R4.
 
 Check, each as proven, plausible or unverified:
 
@@ -47,7 +47,7 @@ Done when: the outcome holds; `tasks/011-369/notes.md` lists each clock read und
 
 ## R2 (W1 rework): review of cand/0.1.523
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.523` at `d5ddd26d5c0346bfa264a2418eb4fc06663c906a`; candidate CI run 43872736374. Range `f0e932201..d5ddd26d5c0346bfa264a2418eb4fc06663c906a` on main at 0.1.522 (peer 1cda3b6f's #228 fix; no shared file but the version files and bundles): worker 53e1f045's three commits (row 011-369 rework, rebased onto 0.1.521 with row 011-372's conflicts resolved), a coordinator test commit `8925e93a4` (review `011-376.md` S1: the coverage turn probe stops in a `finally`; review `0.1.521.md` N1: the new SIGKILL case freezes the check and checks the holder row before the kill), then the 0.1.523 raise and bundles. Read: board rows 011-369 and 011-377; this file's "W1 rework"; `tasks/011-369/notes.md` (with "Rebase onto 0.1.521"); `reviews/0.1.520-abandoned-one-clock.md` S1 (the probe this rework must pass); `status.md` line of 2026-11-16 for the human's decision D.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.523` at `4954549d28575b35503d431e67aee19f1c99115b`; candidate CI run 43872736374. Range `7b7138372..4954549d28575b35503d431e67aee19f1c99115b` on main at 0.1.522 (peer 1cda3b6f's #228 fix; no shared file but the version files and bundles): worker 53e1f045's three commits (row 011-369 rework, rebased onto 0.1.521 with row 011-372's conflicts resolved), a coordinator test commit `188f8e54c` (review `011-376.md` S1: the coverage turn probe stops in a `finally`; review `0.1.521.md` N1: the new SIGKILL case freezes the check and checks the holder row before the kill), then the 0.1.523 raise and bundles. Read: board rows 011-369 and 011-377; this file's "W1 rework"; `tasks/011-369/notes.md` (with "Rebase onto 0.1.521"); `reviews/0.1.520-abandoned-one-clock.md` S1 (the probe this rework must pass); `status.md` line of 2026-11-16 for the human's decision D.
 
 Check, each as proven, plausible or unverified:
 

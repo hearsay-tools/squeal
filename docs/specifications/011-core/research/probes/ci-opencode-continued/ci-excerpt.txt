@@ -1,6 +1,6 @@
 Source: gh run view 41190295201 --log (also fetched --log-failed)
 URL: https://github.com/hearsay-tools/squeal/actions/runs/41190295201/job/124505534282
-Commit: 6ceaf9b85abac7d2410b201042e22654f31f7f6e
+Commit: e5a0ce991f6287d5ef8f6918aa5472364acb6b5c
 Extracted 2026-10-31. ANSI escapes and trailing whitespace removed; original timestamps retained.
 
 --- original lines 580-584 ---

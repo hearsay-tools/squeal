@@ -8,7 +8,7 @@ Wave 20 W2 (`011-core/tasks/wave-20.md`). From 006-97's "Seen, not fixed".
 process group, outside the groups `killRunning` tracks. Its command line names no cell path, so
 `stopCellLeftovers` missed it too. A new `run-cell.test.ts` test ("kills a judge call running
 when the runner is terminated") runs a cell to its judge, whose fake `claude` hangs, and sends
-SIGTERM. At 56c542f86, before the fix, the runner exited 143 with both judge processes alive,
+SIGTERM. At 96c7a07e6, before the fix, the runner exited 143 with both judge processes alive,
 reparented to the host's subreaper (ppid 1049): the shell and its child, each ignoring SIGTERM.
 
 The fake: `fake-cell.ts`'s harness script logs a judge call's pid to `log/judge` when its `HOME`
@@ -100,7 +100,7 @@ code: the loop breaks at the deadline, names each live group, and exits.
 
 At 366905b9d, 2026-10-23:
 
-- Red first. The `run-cell.test.ts` test failed at 56c542f86: both judge processes outlived the
+- Red first. The `run-cell.test.ts` test failed at 96c7a07e6: both judge processes outlived the
   runner. All three `judge-kill.test.ts` tests failed against the old `claudeRunner`. The ground
   truth test and both `stopOnSignal` tests failed with the guard removed and an awaiting handler.
   Each file was restored. The red run of the old `claudeRunner` left its fake judges running.

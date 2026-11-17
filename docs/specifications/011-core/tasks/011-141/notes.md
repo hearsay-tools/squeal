@@ -27,7 +27,7 @@ Test code, `squeal.config.json`, and the return value of two build functions in 
 
 This host, 24 CPUs, 2026-10-23, shared with the other coordinators' workers. Load is the one-minute average, sampled every 15 to 30 s by a poller of `squeal status` (`t/b5d1bbdc/poll.log`, scratch). `slow.maxLoadPerCpu` 1.0 means a load of 24, which the host stayed above throughout.
 
-**The edit.** `git show 92b38a0f6 -- src/ | git apply -R` at 12:46:25 (load 41.8): the `scheduler.ts` edit the research measured, an 011-126 slice. The research's own reverted slice (69a6c09b2) no longer reverses at 016013a6b. The edit was measurement only, never committed, and checked out at 14:00:38. Right after it, `squeal status --wait 30000 test/daemon/busy-tier.test.ts` read "Pending (1): 1 slow, run after the fast tests": not current, where before this row it stayed current (research Q2). It re-keyed 364 of 934 files, 306 fast and 58 of the 60 slow ones; `graph-bundle` and `validity/lock` build nothing that holds `scheduler.ts`.
+**The edit.** `git show 660ff4803 -- src/ | git apply -R` at 12:46:25 (load 41.8): the `scheduler.ts` edit the research measured, an 011-126 slice. The research's own reverted slice (23acdda1a) no longer reverses at 016013a6b. The edit was measurement only, never committed, and checked out at 14:00:38. Right after it, `squeal status --wait 30000 test/daemon/busy-tier.test.ts` read "Pending (1): 1 slow, run after the fast tests": not current, where before this row it stayed current (research Q2). It re-keyed 364 of 934 files, 306 fast and 58 of the 60 slow ones; `graph-bundle` and `validity/lock` build nothing that holds `scheduler.ts`.
 
 | Part of one `squeal run --all --wait` after the edit | Files | Wall | Load (min, median, max) |
 | --- | --- | --- | --- |
@@ -59,4 +59,4 @@ Under Testing, beside the recorder's tests: "a test file that builds the CLI or 
 ## Open
 
 - All 79 build tests run in the fast lane: the 59 of this row and the 20 whose keys already held their build (`test/harness/codex/**`, `opencode/**`, `pi/**` and `plugin.test.ts` declare `src/**/*.ts`, row 001-399; `key-format` and the validity `adapters`, `compare` and `reach` tests import their bundle's entry).
-- The reverted 011-126 slice of the research (69a6c09b2) no longer reverses at 016013a6b. The edit used here is 92b38a0f6 reversed, the research's measured `scheduler.ts` edit, also an 011-126 slice.
+- The reverted 011-126 slice of the research (23acdda1a) no longer reverses at 016013a6b. The edit used here is 660ff4803 reversed, the research's measured `scheduler.ts` edit, also an 011-126 slice.

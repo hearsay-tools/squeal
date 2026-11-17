@@ -1,6 +1,6 @@
 # Issue 93: status-only handover news at Codex Stop
 
-Researcher, 2026-10-24. Squeal 0.1.298 (`package.json`, worktree at `fb8a20889`). Brief: reproduce gh-93, documentation only, 20 minutes. Owner spec 002 D3 and D5; related 011 C8 and C9.
+Researcher, 2026-10-24. Squeal 0.1.298 (`package.json`, worktree at `47603ae1a`). Brief: reproduce gh-93, documentation only, 20 minutes. Owner spec 002 D3 and D5; related 011 C8 and C9.
 
 Host: one-minute load 36.14 on 24 online CPUs (`/proc/loadavg`, `nproc`), above the CPU count. No live Codex probe ran, for that reason and because the synthetic probe answered the question. The synthetic probe runs in process and starts no daemon or Codex.
 
@@ -65,5 +65,5 @@ None edited. Read: 002 `spec.md` D3, D5; 002 `status.md`; 011 `spec.md` C8, C9. 
 ## Sources
 
 - gh-93, https://github.com/hearsay-tools/squeal/issues/93 (`gh issue view 93 -R hearsay-tools/squeal`, read 2026-10-24).
-- `src/harness/codex/handlers.ts` (Stop), `src/harness/shared/stop.ts` (`stopTurn`, `newsText`), `src/core/delivery/delivery.ts` (`deliver`), `src/core/delivery/liveness.ts` (`livenessChange`), `src/core/status/stopping.ts` (`withStopping`), `src/harness/claude-code/hooks/stop.ts`, `plugins/codex/dist/stop.mjs`, at `fb8a20889`.
+- `src/harness/codex/handlers.ts` (Stop), `src/harness/shared/stop.ts` (`stopTurn`, `newsText`), `src/core/delivery/delivery.ts` (`deliver`), `src/core/delivery/liveness.ts` (`livenessChange`), `src/core/status/stopping.ts` (`withStopping`), `src/harness/claude-code/hooks/stop.ts`, `plugins/codex/dist/stop.mjs`, at `47603ae1a`.
 - Probe: `research/probes/issue-93/` (README, `stop-handover.probe.ts`, `vitest.config.ts`, `run-2026-10-24.txt`).

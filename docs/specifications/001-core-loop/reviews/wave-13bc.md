@@ -2,14 +2,14 @@
 
 ## Verdict and verification
 
-**PASS `92cfddb2857c944187f5d9decb7b2f0704d54646`**. Zero blockers, one proven should-fix suggestion, one plausible clock note, zero nits. Range: `583abb85..92cfddb2`, commits `f36a48ee` and `92cfddb2`, version 0.1.149. Candidate checks ran on the clean pinned tree before this findings file was written. The throwaway probes used external configs and files, without editing the candidate. No board, product or eval edits.
+**PASS `717543ae0310efcfc6a72c1357272ec2e657a562`**. Zero blockers, one proven should-fix suggestion, one plausible clock note, zero nits. Range: `636d360c..717543ae`, commits `7af20187` and `717543ae`, version 0.1.149. Candidate checks ran on the clean pinned tree before this findings file was written. The throwaway probes used external configs and files, without editing the candidate. No board, product or eval edits.
 
 Verification output:
 
 `git rev-parse HEAD`:
 
 ```text
-92cfddb2857c944187f5d9decb7b2f0704d54646
+717543ae0310efcfc6a72c1357272ec2e657a562
 ```
 
 `npm ci` (exit 0):

@@ -1,6 +1,6 @@
 # 001-381: a running tier yields to a newer revision or a named wait
 
-Researcher R1 of 011 wave 7, 2026-10-21, worktree `cez/120dbf3e` at 70a0fe00 (main after 9ba34257; `package.json` 0.1.235). Read: `docs/vision.md`, `docs/styleguide.md`, board row 001-381, spec 011 C4 (steps 4 and 5, the timeout split, tier sharing, lanes, the stability check) and C15, `status.md`, `research/issue-63.md`, `research/issue-51.md`, `research/catch-up.md`, `research/streaming-lanes.md`, `research/backlog-wall-budget.md`, 013 `research/issue-62.md`, [#69](https://github.com/hearsay-tools/squeal/issues/69) and its comment.
+Researcher R1 of 011 wave 7, 2026-10-21, worktree `cez/120dbf3e` at 91795996 (main after da73be4e; `package.json` 0.1.235). Read: `docs/vision.md`, `docs/styleguide.md`, board row 001-381, spec 011 C4 (steps 4 and 5, the timeout split, tier sharing, lanes, the stability check) and C15, `status.md`, `research/issue-63.md`, `research/issue-51.md`, `research/catch-up.md`, `research/streaming-lanes.md`, `research/backlog-wall-budget.md`, 013 `research/issue-62.md`, [#69](https://github.com/hearsay-tools/squeal/issues/69) and its comment.
 
 Load and isolation: **no live measurement ran.** The one-minute load was 26 to 44 on 24 CPUs for the whole session, above the hold at 8. Every number is a replay of recorded data, read only: cezar's store, copied once through a `readOnly` connection at 08:12Z (1,870 fast Vitest runs in 53 worktrees, 2026-10-14T19:55Z to 10-21T08:12Z, Squeal up to 0.1.235, Vitest 4.1.10); cezar's run logs (`report.json`); the named `squeal status --wait` calls in cezar's Claude Code and Codex transcripts; `sar -q` for the load at the time. The recorded load at the replayed events was p50 41 to 53, p90 66 to 73, below 8 for 13 of 263 revisions and 4 of 66 waits (`results/load.txt`). Probes: `probes/running-tier-yields/` (README lists each).
 
@@ -15,7 +15,7 @@ Load and isolation: **no live measurement ran.** The one-minute load was 26 to 4
 
 ## 1. The seam, and what a cancel costs
 
-**Where a tier stops today** (*read in source code* at 70a0fe00):
+**Where a tier stops today** (*read in source code* at 91795996):
 - `src/core/scheduler/tiers.ts` `selectTier`: `cancellable = backlog || (turnTier && slot !== null)`, so an edit's tier, the turn's tier and a slow tier get `cancel: null` (`Tier.cancel`, "`null` for an edit's tier").
 - `src/core/scheduler/scheduler.ts` `#pass` calls `#cancelBacklogs(applied.revision)` before the runner part, and `applied: () => this.#cancelBacklogs(null)` after it. `#cancelBacklogs` skips every tier without `tier.cancel`. `promote()` cancels nothing.
 - `src/core/scheduler/backlog.ts` `cancelsBacklog`: an edit's work queued in the lane, or "an input of the tier" in the revision's changes. The second test is the supersession test case (b) needs; it is applied only to backlog tiers.
@@ -121,7 +121,7 @@ Which rule the slice ships: (A) supersession only (free, fixes the repeated runs
 
 ## Sources
 
-- Squeal at 70a0fe00: `src/core/scheduler/{scheduler,tiers,backlog,store-decision,timeout-split,records,files}.ts`, `src/runners/vitest/{gate,adapter,run,reporter,project}.ts`.
+- Squeal at 91795996: `src/core/scheduler/{scheduler,tiers,backlog,store-decision,timeout-split,records,files}.ts`, `src/runners/vitest/{gate,adapter,run,reporter,project}.ts`.
 - Vitest 4.1.10 as installed in cezar: `node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js` (`Pool.cancel`, `cancelCurrentRun`, `cancelTask`), `node_modules/.pnpm/@vitest+runner@4.1.10/.../dist/chunk-artifact.js` (`startTests`, `markPendingTasksAsSkipped`).
 - Cezar: `.git/squeal/store.sqlite` (copied read-only 2026-10-21T08:12Z), `.git/squeal/runs/*/report.json`, `squeal.config.json` (`tierSize` 4, `timeoutMs` 600,000), `vitest.config.ts`, `packages/web/e2e/{vitest.config,workspace-registry}.ts`.
 - Transcripts, read only: `~/.claude/projects/-home-user-projects-cezar*/*.jsonl`, `~/.codex/sessions/2026/10/*/*.jsonl` (1,588 status waits, 828 naming a test path).

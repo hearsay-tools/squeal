@@ -2,7 +2,7 @@
 
 Researcher of row 011-148, 2026-10-23, 13:17Z to 13:50Z. Brief: `research/stored-nothing-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `docs/process.md`, `research/edit-load.md` and `probes/edit-load/work.mjs`, `research/host-load.md`, `research/running-tier-yields.md`, `research/yields-replay.md`, spec 011 C4 (steps 3 to 5, the timeout split, tier sharing), C7, C9, C10.
 
-Versions: source read at this branch's base `4e1ba068` (0.1.276). The stores hold runs of daemons 0.1.2xx. Store copies of squeal, cezar and the client monorepo with a snapshot of each `runs` log directory, taken back to back at 13:25:32Z to 13:25:36Z (the live daemons prune runs and logs, so a log read in place does not match a copy). Windows: the 72 hours before each store's last run start: squeal 10-20T13:23Z to 10-23T13:23Z (1,696 runs, 36,710 file runs), cezar 10-20T13:25Z to 10-23T13:25Z (2,326 runs, 14,069), toolkit 10-20T07:41Z to 10-23T07:41Z (536 runs, 4,116). Turn ends: Claude Code `stop_hook_summary` entries and Codex `task_complete` events of the live worktrees. Load: `sar` (`sadf -d -- -q`). No test, daemon or Squeal command ran; load 35 to 77 during the session. Probes and how to re-run each: `probes/stored-nothing/README.md`.
+Versions: source read at this branch's base `592b292f` (0.1.276). The stores hold runs of daemons 0.1.2xx. Store copies of squeal, cezar and the client monorepo with a snapshot of each `runs` log directory, taken back to back at 13:25:32Z to 13:25:36Z (the live daemons prune runs and logs, so a log read in place does not match a copy). Windows: the 72 hours before each store's last run start: squeal 10-20T13:23Z to 10-23T13:23Z (1,696 runs, 36,710 file runs), cezar 10-20T13:25Z to 10-23T13:25Z (2,326 runs, 14,069), toolkit 10-20T07:41Z to 10-23T07:41Z (536 runs, 4,116). Turn ends: Claude Code `stop_hook_summary` entries and Codex `task_complete` events of the live worktrees. Load: `sar` (`sadf -d -- -q`). No test, daemon or Squeal command ran; load 35 to 77 during the session. Probes and how to re-run each: `probes/stored-nothing/README.md`.
 
 **Units.** *Recorded seconds* are the per-file durations in the run reports (`fileDurations`) or the stored check durations. A file a run cut before its end has no duration: it counts the run's wall when its log has a line of it (*upper bound*), 0 when it has none, and, as a *tight bound*, `min(wall, 2 × its usual duration)`, the usual duration being the median of its stored file rows. One recorded second cost 0.32 to 0.59 CPU-seconds on this host (`edit-load.md` 0).
 
@@ -21,7 +21,7 @@ Versions: source read at this branch's base `4e1ba068` (0.1.276). The stores hol
 
 `fate.mjs` decides, per file a run held, what kept its result out of the store. `storeDecision` logs nothing per file, so the rule is inferred from the run's report (completed files, failure text, `withheld`), the worktree's revisions during the run, and the results that exist now. A result at the same key afterwards is exact when no later revision touched the file: the worktree's key is then the one it ran at, and `results` is checked at that key. Otherwise it is inferred: a later run of the file in the same worktree with no revision between that touched its closure.
 
-| Part (rule, file and line at `4e1ba068`) | squeal s (share), files | cezar s (share), files | Tight bound s, squeal / cezar | Result at the same key afterwards |
+| Part (rule, file and line at `592b292f`) | squeal s (share), files | cezar s (share), files | Tight bound s, squeal / cezar | Result at the same key afterwards |
 |---|---|---|---|---|
 | stored | 134,865 (56.7%) | 174,619 (67.7%) | | |
 | ended in a worktree removed since: the prune deletes its results unless their key is live (`src/core/store/prune.ts:61-62`), its runs with no result left (`prune.ts:100-110`), and its revisions and transitions (`src/core/store/repos/worktrees.ts:154-163`) | 40,539 (17.0%), 7,147 | 33,400 (13.0%), 3,304 | same | not determined: the worktree's keys are gone |
@@ -143,7 +143,7 @@ None: the brief asks for numbers, not design. Before any design, measure "stored
 ## Sources
 
 - Store copies: `~/projects/{squeal,cezar,client-monorepo}/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-10-23 13:25:32Z; `runs/` snapshot copied 13:25:32Z to 13:25:36Z.
-- Source at `4e1ba068`: `src/core/scheduler/{store-decision,bootstrap,backlog,tiers,yields}.ts`, `src/core/store/{prune.ts,repos/results.ts,repos/worktrees.ts}`, `src/runners/vitest/run.ts`; spec 011 C4, C7, C9.
+- Source at `592b292f`: `src/core/scheduler/{store-decision,bootstrap,backlog,tiers,yields}.ts`, `src/core/store/{prune.ts,repos/results.ts,repos/worktrees.ts}`, `src/runners/vitest/run.ts`; spec 011 C4, C7, C9.
 - `squeal.config.json` of cezar (`baseline.onStart: "lookup-only"`, `timeoutMs` 900,000) and the client monorepo; squeal's default policy (`src/core/types/policy.ts:268-272`).
 - Transcripts, read only, for turn-end timestamps: `~/.claude/projects/<live worktree>/*.jsonl`, `~/.codex/sessions/2026/10/{19..23}/*.jsonl`.
 - `sar`: `/var/log/sysstat/sa20` to `sa23`.

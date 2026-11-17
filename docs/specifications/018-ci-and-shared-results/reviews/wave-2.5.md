@@ -1,6 +1,6 @@
 # Wave 2.5 narrow re-review: import attribution
 
-Candidate: `ea776c75c0f80a5ec17793a444d69f793450db06` (`cand/0.1.417`). Range: `ee17cb230..ea776c75`. Reviewed 2026-11-08.
+Candidate: `d4e3ac47cf5801eace40b0ce0583ffc8f03df63b` (`cand/0.1.417`). Range: `a231f0cbc..d4e3ac47`. Reviewed 2026-11-08.
 
 ## Verification
 
@@ -10,10 +10,10 @@ Checks ran at the exact candidate on a clean tracked tree, before writing this f
 $ git fetch origin cand/0.1.417
 From https://github.com/hearsay-tools/squeal
  * branch cand/0.1.417 -> FETCH_HEAD
-$ git checkout ea776c75c0f80a5ec17793a444d69f793450db06
-HEAD is now at ea776c75c chore: 0.1.417 bundles with repair 018-09
+$ git checkout d4e3ac47cf5801eace40b0ce0583ffc8f03df63b
+HEAD is now at d4e3ac47c chore: 0.1.417 bundles with repair 018-09
 $ git rev-parse HEAD
-ea776c75c0f80a5ec17793a444d69f793450db06
+d4e3ac47cf5801eace40b0ce0583ffc8f03df63b
 $ git status --short
 (empty)
 $ pnpm run lint
@@ -25,7 +25,7 @@ $ tsrs --fast --noEmit
 exit 0
 $ git diff --check
 (empty, exit 0)
-$ git diff --exit-code ee17cb230..HEAD -- test/keys/key-format.test.ts src/core/store/transfer.ts src/core/store/transfer-bundle.ts src/core/store/transfer-rows.ts src/core/store/imports.ts
+$ git diff --exit-code a231f0cbc..HEAD -- test/keys/key-format.test.ts src/core/store/transfer.ts src/core/store/transfer-bundle.ts src/core/store/transfer-rows.ts src/core/store/imports.ts
 (empty, exit 0)
 ```
 
@@ -35,7 +35,7 @@ Affected checks used `~/.codex/plugins/data/squeal-hearsay/bin/squeal`. Output e
 
 ```text
 $ squeal status --wait 60000 src/core/status/imports.ts src/core/status/import-lines.ts src/core/types/status.ts test/status/import-reasons.test.ts test/cli/transfer.test.ts
-Revision: 3 · ea776c75 + 0
+Revision: 3 · d4e3ac47 + 0
 Selected: 583 test files
 Current (224): 224 pass
 Pending (359)
@@ -44,14 +44,14 @@ Worktree: known failures 0
 exit 3
 
 $ squeal status --wait 60000 test/status/import-reasons.test.ts test/cli/transfer.test.ts
-Revision: 3 · ea776c75 + 0
+Revision: 3 · d4e3ac47 + 0
 Selected: test/status/import-reasons.test.ts, test/cli/transfer.test.ts
 Named test files at revision 3: no known failures; 2 test files,
 each with a current result, after 2.8 s.
 exit 0
 
 $ squeal status --wait 60000 src/core/status/imports.ts src/core/status/import-lines.ts src/core/types/status.ts test/status/import-reasons.test.ts test/cli/transfer.test.ts
-Revision: 3 · ea776c75 + 0
+Revision: 3 · d4e3ac47 + 0
 Current (404): 404 pass
 Pending (179)
 Named test files have no verdict: deadline passed after 61.0 s
@@ -63,10 +63,10 @@ The broader selection remains **unverified**: 179 selected files were still pend
 
 ```text
 $ gh run list --branch cand/0.1.417 --limit 4 --json databaseId,headSha,status,conclusion,url
-42463506305: ea776c75c0f80a5ec17793a444d69f793450db06, in_progress
-42461609267: ee17cb2306c449e2a31acea3e524121ff8da20f7, success
+42463506305: d4e3ac47cf5801eace40b0ce0583ffc8f03df63b, in_progress
+42461609267: a231f0cbcd091e3a22c50bf1471f47f794f12819, success
 $ gh run view 42463506305 --json headSha,status,conclusion,jobs
-headSha: ea776c75c0f80a5ec17793a444d69f793450db06
+headSha: d4e3ac47cf5801eace40b0ce0583ffc8f03df63b
 status: in_progress; conclusion: ""
 Node 22 (1/3), (2/3), (3/3): in_progress
 Node 24 (lint, typecheck, version-sensitive): in_progress

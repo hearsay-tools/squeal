@@ -2,10 +2,10 @@
 
 ## Verdict and verification
 
-**PASS** at `23bc7afb`: **0 blockers, 0 should-fix, 0 nits**.
-Range: `100b8472^..23bc7afb`. Task 001-248, bounded third round on wave-13y's remaining S1 budget finding, labelled B1 in that report. The range contains 001-247, its test-typing follow-up, the 0.1.107 bundles and the unreleased key-format 3 re-pin. The remaining finding is closed.
+**PASS** at `aefe7555`: **0 blockers, 0 should-fix, 0 nits**.
+Range: `e25c6ecc^..aefe7555`. Task 001-248, bounded third round on wave-13y's remaining S1 budget finding, labelled B1 in that report. The range contains 001-247, its test-typing follow-up, the 0.1.107 bundles and the unreleased key-format 3 re-pin. The remaining finding is closed.
 
-The worker began at `59536044`, whose only difference from the candidate is `docs/board.md`. All product checks and probes ran detached at **exactly `23bc7afb`**, with no tracked changes. The worker branch was restored before writing this report. No product, board or spec edits were made.
+The worker began at `55456405`, whose only difference from the candidate is `docs/board.md`. All product checks and probes ran detached at **exactly `aefe7555`**, with no tracked changes. The worker branch was restored before writing this report. No product, board or spec edits were made.
 
 ```text
 env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null npm ci

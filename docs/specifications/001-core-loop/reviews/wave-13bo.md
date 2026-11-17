@@ -2,7 +2,7 @@
 
 ## Verification and verdict
 
-Candidate: `668e6dfd5868eedc5ccb8bc50ba9cbc1ffed73ac`. Range: `a091ae15..668e6dfd`. HEAD was detached at the exact candidate before any other work. Product code was not rewritten.
+Candidate: `f46602f863cd659887f0e792e9ef64ddb0bcffbb`. Range: `7d3cee7b..f46602f8`. HEAD was detached at the exact candidate before any other work. Product code was not rewritten.
 
 FAIL: **3 proven blockers**, **1 plausible should-fix note**, **1 proven documentation nit**. Independent verification ran from the clean pinned tree. Build left tracked files unchanged. The failure and wiring probes used temporary HOME, XDG_CONFIG_HOME and XDG_RUNTIME_DIR, with private fixture repositories, stores and pool directories. An exploratory Git-only layout command initially inherited its user environment; it was repeated with isolated directories and user/system Git config disabled before its output was used. All probe daemons were stopped and scratch repositories removed. No other worktree, store or daemon was manipulated.
 
@@ -87,7 +87,7 @@ exit 0
 
 ```text
 $ git rev-parse HEAD
-668e6dfd5868eedc5ccb8bc50ba9cbc1ffed73ac
+f46602f863cd659887f0e792e9ef64ddb0bcffbb
 $ git status --porcelain
 (no output, before writing this report)
 ```

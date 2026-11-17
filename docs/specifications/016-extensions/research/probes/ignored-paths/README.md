@@ -3,7 +3,7 @@
 Throwaway. Nothing here is product code; delete it when `ignored-paths.md` is folded.
 
 - `make-recorder.mjs` copies `src/runners/observe/{recorder,fs,spawn,preloads}.cjs` at this
-  worktree's HEAD (e5e432c81) into `$S/rec/src/runners/observe/` and splits the recorder's kind `f`
+  worktree's HEAD (6d0433b39) into `$S/rec/src/runners/observe/` and splits the recorder's kind `f`
   into `load` (resolve hook), `read` (readFile, read streams, opens that can read, copy sources),
   `stat` (stat, lstat, exists, access, realpath) and `exec` (entry point, spawn arguments, Worker
   scripts). `f`, `l`, `r` and `w` are still written as before. The path suffix keeps it a

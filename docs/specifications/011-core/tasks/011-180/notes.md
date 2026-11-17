@@ -1,6 +1,6 @@
 # 011-180: what a tier's yield to an edit's work cuts and what it buys
 
-Worker f24c37b0, wave 32 W12 (`tasks/wave-32.md`), from main at 8c9fffbfd, 2026-10-24. Shape: survey. No product change.
+Worker f24c37b0, wave 32 W12 (`tasks/wave-32.md`), from main at ab70a978e, 2026-10-24. Shape: survey. No product change.
 
 ## Answers
 
@@ -14,7 +14,7 @@ Worker f24c37b0, wave 32 W12 (`tasks/wave-32.md`), from main at 8c9fffbfd, 2026-
 ## 1. Sources and load
 
 - Copies of this host's two stores, each with its `-wal` and `-shm`, then its run logs, back to back, under `nice -n 10 ionice -c3`. Squeal's copy: 13:38:27Z to 13:38:28Z. Cezar's copy: 13:38:28Z to 13:38:32Z. Load (`/proc/loadavg`, 24 CPUs): 22.25 before squeal's copy and 22.23 after cezar's (`probes/results/load.txt`). Read only, in the worker's scratch folder (`t/f24c37b0/copies`). No live store or socket was opened. No test, eval, build or `evals/bin/` script ran.
-- `research/probes/host-load/waste.mjs` from main at 8c9fffbfd on both copies, 24 hours to 2026-10-24T13:38:00Z (`probes/results/waste-*.json`). Its yield cause gives the same counts as 011-177's window: squeal 31 runs, `cut` 60, `cutSeconds` 2,296; cezar 55, 106, 8,348.
+- `research/probes/host-load/waste.mjs` from main at ab70a978e on both copies, 24 hours to 2026-10-24T13:38:00Z (`probes/results/waste-*.json`). Its yield cause gives the same counts as 011-177's window: squeal 31 runs, `cut` 60, `cutSeconds` 2,296; cezar 55, 106, 8,348.
 - Probes in this folder, each read only on a copy or on another probe's output:
   - `probes/yield.mjs`: `tasks/011-136/probes/cut.mjs` with the cause changed to the yield. It keeps the same file classes and the same two bounds. It adds the daemon's estimate at the cancel and rule B's branch, the revisions during the run, the next run of the worktree in the fast Vitest lane, each cut file's remainder, and 011-137's whole and uncut readings. Its `cut` and high bound equal `waste.mjs`'s.
   - `probes/waits.mjs`: every `squeal status --wait` call in this host's Codex and Claude Code transcripts in the window, with the folder it ran in. Read only. The notes quote file paths and times only.

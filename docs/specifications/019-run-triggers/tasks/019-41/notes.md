@@ -4,7 +4,7 @@ Worker b38bdd04, 2026-11-04. Row 019-41, brief `../wave-8.md`, "Before the 0.1.4
 
 ## The failing assertion
 
-Main CI 41773837324 at `529d3b01b`, Node 22 (1/3), claude-code. The failing line is `run-triggers-control.test.ts:144`, `expect(now.texts).toEqual(before.texts.map(accepted))`. It is not the `delivered` comparison (line 143), which passed. `texts` holds five entries: SessionStart (`null` for Claude Code), the prompt, the two Stop texts and `squeal status`.
+Main CI 41773837324 at `7397d8e9a`, Node 22 (1/3), claude-code. The failing line is `run-triggers-control.test.ts:144`, `expect(now.texts).toEqual(before.texts.map(accepted))`. It is not the `delivered` comparison (line 143), which passed. `texts` holds five entries: SessionStart (`null` for Claude Code), the prompt, the two Stop texts and `squeal status`.
 
 The diff is in `squeal status`, in each of the two known failures' facts:
 
@@ -17,7 +17,7 @@ The diff is in `squeal status`, in each of the two known failures' facts:
 
 ## The race
 
-A known failure's facts name a `load` retry when the run that recorded the failure ran at a load of one per CPU or more (`recordedText` and `loadRetryText` in `src/core/retry/text.ts`, row 011-67). The rule and the text are the same at 0.1.393 (`24a8a63b6`) and now: `git show 24a8a63b6:src/core/retry/text.ts` has the same `loadRetryText`.
+A known failure's facts name a `load` retry when the run that recorded the failure ran at a load of one per CPU or more (`recordedText` and `loadRetryText` in `src/core/retry/text.ts`, row 011-67). The rule and the text are the same at 0.1.393 (`a753102e4`) and now: `git show a753102e4:src/core/retry/text.ts` has the same `loadRetryText`.
 
 The control runs the 0.1.393 session first and this version's session after it, minutes apart, on the same runner. The runner also runs the shard's other test files. So the edit's failing runs of one session can start at a load below one per CPU and the other session's at a load above it. Then one text names the retry and its twin does not.
 

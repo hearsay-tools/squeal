@@ -1,6 +1,6 @@
 # Wave 10.5: repair of candidate 0.1.444 (review `reviews/0.1.444.md` FAIL)
 
-Base: `w10/int` at the commit that adds this file (candidate 2d1df96f6 plus the review). One repair each, then one narrow re-review. Read the review file first; each finding names its location, its probe and a one-worker fix.
+Base: `w10/int` at the commit that adds this file (candidate c9fd97660 plus the review). One repair each, then one narrow re-review. Read the review file first; each finding names its location, its probe and a one-worker fix.
 
 ## 020-28 R1 (B1, B2): gate files
 

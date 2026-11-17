@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 
 const db = new DatabaseSync(process.env.STORE ?? "/tmp/t64/cezar-store.sqlite", { readOnly: true });
 const part = process.env.CHECK ?? "autosave";
-// src/core/state/check-name.ts at 775dfe14f.
+// src/core/state/check-name.ts at 61c226005.
 const formatCheck = (c) => {
   const project = c.project === "" ? "" : `[${c.project}] `;
   if (c.kind === "setup") return `${project}${c.test_path === "" ? "" : `${c.test_path} `}(global setup)`;

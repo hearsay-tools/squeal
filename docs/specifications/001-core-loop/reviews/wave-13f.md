@@ -4,7 +4,7 @@ FAIL 4941c15
 
 Two proven blockers (remaining B3 and new B4), one proven should-fix note (S1, pre-existing), two proven nits (N1, N2). Prior wave-13e B1 and B2 are closed. The root-project restart regression is repaired, but a separately configured project still reuses transient optimizer output. Even the root optimizer can build before the first key snapshot and keep bytes that snapshot never saw.
 
-Reviewed `9d0ea80..4941c15`, from the 0.1.64 landing to the exact 0.1.69 bundle landing. The assigned branch starts at `431bc7e`, one documentation commit later. All candidate verification and probes ran detached at `4941c15b0bad7afef565e04dd7492d4709abb2c1` with a clean tracked tree. Returned to the assigned branch only to commit this report. Read wave-13, wave-13b, wave-13c, wave-13d, wave-13e and tasks 001-159/001-168. Other coordinators' work is considered only at the touch, keying and slow-instance seams. This is not a new review of their other rows.
+Reviewed `9d0ea80..4941c15`, from the 0.1.64 landing to the exact 0.1.69 bundle landing. The assigned branch starts at `431bc7e`, one documentation commit later. All candidate verification and probes ran detached at `ab17f93ef573978c8af6b6194c7e76b7dbea4659` with a clean tracked tree. Returned to the assigned branch only to commit this report. Read wave-13, wave-13b, wave-13c, wave-13d, wave-13e and tasks 001-159/001-168. Other coordinators' work is considered only at the touch, keying and slow-instance seams. This is not a new review of their other rows.
 
 ## Verification
 
@@ -12,7 +12,7 @@ Node 24.21.0, Linux, Vitest 5.0.3, Vite 8.3.2. The repository and reviewer skill
 
 ```text
 $ git rev-parse HEAD
-4941c15b0bad7afef565e04dd7492d4709abb2c1
+ab17f93ef573978c8af6b6194c7e76b7dbea4659
 
 $ npm ci
 added 56 packages, and audited 57 packages in 3s

@@ -45,7 +45,7 @@ Comments 6302454362 and 6302569352 contain the incident and recovery evidence.
 
 Squeal source:
 git rev-parse HEAD
-cc7047f2b232df419cd6025841c5005d38aece34 (package version 0.1.233)
+a8b9c04d088ea27bb071e04756bba82cf5c67498 (package version 0.1.233)
 git diff squeal--v0.1.232 HEAD -- src/runners/vitest src/core/scheduler/inputs.ts
 (no output; the latter path does not exist; no Vitest-adapter diff)
 Actual declared-input assembly: src/core/scheduler/keying.ts:342 calls

@@ -44,7 +44,7 @@ Done when: the row's done-when; lint and typecheck pass; the alarm tests you tou
 
 ## R1: review of cand/0.1.498
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43617276092. Pinned to `cand/0.1.498` at `22b4832f6ab79d2c4ae99f37d06daea9e784233b`; range `91fb3cd6c..22b4832f6`: worker 3c07e157's two commits (row 011-321, tests only), worker 29e1f6d0's six (row 011-340), then the 0.1.498 version raise and bundles and one `status.md` commit. Behaviour to compare against: `91fb3cd6c`. Read: board rows 011-340 and 011-321, `research/admission.md`, `tasks/011-340/notes.md`, `tasks/011-321/notes.md`, `reviews/0.1.453-r2.md` N1, this file's W1 and W2, and the two `status.md` lines of 2026-11-14 for these rows.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43617276092. Pinned to `cand/0.1.498` at `22b4832f6ab79d2c4ae99f37d06daea9e784233b`; range `9b2dd3e5f..22b4832f6`: worker 3c07e157's two commits (row 011-321, tests only), worker 29e1f6d0's six (row 011-340), then the 0.1.498 version raise and bundles and one `status.md` commit. Behaviour to compare against: `9b2dd3e5f`. Read: board rows 011-340 and 011-321, `research/admission.md`, `tasks/011-340/notes.md`, `tasks/011-321/notes.md`, `reviews/0.1.453-r2.md` N1, this file's W1 and W2, and the two `status.md` lines of 2026-11-14 for these rows.
 
 Check, each as proven, plausible or unverified:
 
@@ -59,7 +59,7 @@ The coordinator's tree passed lint, typecheck, `check:version origin/main` (0.1.
 
 ## R2: narrow re-review of cand/0.1.498 after rebase onto 0.1.497
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.498` at `95b605dbf272440f35ca3db8c85363d9c1432b0b`; base `3d2526dc6` (main 0.1.497). R1 passed on `22b4832f6` (`reviews/0.1.498.md`). Since then 0.1.495 (spec 020), 0.1.496 (spec 022, rows 022-03 and 022-04: loaded modules join test keys) and 0.1.497 (row 011-339) landed. The only source or test file the candidate shares with them is `test/keys/validity/case.ts` (0.1.496 added `VitestInput.observe` and `PruneInput.loadedLists`; this candidate adds `StoreInput.reads`); the rest shared is version files. The cherry-picks applied without conflict.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.498` at `fb1ba5025b7888caa7c1dc04df6c1e2064795f8b`; base `1434756e3` (main 0.1.497). R1 passed on `22b4832f6` (`reviews/0.1.498.md`). Since then 0.1.495 (spec 020), 0.1.496 (spec 022, rows 022-03 and 022-04: loaded modules join test keys) and 0.1.497 (row 011-339) landed. The only source or test file the candidate shares with them is `test/keys/validity/case.ts` (0.1.496 added `VitestInput.observe` and `PruneInput.loadedLists`; this candidate adds `StoreInput.reads`); the rest shared is version files. The cherry-picks applied without conflict.
 
 Check, each as proven, plausible or unverified:
 

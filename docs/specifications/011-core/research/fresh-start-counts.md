@@ -2,7 +2,7 @@
 
 Researcher of row 011-223, 2026-10-25, 20:58Z to 22:45Z. Brief: `research/fresh-start-counts-brief.md`. Read: `research/missed-sharing.md`, `research/main-daemon.md`, row 011-205 and `src/core/delivery/header.ts`, spec 011 C3, C4 step 3, C5, C9 (start), `status.md` for 011-205.
 
-Versions: source at this branch's base `c696096a9` (package 0.1.321). Host daemons run 0.1.318 to 0.1.321; the experiments ran a copy of the shipped 0.1.321 bundle (`~/.claude/plugins/cache/hearsay/squeal/0.1.321`), patched only to log step times (`patch.mjs`). Node v24.21.0, 24 CPUs. Store copies of squeal and cezar with `-wal` and `-shm`, taken at 20:59:01Z. Window: the 72 hours before the copy. Clones: squeal at `c696096a9`, cezar at `fe61be8c4` (origin/main), under `/tmp/fsc223`, lookup-only (both repositories' own setting), so no test ran. Probes and how to re-run each: `probes/fresh-start-counts/README.md`; outputs in `probes/fresh-start-counts/results/`.
+Versions: source at this branch's base `41cc39977` (package 0.1.321). Host daemons run 0.1.318 to 0.1.321; the experiments ran a copy of the shipped 0.1.321 bundle (`~/.claude/plugins/cache/hearsay/squeal/0.1.321`), patched only to log step times (`patch.mjs`). Node v24.21.0, 24 CPUs. Store copies of squeal and cezar with `-wal` and `-shm`, taken at 20:59:01Z. Window: the 72 hours before the copy. Clones: squeal at `41cc39977`, cezar at `fe61be8c4` (origin/main), under `/tmp/fsc223`, lookup-only (both repositories' own setting), so no test ran. Probes and how to re-run each: `probes/fresh-start-counts/README.md`; outputs in `probes/fresh-start-counts/results/`.
 
 **Load.** Rule: time nothing while the one-minute load is above 24. The store-copy integrity timing ran at load 23.4. Squeal start sq-a1 waited 20 s and started at load 22.3; sq-b1 waited 586 s and started at load 22.9. Both reached load 27 to 30 while they ran. The cezar starts waited from 21:20Z until the waiting script was stopped at 22:38Z (78 min), and never started: the load stayed at 36 to 63 (see open question 1). Every experiment ran at nice 10, below the host daemons' nice 0, so its CPU-bound steps are slower than on the host.
 
@@ -53,7 +53,7 @@ So the 30 to 40 s the human saw is about 15 s of daemon start plus 14 s (squeal)
 
 ## 2. What a listing depends on
 
-Read in source at `c696096a9`:
+Read in source at `41cc39977`:
 
 - **File list.** `VitestAdapter.testFiles` calls Vitest's `globTestSpecifications`, which walks the filesystem with each project's `include` and `exclude`, then drops what `vitest.exclude` and `excludeProjects` drop (`src/runners/vitest/adapter.ts:480-487`). So the list sees untracked files and ignored directories that an `include` reaches, and not git. In squeal, `include` is `test/**`, `src/**`; `.ai/` and `.cursor/` are out of reach. A main checkout with nested worktrees under an included path would list their files (`main-daemon.md` 4, the client monorepo).
 - **Closures.** Vite's import graph plus unresolved candidates and the snapshot path (`adapter.ts:445-467`), kept only for paths inside the root and outside every `node_modules` (`src/core/fs/worktree-paths.ts:24-26`), stored relative. One list per project and test file is shared by all worktrees, written by the last that resolved it, and the observed set only grows (C3, `status.md` 2026-10-25, 016-27).
@@ -64,9 +64,9 @@ Shown on clones (`keys-*.json`, `results/keys-compare.txt`):
 
 | Pair | Equal keys | Differ | Tag |
 |---|---|---|---|
-| Clone a vs clone b, squeal at `c696096a9` | 1,117 | 0 | verified by experiment |
-| Clone vs host worktree 26a6ad36 at `c696096a9` | 1,108 | 9 | verified by experiment |
-| Host 26a6ad36 at `c696096a9` vs host 017527fd at `96926f662` (docs only between) | 1,117 | 0 | read from store |
+| Clone a vs clone b, squeal at `41cc39977` | 1,117 | 0 | verified by experiment |
+| Clone vs host worktree 26a6ad36 at `41cc39977` | 1,108 | 9 | verified by experiment |
+| Host 26a6ad36 at `41cc39977` vs host 017527fd at `ec497c614` (docs only between) | 1,117 | 0 | read from store |
 | Cezar host worktrees fabc7220, a86dd042, 62ebd553 at `477978962` | 1,029 | 0 | read from store |
 
 The 9 squeal files that differ are exactly the 9 whose closure or observed set lists `.git` (`test/daemon/{departure,drain,drain-checkpoint,drain-wait,restart-handover-signal,stop-cancel}.test.ts`, `test/evals/eval-root.test.ts`, `test/kit/vitest.test.ts`, `test/scheduler/environment-growth-wait.test.ts`). *verified by experiment that the sets are equal; that `.git` is the input is inferred.* `missed-sharing.md` found 6 such files on 2026-10-23. Host linked worktrees share these keys with each other, so this splits clones and main checkouts from linked worktrees only.
@@ -80,7 +80,7 @@ The 9 squeal files that differ are exactly the 9 whose closure or observed set l
 | Fresh starts with a known commit | 20 | 16 | read from git reflogs |
 | Another worktree had listed the same commit (proven) | 4 (8 with reflog-only evidence) | 10 | read from store |
 | ...or equal test-relevant content (proven) | **17 (85%)** | **11 (69%)** | read from store and git |
-| No donor | 3: cand/0.1.322 `2d1cca690`, the build commit `02fd25325` (0.1.324 bundles), the docs commit `703e9bfdf` | 5: 288ff376, ab979002 (reflog evidence only), ee1ae15d, fd7d7578, f2efc7b3, all before 10:32Z | |
+| No donor | 3: cand/0.1.322 `601c54312`, the build commit `6a4974d45` (0.1.324 bundles), the docs commit `3a32f4325` | 5: 288ff376, ab979002 (reflog evidence only), ee1ae15d, fd7d7578, f2efc7b3, all before 10:32Z | |
 | Age of the newest proven donor listing | 0 to 44 min (median 6) | 0 to 20 min, one 931 min | |
 
 Squeal's starts are mostly at docs commits on main, so an exact-commit match finds few and a content match finds most. Cezar's start at origin/main in groups (three at `477978962` within a second, three at `6823f952e`), so exact commits match. *read from store and git.* Removed worktrees' starts are not counted: their reflogs are gone. Their listings do count as donors when a result proves them.
@@ -126,7 +126,7 @@ Make the start cheaper before reusing listings. The integrity check is 15 to 34 
 
 - Store copies: `~/projects/squeal/.git/squeal/store.sqlite` and `~/projects/cezar/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-10-25 20:59:01Z.
 - Git: reflogs `~/projects/{squeal,cezar}/.git/worktrees/*/logs/HEAD` and `logs/HEAD`, `git ls-tree -r` per commit.
-- Source at `c696096a9`: `src/core/daemon/{open,daemon}.ts`, `src/core/store/open.ts`, `src/core/scheduler/{bootstrap,keying,ledger}.ts`, `src/runners/vitest/adapter.ts`, `src/core/fs/worktree-paths.ts`, `src/core/keys/environment.ts`, `src/core/delivery/header.ts`, `src/core/notes.ts`; spec 011 C3, C5, C9.
+- Source at `41cc39977`: `src/core/daemon/{open,daemon}.ts`, `src/core/store/open.ts`, `src/core/scheduler/{bootstrap,keying,ledger}.ts`, `src/runners/vitest/adapter.ts`, `src/core/fs/worktree-paths.ts`, `src/core/keys/environment.ts`, `src/core/delivery/header.ts`, `src/core/notes.ts`; spec 011 C3, C5, C9.
 - Shipped bundle 0.1.321, copied to `/tmp/fsc223/bundle` and patched there with `patch.mjs`.
 - SQLite `PRAGMA quick_check`: https://www.sqlite.org/pragma.html#pragma_quick_check, fetched 2026-10-25; Node's bundled SQLite is 3.53.4.
 - Research: `missed-sharing.md`, `main-daemon.md`.

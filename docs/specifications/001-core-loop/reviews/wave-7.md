@@ -17,7 +17,7 @@ Run on a detached worktree at `e818a05` (see N5: the brief's branch HEAD is `93b
 
 ```
 $ git rev-parse HEAD
-e818a05ce6a2bd28a3288c73cb9d53bf22188139
+e0dd8d1e57c57c33234e701a9f5cd094acf9a740
 $ npm ci
 npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
 $ npm run lint
@@ -116,7 +116,7 @@ D4: "`affected` right after an add costs 13 to 17 ms against 10 to 13 ms for the
 1. **Fix row for B1** (owns `src/runners/vitest/`, `test/runners/vitest/`, the D4 paragraph). The three extra rules go in `staleTransforms`. The glob and template-import set comes from a `pre` transform plugin added where the adapter calls `createVitest` (`adapter.ts` `#start`). Tests: the five probe rows above, each asserting `affected` and the run outcome. Budget: `affected` after an add stays under `cold / 4` on the 1,000-module fixture.
 2. **Same row or a second one for B2 and S1** (`structural-cost.test.ts`, D4 and `status.md` numbers). Disjoint from B1 apart from D4, so give B2 and S1 to the B1 worker.
 3. **S2** fits the B1 row (same file).
-4. **The inherited stale FAIL of `test/harness/plugin.test.ts`** (outside the range; the coordinator asked for a proposal). This session saw it live: Squeal reported `bundles > are committed exactly as npm run build produces them` as FAIL, "inherited from …/1babdb45… at commit 64941dfe4ac5", in a worktree whose bundles match the build. The test reads `plugins/claude-code/dist/*.mjs` and bundles `src/` through esbuild at runtime. Neither is a static import, so neither is in its closure, and its key matched across the rebuild. A committed `squeal.config.json` with an `inputs` map is the right fix, and D3 and D11 already provide for it. The repository has no `squeal.config.json` today. Proposed:
+4. **The inherited stale FAIL of `test/harness/plugin.test.ts`** (outside the range; the coordinator asked for a proposal). This session saw it live: Squeal reported `bundles > are committed exactly as npm run build produces them` as FAIL, "inherited from …/1babdb45… at commit 47e230c02d38", in a worktree whose bundles match the build. The test reads `plugins/claude-code/dist/*.mjs` and bundles `src/` through esbuild at runtime. Neither is a static import, so neither is in its closure, and its key matched across the rebuild. A committed `squeal.config.json` with an `inputs` map is the right fix, and D3 and D11 already provide for it. The repository has no `squeal.config.json` today. Proposed:
 
    ```json
    {

@@ -1,6 +1,6 @@
 # 019-22 notes: commit groups run at commit, and the report updates once
 
-Worker 1e5b4be8, 2026-11-04. Spec 019 D5 steps 1 and 3, D6 for lint groups. Baseline main at 0.1.397 (`6d265bb84`).
+Worker 1e5b4be8, 2026-11-04. Spec 019 D5 steps 1 and 3, D6 for lint groups. Baseline main at 0.1.397 (`0a9a2560d`).
 
 ## What changed
 

@@ -25,7 +25,7 @@ The candidate is `626b616`, one commit past `f9b55f4`. That commit changes only 
 
 ```
 $ git rev-parse HEAD
-626b61684ec6863147c7f38bf1a866a64da0625d
+8cff4069c5890cc1742c37144ccf2f9682051548
 $ npm ci
 found 0 vulnerabilities
 npm warn install-scripts ... @parcel/watcher, esbuild ... (exit 0)

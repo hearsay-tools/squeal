@@ -4,7 +4,7 @@
 
 **FAIL 7e15b70**. One proven blocker, no new should-fix items, two non-blocking notes. Wave 2 B1 is only partly closed: `--import` preload observations are keyed, but a computed load from a `--require` preload still escapes every key. S1 is closed for the exercised project failures. S2 meets the coordinator's accepted next-local-revision bound; the no-edit case remains row 003-26.
 
-Reviewed row 003-24: `b11ee2b`, `07310ab`, `5e2d00d`, `edc5d48`, `2ed5f49`, `9fc408a`, `917ba99`, `d63887b`, and their 0.1.24 bundles. HEAD is `7e15b70f1e67e9552087b4a6592a3489aec3ed9e`, rather than the brief's landing `cf0f21f`: the intervening change is only board, task and 002 status documentation. Product and bundle content match the candidate. No 001 or 002 product changes are reviewed here.
+Reviewed row 003-24: `b11ee2b`, `07310ab`, `5e2d00d`, `edc5d48`, `2ed5f49`, `9fc408a`, `917ba99`, `d63887b`, and their 0.1.24 bundles. HEAD is `c5f948a3700e505bc2b6e892178d39de2b814788`, rather than the brief's landing `cf0f21f`: the intervening change is only board, task and 002 status documentation. Product and bundle content match the candidate. No 001 or 002 product changes are reviewed here.
 
 ## Verification output
 
@@ -12,7 +12,7 @@ Commands ran on the clean candidate before this findings file was added. Build l
 
 ```text
 $ git rev-parse HEAD
-7e15b70f1e67e9552087b4a6592a3489aec3ed9e
+c5f948a3700e505bc2b6e892178d39de2b814788
 $ node --version
 v24.21.0
 $ npm ci

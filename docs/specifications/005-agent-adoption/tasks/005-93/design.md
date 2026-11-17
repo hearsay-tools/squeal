@@ -1,6 +1,6 @@
 # 005-93 design note: late and caught-up messages for the agent's own edits
 
-Researcher session 081c29c0, 2026-11-16, for coordinator 4d2ecbfc. Code read at `7bd783c9b`. No product code changed. The human approves this note before any code (`docs/board.md`, row 005-93).
+Researcher session 081c29c0, 2026-11-16, for coordinator 4d2ecbfc. Code read at `4030403ee`. No product code changed. The human approves this note before any code (`docs/board.md`, row 005-93).
 
 Rule this note applies: `docs/vision.md` principle 1, "Silence has to stay readable"; `../../status.md`, 2026-11-16 (a hook carries what the agent can use; no clean line after each edit).
 
@@ -137,7 +137,7 @@ Stays as it is: the 001-224 first-edit line, failure reports, the "Not validated
 
 ## Sources
 
-- Code at `7bd783c9b`: `src/core/delivery/edits.ts`, `delivery.ts`, `header.ts` (`newsLine`), `liveness.ts`, `format.ts` (`settledLine`, `sawEditLine`); `src/harness/shared/deliver.ts`; `src/core/status/feed-late.ts`; `src/core/scheduler/backlog.ts` (`wallEstimate`), `tier-width.ts`, `slots.ts`, `edit-cut.ts`; `src/core/types/watcher.ts`; `src/core/types/policy.ts` (`tierSize` 4).
+- Code at `4030403ee`: `src/core/delivery/edits.ts`, `delivery.ts`, `header.ts` (`newsLine`), `liveness.ts`, `format.ts` (`settledLine`, `sawEditLine`); `src/harness/shared/deliver.ts`; `src/core/status/feed-late.ts`; `src/core/scheduler/backlog.ts` (`wallEstimate`), `tier-width.ts`, `slots.ts`, `edit-cut.ts`; `src/core/types/watcher.ts`; `src/core/types/policy.ts` (`tierSize` 4).
 - Stores, read-only: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`.
 - Transcripts, read-only: `~/.claude/projects/-home-user-projects-{squeal,cezar}*/*.jsonl`.
 - Probes and output: `probes/` (throwaway; `probes/README.md`, `probes/results.txt`).

@@ -5,7 +5,7 @@ Throwaway scripts and trimmed logs behind `../../../lessons.md` (task 007-18, 20
 ## Subject and candidate
 
 - Project: [beeware/briefcase](https://github.com/beeware/briefcase) at `bffc7303f605bbe8e8d079ace3292effeb6b9953` (BSD-3-Clause, `src/` layout, 408 `tests/**/test_*.py` files, `[dependency-groups] test`, pytest 9.1.1 pinned), plus its second pytest project `debugger/` (4 test files). Python 3.13.14, uv-managed.
-- Squeal: main at `7debdef9` (0.1.174). A fresh `npm ci && npm run build` of a `git archive` of it is byte-identical to the committed `plugins/{claude-code,codex,pi}/dist`, so the installed plugins are that build. Both marketplaces were renamed `hearsay` in the copy, as 005-18 did, so the plugin id is `squeal@hearsay`.
+- Squeal: main at `6f43184d` (0.1.174). A fresh `npm ci && npm run build` of a `git archive` of it is byte-identical to the committed `plugins/{claude-code,codex,pi}/dist`, so the installed plugins are that build. Both marketplaces were renamed `hearsay` in the copy, as 005-18 did, so the plugin id is `squeal@hearsay`.
 - Harnesses: Claude Code 2.1.296 (`claude-sonnet-5-5`, effort medium) and Codex 0.160.1 (`gpt-6.1-sol`, effort medium), both as installed for `squeal-e2e` by 005-17.
 
 ## Rules followed
@@ -38,4 +38,4 @@ Throwaway scripts and trimmed logs behind `../../../lessons.md` (task 007-18, 20
 
 - Spec `../../spec.md` (Goals, D2 to D6, Open questions 5 and 7) and `../../status.md`.
 - `docs/specifications/003-node-test-runner/lessons.md` for the report's shape; `docs/specifications/005-agent-adoption/research/probes/dogfood/` for `as-e2e.mjs` and the session flags.
-- Squeal source at `7debdef9`: `src/runners/pytest/adapter-files.ts`, `src/runners/pytest/run/run.ts`, `src/core/daemon/pytest-runners.ts`, `src/core/delivery/attribution.ts`, `src/core/delivery/provenance.ts`, `plugins/codex/skills/squeal/SKILL.md`.
+- Squeal source at `6f43184d`: `src/runners/pytest/adapter-files.ts`, `src/runners/pytest/run/run.ts`, `src/core/daemon/pytest-runners.ts`, `src/core/delivery/attribution.ts`, `src/core/delivery/provenance.ts`, `plugins/codex/skills/squeal/SKILL.md`.

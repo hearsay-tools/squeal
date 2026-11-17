@@ -4,13 +4,13 @@ Initial findings written 2026-10-14 08:05 UTC, within 15 minutes of starting; ex
 
 ## Verification
 
-Checkout: `6af0c836bbe522769d95ab807902b9eb7ecfa00c`, a documentation-only child of the content endpoint `309fc44a` plus `f5d64f5f` (0.1.159). `git diff f5d64f5f..HEAD --stat` contains only the board and review brief. This is the checkout context the task explicitly supplied, not a finding. The reviewed repairs are `d967555b`, `f83fc7fa`, `b2c28837`, and the warm-up test correction `f5d64f5f`.
+Checkout: `71e4dfb849f7303435bd5cd530bf0b0ac0b95f3c`, a documentation-only child of the content endpoint `0430e273` plus `1a1ce2de` (0.1.159). `git diff 1a1ce2de..HEAD --stat` contains only the board and review brief. This is the checkout context the task explicitly supplied, not a finding. The reviewed repairs are `84c26fe0`, `0a5c434f`, `623a15ac`, and the warm-up test correction `1a1ce2de`.
 
 The tree was clean for installation, lint, typecheck, the independent full-suite start, and both original reproduction probes. Only this review document is authored while the full suite runs; no product or test file changes. Broad verification is on the documentation child, not the exact content endpoint, and is **unverified as exact-endpoint evidence** under the reviewer rule. The later project/runner-union and synthetic-guard probes ran with this review file untracked, so their clean-tree evidence is also **unverified** under that rule; they supplement the source inspection and original clean-tree reproductions. Those qualifications are not wave findings.
 
 ```text
 $ git rev-parse HEAD
-6af0c836bbe522769d95ab807902b9eb7ecfa00c
+71e4dfb849f7303435bd5cd530bf0b0ac0b95f3c
 $ git status --short
 (empty before verification and probes)
 $ npm ci
@@ -44,7 +44,7 @@ The full run also printed two `repair: gitdir incorrect` notices for scratch sch
 
 ## Verdict
 
-**PASS `f5d64f5fa5f155504ea6011381bbd44c668d7075` (content endpoint `309fc44a` plus the test correction): 0 blockers, 0 should-fix, 0 nits, 0 new Next findings.** Both prior blockers are closed by source inspection and fresh reproductions. S1 is repaired. The independent full suite exited 0 at the documented checkout.
+**PASS `1a1ce2de120197d865d0331a758989a2d28e3911` (content endpoint `0430e273` plus the test correction): 0 blockers, 0 should-fix, 0 nits, 0 new Next findings.** Both prior blockers are closed by source inspection and fresh reproductions. S1 is repaired. The independent full suite exited 0 at the documented checkout.
 
 ## Blockers
 

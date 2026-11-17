@@ -1,6 +1,6 @@
 # 016-11 Where our core-logic defects come from
 
-Brief: `core-defects-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24 and 25. Examined: 016-09's item list rebuilt at `f6320cd7e` (its `diff` against 016-09's `tally-output.txt` is empty, so the ids match `classes.tsv`), the review files and board rows it cites, `docs/specifications/011-core/spec.md` section titles, `runner-kit.md` recommendation 1 and open question 1, and the tests under `test/` at `0cbd8a861`. Probe: `probes/core-defects/`.
+Brief: `core-defects-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24 and 25. Examined: 016-09's item list rebuilt at `acb96dfa6` (its `diff` against 016-09's `tally-output.txt` is empty, so the ids match `classes.tsv`), the review files and board rows it cites, `docs/specifications/011-core/spec.md` section titles, `runner-kit.md` recommendation 1 and open question 1, and the tests under `test/` at `31aef3e92`. Probe: `probes/core-defects/`.
 
 Every area, mechanism and catch below is `inferred`: one reader (this researcher) coded each item from its title, its cited paths and an excerpt of up to 900 characters (rows: the row text). The counts are `verified by experiment` (`tally.mjs`, `threads.mjs`, `catch.mjs`). Items: the 455 class E items of 016-09, 415 after its residual filter, the 10 E/B among them. A re-review residual (marked `*`) counts toward cost, not toward n.
 
@@ -200,9 +200,9 @@ Limits: one reader coded every item, from excerpts; board rows are terse, so row
 
 Read 2026-10-24 and 25:
 
-- 016-09: `defect-causes.md`, `probes/defect-causes/` (`classes.tsv`, the item scripts, `tally-output.txt`), its item list rebuilt at `f6320cd7e`.
+- 016-09: `defect-causes.md`, `probes/defect-causes/` (`classes.tsv`, the item scripts, `tally-output.txt`), its item list rebuilt at `acb96dfa6`.
 - `runner-kit.md` (recommendation 1, open question 1); `docs/specifications/011-core/spec.md` section titles (C1 to C15).
-- The review files and board rows each item cites, at `f6320cd7e`; GitHub issues of `hearsay-tools/squeal` (`gh issue list --state all`, 93 issues, read 2026-10-24).
-- Tests at `0cbd8a861`: `test/scheduler/helpers.ts`, `test/cli/next-step-rows.test.ts`, `test/keys/validity/case.ts`, `test/e2e/torn-status.test.ts`, `test/e2e/worktrees.test.ts`, `test/daemon/handover.test.ts`, `test/daemon/claims-restart.test.ts`, `test/store/concurrency.test.ts`; a search of `test/` and `package.json` for `fast-check` and `useFakeTimers`.
+- The review files and board rows each item cites, at `acb96dfa6`; GitHub issues of `hearsay-tools/squeal` (`gh issue list --state all`, 93 issues, read 2026-10-24).
+- Tests at `31aef3e92`: `test/scheduler/helpers.ts`, `test/cli/next-step-rows.test.ts`, `test/keys/validity/case.ts`, `test/e2e/torn-status.test.ts`, `test/e2e/worktrees.test.ts`, `test/daemon/handover.test.ts`, `test/daemon/claims-restart.test.ts`, `test/store/concurrency.test.ts`; a search of `test/` and `package.json` for `fast-check` and `useFakeTimers`.
 - Board rows quoted in finding 3: 001-253, 001-254, 001-258, 001-305, 011-27, 011-47.
 - Probe: `probes/core-defects/` (`areas.tsv`, `catch.tsv`, `reread.tsv`, `sample.txt`, the scripts and their `*-output.txt`).

@@ -30,7 +30,7 @@ Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; rep
 
 ## R1 (W1 and W2): review of cand/011-373-374
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-373-374` at `24e33322abdd9ce3fc73f3224810e6e5b0b69c27`; candidate CI run 43837211147. Test files and notes only: no `src/` change, no version raise. Range `de057349a..24e33322abdd9ce3fc73f3224810e6e5b0b69c27` (two commits: worker 9d424f9c's `a6fe26b57`, row 011-374; worker c3a0be16's `2c4ad72f1`, row 011-373). Read: board rows 011-373, 011-374; this file's W1 and W2; `tasks/011-373/notes.md`, `tasks/011-374/notes.md`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-373-374` at `9eef3e52447d0bbfd3d08f9333602ef598e1f6f6`; candidate CI run 43837211147. Test files and notes only: no `src/` change, no version raise. Range `8ab3712fc..9eef3e52447d0bbfd3d08f9333602ef598e1f6f6` (two commits: worker 9d424f9c's `a6fe26b57`, row 011-374; worker c3a0be16's `2c4ad72f1`, row 011-373). Read: board rows 011-373, 011-374; this file's W1 and W2; `tasks/011-373/notes.md`, `tasks/011-374/notes.md`.
 
 Check, each as proven, plausible or unverified:
 

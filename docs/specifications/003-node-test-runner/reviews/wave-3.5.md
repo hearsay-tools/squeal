@@ -4,7 +4,7 @@
 
 **PASS e202b50**. No blockers, no should-fix findings, no nits. `reviews/wave-3.md` B1 and B2 are closed for every previously blocking form exercised on Node 22.23.3 and 24.21.0. This is the bounded second review of 003-33, not a claim that the full repository suite is green.
 
-Reviewed `ee9d137^..2ec5dec`: the package identity and opaque-load repair, adapter version 6, and both committed 0.1.40 plugin bundles. Assigned HEAD was `e202b50885deeae0b2abeb81d0906b0dd331d10e`. Four later documentation commits explain the difference from the named range endpoint; `git diff --exit-code 2ec5dec HEAD -- src test plugins package.json package-lock.json` returned empty output and exit 0. Verification used an independent clone of that exact HEAD.
+Reviewed `ee9d137^..2ec5dec`: the package identity and opaque-load repair, adapter version 6, and both committed 0.1.40 plugin bundles. Assigned HEAD was `ec21c2cdca71794846e6fd31f6c4517a66ddc179`. Four later documentation commits explain the difference from the named range endpoint; `git diff --exit-code 2ec5dec HEAD -- src test plugins package.json package-lock.json` returned empty output and exit 0. Verification used an independent clone of that exact HEAD.
 
 ## Verification output
 
@@ -12,7 +12,7 @@ The clone, independent fixtures, scripts and their private stores lived under th
 
 ```text
 $ git rev-parse HEAD
-e202b50885deeae0b2abeb81d0906b0dd331d10e
+ec21c2cdca71794846e6fd31f6c4517a66ddc179
 $ node --version
 v24.21.0
 $ npm ci

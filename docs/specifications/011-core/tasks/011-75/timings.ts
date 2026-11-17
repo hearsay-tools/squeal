@@ -24,7 +24,7 @@ const CHECK = process.env.CHECK ?? "autosave";
 
 const db = new DatabaseSync(STORE, { readOnly: true });
 
-// Today's queries, `src/core/store/repos/results.ts` at 5216be24c (`listFailures`, `countFailures`).
+// Today's queries, `src/core/store/repos/results.ts` at b146872fc (`listFailures`, `countFailures`).
 const TODAY_WHERE = `r.outcome = 'fail' AND (? IS NULL OR r.worktree_id = ?) AND (? IS NULL OR r.recorded_at >= ?)`;
 const today = {
   list: (wt: string | null, limit: number): Statement => ({

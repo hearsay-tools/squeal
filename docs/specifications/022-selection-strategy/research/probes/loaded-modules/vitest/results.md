@@ -1,6 +1,6 @@
 # Vitest loaded-modules probe: results
 
-Vitest 5.0.3, Vite 8.3.2, Node v26.13.0, Squeal commit 2856d26e8, 2026-11-14. Raw data: `results.json`.
+Vitest 5.0.3, Vite 8.3.2, Node v26.13.0, Squeal commit 9aef0ef9e, 2026-11-14. Raw data: `results.json`.
 Fixtures lived under `$TMPDIR/lm-vitest`; scripts and re-run steps in `README.md`.
 
 "Loaded set" below = files of the nodes in `__vitest_worker__.evaluatedModules.idToModuleMap` with
@@ -109,7 +109,7 @@ transform's import list) and `b.test.ts` as importers; `dep.ts` (factory-mocked)
 transform. Edges are transform-time imports, so a walk from a test file gives the import closure, and
 "transformed" is the union over the whole run. It cannot say which file loaded what.
 
-### Squeal's coverage records, for comparison (read in source code at 2856d26e8)
+### Squeal's coverage records, for comparison (read in source code at 9aef0ef9e)
 
 - Worker side, `src/core/code/coverage/provider.mjs`: V8 precise coverage per worker batch; `takeCoverage`
   keeps scripts whose URL starts `file://` and does not contain `/node_modules/` (`kept`). No coverage

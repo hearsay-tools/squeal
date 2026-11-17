@@ -14,8 +14,8 @@ without reproducing the separate oxlint timeout in #140.
 
 Examined on 2026-11-10. Issue [#170](https://github.com/hearsay-tools/squeal/issues/170)
 reports Squeal 0.1.424, revision 20, in Claude Code. Source checkout:
-**0.1.425**, `241b0112a81174f5c40dd0ca7b33ba181d9aadf8`. Repeated on the exact
-**0.1.424** tag, `5c1d8d8d8d55641f87905282a108e761c10e58fb`, archived into a
+**0.1.425**, `43f66784c0f0a894f2994a2eda882933077b6eaf`. Repeated on the exact
+**0.1.424** tag, `6baa2dbb56be8f6e764ab5d5caed6500a4e2f45a`, archived into a
 temporary directory. Runtime: Node v24.22.1, Linux, 24 logical CPUs.
 
 Pre-probe load was 7.45 / 24 at 13:10:27 UTC. Each probe checked load again:
@@ -133,8 +133,8 @@ git diff squeal--v0.1.424 HEAD -- src/core/commit/text.ts src/core/commit/lint.t
 ```
 
 The last command returned no diff. Primary sources are the fetched issue above,
-[0.1.424 source](https://github.com/hearsay-tools/squeal/tree/5c1d8d8d8d55641f87905282a108e761c10e58fb/src/core),
-[0.1.425 source](https://github.com/hearsay-tools/squeal/tree/241b0112a81174f5c40dd0ca7b33ba181d9aadf8/src/core),
+[0.1.424 source](https://github.com/hearsay-tools/squeal/tree/6baa2dbb56be8f6e764ab5d5caed6500a4e2f45a/src/core),
+[0.1.425 source](https://github.com/hearsay-tools/squeal/tree/43f66784c0f0a894f2994a2eda882933077b6eaf/src/core),
 [017 D2/D8/D9/D11](../spec.md), [017 decisions](../status.md),
 [011 C6](../../011-core/spec.md), and the probe paths linked above.
 

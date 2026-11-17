@@ -6,7 +6,7 @@ Worker 23d565cd, 2026-11-14. Brief: `tasks/wave-95.md` W2. Design: `research/tie
 
 `RunQueue.#ranks()` called `Promotions.rankOf(id)` once per queued entry, and each call read the clock. A member of a batch is ranked at any reading. A selected file in no batch yet (queued again during the wait, before the next settle joins it) is ranked only while its wait is open. So in one `ordered()` call, a wait that ended between two readings ranked the first entry and not the next.
 
-The test (`test/scheduler/queue-promotion.test.ts`, "orders at one clock reading: a wait that ends between two entries' ranks ranks neither"): Y and Z are selected by one wait; Z runs and an edit queues it again; the clock moves 1 ms per reading, the first at the wait's last open moment. Before the change, `ordered()` returned `y, z, b` (Z read at the deadline, unranked). After it, `z, y, b`, with exactly one clock reading per call. With the decision's `now` passed in, the order reads no clock. So the test could fail before this change, and it did (red at `5fabfc2a0`).
+The test (`test/scheduler/queue-promotion.test.ts`, "orders at one clock reading: a wait that ends between two entries' ranks ranks neither"): Y and Z are selected by one wait; Z runs and an edit queues it again; the clock moves 1 ms per reading, the first at the wait's last open moment. Before the change, `ordered()` returned `y, z, b` (Z read at the deadline, unranked). After it, `z, y, b`, with exactly one clock reading per call. With the decision's `now` passed in, the order reads no clock. So the test could fail before this change, and it did (red at `22da8de1d`).
 
 ## What changed
 

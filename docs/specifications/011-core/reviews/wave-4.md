@@ -4,7 +4,7 @@
 
 ## Verification output
 
-HEAD matched the pinned candidate. Range: `origin/main..dae700644275fa262d1bfeca8c58bb0c8d11f2b1`, with local `origin/main` at 3c993aea2ec099824a452c98e37f50e2d08d1f27. The tree was clean before installation, after build, and after the independent suite. Checks ran before this findings file was written. The independent run below is the reviewer gate; Squeal's checkpoint was not substituted.
+HEAD matched the pinned candidate. Range: `origin/main..dae700644275fa262d1bfeca8c58bb0c8d11f2b1`, with local `origin/main` at a936c2d101426fac5609b6c8dfb719143d2dcf23. The tree was clean before installation, after build, and after the independent suite. Checks ran before this findings file was written. The independent run below is the reviewer gate; Squeal's checkpoint was not substituted.
 
 ```text
 $ npm ci
@@ -271,7 +271,7 @@ No further fix wave is required by this review. Slice 2 must retain the first re
 
 ## Wave 4, slice 2
 
-**FAIL 1fb030983d7bdf265ebe218970c566ebd6cd6e6c**. Two proven blockers, one proven nonblocking should-fix item, zero nits. W4 of `tasks/wave-4.md`, reviewed 2026-10-20. Range: `4fe11939..1fb03098`. The slice 1 verdict and its closed B1 remain above; the finding IDs below are specific to slice 2.
+**FAIL 1fb030983d7bdf265ebe218970c566ebd6cd6e6c**. Two proven blockers, one proven nonblocking should-fix item, zero nits. W4 of `tasks/wave-4.md`, reviewed 2026-10-20. Range: `0f00b13c..1fb03098`. The slice 1 verdict and its closed B1 remain above; the finding IDs below are specific to slice 2.
 
 ### Verification output
 

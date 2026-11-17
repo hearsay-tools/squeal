@@ -46,7 +46,7 @@ Done when: the test passes 20 of 20 single-file runs while one full suite runs b
 
 ## R1: review of cand/0.1.270
 
-Use /reviewer. Shape: review. Pinned to `cand/0.1.270` at 4d511f858ead6f97477f943aaed9fffe706b12d5; the range is `origin/main..4d511f858`: W2's two commits (011-79, worker a3badb38), W3's four (011-111, worker 5cccc4dd), W1's six (011-78, worker d7e21eb0), one docs commit (011 C6, C9, C10 and `status.md`) and the release commit (0.1.270, bundles).
+Use /reviewer. Shape: review. Pinned to `cand/0.1.270` at 31fd8e8695a79d9d4b1e0eca826d9c14328cb8b8; the range is `origin/main..31fd8e869`: W2's two commits (011-79, worker a3badb38), W3's four (011-111, worker 5cccc4dd), W1's six (011-78, worker d7e21eb0), one docs commit (011 C6, C9, C10 and `status.md`) and the release commit (0.1.270, bundles).
 
 Read `tasks/wave-17.md` (W1 to W3), the notes under `tasks/011-78/`, `tasks/011-79/` and `tasks/011-111/`, board rows 011-78, 011-79 and 011-111, `tasks/011-62/design.md` sections 2 to 4, the amended C6, C9 and C10 sentences, and the three new `status.md` lines. Check that:
 - 011-78: R1's tests 1 to 7 hold through a real daemon; a removed project's files, keys, known states, queued work and retries go, and its told failure is delivered once as resolved; a run in flight of a removed project is stopped and stores nothing; an unparsable file forgets nothing; judge the generic set in `runner-set.ts`, the reconcile at every `invalidate`, and withholding a leaver's part not yet started;

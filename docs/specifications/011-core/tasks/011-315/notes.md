@@ -18,7 +18,7 @@ Store sizes: 3,891,669 results under 255,190 keys; 102,764 coverage records, eac
 
 | Code-store prune | Pass 1 | Pass 2 | Load average |
 |---|---|---|---|
-| Before (main at 2fbaefc4) | 34.0 s, 0.89 M reads, 3.63 GB | 6.6 s | 12.4 to 14.3 |
+| Before (main at f74a37be) | 34.0 s, 0.89 M reads, 3.63 GB | 6.6 s | 12.4 to 14.3 |
 | Key check only (2d5667c9a) | 16.7 s, 0.39 M reads, 1.58 GB | 3.1 s | 40.8 to 27.8 |
 | Key check and worktree walk | 20.9 s, 0.25 M reads, 1.01 GB | 2.2 s, 0.25 M reads | 17.4 to 23.0 |
 

@@ -2,13 +2,13 @@
 
 ## Verification
 
-Candidate `af0dd6d4045615048f06124481ede37c10aed20a` matches the assigned HEAD. Scope: row 001-306, the human's replacement rule in 001-305 (`2c0d9090`), its spec 004 D9 amendment, and the integrated plugin build `9fe674eb` (0.1.131). Read `wave-13am.md`, `wave-13an.md` and `wave-13ap.md` before inspecting the repair. This is a bounded fourth round: replay the prior schedules against the new rule, inspect its delta, retain the earlier capability note. The primer and watcher reviews are not reopened.
+Candidate `b5a0449a0ec5430f1869c5e727c33c795c1cb746` matches the assigned HEAD. Scope: row 001-306, the human's replacement rule in 001-305 (`a2d912fb`), its spec 004 D9 amendment, and the integrated plugin build `c8a05924` (0.1.131). Read `wave-13am.md`, `wave-13an.md` and `wave-13ap.md` before inspecting the repair. This is a bounded fourth round: replay the prior schedules against the new rule, inspect its delta, retain the earlier capability note. The primer and watcher reviews are not reopened.
 
 The candidate tree was clean for every check and probe. Independent commands and output, 2026-10-12, all with `env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null`. The full suite uses four workers because this 24-CPU host is heavily loaded by other projects. This is the reviewer's own Vitest run, not a Squeal checkpoint.
 
 ```text
 $ git rev-parse HEAD
-af0dd6d4045615048f06124481ede37c10aed20a
+b5a0449a0ec5430f1869c5e727c33c795c1cb746
 $ git status --short
 (no output)
 
@@ -44,7 +44,7 @@ Test Files  426 passed | 1 skipped (427)
   Duration  861.46s (tests 97%, import 2%, transform 1%)
 exit 0
 $ git rev-parse HEAD
-af0dd6d4045615048f06124481ede37c10aed20a
+b5a0449a0ec5430f1869c5e727c33c795c1cb746
 $ git status --short
 (no output)
 ```
@@ -68,7 +68,7 @@ In both harnesses: a failure replacing a pass after the complete poll but before
 
 ## Verdict
 
-**PASS af0dd6d4.** Zero blockers, one retained plausible non-blocking note, no nits. Every earlier blocker schedule is repaired under the human's new rule. The waiting Stop's decision uses current failures and the session's told outcome/fingerprint in the same live write transaction; no tracked membership, original key or run revision can exclude an untold current slow failure.
+**PASS b5a0449a.** Zero blockers, one retained plausible non-blocking note, no nits. Every earlier blocker schedule is repaired under the human's new rule. The waiting Stop's decision uses current failures and the session's told outcome/fingerprint in the same live write transaction; no tracked membership, original key or run revision can exclude an untold current slow failure.
 
 ## Blockers
 

@@ -5,7 +5,7 @@ Researcher, Opus 5.5, 2026-10-15. Read-only on GitHub: `gh api` and `gh run list
 Data sets:
 
 - **R**: all 1,929 CI runs created 2026-10-08 06:26 to 2026-10-15 16:31 UTC. For the 387 failed runs on `main` and `cand/*`, the jobs, and the `FAIL` lines of all 701 failed Node job logs (47 logs from 10-08 and 10-09 had no file line).
-- **W**: the window after 81f80792 (review before main), 2026-10-14 22:38 to 2026-10-15 16:31 UTC, 17.9 h. Main took 170 pushes: 16 code, 6 `evals/results` only, 146 docs, 2 re-pushes. 20 `cand/*` branches.
+- **W**: the window after 7df5d74c (review before main), 2026-10-14 22:38 to 2026-10-15 16:31 UTC, 17.9 h. Main took 170 pushes: 16 code, 6 `evals/results` only, 146 docs, 2 re-pushes. 20 `cand/*` branches.
 - **C**: cezarion's ruleset 22473654, its `ci.yml`, `release.yml` and `nightly.yml` at main, and its latest 100 merged pull requests (2026-10-05 to 10-15).
 
 ## Questions answered
@@ -89,11 +89,11 @@ Data sets:
 
   | When | Where | Files | Fixed | Caught only by CI? |
   |---|---|---|---|---|
-  | 10-13 12:04 | main, Node 22, 3 runs | `e2e/shipped-plugin` (npm 10.9.9 crash) | 65acfe0b, same day | yes: Node 22 |
+  | 10-13 12:04 | main, Node 22, 3 runs | `e2e/shipped-plugin` (npm 10.9.9 crash) | c19ab024, same day | yes: Node 22 |
   | 10-14 14:36 to 17:17 | main, both, 23 runs | `integration/pytest` | 0.1.173 (007-28, 007-29), about 3 h | unknown |
   | 10-14 22:26 | cand/0.1.181, both | `e2e/pytest`, `runners/pytest/fixtures` | re-cut | no: the review also failed it |
-  | 10-14 23:48 | cand/0.1.184, Node 24 | `harness/opencode/bridge-client` | a436948b, before landing | yes: "CI's environment lacks" a proxy URL |
-  | 10-15 00:23 | cand/0.1.185, both | `harness/{codex,opencode,pi}` package bundles, `harness/plugin` | 574200da, before landing | likely: a clean checkout and build |
+  | 10-14 23:48 | cand/0.1.184, Node 24 | `harness/opencode/bridge-client` | 0f5aba6f, before landing | yes: "CI's environment lacks" a proxy URL |
+  | 10-15 00:23 | cand/0.1.185, both | `harness/{codex,opencode,pi}` package bundles, `harness/plugin` | 80354884, before landing | likely: a clean checkout and build |
   | 10-15 14:19 | cand/0.1.196, both | `e2e/{lifecycle,node-test,policy,transitions,worktrees}` | repair 001-418 | no: review 001-417 also failed it |
 
   Every one was fixed before the next release would have run, since there was no release after 10-14 13:08 UTC (0.1.168).
@@ -147,7 +147,7 @@ Step two, as a change to D1 to D6:
   - `repos/hearsay-tools/squeal` (settings, permissions), `…/rulesets`, `…/branches/main/protection`;
   - `orgs/hearsay-tools/memberships/wjarka`;
   - `repos/hearsay-tools/squeal/actions/workflows/ci.yml/runs?created=…` (R), `…/runs/<id>/jobs?filter=latest`, `…/actions/jobs/<id>/logs`.
-  - Runs cited: 38582092315 (6c9fed9e, the first pytest red), 38605425747, 38607309981.
+  - Runs cited: 38582092315 (7af3462a, the first pytest red), 38605425747, 38607309981.
 - Cezarion, read-only: `repos/hearsay-tools/cezarion/rulesets/22473654`, `contents/.github/workflows/{ci,release,nightly}.yml`, `gh pr list --state merged --limit 100`, `commits/<sha>` parents.
-- Repository at origin/main 2026-10-15: `.github/workflows/ci.yml`, `docs/process.md` steps 5, 6, 6a, `.agents/skills/coordinator/SKILL.md` section 6, `docs/board.md` rows 001-417 to 001-419, tags `squeal--v*`, commits 65acfe0b, a436948b, 574200da, 643752b1, 6c9fed9e.
+- Repository at origin/main 2026-10-15: `.github/workflows/ci.yml`, `docs/process.md` steps 5, 6, 6a, `.agents/skills/coordinator/SKILL.md` section 6, `docs/board.md` rows 001-417 to 001-419, tags `squeal--v*`, commits c19ab024, 0f5aba6f, 80354884, ef0a9970, 7af3462a.
 - `research/ci-run-triggers.md`, `research/ci-test-time.md`, `spec.md` and `status.md` of this spec.

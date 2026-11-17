@@ -1,14 +1,14 @@
 # 008 wave 0 review
 
-Verdict: **FAIL eae020fc**. **4 proven blockers**, 2 should-fix notes (1 plausible, 1 proven), 1 proven nit. Range: `c12dc371~1..eae020fc`, rows 008-10 and 008-11, landed as 0.1.176. Reviewed 2026-10-14 against D1, D2, D4, D6, D8 and the wave-0 amendments.
+Verdict: **FAIL 4e846e31**. **4 proven blockers**, 2 should-fix notes (1 plausible, 1 proven), 1 proven nit. Range: `86f1564c~1..4e846e31`, rows 008-10 and 008-11, landed as 0.1.176. Reviewed 2026-10-14 against D1, D2, D4, D6, D8 and the wave-0 amendments.
 
 ## Verification output
 
-The worker started at `5fb1f782`, four documentation-only commits after the candidate. This is a **proven checkout mismatch**, not a product finding: `git diff --stat eae020fc..5fb1f782` names only board/spec/status/brief documents. I detached at the exact candidate for installation, all checks and probes; the tree stayed clean. I then restored the worker branch to commit this report alone. The later brief and latency amendment inform the next-wave inputs below; product evidence is from the named candidate.
+The worker started at `f0792d36`, four documentation-only commits after the candidate. This is a **proven checkout mismatch**, not a product finding: `git diff --stat 4e846e31..f0792d36` names only board/spec/status/brief documents. I detached at the exact candidate for installation, all checks and probes; the tree stayed clean. I then restored the worker branch to commit this report alone. The later brief and latency amendment inform the next-wave inputs below; product evidence is from the named candidate.
 
 ```text
 $ git rev-parse HEAD
-eae020fc6f43b6d0f97738723b7de956c0cfe396
+4e846e319b84f1055e87a5951e0408fdfb844efb
 
 $ npm ci
 added 196 packages, and audited 197 packages in 7s

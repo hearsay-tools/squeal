@@ -1,6 +1,6 @@
 # Probes for 015-76: coverage under node:test
 
-Throwaway. Written for `../../node-test-coverage.md` (row 015-76) and not maintained. Every run used `HOME=/tmp/r-015-76/home`, wrote only under `/tmp/r-015-76/`, and started no daemon and no agent session. `/tmp/r-015-76/node_modules` was a symlink to this worktree's `node_modules`, so `tsx` resolves for the copied fixtures. Versions: Node 24.21.0 and 22.23.3, tsx 4.23.15 (esbuild 0.28.2) from this repository's lockfile, this repository at b062c9832.
+Throwaway. Written for `../../node-test-coverage.md` (row 015-76) and not maintained. Every run used `HOME=/tmp/r-015-76/home`, wrote only under `/tmp/r-015-76/`, and started no daemon and no agent session. `/tmp/r-015-76/node_modules` was a symlink to this worktree's `node_modules`, so `tsx` resolves for the copied fixtures. Versions: Node 24.21.0 and 22.23.3, tsx 4.23.15 (esbuild 0.28.2) from this repository's lockfile, this repository at 7a2095f95.
 
 | File | What it is |
 | --- | --- |

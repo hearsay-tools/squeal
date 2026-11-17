@@ -22,7 +22,7 @@ Use /worker.
 
 Outcome: `reviews/wave-5.6.md` S1 closed: on a store a pre-004-50 daemon wrote, a saved combined closure in `test_files` no longer puts declaration-only scratch back into the extras and the watch set.
 
-Read: `reviews/wave-5.6.md` S1, 004-50's commit `0aeff3b2` (`src/core/scheduler/keying.ts`, `src/core/keys/ignored-inputs.ts`, `src/core/keys/index.ts`), spec 004 D5 and D6. Shape: repair. Lead: where bootstrap reads stored closures back as extras in `keying.ts`, filter their paths through the same 004-47 rule 004-50 applies to the stat cache (an ignored path a declaration selects but the rule rejects, and no closure, environment, lockfile or observed read names, is dropped).
+Read: `reviews/wave-5.6.md` S1, 004-50's commit `04d61589` (`src/core/scheduler/keying.ts`, `src/core/keys/ignored-inputs.ts`, `src/core/keys/index.ts`), spec 004 D5 and D6. Shape: repair. Lead: where bootstrap reads stored closures back as extras in `keying.ts`, filter their paths through the same 004-47 rule 004-50 applies to the stat cache (an ignored path a declaration selects but the rule rejects, and no closure, environment, lockfile or observed read names, is dropped).
 
 Owns: `src/core/scheduler/keying.ts`, `src/core/keys/ignored-inputs.ts`, `test/scheduler/scratch-inputs.test.ts`. Leave `bootstrap.ts` (004-54) and `src/core/state/**` (004-55) alone. Done when: a test with a complete predecessor store (hashes and saved closures) shows the dropped paths stay out of the watch set and no revision follows a full interval pass, red before the fix; lint, typecheck, full suite.
 
@@ -50,7 +50,7 @@ Use /worker.
 
 ## 004-56 review of 004-52, 004-54 and 004-55
 
-Outcome: `reviews/wave-6.md`, committed. Range: `git log --oneline 3040e11d^..17b0c227` on main, 0.1.88 (004-52, 004-54, 004-55, the D8 amendment and the bundles). The gate's load-sensitive failures at load 79 to 136 passed alone on both Nodes; 001-196 (0.1.87) underneath is out of scope. First round. Questions: does 004-52 drop only what 004-47's rule rejects, never a closure, environment, lockfile or observed path; can 004-54's fallback take a duration from a result that is not this file's, or change `resultKey`; does 004-55 keep the clause on for every path a slow file's key holds, including a declared artifact's sources outside `plugins/**`? Rules as for 004-14.
+Outcome: `reviews/wave-6.md`, committed. Range: `git log --oneline 7809fdc1^..48aa3d0a` on main, 0.1.88 (004-52, 004-54, 004-55, the D8 amendment and the bundles). The gate's load-sensitive failures at load 79 to 136 passed alone on both Nodes; 001-196 (0.1.87) underneath is out of scope. First round. Questions: does 004-52 drop only what 004-47's rule rejects, never a closure, environment, lockfile or observed path; can 004-54's fallback take a duration from a result that is not this file's, or change `resultKey`; does 004-55 keep the clause on for every path a slow file's key holds, including a declared artifact's sources outside `plugins/**`? Rules as for 004-14.
 
 Use /reviewer.
 
@@ -66,6 +66,6 @@ Use /worker.
 
 ## 004-58 review of 004-57
 
-Outcome: `reviews/wave-6.5.md`. Range: `git log --oneline 003248a8^..c764599e` on main, 0.1.91 (004-57, the D8 amendment, the bundles). First round. Questions: does the clause now show for every source a slow file's artifact may be built from in this repository and in a dist-only end-to-end layout, and stay off for fixtures and docs; can any path a test loads be dropped because another file declares it? Rules as for 004-14.
+Outcome: `reviews/wave-6.5.md`. Range: `git log --oneline 4690b667^..3d77c586` on main, 0.1.91 (004-57, the D8 amendment, the bundles). First round. Questions: does the clause now show for every source a slow file's artifact may be built from in this repository and in a dist-only end-to-end layout, and stay off for fixtures and docs; can any path a test loads be dropped because another file declares it? Rules as for 004-14.
 
 Use /reviewer.

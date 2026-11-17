@@ -1,12 +1,12 @@
 # Issue 4 triage: the slow tier runs an edit's likely-affected specs in no relevant order
 
-Researcher, 2026-10-16, Opus 5.5. Brief: triage hearsay-tools/squeal#4 and its comment, find duplicate rows and new information, and reproduce the missing relevance order with a cheap probe. No design. Squeal at `e0ff15a3` (main, 0.1.199). Cezarion at `d88c8c1d3`, read through `git show` from the local clone. Probe and logs: `probes/issue-4-ranking/`.
+Researcher, 2026-10-16, Opus 5.5. Brief: triage hearsay-tools/squeal#4 and its comment, find duplicate rows and new information, and reproduce the missing relevance order with a cheap probe. No design. Squeal at `0612dadd` (main, 0.1.199). Cezarion at `d88c8c1d3`, read through `git show` from the local clone. Probe and logs: `probes/issue-4-ranking/`.
 
 ## Questions answered
 
 | # | Question | Answer | Tag |
 | --- | --- | --- | --- |
-| 1 | Does a board row, spec section or issue already cover this? | No. No row, spec section or issue ranks slow files by an edit's relevance. Five rows and one human decision touch it (finding 1). | read in source code (board, specs at `e0ff15a3`; `gh issue list`) |
+| 1 | Does a board row, spec section or issue already cover this? | No. No row, spec section or issue ranks slow files by an edit's relevance. Five rows and one human decision touch it (finding 1). | read in source code (board, specs at `0612dadd`; `gh issue list`) |
 | 2 | How does the slow tier order its queue today? | Recent first, then failing, direct, transitive, never-run, then shortest stored duration (unknown last), then queue order, project and path. Which source changed is not an input. | read in source code, verified by experiment |
 | 3 | Does the cezarion shape reproduce the missing order? | Yes. After a `markdown.tsx` edit, `artifact-project-links` ran 66th of 77 with durations known and 4th with none known (alphabetical). An edit to a diff component gives the same order. | verified by experiment |
 | 4 | Can the original incident be reproduced? | No. Its session's worktree is not in cezarion's store. The 77-browser run was out of scope (finding 4). | read in source code (store, read only) |
@@ -26,7 +26,7 @@ No duplicate. Searched `docs/board.md`, spec 004 `spec.md` and `status.md`, spec
 - **Issue #3** is a separate request: skip a tier when its precondition fails. It shares only the source session. Issues #1 and #2 are unrelated.
 - Spec 004 D2 runs slow files "in D5's order". 004's non-goals rule out marking by duration or per-test tags, not ordering. Vision principle 4 ("orders checks by what changed", with runtime coverage named as machinery) and decision filter 1 support the ask.
 
-### 2. Today's order (read in source code, `e0ff15a3`)
+### 2. Today's order (read in source code, `0612dadd`)
 
 `RunQueue.orderedSlow` (`src/core/scheduler/queue.ts`) sorts the slow entries the same way as the fast ones, by these keys in order: `recent`, then `priority` (`failing` 0, `direct` 1, `transitive` 2, `neverRun` 3, from `priorityOf`), then shortest `durationOf` (unknown is +∞), then `seq`, project and path. `Ledger.orderedSlow` (`src/core/scheduler/ledger.ts:135`) supplies `FileState.durationMs`, the sum of the stored results' durations (`files.ts:149`).
 
@@ -82,5 +82,5 @@ Treat #4 as new work, not a duplicate. The current order is fully explained by 0
 
 - hearsay-tools/squeal#4 and its comment; #1 to #3 (`gh`, 2026-10-16).
 - hearsay-tools/cezarion `d88c8c1d3`: `squeal.config.json`, `packages/web/e2e/*.e2e.ts`, `repo-diff-coverage.ts`, `packages/web/src/routes/task-thread/markdown.tsx`, `packages/web/src/components/diff/**`. PR #1076 (`979d96c91`), issues #1096, #1019, #1097. CI run https://github.com/hearsay-tools/cezarion/actions/runs/38795107753, jobs 116630315349, 116630315481, 116630315565, 116630315669.
-- Squeal `e0ff15a3`: `src/core/scheduler/queue.ts`, `ledger.ts`, `files.ts`, `src/core/keys/key-index.ts`, `reverse-index.ts`, `src/core/slow/*`; `docs/board.md`; specs 001 D5 and 004; `docs/vision.md` principle 4.
+- Squeal `0612dadd`: `src/core/scheduler/queue.ts`, `ledger.ts`, `files.ts`, `src/core/keys/key-index.ts`, `reverse-index.ts`, `src/core/slow/*`; `docs/board.md`; specs 001 D5 and 004; `docs/vision.md` principle 4.
 - Probe: `probes/issue-4-ranking/` (README, `probe.test.ts`, `ci-durations.json`, `tokens.sh`, `store-*.mjs`, `logs/`).

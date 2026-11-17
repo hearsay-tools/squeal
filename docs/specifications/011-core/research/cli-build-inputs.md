@@ -1,6 +1,6 @@
 # 011-127: what keys a test that builds the CLI at run time
 
-Researcher for wave 21 R1, 2026-10-23. Brief: `cli-build-inputs-brief.md`. Probes and raw results: `probes/cli-build-inputs/`. Everything was measured on a scratch clone of main at 7580d1a1d (0.1.273) under `/tmp/r127`, with a scratch daemon from the clone's committed `plugins/claude-code/dist/cli/squeal.mjs` (0.1.273), host slots 4, on this 24-CPU host. Load is the one-minute average.
+Researcher for wave 21 R1, 2026-10-23. Brief: `cli-build-inputs-brief.md`. Probes and raw results: `probes/cli-build-inputs/`. Everything was measured on a scratch clone of main at a7c9e0ea7 (0.1.273) under `/tmp/r127`, with a scratch daemon from the clone's committed `plugins/claude-code/dist/cli/squeal.mjs` (0.1.273), host slots 4, on this 24-CPU host. Load is the one-minute average.
 
 ## Answers
 
@@ -40,18 +40,18 @@ The board row's count differs. `test/keys/validity` has 6 test files, not 12, an
 
 The 20 files without a gap either declare `src/**/*.ts` (16) or import their bundle's entry statically (`driver.ts`: `key-format`, `adapters`, `compare`, `reach`). Of the 59, 52 lack `src/core/scheduler/scheduler.ts` and 23 lack `src/core/status/standing.ts`.
 
-The stale pass, reproduced: in the clone, `scheduler.ts` and `busy-resume.ts` were set back to 69a6c09b2^ (the 011-126 slice undone; `tsc --noEmit` clean). `squeal status test/daemon/busy-tier.test.ts` said `1 pass ... each with a current result` at revision 3. `npx vitest run test/daemon/busy-tier.test.ts` on the same tree failed: "stalls [... {"ms":9449}] ... expected [...] to deeply equal []". This is the 2026-10-23 sighting.
+The stale pass, reproduced: in the clone, `scheduler.ts` and `busy-resume.ts` were set back to 23acdda1a^ (the 011-126 slice undone; `tsc --noEmit` clean). `squeal status test/daemon/busy-tier.test.ts` said `1 pass ... each with a current result` at revision 3. `npx vitest run test/daemon/busy-tier.test.ts` on the same tree failed: "stalls [... {"ms":9449}] ... expected [...] to deeply equal []". This is the 2026-10-23 sighting.
 
 **Q3. Option A, measured** (verified by experiment; `measure.log`, `runs.json`, `option-a-added.txt`). Option A declares `src/**/*.ts` for the 59 files (`option-a.config.json`). Each edit applies a commit's `src/` diff reversed, then `squeal run --all --wait`. The added share is the gap files whose current key lacks the edited file.
 
 | Run | Files run | Summed | Wall | Load (1-min) |
 | --- | --- | --- | --- | --- |
-| Current config, 011-126 edit (92b38a0f6, `scheduler.ts`) | 310, 22 of the 59 | 2,659 s | 790 s | 19 to 46 |
+| Current config, 011-126 edit (660ff4803, `scheduler.ts`) | 310, 22 of the 59 | 2,659 s | 790 s | 19 to 46 |
 | Option A adopted (config change) | 66 | n/a | 532 s | 13 to 37 |
 | Option A, same edit (other files already stored at their keys) | 65, all 59 | 1,586 s; A's added 52: 1,397 s | 617 s | 19 to 97 |
-| Option A, 011-124 edit (761090640, `standing.ts`) | 555 | 4,514 s; A's added 23: 658 s | 1,498 s | 21 to 48 |
+| Option A, 011-124 edit (509630eff, `standing.ts`) | 555 | 4,514 s; A's added 23: 658 s | 1,498 s | 21 to 48 |
 
-For the scheduler edit, A adds 52 % to the summed test time and about 10 minutes of wall to a worker's `run --all --wait`. For the status edit, it adds 17 %. `test/daemon/hold.test.ts` (273 s at load 3 to 17, 280 to 295 s here) is about a fifth of what A adds. At the census's low load, the 59 files sum to 957 s. Over the 1,335 `src/**/*.ts` commits since 2026-10-01 (about 70 a day), 1,322 left at least one of the 59 keyed short. That is a mean of 42 files and 722 s of census time per commit (inferred: closures at 7580d1a1d against each commit's files, `exposure.txt`). Option A re-runs all 59 on every `src/` commit, so this is its cost per commit. During the A edit run, `busy-edit.test.ts` failed its 1,000 ms bound (4,632 ms) at 1.93 load per CPU: a load failure, not the edit.
+For the scheduler edit, A adds 52 % to the summed test time and about 10 minutes of wall to a worker's `run --all --wait`. For the status edit, it adds 17 %. `test/daemon/hold.test.ts` (273 s at load 3 to 17, 280 to 295 s here) is about a fifth of what A adds. At the census's low load, the 59 files sum to 957 s. Over the 1,335 `src/**/*.ts` commits since 2026-10-01 (about 70 a day), 1,322 left at least one of the 59 keyed short. That is a mean of 42 files and 722 s of census time per commit (inferred: closures at a7c9e0ea7 against each commit's files, `exposure.txt`). Option A re-runs all 59 on every `src/` commit, so this is its cost per commit. During the A edit run, `busy-edit.test.ts` failed its 1,000 ms bound (4,632 ms) at 1.93 load per CPU: a load failure, not the edit.
 
 **Q4. Option B: the run reports the bundle's inputs** (verified by experiment). The seam is test code, not the recorder. The recorder keeps the paths a Vitest worker stats or reads (C12). Reads in `beforeAll` are attributed to the file: `buildCli`'s `copyFileSync` of `package.json` is in each daemon test's observed set. A probe test built as `buildCli` does with `--listFiles`, then stat'ed each `src/` path it printed (`option-b.probe.test.ts.txt`). After one run, its observed set held all 595. An edit to `src/cli/ps-index.ts`, outside its static closure, made it pending and re-ran it. `busy-tier.test.ts` stayed current through the same edit. For esbuild, the helpers pass `metafile: true` and stat `Object.keys(metafile.inputs)` (`ps-bundle.test.ts` already reads a `Metafile`). Change sites: `buildCli` (`test/daemon/helpers.ts:64`), `buildCodexBundles`, `buildOpencodeBundles` and `buildPiBundles` in the test helpers, `buildDist` or a wrapper around it, `test/keys/validity/bundle.ts`, and `graph-bundle.test.ts`. No store, key or recorder change. C3 says a change to what a key is computed from "re-keys the affected checks by itself and moves nothing", so neither `KEY_FORMAT_VERSION` nor `RECORDER_VERSION` moves (read in source code; spec 011 C3). The alternative is to teach the recorder about `tsc` and esbuild. That would change what the recorder observes and needs a `RECORDER_VERSION` raise under C3, and it gains nothing over the helper (inferred). Each file runs once more on its first observation (C12). B's re-run set for the `tsc` files equals A's, because `tsc` lists every non-test `src/` file. To narrow it, `buildCli` can stat the CLI's esbuild graph (480 files) instead. The 112 commits that touched only `src/harness/**` (8 %) then leave the daemon tests alone. A type error in an unloaded file still fails `tsc` in those tests, and the typecheck gate also reports it (inferred).
 
@@ -79,8 +79,8 @@ Whatever the choice, every `src/` edit then re-runs about 59 files that take 10 
 
 ## Sources
 
-- Repository at 7580d1a1d: `test/daemon/helpers.ts:64` (`buildCli`), `test/harness/bundle-helpers.ts:96` (`quietCli`), `test/keys/validity/bundle.ts`, `test/keys/validity/driver.ts`, `squeal.config.json`, `src/core/scheduler/observed.ts`, `src/core/keys/observed.ts`, `src/core/store/schema.ts`.
+- Repository at a7c9e0ea7: `test/daemon/helpers.ts:64` (`buildCli`), `test/harness/bundle-helpers.ts:96` (`quietCli`), `test/keys/validity/bundle.ts`, `test/keys/validity/driver.ts`, `squeal.config.json`, `src/core/scheduler/observed.ts`, `src/core/keys/observed.ts`, `src/core/store/schema.ts`.
 - Spec 011 `spec.md` C3 (key format version, closure) and C12 (runtime-input recorder); 001 `tasks/001-399/notes.md`.
 - `node_modules/typescript` 7.0.2: `lib/tsc.js`, `lib/getExePath.js`; esbuild 0.28.2 `lib/main.js`.
-- Commits used as edits: 92b38a0f6, 761090640, 69a6c09b2.
+- Commits used as edits: 660ff4803, 509630eff, 23acdda1a.
 - Probes and results: `probes/cli-build-inputs/` (README lists each file).

@@ -6,7 +6,7 @@
   "utc": "2026-11-06T09:10:15.589Z",
   "node": "v24.22.1",
   "cli": "~/.claude/plugins/cache/hearsay/squeal/0.1.407/dist/cli/squeal.mjs",
-  "commit": "adbdeb991a915c7c66937d9e0d0845066b78b9f8",
+  "commit": "47fd6fe1a9fdd3f13ea3f47e3c7ff70dfa47e37f",
   "vitest": "5.0.3",
   "phases": [
     {

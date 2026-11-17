@@ -28,8 +28,8 @@ Run from the repository root:
     $P/probe-slow.sh ~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs
 
 The candidate build was the committed plugin bundle of `cand/0.1.201`
-(f9c29e11), extracted with
-`git archive f9c29e11 plugins/claude-code | tar -x -C <tmp>` and passed as
+(b8b1a21a), extracted with
+`git archive b8b1a21a plugins/claude-code | tar -x -C <tmp>` and passed as
 `<tmp>/plugins/claude-code/dist/cli/squeal.mjs`.
 
 `output-<version>-lock.txt` and `output-<version>-slow.txt` are the runs the

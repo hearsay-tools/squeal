@@ -18,7 +18,7 @@ Owns: the A1 files and the two fixtures. Done when: each moved file passes 3 of 
 
 ## R1 (wave 113 W1 repair and wave 114 W1): review of cand/011-378-379
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-378-379` at `44bb3ac608184015ae45d1b1b58e2f48ab35d598`; candidate CI run 43916532418. Test files and notes only: no `src/` change, no version raise. Range `c1c2bd33e..44bb3ac608184015ae45d1b1b58e2f48ab35d598`: worker 312a691f's seven first-round commits (row 011-378, unchanged) and its repair (`11ee4c5dc`, `d23d316c3`), then worker f3c9eb6b's one commit (row 011-379, `56fe9425d`), cherry-picked without conflict.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-378-379` at `7b47e2d0b9e9a25ea8c069c8643ea945b2a3bc25`; candidate CI run 43916532418. Test files and notes only: no `src/` change, no version raise. Range `9513eb5c9..7b47e2d0b9e9a25ea8c069c8643ea945b2a3bc25`: worker 312a691f's seven first-round commits (row 011-378, unchanged) and its repair (`11ee4c5dc`, `d23d316c3`), then worker f3c9eb6b's one commit (row 011-379, `56fe9425d`), cherry-picked without conflict.
 
 Two parts:
 

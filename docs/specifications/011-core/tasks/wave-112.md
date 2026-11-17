@@ -34,7 +34,7 @@ Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; rep
 
 ## R1 (W1, with the W2 pilot): review of cand/0.1.524
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.524` at `0d4e11971c2e1691b62c08c270f7c39c76f7fde8`; candidate CI run 43899182157. Range `f17f9146b..0d4e11971c2e1691b62c08c270f7c39c76f7fde8` (main at 0.1.523 plus docs): worker 2249b18f's seven commits (row 011-377), the W2 survey's pilot commit (row 011-371: seven test files outside `test/scheduler/` move from `Scheduler.idle()` to `rest()`), then the 0.1.524 raise and bundles. Read: board rows 011-377 and 011-371; this file's W1 and W2; `tasks/011-377/notes.md` (its Design first); `tasks/011-371/survey.md` "Pilot"; `reviews/0.1.523.md` N2 and "Inputs for the coordinator".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.524` at `0d4e11971c2e1691b62c08c270f7c39c76f7fde8`; candidate CI run 43899182157. Range `ad1ed8676..0d4e11971c2e1691b62c08c270f7c39c76f7fde8` (main at 0.1.523 plus docs): worker 2249b18f's seven commits (row 011-377), the W2 survey's pilot commit (row 011-371: seven test files outside `test/scheduler/` move from `Scheduler.idle()` to `rest()`), then the 0.1.524 raise and bundles. Read: board rows 011-377 and 011-371; this file's W1 and W2; `tasks/011-377/notes.md` (its Design first); `tasks/011-371/survey.md` "Pilot"; `reviews/0.1.523.md` N2 and "Inputs for the coordinator".
 
 Check, each as proven, plausible or unverified:
 
@@ -60,7 +60,7 @@ Keep row 011-372 (one decision reading), the command-hold exception and unchange
 
 ## R2 (W1 repair): narrow re-review of cand/0.1.524
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.524` at `3ad54439e46971ba87588bf02a0b8d2d70585c6d`; candidate CI run 43907398762. Rebuilt on main `f87f8c365`: worker 2249b18f's seven first-round commits (unchanged), its repair (`5480be5eb` fix and tests, `319b33ecd` notes and glossary), the 011-371 pilot commit, then the 0.1.524 raise and bundles. Narrow: the repair, against `reviews/0.1.524.md` B1, B2, S1 and N2. Read that review and `tasks/011-377/notes.md` "Repair after review 0.1.524".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.524` at `204f8a550369c2d8025a72091b9576807b083552`; candidate CI run 43907398762. Rebuilt on main `0110f6600`: worker 2249b18f's seven first-round commits (unchanged), its repair (`5480be5eb` fix and tests, `319b33ecd` notes and glossary), the 011-371 pilot commit, then the 0.1.524 raise and bundles. Narrow: the repair, against `reviews/0.1.524.md` B1, B2, S1 and N2. Read that review and `tasks/011-377/notes.md` "Repair after review 0.1.524".
 
 Check, each as proven, plausible or unverified:
 

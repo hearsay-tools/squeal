@@ -31,7 +31,7 @@ against that manifest:
 `8e1c6279d2ddcc7ace5257d55690a332373a48dbe7e80c58ae53e1be1cc867fc`.
 The local release tag resolves to `ee3531548ed52c4ba692b48b0ae430d9c4965e48`.
 The fixture's store and identity helpers come from checkout
-`8ce4f23fc18c67cb1259b894fed74f395c0c02b5` (0.1.393); those sources and the
+`2432fc1128f402063f6aef0ca232ca75b296d615` (0.1.393); those sources and the
 status sources cited below have no diff against the release. No bundle was built.
 
 Exact outer command (original worker layout; probes were moved into this spec during integration):
@@ -108,7 +108,7 @@ logic waits for possible recovery and retains no verdict; it has no distinct
 `discovery-stalled` outcome. Queued test-file counts are not a measured count of
 files remaining to discover.
 
-**read in official docs; spec checkout `8ce4f23f`.** C6 requires honest incomplete
+**read in official docs; spec checkout `2432fc11`.** C6 requires honest incomplete
 counts. C9 preserves liveness uncertainty and existing lifecycle/hold rules.
 C15 explicitly distinguishes unlisted revisions from idle work. Its 2026-10-31
 011-286 amendment permits a verdict through a lapse only after the wait's sync,
@@ -136,7 +136,7 @@ early-return criterion the human would accept without weakening C15.
   No comments were present. Its incident claims are reported evidence only.
 - [Throwaway probe and method](probes/issue-142/README.md),
   [script](probes/issue-142/probe.mts), and output above.
-- [C6, C9, C15](../spec.md), [amendment log](../status.md), read at `8ce4f23f`.
+- [C6, C9, C15](../spec.md), [amendment log](../status.md), read at `2432fc11`.
 - Release source at [ee3531548](https://github.com/hearsay-tools/squeal/tree/ee3531548ed52c4ba692b48b0ae430d9c4965e48):
   `src/cli/named-selection.ts:90`, `retry-unlisted.ts:74`,
   `named-path-lines.ts:31`, `status-wait-lines.ts:220`,

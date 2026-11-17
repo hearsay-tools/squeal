@@ -20,14 +20,14 @@ A row's values can't say who wrote them. An older ledger's same-revision K -> K2
 
 | Succession | Result | Test |
 | --- | --- | --- |
-| New answers, old registers and does K -> K2 -> K between two polls, before refinement | registration differs: fallback, timeout | `status-wait-round-trip.test.ts`, red at 58cd9a38 (quiet) |
-| Same, after the window was built | dropped at the next poll: timeout | same file, red at 58cd9a38 (quiet) |
-| Old does K -> K2 -> K, then a new ledger's first commit, then the wait syncs with it | A adopted as an open move: the wait holds for A (2 files, 1 pending) | same file, red at 58cd9a38 (quiet); `first-commit-adoption.test.ts` with a real second ledger, red at 58cd9a38 (nothing adopted) |
+| New answers, old registers and does K -> K2 -> K between two polls, before refinement | registration differs: fallback, timeout | `status-wait-round-trip.test.ts`, red at 51ff872d (quiet) |
+| Same, after the window was built | dropped at the next poll: timeout | same file, red at 51ff872d (quiet) |
+| Old does K -> K2 -> K, then a new ledger's first commit, then the wait syncs with it | A adopted as an open move: the wait holds for A (2 files, 1 pending) | same file, red at 51ff872d (quiet); `first-commit-adoption.test.ts` with a real second ledger, red at 51ff872d (nothing adopted) |
 | The answering daemon itself does the round trip (control) | its moves name A: holds | same file |
 | 13ac's single-move successions, before refinement and after the window | timeout, no window | `status-wait-successor.test.ts` |
 | New CLI, a daemon whose sync has no incarnation | fallback | `status-wait.test.ts` (`answering(..., null)`), `rekeyed-moves.test.ts` |
-| Actual 0.1.112 CLI (`cf7e8a2c` bundle), static, against this daemon's socket and record | exit 0, timeout, no `edit`, A queued | manual probe, below |
-| Actual 0.1.115 CLI (`58cd9a38` bundle), same | exit 0, timeout, no `edit`, A queued | manual probe, below |
+| Actual 0.1.112 CLI (`d58dd59c` bundle), static, against this daemon's socket and record | exit 0, timeout, no `edit`, A queued | manual probe, below |
+| Actual 0.1.115 CLI (`51ff872d` bundle), same | exit 0, timeout, no `edit`, A queued | manual probe, below |
 | A later daemon registers between two polls, or the answering one unregisters | fallback | `rekeyed-moves.test.ts` |
 | Fresh worktree: a wait that starts before the daemon's first commit | nothing adopted: quiet once A has its result, B (baseline) still queued | `status-wait-first-commit.test.ts`, red with always-adopt |
 | New-to-new restart, crash or clean exit, wait before the first commit | same: quiet on A | same file, red with always-adopt (crash, clean) and with the clear unchanged (clean) |

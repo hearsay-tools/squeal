@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Reviewed product candidate: `2247281c2b6382f1084e749a13e8296e75a9c8a2` (0.1.146). Actual clean checkout at verification start: `b36a5b5bf96da5a28d2b1fcc9eb59cedc1f9470a`. Only board and 001 review documents differ after the candidate; `git diff 2247281c..b36a5b5b --name-only` confirms no product differences. The HEAD mismatch is reported below. Scope is 005-21, 005-15, 005-19 and their build; 001 and 006 work is excluded.
+Reviewed product candidate: `5977350f9facad597723c32520027cd7bbf78236` (0.1.146). Actual clean checkout at verification start: `e7005ee119ff1e398782c64e08c423ee29ae3149`. Only board and 001 review documents differ after the candidate; `git diff 5977350f..e7005ee1 --name-only` confirms no product differences. The HEAD mismatch is reported below. Scope is 005-21, 005-15, 005-19 and their build; 001 and 006 work is excluded.
 
 ```text
 $ npm ci
@@ -65,7 +65,7 @@ $ git status --short
 
 Npm emitted its existing `store-dir` configuration warning and install-script notices for esbuild and @parcel/watcher. The capped run also printed fixture gitdir repair lines, a cleanup of one process left by an earlier run, and experimental typecheck warnings; it nevertheless completed with exit 0 and no reported test failures. The coordinator stopped the uncapped run because its concurrency drove host load to 323 and other gates were timing out. That interrupted run is **unverified**, not a completed failure verdict. The capped rerun started and ended on clean review-only commit `a3781b51`; its full output is above. It passed: 458 files, 3,864 tests, with one file and ten tests skipped, in 670.04 s. No timing failure remained in this run. At 15:21 UTC the uncapped run had load `201.95 103.12 75.43`. Its timing failures are not findings against the wave. Observations before interruption included Codex bundle-parse and hook waits, daemon restart/idle timing, scheduler backlog duration bounds, and runner-part deadline failures. The interrupted run never produced a complete summary. All are superseded for verification by the passing capped full suite; no source changed between runs.
 
-The verification above is at the actual checkout (install/lint/typecheck/build at `b36a5b5b`, capped suite at clean `a3781b51`), not the literal candidate SHA, so is **unverified for the exact candidate** under the reviewer rule. It is verified for those recorded clean commits; the product tree is identical to the candidate. The initial report commit changes only this review file. Probes use only ignored scratch directories inside this worktree (`node_modules/.review-00533`), synthetic store data and stub CLIs in a scratch HOME. No model or real harness session ran. No source changed.
+The verification above is at the actual checkout (install/lint/typecheck/build at `e7005ee1`, capped suite at clean `a3781b51`), not the literal candidate SHA, so is **unverified for the exact candidate** under the reviewer rule. It is verified for those recorded clean commits; the product tree is identical to the candidate. The initial report commit changes only this review file. Probes use only ignored scratch directories inside this worktree (`node_modules/.review-00533`), synthetic store data and stub CLIs in a scratch HOME. No model or real harness session ran. No source changed.
 
 ## Verdict
 
@@ -164,7 +164,7 @@ D6 says the checkpoint/status units follow D1. The main skill still shows `40 cu
 
 ### N1. Proven, nonblocking: checkout HEAD differs from the build candidate
 
-`git rev-parse HEAD` was `b36a5b5b`, not `2247281c`. The intervening files are only `docs/board.md` and 001's review documents. Report this provenance difference; do not repair board/status or include 001/006 changes in the fix wave. No product mismatch was found.
+`git rev-parse HEAD` was `e7005ee1`, not `5977350f`. The intervening files are only `docs/board.md` and 001's review documents. Report this provenance difference; do not repair board/status or include 001/006 changes in the fix wave. No product mismatch was found.
 
 ## What fits
 

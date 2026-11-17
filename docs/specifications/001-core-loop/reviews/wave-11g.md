@@ -2,13 +2,13 @@
 
 ## Verification
 
-Candidate: `581f5022c4a0d519b3070e9857f232d7452513f0` (0.1.25). This re-review is bounded by `reviews/wave-11f.md`: close B1, S1 and S2, inspect the 001-118 delta, and record new issues as notes. The worker range starts with `b8dc449` and ends with `25ebd10`, cherry-picked as `34000f8`, `31a53b4`, `b139eae`, `411fbb0`, `57021d3`, `ae8f39f` and `64bfec5`. Other rows included in the build are outside this review.
+Candidate: `a2ad8978df6a19bbdc2c3a6a67365743eb9adc44` (0.1.25). This re-review is bounded by `reviews/wave-11f.md`: close B1, S1 and S2, inspect the 001-118 delta, and record new issues as notes. The worker range starts with `b8dc449` and ends with `25ebd10`, cherry-picked as `34000f8`, `31a53b4`, `b139eae`, `411fbb0`, `57021d3`, `ae8f39f` and `64bfec5`. Other rows included in the build are outside this review.
 
-Initial HEAD was `3911ad08c0f741d25afda3b43e391c9760365ba8`. The coordinator explicitly authorized that documentation-only descendant (board and this task's brief), with no mismatch finding needed. All verification and probes ran detached at the requested candidate. `git status --short` was empty before verification, after build, after the probes and after their removal. The task branch was restored before writing this file. No candidate code was changed.
+Initial HEAD was `2f9097145110c1a0b9a7d9c17328e27aaf058b50`. The coordinator explicitly authorized that documentation-only descendant (board and this task's brief), with no mismatch finding needed. All verification and probes ran detached at the requested candidate. `git status --short` was empty before verification, after build, after the probes and after their removal. The task branch was restored before writing this file. No candidate code was changed.
 
 ```text
 $ git rev-parse HEAD
-581f5022c4a0d519b3070e9857f232d7452513f0
+a2ad8978df6a19bbdc2c3a6a67365743eb9adc44
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
 
@@ -149,7 +149,7 @@ That background snapshot does not certify a full suite. No success claim here re
 
 ## Verdict
 
-**PASS 581f5022c4a0d519b3070e9857f232d7452513f0**.
+**PASS a2ad8978df6a19bbdc2c3a6a67365743eb9adc44**.
 
 0 blocking findings, 1 new should-fix note, 0 nits. The note is **proven**, nonblocking under the bounded re-review instruction. Prior wave-11f B1, S1 and S2 are closed. Full-suite success is not claimed.
 

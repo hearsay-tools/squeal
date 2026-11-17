@@ -113,7 +113,7 @@ The 250 and 400 MiB rows allow for a second, slow-lane instance and for leaked i
 
 ## Sources
 
-- Squeal source at `75eb621b1`: `src/runners/vitest/adapter.ts` (`#start`, `#recreate`, `close`), `related.ts`, `graph.ts`, `src/core/daemon/slow-instance.ts`, `runner.ts`, `scratch.ts`, `paths.ts`, `src/core/slow/slot.ts`, `src/core/capacity/pool.ts`, `src/core/scheduler/refinement.ts`; spec 011 C4, C9, C10.
+- Squeal source at `54046e639`: `src/runners/vitest/adapter.ts` (`#start`, `#recreate`, `close`), `related.ts`, `graph.ts`, `src/core/daemon/slow-instance.ts`, `runner.ts`, `scratch.ts`, `paths.ts`, `src/core/slow/slot.ts`, `src/core/capacity/pool.ts`, `src/core/scheduler/refinement.ts`; spec 011 C4, C9, C10.
 - Research: `daemon-scope.md` 1 and 3 and `probes/daemon-scope/snapshot-1.json`; `../../014-ps/research/process-measurement.md` 2.
 - Vite 8.1.4: `node_modules/.pnpm/vite@8.1.4_…/node_modules/vite/dist/node/chunks/node.js` lines 32035 to 32107 (`viteResolvePlugin`, `onWarn`). Rolldown 1.1.5: `@rolldown/binding-linux-x64-gnu/rolldown-binding.linux-x64-gnu.node` (mimalloc option names). Vitest 4.1.10: `dist/node.js`.
 - Node v24.21.0: `node --v8-options` (memory reducer, pooled pages, semi-space, memory saver flags).

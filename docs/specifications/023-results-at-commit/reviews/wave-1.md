@@ -2,7 +2,7 @@
 
 FAIL `f11962b246ad325495b1b2069a48bc6c77ba5dda`
 
-Range: `2ca6a943c..f11962b24`, candidate `cand/0.1.528`, rows 023-03, 023-04 and 023-05. Counts: **3 proven blockers, 0 should-fix, 0 nits**. No product file was changed in this review.
+Range: `161b1ed9f..f11962b24`, candidate `cand/0.1.528`, rows 023-03, 023-04 and 023-05. Counts: **3 proven blockers, 0 should-fix, 0 nits**. No product file was changed in this review.
 
 ## Verification
 
@@ -16,7 +16,7 @@ All local checks and probes below used the exact candidate with a clean tracked 
 | `pnpm run lint` | Exit 0: `Checked 3567 files in 1286ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |
 | `pnpm run build` | Exit 0: `tsrs --fast -p tsconfig.build.json && pnpm run build:plugin`; all four harness builds completed; no bundle drift |
-| `git diff --check 2ca6a943c..f11962b24` | Exit 0, no output |
+| `git diff --check 161b1ed9f..f11962b24` | Exit 0, no output |
 | Squeal affected source check, command below | Exit 3 at the wait deadline: 12 current passes, 75 pending, 261 unknown among 348 selected files. No known failures. Directory arguments selected no files; the named-test check below covers the new checkout and ps tests. |
 | Squeal check of the nine new or extended test files, command below | Exit 0: `Named test files at revision 0: no known failures; 9 test files, each with a current result, after 11.4 s.` Three unknown files were requested and completed: files-only gate, parent-kill, and relaunch. Other current results can be inherited by content key; these are not a claim of fresh execution at this commit. |
 | Broader gate compatibility check, command below | Exit 3 after 63.4 s: **19 current passes, 52 pending** among 71 files. No known failures. Existing gate compatibility is only partly verified. No direct duplicate run was started. |

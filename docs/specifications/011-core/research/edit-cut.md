@@ -2,7 +2,7 @@
 
 Researcher R2 of 011 wave 6, 2026-10-20. Brief: `tasks/wave-6.md` R2. Read: `docs/vision.md`, `docs/styleguide.md`, `docs/process.md`, board row 011-25, `research/central-edits.md` and its probes, spec 011 C4 step 4 and C15, `status.md`.
 
-Versions: Squeal main at `b3e190d6` (after `84509d92`). Cezar's store: the read-only copy `/tmp/r3/cezar-store.sqlite` of 2026-10-19T22:21Z that `central-edits.md` read, so cezar's 62 central and 293 agent revisions are the same ones. Squeal's own store: a copy made 2026-10-20T10:48Z through a `readOnly` connection (`VACUUM INTO`), 1,832 revisions in 29 worktrees, 887 test files. Graphs: `git archive` of 25 cezar heads and 62 Squeal heads into scratch directories, the static one-hop graph of `central-edits.md` (oxc as Vite 8 uses it, es-module-lexer 2.3.1). **No live measurement ran**: the one-minute load was 54 to 76 on 24 CPUs from 12:47 to 13:04 local, above the hold of 8. Every time below is a replay of recorded durations or a read of a store. Probes: `probes/edit-cut/` (README lists each).
+Versions: Squeal main at `7d729f61` (after `f8eef4c9`). Cezar's store: the read-only copy `/tmp/r3/cezar-store.sqlite` of 2026-10-19T22:21Z that `central-edits.md` read, so cezar's 62 central and 293 agent revisions are the same ones. Squeal's own store: a copy made 2026-10-20T10:48Z through a `readOnly` connection (`VACUUM INTO`), 1,832 revisions in 29 worktrees, 887 test files. Graphs: `git archive` of 25 cezar heads and 62 Squeal heads into scratch directories, the static one-hop graph of `central-edits.md` (oxc as Vite 8 uses it, es-module-lexer 2.3.1). **No live measurement ran**: the one-minute load was 54 to 76 on 24 CPUs from 12:47 to 13:04 local, above the hold of 8. Every time below is a replay of recorded durations or a read of a store. Probes: `probes/edit-cut/` (README lists each).
 
 ## Questions answered
 
@@ -201,8 +201,8 @@ Under (n) and (n+K), a source without a namesake keeps all its direct importers,
 
 ## Sources
 
-- Squeal main `b3e190d6`: spec 011 C4 step 4, C15, `status.md`; board row 011-25; `research/central-edits.md` and `probes/central-edits/` (`graph.mjs`, `direct.mjs`, `replay.mjs`, reused in method); `probes/catch-up/{calibrate,explained,snapshot}.mjs`.
+- Squeal main `7d729f61`: spec 011 C4 step 4, C15, `status.md`; board row 011-25; `research/central-edits.md` and `probes/central-edits/` (`graph.mjs`, `direct.mjs`, `replay.mjs`, reused in method); `probes/catch-up/{calibrate,explained,snapshot}.mjs`.
 - Cezar's store copy `/tmp/r3/cezar-store.sqlite` (2026-10-19T22:21Z) and git `~/projects/cezar` (25 heads; hubs at `a8042ec3`). Squeal's store `~/projects/squeal/.git/squeal/store.sqlite`, copied to `/tmp/r25b/squeal-store.sqlite` (2026-10-20T10:48Z), and git (62 heads). `project-a`'s store, copied to `/tmp/r25b/mvp-store.sqlite`, and `git ls-files` at `00bbf84a`.
-- Squeal's static graph trust (`probes/edit-cut/results/trust-squeal.txt`, at `dbe34551`): 737 test files, recall 0.949, precision 1.000 against stored closures. The misses are runtime-read preloads (`src/runners/observe/recorder.cjs` in 64 closures).
+- Squeal's static graph trust (`probes/edit-cut/results/trust-squeal.txt`, at `f3420449`): 737 test files, recall 0.949, precision 1.000 against stored closures. The misses are runtime-read preloads (`src/runners/observe/recorder.cjs` in 64 closures).
 - rolldown 1.1.5 and es-module-lexer 2.3.1 from the npm registry.
 - Probes: `probes/edit-cut/` (README, `lib.mjs`, `classify.mjs`, `trust.mjs`, `namesakes.mjs`, `hubs.mjs`, `replay.mjs`, `results/`).

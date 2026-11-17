@@ -2,7 +2,7 @@
 
 Throwaway. These scripts and outputs back `../../local-capture.md` and are not product code. Nothing here is imported by Squeal or its tests. Run them only from a scratch directory under `$TMPDIR`; they never start an agent CLI and never write to a checkout.
 
-Run on 2026-11-09, Node v24.22.1, Vitest 5.0.3 (this worktree's `node_modules`), Squeal source at `57fda39b7` (0.1.419).
+Run on 2026-11-09, Node v24.22.1, Vitest 5.0.3 (this worktree's `node_modules`), Squeal source at `70d3dd91b` (0.1.419).
 
 - `manual-runs.mjs --from <day> --to <day> --json <out> --skip <session id>`: test runs agents started themselves, from Claude Code transcripts (main and subagent files) under `~/.claude/projects/-home-user-projects-{squeal,cezar}*` and Codex rollouts under `~/.codex/sessions/2026/11/*` whose `cwd` is in either repository. Read only. The classifier is copied from `specifications/005-agent-adoption/research/probes/adoption-baseline/metric.mjs` (`classifyTest`), with two additions: the runner word must stand in command position (only `timeout`, `nice`, `env`, assignments and `pnpm exec`/`npx`/`npm exec` before it), and `node <script> --test` is not node:test (cezar's `check.mjs` takes a `--test` flag). The raw JSON holds command text from transcripts, so it stays in `$TMPDIR` and is not committed.
 - `summarize.mts <runs.json> <worktree>` (through the worktree's `tsx`): the counts in `out-manual-runs.txt`, plus each command passed to Squeal's own recognizer (`recognizeTestCommand` with `commandContext(readPolicy(root), root, root)`, as `deny.ts` builds it).

@@ -44,7 +44,7 @@ Wave 17 W1. hearsay-tools/squeal#1, its first criterion. Before this, a pass tha
 
 - `test/daemon/busy-edit.test.ts` runs a real daemon beside `long-writer.ts` holding the lock once for 12 s. An edit 1 s into the hold must land within 1 s of the lock freeing; so must a heartbeat. Every ping, sent every 100 ms with a 1 s timeout, must be answered. Exactly one busy note must name the revision, with no `database is locked` note.
   - Measured: revision +146 ms, heartbeat +44 ms (load 1.7).
-  - On `55ac514a` (src identical to `8737cdc0`) it fails: the revision came 29,163 ms after the lock freed, the next interval pass.
+  - On `5a8a9391` (src identical to `cfb3b034`) it fails: the revision came 29,163 ms after the lock freed, the next interval pass.
 - `test/scheduler/busy-record.test.ts`: the first tier of an edit runs while a second connection takes the lock for 1.5 s, at a 50 ms busy timeout. The pump resumes with no new batch, the edit's state is recorded at its revision, no `scheduler stopped` or `database is locked` note appears, and one busy note names the queued tier.
   - With the busy branch of `#stall` disabled, `idle()` resolves before the release and the test fails.
 - `test/store/busy-slice.test.ts`:

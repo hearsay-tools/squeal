@@ -1,6 +1,6 @@
 # 011-371: `Scheduler.idle()` goes (wave 116 W1)
 
-Worker 98337e28, 2026-11-16. Base: main `bbd3f9d99`.
+Worker 98337e28, 2026-11-16. Base: main `e7ce7be1b`.
 
 ## Removed
 

@@ -2,7 +2,7 @@
 
 Keep the sync guard; treat this as a snapshot timing and explanation question, not a ban on inherited results at revision zero.
 
-Examined 2026-11-01: Squeal **0.1.389**, source commit `6e573c80bbad0c295e35b7a50d912ff151ffa3d1`, installed launcher and daemon **0.1.389**, Node **v24.22.1**, pnpm **12.15.0**. Research only. No product change, build, test-suite run, daemon restart, or change to existing holds.
+Examined 2026-11-01: Squeal **0.1.389**, source commit `3a38415904caae24b19eb7a57ef843039be17e70`, installed launcher and daemon **0.1.389**, Node **v24.22.1**, pnpm **12.15.0**. Research only. No product change, build, test-suite run, daemon restart, or change to existing holds.
 
 ## Questions and verdict
 
@@ -70,6 +70,6 @@ Open questions: the original incident's exact sync state and duration; what cons
 ## Sources
 
 - [Issue 132](https://github.com/hearsay-tools/squeal/issues/132), fetched with `gh issue view 132 --repo hearsay-tools/squeal --json number,title,body,comments,url`.
-- [Source tree at the examined commit](https://github.com/hearsay-tools/squeal/tree/6e573c80bbad0c295e35b7a50d912ff151ffa3d1); exact source paths and functions above.
+- [Source tree at the examined commit](https://github.com/hearsay-tools/squeal/tree/3a38415904caae24b19eb7a57ef843039be17e70); exact source paths and functions above.
 - [Spec C6/C15](../spec.md), [amendments](../status.md), read at the same commit.
 - [Probe README and exact commands](probes/issue-132/README.md); captures and executable probe in that directory.

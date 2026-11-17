@@ -2,11 +2,11 @@
 
 These probes support [the findings](../../dist-distribution.md). They are research fixtures, not product code or regression suites. Run from the repository root. No harness installation, settings mutation, publication, full suite, credentials or model session is involved. Temporary builds and Git repositories are deleted on exit. Do not commit `node_modules` or generated bundles here.
 
-Examined product commit: `181054dd748f2834b423a23b1cababd0d520dd5d` (0.1.367). Run date: 2026-10-27. Node 24.22.1. Dependencies were already installed from the pinned pnpm lock.
+Examined product commit: `f7aed802784d33b09af23a1c525f7a0b76d3f797` (0.1.367). Run date: 2026-10-27. Node 24.22.1. Dependencies were already installed from the pinned pnpm lock.
 
 | Command | Saved result | Actual result |
 |---|---|---|
-| `python3 docs/specifications/001-core-loop/research/probes/dist-distribution/inventory.py 181054dd748f2834b423a23b1cababd0d520dd5d` | `inventory.json` | Exit 0. 98 dist files, 35,618,004 bytes. Last 100 first-parent commits: three touch dist; dist contributes 22,520 of 45,852 changed text lines. |
+| `python3 docs/specifications/001-core-loop/research/probes/dist-distribution/inventory.py f7aed802784d33b09af23a1c525f7a0b76d3f797` | `inventory.json` | Exit 0. 98 dist files, 35,618,004 bytes. Last 100 first-parent commits: three touch dist; dist contributes 22,520 of 45,852 changed text lines. |
 | `pnpm exec tsx docs/specifications/001-core-loop/research/probes/dist-distribution/build.mts` | `build.json` | Exit 0. Two builds each of four harnesses. No repeat differences and no checkout differences across 98 files. |
 | `python3 docs/specifications/001-core-loop/research/probes/dist-distribution/archive.py` | `archive.json` | Exit 0. Actual installer `unpack()` extracts Pi/OpenCode with all hashes equal. Git plugin targets contain hook bundles. Main contains no dist. Ancestor-tag helper misses the newest release tag. |
 

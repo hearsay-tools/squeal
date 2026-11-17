@@ -16,7 +16,7 @@ not replayed. This research changes no product, policy, spec, board or hold.
 | 1. Does a completed file become current before a non-yielding named batch ends? | No. Its module end is visible but its key has no stored results until the tier ends. **verified by experiment** | Squeal 0.1.407, Vitest 5.0.3 |
 | 2. Is the pending state due to a changed revision or key? | No in the unedited case: revision 0 and identical keys throughout. In the edited case only the later file changes key; the original pair still waits. **verified by experiment** | 0.1.407 |
 | 3. Must a later narrow wait also wait? | An unedited file with unknown duration queued; an actual edit passed beside the batch. These are separate scheduling cases. **verified by experiment** | 0.1.407 |
-| 4. Does the current streaming contract promise early verdicts? | No. `fileEnded` streams progress, not results. Final report, completion barrier and stability checks precede storage. **read in source code** | 0.1.407 source at `7cc32a610`; same callback contract at 0.1.403 tag `138bdc6f1` |
+| 4. Does the current streaming contract promise early verdicts? | No. `fileEnded` streams progress, not results. Final report, completion barrier and stability checks precede storage. **read in source code** | 0.1.407 source at `f0ae452c7`; same callback contract at 0.1.403 tag `95f066d68` |
 
 ## Experiment and exact evidence
 
@@ -125,9 +125,9 @@ original pair. This limits install realism, not the observed ordering.
 - [Issue 152](https://github.com/hearsay-tools/squeal/issues/152), fetched with
   `gh issue view 152 --repo hearsay-tools/squeal --json number,title,body,url,comments`.
 - [011 spec](../spec.md), C4/C6/C14/C15, and [status amendments](../status.md),
-  especially 011-268/269 and 011-283; read at `7cc32a610bf3d00a331dffa76205f30251fafd79`.
+  especially 011-268/269 and 011-283; read at `f0ae452c71367d439af0415f5dd56dfc21e42da2`.
 - [013 spec](../../013-vitest-runner/spec.md), V4/V5, and its status log at that commit.
-- [0.1.403 callback source](https://github.com/hearsay-tools/squeal/blob/138bdc6f14f068708dfe9927c8471a3ede8235a8/src/core/types/runner.ts#L274),
+- [0.1.403 callback source](https://github.com/hearsay-tools/squeal/blob/95f066d68f56f6aef0072b4f907b713c9f8cb327/src/core/types/runner.ts#L274),
   read with `git show squeal--v0.1.403:src/core/types/runner.ts`.
 - [Probe and evidence](probes/issue-152/README.md): two live
   scenarios, each final named selection passed 3 files; both daemons stopped

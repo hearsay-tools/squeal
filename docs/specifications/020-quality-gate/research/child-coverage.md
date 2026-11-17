@@ -1,6 +1,6 @@
 # survey-020-10: coverage of child processes
 
-Researcher, 2026-11-10. Brief: "survey-020-10" in `../tasks/wave-2.md`; spec D5, D8 to D10. Read-only on the product. Probes: `probes/child-coverage/` (throwaway). Versions: this repository at `1e8b506ed`, Node 24.22.1, Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Host: 24 vCPUs, one-minute load 21 to 33 during every run. Starting points: `../../015-coverage-complexity/research/child-processes.md` (R3, at `2e36f1ed2`, Node 24.21.0) and `issue-144.md`.
+Researcher, 2026-11-10. Brief: "survey-020-10" in `../tasks/wave-2.md`; spec D5, D8 to D10. Read-only on the product. Probes: `probes/child-coverage/` (throwaway). Versions: this repository at `fae073967`, Node 24.22.1, Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Host: 24 vCPUs, one-minute load 21 to 33 during every run. Starting points: `../../015-coverage-complexity/research/child-processes.md` (R3, at `4f6e615e6`, Node 24.21.0) and `issue-144.md`.
 
 ## Questions answered
 
@@ -16,7 +16,7 @@ Researcher, 2026-11-10. Brief: "survey-020-10" in `../tasks/wave-2.md`; spec D5,
 
 ### Q1. Collection today and the two seams
 
-**Today** (read in source code, `1e8b506ed`). Squeal's Vitest provider takes coverage through `node:inspector` in the worker (`src/core/code/coverage/provider.mjs:72-76`). It never sets `NODE_V8_COVERAGE`, so a child of a Vitest worker writes nothing, unless a project or an outer tool set the variable. The node:test run sets the variable per test file (`run/coverage.ts:25-28`). The recorder deletes it in the test file's process (Q2). The gate (`src/core/code/gate/collect.ts:160-198`) opens these same adapters with coverage on, and maps each payload with `mapHere` in `recordsOf`. So the gate and the daemon have the same boundary.
+**Today** (read in source code, `fae073967`). Squeal's Vitest provider takes coverage through `node:inspector` in the worker (`src/core/code/coverage/provider.mjs:72-76`). It never sets `NODE_V8_COVERAGE`, so a child of a Vitest worker writes nothing, unless a project or an outer tool set the variable. The node:test run sets the variable per test file (`run/coverage.ts:25-28`). The recorder deletes it in the test file's process (Q2). The gate (`src/core/code/gate/collect.ts:160-198`) opens these same adapters with coverage on, and maps each payload with `mapHere` in `recordsOf`. So the gate and the daemon have the same boundary.
 
 **Node's rule** (verified by experiment, Node 24.22.1). A process keeps the coverage directory it read at startup. Children and worker threads use the value in `process.env` when they start. A process started with `a` that sets the variable to `b` writes its own file to `a`, and its child and its worker thread write to `b`. A worker thread started in a process that had no variable at startup also writes, when the variable is set at `new Worker`.
 
@@ -26,7 +26,7 @@ Researcher, 2026-11-10. Brief: "survey-020-10" in `../tasks/wave-2.md`; spec D5,
 
 ### Q2. Where the variable is deleted
 
-Read in source code, `1e8b506ed`: `src/runners/node-test/runtime/recorder.cjs:56-65`. With `NODE_TEST_CONTEXT` and `SQUEAL_NODE_TEST_COVERAGE` set, the recorder deletes `SQUEAL_NODE_TEST_COVERAGE` at once. Then `hideCoverage` deletes `NODE_V8_COVERAGE` when it equals Squeal's directory. It runs as the main script resolves (`:94`), after preloads, because tsx keeps the source text only while it sees the variable. Where the main script is unknown, it runs at once (`:79`). After the run, `coveragePayloads` (`run/coverage.ts:41-56`) keeps one main-thread file of the pid named by `own-<pid>` and deletes all other files. `ProjectCoverage` (`node-test/coverage.ts:47-53`, `:100-102`) turns coverage off under `--test-isolation=none`, because no test process of its own could delete the variable. The Vitest side has no deletion, because it never sets the variable.
+Read in source code, `fae073967`: `src/runners/node-test/runtime/recorder.cjs:56-65`. With `NODE_TEST_CONTEXT` and `SQUEAL_NODE_TEST_COVERAGE` set, the recorder deletes `SQUEAL_NODE_TEST_COVERAGE` at once. Then `hideCoverage` deletes `NODE_V8_COVERAGE` when it equals Squeal's directory. It runs as the main script resolves (`:94`), after preloads, because tsx keeps the source text only while it sees the variable. Where the main script is unknown, it runs at once (`:79`). After the run, `coveragePayloads` (`run/coverage.ts:41-56`) keeps one main-thread file of the pid named by `own-<pid>` and deletes all other files. `ProjectCoverage` (`node-test/coverage.ts:47-53`, `:100-102`) turns coverage off under `--test-isolation=none`, because no test process of its own could delete the variable. The Vitest side has no deletion, because it never sets the variable.
 
 ### Q3. Mapping with `ownRecord`
 
@@ -57,7 +57,7 @@ Verified by experiment (`analyze.out.json`). Each child file was mapped with `ow
 ### Q5. Tests that see the variable
 
 - **This repository** (verified by experiment, `visible.out.txt`). A static scan found 18 test files that compare a child's or a process's environment, or name the variable. They ran with the variable set in each worker, as the Vitest seam sets it. 17 passed. `test/runners/vitest/own-provider.test.ts` failed 2 of 4 tests: its fixture `self-coverage.test.ts` asserts that precise coverage "counts only what ran after it started". Its Vitest worker is a child of the test, so it starts with the variable. Alone and with the variable off, the file passed 4 of 4. `self-count.mjs` shows the cause: the same call count is 1 without the variable and 2 with it. `recorder.test.ts`, the one failure in R3, now passes (row 015-33 changed it).
-- **Not determined for the other ~1,540 test files.** The host rule allows no full suite, and the load was 21 to 33. R3's run 1 at `2e36f1ed2` had 8 failed files, and R3 named only `recorder.test.ts` as caused by the variable.
+- **Not determined for the other ~1,540 test files.** The host rule allows no full suite, and the load was 21 to 33. R3's run 1 at `4f6e615e6` had 8 failed files, and R3 named only `recorder.test.ts` as caused by the variable.
 - **Squeal's own default-off tests stay valid.** These assert that the variable is deleted: `test/runners/node-test/coverage.test.ts` (fixture `:76-104`, assertion `:261`, a project's own variable `:352`) and `coverage-entry.test.ts:32-42`. They test the default, `children: false`.
 - **Which tests a user can expect to break** (inferred from the failure). Tests that spawn a process that reads its own V8 coverage, such as a nested Vitest or c8 run. Tests that compare a child's whole environment. Tests that read the variable.
 
@@ -93,6 +93,6 @@ Order: 10a can start in wave 3. 10b waits for 020-07, which owns `loaders.ts` an
 ## Sources
 
 - Probes: `probes/child-coverage/` (README, scripts, outputs). Raw files are in the scratch directory `.ai/cezar/t/0989b0c0/cc`, outside git.
-- Repository at `1e8b506ed`: `src/runners/node-test/runtime/recorder.cjs`, `run/coverage.ts`, `coverage.ts`, `adapter-environment.ts`; `src/core/code/coverage/provider.mjs`, `own.ts`, `own-map.ts`, `mapper.ts`, `writer.ts`, `drops.ts`; `src/runners/vitest/coverage.ts`, `environment.ts`; `src/core/code/gate/collect.ts`, `evaluate.ts`; `src/core/code/crap/join.ts`, `loaders.ts`, `score.ts`; `src/core/scheduler/keying.ts` (`observedOf`); `test/runners/vitest/own-provider.test.ts`.
+- Repository at `fae073967`: `src/runners/node-test/runtime/recorder.cjs`, `run/coverage.ts`, `coverage.ts`, `adapter-environment.ts`; `src/core/code/coverage/provider.mjs`, `own.ts`, `own-map.ts`, `mapper.ts`, `writer.ts`, `drops.ts`; `src/runners/vitest/coverage.ts`, `environment.ts`; `src/core/code/gate/collect.ts`, `evaluate.ts`; `src/core/code/crap/join.ts`, `loaders.ts`, `score.ts`; `src/core/scheduler/keying.ts` (`observedOf`); `test/runners/vitest/own-provider.test.ts`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/base.DhkQeZwd.js`, `index.ggMXe2IF.js`, `coverage.S6Dao4g-.js`.
 - `../../015-coverage-complexity/research/child-processes.md` (R3), `quality-gate.md` Q4 and Q5, `issue-144.md`.

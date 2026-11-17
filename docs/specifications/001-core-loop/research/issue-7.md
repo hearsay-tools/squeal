@@ -51,7 +51,7 @@ Error: database is locked
     at readTransaction
 ```
 
-`held()` runs for every query that is not an exact known check (`why.ts:64` to `65`). It calls `store.results.byKey(key, 0)` for each current key of the worktree. `byKey` always runs `UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?` first; with `usedAt` 0 it matches no row, but the statement still needs the write lock. Added to `byKey` in `2758708a` (2026-10-04, from 0.1.62); called from `why` since `3231a087` (001-188, 2026-10-09, from 0.1.86). *Read in source code.*
+`held()` runs for every query that is not an exact known check (`why.ts:64` to `65`). It calls `store.results.byKey(key, 0)` for each current key of the worktree. `byKey` always runs `UPDATE results SET last_used_at = ? WHERE key = ? AND last_used_at < ?` first; with `usedAt` 0 it matches no row, but the statement still needs the write lock. Added to `byKey` in `b8a89bd4` (2026-10-04, from 0.1.62); called from `why` since `f7f3d854` (001-188, 2026-10-09, from 0.1.86). *Read in source code.*
 
 `upgrade.mjs`, the same no-row UPDATE at `busy_timeout = 1000` under a held write lock: alone it waits 1,003 ms and fails; as the first statement in `BEGIN` it waits 1,005 to 1,012 ms; after a `SELECT` in the same transaction it fails in 0 to 1 ms. *Verified by experiment.* SQLite's `sqlite3_busy_handler` page: "If SQLite determines that invoking the busy handler could result in a deadlock, it will go ahead and return SQLITE_BUSY to the application instead of invoking the busy handler. Consider a scenario where one process is holding a read lock that it is trying to promote to a reserved lock..." *Read in official docs*, https://www.sqlite.org/c3ref/busy_handler.html, fetched 2026-10-16.
 
@@ -88,7 +88,7 @@ Vision: `why` is how the agent gets "evidence, not a bare verdict" (vision 7) an
 ## Sources
 
 - hearsay-tools/squeal#7, #1: https://github.com/hearsay-tools/squeal/issues/7, https://github.com/hearsay-tools/squeal/issues/1 (read 2026-10-16).
-- `src/cli/main.ts:177`, `src/core/status/why.ts:59-123`, `src/core/status/open.ts`, `src/core/store/open.ts:49-122`, `src/core/store/connection.ts:64`, `src/core/store/repos/results.ts:30-43`, `src/cli/warmup.ts:282-298`, at `23f276c2`; commits `2758708a`, `3231a087`.
+- `src/cli/main.ts:177`, `src/core/status/why.ts:59-123`, `src/core/status/open.ts`, `src/core/store/open.ts:49-122`, `src/core/store/connection.ts:64`, `src/core/store/repos/results.ts:30-43`, `src/cli/warmup.ts:282-298`, at `23f276c2`; commits `b8a89bd4`, `f7f3d854`.
 - SQLite `sqlite3_busy_handler`: https://www.sqlite.org/c3ref/busy_handler.html.
 - `docs/board.md` rows 001-207, 001-346, 001-362, 001-412, 001-422; spec 001 D7, D8, D12, goal 6.
 - Probes: `research/probes/issue-7/` (`setup.sh`, `hold.mjs`, `attempt.sh`, `trace-open.mjs`, `upgrade.mjs`, `live.sh`, `run-all.sh`), output in `logs/run-all.txt`.

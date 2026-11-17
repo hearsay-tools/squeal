@@ -2,7 +2,7 @@
 
 **PASS** at `404c355b44be70b3f8f731f4a4512a8b0fd388c3` (`cand/006-89`).
 Zero blockers, one proven should-fix, one plausible note, no nits.
-Range: `7af43f7057d7feb53b3aa6ef333aa04adfaf3ee0..404c355b44be70b3f8f731f4a4512a8b0fd388c3`
+Range: `f647291db862008b580e6640e7024fe708556ad3..404c355b44be70b3f8f731f4a4512a8b0fd388c3`
 (`origin/main..404c355b` at review time). Reviewed in the detached candidate tree;
 this report alone is written on the reviewer's branch.
 

@@ -1,6 +1,6 @@
 # Research: runner-trigger (019-01)
 
-Topic `runner-trigger` of `README.md`: can a project choose, per runner, whether its tests run after each edit or only at Stop, and what would that mean. Source read at commit `6c5615a55` (Squeal 0.1.393). Experiments ran the worktree's committed plugin build, 0.1.393, in fixture repositories under `$TMPDIR` on 2026-11-02, with `HOME` and `XDG_RUNTIME_DIR` under `$TMPDIR`, so the fixture daemon took no slow-slot permit from the host's worktrees. Host load during the probe: 26 to 30 on 24 CPUs, above the CPU count, so no timing was measured. Transcript: `probes/runner-trigger/run.log`.
+Topic `runner-trigger` of `README.md`: can a project choose, per runner, whether its tests run after each edit or only at Stop, and what would that mean. Source read at commit `be42dedfa` (Squeal 0.1.393). Experiments ran the worktree's committed plugin build, 0.1.393, in fixture repositories under `$TMPDIR` on 2026-11-02, with `HOME` and `XDG_RUNTIME_DIR` under `$TMPDIR`, so the fixture daemon took no slow-slot permit from the host's worktrees. Host load during the probe: 26 to 30 on 24 CPUs, above the CPU count, so no timing was measured. Transcript: `probes/runner-trigger/run.log`.
 
 ## Questions answered
 
@@ -31,7 +31,7 @@ So the combination exists, but a repository that wants its e2e tier continuous (
 
 ### 2. The unit (read in source code, inferred)
 
-The config shapes at `6c5615a55`: Vitest is one runner whose projects come from the project's own Vitest config; Squeal names them only in `vitest.excludeProjects` and files in `vitest.exclude` (`policy.ts`). `nodeTest` and `pytest` are lists of named entries, each with `include`, `exclude` and `slow` (`policy-node-test.ts`, `policy-pytest.ts`). Lint (017) is per tool (`lint.tools`) and already splits its own run moment: edited files at once, stale whole-program files at the slow trigger (017 D5).
+The config shapes at `be42dedfa`: Vitest is one runner whose projects come from the project's own Vitest config; Squeal names them only in `vitest.excludeProjects` and files in `vitest.exclude` (`policy.ts`). `nodeTest` and `pytest` are lists of named entries, each with `include`, `exclude` and `slow` (`policy-node-test.ts`, `policy-pytest.ts`). Lint (017) is per tool (`lint.tools`) and already splits its own run moment: edited files at once, stale whole-program files at the slow trigger (017 D5).
 
 | Case | Example | Unit that fits |
 |---|---|---|
@@ -100,7 +100,7 @@ This repository: one Vitest runner, 5 808 runs and 190 k runner-seconds outside 
 
 ## Sources
 
-- Squeal at `6c5615a55`: `src/core/daemon/policy.ts`, `policy-slow.ts`, `policy-node-test.ts`, `policy-pytest.ts`, `policy-lint.ts`; `src/core/scheduler/slow-trigger.ts`, `slow-tier.ts`; `src/core/lint/pass/idle.ts`; `src/harness/claude-code/input.ts`, `run.ts`.
+- Squeal at `be42dedfa`: `src/core/daemon/policy.ts`, `policy-slow.ts`, `policy-node-test.ts`, `policy-pytest.ts`, `policy-lint.ts`; `src/core/scheduler/slow-trigger.ts`, `slow-tier.ts`; `src/core/lint/pass/idle.ts`; `src/harness/claude-code/input.ts`, `run.ts`.
 - Specs: 004 D1, D2, D3, D7, D8, D9, D10 (`docs/specifications/004-slow-suites/spec.md`); 017 D5 (`docs/specifications/017-lint-checks/spec.md`); vision principles 2 and 3 (`docs/vision.md`).
 - Configs: this repository's `squeal.config.json`; cezarion's `~/projects/cezar/squeal.config.json` and `vitest.config.ts` at `e03d62149`.
 - Stores, read-only: `~/projects/cezar/.git/squeal/store.sqlite`, `~/projects/squeal/.git/squeal/store.sqlite`, tables `runs`, `results`, `checks`.

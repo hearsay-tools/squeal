@@ -1,6 +1,6 @@
 # 005-83 notes: a Codex session's saved skill path survives plugin updates
 
-Worker notes, 2026-10-26. Brief W1 in `tasks/wave-11.md` (baseline `c652d5a4a`); `research/issue-81.md` answers 4 and 5 and its recommendation; spec 005 D3; gh-81.
+Worker notes, 2026-10-26. Brief W1 in `tasks/wave-11.md` (baseline `b043ddfff`); `research/issue-81.md` answers 4 and 5 and its recommendation; spec 005 D3; gh-81.
 
 ## Cause
 

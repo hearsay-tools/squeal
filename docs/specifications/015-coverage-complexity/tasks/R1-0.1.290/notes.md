@@ -1,6 +1,6 @@
 # R1 notes: a resumed session takes in its new daemon's start scan (review 0.1.290 B1)
 
-Worker 6c97cdea, 2026-10-24. Brief: `tasks/wave-1b.md` R1. Baseline `int/015b-r1` (d1c093ae8). What the re-review and the next row read first.
+Worker 6c97cdea, 2026-10-24. Brief: `tasks/wave-1b.md` R1. Baseline `int/015b-r1` (8ebbc4b09). What the re-review and the next row read first.
 
 ## The rule
 

@@ -44,7 +44,7 @@ None in the reduced candidate.
 
 **B1 is removed from this landing, not repaired.** All five `src/core/commit/at-*.ts` modules, all three corresponding test files and `tasks/023-03/notes.md` are deleted. `git ls-files` finds no remaining source or test under those patterns. A search of `src`, `test`, `plugins` (bundles included), `scripts` and `.github` finds no references to `at-keys`, `at-environment`, `keysAtCommit`, `sideKeys`, `targetCoverage`, `projectEnvironments`, `KeysAtInput` or `environmentAtCommit`.
 
-The three shared files `src/core/keys/environment.ts`, `src/core/store/environments.ts` and `src/core/store/transfer-rekey.ts` match `2ca6a943c` byte for byte. The complete delta is exactly those three restorations and the nine deletions above. Nothing else changed.
+The three shared files `src/core/keys/environment.ts`, `src/core/store/environments.ts` and `src/core/store/transfer-rekey.ts` match `161b1ed9f` byte for byte. The complete delta is exactly those three restorations and the nine deletions above. Nothing else changed.
 
 **B2 remains closed.** Gate implementation and tests are byte-identical to `c56b15d84`. Current environment regression tests cover execution under overridden and unset variables, restoration, store reuse at the matching environment, conditions without storage and overlapping calls. Restoring the keys/store helper files does not remove the effective environment held by `runGateFiles` across config loading, execution and storage.
 

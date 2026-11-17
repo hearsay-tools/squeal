@@ -1,7 +1,7 @@
 # Probes for 011-127 (`../../cli-build-inputs.md`)
 
 Throwaway. Nothing here is product or test code. Every script acted on a scratch
-clone at `/tmp/r127/repo` (main at 7580d1a1d, `npm ci --offline`), with `HOME`,
+clone at `/tmp/r127/repo` (main at a7c9e0ea7, `npm ci --offline`), with `HOME`,
 `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` (host slots 4) and `TMPDIR` under `/tmp/r127`.
 No live daemon or live store was touched. The clone was removed on 2026-10-23.
 Files ending in `.txt` that hold code are code kept out of lint and typecheck.

@@ -2,7 +2,7 @@
  "vitest": "5.0.3",
  "vite": "8.3.2",
  "node": "v26.13.0",
- "squealCommit": "2856d26e8",
+ "squealCommit": "9aef0ef9e",
  "date": "2026-11-14",
  "cases": [
   {

@@ -1,6 +1,6 @@
 # Wave 60.5: repair of review 0.1.382 (B1, B2)
 
-Coordinator 339e9539, 2026-10-31. Review `reviews/0.1.382.md` FAIL on `cand/0.1.382` `a4821729c`: two proven blockers, both wording that claims more than the recorded state. Host policy as in `wave-60.md`. No `pnpm run build`; not yours: board, spec, `status.md`, bundles, version.
+Coordinator 339e9539, 2026-10-31. Review `reviews/0.1.382.md` FAIL on `cand/0.1.382` `42a359648`: two proven blockers, both wording that claims more than the recorded state. Host policy as in `wave-60.md`. No `pnpm run build`; not yours: board, spec, `status.md`, bundles, version.
 
 ## RP1: B1 (row 011-272) and B2 (row 011-271)
 

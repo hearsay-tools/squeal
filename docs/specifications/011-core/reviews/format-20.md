@@ -1,8 +1,8 @@
 # Review of cand/0.1.231: format 20
 
-Candidate: `8b8673e72c25d0ca06d9225c1057dfdd645b2070`.
-Base: `8fd70776` (`squeal--v0.1.230`).
-Range: `8fd70776..8b8673e7`, rows 011-26 and 011-27, the format raise, review brief and release bundles.
+Candidate: `de2aeb226a74645581acdec34fa34c236a9bdd39`.
+Base: `54980921` (`squeal--v0.1.230`).
+Range: `54980921..de2aeb22`, rows 011-26 and 011-27, the format raise, review brief and release bundles.
 
 ## Verification output
 
@@ -10,7 +10,7 @@ The worktree started at the pinned SHA and stayed clean throughout verification.
 
 ```text
 $ git rev-parse HEAD
-8b8673e72c25d0ca06d9225c1057dfdd645b2070
+de2aeb226a74645581acdec34fa34c236a9bdd39
 $ npm ci
 added 196 packages, and audited 197 packages in 7s
 found 0 vulnerabilities
@@ -113,7 +113,7 @@ For R3/R4, reuse `nextStep` and the single not-current formatter. Carry invocati
 
 ## Re-review
 
-Candidate: `35a4969aa308e663fadcbf4d3481ca80c140c407`. Bounded to B1 by parent request `a9b37840-a284-4ef1-9668-90ed1d4efae3`; repair `ffd405ade`, rebuilt CLI bundles `35a4969aa`. The original FAIL above remains the first-round record.
+Candidate: `84361f7b3d4c7e39ced3793e9a12915205c1913f`. Bounded to B1 by parent request `a9b37840-a284-4ef1-9668-90ed1d4efae3`; repair `b8d187f9f`, rebuilt CLI bundles `84361f7b3`. The original FAIL above remains the first-round record.
 
 **PASS**: B1 resolved; 0 remaining blockers, 0 should-fix findings, 0 nits in the bounded re-review.
 
@@ -121,7 +121,7 @@ Candidate: `35a4969aa308e663fadcbf4d3481ca80c140c407`. Bounded to B1 by parent r
 
 ```text
 $ git rev-parse HEAD
-35a4969aa308e663fadcbf4d3481ca80c140c407
+84361f7b3d4c7e39ced3793e9a12915205c1913f
 $ npm ci
 added 196 packages, and audited 197 packages in 7s
 found 0 vulnerabilities
@@ -152,6 +152,6 @@ No full suite was run in this re-review: the source delta is confined to `src/cl
 - The new regression at `test/cli/next-step-rows.test.ts` seeds a stale `tests/a.test.ts`, never-run `tests/n.test.ts`, and stale parent-directory `src/u.test.ts`. It checks the two plain class lines, both verdict-line command groups, and each JSON-entry command through `fileEntry`. It then invokes every printed JSON command through the real `retryCommand` from `tests/` and asserts `readRetries` holds each selected file at `doneKey(path)` with `noResult: true`. Inspection confirms the real JSON command wrapper supplies `wait.selection.base`, matching the test's call.
 - The regression is discriminating. With only `fromBase` temporarily replaced by `return path`, the new test exited 1 at its plain class-line assertion (`next-step-rows.test.ts:229`). Output: `Test Files 1 failed (1); Tests 1 failed | 12 skipped (13)`. The exact source bytes were restored before candidate verification; the same regression passed in the 140-file committed-candidate run. This deliberate mutation run is evidence about the regression, not a passing check of the candidate.
 - A separate production-function probe passed for an outside-root cwd: selecting a test by its absolute path keeps an absolute `selection.base`, and `fromBase` retains that test's root-relative reading. The probe also checked root/omitted-base mappings and a file above the invocation directory. This preserves the outside-root behavior the re-review requested; it does not add a root fallback to selection.
-- `git diff 8b8673e72 35a4969aa -- . ':!docs'` names exactly nine files: the four specified source files (`named-file-lines.ts`, `status-wait-lines.ts`, `status-wait-paths.ts`, `next-step-text.ts`), `next-step-rows.test.ts`, and the Claude Code, Codex, OpenCode and Pi `dist/cli/squeal.mjs` bundles. No scheduler, keys, stored results, version or other product source changed. In `status-wait-paths.ts`, the repair adds `base` to selection and propagates it to JSON commands; the path-selection and valid-closure walk are unchanged. The earlier unmatched-base metadata remains. 011-44 still owns the closure read.
+- `git diff de2aeb226 84361f7b3 -- . ':!docs'` names exactly nine files: the four specified source files (`named-file-lines.ts`, `status-wait-lines.ts`, `status-wait-paths.ts`, `next-step-text.ts`), `next-step-rows.test.ts`, and the Claude Code, Codex, OpenCode and Pi `dist/cli/squeal.mjs` bundles. No scheduler, keys, stored results, version or other product source changed. In `status-wait-paths.ts`, the repair adds `base` to selection and propagates it to JSON commands; the path-selection and valid-closure walk are unchanged. The earlier unmatched-base metadata remains. 011-44 still owns the closure read.
 
 No new blocking finding, should-fix or nit arose within this bounded repair. The first review's format-19/read-as-20 reading and explicit 011-41 coverage deferral stand.

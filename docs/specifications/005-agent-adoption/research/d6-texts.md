@@ -1,6 +1,6 @@
 # D6 texts: where each item holds (005-15)
 
-Board row 005-15, worker 80d080b5, 2026-10-13, on `5378abd3` (0.1.142). Survey, then finish: each D6 item against the primer (`src/harness/shared/primer.ts`) and `skills/squeal` as they stood, then only what was missing. Builds on 001-283 (`../../001-core-loop/research/primer-skill-writing.md`); nothing of it was redone.
+Board row 005-15, worker 80d080b5, 2026-10-13, on `7cfc7bee` (0.1.142). Survey, then finish: each D6 item against the primer (`src/harness/shared/primer.ts`) and `skills/squeal` as they stood, then only what was missing. Builds on 001-283 (`../../001-core-loop/research/primer-skill-writing.md`); nothing of it was redone.
 
 ## The table
 

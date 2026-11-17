@@ -50,7 +50,7 @@ Owns: `test/harness/opencode/held-stop.ts` and its test. Leave alone: `src/**`, 
 
 ## R4 (W4): review of cand/011-338
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43602968476. Pinned to `cand/011-338` at `e3e2d77c862715e5674d2da40743b42e628180cc`; range `1ae8f3e6a..e3e2d77c8`: one commit of worker 2a1811a6, cherry-picked; tests only, no version. Read: board row 011-338, `tasks/011-338/notes.md`, `tasks/011-336/notes.md` (the leak), this file's W4.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43602968476. Pinned to `cand/011-338` at `add79910c8005554315b5abf6af1225f8b8d7084`; range `d94001e80..add79910c`: one commit of worker 2a1811a6, cherry-picked; tests only, no version. Read: board row 011-338, `tasks/011-338/notes.md`, `tasks/011-336/notes.md` (the leak), this file's W4.
 
 Check, each as proven, plausible or unverified:
 
@@ -63,11 +63,11 @@ Host policy as in `wave-85.md`; never the real `HOME`; signal only processes you
 
 ## R5 (W3): review of cand/0.1.487
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43605804828. Pinned to `cand/0.1.487` at `3718c2ea8949c328dffd729034e639cac515fa38`; range `9c067c165..3718c2ea8`: one commit of worker bc573417 (`4e39e2c9a`, cherry-picked from `d9270d22a` without conflict), then the 0.1.487 version raise and bundles. Behaviour to compare against: `9c067c165`. Read: board row 011-49, `tasks/011-49/notes.md`, this file's W3, `src/cli/status-sync.ts`, `src/cli/wait/snapshot.ts`.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43605804828. Pinned to `cand/0.1.487` at `98e403ab27417a220885ad28daffd6b7e6da4b0f`; range `6fb6c29d5..98e403ab2`: one commit of worker bc573417 (`1280f79c9`, cherry-picked from `d9270d22a` without conflict), then the 0.1.487 version raise and bundles. Behaviour to compare against: `6fb6c29d5`. Read: board row 011-49, `tasks/011-49/notes.md`, this file's W3, `src/cli/status-sync.ts`, `src/cli/wait/snapshot.ts`.
 
 Check, each as proven, plausible or unverified:
 
-1. **The process ends near its bound.** `squeal status <path>` against a daemon that accepts and never answers exits near 750 ms, not at the 2 s socket timeout; its exit code and output stay as at `9c067c165` (exit 3, no verdict). `test/cli/status-paths-paused.test.ts` times the process's own exit and fails against the old code.
+1. **The process ends near its bound.** `squeal status <path>` against a daemon that accepts and never answers exits near 750 ms, not at the 2 s socket timeout; its exit code and output stay as at `6fb6c29d5` (exit 3, no verdict). `test/cli/status-paths-paused.test.ts` times the process's own exit and fails against the old code.
 2. **The other waits are unchanged.** The named wait (`status <path> --wait`) and the edit wait pass no deadline: their sync requests, timeouts and outcomes stay as before. A test stub passed as `options.sync` is called as before.
 3. **The deadline.** No request waits past it or starts after it; the sync then reads `unsupported`. Does that change any outcome of the snapshot, for example a daemon that answers after the bound but within 2 s? The worker's known limit (two paused daemons: up to about 1.5 s, from the lookup's two pings) is proven, plausible or wrong.
 4. **The worker's call.** It bounded the requests by the deadline and did not cancel them on `stop()`, since a cancel needs an abort signal in `src/core/daemon/client.ts`. Say whether that leaves a case the row's done-when names.
@@ -81,13 +81,13 @@ Coordinator's decision, 2026-11-14: row 011-44's closure marker had no guard aga
 
 ## R6 (W1 + W2): review of cand/0.1.489
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43610696494. Pinned to `cand/0.1.489` at `73c8277eafcb080df61aa41ef2823cab0324787c`; range `5e8dcc223..73c8277ea`: four commits of worker 6702c043 (row 011-45, `4ea0a0265..22a66aa8c`), four of worker 304fc6e2 (row 011-44, `7ff414ed4..d46064173`, after the W1 repair above), all cherry-picked without conflict; the coordinator's `d83eb364d` (a comment, review 0.1.487 N1) and `73c8277ea` (the closure key added to `test/store/worktree-meta.test.ts`'s shared keys); the 0.1.489 raise and bundles. Behaviour to compare against: `5e8dcc223`. Read: board rows 011-44 and 011-45, `tasks/011-44/notes.md`, `tasks/011-45/notes.md`, this file's W1, W2 and W1 repair, `src/core/store/states-marker.ts`, `src/core/store/closure-writes.ts`.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43610696494. Pinned to `cand/0.1.489` at `73c8277eafcb080df61aa41ef2823cab0324787c`; range `1a2726fb0..73c8277ea`: four commits of worker 6702c043 (row 011-45, `4ea0a0265..22a66aa8c`), four of worker 304fc6e2 (row 011-44, `7ff414ed4..d46064173`, after the W1 repair above), all cherry-picked without conflict; the coordinator's `d83eb364d` (a comment, review 0.1.487 N1) and `73c8277ea` (the closure key added to `test/store/worktree-meta.test.ts`'s shared keys); the 0.1.489 raise and bundles. Behaviour to compare against: `1a2726fb0`. Read: board rows 011-44 and 011-45, `tasks/011-44/notes.md`, `tasks/011-45/notes.md`, this file's W1, W2 and W1 repair, `src/core/store/states-marker.ts`, `src/core/store/closure-writes.ts`.
 
 Check, each as proven, plausible or unverified:
 
 1. **A kept read equals a full read.** While a trusted marker stays, the named wait's selection and the fallback `status --wait`'s states, news and quiet equal what a full read gives at the same point; every write of closures, known states and key rows moves its marker in the transaction that writes them, removals included (`ledger.ts`; the closure writers `storeClosures` and `addClosures`; is any closure removal left without a bump?). The source-scan tests that name the writers fail when a new writer appears.
-2. **One trust rule.** Both markers are trusted only while every registered daemon claimed its states marker (`everyDaemonClaims`), read in the same read as the rows they vouch for; with no marker, no registered daemon, or a daemon of an earlier release, each wait reads every poll as at `5e8dcc223`. The claim sits in the registration transaction. The rule's premise, that every claiming daemon also bumps closures, holds because both rows ship in this release. The residual case in the 011-45 notes (an older daemon registers, writes and exits between two polls) is proven, plausible or wrong.
-3. **Nothing a user sees changes**: lines, JSON payloads and exit codes of `status --wait` and `status <path> --wait` stay as at `5e8dcc223`.
+2. **One trust rule.** Both markers are trusted only while every registered daemon claimed its states marker (`everyDaemonClaims`), read in the same read as the rows they vouch for; with no marker, no registered daemon, or a daemon of an earlier release, each wait reads every poll as at `1a2726fb0`. The claim sits in the registration transaction. The rule's premise, that every claiming daemon also bumps closures, holds because both rows ship in this release. The residual case in the 011-45 notes (an older daemon registers, writes and exits between two polls) is proven, plausible or wrong.
+3. **Nothing a user sees changes**: lines, JSON payloads and exit codes of `status --wait` and `status <path> --wait` stay as at `1a2726fb0`.
 4. **Key format.** `test/keys/key-format.test.ts` passes with no raise; the bumps sit off the validity path (both rows moved them for that reason): say whether that leaves a write unbumped.
 5. **Cost.** The notes' CPU per poll (named: 247–411 ms to 9–19 ms after the first poll; fallback: median 486 ms to 98 ms) is plausible; the extra write per transaction costs the daemon little.
 6. **Scope.** `src/cli/code*.ts`, `src/core/presence/`, `KEY_FORMAT_VERSION` unchanged; `status-wait-held.ts` changed only by the export of `newsSince`.

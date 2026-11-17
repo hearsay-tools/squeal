@@ -1,6 +1,6 @@
 # Load slowdown: how much concurrent test load slows each run on this host, and whether Squeal's load pays for itself
 
-Researcher task bb871401, 2026-11-07. The human asked: with about 20 worktrees and Squeal running tests in each, does Squeal slow the pipeline instead of speeding it up? Data: every Squeal store on the host (squeal, cezar, the client monorepo, project-b, project-a), copied with `-wal`/`-shm` at 2026-11-07 09:24Z, with their runs' `report.json` files; sar 10-minute samples from 2026-10-29 23:00Z to 2026-11-07 08:20Z (1,191 samples, 8.3 days); agent transcripts for the same window. Squeal source read at `3b8daeaf3`. This session's worktree (`bb871401`) is out of every count, and its daemon was stopped. No test, build or load was started. The scripts are in `probes/load-slowdown/`.
+Researcher task bb871401, 2026-11-07. The human asked: with about 20 worktrees and Squeal running tests in each, does Squeal slow the pipeline instead of speeding it up? Data: every Squeal store on the host (squeal, cezar, the client monorepo, project-b, project-a), copied with `-wal`/`-shm` at 2026-11-07 09:24Z, with their runs' `report.json` files; sar 10-minute samples from 2026-10-29 23:00Z to 2026-11-07 08:20Z (1,191 samples, 8.3 days); agent transcripts for the same window. Squeal source read at `3651348e3`. This session's worktree (`bb871401`) is out of every count, and its daemon was stopped. No test, build or load was started. The scripts are in `probes/load-slowdown/`.
 
 The window ends at 08:20Z, not 08:45Z: the human ran a CI test on this Proxmox host at about 09:00Z, and the sample that ends 08:30Z already shows 11.2% steal. The 6 later samples are out of every figure (finding 6c lists them).
 
@@ -93,6 +93,6 @@ The window ends at 08:20Z, not 08:45Z: the human ran a CI test on this Proxmox h
 - Stores: `<common>/squeal/store.sqlite` (+ `-wal`, `-shm`) and `runs/*/report.json` of the five projects, copied 2026-11-07 09:24–09:26Z and read with `node:sqlite` read-only. 61,807 runs.
 - sar: `/var/log/sysstat/sa29`–`sa07`, exported with `sadf -d -U … -- -u` and `-- -q`.
 - Transcripts: `~/.claude/projects/*/*.jsonl` (also `subagents/` for test runs) and `~/.codex/sessions/*/*/*/*.jsonl`, 2026-10-29 23:00Z to 2026-11-07 09:20Z, read by `probes/host-load/011-181/extract.py` and `classify.py` (3,971 runs) and by `probes/load-slowdown/squeal-waits.py`.
-- Source at `3b8daeaf3`: `src/core/store/repos/results.ts` (`putMany`), `src/runners/vitest/reporter.ts` (`moduleDuration`), `src/core/scheduler/capacity.ts` (`TierCapacity`, `poolKind`), `src/core/capacity/cores.ts` (`gatedPermits`), `src/core/capacity/pool.ts`.
+- Source at `3651348e3`: `src/core/store/repos/results.ts` (`putMany`), `src/runners/vitest/reporter.ts` (`moduleDuration`), `src/core/scheduler/capacity.ts` (`TierCapacity`, `poolKind`), `src/core/capacity/cores.ts` (`gatedPermits`), `src/core/capacity/pool.ts`.
 - Earlier results: `host-load/011-181.md`, `host-load.md`, `probes/host-load/README.md`.
 - Probes: `probes/load-slowdown/` (README there).

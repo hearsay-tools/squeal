@@ -4,7 +4,7 @@
 
 **FAIL** `ed3ce731d01dce0b77e967b0e973cc4ca262b16c`: **2 proven blockers, 0 should-fix, 0 nits**.
 
-Board row 001-394 reviews 001-378, range `74d6e4e0..ed3ce731`, against 001 D11 Capacity (Runner ceiling and Priority, amended in this candidate), 001 D3 and 004 D2. Inputs include `tasks/001-378/notes.md`, P1, its decisions and the accepted 001-393 polling gap. This is an original review, not a re-review of prior findings.
+Board row 001-394 reviews 001-378, range `489fc5c1..ed3ce731`, against 001 D11 Capacity (Runner ceiling and Priority, amended in this candidate), 001 D3 and 004 D2. Inputs include `tasks/001-378/notes.md`, P1, its decisions and the accepted 001-393 polling gap. This is an original review, not a re-review of prior findings.
 
 `git rev-parse HEAD` matched the full candidate SHA. Initial `git status --short` was empty. Node 24.21.0, Vitest 5.0.3, Linux. The build changed four bundles (B1); that diff was saved and only those generated changes were restored to the candidate before the independent suite started. All source probes used a temporary `XDG_CONFIG_HOME`, temporary fixtures and private logs. No probe read the user's Squeal configuration. The probes ran against this candidate's freshly compiled `dist` code; the key probe imported the guarded source directly.
 
@@ -128,22 +128,22 @@ None.
 4. Re-review the repaired bundles and the slow admission/interface delta. The floor, restoration, key-format state and shared priority helper above are settled unless that delta reopens them. 001-393 remains a separate row.
 
 
-## Round 2 addendum: repaired candidate 26a41ae6
+## Round 2 addendum: repaired candidate 1a290c88
 
-**PASS** `26a41ae67936c9c7e4ba72c270447af848edc62c`: **0 remaining blockers, 0 should-fix, 0 nits**. B1 and B2 are closed by proven evidence below. The original FAIL above remains the record for `ed3ce731`; this verdict applies only to the repaired candidate.
+**PASS** `1a290c8882e95c3ea3f1b3d86f73a40ff5a9e0e8`: **0 remaining blockers, 0 should-fix, 0 nits**. B1 and B2 are closed by proven evidence below. The original FAIL above remains the record for `ed3ce731`; this verdict applies only to the repaired candidate.
 
 ### Scope and verification
 
-Bounded re-review requested by the coordinator, range `a436948b..26a41ae6`, after rebasing onto main 0.1.184. `git rev-parse HEAD` matched the full repaired SHA; the tracked tree was clean before and after verification. This addendum checks B1, B2, their repair delta, the new regressions, the 004 D2 amendment and the guarded-source re-pin. It does not reopen settled findings. The comparison below reports all six original commits as `=` (unchanged):
+Bounded re-review requested by the coordinator, range `0f5aba6f..1a290c88`, after rebasing onto main 0.1.184. `git rev-parse HEAD` matched the full repaired SHA; the tracked tree was clean before and after verification. This addendum checks B1, B2, their repair delta, the new regressions, the 004 D2 amendment and the guarded-source re-pin. It does not reopen settled findings. The comparison below reports all six original commits as `=` (unchanged):
 
 ```text
-$ git range-diff 74d6e4e0..ed3ce731~1 a436948b..525454ad
-1:  8cbeb945 = 1:  2034a8ae docs(001-378): probe P1, a warm Vitest instance resizes between runs
-2:  8fcf3a1c = 2:  eb06a331 feat(001-378): Vitest runs each tier at its grant under the project's own maxWorkers; maxWorkers leaves the environment hash
-3:  8018e50c = 3:  7464ad2e feat(001-378): every test process runs at nice 10
-4:  f1cedbb2 = 4:  9fe1b777 fix(keys): re-pin key format 10 for 001-378 (10 is unreleased; maxWorkers left the environment hash)
-5:  3c20c4f2 = 5:  88bc0c44 docs(001-378): notes: what changed, tests, decisions, the short-fork gap and the proposed D11 wording
-6:  715ccead = 6:  525454ad docs(001): D11 Runner ceiling and Priority amended (001-378)
+$ git range-diff 489fc5c1..ed3ce731~1 0f5aba6f..6f0da95c
+1:  8cbeb945 = 1:  5765e03c docs(001-378): probe P1, a warm Vitest instance resizes between runs
+2:  8fcf3a1c = 2:  8af55ecc feat(001-378): Vitest runs each tier at its grant under the project's own maxWorkers; maxWorkers leaves the environment hash
+3:  8018e50c = 3:  739af5aa feat(001-378): every test process runs at nice 10
+4:  f1cedbb2 = 4:  d02a46af fix(keys): re-pin key format 10 for 001-378 (10 is unreleased; maxWorkers left the environment hash)
+5:  3c20c4f2 = 5:  52007249 docs(001-378): notes: what changed, tests, decisions, the short-fork gap and the proposed D11 wording
+6:  715ccead = 6:  6f0da95c docs(001): D11 Runner ceiling and Priority amended (001-378)
 ```
 
 Verification on the pinned clean candidate, Node 24.21.0 and Vitest 5.0.3:
@@ -182,7 +182,7 @@ Duration    32.96s
 exit 0
 ```
 
-There is **no new independent full-suite result at this SHA**. The coordinator explicitly requested scoped runs while its own locked full gate runs; this reviewer did not start a second full run. The original full-suite result above belongs to `ed3ce731` and does not verify `26a41ae6`. No file failed the round-2 scoped runs. The original loaded-suite/file-only discrepancy remains `test/keys/key-index.test.ts`, recorded above.
+There is **no new independent full-suite result at this SHA**. The coordinator explicitly requested scoped runs while its own locked full gate runs; this reviewer did not start a second full run. The original full-suite result above belongs to `ed3ce731` and does not verify `1a290c88`. No file failed the round-2 scoped runs. The original loaded-suite/file-only discrepancy remains `test/keys/key-index.test.ts`, recorded above.
 
 ### B1 closed: reproducible bundles (proven)
 

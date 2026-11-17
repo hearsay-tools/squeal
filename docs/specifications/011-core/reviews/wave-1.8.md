@@ -1,10 +1,10 @@
 # Wave 1.8: candidate 0.1.206
 
-PASS `ca832142c8f011139385bfd0de202accc4108142`. 0 blockers, 1 should-fix, 1 resolved note.
+PASS `7aed5262a42f88512e2f0f04317799855f230e75`. 0 blockers, 1 should-fix, 1 resolved note.
 
 ## Verification
 
-Candidate HEAD was exactly `ca832142c8f011139385bfd0de202accc4108142`; the checkout remained clean throughout verification. Reviewed the product delta from `origin/main` and rows 004-66, 005-68, 011-04 and 011-07 against their board Done-when and briefs. Main's intervening changes are docs only. Read 004 D9 including `de61aeac`; 005 D6 including its subsequent docs correction `f00b3a37`; 011 C6, C7, C9 and C10.
+Candidate HEAD was exactly `7aed5262a42f88512e2f0f04317799855f230e75`; the checkout remained clean throughout verification. Reviewed the product delta from `origin/main` and rows 004-66, 005-68, 011-04 and 011-07 against their board Done-when and briefs. Main's intervening changes are docs only. Read 004 D9 including `0ffa9afc`; 005 D6 including its subsequent docs correction `fd6c9af1`; 011 C6, C7, C9 and C10.
 
 Commands and output:
 
@@ -66,7 +66,7 @@ One-worker fix: retain the observed stale age when launching the probe, and reco
 
 ### N1 (proven, resolved): 005 D6 still described the old primer
 
-At the pinned candidate, `docs/specifications/005-agent-adoption/spec.md:138` said "The primer does not change for it" and the amendment log omitted 005-68. The board and brief already authorized the new text. Reported to the coordinator, who landed docs-only `f00b3a37`; fetched and verified that it amends D6 and records the dated decision, including the no-further-folding rule and the deliberate unchanged setup block. No outstanding action.
+At the pinned candidate, `docs/specifications/005-agent-adoption/spec.md:138` said "The primer does not change for it" and the amendment log omitted 005-68. The board and brief already authorized the new text. Reported to the coordinator, who landed docs-only `fd6c9af1`; fetched and verified that it amends D6 and records the dated decision, including the no-further-folding rule and the deliberate unchanged setup block. No outstanding action.
 
 ## What fits
 

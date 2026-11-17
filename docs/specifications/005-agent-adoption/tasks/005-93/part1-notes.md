@@ -1,8 +1,8 @@
 # 005-93 part 1 notes (wave 16 W1)
 
 Worker session a1eb0936, 2026-11-17. Shape: finish. The own count carried from
-`origin/wip/005-93` (88ad9a358) onto main (9967ce790), with no late state and no scheduler fact.
-Main had not touched any file of the wip diff since the branch point (a3ae26cd1), so every
+`origin/wip/005-93` (190abb535) onto main (73b613a15), with no late state and no scheduler fact.
+Main had not touched any file of the wip diff since the branch point (ee39fb9da), so every
 carried hunk applied as it was; the late parts were then cut out.
 
 ## Hunks: carry or leave

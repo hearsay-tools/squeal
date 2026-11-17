@@ -47,7 +47,7 @@ Use /worker, resumed (worker ad47a8ec). Shape: repair. Starts from your branch `
 
 ## 015-59 round 2: re-review of candidate 0.1.324 after R12
 
-Use /reviewer, resumed (reviewer eed2d522). Candidate `cand/0.1.324-r2`, pinned to the SHA named in the message: the three round-1 commits and R12's three (regressions, fix, notes), cherry-picked onto main at 0.1.323, and the build commit redone (0.1.323 to 0.1.324). 0.1.323 shares no source file with the range. Round 1 stays as `cand/0.1.324` (02fd25325). Write `reviews/0.1.324-r2.md` and commit it on your branch. This is the last round.
+Use /reviewer, resumed (reviewer eed2d522). Candidate `cand/0.1.324-r2`, pinned to the SHA named in the message: the three round-1 commits and R12's three (regressions, fix, notes), cherry-picked onto main at 0.1.323, and the build commit redone (0.1.323 to 0.1.324). 0.1.323 shares no source file with the range. Round 1 stays as `cand/0.1.324` (6a4974d45). Write `reviews/0.1.324-r2.md` and commit it on your branch. This is the last round.
 
 Check, narrowly:
 1. **B1.** With records still to come, the early CRAP never falls below the CRAP the whole set gives, transforms that add executable lines included; completing the loaders never raises an early value or makes a function told FAIL -> PASS fail again. The full judgement's calculation and texts are unchanged.
@@ -82,7 +82,7 @@ Use /worker, resumed (worker afa0f736). Shape: repair. Starts from your branch `
 
 ## 015-61 round 2: re-review of candidate 0.1.330 after R13
 
-Use /reviewer, resumed (reviewer 5946f5d7). Candidate `cand/0.1.330-r2`, pinned to the SHA named in the message: round 1's five commits and R13's two (the fix with its regression, notes), cherry-picked onto main 23fb7308c, and the build commit redone (0.1.329 to 0.1.330). Main gained only docs since round 1. Round 1 stays as `cand/0.1.330` (43bbc219a, CI 40252500251 green). Write `reviews/0.1.330-r2.md` and commit it on your branch. This is the last round.
+Use /reviewer, resumed (reviewer 5946f5d7). Candidate `cand/0.1.330-r2`, pinned to the SHA named in the message: round 1's five commits and R13's two (the fix with its regression, notes), cherry-picked onto main 27c3dc526, and the build commit redone (0.1.329 to 0.1.330). Main gained only docs since round 1. Round 1 stays as `cand/0.1.330` (533d2e034, CI 40252500251 green). Write `reviews/0.1.330-r2.md` and commit it on your branch. This is the last round.
 
 Check, narrowly:
 1. **B1.** In parts and in one transaction, gone checks meet move matching and removal judgement in one order, SQLite `BINARY`, from one owner (`src/core/code/pass/order.ts`); your 33-path case gives equal moves, states, views and removed transitions; the one-transaction result is unchanged from main.

@@ -2,15 +2,15 @@
 
 ## Verdict
 
-**FAIL a67407f85d5894f604bb94d8e9290f67b5f82046.** Three proven blockers, two proven should-fix findings, one proven verification-context nit. Review range: `638fb159..a67407f8` (0.1.161 and 0.1.163). Pytest is reviewed as a library; daemon assembly and agent surfaces belong to 007-14 and 007-15 and are not judged here. Interleaved 005 setup changes have their own reviews; this review follows 007-16's named seams.
+**FAIL fffd011a5a14e4f840bfe661daad88061aa26821.** Three proven blockers, two proven should-fix findings, one proven verification-context nit. Review range: `d1b62fa1..fffd011a` (0.1.161 and 0.1.163). Pytest is reviewed as a library; daemon assembly and agent surfaces belong to 007-14 and 007-15 and are not judged here. Interleaved 005 setup changes have their own reviews; this review follows 007-16's named seams.
 
 ## Verification output
 
-The dispatched branch started at `557fd25a`, two documentation-only commits after the candidate. `git diff --name-only a67407f8 557fd25a` lists only `docs/board.md`, `docs/specifications/005-agent-adoption/status.md` and `docs/specifications/007-pytest-runner/tasks/wave-2.md`. Verification and probes ran detached at the exact candidate, with no tracked changes. The branch was restored before committing this file. No product, board or spec changes were made.
+The dispatched branch started at `8b669e04`, two documentation-only commits after the candidate. `git diff --name-only fffd011a 8b669e04` lists only `docs/board.md`, `docs/specifications/005-agent-adoption/status.md` and `docs/specifications/007-pytest-runner/tasks/wave-2.md`. Verification and probes ran detached at the exact candidate, with no tracked changes. The branch was restored before committing this file. No product, board or spec changes were made.
 
 ```text
 $ git rev-parse HEAD
-a67407f85d5894f604bb94d8e9290f67b5f82046
+fffd011a5a14e4f840bfe661daad88061aa26821
 
 $ npm ci
 added 58 packages, and audited 59 packages in 2s
@@ -175,7 +175,7 @@ The full run passed all 4,148 assertions, including both oracle tests, but `afte
 
 ### N1. Proven: dispatch HEAD differed from the named candidate
 
-The worker started at `557fd25a`, not `a67407f8`. The delta was documentation only; verification was moved to the exact candidate and the review remained bounded. No product repair is needed. Future review dispatches should name both the checkout baseline and candidate when a later brief commit is required.
+The worker started at `8b669e04`, not `fffd011a`. The delta was documentation only; verification was moved to the exact candidate and the review remained bounded. No product repair is needed. Future review dispatches should name both the checkout baseline and candidate when a later brief commit is required.
 
 ## What fits
 

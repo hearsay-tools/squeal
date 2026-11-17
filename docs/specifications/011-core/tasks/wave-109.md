@@ -20,7 +20,7 @@ Done when: row 011-372's done-when; `tasks/011-372/notes.md` lists each remainin
 
 ## R1 (W1): review of cand/0.1.520
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `da570536b9674b242f0a0704d5ce2219405fbb16`; candidate CI run 43839480465. (0.1.520 is reused: the earlier candidate with that number, row 011-369's one-calendar-clock version, was abandoned and never landed.) Range `78c81d619..da570536b9674b242f0a0704d5ce2219405fbb16`: worker fe5d8433's four commits (row 011-372), cherry-picked without conflict, then the 0.1.520 raise and bundles. Read: board row 011-372; this file's W1; `tasks/011-372/notes.md`; `reviews/0.1.518.md` S1.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `da570536b9674b242f0a0704d5ce2219405fbb16`; candidate CI run 43839480465. (0.1.520 is reused: the earlier candidate with that number, row 011-369's one-calendar-clock version, was abandoned and never landed.) Range `915fe1ac3..da570536b9674b242f0a0704d5ce2219405fbb16`: worker fe5d8433's four commits (row 011-372), cherry-picked without conflict, then the 0.1.520 raise and bundles. Read: board row 011-372; this file's W1; `tasks/011-372/notes.md`; `reviews/0.1.518.md` S1.
 
 Check, each as proven, plausible or unverified:
 
@@ -33,7 +33,7 @@ Coordinator at the candidate: lint, typecheck, `check:version origin/main`; dire
 
 ## R2 (W1 repair): re-review of cand/0.1.520 after `reviews/0.1.520.md`
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `49baa84ecf86d7420a0826db979b0496428bfd38`; candidate CI run 43843816001. Rebuilt on main `f44628134`: worker fe5d8433's four first-round commits (unchanged), its repair (`3833faca8`, `240877e8e`), then the 0.1.520 raise and bundles. Narrow: the repair, against `reviews/0.1.520.md` B1 and S1. Read that review and `tasks/011-372/notes.md` "Repair after review 0.1.520".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.520` at `b1f557de5bfe8856e26102a40c2d672055baaf41`; candidate CI run 43843816001. Rebuilt on main `68212ebc5`: worker fe5d8433's four first-round commits (unchanged), its repair (`3833faca8`, `240877e8e`), then the 0.1.520 raise and bundles. Narrow: the repair, against `reviews/0.1.520.md` B1 and S1. Read that review and `tasks/011-372/notes.md` "Repair after review 0.1.520".
 
 Check, each as proven, plausible or unverified: B1's paused-backlog scenario is in `step-reading.test.ts`, failed before the fix (46 reads) and passes after; `Ledger.ordered` forwards `now` to `#drains` from both callers; S1's value checks (every yield check and plan receives the step's own reading) catch a wrong reading; the two threshold cases left out (a quiet window, another worktree's claim limit) are a fair follow-up and not hiding a break; the notes' corrected statement (a deadline that passes during a turn counts from the next step) is right and changes nothing a user sees beyond a turn's length. The first candidate's CI failed one coverage timing case (`test/code/coverage/writer-turns.test.ts:62`, 232 against a 100 ms budget on Node 26): say whether this row could reach it.
 

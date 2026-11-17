@@ -2,9 +2,9 @@
 # model and scenario: each measure, the claims, the commands that decided them, and the
 # load at each cell's start (first row of out/load.tsv) beside its max.
 import json,glob,os,collections,statistics
-roots={'0.1.199':'/tmp/squeal-evals-1001/cells/e77eff42453e/20261016T061730Z-07d7ab',
-       '0.1.215':'/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec',
-       '0.1.216':'/tmp/squeal-evals-1001/cells/98beb8cd9f3b/20261018T184306Z-4fc7da'}
+roots={'0.1.199':'/tmp/squeal-evals-1001/cells/0b91ce0bf4ca/20261016T061730Z-07d7ab',
+       '0.1.215':'/tmp/squeal-evals-1001/cells/6faa3f32d500/20261018T125937Z-bcdbec',
+       '0.1.216':'/tmp/squeal-evals-1001/cells/e99ffa66dc68/20261018T184306Z-4fc7da'}
 groups=[(t,m) for m in ('codex-gpt-6-luna','claude-claude-sonnet-5-5') for t in ('a2-slow','a3-harmless','a8-load-hold','a11-inherited-flake')]
 def load(d):
   rows=[l.split('\t') for l in open(d+'/out/load.tsv') if l.strip()]

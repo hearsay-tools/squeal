@@ -1,7 +1,7 @@
 {
   "cezarCommit": "991c14b9675b34ff58cd33fe16b2333752967832",
   "cezarTree": "546367112c6abae028b0408905f91ce649722b77",
-  "squealCommit": "d0b48fe829ee03b0f60c221e62ca5aec96b218fe",
+  "squealCommit": "8e22b9ebb4b41e2cb08f89ea7b4d5aeda37f8e08",
   "node": "v24.22.1",
   "packageManager": "pnpm@12.11.2",
   "versions": {

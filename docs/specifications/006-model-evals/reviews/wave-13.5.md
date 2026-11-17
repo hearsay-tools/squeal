@@ -2,7 +2,7 @@
 
 FAIL `5640437a1c2c628e82943c3027442fc56beb51f5`: 3 proven blockers, no should-fix items, no nits.
 
-Row 006-63, candidate `cand/006-62`, range `007f7431..5640437a`. HEAD matched the requested candidate. The tracked tree was clean during verification and the probes; this review changes only this file. Scope: `tasks/wave-13.md`, “006-62 the pilot's findings”; `tasks/006-62/notes.md`; spec 006 D3, D4, D10 and Testing. No board or product code is changed.
+Row 006-63, candidate `cand/006-62`, range `5cf0688f..5640437a`. HEAD matched the requested candidate. The tracked tree was clean during verification and the probes; this review changes only this file. Scope: `tasks/wave-13.md`, “006-62 the pilot's findings”; `tasks/006-62/notes.md`; spec 006 D3, D4, D10 and Testing. No board or product code is changed.
 
 ## Verification output
 

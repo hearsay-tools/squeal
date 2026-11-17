@@ -6,7 +6,7 @@ Recommend investigating project-lockfile/install mismatch as a distinct diagnost
 
 ## Questions and answers
 
-The brief's questions are numbered here for coverage. Source findings examine Squeal **0.1.405**, checkout **`26ffad7749a2de48e8989b4fae7d12c10d13fed6`**. Its package manager pin is **pnpm 12.15.0**; no pnpm behavior was tested.
+The brief's questions are numbered here for coverage. Source findings examine Squeal **0.1.405**, checkout **`13da8af91a4ffebf3939c7627c3facb519ac24cb`**. Its package manager pin is **pnpm 12.15.0**; no pnpm behavior was tested.
 
 | # | Question and method | Answer and evidence tag |
 | --- | --- | --- |
@@ -89,7 +89,7 @@ No fixture was created or executed. No install, test run, full suite, build, or 
 
 Still unknown: the original manifest and both lockfiles; the pnpm version and layout; the complete 74-check recovery; and an independently observed failure/install/recovery sequence. Also not determined: which project-versus-installed differences prove a relevant missing dependency across workspace, optional-package and filtered-install cases. A textual difference alone was not tested as such proof.
 
-All repository paths below were read at [commit 26ffad7749a2de48e8989b4fae7d12c10d13fed6](https://github.com/hearsay-tools/squeal/tree/26ffad7749a2de48e8989b4fae7d12c10d13fed6):
+All repository paths below were read at [commit 13da8af91a4ffebf3939c7627c3facb519ac24cb](https://github.com/hearsay-tools/squeal/tree/13da8af91a4ffebf3939c7627c3facb519ac24cb):
 
 - Contracts: [spec.md](../spec.md), C2/C3/C5/C6/C11; [status.md](../status.md), 011-162, 011-165–167, 011-190 and 0.1.405 release.
 - Provenance: [liveness.ts](../../../../src/core/delivery/liveness.ts) `readLiveHeader` (line 48); [provenance.ts](../../../../src/core/delivery/provenance.ts) `installSentences` (141); [attribution.ts](../../../../src/core/delivery/attribution.ts) `dependenciesInstalled` (187).

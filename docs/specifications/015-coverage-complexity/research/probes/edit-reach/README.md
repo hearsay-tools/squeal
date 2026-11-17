@@ -4,7 +4,7 @@ Throwaway. Written 2026-11-07 for `../../edit-reach.md`. Nothing here is product
 
 ## Rules these probes keep
 
-- Read only. Repositories are `git clone`s under `/tmp/er015` at a named commit (cezar `d6fed8685`, squeal `bc58ad12f`); `~/projects/cezar` is never edited.
+- Read only. Repositories are `git clone`s under `/tmp/er015` at a named commit (cezar `d6fed8685`, squeal `bbeb184b6`); `~/projects/cezar` is never edited.
 - Stores are read only from copies taken with their `-wal` and `-shm` (`store.sqlite`, and squeal's `code.sqlite`), opened with `node:sqlite` `readOnly`. Run reports are copied (`report.json` only) before reading. No live store or daemon socket is opened.
 - No test, build or benchmark runs. The probes transform source files with esbuild in memory (no output written) and read stored durations.
 - `squeal stop --until-start` ran in the researcher's own worktree first.
@@ -29,7 +29,7 @@ for p in cezar squeal; do C=$(git -C ~/projects/$p rev-parse --path-format=absol
   (cd $C/runs && find . -maxdepth 2 -name report.json -print0 | tar cf - --null -T -) | tar xf - -C $S/runs-$p; done
 cp ~/projects/squeal/.git/squeal/code.sqlite* $S/stores/squeal/
 git clone -q ~/projects/cezar $S/cezar && git -C $S/cezar checkout -q d6fed8685
-git clone -q ~/projects/squeal $S/squeal && git -C $S/squeal checkout -q bc58ad12f
+git clone -q ~/projects/squeal $S/squeal && git -C $S/squeal checkout -q bbeb184b6
 # point "modules" in each spec at a node_modules with esbuild and es-module-lexer (a squeal checkout's)
 node reach.mjs spec-cezar.json $S/out-cezar.json; node reach.mjs spec-squeal.json $S/out-squeal.json
 node table.mjs $S/out-cezar.json; node paths.mjs $S/out-cezar.json packages/cezar/src/workflows/run.ts

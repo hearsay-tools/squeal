@@ -93,23 +93,23 @@ Done when: both probes' tests pass with a second queued file in the project; a r
 
 ### R2: narrow re-review of cand/0.1.262 after the repair
 
-Use /reviewer. Shape: review, narrow, the last round. R1 failed `cand/0.1.262` at dfc218b26 (`reviews/0.1.262.md`, B1 to B3). The coordinator re-cut it at c30f5181a on main 42e87532b (docs only since 60fb71694): the same twelve commits (W1 to W3 and the docs commit), W4's two, W5's two, one docs commit (C5, C6, `status.md`), then the release commit (0.1.262, bundles and skill copies).
+Use /reviewer. Shape: review, narrow, the last round. R1 failed `cand/0.1.262` at dfc218b26 (`reviews/0.1.262.md`, B1 to B3). The coordinator re-cut it at bb6a8db72 on main ca0e1886b (docs only since 9cb6077aa): the same twelve commits (W1 to W3 and the docs commit), W4's two, W5's two, one docs commit (C5, C6, `status.md`), then the release commit (0.1.262, bundles and skill copies).
 
 Check only:
-- `git range-diff 60fb71694..14aac727f 42e87532b..53ff37bd6` shows the twelve commits unchanged but for their cherry-pick lines;
+- `git range-diff 9cb6077aa..14aac727f ca0e1886b..ff3ec9539` shows the twelve commits unchanged but for their cherry-pick lines;
 - B1 to B3 hold as the review's expected behaviour says, by W4's and W5's tests and your own probes; the order the review's Inputs gives holds;
 - the new `squeal failures` options (`--error`, `--per-check`, `--limit all`, and `--all-worktrees` on an inherited group's line) match the amended C5 and C6, their help text and the skill's `commands.md`, and keep `--json` additive;
 - `test/keys/key-format.test.ts` passes with `KEY_FORMAT_VERSION` unchanged; the version is 0.1.262 in all eight places; the build leaves the tree clean; the four launchers are byte-identical.
 
-Run `npm ci`, then the test files W4 and W5 changed or added, directly. The full suite is CI on c30f5181a and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.262b.log`); the pre-repair gate on dfc218b26 passed 888 files. Read both by test name. Write `reviews/0.1.262-r2.md` with a PASS or FAIL verdict on c30f5181a and commit it alone.
+Run `npm ci`, then the test files W4 and W5 changed or added, directly. The full suite is CI on bb6a8db72 and the coordinator's locked gate (`.ai/cezar/t/04a258b0/logs/gate-0.1.262b.log`); the pre-repair gate on dfc218b26 passed 888 files. Read both by test name. Write `reviews/0.1.262-r2.md` with a PASS or FAIL verdict on bb6a8db72 and commit it alone.
 
 ### W6: 011-110, the second source of a second successor
 
-Use /worker. Shape: repair. Baseline the candidate `c30f5181a` (cand/0.1.262); it lands after 0.1.262.
+Use /worker. Shape: repair. Baseline the candidate `bb6a8db72` (cand/0.1.262); it lands after 0.1.262.
 
 Outcome: `squeal start` never spawns a lock-waiting daemon beside the successor the hooks claimed, and `test/daemon/handover-tier.test.ts:161` counts one successor on CI.
 
-Read board row 011-110, `tasks/011-34/notes.md`, `tasks/011-32/notes.md`, spec 011 C9 on `start` during a handoff. Evidence: CI 39769624080 (Node 22 1/3) on c30f5181a, with 011-110's first fix in, still counted two `--await-lock` daemons; `lockWaits` at line 160 was 1, so the hooks spawned one and `start` the other.
+Read board row 011-110, `tasks/011-34/notes.md`, `tasks/011-32/notes.md`, spec 011 C9 on `start` during a handoff. Evidence: CI 39769624080 (Node 22 1/3) on bb6a8db72, with 011-110's first fix in, still counted two `--await-lock` daemons; `lockWaits` at line 160 was 1, so the hooks spawned one and `start` the other.
 
 Seam: `claims()` in `src/cli/start.ts:169` and its caller `finishHandoff` (line 123). The coordinator's hypothesis, unverified: `finishHandoff` passes the record read when `start` began (`stopping.record`); if the successor registered meanwhile and cleared the claim, `claims()` finds no live claim for the old incarnation, writes a new one and spawns with the lock wait. A lead: prove or refute it first with a test that registers a successor between that read and `claims()`. If the second daemon has another source, find it by its parent process.
 

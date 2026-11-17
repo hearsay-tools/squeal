@@ -1,6 +1,6 @@
 # Waits: one module for how Squeal's commands wait, the run waits first
 
-This is the design brief from the architecture review of 2026-11-12, report card 3. Sources: main at `6eb3c3a0a`, rechecked at `c601627a6`; Cezar task af6c0b3f, report artifact d8b46fe2. The design session is task c86019be.
+This is the design brief from the architecture review of 2026-11-12, report card 3. Sources: main at `4cdedf4ae`, rechecked at `49ee87036`; Cezar task af6c0b3f, report artifact d8b46fe2. The design session is task c86019be.
 
 - Terms are in `GLOSSARY.md`: Wait, Status wait, Run wait, Wait outcome; Daemon presence for the gone rule; Covered files from card 2's section Requests.
 - The decisions below are the human's, taken one at a time on 2026-11-13.
@@ -10,7 +10,7 @@ This is the design brief from the architecture review of 2026-11-12, report card
 
 Seven loops in the CLI wait on results. Each repeats the deadline, the poll, the store read, the daemon watch and the outcome order.
 
-| Wait | Command | Where (at `c601627a6`) |
+| Wait | Command | Where (at `49ee87036`) |
 |---|---|---|
 | status wait, edit form | `status --wait`, `run --slow --wait` | `src/cli/status-wait.ts:214` `waitForStatus` |
 | status wait, named form | `status <path> --wait` | `status-wait-paths.ts:218` `waitForNamed` |
@@ -57,7 +57,7 @@ Counted on 2026-11-13 from the review files and git; each cause was judged by on
   - **By cause:** deadline 5, daemon gone 7, store errors 5, synced 4, hold 1, which files 5, wording 6, other 6.
   - **Daemon gone:** all 7 fixes landed in the part the status waits share (`wait-liveness.ts`). The run waits got none of them.
   - **Already elsewhere:** for 4 of the 39, another wait already had the rule.
-- **Since 2026-11-04:** no fix to the status waits' loops; 5 fixes to the run waits (`03d57de22`, `16e27c590`, `a45ae2179`, `df5b3001d`, `2412b4240`).
+- **Since 2026-11-04:** no fix to the status waits' loops; 5 fixes to the run waits (`9f79a2ced`, `e07ffcdcb`, `ae7e6835f`, `ee6a684d7`, `0b8aa569b`).
 - **Earlier record:** `016-extensions/research/core-defects.md` counts status and wait as 75 of 415 core defects. Within that, "status and wait, order" is 12 items over 6 FAIL rounds, and its catch is "owner".
 
 These are small counts. They show where the cost has been, not how large it will be. They also show the pattern this card addresses: a rule reaches some waits and not the others. The on-hold rule (row 011-73) was added to five loops one by one.

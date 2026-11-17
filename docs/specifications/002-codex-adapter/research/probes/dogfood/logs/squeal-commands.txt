@@ -95,7 +95,7 @@ $ node plugins/codex/dist/cli/squeal.mjs status --json
   "inheritedCount": 0,
   "refinedRevision": 3,
   "runnerPartPending": false,
-  "head": "96bd3d9cb6211b5808157e9c340be918777fa97a",
+  "head": "f00f76dc8c9b2ee125bde989ea82c2ebe63e6666",
   "dirty": true,
   "dirtyObservedAt": 3,
   "daemon": {
@@ -187,7 +187,7 @@ $ node plugins/codex/dist/cli/squeal.mjs status --json
   "inheritedCount": 0,
   "refinedRevision": 3,
   "runnerPartPending": false,
-  "head": "96bd3d9cb6211b5808157e9c340be918777fa97a",
+  "head": "f00f76dc8c9b2ee125bde989ea82c2ebe63e6666",
   "dirty": true,
   "dirtyObservedAt": 3,
   "daemon": {

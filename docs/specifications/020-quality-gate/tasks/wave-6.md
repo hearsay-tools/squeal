@@ -2,7 +2,7 @@
 
 Approved by the human on 2026-11-11: "#175 rows: Build both", "Keep result: Yes". Spec D17.
 
-Baseline: `cand/0.1.432` at `0bf414568` (wave 5 integrated, in review). If its review asks for a repair, the coordinator rebases this wave over it. Two workers run in parallel:
+Baseline: `cand/0.1.432` at `e379f43b0` (wave 5 integrated, in review). If its review asks for a repair, the coordinator rebases this wave over it. Two workers run in parallel:
 - 020-17ab: the estimate and the order, one worker, because both edit `collect.ts` before the run;
 - 020-17c: the gate keeps its results.
 
@@ -55,7 +55,7 @@ Use /worker. Shape: finish. Baseline: `origin/main` after release 0.1.432, which
 
 Outcome: one branch with both rows on top of the repair, each keeping its intent (spec D17), and the order D14.4 now sets: resolve scope, resolve stored and parts evidence, print the plan, estimate and order only the files that will run, `prepare`, run, keep.
 
-Start: `git cherry-pick -x 0bf4145689..hold/020-17ab` (6 commits), then `git cherry-pick -x 0bf4145689..hold/020-17c` (9 commits). Expect conflicts in `collect.ts`, `code-gate-text.ts`, `code-gate.ts`, `test/cli/code-gate-stored.test.ts` and `commands.md` (3 copies). Read each row's notes under `tasks/020-17ab/` and `tasks/020-17c/` first, and `tasks/020-W5-R1/notes.md`.
+Start: `git cherry-pick -x e379f43b06..hold/020-17ab` (6 commits), then `git cherry-pick -x e379f43b06..hold/020-17c` (9 commits). Expect conflicts in `collect.ts`, `code-gate-text.ts`, `code-gate.ts`, `test/cli/code-gate-stored.test.ts` and `commands.md` (3 copies). Read each row's notes under `tasks/020-17ab/` and `tasks/020-17c/` first, and `tasks/020-W5-R1/notes.md`.
 
 Rules:
 - The estimate counts only files that will run, after the stored lookup; a kept file read back on a second run is not estimated.

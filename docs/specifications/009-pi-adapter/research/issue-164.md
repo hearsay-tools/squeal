@@ -2,7 +2,7 @@
 
 Recommend a bounded change to the Pi status notice that suppresses unchanged repeats and explains the missing automatic feedback; preserve its existing install guidance and registration uncertainty.
 
-Examined Squeal **0.1.414**, commit `b509d603f483e5b869eb11b6cfecc744b057193e`, Node **24.22.1**, on 2026-11-07. No Pi binary or model ran. The incident version is unknown: #164 names 0.1.412 as current when reported, not as the observed binary. All findings below concern this checkout unless stated otherwise.
+Examined Squeal **0.1.414**, commit `28814707808f0941c0767ff27e82e568621b3367`, Node **24.22.1**, on 2026-11-07. No Pi binary or model ran. The incident version is unknown: #164 names 0.1.412 as current when reported, not as the observed binary. All findings below concern this checkout unless stated otherwise.
 
 ## Questions answered
 
@@ -73,6 +73,6 @@ The installed CLI's `status --wait 60000` over the four changed paths returned e
 ## Sources
 
 - Fetched with `gh issue view <N> --repo hearsay-tools/squeal --json title,body,url,state` (164 also with `comments`, without `state`): [#164](https://github.com/hearsay-tools/squeal/issues/164), [#85](https://github.com/hearsay-tools/squeal/issues/85), [#131](https://github.com/hearsay-tools/squeal/issues/131). Issue reports are claims; section 1 independently reproduces only #164's notice.
-- [Pi notice source at examined commit](https://github.com/hearsay-tools/squeal/blob/b509d603f483e5b869eb11b6cfecc744b057193e/src/cli/pi/status.ts); adjacent source paths and lines cited above.
-- [Launcher source at examined commit](https://github.com/hearsay-tools/squeal/blob/b509d603f483e5b869eb11b6cfecc744b057193e/plugins/claude-code/bin/squeal-launcher).
+- [Pi notice source at examined commit](https://github.com/hearsay-tools/squeal/blob/28814707808f0941c0767ff27e82e568621b3367/src/cli/pi/status.ts); adjacent source paths and lines cited above.
+- [Launcher source at examined commit](https://github.com/hearsay-tools/squeal/blob/28814707808f0941c0767ff27e82e568621b3367/plugins/claude-code/bin/squeal-launcher).
 - Local contract: [009 spec](../spec.md) D2/D7/D8 and [status](../status.md); [011 spec](../../011-core/spec.md) C8/C9; [005 spec](../../005-agent-adoption/spec.md) D3. Board `gh-131` records its evidence hold.

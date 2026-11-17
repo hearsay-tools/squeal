@@ -1,17 +1,17 @@
 # 009 waves 2 and 3 review
 
-Row: 009-22. Candidate: `cf1e952c..3fd4916de395c089e67f6380bf58db9029ac0584`.
-Scope: 009-15, 009-16, 009-18 and 009-19 against spec 009 D1, D4, D5, D6, D7 and Testing, the amendments in `status.md`, and spec 005 D3. `wave-0.md`, `wave-1.md` and `wave-1.5.md` were read first. B1's fix `02249f23` remains settled. Interleaved spec 007 work and release-eval results are outside this row's prosecution.
+Row: 009-22. Candidate: `3deb2899..3d0158c431030449854b37949c2fbdd9360ea908`.
+Scope: 009-15, 009-16, 009-18 and 009-19 against spec 009 D1, D4, D5, D6, D7 and Testing, the amendments in `status.md`, and spec 005 D3. `wave-0.md`, `wave-1.md` and `wave-1.5.md` were read first. B1's fix `f551f58b` remains settled. Interleaved spec 007 work and release-eval results are outside this row's prosecution.
 
 ## Verification output
 
-The dispatched HEAD is `606d5827eb7328cbbd750d71b739e4b56a2dc4bc`, not the candidate. **Proven provenance mismatch, resolved for verification:** every build, independent test and probe below ran in the explicitly authorized detached worktree `/tmp/review-009-w3` at `3fd4916d`. The report alone is committed on the dispatched branch. No tracked product code was changed.
+The dispatched HEAD is `0327ba89f4c1effce6233e32574f502f7375b6c4`, not the candidate. **Proven provenance mismatch, resolved for verification:** every build, independent test and probe below ran in the explicitly authorized detached worktree `/tmp/review-009-w3` at `3d0158c4`. The report alone is committed on the dispatched branch. No tracked product code was changed.
 
 ```text
-$ git worktree add --detach /tmp/review-009-w3 3fd4916d
-HEAD is now at 3fd4916d
+$ git worktree add --detach /tmp/review-009-w3 3d0158c4
+HEAD is now at 3d0158c4
 $ git rev-parse HEAD
-3fd4916de395c089e67f6380bf58db9029ac0584
+3d0158c431030449854b37949c2fbdd9360ea908
 $ npm ci
 added 174 packages, and audited 175 packages in 5s
 found 0 vulnerabilities
@@ -44,7 +44,7 @@ Duration 1281.51s
 (exit 1)
 ```
 
-**Proven unrelated red gate:** the sole failure is the release-eval flag already recorded on the board and in the wave-2 amendment, present since `bdd05f15` and owned by the 0.1.168 releasing coordinator. `test/evals/atomic-trend.test.ts` is unchanged across this range. This is not a scoped Pi blocker, and it is not a green full-suite result. All other test files that ran passed, including the existing Claude Code/Codex suites and the Pi e2e. The suite also printed two fixture gitdir-repair notices, an earlier-run process cleanup notice and Vitest experimental type-test notices; none produced another failure.
+**Proven unrelated red gate:** the sole failure is the release-eval flag already recorded on the board and in the wave-2 amendment, present since `4516ca67` and owned by the 0.1.168 releasing coordinator. `test/evals/atomic-trend.test.ts` is unchanged across this range. This is not a scoped Pi blocker, and it is not a green full-suite result. All other test files that ran passed, including the existing Claude Code/Codex suites and the Pi e2e. The suite also printed two fixture gitdir-repair notices, an earlier-run process cleanup notice and Vitest experimental type-test notices; none produced another failure.
 
 The focused Node 22 run independently covers the changed worker/host, mode and cancellation behavior, fixture isolation, installer/update, and the installed-package e2e:
 
@@ -95,7 +95,7 @@ A post-report `npm run lint` in the dispatched checkout could not execute (`sh: 
 
 ## Verdict
 
-PASS `3fd4916d`: 0 blockers, 2 nonblocking should-fix notes (1 plausible timing risk and 1 proven limit of the accepted retention policy), and 1 proven nit. The independent full suite is red only on the previously documented release-eval flag. No proven break of this row's goals was found.
+PASS `3d0158c4`: 0 blockers, 2 nonblocking should-fix notes (1 plausible timing risk and 1 proven limit of the accepted retention policy), and 1 proven nit. The independent full suite is red only on the previously documented release-eval flag. No proven break of this row's goals was found.
 
 ## Blockers
 
@@ -127,7 +127,7 @@ Small follow-up: state that an open session must `/reload` before another update
 
 `plugins/pi/bin/squeal-launcher:79` and the other two launcher copies remove “and install.sh for Pi” but keep format 2. The existing recopy rule in `src/cli/update.ts:194` replaces a launcher only for a strictly larger format. `squeal update` invokes `install.sh --pi`, which does not call `copy_launcher`.
 
-The probe installs a format-2 launcher from `cf1e952c`, updates Pi successfully from 0.1.172 to 0.1.173 through the candidate's `main(["update"])`, and verifies the installed launcher is byte-for-byte unchanged. It still has the old Pi instruction. The package and selected CLI update correctly; this is obsolete guidance, not a failed update.
+The probe installs a format-2 launcher from `3deb2899`, updates Pi successfully from 0.1.172 to 0.1.173 through the candidate's `main(["update"])`, and verifies the installed launcher is byte-for-byte unchanged. It still has the old Pi instruction. The package and selected CLI update correctly; this is obsolete guidance, not a failed update.
 
 One installer worker can raise the format in all three copies and update the format assertions, with a regression that begins with the preceding release's actual launcher. The existing test of a synthetic format 3 proves the recopy mechanism but does not ship that migration.
 

@@ -22,7 +22,7 @@ Done when: the row's done-when holds: `grep -rn "performance\.now\|Date\.now" sr
 
 ## R1 (W1): review of cand/0.1.512
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.512` at `dc62e4289ab5b814f75238da9f1599689c9a1f2c`; candidate CI run 43708305969. Range `c5f975a58..dc62e4289`: two commits of worker af2e296a (fast-forwarded), then the 0.1.512 raise and bundles. Read: board row 011-351, this file's W1, `tasks/011-351/notes.md`, `../research/scheduler-step.md` ("The clock port", "Timing differences", "Key format").
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.512` at `65e292edb9000dd8b6db0a13921c270ea03ca463`; candidate CI run 43708305969. Range `8f9033b9f..65e292edb`: two commits of worker af2e296a (fast-forwarded), then the 0.1.512 raise and bundles. Read: board row 011-351, this file's W1, `tasks/011-351/notes.md`, `../research/scheduler-step.md` ("The clock port", "Timing differences", "Key format").
 
 Check, each as proven, plausible or unverified:
 

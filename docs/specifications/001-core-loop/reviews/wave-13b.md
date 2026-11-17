@@ -2,7 +2,7 @@
 
 FAIL 6418a6b
 
-One proven blocker remains (B2), one nonblocking should-fix note (S2), no nits. B1 and S1 are closed. Reviewed `e55ccd6..6418a6b`, bounded by `reviews/wave-13.md` and row 001-152. Spec 004's other rows, 004-15 and 003-40, are outside this review. The worktree started at `743b04f`, two documentation-only commits later; all verification and probes below ran after detaching at the exact candidate `6418a6bb54e04cd91845b902c15032dec568f6d5` with a clean tracked tree.
+One proven blocker remains (B2), one nonblocking should-fix note (S2), no nits. B1 and S1 are closed. Reviewed `e55ccd6..6418a6b`, bounded by `reviews/wave-13.md` and row 001-152. Spec 004's other rows, 004-15 and 003-40, are outside this review. The worktree started at `743b04f`, two documentation-only commits later; all verification and probes below ran after detaching at the exact candidate `314bdc71289e449b6d56be6a09e17d96917b3ed3` with a clean tracked tree.
 
 ## Verification
 
@@ -10,7 +10,7 @@ Node 24.21.0, Linux, Vitest 5.0.3. Commands ran at the exact candidate with a cl
 
 ```text
 $ git rev-parse HEAD
-6418a6bb54e04cd91845b902c15032dec568f6d5
+314bdc71289e449b6d56be6a09e17d96917b3ed3
 
 $ npm ci
 added 56 packages, and audited 57 packages in 31s

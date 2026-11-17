@@ -13,8 +13,8 @@ one() { # label pre fix INV KIND
   cp /tmp/ms18/out/$label-pre.json /tmp/ms18/out/$label-fix.json "$here/results/"
 }
 one r398 5ecb377a8 69d6328bf A,B,C,D,E vitest
-one r397 231ecaeb0 b862d2f2d A,B,C,D,E vitest
-one r345 d7344427b 3a8d364e4 C,D,E vitest
+one r397 231ecaeb0 7505b4949 A,B,C,D,E vitest
+one r345 d7344427b 5427e2956 C,D,E vitest
 one r427 dae700644 bc8ed7742 D,E node
 # Second pass (after the E fix): HEAD, every invariant, every failure.
 if [ "${HEAD_RUN:-0}" = 1 ]; then

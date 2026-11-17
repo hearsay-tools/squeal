@@ -21,7 +21,7 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2, on the coordinator's re
 
 | Plugin cache | 0.1.366 born | 0.1.367 born |
 | --- | --- | --- |
-| Claude Code | 07:37:52Z | 11:40:33Z (install record 11:40:33.840Z, commit `6709eb4d7`) |
+| Claude Code | 07:37:52Z | 11:40:33Z (install record 11:40:33.840Z, commit `5ba42a5a4`) |
 | Codex | 07:50:50Z (versions directory 07:52:51Z) | not present at 11:44Z |
 
 ## Sessions (this repository, the window)

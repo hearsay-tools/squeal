@@ -11,7 +11,7 @@ TypeScript project. This report does not define a contract or amend a spec.
 |---|---|
 | 1. Can a test pass at runtime while its duplicate spread property fails typecheck? | **Verified by experiment**, Vitest 5.0.3 / TypeScript 7.0.2: one test passed; `tsc --noEmit` exited 1 with TS2783. |
 | 2. Does shipped Squeal reproduce the missing compiler failure? | **Verified by experiment**, Squeal 0.1.390: the same file was current with no known failures, both initially and after an edit reintroduced the error. |
-| 3. Does this contradict current runtime-result semantics? | **Read in source code**, Squeal 0.1.390 at `6e4094c132fae1e7d80ee56572f058265abc927e`: the primer explicitly excludes typecheck; the Vitest adapter filters out the TypeScript pool. C4/C5/C6/C14 and 013 describe runtime test evidence. |
+| 3. Does this contradict current runtime-result semantics? | **Read in source code**, Squeal 0.1.390 at `cec2aaf15e9ade6f666aebd4d493347b2b9588b7`: the primer explicitly excludes typecheck; the Vitest adapter filters out the TypeScript pool. C4/C5/C6/C14 and 013 describe runtime test evidence. |
 | 4. Is an optional project-configured no-emit check feasible? | **Verified by experiment**, TypeScript 7.0.2: this explicit project config detects and clears the diagnostic without a build command. **Inferred**, same versions: a separate check could expose it; scheduling, dependency keys and per-file attribution remain unproved. |
 | 5. Was the original Cezar incident reproduced exactly? | **Not determined, because** this bounded probe did not check out Cezar PR 2407 or run its workspace configs, CI or Claude Code delivery. It reproduces the same compiler/runtime/status gap in a minimal project. |
 
@@ -142,9 +142,9 @@ probe README for the exact repair command and safer repeat setup.
 2. [011 C4, C5, C6, C14](../spec.md), [011 status](../status.md),
    [013 Scope/V1/V4](../../013-vitest-runner/spec.md),
    [013 status](../../013-vitest-runner/status.md), read at
-   `6e4094c132fae1e7d80ee56572f058265abc927e`.
-3. [Vitest adapter source](https://github.com/hearsay-tools/squeal/blob/6e4094c132fae1e7d80ee56572f058265abc927e/src/runners/vitest/adapter.ts#L775),
-   [primer source](https://github.com/hearsay-tools/squeal/blob/6e4094c132fae1e7d80ee56572f058265abc927e/src/harness/shared/primer.ts#L219),
+   `cec2aaf15e9ade6f666aebd4d493347b2b9588b7`.
+3. [Vitest adapter source](https://github.com/hearsay-tools/squeal/blob/cec2aaf15e9ade6f666aebd4d493347b2b9588b7/src/runners/vitest/adapter.ts#L775),
+   [primer source](https://github.com/hearsay-tools/squeal/blob/cec2aaf15e9ade6f666aebd4d493347b2b9588b7/src/harness/shared/primer.ts#L219),
    and local `src/core/types/runner.ts` (`RunnerAdapter`, `RunReport`).
 4. [Probe commands and environment caveats](probes/issue-133/README.md),
    [initial output](probes/issue-133/initial-output.txt),

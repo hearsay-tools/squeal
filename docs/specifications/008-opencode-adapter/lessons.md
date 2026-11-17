@@ -1,6 +1,6 @@
 # 008 OpenCode adapter: dogfooding lessons
 
-Task 008-20, 2026-10-15. Squeal 0.1.184 (main `4c6d1176`) installed into a real OpenCode 1.18.35 with its own `install.sh`, updated with `squeal update` to a later archive while a TUI session was open, and used by real models on remeda through Cezar-shaped `opencode serve` sessions, `opencode run` and the TUI. Scripts, scenarios and condensed logs: `dogfood/` (its README lists them). Inputs: the brief in `tasks/wave-2.md`, `reviews/wave-2.md` (Inputs for the next wave), the human's model rule of 2026-10-14.
+Task 008-20, 2026-10-15. Squeal 0.1.184 (main `4160bf3c`) installed into a real OpenCode 1.18.35 with its own `install.sh`, updated with `squeal update` to a later archive while a TUI session was open, and used by real models on remeda through Cezar-shaped `opencode serve` sessions, `opencode run` and the TUI. Scripts, scenarios and condensed logs: `dogfood/` (its README lists them). Inputs: the brief in `tasks/wave-2.md`, `reviews/wave-2.md` (Inputs for the next wave), the human's model rule of 2026-10-14.
 
 ## Verdict
 
@@ -31,7 +31,7 @@ One defect touches a goal: under `opencode run`, news known before the turn's id
 | --- | --- |
 | Where | Only as `squeal-e2e`, through `dogfood/as-user.sh`. Every inherited variable is dropped. `HOME`, `TMPDIR` and the four `XDG_*` directories are under `/home/squeal-e2e/dogfood-008`, with `OPENCODE_DISABLE_AUTOUPDATE=1` and `OPENCODE_DISABLE_MODELS_FETCH=1`. The `PATH` holds the launcher's `~/.local/bin`, a `bin/` with only `opencode` (1.18.35 from squeal-e2e's npm prefix), Node 24.21.0, `/usr/bin` and `/bin`, so `claude`, `codex` and `pi` were not on it. The agent user's OpenCode directories were never touched. |
 | Models | `cliproxy`, through `dogfood/proxy.mjs` on 127.0.0.1:47320. The proxy adds `CLIPROXY_API_KEY`, which only the proxy process holds (passed by name with `sudo --preserve-env`), and logs each request body, never a header. OpenCode's provider (`@ai-sdk/openai-compatible`) has a placeholder key. This is stricter than the brief's `apiKey: "{env:CLIPROXY_API_KEY}"`, which would put the key in OpenCode's environment and so in every agent shell. Tiers: `gpt-6-luna` where the daemon is the subject (s0, s3b, s4, s4b, s5), `gpt-6-astra` for ordinary tasks where the reading matters (s1, s3), and `grok-4.7` (s2). No Claude model (the human's rule). |
-| Install | `install.sh` of 0.1.184 (`git show 4c6d1176:install.sh`) with `SQUEAL_SOURCE=file://…/src`, which holds a `git archive` of `4c6d1176` named as the tag archive. The later version is 0.1.190: the same tree with every `0.1.184` in `install.sh`, `package.json` and `plugins/` replaced. It stands in for the next release; the only later candidate, `cand/0.1.185`, does not contain 0.1.184's OpenCode changes. So the update proves the mechanics (repoint, keep, which version an open session runs), not a code change. |
+| Install | `install.sh` of 0.1.184 (`git show 4160bf3c:install.sh`) with `SQUEAL_SOURCE=file://…/src`, which holds a `git archive` of `4160bf3c` named as the tag archive. The later version is 0.1.190: the same tree with every `0.1.184` in `install.sh`, `package.json` and `plugins/` replaced. It stands in for the next release; the only later candidate, `cand/0.1.185`, does not contain 0.1.184's OpenCode changes. So the update proves the mechanics (repoint, keep, which version an open session runs), not a code change. |
 | Project | remeda (`github.com/remeda/remeda` at `8e6e78f6`, 2026-10-04), cloned from 009-20's clone. It is a TypeScript utility library, an npm-workspaces monorepo whose `packages/remeda` has 175 Vitest runtime files and 142 typecheck files: 2,413 checks. Chosen as 009-20 chose it: real, in the size range, fast, with a widely imported core (`purry` re-keys 125 files). Being the same project as 009-20, it also allows a direct comparison with Pi. Setup was `npm ci`, `squeal setup --yes --no-warmup` (defect 3), then `squeal setup --yes` with the warm-up, `npm run build` in `packages/remeda` (7 files import the built package; 009's Observation 4) and `squeal run --all --force`: 2,411 passed, 0 known failures. |
 | Drivers | `serve`: `dogfood/cezar-drive.mjs` runs the installed Cezar 0.16.0-dev.1634 `OpencodeServerRunner` (sha256 `20b478af…`), copied unchanged, in persistent mode, the shape of an interactive Cezar step. Each prompt is sent `gapMs` after the previous turn-end; afterwards the server stays open until quiet. `run`: `dogfood/run.sh`, `opencode run --format json`. TUI: `dogfood/tui.sh`, OpenCode in a 200x50 tmux window, with keys sent and the screen captured. |
 | Machine | Linux 6.8, 24 cores. Sessions started only below load 24, after `dogfood/gate.sh`. The first one waited 25 minutes for the load to fall from 177. Other work on the host pushed the load to 97 during s2. The load is recorded beside each session. |
@@ -193,7 +193,7 @@ So the update does what D1 says. Not seen: a second session on 0.1.190 alongside
 
 ## Cleanup
 
-At the end (2026-10-15 04:04, load 4.2) nothing ran as `squeal-e2e`: no OpenCode, no Squeal daemon or waiter, no proxy, no tmux server (`ps -u squeal-e2e` empty). The remeda clone is clean at `8e6e78f`. During this task the 001 coordinator reported that 0.1.185 landed on main (`32e25666`); nothing here depends on it.
+At the end (2026-10-15 04:04, load 4.2) nothing ran as `squeal-e2e`: no OpenCode, no Squeal daemon or waiter, no proxy, no tmux server (`ps -u squeal-e2e` empty). The remeda clone is clean at `8e6e78f`. During this task the 001 coordinator reported that 0.1.185 landed on main (`a9679671`); nothing here depends on it.
 
 Kept in `/home/squeal-e2e`: `dogfood-008/`, which holds everything below it:
 
@@ -209,7 +209,7 @@ Also kept: the npm prefix `.npm-global` and `.npm`, and the earlier probe direct
 
 ## 008-30: defect 1 re-checked on 0.1.186
 
-Task 008-30, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as above, with Squeal 0.1.186 (main `b4067d55`, whose product tree is `f555ac44`'s), gpt-6-luna only. Records: `dogfood/logs/030-*` (raw logs removed), `install-0.1.186.txt`, `prep-0.1.186.txt`, `stats.txt`. Times are UTC.
+Task 008-30, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as above, with Squeal 0.1.186 (main `3c88fb6a`, whose product tree is `f6ab6cb6`'s), gpt-6-luna only. Records: `dogfood/logs/030-*` (raw logs removed), `install-0.1.186.txt`, `prep-0.1.186.txt`, `stats.txt`. Times are UTC.
 
 ### Verdict
 
@@ -227,7 +227,7 @@ The Cezar-shaped `serve` session got two continuations in a row: defect 5. The f
 
 | Item | Value |
 | --- | --- |
-| Install | `sh make-archive.sh b4067d55` wrote `squeal--v0.1.186.tar.gz`, a `git archive`, and `install-0.1.186.sh`. Then `install.sh` (the full install, not `--opencode`) ran as `squeal-e2e` with `SQUEAL_SOURCE=file://…/src`, at load 8.1. It unpacked 0.1.186, ran `ln -sfn 0.1.186 …/current` and removed 0.1.184. It kept 0.1.190 as the previous version and did not run `opencode plugin` again, since OpenCode's config already listed `current`. It reported the launcher as 0.1.190's, the newest package. The 0.1.190 stand-in was then removed by hand, along with its line in the install record (`install-0.1.186.txt`). Otherwise the launcher, which runs the newest package, would have run 0.1.184's code. After that, `squeal --version` printed 0.1.186 and `current` pointed at 0.1.186. |
+| Install | `sh make-archive.sh 3c88fb6a` wrote `squeal--v0.1.186.tar.gz`, a `git archive`, and `install-0.1.186.sh`. Then `install.sh` (the full install, not `--opencode`) ran as `squeal-e2e` with `SQUEAL_SOURCE=file://…/src`, at load 8.1. It unpacked 0.1.186, ran `ln -sfn 0.1.186 …/current` and removed 0.1.184. It kept 0.1.190 as the previous version and did not run `opencode plugin` again, since OpenCode's config already listed `current`. It reported the launcher as 0.1.190's, the newest package. The 0.1.190 stand-in was then removed by hand, along with its line in the install record (`install-0.1.186.txt`). Otherwise the launcher, which runs the newest package, would have run 0.1.184's code. After that, `squeal --version` printed 0.1.186 and `current` pointed at 0.1.186. |
 | Store | Before any session: 5 known failures from s5's `capitalize`, whose revert no daemon had seen. `squeal start` and `squeal run --all --wait` brought it to revision 43, 0 known failures, and `squeal stop` stopped the daemon (`prep-0.1.186.txt`). Between sessions, the edit was reverted with `git checkout` and settled with `squeal start`, `status --wait` and `stop`. |
 | Model, proxy | `cliproxy/gpt-6-luna` through `dogfood/proxy.mjs`. Only the proxy held the key, by name. |
 | Load | Each session started after `gate.sh` opened: 5.25, 6.85 and 5.42. The highest seen was 8.32. |
@@ -321,7 +321,7 @@ The remeda clone is clean at `8e6e78f`. Squeal's store there is at revision 50 w
 
 ## 008-37: defect 5 re-checked on 0.1.192
 
-Task 008-37, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as 008-30, with Squeal 0.1.192 (main `a0afa0d8`, whose product tree is `163882d7`'s: 008-31's and 008-33's continued-turn fix), gpt-6-luna only. Records: `dogfood/logs/037-*`, `install-0.1.192.txt`, `prep-0.1.192.txt`, `stats.txt`. Times are UTC.
+Task 008-37, 2026-10-15. The same sandbox, OpenCode 1.18.35, remeda and Cezar copy as 008-30, with Squeal 0.1.192 (main `f285a4d6`, whose product tree is `9af8fc8b`'s: 008-31's and 008-33's continued-turn fix), gpt-6-luna only. Records: `dogfood/logs/037-*`, `install-0.1.192.txt`, `prep-0.1.192.txt`, `stats.txt`. Times are UTC.
 
 ### Verdict
 
@@ -345,7 +345,7 @@ No new defect.
 
 | Item | Value |
 | --- | --- |
-| Install | `sh make-archive.sh a0afa0d8` wrote `squeal--v0.1.192.tar.gz`, a `git archive` of main, and `install-0.1.192.sh`. Then `sh install-version.sh 0.1.192` ran that `install.sh` (the full install) as `squeal-e2e` through `as-user.sh` with `SQUEAL_SOURCE=file://…/src`, at load 27.45 (the install is not a session; the gate holds sessions only). It unpacked 0.1.192, repointed `current` and kept 0.1.186 as the previous version; the launcher is 0.1.192's and `squeal --version` printed 0.1.192. The plugin CLI named in every request's primer is `…/opencode/0.1.192/dist/cli/squeal.mjs`. |
+| Install | `sh make-archive.sh f285a4d6` wrote `squeal--v0.1.192.tar.gz`, a `git archive` of main, and `install-0.1.192.sh`. Then `sh install-version.sh 0.1.192` ran that `install.sh` (the full install) as `squeal-e2e` through `as-user.sh` with `SQUEAL_SOURCE=file://…/src`, at load 27.45 (the install is not a session; the gate holds sessions only). It unpacked 0.1.192, repointed `current` and kept 0.1.186 as the previous version; the launcher is 0.1.192's and `squeal --version` printed 0.1.192. The plugin CLI named in every request's primer is `…/opencode/0.1.192/dist/cli/squeal.mjs`. |
 | Store | `sh settle.sh` before each session: `git checkout -- .` in remeda, `squeal start`, `squeal run --all --wait`, `squeal stop`. Before the first session: revision 50, 0 known failures (`prep-0.1.192.txt`); after each, 0 known failures (`037-settle.txt`). |
 | Scenarios | `serve-luna-wake.json`, 030-s4's unchanged (037-s4a, 037-s4b). `serve-luna-recheck.json` (037-s4c, 037-s4d): the same `purry` task, but the message is pinned to `` `Expected ${fn.length} or ${fn.length - 1} arguments, received ${args.length}` ``, which the existing test rejects, and "If Squeal later reports that an existing test fails because of this change, change the message so that test passes while it still names both counts, again only in src/purry.ts and without running, waiting for or checking anything, and reply DONE". The second prompt asks who sent each message and what the tests' state is. This makes the continued turn's own edit, which 030-s4 got by chance, the user's instruction; the plugin path it drives is the same. |
 | Model, proxy | `cliproxy/gpt-6-luna` through `dogfood/proxy.mjs`. Only the proxy held the key, by name. |

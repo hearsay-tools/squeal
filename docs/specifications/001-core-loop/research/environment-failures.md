@@ -1,6 +1,6 @@
 # Environment failures: told apart from test failures (row 001-348)
 
-Researcher, 2026-10-14. Squeal at `a82fdb0c` (package 0.1.159), Vitest 5.0.3 (the version in `package-lock.json`), Node 24.21.0. Cezar read-only at `5dbb4b09`: `squeal.config.json`, its Vitest configs and test files. I ran no squeal or cezar command there and read no store. Probes: `probes/environment-failures/` (throwaway). Their output is in `output.txt`.
+Researcher, 2026-10-14. Squeal at `544580b3` (package 0.1.159), Vitest 5.0.3 (the version in `package-lock.json`), Node 24.21.0. Cezar read-only at `5dbb4b09`: `squeal.config.json`, its Vitest configs and test files. I ran no squeal or cezar command there and read no store. Probes: `probes/environment-failures/` (throwaway). Their output is in `output.txt`.
 
 ## Answers
 

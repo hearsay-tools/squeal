@@ -10,7 +10,7 @@ Use /worker. Shape: slice, test first, one commit per step.
 
 Outcome: `merge` takes each `RunReport` field from one rule record typed over every field, so a field with no rule fails the typecheck, and every merged report is the same as today's.
 
-Read: board row 011-330; `research/runner-traits.md` (decision 2, the call "The report merge", row 2's done-when); `GLOSSARY.md`, "Report merge"; the losses it guards against: `59d1ca149`, review `reviews/0.1.280.md` B1, review `021-remote-store-and-execution/reviews/0.1.457.md` B3.
+Read: board row 011-330; `research/runner-traits.md` (decision 2, the call "The report merge", row 2's done-when); `GLOSSARY.md`, "Report merge"; the losses it guards against: `51ea7dca4`, review `reviews/0.1.280.md` B1, review `021-remote-store-and-execution/reviews/0.1.457.md` B3.
 
 Seam and lead: `merge` at `src/core/daemon/composite-runner.ts:216`. First edit: the table test, run against today's `merge` and passing before any refactor. One row per field over one, two and three parts, and two parts each with a setup failure. Then the rule record (it may live in a new file beside the composite, no barrel), and `merge` built from it.
 
@@ -40,17 +40,17 @@ Seam: `test/daemon/runner-traits-holders.test.ts` (in-process rows about `:58`, 
 
 Owns: those two test files. Leave alone: every product file and W1's files.
 
-If a new row shows an answer that differs from the base before 011-329 (`73abdb9e1`) in a way N1 does not name, stop and report it to the coordinator; do not change product code.
+If a new row shows an answer that differs from the base before 011-329 (`05f601e91`) in a way N1 does not name, stop and report it to the coordinator; do not change product code.
 
 Done when: the new rows pass; the table's other rows are unchanged; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`. Notes: a short "W2" section appended to `tasks/011-329/notes.md` naming each new row.
 
 ## R1: review of cand/0.1.477
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.477` at `efafa9f32d5956483b2dc9b58583b80a068e7c1b`; range `371cc8f8c..efafa9f32`: W1's three commits of e645ac81 (`8c11ce0ff..07e2a6d7a`), W2's two commits of e8ca62ce (`499797ac5..116ea33b0`), all cherry-picked, then the 0.1.477 version raise and bundles. The behaviour to compare against is `371cc8f8c`. Read: board row 011-330, `research/runner-traits.md` (decision 2, "The report merge", row 2's done-when), `tasks/011-330/notes.md`, the "W2" section of `tasks/011-329/notes.md`, `reviews/0.1.473.md` S1 and N1, this file's W1 and W2. Candidate CI: the run on `efafa9f32`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.477` at `127c010f3cc02949edac3b86b759d43169c2073a`; range `39eec1f1d..127c010f3`: W1's three commits of e645ac81 (`50b5f88e0..ccbd8d157`), W2's two commits of e8ca62ce (`0d7302c36..31e8c2ab8`), all cherry-picked, then the 0.1.477 version raise and bundles. The behaviour to compare against is `39eec1f1d`. Read: board row 011-330, `research/runner-traits.md` (decision 2, "The report merge", row 2's done-when), `tasks/011-330/notes.md`, the "W2" section of `tasks/011-329/notes.md`, `reviews/0.1.473.md` S1 and N1, this file's W1 and W2. Candidate CI: the run on `127c010f3`.
 
 Check, each as proven, plausible or unverified:
 
-1. **Every merged report is the same** as at `371cc8f8c`, for the composite and the remote lane: each field's value, whether an optional key is present or absent (empty included), the key order of the merged object, the failure text and its order, the first setup failure kept, `startedProjects` once each and sorted.
+1. **Every merged report is the same** as at `39eec1f1d`, for the composite and the remote lane: each field's value, whether an optional key is present or absent (empty included), the key order of the merged object, the failure text and its order, the first setup failure kept, `startedProjects` once each and sorted.
 2. **A field with no rule fails the typecheck**: `MergeRules` over every `RunReport` key, and the `Object.fromEntries` build with its one cast in `merge`. Can a forgotten or misplaced rule still pass the typecheck and the table, and does the cast hide one?
 3. **One decision path** (review `0.1.452.md` B1): the table calls `merge` as the composite and the remote lane do, never a copy of the rules.
 4. **Replace, don't layer.** Each of the four deleted composite cases maps to table rows that prove the same thing; no remote lane case was deleted, by the worker's call (notes).

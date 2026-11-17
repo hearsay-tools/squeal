@@ -1,6 +1,6 @@
 # Runner traits: each runner kind states them once, and every layer carries them whole
 
-Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 8), designed in task 238ba474 on 2026-11-13 at main `83897e102`. Terms: `GLOSSARY.md` (Lane, Runner traits, Report merge). The decisions below are the human's, taken one at a time on 2026-11-13. Rows 011-329 and 011-330.
+Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 8), designed in task 238ba474 on 2026-11-13 at main `b708b7fec`. Terms: `GLOSSARY.md` (Lane, Runner traits, Report merge). The decisions below are the human's, taken one at a time on 2026-11-13. Rows 011-329 and 011-330.
 
 ## Problem
 
@@ -20,9 +20,9 @@ Counted on 2026-11-13 (read in source code; `git log`):
 | What | Count |
 |---|---|
 | Defaults restated outside the adapters | about 29 in 10 files; `?? grant` for `tierWidth` at 7 sites |
-| A layer lost a trait | 2 in all history: `85c819478` (2026-10-06, the recovering runner dropped `affectedDetailed`, an optional member since replaced by `affected`), `1735a5add` (2026-10-09, `afterEachRun` dropped `lane`, found by the row that added it, 001-140) |
-| A field lost in the report merge | 3: `59d1ca149` (2026-10-14, `skippedFiles`, found the day it was added), `38e5337da` (2026-10-24, `focused`, review `011-core/reviews/0.1.280.md` B1), review `021-remote-store-and-execution/reviews/0.1.457.md` B3 (2026-11-12, a split tier kept one of two setup failures, fixed in `d3ef9514e`) |
-| Counted by the review card but another cause | review 001-394 B2 (`8c429c8ce`): the slow selector admitted more files than a project's `maxWorkers`; `slowWidth` was created by that fix |
+| A layer lost a trait | 2 in all history: `8e7a1860f` (2026-10-06, the recovering runner dropped `affectedDetailed`, an optional member since replaced by `affected`), `2d088e811` (2026-10-09, `afterEachRun` dropped `lane`, found by the row that added it, 001-140) |
+| A field lost in the report merge | 3: `51ea7dca4` (2026-10-14, `skippedFiles`, found the day it was added), `3a64ee8e5` (2026-10-24, `focused`, review `011-core/reviews/0.1.280.md` B1), review `021-remote-store-and-execution/reviews/0.1.457.md` B3 (2026-11-12, a split tier kept one of two setup failures, fixed in `023152194`) |
+| Counted by the review card but another cause | review 001-394 B2 (`b00db0627`): the slow selector admitted more files than a project's `maxWorkers`; `slowWidth` was created by that fix |
 | Fixes in the layer, runner-set and proxy files since 2026-10-20 | 22: 1 report merge, 10 runner-host lifecycle, 4 remote lane, 7 other |
 | When the optional members were added | 11 of 12 between 2026-10-09 and 2026-10-23; `globalSetups` on 2026-11-11, read only by `squeal code` |
 | Tests that only check a layer forwards a trait | 10 tests in 9 files |

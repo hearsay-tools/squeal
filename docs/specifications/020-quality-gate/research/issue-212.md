@@ -30,7 +30,7 @@ $ getconf _NPROCESSORS_ONLN
 
 ## Contract and overlap
 
-Read in repository spec at origin/main `a934786815e3d980ce30a866b6f109b245025c28`:
+Read in repository spec at origin/main `b99bb073f07d0a238f6eb81f251ba390ecb0d0b9`:
 
 - D3.1 selects affected closures for every changed path, not only the paths of changed functions. D3.4 keeps the overall verdict incomplete for unfinished selected files.
 - D5 requires completed loaders and no selected failure. A subset may prove the CRAP bound only when omitted loaders completed. An unfinished loader still prevents pass. Low measured values alone do not establish completeness.

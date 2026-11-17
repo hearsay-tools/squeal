@@ -1,14 +1,14 @@
 # 006 wave 1.5: re-review of 006-05 and 006-06
 
-Candidate checked: `1f95673f5aaf921d418000dbe0f463d63a4892a3`. Range: `aa8a5dc4^..1f95673f`. Board row: 006-07. Prior findings: `wave-1.md`. Second round on this slice.
+Candidate checked: `99dc4adaa843ad1073fb15eefdb020ff293c00b0`. Range: `15c612f2^..99dc4ada`. Board row: 006-07. Prior findings: `wave-1.md`. Second round on this slice.
 
 ## Verification
 
-The initial checkout was `c74d30ae`, beyond the range. Checks and probes ran on the clean tracked tree detached at the requested candidate `1f95673f`. The reviewer returned to `cez/0a553e1b` to commit this report alone. No board, spec, product or test file was edited.
+The initial checkout was `d82aa70e`, beyond the range. Checks and probes ran on the clean tracked tree detached at the requested candidate `99dc4ada`. The reviewer returned to `cez/0a553e1b` to commit this report alone. No board, spec, product or test file was edited.
 
 ```text
 $ git rev-parse HEAD
-1f95673f5aaf921d418000dbe0f463d63a4892a3
+99dc4adaa843ad1073fb15eefdb020ff293c00b0
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities

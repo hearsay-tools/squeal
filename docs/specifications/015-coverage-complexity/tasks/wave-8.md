@@ -35,7 +35,7 @@ Use /worker, resumed (worker fcd7c198). Shape: repair. First rebase your branch 
 
 ## 015-53 round 2: re-review of candidate 0.1.317 after R11
 
-Use /reviewer, resumed (reviewer 9ee867ef). Candidate `cand/0.1.317`, pinned to the SHA named in the message, on main at 0.1.314. It replaces `cand/0.1.315` (round 1, ab788058c; the number moved because 016's 0.1.316 lands first). Range `origin/main..<SHA>`: the scheduler commit, now the listing fact (`listing.<worktreeId>`, `onListed`, `listingFailed` after a thrown runner part; agreements `07557174`, `9e9fe36a`, `bf3feab6`, `e86a66d4`, 011's conditions), the W1 pass commit, the R11 pass commit, and the build commit. Write `reviews/0.1.315-r2.md` and commit it on your branch.
+Use /reviewer, resumed (reviewer 9ee867ef). Candidate `cand/0.1.317`, pinned to the SHA named in the message, on main at 0.1.314. It replaces `cand/0.1.315` (round 1, 3c939b0a8; the number moved because 016's 0.1.316 lands first). Range `origin/main..<SHA>`: the scheduler commit, now the listing fact (`listing.<worktreeId>`, `onListed`, `listingFailed` after a thrown runner part; agreements `07557174`, `9e9fe36a`, `bf3feab6`, `e86a66d4`, 011's conditions), the W1 pass commit, the R11 pass commit, and the build commit. Write `reviews/0.1.315-r2.md` and commit it on your branch.
 
 Check, with proof where you can:
 1. **B1, B2, N1.** Your round-1 reproductions now pass: a rename or a function moved out of a file that stays is one move with nothing told, also through delivery, told and not told; a failed `testFiles`, a whole-refinement error or an install wait releases nothing, and a later successful listing releases and drops, also with no new revision.

@@ -4,7 +4,7 @@ Shipped in 0.1.402 (2026-11-04) on Round 3's evidence: its one blocker, P12, is 
 
 ## Round 1 (019-17)
 
-Task 019-17, 2026-11-04, worker dc7216e0. Squeal 0.1.398 (main at `4163f5de8`, unreleased) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1. Eleven `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, in two clones: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (its e2e browser project at `stop` after its unit projects, lint at `commit`; or its own configuration, the control). The brief is `tasks/wave-4.md`, "019-17". The setup, the scripts and what went wrong are in `tasks/019-17/notes.md`; the scripts in `tasks/019-17/bin/`, the prompts in `tasks/019-17/prompts/`. Every SQUEAL line quoted here is copied from a session's stream.
+Task 019-17, 2026-11-04, worker dc7216e0. Squeal 0.1.398 (main at `131e6cd9e`, unreleased) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1. Eleven `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, in two clones: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (its e2e browser project at `stop` after its unit projects, lint at `commit`; or its own configuration, the control). The brief is `tasks/wave-4.md`, "019-17". The setup, the scripts and what went wrong are in `tasks/019-17/notes.md`; the scripts in `tasks/019-17/bin/`, the prompts in `tasks/019-17/prompts/`. Every SQUEAL line quoted here is copied from a session's stream.
 
 ### Verdict
 
@@ -37,7 +37,7 @@ The groups run at their moments, Stop waits for the group at `stop`, and the age
 | Item | Value |
 | --- | --- |
 | Isolation | The OS user `squeal-e2e`, case root `/home/squeal-e2e/runs/d1917`; credentials by name only; scratch `/tmp/dogfood-019-17` (`notes.md`) |
-| Squeal | 0.1.398 from `git archive 4163f5de8`; Claude Code plugin at user scope; Codex plugin (adapter 1.0.3) with the 0.1.398 runtime selected and both Stop handlers trusted |
+| Squeal | 0.1.398 from `git archive 131e6cd9e`; Claude Code plugin at user scope; Codex plugin (adapter 1.0.3) with the 0.1.398 runtime selected and both Stop handlers trusted |
 | Harnesses | Claude Code 2.1.300, `claude -p --model sonnet`, bypass permissions, stream-json with hook events. Codex 0.160.1, `codex exec --json -m gpt-6-astra`, reasoning effort medium |
 | Fixture | Part A's, 4 test files, e2e file 15 s. Branches `fix-h1`, `fix-h2` (`stop.maxHolds` 1 and 2). From f2d each session started on a new store |
 | cezarion | `10e7a5782`, 1,220 test files (1,019 Vitest unit, 90 browser e2e, 111 node:test), oxlint on 2,283 files, coverage on. Branches `cez-groups` and `cez-today`. Its browser e2e cannot launch Chrome as `squeal-e2e`: global setup fails in 29 s (`notes.md`) |
@@ -168,7 +168,7 @@ At 03:40:27Z `squeal stop` in both clones found no daemon left, `mem.mjs` found 
 
 ## Round 2 (019-33)
 
-Task 019-33, 2026-11-04, worker 7de9ed74. Squeal 0.1.400 (main at `636d2088f`, after wave 5 fixed P1 to P7) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1, in a new case root. Eleven `claude -p --model sonnet` sessions and two `codex exec` sessions on `gpt-6-astra`, each on a new store, in the same two clones as Round 1: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (Round 1's bundle). Three probes with no model: `p3probe.mjs` (18 first Stops), `symlink.sh` and `update.sh`. The brief is `tasks/wave-6.md`, "019-33". The scripts are in `tasks/019-33/bin/` (Round 1's unchanged ones run from `tasks/019-17/bin/`), the prompts in `tasks/019-33/prompts/`, the setup and raw data in `tasks/019-33/notes.md`. Every SQUEAL line quoted here is copied from a session's stream or a probe's output.
+Task 019-33, 2026-11-04, worker 7de9ed74. Squeal 0.1.400 (main at `360d0f89c`, after wave 5 fixed P1 to P7) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1, in a new case root. Eleven `claude -p --model sonnet` sessions and two `codex exec` sessions on `gpt-6-astra`, each on a new store, in the same two clones as Round 1: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (Round 1's bundle). Three probes with no model: `p3probe.mjs` (18 first Stops), `symlink.sh` and `update.sh`. The brief is `tasks/wave-6.md`, "019-33". The scripts are in `tasks/019-33/bin/` (Round 1's unchanged ones run from `tasks/019-17/bin/`), the prompts in `tasks/019-33/prompts/`, the setup and raw data in `tasks/019-33/notes.md`. Every SQUEAL line quoted here is copied from a session's stream or a probe's output.
 
 ### Verdict
 
@@ -195,7 +195,7 @@ Wave 5 fixed what Round 1 saw in the fixture: the commit line now reaches the ag
 | Item | Value |
 | --- | --- |
 | Isolation | The OS user `squeal-e2e`, case root `/home/squeal-e2e/runs/d1933` (its pnpm store is Round 1's, linked); credentials by name only; scratch `/tmp/dogfood-019-33` (`tasks/019-33/notes.md`) |
-| Squeal | 0.1.400 from `git archive 636d2088f`; Claude Code plugin at user scope; Codex plugin (adapter 1.0.3) with the 0.1.400 runtime selected, and all ten hooks trusted again with `squeal init --harness codex --trust --yes`, both Stop handlers among them |
+| Squeal | 0.1.400 from `git archive 360d0f89c`; Claude Code plugin at user scope; Codex plugin (adapter 1.0.3) with the 0.1.400 runtime selected, and all ten hooks trusted again with `squeal init --harness codex --trust --yes`, both Stop handlers among them |
 | Harnesses | Claude Code 2.1.300, `claude -p --model sonnet`, bypass permissions, stream-json with hook events. Codex 0.160.1, `codex exec --json -m gpt-6-astra`, reasoning effort medium |
 | Fixture | Part A's, 4 test files, e2e file 15 s. Branches `fix-h1`, `fix-h2` (`stop.maxHolds` 1 and 2) and `fix-none` (lint, no `checks`: Goal 2's control) |
 | cezarion | `10e7a5782`, branch `cez-groups` (its own configuration plus `checks`: e2e at stop after unit, `maxHolds` 1). A new store each session, so the unit baseline of 1,019 files was queued behind every session |
@@ -324,7 +324,7 @@ At 05:59:57Z `squeal stop` stopped cezarion's daemon and found none in the fixtu
 
 ## Round 3 (019-40)
 
-Task 019-40, 2026-11-04, worker 8eaf72d1. Squeal 0.1.401 (main at `64ed7667e`, after wave 7 fixed P8 to P11) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1, in a new case root. Four `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, each on a new store, in the same two clones as Rounds 1 and 2: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (Round 2's bundles, unchanged). The fifth session, s1c-2, repeats s1c with a sampler of the stored commit reports. Three probes with no model: `keying.sh`, `sync.sh` and `envmove.sh`. The brief is `tasks/wave-8.md`, "019-40". The scripts are in `tasks/019-40/bin/` (Round 1's and Round 2's unchanged ones run from `tasks/019-17/bin/` and `tasks/019-33/bin/`), the new prompt in `tasks/019-40/prompts/`, the setup and raw data in `tasks/019-40/notes.md`. Every SQUEAL line quoted here is copied from a session's stream or a probe's output.
+Task 019-40, 2026-11-04, worker 8eaf72d1. Squeal 0.1.401 (main at `c6d1a3bc6`, after wave 7 fixed P8 to P11) from `git archive`, installed for the throwaway user `squeal-e2e` in Claude Code 2.1.300 and Codex 0.160.1, in a new case root. Four `claude -p --model sonnet` sessions and one `codex exec` session on `gpt-6-astra`, each on a new store, in the same two clones as Rounds 1 and 2: the Part A fixture (unit at `edit`, lint at `commit`, e2e at `stop` after unit with `maxParallel: 1`; its e2e file sleeps 15 s) and cezarion at `10e7a5782` (Round 2's bundles, unchanged). The fifth session, s1c-2, repeats s1c with a sampler of the stored commit reports. Three probes with no model: `keying.sh`, `sync.sh` and `envmove.sh`. The brief is `tasks/wave-8.md`, "019-40". The scripts are in `tasks/019-40/bin/` (Round 1's and Round 2's unchanged ones run from `tasks/019-17/bin/` and `tasks/019-33/bin/`), the new prompt in `tasks/019-40/prompts/`, the setup and raw data in `tasks/019-40/notes.md`. Every SQUEAL line quoted here is copied from a session's stream or a probe's output.
 
 ### Verdict
 
@@ -351,7 +351,7 @@ Wave 7's four fixes hold in real sessions. Goal 5 is met for the line and its up
 | Item | Value |
 | --- | --- |
 | Isolation | The OS user `squeal-e2e`, case root `/home/squeal-e2e/runs/d1940` (its pnpm store is Round 2's, linked); credentials by name only; scratch `/tmp/dogfood-019-40` (`tasks/019-40/notes.md`) |
-| Squeal | 0.1.401 from `git archive 64ed7667e`; the Claude Code plugin at user scope (`claude plugin list`: `squeal@hearsay` 0.1.401); the Codex plugin (adapter 1.0.3) with the 0.1.401 runtime selected, and all ten hooks trusted with `squeal init --harness codex --trust --yes`, both Stop handlers among them |
+| Squeal | 0.1.401 from `git archive c6d1a3bc6`; the Claude Code plugin at user scope (`claude plugin list`: `squeal@hearsay` 0.1.401); the Codex plugin (adapter 1.0.3) with the 0.1.401 runtime selected, and all ten hooks trusted with `squeal init --harness codex --trust --yes`, both Stop handlers among them |
 | Harnesses | Claude Code 2.1.300, `claude -p --model sonnet`, bypass permissions, stream-json with hook events. Codex 0.160.1, `codex exec --json -m gpt-6-astra`, reasoning effort medium |
 | Fixture | Round 2's bundle (`f5dad60`), branches `fix-h1` and `fix-h2` (`stop.maxHolds` 1 and 2), by Round 2's `configs.mjs` |
 | cezarion | `10e7a5782`, branch `cez-groups` (its own configuration plus `checks`: e2e at stop after unit, `maxHolds` 1). A new store each session, so the unit baseline of 1,019 files was queued behind every session |

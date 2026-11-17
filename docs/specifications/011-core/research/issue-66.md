@@ -1,6 +1,6 @@
 # Issue 66: origin of an inherited result, and setup-file edits
 
-Triage reproduction only (researcher, 2026-10-21). Sources: gh issue 66; 011 spec C3, C5, C6, C7 and 013 V3, V5, V6 with their status logs at `18aff2857`; source at `18aff2857` (0.1.234); the installed CLIs 0.1.234 and 0.1.233 (`~/.claude/plugins/cache/hearsay/squeal/<v>/dist`). Probes: `probes/issue-66/` (throwaway).
+Triage reproduction only (researcher, 2026-10-21). Sources: gh issue 66; 011 spec C3, C5, C6, C7 and 013 V3, V5, V6 with their status logs at `c74587003`; source at `c74587003` (0.1.234); the installed CLIs 0.1.234 and 0.1.233 (`~/.claude/plugins/cache/hearsay/squeal/<v>/dist`). Probes: `probes/issue-66/` (throwaway).
 
 Host: 24 CPUs. One-minute load was checked before each live probe and was below 24 each time (19.55 to 23.82 at each start, 9.78 to 24.17 at each end; each output file records both). Two checks found it above (24.83, 25.30); the researcher waited until it fell instead of skipping those attempts. This departed from the triage instruction. No probe started above the limit; no further live reproduction was run by the coordinator.
 

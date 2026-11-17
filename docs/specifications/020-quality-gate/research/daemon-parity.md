@@ -1,6 +1,6 @@
 # Survey 020-07: daemon parity
 
-Researcher 26dfa2d5, 2026-11-10. Brief: `../tasks/wave-2.md`, "survey-020-07". Squeal `1e8b506ed` (0.1.423 plus docs), Node v24.22.1, Vitest 5.0.3. Read-only on the product. Probes: `probes/daemon-parity/` (throwaway; pure functions and read-only store reads; no daemon, no test run). One-minute load 24 to 28 on 24 vCPUs during every probe; 74 at session start, when nothing ran.
+Researcher 26dfa2d5, 2026-11-10. Brief: `../tasks/wave-2.md`, "survey-020-07". Squeal `fae073967` (0.1.423 plus docs), Node v24.22.1, Vitest 5.0.3. Read-only on the product. Probes: `probes/daemon-parity/` (throwaway; pure functions and read-only store reads; no daemon, no test run). One-minute load 24 to 28 on 24 vCPUs during every probe; 74 at session start, when nothing ran.
 
 ## Questions answered
 
@@ -16,7 +16,7 @@ Researcher 26dfa2d5, 2026-11-10. Brief: `../tasks/wave-2.md`, "survey-020-07". S
 
 ### Q1. Where the daemon's code states come from
 
-Read in source code at `1e8b506ed`.
+Read in source code at `fae073967`.
 
 - **Complexity** (`measure = complexity`): `pass/pass.ts` runs a pass per revision. `pass/plan.ts` and `pass/included.ts` choose the files. `included.ts` leaves out every path in `testFiles` (the runner's listing), `node_modules` and ignored files. `pass/judge.ts` gives `pass`/`fail` against the threshold, `unknown` inside a parse error, and moves by body hash. A file not counted yet is `pending`. Complexity never waits for a test (015 D5).
 - **CRAP and untested** (`crap`, `uncovered`): `crap/step.ts` runs the coverage step within `STEP_BUDGET_MS`.
@@ -134,8 +134,8 @@ Cost: one count of all test files per repository (5 s here); about 29k more comp
 
 ## Sources
 
-- Spec 020 D1 to D10 and `status.md`; spec 015 D1, D4 to D9 (`../../015-coverage-complexity/spec.md`); research `../../015-coverage-complexity/research/quality-gate.md` (015-126) and `issue-165.md`, at `1e8b506ed`.
-- Code at `1e8b506ed`: `src/core/code/gate/{evaluate,types,changed,collect,policy,report}.ts`; `src/core/code/crap/{file,judge,walk,loaders,step,checks,summary}.ts`; `src/core/code/pass/{judge,included,plan,listed,types}.ts`; `src/core/code/coverage/{mapper,writer,record,types}.ts`; `src/core/code/count/index.ts`; `src/core/ci/export.ts`; `src/core/scheduler/keying.ts`; `src/core/hash/hasher.ts`; `src/runners/vitest/environment.ts`; `src/cli/code-coverage.ts`; `src/core/delivery/code-coverage.ts`; `src/core/daemon/daemon.ts:692`.
+- Spec 020 D1 to D10 and `status.md`; spec 015 D1, D4 to D9 (`../../015-coverage-complexity/spec.md`); research `../../015-coverage-complexity/research/quality-gate.md` (015-126) and `issue-165.md`, at `fae073967`.
+- Code at `fae073967`: `src/core/code/gate/{evaluate,types,changed,collect,policy,report}.ts`; `src/core/code/crap/{file,judge,walk,loaders,step,checks,summary}.ts`; `src/core/code/pass/{judge,included,plan,listed,types}.ts`; `src/core/code/coverage/{mapper,writer,record,types}.ts`; `src/core/code/count/index.ts`; `src/core/ci/export.ts`; `src/core/scheduler/keying.ts`; `src/core/hash/hasher.ts`; `src/runners/vitest/environment.ts`; `src/cli/code-coverage.ts`; `src/core/delivery/code-coverage.ts`; `src/core/daemon/daemon.ts:692`.
 - Vitest 5.0.3: `node_modules/vitest/dist/chunks/index.DpLw24bj.js` `serializeConfig` (line 9835).
 - Stores: `~/projects/squeal/.git/squeal/{store,code}.sqlite`, read-only, 2026-11-10 10:4x to 11:0x Europe/Warsaw.
 - Probes and outputs: `probes/daemon-parity/README.md`.

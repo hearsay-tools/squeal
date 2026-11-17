@@ -22,7 +22,7 @@ Done when: the row's done-when holds; lint and typecheck pass; affected results 
 
 ## R1: review of cand/0.1.429
 
-Use /reviewer. Shape: review. Pinned to `cand/0.1.429` at `d8bac243f28a68808c3a59776cf2869f7c3ed8b6`; range `bf320db00..d8bac243f` (worker commits, the 004 D9 amendment, version and bundles).
+Use /reviewer. Shape: review. Pinned to `cand/0.1.429` at `d8bac243f28a68808c3a59776cf2869f7c3ed8b6`; range `a870d085f..d8bac243f` (worker commits, the 004 D9 amendment, version and bundles).
 
 Outcome: a PASS or FAIL verdict on row 011-312, written to `docs/specifications/011-core/reviews/0.1.429.md` and committed on your branch.
 
@@ -34,4 +34,4 @@ Owns: only the review file. Do not run a full suite or `pnpm run build`; read af
 
 ## R2: narrow re-review of cand/0.1.429
 
-Use /reviewer, same reviewer (c35253da). Pinned to `cand/0.1.429` at `ba8cf4ec78cbab12c07f702a406b781c3a00cce4`. New since R1: the B1 repair `8985e9c9c` (cherry-picked from worker commit `5ed473458`) and its bundles; the rest was rebased onto docs-only main commits. Verify B1 closed (both harnesses, both entries, controls kept; the new cases fail without the fix), that the open-first order for a live or crashed daemon is unchanged, and nothing else regressed in the diff `d8bac243f..ba8cf4ec7` restricted to `src`, `test` and `plugins`. Write `reviews/0.1.429-r2.md`, PASS or FAIL, and commit it. Same host policy as R1.
+Use /reviewer, same reviewer (c35253da). Pinned to `cand/0.1.429` at `f35fc5340e752799fe99b39a64a478070af69bbd`. New since R1: the B1 repair `8985e9c9c` (cherry-picked from worker commit `5ed473458`) and its bundles; the rest was rebased onto docs-only main commits. Verify B1 closed (both harnesses, both entries, controls kept; the new cases fail without the fix), that the open-first order for a live or crashed daemon is unchanged, and nothing else regressed in the diff `d8bac243f..f35fc5340` restricted to `src`, `test` and `plugins`. Write `reviews/0.1.429-r2.md`, PASS or FAIL, and commit it. Same host policy as R1.

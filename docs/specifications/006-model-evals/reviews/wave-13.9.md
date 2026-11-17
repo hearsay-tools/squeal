@@ -1,6 +1,6 @@
 # 006-84: kept cells regraded from raw output
 
-PASS `7e518efe2c73368cb3f49edb6bbdb2602cd16488`. Zero blockers, zero should-fix findings, one maintenance note. Range `origin/main..7e518efe`, with `origin/main` at `627df10a8bd9bdd26bb0b0c41eb07cf94e38ca9a` when reviewed.
+PASS `7e518efe2c73368cb3f49edb6bbdb2602cd16488`. Zero blockers, zero should-fix findings, one maintenance note. Range `origin/main..7e518efe`, with `origin/main` at `2917fc15250565d56a2ca163308d7db9d72331ef` when reviewed.
 
 ## Verification
 

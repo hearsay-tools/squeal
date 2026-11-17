@@ -1,10 +1,10 @@
 # Wave 13bj: 001-351 third review
 
-Candidate: `90fa864b1888ef003c1eb60fd2f2ac811e1f6483` (0.1.156). Scope: 001-340, 001-345 and 001-350 only, bounded by `reviews/wave-13bh.md`. Unrelated commits in `d4bb5eaa..90fa864b` are excluded.
+Candidate: `c0c2881f91a0d83c8360a2cb345132d1024ecc24` (0.1.156). Scope: 001-340, 001-345 and 001-350 only, bounded by `reviews/wave-13bh.md`. Unrelated commits in `0bc55931..c0c2881f` are excluded.
 
 ## Verdict
 
-FAIL `90fa864b1888ef003c1eb60fd2f2ac811e1f6483`: **1 proven blocker, 1 proven should-fix note, 0 new nits**. Original wave-13bh B1/B2 reproductions are repaired and their regressions distinguish the fixes, but a failed final version read still allows an older waiter to serve. The independent full suite has one fixture-precondition failure, recorded below; no rerun to green.
+FAIL `c0c2881f91a0d83c8360a2cb345132d1024ecc24`: **1 proven blocker, 1 proven should-fix note, 0 new nits**. Original wave-13bh B1/B2 reproductions are repaired and their regressions distinguish the fixes, but a failed final version read still allows an older waiter to serve. The independent full suite has one fixture-precondition failure, recorded below; no rerun to green.
 
 ## Verification output
 
@@ -107,7 +107,7 @@ npm notice To update run: npm install -g npm@12.2.0
 npm notice
 exit 1
 $ git rev-parse HEAD
-90fa864b1888ef003c1eb60fd2f2ac811e1f6483
+c0c2881f91a0d83c8360a2cb345132d1024ecc24
 $ git status --short
 [empty]
 ```
@@ -116,7 +116,7 @@ The two fixture gitdir repairs, dead-run process cleanup and experimental type-c
 
 ### Required fix-removal controls
 
-The tests stayed at the candidate. After the full suite, only src/cli/stop.ts was temporarily replaced with d27480a4^'s source and src/core/daemon/open.ts with febcbce2^'s source. These are the exact two fixes removed; no bundle, test, key pin or board changed. Both files were then restored from 90fa864b. The red run is deliberately on modified source and is not candidate gate evidence. The restored green run has exact candidate source and an empty tracked status.
+The tests stayed at the candidate. After the full suite, only src/cli/stop.ts was temporarily replaced with ad6565bc^'s source and src/core/daemon/open.ts with 311c85a3^'s source. These are the exact two fixes removed; no bundle, test, key pin or board changed. Both files were then restored from c0c2881f. The red run is deliberately on modified source and is not candidate gate evidence. The restored green run has exact candidate source and an empty tracked status.
 
 ```text
 $ npx vitest run --maxWorkers=4 test/cli/stop-lock.test.ts \
@@ -147,7 +147,7 @@ $ git status --short
 [empty]
 ```
 
-Both d27480a4 regressions are red without its fix and green with it; both febcbce2 newer-version regressions are red without its fix and green with it. The same-version case stays green in both states. The five skipped cases are outside the focused test-name filter. No full-suite rerun followed its failure.
+Both ad6565bc regressions are red without its fix and green with it; both 311c85a3 newer-version regressions are red without its fix and green with it. The same-version case stays green in both states. The five skipped cases are outside the focused test-name filter. No full-suite rerun followed its failure.
 
 ### Original blocker probes
 
@@ -196,7 +196,7 @@ One-worker fix: distinguish an unknown read from absence. Under the daemon lock,
 
 ## What fits
 
-The bounded review covers the requested 001-340 commits, the listed 001-345 repair commits and status restore, and d27480a4/febcbce2/1f3d0557/90fa864b. It does not review 001-343, spec 005 or other intervening rows.
+The bounded review covers the requested 001-340 commits, the listed 001-345 repair commits and status restore, and ad6565bc/311c85a3/3b4fe5f9/c0c2881f. It does not review 001-343, spec 005 or other intervening rows.
 
 - Original wave-13bh B1 is repaired. Under uid 1001, the fixture's locks directory is chmod 000 while the same live PID keeps its SQLite WRITE lock. existsSync remains false, but lockFreed returns unchecked with an error. Public stopCommand waits its real 30 s and prints could not be checked. /proc/locks still identifies the holder afterwards. The older unreadable-file and pid/replacement tests remain.
 - Original wave-13bh B2 is repaired. An actual child waiter checks before registration, is SIGSTOPped, and resumes only after a 999.0.0 daemon identity is recorded and cleared and the fixture holder releases. It exits lost-lock/code 0, stderr empty, and the lock can be acquired afterwards. The direct vacant/successor regressions preserve no-note assertions.
@@ -204,7 +204,7 @@ The bounded review covers the requested 001-340 commits, the listed 001-345 repa
 - Lock ownership remains SQLite BEGIN EXCLUSIVE with locking_mode=EXCLUSIVE. Every failed attempt closes its own connection. Serving startup remains behind the daemon lock; no simultaneous-serving break was proved. The new post-acquire check releases on a successful newer-version decision, before an integrity/create open or a serving registration.
 - ensureDaemon still spawns detached with ignored stdio and unref. Neither the 30 s vacant wait nor the 120 s successor wait is awaited by a hook. A timer deadline bounds the retry loop, with 10 ms attempts and 250 ms give-up checks. Normal timeouts retain one note/code 0/lock-wait-timed-out; ordinary loser paths write no note.
 - npm run build reproduced all committed plugin dist files without drift. Root package.json, plugins/claude-code/package.json, plugins/claude-code/.claude-plugin/plugin.json and plugins/codex/.codex-plugin/plugin.json all say 0.1.156. KEY_FORMAT_VERSION is 9; the current committed pin is 461e7c4506005a5de73ff650f691ca67cd67e7c133d747d3f3f9077e411abd0d. The 120a40... pin in the worker's notes predates the candidate re-pin; it is historical evidence, not the candidate's current pin.
-- wave-13bh S1 is resolved: e7a08e95 restores the 231 removed status lines, and the candidate retains the stage and earlier amendments. Its N1 board observation remains partly visible: 001-335/337 still point to the cancelled 001-344 and 001-350 says running. These are coordinator records, outside this product re-review; no board edit was made.
+- wave-13bh S1 is resolved: 5230fc78 restores the 231 removed status lines, and the candidate retains the stage and earlier amendments. Its N1 board observation remains partly visible: 001-335/337 still point to the cancelled 001-344 and 001-350 says running. These are coordinator records, outside this product re-review; no board edit was made.
 
 ### D10 conformance of the reviewed sentences
 

@@ -1,19 +1,19 @@
 # 009 wave 0 review
 
-Candidate: `a19b6638..8d4011447dc9148f1ebebc71fcc9c251afe316eb`. Row: 009-14.
+Candidate: `82dd655d..bd028b70ad02b1368e5bc18718bfb2e76e4218d4`. Row: 009-14.
 Reviewed against `spec.md` D1, D2, D4, D6 and D3's session events, with the 2026-10-14 amendments in `status.md` and the wave-0 done-when clauses. The other events, install and status are wave 1, not missing wave-0 work.
 
 ## Verdict
 
-PASS `8d401144`: 0 blockers, 2 plausible should-fix notes, 1 proven style nit. The full-suite check is red on unchanged tests under heavy host load; it is not evidence of a proven wave-0 break. The focused Pi run passes all 50 tests. No claim that the repository as a whole is green.
+PASS `bd028b70`: 0 blockers, 2 plausible should-fix notes, 1 proven style nit. The full-suite check is red on unchanged tests under heavy host load; it is not evidence of a proven wave-0 break. The focused Pi run passes all 50 tests. No claim that the repository as a whole is green.
 
 ## Verification output
 
-The dispatched checkout was `6a069fbc5c41e4f8bd5e6fd9be3eba5cfe471392`, not the candidate. **Proven provenance mismatch, resolved for verification:** `git diff --stat 8d401144..HEAD` lists only board, spec, status and the wave-1 brief. The parent explicitly authorized a temporary detached worktree at the candidate, including build. All evidence below comes from that clean candidate worktree, `/tmp/review-009-w0`, on Node 24.21.0. The report is committed on the dispatched branch; no product code changes.
+The dispatched checkout was `39442f2bd497de951b9a8c445f74786be383c69f`, not the candidate. **Proven provenance mismatch, resolved for verification:** `git diff --stat bd028b70..HEAD` lists only board, spec, status and the wave-1 brief. The parent explicitly authorized a temporary detached worktree at the candidate, including build. All evidence below comes from that clean candidate worktree, `/tmp/review-009-w0`, on Node 24.21.0. The report is committed on the dispatched branch; no product code changes.
 
 ```text
 $ git rev-parse HEAD
-8d4011447dc9148f1ebebc71fcc9c251afe316eb
+bd028b70ad02b1368e5bc18718bfb2e76e4218d4
 $ npm ci
 added 174 packages, and audited 175 packages in 22s
 found 0 vulnerabilities

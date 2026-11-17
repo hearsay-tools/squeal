@@ -26,7 +26,7 @@ Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; rep
 
 ## R1 (W1 and W2): review of cand/011-363-367
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-363-367` at `f15bc27e798f66e0ab335a004fb4ea5174b66f23`; candidate CI run 43783086882. Test files and notes only: no `src/` change, no version raise (`check:version` passes at 0.1.518). Range `6ca645f2a..f15bc27e798f66e0ab335a004fb4ea5174b66f23`: worker 39096e36's six commits (row 011-363) and worker 1fb3ba32's seven (rows 011-367, 011-360), cherry-picked without conflict. Read: board rows 011-360, 011-363, 011-367; this file's W1 and W2; `tasks/011-363/notes.md`, `tasks/011-367/notes.md`; `../quality/2026-11-15-card-7.md` section 4.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-363-367` at `666a272e70e28f08e1489661d3d1da850b627a29`; candidate CI run 43783086882. Test files and notes only: no `src/` change, no version raise (`check:version` passes at 0.1.518). Range `6fc5dd3af..666a272e70e28f08e1489661d3d1da850b627a29`: worker 39096e36's six commits (row 011-363) and worker 1fb3ba32's seven (rows 011-367, 011-360), cherry-picked without conflict. Read: board rows 011-360, 011-363, 011-367; this file's W1 and W2; `tasks/011-363/notes.md`, `tasks/011-367/notes.md`; `../quality/2026-11-15-card-7.md` section 4.
 
 Check, each as proven, plausible or unverified:
 

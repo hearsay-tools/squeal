@@ -35,7 +35,7 @@ mkdir -p $R/stores/{squeal,cezar}
 for p in squeal cezar; do C=$(git -C ~/projects/$p rev-parse --path-format=absolute --git-common-dir)/squeal
   for f in store code lint; do [ -f $C/$f.sqlite ] && cp $C/$f.sqlite* $R/stores/$p/; done; cp $C/repository-id $R/stores/$p/; done
 node qc.mjs $R/stores/*/store.sqlite $R/stores/*/code.sqlite
-git clone -q --no-checkout ~/projects/squeal $R/squeal && git -C $R/squeal checkout -q --detach e36b8d509
+git clone -q --no-checkout ~/projects/squeal $R/squeal && git -C $R/squeal checkout -q --detach bc282b63d
 git clone -q --no-checkout ~/projects/cezar $R/cezar && git -C $R/cezar checkout -q --detach 5f7c94cf3
 for p in squeal cezar; do (cd $R/$p && pnpm install --frozen-lockfile --offline)
   mkdir -p $R/$p/.git/squeal && cp $R/stores/$p/* $R/$p/.git/squeal/; done

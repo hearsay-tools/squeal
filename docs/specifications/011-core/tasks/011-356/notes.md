@@ -1,6 +1,6 @@
 # Row 011-356: the scheduler step
 
-Worker 3f053805, wave 101 (`tasks/wave-101.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 3, "The step's interface", "In-turn triggers", "Tests: replace, don't layer", row 6. Baseline: 011-351 to 011-353 (main) and 011-354/011-355 at cand/0.1.514 `8bf9b4d8d` (the purity repair; the branch was rebased onto it from `896c67ac2`). The row was done whole; no split.
+Worker 3f053805, wave 101 (`tasks/wave-101.md`, W1), 2026-11-15. Design: `research/scheduler-step.md`, decision 3, "The step's interface", "In-turn triggers", "Tests: replace, don't layer", row 6. Baseline: 011-351 to 011-353 (main) and 011-354/011-355 at cand/0.1.514 `bf7ea77d0` (the purity repair; the branch was rebased onto it from `896c67ac2`). The row was done whole; no split.
 
 ## What changed
 
@@ -85,7 +85,7 @@ Line 2 is the guard of `#pump()`'s entry: a halted or unstarted scheduler starts
 
 ## Checks
 
-On `8bf7a3b3d` (rebased onto origin/main `8b6a9465d`, 0.1.514 landed; no code change from the rebase, `git diff ORIG_HEAD HEAD -- src test` empty). No `pnpm run build`, no full suite, no `squeal run --all`.
+On `8bf7a3b3d` (rebased onto origin/main `e8f58d643`, 0.1.514 landed; no code change from the rebase, `git diff ORIG_HEAD HEAD -- src test` empty). No `pnpm run build`, no full suite, no `squeal run --all`.
 
 - `pnpm run lint`: `Checked 3523 files ... No fixes applied.` `pnpm run typecheck`: exit 0.
 - Direct, `env -u PLUGIN_ROOT -u PLUGIN_DATA node_modules/.bin/vitest run test/scheduler test/keys/key-format.test.ts test/keys/validity --maxWorkers=6` after the rebase onto the candidate, at one-minute load 43 rising to 50 on 24 CPUs: 316 of 318 files passed. The 2 failures (`clock-port.test.ts` "a clock that went back gives none back", 10.7 s; `tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key") passed alone right after (21 of 21) and in Squeal's run. Earlier runs of `test/scheduler` at load 6 to 11: 307 of 307 files twice.

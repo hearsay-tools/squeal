@@ -9,7 +9,7 @@ authorizes no implementation.
 
 Examined on 2026-11-10: Squeal **0.1.426**, release commit
 `c471793472c3eaf5e8a1b8801073a66053159c87`; source checkout
-`246cdc1855e08ae28c1803376ee5f8cfa0a1de4e`; Node **24.22.1**,
+`c09bd3d58a208fae54ec0cbebc6470d2361f4f1b`; Node **24.22.1**,
 Vitest **5.0.3**, Vite **8.3.2**. The inspected startup, conversion, execution,
 state-sink and log-lookup sources have no diff from that release. The live probe
 uses the installed version's absolute bundle, and `--version` returned 0.1.426

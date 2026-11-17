@@ -1,10 +1,10 @@
 # Tier plan: decide which tier starts next, then start it
 
-Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 6). Rechecked on main at `752313729` on 2026-11-14 by design session baf61c5d. Terms: `GLOSSARY.md` (Tier, Tier plan, Queue view, Yield, Admission, Lane, Runner traits). The decisions below are the human's, taken one at a time on 2026-11-14. Rows 011-346 to 011-349.
+Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 6). Rechecked on main at `aaa3bd865` on 2026-11-14 by design session baf61c5d. Terms: `GLOSSARY.md` (Tier, Tier plan, Queue view, Yield, Admission, Lane, Runner traits). The decisions below are the human's, taken one at a time on 2026-11-14. Rows 011-346 to 011-349.
 
 ## Problem
 
-`selectTier` (`src/core/scheduler/tiers.ts:260-497`, 237 lines of an 867-line file) picks the next fast tier. It writes while it decides, and it calls itself again when its first choice fails (read in source code at `752313729`):
+`selectTier` (`src/core/scheduler/tiers.ts:260-497`, 237 lines of an 867-line file) picks the next fast tier. It writes while it decides, and it calls itself again when its first choice fails (read in source code at `aaa3bd865`):
 
 - six positional parameters: `(context, ledger, busy, cut, turnDue, pass)`, with a `SelectPass` of four flags (`wide`, `rest`, `beside`, `asEdit`);
 - 6 self-calls (5 on 2026-11-04):
@@ -22,7 +22,7 @@ Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, re
 - why nothing started lives in flags set on the way (`Claims.#waiting`, `TierCapacity.#refused`); the pump computes the quiet wait again itself;
 - the pump has two more retry paths around it: `#besideTier` (`scheduler.ts` ~1310) and the loop that fills slots (~1119).
 
-Around it: `RunQueue` (`queue.ts`) has 45 methods; `SchedulerContext` (`context.ts`) has 21 fields and is used by 50 source files. `TierYields` (`yields.ts`, 548 lines) decides whether a running tier yields. Its "would the waiting file start sooner" check, `startsSooner` (`yield-sooner.ts`, 110 lines), is a second model of the order in which queued files become tiers (`87b8069ea`). The two models disagreed once (`6c6a88d4f`).
+Around it: `RunQueue` (`queue.ts`) has 45 methods; `SchedulerContext` (`context.ts`) has 21 fields and is used by 50 source files. `TierYields` (`yields.ts`, 548 lines) decides whether a running tier yields. Its "would the waiting file start sooner" check, `startsSooner` (`yield-sooner.ts`, 110 lines), is a second model of the order in which queued files become tiers (`478c34e2d`). The two models disagreed once (`22c9a85dd`).
 
 **Lookups write.** `ledger.probe(key)` updates the stored result's `last_used_at`, may copy the newest result set to the key (`copyNewest`), and reads the clock. `Claims.holds` and `backlogSize` read the store; the pool's `offer` reads permit files and `/proc`. Selection asks these lazily, in queue order, and stops at the tier's size. `startTier` probes again inside `BEGIN IMMEDIATE` (`startable`) to close the race with other worktrees.
 
@@ -31,12 +31,12 @@ Around it: `RunQueue` (`queue.ts`) has 45 methods; `SchedulerContext` (`context.
 | | Since 2026-10-20 | Since 2026-11-04 |
 |---|---|---|
 | Review blockers in selection and yields | 12 | 2 (`reviews/0.1.413.md` B1, B2) |
-| Fix commits | 17 | 1 (`7b9709fca`) |
+| Fix commits | 17 | 1 (`64508f0a2`) |
 | All commits on the tier files | 76 | 10 (4 since 2026-11-08, none a fix) |
 
-The 12 blockers by mechanism: 4 the order between kinds of tier (wave-4 S2-B2, 0.1.280 B2, 0.1.377 B1, and 0.1.378 B1 in part); 4 a yield on wrong evidence or with no recheck signal (0.1.237 B1, B2, 0.1.271 B1, 0.1.296 B1); 2 clock readings (0.1.296 B2, 0.1.296-r2 B2, fixed by `b96343e1d` and `441de0b00`); 1 grant arithmetic after a trim (0.1.413 B1: the reviewer asked to "determine the edit-sized batch candidate and its width independently of the pool-budgeted wide pick"; the repair added a `trimmed` flag); 1 a skipped write on one path (0.1.413 B2). Four more blockers are in `tiers.ts` but in recording (card 1's scope).
+The 12 blockers by mechanism: 4 the order between kinds of tier (wave-4 S2-B2, 0.1.280 B2, 0.1.377 B1, and 0.1.378 B1 in part); 4 a yield on wrong evidence or with no recheck signal (0.1.237 B1, B2, 0.1.271 B1, 0.1.296 B1); 2 clock readings (0.1.296 B2, 0.1.296-r2 B2, fixed by `bbc2a1fc1` and `481f58e3e`); 1 grant arithmetic after a trim (0.1.413 B1: the reviewer asked to "determine the edit-sized batch candidate and its width independently of the pool-budgeted wide pick"; the repair added a `trimmed` flag); 1 a skipped write on one path (0.1.413 B2). Four more blockers are in `tiers.ts` but in recording (card 1's scope).
 
-The plan and apply split plausibly prevents about 4 of the 12, two of them in part (0.1.413 B1 and B2, 0.1.378 B1, 0.1.280 B2). It would not have caught the order rules or the yield evidence: those need explicit rules and tests whatever the structure. Most self-calls are where fixes were added (`5229dcecf`, `9a695ee18`, `a6366baee`, `7b9709fca`), not where defects started. Spec 016 `research/core-defects.md` filed most selection and yield items under "named demand" (22 items, 14 blockers); its proposed state-machine test does not exist.
+The plan and apply split plausibly prevents about 4 of the 12, two of them in part (0.1.413 B1 and B2, 0.1.378 B1, 0.1.280 B2). It would not have caught the order rules or the yield evidence: those need explicit rules and tests whatever the structure. Most self-calls are where fixes were added (`0b853350d`, `4a2292356`, `a46053c73`, `64508f0a2`), not where defects started. Spec 016 `research/core-defects.md` filed most selection and yield items under "named demand" (22 items, 14 blockers); its proposed state-machine test does not exist.
 
 The defect count alone is small now. The card's value is a base for card 7 (the scheduler's decisions as one step) and tests that need no stub of the daemon.
 

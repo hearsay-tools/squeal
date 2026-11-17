@@ -1,6 +1,6 @@
 # 011-245: status names a test's process left running after a cut Vitest run
 
-Wave 51 W2, slice. Baseline `0885eec11`. gh-101; 013 `research/issue-101.md`, findings 2, 3 and 5.
+Wave 51 W2, slice. Baseline `ba25017ad`. gh-101; 013 `research/issue-101.md`, findings 2, 3 and 5.
 
 ## Cause
 

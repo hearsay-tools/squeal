@@ -2,7 +2,7 @@
 
 Brief: `main-pull-reuse-brief.md`. Researcher, 2026-10-26, about 09:10–09:22 UTC; status read at
 about 09:13 UTC. Squeal 0.1.334 (installed CLI and the main daemon), source read at this worktree
-(0.1.335, `3ad30a2fe`). Read-only: store opened with `node:sqlite` `readOnly`, `git diff` between
+(0.1.335, `5dfdd7ef9`). Read-only: store opened with `node:sqlite` `readOnly`, `git diff` between
 commits, `squeal status` and `squeal ps` (status reads the store; no daemon is needed).
 
 **Verdict.** No reuse defect was found. That does not prove that all 703 misses were correct. At
@@ -60,7 +60,7 @@ result at main's revision-159 key, recorded before 09:08:07):
 
 The 370 inherited files agree with status's 370 "test files loaded" across 19 source records.
 Key format 20 and the Vitest adapter version 3 did not change. The node:test adapter went to 10
-in 0.1.333 (`f4011807d`). Main and every worktree daemon that recorded on 2026-10-26 run 0.1.333
+in 0.1.333 (`2ece02a1e`). Main and every worktree daemon that recorded on 2026-10-26 run 0.1.333
 or later, so versions explain no miss (read in source code). All daemons run Node v24.21.0
 (`/proc/<pid>/exe`).
 

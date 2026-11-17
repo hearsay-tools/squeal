@@ -21,7 +21,7 @@ I ran this on a detached worktree at `94f468b`. The brief's branch HEAD is `8119
 
 ```
 $ git rev-parse HEAD
-94f468b867c830abd4e4cd12c1a12f0c2ef14de8
+ed1e2a6b2286f15ae8f508e085b30270e54f6525
 $ npm ci
 npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
 $ npm run lint

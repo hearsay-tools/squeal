@@ -1,6 +1,6 @@
 # 011-229: tests reach the two uncovered error paths of the full integrity check
 
-Wave 46 W4, slice. Baseline `eec505f3b`. Test files only; `src/` is unchanged.
+Wave 46 W4, slice. Baseline `958591e4a`. Test files only; `src/` is unchanged.
 
 ## Cause
 

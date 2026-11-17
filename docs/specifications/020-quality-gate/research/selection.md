@@ -2,7 +2,7 @@
 
 Recommendation: leave the test files of `manual` check groups (read at the base) out of the gate's automatic selection, add `--group <name>` to put a group back, print the selection to stderr before the first run, and report the scope. Do not add a replace-selection flag.
 
-Examined on 2026-11-10: Squeal source at `919f108ca` (0.1.427), Vitest 5.0.3 (`node_modules/vitest/dist/chunks/index.DpLw24bj.js`), Node 24.22.1, cezar (hearsay-tools/cezarion) at `e831c2c67` and `154cba614`, read only through `git show`. Host: 24 vCPUs. The one-minute load stayed between 35 and 55 for the whole survey, so no live gate run took place (Q5).
+Examined on 2026-11-10: Squeal source at `eef44fa6f` (0.1.427), Vitest 5.0.3 (`node_modules/vitest/dist/chunks/index.DpLw24bj.js`), Node 24.22.1, cezar (hearsay-tools/cezarion) at `e831c2c67` and `154cba614`, read only through `git show`. Host: 24 vCPUs. The one-minute load stayed between 35 and 55 for the whole survey, so no live gate run took place (Q5).
 
 ## The cause of #172
 
@@ -96,8 +96,8 @@ Rows, in order:
 
 - Issue #172 and its 2026-11-10 comment, fetched with `gh issue view 172 --repo hearsay-tools/squeal`.
 - `../../015-coverage-complexity/research/issue-172.md` and its probe.
-- Spec 020 D1, D3, D5, D6, D7, D11, D12, D13; spec 019 D1, D4, D6; spec 015 D9 (this repository at `919f108ca`).
-- Squeal source at `919f108ca`: `src/core/code/gate/collect.ts`, `evaluate.ts`, `policy.ts`, `types.ts`; `src/cli/code-gate.ts`, `code-gate-args.ts`; `src/runners/vitest/adapter.ts`, `affected.ts`, `project.ts`, `run.ts`, `exclude.ts`; `src/core/daemon/check-groups.ts`.
+- Spec 020 D1, D3, D5, D6, D7, D11, D12, D13; spec 019 D1, D4, D6; spec 015 D9 (this repository at `eef44fa6f`).
+- Squeal source at `eef44fa6f`: `src/core/code/gate/collect.ts`, `evaluate.ts`, `policy.ts`, `types.ts`; `src/cli/code-gate.ts`, `code-gate-args.ts`; `src/runners/vitest/adapter.ts`, `affected.ts`, `project.ts`, `run.ts`, `exclude.ts`; `src/core/daemon/check-groups.ts`.
 - Vitest 5.0.3 installed source `node_modules/vitest/dist/chunks/index.DpLw24bj.js`: lines 9504–9506, 12180–12188, 12228, 21126, 21251, 21282–21286, 21034 (`standalone`) and 12341 (`_standalone`).
 - cezar (local clone `~/projects/cezar`, read through `git show`/`git grep`, nothing written): `squeal.config.json` (`checks` `browser` at `manual`), `vitest.config.ts`, `packages/web/e2e/vitest.config.ts`, `e2e/environment.ts`, `e2e/workspace-registry.ts`, `.ai/scripts/test-env-lease.mjs`.
 - Probes: `probes/selection/` (README there).

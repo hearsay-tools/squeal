@@ -14,7 +14,7 @@ Three scenarios, each on a prompt virtual clock:
 2. Beside a running batch's tier (`heldBatch`): an edit's tier beside the batch, then the batch's end, the beside lane's close and the backlog's tiers.
 3. A slow lane (`test/e2e/**` as slow, `quietMs` 0): an edit queues a fast file and two slow files; the lane lists, guards, picks and starts.
 
-Reads inside the counted steps, same final test on the base commit `1d32d4acd` and on this branch (host load 13.5–14.4 on 24 CPUs; counts do not depend on load):
+Reads inside the counted steps, same final test on the base commit `f75806704` and on this branch (host load 13.5–14.4 on 24 CPUs; counts do not depend on load):
 
 | Scenario | Steps | Reads before | Decision reads before | Reads after | Decision reads after |
 |---|---|---|---|---|---|

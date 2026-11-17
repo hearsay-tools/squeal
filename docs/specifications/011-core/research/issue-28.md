@@ -2,18 +2,18 @@
 
 Researcher, 2026-10-17, against the brief `issue-28-brief.md`. Documentation-only reproduction, bounded to about 20 minutes. Nothing here is a design; the spec owner decides.
 
-Versions and host: checkout `ab67f040` (package `0.1.204`); installed `squeal --version` `0.1.199` (`~/.local/bin/squeal`); Node v24.21.0. One-minute load 19.54 at start and 19.02 at the last check, on 24 CPUs (`uptime`, `nproc`), so below the CPU count. Live probes were allowed by load; the full two-worktree reproduction was left out for time, not load (Q3).
+Versions and host: checkout `0b6dd475` (package `0.1.204`); installed `squeal --version` `0.1.199` (`~/.local/bin/squeal`); Node v24.21.0. One-minute load 19.54 at start and 19.02 at the last check, on 24 CPUs (`uptime`, `nproc`), so below the CPU count. Live probes were allowed by load; the full two-worktree reproduction was left out for time, not load (Q3).
 
 ## Answers
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
-| 1 | Do the issue's two port-looking messages share a fingerprint? | No. Nothing in `VOLATILE` matches a bare decimal port, so `35321` and `34963` stay and the fingerprints differ: `fail-changed`. | verified by experiment, checkout `ab67f040` |
-| 2 | Do the issue's two Squeal-tmp paths share a fingerprint? | No. `/tmp/squeal-1001` becomes `<tmp>` and `6db45f9b91a3d272` becomes `<hex>`, but the `mkdtemp` suffix `QI9brD` / `jzfwcE` survives. With the daemon's TMPDIR equal to one worktree's scratch directory, that worktree's path collapses fully and the other worktree's does not, so they still differ. | verified by experiment, checkout `ab67f040` |
-| 3 | Does an inherited same-key result with no new revision deliver `FAIL -> FAIL, failure changed`? | Not reproduced, because a two-worktree daemon run (npm ci, two daemons, one store) did not fit the 20-minute budget. The code paths that would deliver it are named under Q3; that part is read in source, not observed. | read in source code, checkout `ab67f040` |
+| 1 | Do the issue's two port-looking messages share a fingerprint? | No. Nothing in `VOLATILE` matches a bare decimal port, so `35321` and `34963` stay and the fingerprints differ: `fail-changed`. | verified by experiment, checkout `0b6dd475` |
+| 2 | Do the issue's two Squeal-tmp paths share a fingerprint? | No. `/tmp/squeal-1001` becomes `<tmp>` and `6db45f9b91a3d272` becomes `<hex>`, but the `mkdtemp` suffix `QI9brD` / `jzfwcE` survives. With the daemon's TMPDIR equal to one worktree's scratch directory, that worktree's path collapses fully and the other worktree's does not, so they still differ. | verified by experiment, checkout `0b6dd475` |
+| 3 | Does an inherited same-key result with no new revision deliver `FAIL -> FAIL, failure changed`? | Not reproduced, because a two-worktree daemon run (npm ci, two daemons, one store) did not fit the 20-minute budget. The code paths that would deliver it are named under Q3; that part is read in source, not observed. | read in source code, checkout `0b6dd475` |
 | 4 | Do the controls behave? | Same raw message: same fingerprint. Changed assertion value (`to be 2` vs `to be 3`): different. Changed path tail (`cli.js` vs `main.js`): different. Durations and ISO times: same. | verified by experiment |
 | 5 | Is the raw message kept apart from the fingerprint, for `squeal why`? | Yes by spec and schema: failure text is stored deduplicated by exact text, the fingerprint is a separate derived column. Not run here. | read in official docs (spec 011 C7); read in source code (`src/core/store/repos/results.ts:97-159`) |
-| 6 | Does installed 0.1.199 have the same fingerprint logic? | Likely. The last commit to `fingerprint.ts` is `2f459e49` (2026-10-15), before 0.1.199. No release tag was found locally to confirm it. | inferred |
+| 6 | Does installed 0.1.199 have the same fingerprint logic? | Likely. The last commit to `fingerprint.ts` is `508599ea` (2026-10-15), before 0.1.199. No release tag was found locally to confirm it. | inferred |
 
 ## Findings
 
@@ -45,7 +45,7 @@ In either path, `transitionKind(prev, next)` sees `fail -> fail` with unequal st
 
 ## Recommendation for Squeal
 
-The fingerprint half of issue 28 is reproduced directly: both of the issue's pairs read as changed failures at `ab67f040`. The controls show that the current rules keep genuinely changed values distinct. Whatever masks ports and `mkdtemp` suffixes has to keep the D and E controls distinct, which rules out stripping all digits or whole paths.
+The fingerprint half of issue 28 is reproduced directly: both of the issue's pairs read as changed failures at `0b6dd475`. The controls show that the current rules keep genuinely changed values distinct. Whatever masks ports and `mkdtemp` suffixes has to keep the D and E controls distinct, which rules out stripping all digits or whole paths.
 
 The decision belongs to the spec owner. One option is to fingerprint against volatile tokens in the message (port after `:` or `port `, a `-XXXXXX` mkdtemp tail, all temp-prefix segments). Another is to compare by the receiving worktree's last-told fingerprint, as the issue's second bullet suggests. The inherited-delivery half needs a live two-worktree probe before anyone claims it from this file.
 
@@ -61,4 +61,4 @@ The decision belongs to the spec owner. One option is to fingerprint against vol
 - Issue: https://github.com/hearsay-tools/squeal/issues/28 (`gh issue view 28 -R hearsay-tools/squeal`, 2026-10-17).
 - `status.md`: no entry names issue 28, the fingerprint or normalization (grep, 2026-10-17), so no amendment overrides C5 here.
 - Spec 011 C5 (normalization, transitions, inherited confirmation), C6, C7 (failure text versus fingerprint column), open question 9: `docs/specifications/011-core/spec.md`.
-- Source at `ab67f040`: `src/core/state/fingerprint.ts`, `src/core/state/transitions.ts`, `src/core/state/derive.ts`, `src/core/scheduler/store-results.ts`, `src/core/scheduler/ledger.ts:513`, `src/core/daemon/scratch.ts`, `src/core/daemon/daemon.ts:134`, `src/core/delivery/provenance.ts:20`.
+- Source at `0b6dd475`: `src/core/state/fingerprint.ts`, `src/core/state/transitions.ts`, `src/core/state/derive.ts`, `src/core/scheduler/store-results.ts`, `src/core/scheduler/ledger.ts:513`, `src/core/daemon/scratch.ts`, `src/core/daemon/daemon.ts:134`, `src/core/delivery/provenance.ts:20`.

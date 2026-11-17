@@ -3,7 +3,7 @@
 Throwaway. Nothing here is product code or a test. Every run used a scratch clone under
 `/tmp/r74-<epoch>/` with HOME, the XDG directories, npm's cache and pnpm's store inside it,
 `GIT_CONFIG_GLOBAL=/dev/null` and an explicit probe git identity (`env.sh` there). Squeal was
-cloned `--shared` from this worktree at `b08779a8` (0.1.215), cezarion from the local
+cloned `--shared` from this worktree at `fb87254c` (0.1.215), cezarion from the local
 `~/projects/cezar` at `51190d494`; neither source repository was written. The eval
 cells under `/tmp/squeal-evals-1001/cells` were only read. The scratch root was removed
 afterwards. Probes ran only while the 1-minute load was below 24 (the CPU count), at 7 to 20.

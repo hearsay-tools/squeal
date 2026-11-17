@@ -10,4 +10,4 @@ Throwaway scripts for `../design.md`. Each one names its method in its header.
 | `file-cpu.sh <clone> <scratch> <runs> <files>` | Runs each test file `runs` times in a `git clone` under `/tmp`, with `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` and `TMPDIR` under the scratch directory, `env -i`, `nice -n 10`, `--maxWorkers=1`, under `/usr/bin/time` (Vitest's process and the descendants it waited for). Records the one-minute load before each run. | `logs/file-cpu.tsv` |
 | `file-cpu-table.mjs <log>` | Tabulates `file-cpu.tsv`. | |
 
-The clone was `/tmp/squeal-011-83/clone` at `90e442f7f`, with the `node_modules` of a worktree whose `package-lock.json` matched copied in (no install, no build). It was removed afterwards. Time zone: CEST (the logs' ISO times are UTC, two hours earlier).
+The clone was `/tmp/squeal-011-83/clone` at `0d28a87ee`, with the `node_modules` of a worktree whose `package-lock.json` matched copied in (no install, no build). It was removed afterwards. Time zone: CEST (the logs' ISO times are UTC, two hours earlier).

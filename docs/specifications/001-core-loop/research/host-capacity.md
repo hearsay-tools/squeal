@@ -1,6 +1,6 @@
 # Sharing the host's test capacity across daemons, worktrees and projects
 
-Research for board row 001-372, 2026-10-14. Host: 24 CPUs, 47 GiB, Linux 6.8.0-147, Node 24.21.0, sysstat 12.6.1. Squeal at `03ea82d8`; daemons of 0.1.131 and 0.1.168 were running. Vitest 5.0.3 source, read from an installed copy. Everything here was observed read-only: sysstat logs, `/proc`, `ps`, and the three Squeal stores of uid 1001, opened with `node:sqlite` `readOnly`. No test run, daemon or load was started. The scripts (a `/proc` sampler, a store reader, a join with sysstat) lived in the task's scratch directory and are not committed (brief: commit only this file). Their method is given with each finding.
+Research for board row 001-372, 2026-10-14. Host: 24 CPUs, 47 GiB, Linux 6.8.0-147, Node 24.21.0, sysstat 12.6.1. Squeal at `d408bd42`; daemons of 0.1.131 and 0.1.168 were running. Vitest 5.0.3 source, read from an installed copy. Everything here was observed read-only: sysstat logs, `/proc`, `ps`, and the three Squeal stores of uid 1001, opened with `node:sqlite` `readOnly`. No test run, daemon or load was started. The scripts (a `/proc` sampler, a store reader, a join with sysstat) lived in the task's scratch directory and are not committed (brief: commit only this file). Their method is given with each finding.
 
 ## Questions answered
 
@@ -198,7 +198,7 @@ Extending it to every lane is incremental. Its limits:
 - sysstat logs `/var/log/sysstat/sa06` to `sa14` (sysstat 12.6.1); `/proc/stat`, `/proc/loadavg`, `/proc/pressure/cpu`, `/proc/<pid>/{stat,cmdline}`.
 - Stores, read-only: `~/projects/{squeal,cezar,project-a}/.git/squeal/store.sqlite` (`runs`, `results`).
 - Vitest 5.0.3 `dist/chunks/index.DpLw24bj.js`: `getDefaultThreadsCount`, `resolveMaxWorkers`, `Pool.setMaxWorkers`, `serializeConfig`, the `isolate === false && maxWorkers === 1` grouping.
-- Squeal `03ea82d8`: `src/core/slow/slot.ts`, `src/core/slow/guard.ts`, `src/runners/vitest/{adapter,environment}.ts`, `src/runners/node-test/adapter.ts`, `src/runners/pytest/adapter.ts`. Spec 001 D1, D5, D8, D10, D11, D12; 004 D2, D3, D7; 007 D6; `research/daemon-under-harnesses.md`; `004-slow-suites/research/slow-suite-runtime.md` 2.
+- Squeal `d408bd42`: `src/core/slow/slot.ts`, `src/core/slow/guard.ts`, `src/runners/vitest/{adapter,environment}.ts`, `src/runners/node-test/adapter.ts`, `src/runners/pytest/adapter.ts`. Spec 001 D1, D5, D8, D10, D11, D12; 004 D2, D3, D7; 007 D6; `research/daemon-under-harnesses.md`; `004-slow-suites/research/slow-suite-runtime.md` 2.
 - GNU make 4.4.1, POSIX jobserver: https://www.gnu.org/software/make/manual/html_node/POSIX-Jobserver.html and https://www.gnu.org/software/make/manual/html_node/Job-Slots.html
 - Bazel user manual: https://bazel.build/docs/user-manual
 - Gradle 9.8.1: https://docs.gradle.org/current/userguide/build_environment.html and https://docs.gradle.org/current/userguide/gradle_daemon.html

@@ -2,11 +2,11 @@
 
 ## Verdict
 
-**FAIL 04d8adfaa511da4b648723849074b72f837166ed**. Three proven blockers, no product should-fix items, one proven checkout note, no nits. Review row 001-313; candidate range `03e2cd45..04d8adfa`.
+**FAIL 04ae16681479fea7cf043789bed1ba95df239eed**. Three proven blockers, no product should-fix items, one proven checkout note, no nits. Review row 001-313; candidate range `9e7ebc1c..04ae1668`.
 
 ## Verification
 
-All checks below ran on clean candidate `04d8adfaa511da4b648723849074b72f837166ed`. Each exited 0. `git status --porcelain` was empty before checks, after build, and after the full gate.
+All checks below ran on clean candidate `04ae16681479fea7cf043789bed1ba95df239eed`. Each exited 0. `git status --porcelain` was empty before checks, after build, and after the full gate.
 
 ```text
 $ npm ci
@@ -69,7 +69,7 @@ squeal tests: killing 1 process(es) an earlier run left: 2114142
 [exit 0]
 ```
 
-The initial checkout was clean at `303a5da8fa71d709689a06a0e75f672bdeebef57`, a board-only successor of the requested candidate. I detached to the exact candidate before installing and checking it, and returned to `cez/d301fd4f` only after verification to commit this file. No product files or board entries were edited. Build generated no tracked drift. No eval sessions ran. The independent Vitest command is the task's requested gate, not a Squeal checkpoint.
+The initial checkout was clean at `f84fab4c8ec0d2e37f40b733ae9218467c106437`, a board-only successor of the requested candidate. I detached to the exact candidate before installing and checking it, and returned to `cez/d301fd4f` only after verification to commit this file. No product files or board entries were edited. Build generated no tracked drift. No eval sessions ran. The independent Vitest command is the task's requested gate, not a Squeal checkpoint.
 
 The three targeted probes used the candidate's freshly built modules, a real temporary SQLite store and temporary files, and `runHook` for Claude Code SessionStart/PostToolBatch/SessionEnd. They seeded scheduler-equivalent rows and supplied `ensureDaemon: async () => "alive"`; they did not start two daemons or run model evals. Their complete discriminating output:
 
@@ -138,9 +138,9 @@ Fix scope for one repair worker: budget the line, including the standalone `SQUE
 
 ### N1. Proven, non-blocking: the initial checkout did not equal the requested candidate
 
-Location: initial checkout HEAD; the successor changes only `docs/board.md:408` onward; initial `git rev-parse HEAD` was `303a5da8fa71d709689a06a0e75f672bdeebef57`, not `04d8adfaa511da4b648723849074b72f837166ed`.
+Location: initial checkout HEAD; the successor changes only `docs/board.md:408` onward; initial `git rev-parse HEAD` was `f84fab4c8ec0d2e37f40b733ae9218467c106437`, not `04ae16681479fea7cf043789bed1ba95df239eed`.
 
-This is a dispatch/checkout mismatch, not a product break. `git diff --stat 04d8adfa..303a5da8` showed only `docs/board.md`, 6 insertions and 4 deletions. Verification was performed on the clean exact candidate, so it is verified rather than evidence from the successor. Coordinator action: pin future reviewer worktrees to the requested candidate. No board repair was performed.
+This is a dispatch/checkout mismatch, not a product break. `git diff --stat 04ae1668..f84fab4c` showed only `docs/board.md`, 6 insertions and 4 deletions. Verification was performed on the clean exact candidate, so it is verified rather than evidence from the successor. Coordinator action: pin future reviewer worktrees to the requested candidate. No board repair was performed.
 
 No other should-fix findings. No nits. Timing at D9's 80 ms p95 budget was not measured, and is unverified rather than a finding.
 

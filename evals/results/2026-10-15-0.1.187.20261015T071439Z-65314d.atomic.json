@@ -4,7 +4,7 @@
  "date": "2026-10-15",
  "run": "20261015T071439Z-65314d",
  "squealVersion": "0.1.187",
- "commit": "353bb068aa6537f65d9972e5b11061cfcae47c21",
+ "commit": "541f122642fbe861853ccbb43fc71e2a63b1d031",
  "conditions": {
   "fixture": "b192f479e3a40f6f621c9be4982b06ac7a74055b",
   "tasks": {
@@ -2100,7 +2100,7 @@
     "a11-inherited-flake.p0.claude-claude-sonnet-5-5.e-medium.r1",
     "a11-inherited-flake.p0.codex-gpt-6.1-sol.e-medium.r1"
    ],
-   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed 39c28f7c and d589ac24): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
+   "note": "Graded again from the run's kept raw cells (spec 006 D4, D10) under rows 006-77 and 006-82 (landed ac6dc753 and 088d1c78): the parser now reads counts that name their parts, a Claude Code hook's JSON (only the reasons Claude is shown) and a status cut above its Revision line; under 006-62 a Squeal call Squeal did not answer earns no credit. 'changed' names cells whose grade changed, 'evidence' cells whose retained timeline alone changed. Judge verdicts, transcripts and costs are kept."
   },
   {
    "by": "006-91",

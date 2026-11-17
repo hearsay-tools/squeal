@@ -24,7 +24,7 @@ Done when: every listed file passes 3 of 3 (load stated); `git grep -nE "schedul
 
 ## R1 (B1 to B3): review of cand/011-380-b1-b3
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b1-b3` at `fb87ff5822a5356b21c58cb75bee67f61da03034`; candidate CI run 43925583116. Test files and notes only: no `src/` change, no version raise. Range `999390321..fb87ff5822a5356b21c58cb75bee67f61da03034`: workers 53963056 (B1, two commits), 59182a73 (B2, four) and e5d56a10 (B3, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md` (the quiet point's contract); `tasks/011-380/B1.md`, `B2.md`, `B3.md`; `reviews/011-378-379.md` (R2, N1).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b1-b3` at `f55764687bac3de7dc0dec91525ddb13f31944e7`; candidate CI run 43925583116. Test files and notes only: no `src/` change, no version raise. Range `5960ad5b2..f55764687bac3de7dc0dec91525ddb13f31944e7`: workers 53963056 (B1, two commits), 59182a73 (B2, four) and e5d56a10 (B3, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md` (the quiet point's contract); `tasks/011-380/B1.md`, `B2.md`, `B3.md`; `reviews/011-378-379.md` (R2, N1).
 
 Check, each as proven, plausible or unverified:
 
@@ -36,7 +36,7 @@ Coordinator at the candidate: lint and typecheck pass; six files from the three 
 
 ## R2 (B4 to B6): review of cand/011-380-b4-b6
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b4-b6` at `861c9da471c8be3eade0f306f1a259b8becefbe9`; candidate CI run 43927655040. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b1-b3 (`fb87ff582`, review PASS, landing after its CI). Range `fb87ff582..861c9da471c8be3eade0f306f1a259b8becefbe9`: workers 8f984d27 (B4, two commits), ce41e077 (B5, two) and 7ad9c303 (B6, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md`; `tasks/011-380/B4.md`, `B5.md`, `B6.md`; `reviews/011-380-b1-b3.md` (on branch `cez/09791541` until it lands).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-b4-b6` at `d03663122598df2c1832e5df5ed6d38ab74b01fc`; candidate CI run 43927655040. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b1-b3 (`f55764687`, review PASS, landing after its CI). Range `f55764687..d03663122598df2c1832e5df5ed6d38ab74b01fc`: workers 8f984d27 (B4, two commits), ce41e077 (B5, two) and 7ad9c303 (B6, two), cherry-picked without conflict. Read: board rows 011-371, 011-378, 011-380; this file; `tasks/011-378/notes.md`; `tasks/011-380/B4.md`, `B5.md`, `B6.md`; `reviews/011-380-b1-b3.md` (on branch `cez/09791541` until it lands).
 
 Check, each as proven, plausible or unverified:
 
@@ -48,7 +48,7 @@ Coordinator at the candidate: lint and typecheck pass; the four exception files 
 
 ## R3 (B7, C1 to C4): review of cand/011-380-381
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-381` at `871cc22c0943e5bc0f323eb7a3dfd54fe632e1b2`; candidate CI run 43933339988. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b4-b6 (`861c9da47`, review PASS, landing after main's CI). Range `861c9da47..871cc22c0943e5bc0f323eb7a3dfd54fe632e1b2`: workers 9d5a16b9 (B7), a9d6d872 (C1), e635c69e (C2), cc1cbc68 (C3) and 04d9e9e1 (C4), cherry-picked without conflict. After this range no test calls `Scheduler.idle()`. Read: board rows 011-371, 011-378, 011-380, 011-381; this file; `tasks/011-378/notes.md`; `tasks/011-380/B7.md`; `tasks/011-381/C1.md` to `C4.md`; `reviews/011-380-b4-b6.md` (N1).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-380-381` at `b886b3bca9d443e6608da40862953266905e99dc`; candidate CI run 43933339988. Test files and notes only: no `src/` change, no version raise. Stacked on cand/011-380-b4-b6 (`d03663122`, review PASS, landing after main's CI). Range `d03663122..b886b3bca9d443e6608da40862953266905e99dc`: workers 9d5a16b9 (B7), a9d6d872 (C1), e635c69e (C2), cc1cbc68 (C3) and 04d9e9e1 (C4), cherry-picked without conflict. After this range no test calls `Scheduler.idle()`. Read: board rows 011-371, 011-378, 011-380, 011-381; this file; `tasks/011-378/notes.md`; `tasks/011-380/B7.md`; `tasks/011-381/C1.md` to `C4.md`; `reviews/011-380-b4-b6.md` (N1).
 
 Check, each as proven, plausible or unverified:
 

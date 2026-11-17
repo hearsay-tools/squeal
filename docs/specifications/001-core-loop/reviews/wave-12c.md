@@ -1,6 +1,6 @@
 # Wave 12c re-review: daemon handover
 
-Candidate: `7f62b20215c959f7545e893cef37681238ade897` (0.1.34). Re-review bounded by `reviews/wave-12b.md`, chiefly B1 and S1. Reviewed 001-130's original `ca19ee0..7f976a3` as landed in `0ce9728`, `c5ae51d`, `f20ed30`, `4fb77cc`, plus both committed plugin bundles in `7f62b20`.
+Candidate: `0c8ddcd26c542c41af692fa5dbf2bf075d92ffa7` (0.1.34). Re-review bounded by `reviews/wave-12b.md`, chiefly B1 and S1. Reviewed 001-130's original `ca19ee0..7f976a3` as landed in `0ce9728`, `c5ae51d`, `f20ed30`, `4fb77cc`, plus both committed plugin bundles in `7f62b20`.
 
 **FAIL: 1 proven blocker (prior B1 remains), 1 proven nonblocking wording note (S1 partly remains), 1 proven provenance nit.** No plausible or unverified product finding. Per 001-131's brief, the remaining blocker goes to the human; this review does not start another fix round.
 
@@ -10,7 +10,7 @@ All verification and product probes ran on a clean detached checkout of the exac
 
 ```text
 $ git rev-parse HEAD
-7f62b20215c959f7545e893cef37681238ade897
+0c8ddcd26c542c41af692fa5dbf2bf075d92ffa7
 
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
@@ -118,7 +118,7 @@ The main D5 correction and the changed scheduler comments correctly state that s
 
 ### N1. Proven provenance mismatch at assignment, corrected for verification
 
-Initial HEAD was `5cd8261f6dd37d9e35397313854a5edd7465b5f9`, not the named build `7f62b20`. The delta contains only `docs/board.md` and `docs/specifications/001-core-loop/tasks/wave-12.md`. Verification and probes ran after explicitly checking out the exact candidate; the assigned branch was restored only to commit this review. Nonblocking. Dispatch the exact candidate when possible.
+Initial HEAD was `e23213c071ddd93ba76581b6f90c2e35b0ebb58e`, not the named build `7f62b20`. The delta contains only `docs/board.md` and `docs/specifications/001-core-loop/tasks/wave-12.md`. Verification and probes ran after explicitly checking out the exact candidate; the assigned branch was restored only to commit this review. Nonblocking. Dispatch the exact candidate when possible.
 
 ## What fits
 

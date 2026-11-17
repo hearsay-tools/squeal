@@ -1,6 +1,6 @@
 # 019-27 notes: the last small fixes
 
-Worker af811454, 2026-11-04. Brief `tasks/wave-4.md`, 019-27. Base `0195b5590` (main at 0.1.398 plus the wave 4 briefs). No build: the bundles and the skill copies are the candidate's.
+Worker af811454, 2026-11-04. Brief `tasks/wave-4.md`, 019-27. Base `827d8c482` (main at 0.1.398 plus the wave 4 briefs). No build: the bundles and the skill copies are the candidate's.
 
 ## What changed
 

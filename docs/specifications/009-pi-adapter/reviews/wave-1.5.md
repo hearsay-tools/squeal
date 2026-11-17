@@ -1,16 +1,16 @@
 # 009 wave 1.5 review
 
-Row: 009-21. Scope: `02249f2355e2b45bd0452e63d2f49e6552c1c41b` only, against B1 of `wave-1.md`, spec 009 goal 4 and D3 as amended in `status.md`. Verification candidate: `c4c594821a4cb40840d3f474132250c5fd81a090` (0.1.172), as the brief requires. This closes the last re-review of wave 1; it does not review wave 2's idle-wake implementation.
+Row: 009-21. Scope: `f551f58b0616705e31ffe96376176e1750f7f0ee` only, against B1 of `wave-1.md`, spec 009 goal 4 and D3 as amended in `status.md`. Verification candidate: `1e0d7feefcb10a62a9b76f209badafe57c685b89` (0.1.172), as the brief requires. This closes the last re-review of wave 1; it does not review wave 2's idle-wake implementation.
 
 ## Verification output
 
-The dispatched branch starts at `1409403e0ed5d42265694710df038ebba29d95af`, after the verification candidate. All builds, independent tests and probes below ran in the explicitly authorized detached worktree at `c4c59482`, on Node 24.21.0. No tracked code was changed. The review file alone is committed on the dispatched branch.
+The dispatched branch starts at `7b8a364c9b04e43c4ec96999fb4cffb145b6e4d9`, after the verification candidate. All builds, independent tests and probes below ran in the explicitly authorized detached worktree at `1e0d7fee`, on Node 24.21.0. No tracked code was changed. The review file alone is committed on the dispatched branch.
 
 ```text
-$ git worktree add --detach /tmp/review-009-w15 c4c59482
-HEAD is now at c4c59482 build: 0.1.172 bundles with the Pi idle wake and the B1 fix (spec 009 wave 2)
+$ git worktree add --detach /tmp/review-009-w15 1e0d7fee
+HEAD is now at 1e0d7fee build: 0.1.172 bundles with the Pi idle wake and the B1 fix (spec 009 wave 2)
 $ git rev-parse HEAD
-c4c594821a4cb40840d3f474132250c5fd81a090
+1e0d7feefcb10a62a9b76f209badafe57c685b89
 $ npm ci
 added 174 packages, and audited 175 packages in 5s
 found 0 vulnerabilities
@@ -40,7 +40,7 @@ Duration 1340.47s
 (exit 1)
 ```
 
-**Proven, outside the scoped delta:** the only failed test is the known release-eval flag assertion at `test/evals/atomic-trend.test.ts:270`. It sees the committed 0.1.168 `a5-uncovered` / `own-run-covers` flag for Claude Haiku, 0/10 against 8/10 on 0.1.131 (`evals/results/ATOMIC.md:19`, committed by `bdd05f15`). `git diff --name-only 02249f23^ c4c59482 -- test/evals/atomic-trend.test.ts evals/results` prints nothing. The board already records this main-CI failure and its owner. It is not a B1 finding or a new blocker against the fix. This full-suite run is not green.
+**Proven, outside the scoped delta:** the only failed test is the known release-eval flag assertion at `test/evals/atomic-trend.test.ts:270`. It sees the committed 0.1.168 `a5-uncovered` / `own-run-covers` flag for Claude Haiku, 0/10 against 8/10 on 0.1.131 (`evals/results/ATOMIC.md:19`, committed by `4516ca67`). `git diff --name-only f551f58b^ 1e0d7fee -- test/evals/atomic-trend.test.ts evals/results` prints nothing. The board already records this main-CI failure and its owner. It is not a B1 finding or a new blocker against the fix. This full-suite run is not green.
 
 ### Discriminating B1 proof
 
@@ -97,7 +97,7 @@ $ git worktree remove /tmp/review-009-w15
 
 ## Verdict
 
-PASS `c4c59482`, for `02249f23`: 0 proven blockers, 0 plausible should-fix notes, 0 nits. B1 is closed. The regression passes the candidate and fails when only its executable fix is reversed. No per-run flag leak was found across the brief's new-run, abort and error cases. The full-suite result and its limitations are recorded above; this verdict concerns the bounded B1 fix.
+PASS `1e0d7fee`, for `f551f58b`: 0 proven blockers, 0 plausible should-fix notes, 0 nits. B1 is closed. The regression passes the candidate and fails when only its executable fix is reversed. No per-run flag leak was found across the brief's new-run, abort and error cases. The full-suite result and its limitations are recorded above; this verdict concerns the bounded B1 fix.
 
 ## Blockers
 

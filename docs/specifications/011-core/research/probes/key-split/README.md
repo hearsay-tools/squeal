@@ -15,7 +15,7 @@ Throwaway probes for `research/key-split.md`. Nothing here is product code or a 
 
 Outputs, as run on 2026-10-21 between 21:04 and 21:17 CEST (one-minute load 31.9 to 36.6 on 24 CPUs):
 
-- `parts-output.jsonl`: `parts.ts` on squeal clones `a` (0.1.240, `94607f2e3`), `b` (0.1.242, `423953305`) and `c` (`423953305` over an install of 0.1.237, `76d961d54`).
+- `parts-output.jsonl`: `parts.ts` on squeal clones `a` (0.1.240, `58c9889b6`), `b` (0.1.242, `651c75905`) and `c` (`651c75905` over an install of 0.1.237, `cf4223695`).
 - `cezar-parts-output.txt`: `parts.ts` on cezar clones `cz-f1` (`a7ee35b90`, the head of `f1ca49e6`) and `cz-7c` (`5fc6dd862`, the head of `7c144ff7`).
 - `lockfile-parts-output.jsonl`: `lockfile-parts.ts` on the clones and every live squeal worktree with an install, read-only.
 - `squeal-events.json`, `cezar-events.json`: `stores.ts` over 2026-10-14 21:10 to 2026-10-21 21:10 CEST, with `*-runner-files.json` as the runner files.

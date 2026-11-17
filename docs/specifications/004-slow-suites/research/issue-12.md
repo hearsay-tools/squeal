@@ -1,6 +1,6 @@
 # Issue 12 reproduction: requested slow work "loses its daemon"
 
-Brief: `research/issue-12-brief.md`. Issue: https://github.com/hearsay-tools/squeal/issues/12 (read 2026-10-16 with `gh issue view 12 --json`, open, no comments; reported against 0.1.199). Source examined at `785c966d` (0.1.200). The liveness, lifecycle, slot and store code is unchanged since the `squeal--v0.1.199` tag (`git diff --stat` only touches `leftovers.ts` and `terminate.ts`). Experiments ran the installed 0.1.199 bundle and the `cand/0.1.201` bundle (f9c29e11, which carries 001-422). They ran in isolated fixtures on 2026-10-16 between 20:40 and 20:51 UTC, at host load 15 to 23 on 24 CPUs. Reproduction only: no product file, board, spec or status was changed.
+Brief: `research/issue-12-brief.md`. Issue: https://github.com/hearsay-tools/squeal/issues/12 (read 2026-10-16 with `gh issue view 12 --json`, open, no comments; reported against 0.1.199). Source examined at `785c966d` (0.1.200). The liveness, lifecycle, slot and store code is unchanged since the `squeal--v0.1.199` tag (`git diff --stat` only touches `leftovers.ts` and `terminate.ts`). Experiments ran the installed 0.1.199 bundle and the `cand/0.1.201` bundle (b8b1a21a, which carries 001-422). They ran in isolated fixtures on 2026-10-16 between 20:40 and 20:51 UTC, at host load 15 to 23 on 24 CPUs. Reproduction only: no product file, board, spec or status was changed.
 
 ## Vision alignment
 
@@ -105,7 +105,7 @@ The reproduced mechanism is a heartbeat lapse with no lost request; whether it c
 - https://github.com/hearsay-tools/squeal/issues/12
 - `src/core/delivery/liveness.ts`, `src/core/status/snapshot.ts:42`, `src/core/daemon/lifecycle.ts`, `src/core/daemon/ensure.ts:192`, `src/core/daemon/open.ts:50`, `src/core/slow/slot.ts`, `src/core/scheduler/scheduler.ts:375`, `src/cli/status-wait.ts:304`, `src/cli/status-wait-lines.ts`, at `785c966d`
 - `docs/specifications/004-slow-suites/spec.md` D2, D8, D9; `docs/board.md` rows 001-156, 001-219, 001-263, 001-415, 001-422, 004-29, 004-59
-- Probes and outputs: `research/probes/issue-12/`. Bundles: 0.1.199 `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs` (sha256 6869478e…ae31f); 0.1.201 `git archive f9c29e11 plugins/claude-code` (sha256 35ef882d…454620a)
+- Probes and outputs: `research/probes/issue-12/`. Bundles: 0.1.199 `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs` (sha256 6869478e…ae31f); 0.1.201 `git archive b8b1a21a plugins/claude-code` (sha256 35ef882d…454620a)
 
 ## Coordinator validation
 

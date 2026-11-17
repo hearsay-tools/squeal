@@ -108,7 +108,7 @@ Run against the final main SHA: `SQ_REAL_CLI_CANDIDATE=<sha> npx vitest run --co
 
 ## Pre-release run, after wave 5
 
-2026-10-13 23:28 to 23:41 local, run by the coordinator. The candidate was main `0ba1d83e`, with plugins 0.1.154: 005-38 and 005-40 landed, plus 001-343's 0.1.155 code. The CLIs and isolation were as above.
+2026-10-13 23:28 to 23:41 local, run by the coordinator. The candidate was main `483b170d`, with plugins 0.1.154: 005-38 and 005-40 landed, plus 001-343's 0.1.155 code. The CLIs and isolation were as above.
 
 | Run | Result |
 |---|---|

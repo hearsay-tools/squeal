@@ -4,16 +4,16 @@
 
 Started 2026-10-14 about 11:39 UTC. Initial findings written 2026-10-14 11:46 UTC, within 15 minutes; independent suite still running at this first write. Extended 2026-10-14 11:57 UTC with the completed independent suite output.
 
-Fix: `ce85050c2bdaaec0c20f371990b0f313abda5a18`, cherry-picked from `c46b6bbe`. Reviewed bundle: `f95ed1bb0541a8617e4953d4367ae11c5e6d5d99`, version 0.1.165. Initial checkout was clean `abd5682771555d7f96003918e678df8811361bb4`, exactly the documentation overlay the brief names. It differs from the bundle only in `docs/board.md` and spec 005's `status.md`. The reviewer temporarily detached at `f95ed1bb` before installing dependencies or running checks; the branch was restored at `abd56827` after the suite, before committing the findings. No unexpected HEAD mismatch.
+Fix: `2a62c703803c1ec7492440417816f798d2e3a2b1`, cherry-picked from `c46b6bbe`. Reviewed bundle: `6a3ce67489f5404f10ccfc9e76ead9ca67c47dfb`, version 0.1.165. Initial checkout was clean `28a4889a43223461ddefa7f74b272948af7da254`, exactly the documentation overlay the brief names. It differs from the bundle only in `docs/board.md` and spec 005's `status.md`. The reviewer temporarily detached at `6a3ce674` before installing dependencies or running checks; the branch was restored at `28a4889a` after the suite, before committing the findings. No unexpected HEAD mismatch.
 
 ```text
 $ git rev-parse HEAD
-f95ed1bb0541a8617e4953d4367ae11c5e6d5d99
+6a3ce67489f5404f10ccfc9e76ead9ca67c47dfb
 $ git status --short
 [no output before checks]
-$ git diff --exit-code ce85050c f95ed1bb -- src/cli/setup/gates.ts test/cli/setup
+$ git diff --exit-code 2a62c703 6a3ce674 -- src/cli/setup/gates.ts test/cli/setup
 [no output; exit 0]
-$ git diff --exit-code f95ed1bb abd56827 -- src test plugins package.json package-lock.json
+$ git diff --exit-code 6a3ce674 28a4889a -- src test plugins package.json package-lock.json
 [no output; exit 0]
 $ npm ci
 added 58 packages, and audited 59 packages in 4s

@@ -20,7 +20,7 @@ Done when: the row's done-when holds: `grep -n "realSleep\|realSetTimeout\|watch
 
 ## R1 (W1): review of cand/011-353
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `562a5cb6e8a3dd18840753b71ecd23948bdcb4b7`; candidate CI run 43726276467. Test files and notes only, so no version raise and no bundle change (`check:version` passes at 0.1.513). Range `3b782912b..562a5cb6e`: seven commits of worker 7a90f9aa, cherry-picked onto main after 0.1.513 (row 011-352) landed. Read: board row 011-353, this file's W1, `tasks/011-353/notes.md`, `../research/scheduler-step.md` (the model-test paragraph of "Tests: replace, don't layer"), research 016 `model-scheduler.md`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `97c629afb0f55fff04e2c45591d45a926c61f1ab`; candidate CI run 43726276467. Test files and notes only, so no version raise and no bundle change (`check:version` passes at 0.1.513). Range `bf9f8052f..97c629afb`: seven commits of worker 7a90f9aa, cherry-picked onto main after 0.1.513 (row 011-352) landed. Read: board row 011-353, this file's W1, `tasks/011-353/notes.md`, `../research/scheduler-step.md` (the model-test paragraph of "Tests: replace, don't layer"), research 016 `model-scheduler.md`.
 
 Check, each as proven, plausible or unverified:
 
@@ -34,6 +34,6 @@ The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `v
 
 ## R2 (W1 repair): re-review of cand/011-353 after `reviews/011-353.md`
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `76d86d4db2ad8c27b7eed49842f307baa6f820b0`; candidate CI run 43727557797. Narrow: the repair `562a5cb6e..76d86d4db` (worker 7a90f9aa `59393ef97`, `8e9f10193`, cherry-picked): `advance` ends at the later of the reached time and `until`, so a jump made inside a timer stays; two regression cases in `model-harness-clock.test.ts`. Read `reviews/011-353.md` and the notes' "Repair after review 011-353".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-353` at `c0877289f61a46a6622c844bfdaa7c497c0bc73f`; candidate CI run 43727557797. Narrow: the repair `97c629afb..c0877289f` (worker 7a90f9aa `59393ef97`, `8e9f10193`, cherry-picked): `advance` ends at the later of the reached time and `until`, so a jump made inside a timer stays; two regression cases in `model-harness-clock.test.ts`. Read `reviews/011-353.md` and the notes' "Repair after review 011-353".
 
 Check, each as proven, plausible or unverified: B1's reproduction passes; `advance` still fires due timers in time order and never moves time backwards or skips a timer due before the reached time; nothing else in the helper or the model test changed. Worker evidence: the two cases failed before the fix; `model-harness-clock`, `clock-port`, `wakes` 37/37; the model test 7/7 in 16.2 s at load 11; coordinator: lint, typecheck, `model-harness-clock` with `clock-port` 18/18. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/011-353-r2.md` and commit it on your branch.

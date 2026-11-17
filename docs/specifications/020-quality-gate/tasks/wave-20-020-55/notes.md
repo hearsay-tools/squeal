@@ -1,6 +1,6 @@
 # Row 020-55 notes: the gate keeps the result of a file it reran under load
 
-Worker 9a30a36d, wave 20, 2026-11-14. Shape: slice. Base: main at `4fe1a2d29`
+Worker 9a30a36d, wave 20, 2026-11-14. Shape: slice. Base: main at `cba6bdf05`
 (0.1.477).
 
 A file that failed here under load and ran once more (row 020-54, D3.4) now

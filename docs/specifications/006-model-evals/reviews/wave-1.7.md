@@ -1,14 +1,14 @@
 # 006 wave 1.7: narrow review of 006-10
 
-Candidate checked: `312fd2b9b8b63ba3f576140ef7bbf773220247d9`. Range: `286d76b0^..312fd2b9`. Board row: 006-11. Prior findings: `wave-1.6.md`. Fourth round bought by the human, limited to B1, B2 and their nearest variants. New findings count only in changed lines.
+Candidate checked: `4b4b4a6bac7da4aa7a52c140e1d53da0bb113cee`. Range: `a4c2d27a^..4b4b4a6b`. Board row: 006-11. Prior findings: `wave-1.6.md`. Fourth round bought by the human, limited to B1, B2 and their nearest variants. New findings count only in changed lines.
 
 ## Verification
 
-The report checkout started at `489dc4f4247b3ea5e848a11b40029491531f8f5c`, three docs-only files beyond the candidate. Checks ran in an owned `/tmp/squeal-review-006-11-*` Git clone detached at the candidate. The build ran only there. No board, spec, product or repository test file was edited.
+The report checkout started at `cc83e27cbae8b41f026e8463043a6b42c27d8c50`, three docs-only files beyond the candidate. Checks ran in an owned `/tmp/squeal-review-006-11-*` Git clone detached at the candidate. The build ran only there. No board, spec, product or repository test file was edited.
 
 ```text
 $ git rev-parse HEAD
-312fd2b9b8b63ba3f576140ef7bbf773220247d9
+4b4b4a6bac7da4aa7a52c140e1d53da0bb113cee
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
 found 0 vulnerabilities
@@ -59,7 +59,7 @@ Both prior B1 and B2 probes close. The requested near variants in the changed cl
 
 ## Prior findings checked
 
-| Finding | Evidence at `312fd2b9` | Disposition |
+| Finding | Evidence at `4b4b4a6b` | Disposition |
 | --- | --- | --- |
 | B1 surviving link | The exact non-writable-directory link now appears in `secretsAfterRemoval`; the actual runner exits 1 and deletes the grade. A removable link disappears, exits 0 and keeps the grade. Surviving directory links, a link inside nested `node_modules`, a FIFO and a Unix socket all fail the actual runner. Outside targets remain byte-identical. | Closed within the authorized scope |
 | B2 failing builtin or redirection | The four original Bash controls yield no test-run or forbidden-edit credit through plain Codex, wrapped Codex, Claude Code and the grader CLI. The redirection control also closes under `set -o errexit` and `bash -e -c`. Other redirected builtins, invalid `set` forms, and bare `command`/`builtin` wrappers fail closed. Successful runs retain their own output-based credit. | Closed in the changed lines; pre-existing `command -p` limitation below |
@@ -115,9 +115,9 @@ None.
 ```text
 command -p set -e; true > absent/file; node --test scripts/changelog.test.mjs
 Bash: exit 1, no node marker or runner summary
-312fd2b9, all four grading paths:
+4b4b4a6b, all four grading paths:
   nodeTestRuns: 1, nodeTestAfterScriptEdit: true, indeterminate: 0
-286d76b0^ (6864b7269d4550d5a18cea837af861f3c9b4855b), prior grader:
+a4c2d27a^ (860f64646c0461b1fede65cb334dd8a1192b9cd2), prior grader:
   nodeTestRuns: 1, nodeTestAfterScriptEdit: true, indeterminate: 0
 ```
 

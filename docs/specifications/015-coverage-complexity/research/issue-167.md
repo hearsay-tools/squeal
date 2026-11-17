@@ -5,7 +5,7 @@ The current command and no-loader gaps are confirmed. The proposed whole engine
 and the external Cezarion failures were not reproduced.
 
 Examined 2026-11-09: Squeal **0.1.420**, commit
-`674ffbc690fc78775a7432e42aa5c5ca43d31546`, Node **v24.22.1**.
+`3e91368c6a1392a15578331db220260090edebdf`, Node **v24.22.1**.
 All source findings below refer to that commit. Issue and board states are the
 snapshot read on that date. Work was bounded to 15 minutes.
 
@@ -121,7 +121,7 @@ was the assertion probe and CLI reads above, not a product test-suite pass.
 - [Issue #167](https://github.com/hearsay-tools/squeal/issues/167), fetched with
   `gh issue view 167 --repo hearsay-tools/squeal --json number,title,body,state,comments,url`.
   Related issues used the same command without `comments`.
-- [Examined repository commit](https://github.com/hearsay-tools/squeal/tree/674ffbc690fc78775a7432e42aa5c5ca43d31546):
+- [Examined repository commit](https://github.com/hearsay-tools/squeal/tree/3e91368c6a1392a15578331db220260090edebdf):
   `docs/process.md`, `docs/vision.md`, `docs/styleguide.md`, `docs/board.md`;
   spec 015 `spec.md` D1–D9/Non-goals and `status.md`.
 - At that commit: `src/cli/{main,code}.ts`, `package.json`,

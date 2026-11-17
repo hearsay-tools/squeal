@@ -1,6 +1,6 @@
 # Research: remote-runner
 
-Row 019-04, topic `remote-runner` of `README.md`. Researcher, 2026-11-03. Source read at `e571d02fb` (Squeal 0.1.393 line), with the installed Vitest 5.0.3 and Vite 8.3.2 under `node_modules`. Experiments on this host: Node v24.22.1, pnpm 12.15.0, rsync and git 2.43.0, 24 CPUs. The one-minute load was 8.6 to 13.4 during every timing, under the CPU count, so the timings are reported. There is no remote machine and no network shaping. Every time below is local, and each round trip is added by arithmetic at an assumed RTT of 1 ms (same LAN), 20 ms (same cloud region) or 80 ms (another continent). Probes: `probes/remote-runner/` (throwaway). Official docs fetched with `curl` on 2026-11-03.
+Row 019-04, topic `remote-runner` of `README.md`. Researcher, 2026-11-03. Source read at `15133488e` (Squeal 0.1.393 line), with the installed Vitest 5.0.3 and Vite 8.3.2 under `node_modules`. Experiments on this host: Node v24.22.1, pnpm 12.15.0, rsync and git 2.43.0, 24 CPUs. The one-minute load was 8.6 to 13.4 during every timing, under the CPU count, so the timings are reported. There is no remote machine and no network shaping. Every time below is local, and each round trip is added by arithmetic at an assumed RTT of 1 ms (same LAN), 20 ms (same cloud region) or 80 ms (another continent). Probes: `probes/remote-runner/` (throwaway). Official docs fetched with `curl` on 2026-11-03.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
@@ -116,7 +116,7 @@ Not determined: Mutagen and sshfs latency (not installed); a cold remote install
 
 ## Sources
 
-- Squeal at `e571d02fb`: `src/runners/vitest/index.ts`, `adapter.ts`, `load.ts`, `run.ts`, `startup.ts`, `observe.ts`, `coverage.ts`; `src/runners/node-test/run/run.ts`, `adapter-environment.ts`, `adapter-project.ts`; `src/runners/pytest/run/run.ts`, `adapter-run.ts`; `src/runners/process/group.ts`, `recorders.ts`; `src/runners/observe/runtime.ts`, `read.ts`; `src/core/keys/environment.ts`; `src/core/types/runner.ts`; `src/core/store/schema.ts`.
+- Squeal at `15133488e`: `src/runners/vitest/index.ts`, `adapter.ts`, `load.ts`, `run.ts`, `startup.ts`, `observe.ts`, `coverage.ts`; `src/runners/node-test/run/run.ts`, `adapter-environment.ts`, `adapter-project.ts`; `src/runners/pytest/run/run.ts`, `adapter-run.ts`; `src/runners/process/group.ts`, `recorders.ts`; `src/runners/observe/runtime.ts`, `read.ts`; `src/core/keys/environment.ts`; `src/core/types/runner.ts`; `src/core/store/schema.ts`.
 - Vitest 5.0.3 and Vite 8.3.2 type declarations under `node_modules`: `vitest/dist/chunks/plugin.d.BsjqSb4-.d.ts` (`PoolRunnerInitializer`, `PoolWorker`, `WorkerRequest`), `rpc.d.BPFHl-HE.d.ts` (`RuntimeRPC`), `config.d.BxjInJat.d.ts` (`FetchCachedFileSystemResult`), `vite/dist/node/chunks/moduleRunnerTransport.d.ts` (`ExternalFetchResult`, `ViteFetchResult`).
 - Earlier findings extended: `../../018-ci-and-shared-results/research/result-import.md`, `remote-store.md`; `runner-trigger.md` Q5 and `stop-wait.md` Q3 in this folder; `../../011-core/research/host-load/2026-11-02.md`.
 - Probes: `probes/remote-runner/` (`sync.sh`, `make-fixture.sh`, `store-revisions.mjs` and their outputs). The store was opened read-only.

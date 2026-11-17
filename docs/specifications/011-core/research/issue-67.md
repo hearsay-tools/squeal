@@ -1,6 +1,6 @@
 # Issue 67: find one test file's failures and their test-file frame
 
-Researcher findings for hearsay-tools/squeal#67, 2026-10-21. Squeal 0.1.235 source (`package.json`), branch `cez/4084a021` at `48c914667`; installed CLI 0.1.235. Host: 24 CPUs, 1-minute load 2.30 at start and 2.86 at the probe, below the CPU count, so the probe ran. Reproduction only. Nothing is designed or implemented. The existing holds stand.
+Researcher findings for hearsay-tools/squeal#67, 2026-10-21. Squeal 0.1.235 source (`package.json`), branch `cez/4084a021` at `6e4cfe7e6`; installed CLI 0.1.235. Host: 24 CPUs, 1-minute load 2.30 at start and 2.86 at the probe, below the CPU count, so the probe ran. Reproduction only. Nothing is designed or implemented. The existing holds stand.
 
 **Verdict.** Reproduced in full on a synthetic store. Each of the three gaps holds on the current source:
 
@@ -91,7 +91,7 @@ Treat 67 as a C6 and C5 amendment for the human, in two parts: (a) `failures` ga
 
 ## Sources
 
-- `src/cli/failures.ts`, `src/core/status/failures.ts`, `src/core/status/why.ts`, `src/core/status/format-why.ts`, `src/runners/vitest/results.ts`, `src/core/fs/worktree-paths.ts`, `src/core/state/fingerprint.ts`, `src/core/delivery/format.ts:136,381`, `src/core/store/repos/results.ts:87-115`, at `48c914667`.
+- `src/cli/failures.ts`, `src/core/status/failures.ts`, `src/core/status/why.ts`, `src/core/status/format-why.ts`, `src/runners/vitest/results.ts`, `src/core/fs/worktree-paths.ts`, `src/core/state/fingerprint.ts`, `src/core/delivery/format.ts:136,381`, `src/core/store/repos/results.ts:87-115`, at `6e4cfe7e6`.
 - `docs/specifications/011-core/spec.md` C5, C6, C7; `status.md` (011-41 review line).
 - Issue: https://github.com/hearsay-tools/squeal/issues/67 (body and the 2026-10-21 comment).
 - `research/issue-54.md`, `research/issue-55.md`.

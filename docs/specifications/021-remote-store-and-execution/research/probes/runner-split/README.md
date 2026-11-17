@@ -2,7 +2,7 @@
 
 These scripts are throwaway. They supported `../../runner-split.md` once, on 2026-11-11, and are not maintained. Nothing in Squeal uses them.
 
-SSH keys, `known_hosts`, the SSH `HOME` and the control socket live under `$TMPDIR/rs` or a `mktemp` directory in `/tmp` (`env.sh`, `setup.sh`). The remote is a throwaway container on this host. Squeal's clone (`$TMPDIR/rs/squeal`, this repository at `0fa197e09`, installed with `pnpm install --offline`) is mounted read-only at `/opt/squeal`; this directory at `/opt/rs`.
+SSH keys, `known_hosts`, the SSH `HOME` and the control socket live under `$TMPDIR/rs` or a `mktemp` directory in `/tmp` (`env.sh`, `setup.sh`). The remote is a throwaway container on this host. Squeal's clone (`$TMPDIR/rs/squeal`, this repository at `777338026`, installed with `pnpm install --offline`) is mounted read-only at `/opt/squeal`; this directory at `/opt/rs`.
 
 | File | What it does |
 |---|---|

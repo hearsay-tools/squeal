@@ -1,4 +1,4 @@
-== raise 9->10 7851b5e1..6c9fed9e src/build files: 18; manifests changed beyond version: none; lock package lines changed: 0; +1388 insertions(+), 15 deletions(-)
+== raise 9->10 7851b5e1..7af3462a src/build files: 18; manifests changed beyond version: none; lock package lines changed: 0; +1388 insertions(+), 15 deletions(-)
    9+/0- src/core/daemon/composite-runner.ts
    16+/1- src/core/daemon/daemon.ts
    2+/0- src/core/daemon/escaped.ts
@@ -17,7 +17,7 @@
    131+/0- src/runners/pytest/adapter-run.ts
    324+/0- src/runners/pytest/adapter.ts
    8+/1- src/runners/pytest/run/run.ts
-== raise 10->11 9608b93f..a6c50b6e src/build files: 9; manifests changed beyond version: none; lock package lines changed: 0; +221 insertions(+), 34 deletions(-)
+== raise 10->11 9608b93f..236fdad9 src/build files: 9; manifests changed beyond version: none; lock package lines changed: 0; +221 insertions(+), 34 deletions(-)
    19+/6- src/core/daemon-loop/index.ts
    54+/8- src/core/daemon/daemon.ts
    28+/7- src/core/daemon/escaped.ts
@@ -27,7 +27,7 @@
    2+/0- src/core/scheduler/slow-tier.ts
    14+/3- src/core/scheduler/tiers.ts
    11+/2- src/core/types/scheduler.ts
-== raise 11->12 d25d03ad..35abdccc src/build files: 16; manifests changed beyond version: none; lock package lines changed: 0; +213 insertions(+), 58 deletions(-)
+== raise 11->12 d25d03ad..9d2d558f src/build files: 16; manifests changed beyond version: none; lock package lines changed: 0; +213 insertions(+), 58 deletions(-)
    2+/0- src/core/retry/index.ts
    2+/0- src/core/retry/pending.ts
    6+/2- src/core/retry/recorded.ts
@@ -44,7 +44,7 @@
    5+/3- src/core/types/check.ts
    6+/0- src/core/types/state.ts
    21+/0- src/core/types/status.ts
-== raise 12->13 2639208a..87d7ced6 src/build files: 36; manifests changed beyond version: none; lock package lines changed: 0; +171 insertions(+), 1615 deletions(-)
+== raise 12->13 3433ae62..325022b0 src/build files: 36; manifests changed beyond version: none; lock package lines changed: 0; +171 insertions(+), 1615 deletions(-)
    1+/0- src/core/daemon/daemon.ts
    0+/2- src/core/daemon/policy-node-test.ts
    0+/51- src/core/daemon/policy-precondition.ts
@@ -81,7 +81,7 @@
    0+/2- src/core/types/store.ts
    37+/8- src/runners/vitest/adapter.ts
    7+/0- src/runners/vitest/index.ts
-== raise 13->14 efcba0e0..05958848 src/build files: 14; manifests changed beyond version: none; lock package lines changed: 0; +213 insertions(+), 45 deletions(-)
+== raise 13->14 efcba0e0..f83116aa src/build files: 14; manifests changed beyond version: none; lock package lines changed: 0; +213 insertions(+), 45 deletions(-)
    47+/22- src/core/capacity/pool.ts
    3+/0- src/core/daemon/composite-runner.ts
    1+/0- src/core/daemon/escaped.ts
@@ -96,7 +96,7 @@
    10+/0- src/core/types/runner.ts
    9+/0- src/runners/vitest/adapter.ts
    9+/0- src/runners/vitest/width.ts
-== raise 14->15 ac19ab38..8515e737 src/build files: 9; manifests changed beyond version: none; lock package lines changed: 0; +96 insertions(+), 18 deletions(-)
+== raise 14->15 ac19ab38..8c805e19 src/build files: 9; manifests changed beyond version: none; lock package lines changed: 0; +96 insertions(+), 18 deletions(-)
    1+/0- src/core/daemon/composite-runner.ts
    15+/5- src/core/daemon/escaped.ts
    2+/0- src/core/daemon/node-test-runners.ts
@@ -106,7 +106,7 @@
    30+/10- src/core/scheduler/scheduler.ts
    32+/3- src/core/scheduler/tiers.ts
    10+/0- src/core/types/runner.ts
-== raise 15->16 22a390e4..70759ddf src/build files: 11; manifests changed beyond version: none; lock package lines changed: 0; +378 insertions(+), 107 deletions(-)
+== raise 15->16 22a390e4..4e855627 src/build files: 11; manifests changed beyond version: none; lock package lines changed: 0; +378 insertions(+), 107 deletions(-)
    1+/0- src/core/daemon/composite-runner.ts
    1+/0- src/core/daemon/escaped.ts
    2+/0- src/core/daemon/node-test-runners.ts

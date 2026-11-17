@@ -2,7 +2,7 @@
 
 Throwaway scripts and trimmed logs for the section "Confirmation at 0.1.85" in `../../../lessons.md`. Not product code. Nothing here is imported, built or tested by Squeal; delete freely.
 
-Run on 2026-10-09 from 21:20 to 21:57 UTC, with Node 24.21.0, Claude Code 2.1.296 (`claude -p --model opus`) and the Squeal plugin of the dogfood worktree (`--plugin-dir`, version 0.1.85, `origin/main` at `8b40d341`). The hub's `squeal@hearsay` was disabled in the worktree's untracked `.claude/settings.local.json`; the session's `init` event lists `squeal@inline` 0.1.85 as its only Squeal. Times in the logs are UTC; the slow-tier line's `HH:MM` is local time (UTC+2).
+Run on 2026-10-09 from 21:20 to 21:57 UTC, with Node 24.21.0, Claude Code 2.1.296 (`claude -p --model opus`) and the Squeal plugin of the dogfood worktree (`--plugin-dir`, version 0.1.85, `origin/main` at `3d5aeb24`). The hub's `squeal@hearsay` was disabled in the worktree's untracked `.claude/settings.local.json`; the session's `init` event lists `squeal@inline` 0.1.85 as its only Squeal. Times in the logs are UTC; the slow-tier line's `HH:MM` is local time (UTC+2).
 
 ## Rules followed
 

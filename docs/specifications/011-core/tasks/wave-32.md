@@ -113,7 +113,7 @@ Use /worker. Shape: slice. Row 011-183 in `docs/board.md`.
 
 Outcome: `test/daemon/hold.test.ts` case 2 no longer misses the edit's revision on a loaded runner: either the test waits on evidence, not on time, or the daemon fault behind it is fixed.
 
-Read the row (its evidence: main CI run 40107613445, attempt 1, Node 22 shard 2/3; `gh run view 40107613445 --attempt 1 --log-failed` has the test's `diagnose` output), 011 spec *Hold command* (`spec.md:272`), and commit `d8d74073f` (011-159 pinned the start baseline with `waitReady`).
+Read the row (its evidence: main CI run 40107613445, attempt 1, Node 22 shard 2/3; `gh run view 40107613445 --attempt 1 --log-failed` has the test's `diagnose` output), 011 spec *Hold command* (`spec.md:272`), and commit `32a19c359` (011-159 pinned the start baseline with `waitReady`).
 
 Seam: case 2 (`hold.test.ts:169`) and `editRecorded` (`:128`). The diagnosis showed the daemon serving and the hold already ended ("its command is gone; validating again"), yet no revision after the edit within 30 s. Lead: read the failed log's diagnosis for the watcher's state, and check whether the edit can fall between the wrapper's kill, the hold's end and the daemon's re-scan, so that no revision ever counts it.
 

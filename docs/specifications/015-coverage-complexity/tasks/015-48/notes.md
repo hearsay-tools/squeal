@@ -1,6 +1,6 @@
 # 015-48 notes: a recount's complexity write is sliced
 
-Worker 557fa03e, 2026-10-25. Brief: `tasks/wave-9.md` W1. Starts from main at 0.1.317 (`7d397293c`). Shape: slice. Code changes are inside the brief's ownership (`src/core/code/pass/**`, `src/core/code/crap/**` and their tests), plus `src/core/code/store/states.ts` and `types.ts` for `CodeStateRepo.adopt` only, by the coordinator's agreement (reply to request `65789ce6`, option a). No table, index, column, `user_version`, record or result key changed. Bundles are not built (the brief), so the committed-dist tests fail until the coordinator builds.
+Worker 557fa03e, 2026-10-25. Brief: `tasks/wave-9.md` W1. Starts from main at 0.1.317 (`126c7be7d`). Shape: slice. Code changes are inside the brief's ownership (`src/core/code/pass/**`, `src/core/code/crap/**` and their tests), plus `src/core/code/store/states.ts` and `types.ts` for `CodeStateRepo.adopt` only, by the coordinator's agreement (reply to request `65789ce6`, option a). No table, index, column, `user_version`, record or result key changed. Bundles are not built (the brief), so the committed-dist tests fail until the coordinator builds.
 
 ## What changed
 
@@ -14,7 +14,7 @@ Worker 557fa03e, 2026-10-25. Brief: `tasks/wave-9.md` W1. Starts from main at 0.
 
 All on this host (24 CPUs), one-minute load given per run. I made no load of my own beyond the measured process. "Gap" is the longest stretch between two `setImmediate` ticks in a disposable probe (not committed); `chain-load.test.ts` reports `monitorEventLoopDelay`'s maximum. The store is `chain-load`'s recount store: 1,263 sources of 10 functions, 37,890 states (12,630 complexity), judged by coverage first.
 
-### Before (main at `7d397293c`, with this row's seed commit only where marked)
+### Before (main at `126c7be7d`, with this row's seed commit only where marked)
 
 | Run | Turn | Load |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ All on this host (24 CPUs), one-minute load given per run. I made no load of my 
 | Same recount, the whole turn: count reads 56 + transaction 181 + first coverage step about 65 | 302 ms | 18.3 |
 | Recount, names kept | 226 ms | 18.9 |
 | `chain-load` recount case, pre-staging pass (`dd893de3e`) | 265 ms | 1.6 |
-| `chain-load` start case, pre-row code (`7d397293c`), pages warm | 66 ms | 1.8 |
+| `chain-load` start case, pre-row code (`126c7be7d`), pages warm | 66 ms | 1.8 |
 | Threshold recount, first turn (store open, plan, files rows, every count looked up, first part) | 76 ms | 3.4 |
 
 Write paths for 12,630 states on that store, at load 17 to 18: per-row `upsertMany` 109 to 132 ms, a set-based `json_each` upsert 96 to 121 ms, staged parts of 1,000 states 5.3 ms each, the staged switch 54 ms (drop included).

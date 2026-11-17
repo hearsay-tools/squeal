@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `b4931389a12b9e18b1dc5ee2c6906afe68491f11`, package 0.1.97. Assigned range: `b2750ece..b4931389a12b9e18b1dc5ee2c6906afe68491f11`. HEAD matched and the tracked tree was clean throughout the checks and probes, before this report. Reviewed rows: 001-207, 001-208/209, 001-212 and 001-214. Documentation about later rows is not executable work delivered by this wave.
+Candidate: `c185a421345021cbf6bab3be3f867e7b2896b391`, package 0.1.97. Assigned range: `7fffcfbe..c185a421345021cbf6bab3be3f867e7b2896b391`. HEAD matched and the tracked tree was clean throughout the checks and probes, before this report. Reviewed rows: 001-207, 001-208/209, 001-212 and 001-214. Documentation about later rows is not executable work delivered by this wave.
 
 Linux, Node 24.21.0 for the independent full suite and discriminating probes. Node 22.23.3 for the focused compatibility checks and scratch repetitions. The human forbade `npm run build`; build reproducibility is **unverified**, not a blocker. Tests that normally compile private fixture CLIs still ran. Both committed CLI bundles contain the WAL retry, held-window logic, `rekeyedOnceRefined` daemon call and the new cleanup formatter. This source inspection does not substitute for rebuilding.
 
 ```text
 $ git rev-parse HEAD
-b4931389a12b9e18b1dc5ee2c6906afe68491f11
+c185a421345021cbf6bab3be3f867e7b2896b391
 $ git status --short
 (no output)
 
@@ -90,7 +90,7 @@ Final background status is recorded below. All temporary probes were removed bef
 
 ## Verdict
 
-**FAIL b4931389: 2 proven blockers, 1 should-fix, 1 nit.** The WAL repair and the two test fixes hold. Normal cleanup notes have the requested facts, and normal captured sync answers retain their discharge membership. Two boundaries fail the wave's promises: a cleanup note can send the reader to another tier's test files, and abandoned sync answers can keep retention exemptions indefinitely. Blockers were sent to the parent for the human's decision, as instructed.
+**FAIL c185a421: 2 proven blockers, 1 should-fix, 1 nit.** The WAL repair and the two test fixes hold. Normal cleanup notes have the requested facts, and normal captured sync answers retain their discharge membership. Two boundaries fail the wave's promises: a cleanup note can send the reader to another tier's test files, and abandoned sync answers can keep retention exemptions indefinitely. Blockers were sent to the parent for the human's decision, as instructed.
 
 ## Blockers
 

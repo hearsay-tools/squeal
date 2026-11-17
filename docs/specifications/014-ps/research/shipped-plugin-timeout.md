@@ -1,6 +1,6 @@
 # Research 014-17: why `test/e2e/shipped-plugin.test.ts` times out on this host
 
-Row 014-17, brief in `tasks/wave-3.md`. Examined on 2026-10-21, 17:36 to 17:42 UTC, at c8a1fa65b (0.1.240), Node 24.21.0, npm 11.19.0, Vitest 5.0.3, Vite 8.3.2.
+Row 014-17, brief in `tasks/wave-3.md`. Examined on 2026-10-21, 17:36 to 17:42 UTC, at e3edf370d (0.1.240), Node 24.21.0, npm 11.19.0, Vitest 5.0.3, Vite 8.3.2.
 
 **Verdict.** The host's npm cache is stale. The test's own Squeal and the test's isolation are not the cause. `rolldown@1.2.15` was published at 13:10 UTC. The cache refreshed its `rolldown` packument at 14:48 UTC, but it still holds the packument of `@rolldown/binding-linux-x64-gnu` from 2026-10-20 23:19 UTC, which stops at 1.2.14. The fixture installs with `--prefer-offline`, so npm resolves `rolldown@1.2.15` from the fresh packument, cannot find the binding 1.2.15 in the stale one, and drops that optional dependency without a message. Vite then cannot load. The shipped daemon notes `vitest could not start: Cannot find native binding` within 0.2 s of its start, lists no test file, and the test waits out its 60 s bound.
 
@@ -65,7 +65,7 @@ Raising the 60 s bound would not help. The daemon has nothing to run.
 
 ## Sources
 
-- `test/e2e/shipped-plugin.test.ts` (`beforeAll` install, `until`, the 60 s baseline wait), `test/e2e/install.ts`, `test/harness/bundle-helpers.ts` (`runNode` passes the real `HOME`), `src/core/daemon/user-config.ts`, `src/core/slow/slot.ts` (`slowSlotDir`), `src/core/store/paths.ts`, all at c8a1fa65b.
+- `test/e2e/shipped-plugin.test.ts` (`beforeAll` install, `until`, the 60 s baseline wait), `test/e2e/install.ts`, `test/harness/bundle-helpers.ts` (`runNode` passes the real `HOME`), `src/core/daemon/user-config.ts`, `src/core/slow/slot.ts` (`slowSlotDir`), `src/core/store/paths.ts`, all at e3edf370d.
 - `~/.npm/_cacache/index-v5` entries `make-fetch-happen:request-cache:https://registry.npmjs.org/rolldown` and `…/@rolldown%2fbinding-linux-x64-gnu`, with their content, read without writing.
 - npm/cli#4828, as cited by the error text: https://github.com/npm/cli/issues/4828 (not fetched).
 - Probes (throwaway, outside the repository): scratch caches under `/tmp/cc4c-npm/`; the store-copy watcher and readers under the task's scratch directory. Run outputs: run 1 at 17:36:55 UTC, run 2 at 17:40:47 UTC, run 3 at 17:41:19 UTC, with the load sampled every 2 s.

@@ -1,6 +1,6 @@
 # 010-34 notes: adopt the measured compiler
 
-Evidence for the board row's done-when (spec 010 D13, ADR 0005), and the seams a later worker needs. Worker of coordinator `7803aae0`, 2026-11-02, base `bbe3f3c29`.
+Evidence for the board row's done-when (spec 010 D13, ADR 0005), and the seams a later worker needs. Worker of coordinator `7803aae0`, 2026-11-02, base `12d8efd12`.
 
 ## Changes
 
@@ -31,7 +31,7 @@ None to public types. `delivery.ts` only annotates parameters with existing expo
 
 ## Checks
 
-Run at `196a82a4e`, Node 24.22.1, host load about 18 to 20 from other sessions.
+Run at `305ff4e4d`, Node 24.22.1, host load about 18 to 20 from other sessions.
 
 - `pnpm run lint`: `Checked 2671 files in 1001ms. No fixes applied.`
 - `pnpm run typecheck` (`tsrs --fast --noEmit`): no output, exit 0.

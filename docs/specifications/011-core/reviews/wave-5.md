@@ -4,7 +4,7 @@ Verdict: **FAIL 276ed939fb2c3c0adae9ab5b327a2991ade36b25**. **3 proven blockers,
 
 ## Verification output
 
-Requested candidate initially `8e67bb2d514c46dcf2a1ab764738d092d1730130`, range `878b35bb..8e67bb2d`. Initial `git rev-parse HEAD` matched and `git status --short` was empty. During the review the coordinator changed the target to `276ed939fb2c3c0adae9ab5b327a2991ade36b25`, adding only W2's notes and margin probe. Fast-forwarded this review branch to that SHA; `git diff --quiet 8e67bb2d 276ed939 -- src test plugins package.json package-lock.json` exited 0. The findings below apply to `878b35bb..276ed939`.
+Requested candidate initially `8e67bb2d514c46dcf2a1ab764738d092d1730130`, range `3f3bb5a7..8e67bb2d`. Initial `git rev-parse HEAD` matched and `git status --short` was empty. During the review the coordinator changed the target to `276ed939fb2c3c0adae9ab5b327a2991ade36b25`, adding only W2's notes and margin probe. Fast-forwarded this review branch to that SHA; `git diff --quiet 8e67bb2d 276ed939 -- src test plugins package.json package-lock.json` exited 0. The findings below apply to `3f3bb5a7..276ed939`.
 
 `npm ci` ran from the lockfile on the initial clean candidate, then again at the final candidate SHA before the remaining verification:
 
@@ -149,7 +149,7 @@ Bounded to the repair delta `276ed939..c2c94c7f` and B1–B3 above, including th
 
 ### Verification output
 
-`git rev-parse HEAD` matched `c2c94c7f922546baf99de79312beb69994961417`; the candidate tree was clean. The original findings-only commit `ee8ab04e`, already cherry-picked to main as `2eaa9fc7`, was excluded from the candidate checkout. Its text was saved outside the project and restored only after verification, with this section appended.
+`git rev-parse HEAD` matched `c2c94c7f922546baf99de79312beb69994961417`; the candidate tree was clean. The original findings-only commit `ee8ab04e`, already cherry-picked to main as `792db8d4`, was excluded from the candidate checkout. Its text was saved outside the project and restored only after verification, with this section appended.
 
 ```text
 $ npm ci

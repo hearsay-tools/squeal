@@ -48,7 +48,7 @@ projects, and that it writes no last-used time.
 
 ## For the next worker
 
-- The duration also helps a `lookup-only` start (squeal's own baseline since 5a5bbc9ba, and
+- The duration also helps a `lookup-only` start (squeal's own baseline since e3470d99b, and
   cezar's): the misses are not queued there, but they keep the duration on the ledger, so a later
   catch-up or `run --all` backlog tier is budgeted by it.
 - `ResultRepo.latestForCheck` now has no caller in `src/`; tests in `test/delivery`,

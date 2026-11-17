@@ -1,8 +1,8 @@
 # Wave 6 review: 011-25's edit cut and 001-431's recorder
 
-Verdict: **FAIL 2b1818e0babcd78afb65327ec946f4e423e03d90**. **2 proven blockers, 0 should-fix, 0 nits.**
+Verdict: **FAIL 758d957b29b9c19f26ee1485353f4c4808597296**. **2 proven blockers, 0 should-fix, 0 nits.**
 
-Range: `d12c4e28..2b1818e0`, the supplied `origin/main` base and exact `cand/0.1.229` candidate. Scope: R3 of `tasks/wave-6.md`. No product source, board or status edits by this reviewer.
+Range: `8a8960c0..758d957b`, the supplied `origin/main` base and exact `cand/0.1.229` candidate. Scope: R3 of `tasks/wave-6.md`. No product source, board or status edits by this reviewer.
 
 ## Verification output
 
@@ -10,7 +10,7 @@ All repository checks below ran at the exact candidate, with a clean tracked tre
 
 ```text
 $ git rev-parse HEAD
-2b1818e0babcd78afb65327ec946f4e423e03d90
+758d957b29b9c19f26ee1485353f4c4808597296
 $ git status --short
 (no output)
 
@@ -113,7 +113,7 @@ It exhausted all three barrier attempts before the scenario under test was estab
 
 ### Discriminating probes
 
-Throwaway probes ran in a `git archive 2b1818e0` scratch copy, with this checkout's installed dependencies linked in. Candidate product sources were unchanged for the candidate probes. The two explicit revert controls changed only the scratch copy. These are reproduction evidence, separate from the clean-tree repository gate.
+Throwaway probes ran in a `git archive 758d957b` scratch copy, with this checkout's installed dependencies linked in. Candidate product sources were unchanged for the candidate probes. The two explicit revert controls changed only the scratch copy. These are reproduction evidence, separate from the clean-tree repository gate.
 
 ```text
 $ npx vitest run --config probe.config.ts test/review-probe.test.ts
@@ -126,7 +126,7 @@ Test Files  1 failed (1)
 Tests       3 failed | 1 passed (4)
 (exit 1; new-target adapter control passes; three B2 expectations fail)
 
-$ # Same adapter probes, only src/runners/vitest/observe.ts reverted to d12c4e28
+$ # Same adapter probes, only src/runners/vitest/observe.ts reverted to 8a8960c0
 $ npx vitest run --config probe.config.ts test/review-adapter.test.ts
 Test Files  1 passed (1)
 Tests       4 passed (4)
@@ -140,7 +140,7 @@ Test Files  2 passed (2)
 Tests       2 passed | 3 skipped (5)
 (exit 0; exactly the two original fidelity cases selected)
 
-$ # Same command, 001-431's four changed TypeScript sources reverted to d12c4e28
+$ # Same command, 001-431's four changed TypeScript sources reverted to 8a8960c0
 Test Files  2 failed (2)
 Tests       2 failed | 3 skipped (5)
 (exit 1; both no-recorder branches fail)
@@ -234,9 +234,9 @@ Neither repair requires changing the namesake policy, pool grants, cancellation,
 
 ## Re-review
 
-Verdict: **PASS 08836914a7410ffc7e91f1d5e2818469217a8be5**. **0 remaining blockers, 0 should-fix, 0 nits.** B1 and B2 are closed. The independent full gate has two failures, recorded below; PASS is this bounded review's judgment, not a claim that the gate passed.
+Verdict: **PASS 6eccee3a565c2e51ac7cb5da0735ac68969eb1f2**. **0 remaining blockers, 0 should-fix, 0 nits.** B1 and B2 are closed. The independent full gate has two failures, recorded below; PASS is this bounded review's judgment, not a claim that the gate passed.
 
-Scope: R3r of `tasks/wave-6.md`, repair range `2fb497da..08836914`: B1 (`4a06ee34`), B2 (`4d8fea2a`), and the re-pin/build/brief (`08836914`). The original review above remains the record for `2b1818e0`. No product, board or status edits by this reviewer.
+Scope: R3r of `tasks/wave-6.md`, repair range `f9c3b6ab..6eccee3a`: B1 (`e1306b0a`), B2 (`e27ee6ed`), and the re-pin/build/brief (`6eccee3a`). The original review above remains the record for `758d957b`. No product, board or status edits by this reviewer.
 
 ### Re-review verification output
 
@@ -244,7 +244,7 @@ Fetched origin and checked out the supplied SHA detached. All repository checks 
 
 ```text
 $ git rev-parse HEAD
-08836914a7410ffc7e91f1d5e2818469217a8be5
+6eccee3a565c2e51ac7cb5da0735ac68969eb1f2
 $ git status --short
 (no output)
 
@@ -302,11 +302,11 @@ Verification context, outside B1/B2:
 - **Unverified cause and candidate attribution:** `test/daemon/handover.test.ts:72` observed `alive` instead of the expected `spawned` at the first current hook, before the later handover assertions. This re-review establishes the failed assertion, not a product cause or an explanation from host load. It does not reopen the settled scheduler handover review. A later investigation can trace the hook/ensure decision for this released-version fixture if needed.
 - **Unverified scenario assertion and candidate attribution:** `test/harness/opencode-dispose.test.ts:172` exhausted all three barrier attempts at +2272, +2026 and +2283 ms, each beyond the held Stop's +2000 ms deadline. The abort/old-answer scenario was not established. This is the same shape as the original independent run and the coordinator's supplied gate, not a completed assertion of report storage behavior. A later test investigation can establish the barriers under controlled host conditions before drawing a product conclusion.
 
-The coordinator supplied its separate 771-pass/1-fail/1-skip gate on this SHA, with the same OpenCode barrier shape. Separately checked branch CI [run 39440872635](https://github.com/hearsay-tools/squeal/actions/runs/39440872635): `headSha` is `08836914a7410ffc7e91f1d5e2818469217a8be5`, `status: completed`, `conclusion: success`. This is additional evidence; it does not replace or make this reviewer's local gate green.
+The coordinator supplied its separate 771-pass/1-fail/1-skip gate on this SHA, with the same OpenCode barrier shape. Separately checked branch CI [run 39440872635](https://github.com/hearsay-tools/squeal/actions/runs/39440872635): `headSha` is `6eccee3a565c2e51ac7cb5da0735ac68969eb1f2`, `status: completed`, `conclusion: success`. This is additional evidence; it does not replace or make this reviewer's local gate green.
 
 ### Re-review discriminating checks
 
-Used a fresh `git archive 08836914` scratch copy linked to this checkout's installed dependencies. The original two scheduler probes and four real-adapter probes were reconstructed from the original review's scenarios. Candidate source files were unchanged for candidate runs; revert controls changed only the scratch copy. Restored files were byte-compared with the candidate before the fidelity run. The scratch tree and all throwaway probes were deleted before this report edit.
+Used a fresh `git archive 6eccee3a` scratch copy linked to this checkout's installed dependencies. The original two scheduler probes and four real-adapter probes were reconstructed from the original review's scenarios. Candidate source files were unchanged for candidate runs; revert controls changed only the scratch copy. Restored files were byte-compared with the candidate before the fidelity run. The scratch tree and all throwaway probes were deleted before this report edit.
 
 ```text
 $ npx vitest run --config probe.config.ts
@@ -319,13 +319,13 @@ Test Files  1 passed (1)
      Tests  2 passed (2)
 (exit 0; root NODE_OPTIONS beside own/none projects, with and without extends)
 
-$ # Only edit-cut.ts and refinement.ts restored to 2fb497da in scratch
+$ # Only edit-cut.ts and refinement.ts restored to f9c3b6ab in scratch
 $ npx vitest run --config probe.config.ts test/scheduler/edit-cut-new-source.test.ts
 Test Files  1 failed (1)
      Tests  3 failed (3)
 (exit 1; namesake, bare fallback, and mixed known/new-source expectations)
 
-$ # Candidate scheduler restored; only adapter.ts and observe.ts at 2fb497da
+$ # Candidate scheduler restored; only adapter.ts and observe.ts at f9c3b6ab
 $ npx vitest run --config probe.config.ts test/runners/vitest/unobserved-project-env.test.ts
 Test Files  1 failed (1)
      Tests  2 failed | 1 passed (3)

@@ -1,7 +1,7 @@
 # Wave 4 review: FAIL
 
 Candidate: `cand/0.1.246`, `563a806190085b6b364fd8d89cc7f0a7c5949798`.
-Range: `c3b6888a7..563a80619`. Row: 014-29. Reviewed on Linux, Node v24.21.0.
+Range: `d81e1d8a6..563a80619`. Row: 014-29. Reviewed on Linux, Node v24.21.0.
 
 Three proven blockers. One proven should-fix. One plausible note. Live proof remains unverified where stated below. No product code changed.
 

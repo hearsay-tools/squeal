@@ -2,13 +2,13 @@
 
 ## Verification
 
-Reviewed `b167429e..75258812`, the 001-297 landing, for review row 001-319. Candidate HEAD was exactly `75258812701304dc39698902e14147c860ff7d0a`. The tree was clean before verification, after the build, and after both Vitest runs and the disposable probes. Only this report is committed. The board and product were not edited. No eval sessions were run.
+Reviewed `eb073a85..c05e2a7f`, the 001-297 landing, for review row 001-319. Candidate HEAD was exactly `c05e2a7f138ec6fe75235fcd450eb85c2af06d95`. The tree was clean before verification, after the build, and after both Vitest runs and the disposable probes. Only this report is committed. The board and product were not edited. No eval sessions were run.
 
 Independent commands and output, 2026-10-13:
 
 ```text
 $ git rev-parse HEAD
-75258812701304dc39698902e14147c860ff7d0a
+c05e2a7f138ec6fe75235fcd450eb85c2af06d95
 $ git status --short
 (no output)
 
@@ -67,7 +67,7 @@ The full run passed the changed harness suites (`stop-slow-wait`, `stop-require-
 
 ## Verdict
 
-**PASS 75258812.** Zero blockers, one proven non-blocking should-fix note, no nits.
+**PASS c05e2a7f.** Zero blockers, one proven non-blocking should-fix note, no nits.
 
 This is the bounded review of row 001-297 and wave 13am S1. The distinct-session hole and the row's two-session done-when are closed. The new delta exposes the lifetime note below. The earlier review's B1/B2 repairs are outside this range and are not re-prosecuted here.
 
@@ -120,7 +120,7 @@ None.
 - Both changed callers pass `(store, consumer, harness, version)` to the implemented interface. The consumer is `(worktree, session ID, agent ID or main)`, and the worktree still selects the meta row. `recordStopWait` encloses its read and `writeSlot` in one store transaction, as `slots.ts` requires.
 - The new two-session test runs for both Claude Code and Codex. A's marker is present; B's short Stop blocks with the expected pending-slow reason; A's short Stop remains silent. It also asserts B's marker is false and A's remains true. The existing unmarked test invokes the real waiting entry and checks that it records its consumer, so the synthetic marker in the new isolation test is supported by an independent writer test.
 - A stored legacy worktree-wide row containing both harness names at the current version is ignored. The probe registered A and B, seeded `{ "codex": "0.1.144", "claude-code": "0.1.144" }`, then read both consumers: `legacy row ignored: true`. An old row has no `session\nagent` slot and cannot authorize either session's deferral. A new write discards those legacy entries through the registered-slot filter.
-- The new allowed seam is exactly `src/core/slow/stop-wait.ts -> src/core/delivery/slots.ts`, with a reason in `test/keys/key-format.test.ts:64`. The imported helpers only read/write consumer meta slots and inspect registered consumers. They cannot key, execute or record a test result. The guard still checks all guarded-to-exempt imports and detects changes to guarded sources. Version 9's hash was re-pinned as unreleased in `cb4fb75a`; the latest release recorded in status shipped version 8.
+- The new allowed seam is exactly `src/core/slow/stop-wait.ts -> src/core/delivery/slots.ts`, with a reason in `test/keys/key-format.test.ts:64`. The imported helpers only read/write consumer meta slots and inspect registered consumers. They cannot key, execute or record a test result. The guard still checks all guarded-to-exempt imports and detects changes to guarded sources. Version 9's hash was re-pinned as unreleased in `a44a2a38`; the latest release recorded in status shipped version 8.
 - The committed Claude Code and Codex bundles use consumer slots at both Stop entries and reproduce without drift. The patch version is `0.1.144`. The change introduces no asynchronous work or additional waiting into the short Stop. The waiting cap, handoff budget, setting-off exit and subagent exclusion are unchanged.
 - No new stale-result or misleading-current-status path was found in this delta. Marker scope decides who holds the agent; it does not change result validity, revision provenance, stored results or header counts.
 

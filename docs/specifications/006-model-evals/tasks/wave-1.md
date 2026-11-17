@@ -29,7 +29,7 @@ Use /worker. Shape: slice.
 
 ## 006-03 review of 006-01
 
-Use /reviewer. Range `c26cbb78^..69f7eb0f` (006-01's eight commits on main). Spec: `../spec.md` D1 to D6 and D8, with `../status.md`.
+Use /reviewer. Range `b2566d88^..0de06e31` (006-01's eight commits on main). Spec: `../spec.md` D1 to D6 and D8, with `../status.md`.
 
 Where the blast radius is, in order:
 

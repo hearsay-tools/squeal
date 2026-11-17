@@ -1,8 +1,8 @@
 # Issue 36: does a single unknown test file have a narrow rerun path?
 
-Researcher, 2026-10-18, 20-minute time box, documentation only. Issue: hearsay-tools/squeal#36 (`gh issue view 36 -R hearsay-tools/squeal`). Specs read: 011 C4, C5, C6, C9, C15 and `status.md` at `8ec92f9b`.
+Researcher, 2026-10-18, 20-minute time box, documentation only. Issue: hearsay-tools/squeal#36 (`gh issue view 36 -R hearsay-tools/squeal`). Specs read: 011 C4, C5, C6, C9, C15 and `status.md` at `32795e5a`.
 
-Versions: installed Squeal **0.1.199** (`squeal --version`, plugin `squeal@hearsay`, git sha `e36fea56`, tag `squeal--v0.1.199`); `origin/main` = this worktree's HEAD `8ec92f9b`, **0.1.213** (`package.json`), run from its committed bundle `plugins/claude-code/dist/cli/squeal.mjs` without building. Vitest 4.1.10, symlinked read-only from `~/projects/cezar/node_modules`. The incident's version is 0.1.199 (issue text).
+Versions: installed Squeal **0.1.199** (`squeal --version`, plugin `squeal@hearsay`, git sha `c5a4c70c`, tag `squeal--v0.1.199`); `origin/main` = this worktree's HEAD `32795e5a`, **0.1.213** (`package.json`), run from its committed bundle `plugins/claude-code/dist/cli/squeal.mjs` without building. Vitest 4.1.10, symlinked read-only from `~/projects/cezar/node_modules`. The incident's version is 0.1.199 (issue text).
 
 Host load: one-minute load 11.41 on 24 CPUs at the start (`/proc/loadavg`, `nproc`), 7.12 to 9.66 at each probe's start, 12.44 at the end. That is below the CPU count throughout, so the live probe ran.
 
@@ -18,7 +18,7 @@ Host load: one-minute load 11.41 on 24 CPUs at the start (`/proc/loadavg`, `npro
 | 2 | Did retry change between 0.1.199 and 0.1.213? | No. `git diff --quiet squeal--v0.1.199 HEAD -- src/cli/retry.ts src/core/retry src/cli/run.ts` exits 0. | read in source code |
 | 3 | Is there a narrow rerun path for one unknown file? | `run --all` queues only non-current files and clears their unknown mark (`queueFullSuite`: `classify(file) !== "current"`, `file.unknownKey = null`). Probe: `3 test files, 2 already current, 1 run now`, then `6 passed`. There is no single-file request. | read in source code (`src/core/scheduler/checkpoint-requests.ts:50-103`); verified by experiment (both) |
 | 4 | Does a named wait re-queue an unknown file? | No. It exits 3 at once: `Named test files have no verdict: 1 test file without a current result at revision 1 (1 unknown)`. | verified by experiment (both) |
-| 5 | Does status name the command that advances it? | On 0.1.213 it does: `Idle: nothing is running and no run is open; 1 test file without a result, none queued (\`squeal run --all --wait\` runs every test file without a result and waits)` (011-12, `b4eca021`, 0.1.210). On 0.1.199 there is no such line. | verified by experiment |
+| 5 | Does status name the command that advances it? | On 0.1.213 it does: `Idle: nothing is running and no run is open; 1 test file without a result, none queued (\`squeal run --all --wait\` runs every test file without a result and waits)` (011-12, `cee66f14`, 0.1.210). On 0.1.199 there is no such line. | verified by experiment |
 | 6 | Does 011-06 (#10) remove the unknown state? | Only for a transient touch. When touches repeat, both versions end unknown and unqueued after two runs in a row: the 007-30 barrier says `stays unknown until an input changes`. With one touch, 0.1.199 already ran the tier once more. | verified by experiment (both) |
 | 7 | Was the 37-minute incident reproduced? | No. No cezarion run, no 81-file backlog, no timing. The incident's reason text was reproduced exactly on 0.1.199: `vitest adapter: dist/lib.js was written during this run and ended as it was; ... (task 001-159)`. | verified by experiment (reason text); inferred (timeline) |
 
@@ -73,7 +73,7 @@ One host, one synthetic repo of three files, one Vitest project, touches made by
 
 - hearsay-tools/squeal#36, `gh issue view 36 -R hearsay-tools/squeal --json title,body,comments`.
 - `docs/specifications/011-core/spec.md` C4 (unknown, `run --all`, stability, MAX_DISCARDS), C5 (retry), C6, C15; `status.md` lines for 011-06, 011-12, 011-13.
-- `src/cli/retry.ts`, `src/core/scheduler/checkpoint-requests.ts`, `src/core/scheduler/stability.ts:156-157`, `src/runners/vitest/moved.ts:81-123`, `src/core/scheduler/ledger.ts:44`, `src/core/status/work-line.ts`, `src/harness/shared/primer.ts:126`; commits `aa260ef0` (011-06), `b4eca021` (011-12).
+- `src/cli/retry.ts`, `src/core/scheduler/checkpoint-requests.ts`, `src/core/scheduler/stability.ts:156-157`, `src/runners/vitest/moved.ts:81-123`, `src/core/scheduler/ledger.ts:44`, `src/core/status/work-line.ts`, `src/harness/shared/primer.ts:126`; commits `cf308f82` (011-06), `cee66f14` (011-12).
 - `plugins/claude-code/skills/squeal/SKILL.md` step 5, `references/commands.md` "squeal run --all".
 - `docs/board.md` rows 011-06, 011-12, 005-67, gh-30, gh-33, gh-34.
 - Probe: `probes/issue-36/` (`README.md`, `probe.sh`, `output-*.txt`).

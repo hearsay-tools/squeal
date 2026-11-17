@@ -4,7 +4,7 @@
 
 **PASS 0013080e37bc06e11165df153e0e6c151fd8e80d.** Zero blocking findings. B1, B2, B3 and S2 are closed. S1 is not fully closed: its original missing note is fixed, but an incomplete run can receive an inaccurate all-skipped note. This is one proven, nonblocking should-fix finding. No new blockers or nits.
 
-Range: `5b50e9dd..0013080e`, the five repair commits only. This is the second and last review of this slice, bounded by `reviews/wave-1.md` and the 007-20/007-21 briefs in `tasks/wave-2.md`. Daemon assembly remains outside this review. Plugin bundle drift and key-format drift are explicitly accepted integration work, not findings here.
+Range: `a536e48a..0013080e`, the five repair commits only. This is the second and last review of this slice, bounded by `reviews/wave-1.md` and the 007-20/007-21 briefs in `tasks/wave-2.md`. Daemon assembly remains outside this review. Plugin bundle drift and key-format drift are explicitly accepted integration work, not findings here.
 
 ## Verification output
 

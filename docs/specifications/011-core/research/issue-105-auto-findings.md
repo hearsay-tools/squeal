@@ -3,7 +3,7 @@
 Researcher, row 011-261, issue [#105](https://github.com/hearsay-tools/squeal/issues/105).
 **No automatic rule examined meets both requirements.** Write order, writer identity and repeated changes identify generated files, not their relevance to a verdict. Prefer the not-an-input setting if the human accepts its loss of coverage. This recommendation is not an approved design.
 
-Versions: **S** = Squeal `3c6d3201bc2b6d3faa1be14e9842972cef371104` (0.1.359); **C** = cezarion `9a9f617f` and `ecdde7685`; **E** = the throwaway fixture at S, Node 24.21.0, Vitest 5.0.3, Linux. Store copies and probes: 2026-10-26 UTC (2026-10-27 locally). Sources and repeat commands are below and in [the probe README](probes/issue-105-auto/README.md).
+Versions: **S** = Squeal `ee07d24fb8358a9f571f2bb7e1662cd5e51f9fb0` (0.1.359); **C** = cezarion `9a9f617f` and `ecdde7685`; **E** = the throwaway fixture at S, Node 24.21.0, Vitest 5.0.3, Linux. Store copies and probes: 2026-10-26 UTC (2026-10-27 locally). Sources and repeat commands are below and in [the probe README](probes/issue-105-auto/README.md).
 
 | Question | Answer | Tag / version |
 |---|---|---|
@@ -67,7 +67,7 @@ Not determined: production cost and coverage of native tracing; a candidate's ex
 ## Sources
 
 - **[E1]** [Probe README and commands](probes/issue-105-auto/README.md), `probe.py`, `run.sh`, `results.ndjson`. Both SQLite copies pass `PRAGMA quick_check`; no live database or daemon socket was opened.
-- **[S1]** [Squeal at S](https://github.com/hearsay-tools/squeal/tree/3c6d3201bc2b6d3faa1be14e9842972cef371104): `src/runners/observe/{recorder,fs,spawn}.cjs`, `{read,inputs,runtime}.ts`; `src/runners/vitest/observe.ts`.
+- **[S1]** [Squeal at S](https://github.com/hearsay-tools/squeal/tree/ee07d24fb8358a9f571f2bb7e1662cd5e51f9fb0): `src/runners/observe/{recorder,fs,spawn}.cjs`, `{read,inputs,runtime}.ts`; `src/runners/vitest/observe.ts`.
 - **[S2]** Same revision: `src/core/scheduler/observed.ts` (`scratchOf`, `observedGrowth`); `keying.ts` (`setClosure`, `track`, `#release`, `#declarable`); `lockfiles.ts`.
 - **[S3]** [Vitest 5.0.3](https://github.com/vitest-dev/vitest/tree/v5.0.3), installed package `node_modules/vitest/dist/chunks/index.DpLw24bj.js:12180` and `:21282`: `_initializeGlobalSetup` / `initializeGlobalSetup`.
 - **[S4]** S: `src/core/keys/observed.ts` (`SharedPaths`); `src/core/store/schema.ts`; 011 C2, C3, C12 and `status.md`; 016 D4 and `research/ignored-paths.md`; `issue-105-findings.md` (earlier daemon E1).

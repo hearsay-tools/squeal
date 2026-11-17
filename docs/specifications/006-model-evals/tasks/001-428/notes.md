@@ -1,6 +1,6 @@
 # 001-428: repair of review 001-427 B1, `slow-through-squeal`
 
-Findings: `docs/specifications/001-core-loop/reviews/release-0.1.199.md` at `25a5dab1`, B1. Baseline main `e77eff42`.
+Findings: `docs/specifications/001-core-loop/reviews/release-0.1.199.md` at `25a5dab1`, B1. Baseline main `0b91ce0b`.
 
 ## The rule now
 

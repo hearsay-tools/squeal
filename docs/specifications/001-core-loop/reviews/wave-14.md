@@ -4,7 +4,7 @@
 
 ## Verification output
 
-Range: `origin/main` (`90c114f8b0685a2e67915467c267a1b7b39aa17e`, package version 0.1.195) to `e135650e`. There is no local `0.1.195` tag. HEAD matches the assigned candidate. Checks run before writing this file, on the clean candidate; no product code changed. Temporary probes use the candidate's freshly built `dist` modules and private temporary stores, and clean their stores afterwards.
+Range: `origin/main` (`024e98bcb95aa2bdae0907d3ad2aeffdcc2bc1b2`, package version 0.1.195) to `e135650e`. There is no local `0.1.195` tag. HEAD matches the assigned candidate. Checks run before writing this file, on the clean candidate; no product code changed. Temporary probes use the candidate's freshly built `dist` modules and private temporary stores, and clean their stores afterwards.
 
 ```text
 $ git rev-parse HEAD
@@ -217,7 +217,7 @@ The candidate amends D10 and the D11 daemon-key list, but D2 does not describe t
 
 ### Verification output
 
-The assigned force-pushed branch was fetched, checked out and verified as `adb833e5`. The merge base with the locally available `origin/main` is `a8fedcc15c3c1d363bdcdce1e8a7f9a20694a50a`. Reviewed the repair delta, `tasks/001-418/notes.md`, the D2/D7/D9/D11 and 004 D2 amendments and their status-log entries. Checks and temporary probes ran on the clean candidate before restoring this review; no product code changed. Private-store probes use freshly built `dist` modules, and the revision probe uses real Git resets. The independent suite below is the reviewer gate, not the background Squeal verdict.
+The assigned force-pushed branch was fetched, checked out and verified as `adb833e5`. The merge base with the locally available `origin/main` is `ae5835019203d9b06dd8cae8ce93d836ffa7ff42`. Reviewed the repair delta, `tasks/001-418/notes.md`, the D2/D7/D9/D11 and 004 D2 amendments and their status-log entries. Checks and temporary probes ran on the clean candidate before restoring this review; no product code changed. Private-store probes use freshly built `dist` modules, and the revision probe uses real Git resets. The independent suite below is the reviewer gate, not the background Squeal verdict.
 
 ```text
 $ git rev-parse HEAD
@@ -311,17 +311,17 @@ B3 needs producer identity, not a broader fingerprint heuristic. Preserve the va
 
 ---
 
-## Round 3 — repair 001-419, candidate 4c6a6f78
+## Round 3 — repair 001-419, candidate 2805af67
 
-**PASS** `4c6a6f78439ad3fc5a084434b1b353c2596a2d73` for this narrow re-review: **0 remaining blockers; 1 new proven, nonblocking follow-up note (N2)**. The round-2 B3 scenario and its requested positive cases pass. The human's accepted S1 resume exception is now explicit in 004 D2 and matches the code. This addendum supersedes the previous verdict for the new candidate; rounds 1 and 2 above are preserved verbatim from `f06b4c33`. The mixed older-writer case below is new evidence from the repair delta, recorded as a note under the bounded re-review rule.
+**PASS** `2805af67e0e85d3a4fbcb5d15829ae1277f2148c` for this narrow re-review: **0 remaining blockers; 1 new proven, nonblocking follow-up note (N2)**. The round-2 B3 scenario and its requested positive cases pass. The human's accepted S1 resume exception is now explicit in 004 D2 and matches the code. This addendum supersedes the previous verdict for the new candidate; rounds 1 and 2 above are preserved verbatim from `f06b4c33`. The mixed older-writer case below is new evidence from the repair delta, recorded as a note under the bounded re-review rule.
 
 ### Verification output
 
-Fetched the force-pushed `cand/0.1.196`, checked it out and verified HEAD. Reviewed `8164f3bd` (producer references), `7e7adf16` (S1 amendment), `tasks/001-419/notes.md`, the rebuilt bundles and key-format re-pin. Checks and private-store probes ran before restoring this review, on the clean candidate. No product code changed.
+Fetched the force-pushed `cand/0.1.196`, checked it out and verified HEAD. Reviewed `bf2bed2f` (producer references), `f3c6a0ff` (S1 amendment), `tasks/001-419/notes.md`, the rebuilt bundles and key-format re-pin. Checks and private-store probes ran before restoring this review, on the clean candidate. No product code changed.
 
 ```text
 $ git rev-parse HEAD
-4c6a6f78439ad3fc5a084434b1b353c2596a2d73
+2805af67e0e85d3a4fbcb5d15829ae1277f2148c
 $ git status --short
 (no output)
 $ npm ci
@@ -353,7 +353,7 @@ $ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
    Duration  691.72s (tests 98%, import 2%)
 (exit 0)
 $ git rev-parse HEAD
-4c6a6f78439ad3fc5a084434b1b353c2596a2d73
+2805af67e0e85d3a4fbcb5d15829ae1277f2148c
 $ git status --short
 (no output)
 $ git diff --exit-code -- plugins/claude-code/dist plugins/codex/dist plugins/pi/dist plugins/opencode/dist

@@ -42,7 +42,7 @@ Regressions (`test/evals/retry-background.test.ts`, both harnesses; 16 fail with
 - pilot 2's Sonnet sequence true, and false without the record;
 - a background start of the running service, failed lines, and a printed `listening` with a record that lacks it add no step.
 
-**Graded identically.** In memory, nothing written, no `atomic-regrade.mjs`: `regradeAtomic` over the 15 committed atomic files (10 `.atomic.json`, 5 `.atomic-variant.json`) under this tree changes 0 cells. The 76 retained a9 and a10 cells under `/tmp/squeal-evals-1001/cells` (none with a record) grade from their events to the same retained timeline under this tree's `gradeCell` as under main's before 006-67 (`d4284c12`).
+**Graded identically.** In memory, nothing written, no `atomic-regrade.mjs`: `regradeAtomic` over the 15 committed atomic files (10 `.atomic.json`, 5 `.atomic-variant.json`) under this tree changes 0 cells. The 76 retained a9 and a10 cells under `/tmp/squeal-evals-1001/cells` (none with a record) grade from their events to the same retained timeline under this tree's `gradeCell` as under main's before 006-67 (`8dc46be9`).
 
 ## Regressions (006-67; superseded in part by 006-72's list above)
 

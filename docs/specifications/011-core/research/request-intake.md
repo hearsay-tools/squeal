@@ -1,10 +1,10 @@
 # Request intake: one place where the scheduler takes a request
 
-Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 2), rechecked on main at `c601627a6` (0.1.467) on 2026-11-13 by design session b3f9b586. Terms: `GLOSSARY.md` (Request, Request intake, Covered files). The decisions below are the human's, taken one at a time on 2026-11-13. Rows 011-322 to 011-325.
+Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 2), rechecked on main at `49ee87036` (0.1.467) on 2026-11-13 by design session b3f9b586. Terms: `GLOSSARY.md` (Request, Request intake, Covered files). The decisions below are the human's, taken one at a time on 2026-11-13. Rows 011-322 to 011-325.
 
 ## Problem
 
-A daemon takes a request in seven methods of `src/core/scheduler/scheduler.ts`: `requestFullSuite` (639-707), `requestSlowSuite` and `requestGroup` (717-766, a lint group at 733-745), `requestGroupPaths` (777-821), `requestRetries` (824-837, `#takeRetries` 844-846), `promote` (855-864), `focus` (873-888) and `refreshObserved` (901-910). Each applies the rules all requests share in its own shape (read in source code at `c601627a6`; the file is unchanged since `9fc1a9bc7`, 2026-11-11):
+A daemon takes a request in seven methods of `src/core/scheduler/scheduler.ts`: `requestFullSuite` (639-707), `requestSlowSuite` and `requestGroup` (717-766, a lint group at 733-745), `requestGroupPaths` (777-821), `requestRetries` (824-837, `#takeRetries` 844-846), `promote` (855-864), `focus` (873-888) and `refreshObserved` (901-910). Each applies the rules all requests share in its own shape (read in source code at `49ee87036`; the file is unchanged since `291bbd28f`, 2026-11-11):
 
 | Rule | `run --all` | `run <group>` | `run <group> <path>` | `retry` | promote, focus | import (`refreshObserved`) |
 |---|---|---|---|---|---|---|
@@ -24,9 +24,9 @@ A rule then reaches one path, and a review finds the others. Review blockers sin
 | 018 `reviews/wave-3.6.md` B3 | The retry's progress record existed only in `requestRetries`; the start and reconciliation paths that take stored retries skipped it | progress record |
 | 021 `reviews/0.1.434.md` B2 | Socket requests' writes ran outside the busy-store retry | busy-store retry |
 | 021 `reviews/0.1.434.md` re-review B2 | `run --all`'s runner recovery still wrote outside it; after this second FAIL the chain went to the human (process step 6) | busy-store retry |
-| 019 `reviews/0.1.411.md` B2 | A narrow run's answer was read as "current" by the CLI; fixed by `a45ae2179`, which classifies in the scheduler | answer |
+| 019 `reviews/0.1.411.md` B2 | A narrow run's answer was read as "current" by the CLI; fixed by `ae7e6835f`, which classifies in the scheduler | answer |
 
-Five blockers in three reviews. Five fix commits added the busy-store retry one path at a time: `9f6623beb`, `9fc1a9bc7`, `7fc5d4f7b`, `1ad5df20c`, `52bcd4126` (the last two are pass and baseline writes, not requests). This is spec 016 `research/core-defects.md`'s mechanism "a path that skips a rule" (6 FAIL rounds in the scheduler), whose best catch is a single owner for the rule.
+Five blockers in three reviews. Five fix commits added the busy-store retry one path at a time: `601dc551e`, `291bbd28f`, `742459ff5`, `00afd801f`, `3a70c460d` (the last two are pass and baseline writes, not requests). This is spec 016 `research/core-defects.md`'s mechanism "a path that skips a rule" (6 FAIL rounds in the scheduler), whose best catch is a single owner for the rule.
 
 The tests repeat the same races per request (test inventory, read in source code): the lock-holder race in 6 cases in 3 files (`test/scheduler/busy-requests.test.ts:71,93,111`, `test/daemon/busy-requests.test.ts:71,86`, `test/daemon/busy-writes.test.ts:60`); the held-baseline progress setup in 8 cases in 3 files (`test/scheduler/request-progress.test.ts:98,111,121,134,147`, `request-progress-forced.test.ts:43`, `request-progress-retry.test.ts:19,37`). The install wait is tested through `run --all` only (`install-wait.test.ts:230`, `reinstall.test.ts:159,200,272`); no test covers it for a group, a narrow run, a retry or an import.
 

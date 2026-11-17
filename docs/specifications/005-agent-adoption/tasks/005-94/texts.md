@@ -2,7 +2,7 @@
 
 Researcher's file for row 005-94 (wave 16, W2), 2026-11-17. It shows each sentence that the wording pass changes, before and after, for the human to approve. Nothing here is built. The coordinator writes the brief for the code from the approved texts.
 
-- Base: `main` at `9967ce790` (Squeal 0.1.531). W1's carried texts (row 005-93, part 1) are read on `origin/wip/005-93` at `88ad9a358`.
+- Base: `main` at `73b613a15` (Squeal 0.1.531). W1's carried texts (row 005-93, part 1) are read on `origin/wip/005-93` at `190abb535`.
 - "Before" texts: printed by the real formatters of the base commit (`formatRegistration`, `headerLines`, `primer`, `statusText`, `formatDelta`, `sawEditLine`). The throwaway probe is `probe/render.ts` (see `probe/README.md`). The status values are hand-set (`StatusHeader` objects); the words are the code's. The clock is in UTC.
 - "After" texts of the primer: printed by a draft copy of `primer.ts` (`probe/primer-after.ts`, run by `probe/after.ts`), which keeps the fold and drop logic. The lengths are measured, not estimated. All other "after" texts are hand-written proposals.
 - Coverages. **Default**: this repository (Vitest with `vitest.config.ts`, `test/e2e/**` excluded, no slow files, no check groups). **Cezar**: Vitest and two node:test projects, check groups `lint` and `tests` at edit, `run-loop` at pause, `browser` manual, slow declared with 0 files (`test/harness/primer-over-cap.test.ts`; its runner part matches `runnerCoverage` read from cezar's `squeal.config.json` at `fd1e7f658`). **Slow-on**: the default with 3 slow files and `stop.requireSlowSuite` on. The eval fixture (`evals/ledgerline`) is measured too, because the atomic tier reads its primer.
@@ -27,7 +27,7 @@ The rule (`status.md`, 2026-11-16): a hook sentence stays when the agent in the 
 
 ```text
 SQUEAL · registered at revision 79
-Revision 79 · a8f6984d + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Imported: 12 of 4400 current. Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
+Revision 79 · c99d5246 + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Imported: 12 of 4400 current. Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
 Known failures: 0; not current: 116 of 584 test files (12 queued, 104 unknown), 140 tests (108 queued, 32 unknown)
 Complexity: 74 functions over 20; squeal code lists them.
 ```
@@ -36,7 +36,7 @@ Complexity: 74 functions over 20; squeal code lists them.
 
 ```text
 SQUEAL · registered at revision 79
-Revision 79 · a8f6984d + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
+Revision 79 · c99d5246 + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
 Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.
 browser: 9 test files; 9 not run at revision 79. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
 Known failures: 0; not current: 116 of 584 test files (12 queued, 104 unknown), 140 tests (108 queued, 32 unknown)
@@ -48,7 +48,7 @@ Lint: 2 files with findings; squeal lint lists them.
 
 ```text
 SQUEAL · registered at revision 79
-Revision 79 · a8f6984d + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
+Revision 79 · c99d5246 + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown. Full-suite checkpoint: none completed at any revision (the counts are for revision 79; `squeal run --all` requests one).
 Slow tier: 3 test files; 1 current at revision 75; 2 not run at revision 79. Stop waits up to 2 min for them or holds the agent once; `squeal run --slow --wait 60000` waits for their results.
 Known failures: 0; not current: 116 of 584 test files (12 queued, 104 unknown), 140 tests (108 queued, 32 unknown)
 Complexity: 74 functions over 20; squeal code lists them.
@@ -58,7 +58,7 @@ Complexity: 74 functions over 20; squeal code lists them.
 
 ```text
 SQUEAL · registered at revision 79
-Revision 79 · a8f6984d + 3, dirty: 4556 current (4072 tests, 484 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 79.
+Revision 79 · c99d5246 + 3, dirty: 4556 current (4072 tests, 484 test files loaded), 0 pending, 0 stale, 0 unknown. Full-suite checkpoint: completed at revision 79.
 Known failures: 0; all 484 test files current
 Complexity: 74 functions over 20; squeal code lists them.
 ```
@@ -120,7 +120,7 @@ A stale count reads `3 stale (run on older file contents; not queued)`. R2 keeps
 | `4400 current (3932 tests, 468 test files loaded), 120 pending (…), 0 stale, 36 unknown (…)` | removed (R1) or test files with glosses (R2) | 4, 8 | person (R1) | `squeal status`: `Affected checks:` and `Known failures:` lines |
 | `Test files without checks: 0 pending, 100 unknown.` | removed; the files count among the test files of the `Known failures` line | 4 | person | `squeal status --full` (`status-detail.ts`, printed when not 0) |
 | `Known failures: 0; not current: 116 of 584 test files (12 queued, 104 unknown), 140 tests (…)` | `` Known failures: 0; 468 of 584 test files are current (run on the files as they are now), and `squeal status` counts the rest. `` | 4 | agent | the tests split: `squeal status` |
-| `Revision 79 · a8f6984d + 3, dirty` | `Revision 79`, here and in every hook header | 4 | person | `squeal status`: `Revision: 79 · a8f6984d + 3, dirty`; `--full`: `Worktree: … (HEAD …, dirty at revision N)` (verified by experiment) |
+| `Revision 79 · c99d5246 + 3, dirty` | `Revision 79`, here and in every hook header | 4 | person | `squeal status`: `Revision: 79 · c99d5246 + 3, dirty`; `--full`: `Worktree: … (HEAD …, dirty at revision N)` (verified by experiment) |
 | `Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.` (0 slow files listed) | removed from hooks while the listing counts 0 | 1 (the primer's own drop) | person | `squeal status` |
 | `Complexity: counting has not started.`, `Complexity: counting, N of M files.` and lint's linting progress | removed from hooks; the count line stays once known | table, "counting progress" | person | `squeal status` |
 
@@ -132,7 +132,7 @@ Before (413):
 
 ```text
 SQUEAL · the counts after the listing at revision 79
-Revision 79 · a8f6984d + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown; the baseline is lookup-only, so it queued none of them.
+Revision 79 · c99d5246 + 3, dirty: 4400 current (3932 tests, 468 test files loaded), 120 pending (108 tests, 12 test files loaded), 0 stale, 36 unknown (32 tests, 4 test files loaded). Inherited: 4100 of 4400 current (3660 tests, 440 test files loaded). Test files without checks: 0 pending, 100 unknown; the baseline is lookup-only, so it queued none of them.
 ```
 
 After: the title loses the internal word "listing", the line is R1's.
@@ -254,13 +254,13 @@ Also in Stop's full header (listed): every change of item 1 applies, if Stop tak
 Before, a delivery's header (260); the feed is late when its last batch started over 60 s ago (`FEED_LATE_MS`, 2 × 30 s):
 
 ```text
-Revision 79 · a8f6984d + 3, dirty: 120 pending (108 tests, 12 test files loaded), 36 unknown (32 tests, 4 test files loaded). Test files without checks: 100 unknown. Squeal has not yet read edits made after 01:16:30; these counts cover revision 79 and earlier.
+Revision 79 · c99d5246 + 3, dirty: 120 pending (108 tests, 12 test files loaded), 36 unknown (32 tests, 4 test files loaded). Test files without checks: 100 unknown. Squeal has not yet read edits made after 01:16:30; these counts cover revision 79 and earlier.
 ```
 
 With the revision's listing pending too:
 
 ```text
-Revision 79 · a8f6984d + 3, dirty: 120 pending (108 tests, 12 test files loaded), 36 unknown (32 tests, 4 test files loaded). Test files without checks: 100 unknown. Squeal is behind: it has not read edits made after 01:16:30, and Vitest has not listed revision 79's test files yet, so new test files are not counted.
+Revision 79 · c99d5246 + 3, dirty: 120 pending (108 tests, 12 test files loaded), 36 unknown (32 tests, 4 test files loaded). Test files without checks: 100 unknown. Squeal is behind: it has not read edits made after 01:16:30, and Vitest has not listed revision 79's test files yet, so new test files are not counted.
 ```
 
 After (W1's own count in place of the queue counts; the commit suffix gone):
@@ -285,7 +285,7 @@ Squeal is behind: it has not read edits made after 01:16:30 UTC, and Vitest has 
 | closure | none since row 005-92 ("imports" in place of "closure", `src/core/delivery/provenance.ts`). Left in the CLI (`no test file's closure holds <path>`), a status note (`refusedNote`) and the code gate. | No hook change. The skill's `reports.md` says "which its closure rarely holds": becomes "which its imports rarely include". | agent (skill) |
 | lookup-only | the owed counts: `…; the baseline is lookup-only, so it queued none of them.` | Removed with the test-files-without-checks sentence (item 1). `squeal status` keeps `(the baseline is lookup-only)` in `Outstanding` (verified by experiment). | person |
 | test files without checks | the full header (registration, Stop, owed counts); the news line on main | Removed from hooks (item 1; W1 removes it from the news line). `squeal status --full` keeps it. | person |
-| `· a8f6984d + 3, dirty` | every hook header's revision | Removed from hooks; `squeal status` keeps it, `--full` explains it (item 1). | person |
+| `· c99d5246 + 3, dirty` | every hook header's revision | Removed from hooks; `squeal status` keeps it, `--full` explains it (item 1). | person |
 | current, pending, stale, unknown | every full header and `Known failures` line | R1: "current" defined in place, the others left to `squeal status`. R2: each glossed in place. | agent |
 
 The first-edit and done lines with the recovery clause (W1's texts on the left):
@@ -356,8 +356,8 @@ The run, once the code lands: the atomic tier on Sonnet and Sol on the candidate
 ## Sources
 
 - `research/hook-messages-2026-11-16.md` (findings 1 to 4, 8, 13 and the table); `status.md` 2026-11-16 and 2026-11-17; `docs/vision.md` principle 1; spec 005 D1, D6.
-- `src/harness/shared/primer.ts`, `text.ts`, `stop-text.ts`; `src/core/delivery/format.ts`, `header.ts`, `provenance.ts`, `content-title.ts`; `src/core/status/feed-late.ts`, `format-status.ts`, `status-detail.ts`; `src/core/state/header.ts` (`fullSuiteText`), `revision-commit.ts`; `src/cli/status-wait.ts`, `status-sync.ts`, `status-wait-ask.ts`; at `9967ce790`.
-- `origin/wip/005-93` at `88ad9a358`: `src/core/delivery/late-format.ts`, `format.ts`, `header.ts`.
+- `src/harness/shared/primer.ts`, `text.ts`, `stop-text.ts`; `src/core/delivery/format.ts`, `header.ts`, `provenance.ts`, `content-title.ts`; `src/core/status/feed-late.ts`, `format-status.ts`, `status-detail.ts`; `src/core/state/header.ts` (`fullSuiteText`), `revision-commit.ts`; `src/cli/status-wait.ts`, `status-sync.ts`, `status-wait-ask.ts`; at `73b613a15`.
+- `origin/wip/005-93` at `190abb535`: `src/core/delivery/late-format.ts`, `format.ts`, `header.ts`.
 - `plugins/{claude-code,codex-runtime,pi}/skills/squeal/SKILL.md` and `references/reports.md`.
 - `evals/atomic/atomic.json`, `evals/lib/atomic-measures.mjs`, `evals/lib/squeal-text.mjs`, `evals/results/ATOMIC.md`, `evals/ledgerline/squeal.config.json`.
 - Experiment: `squeal status --full` (installed 0.1.526) in this worktree, read-only, for where the removed facts stay.

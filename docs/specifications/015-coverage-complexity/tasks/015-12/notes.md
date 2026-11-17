@@ -1,6 +1,6 @@
 # 015-12 notes: CRAP and "no in-process test that Squeal runs reaches it"
 
-Row 015-12, spec 015 wave 2b, brief "W4: 015-12" in `../wave-2.md`. Spec sections: goal 11, D5 to D7, D8 (the record), D9 with its 2026-10-24 amendments. Starts from main at 0.1.295 (`0aff41b56`), beside wave 1d (rows 015-34 to 015-37).
+Row 015-12, spec 015 wave 2b, brief "W4: 015-12" in `../wave-2.md`. Spec sections: goal 11, D5 to D7, D8 (the record), D9 with its 2026-10-24 amendments. Starts from main at 0.1.295 (`e6d2adbdf`), beside wave 1d (rows 015-34 to 015-37).
 
 ## What changed
 

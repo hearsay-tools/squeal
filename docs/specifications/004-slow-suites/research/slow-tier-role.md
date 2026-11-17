@@ -1,6 +1,6 @@
 # Research: what the slow tier is for, and when its results can reach the agent
 
-Row 004-74. Brief: `slow-tier-role-brief.md`. Researcher, 2026-10-18, Opus 5.5. Examined: Squeal at `b08779a8` (0.1.215), cezarion at `51190d494` (2026-10-18), Node 24.21.0, Vitest 5.0.3, TypeScript 7 in cezarion, Linux 6.8 on 24 CPUs. Probes: `probes/slow-tier-role/` (throwaway; scratch clones under `/tmp`, scratch HOME, XDG and package caches, explicit git identity; run only at a 1-minute load of 7 to 20). Eval cells under `/tmp/squeal-evals-1001/` were read only.
+Row 004-74. Brief: `slow-tier-role-brief.md`. Researcher, 2026-10-18, Opus 5.5. Examined: Squeal at `fb87254c` (0.1.215), cezarion at `51190d494` (2026-10-18), Node 24.21.0, Vitest 5.0.3, TypeScript 7 in cezarion, Linux 6.8 on 24 CPUs. Probes: `probes/slow-tier-role/` (throwaway; scratch clones under `/tmp`, scratch HOME, XDG and package caches, explicit git identity; run only at a 1-minute load of 7 to 20). Eval cells under `/tmp/squeal-evals-1001/` were read only.
 
 ## Questions answered
 
@@ -120,7 +120,7 @@ The cost is one wording change. The tradeoff that decides it: (b) and (c) each m
 
 ## Sources
 
-- Squeal `b08779a8`: `squeal.config.json`, `vitest.config.ts`, `package.json`, `test/e2e/{plugins,install,harness,pi-fixture,opencode-fixture}.ts`, `src/core/state/slow-text.ts:114,165`, `src/harness/shared/primer.ts:221-222`; specs 001 D11 Capacity, 004 D2, D4, D5, D8, D9 and `status.md`; `lessons.md`; `research/{slow-suite-policy,slow-suite-runtime,issue-4-signals,issue-4-ranking}.md`; `probes/dogfood*/prompts/`; `evals/ledgerline/{squeal.config.json,package.json}`.
+- Squeal `fb87254c`: `squeal.config.json`, `vitest.config.ts`, `package.json`, `test/e2e/{plugins,install,harness,pi-fixture,opencode-fixture}.ts`, `src/core/state/slow-text.ts:114,165`, `src/harness/shared/primer.ts:221-222`; specs 001 D11 Capacity, 004 D2, D4, D5, D8, D9 and `status.md`; `lessons.md`; `research/{slow-suite-policy,slow-suite-runtime,issue-4-signals,issue-4-ranking}.md`; `probes/dogfood*/prompts/`; `evals/ledgerline/{squeal.config.json,package.json}`.
 - Cezarion `51190d494`, read with `git show` from `~/projects/cezar` and run only in a scratch clone: `squeal.config.json`, `package.json`, `packages/cezar/{package.json,tsconfig.json}`, `packages/web/e2e/{vitest.config.ts,environment.ts}`, `.ai/scripts/{build-e2e.sh,e2e.sh,test-env-up.sh}`.
 - Issues: https://github.com/hearsay-tools/squeal/issues/3, /4, /5, /29, /35 (read with `gh issue view`, 2026-10-18).
 - Eval cells: `/tmp/squeal-evals-1001/cells/*/*/` (`out/events.jsonl`, `out/status-end.txt`), runs `20261016T061730Z-07d7ab` and `20261018T125937Z-bcdbec`.

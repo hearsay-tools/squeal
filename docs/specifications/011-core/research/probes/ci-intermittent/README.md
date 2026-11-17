@@ -32,13 +32,13 @@ env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/harness/codex/runtim
 env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/scheduler/runs.test.ts --maxWorkers=1 -t 'runs a file again when a batch during its crashed run gave it a new key'
 ```
 
-The lock file ran nine times at `b34b00682`, with failures on runs 6 and 7.
+The lock file ran nine times at `a02a4ef54`, with failures on runs 6 and 7.
 The next launch was withheld because load reached 24.63 on 24 CPUs. The
-scheduler test ran ten times at `37c3c7125`, with no failure. Its six sibling
+scheduler test ran ten times at `8953cfb3c`, with no failure. Its six sibling
 tests were skipped. Runs were sequential, with no added load. Launch loads
 were 21.38–23.04 for the lock and 17.41–20.46 for the scheduler.
 
-The scheduler copy was made with `git archive 37c3c7125` of `src`, `test`,
+The scheduler copy was made with `git archive 8953cfb3c` of `src`, `test`,
 `package.json`, `pnpm-lock.yaml`, the two tsconfigs and `vitest.config.ts`,
 extracted below `/tmp/squeal-ci-r2-da2b436c/scheduler-tree`. Dependencies were
 linked from this worktree. The first `pnpm exec` automatically attempted an

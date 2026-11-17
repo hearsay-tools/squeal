@@ -3,7 +3,7 @@ FAIL 5bbc50709d7decd9ca1f2b60ab043c97fbdaf90a
 Two proven blockers, zero should-fix items, one proven note.
 
 Candidate: `cand/0.1.238`, pinned to `5bbc50709d7decd9ca1f2b60ab043c97fbdaf90a`.
-Range: `09911101a..5bbc50709`. Review of row 014-09 against amended spec 014 D2 to D6 and D9, the wave 1 brief, and 011 C7, C9 and C10. The prior wave's findings are context, not reopened issues. No product code changed.
+Range: `a821b94a0..5bbc50709`. Review of row 014-09 against amended spec 014 D2 to D6 and D9, the wave 1 brief, and 011 C7, C9 and C10. The prior wave's findings are context, not reopened issues. No product code changed.
 
 ## Verification output
 

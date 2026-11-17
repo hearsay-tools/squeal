@@ -8,11 +8,11 @@ Reviewed `b36faa4..a04226c`, the exact 0.1.58 to 0.1.64 bundle landings. The sta
 
 ## Verification
 
-Node 24.21.0, Linux, Vitest 5.0.3, Vite 8.3.2. Commands below ran at exact candidate `a04226c43dcf14f95f17143d138380a37da0d5dd`. The tree stayed clean. The reviewer skill and AGENTS.md require the build check; implementation briefs' no-build rule does not waive it for this reviewer. Both regenerated plugin bundles stayed byte-identical. One full gate only, with the required four-worker cap.
+Node 24.21.0, Linux, Vitest 5.0.3, Vite 8.3.2. Commands below ran at exact candidate `e55dbd2db766433399761280cb73945f7d70ef33`. The tree stayed clean. The reviewer skill and AGENTS.md require the build check; implementation briefs' no-build rule does not waive it for this reviewer. Both regenerated plugin bundles stayed byte-identical. One full gate only, with the required four-worker cap.
 
 ```text
 $ git rev-parse HEAD
-a04226c43dcf14f95f17143d138380a37da0d5dd
+e55dbd2db766433399761280cb73945f7d70ef33
 
 $ npm ci
 added 56 packages, and audited 57 packages in 1s

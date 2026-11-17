@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `70a99c824b52221252d696cd816c30da58e5dafe`, version 0.1.82. Range: `4bc0d444^..70a99c82`. First round on this slice. Scope is 003-43, its agreed `keyedAt` change and bundles; 001-187's `environmentFiles` and 001-186's wait interface are checked only where this repair relies on them. Other 001 work is outside this review.
+Candidate: `b6facff79e349e215de9cfef868eb576d757c515`, version 0.1.82. Range: `217f4899^..b6facff7`. First round on this slice. Scope is 003-43, its agreed `keyedAt` change and bundles; 001-187's `environmentFiles` and 001-186's wait interface are checked only where this repair relies on them. Other 001 work is outside this review.
 
-The assigned worker checkout started at `90758053`, two documentation commits after the candidate. Its executable files match the candidate. Verification ran in a separate, detached `/tmp` worktree at the exact candidate, clean before and after the checks. Node 24.21.0, Linux. The report alone is committed in the assigned checkout.
+The assigned worker checkout started at `f47d9c95`, two documentation commits after the candidate. Its executable files match the candidate. Verification ran in a separate, detached `/tmp` worktree at the exact candidate, clean before and after the checks. Node 24.21.0, Linux. The report alone is committed in the assigned checkout.
 
 ```text
 $ git rev-parse HEAD  # detached verification checkout
-70a99c824b52221252d696cd816c30da58e5dafe
+b6facff79e349e215de9cfef868eb576d757c515
 
 $ npm ci
 added 56 packages, and audited 57 packages in 2s
@@ -86,7 +86,7 @@ Initial probe assertions confused an unknown file with a check whose outcome lit
 
 ## Verdict
 
-**FAIL 70a99c82**. One proven blocker, B1. No should-fix findings. One resolved provenance nit. The incomplete-environment publication repair holds in the exercised store, inheritance, forced-request, partial-run and policy/refinement routes. Its new wait attribution can erase an earlier edit's outstanding file from a wait that already captured that edit's revision.
+**FAIL b6facff7**. One proven blocker, B1. No should-fix findings. One resolved provenance nit. The incomplete-environment publication repair holds in the exercised store, inheritance, forced-request, partial-run and policy/refinement routes. Its new wait attribution can erase an earlier edit's outstanding file from a wait that already captured that edit's revision.
 
 ## Blockers
 
@@ -136,7 +136,7 @@ None.
 
 ### N1. The assigned checkout was ahead of the named candidate
 
-**Proven, resolved for this review.** Initial `HEAD` was `90758053`, not `70a99c82`. The only intervening changes were `docs/board.md`, spec 003's `status.md` and its review brief. Exact-candidate verification in the detached temporary worktree resolves the evidence mismatch. No product fix or new gate is needed.
+**Proven, resolved for this review.** Initial `HEAD` was `f47d9c95`, not `b6facff7`. The only intervening changes were `docs/board.md`, spec 003's `status.md` and its review brief. Exact-candidate verification in the detached temporary worktree resolves the evidence mismatch. No product fix or new gate is needed.
 
 ## What fits
 

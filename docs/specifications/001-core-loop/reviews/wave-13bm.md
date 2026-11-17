@@ -1,6 +1,6 @@
 # Wave 13bm: narrow re-review 001-371 of repair 001-370
 
-Candidate: `e751a5368804505571508b0aa08ce78ad16dbafb` (0.1.168), pinned detached. Scope: the 001-370 repair commits `a1036d3a`, `635c74b2`, `6dc976ef`, `17b29488`, `463b1d06`, and coordinator build/amendment `e751a536`. The board and prior review commits returned by the grep are context, not product changes under review. This is the second round against `wave-13bl.md` B1, S1, S2, N1 and the coordinator's configured-filter widening reproduction.
+Candidate: `65cef1d09cfbab776d2ead4b9f69eeb656fc65ce` (0.1.168), pinned detached. Scope: the 001-370 repair commits `3e26342b`, `be416e19`, `f3a4660b`, `d6941f07`, `864c9e2f`, and coordinator build/amendment `65cef1d0`. The board and prior review commits returned by the grep are context, not product changes under review. This is the second round against `wave-13bl.md` B1, S1, S2, N1 and the coordinator's configured-filter widening reproduction.
 
 ## Verdict
 
@@ -94,7 +94,7 @@ exit 0
 
 ```text
 $ git rev-parse HEAD
-e751a5368804505571508b0aa08ce78ad16dbafb
+65cef1d09cfbab776d2ead4b9f69eeb656fc65ce
 $ git status --short
 (no output before and after the full suite)
 $ git diff --exit-code -- src test plugins/claude-code/dist plugins/codex/dist
@@ -103,10 +103,10 @@ $ git diff --exit-code -- src test plugins/claude-code/dist plugins/codex/dist
 
 ### Local red/restore proof
 
-Only after the independent suite ended, the exact 001-349 source versions were restored temporarily from `58eff841f71af0699108f6bf574feea2ff00cef2`. The new tests, bundles and all other candidate files stayed unchanged. This dirty baseline is deliberately separate from the clean-candidate verification.
+Only after the independent suite ended, the exact 001-349 source versions were restored temporarily from `6421dc1724388c37aa7c03754dd2289834b87425`. The new tests, bundles and all other candidate files stayed unchanged. This dirty baseline is deliberately separate from the clean-candidate verification.
 
 ```text
-$ git restore --source=58eff841f71af0699108f6bf574feea2ff00cef2 --worktree -- src/runners/vitest/exclude.ts src/runners/vitest/adapter.ts
+$ git restore --source=6421dc1724388c37aa7c03754dd2289834b87425 --worktree -- src/runners/vitest/exclude.ts src/runners/vitest/adapter.ts
 $ git diff --stat -- src/runners/vitest/exclude.ts src/runners/vitest/adapter.ts
  src/runners/vitest/adapter.ts |  5 +--
  src/runners/vitest/exclude.ts | 83 ++++++++++---------------------------------
@@ -129,7 +129,7 @@ The four run-selection regressions fail because the baseline lists `a c` instead
 The two no-exclusion baselines and two environment digest tests remain green, distinguishing the filter repair from S1's corrected wording. Restoring the candidate makes every new filter test pass, and also rechecks the original exclusion, status, both harness primers and the key-format pin:
 
 ```text
-$ git restore --source=e751a5368804505571508b0aa08ce78ad16dbafb --worktree -- src/runners/vitest/exclude.ts src/runners/vitest/adapter.ts
+$ git restore --source=65cef1d09cfbab776d2ead4b9f69eeb656fc65ce --worktree -- src/runners/vitest/exclude.ts src/runners/vitest/adapter.ts
 $ git diff --exit-code -- src test plugins/claude-code/dist plugins/codex/dist
 (no output; exit 0)
 $ npx vitest run --maxWorkers=4 test/runners/vitest/exclude-projects-filter.test.ts test/runners/vitest/exclude-projects.test.ts test/status/excluded-projects.test.ts test/harness/primer-excluded.test.ts test/keys/key-format.test.ts
@@ -161,7 +161,7 @@ None.
 
 ### N1. The coordinator build leaves the lockfile's root version behind (proven)
 
-`package-lock.json:3` and `package-lock.json:9` still say `0.1.167`. The four shipped version files say `0.1.168`: root `package.json`, `plugins/claude-code/package.json`, and both plugin manifests. Before `e751a536`, both root package and lockfile said `0.1.167`; its version bump introduces the mismatch. `npm ci` succeeds and leaves the lockfile unchanged, so this is metadata drift, not a runtime or validation failure. Update both root version fields in the lockfile in the next version/build commit. No dependency change is needed.
+`package-lock.json:3` and `package-lock.json:9` still say `0.1.167`. The four shipped version files say `0.1.168`: root `package.json`, `plugins/claude-code/package.json`, and both plugin manifests. Before `65cef1d0`, both root package and lockfile said `0.1.167`; its version bump introduces the mismatch. `npm ci` succeeds and leaves the lockfile unchanged, so this is metadata drift, not a runtime or validation failure. Update both root version fields in the lockfile in the next version/build commit. No dependency change is needed.
 
 ## What fits
 

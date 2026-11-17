@@ -3,14 +3,14 @@
 Survey of the 15 judge/parser disagreements in 0.1.195's baseline (`20261015T130224Z-c94221`,
 judge Sonnet), all "judge met, parser missed" on `current-before-claim` and `no-overclaim`, and
 the slice that closes them. Computed in memory from the cells' raw `out/events.jsonl` under
-`/tmp/squeal-evals-1001/cells/6d0c0103724a/20261015T130224Z-c94221/` and from the committed
+`/tmp/squeal-evals-1001/cells/640fc091131a/20261015T130224Z-c94221/` and from the committed
 results files. No model call, no regrade script run.
 
 ## The hypothesis was wrong in one respect
 
 The board row guessed Squeal gained a header form after 0.1.168. It did not. The form the parser
 misses, counts that name their parts (`30 current (23 tests, 7 test files loaded), 0 pending, 0
-stale, 0 unknown`), came with 005-21 (`b24caf8f`, 2026-10-13), which 0.1.168 already ships; 5062b3's
+stale, 0 unknown`), came with 005-21 (`1016207a`, 2026-10-13), which 0.1.168 already ships; 5062b3's
 transcripts carry it. The parser read a status's counts from its `Affected checks:` line, which
 has no such parts, and never matched a delivery's header at all. What differs is how often the
 last evidence before the claim is a delivery rather than a status:

@@ -2,17 +2,17 @@
 
 ## Verification
 
-Candidate: `cand/0.1.419` at `21adaff513bb94a01ca0f00593de77bbbcc43562`, rebased onto `origin/main` at `e69c19caa`.
+Candidate: `cand/0.1.419` at `6b03821e40505930b75eb8c541590f07165eb52d`, rebased onto `origin/main` at `7eca45254`.
 
-Read `wave-3.6-r2.md` first. Scope: the 018-12 R2 repair (`18e775a2b`), its brief and status amendment; and the newly authorized 011-310 / issue #166 changes (`1dd5a98b5`, `1022abdc7`, `f1a4c15fe`, `543930a03`), notes and bundles. The prior candidate's rebased equivalent is `12571f21a`. The review follows both briefs, the 011-310 research and notes, and the affected source and callers.
+Read `wave-3.6-r2.md` first. Scope: the 018-12 R2 repair (`538f982a3`), its brief and status amendment; and the newly authorized 011-310 / issue #166 changes (`18d4e4b46`, `6003c2ba8`, `574cb816b`, `b70103d51`), notes and bundles. The prior candidate's rebased equivalent is `243846c3b`. The review follows both briefs, the 011-310 research and notes, and the affected source and callers.
 
 All code verification ran at the exact candidate with an empty `git status --porcelain`. Throwaway probes were outside the checkout. Only this report was added afterwards.
 
 ```text
 $ git fetch origin cand/0.1.419
-$ git checkout --detach 21adaff513bb94a01ca0f00593de77bbbcc43562
+$ git checkout --detach 6b03821e40505930b75eb8c541590f07165eb52d
 $ git rev-parse HEAD
-21adaff513bb94a01ca0f00593de77bbbcc43562
+6b03821e40505930b75eb8c541590f07165eb52d
 $ git status --porcelain
 (empty)
 
@@ -95,7 +95,7 @@ Affected results were read repeatedly with:
 Repeated waits advanced from 313 current / 741 pending, through 641 / 413, to this last result:
 
 ```text
-Revision: 6 · 21adaff5 + 0
+Revision: 6 · 6b03821e + 0
 Current (752): 752 pass
 Pending (302): 33 in a running tier or awaiting its final checks,
 237 queued behind it, 32 waiting for the parent worktree's shared result
@@ -107,7 +107,7 @@ exit 3
 
 These 302 affected files are **unverified**, not passing. No full-suite checkpoint was requested.
 
-CI was read with `gh run view 42593079334 --json status,conclusion,jobs`. [Exact-candidate run 42593079334](https://github.com/hearsay-tools/squeal/actions/runs/42593079334) has head SHA `21adaff513bb94a01ca0f00593de77bbbcc43562`. At the last read, Node 24 (lint, typecheck, version-sensitive, build and bundle checks) passed. All three Node 22 shards remain in progress. The nightly Node 24 and bundle-version jobs are skipped. Full-suite CI remains **unverified**; this is not a review blocker.
+CI was read with `gh run view 42593079334 --json status,conclusion,jobs`. [Exact-candidate run 42593079334](https://github.com/hearsay-tools/squeal/actions/runs/42593079334) has head SHA `6b03821e40505930b75eb8c541590f07165eb52d`. At the last read, Node 24 (lint, typecheck, version-sensitive, build and bundle checks) passed. All three Node 22 shards remain in progress. The nightly Node 24 and bundle-version jobs are skipped. Full-suite CI remains **unverified**; this is not a review blocker.
 
 ## Verdict
 

@@ -1,6 +1,6 @@
 # 020-26ab notes: records beside the project's V8 coverage (#189)
 
-Worker 29f91714, 2026-11-12, on `cez/29f91714` from `ab437504f`. Spec D19.1 to D19.6 (D19.5 as amended on main).
+Worker 29f91714, 2026-11-12, on `cez/29f91714` from `a55e5f365`. Spec D19.1 to D19.6 (D19.5 as amended on main).
 
 ## Seam map
 

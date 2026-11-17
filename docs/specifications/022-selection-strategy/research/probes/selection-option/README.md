@@ -6,7 +6,7 @@ Throwaway. Nothing here is product code or a test. Delete freely.
 
 Copies of two Squeal stores, made 2026-11-14 12:00Z with `VACUUM INTO` through a read-only `node:sqlite` connection into `$TMPDIR` (copies deleted after the run):
 
-- this repository: `~/projects/squeal/.git/squeal/{store,code}.sqlite`, config `squeal.config.json` at `2856d26e8`;
+- this repository: `~/projects/squeal/.git/squeal/{store,code}.sqlite`, config `squeal.config.json` at `9aef0ef9e`;
 - cezar: `~/projects/cezar/.git/squeal/{store,code}.sqlite`, config `squeal.config.json` at cezar `origin/main` `4711d29b3`.
 
 No test, daemon or build ran. One-minute load during the runs: 13 to 15 on 24 CPUs; no timing is reported.

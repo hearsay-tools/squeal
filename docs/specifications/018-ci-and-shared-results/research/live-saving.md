@@ -1,6 +1,6 @@
 # live-saving: what CI's shared results save on this host (row 018-39)
 
-Researcher 2b3001f6 for spec 018, 2026-11-12, 14:48Z to 15:05Z. Brief: `research/README.md`, "Topic: live-saving". Source read at squeal `2c4d01751` (main). Data: squawk's (cezarion's) one shared store, `~/projects/cezar/.git/squeal/store.sqlite` (all 42 cezar worktrees use it), opened read-only, and the runs' `report.json` files. Cutoff 2026-11-12T14:45Z unless a line says otherwise. No daemon was started or stopped; nothing ran in `~/projects/cezar`. Host one-minute load was 22 to 30 on 24 vCPUs while I read; I took no timing measurement of my own. Durations below are the daemons' own records under that load. Probes: `probes/live-saving/` (throwaway).
+Researcher 2b3001f6 for spec 018, 2026-11-12, 14:48Z to 15:05Z. Brief: `research/README.md`, "Topic: live-saving". Source read at squeal `a4a080701` (main). Data: squawk's (cezarion's) one shared store, `~/projects/cezar/.git/squeal/store.sqlite` (all 42 cezar worktrees use it), opened read-only, and the runs' `report.json` files. Cutoff 2026-11-12T14:45Z unless a line says otherwise. No daemon was started or stopped; nothing ran in `~/projects/cezar`. Host one-minute load was 22 to 30 on 24 vCPUs while I read; I took no timing measurement of my own. Durations below are the daemons' own records under that load. Probes: `probes/live-saving/` (throwaway).
 
 ## Questions answered
 
@@ -83,7 +83,7 @@ Windows (`out/local-summary.json`, `out/late.txt`, `out/rekey.txt`, `out/environ
 ## Sources
 
 - Store: `~/projects/cezar/.git/squeal/store.sqlite` (tables `imports`, `import_files`, `results`, `known_states`, `revisions`, `runs`, `environments`, `worktree_environment_hashes`), `runs/<id>/report.json`; read 2026-11-12 14:48Z to 15:01Z.
-- Source at `2c4d01751`: `src/core/scheduler/bootstrap.ts` (lines 38 to 54, 124 to 125), `src/core/shared/reader.ts` (166 to 176, 228 to 289), `src/core/store/transfer-rekey.ts` (27 to 40, 70 to 140), `src/core/store/repos/results.ts` (`byKey`, `putMany`), `src/core/status/imports.ts`, `src/core/types/state.ts` (`importIdOf`).
+- Source at `a4a080701`: `src/core/scheduler/bootstrap.ts` (lines 38 to 54, 124 to 125), `src/core/shared/reader.ts` (166 to 176, 228 to 289), `src/core/store/transfer-rekey.ts` (27 to 40, 70 to 140), `src/core/store/repos/results.ts` (`byKey`, `putMany`), `src/core/status/imports.ts`, `src/core/types/state.ts` (`importIdOf`).
 - Release times: git tags `squeal--v0.1.426` to `squeal--v0.1.451`; hub cache directories `~/.claude/plugins/cache/hearsay/squeal/<version>` (birth times).
 - `~/projects/cezar` `origin/main` reflog (read only).
 - Earlier findings extended, not repeated: `shared-proof.md` (fresh-clone counts, export left-outs, CI cost), `capture-saving.md`.

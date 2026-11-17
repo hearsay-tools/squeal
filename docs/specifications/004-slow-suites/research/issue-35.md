@@ -1,6 +1,6 @@
 # Issue 35: slow-tier completion advice runs package tests without their build output
 
-Brief: `probes/issue-35/README.md`. Researcher: Opus 5.5, 2026-10-18, 20-minute bound, documentation only. Issue read with `gh issue view 35` (open; labels `area-slow-suites`, `bug`, `friction`, `needs-triage`; no comments). Examined: the installed plugin `~/.claude/plugins/cache/hearsay/squeal/0.1.199` (`squeal --version` 0.1.199) and main `8ec92f9b`, whose committed `plugins/claude-code/dist` reports 0.1.213. 004-65 (0.1.214) is not on main. Node v24.21.0. Host: 24 CPUs, one-minute load 10.75 before the first probe, 10.68 and 16.70 at the two recorded runs, all below the CPU count, so the live probe went ahead. The reporter's policy was read in cezarion at `463a5bf0` (`squeal.config.json`). Nothing in product code, tests, spec, status, skills or board was changed. Nothing was built.
+Brief: `probes/issue-35/README.md`. Researcher: Opus 5.5, 2026-10-18, 20-minute bound, documentation only. Issue read with `gh issue view 35` (open; labels `area-slow-suites`, `bug`, `friction`, `needs-triage`; no comments). Examined: the installed plugin `~/.claude/plugins/cache/hearsay/squeal/0.1.199` (`squeal --version` 0.1.199) and main `32795e5a`, whose committed `plugins/claude-code/dist` reports 0.1.213. 004-65 (0.1.214) is not on main. Node v24.21.0. Host: 24 CPUs, one-minute load 10.75 before the first probe, 10.68 and 16.70 at the two recorded runs, all below the CPU count, so the live probe went ahead. The reporter's policy was read in cezarion at `463a5bf0` (`squeal.config.json`). Nothing in product code, tests, spec, status, skills or board was changed. Nothing was built.
 
 ## Verdict
 
@@ -62,7 +62,7 @@ Slow tier: 3 test files; 3 current against dist/** as of revision 1. Squeal runs
 
 ## Findings
 
-1. **The run (verified by experiment, both versions).** `queueSlowSuite` takes every slow file that is not current (`research/issue-29.md` 4, `slow-tier.ts:647-664` at `6ea14815`). Nothing on main checks the artifact first: `grep -rn precondition src` is empty at `8ec92f9b`. The failures are the issue's shape, scaled down: `ERR_MODULE_NOT_FOUND` for a `dist/` module, plus assertion failures that do not name `dist/`.
+1. **The run (verified by experiment, both versions).** `queueSlowSuite` takes every slow file that is not current (`research/issue-29.md` 4, `slow-tier.ts:647-664` at `3fbf49b7`). Nothing on main checks the artifact first: `grep -rn precondition src` is empty at `32795e5a`. The failures are the issue's shape, scaled down: `ERR_MODULE_NOT_FOUND` for a `dist/` module, plus assertion failures that do not name `dist/`.
 2. **The advice (verified by experiment; read in source code).** The quiet line is `slowTierText` (`src/cli/status-wait-lines.ts:124-132`, task 001-282). It counts pending plus not-run slow files and names `run --slow --wait 60000` with no policy input. The issue's step 3, "Follow its advice", matches this line. On main the primer and skill step 4 (`plugins/claude-code/skills/squeal/SKILL.md:15`) tell a policy-off agent to count instead. So on main the agent gets two pointers that disagree: the skill says count, and the wait line names the command.
 3. **Affected against unaffected (verified by experiment).** The edit's own checks were quiet and current before any slow file ran. The slow files were "not run" from the `lookup-only` baseline, not from the edit. This is the issue's "distinguish checks required by the edit from unrelated unrun slow files", and it already holds in the scheduler.
 4. **Duplicate boundaries (read in source code: board rows, issue states).**
@@ -86,7 +86,7 @@ Treat #35 as two parts. The run without build output is 004-65; cezarion declari
 
 - https://github.com/hearsay-tools/squeal/issues/35, /3, /16, /29, /5, /19 (`gh issue view`, 2026-10-18)
 - Probe: `probes/issue-35/run.sh`, `overlay/`, `output-0.1.199.txt`, `output-0.1.213.txt`; fixture `probes/issue-3-preconditions/fixture/`
-- main `8ec92f9b`: `src/cli/status-wait-lines.ts:124-132`, `plugins/claude-code/skills/squeal/SKILL.md:15`, `plugins/claude-code/dist/cli/squeal.mjs`
+- main `32795e5a`: `src/cli/status-wait-lines.ts:124-132`, `plugins/claude-code/skills/squeal/SKILL.md:15`, `plugins/claude-code/dist/cli/squeal.mjs`
 - 0.1.199: `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, `skills/squeal/SKILL.md:15`
 - cezarion `463a5bf0`: `squeal.config.json` (`stop`, `baseline`, `inputs`, `nodeTest` `test:package` `slow: true`), `packages/cezar/package.json` `test:package`
 - `spec.md` D5, D7–D9 (D8 as amended for 004-65), `status.md`, `tasks/004-65/amendment.md`, `research/issue-3-preconditions.md`, `research/issue-29.md`; `docs/board.md` rows 004-62, 004-65, 004-67, gh-29

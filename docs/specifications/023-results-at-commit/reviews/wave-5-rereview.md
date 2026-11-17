@@ -1,10 +1,10 @@
 # Wave 5 narrow re-review
 
-FAIL `4a6a68ce1e108b9e8e4524bd47ebf18de57e516c`
+FAIL `432fcd29950530e8d319323d81dfb1f192fd7498`
 
-Candidate `cand/023-16`, version 0.1.543, rebuilt on main `b8ebc225d` (0.1.541). Scope: B1 to B3 from `wave-5.md` and the repair delta. **1 proven blocker remains, B1. B2 and B3 are closed for their original scenarios. 1 plausible, nonblocking lifecycle note. No nits.** No product code was changed.
+Candidate `cand/023-16`, version 0.1.543, rebuilt on main `1de1a7911` (0.1.541). Scope: B1 to B3 from `wave-5.md` and the repair delta. **1 proven blocker remains, B1. B2 and B3 are closed for their original scenarios. 1 plausible, nonblocking lifecycle note. No nits.** No product code was changed.
 
-The relevant repair range is `27a6d3b8e..4a6a68ce1`: `8d3d0231a`, `9cc077e51`, `f630a1b21`, `d607c9fc0`, and the version/bundle commit. The unrelated 0.1.541 main changes are not re-reviewed here.
+The relevant repair range is `27bd7ee2d..432fcd299`: `129395883`, `e11b48a3b`, `2247eca8f`, `c95cde527`, and the version/bundle commit. The unrelated 0.1.541 main changes are not re-reviewed here.
 
 ## Remaining blocker
 
@@ -91,20 +91,20 @@ All product checks and external probes ran at the exact candidate with a clean t
 
 | Command or evidence | Actual result |
 | --- | --- |
-| `git fetch origin && git checkout --detach 4a6a68ce1e108b9e8e4524bd47ebf18de57e516c` | Exit 0; `git rev-parse HEAD` equals the requested candidate |
+| `git fetch origin && git checkout --detach 432fcd29950530e8d319323d81dfb1f192fd7498` | Exit 0; `git rev-parse HEAD` equals the requested candidate |
 | `git status --short`, after checkout and after build/probes | Empty |
 | Dependency setup | No separate install repeated. The lint invocation first printed `Lockfile is up to date, resolution step is skipped`, `Already up to date`, and `Done in 92ms using pnpm v12.15.0`. |
 | `pnpm run lint` | Exit 0: `Checked 3618 files in 1714ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |
 | `pnpm run build` | Exit 0: TypeScript and all four harness builds completed; committed bundles did not drift |
-| `git diff --check 27a6d3b8e..HEAD` | Exit 0, no output |
+| `git diff --check 27bd7ee2d..HEAD` | Exit 0, no output |
 | Squeal affected-source command below | Exit 3 after 60.8 s: **303 selected, 1 current pass, 302 pending**, no known failures. The checkout re-keyed many tests and the running tier did not yield. Broader coverage remains **unverified**. |
 | Squeal nine named tests below | Exit 0 after 20.0 s: `Named test files at revision 5: no known failures; 9 test files, each with a current result.` Worktree: 1072 of 1919 files not current, 4 running and 1068 queued. Results can be inherited by content key; this is not a fresh full-suite claim. |
 | `timeout 600 pnpm exec vitest run --config <probe>/vitest.config.mjs` | Exit 1: **3 passed, 1 failed**, 12.34 s. The original B1, B2 and B3 probes passed; the configured-extension B1 case returned the wrong key/pass. |
 | Same command with `-t 'B1 directory resolution with configured custom extension'` | Exit 1: **1 failed, 3 skipped**, 4.00 s. Added actual execution of A and B before the key assertion. A failed on the expected assertion and B passed; the wrong key remained. |
-| `pnpm run check:private`, before the findings commit | Exit 0: `private: 2236 added lines in 64 files over b8ebc225dd15bcc2a8e0c96e1bc29fc77a4b3508, ok`. Warning: the local private denylist is empty, so that rule was skipped. This scanner reads committed HEAD; the staged review is also searched for absolute home paths. |
+| `pnpm run check:private`, before the findings commit | Exit 0: `private: 2236 added lines in 64 files over 1de1a791188c0eea0b486a1e50d334b2515a79d1, ok`. Warning: the local private denylist is empty, so that rule was skipped. This scanner reads committed HEAD; the staged review is also searched for absolute home paths. |
 | `gh run view 44056110703 --json headSha,status,conclusion,jobs` | At 2026-11-17 09:34 UTC: exact candidate, CI **in progress**. Six Node 22/26 shards and the Node 24 lint/typecheck/version-sensitive job remained in progress. Version-bump and nightly jobs were skipped. Full-suite result is **unverified**, not a finding. [CI run](https://github.com/hearsay-tools/squeal/actions/runs/44056110703) |
-| `gh run list --commit 4a6a68ce1e108b9e8e4524bd47ebf18de57e516c` | Exact-candidate `Private material` run **success**, [run 44056110685](https://github.com/hearsay-tools/squeal/actions/runs/44056110685) |
+| `gh run list --commit 432fcd29950530e8d319323d81dfb1f192fd7498` | Exact-candidate `Private material` run **success**, [run 44056110685](https://github.com/hearsay-tools/squeal/actions/runs/44056110685) |
 
 The temporary probe folder was `~/projects/squeal/.ai/squawk/t/51f5d4df/sq-rereview-wave5-7f275415`. Commands used its expanded path. Reference keys came from the existing `freshKey` fixture helper: an independent plain detached worktree at each version, its real Vitest adapter and the gate's fresh keyer. The key fixtures use the documented Vitest link install. B3 uses the real default npm frozen install. The B1 execution follow-up uses `runGateFiles` with `store: false` in a separate worktree at A and the fixture at B.
 

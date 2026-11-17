@@ -12,7 +12,7 @@ reproduced**, because this bounded investigation used a small synthetic fixture
 without the incident worktree, effective policy, registration state or hook input.
 No real harness session or production daemon was launched for the probe.
 
-Examined checkout: `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`, package and installed
+Examined checkout: `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`, package and installed
 CLI 0.1.414, Node 24.22.1, Vitest 5.0.3, Linux, 24 CPUs. Investigation began
 2026-11-07 at 22:39 Europe/Warsaw. Initial `/proc/loadavg`: **18.96 9.52 7.82**;
 later check **16.51 10.19 8.13**; final probe's one-minute load **16.85**.
@@ -122,7 +122,7 @@ coverage/environment leases, and proposes no product implementation.
 
 - Fetched with `gh issue view <159|153|156> --repo hearsay-tools/squeal --json number,title,body,comments,url,state`:
   [#159](https://github.com/hearsay-tools/squeal/issues/159), [#153](https://github.com/hearsay-tools/squeal/issues/153), [#156](https://github.com/hearsay-tools/squeal/issues/156).
-- Source at [d3f36305](https://github.com/hearsay-tools/squeal/tree/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1):
+- Source at [b598e5dc](https://github.com/hearsay-tools/squeal/tree/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a):
   `src/harness/shared/{no-edit,stop-required,stop-slow,stop}.ts`,
   `src/core/{delivery/registered,state/required,slow/stop-wait,types/policy}.ts`,
   `src/harness/codex/{input,handlers}.ts`. Local tag `squeal--v0.1.409` resolves

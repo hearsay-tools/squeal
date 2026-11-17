@@ -1,12 +1,12 @@
 # 011-179: the validity comparison runs its drivers at once and removes each work directory as it ends
 
-Worker 0995985a, wave 31 W10, from `cand/w31` at 5c8610e0d (0.1.292 the last release), 2026-10-24. Shape: repair (test). Changed: `test/keys/validity/sides.ts`, `compare.ts`, `self-test.ts`, and a new `sides.test.ts`. Unchanged: `driver.ts`, the harness, the cases, `pytest.test.ts`, `compare-refs.ts`, `src/`.
+Worker 0995985a, wave 31 W10, from `cand/w31` at 21e1294b7 (0.1.292 the last release), 2026-10-24. Shape: repair (test). Changed: `test/keys/validity/sides.ts`, `compare.ts`, `self-test.ts`, and a new `sides.test.ts`. Unchanged: `driver.ts`, the harness, the cases, `pytest.test.ts`, `compare-refs.ts`, `src/`.
 
 The brief names `test/keys/validity/harness/sides.ts` and `harness/compare.ts`. Those paths do not exist; the files are `test/keys/validity/sides.ts` and `compare.ts`, one directory up.
 
 ## 1. Where the time went
 
-A scratch probe called `compareTrees` as `pytest.test.ts:34` does (this checkout against itself, the `str(pytest.__version__)` overlay, the 19 `adapter:pytest` cases), kept the work directory, and read each phase's end from its files' times. At 5c8610e0d, load 25 to 30:
+A scratch probe called `compareTrees` as `pytest.test.ts:34` does (this checkout against itself, the `str(pytest.__version__)` overlay, the 19 `adapter:pytest` cases), kept the work directory, and read each phase's end from its files' times. At 21e1294b7, load 25 to 30:
 
 | Phase | Ends at |
 |---|---|
@@ -37,7 +37,7 @@ The bound is fixed: 4 run drivers at once per comparison, each with its pytest o
 
 ## 3. The line-34 test alone, before and after
 
-The test ran alone (`-t "passes a runtime change that every case runs"`) in a detached checkout of 5c8610e0d ("before") or d41601e45 ("after"), `node_modules` linked, so edits and Squeal's runs in this worktree did not change it. Each ran at nice 10, as Squeal runs a test worker. Busy loops at nice 10, unpinned, raised the load: their number was 50 minus the host's runnable processes (10 one-second samples of `procs_running`, the loops excluded), set before each run and held during it, 60 s ahead of it so the one-minute average follows.
+The test ran alone (`-t "passes a runtime change that every case runs"`) in a detached checkout of 21e1294b7 ("before") or d41601e45 ("after"), `node_modules` linked, so edits and Squeal's runs in this worktree did not change it. Each ran at nice 10, as Squeal runs a test worker. Busy loops at nice 10, unpinned, raised the load: their number was 50 minus the host's runnable processes (10 one-second samples of `procs_running`, the loops excluded), set before each run and held during it, 60 s ahead of it so the one-minute average follows.
 
 | Run | Start (local) | Load (1 min, min to max) | Loops | Test |
 |---|---|---|---|---|

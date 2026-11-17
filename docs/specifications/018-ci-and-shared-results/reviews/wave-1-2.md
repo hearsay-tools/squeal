@@ -1,6 +1,6 @@
 # Waves 1 and 2 review: environment records and result transfer
 
-Candidate: `ee17cb2306c449e2a31acea3e524121ff8da20f7` (`cand/0.1.417`). Range: `7280f4469..ee17cb230`. Rows: 018-06 and 018-07. Reviewed 2026-11-08.
+Candidate: `a231f0cbcd091e3a22c50bf1471f47f794f12819` (`cand/0.1.417`). Range: `11c2fe7c8..a231f0cbc`. Rows: 018-06 and 018-07. Reviewed 2026-11-08.
 
 ## Verification
 
@@ -8,7 +8,7 @@ All local checks below ran at the candidate SHA on a clean tracked tree, before 
 
 ```text
 $ git rev-parse HEAD
-ee17cb2306c449e2a31acea3e524121ff8da20f7
+a231f0cbcd091e3a22c50bf1471f47f794f12819
 $ git status --short
 (empty)
 $ pnpm run lint
@@ -18,7 +18,7 @@ exit 0
 $ pnpm run typecheck
 $ tsrs --fast --noEmit
 exit 0
-$ git diff --name-only 7280f4469..HEAD -- test/keys/key-format.test.ts
+$ git diff --name-only 11c2fe7c8..HEAD -- test/keys/key-format.test.ts
 (empty)
 $ pnpm exec vitest run test/keys/key-format.test.ts
 Test Files  1 passed (1)
@@ -60,7 +60,7 @@ CI observation:
 
 ```text
 $ gh run view 42461609267 --json headSha,status,conclusion,jobs
-headSha: ee17cb2306c449e2a31acea3e524121ff8da20f7
+headSha: a231f0cbcd091e3a22c50bf1471f47f794f12819
 status: in_progress
 conclusion: ""
 Node 24 (lint, typecheck, version-sensitive): completed, success
@@ -128,7 +128,7 @@ None.
 - **D2 privacy probe:** exported bytes excluded sentinel environment value `secret-env-018`, config value `secret-config-018`, an absolute config value `/private/secret-home`, stored failure text, and the local worktree id. A closure path `/private/absolute` raised `AbsolutePathError`. This confirms the explicit data paths, not a promise to sanitize arbitrary strings in test names. GitHub source fields are the deliberate D2 exception: their values are recorded as required by the spec.
 - **D3:** the single `BEGIN IMMEDIATE` import transaction includes result insertion, add-only lists and environment writes. Nested repository transactions use savepoints. It never writes `test_file_keys` or `known_states`. A key already held in `results` keeps its rows. Existing closure rows and observed entries are left alone. Dry-run throws inside the transaction and rolls it back. No run request is inserted by import.
 - **D3 running daemon seam:** the round-trip and active-scheduler tests pass. Imported results have the import time as `recorded_at`; a running scheduler adopts them on its next interval without a restart or a test run. The CLI sends the existing retry IPC message; it does not claim immediate adoption.
-- **D4 compatibility probe:** extracted actual 0.1.416 source from `7280f4469`, then opened a candidate-created temporary store with its `openStore`. That store held `imports`, `import_files`, `environments`, `worktree_environment_hashes`, an imported result, and a candidate-written imported known state. The old reader opened schema 1, listed the results (including `worktreeId: import:two`), and read the known state with `origin: null`, without throwing. No schema migration or version raise was needed.
+- **D4 compatibility probe:** extracted actual 0.1.416 source from `11c2fe7c8`, then opened a candidate-created temporary store with its `openStore`. That store held `imports`, `import_files`, `environments`, `worktree_environment_hashes`, an imported result, and a candidate-written imported known state. The old reader opened schema 1, listed the results (including `worktreeId: import:two`), and read the known state with `origin: null`, without throwing. No schema migration or version raise was needed.
 - **D4 display:** the CLI round-trip test proves imported origin text through `status --full`, `why`, and no-run-log explanations. Hook count and recovery-provenance fixtures pass. Imported origin switches in derivation, result lookup and provenance handling agree on `import:<id>`.
 - **D5:** the five mismatch reasons render in the specified order. Environment, closure and observed precedence precede content/no-key fallback. The ordinary no-import and irrelevant-import paths stay silent. The all-environment default case shows the first two differences. B1 limits the current-file attribution claim; N1 limits the mixed-cause wording claim.
 - **D6:** the importer never adopts an exported key as a local key. Current result adoption still goes through the daemon's own computed key. A forged outcome at an actual key remains within the explicitly accepted user-chosen-file trust model.

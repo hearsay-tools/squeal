@@ -28,7 +28,7 @@ Done when: the four changes hold with one command row each; no other line or exi
 
 ## R1: review of cand/0.1.486
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43597872117. Pinned to `cand/0.1.486` at `214d1f0f249004486b8aaf13551e03899b627ef6`; range `5f7998206..214d1f0f2`: six commits of worker e3df2f70, cherry-picked (`063ded510` tests pinned to today's output, `b62421e2c` the intake, `8f1259b4f` the CLI, three notes commits), then the 0.1.486 version raise and bundles. Behaviour to compare against: `5f7998206`. Read: board row 011-337, `tasks/011-337/notes.md`, this file's W1.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43597872117. Pinned to `cand/0.1.486` at `d8346f3ce1e5936847e16349b47f38fa16e95fd5`; range `35e39c556..d8346f3ce`: six commits of worker e3df2f70, cherry-picked (`3f46ad3b8` tests pinned to today's output, `f541e5961` the intake, `58f674811` the CLI, three notes commits), then the 0.1.486 version raise and bundles. Behaviour to compare against: `35e39c556`. Read: board row 011-337, `tasks/011-337/notes.md`, this file's W1.
 
 Check, each as proven, plausible or unverified:
 

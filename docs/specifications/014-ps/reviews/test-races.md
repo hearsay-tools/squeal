@@ -1,8 +1,8 @@
 # Review of the three test races
 
-PASS aea7224d407b049ad2ca395a29e9d87764d4d86b
+PASS e79aaee2b2ce8192f8d4abdd9b9bd998da87398a
 
-Range: `660a1b6af..aea7224d4`, on `cand/014-18`. Commits: `56a3b43c5` (014-18), `9522cba5d` (014-20), `aea7224d4` (014-19). This is an independent review. The earlier reviewer's notes are not used as evidence. No candidate code changed during this review.
+Range: `a27b36632..e79aaee2b`, on `cand/014-18`. Commits: `f281d6dfd` (014-18), `4fd838c84` (014-20), `e79aaee2b` (014-19). This is an independent review. The earlier reviewer's notes are not used as evidence. No candidate code changed during this review.
 
 Blockers: 0. Should-fix: 0. Nits: 0. Full-run notes: 1 known failure outside this range (008-38).
 
@@ -82,7 +82,7 @@ The isolated rerun began at 20:58:39 UTC with load 31.87 on 24 CPUs. This is a r
 CI was checked independently with `gh run view 39661075417 --json headSha,status,conclusion,url`:
 
 ```json
-{"conclusion":"success","headSha":"aea7224d407b049ad2ca395a29e9d87764d4d86b","status":"completed","url":"https://github.com/hearsay-tools/squeal/actions/runs/39661075417"}
+{"conclusion":"success","headSha":"e79aaee2b2ce8192f8d4abdd9b9bd998da87398a","status":"completed","url":"https://github.com/hearsay-tools/squeal/actions/runs/39661075417"}
 ```
 
 ## Findings
@@ -91,7 +91,7 @@ CI was checked independently with `gh run view 39661075417 --json headSha,status
 
 Location: `test/version-sensitive.test.ts:58-69`, regression at `:142`. Board 014-18 and the test-races brief require skipping `test/fixtures` before descent. The walk now reads one directory at a time and tests `path !== "test/fixtures"` before recursion. It never lists that directory, so a scheduler's fixture cleanup cannot interrupt this walk inside its scratch repository.
 
-The actual old `sources()` from `660a1b6af` and the candidate function were also run against the same stable candidate archive. They returned exactly the same sorted list of 981 TypeScript files outside `test/fixtures`. Instrumenting the new directory reader recorded 61 directory reads and no entry into `test/fixtures` or its descendants. The review-only probe file was removed from that archive before comparison.
+The actual old `sources()` from `a27b36632` and the candidate function were also run against the same stable candidate archive. They returned exactly the same sorted list of 981 TypeScript files outside `test/fixtures`. Instrumenting the new directory reader recorded 61 directory reads and no entry into `test/fixtures` or its descendants. The review-only probe file was removed from that archive before comparison.
 
 ```text
 old: 981; new: 981; equal: true
@@ -114,7 +114,7 @@ This is a counterfactual of the skip, with the injected directory reader retaine
 
 Location: `test/daemon/died-startup.test.ts:30-44`, existing JSON assertion at `:87`. Board 014-20 and the brief require a temporary write followed by rename. The driver writes `<out>.tmp`, completes that synchronous write, then renames it to `out` in the same directory. Each test owns a fresh directory. The reader's unchanged existence check cannot see the staged partial write. Same-directory rename publishes the complete JSON on this Linux host.
 
-Commit `9522cba5d` explains why it adds no dedicated deterministic regression: the natural window lies inside the child's file creation/write, and observing it reliably requires changing the driver. The brief permits this reason in the commit body. Natural reproduction of that exact narrow window in this review is **unverified**.
+Commit `4fd838c84` explains why it adds no dedicated deterministic regression: the natural window lies inside the child's file creation/write, and observing it reliably requires changing the driver. The brief permits this reason in the commit body. Natural reproduction of that exact narrow window in this review is **unverified**.
 
 A controlled disposable probe tested the existing JSON oracle. Only the child driver's `writeFileSync` was wrapped: it opened the requested path, waited 2 seconds, then wrote the JSON. With the staging/rename fix present, both existing cases passed. With that fix alone removed, and the same delay retained, both cases failed at the unchanged JSON assertion:
 

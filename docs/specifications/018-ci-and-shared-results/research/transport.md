@@ -1,6 +1,6 @@
 # Research: transport (018-14)
 
-Researcher c3d2a5c6 for spec 018, 2026-11-09. Brief: `tasks/wave-4.md`, topic `transport` in `README.md`. This repository at `fdb16d0f6`. git 2.43.0, Node 24.22.1, 24 vCPUs. Timings only at one-minute load below 24 (22.3 to 23.5); runs above it are named. GitHub docs read as Markdown from `docs.github.com/api/article/body` on 2026-11-09. Read-only on GitHub and on `~/projects/cezar`. Probes: `probes/transport/` (throwaway; its README holds every output). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred. This extends `remote-store.md` Q4 to Q6 and does not repeat it.
+Researcher c3d2a5c6 for spec 018, 2026-11-09. Brief: `tasks/wave-4.md`, topic `transport` in `README.md`. This repository at `9b58f0a04`. git 2.43.0, Node 24.22.1, 24 vCPUs. Timings only at one-minute load below 24 (22.3 to 23.5); runs above it are named. GitHub docs read as Markdown from `docs.github.com/api/article/body` on 2026-11-09. Read-only on GitHub and on `~/projects/cezar`. Probes: `probes/transport/` (throwaway; its README holds every output). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred. This extends `remote-store.md` Q4 to Q6 and does not repeat it.
 
 ## Questions answered
 
@@ -101,5 +101,5 @@ The attribution question itself belongs to `ci-step` Q5.
 - `https://raw.githubusercontent.com/actions/checkout/main/README.md` and `https://cli.github.com/manual/gh_attestation_verify`, retrieved 2026-11-09.
 - git 2.43.0 manual pages (local): `git-fetch` (`--no-write-fetch-head`, `--[no-]auto-maintenance`), `git` (`GIT_TERMINAL_PROMPT`), `git-config` (`http.lowSpeedLimit`, `repack.writeBitmaps`, `gc.pruneExpire`).
 - cezarion (read-only): `.github/workflows/ci.yml` at main (`gh api …/contents`); `gh run list --workflow ci.yml --event merge_group` (462 runs) and `--event push`; `gh run view --json jobs` for 42 runs; a treeless clone of `https://github.com/hearsay-tools/cezarion` in `$TMPDIR` (removed); `git worktree list` and `merge-base` in `~/projects/cezar`; trial export of run 42596322864 (`gh run download`, removed after use).
-- This repository at `fdb16d0f6`: `spec.md` D2, D6; `research/remote-store.md`; `research/import-trial.md`; `research/main-results.md` (604 files re-keyed per cezar landing).
+- This repository at `9b58f0a04`: `spec.md` D2, D6; `research/remote-store.md`; `research/import-trial.md`; `research/main-results.md` (604 files re-keyed per cezar landing).
 - Probes: `probes/transport/` and its README (outputs).

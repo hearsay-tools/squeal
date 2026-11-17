@@ -1,8 +1,8 @@
 # Wave 13 review: continuous slow lane, evidence ranking, build-output excludes
 
-FAIL `14a31e2cc1251f16fae6da7fc26f27e11a2ea15a` (0.1.221).
+FAIL `2a9ab0f12cb8eaaed067a1891ea735fed69c2f7a` (0.1.221).
 
-Counts: 1 proven blocker, 1 proven nonblocking should-fix, 0 nits. Range: `58483b88..14a31e2c`; rows 004-80, 004-82 and 005-70. The blocker is setup coverage loss, not slow scheduling.
+Counts: 1 proven blocker, 1 proven nonblocking should-fix, 0 nits. Range: `0505820d..2a9ab0f1`; rows 004-80, 004-82 and 005-70. The blocker is setup coverage loss, not slow scheduling.
 
 ## Verification
 
@@ -10,7 +10,7 @@ Verification ran at the exact candidate with a clean tracked and untracked tree.
 
 ```text
 $ git rev-parse HEAD
-14a31e2cc1251f16fae6da7fc26f27e11a2ea15a
+2a9ab0f12cb8eaaed067a1891ea735fed69c2f7a
 $ git status --short
 (no output)
 
@@ -139,7 +139,7 @@ None.
 - **Wake-ups and idle:** the scheduler's existing fast-tier completion wakes its pump; `SlowTier.#candidates` arms a timer for the remaining quiet interval. A later revision is rechecked when that timer fires, and an earlier deadline replaces a later one. Selection rechecks the trigger after the guard and slot. Fast work returns before arming a quiet timer, so it does not poll at an expired quiet deadline. Idle retains `consumersIdle` and its bounded recheck. Existing idle scenarios explicitly pin `trigger: "idle"`; the continuous test exercises a real mid-turn slow run and next-tool-boundary failure delivery within the 15 s recheck interval.
 - **004 D8/D9, honest delivery and waits:** continuous quiet waiting publishes no false “waiting for the agent to pause” activity. Header/status, named-file reason and primer read the trigger consistently. Not-run files retain the “not queued” distinction. Path waits keep queued slow files under continuous and leave pause-only files out under idle. The plain wait still excludes slow work as the last status amendment requires; its quiet clause says continuous pending files run after the fast tests. Stop requirements remain policy-controlled.
 - **004 D2, ranking:** evidence is a comparator within the existing group/promotion/priority order; it does not select, drop or defer queue entries. Duration mode bypasses it. E1, E5 and the no-token build-script replay exercise product extraction, and the scheduler regression verifies all invalidated files run. Own/helper records are checked against current hashes, and helper changes rebuild their token content. `why` accepts evidence only at the current file key. S1 is the remaining changed-side hole.
-- **Store and integration:** `slowEvidence` is registered in `WORKTREE_META_ROWS` with the rank-store owner; `slowTokensMetaKey` is explicitly shared in the meta-row test. The coordinator's d6d2099f joins the policy blocks, keeps `KEY_FORMAT_VERSION` at 13, and pins the combined guarded-source hash to `d23d232ffedaa9a4db5180b364e8e93ccd82c19787c3faec1f88613711246306`. The rebuilt committed bundles match the candidate.
+- **Store and integration:** `slowEvidence` is registered in `WORKTREE_META_ROWS` with the rank-store owner; `slowTokensMetaKey` is explicitly shared in the meta-row test. The coordinator's c6df83a3 joins the policy blocks, keeps `KEY_FORMAT_VERSION` at 13, and pins the combined guarded-source hash to `d23d232ffedaa9a4db5180b364e8e93ccd82c19787c3faec1f88613711246306`. The rebuilt committed bundles match the candidate.
 - **005 D3, bounded parts of setup:** manifest-only source paths do not qualify, the question prints evidence and says Squeal never builds, default yes and explicit flags write runner excludes, node:test paths are relative to project cwd, and no keeps the group a slow candidate. The unsafe width of those exclusions is B1. Pytest detection remains absent from the pre-existing slow-candidate universe; the new type does not falsely claim a pytest target was implemented.
 - **Measurement amendments:** the last 004 status line records 3000 ms, plain-wait scope, string-literal matches, queued evidence accumulation and the >100-path bound. The worker notes separate live eval-fixture measurements from stored cezarion browser measurements and state that browser specs were not rerun. No fresh browser benchmark was claimed by this review.
 
@@ -152,9 +152,9 @@ None.
 
 ## Re-review
 
-PASS `160e6874b0c022011dbe16f879abbe648b1e1fa0` (0.1.221).
+PASS `9def68c97a38bf1c21e6a9dd5a8db190e3ca0ef0` (0.1.221).
 
-Counts: 0 remaining blockers, 1 proven new nonblocking should-fix note, 0 nits. B1's original reproduction and S1 are resolved. This is the requested narrow re-review of `14a31e2c..160e6874`: the setup repair, ranking repair, version-13 re-pin and rebuilt bundles. The first-round conclusions about unchanged code stand. New delta findings are notes under the re-review rule.
+Counts: 0 remaining blockers, 1 proven new nonblocking should-fix note, 0 nits. B1's original reproduction and S1 are resolved. This is the requested narrow re-review of `2a9ab0f1..9def68c9`: the setup repair, ranking repair, version-13 re-pin and rebuilt bundles. The first-round conclusions about unchanged code stand. New delta findings are notes under the re-review rule.
 
 ### Verification
 
@@ -162,7 +162,7 @@ The exact candidate was checked on a clean tree. `npm ci` ran first; the build l
 
 ```text
 $ git rev-parse HEAD
-160e6874b0c022011dbe16f879abbe648b1e1fa0
+9def68c97a38bf1c21e6a9dd5a8db190e3ca0ef0
 $ git status --short
 (no output)
 $ npm ci
@@ -210,7 +210,7 @@ Breaking changes might not follow SemVer, please pin Vitest's version when using
              at least ~27.12s faster with isolate: false — reuses workers across files instead of one per file
 (exit 0)
 $ git rev-parse HEAD
-160e6874b0c022011dbe16f879abbe648b1e1fa0
+9def68c97a38bf1c21e6a9dd5a8db190e3ca0ef0
 $ git status --short
 (no output)
 ```

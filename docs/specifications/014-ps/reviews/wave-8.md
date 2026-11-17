@@ -2,7 +2,7 @@
 
 FAIL ec15d10bf2b103e10e49a5f18d79d98cb4defbaa
 
-Row 014-46. Candidate `cand/0.1.267`, range `81b927e08..ec15d10bf`, 20 commits. **1 blocker, 1 should-fix, 0 nits.** The blocker is in the new test temp-parent sweep. The `ps` changes meet their amended contracts.
+Row 014-46. Candidate `cand/0.1.267`, range `f524e0940..ec15d10bf`, 20 commits. **1 blocker, 1 should-fix, 0 nits.** The blocker is in the new test temp-parent sweep. The `ps` changes meet their amended contracts.
 
 ## Verification
 
@@ -34,7 +34,7 @@ $ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
 exit 0
 ```
 
-One independent full suite ran, under the shared lock. The start time above is local time (UTC+02:00). The output also contained two fixture `gitdir incorrect` repair notices, one nested setup's earlier-run stray cleanup notice, and Vitest's experimental type-testing notices. It reported no test failure. This includes `test/global-teardown.test.ts`, the store, slow, delivery, setup, update and `ps` tests, `test/keys/key-format.test.ts`, and `test/harness/ps-bundle.test.ts`. `git diff --check 81b927e08..ec15d10bf` also passed.
+One independent full suite ran, under the shared lock. The start time above is local time (UTC+02:00). The output also contained two fixture `gitdir incorrect` repair notices, one nested setup's earlier-run stray cleanup notice, and Vitest's experimental type-testing notices. It reported no test failure. This includes `test/global-teardown.test.ts`, the store, slow, delivery, setup, update and `ps` tests, `test/keys/key-format.test.ts`, and `test/harness/ps-bundle.test.ts`. `git diff --check f524e0940..ec15d10bf` also passed.
 
 Direct checks of all four committed `plugins/*/dist/cli/ps.mjs` bundles returned:
 

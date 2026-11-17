@@ -2,7 +2,7 @@
 // environment hash, computed from the committed pnpm-lock.yaml at a commit
 // (git show), against the value a daemon recorded. Re-implements, for this
 // probe only, the whole-fingerprint branch of installedDependencies()
-// (src/core/keys/environment.ts at d2678e570) and withoutLinkedSpecifiers()
+// (src/core/keys/environment.ts at c13564931) and withoutLinkedSpecifiers()
 // (src/core/keys/pnpm-lockfile.ts). pnpm 12 writes the committed file as two
 // YAML documents; the installed node_modules/.pnpm/lock.yaml is the second.
 // Usage: node installed-from-git.mjs <repo> <commit> [<installed lock.yaml>]

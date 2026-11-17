@@ -1,7 +1,7 @@
 # Issue 95: node:test runs that outlive their tests
 
 Date: 2026-10-25. Issue: https://github.com/hearsay-tools/squeal/issues/95
-Baseline: origin/main `40a2aafbd1c6cf76e9cd9ac84b8519cbb8a66ec1`.
+Baseline: origin/main `849f3e31c77c0ba7190f46505d25fc8a0187e5ca`.
 
 ## Fit and owner
 

@@ -1,6 +1,6 @@
 # 013-02 notes: a touch withholds only what the Vitest instance could have read
 
-Worker 782141bb, 2026-10-20, brief `../wave-1.md` (013-02), design `../013-01/design.md` sections 2, 3 and 6. Commits on `cez/782141bb`: the adapter (`306daead`), the agreed `withheld-touch` fixture (`1445edb6`), D2 (`489d6005`), key format 18 (`e9a2c454`).
+Worker 782141bb, 2026-10-20, brief `../wave-1.md` (013-02), design `../013-01/design.md` sections 2, 3 and 6. Commits on `cez/782141bb`: the adapter (`53b4df95`), the agreed `withheld-touch` fixture (`dcb8fd75`), D2 (`236587d1`), key format 18 (`4252c3f7`).
 
 ## Seam map
 

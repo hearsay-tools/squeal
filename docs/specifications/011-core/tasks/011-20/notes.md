@@ -1,6 +1,6 @@
 # 011-20 notes (W1 of wave 10, 2026-10-21)
 
-The stop-gap e2e race (`test/e2e/stop-gap.test.ts`, 001-340 and 001-355, since 011-08 with an edit in the gap). Base main at 2b1fbecce (0.1.245). Brief: `tasks/wave-10.md`, W1.
+The stop-gap e2e race (`test/e2e/stop-gap.test.ts`, 001-340 and 001-355, since 011-08 with an edit in the gap). Base main at 514187e96 (0.1.245). Brief: `tasks/wave-10.md`, W1.
 
 ## One shape, not two
 

@@ -1,12 +1,12 @@
 # 016-18 A model-based test of the scheduler
 
-Brief: `model-scheduler-brief.md`. Researcher: Claude Opus 5.5, 2026-10-25. Examined: `docs/specifications/011-core/spec.md` C4, C5, C6 and C15 at `2f9328ff6` (line numbers below are of that file), `src/core/scheduler/yields.ts`, `promotions.ts` and `queue.ts` at `2f9328ff6`, `test/scheduler/helpers.ts`, `catch-up-fixture.ts` and `tier-yields-named.test.ts`, `core-defects.md`, and the review files of the blockers replayed. Probe: `probes/model-scheduler/` (scratch clone `/tmp/ms18/repo`, removed after).
+Brief: `model-scheduler-brief.md`. Researcher: Claude Opus 5.5, 2026-10-25. Examined: `docs/specifications/011-core/spec.md` C4, C5, C6 and C15 at `74d2341e2` (line numbers below are of that file), `src/core/scheduler/yields.ts`, `promotions.ts` and `queue.ts` at `74d2341e2`, `test/scheduler/helpers.ts`, `catch-up-fixture.ts` and `tier-yields-named.test.ts`, `core-defects.md`, and the review files of the blockers replayed. Probe: `probes/model-scheduler/` (scratch clone `/tmp/ms18/repo`, removed after).
 
 ## Questions answered
 
 | # | Question | Answer in one line | Tag |
 |---|---|---|---|
-| 1 | Invariants | Six are checked from the store, the published `yields` and `promotions` rows and the runner's calls (A to F below), the three of row 011-184 among them; seven more are checkable and not yet written; C6's wait and C5's delivery need a consumer or the CLI. | read in official docs (011 spec at `2f9328ff6`); A to F verified by experiment |
+| 1 | Invariants | Six are checked from the store, the published `yields` and `promotions` rows and the runner's calls (A to F below), the three of row 011-184 among them; seven more are checkable and not yet written; C6's wait and C5's delivery need a consumer or the CLI. | read in official docs (011 spec at `74d2341e2`); A to F verified by experiment |
 | 2 | Model | Seven events (edit, promote, a file's end, a run's finish or crash, a clock step, a clock jump inside the next decision, `run --all` with or without `--force`) over the real scheduler and store; a fake runner that ends files and runs only on command; a virtual clock whose `setTimeout` timers fire when a step passes them; a quiet-store settle after each event. Restart and install are not modelled. | verified by experiment |
 | 3 | Replay | Of five past blockers, the generator found 1 (R398, after 141 sequences, 4 events); R427 is reached by a hand-placed 6-event sequence but not in 300 random ones; R345, R397 and R399 were not found within 173 to 300 sequences. On HEAD it found two defects of its own (F in 36 of 300 sequences; A once, a race inside one decision). | verified by experiment |
 | 4 | Shape | About 450 lines in two files over `test/scheduler/`; 0.9 s a sequence; one 1,000-sequence run took 925 s wall and 191 s CPU (scaled from 300) at a one-minute load of 16 to 18 on 24 CPUs; flake risk from the settle heuristic and from oracle readings at deadline boundaries. | verified by experiment; flake risk inferred |
@@ -30,7 +30,7 @@ Checkable the same way, not written yet: promoted files first and the earlier re
 
 ### 2. Model
 
-All verified by experiment at `2f9328ff6` and the replayed commits.
+All verified by experiment at `74d2341e2` and the replayed commits.
 
 - **Fixture.** One worktree, real `createScheduler` and `openStore`, `RecordingSink`, no `capacity` (no pool, so `/proc/stat` is never read; stricter than `host: null`). Six test files: four "slow" ones of one known duration each sequence draws (20, 35 or 200 s), `P` in a second project, `Q` beside them. The start is `heldTier` of `tier-yields-named.test.ts`: the four in an edit's tier in flight, `P` queued behind by its environment. Two runner kinds: Vitest-like (cancels, reports each file's end) and node-like (`besideBacklog`, ignores cancels, reports no ends, may crash).
 - **Forced interleavings.** The runner resolves a run only when a `finish` event comes, and a file ends only on an `end` event. The clock is `SchedulerOptions.now`, the host's plus an offset; `setTimeout` is replaced during the sequence, so a step that passes a timer's deadline fires it (the yield bound of `yields.ts:241`). A `cross` event arms a jump after N more clock reads, so the next decision reads two times (as test 10's `stillClock`). After each event the probe waits until the runner, the key rows, the known states and the `yields` row are unchanged for three polls 15 ms apart.
@@ -46,17 +46,17 @@ Five blockers. Two are from 016-11's scheduler race and order groups (R345 order
 |---|---|---|---|---|---|---|
 | R398 (0.1.296 B1): the protected module's end does not recheck the tier | `5ecb377a8` → `69d6328bf` | A to E | yes, B | 141 | promote P 60 s; step 35 s; promote s3 3 s; end P → the tier stands `named` with no file left unended | 141 pass |
 | R399 (0.1.296 B2): an expired earlier wait keeps a later waiter behind | `5ecb377a8` | A to E | no (R398 stopped the run first; no B on expiry in 141) | 141 | – | – |
-| R397 (0.1.296-r2 B2): expiry between the rank and bound reads | `231ecaeb0` → `b862d2f2d` | A to E | no | 173, stopped by a C failure that the fix commit shows too | – | seed 173 fails C again; seed 97 fails A (an oracle error, fixed after) |
-| R345 (0.1.237 B1): a forced run yields again at one file and key | `d7344427b` → `3a8d364e4` | C to E | no | 300 | – | 300 pass |
+| R397 (0.1.296-r2 B2): expiry between the rank and bound reads | `231ecaeb0` → `7505b4949` | A to E | no | 173, stopped by a C failure that the fix commit shows too | – | seed 173 fails C again; seed 97 fails A (an oracle error, fixed after) |
+| R345 (0.1.237 B1): a forced run yields again at one file and key | `d7344427b` → `5427e2956` | C to E | no | 300 | – | 300 pass |
 | R427 (wave-4 B1): an old backlog run erases the newer run's state | `dae700644` → `bc8ed7742` | D, E | not by the generator (300, node kind); a hand-placed sequence fails D | 300 | finish; finish; `run --all --force`; step 1 s; edit `src/s.ts`; crash the old run → `s1` runs at its key and its row is not pending | hand sequence passes; 300 seeds pass |
 
 Why the misses (inferred): R427 needs four events in one order (a forced backlog, an edit beside it, the old run's crash), about 1 in 10³ under these weights. R345 needs a forced file queued beside a running forced tier, and six files fit in one backlog tier, so this fixture never queues one. R399 and R397 need an earlier wait on a tier file to expire while a later wait's file is queued and the tier has run 30 s; at `5ecb377a8` the R398 find came first. At `231ecaeb0`, R397 needs a jump between the rank and bound reads of one decision; `cross` jumps after 1 to 4 reads, and nothing aims it at that pair.
 
-**HEAD (`2f9328ff6`), 300 mixed sequences, every invariant, every failure** (`results/head.json`):
+**HEAD (`74d2341e2`), 300 mixed sequences, every invariant, every failure** (`results/head.json`):
 
 - **F, 36 of 300 (verified by experiment, cause read in source code).** When a promotion cuts a tier, an earlier open wait's promotion of a file in that tier is dropped, though the file is queued again and the wait's deadline has not passed. Fixed reproduction, every run on HEAD: step 1 s; promote s4 120 s (s4 running in the tier); promote P 60 s (the tier yields to P) → the `promotions` row holds only P's. Cause: `RunQueue.add` calls `#promotions.settle(this.#queued)` before it adds the entry (`queue.ts:195`). The cut file is then neither queued nor in a run (`Promotions.#open`, `promotions.ts:139`), so its promotion goes. Effect: s4's wait reads `queued`, not promoted. It no longer ranks first. And it no longer protects the next tier that runs it under (a). A 4-event variant gave the same symptom at `5ecb377a8` and `69d6328bf` (`results/directed.md`), so it predates 011-184's repairs.
 - **A, 1 of 300 (seed 60; verified by experiment, cause read in source code).** One decision reads the clock more than once. `rankToBeat` reads it once (`yields.ts:359`), and `remainder` and `byRemainder` read it again (`yields.ts:398`, `411`). With a 20 s tier, wait 0 on s4 and P, and the clock moving 60 s during the next promotion's decision, the rank read saw the tier under 30 s (so no file was protected). The remainder read saw it 40 s past its estimate, and the tier yielded, cutting s4, which wait 0 selected beside P. Under either single reading the tier would not yield. On a real clock the window is the decision's own duration at the 30 s boundary of a tier whose estimate is about 0 (files of no known duration), where "yields 30 s after its start" and the protection start at the same instant. This is review `0.1.296-r2.md` B2's class (one reading per decision), on the remainder rather than the deadline.
-- A, seeds 33 and 51: oracle false positives (traced; see finding 2). B, C, D, E: none on HEAD. The C failure at `231ecaeb0` and `b862d2f2d` (seed 173, `KIND=vitest`) was not re-run on HEAD under the same kind: not determined.
+- A, seeds 33 and 51: oracle false positives (traced; see finding 2). B, C, D, E: none on HEAD. The C failure at `231ecaeb0` and `7505b4949` (seed 173, `KIND=vitest`) was not re-run on HEAD under the same kind: not determined.
 
 ### 4. Shape
 
@@ -76,7 +76,7 @@ Limits: one fixture of six files, one worktree, no restart or install; 12 events
 
 ## Open questions
 
-1. Does the C failure (a file cut twice at one key, seed 173 under `KIND=vitest`) hold on HEAD, and is it a defect or an oracle error? Not determined: it was found on `231ecaeb0` and `b862d2f2d` and not traced.
+1. Does the C failure (a file cut twice at one key, seed 173 under `KIND=vitest`) hold on HEAD, and is it a defect or an oracle error? Not determined: it was found on `231ecaeb0` and `7505b4949` and not traced.
 2. Would R399, R397 and R345 be found with a larger budget or the weighting of recommendation 3? Not determined: not run.
 3. Is the dropped promotion (F) seen in practice? Not determined: no live store was read; cezar's `promotions:` rows, read through a copy, would show a wait whose file is queued with no row.
 
@@ -84,9 +84,9 @@ Limits: one fixture of six files, one worktree, no restart or install; 12 events
 
 Read and run 2026-10-25:
 
-- `docs/specifications/011-core/spec.md` at `2f9328ff6`: C4 lines 113 to 158, C5 163 to 192, C6 197 to 219, C15 369 to 404; `status.md` lines 155 to 158; `docs/board.md` row 011-184.
-- `src/core/scheduler/yields.ts`, `promotions.ts`, `queue.ts` (lines 99, 144 to 163, 195, 314 to 332), `scheduler.ts` (`promote`, lines 611 to 618), at `2f9328ff6`.
+- `docs/specifications/011-core/spec.md` at `74d2341e2`: C4 lines 113 to 158, C5 163 to 192, C6 197 to 219, C15 369 to 404; `status.md` lines 155 to 158; `docs/board.md` row 011-184.
+- `src/core/scheduler/yields.ts`, `promotions.ts`, `queue.ts` (lines 99, 144 to 163, 195, 314 to 332), `scheduler.ts` (`promote`, lines 611 to 618), at `74d2341e2`.
 - `test/scheduler/helpers.ts` (line 353, `host: null`), `catch-up-fixture.ts`, `tier-yields-fixture.ts`, `tier-yields-named.test.ts` (tests 9 to 11, `stillClock`), `quiet-clock.ts`.
-- Reviews: `docs/specifications/011-core/reviews/0.1.296.md` (B1, B2), `0.1.296-r2.md` (B2), `0.1.237.md` (B1), `wave-4.md` (B1); items R345, R397 to R399 and R427 of 016-09's list, rebuilt at `f6320cd7e` with `probes/defect-causes/` (issues list left empty; R ids come from reviews only), codes from `probes/core-defects/areas.tsv`.
-- Commits: `5ecb377a8`, `69d6328bf`, `231ecaeb0`, `b862d2f2d`, `d7344427b`, `3a8d364e4` (fix `55ba5d821`), `dae700644`, `bc8ed7742` (fixes `9c858b45a`, `66e590e07`), `2f9328ff6`.
+- Reviews: `docs/specifications/011-core/reviews/0.1.296.md` (B1, B2), `0.1.296-r2.md` (B2), `0.1.237.md` (B1), `wave-4.md` (B1); items R345, R397 to R399 and R427 of 016-09's list, rebuilt at `acb96dfa6` with `probes/defect-causes/` (issues list left empty; R ids come from reviews only), codes from `probes/core-defects/areas.tsv`.
+- Commits: `5ecb377a8`, `69d6328bf`, `231ecaeb0`, `7505b4949`, `d7344427b`, `5427e2956` (fix `772c887b9`), `dae700644`, `bc8ed7742` (fixes `9c858b45a`, `66e590e07`), `74d2341e2`.
 - Probe: `probes/model-scheduler/` (`model.probe.ts`, `run.sh`, `replay.sh`, `results/log-1.txt`, `results/log-2.txt`, `results/directed.md`, `results/*.json`).

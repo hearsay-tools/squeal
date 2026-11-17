@@ -1,6 +1,6 @@
 # 011-160 worker notes: a removed worktree's results kept for 7 days
 
-Worker of row 011-160 (wave 26, W2), 2026-10-23, from main 27d481c0e (0.1.279). Brief: `tasks/wave-26.md` W2. Read: 001 D8 (Pruning) as amended 2026-10-23, `research/stored-nothing.md` finding 1, `research/missed-sharing.md` C1.
+Worker of row 011-160 (wave 26, W2), 2026-10-23, from main cd0143124 (0.1.279). Brief: `tasks/wave-26.md` W2. Read: 001 D8 (Pruning) as amended 2026-10-23, `research/stored-nothing.md` finding 1, `research/missed-sharing.md` C1.
 
 ## 1. Growth on store copies, before the change
 

@@ -4,7 +4,7 @@ FAIL `c64c4eb3dce8937785c7c0f35975559619a05e39`: **3 proven blockers, 1 proven n
 
 ## Verification
 
-Independent review on the exact pinned candidate, on a clean tree throughout checks and probes. Product range: `4db9e06f..c64c4eb3`. Local `origin/main` is `e379086c84f52c09c3d75b8faec2b38d75a64182`; its only change from the supplied base `4db9e06f` is `docs/board.md`. The requested version check used that actual `origin/main`. No build was run, as explicitly requested. No product files changed. The review file was written only after verification.
+Independent review on the exact pinned candidate, on a clean tree throughout checks and probes. Product range: `b503c041..c64c4eb3`. Local `origin/main` is `54fa42994a99ba2b242c63caa4eebe23b27ed763`; its only change from the supplied base `b503c041` is `docs/board.md`. The requested version check used that actual `origin/main`. No build was run, as explicitly requested. No product files changed. The review file was written only after verification.
 
 ```text
 $ git rev-parse HEAD
@@ -278,7 +278,7 @@ FAIL `1a5ae371b171de23383daa61bd5301196f35e30d`: **1 proven blocker remains (B1)
 
 ### Verification
 
-This is a bounded re-review of B1–B3 and the repair delta from `c64c4eb3`, including the bundles, against the amended C15 and status log. The candidate was checked out at the exact requested SHA; the tree stayed clean throughout checks and production probes. The original review is restored above only after verification because the rebased candidate does not carry the review commit `6c8d4e52`. No build was run, per the explicit brief. The version check used local `origin/main`; at the completion read that ref was `01f20a26273bc7a6ef20f634f22de4dd1eb69476`, differing from the original review's `e379086c` only in `docs/board.md`.
+This is a bounded re-review of B1–B3 and the repair delta from `c64c4eb3`, including the bundles, against the amended C15 and status log. The candidate was checked out at the exact requested SHA; the tree stayed clean throughout checks and production probes. The original review is restored above only after verification because the rebased candidate does not carry the review commit `6c8d4e52`. No build was run, per the explicit brief. The version check used local `origin/main`; at the completion read that ref was `4d783c7400244722a8f266072ea039dfe91760e7`, differing from the original review's `54fa4299` only in `docs/board.md`.
 
 ```text
 $ git rev-parse HEAD
@@ -456,19 +456,19 @@ One status-reason worker can finish B1 in `named-files.ts` and its discriminatin
 
 ---
 
-## Third round: B1 only, candidate 432f0a7b (0.1.210)
+## Third round: B1 only, candidate 4a2848fb (0.1.210)
 
-PASS `432f0a7b010ca2f2d397cfcef405a71752453392`: **B1 closed; 0 blocking findings, 0 new notes or nits in this round.** The earlier B2/B3 conclusions remain settled. S1 remains a nonblocking 011-13 follow-up, outside this round.
+PASS `4a2848fbf1ad8087a9fb60372505b87a0a4abdfe`: **B1 closed; 0 blocking findings, 0 new notes or nits in this round.** The earlier B2/B3 conclusions remain settled. S1 remains a nonblocking 011-13 follow-up, outside this round.
 
 ### Verification
 
-Scope is the human-authorized final B1 re-review: the prior B1 finding and `git diff 1a5ae371 432f0a7b -- src test plugins`. That product diff contains exactly `src/cli/named-files.ts`, the claim expectation in `test/cli/status-wait-reasons.test.ts`, and the same calculation in four CLI bundles. No other product source, test or plugin file changed. C15 and status.md now describe the conservative waiter-relative bound. Local `origin/main` was `aff752fbd7927f1837d33c01119f3118290e3ee7` at the initial read; changes since the previous review's main reference are docs only.
+Scope is the human-authorized final B1 re-review: the prior B1 finding and `git diff 1a5ae371 4a2848fb -- src test plugins`. That product diff contains exactly `src/cli/named-files.ts`, the claim expectation in `test/cli/status-wait-reasons.test.ts`, and the same calculation in four CLI bundles. No other product source, test or plugin file changed. C15 and status.md now describe the conservative waiter-relative bound. Local `origin/main` was `40316220dd328b113602a5dc997f874d56ebec61` at the initial read; changes since the previous review's main reference are docs only.
 
 The first `npm ci` attempt could not finish removing an existing Vitest cache (`ENOTEMPTY`, exit 217). Lint and typecheck then lacked their executables (`biome: not found`, `tsc: not found`, exit 127); those attempts are unverified, not findings. A second `npm ci` completed, followed by successful fresh lint/typecheck. The version check ran successfully on the same pinned clean candidate. No build was run, per the explicit brief.
 
 ```text
 $ git rev-parse HEAD
-432f0a7b010ca2f2d397cfcef405a71752453392
+4a2848fbf1ad8087a9fb60372505b87a0a4abdfe
 $ git status --short
 (no output)
 

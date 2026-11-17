@@ -1,6 +1,6 @@
 # Research: worktrees split a baseline through claims
 
-Row 001-201, 2026-10-10. Topic `shared-runs` in `README.md`. Squeal at `8ca16a14` (0.1.86 plus docs; the prototype is `probes/shared-runs/prototype.patch` on it), Node 24.21.0, Linux, 24 CPUs. The host was shared with other workers' gates: load 16 to 140 during the experiments. Every experiment used scratch copies under `/tmp/sr201`: a `VACUUM INTO` copy of cezar's store (read-only connection, 220 MB, taken 00:26), and a fresh clone of cezar at `c07b0bfc` with three linked worktrees. Daemons ran with only `HOME`, `PATH`, `USER` and `LANG` in their environment and were all stopped. No live store or daemon was touched. Probes, the prototype patch and the raw output are in `probes/shared-runs/`.
+Row 001-201, 2026-10-10. Topic `shared-runs` in `README.md`. Squeal at `4ffa567e` (0.1.86 plus docs; the prototype is `probes/shared-runs/prototype.patch` on it), Node 24.21.0, Linux, 24 CPUs. The host was shared with other workers' gates: load 16 to 140 during the experiments. Every experiment used scratch copies under `/tmp/sr201`: a `VACUUM INTO` copy of cezar's store (read-only connection, 220 MB, taken 00:26), and a fresh clone of cezar at `c07b0bfc` with three linked worktrees. Daemons ran with only `HOME`, `PATH`, `USER` and `LANG` in their environment and were all stopped. No live store or daemon was touched. Probes, the prototype patch and the raw output are in `probes/shared-runs/`.
 
 ## Questions answered
 
@@ -14,7 +14,7 @@ Row 001-201, 2026-10-10. Topic `shared-runs` in `README.md`. Squeal at `8ca16a14
 
 ## Findings
 
-### 1. The claim (verified by experiment on the store copy; read in source code at `8ca16a14`)
+### 1. The claim (verified by experiment on the store copy; read in source code at `4ffa567e`)
 
 What exists already. `startTier` (`src/core/scheduler/tiers.ts`) marks each picked file `running` (`Ledger.setRunning`) and commits in one `store.transaction`, a `BEGIN IMMEDIATE` (`connection.ts`). `Ledger.commit` writes `test_file_keys (worktree_id, project, path, key, revision, pending)` for every dirty file. `recordTier` clears `running` in the same transaction that stores the tier's results. `test_file_keys_by_key` indexes the key. So "worktree W is running key K" is already a committed, indexed fact. It turns to "results stored" or "nothing stored" atomically. `worktrees.daemon_heartbeat_at` and `daemon_heartbeat_interval_ms` say whether W's daemon lives.
 
@@ -72,7 +72,7 @@ Four worktrees of the cezar clone on one commit (`933dd908`: 243 test files of t
 
 | Arm | Wall to all current | File runs (unique) | Tier runs per worktree | Total CPU | Load at start / end |
 |---|---|---|---|---|---|
-| today (`8ca16a14`) | 465.5 s | 972 (243) | 2 each (200 + 43) | 2,873 s | 17 / 65 |
+| today (`4ffa567e`) | 465.5 s | 972 (243) | 2 each (200 + 43) | 2,873 s | 17 / 65 |
 | prototype, backlog tier 200 | 332.7 s (−29%) | 243 (243) | main 200, wt1 43, wt2 and wt3 none | 770 s (−73%) | 28 / 84 |
 | prototype, backlog tier 64 | 132.5 s (−72%) | 243 (243) | 64, 64, 64, 51 | 665 s (−77%) | 29 / 22 |
 
@@ -129,7 +129,7 @@ Take the claim as decided, as a derived claim with a split backlog tier. The CPU
 
 ## Sources
 
-- Squeal at `8ca16a14`: `src/core/scheduler/{tiers,ledger,queue,backlog,scheduler,slow-tier,held,rerun,timeout-split}.ts`, `src/core/store/{schema,store,connection}.ts`, `src/core/slow/inherit.ts`, `src/core/state/inherited.ts`, `src/core/status/snapshot.ts`, `src/core/delivery/liveness.ts`, `src/runners/vitest/run.ts`; `spec.md` D5, D8, D10; `status.md` amendments for 001-140, 001-161, 001-168, 001-170, 001-171, 001-179, 001-184, 001-186.
+- Squeal at `4ffa567e`: `src/core/scheduler/{tiers,ledger,queue,backlog,scheduler,slow-tier,held,rerun,timeout-split}.ts`, `src/core/store/{schema,store,connection}.ts`, `src/core/slow/inherit.ts`, `src/core/state/inherited.ts`, `src/core/status/snapshot.ts`, `src/core/delivery/liveness.ts`, `src/runners/vitest/run.ts`; `spec.md` D5, D8, D10; `status.md` amendments for 001-140, 001-161, 001-168, 001-170, 001-171, 001-179, 001-184, 001-186.
 - cezar's store, copied read-only with `VACUUM INTO` from `~/projects/cezar/.git/squeal/store.sqlite` at 2026-10-10 00:26 (0.1.86 daemons live in two worktrees).
 - cezar at `c07b0bfc`, Vitest 4.1.10, cloned to `/tmp/sr201/cz`.
 - Probes: `probes/shared-runs/` (README lists each file).

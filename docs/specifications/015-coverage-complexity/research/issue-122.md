@@ -3,7 +3,7 @@
 Keep explicit exclusions; treat automatic unavailable coverage for excluded tests as a policy decision.
 
 The reported score and function name reproduce at the adapter/judgement boundary
-on Squeal **0.1.374**, commit `15f73a3110c4f6aaa85171ac0dffdbb8575dff5a`, Node
+on Squeal **0.1.374**, commit `e35aac4bd2b74ba82356dac5e679deb67e1af5e8`, Node
 **24.22.1**. The external Cezarion incident and its delivery sequence are not
 reproduced. This is documentation-only research for [issue 122][issue].
 
@@ -125,6 +125,6 @@ ignores this research path. It applied no fixes and supplies no lint pass.
 - [Probe source, command and full output][probe]. Findings tagged as experiments use this run; policy conclusions use the cited repository text, not recalled APIs.
 
 [issue]: https://github.com/hearsay-tools/squeal/issues/122
-[source]: https://github.com/hearsay-tools/squeal/tree/15f73a3110c4f6aaa85171ac0dffdbb8575dff5a/src
+[source]: https://github.com/hearsay-tools/squeal/tree/e35aac4bd2b74ba82356dac5e679deb67e1af5e8/src
 [probe]: probes/issue-122/
 [snapshot]: probes/issue-122/issue.json

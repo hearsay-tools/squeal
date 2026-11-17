@@ -1,6 +1,6 @@
 # 011-363: the six flakiest whole-scheduler test files on the virtual clock
 
-Worker 39096e36, wave 106 W1, 2026-11-16. Base: `0535d8465` (0.1.518 plus the wave brief). Test files only.
+Worker 39096e36, wave 106 W1, 2026-11-16. Base: `62dcae8e2` (0.1.518 plus the wave brief). Test files only.
 
 ## What changed
 

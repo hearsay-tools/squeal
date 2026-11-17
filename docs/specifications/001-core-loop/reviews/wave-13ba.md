@@ -2,13 +2,13 @@
 
 ## Verification
 
-Reviewed `0ec7f837..c0c211f8`, the 001-322 landing, for review row 001-327. Candidate HEAD was exactly `c0c211f83de247451ea39727f4af931289cf58d0`. The tree was clean before verification and after the build. This is the bounded follow-up to wave 13aw S1; the earlier review's settled cases are not re-prosecuted. Only this findings file is committed. No board edits or eval runs.
+Reviewed `71b0c66d..88780c08`, the 001-322 landing, for review row 001-327. Candidate HEAD was exactly `88780c08b53bf8a58a651f88288ac6f5d79f7dc6`. The tree was clean before verification and after the build. This is the bounded follow-up to wave 13aw S1; the earlier review's settled cases are not re-prosecuted. Only this findings file is committed. No board edits or eval runs.
 
 Independent commands and output, 2026-10-13:
 
 ```text
 $ git rev-parse HEAD
-c0c211f83de247451ea39727f4af931289cf58d0
+88780c08b53bf8a58a651f88288ac6f5d79f7dc6
 $ git status --short
 (no output)
 
@@ -71,7 +71,7 @@ The disposable SQLite probe below ran with `node --disable-warning=ExperimentalW
 
 ## Verdict
 
-**FAIL c0c211f8.** One proven blocker, no separate should-fix findings, no nits. The original S1 failure is repaired when registration timestamps differ, but remains when a timestamp is reused. The blocker concerns the lifecycle guarantee added by this delta.
+**FAIL 88780c08.** One proven blocker, no separate should-fix findings, no nits. The original S1 failure is repaired when registration timestamps differ, but remains when a timestamp is reused. The blocker concerns the lifecycle guarantee added by this delta.
 
 ## Blockers
 
@@ -119,7 +119,7 @@ None.
 - For different registration timestamps, the reader rejects the old slot. It returns false while the consumer is absent; the writer does nothing for an absent consumer and checks/writes inside the store transaction. The `(store, consumer, harness, version)` interface and both Stop callers are unchanged.
 - A still-registered main consumer's `compact` path returns the primer before re-registration (`src/harness/shared/session.ts:52-53`), so it retains both `registeredAt` and its marker. Both compaction tests discriminate against dropping the marker, as verified below.
 - Both legacy shapes read unmarked: a worktree-wide `{harness: version}` and a per-consumer `{harness: version}` without `registeredAt`. The real-store probe tested both shapes for each harness. An absent-consumer marker write left `{}` unchanged. No migration turns historical capability into current evidence.
-- The three new tests run for Claude Code and Codex. In a disposable archive of the candidate with its installed dependencies linked, restoring only `stop-wait.ts` from `0ec7f837` and running `test/harness/stop-slow-wait.test.ts -t 001-322 --maxWorkers=1` yielded `4 failed | 2 passed | 25 skipped`: the two resume cases fail in each harness; compaction still passes. Restoring the candidate helper but forcing `stopWaitRuns` to return false, then running `-t 'compaction.*001-322'`, yielded `2 failed | 29 skipped`. Each compaction assertion received a pending-slow block instead of `{}`. These are deliberate mutation failures, not failures of the candidate. The archive was deleted before filing. They prove the intended distinctions, with the equal-timestamp coverage gap identified in B1.
+- The three new tests run for Claude Code and Codex. In a disposable archive of the candidate with its installed dependencies linked, restoring only `stop-wait.ts` from `71b0c66d` and running `test/harness/stop-slow-wait.test.ts -t 001-322 --maxWorkers=1` yielded `4 failed | 2 passed | 25 skipped`: the two resume cases fail in each harness; compaction still passes. Restoring the candidate helper but forcing `stopWaitRuns` to return false, then running `-t 'compaction.*001-322'`, yielded `2 failed | 29 skipped`. Each compaction assertion received a pending-slow block instead of `{}`. These are deliberate mutation failures, not failures of the candidate. The archive was deleted before filing. They prove the intended distinctions, with the equal-timestamp coverage gap identified in B1.
 - The changed built Stop readers/writers match the source in both plugins; the other bundle changes are the `0.1.148` version. The build reproduces them. Key format remains 9 with its unreleased hash re-pinned; this delta does not alter result keys, stored results, revision validity or header counts.
 - The short Stop gains only synchronous store reads. Its 2 s budget, the 3000 ms handoff and the 600000 ms wait cap under the 630 s waiting-hook timeout remain unchanged. Disabling a waiting handler within one registration remains an explicitly documented limit outside this repair.
 

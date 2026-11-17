@@ -2,9 +2,9 @@
 
 Board row 011-64, a docs-only design draft (brief W6 of `../wave-8.md`). Approved by the human on 2026-10-21 as the design row for triage round 9, group D: gh-67 (find a test file's stored failures, and its test-file frame) with gh-54 (keep the failure a passing retry replaced). Nothing here is in `spec.md` until the human accepts it. On acceptance, the three amendments in "Spec text" go into 011 C5, C6 and C7, `status.md` gets a dated line, and the code rows of section 5 are numbered on the board.
 
-Sources: `research/issue-67.md`, `research/issue-54.md` and their probes; 011 C5, C6, C7 and `status.md` (the 011-37 and 011-41 lines); row 011-50; the source at `775dfe14f`. New evidence: `probes/` (method and isolation in `probes/README.md`, the recorded run in `probes/output.txt`). The SQL probes read a read-only copy of cezar's store taken at 2026-10-21T15:09Z: 660,622 results, 1,065 of them failing, 22,750 checks, 944 test files, 32 worktrees, 6,493 runs, 404 failure texts. Host: 24 CPUs; the one-minute load was 39.6 when the session started, 33.7 at the copy and 10.6 to 11.5 during the recorded run. Timings are medians of 7.
+Sources: `research/issue-67.md`, `research/issue-54.md` and their probes; 011 C5, C6, C7 and `status.md` (the 011-37 and 011-41 lines); row 011-50; the source at `61c226005`. New evidence: `probes/` (method and isolation in `probes/README.md`, the recorded run in `probes/output.txt`). The SQL probes read a read-only copy of cezar's store taken at 2026-10-21T15:09Z: 660,622 results, 1,065 of them failing, 22,750 checks, 944 test files, 32 worktrees, 6,493 runs, 404 failure texts. Host: 24 CPUs; the one-minute load was 39.6 when the session started, 33.7 at the copy and 10.6 to 11.5 during the recorded run. Timings are medians of 7.
 
-Evidence tags: *verified by experiment* (a probe in `probes/`), *measured on cezar's store* (read-only copy), *read in source code* (at `775dfe14f`), *inferred*.
+Evidence tags: *verified by experiment* (a probe in `probes/`), *measured on cezar's store* (read-only copy), *read in source code* (at `61c226005`), *inferred*.
 
 ## Summary
 

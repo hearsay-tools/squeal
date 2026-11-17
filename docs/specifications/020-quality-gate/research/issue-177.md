@@ -1,6 +1,6 @@
 # Issue #177: `squeal code` omits changed functions without a reason
 
-Researcher, 2026-11-11. Squeal 0.1.430 (`1ac649d40`), Node 24.22.1, 24 vCPUs.
+Researcher, 2026-11-11. Squeal 0.1.430 (`4de9b4d96`), Node 24.22.1, 24 vCPUs.
 One-minute load before the live run: 15.53 (under 24). Probe:
 `probes/issue-177/fixture.sh`, output `probes/issue-177/run.txt`.
 
@@ -62,6 +62,6 @@ Treat #177 as a reporting gap, not a selection defect. If the human wants it, am
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/177 (read with `gh issue view 177 --json`, 2026-11-11).
 - PR: https://github.com/hearsay-tools/cezarion/pull/3170 (`gh pr view 3170 --json files`).
-- Spec 020 D1, D2, D5, D6, D7; spec 015 D1, D2, D3, D6 (this worktree at `1ac649d40`).
-- Source at `1ac649d40`: `src/core/code/gate/changed.ts:40-130`, `src/core/code/count/walk.ts:181`, `src/core/code/count/typescript.ts:67`, `src/cli/code-gate-text.ts:143-180`.
+- Spec 020 D1, D2, D5, D6, D7; spec 015 D1, D2, D3, D6 (this worktree at `4de9b4d96`).
+- Source at `4de9b4d96`: `src/core/code/gate/changed.ts:40-130`, `src/core/code/count/walk.ts:181`, `src/core/code/count/typescript.ts:67`, `src/cli/code-gate-text.ts:143-180`.
 - Probe: `probes/issue-177/fixture.sh`, `probes/issue-177/run.txt`.

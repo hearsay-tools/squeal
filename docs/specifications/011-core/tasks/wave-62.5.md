@@ -1,6 +1,6 @@
 # Wave 62.5: repair of review 0.1.384 (B1)
 
-Coordinator dd7baf7f, 2026-10-31. Review `reviews/0.1.384.md` FAIL on `cand/0.1.384` `02b528e0a`: B1 proven. Host policy as in `wave-60.md`. No `pnpm run build`; not yours: board, spec, `status.md`, bundles, version.
+Coordinator dd7baf7f, 2026-10-31. Review `reviews/0.1.384.md` FAIL on `cand/0.1.384` `2aa5fad61`: B1 proven. Host policy as in `wave-60.md`. No `pnpm run build`; not yours: board, spec, `status.md`, bundles, version.
 
 ## RP1: B1 (row 011-283: an already-current file keeps a finished wait alive)
 

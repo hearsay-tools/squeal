@@ -2,7 +2,7 @@
 
 Short answer: do not use the daemon. Use the gate's keyer (`openDaemonKeying` and `keyFiles`, row 020-51) in-process in the temporary checkout, and only for the test files the fast path cannot settle. The keyer walks each named file's closure fresh over a scratch store, so its keys are exact by construction. It keys every test file in 40 to 58 s, and 1 file in 4 to 6 s. A lookup-only daemon start takes 82 to 145 s. Most of that time is the store's integrity check (53 s and 98 s on these stores). The daemon also keys hits from stored closure lists, not from fresh walks. The fast path is a check from git objects: every input of the current key is unchanged at the commit. It accepted no wrong key in 11,385 file-commit comparisons with walked keys. It settles a median 99% (Squeal) and 91% (squawk) of the test files 1 commit back, 26% and 15% 10 commits back, and 15% and 1% 50 commits back. The parked environment steps add at most 0.1 points on top of it.
 
-Versions: Squeal source and bundle at `1dcc79aa9` (0.1.538), squawk at `e50c45c72`, Node v26.13.0, pnpm 12.15.0 (12.11.2 pinned in squawk). Stores copied whole with `VACUUM INTO` on 2026-11-17 at 07:56Z. Runs between 07:55Z and 08:34Z on 24 vCPUs, at a one-minute load of 11 to 26, stated beside each number. Probes and outputs: `probes/keys-by-walk/` (README).
+Versions: Squeal source and bundle at `9820b54b5` (0.1.538), squawk at `e50c45c72`, Node v26.13.0, pnpm 12.15.0 (12.11.2 pinned in squawk). Stores copied whole with `VACUUM INTO` on 2026-11-17 at 07:56Z. Runs between 07:55Z and 08:34Z on 24 vCPUs, at a one-minute load of 11 to 26, stated beside each number. Probes and outputs: `probes/keys-by-walk/` (README).
 
 ## Questions answered
 
@@ -22,10 +22,10 @@ Versions: Squeal source and bundle at `1dcc79aa9` (0.1.538), squawk at `e50c45c7
 
 | Checkout | Files | Total | Runner start | Env. read | File hashing | Walk | Keying | Lookup | Hits | Peak RSS | Load |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Squeal tip `1dcc79aa9` | 1,907 | 54.3 s | 0.8 s | 0.6 s | 2.4 s | 47.6 s | 2.3 s | 0.5 s | 1,591 | 749 MB | 22.0 |
-| Squeal −1 `18d475a5f` | 1,907 | 50.1 s | 0.6 s | 0.5 s | 1.9 s | 44.4 s | 2.3 s | 0.5 s | 1,591 | 825 MB | 15.8 |
-| Squeal −10 `74aab4211` | 1,907 | 58.1 s | 0.9 s | 0.5 s | 1.9 s | 51.9 s | 2.5 s | 0.3 s | 1,820 | 853 MB | 14.8 to 21.0 |
-| Squeal −50 `737db5966` | 1,898 | 43.4 s | 0.6 s | 0.7 s | 2.7 s | 36.8 s | 2.1 s | 0.3 s | 1,005 | 886 MB | 11.5 |
+| Squeal tip `9820b54b5` | 1,907 | 54.3 s | 0.8 s | 0.6 s | 2.4 s | 47.6 s | 2.3 s | 0.5 s | 1,591 | 749 MB | 22.0 |
+| Squeal −1 `8f2b9ecfd` | 1,907 | 50.1 s | 0.6 s | 0.5 s | 1.9 s | 44.4 s | 2.3 s | 0.5 s | 1,591 | 825 MB | 15.8 |
+| Squeal −10 `c40cef15e` | 1,907 | 58.1 s | 0.9 s | 0.5 s | 1.9 s | 51.9 s | 2.5 s | 0.3 s | 1,820 | 853 MB | 14.8 to 21.0 |
+| Squeal −50 `ad4f00cb2` | 1,898 | 43.4 s | 0.6 s | 0.7 s | 2.7 s | 36.8 s | 2.1 s | 0.3 s | 1,005 | 886 MB | 11.5 |
 | squawk tip `e50c45c72` | 1,923 | 40.3 s | 1.3 s | 0.6 s | 1.3 s | 35.3 s | 1.3 s | 0.6 s | 1,624 | 1,197 MB | 21.7 |
 | squawk −1 `20e368f85` | 1,917 | 39.2 s | 1.5 s | 0.7 s | 1.7 s | 33.6 s | 1.3 s | 0.4 s | 223 | 1,087 MB | 15.4 |
 | squawk −10 `46ffd4917` | 1,906 | 57.4 s | 1.6 s | 0.5 s | 1.6 s | 51.5 s | 1.5 s | 0.6 s | 1,620 | 1,124 MB | 21.0 |
@@ -108,7 +108,7 @@ Fifty main commits span about 6 hours in Squeal and 18 hours in squawk. These sh
 ### 5. Flow, wait time and the parked code
 
 - **Parked environment steps** (verified by experiment, variant V5 in `out/fastpath-slide-*.jsonl`). Let a changed lockfile alone pass to D2.2's derived environment. The fast path then grows by 0.0 points in Squeal and by 0 to 0.1 points (mean) in squawk. Lockfile changes come with closure changes. The checkout's install gives the exact environment hash in under 1 s anyway (`environment-at-commit.md` Q3).
-- **Parked helpers** (read at `park/023-03-git-keys` `2ba00592c`). `at-keys-untracked.ts` (`untrackedInputs`) is condition 9. `at-keys-globs.ts` (`entryNames`, `namesOf`) is condition 3, from a commit's tree. `at-keys-coverage.ts` (`targetCoverage`) is superseded: the fast path proves nothing about X's closure, it only checks that every input is unchanged. 023-14 puts `candidates` and `stemOf` into the closure itself.
+- **Parked helpers** (read at `park/023-03-git-keys` `0ca88170e`). `at-keys-untracked.ts` (`untrackedInputs`) is condition 9. `at-keys-globs.ts` (`entryNames`, `namesOf`) is condition 3, from a commit's tree. `at-keys-coverage.ts` (`targetCoverage`) is superseded: the fast path proves nothing about X's closure, it only checks that every input is unchanged. 023-14 puts `candidates` and `stemOf` into the closure itself.
 
 ## Recommendation for Squeal
 
@@ -135,8 +135,8 @@ The tradeoff that decides it: the fast path costs one git diff and settles most 
 
 ## Sources
 
-- Squeal source at `1dcc79aa9`: `src/core/scheduler/bootstrap.ts`, `daemon-keying.ts`, `daemon-keys.ts`, `keying.ts` (`stabilityPaths`, line 1035); `src/core/code/gate/stored.ts` (`openKeyer`, `keyFiles`); `src/cli/code-gate-stored.ts` (`daemonAdapters`); `src/core/store/open.ts` (`integrityProblem`); `src/core/daemon/open.ts:228`; `src/core/store/repos/worktrees.ts:19`; `src/core/keys/observed.ts` (`listingPath`, `Listings`); `src/core/watcher/links.ts:70`. Bundle `plugins/claude-code/dist/cli/squeal.mjs` (0.1.538).
-- Parked 023-03 at `origin/park/023-03-git-keys` (`2ba00592c`): `src/core/commit/at-*.ts`.
+- Squeal source at `9820b54b5`: `src/core/scheduler/bootstrap.ts`, `daemon-keying.ts`, `daemon-keys.ts`, `keying.ts` (`stabilityPaths`, line 1035); `src/core/code/gate/stored.ts` (`openKeyer`, `keyFiles`); `src/cli/code-gate-stored.ts` (`daemonAdapters`); `src/core/store/open.ts` (`integrityProblem`); `src/core/daemon/open.ts:228`; `src/core/store/repos/worktrees.ts:19`; `src/core/keys/observed.ts` (`listingPath`, `Listings`); `src/core/watcher/links.ts:70`. Bundle `plugins/claude-code/dist/cli/squeal.mjs` (0.1.538).
+- Parked 023-03 at `origin/park/023-03-git-keys` (`0ca88170e`): `src/core/commit/at-*.ts`.
 - Findings: `temp-checkout.md`, `environment-at-commit.md`, `glob-membership.md`, `../reviews/wave-3.md`, `../../018-ci-and-shared-results/research/results-at-commit.md`.
-- Stores, whole `VACUUM INTO` copies: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`. Git: Squeal main `1dcc79aa9` and its 100 first-parent ancestors; squawk main `e50c45c72` and its ancestors.
+- Stores, whole `VACUUM INTO` copies: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`. Git: Squeal main `9820b54b5` and its 100 first-parent ancestors; squawk main `e50c45c72` and its ancestors.
 - Probes and outputs: `probes/keys-by-walk/` (README).

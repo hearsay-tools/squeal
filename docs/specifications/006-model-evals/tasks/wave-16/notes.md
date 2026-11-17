@@ -52,4 +52,4 @@ Committed regrade, `atomic-regrade.mjs --by 006-94`: every file unchanged, none 
 
 - Before the 004-80 confirm run: `stop.requireSlowSuite` must be a key the pinned CLI accepts. It is since `stop-slow` ran on 0.1.131. `run-cell` checks only `testCommand` and `denyWhenCurrent` as unknown keys.
 - With the policy on and the load hold, Stop may wait or hold once while the slow file is held for up to 600 s. Sonnet's policy-off a8 sessions already ran about 622 s after `run --all --wait` (006-92 Q2), so expect long a8 cells, and check that the cell timeout allows them.
-- The "Stop waits or holds" sentence in the judge text follows the primer's wording at `5aef3302`. If 004-80 changes that sentence, update `situationOf` with it.
+- The "Stop waits or holds" sentence in the judge text follows the primer's wording at `9dcdf371`. If 004-80 changes that sentence, update `situationOf` with it.

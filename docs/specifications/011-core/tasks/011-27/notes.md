@@ -1,6 +1,6 @@
 # 011-27 notes: every file without a verdict names what advances it
 
-Worker notes for board row 011-27 (011-24 R2; gh-38, gh-39, gh-40, gh-41, gh-43, gh-46's hint). Brief: the `## 011-27` section of `../011-24/briefs.md`; design `../011-24/design.md` sections 3 and 5 R2; spec 011 C5 and C15 as amended 2026-10-20. Baseline `b46dd13a` (0.1.228, after 011-42's 0.1.227 reshaping of the waits).
+Worker notes for board row 011-27 (011-24 R2; gh-38, gh-39, gh-40, gh-41, gh-43, gh-46's hint). Brief: the `## 011-27` section of `../011-24/briefs.md`; design `../011-24/design.md` sections 3 and 5 R2; spec 011 C5 and C15 as amended 2026-10-20. Baseline `e3e17c85` (0.1.228, after 011-42's 0.1.227 reshaping of the waits).
 
 ## Probe: does the store keep each project's global setup files?
 
@@ -93,4 +93,4 @@ The 001-390 fidelity tests fail on main too: `test/runners/node-test/run-reads-f
 
 ## Verification
 
-`npm ci`, `npm run lint` (`Checked 1528 files ... No fixes applied.`) and `npm run typecheck` are clean. `squeal run --all --wait`, checkpoint 38cb1cbe, completed at revision 42 (HEAD bef82c12, clean): 753 test files, 7,125 checks passed, 11 known failures. Ten are the expected ones above: four bundle drift, three key-format, `compare.test.ts` and the two 001-390 fidelity tests. The eleventh, `test/harness/opencode-dispose.test.ts` `serve: an abort of the new turn, then the old Stop's answer, stores nothing`, killed a held Stop at +2018 ms against a +2000 ms deadline at revision 14, 1.77 load per CPU. This row changes no harness file. `squeal retry --reason load` ran it again at the same inputs and it passed: a flake under load.
+`npm ci`, `npm run lint` (`Checked 1528 files ... No fixes applied.`) and `npm run typecheck` are clean. `squeal run --all --wait`, checkpoint 38cb1cbe, completed at revision 42 (HEAD f164aeab, clean): 753 test files, 7,125 checks passed, 11 known failures. Ten are the expected ones above: four bundle drift, three key-format, `compare.test.ts` and the two 001-390 fidelity tests. The eleventh, `test/harness/opencode-dispose.test.ts` `serve: an abort of the new turn, then the old Stop's answer, stores nothing`, killed a held Stop at +2018 ms against a +2000 ms deadline at revision 14, 1.77 load per CPU. This row changes no harness file. `squeal retry --reason load` ran it again at the same inputs and it passed: a flake under load.

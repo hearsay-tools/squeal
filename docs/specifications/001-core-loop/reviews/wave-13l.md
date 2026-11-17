@@ -2,11 +2,11 @@
 
 ## Verification output
 
-Candidate: `c46b1ee9d13fc62f16eaa61dba219e7a8982cb2c`, the supplied `origin/main` at the start of this review. Package version 0.1.87. The bounded product delta is `7bf2efef..c46b1ee9`, specifically 001-196 and its rebuilt plugins. Other specs' documentation in that range is outside this re-review. Linux, Node 24.21.0 and Node 22.23.3. Gates ran with a clean tracked tree, before writing this report.
+Candidate: `d0de1c3f5f6d90e8d24ad29efc532516fac4c3dd`, the supplied `origin/main` at the start of this review. Package version 0.1.87. The bounded product delta is `00363cc8..d0de1c3f`, specifically 001-196 and its rebuilt plugins. Other specs' documentation in that range is outside this re-review. Linux, Node 24.21.0 and Node 22.23.3. Gates ran with a clean tracked tree, before writing this report.
 
 ```text
 $ git rev-parse HEAD
-c46b1ee9d13fc62f16eaa61dba219e7a8982cb2c
+d0de1c3f5f6d90e8d24ad29efc532516fac4c3dd
 
 $ npm ci
 added 56 packages, and audited 57 packages in 6s
@@ -106,7 +106,7 @@ The background baseline initially reported failures in departure, lifecycle, han
 
 ## Verdict
 
-**PASS c46b1ee9: 0 blockers, 1 proven should-fix note, 0 nits.** Wave 13k B1 is closed. Its literal S1 reproduction is closed, both skills now read the outcome, and N1's amendment entries are present. Both original 003 B1 regressions remain green on Node 22 and 24. The overall independent gate failed as recorded above; PASS is the bounded repair verdict. A second discharge can still erase the first edit's news before its sync answer; this retains S1's nonblocking severity and is a note from the repair delta, not a reopening of the proven B1.
+**PASS d0de1c3f: 0 blockers, 1 proven should-fix note, 0 nits.** Wave 13k B1 is closed. Its literal S1 reproduction is closed, both skills now read the outcome, and N1's amendment entries are present. Both original 003 B1 regressions remain green on Node 22 and 24. The overall independent gate failed as recorded above; PASS is the bounded repair verdict. A second discharge can still erase the first edit's news before its sync answer; this retains S1's nonblocking severity and is a note from the repair delta, not a reopening of the proven B1.
 
 ## Blockers
 
@@ -155,7 +155,7 @@ None. Wave 13k N1 is closed: `status.md:150` records the D5 timeout split, `:151
 | Skill inference | Both plugins' red/green section says quiet means no owed result remains and reads the snapshot's `Known failures`; it no longer infers a pass from quiet. `skill.test.ts` pins that distinction and common wording. |
 | Packaging | Both Node builds reproduce both tracked plugin distributions. Version 0.1.87 is consistent. No new dependency, SQLite schema change or persisted attribution history. |
 
-The worker notes report that the two new regressions fail at `7bf2efef` on both Nodes. This re-review independently ran their green side and inspected the removed comparator/clearing paths; it did not replay the base's red side.
+The worker notes report that the two new regressions fail at `00363cc8` on both Nodes. This re-review independently ran their green side and inspected the removed comparator/clearing paths; it did not replay the base's red side.
 
 ## Inputs for the next wave
 

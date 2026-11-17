@@ -2,7 +2,7 @@
 
 The cezarion incident is **not reproduced**. In a small fixture on Squeal 0.1.429, a named new test file was listed at once and was not held by revision discovery. It still got no verdict for 61 s, while a direct Vitest run of it returned in 0.5 s. Two other things held it: a running tier of another file, and its own first-failure re-run, which waited behind a 30 s re-run of that file. This is a synthetic blocker. It does not prove what caused the incident.
 
-2026-11-11, 01:21–01:28 UTC. Research baseline `1ac649d40` (0.1.430 released). Documentation and throwaway probes only. No product code, board, spec, status or skill was changed. No other session's daemon, socket or store was touched.
+2026-11-11, 01:21–01:28 UTC. Research baseline `4de9b4d96` (0.1.430 released). Documentation and throwaway probes only. No product code, board, spec, status or skill was changed. No other session's daemon, socket or store was touched.
 
 ## Answers
 
@@ -112,7 +112,7 @@ Keep #181 open as an incident not reproduced. Do not record discovery as its cau
 
 - Issue: `gh issue view 181 -R hearsay-tools/squeal --comments` (read 2026-11-11 01:21 UTC).
 - Spec `docs/specifications/011-core/spec.md` C4 (validity, yields; read in part), C15 (named demand: "An unlisted revision ... no tier starts until the revision is listed, promoted or not"; "Lifetime").
-- Source `src/core/scheduler/rerun.ts` header at `1ac649d40`.
+- Source `src/core/scheduler/rerun.ts` header at `4de9b4d96`.
 - Tags `squeal--v0.1.429`, `squeal--v0.1.430`.
 - Probe and evidence: `docs/specifications/011-core/research/probes/issue-181/`.
 - Comparison: `research/issue-139.md`, `research/issue-142.md`, `research/issue-152.md`.

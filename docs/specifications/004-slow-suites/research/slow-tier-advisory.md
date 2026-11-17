@@ -1,6 +1,6 @@
 # Research: the slow tier's value in practice, and an advisory slow tier
 
-Row 004-75. Brief: `slow-tier-advisory-brief.md`. Researcher, 2026-10-18, Opus 5.5. Follows `slow-tier-role.md` (004-74). Examined: Squeal at `06cc5da0` (0.1.215 plus docs); cezarion at `51190d494` (main) and `eed821254` (PR #1250). Cezarion's sessions ran Squeal 0.1.199, the pinned release (the store's `daemon-token` meta). Sources:
+Row 004-75. Brief: `slow-tier-advisory-brief.md`. Researcher, 2026-10-18, Opus 5.5. Follows `slow-tier-role.md` (004-74). Examined: Squeal at `9ede5b14` (0.1.215 plus docs); cezarion at `51190d494` (main) and `eed821254` (PR #1250). Cezarion's sessions ran Squeal 0.1.199, the pinned release (the store's `daemon-token` meta). Sources:
 - the live stores of both repositories, opened read-only: cezarion holds 2026-10-14 to 10-18 (25 worktrees), this repository 2026-10-07 to 10-18;
 - 780 cezarion Claude Code transcripts from the last 5 days;
 - the eval cells of runs `07d7ab` (0.1.199) and `bcdbec` (0.1.215, finished).
@@ -176,7 +176,7 @@ The human's doubt about value holds in one respect. 98.4% of slow re-runs re-con
 
 ## Sources
 
-- Squeal `06cc5da0`:
+- Squeal `9ede5b14`:
   - `src/cli/run.ts:34` (usage), `src/cli/status-wait-slow.ts`
   - spec 004 D1 to D10, 011 C4 step 4, C6 and C15
   - `slow-tier-role.md`, `issue-4-signals.md`, `probes/issue-4-signals/tokens.mjs` and `logs/signals.json`, `probes/slow-tier-role/a2-tally.sh`
@@ -184,5 +184,5 @@ The human's doubt about value holds in one respect. 98.4% of slow re-runs re-con
 - Cezarion: `squeal.config.json` and `AGENTS.md` at `51190d494` (lines 212 to 293); PR hearsay-tools/cezarion#1250 (`gh pr checks 1250`, `gh pr view 1250`, 2026-10-18); commits `4f2f01c0..3c5ea5957` and `51190d494..eed821254`; `packages/web/src/routes/task-thread/review-panel.tsx` at `eed821254`; failure bundle `.ai/qa/failures/review-gate/Accept-finishes-…-1/` in worktree `17413271`.
 - Stores, read-only: `~/projects/cezar/.git/squeal/store.sqlite` (read 18:54 and 19:00 CEST), `~/projects/squeal/.git/squeal/store.sqlite`.
 - Transcripts, read-only: `~/.claude/projects/-home-user-projects-cezar*/*.jsonl`, the last 5 days. The #1234 session is `…worktrees-17413271-a7d9-491e-b190-b16533f7e987/2af0fedd-c789-442a-a61a-c56c7d32fc71.jsonl`; the others are named in 2.
-- Eval cells, read-only: `/tmp/squeal-evals-1001/cells/e77eff42453e/20261016T061730Z-07d7ab/a2-slow*`, `…/581f1772dc45/20261018T125937Z-bcdbec/a2-slow*`.
+- Eval cells, read-only: `/tmp/squeal-evals-1001/cells/0b91ce0bf4ca/20261016T061730Z-07d7ab/a2-slow*`, `…/6faa3f32d500/20261018T125937Z-bcdbec/a2-slow*`.
 - Probes and logs: `probes/slow-tier-advisory/README.md`.

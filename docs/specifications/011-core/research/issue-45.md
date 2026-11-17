@@ -4,7 +4,7 @@ Researcher findings for [hearsay-tools/squeal#45](https://github.com/hearsay-too
 
 ## Reproduction verdict
 
-**Reproduced in shape, with a synthetic store, on Squeal 0.1.222 (the incident's version), 0.1.223 (installed and this checkout, `3c993aea`).** A worktree with no failing check and 60 stale plus 20 queued passing checks prints `Known failures: 0` alone on its line; the stale and queued counts appear only on the `Affected checks:` line two lines below, as checks, with no count of test files. The original cezarion workload (5,542 stale checks in 176 files, 29 red server tests) was not re-run, by design of the brief.
+**Reproduced in shape, with a synthetic store, on Squeal 0.1.222 (the incident's version), 0.1.223 (installed and this checkout, `a936c2d1`).** A worktree with no failing check and 60 stale plus 20 queued passing checks prints `Known failures: 0` alone on its line; the stale and queued counts appear only on the `Affected checks:` line two lines below, as checks, with no count of test files. The original cezarion workload (5,542 stale checks in 176 files, 29 red server tests) was not re-run, by design of the brief.
 
 The second half of the issue reproduces as described but is spec-conforming: a failure observed at revision 6 whose test file's key has not moved prints `observed at revision 6, current` at revision 26. By C4 that check is current, not stale; "stale" means its key moved. A failure whose key did move already prints `stale` and is not counted (gh-34, 0.1.216).
 
@@ -94,7 +94,7 @@ Synthetic stores written with the checkout's store API; no daemon, no Vitest run
 - Issue: `gh issue view 45 --repo hearsay-tools/squeal` (read 2026-10-19).
 - Spec: `docs/specifications/011-core/spec.md` C4 (validity), C5 (retry, header), C6 (status, gh-34 amendment), C8; `status.md`; `docs/vision.md` ("no known failures").
 - Prior research: `research/issue-34.md`, `research/probes/issue-34/`.
-- Code at `3c993aea` (0.1.223): `src/core/status/format-status.ts`, `src/core/status/checks.ts`, `src/core/state/derive.ts`, `src/core/delivery/header.ts`.
+- Code at `a936c2d1` (0.1.223): `src/core/status/format-status.ts`, `src/core/status/checks.ts`, `src/core/state/derive.ts`, `src/core/delivery/header.ts`.
 - Installed CLIs: `~/.claude/plugins/cache/hearsay/squeal/0.1.222/bin/squeal`, `.../0.1.223/bin/squeal`; launcher `~/.local/bin/squeal --version` → 0.1.223.
 - Probes: `research/probes/issue-45/` (`run.sh`, `installed.sh`, `probe.mjs`, README).
 

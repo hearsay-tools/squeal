@@ -2,19 +2,19 @@
 
 ## Verification
 
-Candidate: `2b7ae252c4ccf79783ea21127298e14909dcbe49` (`cand/0.1.418`).
-Range: `4e9117fb6..2b7ae252c`. Prior findings: `reviews/wave-3.5.md`, read first.
+Candidate: `1285d3b6c783229aa79c98d518ab2d1be411e2a4` (`cand/0.1.418`).
+Range: `c2ccdd95b..1285d3b6c`. Prior findings: `reviews/wave-3.5.md`, read first.
 Scope: B1 and S1, their repair delta, and new row 018-11. Earlier settled provider behavior was not re-reviewed.
 
 | Command or check | Actual result |
 | --- | --- |
-| `git fetch origin cand/0.1.418`; `git checkout --detach 2b7ae252c4ccf79783ea21127298e14909dcbe49`; `git rev-parse HEAD` | Exact requested SHA. |
+| `git fetch origin cand/0.1.418`; `git checkout --detach 1285d3b6c783229aa79c98d518ab2d1be411e2a4`; `git rev-parse HEAD` | Exact requested SHA. |
 | `git status --short` before and after verification | Empty. |
 | Dependencies | Retained from the prepared worktree. No separate setup requested or repeated. |
 | `pnpm run lint` | Exit 0. `Checked 2877 files in 1377ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0. `tsrs --fast --noEmit`; no diagnostics. |
 | `git diff --check` | Exit 0. |
-| Squeal focused wait, listed below | Exit 0 at revision 3, candidate `2b7ae252 + 0`: `9 test files, each with a current result`; no known failures. Worktree still had 174 queued files, 975 queued tests. This is affected evidence, not a full-suite pass. |
+| Squeal focused wait, listed below | Exit 0 at revision 3, candidate `1285d3b6 + 0`: `9 test files, each with a current result`; no known failures. Worktree still had 174 queued files, 975 queued tests. This is affected evidence, not a full-suite pass. |
 | Bundle checks | All four providers equal the source byte for byte. All four CLI bundles contain key version 3 and record version 4. The coverage-map worker bundle uses record version 4 for both mapping paths. All Codex runtime manifest SHA-256 hashes match their files. No build was run. |
 | Disposable before-fix experiment, described below | Three expected assertion failures: escaped provider output, manual-group verdict, and manual-group start count. After teardown, no escaped file remained in the disposable checkout root. |
 
@@ -70,7 +70,7 @@ The URL-only fixture is separate from filesystem stubbing now. It asserts covere
 
 Independent experiment in a disposable candidate archive:
 
-1. Link the installed dependencies. Restore only `src/core/code/coverage/provider.mjs` and `src/cli/run-lanes.ts` from `e9eba1e36`.
+1. Link the installed dependencies. Restore only `src/core/code/coverage/provider.mjs` and `src/cli/run-lanes.ts` from `3c63663f8`.
 2. Run `node node_modules/vitest/vitest.mjs run test/runners/vitest/own-provider-mocks.test.ts test/cli/run-lanes.test.ts --maxWorkers=1` with Node 24.22.1 and the disposable root as the working directory.
 3. The provider test fails at line 116 because one escaped `\tmp\...\coverage-<uuid>.json` entry exists. After the command finishes and teardown runs, listing root names that start with a backslash returns `[]`.
 

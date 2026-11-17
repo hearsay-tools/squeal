@@ -12,10 +12,10 @@ Throwaway. These scripts read 016-09's item list and this directory's codes, and
 - `catch.mjs`: items and blockers per kind of catch. Output in `catch-output.txt`.
 - `family-output.txt`: review blockers and FAIL rounds per mechanism family (a one-off `node -e` over `areas.tsv`; the family map is in `core-defects.md`, finding 2).
 
-Rerun. 016-09's item ids hold only at `f6320cd7e`, so build its item list from a checkout of that commit:
+Rerun. 016-09's item ids hold only at `acb96dfa6`, so build its item list from a checkout of that commit:
 
 ```sh
-git worktree add --detach /tmp/cd11/wt f6320cd7e
+git worktree add --detach /tmp/cd11/wt acb96dfa6
 D=../defect-causes
 node $D/extract.mjs /tmp/cd11/wt > /tmp/cd11/reviews.jsonl
 node $D/rows.mjs /tmp/cd11/wt > /tmp/cd11/rows.jsonl

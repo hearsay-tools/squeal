@@ -25,7 +25,7 @@ Done when:
 
 ## Review of cand/0.1.353
 
-Use /reviewer. Candidate `cand/0.1.353` `26b12b955` on main `63725249d` (0.1.352). Whole range `63725249d..26b12b955`; this repair `9e034cacb^..26b12b955`. Re-review against `reviews/0.1.348.md`, `0.1.348-r2.md` and `0.1.351.md`: every earlier blocker's reproduction must still fail to break.
+Use /reviewer. Candidate `cand/0.1.353` `3083f5c50` on main `dd0caab04` (0.1.352). Whole range `dd0caab04..3083f5c50`; this repair `020a95bbf^..3083f5c50`. Re-review against `reviews/0.1.348.md`, `0.1.348-r2.md` and `0.1.351.md`: every earlier blocker's reproduction must still fail to break.
 
 Read: spec 017 D4 and D5, especially "The bytes ESLint used" and its five accepted boundaries; this file; `tasks/017-04/notes.md` decisions 19 to 30 and its open cases.
 

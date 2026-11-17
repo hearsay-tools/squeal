@@ -2,7 +2,7 @@
 
 **FAIL** `bc1f4bfc66b81cee7d9d9cd9507132e62da79553`: **3 proven blockers, 1 proven should-fix, 1 proven nit**.
 
-Range: `b5d33c29..bc1f4bfc`. Rows 001-390, 001-393, 001-400, 001-396, 001-399 and 001-385. Reviewed against their notes, spec 001 D3/D4, D11 Fidelity and Priority, D12, and the vision's truthful evidence rule. No candidate code changed.
+Range: `9c2786b5..bc1f4bfc`. Rows 001-390, 001-393, 001-400, 001-396, 001-399 and 001-385. Reviewed against their notes, spec 001 D3/D4, D11 Fidelity and Priority, D12, and the vision's truthful evidence rule. No candidate code changed.
 
 ## Verification output
 
@@ -105,7 +105,7 @@ Parent env: `NODE_OPTIONS=--import "<file URL of src/runners/observe/recorder.cj
 | Worker, `env: {}` | secret | yes | yes |
 | Worker, `SHARE_ENV` | secret | no | yes |
 
-The before arm used the three recorder files archived from `b5d33c29` into a temp directory, not another checkout. An additional probe through `createVitestAdapter({root, observe: () => true})` ran a passing test that spawns the child with default env: `report.observed` omitted `input.txt` too. The committed delivery test's explicit `env: {}` avoids the broken branch.
+The before arm used the three recorder files archived from `9c2786b5` into a temp directory, not another checkout. An additional probe through `createVitestAdapter({root, observe: () => true})` ran a passing test that spawns the child with default env: `report.observed` omitted `input.txt` too. The committed delivery test's explicit `env: {}` avoids the broken branch.
 
 **One-worker fix:** choose the recorder's required position at every spawn even when it is already present; preserve the foreign-recorder guard and avoid duplicate execution. Handle a Worker's shared env without replacing its sharing semantics. Add inherited-env and SHARE_ENV preload-read regressions, including a child or Worker that spawns another child. Rebuild the four bundles and re-pin the unreleased key format.
 
@@ -211,7 +211,7 @@ That is not a 7 s bound on daemon shutdown. Shutdown first drains in-flight tier
 
 ## Second-round addendum — 2026-10-15
 
-**FAIL `252e7ac9b362ca0c19a2c85f8ba177775a9b18a0` — 1 blocking finding (B2), 2 should-fix notes (S1, S2), 0 open nits.** B1 and B3 are repaired; N1 is resolved. This is the narrow re-review requested for the repaired candidate, not a fresh prosecution of the original bundle. B2 remains the original false-preload/fidelity defect. S2 is a new seam note, nonblocking under this re-review's bound. The coordinator takes a second-round FAIL to the human (process step 6).
+**FAIL `8f7cf12c6ad56c4b7b859a92815990c567219070` — 1 blocking finding (B2), 2 should-fix notes (S1, S2), 0 open nits.** B1 and B3 are repaired; N1 is resolved. This is the narrow re-review requested for the repaired candidate, not a fresh prosecution of the original bundle. B2 remains the original false-preload/fidelity defect. S2 is a new seam note, nonblocking under this re-review's bound. The coordinator takes a second-round FAIL to the human (process step 6).
 
 ### Verification at the repaired candidate
 
@@ -219,7 +219,7 @@ Every check and probe below ran at the exact candidate, before switching back to
 
 ```text
 $ git rev-parse HEAD
-252e7ac9b362ca0c19a2c85f8ba177775a9b18a0
+8f7cf12c6ad56c4b7b859a92815990c567219070
 $ npm ci
 added 196 packages, and audited 197 packages in 7s
 found 0 vulnerabilities
@@ -270,7 +270,7 @@ Test Files  3 passed (3)
 
 No scoped file failed. **No second independent full suite was run**, as the parent explicitly requested scoped runs and probes while its flock-protected landing gate ran. The passing full suite earlier in this file belongs to `bc1f4bfc`, not this candidate; this reviewer makes no repaired-candidate full-suite claim. No file is classified here as failing the repaired full suite but passing alone, since this reviewer did not run that full suite.
 
-`git range-diff bc1f4bfc..7c3eef85 43dfbe04..ac9426fe` pairs all six repair commits with `=`: spawn/preloads, signatures, orphan lowering, key re-pin, notes, and formatting survived the rebase unchanged. The additional D11 wording and rebuild were inspected. Throwaway probes used only temp fixtures, this checkout's sources/dependencies, the installed Node 22.23.3/24.21.0 binaries, and their own children; HOME and both XDG paths were temp paths. Nothing was written to another checkout or the cezar repository.
+`git range-diff bc1f4bfc..7c3eef85 7e7c3f8c..362a3b69` pairs all six repair commits with `=`: spawn/preloads, signatures, orphan lowering, key re-pin, notes, and formatting survived the rebase unchanged. The additional D11 wording and rebuild were inspected. Throwaway probes used only temp fixtures, this checkout's sources/dependencies, the installed Node 22.23.3/24.21.0 binaries, and their own children; HOME and both XDG paths were temp paths. Nothing was written to another checkout or the cezar repository.
 
 ### B2 remains blocking — ordinary options and the uncertainty policy invent preloads (proven)
 

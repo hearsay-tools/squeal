@@ -70,7 +70,7 @@ Write the digest: group the rows by theme (gh-75 and gh-77 share the daemon hand
 
 ## R1: review of cand/0.1.271
 
-Use /reviewer. Shape: review. Pinned to `cand/0.1.271` at 70bd5840f959e706f84a89bc82ad6487778f065f; the range is `origin/main..70bd5840f` (`origin/main` at 5a7d78971): W2's three commits (011-67, worker 9bc1c8e9), W4's two (011-55, worker d0d65d20), W1's two (005-81, worker 3e274f1c), one docs commit (005 D3, 011 C5 and C15, `status.md`), W3's three (006-95, worker 7f2b05cc), the 006 `status.md` commit and the release commit (0.1.271, bundles).
+Use /reviewer. Shape: review. Pinned to `cand/0.1.271` at 70bd5840f959e706f84a89bc82ad6487778f065f; the range is `origin/main..70bd5840f` (`origin/main` at a5b6a5cc0): W2's three commits (011-67, worker 9bc1c8e9), W4's two (011-55, worker d0d65d20), W1's two (005-81, worker 3e274f1c), one docs commit (005 D3, 011 C5 and C15, `status.md`), W3's three (006-95, worker 7f2b05cc), the 006 `status.md` commit and the release commit (0.1.271, bundles).
 
 Read `docs/specifications/011-core/tasks/wave-18.md` (W1 to W4), the notes under `005-agent-adoption/tasks/005-81/`, `011-core/tasks/011-67/`, `011-core/tasks/011-55/` and `006-model-evals/tasks/006-95/`, board rows 005-81, 011-67, 011-55 and 006-95, the amended 005 D3, 011 C5 and C15 sentences, and the four new `status.md` lines. Check that:
 - 005-81: every Codex hook but SessionStart spawns from the kept copy when no copy exists yet and no daemon answers; a hook that spawns nothing, or finds a daemon, copies nothing; a successor after a handoff spawns from the copy; a hook with no `PLUGIN_ROOT` or `PLUGIN_DATA` spawns from the cache as before; SessionStart and `squeal start` are unchanged; the extra probe costs nothing on a hook that finds a daemon;

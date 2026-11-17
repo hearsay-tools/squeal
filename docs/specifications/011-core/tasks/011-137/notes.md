@@ -1,6 +1,6 @@
 # 011-137: a daemon that steps down for newer hooks keeps its running tier's work
 
-Worker fc86484d, wave 28 W1, from main at e9c424d3d (after 0.1.286), 2026-10-24. Shape: survey, then slice.
+Worker fc86484d, wave 28 W1, from main at f5a9c2885 (after 0.1.286), 2026-10-24. Shape: survey, then slice.
 
 ## 1. Survey: what a step-down's cancel kept
 
@@ -114,7 +114,7 @@ And in C4 step 5, after "the files whose module ended before the cancel keep the
 
 ## 4. Repair: review 0.1.287 B1
 
-`reviews/0.1.287.md` (FAIL on 4ca9ece7f), B1: a test that the cancel reached can end `passed`. In Vitest 5.0.3 (`runTest`, `vitest/dist/chunks/run.*.js`), the cancel marks each running test `skip` and aborts its context signal. An `afterEach` that throws on the aborted signal makes the test `fail`, and `it.fails` then turns `fail` into `pass` and drops the error. The module ends `passed`, so `cutShort` read the module as whole and the slice's report completed it. Run without a cancel, the same file fails ("Expect test to fail"). The probe in section 2 had no `it.fails` test, so its line "a test that was running at the cancel never reads `passed`" is wrong.
+`reviews/0.1.287.md` (FAIL on 54afc1f48), B1: a test that the cancel reached can end `passed`. In Vitest 5.0.3 (`runTest`, `vitest/dist/chunks/run.*.js`), the cancel marks each running test `skip` and aborts its context signal. An `afterEach` that throws on the aborted signal makes the test `fail`, and `it.fails` then turns `fail` into `pass` and drops the error. The module ends `passed`, so `cutShort` read the module as whole and the slice's report completed it. Run without a cancel, the same file fails ("Expect test to fail"). The probe in section 2 had no `it.fails` test, so its line "a test that was running at the cancel never reads `passed`" is wrong.
 
 A second path leaves no abort note. When the body has passed and the cancel reaches the test's `afterEach`, the test's state is no longer `run`, so the cancel does not mark it skipped and sets no note. The `afterEach` throws all the same, and `it.fails` turns that into a pass. So the note is not enough evidence. The final mode is not either: the worker's `test.mode = "skip"` does not reach the main thread, because a task update carries only the result and the meta.
 

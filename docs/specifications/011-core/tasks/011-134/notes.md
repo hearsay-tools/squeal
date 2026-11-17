@@ -1,6 +1,6 @@
 # 011-134: `retry` on a test file the daemon has not listed yet (gh-76)
 
-Worker W1 of wave 22, 2026-10-23, from main e81754965. Design accepted by coordinator 04a258b0 (reply to request 356105ac): the default below, no daemon protocol.
+Worker W1 of wave 22, 2026-10-23, from main 178c6e5cc. Design accepted by coordinator 04a258b0 (reply to request 356105ac): the default below, no daemon protocol.
 
 ## The row's first question
 

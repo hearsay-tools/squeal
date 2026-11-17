@@ -1,6 +1,6 @@
 # Research: issue 63, a current named wait behind a superseded running tier
 
-Researcher, 2026-10-21, worktree `cez/7e9e9606` at 894238b11 (`package.json` 0.1.234). [Issue #63](https://github.com/hearsay-tools/squeal/issues/63), reported on Squeal 0.1.233 during hearsay-tools/cezarion#1270: a unit regression failed at revision 2 (22:56:47Z); revision 3 saved the fix; a Vitest tier of four files started 22:56:49Z; repeated `squeal status --wait 60000 packages/cezar/src/workflows/waits.test.ts packages/cezar/src/workflows/waits-claude-parity.test.ts` timed out with `queued, promoted, behind the vitest tier ... no command runs them sooner (a running tier is not interrupted)`; the regression went FAIL to PASS at 23:03:35Z with a 0 ms duration. About 6 min 46 s of wait for a 0 ms test. The daemon stayed alive.
+Researcher, 2026-10-21, worktree `cez/7e9e9606` at 3b0bc5de9 (`package.json` 0.1.234). [Issue #63](https://github.com/hearsay-tools/squeal/issues/63), reported on Squeal 0.1.233 during hearsay-tools/cezarion#1270: a unit regression failed at revision 2 (22:56:47Z); revision 3 saved the fix; a Vitest tier of four files started 22:56:49Z; repeated `squeal status --wait 60000 packages/cezar/src/workflows/waits.test.ts packages/cezar/src/workflows/waits-claude-parity.test.ts` timed out with `queued, promoted, behind the vitest tier ... no command runs them sooner (a running tier is not interrupted)`; the regression went FAIL to PASS at 23:03:35Z with a 0 ms duration. About 6 min 46 s of wait for a 0 ms test. The daemon stayed alive.
 
 Environment: host 24 CPUs (`nproc`). One-minute load 12.57 at the start, 16.17 before the first probe run, 15.99 before the recorded run, 24.21 after it (`probes/issue-63/results.txt`). Each live run started below the CPU count, so the brief's skip rule allowed it. `npm ci --ignore-scripts`, node v24.21.0, Vitest 5.0.3. No build, no suite. The probe is synthetic and in-process: a fake runner, a real store and a real scheduler, no Vitest child processes. The original cezar store, daemon log and test durations were not available.
 
@@ -34,7 +34,7 @@ Limits against the cezar incident: the fake runner ends a run at its slowest fil
 
 ## 2. Why the tier is not cancelled
 
-**Read in source code** at 894238b11:
+**Read in source code** at 3b0bc5de9:
 - `src/core/scheduler/scheduler.ts` `#cancelBacklogs` (line 328): aborts only tiers with `tier.cancel` set; the pump's comment (line 539): "An edit's tier in flight is never cancelled by a new revision; a backlog tier is".
 - `src/core/scheduler/tiers.ts` line 71: `cancel` is "`null` for an edit's tier".
 - `src/core/scheduler/backlog.ts` `cancelsBacklog`: a revision cancels a backlog tier when it queues an edit's work in the lane or changes an input of the tier ("its results ... the stability check would discard"). The same condition holds for the superseded edit's tier in case A, but the rule is not applied to it.
@@ -65,5 +65,5 @@ Holds preserved: no implementation; 001-381 keeps the running-tier question; the
 - Spec: `docs/specifications/011-core/spec.md` C4 step 5 (line 123), C4 step 4 amendment (line 154), C15 Rank (line 335); C2 (revisions, line 72) and C6 (status, line 183) for the revision and wait vocabulary only.
 - Board rows: 001-381, gh-51, 011-17, 011-21, 011-24 (`docs/board.md`).
 - Prior research: `research/issue-51.md`, `research/streaming-lanes.md`.
-- Source at 894238b11: `src/core/scheduler/scheduler.ts`, `backlog.ts`, `tiers.ts`, `store-decision.ts`, `queue.ts`; `src/core/status/next-step.ts`; `src/runners/vitest/gate.ts`; fixture `test/scheduler/catch-up-fixture.ts`.
+- Source at 3b0bc5de9: `src/core/scheduler/scheduler.ts`, `backlog.ts`, `tiers.ts`, `store-decision.ts`, `queue.ts`; `src/core/status/next-step.ts`; `src/runners/vitest/gate.ts`; fixture `test/scheduler/catch-up-fixture.ts`.
 - Probe: `probes/issue-63/` (README, probe, config, `results.txt`).

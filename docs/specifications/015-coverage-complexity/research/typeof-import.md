@@ -1,6 +1,6 @@
 # 015-25: `typeof import` in a type argument
 
-Brief: `typeof-import-brief.md`. Researcher, 2026-10-24. Evidence: tree-sitter-tsx 0.23.2 (the shipped WASM, and a build of `v0.23.2` with the same toolchain as the PR), a build of tree-sitter-typescript pull request 375, and four read-only checkouts: squeal at `55afb856a` and `d5018817a`, cezar at `cf9df51a9` (its `origin/main` today) and `03c905a00`. Each JS/TS file was counted by this worktree's counter, with three rewrites and over the PR's grammar, and compared with ESLint 10.13.0 `complexity` on `@typescript-eslint/parser` 8.72.0. Host load was 10 to 52. Probes and outputs: `probes/typeof-import/`.
+Brief: `typeof-import-brief.md`. Researcher, 2026-10-24. Evidence: tree-sitter-tsx 0.23.2 (the shipped WASM, and a build of `v0.23.2` with the same toolchain as the PR), a build of tree-sitter-typescript pull request 375, and four read-only checkouts: squeal at `852f2edc8` and `5fc50b2b5`, cezar at `cf9df51a9` (its `origin/main` today) and `03c905a00`. Each JS/TS file was counted by this worktree's counter, with three rewrites and over the PR's grammar, and compared with ESLint 10.13.0 `complexity` on `@typescript-eslint/parser` 8.72.0. Host load was 10 to 52. Probes and outputs: `probes/typeof-import/`.
 
 ## Questions answered
 
@@ -59,13 +59,13 @@ Each file was compared by the multiset of its function counts with ESLint's on t
 
 | Checkout | Way | Files with errors | Functions in errors | Functions (ESLint) | Files equal to ESLint |
 |---|---|---|---|---|---|
-| squeal `55afb856a` | shipped | 14 | 19 | 30,848 (30,848) | 1,962 / 1,962 |
+| squeal `852f2edc8` | shipped | 14 | 19 | 30,848 (30,848) | 1,962 / 1,962 |
 | | r1, r2, r3, PR 375 | 0 | 0 | 30,848 | 1,962 / 1,962 |
 | cezar `cf9df51a9` | shipped | 66 | 285 | 55,888 (55,890) | 1,917 / 1,918 |
 | | r1, PR 375 | 1 | 215 | 55,888 | 1,917 / 1,918 |
 | | r2, r3 | 0 | 0 | 55,890 | 1,918 / 1,918 |
 
-At `d5018817a` and `03c905a00` the numbers are the same shape (squeal 14 and 19 to 0; cezar 66 and 285 to 0, 1,913 to 1,914 of 1,914).
+At `5fc50b2b5` and `03c905a00` the numbers are the same shape (squeal 14 and 19 to 0; cezar 66 and 285 to 0, 1,913 to 1,914 of 1,914).
 
 In squeal the misparse changes no count: the files equal ESLint before the fix. Its only effect is 19 functions marked `unknown`. In cezar the same holds for the 65 `typeof import` files. `composer.test.tsx` is the one file whose counts and names are wrong.
 
@@ -73,9 +73,9 @@ In the files `squeal code` counts (test-named files left out), there are 0 error
 
 ### 4. The two counts
 
-- `src/core/code/pass/included.ts` (read in source code, `55afb856a`): a path is not counted when it is one of the runners' test files.
+- `src/core/code/pass/included.ts` (read in source code, `852f2edc8`): a path is not counted when it is one of the runners' test files.
 - All 66 cezar error files are `packages/{cezar,web}/src/**/*.test.ts(x)`. The vitest projects list them (`include: ['src/**/*.test.ts']`, and `{ts,tsx}` for web). All 14 squeal error files are `test/**/*.test.ts`, inside `vitest.config.ts`'s `include` (verified by experiment, path match against the configs).
-- The released 0.1.284 counter (`git archive squeal--v0.1.284 src`), over files that are not test-named (verified by experiment, `count-0.1.284.out.txt`): cezar `03c905a00` has 1 error file, `packages/cezar/src/git-worktree.ts`, with 1 function. That is `lessons.md`'s "1 function in a parse error", the NUL. squeal `d5018817a` has the 3 `export type *` barrels with 0 functions. `lessons.md`'s fourth file, `test/fixtures/node-test/edge/test/syntax.test.ts`, is test-named but no runner lists it.
+- The released 0.1.284 counter (`git archive squeal--v0.1.284 src`), over files that are not test-named (verified by experiment, `count-0.1.284.out.txt`): cezar `03c905a00` has 1 error file, `packages/cezar/src/git-worktree.ts`, with 1 function. That is `lessons.md`'s "1 function in a parse error", the NUL. squeal `5fc50b2b5` has the 3 `export type *` barrels with 0 functions. `lessons.md`'s fourth file, `test/fixtures/node-test/edge/test/syntax.test.ts`, is test-named but no runner lists it.
 - 015-23's probe counted every git-listed file, test files too. That gives 65 `typeof import` files with 70 functions, plus `composer.test.tsx` with 215.
 - My counts of not-test-named files (927 cezar, 1,082 squeal) are under the dogfood's 944 and 1,204. The difference is test-named files that no runner lists, such as fixtures (66 in squeal's `fixtures/`). None of these fixtures holds `typeof import`.
 
@@ -99,5 +99,5 @@ In the files `squeal code` counts (test-named files left out), there are 0 error
 - npm: `npm view tree-sitter-typescript` (latest 0.23.2, 2024-11-11), 2026-10-24.
 - tree-sitter-cli 0.27.1 (`tree-sitter build --wasm`). web-tree-sitter 0.27.1 (this worktree).
 - ESLint 10.13.0 `complexity` rule, `@typescript-eslint/parser` 8.72.0, TypeScript 6.0.3.
-- Squeal at `55afb856a`: `src/core/code/count/{parser,typescript,walk,index}.ts`, `src/core/code/pass/{included,judge}.ts`, `src/core/code/count/README.md`; `tasks/015-23/notes.md`; `lessons.md` "Setup" and "Parse errors"; release `squeal--v0.1.284`.
+- Squeal at `852f2edc8`: `src/core/code/count/{parser,typescript,walk,index}.ts`, `src/core/code/pass/{included,judge}.ts`, `src/core/code/count/README.md`; `tasks/015-23/notes.md`; `lessons.md` "Setup" and "Parse errors"; release `squeal--v0.1.284`.
 - cezar: `~/projects/cezar`, cloned read-only to `/tmp`, at `cf9df51a9` and `03c905a00`; `vitest.config.ts` and `packages/*/vitest.config.ts`.

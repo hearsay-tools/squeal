@@ -1,6 +1,6 @@
 # Lanes per group: where the slow lane lives today, and a cut of wave 2
 
-Row 019-08, survey. Source read at commit `a51dc345c` (2026-11-03). Probes under `probes/lanes-survey/` (throwaway), Vitest 5.0.3, Node 24.22.1, this host (24 CPUs). Two code maps were made by read-only subagents and spot-checked here (the pytest, head-move and lint-idle findings re-read by hand).
+Row 019-08, survey. Source read at commit `15649f3ee` (2026-11-03). Probes under `probes/lanes-survey/` (throwaway), Vitest 5.0.3, Node 24.22.1, this host (24 CPUs). Two code maps were made by read-only subagents and spot-checked here (the pytest, head-move and lint-idle findings re-read by hand).
 
 ## Questions answered
 
@@ -14,7 +14,7 @@ Row 019-08, survey. Source read at commit `a51dc345c` (2026-11-03). Probes under
 
 ## 1. What is slow-specific, and its form per group
 
-Read in source code, `a51dc345c`, unless marked otherwise.
+Read in source code, `15649f3ee`, unless marked otherwise.
 
 | Concept | Where it lives today | Per group (D1 to D3) |
 |---|---|---|
@@ -52,7 +52,7 @@ Proposed mapping (inferred, from the code above and D3):
 
 ## 3. Open question 7: one more Vitest instance
 
-Verified by experiment. Script `probes/lanes-survey/instances.mjs`: in one Node process, it calls `createVitest("test", { watch: false })`, then `standalone()`, as the daemon does (`runners/vitest/adapter.ts:223`). Then it runs every selected file twice. The host had a one-minute load of 15.6 to 21.1 on 24 CPUs, below the CPU count, so timing was taken. The load came from other sessions; I added none on purpose. Fixture A: 200 chained modules and 20 test files, synthetic, under `$TMPDIR`. Fixture B: `git archive` of this repository at `a51dc345c` under `$TMPDIR`, 20 files of `test/code/`. Some of them failed there (not a git checkout), which does not change what loads.
+Verified by experiment. Script `probes/lanes-survey/instances.mjs`: in one Node process, it calls `createVitest("test", { watch: false })`, then `standalone()`, as the daemon does (`runners/vitest/adapter.ts:223`). Then it runs every selected file twice. The host had a one-minute load of 15.6 to 21.1 on 24 CPUs, below the CPU count, so timing was taken. The load came from other sessions; I added none on purpose. Fixture A: 200 chained modules and 20 test files, synthetic, under `$TMPDIR`. Fixture B: `git archive` of this repository at `15649f3ee` under `$TMPDIR`, 20 files of `test/code/`. Some of them failed there (not a git checkout), which does not change what loads.
 
 | Run | Instances | Start (`createVitest` + `standalone`) | Daemon heap after its first run (baseline 17 MB) | Daemon RSS (baseline 97 to 99 MB) | Workers during a run | Workers after | First / second run |
 |---|---|---|---|---|---|---|---|
@@ -80,7 +80,7 @@ Read in source code unless marked.
 - Stop's request: 019-09 sends `run-slow` before the wait. Per group, it sends the request of the groups at `stop`, in `after` order (L6's request).
 
 **D5, commit.**
-- `recordHeadMove` (`scheduler/head-move.ts:13`) runs only on a reconciliation pass that made no revision and was not a watch batch (`batch.ts:53`, `:83`): the pass every 30 s, a start, or a `sync`. It stores the latest move in one meta row (`headMove:<worktree>`) and **emits nothing**. A `HEAD` move that comes with file changes (a checkout, a rebase) is stored in the revision's own `head`. Its readers are `state/revision-commit.ts:30` (the `79 · 1bc146f0 + 3` text) and `code/pass/source.ts:31`.
+- `recordHeadMove` (`scheduler/head-move.ts:13`) runs only on a reconciliation pass that made no revision and was not a watch batch (`batch.ts:53`, `:83`): the pass every 30 s, a start, or a `sync`. It stores the latest move in one meta row (`headMove:<worktree>`) and **emits nothing**. A `HEAD` move that comes with file changes (a checkout, a rebase) is stored in the revision's own `head`. Its readers are `state/revision-commit.ts:30` (the `79 · 929f52b7 + 3` text) and `code/pass/source.ts:31`.
 - The tool boundary: `deliver` (`harness/shared/deliver.ts:62`) → `HarnessDelivery.onToolBoundary` (`delivery/delivery.ts:476`). It reads no `HEAD` today. `readGitHead` (`status/git-head.ts`) reads the git files without a spawn. Inferred seam: at the boundary, compare `readGitHead` to the store's last `HEAD` (`readRevisionCommit`). On a difference, send the existing `sync` request, whose pass reaches `recordHeadMove`. That is the D5 path that removes the 30 s delay.
 - A commit report needs a "new commit" event after both stores (the head-move row and a revision whose `head` changed). It also needs, per check, whether any input of its closure differs between the commit and the working tree. `context.head()` gives only one `dirty` flag today.
 
@@ -132,5 +132,5 @@ L1 is the largest row and the critical path: L5, L6 and L7 need its lanes and re
 
 - `docs/specifications/019-run-triggers/spec.md` D1 to D7 and open question 7; `tasks/wave-1.md`; `research/README.md`.
 - `docs/specifications/004-slow-suites/spec.md` D2, D3, D7 to D10; `011-core/spec.md` C10 (Capacity, Priority, Lint parts); `007` (pytest `slow`).
-- Source at `a51dc345c`: the files named in each section.
+- Source at `15649f3ee`: the files named in each section.
 - Probes: `probes/lanes-survey/make-fixture.mjs`, `instances.mjs` and `cycles.mjs`, run on 2026-11-03 against Vitest 5.0.3 (`node_modules/vitest/package.json`), with the fixtures under `$TMPDIR`.

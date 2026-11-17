@@ -2,15 +2,15 @@
 
 ## Verification
 
-Candidate: `4e9117fb6d85d69ca13b73ccefff83277f1fa15d` (`cand/0.1.418`).
-Range: `e9eba1e36..4e9117fb6`, the two commits after main's documentation head:
-`9498a1aa3` (018-10) and `4e9117fb6` (0.1.418 bundles).
+Candidate: `c2ccdd95bcf3d613811d69ac6ecd7616e393974d` (`cand/0.1.418`).
+Range: `3c63663f8..c2ccdd95b`, the two commits after main's documentation head:
+`f1b991cd9` (018-10) and `c2ccdd95b` (0.1.418 bundles).
 
 Commands below ran on the clean candidate unless marked as a disposable experiment.
 
 | Command | Actual result |
 | --- | --- |
-| `git rev-parse HEAD` | `4e9117fb6d85d69ca13b73ccefff83277f1fa15d`; matches the brief. |
+| `git rev-parse HEAD` | `c2ccdd95bcf3d613811d69ac6ecd7616e393974d`; matches the brief. |
 | `git status --short` before and after candidate checks | Empty. |
 | `pnpm install --frozen-lockfile` | Cezar supplied installed dependencies before this session; not repeated, as instructed. No independent install claim. |
 | `pnpm run lint` | Exit 0. `Checked 2878 files in 1467ms. No fixes applied.` |
@@ -59,7 +59,7 @@ test("clamp", () => expect(clamp(-1, 0, 10)).toBe(0));
 ```
 
 Disposable experiment: archive the candidate, link its dependencies, and run this single fixture through `covering()`, `openFixture("own-provider", ...)`, `adapter.run`, and `buildRecord`.
-First replace only the provider with `git show e9eba1e36:src/core/code/coverage/provider.mjs`; then restore the candidate provider and repeat the identical fixture.
+First replace only the provider with `git show 3c63663f8:src/core/code/coverage/provider.mjs`; then restore the candidate provider and repeat the identical fixture.
 Do not mock `fs`, `crypto` or `path` in this experiment. Both runs complete successfully and produce an ordinary record with `unread: []`.
 
 | Provider | Provider version | Covered lines of `src/math.ts` |

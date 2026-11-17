@@ -1,6 +1,6 @@
 # Store writers in source (Q2), throwaway collation
 
-Read at `0fa197e09` by a sub-agent of researcher a1540808; spot-checked against `src/core/store/{open,connection,busy}.ts`, `src/cli/{hold,stopped-mark,store-writes}.ts`, `src/core/daemon/open.ts`, `src/core/delivery/{held-connection,prepared,code-source}.ts`, `src/harness/shared/hand-off.ts`, `src/core/daemon/lifecycle.ts`. Paths are under `src/`.
+Read at `777338026` by a sub-agent of researcher a1540808; spot-checked against `src/core/store/{open,connection,busy}.ts`, `src/cli/{hold,stopped-mark,store-writes}.ts`, `src/core/daemon/open.ts`, `src/core/delivery/{held-connection,prepared,code-source}.ts`, `src/harness/shared/hand-off.ts`, `src/core/daemon/lifecycle.ts`. Paths are under `src/`.
 
 ## Callers of `openStore`
 

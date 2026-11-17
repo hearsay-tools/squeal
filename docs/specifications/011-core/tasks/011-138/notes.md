@@ -1,6 +1,6 @@
 # 011-138: the daily measurement counts the files a cancelled run never started
 
-Worker fc86484d, resumed by the wave 28 coordinator after row 011-137, 2026-10-24. Shape: slice (measurement). The row as rescoped on the board at main 24cec018d: the 011-137 survey's finding 4 goes into `research/probes/host-load/waste.mjs`.
+Worker fc86484d, resumed by the wave 28 coordinator after row 011-137, 2026-10-24. Shape: slice (measurement). The row as rescoped on the board at main d662bfe9b: the 011-137 survey's finding 4 goes into `research/probes/host-load/waste.mjs`.
 
 ## 1. What changed
 

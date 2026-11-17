@@ -1,6 +1,6 @@
 # Research: runner-split
 
-Row 021-04, topic `runner-split` of `README.md` (second round). Researcher, 2026-11-11. It extends `../../019-run-triggers/research/remote-runner.md` (019-04) and `remote-execution.md` (021-02) and does not repeat them. Squeal source read at `0fa197e09` (0.1.430). Vitest 5.0.3 and Vite 8.3.2 under this repository's `node_modules`; the fixture installed Vitest 5.0.3 with Vite 8.3.5. The remote is a throwaway container on this host (`node:24.22.1-bookworm-slim` with `openssh-server`), reached over SSH on loopback with a kept connection (`ControlMaster`). Keys, `known_hosts` and the SSH `HOME` lived under `$TMPDIR`. Probes: `probes/runner-split/` (throwaway). Official docs fetched 2026-11-11.
+Row 021-04, topic `runner-split` of `README.md` (second round). Researcher, 2026-11-11. It extends `../../019-run-triggers/research/remote-runner.md` (019-04) and `remote-execution.md` (021-02) and does not repeat them. Squeal source read at `777338026` (0.1.430). Vitest 5.0.3 and Vite 8.3.2 under this repository's `node_modules`; the fixture installed Vitest 5.0.3 with Vite 8.3.5. The remote is a throwaway container on this host (`node:24.22.1-bookworm-slim` with `openssh-server`), reached over SSH on loopback with a kept connection (`ControlMaster`). Keys, `known_hosts` and the SSH `HOME` lived under `$TMPDIR`. Probes: `probes/runner-split/` (throwaway). Official docs fetched 2026-11-11.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
@@ -57,7 +57,7 @@ So a remote worker still needs the tree and `node_modules` on its disk, and then
 
 ### Q3. Prototype
 
-`host.mts` runs on the remote as `node --import tsx host.mts <root>`, from a clone of Squeal at `0fa197e09` mounted read-only. That mount stands for "Squeal installed on the remote at the local version". The host imports `src/runners/vitest/index.ts`, builds the adapter with `observe: () => true` and `cache: false`, and answers one JSON request per line. It also answers `blobs(paths)`: the git blob id of each path, which is Squeal's file hash (018 `result-import` Q1). Stray output cannot be read as a reply: each reply line starts with a marker, and the host sends its own stdout to stderr.
+`host.mts` runs on the remote as `node --import tsx host.mts <root>`, from a clone of Squeal at `777338026` mounted read-only. That mount stands for "Squeal installed on the remote at the local version". The host imports `src/runners/vitest/index.ts`, builds the adapter with `observe: () => true` and `cache: false`, and answers one JSON request per line. It also answers `blobs(paths)`: the git blob id of each path, which is Squeal's file hash (018 `result-import` Q1). Stray output cannot be read as a reply: each reply line starts with a marker, and the host sends its own stdout to stderr.
 
 `driver.mjs` plays the daemon. Per edit it appends a line to `src/math.ts` and rsyncs that path (`--files-from`). It calls `invalidate` and `affected`, which gave both test files, since `greet.ts` imports `math.ts`, and calls `closure` for each. It then compares the remote's blob ids of the closure and environment files with the local ones, calls `run`, and compares again over the closure plus the observed paths. The fixture's node_modules (40 MB, 1,834 files) was copied once by rsync in 0.79 s, standing for an install on the remote.
 
@@ -174,7 +174,7 @@ Not determined:
 
 ## Sources
 
-- **Squeal at `0fa197e09`:**
+- **Squeal at `777338026`:**
   - `src/core/types/runner.ts`
   - `src/runners/vitest/index.ts`, `load.ts`, `adapter.ts:235`, `width.ts`, `environment.ts`, `observe.ts`, `coverage.ts`, `sources.ts`, `stamp.ts`, `run.ts`
   - `src/runners/observe/runtime.ts`

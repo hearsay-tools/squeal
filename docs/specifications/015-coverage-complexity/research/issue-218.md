@@ -32,7 +32,7 @@ gh issue list --repo hearsay-tools/squeal --state open --label triaged --limit 2
 
 **Inferred:** passes the decision filter if diagnostic history preserves provenance and uncertainty: it can improve useful feedback without forcing another whole-suite run. Owner: 015 D11; related D4/D8/D9. Spec 011 result validity must remain unchanged.
 
-Checked origin/main board at `c5481f1a8d3e51d0d7418dffdaaa1cc4e150d5d0` for the issue, reach symptom, loaded-only wording and named `test-factories` helper. No existing issue row or exact duplicate found. The #217 row mentions #218 as a distinct concern. Open issues, including `triaged`, show #183 (savings overstated when alternate routes remain) and #217 (reach discovery), not the missing historical split. #135 concerns pending code reports after installation, not reach history.
+Checked origin/main board at `495da3364e14b9514aa762fd5eeb768867b871cc` for the issue, reach symptom, loaded-only wording and named `test-factories` helper. No existing issue row or exact duplicate found. The #217 row mentions #218 as a distinct concern. Open issues, including `triaged`, show #183 (savings overstated when alternate routes remain) and #217 (reach discovery), not the missing historical split. #135 concerns pending code reports after installation, not reach history.
 
 ## Human decision
 

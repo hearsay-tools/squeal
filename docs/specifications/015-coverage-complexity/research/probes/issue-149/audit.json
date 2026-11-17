@@ -1,7 +1,7 @@
 {
   "node": "v24.22.1",
   "vitest": "5.0.3",
-  "commit": "4204b3d479ec241424d1ba629f904caf95076c15",
+  "commit": "43a16f75c14e900bac6e1685fff91e085f173744",
   "summary": [
     {
       "name": "separate-config",

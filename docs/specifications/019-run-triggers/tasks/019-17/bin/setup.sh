@@ -3,7 +3,7 @@
 # The case root /home/squeal-e2e/runs/d1917, as squeal-e2e; scratch /tmp/dogfood-019-17.
 #   sh setup.sh <step>...
 #     dirs     the case directories
-#     pin      `git archive 4163f5de8` (main at 0.1.398, unreleased) of both plugins, the Codex
+#     pin      `git archive 131e6cd9e` (main at 0.1.398, unreleased) of both plugins, the Codex
 #              runtime and both marketplace manifests into pin/, each marketplace renamed
 #              `hearsay`, so the plugin id is squeal@hearsay as a released install's
 #     bundles  git bundles: cezarion at its HEAD (read only on ~/projects/cezar), and
@@ -22,7 +22,7 @@ R=/home/squeal-e2e/runs/d1917
 W=/tmp/dogfood-019-17
 WT=$(cd "$here/../../../../../.." && pwd)
 CEZ=~/projects/cezar
-REF=4163f5de8
+REF=131e6cd9e
 as() { dir=$1; shift; node "$here/as-e2e.mjs" "$R" "$R/$dir" "$@"; }
 e2e() { sudo -n -u squeal-e2e "$@"; }
 data=$R/codex/plugins/data/squeal-hearsay

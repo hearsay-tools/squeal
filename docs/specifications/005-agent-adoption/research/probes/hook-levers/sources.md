@@ -33,7 +33,7 @@ https://github.com/openai/codex/tree/rust-v0.160.1, downloaded tag archive to th
 
 ## Pinned Squeal source
 
-Squeal 0.1.67, commit `9848df0571da95cdfd0fe7b8303873deb0fa8414`:
+Squeal 0.1.67, commit `dd2eb90ba451e7b24881b10c7241c7184d728fa0`:
 
 - `src/cli/run.ts:12-118`: only `--all`, `--force`, `--wait` (and separate slow mode); wait polls indefinitely, checks daemon liveness, formats status, then `return end === "completed" ? 0 : 1`. No failure-count test in the exit decision.
 - `src/harness/shared/stop.ts:60-130,163-197`: policy checks the current checkpoint, returns a blocking reason, never queues a run; `stopHookActive` suppresses a second policy block.

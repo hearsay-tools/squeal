@@ -1,6 +1,6 @@
 # 011-201 notes: a pass reads HEAD from git when the git dir reader cannot
 
-Worker W1 of wave 45, 2026-10-26. Commit `50976ff37`, from main `eb417c9b1`.
+Worker W1 of wave 45, 2026-10-26. Commit `50976ff37`, from main `c145ab82d`.
 
 ## The change
 

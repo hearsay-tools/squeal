@@ -1,6 +1,6 @@
 # 011-67: a failure recorded under load names its load retry
 
-Wave 18 W2, 2026-10-23, from main e051dfc1a (0.1.270). gh-52, guidance only: 011 C5 is unchanged.
+Wave 18 W2, 2026-10-23, from main 42fa5b0ee (0.1.270). gh-52, guidance only: 011 C5 is unchanged.
 
 ## What changed
 

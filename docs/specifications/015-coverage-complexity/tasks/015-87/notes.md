@@ -1,6 +1,6 @@
 # 015-87 notes: keep the code settings through a config that does not parse
 
-Worker d97c38c5, 2026-10-27, from `tasks/wave-23.md` W1. Shape: repair. Baseline `8e3e616b6` (released 0.1.365 plus docs). Spec: D1 as amended 2026-10-27; 011 C10, *Projects at a reload*.
+Worker d97c38c5, 2026-10-27, from `tasks/wave-23.md` W1. Shape: repair. Baseline `f0fef4ebd` (released 0.1.365 plus docs). Spec: D1 as amended 2026-10-27; 011 C10, *Projects at a reload*.
 
 ## Answer
 

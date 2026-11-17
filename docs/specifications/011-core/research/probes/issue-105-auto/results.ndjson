@@ -1,4 +1,4 @@
-{"label": "versions", "value": {"at": "2026-10-26T23:16:02Z", "cezar": "ecdde7685b08d80b4516b9af79edf12444be2674", "node": "v24.21.0", "squeal": "3c6d3201bc2b6d3faa1be14e9842972cef371104", "vitest": "5.0.3"}}
+{"label": "versions", "value": {"at": "2026-10-26T23:16:02Z", "cezar": "ecdde7685b08d80b4516b9af79edf12444be2674", "node": "v24.21.0", "squeal": "ee07d24fb8358a9f571f2bb7e1662cd5e51f9fb0", "vitest": "5.0.3"}}
 {"label": "cezar-quick-check", "value": "ok"}
 {"label": "cezar-schema", "value": {"meta": ["key", "value"], "results": ["check_id", "key", "outcome", "duration_ms", "location_path", "location_line", "location_column", "fingerprint", "failure_id", "worktree_id", "revision", "commit_sha", "dirty", "run_id", "recorded_at", "last_used_at"], "revisions": ["worktree_id", "number", "created_at", "head", "dirty", "trigger", "changes"], "test_file_keys": ["worktree_id", "project", "path", "key", "revision", "pending"]}}
 {"label": "cezar-ignore-source", "value": "ecdde7685b08d80b4516b9af79edf12444be2674"}
@@ -8,7 +8,7 @@
 {"label": "cezar-inventory-timing", "value": {"load1_after": 25.88, "load1_before": 31.61, "seconds": 41.388}}
 {"label": "squeal-quick-check", "value": "ok"}
 {"label": "squeal-schema", "value": {"meta": ["key", "value"], "results": ["check_id", "key", "outcome", "duration_ms", "location_path", "location_line", "location_column", "fingerprint", "failure_id", "worktree_id", "revision", "commit_sha", "dirty", "run_id", "recorded_at", "last_used_at", "runner"], "revisions": ["worktree_id", "number", "created_at", "head", "dirty", "trigger", "changes"], "test_file_keys": ["worktree_id", "project", "path", "key", "revision", "pending"]}}
-{"label": "squeal-ignore-source", "value": "1dfde8b55435433c229caa49131f63da1a5076ed"}
+{"label": "squeal-ignore-source", "value": "9d697ede6e287966b0cf1d204d7ffde898db422b"}
 {"label": "ignore-refused", "value": ["test/fixtures/node-test/edge/node_modules/@edge/lib/"]}
 {"label": "ignore-refused", "value": ["test/fixtures/node-test/edge/node_modules/@edge/lib/src/"]}
 {"label": "ignore-refused", "value": ["test/fixtures/node-test/monorepo/node_modules/@mono/dual/"]}

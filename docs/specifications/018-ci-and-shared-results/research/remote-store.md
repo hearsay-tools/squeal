@@ -1,6 +1,6 @@
 # Research: remote-store (018-03)
 
-Researcher: row 018-03, 2026-10-31. Source read at commit `6053220eb` of this repository. Store measured on a copy of this repository's live store, taken 2026-10-31 22:42. Host: 24 CPUs, one-minute load 8.7 to 11.0 during every timing (below the CPU count, so timings are reported). Node 24.22.1, git 2.43.0. External docs retrieved 2026-10-31.
+Researcher: row 018-03, 2026-10-31. Source read at commit `9beda4d78` of this repository. Store measured on a copy of this repository's live store, taken 2026-10-31 22:42. Host: 24 CPUs, one-minute load 8.7 to 11.0 during every timing (below the CPU count, so timings are reported). Node 24.22.1, git 2.43.0. External docs retrieved 2026-10-31.
 
 ## Questions answered
 
@@ -115,7 +115,7 @@ Do not build a remote store. Keep the one local SQLite store as the only thing t
 
 ## Sources
 
-- This repository at `6053220eb`: `src/core/store/schema.ts`, `src/core/store/repos/results.ts`, `test-files.ts`, `replaced.ts`, `unknown-runs.ts`, `src/core/scheduler/bootstrap.ts`, `accept.ts`, `src/core/state/inherited.ts`, `src/core/keys/observed.ts`, `key-format.ts`; `docs/decisions/0002-content-keyed-shared-store.md`.
+- This repository at `9beda4d78`: `src/core/store/schema.ts`, `src/core/store/repos/results.ts`, `test-files.ts`, `replaced.ts`, `unknown-runs.ts`, `src/core/scheduler/bootstrap.ts`, `accept.ts`, `src/core/state/inherited.ts`, `src/core/keys/observed.ts`, `key-format.ts`; `docs/decisions/0002-content-keyed-shared-store.md`.
 - Probes: `research/probes/remote-store/` (README lists each script).
 - Turborepo: https://turborepo.dev/docs/core-concepts/remote-caching, https://turborepo.dev/docs/openapi, https://turborepo.dev/api/remote-cache-spec (spec 1.0.0), https://turborepo.dev/docs/reference/configuration, https://turborepo.dev/docs/reference/run (retrieved 2026-10-31, "Latest").
 - Nx: https://nx.dev/docs/kb/self-hosted-caching (updated 2026-10-20), https://nx.dev/docs/kb/access-tokens, https://nx.dev/blog/cve-2025-36852-critical-cache-poisoning-vulnerability-creep (retrieved 2026-10-31).

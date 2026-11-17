@@ -2,7 +2,7 @@
 
 Recommendation: keep the rule that every selected file must finish (D3.4, D5), and fix what misled the reporter. Remove the false "no-loader" line for setup files. Let the estimate react to host load. Name the setup-file selection before the run. A rule that lets a sample stand for the whole suite read `pass` while 28 of 300 files failed in the probe (`late-breaks`). It should be offered to the human only as a separate outcome that says the tests did not all run, never as `pass`.
 
-Examined 2026-11-14: Squeal main `4fe1a2d29` (0.1.477 in `package.json`), the released 0.1.475 bundle for probes, the 0.1.467 bundle (the reporter's version) read only, Vitest 5.0.3 in this repository, Node 26.13.0, 24 vCPUs. Cezar `cc34d00d6` and its Squeal store, both read only. The one-minute load was 70 to 88 from 08:50Z. All live runs ran 10:16Z–10:23Z at a one-minute load of 9.5 to 23.2 at their start, below the 24 CPUs. Each run's load is in the table under Q1.
+Examined 2026-11-14: Squeal main `cba6bdf05` (0.1.477 in `package.json`), the released 0.1.475 bundle for probes, the 0.1.467 bundle (the reporter's version) read only, Vitest 5.0.3 in this repository, Node 26.13.0, 24 vCPUs. Cezar `cc34d00d6` and its Squeal store, both read only. The one-minute load was 70 to 88 from 08:50Z. All live runs ran 10:16Z–10:23Z at a one-minute load of 9.5 to 23.2 at their start, below the 24 CPUs. Each run's load is in the table under Q1.
 
 | # | Question | Answer | Tag |
 | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ For the human: **A** (diagnostics, no rule change), as one row: no false no-load
 ## Sources
 
 - Issue https://github.com/hearsay-tools/squeal/issues/212 and its comments; https://github.com/hearsay-tools/squeal/issues/175 (`gh issue view`, 2026-11-14). `research/issue-212.md`, `research/gate-budget.md`, `research/wide-import.md`; spec 020 D3, D5, D6, D14, D17, D18, `status.md`; board rows gh-212, 020-17.
-- Squeal `4fe1a2d29`: `src/core/code/gate/{evaluate,rule,prerun,order,plan,estimate,evidence,types}.ts`, `src/cli/{code-gate-prerun,code-gate-durations}.ts`, `src/runners/vitest/{adapter,affected,project}.ts`, `src/core/store/repos/results.ts`, `src/core/scheduler/files.ts`. Bundles `~/.claude/plugins/cache/hearsay/squeal/{0.1.467,0.1.475}/dist/cli/squeal.mjs`.
+- Squeal `cba6bdf05`: `src/core/code/gate/{evaluate,rule,prerun,order,plan,estimate,evidence,types}.ts`, `src/cli/{code-gate-prerun,code-gate-durations}.ts`, `src/runners/vitest/{adapter,affected,project}.ts`, `src/core/store/repos/results.ts`, `src/core/scheduler/files.ts`. Bundles `~/.claude/plugins/cache/hearsay/squeal/{0.1.467,0.1.475}/dist/cli/squeal.mjs`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/index.DpLw24bj.js`, `plugin.d.BsjqSb4-.d.ts`.
 - Jest `docs/CLI.md` (https://raw.githubusercontent.com/jestjs/jest/main/docs/CLI.md) and `packages/jest-core/src/SearchSource.ts` at `aa88f7cf0`.
 - https://turborepo.com/docs/reference/run, https://turborepo.com/docs/reference/configuration; https://nx.dev/docs/features/ci-features/affected, https://nx.dev/docs/reference/inputs; https://bazel.build/reference/command-line-reference, https://bazel.build/reference/test-encyclopedia; https://testmon.org/, https://testmon.org/blog/determining-affected-tests/, https://github.com/tarpas/pytest-testmon at `86d43f1b5` (all fetched 2026-11-14).

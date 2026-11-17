@@ -5,7 +5,7 @@ and provenance evidence; no implementation is authorized.
 
 Research date: 2026-10-16 UTC (2026-10-17 Warsaw). Target installed Squeal
 **0.1.199**, Node **v24.21.0**, git **2.43.0**, Linux, 24 available CPUs.
-Repository sources/specs read at `63c2f9abde46b97e978bb1171303c8d716e0b689`
+Repository sources/specs read at `3c399007fad890c81206642037321df977218c1e`
 (`package.json` version 0.1.203).
 Bounded documentation-only investigation; the live reproduction was **not
 reproduced because the mandatory launch load check refused it**. No inference
@@ -17,8 +17,8 @@ below is a new successful reproduction.
 | --- | --- | --- |
 | 1 | Does installed 0.1.199 reproduce #16 through an explicit slow request? | Not determined in this run: load 24.17 exceeded 24 CPUs before launch. **verified by experiment**, load gate and CLI version only, 0.1.199. |
 | 2 | Does a built-first control pass? | Not determined here: control skipped under the same load decision. Prior #3 research records missing-output failure and built-first success on 0.1.199. **inferred**, from that retained experiment, not repeated. |
-| 3 | What do D5-D9 currently guarantee? | Artifact keying, constrained inheritance and provenance, with policy-dependent Stop; they do not promise to build or gate on a build prerequisite. **read in source code**, spec/status at `63c2f9ab`. |
-| 4 | Is “declared artifact unknown for 3” a missing-build detector? | No: the current implementation counts missing recorded artifact provenance. Its cause in #16 is not determined. **read in source code**, `63c2f9ab`; no 0.1.199 runtime verification here. |
+| 3 | What do D5-D9 currently guarantee? | Artifact keying, constrained inheritance and provenance, with policy-dependent Stop; they do not promise to build or gate on a build prerequisite. **read in source code**, spec/status at `3c399007`. |
+| 4 | Is “declared artifact unknown for 3” a missing-build detector? | No: the current implementation counts missing recorded artifact provenance. Its cause in #16 is not determined. **read in source code**, `3c399007`; no 0.1.199 runtime verification here. |
 | 5 | Duplicate overlap and new information? | Same missing-output prerequisite problem as #3; #16 adds an identified repository/head, explicit slow request, a reported 40-minute delay and build-only recovery. **inferred**, issue snapshots read 2026-10-16, both describing 0.1.199-era behavior. |
 
 ## Commands and observed output
@@ -102,7 +102,7 @@ decision.
 
 ## Contract and open questions
 
-**Read in source code, `63c2f9ab`:** D5 keys declared artifacts; D6 requires an
+**Read in source code, `3c399007`:** D5 keys declared artifacts; D6 requires an
 existing declared non-test artifact for cross-worktree inheritance, but permits
 reuse within the worktree. `src/core/slow/inherit.ts:18` implements that rule;
 `src/core/scheduler/slow-tier.ts:554` emits a note for missing artifact matches.
@@ -113,7 +113,7 @@ the later 004-62 amendment, shipped in 0.1.202 per `status.md`, makes guidance
 depend on `stop.requireSlowSuite`. That text correction does not itself address
 missing generated artifacts.
 
-**Read in source code, `63c2f9ab`:** `src/core/state/slow.ts:151` increments
+**Read in source code, `3c399007`:** `src/core/state/slow.ts:151` increments
 `artifactUnknown` when the stored artifact record is absent;
 `src/core/state/slow-text.ts:98` renders the partial “unknown for N” clause. This
 is distinct from D5's unmatched-artifact note. Do not infer that exactly three
@@ -129,6 +129,6 @@ build handling, and the policy/result semantics of any future prerequisite.
 ## Sources
 
 - [Issue #16](https://github.com/hearsay-tools/squeal/issues/16), including [recovery comment](https://github.com/hearsay-tools/squeal/issues/16#issuecomment-6224164084); fetched snapshots above.
-- [Issue #3](https://github.com/hearsay-tools/squeal/issues/3); `issue-3-preconditions.md` and `probes/issue-3-preconditions/` at `63c2f9ab`.
+- [Issue #3](https://github.com/hearsay-tools/squeal/issues/3); `issue-3-preconditions.md` and `probes/issue-3-preconditions/` at `3c399007`.
 - `../spec.md` D5-D9, goal 8; `../status.md` 004-62; `docs/vision.md` principles 1, 2, 5, 8.
 - Installed `0.1.199/skills/squeal/SKILL.md` step 4 and `references/commands.md`; installed CLI path above. Source-code claims are pinned separately to the repository commit, not assumed identical to the installed bundle.

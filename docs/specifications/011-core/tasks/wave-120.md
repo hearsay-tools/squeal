@@ -20,7 +20,7 @@ Done when: the new test failed before and passes; a real 1 h set-back and set-fo
 
 ## R1 (W1): review of cand/0.1.540
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.540` at `f6ddf93e1f4c66d5c35a8dccbead6ac494d61825`; candidate CI run 44035727756. Range `b85898220..f6ddf93e1f4c66d5c35a8dccbead6ac494d61825` (main at 0.1.539): worker 58724cf5's one commit (row 011-390), cherry-picked without conflict, then the 0.1.540 raise and bundles. Read: board row 011-390; this file's W1; `tasks/011-390/notes.md`; `reviews/0.1.531.md` S1; `tasks/011-389/notes.md`; `src/core/scheduler/calendar-steps.ts`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.540` at `5dda35e80d470703e3e8998b6ca1358fd76e9c68`; candidate CI run 44035727756. Range `19a3155d0..5dda35e80d470703e3e8998b6ca1358fd76e9c68` (main at 0.1.539): worker 58724cf5's one commit (row 011-390), cherry-picked without conflict, then the 0.1.540 raise and bundles. Read: board row 011-390; this file's W1; `tasks/011-390/notes.md`; `reviews/0.1.531.md` S1; `tasks/011-389/notes.md`; `src/core/scheduler/calendar-steps.ts`.
 
 Check, each as proven, plausible or unverified:
 

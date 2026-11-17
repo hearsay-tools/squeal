@@ -1,6 +1,6 @@
 # 011-178: `backlog-slots.test.ts` checks the slot schedule by events, not by the wall clock
 
-Worker 0b0387ed, wave 31 W9, from main at 36ee11d02 (after 0.1.291), 2026-10-24. Shape: repair (test). Only `test/scheduler/backlog-slots.test.ts` changed; `slots-fixture.ts`, `timed-runner.ts` and `src/` did not.
+Worker 0b0387ed, wave 31 W9, from main at 95f26c192 (after 0.1.291), 2026-10-24. Shape: repair (test). Only `test/scheduler/backlog-slots.test.ts` changed; `slots-fixture.ts`, `timed-runner.ts` and `src/` did not.
 
 ## 1. Why the two bounds failed on a loaded host
 

@@ -1,6 +1,6 @@
 # 016-01 Squeal's seams today
 
-Brief: `seams-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24. Examined: this repository at `0822a4440` (`package.json` 0.1.296). Probes: `probes/seams/` (a static import and name scan, and a minimal adapter typecheck). Line counts are `wc -l` of non-test product files.
+Brief: `seams-brief.md`. Researcher: Claude Opus 5.5, 2026-10-24. Examined: this repository at `a52303814` (`package.json` 0.1.296). Probes: `probes/seams/` (a static import and name scan, and a minimal adapter typecheck). Line counts are `wc -l` of non-test product files.
 
 ## Questions answered
 
@@ -158,7 +158,7 @@ Limits: all of the above is a static reading at one commit. Nothing was measured
 
 ## Sources
 
-All at commit `0822a4440`, 2026-10-24, read in this worktree:
+All at commit `a52303814`, 2026-10-24, read in this worktree:
 
 - `src/core/types/runner.ts`, `check.ts`, `keys.ts`, `delivery.ts`, `policy.ts`, `code.ts`, `status.ts`
 - `src/core/daemon/{daemon,runner,runner-set,composite-runner,slow-instance,node-test-runners,pytest-runners,lifecycle,version}.ts`

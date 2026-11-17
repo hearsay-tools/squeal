@@ -1,6 +1,6 @@
 # 015-60 notes: the writer-feed timing bound
 
-Worker 7c66d45b, 2026-10-26. Brief: `tasks/wave-11.md` W1. Shape: repair. Starts from main at `edb138161`. Only `test/code/coverage/writer-feed.test.ts` changed. `test/code/pass/turns.ts` is reused as it is. No `src/` change.
+Worker 7c66d45b, 2026-10-26. Brief: `tasks/wave-11.md` W1. Shape: repair. Starts from main at `1e8b41dfd`. Only `test/code/coverage/writer-feed.test.ts` changed. `test/code/pass/turns.ts` is reused as it is. No `src/` change.
 
 ## What changed
 
@@ -10,7 +10,7 @@ The wall-time ratio is retired, not widened. It is the weaker check: it failed o
 
 ## CI values of the old line (`reconciliation pass over 2000`)
 
-Every Node 22 job run of the case on GitHub's runners from its first landing (`cand/0.1.305`, 2026-10-25 03:13Z) to main `d059311a6` (2026-10-26 01:56Z): 89 job runs of 103 run attempts on main and `cand/*`. The other 14 attempts are 7 reruns that did not run this job again (their log repeats the earlier attempt's line, counted once), 6 runs from before the test was on their branch, and 1 cancelled run. Collected with `gh run view <id> --attempt <n> --log`, one line each. Times in ms; "payload map" is `heavy()`'s wall time for one payload on the main thread; load is the value the test read.
+Every Node 22 job run of the case on GitHub's runners from its first landing (`cand/0.1.305`, 2026-10-25 03:13Z) to main `f522d7c38` (2026-10-26 01:56Z): 89 job runs of 103 run attempts on main and `cand/*`. The other 14 attempts are 7 reruns that did not run this job again (their log repeats the earlier attempt's line, counted once), 6 runs from before the test was on their branch, and 1 cancelled run. Collected with `gh run view <id> --attempt <n> --log`, one line each. Times in ms; "payload map" is `heavy()`'s wall time for one payload on the main thread; load is the value the test read.
 
 - Beside / alone: 0.94x to 3.10x, median 1.62x, 90th percentile 2.25x. One run in 89 at 3x or more (the failure, main CI 40246921578 attempt 1), six at 2.5x or more.
 - The pass alone: 44 to 148 ms. Beside: 75 to 288 ms. A payload's map: 260 to 517 ms. Load: 3.2 to 7.6.

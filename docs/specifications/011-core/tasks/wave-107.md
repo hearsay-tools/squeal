@@ -26,7 +26,7 @@ All: lint, typecheck and `squeal status --wait 60000` on the changed paths; repo
 
 ## R1 (W1 and W2): review of cand/011-368-358
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-368-358` at `93e435f8cb47a82cbe1a95ee87b14a435368fb1b`; candidate CI run 43786229992. Test files and notes only: no `src/` change, no version raise. Range `8fbe8355a..93e435f8cb47a82cbe1a95ee87b14a435368fb1b`: worker c7bf1fcf's three commits (rows 011-358, 011-359) and worker f67dd95b's seven (row 011-368, with review `011-363-367.md` S1 and N1), cherry-picked without conflict. Read: board rows 011-358, 011-359, 011-368; this file's W1 and W2; `tasks/011-358/notes.md`, `tasks/011-368/notes.md`; `reviews/011-363-367.md` (S1, N1).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-368-358` at `23f842b850b17b4420fa481c7eca462474e85b32`; candidate CI run 43786229992. Test files and notes only: no `src/` change, no version raise. Range `ebd11dbde..23f842b850b17b4420fa481c7eca462474e85b32`: worker c7bf1fcf's three commits (rows 011-358, 011-359) and worker f67dd95b's seven (row 011-368, with review `011-363-367.md` S1 and N1), cherry-picked without conflict. Read: board rows 011-358, 011-359, 011-368; this file's W1 and W2; `tasks/011-358/notes.md`, `tasks/011-368/notes.md`; `reviews/011-363-367.md` (S1, N1).
 
 Check, each as proven, plausible or unverified:
 
@@ -39,7 +39,7 @@ Coordinator at the candidate: lint and typecheck pass; 14 files run directly pas
 
 ## R2 (W3): review of cand/0.1.519
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.519` at `5e972cd7fb5598fa3dad2829e6ad9d91e74c1a17`; candidate CI run 43792523395. Range `50c8a39c7..5e972cd7fb5598fa3dad2829e6ad9d91e74c1a17`: worker e042ffdf's two commits (row 011-370), cherry-picked without conflict, then the 0.1.519 raise and bundles. Read: board row 011-370; this file's W3; `tasks/011-370/notes.md`; `../quality/2026-11-15-card-7.md` (S2, S3, S5, S6, S8 to S11).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.519` at `96602fc95d4c68411159ff6c41b77bf22aa9ff59`; candidate CI run 43792523395. Range `d318294ec..96602fc95d4c68411159ff6c41b77bf22aa9ff59`: worker e042ffdf's two commits (row 011-370), cherry-picked without conflict, then the 0.1.519 raise and bundles. Read: board row 011-370; this file's W3; `tasks/011-370/notes.md`; `../quality/2026-11-15-card-7.md` (S2, S3, S5, S6, S8 to S11).
 
 Check, each as proven, plausible or unverified: the removed exports have no user (in `src/`, `test/`, `evals/`, `scripts/` and the bundle entry points); the `#notify` to `#post` rename and the intake's `checkYields` hook change no behaviour; the comments describe the code as it is; the `GLOSSARY.md` entries match `step-events.ts` (the worker's wording for "Scheduler event" in particular); the five deleted `step.test.ts` rows and two `tier-yields-bound` checks are really covered by `decide-yields.test.ts`; the `tier-yields-running` to `tier-yields-text` merge keeps every check; `movableClock` (in `quiet-clock.ts`, outside the brief's list) had no user; nothing a user sees changes.
 

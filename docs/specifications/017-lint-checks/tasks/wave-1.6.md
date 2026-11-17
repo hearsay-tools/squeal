@@ -23,7 +23,7 @@ Done when the new tests pass, `npx vitest run test/lint/` passes, lint and typec
 
 ## Final review of the candidate (0.1.351)
 
-Use /reviewer. This is the last review of wave 1 (the human, 2026-10-26); a FAIL goes to the human. The candidate is `cand/0.1.351` at `e47e19d58`, on main `a6300f3af` (0.1.349). Whole wave 1 range `a6300f3af..e47e19d58`; this round's repair `64314f79c..e47e19d58`: worker 2e373245's R3 (`src/core/lint/pass/unlisted.ts`, the refresh per moved input in `session.ts`, the one listing read per pass in `run.ts`, `LINT_KEY` 2) and the version raise with the bundle commit. Write `docs/specifications/017-lint-checks/reviews/0.1.351.md` and commit it alone on your branch.
+Use /reviewer. This is the last review of wave 1 (the human, 2026-10-26); a FAIL goes to the human. The candidate is `cand/0.1.351` at `c9245eaf6`, on main `f413e50c0` (0.1.349). Whole wave 1 range `f413e50c0..c9245eaf6`; this round's repair `388be3ce8..c9245eaf6`: worker 2e373245's R3 (`src/core/lint/pass/unlisted.ts`, the refresh per moved input in `session.ts`, the one listing read per pass in `run.ts`, `LINT_KEY` 2) and the version raise with the bundle commit. Write `docs/specifications/017-lint-checks/reviews/0.1.351.md` and commit it alone on your branch.
 
 Read: `reviews/0.1.348.md` and `reviews/0.1.348-r2.md`; this file's R3 section; `tasks/017-04/notes.md`, its R3 decisions 14 to 18 and its cost table; D4 and D5 as amended.
 

@@ -1,6 +1,6 @@
 # 011-300: a main-checkout daemon, with today's numbers
 
-Researcher of row 011-300, 2026-11-05 23:40Z to 2026-11-06 00:40Z (Europe/Warsaw 00:40 to 01:40). Brief: `research/main-daemon-2-brief.md`. Read: `research/main-daemon.md` (011-157) and its brief and probes, `research/new-worktree-baseline.md` (011-299) section 4 and probes, `research/restart-baseline.md`, `research/main-pull-checkpoint.md`, `research/main-pull-reuse.md`, `research/daemon-memory.md`, `019-run-triggers/research/load-split.md`; `src/core/scheduler/claims.ts` (`claimOf`, `peekClaim`) at `75173271d`.
+Researcher of row 011-300, 2026-11-05 23:40Z to 2026-11-06 00:40Z (Europe/Warsaw 00:40 to 01:40). Brief: `research/main-daemon-2-brief.md`. Read: `research/main-daemon.md` (011-157) and its brief and probes, `research/new-worktree-baseline.md` (011-299) section 4 and probes, `research/restart-baseline.md`, `research/main-pull-checkpoint.md`, `research/main-pull-reuse.md`, `research/daemon-memory.md`, `019-run-triggers/research/load-split.md`; `src/core/scheduler/claims.ts` (`claimOf`, `peekClaim`) at `44b349b5d`.
 
 Data: copies of cezar's and squeal's stores (`store.sqlite` with `-wal` and `-shm`), taken 2026-11-05T23:47Z. Window as 011-299: 72 h to 2026-11-05T16:50Z. cezar's and squeal's git repositories and their `origin/main` reflogs, read only. No daemon was started, no test ran. Load1 while the probes ran: 9 to 21 (24 CPUs). Probes and re-run steps: `probes/main-daemon-2/README.md`; outputs in `probes/main-daemon-2/results/`.
 
@@ -117,8 +117,8 @@ Do not build it on these numbers. The tradeoff is the same as on 2026-10-23, at 
 ## Sources
 
 - Store copies: `~/projects/{cezar,squeal}/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-11-05T23:47Z; `runs/<id>/report.json` read in place.
-- Git: `rev-list --first-parent origin/main`, `ls-tree -r`, and `logs/refs/remotes/origin/main` of both repositories; cezar origin/main at `9f0941b84` and squeal at `dde59cf8c` when read. `~/projects/{cezar,squeal}/squeal.config.json` for declared inputs.
-- Source at `75173271d`: `src/core/scheduler/claims.ts` (`claimOf`, `peekClaim`).
+- Git: `rev-list --first-parent origin/main`, `ls-tree -r`, and `logs/refs/remotes/origin/main` of both repositories; cezar origin/main at `9f0941b84` and squeal at `9c8c6221c` when read. `~/projects/{cezar,squeal}/squeal.config.json` for declared inputs.
+- Source at `44b349b5d`: `src/core/scheduler/claims.ts` (`claimOf`, `peekClaim`).
 - `ps` and `/proc/<pid>/cwd` of the host's daemons, read only (no main-checkout daemon idle figure taken).
 - Earlier research: `main-daemon.md` and `probes/main-daemon/sig.mjs`, `new-worktree-baseline.md` section 4, `restart-baseline.md`, `019-run-triggers/research/load-split.md`, `edit-load.md` finding 0.
 - Probes: `probes/main-daemon-2/` (README lists each script and the commands; `results/` holds the outputs quoted here).

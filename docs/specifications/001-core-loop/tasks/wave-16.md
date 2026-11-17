@@ -24,7 +24,7 @@ Done when:
 
 ## W2: 001-429, review of cand/0.1.200
 
-Use /reviewer. Shape: review. Pinned to the `cand/0.1.200` SHA named in the spawn. The range is `e0ff15a3..<sha>`: W1's two commits, the bundles, version 0.1.200 and key format 11 (10 shipped in 0.1.199).
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.200` SHA named in the spawn. The range is `0612dadd..<sha>`: W1's two commits, the bundles, version 0.1.200 and key format 11 (10 shipped in 0.1.199).
 
 Read the W1 section above, issue #2, spec 001 D10 as amended on 2026-10-16 and D12. Check that:
 - only `squeal stop` cancels, and the superseded, sessions-gone, reinstall and signal exits still let the tier finish;

@@ -1,6 +1,6 @@
 # An edit made just before `squeal run <group> --wait` (row 011-332)
 
-Research for decision 5 of `research/waits.md` (brief R1 in `tasks/wave-85.md`). Source examined: branch `cez/3214dce5` at `f206c9146` (main as of 2026-11-14). Probe: `probes/group-wait-edits/`. Runs on 2026-11-14 from 09:38Z to 09:50Z.
+Research for decision 5 of `research/waits.md` (brief R1 in `tasks/wave-85.md`). Source examined: branch `cez/3214dce5` at `0773d8906` (main as of 2026-11-14). Probe: `probes/group-wait-edits/`. Runs on 2026-11-14 from 09:38Z to 09:50Z.
 
 **Verdict.** Yes. The daemon takes a `run-group` request without first storing the edits made before it. A client that reaches the daemon before the edit's revision is stored gets a verdict at the revision before the edit, with exit 0 for a failing edit or exit 1 for a passing one. The spawned CLI did not hit it in 24 runs on a 12-file fixture, because its own start-up was slower than the change feed there. Taking the status waits' sync first removed the miss in 24 of 24 runs, at 57 to 233 ms per command.
 
@@ -32,7 +32,7 @@ Per-run records with the load of each run: `probes/group-wait-edits/evidence/<ba
 
 ## Findings
 
-**F1. The request does not wait for the edits made before it.** `Scheduler.requestGroup` hands `groupRequest` to the request intake (`src/core/scheduler/scheduler.ts:676`). Its start rule is a plain `skip` (`request-intake-requests.ts:98`); the narrow run's is too (`narrow-run.ts:118`). Only `fullSuiteRequest` sets `afterPass: true` (`checkpoint-requests.ts:136`), which makes the intake wait for a reconciliation pass that started after the request (`request-intake.ts:118`, `#afterPass`). The daemon's `run-group` handler calls `requestGroup` directly (`daemon.ts:1160`); only the `sync` request runs `this.#loop.reconcile()` first (`daemon.ts:1176`). *read in source code, `f206c9146`.*
+**F1. The request does not wait for the edits made before it.** `Scheduler.requestGroup` hands `groupRequest` to the request intake (`src/core/scheduler/scheduler.ts:676`). Its start rule is a plain `skip` (`request-intake-requests.ts:98`); the narrow run's is too (`narrow-run.ts:118`). Only `fullSuiteRequest` sets `afterPass: true` (`checkpoint-requests.ts:136`), which makes the intake wait for a reconciliation pass that started after the request (`request-intake.ts:118`, `#afterPass`). The daemon's `run-group` handler calls `requestGroup` directly (`daemon.ts:1160`); only the `sync` request runs `this.#loop.reconcile()` first (`daemon.ts:1176`). *read in source code, `0773d8906`.*
 
 **F2. The wait then ends at the old revision.** `queueGroup` queues nothing for a file that is current at the request's revision, so the request answers `No test files of group e2e to run at revision N`. `runWait` reads the store at once (`wait/wait.ts:52`), finds no file of the group pending, and ends `ended` with the verdict at revision N (`wait/table.ts:254`). In the `inproc` batch this happened in every run whose file was current before the edit: 12 of 24, each in 119 to 235 ms. Example, run 1: `Group e2e completed at revision 0: no known failures` with exit 0, while `src/value.ts` returned 2 and the test failed at revision 1. *verified by experiment; read in source code.*
 
@@ -59,6 +59,6 @@ Cost either way: one reconciliation pass per command, about 0.06 to 0.23 s on a 
 
 ## Sources
 
-- `src/core/scheduler/request-intake.ts`, `request-intake-requests.ts`, `checkpoint-requests.ts`, `narrow-run.ts`, `scheduler.ts`; `src/core/daemon/daemon.ts`, `handlers.ts`; `src/core/watcher/change-feed.ts`; `src/cli/run-group.ts`, `run-group-wait.ts`, `wait/wait.ts`, `wait/table.ts`, `wait/reads.ts`, `status-sync.ts`; all at `f206c9146`.
+- `src/core/scheduler/request-intake.ts`, `request-intake-requests.ts`, `checkpoint-requests.ts`, `narrow-run.ts`, `scheduler.ts`; `src/core/daemon/daemon.ts`, `handlers.ts`; `src/core/watcher/change-feed.ts`; `src/cli/run-group.ts`, `run-group-wait.ts`, `wait/wait.ts`, `wait/table.ts`, `wait/reads.ts`, `status-sync.ts`; all at `0773d8906`.
 - `test/cli/run-group-daemon.test.ts`, `test/daemon/helpers.ts` (the fixture and daemon helpers the probe reuses).
 - `probes/group-wait-edits/`: `probe.test.ts`, `vitest.config.ts`, `run-all-modes.sh`, `README.md`, `evidence/`.

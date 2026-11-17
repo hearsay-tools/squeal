@@ -1,6 +1,6 @@
 # 011-235: a full check gives its claim back on one rule
 
-Wave 49 W3, slice. Baseline `89f458320`. Changed files: `src/core/daemon/full-check.ts` and `test/daemon/full-check.test.ts`.
+Wave 49 W3, slice. Baseline `ca405690d`. Changed files: `src/core/daemon/full-check.ts` and `test/daemon/full-check.test.ts`.
 
 ## Cause
 

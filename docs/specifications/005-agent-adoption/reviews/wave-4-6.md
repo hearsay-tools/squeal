@@ -4,13 +4,13 @@ Initial findings written 2026-10-14 06:58 UTC, within 15 minutes of starting; ex
 
 ## Verification
 
-Requested range: `00c98842..8dfe244d`, only commits matching `git log --grep '00[5]-'`. Checkout at verification start: `3cd299ee6527e06f76fe8eadded020f564a03625`. Its sole delta from the endpoint is the review brief and board row; product and tests match `8dfe244d`. Exact-endpoint broad verification is **unverified** under the reviewer rule. The full suite started on a clean tree; only this review document was authored during it, and no product/test file changed. No verification failure is a blocker in itself. No broad check failed.
+Requested range: `00c98842..e36698ee`, only commits matching `git log --grep '00[5]-'`. Checkout at verification start: `d301b71006b0a21b70bbe7abda77ab1402223fdd`. Its sole delta from the endpoint is the review brief and board row; product and tests match `e36698ee`. Exact-endpoint broad verification is **unverified** under the reviewer rule. The full suite started on a clean tree; only this review document was authored during it, and no product/test file changed. No verification failure is a blocker in itself. No broad check failed.
 
 Routine verification output (npm notices retained below):
 
 ```text
 $ git rev-parse HEAD
-3cd299ee6527e06f76fe8eadded020f564a03625
+d301b71006b0a21b70bbe7abda77ab1402223fdd
 $ git status --short
 (empty before verification)
 $ npm ci
@@ -44,13 +44,13 @@ npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install
 
 `npm run build` was omitted by the explicit task instruction. Bundle rebuild/drift is **unverified**. No real CLI, model session, real-home config read, real-CLI suite or command as `squeal-e2e` was run. The normal Vitest include matches `.test.ts`, while the real-CLI cases end in `.real.ts`.
 
-Both failure scenarios were also reproduced against the exact endpoint's unmodified source, exported with `git archive 8dfe244d` into `/tmp/005-42-candidate` and using the installed dependency tree. Both produced the same outputs recorded under the blockers. Those probes do not run Vitest, test/real-cli, model sessions or artifacts, and write only scratch fixtures. The proof is the source seam and concrete outputs, independent of broad verification at the documentation-only child.
+Both failure scenarios were also reproduced against the exact endpoint's unmodified source, exported with `git archive e36698ee` into `/tmp/005-42-candidate` and using the installed dependency tree. Both produced the same outputs recorded under the blockers. Those probes do not run Vitest, test/real-cli, model sessions or artifacts, and write only scratch fixtures. The proof is the source seam and concrete outputs, independent of broad verification at the documentation-only child.
 
 The full run also printed two `repair: gitdir incorrect` notices for scratch scheduler worktrees, a cleanup message about one process left by an earlier run, and Vitest's experimental typecheck warnings. It still exited 0. The separate Squeal background baseline reported two warm-up test failures and then their recovery under the same inputs; those are not the independent-run verdict and were not promoted to blockers.
 
 ## Verdict
 
-**FAIL `8dfe244d`: 2 proven blockers, 1 plausible should-fix, 1 proven nonblocking checkout note.**
+**FAIL `e36698ee`: 2 proven blockers, 1 plausible should-fix, 1 proven nonblocking checkout note.**
 
 ## Blockers
 
@@ -117,19 +117,19 @@ The guard scans only `s.env` values for credentials; `commandLine` appends `s.cm
 
 ### N1 (proven, nonblocking): requested endpoint and checkout differ
 
-**Location:** `docs/specifications/005-agent-adoption/tasks/wave-6.md:98` (range), checkout `3cd299ee`.
+**Location:** `docs/specifications/005-agent-adoption/tasks/wave-6.md:98` (range), checkout `d301b710`.
 
-The brief asks for the endpoint `8dfe244d`; HEAD is its documentation-only child `3cd299ee`. This is the mismatch the reviewer procedure requires reporting. No product defect follows. The coordinator can distinguish the content endpoint from the checkout in later review briefs. The broad verification above is not promoted to exact-endpoint evidence.
+The brief asks for the endpoint `e36698ee`; HEAD is its documentation-only child `d301b710`. This is the mismatch the reviewer procedure requires reporting. No product defect follows. The coordinator can distinguish the content endpoint from the checkout in later review briefs. The broad verification above is not promoted to exact-endpoint evidence.
 
 ## Scope checked
 
 | Rows | In-range changes followed |
 |---|---|
-| 005-17 | `6189afdd`, `f7e0b209`, `c0ee7220`, `3666cce9`, `14b9b80c`, `20a94891`, `bfa1e3da`: isolated process boundary, scratch machines, install/update/setup assertions, model opt-in, teardown and provider handling |
-| 005-38 | `43001da2`, `c7e62953`: string evidence, path qualification, ranking, defaults and ties |
-| 005-40 | `8ffd7d30`, `bad5a955`: Codex hint, shared validation and normalization, both write paths, check diagnostics, setup skill syntax |
-| 005-39 and 005-41 | `85217cbd`, `5f92ba4a`: load-wait progress and deduplication, ignored-read suggestion clause, matching skill copies |
-| Bundle landings | `4f250bad`, `a3e56078`: source reviewed above; rebuilding explicitly forbidden, so drift remains unverified |
+| 005-17 | `649b8d4e`, `fd1e63e0`, `59d9b577`, `f9edd0eb`, `323b0bec`, `395a9d50`, `81621e3a`: isolated process boundary, scratch machines, install/update/setup assertions, model opt-in, teardown and provider handling |
+| 005-38 | `e3983a61`, `b6c66465`: string evidence, path qualification, ranking, defaults and ties |
+| 005-40 | `5e99e189`, `37b3b93c`: Codex hint, shared validation and normalization, both write paths, check diagnostics, setup skill syntax |
+| 005-39 and 005-41 | `5816990e`, `2d2cd6e4`: load-wait progress and deduplication, ignored-read suggestion clause, matching skill copies |
+| Bundle landings | `154a83e9`, `87887373`: source reviewed above; rebuilding explicitly forbidden, so drift remains unverified |
 
 001 commits between these changes were excluded from prosecution. No spec review or lessons file was prosecuted.
 

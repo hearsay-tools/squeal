@@ -1,6 +1,6 @@
 # 011-36: a cached ignored path nothing names stops being watched, worker notes (2026-10-23)
 
-Brief `brief.md`, shape slice. Base `266a3471a`. Commits:
+Brief `brief.md`, shape slice. Base `e97b01b38`. Commits:
 
 - `b130273ab`: the change in `src/core/scheduler/keying.ts` and `test/scheduler/ignored-leftovers.test.ts`.
 - `9a5097481`: the end-to-end case in `test/scheduler/scratch-inputs.test.ts` and this file.
@@ -33,13 +33,13 @@ Brief `brief.md`, shape slice. Base `266a3471a`. Commits:
 
 ## Tests
 
-- `test/scheduler/ignored-leftovers.test.ts`, new, over `WorktreeKeys` and a seeded stat cache, no runner, about 3 s. Five cases: the drop with no revision while a closure-named, an observed and a lockfile path stay; nothing judged before the environment read; a replaced closure; a removed test file; a dropped path named again is tracked and watched again. All five failed at `266a3471a`.
-- `test/scheduler/scratch-inputs.test.ts`, one new case, real Vitest and node:test: a node:test project imports a gitignored `pkg/dist/lib.js`, a predecessor's row holds `pkg/dist/lib.d.ts`, the project is removed, and one daemon start drops both while `src/gen/client.ts` (named by `test/gen.test.ts`) stays. A rebuild makes no revision. It fails at `266a3471a`'s `keying.ts` with `expected [ 'pkg/dist/lib.d.ts', …(2) ] to not include 'pkg/dist/lib.js'`.
+- `test/scheduler/ignored-leftovers.test.ts`, new, over `WorktreeKeys` and a seeded stat cache, no runner, about 3 s. Five cases: the drop with no revision while a closure-named, an observed and a lockfile path stay; nothing judged before the environment read; a replaced closure; a removed test file; a dropped path named again is tracked and watched again. All five failed at `e97b01b38`.
+- `test/scheduler/scratch-inputs.test.ts`, one new case, real Vitest and node:test: a node:test project imports a gitignored `pkg/dist/lib.js`, a predecessor's row holds `pkg/dist/lib.d.ts`, the project is removed, and one daemon start drops both while `src/gen/client.ts` (named by `test/gen.test.ts`) stays. A rebuild makes no revision. It fails at `e97b01b38`'s `keying.ts` with `expected [ 'pkg/dist/lib.d.ts', …(2) ] to not include 'pkg/dist/lib.js'`.
 
 ## Outside the brief's ownership, approved by the coordinator
 
 1. **The `KEY_FORMAT_VERSION` alarm** (`test/keys/key-format.test.ts`) failed at `b130273ab`: "changed lines no case runs". No case seeded a stat cache, read environments through `setEnvironments` or removed a test file. `AssembleInput` (`test/keys/validity/case.ts`) gains three optional fields: `cached`, `environment` and `after`. `harness/assemble.ts` applies them only when they are present, so no existing case changes. The new case is `cases/assemble/inherited.ts`. Every key agrees at both trees, so no raise. The flagged lines it runs:
-   - At the release (`squeal--v0.1.273`, the newest tag below this branch; the line numbers are `266a3471a`'s `keying.ts`): 174 (bootstrap's `else this.#extra.add(path)`), 413 (`removeTestFile`), 454 and 459 (`#release` filtering and dropping a revived path).
+   - At the release (`squeal--v0.1.273`, the newest tag below this branch; the line numbers are `e97b01b38`'s `keying.ts`): 174 (bootstrap's `else this.#extra.add(path)`), 413 (`removeTestFile`), 454 and 459 (`#release` filtering and dropping a revived path).
    - At the candidate (`b130273ab`'s `keying.ts`): 181 to 184 (bootstrap's ignored branch and `#inherit`), 429 (`removeTestFile`'s rejudge), 461 to 464 (`#inherit`), 469 (`#rejudge`), 481 to 483 (former environment files), 487, 490 and 493 (`#release` judging and dropping).
    - With the case, the alarm passes; without it, it names exactly these lines. `test/keys/validity/bundle.ts` is not touched (row 011-141 owns it).
 2. **`test/integration/touched-scope.test.ts` case 1** (013-02, T1 and T2): its rig seeded `dist/unrelated.js` as a cached row nothing names, which is the leftover this row drops at start, so the touch never reached the runner. The rig changed for that reason. A node:test project's test now imports the path (cezar's `test:package` shape), no row is seeded, and the stored expectations read the Vitest files only.

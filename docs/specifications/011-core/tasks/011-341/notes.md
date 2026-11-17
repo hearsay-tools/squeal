@@ -1,6 +1,6 @@
 # 011-341 and 011-342: the admission's two design differences (worker notes)
 
-Worker 0c0970aa, wave 93 W1, 2026-11-14. Design: `research/admission.md`, "Differences between the copies", items 1 and 2. Branch `cez/0c0970aa`, base `b28e28051`. Both differences happened; both are closed.
+Worker 0c0970aa, wave 93 W1, 2026-11-14. Design: `research/admission.md`, "Differences between the copies", items 1 and 2. Branch `cez/0c0970aa`, base `38444bc3b`. Both differences happened; both are closed.
 
 ## 011-341: no lane starts while runner work is pending
 

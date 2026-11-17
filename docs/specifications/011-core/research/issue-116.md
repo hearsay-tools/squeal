@@ -2,7 +2,7 @@
 
 Recommend treating #116 as a distinct request to extend C15's promotion lifetime across handover, subject to human approval. The loss reproduces in a current CLI/queue/store fixture. C15 explicitly permits it today. No implementation is authorized; existing holds stand.
 
-Examined 2026-10-28: Squeal **0.1.370**, commit `2970f9b3581b2b58d8edec14034da528687fab32`, Node `v24.22.1`, Vitest `5.0.3`. Historical source: **0.1.313** at `51b37398230a2387d77908962957ae29ca0152ff`, **0.1.314** at `895e9d693365a9afdeda6bec95b19e553af28eb5`. Those historical binaries were not run.
+Examined 2026-10-28: Squeal **0.1.370**, commit `e8012aaa011973f459f3d8334bbcd08c8cb9d0ec`, Node `v24.22.1`, Vitest `5.0.3`. Historical source: **0.1.313** at `51b37398230a2387d77908962957ae29ca0152ff`, **0.1.314** at `895e9d693365a9afdeda6bec95b19e553af28eb5`. Those historical binaries were not run.
 
 ## Questions and verdicts
 
@@ -60,8 +60,8 @@ Not determined: real version-handover timing, the reported 8–59 selected files
 ## Sources
 
 - Fetched via `gh issue view N --repo hearsay-tools/squeal --json title,body,state,url` (116 also with `comments`): [#116](https://github.com/hearsay-tools/squeal/issues/116), [#79](https://github.com/hearsay-tools/squeal/issues/79), [#110](https://github.com/hearsay-tools/squeal/issues/110), [#77](https://github.com/hearsay-tools/squeal/issues/77). Issue text is reporter evidence, not independent reproduction.
-- Local `spec.md` C4/C9/C15, `status.md` amendments 2026-10-17 and 2026-10-26, and `docs/board.md` rows gh-79, gh-110, gh-77, 011-196 at the examined commit. [Pinned C15 source](https://github.com/hearsay-tools/squeal/blob/2970f9b3581b2b58d8edec14034da528687fab32/docs/specifications/011-core/spec.md).
-- Current source: `src/cli/status-wait-paths.ts:215`, `src/core/scheduler/ledger.ts:129`, `queue.ts:154`, `promotions.ts:143`, `handover.ts:42` and `bootstrap.ts:247` (scheduler paths under `src/core/scheduler/`). [Pinned wait loop](https://github.com/hearsay-tools/squeal/blob/2970f9b3581b2b58d8edec14034da528687fab32/src/cli/status-wait-paths.ts).
+- Local `spec.md` C4/C9/C15, `status.md` amendments 2026-10-17 and 2026-10-26, and `docs/board.md` rows gh-79, gh-110, gh-77, 011-196 at the examined commit. [Pinned C15 source](https://github.com/hearsay-tools/squeal/blob/e8012aaa011973f459f3d8334bbcd08c8cb9d0ec/docs/specifications/011-core/spec.md).
+- Current source: `src/cli/status-wait-paths.ts:215`, `src/core/scheduler/ledger.ts:129`, `queue.ts:154`, `promotions.ts:143`, `handover.ts:42` and `bootstrap.ts:247` (scheduler paths under `src/core/scheduler/`). [Pinned wait loop](https://github.com/hearsay-tools/squeal/blob/e8012aaa011973f459f3d8334bbcd08c8cb9d0ec/src/cli/status-wait-paths.ts).
 - Historical reads: `git show squeal--v0.1.313:<path>` and `git show squeal--v0.1.314:<path>` for `docs/specifications/011-core/spec.md`, `src/cli/status-wait-paths.ts`, `src/core/scheduler/promotions.ts`, and .314 `ledger.ts`. [Historical promotion source](https://github.com/hearsay-tools/squeal/blob/51b37398230a2387d77908962957ae29ca0152ff/src/core/scheduler/promotions.ts).
 - Probe and raw evidence: `docs/specifications/011-core/research/probes/issue-116/{README.md,probe.test.ts,vitest.config.ts,evidence.json,result.txt}`.
 

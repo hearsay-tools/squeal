@@ -2,7 +2,7 @@
 
 ## Verification
 
-Tested HEAD: `3a3e752272ed2f17719001788b964eb6506466b2`, version 0.1.75. The pinned candidate consists of `0aeff3b` (004-50) and `1a3d231` (both plugin bundles). Later commits change documentation only. No executable mismatch. This is the second and last review round for 004-47, bounded by `reviews/wave-5.5.md` B1; 004-48 and earlier settled findings are not reopened.
+Tested HEAD: `0e3739dd8f0d5f1f6b536b314c0df5d84111cf4a`, version 0.1.75. The pinned candidate consists of `0aeff3b` (004-50) and `1a3d231` (both plugin bundles). Later commits change documentation only. No executable mismatch. This is the second and last review round for 004-47, bounded by `reviews/wave-5.5.md` B1; 004-48 and earlier settled findings are not reopened.
 
 The lockfile install and checks ran on the clean tracked candidate before adding this report. The build reproduced both committed plugins without drift. The review's independent Vitest gate was run directly; Squeal's checkpoint below is separate evidence. The implementation brief's no-build instruction does not remove the reviewer and repository build gate.
 

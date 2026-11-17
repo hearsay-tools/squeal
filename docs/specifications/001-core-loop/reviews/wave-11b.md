@@ -41,7 +41,7 @@ HEAD is `fc2bbbd`, one commit past the build `c61a98e`. `git diff --stat c61a98e
 
 ```
 $ git rev-parse HEAD
-fc2bbbd6a146354d05773389ac33b4bbc5734a95
+3de312b16ea7dae3e2ccafc3d0daf04b2d608ab0
 $ npm ci
 (exit 0; install-scripts warnings for @parcel/watcher and esbuild)
 $ npm run lint

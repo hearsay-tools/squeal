@@ -2,7 +2,7 @@
 
 Recommendation: take option B (a promoted tier sized by the backlog's wall budget). Do not take option C (protection kept after a wait ends) on its own. Take B+C only with a bound on how long a protected group may hold back a later file.
 
-Researcher, row 011-208 as widened by gh-121, 2026-10-28. Worktree commit `2f49b3e92` (Squeal 0.1.374 source; no scheduler change since `issue-121.md`). Durations from cezar's live store at cezar `991c14b96`. Brief: `tasks/wave-57.md` R1.
+Researcher, row 011-208 as widened by gh-121, 2026-10-28. Worktree commit `784efb133` (Squeal 0.1.374 source; no scheduler change since `issue-121.md`). Durations from cezar's live store at cezar `991c14b96`. Brief: `tasks/wave-57.md` R1.
 
 ## Questions answered
 
@@ -125,7 +125,7 @@ So a 2 s file waits at worst about 129 s today, 33 s under B, 174 s under C and 
 - Prior research: `research/issue-79.md`, `research/issue-91.md`, `research/issue-121.md` (F2, F3, F4).
 - Spec 011 C4 step 5 (tiers, backlog wall budget, yields, 30 s rule), C10, C15 Rank and Lifetime.
 - Issues: [#79](https://github.com/hearsay-tools/squeal/issues/79) with its [later comment](https://github.com/hearsay-tools/squeal/issues/79#issuecomment-6433715406), and [#121](https://github.com/hearsay-tools/squeal/issues/121). Read with `gh issue view` on 2026-10-28.
-- Source at `2f49b3e92`:
+- Source at `784efb133`:
   - `src/core/scheduler/tiers.ts` (`selectTier`)
   - `queue.ts` (`ordered`, `hasFirstGroup`, `rankAt`)
   - `promotions.ts`

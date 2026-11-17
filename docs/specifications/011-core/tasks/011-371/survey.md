@@ -1,6 +1,6 @@
 # 011-371: survey of `Scheduler.idle()` callers
 
-Worker 25ee0ae9, wave 112 W2, 2026-11-16. Base: `8c9e04358` (0.1.523). Shape: survey with a small pilot. Changes no `src/` file and no file under `test/scheduler/`.
+Worker 25ee0ae9, wave 112 W2, 2026-11-16. Base: `96346201c` (0.1.523). Shape: survey with a small pilot. Changes no `src/` file and no file under `test/scheduler/`.
 
 ## Answer
 

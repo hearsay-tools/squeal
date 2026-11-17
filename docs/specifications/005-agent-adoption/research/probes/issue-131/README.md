@@ -27,4 +27,4 @@ the documented persistence-failure fallback, not the reporter's filesystem state
 prefixes are normalized to `<scratch>`. The final line is an assertion summary,
 not JSON. The selected runtime versions 0.1.382–0.1.384 are fixture labels, not
 executed runtime bundles. The launcher itself is format 8 from checkout
-`e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc`; its bytes equal release 0.1.383.
+`0bfafb150ff7ca3581f910554ff4e8aca777438b`; its bytes equal release 0.1.383.

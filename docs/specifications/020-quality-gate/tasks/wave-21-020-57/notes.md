@@ -1,6 +1,6 @@
 # Row 020-57 notes: the gate's early lines tell the truth about a setup-file change and a busy host (#212)
 
-Worker cdd2fb40, wave 21, 2026-11-14. Shape: slice. Base: main at `70cb2d357`.
+Worker cdd2fb40, wave 21, 2026-11-14. Shape: slice. Base: main at `73fe4f5a9`.
 
 Three changes to what `squeal code --base` prints before its first run. No
 rule changes: the verdicts, the exit codes and `QUALITY_POLICY_VERSION`

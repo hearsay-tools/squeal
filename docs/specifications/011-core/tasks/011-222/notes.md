@@ -1,6 +1,6 @@
 # 011-222: notes (wave 46 W5, 2026-10-26)
 
-The validity harness no longer reads code where it was before row 011-40's and row 011-47's moves. The comparison against the last release gives the same result as before. The oldest baseline the harness compares is now `squeal--v0.1.232`. For an older window, run `compare-refs.ts` from a worktree at `eec505f3b`.
+The validity harness no longer reads code where it was before row 011-40's and row 011-47's moves. The comparison against the last release gives the same result as before. The oldest baseline the harness compares is now `squeal--v0.1.232`. For an older window, run `compare-refs.ts` from a worktree at `958591e4a`.
 
 ## Cause
 
@@ -8,7 +8,7 @@ The validity harness no longer reads code where it was before row 011-40's and r
 
 ## The first step, measured
 
-The brief's first step said that `compare-refs.ts`, from the oldest tag it still compares, needs none of the fallbacks. That was false. With the harness at `eec505f3b`:
+The brief's first step said that `compare-refs.ts`, from the oldest tag it still compares, needs none of the fallbacks. That was false. With the harness at `958591e4a`:
 
 - Every tag from `squeal--v0.1.199` to `squeal--v0.1.231` bundles the driver and all five entries only through the fallbacks. `squeal--v0.1.168` and older already fail to bundle.
 - `compare-refs.ts squeal--v0.1.231 HEAD accept store` ran all 21 cases, every one with equal keys and outputs, none thrown.
@@ -29,7 +29,7 @@ Host load 12 to 29 on 24 CPUs, the host's own load and these runs.
 
 **The done-when comparison**, `env -u PLUGIN_ROOT -u PLUGIN_DATA node --import tsx test/keys/validity/compare-refs.ts squeal--v0.1.332 HEAD`. The two trees have no `src/` difference, so no alarm fires and no case runs.
 
-Before (`eec505f3b`):
+Before (`958591e4a`):
 
 ```
 squeal--v0.1.332 -> HEAD, 192 ms, fired: false (global 20->20, vitest 3->3, node:test 10->10, pytest 4->4, recorder 4->4)
@@ -37,7 +37,7 @@ wording: []
 uncovered: 0
 ```
 
-After (the fix's working tree, `src/` at `eec505f3b`):
+After (the fix's working tree, `src/` at `958591e4a`):
 
 ```
 squeal--v0.1.332 -> HEAD, 413 ms, fired: false (global 20->20, vitest 3->3, node:test 10->10, pytest 4->4, recorder 4->4)
@@ -63,5 +63,5 @@ uncovered: 0
 
 ## For whoever continues
 
-- A one-off on a window older than `squeal--v0.1.232` (the 12→13, 15→16 and 17→18 windows in `test/keys/validity/notes.md`) needs the harness at `eec505f3b`: `git worktree add <dir> eec505f3b`, then run `compare-refs.ts` there.
+- A one-off on a window older than `squeal--v0.1.232` (the 12→13, 15→16 and 17→18 windows in `test/keys/validity/notes.md`) needs the harness at `958591e4a`: `git worktree add <dir> 958591e4a`, then run `compare-refs.ts` there.
 - The next fallback of this kind follows the same rule: add it with the move, and remove it once the last release carries the move.

@@ -2,7 +2,7 @@
 
 Recommend a scoped recovery decision for invalid persisted paths that preserves input provenance and the existing holds.
 
-**Verdict:** reproduced synthetically on Squeal **0.1.414**, source and committed CLI bundle at `b509d603f483e5b869eb11b6cfecc744b057193e`. One saved observed path prevents the daemon from listing tests on first start, restart, and a fresh linked worktree of the same scratch repository. No fix is implemented or authorized here.
+**Verdict:** reproduced synthetically on Squeal **0.1.414**, source and committed CLI bundle at `28814707808f0941c0767ff27e82e568621b3367`. One saved observed path prevents the daemon from listing tests on first start, restart, and a fresh linked worktree of the same scratch repository. No fix is implemented or authorized here.
 
 ## Questions and answers
 
@@ -69,6 +69,6 @@ The probe was moved after capture from `research/probes/issue-166/` to the requi
 ## Sources
 
 - [Issue #166 and its comments](https://github.com/hearsay-tools/squeal/issues/166), fetched with `gh` on 2026-11-07; reporter evidence, not an independent experiment.
-- [Source tree at the examined commit](https://github.com/hearsay-tools/squeal/tree/b509d603f483e5b869eb11b6cfecc744b057193e): `src/core/keys/{observed,closure,runtime-files}.ts`, `src/core/scheduler/{keying,bootstrap,revision}.ts`, `src/core/daemon/daemon.ts`.
+- [Source tree at the examined commit](https://github.com/hearsay-tools/squeal/tree/28814707808f0941c0767ff27e82e568621b3367): `src/core/keys/{observed,closure,runtime-files}.ts`, `src/core/scheduler/{keying,bootstrap,revision}.ts`, `src/core/daemon/daemon.ts`.
 - [011 spec C3/C9/C12/C13](../spec.md) and [amendments](../status.md), read at that commit.
 - [Probe instructions](probes/issue-166/README.md), [captured output](probes/issue-166/result.jsonl), and [stderr](probes/issue-166/stderr.txt).

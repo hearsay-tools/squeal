@@ -12,7 +12,7 @@ Outcome: a Vitest file's child process that fails to import a missing script rec
 
 Read: `research/issue-56.md`; spec 011 C3 and C12; 013 V3 and V10; the board row.
 
-Seam and lead: a worker wrote this on 2026-10-21 on origin `wip/011-60`: commits `b5207c826`, `0ad7c9b6c` and the raise `de730ec12`. They conflict with main in `src/runners/observe/recorder.cjs` and `test/keys/validity/cases/index.ts`. Port them onto this tree; review the old code as new work against today's recorder. `RECORDER_VERSION` (`src/runners/observe/runtime.ts`) is now 5: raise it to 6 in its own commit only if the alarm names the new case.
+Seam and lead: a worker wrote this on 2026-10-21 on origin `wip/011-60`: commits `6a5756ebf`, `b90ee75c6` and the raise `955e4c044`. They conflict with main in `src/runners/observe/recorder.cjs` and `test/keys/validity/cases/index.ts`. Port them onto this tree; review the old code as new work against today's recorder. `RECORDER_VERSION` (`src/runners/observe/runtime.ts`) is now 5: raise it to 6 in its own commit only if the alarm names the new case.
 
 Owns: `src/runners/observe/**`, `test/runners/observe/**`, `test/keys/validity/cases/observe/failed-import.ts` and its one line in `cases/index.ts`. Leave alone: `src/core/**`, `src/core/keys/key-format.ts`.
 

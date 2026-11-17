@@ -1,6 +1,6 @@
 # 011-239 notes: one HEAD reader, and the idle pass reads HEAD in reftable repositories
 
-Worker W1 of wave 48, 2026-10-26. From main `9622b9ed0`. Commits `18ea7283d` (slice 1) and `c4bf93954` (slice 2).
+Worker W1 of wave 48, 2026-10-26. From main `12cbdf38f`. Commits `18ea7283d` (slice 1) and `c4bf93954` (slice 2).
 
 ## Slice 1: the idle pass (`18ea7283d`)
 

@@ -1,6 +1,6 @@
 # Wave 13i: inherited failures, one re-run, and console logs
 
-Candidate: `f7257366f963a4fa78c2df111cf1f6f796de052a`, exactly HEAD and origin/main when verification began, version 0.1.73. The tracked tree was clean throughout the gate and probes. Review row 001-183, against the 2026-10-09 inherited-failure and eight-per-tier decisions, spec 001 D5, D6 and D7, and spec 004's slow-file rules at their seams.
+Candidate: `c0d77371928f8fc0cb331d0816ac92b6e000c3e6`, exactly HEAD and origin/main when verification began, version 0.1.73. The tracked tree was clean throughout the gate and probes. Review row 001-183, against the 2026-10-09 inherited-failure and eight-per-tier decisions, spec 001 D5, D6 and D7, and spec 004's slow-file rules at their seams.
 
 ## Verification
 
@@ -8,8 +8,8 @@ Linux, Node 24.21.0, Vitest 5.0.3. The reviewer gate requires direct Vitest; bac
 
 ```text
 $ git rev-parse HEAD origin/main
-f7257366f963a4fa78c2df111cf1f6f796de052a
-f7257366f963a4fa78c2df111cf1f6f796de052a
+c0d77371928f8fc0cb331d0816ac92b6e000c3e6
+c0d77371928f8fc0cb331d0816ac92b6e000c3e6
 
 $ npm ci
 added 56 packages, and audited 57 packages in 2s

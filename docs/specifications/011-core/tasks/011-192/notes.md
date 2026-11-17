@@ -1,6 +1,6 @@
 # 011-192: why `busy-edit.test.ts:151` saw the first heartbeat after the hold seconds late
 
-Wave 34 W4, worker c53007f3, from main a6a2aa3f6 (0.1.301). Shape: slice.
+Wave 34 W4, worker c53007f3, from main a40dbd5e1 (0.1.301). Shape: slice.
 
 ## Answer
 
@@ -63,7 +63,7 @@ A mutant whose timers retry only every 5 s (`sliced-writes.ts:95`, `busyBackoffM
 
 ## Reproduce
 
-Apply `probe/instrument.diff` to `test/daemon/busy-edit.test.ts` at a6a2aa3f6, then `probe/loop.sh <out-dir> 20` and `python3 probe/summary.py <out-dir>/beats.jsonl`. The loop runs the test file only, in its own worktree, with `PLUGIN_ROOT` and `PLUGIN_DATA` unset.
+Apply `probe/instrument.diff` to `test/daemon/busy-edit.test.ts` at a40dbd5e1, then `probe/loop.sh <out-dir> 20` and `python3 probe/summary.py <out-dir>/beats.jsonl`. The loop runs the test file only, in its own worktree, with `PLUGIN_ROOT` and `PLUGIN_DATA` unset.
 
 ## Verification
 

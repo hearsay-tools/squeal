@@ -2,11 +2,11 @@
 
 ## Verdict and verification
 
-**PASS** `5808fdafdca6f27a158def1a302e737fb872e147`, with a narrow test-only addendum at `72076a6fb5c2e204a47fe3bc6e39c9b2709b6185`: **0 blockers, 0 should-fix, 1 proven documentation nit, 1 proven out-of-scope test-failure note**. The scoped judgment does not claim a green independent full suite.
+**PASS** `06a8803403f4fce6f3eeda92a857cc9ff849b734`, with a narrow test-only addendum at `a7164072e712877f01c058c81b64a9f41f642500`: **0 blockers, 0 should-fix, 1 proven documentation nit, 1 proven out-of-scope test-failure note**. The scoped judgment does not claim a green independent full suite.
 
-Inputs: wave-13bo B1 to B3, N1 and the settled S1 ruling; wave-13bp B1 to B4; board rows 001-386, 001-389 and 004-60; their task notes; 001 D4/D5/D6/D11 and 004 D2. Other observations are notes under this brief. The coordinator subsequently requested a narrow review of `5808fdaf..72076a6f`, which changes only `test/daemon/drain.test.ts`.
+Inputs: wave-13bo B1 to B3, N1 and the settled S1 ruling; wave-13bp B1 to B4; board rows 001-386, 001-389 and 004-60; their task notes; 001 D4/D5/D6/D11 and 004 D2. Other observations are notes under this brief. The coordinator subsequently requested a narrow review of `06a88034..a7164072`, which changes only `test/daemon/drain.test.ts`.
 
-The original candidate was fetched and checked out detached. `git rev-parse HEAD` returned exactly `5808fdafdca6f27a158def1a302e737fb872e147`. The tree was clean for all original verification and remained clean after the build and full suite. Each probe and the independent suite used temporary HOME and XDG config/runtime/cache/data/state directories; no other worktree's store or daemon was used.
+The original candidate was fetched and checked out detached. `git rev-parse HEAD` returned exactly `06a8803403f4fce6f3eeda92a857cc9ff849b734`. The tree was clean for all original verification and remained clean after the build and full suite. Each probe and the independent suite used temporary HOME and XDG config/runtime/cache/data/state directories; no other worktree's store or daemon was used.
 
 Original candidate verification, output excerpts:
 
@@ -51,7 +51,7 @@ This was the reviewer's independent full run, not a Squeal checkpoint. It waited
 
 ## Test-only addendum verification
 
-Origin was fetched while the original suite ran. After that suite exited, the checkout moved detached to `72076a6fb5c2e204a47fe3bc6e39c9b2709b6185`; `git rev-parse HEAD` matched. `git diff --name-only 5808fdaf..HEAD` returned only `test/daemon/drain.test.ts`. The tree was clean for this focused verification, again with temporary HOME and XDG directories:
+Origin was fetched while the original suite ran. After that suite exited, the checkout moved detached to `a7164072e712877f01c058c81b64a9f41f642500`; `git rev-parse HEAD` matched. `git diff --name-only 06a88034..HEAD` returned only `test/daemon/drain.test.ts`. The tree was clean for this focused verification, again with temporary HOME and XDG directories:
 
 ```text
 $ npm run lint
@@ -74,7 +74,7 @@ Duration    70.54s (tests 98%, transform 1%)
 exit 0; git status --porcelain: empty
 ```
 
-The full suite, installation and build evidence above belong to `5808fdaf`, not to this addendum SHA. A second independent full run was not performed for the single fixture-only change. The focused four-CPU run discriminates the reported failure mode.
+The full suite, installation and build evidence above belong to `06a88034`, not to this addendum SHA. A second independent full run was not performed for the single fixture-only change. The focused four-CPU run discriminates the reported failure mode.
 
 ## Blockers
 
@@ -104,7 +104,7 @@ The probes imported this candidate's freshly built pool, adapter and scheduler. 
 - **004-60, proven.** `SlowTier.#fastFirst` uses `editPending() || (!requested && !fastIdle())` at candidate selection, after guard/slot acquisition and after completion. The scheduler's `fastIdle` includes runner refinement, queued fast files and fast flights, so baseline, checkpoint and `run --all` use the same ordering. Separate external baseline and forced-checkpoint probes held the first fast file at zero load with no consumer: no slow run occurred while it was held, and both fast tiers completed before a two-file slow tier. With hostSlots 1 and the fast baseline held, `requestSlowSuite` completed both slow files as **one-file, ungranted** tiers before releasing fast work. A backlog arriving after a slow tier started is not preemptive, as D2/D4 say. The candidate's new `slow-backlog` tests and adjusted activity tests test these states rather than accepting an earlier waiting reason.
 - **node-test-packages, proven by a shipped-CLI probe and source.** `test/integration/node-test-packages.test.ts:148` waits for at least twice the three reaching files in run rows and for every row to end, in addition to the prior current-failure/quiet condition. The following exact equality still requires each reaching file exactly twice and the plain file never; failure ownership is still checked. A missing retry times out, an extra/unrelated retry fails equality, and an unfinished retry cannot satisfy the new predicate. `queueReruns` records a new failure immediately and queues its forced retry without making the already reported failure pending. The isolated shipped-CLI probe reproduced the exact former settle window: status was `current: 8, pending: 0`, all first failure rows had ended, but only the three first file runs existed. The new predicate waited for all six ended file runs; their exact identities were each of the three reaching files twice, with no plain-file run. This confirms the worker explanation; the same scheduler mechanism predates pool admission. Waiting for the run records is appropriate for this test's purpose; no product assertion was dropped. Whether an explicit checkpoint should await such a follow-up retry is a separate D7/product decision, already named in the notes, not a hidden pass in this review.
 
-### Drain fixture addendum, `5808fdaf..72076a6f`
+### Drain fixture addendum, `06a88034..a7164072`
 
 **Fits, proven.** `test/daemon/drain.test.ts:142` writes `capacity.hostSlots: 16` into the fixture's private `runtimeDir/config/squeal/config.json` before `suite.daemon(repo)` starts. `childEnv` sets that same `runtimeDir/config` as `XDG_CONFIG_HOME` (`test/daemon/helpers.ts:153`); the daemon reads it once at startup. Cleanup already removes the runtime directory. It neither changes the repository's config nor touches a real user's config.
 
@@ -126,7 +126,7 @@ The new wording says “`slow.maxWorkers` per slow file, and as many slow files 
 
 ### N2. Proven observed failure; cause unverified: OpenCode root consumer remains after the child-session test
 
-Location: `test/harness/opencode-hooks.test.ts:131` at `5808fdaf`.
+Location: `test/harness/opencode-hooks.test.ts:131` at `06a88034`.
 
 The independent full suite expected no consumers after OpenCode exited, but the store retained one consumer with `agentId: "main"`. The child request, primer and child registration assertions before it passed. The suite therefore exited 1. This is outside the prior findings, slow admission, package retry predicate and spec-amendment scope, so it is a note, not a blocker in this judgment. No isolated reproduction or claim about the load causing it was made.
 

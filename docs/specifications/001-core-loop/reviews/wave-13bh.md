@@ -1,6 +1,6 @@
 # Wave 13bh: 001-347 review
 
-Candidate: `5889105d81f66376e0f23524ba39ac9338b41af3`. Scope: 001-335, 001-337, 001-340 and 001-345, against amended spec 001 D9 and D10. No later commits reviewed. The cancelled 001-344 produced no findings file; its B1 and B2 probes are explicit review inputs.
+Candidate: `fb10b34a5e66974577c89669ee82a413fa0596f5`. Scope: 001-335, 001-337, 001-340 and 001-345, against amended spec 001 D9 and D10. No later commits reviewed. The cancelled 001-344 produced no findings file; its B1 and B2 probes are explicit review inputs.
 
 ## Verification output
 
@@ -60,7 +60,7 @@ exit 0
 
 ### Independent full suite on the pinned, clean candidate
 
-The initial verification was committed on the report branch before the long run. To keep this proof at exactly the candidate, this worktree then checked out detached `5889105d`, and report-only commits were written in a separate temporary worktree on `cez/987c1f61`. Product sources and tracked files stayed clean throughout the full run and the probes. After the run, `git rev-parse HEAD` still reported `5889105d81f66376e0f23524ba39ac9338b41af3` and `git status --short` was empty. One full suite run, no reviewer test reruns.
+The initial verification was committed on the report branch before the long run. To keep this proof at exactly the candidate, this worktree then checked out detached `fb10b34a`, and report-only commits were written in a separate temporary worktree on `cez/987c1f61`. Product sources and tracked files stayed clean throughout the full run and the probes. After the run, `git rev-parse HEAD` still reported `fb10b34a5e66974577c89669ee82a413fa0596f5` and `git status --short` was empty. One full suite run, no reviewer test reruns.
 
 ```text
 $ env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 npx vitest run --maxWorkers=4
@@ -119,7 +119,7 @@ These messages are not additional blocking findings against the selected wave. T
 
 ## Verdict
 
-FAIL `5889105d81f66376e0f23524ba39ac9338b41af3`: **2 proven blockers, 1 proven should-fix, 1 proven nit**. The independent full suite passes. The original B1 and B2 controls are repaired, but the new B1/B2 scenarios below still violate amended D10. No plausible or unverified blocker. Background failures are recorded separately as verification observations.
+FAIL `fb10b34a5e66974577c89669ee82a413fa0596f5`: **2 proven blockers, 1 proven should-fix, 1 proven nit**. The independent full suite passes. The original B1 and B2 controls are repaired, but the new B1/B2 scenarios below still violate amended D10. No plausible or unverified blocker. Background failures are recorded separately as verification observations.
 
 ## Blockers
 
@@ -172,7 +172,7 @@ Before 001-340 this normal spawn exited on its first failed acquisition; it coul
 
 ### S1: the candidate deletes the status and amendment history
 
-**Proven, non-blocking.** `docs/specifications/001-core-loop/status.md:1`. Commit 5889105d replaces 232 lines with a blank line and the new 001-345 amendment (`git diff --numstat 5889105d^ 5889105d`: 1 added, 231 deleted). It removes the shipped stage, earlier decisions, and every prior amendment including 001-340. Repository process calls this file the stage and amendment log. Restore the parent’s content and append the 001-345 entry. No product-code change required.
+**Proven, non-blocking.** `docs/specifications/001-core-loop/status.md:1`. Commit fb10b34a replaces 232 lines with a blank line and the new 001-345 amendment (`git diff --numstat fb10b34a^ fb10b34a`: 1 added, 231 deleted). It removes the shipped stage, earlier decisions, and every prior amendment including 001-340. Repository process calls this file the stage and amendment log. Restore the parent’s content and append the 001-345 entry. No product-code change required.
 
 ### N1: board statuses point to the cancelled review
 

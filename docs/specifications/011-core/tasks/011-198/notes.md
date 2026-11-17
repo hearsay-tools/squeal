@@ -1,6 +1,6 @@
 # 011-198 and 011-200 notes: the change feed records what it delivered
 
-Worker W1 of wave 36 (8e547389), 2026-10-25. Base cand/0.1.304b `776c6832e`. Commits `0ec946eec` (011-198) and `1619a4e24` (011-200). The rounds on `origin/cand/0.1.304` (`f049340cb`, `c51cc53c4`) were read as reference only; nothing of them is in this branch.
+Worker W1 of wave 36 (8e547389), 2026-10-25. Base cand/0.1.304b `b501daf66`. Commits `0ec946eec` (011-198) and `1619a4e24` (011-200). The rounds on `origin/cand/0.1.304` (`21586a6f6`, `ce1ab4e17`) were read as reference only; nothing of them is in this branch.
 
 ## 011-198: one owner for "a pass was delivered"
 
@@ -17,7 +17,7 @@ The note is a pass number, not a clock time. The brief says "notes the time"; a 
 
 Tests, `test/scheduler/full-suite-pass.test.ts`, run against copies of each source tree (isolated `HOME`, `XDG_*`, `TMPDIR`):
 
-| Test | 776c6832e | e75de61c3 | 6df494769 | 0ec946eec |
+| Test | b501daf66 | 6aeb1c1a1 | 73c9386db | 0ec946eec |
 |---|---|---|---|---|
 | plans at the edit's revision, silent watcher (findings) | fail | pass | pass | pass |
 | B1 path 1: git status exits 128 for the requested pass | fail | fail (resolved) | fail (message) | pass |

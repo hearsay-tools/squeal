@@ -1,5 +1,5 @@
 import json,glob,os,collections
-roots={'0199':'/tmp/squeal-evals-1001/cells/e77eff42453e/20261016T061730Z-07d7ab','0215':'/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec'}
+roots={'0199':'/tmp/squeal-evals-1001/cells/0b91ce0bf4ca/20261016T061730Z-07d7ab','0215':'/tmp/squeal-evals-1001/cells/6faa3f32d500/20261018T125937Z-bcdbec'}
 T=['a2-slow','a3-harmless','a8-load-hold','a11-inherited-flake']
 res=collections.defaultdict(lambda: collections.defaultdict(lambda:[0,0]))
 claims=collections.defaultdict(collections.Counter)

@@ -1,6 +1,6 @@
 # 015-85 notes: shared coverage record parts, the storage contract
 
-Worker e50e8775, 2026-10-27, from `tasks/wave-19.md` W3. Shape: survey. No product edits. Baseline `776712148` (package 0.1.359).
+Worker e50e8775, 2026-10-27, from `tasks/wave-19.md` W3. Shape: survey. No product edits. Baseline `b5a929151` (package 0.1.359).
 
 ## Answer
 
@@ -141,7 +141,7 @@ Proposed D4 text for A, after "Indexes after version 1": "**A table after versio
 
 ## Red-first store test plan
 
-Every case is red at `776712148`, because there is no `coverage_parts` table.
+Every case is red at `b5a929151`, because there is no `coverage_parts` table.
 
 1. `test/code/coverage/parts.test.ts`, "two records of one test file that differ in one source store the unchanged parts once": records with sources s1, s2, s3 at K1 and s1, s2, s3′ at K2 give four `coverage_parts` rows. Each key reads back equal to its input (`toEqual`).
 2. Same file, "an equal blob never merges different hits": two records hold s at one path and blob, one with a line covered or a function hit that the other lacks. This gives two parts, and each key reads its own hits. The same blob at two paths also gives two parts.

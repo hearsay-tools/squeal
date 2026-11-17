@@ -16,7 +16,7 @@ The brief's branch HEAD is `2dbb399`. It is one commit past the candidate and to
 
 ```
 $ git rev-parse HEAD
-57671b70f404d75e9ad36ff9f6f389ab3dbd09ce   (detached worktree)
+070bb0e3395030ca43d01643d50deddf28d7d652   (detached worktree)
 $ npm ci
 npm warn install-scripts   esbuild@0.28.2 (postinstall: node install.js)
 $ npm run lint

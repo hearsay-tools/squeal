@@ -30,7 +30,7 @@ Under the probe, `ROUNDS=60` (720 forks) under `taskset -c 0`:
 
 | version | hogs on CPU 0 | forks with the child at nice 0 |
 |---|---|---|
-| before (2c3d0121) | 1, then 2 | 5 of 720, each time |
+| before (49152b81) | 1, then 2 | 5 of 720, each time |
 | one walk more (8cf65404) | 2 | 1 of 720, its `spawn()` 249 ms |
 | walked for 1 s after the last new descendant (27f80282) | 2 | 0 of 720 |
 | B, every look while it lives (f5f294b2) | 1 | 0 of 720 |

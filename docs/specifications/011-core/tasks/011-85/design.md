@@ -2,7 +2,7 @@
 
 Board row 011-85, a docs-only design draft (brief `tasks/011-85/brief.md`). The human asked for a design row first on 2026-10-21, from row 011-81's findings (`research/key-split.md`). Nothing here is in `spec.md` until the human accepts it. On acceptance, the drafts in section 7 go into 011 C3, C4, C7, C11 and C14, `status.md` gets a dated line, and the board numbers the code rows of section 8.
 
-Sources: `research/key-split.md` and `research/probes/key-split/`; `research/host-load.md` 3; 011 C3 (the environment hash and key format bullets), C4 step 3, C7, C11, C14 and `status.md`; `tasks/011-37/design.md` (formats read as one); the source at `90e442f7f` (Squeal 0.1.245, key format 20). New probes in `probes/` (`probes/README.md`): a `git clone` under `/tmp` with a copied install, scratch `HOME`, `XDG_*` and `TMPDIR`, single test files only, no daemon and no build. One-minute load 41 to 66 on 24 CPUs during the probes. The clone is removed.
+Sources: `research/key-split.md` and `research/probes/key-split/`; `research/host-load.md` 3; 011 C3 (the environment hash and key format bullets), C4 step 3, C7, C11, C14 and `status.md`; `tasks/011-37/design.md` (formats read as one); the source at `0d28a87ee` (Squeal 0.1.245, key format 20). New probes in `probes/` (`probes/README.md`): a `git clone` under `/tmp` with a copied install, scratch `HOME`, `XDG_*` and `TMPDIR`, single test files only, no daemon and no build. One-minute load 41 to 66 on 24 CPUs during the probes. The clone is removed.
 
 Evidence tags follow `docs/process.md`: `verified by experiment`, `read in official docs`, `read in source code`, `inferred`.
 
@@ -94,7 +94,7 @@ One existing test pins today's rule and changes with R2: `test/runners/vitest/ex
 
 ## 3. Regressions (brief question 3)
 
-The findings' five, each as a test. "Base" is 0.1.245 (`90e442f7f`), "candidate" is `probes/candidate.patch`. The first three and the fifth ran in the probe.
+The findings' five, each as a test. "Base" is 0.1.245 (`0d28a87ee`), "candidate" is `probes/candidate.patch`. The first three and the fifth ran in the probe.
 
 | # | Must hold | Test (file, name) | Fixture | Base, candidate |
 | --- | --- | --- | --- | --- |
@@ -160,7 +160,7 @@ So, by C3's rule, R1 and R2 move no version. Their keys differ, and a differing 
 Making it non-opaque changes little, because the test files are opaque on their own. *Verified by experiment, a static estimate* (`probes/opaque-count.json`): 787 of 820 test files reach `child_process`, `worker_threads`, `cluster` or `module` through relative imports (C11 case 1), and 607 call `require.resolve`, `createRequire` or `import.meta.resolve` (case 2). `src/core/fs/git.ts` alone is in 684 closures. The estimate leaves out bare imports and opaque packages (case 4), so the true count is at least this high for case 1.
 
 - **Instead of R1** it does not fix the raise: those 787 files would key by `whole:<fingerprint>` and split at each raise, as 011-81 inferred.
-- **Beside R1** it narrows only a real dependency change, from every file to at least 96% of them. Main took one in 7 days (`c12dc371d`).
+- **Beside R1** it narrows only a real dependency change, from every file to at least 96% of them. Main took one in 7 days (`86f1564c8`).
 - It costs a process listing without `child_process`: reading `/proc/*/cmdline` works on Linux only. Hiding the import from C11's scan (a computed specifier) would defeat the rule that protects a child process's packages.
 
 Recommendation: leave it (Q6 (a)).

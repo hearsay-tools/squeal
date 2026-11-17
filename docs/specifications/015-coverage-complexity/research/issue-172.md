@@ -10,7 +10,7 @@ is **not fully reproduced**. Broad custom `inputs` alone did not select the brow
 stand-in. The report's attribution to those inputs is not established.
 
 Examined on 2026-11-10: reported and probed Squeal **0.1.426**, source commit
-`6bb387fec689dd80bd68cfb04f6bbea2153a3c23`, Node **24.22.1**, Vitest **5.0.3**.
+`ec2c45309194de704409aef3edd0af296ae6d7f7`, Node **24.22.1**, Vitest **5.0.3**.
 The runtime report records counter 4, coverage provider 3, coverage record 4 and
 quality policy 2. Each tag below applies to these versions unless stated otherwise.
 
@@ -126,7 +126,7 @@ research selects no flag design and changes no existing policy.
 - Local repository specs: `015-coverage-complexity/spec.md` D7–D9 and `status.md`;
   `019-run-triggers/spec.md` D1/D6 and `status.md`;
   `020-quality-gate/spec.md` D1/D3/D5 and `status.md`.
-- [Pinned Squeal source](https://github.com/hearsay-tools/squeal/tree/6bb387fec689dd80bd68cfb04f6bbea2153a3c23), paths and lines cited above.
+- [Pinned Squeal source](https://github.com/hearsay-tools/squeal/tree/ec2c45309194de704409aef3edd0af296ae6d7f7), paths and lines cited above.
 - Installed dependency source: `node_modules/vitest/dist/chunks/index.DpLw24bj.js`,
   version from `node_modules/vitest/package.json`; package reference
   <https://www.npmjs.com/package/vitest/v/5.0.3>. The package URL is identification;

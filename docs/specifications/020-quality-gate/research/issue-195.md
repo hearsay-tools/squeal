@@ -5,7 +5,7 @@ late failure is not reproduced in this bounded probe.
 
 Examined 2026-11-12: installed Squeal 0.1.443 and cached shipped Squeal 0.1.440,
 Node 26.13.0, Vitest 5.0.3, Linux. Documentation baseline:
-`9114fdf419c2f374146fe68410915a8753b7b4b0`.
+`a438ded309476a900bb7b44ad1c3a25c8500730b`.
 No product source was read, no product code changed, and no repository gate or
 whole suite ran. Existing holds remain unchanged.
 
@@ -98,7 +98,7 @@ versions already stop early here, but an uncaught stack, exit 3 and no usable
 report do not give D1's setup-error classification or the issue's requested
 remedy. This is evidence for the coordinator, not approval to implement a fix.
 
-**read in official docs**, spec 020 at `9114fdf4`: D1 assigns exit 2 to usage or
+**read in official docs**, spec 020 at `a438ded3`: D1 assigns exit 2 to usage or
 setup errors; D3.5 puts temporary files under TMPDIR; D7 specifies the report
 object; D11.7 reads stored evidence; D17.3 keeps completed results. The status
 amendments retain those reuse and keep rules. These contracts do not establish
@@ -120,7 +120,7 @@ prove a regression window or that the incident is fixed.
   Incident account only, not independent experimental proof. It reports 0.1.440,
   unknown revision, 989 Vitest plus 8 node:test files, and late exit 2.
 - [Spec](../spec.md), D1, D3, D7, D11.7, D17.3, and [status](../status.md),
-  read at `9114fdf419c2f374146fe68410915a8753b7b4b0`.
+  read at `a438ded309476a900bb7b44ad1c3a25c8500730b`.
 - [Probe instructions](probes/issue-195/README.md) and
   [captured evidence](probes/issue-195/results.json).
 - Installed 0.1.443 launcher and cached 0.1.440 CLI paths above, executed as

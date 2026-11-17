@@ -1,6 +1,6 @@
 # 001-389: repair of 001-388 (0.1.180's setup failure)
 
-Worker notes, 2026-10-15. Source: `reviews/wave-13bp.md` B1 to B4, spec D4 to D7 as amended by 001-382, `tasks/001-382/notes.md`. Each blocker's review probe is a regression test, red at `ee6f80c2` and green after.
+Worker notes, 2026-10-15. Source: `reviews/wave-13bp.md` B1 to B4, spec D4 to D7 as amended by 001-382, `tasks/001-382/notes.md`. Each blocker's review probe is a regression test, red at `876ccc8d` and green after.
 
 ## The fixes
 
@@ -41,6 +41,6 @@ Worker notes, 2026-10-15. Source: `reviews/wave-13bp.md` B1 to B4, spec D4 to D7
 ## Not done, for the next worker
 
 - The plugin dist drifts: the four bundle tests (`test/harness/plugin.test.ts`, `codex/plugin.test.ts`, `pi/package.test.ts`, `opencode/package.test.ts`) fail until the coordinator rebuilds. The version is not bumped.
-- The key-format guard fails (`test/keys/key-format.test.ts`, three tests): the guarded sources changed, and no key changes meaning. Format 10 is unreleased (no `squeal--v0.1.18*` tag locally or on origin), so the coordinator's landing commit can re-pin `KEY_SOURCES_HASHES[10]` in place, as `f8f97252` did, once 001-386's sources are in too. At this branch the hash is `23878fba47cd626cc5ac511aca0d8bc7f22517f7ed1a9655428464e4ef3a5233`.
+- The key-format guard fails (`test/keys/key-format.test.ts`, three tests): the guarded sources changed, and no key changes meaning. Format 10 is unreleased (no `squeal--v0.1.18*` tag locally or on origin), so the coordinator's landing commit can re-pin `KEY_SOURCES_HASHES[10]` in place, as `ae08a731` did, once 001-386's sources are in too. At this branch the hash is `23878fba47cd626cc5ac511aca0d8bc7f22517f7ed1a9655428464e4ef3a5233`.
 - `test/integration/node-test-packages.test.ts` failed once in the checkpoint and passed on its re-run under the same inputs (Squeal: flaky). It is the file 001-386 is investigating.
 - 001-382's gap is unchanged: when every blocked file finds a current result from the store after the retry, nothing runs and the setup check stays `fail`. That stays with 001-368's retry hook.

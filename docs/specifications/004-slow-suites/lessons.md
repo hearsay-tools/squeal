@@ -277,7 +277,7 @@ Numbered on from the first dogfood's 9. None is fixed here.
 
 ## Confirmation at 0.1.85
 
-Task 004-53, 2026-10-09, 21:20 to 21:57 UTC. A check that the revision loop of defect 10 stays closed in real use, with the slow-tier line read against the truth. This repository only. The agent was Claude Code 2.1.296 (`claude -p --model opus`) loading the dogfood worktree's own plugin (`--plugin-dir`), with `squeal@hearsay` disabled in the worktree's untracked `.claude/settings.local.json`. The session's `init` event lists `squeal@inline` 0.1.85 as its only Squeal. `origin/main` was `8b40d341`, version 0.1.85. Node 24.21.0. The load was 0.03 to 2.6 per CPU on 24 CPUs, 1 or above only at 21:32 and from 21:36 to 21:42 (other agents and r9 to r11's fast work). Scripts, prompt and trimmed logs: `research/probes/dogfood3/`; its README lists the rules followed.
+Task 004-53, 2026-10-09, 21:20 to 21:57 UTC. A check that the revision loop of defect 10 stays closed in real use, with the slow-tier line read against the truth. This repository only. The agent was Claude Code 2.1.296 (`claude -p --model opus`) loading the dogfood worktree's own plugin (`--plugin-dir`), with `squeal@hearsay` disabled in the worktree's untracked `.claude/settings.local.json`. The session's `init` event lists `squeal@inline` 0.1.85 as its only Squeal. `origin/main` was `3d5aeb24`, version 0.1.85. Node 24.21.0. The load was 0.03 to 2.6 per CPU on 24 CPUs, 1 or above only at 21:32 and from 21:36 to 21:42 (other agents and r9 to r11's fast work). Scripts, prompt and trimmed logs: `research/probes/dogfood3/`; its README lists the rules followed.
 
 Setup:
 

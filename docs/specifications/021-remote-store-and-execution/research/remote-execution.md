@@ -1,6 +1,6 @@
 # Research: remote-execution
 
-Row 021-02, topic `remote-execution` of `README.md`. Researcher, 2026-11-11. It extends `../../019-run-triggers/research/remote-runner.md` (019-04, 2026-11-03) and does not repeat it. Squeal source read at `a3579d787` (0.1.430). Mutagen v0.18.1 (release binary, SHA-256 `7735286c…f6f8f` checked against the release's `SHA256SUMS`; source tag `a225ae50a`). The remote is a throwaway container on this host: `node:24.22.1-bookworm-slim` with `openssh-server`, reached over SSH on loopback. Every key, `known_hosts`, `HOME` and Mutagen state lived under `$TMPDIR`. Probes: `probes/remote-execution/` (throwaway). Vendor docs fetched 2026-11-11.
+Row 021-02, topic `remote-execution` of `README.md`. Researcher, 2026-11-11. It extends `../../019-run-triggers/research/remote-runner.md` (019-04, 2026-11-03) and does not repeat it. Squeal source read at `b0676e0af` (0.1.430). Mutagen v0.18.1 (release binary, SHA-256 `7735286c…f6f8f` checked against the release's `SHA256SUMS`; source tag `a225ae50a`). The remote is a throwaway container on this host: `node:24.22.1-bookworm-slim` with `openssh-server`, reached over SSH on loopback. Every key, `known_hosts`, `HOME` and Mutagen state lived under `$TMPDIR`. Probes: `probes/remote-execution/` (throwaway). Vendor docs fetched 2026-11-11.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
@@ -133,7 +133,7 @@ Not determined: Mutagen save-to-remote latency, even on loopback (load 30 to 86 
 
 ## Sources
 
-- Squeal at `a3579d787`: `src/core/keys/environment.ts:45-47`, `src/core/keys/environment-descriptor.ts`, `src/core/status/import-environment.ts`, `src/runners/process/group.ts`; spec 018 D1, D10 (`../../018-ci-and-shared-results/spec.md`).
+- Squeal at `b0676e0af`: `src/core/keys/environment.ts:45-47`, `src/core/keys/environment-descriptor.ts`, `src/core/status/import-environment.ts`, `src/runners/process/group.ts`; spec 018 D1, D10 (`../../018-ci-and-shared-results/spec.md`).
 - Earlier findings: `../../019-run-triggers/research/remote-runner.md`; `../../018-ci-and-shared-results/research/result-import.md`; `../../011-core/research/load-slowdown.md`; `../../011-core/research/host-load/011-181.md`.
 - Mutagen v0.18.1: release `mutagen_linux_amd64_v0.18.1.tar.gz` and `SHA256SUMS` (github.com/mutagen-io/mutagen/releases/tag/v0.18.1); source at tag v0.18.1 (`a225ae50a`): `LICENSE`, `pkg/synchronization/controller.go`, `pkg/synchronization/version.go`, `pkg/ssh/ssh.go`, `pkg/synchronization/core/ignore/`; GitHub API for releases and commits (2026-11-11). Docs: https://mutagen.io/documentation/synchronization/, …/synchronization/ignores/, …/synchronization/version-control-systems/, …/synchronization/watching/, …/transports/ssh/.
 - Unison: https://github.com/bcpierce00/unison (README at master, release v2.54.0). lsyncd: https://github.com/lsyncd/lsyncd (README at master, release v2.3.1).

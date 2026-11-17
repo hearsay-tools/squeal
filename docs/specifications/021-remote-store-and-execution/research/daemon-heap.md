@@ -1,6 +1,6 @@
 # 021-27: what fills an idle daemon, and whether a runner host grows per run
 
-Researcher, 2026-11-12, 21:03Z to 21:58Z. Brief: `../tasks/wave-6.md`, section 021-27. Extends `../../011-core/research/daemon-memory.md` (011-53). Host: 24 vCPUs, Linux 6.8.0-147, Node v26.13.0. Squeal: this worktree's committed Claude Code bundle at `5cc5624e2` (0.1.459), copied. Repositories: shallow clones of cezar at `cc3cead4b` (Vitest 4.1.10, Vite 8.1.4) and of Squeal at `5cc5624e2` (Vitest 5.0.3), each under `$TMPDIR` with its own `HOME`, `XDG_*` and `TMPDIR`, installed offline from the host's pnpm store. Pool capped at 4 slots (1 slot for the busy runs), slow lane off. Live daemons of other worktrees were read only through `/proc/<pid>/smaps` and `squeal ps`; none was attached to or signalled. Probes and logs: `probes/daemon-heap/` (throwaway). The one-minute load is given beside every number. The load was 15 to 50 during the session, from other coordinators; every timing kept was taken below 24.
+Researcher, 2026-11-12, 21:03Z to 21:58Z. Brief: `../tasks/wave-6.md`, section 021-27. Extends `../../011-core/research/daemon-memory.md` (011-53). Host: 24 vCPUs, Linux 6.8.0-147, Node v26.13.0. Squeal: this worktree's committed Claude Code bundle at `0fb3f8ccd` (0.1.459), copied. Repositories: shallow clones of cezar at `cc3cead4b` (Vitest 4.1.10, Vite 8.1.4) and of Squeal at `0fb3f8ccd` (Vitest 5.0.3), each under `$TMPDIR` with its own `HOME`, `XDG_*` and `TMPDIR`, installed offline from the host's pnpm store. Pool capped at 4 slots (1 slot for the busy runs), slow lane off. Live daemons of other worktrees were read only through `/proc/<pid>/smaps` and `squeal ps`; none was attached to or signalled. Probes and logs: `probes/daemon-heap/` (throwaway). The one-minute load is given beside every number. The load was 15 to 50 during the session, from other coordinators; every timing kept was taken below 24.
 
 ## Answers
 
@@ -41,7 +41,7 @@ The Squeal clone gives the same shape: 292 MiB, `#runnerClosures` 160 MiB, `impo
 
 **Why `imports` is large.** Each test file's closure carries one record per module it loads, about 183 on cezar, and the records of different test files are separate objects. The 1.96 million strings in the heap hold 71,032 distinct values. Held once each they would take 16 MiB; the copies take 95 MiB (`logs/cezar-settled-strings.txt`). One path, `packages/cezar/src/home/display.ts`, is held 35,490 times. The 40-hex `sha1` values: 356,526 strings for 8,545 distinct values, 19 MiB. *Verified by experiment.*
 
-**Who reads it.** `keying.ts` never reads `imports`. The import-graph writer (`recordImportGraph`, `src/core/store/import-edges.ts`) reads it from fetched parts (`revision.ts:382`, `import-rewalk.ts:113`) and stores the edges in the store. After that, the copy in `#runnerClosures` is read by nothing found. *Read in source code at `5cc5624e2`.*
+**Who reads it.** `keying.ts` never reads `imports`. The import-graph writer (`recordImportGraph`, `src/core/store/import-edges.ts`) reads it from fetched parts (`revision.ts:382`, `import-rewalk.ts:113`) and stores the edges in the store. After that, the copy in `#runnerClosures` is read by nothing found. *Read in source code at `0fb3f8ccd`.*
 
 **Busy, the state of the live daemons.** `squeal ps` at 21:31Z: idle cezar daemons at 553 to 590 MiB; busy ones, with 466 to 1,563 files pending, at 0.9 to 1.1 GB. In the 21:06Z `/proc` read (`logs/live-split-1.tsv`), three cezar daemons held 0.96 to 1.40 GB private, 0.66 to 0.98 GB of it V8 pages. My cezar daemon reproduced this. An edit to `packages/contract/src/waits.ts`, which most closures name, queued 1,330 files at one slot (`logs/cezar-busy-run2-daemon.tsv`):
 
@@ -83,7 +83,7 @@ What makes a host large is its first `affected` walk, not its runs. In the drive
 
 ## 3. D20's cold start
 
-`drive-host.mts` starts the copied bundle's `runner-host` through Squeal's own proxy (source at `5cc5624e2`), on a copy of the clone so that no daemon saw the edits. Each cycle does what a daemon asks of a host for one edit of a test file: `invalidate`, `affected` (the daemon calls it on every revision, `refinement.ts:159`), `closure` and `run`. It repeats that twice warm, then closes the host, so the process exits as under D20.2. 3 cycles each, 4 workers, no coverage, no exclusions, so the lists include the end-to-end files the daemons leave out (`logs/cold-start-*.jsonl`). *Verified by experiment.*
+`drive-host.mts` starts the copied bundle's `runner-host` through Squeal's own proxy (source at `0fb3f8ccd`), on a copy of the clone so that no daemon saw the edits. Each cycle does what a daemon asks of a host for one edit of a test file: `invalidate`, `affected` (the daemon calls it on every revision, `refinement.ts:159`), `closure` and `run`. It repeats that twice warm, then closes the host, so the process exits as under D20.2. 3 cycles each, 4 workers, no coverage, no exclusions, so the lists include the end-to-end files the daemons leave out (`logs/cold-start-*.jsonl`). *Verified by experiment.*
 
 | | cezar, 1,765 files listed, load 15 to 19 | Squeal, 1,765 files listed, load 15 to 20 |
 |---|---|---|
@@ -113,6 +113,6 @@ The cold walk transforms every test file's imports, as in 011-53 3. It costs abo
 
 ## Sources
 
-- Squeal source at `5cc5624e2`: `src/core/scheduler/keying.ts` (`#runnerClosures`, `setClosure`), `src/core/types/runner.ts` (`RunnerClosure`, `FileImports`), `src/core/store/import-edges.ts`, `src/core/scheduler/revision.ts`, `import-rewalk.ts`, `refinement.ts`, `src/core/code/crap/loaders.ts`, `cache.ts`, `file.ts`, `walk.ts`, `step.ts`, `src/core/runner-host/protocol.ts`, `channel.ts`, `proxy.ts`, `vitest-host.ts`, `src/core/daemon/idle-gc.ts`, `src/core/code/count/parser.ts`; the bundle `plugins/claude-code/dist/cli/squeal.mjs` for the profiler's line numbers.
+- Squeal source at `0fb3f8ccd`: `src/core/scheduler/keying.ts` (`#runnerClosures`, `setClosure`), `src/core/types/runner.ts` (`RunnerClosure`, `FileImports`), `src/core/store/import-edges.ts`, `src/core/scheduler/revision.ts`, `import-rewalk.ts`, `refinement.ts`, `src/core/code/crap/loaders.ts`, `cache.ts`, `file.ts`, `walk.ts`, `step.ts`, `src/core/runner-host/protocol.ts`, `channel.ts`, `proxy.ts`, `vitest-host.ts`, `src/core/daemon/idle-gc.ts`, `src/core/code/count/parser.ts`; the bundle `plugins/claude-code/dist/cli/squeal.mjs` for the profiler's line numbers.
 - Research: `../../011-core/research/daemon-memory.md` (011-53); spec 021 D8 and D20; `../status.md`, 2026-11-12.
 - Probes: `probes/daemon-heap/` (README lists each script and log). cezar at `cc3cead4b`.

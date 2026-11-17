@@ -1,6 +1,6 @@
 # 011-151: a hook's step-down and stop reach only the incarnation its decision read
 
-Worker b833f699, wave 25 W3, from main at 7e585a601 (after 0.1.278), 2026-10-23. Mechanism A, chosen by the coordinator in its reply to request 356e7e52 (late, after I had started on the same default). The reply also gave this row `replaceShort` in `src/cli/start.ts`.
+Worker b833f699, wave 25 W3, from main at ccab4d647 (after 0.1.278), 2026-10-23. Mechanism A, chosen by the coordinator in its reply to request 356e7e52 (late, after I had started on the same default). The reply also gave this row `replaceShort` in `src/cli/start.ts`.
 
 ## 1. The window, and why a mark alone cannot close it
 
@@ -8,7 +8,7 @@ Worker b833f699, wave 25 W3, from main at 7e585a601 (after 0.1.278), 2026-10-23.
 
 What every release does have:
 
-- Every daemon since the first one (fd6ffee30, 2026-10-04) answers `ping` with `pid`, `squealVersion` and `startedAt`. The record holds `startedAt` and `squealVersion`.
+- Every daemon since the first one (1f02af21f, 2026-10-04) answers `ping` with `pid`, `squealVersion` and `startedAt`. The record holds `startedAt` and `squealVersion`.
 - Each incarnation's socket is a new file at the path. Since row 001-77 the server listens at a staging name and renames it over the path (`bindAt`, `src/core/daemon/server.ts`). Before that it unlinked and bound. A file never comes back to the path after it is replaced.
 - The server answers one request per connection (`answer` ends the socket), so a ping and a step-down cannot share one connection.
 

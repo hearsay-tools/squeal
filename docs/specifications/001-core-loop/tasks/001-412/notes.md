@@ -26,12 +26,12 @@ Wave 15 W2. Fix: `38499006`. Test: `test/scheduler/idle-lock.test.ts`.
 ## Reproduction on main, and the fix
 
 - **Scheduler level:** `test/scheduler/idle-lock.test.ts`. A second connection holds `BEGIN IMMEDIATE` and the store's busy timeout is 50 ms.
-  - On `a439bbb9`, the idle `interval` pass threw `database is locked` from `takeHeldFiles`.
+  - On `b7f07d33`, the idle `interval` pass threw `database is locked` from `takeHeldFiles`.
   - With only the first two writes removed, the pump stalled instead ("scheduler stopped running tiers: Error: database is locked") from `selectTier` → `Ledger.commit`.
   - With all three removed, it passes, and an edit after the hold records its revision.
 - **Daemon level:** scripts in `/tmp/w2-412/scripts` (scratch only).
   - Setup: `repro2.sh` starts a real daemon in a one-file scratch repo. Two writers (`test/daemon/long-writer.ts`) take turns on the write lock, 12 s held and 1 s free, for 100 s.
-  - Baseline `a439bbb9` build: `daemon error: database is locked` noted in 3 of 3 runs (17:55Z, 18:01Z, 18:03Z).
+  - Baseline `b7f07d33` build: `daemon error: database is locked` noted in 3 of 3 runs (17:55Z, 18:01Z, 18:03Z).
   - Fixed build: 0 such notes in 3 of 3 runs. Heartbeats and consumer expiry still fail on stderr, as before; they are not notes.
   - With 7 s holds the baseline did not reproduce in one 75 s run: the waiter gets in during the 1 s rests, and a hold has to cover a pass's whole 5 s wait.
 - **The fix** (`38499006`). Each write reads first and writes only when something changed:

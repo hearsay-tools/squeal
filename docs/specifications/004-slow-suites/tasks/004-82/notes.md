@@ -1,6 +1,6 @@
 # 004-82 worker notes: slow files ranked by evidence
 
-Brief: `../wave-13.md`, section 004-82. Baseline: `ad5dd720` (0.1.220, `KEY_FORMAT_VERSION` 13). No
+Brief: `../wave-13.md`, section 004-82. Baseline: `fcdd83fe` (0.1.220, `KEY_FORMAT_VERSION` 13). No
 guarded source changed, so 13 is not re-pinned; no version bump; no `npm run build`.
 
 ## Seam map

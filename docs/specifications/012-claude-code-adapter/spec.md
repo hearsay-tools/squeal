@@ -1,6 +1,6 @@
 # 012 Claude Code adapter
 
-Stage: shipped (inherited from 001, shipped 2026-10-06; this spec forked 2026-10-17). Source: `../001-core-loop/spec.md` at `cdd72a91`, frozen; split per `../001-core-loop/split-proposal.md` (the human's decisions Q1 to Q8, 2026-10-16 and 2026-10-17). Every paragraph tagged with an HTML comment is 001's text verbatim; text under a **Note** or in a section 001 did not have is new. Amendments after the fork are dated lines in `status.md` here and edits to this file.
+Stage: shipped (inherited from 001, shipped 2026-10-06; this spec forked 2026-10-17). Source: `../001-core-loop/spec.md` at `60965d3b`, frozen; split per `../001-core-loop/split-proposal.md` (the human's decisions Q1 to Q8, 2026-10-16 and 2026-10-17). Every paragraph tagged with an HTML comment is 001's text verbatim; text under a **Note** or in a section 001 did not have is new. Amendments after the fork are dated lines in `status.md` here and edits to this file.
 
 ## Scope
 
@@ -8,24 +8,24 @@ The Claude Code plugin is the first implementation of the hook contract (011 C8)
 
 ## Non-goals
 
-<!-- 001 spec.md@cdd72a91 lines 31 (Non-goals) -->
+<!-- 001 spec.md@60965d3b lines 31 (Non-goals) -->
 - Idle wake-up in Claude Code `-p` mode. Not possible without blocking the agent (research, claude-code-integration §4).
 
 ## Design
 
 ### CC1. Plugin, install and files
 
-<!-- 001 spec.md@cdd72a91 lines 165 (D9) -->
+<!-- 001 spec.md@60965d3b lines 165 (D9) -->
 Shipped as a Claude Code plugin in this repository (ADR 0003). `squeal init` adds the marketplace and the `enabledPlugins` entry to project settings and writes `squeal.config.json` if absent. It never writes raw hook commands into user-owned settings.
 
-<!-- 001 spec.md@cdd72a91 lines 167 (D9) -->
+<!-- 001 spec.md@60965d3b lines 167 (D9) -->
 Plugin contents:
 
-<!-- 001 spec.md@cdd72a91 lines 179-180 (D9) -->
+<!-- 001 spec.md@60965d3b lines 179-180 (D9) -->
 - `skills/squeal/SKILL.md`: described by its trigger, the agent being about to run tests (vitest, npm test) or to check whether a change broke something. Its body is steps first: keep working and read the reports; on a FAIL, `squeal why` from the report's last line; wait with `squeal status --wait` only when a result is needed before the next step, results arriving with the next tool call by default; claim only what status shows; run tests yourself only in the primer's cases. It says the full header at registration and Stop names the files changed since the last report, not the cause, and that the other reports carry only the news (task 001-407). Counts, commands and policy keys are reference in `skills/squeal/references/`, reached by pointers that name when to read them. Every pointer to `squeal status --wait`, in the skill and the primer, states the next-tool-call default first.
 - `bin/squeal` so the CLI is on the Bash tool's path.
 
-<!-- 001 spec.md@cdd72a91 lines 182 (D9) -->
+<!-- 001 spec.md@60965d3b lines 182 (D9) -->
 Every hook script: dependency-free Node using `node:sqlite` and `node:net`; passes the CLI bundle it ships to the daemon-ensuring helper, so a plugin-only install can start a daemon; reads the store directly for deltas and status; uses the socket only for liveness and nudges with a 100 ms timeout; exits 0 with no output on any internal error; enabled plugins fire in every repository, so in a repository without `squeal.config.json` and without a store the script exits in a few milliseconds. PreToolUse and PostToolBatch, which fire per tool call, run Node only after a POSIX `sh` test, with no `git` or other process, finds Squeal from `$CLAUDE_PROJECT_DIR` or else the hook's working directory: `squeal.config.json` there or at the nearest ancestor with a `.git` entry, or a `squeal` entry in that worktree's common dir (the `.git` directory, or for a `.git` file its `gitdir:` and then that dir's `commondir`). Otherwise the command exits 0 with no output, budget 10 ms p95.
 
 Amended 2026-10-20 (task 012-01, the human): a harness that imports this plugin can keep an entry's `command` and drop its `args`. The Cursor CLI does, for every installed Claude Code plugin, and so did Codex (`research/cursor-dropped-args.md`). So every entry's `command`, run on its own with a hook payload on stdin, runs nothing, reads none of its stdin as code, and exits 0 with no output. With its `args`, Claude Code still spawns each entry in exec form, and the hook's Node process still has the harness as its parent. One exception, accepted by the human on 2026-10-20 (reviews `reviews/012-01.md` and `reviews/012-01-r2.md`, B1): when the plugin root contains whitespace, a harness that runs `command` through a shell splits it, since exec form leaves no room for quotes. The shell then runs whatever file the root's first word names. When no file is there, the hook fails with exit 127 and the shell's "not found" line, which Cursor does not treat as a block, and nothing runs or is read. When an executable is there, as `/home/John` is for a root under `/home/John Smith`, that file runs with the payload on stdin, and its exit decides; 2 blocks the tool in Cursor. Squeal's own code never runs or reads the payload in either case.
@@ -34,7 +34,7 @@ Amended 2026-10-20 (task 012-01, the human): a harness that imports this plugin 
 
 Each event below maps Claude Code's hook onto the hook contract (011 C8). The rules stated inside these bullets that hold for every harness are 011's; their wording is kept here because 001 wrote them per event.
 
-<!-- 001 spec.md@cdd72a91 lines 169-176 (D9) -->
+<!-- 001 spec.md@60965d3b lines 169-176 (D9) -->
 - `hooks/hooks.json` with every hook `timeout: 2` and scripts under `${CLAUDE_PLUGIN_ROOT}`:
   - `SessionStart`: ensure the daemon (D10), register the consumer, inject the status header followed by the primer. After spawning a daemon it waits up to 750 ms for the daemon's heartbeat, never for its start scan (D6). A loaded host can outlast that wait (a 1.1 s hook and the first heartbeat 1.5 s after the spawn at load 127, task 001-156), so a registration whose hook spawned a daemon that has not heartbeat yet, SessionStart's or any other's, says "A daemon is starting; results are as of revision N." in place of "No daemon is running", and the consumer is told the daemon is starting, as the time of the spawn, beside the told liveness (D6): its first heartbeat is no news, and a tool boundary says no daemon is validating only once 10 s passed since the spawn with no heartbeat (two default intervals, the deadline a running daemon's heartbeat has) or once it heartbeat and stopped. Before this rule the registration told the consumer the daemon was down and the next boundary said "a daemon is validating again" for a daemon that had never stopped. A hook from before the rule reads the told start as validating. With source `startup` or `resume` it first unregisters every other consumer of the session id, since that earlier run is gone; after `compact` the same run goes on, so it keeps every consumer and a registered main agent's view, and says only the primer, which compaction dropped. In a repository that has no store yet, SessionStart only spawns the daemon and injects the primer, and the first UserPromptSubmit (interactive) or PostToolBatch registers and injects the header. The **primer** is a short paragraph, the one place a hook tells the agent what to do, as decided by the human: Squeal runs the Vitest tests; do not run Vitest to learn whether edits broke something; results arrive with the next tool call, so keep working, and `squeal status --wait` only when a result is needed before the next step; run tests yourself only without a validating daemon, with unknown results, or when the repository's own gate requires it; what Squeal covers: only the runners the daemon itself would build, by its own selection rule (Vitest when its config is detected, node:test when `nodeTest` projects are configured), with the opening sentence naming those runners; each runner's projects by their configured identity (Vitest's config file or named projects, each `nodeTest` project with its globs), never inferred from old key rows; and the number of slow test files the runner listed, a long list folded into "and N more" and repeated command references compacted, so the primer and its whole closing sentence stay within 1,500 characters with any valid command path (task 001-250); and that typecheck, build and any other test suite are not covered, so run those yourself. Amended 2026-10-10 (task 001-234): the agent works out what is left from the list, since in 005's eval pilot every false "pass" came from a node:test suite Squeal did not cover. The registration is capped so that it and the primer stay within 10,000 characters. If interactive (`CLAUDE_CODE_SESSION_ATTENDED=1`, undocumented, guarded), arm the idle waiter.
   - `PostToolBatch`: deliver the delta for this consumer. Primary push channel. PostToolBatch and Stop also ensure the daemon when the recorded heartbeat is older than two intervals, a store read with no socket cost on the hot path. When that finds no daemon validating and starts none (one holds the lock and does not answer, D10, or there is no CLI to spawn), a batch whose tool calls may have changed files (any tool but the harness's known read-only ones, so a custom editing tool counts, or calls the harness does not name) adds one line at that boundary, every time, beside the liveness told once (D6): "Not validated: no daemon has validated since <time>; any change this call made has no result.", worded so a call that changed nothing is not said to have edited (`reviews/wave-11f.md` S1, S2) ("no daemon is running" when none ever heartbeat), so silence never reads as no failures (`lessons.md`, defect 22). A batch whose daemon the hook just spawned adds nothing: that daemon's start scan validates the edit. Without that line, a batch that may have changed files names, as amended (task 001-292, the human, 2026-10-13, on the eval in `status.md`), the code files (`.js .jsx .ts .tsx .mjs .cjs .mts .cts .py`, outside any `dist/`, still present) changed since the consumer registered that are neither a test file the daemon listed for this worktree nor in one of those files' closures as D6 trusts them (written by this worktree, or by one at this worktree's current key for the file; review wave 13as, B1): "No result for <paths>: no test Squeal runs reads it. Run whatever tests it yourself." ("them" for several; at most 3 paths, then " and N more"). Each path is named once per consumer and never again, whether it changes again or a test reads it later, kept in an `uncovered-told:<worktree>` `meta` row that worktree removal drops; a consumer that leaves takes its told paths into its parked registration and gets them back when it returns before that expires (review wave 13as, B2). Nothing is said before the daemon listed the worktree's test files or while one of them has no closure this worktree trusts. The line, with its `SQUEAL · `, is held to 1,000 characters before the delta is fitted: when 3 paths do not fit, fewer are named and the rest counted in " and N more", and when not even the first fits, it is named by its end after "…" (review wave 13as, B3). The line counts against the message cap. Policy `delivery.uncoveredEdits` turns it off. Verified to reach the model before its next step in the same turn; budget 80 ms p95 (about 50 ms Node start plus a store read). Amended 2026-11-05 (011 row 011-295): the line says the daemon as status says it: "the daemon's heartbeat is late: …; any change this call made has no result until it validates again." (row 011-276); beside a daemon that died, "no daemon has validated since <time>; the last daemon died without shutting down, <between runs | during run …>; `squeal start` starts one; …"; beside a shutdown begun or a handoff under way, "the daemon is stopping since <time>; nothing validates until its lock frees; …" (or "handing over from X to Y since <time>; Y serves once the old daemon's lock frees", or past its bound "`squeal start` finishes it"). It reads the death and the stopping daemon only when it prints.
@@ -48,14 +48,14 @@ Amended 2026-10-31 (row 011-288, 011 C8): a hook commits its report only after i
 
 ### CC3. Idle waiter
 
-<!-- 001 spec.md@cdd72a91 lines 178 (D9) -->
+<!-- 001 spec.md@60965d3b lines 178 (D9) -->
 - Idle waiter: one `asyncRewake` hook per session, started by SessionStart, UserPromptSubmit and Stop, with a per-consumer lock so only one runs. It blocks on the daemon until the consumer is idle and has a non-empty delta about the test files it recorded when its turn ended, prints only those entries to stderr and exits 2, which wakes an idle agent in about 40 ms; the wake puts the consumer in a turn. Every other difference waits for the next prompt or tool boundary. Each consumer has a turn state, no timer: a session starts idle and waiting for nothing; UserPromptSubmit, a wake or a tool call (PreToolUse before it runs, PostToolBatch after the batch) puts it in a turn, the tool call correcting an idle state that a Stop which was not the last word (another Stop hook blocked) or a failed UserPromptSubmit left, though a result that lands between such a Stop and the continuation's first tool call can still wake the waiter; a registration by UserPromptSubmit, PostToolBatch or Stop is in a turn in its own transaction; only a silent Stop makes it idle, so after an interrupted turn (no Stop) it stays in a turn and nothing wakes it. The state lives in `meta`, one row per worktree, beside the told liveness; a `consumers` column would need a schema step that every older hook and daemon sharing the store reads as "store version newer". A waiter message written mid-turn lands only at the next tool boundary, after PostToolBatch has delivered the same news with a newer header, so the waiter never speaks in a turn (`lessons.md`, defect 14). It is never armed in `-p` mode, where `asyncRewake` blocks the agent. Its `timeout` is explicit and long; expiry is silent, records the consumer as heard from (D10), and the next prompt or Stop re-arms it.
 
 ### CC4. Interactive liveness and lifecycle integration
 
 The daemon's rules are 011 C9, verbatim there: an interactive main agent's liveness is its idle waiter, whose lock the OS releases when Claude Code kills it, so a consumer with a free waiter lock and no delivery or sign of life for 10 minutes expires; departures, step-down and `squeal stop` are the daemon's. Claude Code's side is the waiter lock (`src/core/waiter-lock`), the per-session root of 011 C8, and the leaving mark SubagentStop writes:
 
-<!-- 001 spec.md@cdd72a91 lines 188 (D9) -->
+<!-- 001 spec.md@60965d3b lines 188 (D9) -->
 Amended 2026-10-15 (task 001-416, review 001-423 B1): before it ensures the daemon or waits, SubagentStop marks its consumer leaving, as the time of the mark, in a per-consumer `meta` row (`leaving:<worktree>`). A block clears the mark and keeps the registration. A registration of that consumer clears it in its own transaction, and so does every later boundary of it except the stopping hook's own delivery: PostToolBatch, every PreToolUse (the peek and a turn resumed without one, a consumer already in its turn included) and UserPromptSubmit. So a subagent that kept working, or registered again, is never dropped. The normal end unregisters as before, and that removes the mark.
 
 ## Known seams
@@ -69,20 +69,20 @@ Coupling recorded by the split proposal (section 3), not changed by it. Each is 
 
 ## Testing
 
-<!-- 001 spec.md@cdd72a91 lines 242 (Testing) -->
+<!-- 001 spec.md@60965d3b lines 242 (Testing) -->
 - **Hook scripts**: recorded hook JSON in, JSON out, for every event; a latency test asserting the p95 budget; behaviour with no store, with a newer schema, and with a dead daemon.
 
-<!-- 001 spec.md@cdd72a91 lines 244 (Testing) -->
+<!-- 001 spec.md@60965d3b lines 244 (Testing) -->
 - **Manual**: dogfood on this repository with Claude Code interactive and `-p`, recording delivery latency, duplicate rate, and how the model reacts to a PreToolUse denial.
 
 ## Open questions
 
 Numbering is 001's, so the lessons and reviews that cite a question keep resolving. Owner is the coordinator unless noted.
 
-<!-- 001 spec.md@cdd72a91 lines 252 (Open questions) -->
+<!-- 001 spec.md@60965d3b lines 252 (Open questions) -->
 3. PreToolUse denial wording and whether default-on survives dogfooding. Dogfooding (`lessons.md`): 4 denials in 2 of 18 editing sessions; the model re-issued the denied edit every time, never stalled or looped, and read the failure from the denial text, once reading the failing test in the same step as the re-issue and then fixing it. Cost: one extra tool call per denial. 2 of the 4 were transient mid-refactor failures. Claude Code prefixes the reason with "PreToolUse:Edit hook error:" without misleading the model. Proposed: keep default on and the current wording.
 
-<!-- 001 spec.md@cdd72a91 lines 255 (Open questions) -->
+<!-- 001 spec.md@60965d3b lines 255 (Open questions) -->
 6. Long tool calls delay delivery until they end (19 s observed). Whether to ship a plugin `monitor` is deferred to the dogfooding report. Dogfooding (`lessons.md`): during a 15 s Bash call the idle waiter took the delta 246 ms after the result and Claude Code queued it as a task notification until the call returned, 8.5 s later; a monitor's output would wait at the same boundary (inferred, not tested). The longest tool calls agents made were their own waits for pending checks (`sleep 20; squeal status`). Proposed: no monitor in v1; consider a blocking `squeal status --wait`.
 
 ## References
@@ -93,7 +93,7 @@ Numbering is 001's, so the lessons and reviews that cite a question keep resolvi
 
 ## Crosswalk from 001
 
-Lines are those of `001-core-loop/spec.md` at `cdd72a91`. Bold targets are this spec's; the others name where the rest of a 001 section went.
+Lines are those of `001-core-loop/spec.md` at `60965d3b`. Bold targets are this spec's; the others name where the rest of a 001 section went.
 
 | 001 section | Lines | Now in |
 |---|---|---|

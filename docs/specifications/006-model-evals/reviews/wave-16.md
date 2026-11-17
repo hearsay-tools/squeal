@@ -1,8 +1,8 @@
-PASS 65ae6c09831ef01311ac15b3aa864ae75b910269
+PASS 6d4ff6adc594d8a1d404b83a703d4bd4f5b2d112
 
 # Wave 16 review: 006-93 and 006-94
 
-2026-10-19. **0 blockers, 1 proven nonblocking note, 0 nits.** Candidate `cand/006-93`, range `1f863005..65ae6c09831ef01311ac15b3aa864ae75b910269` (0.1.220 base). The cached `origin/main` is `33ce411d`; the two intervening commits are coordinator docs only. No product version, bundle or `src/` change.
+2026-10-19. **0 blockers, 1 proven nonblocking note, 0 nits.** Candidate `cand/006-93`, range `f026065a..6d4ff6adc594d8a1d404b83a703d4bd4f5b2d112` (0.1.220 base). The cached `origin/main` is `c2bb7960`; the two intervening commits are coordinator docs only. No product version, bundle or `src/` change.
 
 ## Verification
 
@@ -10,7 +10,7 @@ All checks below ran at the pinned candidate with a clean tracked tree. The find
 
 ```text
 $ git rev-parse HEAD
-65ae6c09831ef01311ac15b3aa864ae75b910269
+6d4ff6adc594d8a1d404b83a703d4bd4f5b2d112
 $ git status --porcelain
 [no output]
 

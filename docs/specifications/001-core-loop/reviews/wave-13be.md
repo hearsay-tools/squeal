@@ -2,14 +2,14 @@
 
 ## Verdict and verification
 
-**PASS `a2e409d1974f331bcf476b1cb1b1228fbcafc162`**. Zero blockers, one plausible nonblocking suggestion, zero nits. Range: `7f4d8798..a2e409d1`, commits `ac61c3d2` (001-334) and `a2e409d1` (001-332), version 0.1.150. This review is bounded by 13bc S1/S2 for 001-332 and the new 001-334 diff. The independent full suite is **not green**; its failure is recorded below, outside this test-only range. No failing run was retried to green.
+**PASS `42fda936eccf8fd7f9d3e6c57aad0f7b97679b83`**. Zero blockers, one plausible nonblocking suggestion, zero nits. Range: `a1071dae..42fda936`, commits `7edb02ef` (001-334) and `42fda936` (001-332), version 0.1.150. This review is bounded by 13bc S1/S2 for 001-332 and the new 001-334 diff. The independent full suite is **not green**; its failure is recorded below, outside this test-only range. No failing run was retried to green.
 
 All candidate checks ran at the exact pinned commit on a clean tracked tree, before writing this file. `git status --short` stayed empty after the build, probes and full suite; `git diff --exit-code` returned 0. Throwaway configs, controlled-clock probes and mutated bundle copies lived outside the checkout and were removed. Only this findings file is committed; board, status, product, bundles and eval files were not edited.
 
 `git rev-parse HEAD`:
 
 ```text
-a2e409d1974f331bcf476b1cb1b1228fbcafc162
+42fda936eccf8fd7f9d3e6c57aad0f7b97679b83
 ```
 
 The commands used a scratch HOME and XDG config/cache directories, with `CODEX_SESSION_ID`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` unset and `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1`. No credentials were read or copied. npm's warnings below did not prevent the checks. This is the reviewer's independent Vitest run, not a Squeal checkpoint.

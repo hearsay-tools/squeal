@@ -43,7 +43,7 @@ node $P/classify.mjs an/content-squeal.jsonl an/earlier-squeal.jsonl an/age-sque
 nice -n 10 node $P/growth.mjs stores/squeal/store.sqlite runs/squeal an/growth-squeal.json; node $P/growth2.mjs an/content-squeal.jsonl
 # Question 3: build nothing; copy the shipped bundle, then a clone per commit (the paths in the scripts assume S=/tmp/ms152).
 cp -a ~/.claude/plugins/cache/hearsay/squeal/0.1.276 $S/bundle; cp $P/envrun.sh $P/mkclone.sh $S/; B=$S/bundle/dist/cli/squeal.mjs
-$S/mkclone.sh c 69cb9f7ed; cd $S/clones/c; $S/envrun.sh node $B start $S/clones/c; $S/envrun.sh node $B status --wait 180000
+$S/mkclone.sh c d9594d868; cd $S/clones/c; $S/envrun.sh node $B start $S/clones/c; $S/envrun.sh node $B status --wait 180000
 $S/envrun.sh node $B stop $S/clones/c; cp .git/squeal/store.sqlite* $S/an/c/   # then compare test_file_keys with a host worktree at that commit
 ```
 

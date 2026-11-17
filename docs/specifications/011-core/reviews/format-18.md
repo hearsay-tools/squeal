@@ -6,7 +6,7 @@ Candidate: `cand/0.1.228`, pinned to `8a4af878d6977913813babe9202ec7a4d72e6a2f`.
 
 ## Verification
 
-All checks and probes ran against the pinned candidate with no product edits. The range named by the brief is `origin/main..8a4af878`; the local remote-tracking main also precedes the explicitly excluded 0.1.227 work. The reviewed product delta is therefore `00a99166..8a4af878`. Nothing in 011-42 or 011-46 is a finding here.
+All checks and probes ran against the pinned candidate with no product edits. The range named by the brief is `origin/main..8a4af878`; the local remote-tracking main also precedes the explicitly excluded 0.1.227 work. The reviewed product delta is therefore `5a04abc6..8a4af878`. Nothing in 011-42 or 011-46 is a finding here.
 
 ```text
 $ git rev-parse HEAD
@@ -128,15 +128,15 @@ Repair B1 in the coverage reader and comparison self-tests only. Re-review that 
 
 ## Re-review
 
-Candidate: `50a234ce618d60cc4c7d0d7464faccb143f12573` (`cand/0.1.228`). **PASS: B1 resolved; 0 remaining blockers, 0 new findings.** This bounded re-review supersedes the initial FAIL verdict above.
+Candidate: `668146beed346d942945f92241347b4f38354014` (`cand/0.1.228`). **PASS: B1 resolved; 0 remaining blockers, 0 new findings.** This bounded re-review supersedes the initial FAIL verdict above.
 
-The non-doc delta from `8a4af878` is exactly repair commit `50a234ce`: five files under `test/keys/validity/` (`coverage.ts`, its new test, `sides.ts`, `compare.ts` and its test). `git diff --exit-code 8a4af878 50a234ce^ -- . ':!docs'` exited 0. The rebase from `00a99166` to released main `f30ce4e8` changes only `docs/board.md` and the 011-42 review. The nearest ancestral release is now `squeal--v0.1.227`; the passing cross-release test uses it. No product or bundle change reopens the settled product review.
+The non-doc delta from `8a4af878` is exactly repair commit `668146be`: five files under `test/keys/validity/` (`coverage.ts`, its new test, `sides.ts`, `compare.ts` and its test). `git diff --exit-code 8a4af878 668146be^ -- . ':!docs'` exited 0. The rebase from `5a04abc6` to released main `8db59c3e` changes only `docs/board.md` and the 011-42 review. The nearest ancestral release is now `squeal--v0.1.227`; the passing cross-release test uses it. No product or bundle change reopens the settled product review.
 
 Verification against the clean pinned candidate:
 
 ```text
 $ git rev-parse HEAD
-50a234ce618d60cc4c7d0d7464faccb143f12573
+668146beed346d942945f92241347b4f38354014
 
 $ npm ci
 added 196 packages, and audited 197 packages in 8s

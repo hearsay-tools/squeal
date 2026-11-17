@@ -19,7 +19,7 @@ no implementation.
 
 ## Versions, method and commands
 
-Examined checkout: `c2a6d371858c6fd4f05243ca383d0cfa2243f660`, package 0.1.459.
+Examined checkout: `53696af73f38e96aaaa1f7f35b2ba61df71350f0`, package 0.1.459.
 The live CLI was the installed **0.1.457** runtime, not the checkout bundle.
 Every report confirmed `versions.squeal: "0.1.457"`, counter 5, coverage provider
 3, coverage record 4, quality policy 4. Release source:
@@ -133,5 +133,5 @@ direct, task-required probe runs supply the research evidence.
 - [Release selection](https://github.com/hearsay-tools/squeal/blob/6c73ad9a84ba5db2eda36a001394752bc6866ec9/src/core/code/gate/collect.ts), local `src/core/code/gate/collect.ts:select`.
 - [Release scope](https://github.com/hearsay-tools/squeal/blob/6c73ad9a84ba5db2eda36a001394752bc6866ec9/src/core/code/gate/scope.ts), local `src/core/code/gate/scope.ts:tallyScope/addGroup`.
 - [Shipped command reference](https://github.com/hearsay-tools/squeal/blob/6c73ad9a84ba5db2eda36a001394752bc6866ec9/plugins/claude-code/skills/squeal/references/commands.md#L112), lines 112–116; release `src/cli/code-gate-prerun.ts` and `src/cli/code-gate-text.ts` for report wording.
-- [Spec 020](../spec.md), D1/D3/D5/D7/D14 and [decision log](../status.md); [spec 019](../../019-run-triggers/spec.md), D1/D6 and its status log, read at checkout `c2a6d371`.
+- [Spec 020](../spec.md), D1/D3/D5/D7/D14 and [decision log](../status.md); [spec 019](../../019-run-triggers/spec.md), D1/D6 and its status log, read at checkout `53696af7`.
 - [Reproducible probe](probes/issue-203/run.mjs); only synthetic execution is claimed. No product suite, build, or full-suite checkpoint was run.

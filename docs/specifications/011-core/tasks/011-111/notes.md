@@ -34,7 +34,7 @@ In C9, the sentence on `squeal start` with a daemon stopping now reads "It waits
 
 Each single-file run is `npx vitest run test/daemon/start-handoff.test.ts -t "exits 0 once the successor serves"`, outside the lock, while one `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4` runs. Pinned runs use `taskset -c <cpu>`, which the test's daemons inherit. Scripts: `t/5cccc4dd/bin/loop.sh` and `loop-pinned.sh` in the task's scratch directory.
 
-Before the fix (tree `d08a1011b`, a separate checkout), beside its full suite (23:30:26 to 23:51:41 UTC, 928 files passed, 2 skipped, 1,274 s):
+Before the fix (tree `c68a611f8`, a separate checkout), beside its full suite (23:30:26 to 23:51:41 UTC, 928 files passed, 2 skipped, 1,274 s):
 
 | Loop | Runs | Failures | Load |
 |---|---|---|---|

@@ -6,7 +6,7 @@ set -eu
 W=/tmp/dogfood-015-10/w-4ddd4e37
 id=$1; repo=$2
 case $repo in
-  squeal) G=~/projects/squeal/.ai/cezar/worktrees/4ddd4e37-a86d-432a-9739-e2292f9332f4; C=d5018817aa3c2f6e09126a8d18cfc59389a810c9;;
+  squeal) G=~/projects/squeal/.ai/cezar/worktrees/4ddd4e37-a86d-432a-9739-e2292f9332f4; C=5fc50b2b5d44392611e7ebd6af6dd630c4d6beb9;;
   cezar) G=~/projects/cezar; C=03c905a00c449c7a6257e2d0d3c16383cd267743;;
 esac
 O=$W/files/after-$id

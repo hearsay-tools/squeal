@@ -1,6 +1,6 @@
 # Wave 41.5
 
-Repair of `cand/0.1.322` (`2d1cca690`, branch `int/w41`), 2026-10-25, from `reviews/0.1.322.md` (FAIL: B1 to B4, S1). One repair round, then one re-review (`docs/process.md` step 6). The two workers resume on their own branches, on disjoint seams. The coordinator picks their commits onto `int/w41`, fixes S1 in `test/cli/fake-daemon.ts` itself, and rebuilds 0.1.322. N1 stays row 011-221. N2: the board on main already read *in review*.
+Repair of `cand/0.1.322` (`601c54312`, branch `int/w41`), 2026-10-25, from `reviews/0.1.322.md` (FAIL: B1 to B4, S1). One repair round, then one re-review (`docs/process.md` step 6). The two workers resume on their own branches, on disjoint seams. The coordinator picks their commits onto `int/w41`, fixes S1 in `test/cli/fake-daemon.ts` itself, and rebuilds 0.1.322. N1 stays row 011-221. N2: the board on main already read *in review*.
 
 ## R1: 011-207 B1, B2 and B3 (resume W1 b528f9fc)
 

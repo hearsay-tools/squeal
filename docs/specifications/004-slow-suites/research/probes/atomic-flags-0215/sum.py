@@ -1,5 +1,5 @@
 import json,glob,os,sys
-roots={'0215':'/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec','0199':'/tmp/squeal-evals-1001/cells/e77eff42453e/20261016T061730Z-07d7ab'}
+roots={'0215':'/tmp/squeal-evals-1001/cells/6faa3f32d500/20261018T125937Z-bcdbec','0199':'/tmp/squeal-evals-1001/cells/0b91ce0bf4ca/20261016T061730Z-07d7ab'}
 task,model=sys.argv[1],sys.argv[2]
 for v,r in roots.items():
   print('=====',v)

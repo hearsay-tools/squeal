@@ -1,6 +1,6 @@
 # 020-42: selection for files the Vitest config imports (#198 part 1)
 
-Researcher 9f26ed88, 2026-11-12. Brief: `../tasks/wave-14.md`, "020-42". Read: `research/issue-198.md`, spec 001 D3 and D4, spec 020 D3.1, D11.7 and D17.3. Source at `f1fbf73bc` (main `52534310d` plus the probe fixture). Vitest 5.0.3, Vite 8.3.2, Node v26.13.0. Released Squeal 0.1.457 for the gate and daemon runs. Probes: `probes/config-dependency-selection/` (throwaway, see its README), run in `/tmp/cds` with `HOME=/tmp/cds/home` and `TMPDIR=/tmp/cds/tmp`. The one-minute load was 22.14 to 23.37 at each probe start (22:42 to 22:44 UTC). The guard script skips any step at load 24 or more.
+Researcher 9f26ed88, 2026-11-12. Brief: `../tasks/wave-14.md`, "020-42". Read: `research/issue-198.md`, spec 001 D3 and D4, spec 020 D3.1, D11.7 and D17.3. Source at `f1fbf73bc` (main `59248de22` plus the probe fixture). Vitest 5.0.3, Vite 8.3.2, Node v26.13.0. Released Squeal 0.1.457 for the gate and daemon runs. Probes: `probes/config-dependency-selection/` (throwaway, see its README), run in `/tmp/cds` with `HOME=/tmp/cds/home` and `TMPDIR=/tmp/cds/tmp`. The one-minute load was 22.14 to 23.37 at each probe start (22:42 to 22:44 UTC). The guard script skips any step at load 24 or more.
 
 ## Questions answered
 

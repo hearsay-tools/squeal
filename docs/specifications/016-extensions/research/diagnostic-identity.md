@@ -1,6 +1,6 @@
 # What one linter or type-checker check is
 
-Researcher 016-33, 2026-10-26, Squeal at `6f8a579a1`. Brief: [diagnostic-identity-brief.md](diagnostic-identity-brief.md). Probe: [probes/diagnostic-identity/](probes/diagnostic-identity/README.md). Tools: TypeScript 7.0.2 (native `tsc`), ESLint 10.13.0, `@microsoft/eslint-formatter-sarif` 3.1.0, Ruff 0.17.2 (`30516b42`), typescript-eslint 8.72.0 with TypeScript 6.0.3, Node v24.21.0. No timings, no test suite, no agent session.
+Researcher 016-33, 2026-10-26, Squeal at `16bbad788`. Brief: [diagnostic-identity-brief.md](diagnostic-identity-brief.md). Probe: [probes/diagnostic-identity/](probes/diagnostic-identity/README.md). Tools: TypeScript 7.0.2 (native `tsc`), ESLint 10.13.0, `@microsoft/eslint-formatter-sarif` 3.1.0, Ruff 0.17.2 (`30516b42`), typescript-eslint 8.72.0 with TypeScript 6.0.3, Node v24.21.0. No timings, no test suite, no agent session.
 
 **Verdict:** store one check per file per tool, holding the file's whole set of findings, with a failure fingerprint that has no line numbers (candidate a-set). In the replay it gave no false recovery, no false new failure and no hidden change, at most one notice per changed file. A per-finding check (b, c) gave a false `FAIL -> PASS` on three of seven edits with every tool.
 
@@ -78,4 +78,4 @@ Limits: one small fixture per tool, seven edits, three rules each. The labels of
 - Probe and raw outputs: [probes/diagnostic-identity/](probes/diagnostic-identity/README.md), `out/compare.txt`, `out/typed-eslint.txt`, `out/versions.txt`.
 - Ruff 0.17.2, https://github.com/astral-sh/ruff at `30516b42ab972ffa2569e5efcfee81135da466d3`: `crates/ruff_db/src/diagnostic/render/gitlab.rs`, `crates/ruff_workspace/src/options.rs`.
 - `@microsoft/eslint-formatter-sarif` 3.1.0, `sarif.js` from npm (no `fingerprint` in the file).
-- Squeal at `6f8a579a1`: [011 C3 and C5](../../011-core/spec.md), [docs/vision.md](../../../vision.md) (lines 205, 258–267), [check-protocol.md](check-protocol.md) §3, [check-protocol-astra.md](check-protocol-astra.md) §3, [check-protocol-judgment.md](check-protocol-judgment.md) divergence 1 and spec input 7, [plugin-mechanisms.md](plugin-mechanisms.md) (per-file linter and project type checker rows).
+- Squeal at `16bbad788`: [011 C3 and C5](../../011-core/spec.md), [docs/vision.md](../../../vision.md) (lines 205, 258–267), [check-protocol.md](check-protocol.md) §3, [check-protocol-astra.md](check-protocol-astra.md) §3, [check-protocol-judgment.md](check-protocol-judgment.md) divergence 1 and spec input 7, [plugin-mechanisms.md](plugin-mechanisms.md) (per-file linter and project type checker rows).

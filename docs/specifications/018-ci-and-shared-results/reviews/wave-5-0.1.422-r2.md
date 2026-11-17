@@ -2,17 +2,17 @@
 
 ## Verification
 
-Candidate: `f44f6676006e0249946780ed5e76e91af473b3d9`. Ran `git fetch origin cand/0.1.422`, checked out that exact SHA, and confirmed it with `git rev-parse HEAD`. Verification ran on a clean tree. This is the bounded re-review of B1 and B2 in `wave-5-0.1.422.md`, against the `018-20 R1` brief, D14 and the repair delta since `c15abc2d538a271e413533d8a8d7e04a6e9b5f0c`. The candidate is rebased onto released main `cc174547e`; unrelated main changes are outside this review.
+Candidate: `574745fc04bd6ce4484988ff0a317a99b4e3b74b`. Ran `git fetch origin cand/0.1.422`, checked out that exact SHA, and confirmed it with `git rev-parse HEAD`. Verification ran on a clean tree. This is the bounded re-review of B1 and B2 in `wave-5-0.1.422.md`, against the `018-20 R1` brief, D14 and the repair delta since `c15abc2d538a271e413533d8a8d7e04a6e9b5f0c`. The candidate is rebased onto released main `3cc47e13c`; unrelated main changes are outside this review.
 
 Dependencies were already installed. No install, build or full suite was run. After the requested candidate fetch, all test and probe transport used local scratch repositories. Independent probes lived under this task's `$TMPDIR`, outside the worktree, and were removed before committing this file. No product source or test changed.
 
 | Command | Actual output/result at the candidate |
 | --- | --- |
-| `git rev-parse HEAD` | `f44f6676006e0249946780ed5e76e91af473b3d9` |
+| `git rev-parse HEAD` | `574745fc04bd6ce4484988ff0a317a99b4e3b74b` |
 | `pnpm run lint` | Exit 0: `Checked 2946 files in 1642ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit`, no diagnostics. |
 | `pnpm exec vitest run test/shared/reader-lifecycle.test.ts test/shared/reader.test.ts test/shared/policy.test.ts test/daemon/shared-reader-daemon.test.ts test/ci/publish.test.ts test/cli/ci-publish.test.ts test/keys/key-format.test.ts --maxWorkers=2` | Exit 0: **7 files, 49 tests passed**, 17.60 s. Explicit targeted run requested by the brief. |
-| `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/shared/reader-lifecycle.test.ts test/shared/reader.test.ts test/shared/policy.test.ts test/daemon/shared-reader-daemon.test.ts test/ci/publish.test.ts test/cli/ci-publish.test.ts test/keys/key-format.test.ts` | Exit 0 at revision 5, `f44f6676 + 0`: **7 named files, each current**, after 5.3 s. Known failures 0. **155 of 1549 files not current** (15 running, 140 queued), 967 tests (122 running, 845 queued). Remaining checks are pending. |
+| `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/shared/reader-lifecycle.test.ts test/shared/reader.test.ts test/shared/policy.test.ts test/daemon/shared-reader-daemon.test.ts test/ci/publish.test.ts test/cli/ci-publish.test.ts test/keys/key-format.test.ts` | Exit 0 at revision 5, `574745fc + 0`: **7 named files, each current**, after 5.3 s. Known failures 0. **155 of 1549 files not current** (15 running, 140 queued), 967 tests (122 running, 845 queued). Remaining checks are pending. |
 | `pnpm exec tsx "$TMPDIR/squeal-review-422-r2-us1c4knb/probe.mts" "$TMPDIR/squeal-review-422-r2-us1c4knb"` | Exit 0. Eleven shutdown stages: no later Git invocation, import or status note at any stage. Nine signal-aware children die and `idle()` resolves before the gate is released. The two local helper children survive, as N1 records. An unchanged-HEAD/new-main fixture imports both commits through an idle change-feed batch with zero paths and no watcher hints. |
 
 Exact-candidate CI and bundle drift are **unverified**. The brief permits no external network beyond the candidate fetch and forbids a build. No CI result was supplied. These are verification limits, not findings. The coordinator still owns exact-release full-suite CI and bundle verification.

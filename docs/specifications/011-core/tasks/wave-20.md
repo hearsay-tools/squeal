@@ -56,7 +56,7 @@ Done when:
 
 ## R1: review of cand/0.1.273
 
-Use /reviewer. Shape: review. Pinned to `cand/0.1.273` at a1618a61f2b3992321e28e2aa2ae548bdbc36072. The range is `b911f082c..a1618a61f` (`origin/main` at b911f082c):
+Use /reviewer. Shape: review. Pinned to `cand/0.1.273` at a1618a61f2b3992321e28e2aa2ae548bdbc36072. The range is `a447fbc5f..a1618a61f` (`origin/main` at a447fbc5f):
 - W2's seven commits (006-98, worker 6077df44) and the 006 docs commit;
 - W1's four (011-126, worker e8b08f00);
 - W3's three (009-31, worker a6a03320);

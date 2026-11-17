@@ -2,7 +2,7 @@
 
 Verdict: **FAIL**. One proven blocker, one plausible should-fix note, no nits. Two pre-existing limitations are recorded separately and do not count against this wave.
 
-Candidate: `cand/0.1.211`, pinned to `8a19bbeb2d4df51b2aeb7a074cce9315f383a8e1`. Reviewed the ten commits in `git log origin/main..8a19bbeb`, principally `src/core/daemon/low-priority.ts`, its callers and tests, D11 Priority and the final amendment in `001-core-loop/status.md`, and `tasks/001-437/{notes.md,probe.test.ts.txt,bench.test.ts.txt}`. No candidate code was changed.
+Candidate: `cand/0.1.211`, pinned to `886fc2b5a00faf77368eea1792b7163eada0973c`. Reviewed the ten commits in `git log origin/main..886fc2b5`, principally `src/core/daemon/low-priority.ts`, its callers and tests, D11 Priority and the final amendment in `001-core-loop/status.md`, and `tasks/001-437/{notes.md,probe.test.ts.txt,bench.test.ts.txt}`. No candidate code was changed.
 
 ## Verification
 
@@ -11,7 +11,7 @@ All primary commands ran at the pinned SHA with a clean tracked tree. Probe scri
 `git rev-parse HEAD`, exit 0:
 
 ```text
-8a19bbeb2d4df51b2aeb7a074cce9315f383a8e1
+886fc2b5a00faf77368eea1792b7163eada0973c
 ```
 
 `npm ci`, exit 0:
@@ -243,16 +243,16 @@ try{
 
 ## Re-review
 
-Verdict: **PASS d1123963cba578d9cf48bb739f77b379565c4867**. B1 is resolved. No new blockers, should-fix findings or nits in this round. S1 and the pre-existing `ionice` batch-abort limitation remain carried to the coordinator's later 001 row; this re-review does not reopen them.
+Verdict: **PASS 7617597b13d4c85c5c658ee21b25c9279c760703**. B1 is resolved. No new blockers, should-fix findings or nits in this round. S1 and the pre-existing `ionice` batch-abort limitation remain carried to the coordinator's later 001 row; this re-review does not reopen them.
 
-Scope: `8a19bbeb..d1123963`, against B1 and its done-when only. Fetched `cand/0.1.211`, checked out the requested SHA detached, and confirmed the tracked tree stayed clean through verification. The final commit appends only this section. No product file was edited. The optional independent full suite was not rerun, and `npm run build` was omitted as instructed. The first round's independent full-suite result belongs to `8a19bbeb`, not this repaired candidate.
+Scope: `886fc2b5..7617597b`, against B1 and its done-when only. Fetched `cand/0.1.211`, checked out the requested SHA detached, and confirmed the tracked tree stayed clean through verification. The final commit appends only this section. No product file was edited. The optional independent full suite was not rerun, and `npm run build` was omitted as instructed. The first round's independent full-suite result belongs to `886fc2b5`, not this repaired candidate.
 
 ### Verification output
 
 `git rev-parse HEAD`, exit 0:
 
 ```text
-d1123963cba578d9cf48bb739f77b379565c4867
+7617597b13d4c85c5c658ee21b25c9279c760703
 ```
 
 `npm ci`, exit 0:
@@ -335,13 +335,13 @@ Round 3:
    Duration  18.22s (tests 95%, transform 4%, import 1%)
 ```
 
-The coordinator separately reports its full gate at `d8d9aa97`: 5,956 passed and one failure in unchanged `test/harness/opencode-dispose.test.ts`, followed by three isolated passes. That is reported coordinator evidence, not an independent result from this round; the full-suite timeout was not independently re-tested here.
+The coordinator separately reports its full gate at `6c459717`: 5,956 passed and one failure in unchanged `test/harness/opencode-dispose.test.ts`, followed by three isolated passes. That is reported coordinator evidence, not an independent result from this round; the full-suite timeout was not independently re-tested here.
 
 ### B1 and its done-when
 
 **Proven:** `low-priority.ts:65,76-85` passes a loss on the next look after a lowered carrier disappears or a previously listed descendant leaves the walk. `escaped.ts:151-157` retains that request as a non-matching reaped count (`NaN`) until the existing `#orphans` cap allows a scan. The original failure no longer relies on a direct daemon-child exit. The optional third argument leaves existing two-argument callers compatible.
 
-**Proven, non-vacuous regression:** the new `wave-18 B1` case was run against disposable copies of both pre-repair modules from `8a19bbeb`, and against this candidate. Only import paths changed in those copies. At nice 0 the old version failed `expected +0 to be 10`; the candidate passed. Neither the live candidate nor its tests were reverted.
+**Proven, non-vacuous regression:** the new `wave-18 B1` case was run against disposable copies of both pre-repair modules from `886fc2b5`, and against this candidate. Only import paths changed in those copies. At nice 0 the old version failed `expected +0 to be 10`; the candidate passed. Neither the live candidate nor its tests were reverted.
 
 ```text
  Test Files  1 failed | 1 passed (2)

@@ -1,6 +1,6 @@
 # Row 020-54 notes: the gate reruns once a failure recorded while the host was overloaded (#210)
 
-Worker 926f04b4, wave 19, 2026-11-13. Shape: slice. Base: main at `029499709`.
+Worker 926f04b4, wave 19, 2026-11-13. Shape: slice. Base: main at `a836b4884`.
 
 A selected file that fails here while the host's one-minute load is at or
 over its CPU count now runs once more, after every other run, inside the
@@ -188,7 +188,7 @@ The coordinator files this row. What it needs:
 
 ## Repair R1 (wave 19.5, review `reviews/0.1.468.md` B1)
 
-Base: this branch with row 020-53 cherry-picked (`029499709..cez/f3c22710`,
+Base: this branch with row 020-53 cherry-picked (`a836b4884..cez/f3c22710`,
 nine commits, no conflict). The repair commits come after them.
 
 **The defect.** Gate tests that are not about the rerun read the real host

@@ -16,7 +16,7 @@ Triage research for [hearsay-tools/squeal#123](https://github.com/hearsay-tools/
 
 ## Findings
 
-**F1. The API exists and is documented to agents.** C15 "Focused checks" (added 2026-10-23, row 011-135): `--check` selects "the checks of each test file selected by its own path whose full name holds one of the texts". C4 runs them in a focused tier ahead of other classes; C5 keeps the newest focused run per file in `focused:<worktree>`, never as a result; C6 prints `Focused (not counted):`; C14 gives `RunOptions.checks` and `RunnerAdapter.focuses`; 013 V4 turns texts into one escaped `testNamePattern` per file. The Claude Code and Codex skills' `references/commands.md` describe `--check` (`plugins/codex-runtime/skills/squeal/references/commands.md`). Tag: read in official docs and source, repository at 0.1.374 (`8b43591b6`).
+**F1. The API exists and is documented to agents.** C15 "Focused checks" (added 2026-10-23, row 011-135): `--check` selects "the checks of each test file selected by its own path whose full name holds one of the texts". C4 runs them in a focused tier ahead of other classes; C5 keeps the newest focused run per file in `focused:<worktree>`, never as a result; C6 prints `Focused (not counted):`; C14 gives `RunOptions.checks` and `RunnerAdapter.focuses`; 013 V4 turns texts into one escaped `testNamePattern` per file. The Claude Code and Codex skills' `references/commands.md` describe `--check` (`plugins/codex-runtime/skills/squeal/references/commands.md`). Tag: read in official docs and source, repository at 0.1.374 (`e8592ce6e`).
 
 **F2. The original incident did not use `--check`.** The issue's command was `squeal status --wait 60000 packages/cezar/src/core/*-parity.test.ts packages/cezar/src/workflows/*-parity.test.ts`, a plain named wait over 56 files, which waits for whole-file runs. That wait reported 47 pending behind a running tier. Why the worker did not use `--check` is not determined: the issue does not say, and the session is not replayed. Tag: read in the issue. 56 matches the file count in `~/projects/cezar` at `991c14b96`: inferred (same glob, local checkout, not the incident's commit `cfb6cbbb`).
 
@@ -56,7 +56,7 @@ The original Cezarion incident was not replayed.
 ## Sources
 
 - Issue: `gh issue view 123 --repo hearsay-tools/squeal`, read 2026-10-28.
-- `docs/specifications/011-core/spec.md` C4 (focused tier), C5 (focused row), C6 (status lines), C14 (`RunOptions.checks`), C15 (Focused checks, 011-206/207 amendments); `docs/specifications/013-vitest-runner/spec.md` V4; `docs/board.md` rows 011-143 to 011-146, 011-171; repository at `8b43591b6`.
+- `docs/specifications/011-core/spec.md` C4 (focused tier), C5 (focused row), C6 (status lines), C14 (`RunOptions.checks`), C15 (Focused checks, 011-206/207 amendments); `docs/specifications/013-vitest-runner/spec.md` V4; `docs/board.md` rows 011-143 to 011-146, 011-171; repository at `e8592ce6e`.
 - `src/core/scheduler/focused-row.ts:28,121`; `src/core/scheduler/focused.ts:30`; `plugins/*/skills/squeal/references/commands.md:51`.
 - Cezar: `~/projects/cezar` at `991c14b96`, `packages/cezar/src/workflows/waits-parity-cells.testkit.ts`, `squeal.config.json`.
 - Probe: `research/probes/issue-123/`.

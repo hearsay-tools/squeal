@@ -1,8 +1,8 @@
-PASS cc7227db0640c45e6f90ffd6195198990606ec1c
+PASS c0f9f3f388e60f2a3120212c40d351304165a4f8
 
 # Wave 10 review: stale-artifact wording and repository slow policy
 
-Zero blockers, zero should-fix findings, zero nits. Row 004-76, candidate 0.1.218. Range: `origin/main` at `b6cf92bcafa951ad38bc874dea82ee5506888550` (0.1.217) through `cc7227db0640c45e6f90ffd6195198990606ec1c`. HEAD matched the requested pin. The tracked tree remained clean throughout the checks and probes. No product files changed during review; only this review is committed.
+Zero blockers, zero should-fix findings, zero nits. Row 004-76, candidate 0.1.218. Range: `origin/main` at `70e4ae925d0a6a84819dd868265439b24da82faa` (0.1.217) through `c0f9f3f388e60f2a3120212c40d351304165a4f8`. HEAD matched the requested pin. The tracked tree remained clean throughout the checks and probes. No product files changed during review; only this review is committed.
 
 ## Verification
 
@@ -10,7 +10,7 @@ Node 24.21.0, Vitest 5.0.3. Each command below exited 0 unless explicitly stated
 
 ```text
 $ git rev-parse HEAD
-cc7227db0640c45e6f90ffd6195198990606ec1c
+c0f9f3f388e60f2a3120212c40d351304165a4f8
 
 $ npm ci
 added 196 packages, and audited 197 packages in 7s

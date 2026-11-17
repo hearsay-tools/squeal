@@ -1,10 +1,10 @@
 # Wave 1 review: 011-01 and 005-67
 
-FAIL `3c9949a858316ca26143812f006466d6af1177df`: 1 blocker, 1 should-fix, 0 additional notes.
+FAIL `7098449fd9d7f7b4e18ff6464f6d7a691ffdcb24`: 1 blocker, 1 should-fix, 0 additional notes.
 
 ## Verification
 
-Reviewed the exact candidate `cand/0.1.204`, HEAD `3c9949a858316ca26143812f006466d6af1177df`. The worktree was clean throughout verification. Scope: `bf349b2b..3c9949a8`, product commits `a7ae87d0`, `9e96db73`, and bundle/version commit `3c9949a8`. Local main was `bf349b2b`; its difference from the candidate's parent `caa73e40` is documentation only. No rebase or product edit was made to the pinned candidate.
+Reviewed the exact candidate `cand/0.1.204`, HEAD `7098449fd9d7f7b4e18ff6464f6d7a691ffdcb24`. The worktree was clean throughout verification. Scope: `2a8c73bb..7098449f`, product commits `689f2bce`, `2e25f8d4`, and bundle/version commit `7098449f`. Local main was `2a8c73bb`; its difference from the candidate's parent `ac02fb4b` is documentation only. No rebase or product edit was made to the pinned candidate.
 
 Independent checks, run here after installing from the lockfile:
 

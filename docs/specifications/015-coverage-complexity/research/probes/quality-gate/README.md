@@ -1,7 +1,7 @@
 # Probes for quality-gate.md (row 015-126)
 
 Throwaway. Not product code, not tests. Kept only as the evidence of
-`../../quality-gate.md`. Run 2026-11-09 at Squeal `fc58af3da` (0.1.422),
+`../../quality-gate.md`. Run 2026-11-09 at Squeal `f20ddebf2` (0.1.422),
 Node v24.22.1, Vitest 5.0.3, tsx from this repository's lockfile.
 
 Every run used a scratch clone at `/tmp/qg/repo` (`git clone --shared`, with

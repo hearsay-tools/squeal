@@ -6,7 +6,7 @@ Treat a requested file with no complexity index row as incomplete evidence, whil
 
 **Verified by experiment, 0.1.414:** the reported output defect reproduces. A new untracked file with three functions returns only `Complexity: 0 functions in src/new.ts, threshold 20`. JSON returns `available: true`, `functions: []`, `files: []`. A genuinely counted empty file has the same evidence arrays. After counting, the unchanged file lists three functions while still untracked. Committing is not required for counting.
 
-Reported version: **0.1.409**, issue revisions 16 and 22. Tested: packaged CLI **0.1.414**, with the real code pass, SQLite stores and tree-sitter counter from **d3f363054fbe5d30e6e11bf8f212e1ac74d567e1** (package 0.1.414), Node **24.22.1**. The probe controls the revision source and runner-listing fact; it does not run a watcher, daemon or test suite. Coverage is off to isolate inventory. This proves a reachable reporting defect and a listing-gate mechanism, not the cause of the reporter's 25-minute delay.
+Reported version: **0.1.409**, issue revisions 16 and 22. Tested: packaged CLI **0.1.414**, with the real code pass, SQLite stores and tree-sitter counter from **b598e5dc8129c5c7848b9c5ace2887a03e9ab12a** (package 0.1.414), Node **24.22.1**. The probe controls the revision source and runner-listing fact; it does not run a watcher, daemon or test suite. Coverage is off to isolate inventory. This proves a reachable reporting defect and a listing-gate mechanism, not the cause of the reporter's 25-minute delay.
 
 Host check immediately before the probe: one-minute load **16.22**, **24 CPUs**, 2026-11-07 **22:42:06 Europe/Warsaw** (`21:42:06Z`). The probe was allowed by the task's load gate. Initial local read was 18.55/24; the parent's earlier 12.73/24 is context, not this run's load.
 
@@ -18,7 +18,7 @@ Host check immediately before the probe: one-minute load **16.22**, **24 CPUs**,
 | 2. Is that distinguishable from a counted empty file? | In the store, yes: absent `files` row versus a row plus a successful zero-function count. In the report's evidence arrays, no. **Verified by experiment, 0.1.414.** |
 | 3. Can the function list appear later without changing or committing the file? | Yes: advance the controlled listing from revision 1 to 2 and run the real pass. Three functions appear; Git still lists the file as untracked. **Verified by experiment, 0.1.414.** |
 | 4. Which code loses the pending state? | The report enumerates only stored file rows; its freshness and not-judged checks never see an absent row. **Read in source code, 0.1.409 and 0.1.414.** |
-| 5. Is this already covered by 015-22, 015-35 or the CRAP issues? | Those cover a stale existing count, registration before the first count, and coverage state for listed functions, respectively. They do not cover this missing inventory. **Read in official docs, spec 015 at d3f363054 (0.1.414).** |
+| 5. Is this already covered by 015-22, 015-35 or the CRAP issues? | Those cover a stale existing count, registration before the first count, and coverage state for listed functions, respectively. They do not cover this missing inventory. **Read in official docs, spec 015 at b598e5dc8 (0.1.414).** |
 | 6. What caused the original long delay, and did restart or commit clear it? | **Not determined:** no original store, listing history or daemon trace was supplied; both a restart and commit occurred between the reported reads. |
 
 ## Experiment
@@ -62,7 +62,7 @@ Inside the probe, each read is `node --disable-warning=ExperimentalWarning <pack
 
 The three-file comparison against tag `squeal--v0.1.409` (`6edeb3cba35642d8c2f52c5e77e2e41bf4651270`) shows import changes only. Version 0.1.409 was not executed.
 
-**Read in official docs, spec 015 at d3f363054 (0.1.414):** D1 and D4 require a new file to wait for runner discovery. D5 says an uncounted file is pending. D6 requires uncounted files to carry a reason. This is a reporting gap at that boundary, not evidence that the counting gate should be removed. Row 015-22 handles files with an older count and its current probe control works. Row 015-35 handles the worktree's registration summary. The 0.1.408 amendment for 015-104 / #155 supplies pending CRAP for a *listed function*; it cannot describe functions absent from the inventory. #135's coverage wait is likewise separate.
+**Read in official docs, spec 015 at b598e5dc8 (0.1.414):** D1 and D4 require a new file to wait for runner discovery. D5 says an uncounted file is pending. D6 requires uncounted files to carry a reason. This is a reporting gap at that boundary, not evidence that the counting gate should be removed. Row 015-22 handles files with an older count and its current probe control works. Row 015-35 handles the worktree's registration summary. The 0.1.408 amendment for 015-104 / #155 supplies pending CRAP for a *listed function*; it cannot describe functions absent from the inventory. #135's coverage wait is likewise separate.
 
 ## Recommendation and limits
 
@@ -79,7 +79,7 @@ The saved probe and a rerun after formatting both exited 0 with all assertions p
 ## Sources
 
 - [Issue 157](https://github.com/hearsay-tools/squeal/issues/157), fetched with `gh issue view`; the 0.1.409 incident is reported evidence, not independently observed history.
-- [Spec 015](../spec.md), D1, D4, D5, D6; [status amendments](../status.md); `docs/board.md` rows 015-22 and 015-35 at d3f363054.
-- [Report reader at tested commit](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/cli/code-report.ts), [CLI](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/cli/code.ts), [listing gate](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/core/code/pass/listed.ts); read from the local Git checkout and compared with the 0.1.409 tag.
+- [Spec 015](../spec.md), D1, D4, D5, D6; [status amendments](../status.md); `docs/board.md` rows 015-22 and 015-35 at b598e5dc8.
+- [Report reader at tested commit](https://github.com/hearsay-tools/squeal/blob/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a/src/cli/code-report.ts), [CLI](https://github.com/hearsay-tools/squeal/blob/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a/src/cli/code.ts), [listing gate](https://github.com/hearsay-tools/squeal/blob/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a/src/core/code/pass/listed.ts); read from the local Git checkout and compared with the 0.1.409 tag.
 - Existing source examples, read but not run: `test/code/pass/unlisted.test.ts`, `test/code/delivery/code-pending.test.ts`, `test/code/delivery/code-command.test.ts`.
 - [Probe instructions](probes/issue-157/README.md), [script](probes/issue-157/reproduce.ts), [captured run](probes/issue-157/result.jsonl).

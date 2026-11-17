@@ -10,7 +10,7 @@ Triage date: 2026-10-21. Owner: 013 V4 (Vitest results), related 011 C5 (stored 
 
 ## Reproduction verdict
 
-**Not reproduced, because** the one-minute host load was **38.71**, above **24 online CPUs**. The user requires live reproduction to be skipped in this condition. No researcher, probe, test run or incident replay was dispatched. Local package version is **0.1.233**. Source baseline: `24c242f35c25bd16817e2f493d88ca69eae2cb90`.
+**Not reproduced, because** the one-minute host load was **38.71**, above **24 online CPUs**. The user requires live reproduction to be skipped in this condition. No researcher, probe, test run or incident replay was dispatched. Local package version is **0.1.233**. Source baseline: `baffc5b8207a0afe99408daa1536218eec58c491`.
 
 Exact inspection commands:
 

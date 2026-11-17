@@ -31,7 +31,7 @@ returned 24. Not reproduced, because one-minute load exceeded CPU count.
 No browser run, coverage run, throwaway probe or test suite was started.
 Reported and session runtime: 0.1.516 (session runtime path supplied by
 Squeal). Checkout package version: 0.1.518, commit
-`0535d8465b70a3aef5a9a040e75a42290343916d`.
+`62dcae8e2b9f4d0ca7c2324e1931e28d00c044b1`.
 
 **Read in existing research and board:** [issue-203.md](issue-203.md)
 verified six synthetic cases on 0.1.457. `--test` included a named manual file;

@@ -1,8 +1,8 @@
 # 006 first baseline: two runs of one release commit
 
-Board row 006-04 (`../tasks/wave-2.md`). Spec 006's proof: the baseline twice on `squeal--v0.1.110` (`903600d8`), to see how far one run's rates move from another's by chance.
+Board row 006-04 (`../tasks/wave-2.md`). Spec 006's proof: the baseline twice on `squeal--v0.1.110` (`4fd0f0ae`), to see how far one run's rates move from another's by chance.
 
-Both runs used `node evals/bin/run-baseline.mjs --commit squeal--v0.1.110 --parallel 2` from `evals/` at `d58b0403`, each a fresh run with no `--resume`. Fixture `b192f479`, variant `p0`, effort `medium` in every cell, as both harnesses reported it. Claude Code 2.1.296 with `claude-haiku-5-5` and `claude-sonnet-5-5`; Codex CLI 0.160.1 with `gpt-6-luna` and `gpt-6.1-sol`. Every model was served, so none is missing and no stand-in ran. Each run has 48 cells, 0 failed, and 0 files with a secret in scratch.
+Both runs used `node evals/bin/run-baseline.mjs --commit squeal--v0.1.110 --parallel 2` from `evals/` at `6e8ce1b4`, each a fresh run with no `--resume`. Fixture `b192f479`, variant `p0`, effort `medium` in every cell, as both harnesses reported it. Claude Code 2.1.296 with `claude-haiku-5-5` and `claude-sonnet-5-5`; Codex CLI 0.160.1 with `gpt-6-luna` and `gpt-6.1-sol`. Every model was served, so none is missing and no stand-in ran. Each run has 48 cells, 0 failed, and 0 files with a secret in scratch.
 
 | Run | Results file | UTC | Load at session start | Peak load in a session |
 | --- | --- | --- | --- | --- |

@@ -1,6 +1,6 @@
 # 004-83 an agent knows it can wait for slow files: worker notes
 
-Worker 869c1188, parent 6a627ff7, 2026-10-19. Brief: `../wave-14.md` § 004-83. Branch `cez/869c1188`, base `e48a243f`.
+Worker 869c1188, parent 6a627ff7, 2026-10-19. Brief: `../wave-14.md` § 004-83. Branch `cez/869c1188`, base `b16835d0`.
 
 ## 1. Mechanism: `run --slow --wait` already joined a running slow file
 

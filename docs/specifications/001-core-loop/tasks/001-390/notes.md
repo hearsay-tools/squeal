@@ -1,6 +1,6 @@
 # 001-390: the recorder loads by `--import`, and a recorder-caused failure says so
 
-Worker notes, 2026-10-15. Spec 001 D11 Fidelity; `research/injected-environment.md` F1, F4, O1 and O4. Squeal 0.1.187 (`956cba88`), Node 22.23.3 and 24.21.0, Vitest 5.0.3. The probes ran in this task's temp directory with a temporary `HOME` and `env -i`, against copies of the recorder; no real `HOME`, no other checkout and no cezar tree. Scripts: `probe/bench.mjs` (start-up) and `probe/old.mjs` (older Node).
+Worker notes, 2026-10-15. Spec 001 D11 Fidelity; `research/injected-environment.md` F1, F4, O1 and O4. Squeal 0.1.187 (`4aad2d17`), Node 22.23.3 and 24.21.0, Vitest 5.0.3. The probes ran in this task's temp directory with a temporary `HOME` and `env -i`, against copies of the recorder; no real `HOME`, no other checkout and no cezar tree. Scripts: `probe/bench.mjs` (start-up) and `probe/old.mjs` (older Node).
 
 Tags as in the research: **[exp]** experiment, **[src]** source, **[inf]** inferred.
 

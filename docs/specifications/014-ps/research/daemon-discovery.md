@@ -1,6 +1,6 @@
 # 014-01 Finding every daemon and what it can say
 
-Researcher, 2026-10-21. Squeal 0.1.235 at `9060a96c9`; Linux 6.8, Node 24.21.0, SQLite 3.53.4, iproute2 6.1.0, 24 CPUs. The host carried 21 to 23 live daemons during the work; load is given beside each timing. Probes are in `probes/daemon-discovery/` (README there). No probe connected to a live socket, opened a live store for writing, or signalled a process it did not start.
+Researcher, 2026-10-21. Squeal 0.1.235 at `0547eee7f`; Linux 6.8, Node 24.21.0, SQLite 3.53.4, iproute2 6.1.0, 24 CPUs. The host carried 21 to 23 live daemons during the work; load is given beside each timing. Probes are in `probes/daemon-discovery/` (README there). No probe connected to a live socket, opened a live store for writing, or signalled a process it did not start.
 
 ## Answers
 
@@ -51,7 +51,7 @@ Read through a read-only connection (P5: 0.3 ms open, 0.4 to 3.8 ms per worktree
 
 **Not in the store:** the idle and unused clocks (`daemon.ts` `#lastUsed`, `#lastActive`, `lifecycle.ts` `unused`). The store has proxies only: the last revision time, run ends, and consumers' `last_seen_at`. Waits and requests leave no trace. *Read in source code.*
 
-**Socket requests** (`protocol.ts`): `ping`, `nudge`, `retry`, `run-all`, `run-all-status`, `run-slow`, `run-slow-status`, `sync`, `sync-status`, `promote`, `stop`, `step-down`. Each one except `ping` and the three `*-status` requests calls `onActivity` or acts, so it resets the unused clock or starts work. `stop` and `step-down` end the daemon. `ping` returns `{pid, worktreeId, root, squealVersion, phase: starting|ready|stopping, startedAt}` and touches nothing. That is true in the first daemon commit `fd6ffee30` and in every later `handlers.ts` (checked by `git log`). An unknown type gets an error answer and nothing else. Only `ping` adds something the store does not have: `phase`. `stopping` can be told without it, from the held lock plus the cleared row and the exit mark. *Read in source code.*
+**Socket requests** (`protocol.ts`): `ping`, `nudge`, `retry`, `run-all`, `run-all-status`, `run-slow`, `run-slow-status`, `sync`, `sync-status`, `promote`, `stop`, `step-down`. Each one except `ping` and the three `*-status` requests calls `onActivity` or acts, so it resets the unused clock or starts work. `stop` and `step-down` end the daemon. `ping` returns `{pid, worktreeId, root, squealVersion, phase: starting|ready|stopping, startedAt}` and touches nothing. That is true in the first daemon commit `1f02af21f` and in every later `handlers.ts` (checked by `git log`). An unknown type gets an error answer and nothing else. Only `ping` adds something the store does not have: `phase`. `stopping` can be told without it, from the held lock plus the cleared row and the exit mark. *Read in source code.*
 
 ## 4. Versions
 
@@ -82,7 +82,7 @@ This found 21 of 21 daemons and the one leftover socket in about 40 ms of reads 
 
 ## Sources
 
-- Code at `9060a96c9`: `src/core/daemon/{paths,server,handlers,protocol,lock,ensure,desk,front-desk,daemon,lifecycle}.ts`, `src/core/store/{schema,open,paths}.ts`, `src/core/store/repos/runs.ts`, `src/core/status/open-runs.ts`, `src/core/capacity/marks.ts`, `src/core/slow/slot.ts`, `src/core/delivery/harness-process.ts`, `src/core/types/{store,store-records,daemon}.ts`, `src/core/fs/git-layout.ts`; commits `fd6ffee30` (first daemon), `73e65f70a` (staging rename, 001-77).
+- Code at `0547eee7f`: `src/core/daemon/{paths,server,handlers,protocol,lock,ensure,desk,front-desk,daemon,lifecycle}.ts`, `src/core/store/{schema,open,paths}.ts`, `src/core/store/repos/runs.ts`, `src/core/status/open-runs.ts`, `src/core/capacity/marks.ts`, `src/core/slow/slot.ts`, `src/core/delivery/harness-process.ts`, `src/core/types/{store,store-records,daemon}.ts`, `src/core/fs/git-layout.ts`; commits `1f02af21f` (first daemon), `855654fc4` (staging rename, 001-77).
 - Spec `docs/specifications/011-core/spec.md` C1, C7, C9, C10.
 - `docs/specifications/001-core-loop/research/harness-process-liveness.md` (macOS `ps`, `kinfo_proc`).
 - `ss(8)` iproute2 6.1.0 (`ino:` is "the socket's inode number in VFS"); `lsof(8)` 4.95.0; `proc(5)` (`/proc/locks`, `/proc/net/unix`).

@@ -2,15 +2,15 @@
 
 ## Verification
 
-Candidate: `cand/0.1.420`, `43fb35087cec16251b9adf146c8dbc7a018f58cd`.
-Range: `63089489a6c8b03a3d514a9c8ca97efe7fb6bb60..43fb35087cec16251b9adf146c8dbc7a018f58cd` (`origin/main..candidate` at review).
+Candidate: `cand/0.1.420`, `170e95495f8a1cd305a13579719951a5404d5c18`.
+Range: `992a94c5e367089297dbf9917dd9fa9de8e83859..170e95495f8a1cd305a13579719951a5404d5c18` (`origin/main..candidate` at review).
 Rows: 018-16, 018-18, 018-19. Reviewed against the second slice, `tasks/wave-5.md`, worker notes and accepted amendments in `status.md`.
 
 All checks below ran at that candidate, with a clean tracked tree. Probes lived outside the checkout and were removed. No product file changed.
 
 | Command | Actual result |
 | --- | --- |
-| `git rev-parse HEAD` | `43fb35087cec16251b9adf146c8dbc7a018f58cd`, matches the brief |
+| `git rev-parse HEAD` | `170e95495f8a1cd305a13579719951a5404d5c18`, matches the brief |
 | `git status --porcelain=v1` | Empty, before and after checks |
 | `pnpm install --frozen-lockfile` | Cezar reports it completed in 1 second before this session. Not repeated, as instructed. Exact-candidate CI also passed this step. |
 | `pnpm run lint` | Exit 0. `Checked 2901 files in 1516ms. No fixes applied.` |
@@ -49,7 +49,7 @@ Tests       1 failed | 7 passed (8)
 Duration    4.29s
 ```
 
-CI: [run 42635292959](https://github.com/hearsay-tools/squeal/actions/runs/42635292959), queried with `gh run list --commit 43fb35087cec16251b9adf146c8dbc7a018f58cd --json databaseId,headSha,status,conclusion,url,name` and `gh run view 42635292959 --json status,conclusion,jobs`. At the final observation, Node 24 (lint, typecheck, version-sensitive) passed, including its build and bundle checks. All three Node 22 full-suite shards were still in progress. Their results remain **unverified**. No local full suite, Squeal full-suite request or local build was run.
+CI: [run 42635292959](https://github.com/hearsay-tools/squeal/actions/runs/42635292959), queried with `gh run list --commit 170e95495f8a1cd305a13579719951a5404d5c18 --json databaseId,headSha,status,conclusion,url,name` and `gh run view 42635292959 --json status,conclusion,jobs`. At the final observation, Node 24 (lint, typecheck, version-sensitive) passed, including its build and bundle checks. All three Node 22 full-suite shards were still in progress. Their results remain **unverified**. No local full suite, Squeal full-suite request or local build was run.
 
 ## Verdict
 

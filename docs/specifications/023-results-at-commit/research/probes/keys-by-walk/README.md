@@ -2,7 +2,7 @@
 
 Throwaway scripts for `../../keys-by-walk.md` (row 023-15). Not product code; do not import them.
 
-They ran on 2026-11-17 between 07:55Z and 08:34Z (host clock UTC+1 in the logs) on 24 vCPUs at a one-minute load of 11 to 26. Each output line states its load. Squeal source and bundle at `1dcc79aa9` (0.1.538, `plugins/claude-code/dist/cli/squeal.mjs`), Node v26.13.0, pnpm 12.15.0 (12.11.2 pinned by squawk).
+They ran on 2026-11-17 between 07:55Z and 08:34Z (host clock UTC+1 in the logs) on 24 vCPUs at a one-minute load of 11 to 26. Each output line states its load. Squeal source and bundle at `9820b54b5` (0.1.538, `plugins/claude-code/dist/cli/squeal.mjs`), Node v26.13.0, pnpm 12.15.0 (12.11.2 pinned by squawk).
 
 Rules kept: the live stores were opened read-only and copied whole with `VACUUM INTO` (`copy-store.mjs`) into `$TMPDIR/kbw/stores/`; each run used a fresh reflink of that copy at `<clone>/.git/squeal/store.sqlite`. The clones were `git clone --shared --no-checkout` of `~/projects/squeal` and `~/projects/cezar` under `$TMPDIR/kbw/`; checkouts were detached `git worktree add` there, installed with `pnpm install --frozen-lockfile` (warm store). Every daemon was stopped with `squeal stop <root>` and checked gone in `/proc`. All checkouts, clones, store copies and the `squeal-links-*` folders the runs left in `$TMPDIR` were deleted at the end. No test ran.
 

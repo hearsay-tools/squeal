@@ -42,7 +42,7 @@ Ansible ran `systemd_service name=cezar.service state=restarted` 34 times from 1
 
 ## 3. Senders
 
-Inside Squeal (read in source code, this worktree at `cf678b7c2`):
+Inside Squeal (read in source code, this worktree at `153ec9c35`):
 
 - `src/cli/daemon.ts` routes SIGINT, SIGTERM and SIGHUP through `ownSignals` (`src/core/daemon/signals.ts`) to `daemon.stop("signal")`. That writes `daemon stopped: signal` with `exitOf`, the only source of this note. A signal during start stops the daemon once `startDaemon` returns, so its revision is null.
 - `terminate` (`src/core/daemon/terminate.ts`) is called only by `EscapedChildren` (`escaped.ts:253`). It reaches processes that carry the daemon's `SQUEAL_DAEMON_CHILD` mark, or that are in the daemon's own group and no longer descend from it. A hook-spawned daemon has neither.
@@ -105,7 +105,7 @@ Whether daemons should leave the cockpit's control group is a host and Cezar que
 ## Sources
 
 - Issue https://github.com/hearsay-tools/squeal/issues/1 and its comments, read 2026-10-26.
-- Source in this worktree at `cf678b7c2`: `src/cli/daemon.ts`, `src/core/daemon/{signals,terminate,escaped,ensure,daemon,lifecycle}.ts`, `src/cli/{stop,stopped-mark,hold,start}.ts`, `src/harness/shared/{ensure,deliver,prompt,session,stop}.ts`, `plugins/{claude-code,codex}/hooks/hooks.json`; spec 011 C9.
+- Source in this worktree at `153ec9c35`: `src/cli/daemon.ts`, `src/core/daemon/{signals,terminate,escaped,ensure,daemon,lifecycle}.ts`, `src/cli/{stop,stopped-mark,hold,start}.ts`, `src/harness/shared/{ensure,deliver,prompt,session,stop}.ts`, `plugins/{claude-code,codex}/hooks/hooks.json`; spec 011 C9.
 - Cezar bundle `~/.nvm/versions/node/v24.21.0/lib/node_modules/cezarion/node_modules/@wjarka/cezarion/dist/core/session-process.js` (0.16.0-dev.2824).
 - `~/.config/systemd/user/cezar.service`; `systemctl --user show cezar.service`; `journalctl --user` from 2026-10-01 (extracts in `probes/issue-1/`).
 - Store copies of `~/projects/{squeal,cezar,client-monorepo,project-a}/.git/squeal/store.sqlite`, taken 2026-10-26 13:41Z and deleted after reading.

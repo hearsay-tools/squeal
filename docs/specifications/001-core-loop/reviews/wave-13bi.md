@@ -1,6 +1,6 @@
 # Wave 13bi: 001-353 reviews 001-343 (0.1.155)
 
-Candidate: `ea63bddb611e6a56405f2ab2b39abdc90b4303e3`. Range: `02dc8106..ea63bddb` (the five commits named in the brief).
+Candidate: `0c58abcd0ff685097b01ef6c1f61326d1c63259c`. Range: `1dce9058..0c58abcd` (the five commits named in the brief).
 
 Verdict: **PASS**. 0 blockers, 1 should-fix suggestion (plausible), 1 nit (proven). No correctness break of the changed read-stamp paths was proven. The independent full suite passes. No product or board file was edited by the reviewer.
 
@@ -109,7 +109,7 @@ Breaking changes might not follow SemVer, please pin Vitest's version when using
 exit 0
 ```
 
-`git rev-parse HEAD` immediately before and after: `ea63bddb611e6a56405f2ab2b39abdc90b4303e3`. `git status --short` before and after: empty. No fixture symlink deletion or bundle drift. There were no failed tests and no unhandled-error summary. The three known open cases named in the brief did not fail in this run. One suite was run; there was no rerun to green.
+`git rev-parse HEAD` immediately before and after: `0c58abcd0ff685097b01ef6c1f61326d1c63259c`. `git status --short` before and after: empty. No fixture symlink deletion or bundle drift. There were no failed tests and no unhandled-error summary. The three known open cases named in the brief did not fail in this run. One suite was run; there was no rerun to green.
 
 ## Blockers
 
@@ -117,7 +117,7 @@ None. Both new regressions are red with their matching source fix removed and gr
 
 ## Discriminating checks
 
-Original worktree checks ran on the clean, exact `ea63bddb` candidate after temporarily detaching HEAD; the review-only branch commit remains separate. Scratch mutations are experiments, not whole-tree verification. Each experiment uses the isolated HOME from Verification.
+Original worktree checks ran on the clean, exact `0c58abcd` candidate after temporarily detaching HEAD; the review-only branch commit remains separate. Scratch mutations are experiments, not whole-tree verification. Each experiment uses the isolated HOME from Verification.
 
 ### overlap-green
 
@@ -293,7 +293,7 @@ One-worker fix: narrow Recommendation 1 to "the measured stamp scan took under 3
 ## What fits
 
 - The candidate SHA matches the brief and the build causes no tracked drift. All four version files name 0.1.155.
-- Both new overlap cases discriminate their fixes: reverting 3a9b4e56 completes the held file incorrectly; retaining that fix but reverting b033e2db lets the later load hide the held file's old bytes. Candidate overlap: 8/8.
+- Both new overlap cases discriminate their fixes: reverting 8c6a9418 completes the held file incorrectly; retaining that fix but reverting 49780831 lets the later load hide the held file's old bytes. Candidate overlap: 8/8.
 - The new end check scans every stamped project-file read from the run, including uncached transforms; replacements with different hashes retain the earlier stamp. Equal bytes are compared by the existing stat/hash rule, so invalidation alone does not taint a run.
 - Independently probed Vite 8.3.2's pending-request abort on a scratch candidate copy. It clears only the pending entry; the first promise returns its old transform, while the second returns the fresh one. The candidate detects the retained earlier hash; equal-byte reloads return no stale file. Both cases pass. The scratch probe was removed before the final review commit.
 - Integration planting still requires the module's old bytes to have been loaded without a module revision after `at`. Requiring exactly one test-file revision excludes route A's empty-file key plus restored-file key, rather than accepting an unplanted trial. The test asserts planting, tries at most eight times, and keeps the no-current-pass assertion. Route B's two deterministic adapter cases are separately red before their fixes.

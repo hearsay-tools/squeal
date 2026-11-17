@@ -1,6 +1,6 @@
 # 015-26: progress updates on a failing function
 
-Researcher for row 015-26, 2026-10-24. Brief: `progress-updates-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, spec D2, D5, D6 with the 2026-10-24 amendments, `../status.md`, `../lessons.md` "Round 1, live sessions (015-10)", 011 C5 and C6, and the source at `55afb856a` (0.1.292): `src/core/delivery/code-deliver.ts`, `code-delta.ts`, `code-format.ts`, `src/cli/code.ts`, `src/core/code/store/types.ts`. Session evidence: the 015-10 part C streams and base files that worker 4ddd4e37 left under `/tmp/dogfood-015-10/w-4ddd4e37/` (read only). The sessions ran 0.1.284, before 015-19 to 015-27. Probes: `probes/progress-updates/` (throwaway). No agent session, no daemon and no test run. Peer pages were fetched with curl on 2026-10-24.
+Researcher for row 015-26, 2026-10-24. Brief: `progress-updates-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, spec D2, D5, D6 with the 2026-10-24 amendments, `../status.md`, `../lessons.md` "Round 1, live sessions (015-10)", 011 C5 and C6, and the source at `852f2edc8` (0.1.292): `src/core/delivery/code-deliver.ts`, `code-delta.ts`, `code-format.ts`, `src/cli/code.ts`, `src/core/code/store/types.ts`. Session evidence: the 015-10 part C streams and base files that worker 4ddd4e37 left under `/tmp/dogfood-015-10/w-4ddd4e37/` (read only). The sessions ran 0.1.284, before 015-19 to 015-27. Probes: `probes/progress-updates/` (throwaway). No agent session, no daemon and no test run. Peer pages were fetched with curl on 2026-10-24.
 
 ## Questions answered
 
@@ -92,7 +92,7 @@ No peer named here lets a user subscribe to one function. Where the count is liv
 
 ## Sources
 
-- Squeal at `55afb856a` (0.1.292): `src/core/delivery/code-deliver.ts` (`codeStep`, `seed`, `dropCode`, `tellCode`), `src/core/delivery/code-delta.ts` (`editToTell`, `stateStep`, `planCodeDelta`, `isOwn`), `src/core/delivery/code-format.ts` (`quietHint`, `codeEntryLine`), `src/cli/code.ts`, `src/cli/status-wait.ts` (`waitConsumer`), `src/core/code/store/types.ts` (`CodeEdit`, `CodeStateRepo.move`), `src/core/types/code.ts` (`CodeCheckId`, `CodeTold`, `CodeViewEntry`).
+- Squeal at `852f2edc8` (0.1.292): `src/core/delivery/code-deliver.ts` (`codeStep`, `seed`, `dropCode`, `tellCode`), `src/core/delivery/code-delta.ts` (`editToTell`, `stateStep`, `planCodeDelta`, `isOwn`), `src/core/delivery/code-format.ts` (`quietHint`, `codeEntryLine`), `src/cli/code.ts`, `src/cli/status-wait.ts` (`waitConsumer`), `src/core/code/store/types.ts` (`CodeEdit`, `CodeStateRepo.move`), `src/core/types/code.ts` (`CodeCheckId`, `CodeTold`, `CodeViewEntry`).
 - Spec 015 `spec.md` D2, D5, D6, D7; `../status.md`; `../lessons.md` "Round 1, live sessions (015-10)"; `../tasks/015-10/part-c/prompts/*.txt`; 011 `spec.md` C5; `docs/vision.md`.
 - Session evidence: `/tmp/dogfood-015-10/w-4ddd4e37/logs/sessions/*/stream.jsonl` and `files/base-{squeal,cezar}/` (015-10 part C, Squeal 0.1.284, Claude Code 2.1.300, Sonnet). The originals under `/home/squeal-e2e/runs/d1510/` were not readable from this user.
 - Probes: `probes/progress-updates/replay-edits.mts`, `tally.py`, outputs `replay-out.txt`, `tally-out.txt`.

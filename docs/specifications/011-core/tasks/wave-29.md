@@ -1,6 +1,6 @@
 # Wave 29
 
-From main `4b432d1f8` (after 0.1.286; 0.1.287 is in review and touches neither row's files). Two refactor rows from `quality/2026-10-24.md`, on disjoint files, run side by side. No behaviour or printed text changes. Both go into one candidate after 0.1.287; the coordinator integrates.
+From main `0de9a50f3` (after 0.1.286; 0.1.287 is in review and touches neither row's files). Two refactor rows from `quality/2026-10-24.md`, on disjoint files, run side by side. No behaviour or printed text changes. Both go into one candidate after 0.1.287; the coordinator integrates.
 
 ## W3: 011-171, a focused wait decides in one place, with slices 1, 3, 4, 5, 11 and 011-172 slice 6
 

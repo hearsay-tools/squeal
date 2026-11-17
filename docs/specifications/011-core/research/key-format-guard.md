@@ -1,6 +1,6 @@
 # Findings: when should a check key change across releases? (011-35)
 
-Brief: `key-format-guard-brief.md`. Examined at `origin/main` 878b35bb (0.1.225, `KEY_FORMAT_VERSION` 16) and `origin/cand/0.1.226` 276ed939 (17). Read-only on the product. Probes and their output are in `probes/key-format-guard/` (throwaway). Experiments ran in worktrees under `/tmp/kfg-golden` with `HOME` and `XDG_*` there, once the one-minute load was below 24.
+Brief: `key-format-guard-brief.md`. Examined at `origin/main` 3f3bb5a7 (0.1.225, `KEY_FORMAT_VERSION` 16) and `origin/cand/0.1.226` 276ed939 (17). Read-only on the product. Probes and their output are in `probes/key-format-guard/` (throwaway). Experiments ran in worktrees under `/tmp/kfg-golden` with `HOME` and `XDG_*` there, once the one-minute load was below 24.
 
 ## Answers
 
@@ -18,13 +18,13 @@ Brief: `key-format-guard-brief.md`. Examined at `origin/main` 878b35bb (0.1.225,
 
 | Raise | Forcing window | Files | (a) key inputs or computation | (b) stored meaning or acceptance | (c) | Change |
 |---|---|---|---|---|---|---|
-| 9→10 | 0.1.168..6c9fed9e | 18 | 7: the pytest adapter, a new runner with no stored rows | 1: `records.ts`, a module-level skip stores `skip` for its known checks (007-23) | 10 | pytest runner wired in |
-| 10→11 | 0.1.199..a6c50b6e | 9 | 0 | 0 | 9 | `stop` cancels tiers (001-367) |
-| 11→12 | 0.1.215..35abdccc | 16 | 0 | 3, label only: `records.ts`, `types/check.ts`, `state/fingerprint.ts` store `phase: "after-tests"` and its prefix (011-19) | 13 | 011-15 to 011-19: counts, retries, order, slow re-run |
-| 12→13 | 0.1.219..87d7ced6 | 36 | 3: `keying.ts`, `keys/ignored-inputs.ts`, `keys/index.ts`, the slow artifact rule leaves closures (004-81) | 0 | 33 | slow preconditions removed |
-| 13→14 | 0.1.222..05958848 | 14 | 0 | 0 | 14 | backlog width and wall budget (001-366) |
-| 14→15 | 0.1.223..8515e737 | 9 | 0 | 0 | 9 | edit tier beside the backlog (011-21) |
-| 15→16 | 0.1.224..70759ddf | 11 | 0 | 0 | 11 | slots; slot records committed together; the stability check moved verbatim (011-21) |
+| 9→10 | 0.1.168..7af3462a | 18 | 7: the pytest adapter, a new runner with no stored rows | 1: `records.ts`, a module-level skip stores `skip` for its known checks (007-23) | 10 | pytest runner wired in |
+| 10→11 | 0.1.199..236fdad9 | 9 | 0 | 0 | 9 | `stop` cancels tiers (001-367) |
+| 11→12 | 0.1.215..9d2d558f | 16 | 0 | 3, label only: `records.ts`, `types/check.ts`, `state/fingerprint.ts` store `phase: "after-tests"` and its prefix (011-19) | 13 | 011-15 to 011-19: counts, retries, order, slow re-run |
+| 12→13 | 0.1.219..325022b0 | 36 | 3: `keying.ts`, `keys/ignored-inputs.ts`, `keys/index.ts`, the slow artifact rule leaves closures (004-81) | 0 | 33 | slow preconditions removed |
+| 13→14 | 0.1.222..f83116aa | 14 | 0 | 0 | 14 | backlog width and wall budget (001-366) |
+| 14→15 | 0.1.223..8c805e19 | 9 | 0 | 0 | 9 | edit tier beside the backlog (011-21) |
+| 15→16 | 0.1.224..4e855627 | 11 | 0 | 0 | 11 | slots; slot records committed together; the stability check moved verbatim (011-21) |
 | 16→17 | 0.1.225..d3014a3e | 10 | 0 | 0 | 10 | catch-up order (011-22); `keysSince`, a read, and `StoredKeys` through the unchanged `Ledger.settle` (011-23) |
 
 The calls were made by reading every hunk. Raises with any (a) or (b): **3 of 8**. Borderline calls:

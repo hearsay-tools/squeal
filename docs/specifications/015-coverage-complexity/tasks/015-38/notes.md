@@ -1,6 +1,6 @@
 # 015-38 notes: transitions from a pull
 
-Worker b822c832, 2026-10-24. Brief: `tasks/wave-1d.md` W2. Starts from `int/015f-r1` (0b1abef7e). The human's option (a), `status.md` 2026-10-24; `lessons.md` "Round 1 (015-10)" B5.
+Worker b822c832, 2026-10-24. Brief: `tasks/wave-1d.md` W2. Starts from `int/015f-r1` (5660ca9a0). The human's option (a), `status.md` 2026-10-24; `lessons.md` "Round 1 (015-10)" B5.
 
 ## The rule, as built
 

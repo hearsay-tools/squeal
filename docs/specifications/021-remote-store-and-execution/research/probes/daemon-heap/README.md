@@ -1,6 +1,6 @@
 # Probes for research 021-27 (what fills an idle daemon; does a host grow per run)
 
-Throwaway. Not product code, not tests. Everything ran in scratches `$TMPDIR/dh-<repo>-XXXXXX` with their own `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `TMPDIR`, on shallow `git clone`s (never a worktree of a live repository), with a copy of this worktree's committed bundle (0.1.459 at `5cc5624e2`). Live daemons of other worktrees were read only through `/proc/<pid>/status` and `smaps` (`split.py`) and `squeal ps`; none was attached to, connected to or signalled. Both scratches were removed at 21:57Z; no process named them afterwards. Run Python with `-I`.
+Throwaway. Not product code, not tests. Everything ran in scratches `$TMPDIR/dh-<repo>-XXXXXX` with their own `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `TMPDIR`, on shallow `git clone`s (never a worktree of a live repository), with a copy of this worktree's committed bundle (0.1.459 at `0fb3f8ccd`). Live daemons of other worktrees were read only through `/proc/<pid>/status` and `smaps` (`split.py`) and `squeal ps`; none was attached to, connected to or signalled. Both scratches were removed at 21:57Z; no process named them afterwards. Run Python with `-I`.
 
 | File | What it does |
 |---|---|

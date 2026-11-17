@@ -4,7 +4,7 @@ Triage reproduction for [hearsay-tools/squeal#101](https://github.com/hearsay-to
 
 **Verdict.** Reproduced at the adapter. When the Vitest adapter cancels a run and the running test does not finish its teardown within the 1 s grace, the forced cancel kills the worker process only. A child that the test started in its own process group lives on, also after `adapter.close()`. The cancel cause does not change this. The original incident is not reproduced: no record shows that the scheduler cancelled that run. Source reading makes it likely that the daemon's leftover sweep could not find the incident's holder either, because the test's supervisor drops Squeal's child marker from the environment.
 
-**Setup.** Squeal 0.1.332 source at `219879482` (branch `cez/5e470fdc` from main); the installed CLI reports 0.1.331. Vitest 5.0.3, default pool (forks: the worker had an IPC channel in every run). Load before live work: 10.69 (05:17:01) and 13.98 (05:19:12) on 24 CPUs. Load after the last run: 25.25 (05:20:37), so live work stopped there. The incident ran 0.1.328.
+**Setup.** Squeal 0.1.332 source at `513241d17` (branch `cez/5e470fdc` from main); the installed CLI reports 0.1.331. Vitest 5.0.3, default pool (forks: the worker had an IPC channel in every run). Load before live work: 10.69 (05:17:01) and 13.98 (05:19:12) on 24 CPUs. Load after the last run: 25.25 (05:20:37), so live work stopped there. The incident ran 0.1.328.
 
 ## Questions answered
 
@@ -77,7 +77,7 @@ Every probe ran under `timeout 150` with a 120 s self-expiry, and every holder h
 ## Sources
 
 - Issue: `gh issue view 101 --repo hearsay-tools/squeal`, read 2026-10-26.
-- Squeal at `219879482`: `src/runners/vitest/run.ts` (`execute`, `abandon`, `GRACE_*`), `src/runners/vitest/adapter.ts:560-600`, `src/core/scheduler/yields.ts:266`, `src/core/daemon/leftovers.ts`, 013 spec V1/V4/V7/V8/V9/V10, 011 spec C13 (process-reaping bullet), `test/runners/vitest/cancel-grace.test.ts` (the abort harness that the probe follows).
+- Squeal at `513241d17`: `src/runners/vitest/run.ts` (`execute`, `abandon`, `GRACE_*`), `src/runners/vitest/adapter.ts:560-600`, `src/core/scheduler/yields.ts:266`, `src/core/daemon/leftovers.ts`, 013 spec V1/V4/V7/V8/V9/V10, 011 spec C13 (process-reaping bullet), `test/runners/vitest/cancel-grace.test.ts` (the abort harness that the probe follows).
 - Vitest 5.0.3: `node_modules/vitest/dist/chunks/index.DpLw24bj.js` lines 11060-11127 (`ForksPoolWorker.stop`), 11568-11590 (`cancel`), 21276 (`cancelCurrentRun`).
 - Cezar `~/projects/cezar` at `e10fcebb` (read only): `packages/cezar/src/preview/dev-server.ts` (lines 20, 71-77, 149-152), `dev-server.test.ts` (lines 30-35, 226-237), `__fixtures__/fake-dev-server.mjs`, `src/core/agent-env.ts` (`buildCommandEnv`, `BASE_ALLOW_*`).
 - Probes and outputs: `research/probes/issue-101/` (`probe.ts`, `holder.cjs`, `out-*.txt`).

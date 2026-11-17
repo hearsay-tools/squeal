@@ -1,6 +1,6 @@
 # Issue 65: the selected files sit under `named` or `wait`, by whether `--wait` is given
 
-Research for hearsay-tools/squeal#65, 2026-10-21. Documentation only: no product, spec, status, skill or board edit. Code read at commit `18aff2857` (package version 0.1.234). Live probes ran on copies of the installed plugins 0.1.234 and 0.1.233. Probes: `probes/issue-65/`.
+Research for hearsay-tools/squeal#65, 2026-10-21. Documentation only: no product, spec, status, skill or board edit. Code read at commit `c74587003` (package version 0.1.234). Live probes ran on copies of the installed plugins 0.1.234 and 0.1.233. Probes: `probes/issue-65/`.
 
 **Host load before each live probe** (the one-minute load against 24 CPUs, from `/proc/loadavg` and `nproc`): 14.85 before the first check in this worktree, 21.02 before `run.sh` on 0.1.234, 20.03 before `run.sh` on 0.1.233. Every load was below the CPU count, so every probe ran. Each `run.sh` took about 10 s of wall time.
 
@@ -58,14 +58,14 @@ The issue's filter, `.<key>.testFiles[]? | select(.state != "current" or .verdic
 
 So a "not passing" filter on the wrong key reads as "everything passes" while a known failure is in the selection. The `?` hides the only signal: without it, `.wait.testFiles[]` on the snapshot errors with exit 5. `jq -e` separates "no output" (exit 4) from a match, but it also exits 4 on the right key when every file passes, so it cannot tell a wrong key from a clean selection.
 
-### 3. The split is designed and pinned (read in source code, `18aff2857`)
+### 3. The split is designed and pinned (read in source code, `c74587003`)
 
 - `src/cli/status-wait-paths.ts:462-463`: `const field = wait.snapshot === true ? "named" : "wait";` then `JSON.stringify({ ...wait.result, [field]: payload })`. Both forms build the same `NamedWaitPayload` (`status-wait-paths.ts:249-258`: `outcome`, `waitedMs`, `code`, `testFiles`, `unmatched`, `leftForPause`, `verdict`).
-- Introduced by commit `4c7bb6a9b` (row 011-28, 0.1.233). Its design, `tasks/011-24/design.md` line 76 (section 1.5): "`--json`: the snapshot plus a `named` field, the named wait's payload with `outcome: "snapshot"`". The same design, line 67, says the named wait's "`--json` is unchanged in shape: stdout is the snapshot plus `wait`".
+- Introduced by commit `764176acd` (row 011-28, 0.1.233). Its design, `tasks/011-24/design.md` line 76 (section 1.5): "`--json`: the snapshot plus a `named` field, the named wait's payload with `outcome: "snapshot"`". The same design, line 67, says the named wait's "`--json` is unchanged in shape: stdout is the snapshot plus `wait`".
 - `test/cli/status-wait-paths.test.ts:345` asserts `payload.named` is undefined in a wait; `test/cli/status-paths.test.ts:204-206` asserts the snapshot's `named` payload.
 - 011 C15 names `wait.testFiles` for a named wait (spec line 357). 005 D2 (spec line 63) gives the snapshot form's text and exit code but names no JSON key. Neither `status.md` records a decision on the key name.
 
-### 4. Documentation (read in source code, `18aff2857`; identical in the installed 0.1.234 plugin)
+### 4. Documentation (read in source code, `c74587003`; identical in the installed 0.1.234 plugin)
 
 - `plugins/claude-code/skills/squeal/references/commands.md` line 47: the snapshot's stdout is "the snapshot with a `named` field whose `outcome` is `snapshot`".
 - Line 43 describes only the path-less wait: a `wait` field whose `edit` holds `testFiles`. That is a third location, `wait.edit.testFiles`, with a different entry shape. The named wait's `wait.testFiles` is not named in the reference.
@@ -98,7 +98,7 @@ The decision is the human's. Inputs:
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/65 (read 2026-10-21).
-- `src/cli/status-wait-paths.ts` (`printNamed`, `NamedWaitPayload`, `namedCode`), `src/cli/named-file-lines.ts` (`fileEntry`), `src/cli/main.ts:222-225`, commit `4c7bb6a9b`.
+- `src/cli/status-wait-paths.ts` (`printNamed`, `NamedWaitPayload`, `namedCode`), `src/cli/named-file-lines.ts` (`fileEntry`), `src/cli/main.ts:222-225`, commit `764176acd`.
 - `test/cli/status-wait-paths.test.ts:345`, `test/cli/status-paths.test.ts:204-206`.
 - `docs/specifications/011-core/tasks/011-24/design.md` lines 67 and 76; `docs/specifications/011-core/spec.md` C6 and C15; `docs/specifications/005-agent-adoption/spec.md` D2.
 - `plugins/claude-code/skills/squeal/references/commands.md` lines 43 and 47.

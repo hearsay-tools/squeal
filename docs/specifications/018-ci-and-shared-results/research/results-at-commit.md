@@ -4,7 +4,7 @@ The human, 2026-11-16: an agent wants the results at a commit, the checks with n
 
 Short answer: to look results up at a commit, no checkout is needed. Squeal can compute the keys from `git ls-tree` plus this worktree's closures and environment, and code for that already exists. To run the missing checks, a checkout is needed. The `commit_sha` label does not answer the question: at recent main commits it finds 0.9% (Squeal) and 4.1% (squawk) of the test files.
 
-Source read at `23f3c7483` (Squeal 0.1.523). Stores read live and read-only on 2026-11-16, 15:05Z to 15:30Z, at a one-minute load of 26 to 30 on 24 CPUs. No timing is reported for that reason. Probes: `probes/results-at-commit/` (README lists each script and output).
+Source read at `36361d5e3` (Squeal 0.1.523). Stores read live and read-only on 2026-11-16, 15:05Z to 15:30Z, at a one-minute load of 26 to 30 on 24 CPUs. No timing is reported for that reason. Probes: `probes/results-at-commit/` (README lists each script and output).
 
 ## Questions answered
 
@@ -131,7 +131,7 @@ Use computed keys, built from the existing D11 re-key and 019 commit-report code
 
 ## Sources
 
-- Code at `23f3c7483` (Squeal 0.1.523): `src/core/keys/check-key.ts`, `environment-hash.ts`, `environment.ts`, `dependencies.ts`, `closure.ts`, `observed.ts`, `runtime-files.ts`; `src/core/hash/blob.ts`; `src/core/store/schema.ts`, `repos/results.ts`, `prune-rules.ts`, `transfer-rekey.ts`, `transfer-rows.ts`, `imports.ts`, `environments.ts`, `import-edges.ts`; `src/core/commit/tree.ts`, `compute.ts`, `store.ts`, `report.ts`; `src/core/types/state.ts` (`importMark`).
+- Code at `36361d5e3` (Squeal 0.1.523): `src/core/keys/check-key.ts`, `environment-hash.ts`, `environment.ts`, `dependencies.ts`, `closure.ts`, `observed.ts`, `runtime-files.ts`; `src/core/hash/blob.ts`; `src/core/store/schema.ts`, `repos/results.ts`, `prune-rules.ts`, `transfer-rekey.ts`, `transfer-rows.ts`, `imports.ts`, `environments.ts`, `import-edges.ts`; `src/core/commit/tree.ts`, `compute.ts`, `store.ts`, `report.ts`; `src/core/types/state.ts` (`importMark`).
 - Specs: 018 D2, D3, D4, D11, D13, D14 (`../spec.md`); 019 D5 (`../../019-run-triggers/spec.md`); 020 D3, D11.7, D17.3 (`../../020-quality-gate/spec.md`); `ci-run.md` 4 (earlier key-reuse replay over 20 landings).
 - Stores, read-only: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`. Git: `origin/main` of both checkouts. `git ls-remote origin 'refs/squeal/*'` (read-only) in squawk's checkout.
 - Probes and outputs: `probes/results-at-commit/` (README).

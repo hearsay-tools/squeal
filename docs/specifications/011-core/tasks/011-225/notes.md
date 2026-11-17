@@ -4,7 +4,7 @@ Worker 901f512b, 2026-10-26. Brief: `tasks/wave-44.md` W3.
 
 ## Cause
 
-The test was wrong, not the product. The case let go of the holder's lock on a 50 ms timer started just before `startDaemon`. Before its first lock attempt, `openDaemon` resolves the root and spawns `git rev-parse`. When that took longer than 50 ms, the timer fired first and the first attempt took the free lock. A daemon that takes the lock at once is not a waiter, so it never runs the decide-once-more read (`febcbce2a`). It opened the store with the start's 120 s busy timeout, waited until the blocker let go at about 7 s, and served. The 7 s also satisfied the case's `elapsed >= DAEMON_BUSY_TIMEOUT_MS` premise, so only line 180 failed, with a ready daemon.
+The test was wrong, not the product. The case let go of the holder's lock on a 50 ms timer started just before `startDaemon`. Before its first lock attempt, `openDaemon` resolves the root and spawns `git rev-parse`. When that took longer than 50 ms, the timer fired first and the first attempt took the free lock. A daemon that takes the lock at once is not a waiter, so it never runs the decide-once-more read (`311c85a3b`). It opened the store with the start's 120 s busy timeout, waited until the blocker let go at about 7 s, and served. The 7 s also satisfied the case's `elapsed >= DAEMON_BUSY_TIMEOUT_MS` premise, so only line 180 failed, with a ready daemon.
 
 No other order gives a ready daemon in vacant mode. Under the lock, a busy store throws SQLITE_BUSY and the waiter reads again; `openStore` reports `missing`, read as no daemon recorded, only when the database file does not exist. A first check that gives up, or a wait that runs out, ends `lost-lock` or `lock-wait-timed-out`, never ready.
 

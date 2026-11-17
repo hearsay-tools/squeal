@@ -4,7 +4,7 @@
 
 PASS `c42b725f1b63fd8c88e75c4b827f7866edfac609`: **0 blockers, 1 should-fix, 0 nits**.
 
-Range: `379517ae..c42b725f`. HEAD matched the supplied candidate and the tracked tree was clean throughout verification. No `src/`, plugin bundle or package version change. This review uses D12's approved replay amendment in main commit `530c1a623bddde5cb6a8d749c00d99e0d808678f`, confirmed from GitHub, as directed by the coordinator during review. The candidate itself stayed pinned.
+Range: `24e5fe5b..c42b725f`. HEAD matched the supplied candidate and the tracked tree was clean throughout verification. No `src/`, plugin bundle or package version change. This review uses D12's approved replay amendment in main commit `42a2ecb5ded37185d484b6e6bb79bd4b01df39b3`, confirmed from GitHub, as directed by the coordinator during review. The candidate itself stayed pinned.
 
 ## Independent verification
 

@@ -24,11 +24,11 @@ Done when: each row's done-when; lint and typecheck pass; `squeal status --wait 
 
 ## R1: review of cand/0.1.502
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.502` at `b83018e0e07d97cd5ad8a863d2140c255acea697`; range `049563bc2..b83018e0e`: worker 0c0970aa's three commits (row 011-341 fix, row 011-342 fix, notes), then the 0.1.502 version raise and bundles. Behaviour to compare against: `049563bc2` (0.1.501). Read: board rows 011-341 and 011-342, `research/admission.md` (differences 1 and 2, Rows items 2 and 3), `tasks/011-341/notes.md`, this file's W1, `reviews/0.1.498.md`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.502` at `046de73582142883cfc61ad1cfbed67a0e301ce8`; range `bd436e046..046de7358`: worker 0c0970aa's three commits (row 011-341 fix, row 011-342 fix, notes), then the 0.1.502 version raise and bundles. Behaviour to compare against: `bd436e046` (0.1.501). Read: board rows 011-341 and 011-342, `research/admission.md` (differences 1 and 2, Rows items 2 and 3), `tasks/011-341/notes.md`, this file's W1, `reviews/0.1.498.md`.
 
 Check, each as proven, plausible or unverified:
 
-1. **Each defect was real before its fix.** `admission-runner-work.test.ts` and `admission-rewalk-lanes.test.ts` fail at `049563bc2` (revert only the `src/` part of each fix) and pass at the pin; neither depends on a timing race (the notes claim 5 of 5 and 3 of 3).
+1. **Each defect was real before its fix.** `admission-runner-work.test.ts` and `admission-rewalk-lanes.test.ts` fail at `bd436e046` (revert only the `src/` part of each fix) and pass at the pin; neither depends on a timing race (the notes claim 5 of 5 and 3 of 3).
 2. **011-341**: no lane starts a tier while runner work is pending, whatever its `after`; the refusal order (`stopping`, `runtime-gone`, `held`, `runner-work`, then the lane's rules) holds; a lane refused for runner work is asked again after the drain and cannot stall (no lost wake, no busy loop); `waits` and the published activity are unchanged; spec 019's `status.md` line reads D3 as the row says.
 3. **011-342**: the re-walk gives way to any group lane's waiting activity; the read stays lazy (at most once per answer, after the halt check); a group with no stored activity reads as not waiting.
 4. **Nothing else a user sees changes**: no message, status field, CLI output or key; `test/keys/key-format.test.ts` passes with no raise.

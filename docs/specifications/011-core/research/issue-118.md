@@ -6,7 +6,7 @@ Existing holds stand. This research authorizes no implementation.
 
 ## Scope and verdict
 
-Examined 2026-10-28, source commit `9e4206a2d72738d6964b955aa0dc7073796f4d15`,
+Examined 2026-10-28, source commit `2e2ff78f22ee35a42c8a4203ae404c2ebe283c01`,
 package and installed CLI version **0.1.370**. The cheap probes completed between
 11:44 and 11:47 UTC, within the 20-minute bound. No browser setup, runtime rewrite,
 test run, full suite, daemon start, retry or hold change was requested.
@@ -166,6 +166,6 @@ the final path; the final check records the worker's original paths.
   no comments at read time. Original report: 0.1.370, Claude Code under Cezar.
 - [011 spec](../spec.md), C3/C5/C6/C15, and [amendment log](../status.md).
 - [005 spec](../../005-agent-adoption/spec.md), D1/D2 and CLI/install context.
-- [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/9e4206a2d72738d6964b955aa0dc7073796f4d15);
+- [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/2e2ff78f22ee35a42c8a4203ae404c2ebe283c01);
   exact paths and lines are cited above.
 - [Probe README](probes/issue-118/README.md) and saved E1/E2 evidence.

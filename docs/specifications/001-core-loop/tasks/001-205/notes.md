@@ -30,7 +30,7 @@ Each fix was checked to discriminate: without the claim check test 1 runs keys t
 
 | Arm | Files | File runs | Most runs of one file | File runs per worktree | Current checks per worktree |
 |---|---|---|---|---|---|
-| base `bc0c9543` | 40 | 160 | 4 | 40, 40, 40, 40 | 80 each |
+| base `943825f2` | 40 | 160 | 4 | 40, 40, 40, 40 | 80 each |
 | 001-205 | 40 | 40 | 1 | 20, 14, 6 (one inherited all) | 80 each |
 | 001-205 | 120 | 120 | 1 | 60, 60 (two inherited all) | 240 each |
 

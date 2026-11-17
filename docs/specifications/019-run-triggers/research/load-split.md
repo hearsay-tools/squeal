@@ -1,6 +1,6 @@
 # 019-46: where Squeal's test CPU goes now, by trigger
 
-Researcher of row 019-46, 2026-11-05, 16:40Z to 17:10Z (Europe/Warsaw 17:40 to 18:10). Brief: `research/load-split-brief.md`. Read: `docs/vision.md`, `011-core/research/edit-load.md` (method, classes) and its `work.mjs`, `011-core/research/edit-cut.md`, `011-core/research/host-load.md`, spec 011 C4, spec 019 D1 to D3, `src/core/scheduler/edit-cut.ts`, `quiet.ts`, `claims.ts`, `tiers.ts`, `slow-trigger.ts`, `store/prune.ts`, `fs/git-layout.ts` at squeal `48da797c8`.
+Researcher of row 019-46, 2026-11-05, 16:40Z to 17:10Z (Europe/Warsaw 17:40 to 18:10). Brief: `research/load-split-brief.md`. Read: `docs/vision.md`, `011-core/research/edit-load.md` (method, classes) and its `work.mjs`, `011-core/research/edit-cut.md`, `011-core/research/host-load.md`, spec 011 C4, spec 019 D1 to D3, `src/core/scheduler/edit-cut.ts`, `quiet.ts`, `claims.ts`, `tiers.ts`, `slow-trigger.ts`, `store/prune.ts`, `fs/git-layout.ts` at squeal `be9e52eec`.
 
 Window: 72 h, 2026-11-02T16:50Z to 2026-11-05T16:50Z. Store copies taken 16:50Z: squeal, cezar, the client monorepo, and two small ones (`project-a` has no run, `project-b` none since 2026-10-29: both left out). Host: 24 CPUs, load1 20 to 38 while the probes ran. No test was run. Probes and re-run steps: `probes/load-split/README.md`.
 
@@ -172,6 +172,6 @@ None as design: the brief asks for numbers. For the human's choice, the numbers 
 - Store copies 2026-11-05 16:50Z: `~/projects/{squeal,cezar,client-monorepo,project-a,project-b}/.git/squeal/store.sqlite` with `-wal` and `-shm`; run logs `report.json` read in place.
 - Configs: `squeal.config.json` of the squeal, cezar and the client monorepo main checkouts, read 2026-11-05.
 - Transcripts: `~/.claude/projects/**/*.jsonl` and `~/.codex/sessions/**/*.jsonl` changed since 2026-11-02T14:00Z (6,519 files).
-- Source at squeal `48da797c8`: `src/core/scheduler/quiet.ts` (`BACKLOG_QUIET_MS`, `CATCHUP_QUIET_MS`), `edit-cut.ts`, `claims.ts` (`backlogSize`), `tiers.ts` (`selectTier`), `slow-trigger.ts`, `src/core/store/prune.ts`, `src/core/fs/git-layout.ts`, `src/core/types/policy.ts:364`.
+- Source at squeal `be9e52eec`: `src/core/scheduler/quiet.ts` (`BACKLOG_QUIET_MS`, `CATCHUP_QUIET_MS`), `edit-cut.ts`, `claims.ts` (`backlogSize`), `tiers.ts` (`selectTier`), `slow-trigger.ts`, `src/core/store/prune.ts`, `src/core/fs/git-layout.ts`, `src/core/types/policy.ts:364`.
 - Earlier numbers: `011-core/research/edit-load.md` findings 0, 2 and 6.
 - Probes: `probes/load-split/` (README lists each script and the commands).

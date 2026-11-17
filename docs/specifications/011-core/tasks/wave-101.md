@@ -22,7 +22,7 @@ Done when: the row's done-when holds: `#cutTiers` and `#recheckTiers` are gone; 
 
 ## R1 (W1): review of cand/0.1.515
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.515` at `8c0a6c91e9cfcead6279bb2b4ad21d26e4f80d8c`; candidate CI run 43741972368. Range `8b6a9465d..8c0a6c91e9cfcead6279bb2b4ad21d26e4f80d8c`: six commits of worker 3f053805 (fast-forwarded), then the 0.1.515 raise and bundles. Read: board row 011-356, this file's W1, `tasks/011-356/notes.md`, `../research/scheduler-step.md` (decision 3, "The step's interface", "In-turn triggers"), `reviews/0.1.514-r2.md` (its plausible claims note).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.515` at `8c0a6c91e9cfcead6279bb2b4ad21d26e4f80d8c`; candidate CI run 43741972368. Range `e8f58d643..8c0a6c91e9cfcead6279bb2b4ad21d26e4f80d8c`: six commits of worker 3f053805 (fast-forwarded), then the 0.1.515 raise and bundles. Read: board row 011-356, this file's W1, `tasks/011-356/notes.md`, `../research/scheduler-step.md` (decision 3, "The step's interface", "In-turn triggers"), `reviews/0.1.514-r2.md` (its plausible claims note).
 
 Check, each as proven, plausible or unverified:
 
@@ -36,6 +36,6 @@ The coordinator's tree passed lint, typecheck, `check:version origin/main`, `key
 
 ## R2 (W1 repair): re-review of cand/0.1.515 after `reviews/0.1.515.md`
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.515` at `0e007ffc33626d049f472af4bdc23a2d1f6266df`; candidate CI run 43746942737. Rebuilt on main `2bf810c99`: worker 3f053805's six first-round commits (unchanged), its repair (`424bbea79`, `d8bb78399`, cherry-picked), then the 0.1.515 raise and bundles. Narrow: the repair, against `reviews/0.1.515.md` B1. Read that review and `tasks/011-356/notes.md` "Repair after review 0.1.515".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.515` at `f978b6a8207adee9f8105281082955b1e1c17aab`; candidate CI run 43746942737. Rebuilt on main `88b7cb65d`: worker 3f053805's six first-round commits (unchanged), its repair (`424bbea79`, `d8bb78399`, cherry-picked), then the 0.1.515 raise and bundles. Narrow: the repair, against `reviews/0.1.515.md` B1. Read that review and `tasks/011-356/notes.md` "Repair after review 0.1.515".
 
 Check, each as proven, plausible or unverified: the review's probe passes as `step-install-refresh.test.ts` on the real harness; the owed refresh (`#refreshOwed`) survives a reset of the step's reads and is cleared only after `refreshInstall` returns; a refresh that throws stays owed without a busy loop or a stall a user sees; the worker's list of other consumed reads (released paths, pool refusal, lane answers, re-walk chunks, install-missing, hold state) is right, or name one that a reset can still drop; nothing a user sees changes. Worker evidence: 7 files 74 tests and 2 files 4 tests direct, model test 8/8 in 18.1 s at load 10, 598 affected current (4 bundle drift). Coordinator: lint, typecheck, `check:version`, `key-format`, `version-sensitive`, `step`, `step-install-refresh`, model test (69 tests) at the candidate. Host policy as in `wave-85.md`; never the real `HOME`; run vitest with a timeout and make sure each run ends. Write `reviews/0.1.515-r2.md` and commit it on your branch.

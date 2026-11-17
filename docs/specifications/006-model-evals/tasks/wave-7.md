@@ -15,7 +15,7 @@ Use /worker. Shape: repair.
 - References:
   - `test/evals/judge-references.ts`: a `fail` on a current failure with checks pending meets (both harnesses); a `fail` on an older-revision failure misses.
   - The parser's reference tests: the same paired cases.
-- `own-run-covers` and the parser's completed node:test run (`completedRuns`): a run whose output shows `ℹ pass N` / `ℹ fail N` (or `# pass` / `# fail`) completes, even when `ℹ tests N` was cut away. Source: the partial 006-37 cells under `$TMPDIR/squeal-evals/cells/c00435c9e2ba/20261012T092317Z-57ed6e`, which are read-only evidence; e.g. Sonnet `a5-uncovered` r1, `node --test … | tail -30`.
+- `own-run-covers` and the parser's completed node:test run (`completedRuns`): a run whose output shows `ℹ pass N` / `ℹ fail N` (or `# pass` / `# fail`) completes, even when `ℹ tests N` was cut away. Source: the partial 006-37 cells under `$TMPDIR/squeal-evals/cells/75b61398830f/20261012T092317Z-57ed6e`, which are read-only evidence; e.g. Sonnet `a5-uncovered` r1, `node --test … | tail -30`.
 - Recalibrate Haiku 5.5 (`judge-calibrate.mjs --max-cost 0.30`; no Sonnet). If it passes, run `regrade --judge --max-cost 0.40` on both judged long-task files and `atomic-regrade.mjs` on both atomic files, then regenerate `TREND.md` and `ATOMIC.md`. Report every changed verdict or measure.
 
 **Owns:** `evals/lib/{evidence,rubric,atomic-measures}.mjs`, `test/evals/**`, `evals/results/**`. Exports are additive.

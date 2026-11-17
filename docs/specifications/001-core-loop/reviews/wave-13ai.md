@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `6bad4eba`, package and both plugins 0.1.123, `KEY_FORMAT_VERSION = 7`. Range: `be1aad84..6bad4eba`. Initial HEAD: `9344162a65f2efc4dd7ea9ad85d1c251f302bfc3`; `git diff --name-only 6bad4eba..HEAD` lists only `docs/board.md`. Executable sources, tests, manifests and distributions match the candidate. The checkout stayed clean during verification and the external probes. Linux, Node 24.21.0, Vitest 5.0.3.
+Candidate: `a5dbe5ab`, package and both plugins 0.1.123, `KEY_FORMAT_VERSION = 7`. Range: `a2a7612d..a5dbe5ab`. Initial HEAD: `07c8f9bc5040c5104e7e73672fdb60a74717cc81`; `git diff --name-only a5dbe5ab..HEAD` lists only `docs/board.md`. Executable sources, tests, manifests and distributions match the candidate. The checkout stayed clean during verification and the external probes. Linux, Node 24.21.0, Vitest 5.0.3.
 
 Bounded by wave-13ah B1 and 001-277's before/after-registration questions. Interleaved spec 006 changes are outside this review; their unit tests are included in the independent suite. No product, test, board, spec, status or distribution file was edited. The forbidden `npm run build`, eval runner and repository scripts to check evals were not run. Existing daemon test helpers compile private source fixtures with `tsc`. Rebuild equivalence and macOS are **unverified**, not findings.
 
@@ -67,17 +67,17 @@ The independent full gate is **not green**. Its one failure is a timeout in an u
 
 Squeal separately completed its revision-0 checkpoint and last reported one known failure, an unchanged `test/harness/codex/hooks.test.ts` PostToolUse timeout. Its two e2e timing failures recovered under the same inputs. That checkpoint does not replace this independent run.
 
-The prior probes were restored privately, with candidate paths and simulated identities changed to this checkout and 0.1.123. Historical sources remain unchanged: 0.1.112 from `cf7e8a2c`, the base wait from `6864b726`, 0.1.115 from `2ec0efa1`, and tokenless 0.1.116 from `d9fe66ba`. The original orphan probe keeps its pre-durable-row control from `3ee7d64d`; additional comparisons use the actual immediate base `be1aad84`. The controller restart interrupted one incomplete succession replay; only its complete replay is counted. Initial gap-harness attempts needed missing filesystem imports and seed-store creation; they are not candidate failures.
+The prior probes were restored privately, with candidate paths and simulated identities changed to this checkout and 0.1.123. Historical sources remain unchanged: 0.1.112 from `d58dd59c`, the base wait from `860f6464`, 0.1.115 from `eecab4cb`, and tokenless 0.1.116 from `7481623e`. The original orphan probe keeps its pre-durable-row control from `642cc337`; additional comparisons use the actual immediate base `a2a7612d`. The controller restart interrupted one incomplete succession replay; only its complete replay is counted. Initial gap-harness attempts needed missing filesystem imports and seed-store creation; they are not candidate failures.
 
 Replayable [probe source snapshot](/p/squeal/tasks/18acb54c-b806-4c7d-9d3b-a99fb4eb1832/files?artifact=aa217bc1-7a87-46ce-aa27-d4c9b2d4fdfa). Complete captured [verification output snapshot](/p/squeal/tasks/18acb54c-b806-4c7d-9d3b-a99fb4eb1832/files?artifact=aaefb363-c934-477c-9967-a7a1e61ecbf6).
 
 ## Verdict
 
-**PASS 6bad4eba: 0 proven blockers, 0 candidate should-fix, 0 nits. One proven pre-existing note.**
+**PASS a5dbe5ab: 0 proven blockers, 0 candidate should-fix, 0 nits. One proven pre-existing note.**
 
 Wave-13ah B1 closes. A failed socket start in a never-registered linked worktree leaves no exit row before or after normal pruning. A stop or step-down forced before registration preserves predecessor evidence until registration, then commits its own matching evidence with its owner. Requested death, note-churn, succession and virtual-read replays pass. No several-second stop regression is observed.
 
-The answer to the broader question, "can any after-registration exit still leave a row no prune reaches?", is **yes**, in the pre-existing ordering below. It occurs on `be1aad84` as well as the candidate, so it is a note rather than a blocker against 001-276. This PASS does not certify every possible removed-worktree ordering as orphan-free.
+The answer to the broader question, "can any after-registration exit still leave a row no prune reaches?", is **yes**, in the pre-existing ordering below. It occurs on `a2a7612d` as well as the candidate, so it is a note rather than a blocker against 001-276. This PASS does not certify every possible removed-worktree ordering as orphan-free.
 
 ## Blockers
 
@@ -91,7 +91,7 @@ None introduced by the candidate. The full-suite timeout remains a verification 
 
 ### N1. Pruning a running daemon's owner before its stop recreates an orphan
 
-**Proven on both `be1aad84` and `6bad4eba`, with public daemon and store calls, no product edits or mocked store.** Locations: `src/core/daemon/daemon.ts:559` and `:594`, and `src/core/store/prune.ts:77`. The new `#registered` flag at `:592` remembers a successful registration; it does not track whether another connection subsequently removed that owner. The same mark write before this guard already has the defect.
+**Proven on both `a2a7612d` and `a5dbe5ab`, with public daemon and store calls, no product edits or mocked store.** Locations: `src/core/daemon/daemon.ts:559` and `:594`, and `src/core/store/prune.ts:77`. The new `#registered` flag at `:592` remembers a successful registration; it does not track whether another connection subsequently removed that owner. The same mark write before this guard already has the defect.
 
 Reproduction:
 

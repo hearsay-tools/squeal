@@ -1,14 +1,14 @@
 # Wave 2.7 narrow review: 006-20
 
-Verdict: **FAIL** at `c43062d92b512db66b5eefb300f0ee5fcb675e29`. One proven residual blocker, B3; one proven non-blocking residual note, S2; no nits. B2 and S1 close for the bounded reproductions and nearest variants. All original B3/S2 reproductions are repaired, but nearby exclusion and overflow cases remain wrong. This is the human-bought third and last round; the verdict does not authorize more repair work.
+Verdict: **FAIL** at `e1f7950daf356ebf88987b13c6a62c36e48c230c`. One proven residual blocker, B3; one proven non-blocking residual note, S2; no nits. B2 and S1 close for the bounded reproductions and nearest variants. All original B3/S2 reproductions are repaired, but nearby exclusion and overflow cases remain wrong. This is the human-bought third and last round; the verdict does not authorize more repair work.
 
 ## Verification
 
-Reviewed range: `0730b6a6^..c43062d9`, limited to `reviews/wave-2.6.md` B2, B3, S1 and S2 and their nearest variants, per `tasks/wave-2.7.md`. No other finding was reopened. The review-writing worktree started at `915eba9c54a5076a9e36c49c3dc056f37b12093c`. Executable checks used an independent scratch clone at `/tmp/squeal-review-006-20-xCtoBJ/repo`, created with `git clone --local --no-checkout . <path>` and `git checkout --detach c43062d9`. The checked commit is the full SHA below. The worktree difference is recorded, not charged as a candidate defect; D4 agrees between the checkouts.
+Reviewed range: `05fde43a^..e1f7950d`, limited to `reviews/wave-2.6.md` B2, B3, S1 and S2 and their nearest variants, per `tasks/wave-2.7.md`. No other finding was reopened. The review-writing worktree started at `506e9dc4e1133410219495cff488ed7cafa3f3b4`. Executable checks used an independent scratch clone at `/tmp/squeal-review-006-20-xCtoBJ/repo`, created with `git clone --local --no-checkout . <path>` and `git checkout --detach e1f7950d`. The checked commit is the full SHA below. The worktree difference is recorded, not charged as a candidate defect; D4 agrees between the checkouts.
 
 ```text
 $ git rev-parse HEAD
-c43062d92b512db66b5eefb300f0ee5fcb675e29
+e1f7950daf356ebf88987b13c6a62c36e48c230c
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities

@@ -6,7 +6,7 @@
 #   sh setup.sh <step>...
 #     dirs     the case directories; the scratch bin/ (019-17's scripts, then these) for the
 #              e2e user; the case's pnpm store is Round 1's (same user, packages only)
-#     pin      `git archive 636d2088f` (main at 0.1.400) of both plugins, the Codex runtime and
+#     pin      `git archive 360d0f89c` (main at 0.1.400) of both plugins, the Codex runtime and
 #              both marketplace manifests into pin/, each marketplace renamed `hearsay`
 #     bundles  cezarion: Round 1's bundle, at 10e7a5782, so both rounds run the same commit;
 #              the Part A fixture (make-fixture.mjs) with a 15 s e2e file
@@ -25,7 +25,7 @@ r1=$(cd "$here/../../019-17/bin" && pwd)
 R=/home/squeal-e2e/runs/d1933
 W=/tmp/dogfood-019-33
 WT=$(cd "$here/../../../../../.." && pwd)
-REF=636d2088f
+REF=360d0f89c
 as() { dir=$1; shift; node "$r1/as-e2e.mjs" "$R" "$R/$dir" "$@"; }
 e2e() { sudo -n -u squeal-e2e "$@"; }
 data=$R/codex/plugins/data/squeal-hearsay

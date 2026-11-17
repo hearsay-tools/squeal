@@ -1,6 +1,6 @@
 # Issue #106: "untested" for a module a node:test preload also imports
 
-Researcher, 2026-10-26. Brief: issue #106 triage reproduction (about 20 minutes). Probes: `probes/issue-106/` (throwaway). Version examined: this branch at `a36f6bde7` (0.1.352), its built CLI `plugins/claude-code/dist/cli/squeal.mjs`, Node 24.21.0. Every run used `HOME`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` under `/tmp/issue-106/home`; no evals script ran. One run (fixture `d-two-projects`, `run --all`) started at a one-minute load of 44.5, above the brief's limit of 24, because the load check and the start were in one command. Every other run started at a load of 12 to 22.
+Researcher, 2026-10-26. Brief: issue #106 triage reproduction (about 20 minutes). Probes: `probes/issue-106/` (throwaway). Version examined: this branch at `425c39259` (0.1.352), its built CLI `plugins/claude-code/dist/cli/squeal.mjs`, Node 24.21.0. Every run used `HOME`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` under `/tmp/issue-106/home`; no evals script ran. One run (fixture `d-two-projects`, `run --all`) started at a one-minute load of 44.5, above the brief's limit of 24, because the load check and the start were in one command. Every other run started at a load of 12 to 22.
 
 ## Questions answered
 
@@ -10,7 +10,7 @@ Researcher, 2026-10-26. Brief: issue #106 triage reproduction (about 20 minutes)
 | 2 | Hypothesis: the preload files the path under the environment, not the test's closure | Refuted for a module the test file also imports: the test file's own closure holds it, with or without the preload, also with two projects that share the preload. Confirmed only for a module that **only** the preload loads: it has no loader and reads `untested`. | experiment (`a-preload`, `d-two-projects`); source |
 | 3a | The same module without the preload | Same as with the preload: the test file is its loader; the file reads `unknown` (after a restart, see 5). | experiment (`b-plain`) |
 | 3b | Vitest `setupFiles` import of the source | No gap. The source reads 100% covered from the test file's record. | experiment (`c-vitest`) |
-| 4 | Regression since 0.1.341? | Not a code regression. 0.1.341 (`a2ab372a2`, 015-64) made `coverage.enabled` default `true`. Before it, the reporter's config (only `complexity.enabled`) had no CRAP or `untested` states, so the case could not show. The rule that keeps the stale state is D9 as written (spec line 252). | source |
+| 4 | Regression since 0.1.341? | Not a code regression. 0.1.341 (`8cdc34cc6`, 015-64) made `coverage.enabled` default `true`. Before it, the reporter's config (only `complexity.enabled`) had no CRAP or `untested` states, so the case could not show. The rule that keeps the stale state is D9 as written (spec line 252). | source |
 | 5 | Found on the way: `pending` never turns `unknown` in a live daemon | In every fixture, a node:test-only source stayed "waits for coverage records" for over 2 minutes (D9 says `unknown` after 36 s). A daemon restart made it `unknown` at once. Cause not determined in the time bound. | experiment |
 
 ## Findings
@@ -67,5 +67,5 @@ In `a-preload`, `b-plain`, `d-two-projects` and `e-order`, a source whose only l
 
 - Issue: `gh issue view 106 --repo hearsay-tools/squeal`. Reporter's config and files: hearsay-tools/cezarion at `98ad418504d4` (PR #1917 head), `squeal.config.json` `nodeTest`, `scripts/test-sandbox.test.mjs`, `scripts/test-git-env.mjs`.
 - Spec: `docs/specifications/015-coverage-complexity/spec.md` Non-goals line 40, D9 lines 239-252.
-- Code at `a36f6bde7`: `src/core/code/crap/{loaders,file,walk}.ts`, `src/core/code/pass/index.ts`, `src/runners/node-test/graph/closures.ts`, `src/core/keys/closure.ts`. Default change: `a2ab372a2` (015-64), released in 0.1.341 (`663cb5485`).
+- Code at `425c39259`: `src/core/code/crap/{loaders,file,walk}.ts`, `src/core/code/pass/index.ts`, `src/runners/node-test/graph/closures.ts`, `src/core/keys/closure.ts`. Default change: `8cdc34cc6` (015-64), released in 0.1.341 (`5c31dab55`).
 - Probes: `probes/issue-106/setup.sh` (fixtures a to e), `run.sh` (isolated CLI), `README.md`.

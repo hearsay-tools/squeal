@@ -9,7 +9,7 @@ The behavior follows current 011 C2/C3/C4 and 004 D2/D5. This research proposes
 no implementation and changes no approval or hold.
 
 Examined on 2026-11-02: Squeal **0.1.393**, committed CLI and source at
-`c5e60eea30291ebd1b48f287da288c178226c494`; Node **24.22.1**, Vitest **5.0.3**,
+`72cabdf1f60f9245b777fa8798a4fe7d00728478`; Node **24.22.1**, Vitest **5.0.3**,
 Vite **8.3.2**, esbuild **0.28.2**, Linux. Issue 137 reports **0.1.392**.
 The initial load check was **9.60 on 24 CPUs** at 16:47:05Z. The retained live
 run began at **3.27/24**, ended at **3.68/24**, and took about ten seconds.
@@ -145,5 +145,5 @@ The repeat commands below use the new paths; retained output is unchanged.
 - [Source excerpts and incident-tag comparison](probes/issue-137/source-evidence.txt):
   `src/core/hash/blob.ts:15`, `src/core/keys/key-index.ts:204`,
   `src/core/scheduler/slow-tier.ts:280`, all at
-  [examined commit](https://github.com/hearsay-tools/squeal/tree/c5e60eea30291ebd1b48f287da288c178226c494).
+  [examined commit](https://github.com/hearsay-tools/squeal/tree/72cabdf1f60f9245b777fa8798a4fe7d00728478).
   Installed Vite 8.3.2 `dist/node/chunks/node.js:26271,27111` supplies the directive check.

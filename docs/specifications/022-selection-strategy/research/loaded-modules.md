@@ -5,7 +5,7 @@
 Researcher, row 022-01, 2026-11-14, 11:00Z to 12:30Z. I read `docs/vision.md`, `docs/styleguide.md`, `docs/process.md`, ADR 0002, `../status.md`, `015-coverage-complexity/research/{edit-reach,line-level-selection,selection-tools,cezar-selection}.md`, `011-core/research/{central-edits,edit-cut}.md`, the cezar re-run note, and the human's Kody reference (coordinator message, 11:56Z).
 
 Versions examined:
-- Squeal `2856d26e8` (0.1.481), with Vitest 5.0.3, Vite 8.3.2 and Node 26.13.0.
+- Squeal `9aef0ef9e` (0.1.481), with Vitest 5.0.3, Vite 8.3.2 and Node 26.13.0.
 - cezar `cc34d00d6`.
 - Kody `2b3a0035a` (PR #5108) and its CI map at `518a02f0`, with Vitest 4.1.12.
 - Ekstazi `b6ee1f2b` and its ISSTA 2015 paper.
@@ -202,7 +202,7 @@ Measured frequency:
 
 ## Sources
 
-- Squeal `2856d26e8`:
+- Squeal `9aef0ef9e`:
   - `src/runners/vitest/{graph,loads,dynamic,environment,project,coverage}.ts`
   - `src/core/code/coverage/{provider.mjs,record.ts,parts.ts,types.ts}`
   - `src/core/store/{schema,import-edges}.ts`

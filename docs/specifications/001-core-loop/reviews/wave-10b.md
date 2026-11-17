@@ -23,7 +23,7 @@ The branch HEAD is `8a8d465`, one commit past the candidate. That commit changes
 
 ```
 $ git rev-parse HEAD
-8a8d465f308dc34479127989b688a8a071bdc0ae
+8bcaf060faa3643eddbe41d41c8a1cb42ead3db8
 $ git diff --stat b5581e0 HEAD -- . ':!docs'
 (empty)
 $ npm ci

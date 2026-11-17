@@ -1,6 +1,6 @@
 # 011-169: why a promoted edit did not cut the tier on main CI, worker notes (2026-10-24)
 
-Brief W2 of `../wave-28.md`. Shape: survey, then repair. Base main `e9c424d3d` (after 0.1.286). Spec 011 C4 step 5 and C15; `../011-55/notes.md`, `../011-107/notes.md`, `../011-159/notes.md`.
+Brief W2 of `../wave-28.md`. Shape: survey, then repair. Base main `f5a9c2885` (after 0.1.286). Spec 011 C4 step 5 and C15; `../011-55/notes.md`, `../011-107/notes.md`, `../011-159/notes.md`.
 
 ## The cause
 
@@ -99,7 +99,7 @@ Yes: C4 step 5 counts a file with no known duration as 0 and says a tier also yi
 
 ## Row 011-174: the two tests left (2026-10-24)
 
-The coordinator resumed this worker on `cez/32fe48c6` after `5dac4b72e` (board row 011-174, main `8dd84a8d7`). Shape: repair, tests only. No load phase.
+The coordinator resumed this worker on `cez/32fe48c6` after `5dac4b72e` (board row 011-174, main `a9344f5b8`). Shape: repair, tests only. No load phase.
 
 | Commit | File | Change |
 | --- | --- | --- |

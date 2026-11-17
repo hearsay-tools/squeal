@@ -4,14 +4,14 @@
 
 Initial findings written 2026-10-14 12:23:07 UTC, within 10 minutes of starting. Extended 2026-10-14 12:39:01 UTC with the completed independent suite output.
 
-Fix: `c8d5d54d2af46b3a255da1c6bd91a0f14a0121ac`. Reviewed bundle: `1a6b14f0`, version 0.1.167. Initial checkout: clean `1d662bfc09af68f986322f0e21ada3ae7c44fa5f`, the documentation overlay expressly named by the brief. Its only difference from the bundle is the 005-61 brief in `tasks/wave-7.md`. No unexpected candidate mismatch. Detached at the exact bundle before installation, checks and probes; the branch was restored to `1d662bfc` after the suite, before committing this file.
+Fix: `25e8476e6dec6f7d256f9677624c7a8d19a3b4ba`. Reviewed bundle: `7751aeca`, version 0.1.167. Initial checkout: clean `362b383a7e220f40c8ec684df8eeeebccedb03fa`, the documentation overlay expressly named by the brief. Its only difference from the bundle is the 005-61 brief in `tasks/wave-7.md`. No unexpected candidate mismatch. Detached at the exact bundle before installation, checks and probes; the branch was restored to `362b383a` after the suite, before committing this file.
 
 ```text
 $ git rev-parse HEAD
-1a6b14f0b39d399b141e2d805bc9336124d94727
+7751aecacb83532a761888db2add535976f47103
 $ git status --short
 [no output before checks]
-$ git diff --exit-code 1a6b14f0 1d662bfc -- src test plugins package.json package-lock.json
+$ git diff --exit-code 7751aeca 362b383a -- src test plugins package.json package-lock.json
 [no output; exit 0]
 $ npm ci
 

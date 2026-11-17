@@ -2,11 +2,11 @@
 
 Researcher, 2026-11-07, from 13:20Z. Phase 1 (before, at origin/main) and phase 2 (after, at the candidate `cand/0.1.414` `963aff844`). Brief: `tasks/wave-28.md`, section 015-112. Read first: `research/edit-reach.md` and `probes/edit-reach/README.md`.
 
-Versions: squeal origin/main `6db9fcb7b` (2026-11-07 13:27Z; equal in code to `2fc4ad13f` and to the candidate's main base `b21efef01`: no change outside `docs/`). Candidate `963aff844a83` (`cand/0.1.414`, 015-110 and 015-111). Read-only clones are under `/tmp/er112/main` and `/tmp/er112/cand`. Store copies (`store.sqlite`, `code.sqlite`, each with `-wal` and `-shm`) and copies of 8,026 `report.json` files were taken at 13:27Z from `~/projects/squeal/.git/squeal`. No test, build or benchmark ran. No live store or daemon socket was opened. Probes ran at nice 10: `probes/edit-reach-refactor/README.md`.
+Versions: squeal origin/main `2e9835d1d` (2026-11-07 13:27Z; equal in code to `28b17c099` and to the candidate's main base `2f97d32db`: no change outside `docs/`). Candidate `963aff844a83` (`cand/0.1.414`, 015-110 and 015-111). Read-only clones are under `/tmp/er112/main` and `/tmp/er112/cand`. Store copies (`store.sqlite`, `code.sqlite`, each with `-wal` and `-shm`) and copies of 8,026 `report.json` files were taken at 13:27Z from `~/projects/squeal/.git/squeal`. No test, build or benchmark ran. No live store or daemon socket was opened. Probes ran at nice 10: `probes/edit-reach-refactor/README.md`.
 
 **Units**, as in `edit-reach.md`. A *pair* is one (source file, test file that an edit of the source re-keys). *Pair-seconds* weight a pair by the test file's recorded seconds (the median `fileDurations`). "Every source once" weights each reached source file equally. "Real edits" weights a source file by its count in the store's watch revisions of 1 to 3 paths. The *called share* is the share of pair-seconds in which the test file's newest coverage record shows that a function of the source ran (the module's top level does not count).
 
-**Suite.** 1,490 automatic test files, 6,205 recorded s. The 17 `test/e2e/**` files (481 s) are left out: `squeal.config.json` `vitest.exclude` has excluded them since `a962e0e89` (004-81), so an edit does not re-run them. Their stored closures date from 2026-10-07 to 2026-10-19. `edit-reach.md` counted them (1,504 files, 6,696 s). Its shares are therefore not exactly comparable with these. *read in source code and store.*
+**Suite.** 1,490 automatic test files, 6,205 recorded s. The 17 `test/e2e/**` files (481 s) are left out: `squeal.config.json` `vitest.exclude` has excluded them since `dc9f4d358` (004-81), so an edit does not re-run them. Their stored closures date from 2026-10-07 to 2026-10-19. `edit-reach.md` counted them (1,504 files, 6,696 s). Its shares are therefore not exactly comparable with these. *read in source code and store.*
 
 **Real edits.** 106 edits of 51 reached source files, in 1,333 watch revisions from 2026-10-06 to 2026-11-07 (869 of them with 1 to 3 paths). This is a small sample, and it is smaller than in `edit-reach.md` (137 edits of 64 files). The store now holds fewer watch revisions (1,333, against 1,523 then). *read from store.*
 
@@ -20,7 +20,7 @@ Versions: squeal origin/main `6db9fcb7b` (2026-11-07 13:27Z; equal in code to `2
 | 4 | Where the static and stored methods differ | At main they agree to 7 of 3,118,924 pair-s. With the excluded e2e files they would differ by 3.2%, from those files' stale closures. Differences that only a candidate has are listed in section 3 | verified by experiment |
 | 5 | The limit of coverage carried over per pair | "Called" is a property of the (source, test file) pair as recorded before the wave. A source file that origin/main lacks counts as "no record". The invariant holds by real edits (52,309 before and after). Every source once, it falls by 5,068 (0.7%): 1,599 from the rename of the scheduler helpers, and 3,469 from functions that ran only while a module loaded, in modules the tests no longer load | verified by experiment |
 
-## 1. Before, at origin/main `6db9fcb7b`
+## 1. Before, at origin/main `2e9835d1d`
 
 Static mode: the import part of each test file is the emulated value graph at the commit, plus the setup and config closure (`vitest.config.ts`, `test/global-teardown.ts`). From the store come only the observed reads (`meta observed.`), the child-process imports (`observedModules.`) and the policy's declared inputs. *verified by experiment.*
 
@@ -59,7 +59,7 @@ At main there are 43 barrels by the probe's rule (a module that holds only impor
 
 ## 2. After, at the candidate `963aff844`
 
-Same method and the same store copy: `reach.mjs` in static mode on the candidate clone, with `"base": "6db9fcb7b"`, then `compare.mjs` (output: `probes/edit-reach-refactor/compare-main-cand.md`). The suite is unchanged: 1,490 automatic test files, 6,205 s, and no test file was added or removed. Under `src/` the candidate deletes 32 files: 29 barrels and 3 other re-export files. It renames `test/scheduler/helpers.ts` to `test/scheduler/vitest-harness.ts` and adds 4 helpers beside it. *verified by experiment; file changes read with `git diff --name-status`.*
+Same method and the same store copy: `reach.mjs` in static mode on the candidate clone, with `"base": "2e9835d1d"`, then `compare.mjs` (output: `probes/edit-reach-refactor/compare-main-cand.md`). The suite is unchanged: 1,490 automatic test files, 6,205 s, and no test file was added or removed. Under `src/` the candidate deletes 32 files: 29 barrels and 3 other re-export files. It renames `test/scheduler/helpers.ts` to `test/scheduler/vitest-harness.ts` and adds 4 helpers beside it. *verified by experiment; file changes read with `git diff --name-status`.*
 
 | Measure | Before | After | Change |
 |---|---|---|---|
@@ -93,7 +93,7 @@ Value pairs that the candidate no longer holds, on source files that both commit
 
 **The scheduler helpers (015-111).** At main, `test/scheduler/helpers.ts` was the largest single gateway: 153 test files, 16.9% / 15.3% of pair-s if it passed no imports on. At the candidate its successor `test/scheduler/vitest-harness.ts` is still the largest: 136 test files, 15.2% / 9.4%. The next gateways at the candidate are `src/cli/main.ts` (104 files, 6.9% / 8.4%), `src/core/scheduler/scheduler.ts` (382 files, 6.8% / 8.0%) and `src/harness/claude-code/hooks.ts` (105 files, 4.9% / 3.8%). *verified by experiment (`cuts` in `summary-cand.json`).*
 
-**The called invariant.** By real edits, called pair-s are 52,309 before and after: exactly equal. Every source once, they fall from 763,064 to 757,996 (−5,068, −0.7%). On kept source files, called pairs that lose their import path hold 3,727 pair-s (`lostcalled.mjs`). Of these, 258 stay reached through an observed read or a declared input, so the net loss there is 3,469. All of the 3,727 are functions that run while the module loads. Examples: `src/core/code/crap/loaders.ts:71`, the `reduce` callback of the top-level `RECORD_WAIT_MS` (501 test files, 2,826 pair-s); `src/core/retry/text.ts:26`, `waitedText` for the top-level `BOUND_TEXT` (81 files); `src/core/code/coverage/parts.ts:218`, `src/core/daemon/policy.ts:58,62` and `policy-checks.ts`. These tests loaded the modules only through barrels and called nothing in them. The other 1,599 pair-s are the rename: `test/scheduler/helpers.ts` is gone, and `test/scheduler/vitest-harness.ts` did not exist at the base, so it has "no record". 3,469 + 1,599 = 5,068. No source file gains called pair-s. No lost pair points to a test that lost an import it uses. *verified by experiment; function lines read in source at `6db9fcb7b`.*
+**The called invariant.** By real edits, called pair-s are 52,309 before and after: exactly equal. Every source once, they fall from 763,064 to 757,996 (−5,068, −0.7%). On kept source files, called pairs that lose their import path hold 3,727 pair-s (`lostcalled.mjs`). Of these, 258 stay reached through an observed read or a declared input, so the net loss there is 3,469. All of the 3,727 are functions that run while the module loads. Examples: `src/core/code/crap/loaders.ts:71`, the `reduce` callback of the top-level `RECORD_WAIT_MS` (501 test files, 2,826 pair-s); `src/core/retry/text.ts:26`, `waitedText` for the top-level `BOUND_TEXT` (81 files); `src/core/code/coverage/parts.ts:218`, `src/core/daemon/policy.ts:58,62` and `policy-checks.ts`. These tests loaded the modules only through barrels and called nothing in them. The other 1,599 pair-s are the rename: `test/scheduler/helpers.ts` is gone, and `test/scheduler/vitest-harness.ts` did not exist at the base, so it has "no record". 3,469 + 1,599 = 5,068. No source file gains called pair-s. No lost pair points to a test that lost an import it uses. *verified by experiment; function lines read in source at `2e9835d1d`.*
 
 ## 3. Where the two methods differ
 
@@ -110,8 +110,8 @@ Value pairs that the candidate no longer holds, on source files that both commit
 
 ## Sources
 
-- Squeal at `6db9fcb7b`: `src/core/keys/closure.ts` (`assembleClosure`, `CLOSURE_METHOD`), `src/core/keys/observed.ts` (`observedMetaKey`, `observedDirectMetaKey`), `src/core/keys/modules.ts` (`observedModulesMetaKey`), `vitest.config.ts`, `squeal.config.json`.
+- Squeal at `2e9835d1d`: `src/core/keys/closure.ts` (`assembleClosure`, `CLOSURE_METHOD`), `src/core/keys/observed.ts` (`observedMetaKey`, `observedDirectMetaKey`), `src/core/keys/modules.ts` (`observedModulesMetaKey`), `vitest.config.ts`, `squeal.config.json`.
 - Store copies of `~/projects/squeal/.git/squeal/{store,code}.sqlite` and `runs/*/report.json`, taken 2026-11-07 13:27Z.
 - `research/edit-reach.md` and `probes/edit-reach/`.
 - Probes: `probes/edit-reach-refactor/` (`reach.mjs`, `compare.mjs`, `removed.mjs`, `added.mjs`, `lostcalled.mjs`, `observed-bound.mjs`, `spec-{main,cand}.json`, `summary-{main,cand}.json`, `rows-{main,cand}.json`, `compare-main-cand.md`).
-- Squeal at `963aff844` (`cand/0.1.414`): `src/harness/build.ts` (bundle entries), the files listed by `git diff --name-status 6db9fcb7b 963aff844 -- src test`.
+- Squeal at `963aff844` (`cand/0.1.414`): `src/harness/build.ts` (bundle entries), the files listed by `git diff --name-status 2e9835d1d 963aff844 -- src test`.

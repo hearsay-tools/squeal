@@ -6,7 +6,7 @@ import { primer } from "../../../../../../src/harness/shared/primer.ts";
 const node = 'node --disable-warning=ExperimentalWarning "';
 const tail = '/plugins/cache/hearsay/squeal/0.1.215/dist/cli/squeal.mjs"';
 const homes = {
-  "eval cell": "/tmp/squeal-evals-1001/cells/581f1772dc45/20261018T125937Z-bcdbec/a3-harmless.p0.codex-gpt-6-luna.e-medium.r3/codex",
+  "eval cell": "/tmp/squeal-evals-1001/cells/6faa3f32d500/20261018T125937Z-bcdbec/a3-harmless.p0.codex-gpt-6-luna.e-medium.r3/codex",
   "typical user": "/home/someone/.codex",
 };
 const coverage = (requireSlowSuite: boolean) => ({

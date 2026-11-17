@@ -2,14 +2,14 @@
 
 ## Verification
 
-Candidate `cand/0.1.202`, pinned to `512eb255e6d2664da0b5bb617c1c6cc76b211845`.
-Range `506d9955..512eb255`: 004-62 and its coordinator build/version commit.
+Candidate `cand/0.1.202`, pinned to `35f66498e0921162514e35849dcc9c8d5ec39d91`.
+Range `394d531a..35f66498`: 004-62 and its coordinator build/version commit.
 HEAD matched the pin; the tracked tree was clean before verification and after the build.
 Node `v24.21.0`. The independent reviewer full run was queued under the shared host lock, then withdrawn at the parent's explicit direction, as detailed below. No Squeal checkpoint substitutes for it.
 
 ```text
 $ git rev-parse HEAD
-512eb255e6d2664da0b5bb617c1c6cc76b211845
+35f66498e0921162514e35849dcc9c8d5ec39d91
 $ npm ci
 added 196 packages, and audited 197 packages in 11s
 found 0 vulnerabilities
@@ -46,7 +46,7 @@ exit 143 (waiting flock terminated, no reviewer Vitest child started)
 For context, the parent supplied this result from its earlier gate on the exact pinned candidate. It was **not independently reproduced by this reviewer**:
 
 ```text
-Coordinator-reported, 512eb255:
+Coordinator-reported, 35f66498:
 $ flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
 Test Files  667 passed | 1 skipped (668)
      Tests  5691 passed | 10 skipped (5701)
@@ -81,7 +81,7 @@ exit 0
 
 The probe output above is excerpted; both Claude Code and Codex forms had the matching policy text. It starts no daemon and queues nothing.
 
-A private detached worktree at the base `506d9955` received only the candidate's three changed guidance test files. Its product and installed skill text stayed at the base. The focused negative control used the candidate's installed dependencies:
+A private detached worktree at the base `394d531a` received only the candidate's three changed guidance test files. Its product and installed skill text stayed at the base. The focused negative control used the candidate's installed dependencies:
 
 ```text
 $ npx vitest run test/harness/primer-slow-policy.test.ts test/harness/primer-coverage.test.ts test/harness/skill.test.ts --maxWorkers=1
@@ -107,7 +107,7 @@ This probe deliberately establishes the mismatch in B1; its passing assertions d
 
 ## Verdict
 
-**FAIL `512eb255e6d2664da0b5bb617c1c6cc76b211845`: 1 proven blocker, 1 plausible should-fix, 0 nits.**
+**FAIL `35f66498e0921162514e35849dcc9c8d5ec39d91`: 1 proven blocker, 1 plausible should-fix, 0 nits.**
 
 Issue #5's optional-completion behavior is corrected. The remaining blocker is narrower: the newly added policy-on primer makes an untrue Stop promise in supported harnesses, contrary to W2's explicit sentence/Stop check and D9's fallback. The existing runtime enforcement remains intact.
 

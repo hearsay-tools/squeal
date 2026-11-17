@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `7314670419beca6548d039692a8d36ea3d496054`, version 0.1.45.
+Candidate: `04fab8b505ca9d8d9ebead9faacc792c1ba271db`, version 0.1.45.
 Range: `687fb0e^..7314670`. Reviewed 004-12, 004-13, 004-19 with 003-37, 003-36 and 003-38. The surrounding 001 work is out of scope. Spec 004 and its amendment log, and spec 003's amended preload contract, are the inputs.
 
 The supplied worktree started at `91890f8`, one documentation-only commit after the candidate. Verification below ran with HEAD detached at the exact candidate, with no tracked changes. The branch was restored before writing this file. See N1.

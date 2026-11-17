@@ -1,4 +1,4 @@
-Commit: c5e60eea30291ebd1b48f287da288c178226c494
+Commit: 72cabdf1f60f9245b777fa8798a4fe7d00728478
 
 src/core/hash/blob.ts
 10: /**

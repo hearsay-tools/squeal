@@ -1,12 +1,12 @@
 # 006 wave 3 review: the judge
 
-Verdict: **FAIL** at `9250fb4e`. One proven blocker in 006-25: a fresh eval root cannot start the calibration step. One proven should-fix in transcript retention, without a demonstrated incorrect fixture grade. No nits. The rubric correction and the two committed calibration records hold up; five recorded verdicts and their isolated replays agree with their transcripts.
+Verdict: **FAIL** at `db17692a`. One proven blocker in 006-25: a fresh eval root cannot start the calibration step. One proven should-fix in transcript retention, without a demonstrated incorrect fixture grade. No nits. The rubric correction and the two committed calibration records hold up; five recorded verdicts and their isolated replays agree with their transcripts.
 
 ## Verification
 
-Scope: board row 006-24, `tasks/wave-3.md`, range `be6aaaf9^..9250fb4e`, D4 "Who grades what", D9, 006-23 and 006-25. This is a design and evidence review, not another prosecution of the frozen shell parser. The unrelated 001-274 commits interleaved in this range were not reviewed here.
+Scope: board row 006-24, `tasks/wave-3.md`, range `2e27498a^..db17692a`, D4 "Who grades what", D9, 006-23 and 006-25. This is a design and evidence review, not another prosecution of the frozen shell parser. The unrelated 001-274 commits interleaved in this range were not reviewed here.
 
-The review-writing worktree started at `a893880617dd51dce14dce9b3224dfb7ebcdda0d`, later than the candidate. Executable checks used a full `git archive 9250fb4e` extracted into `/tmp/squeal-review-006-24-grhs24up/repo`. A scratch Git repository tracked that archive to detect build drift. There were no candidate source edits, and `git status --short` was empty after the build and full suite. All probe scripts lived outside the repository when the checks finished. No build ran in the review-writing worktree. The scratch was removed before this review was committed.
+The review-writing worktree started at `36570b6a0c0ccfc7541b67d8b225245893319098`, later than the candidate. Executable checks used a full `git archive db17692a` extracted into `/tmp/squeal-review-006-24-grhs24up/repo`. A scratch Git repository tracked that archive to detect build drift. There were no candidate source edits, and `git status --short` was empty after the build and full suite. All probe scripts lived outside the repository when the checks finished. No build ran in the review-writing worktree. The scratch was removed before this review was committed.
 
 Commands below ran with a scratch HOME. The independent Vitest run is the reviewer gate; Squeal's checkpoint was not substituted. The writing worktree has no dependencies installed, so its Squeal header is not evidence for these candidate checks.
 

@@ -2,11 +2,11 @@
 
 ## Verification and verdict
 
-Candidate: `69a6ea23c44b237e009e0cee21d17f1ed2f66c79` (0.1.174). Requested range: `ec64fa0f^..69a6ea23`.
+Candidate: `c5c01c471e194cc4036523baf55fd5b5ad83f801` (0.1.174). Requested range: `48349292^..c5c01c47`.
 
 PASS: zero blockers, zero should-fix items, two proven metadata nits. Product prosecution found no blocking break of D4, D6 or either row's done-when. Two proven provenance/board nits below are nonblocking.
 
-The initial clean HEAD was `83e2d4e8614944b911ffc3113198b27bc05b525a`, one board-only successor beyond the pin. Switched detached to the exact candidate before installation, commands and probes. All verification below is from that clean candidate; no candidate code was rewritten. Build left every committed plugin bundle and manifest unchanged. After verification, the owned branch was restored at its board-only successor to commit this report alone; the evidence remains pinned to `69a6ea23`. The full suite was run independently, rather than through Squeal, with four outer workers to limit contention. Commands run with a private HOME, temp and XDG directories, explicit private Codex/Claude/Pi config directories, an allowlisted environment without credentials or session identities, and no user git config. The standalone probe used the compiled modules and its own fixture and store below `/tmp`; it removed the fixture/store afterwards. No real agent provider was used.
+The initial clean HEAD was `3a1299a0ea0f55916cdf1d7be15c56f3af03ee98`, one board-only successor beyond the pin. Switched detached to the exact candidate before installation, commands and probes. All verification below is from that clean candidate; no candidate code was rewritten. Build left every committed plugin bundle and manifest unchanged. After verification, the owned branch was restored at its board-only successor to commit this report alone; the evidence remains pinned to `c5c01c47`. The full suite was run independently, rather than through Squeal, with four outer workers to limit contention. Commands run with a private HOME, temp and XDG directories, explicit private Codex/Claude/Pi config directories, an allowlisted environment without credentials or session identities, and no user git config. The standalone probe used the compiled modules and its own fixture and store below `/tmp`; it removed the fixture/store afterwards. No real agent provider was used.
 
 ```text
 $ npm ci
@@ -165,7 +165,7 @@ key format 9 versus 10 changes environment hash: PASS
 exit 0
 
 $ git rev-parse HEAD
-69a6ea23c44b237e009e0cee21d17f1ed2f66c79
+c5c01c471e194cc4036523baf55fd5b5ad83f801
 $ git status --porcelain
 <empty, after build, full suite, probe and narrow rerun>
 ```
@@ -182,11 +182,11 @@ None.
 
 ### N1. Proven, nonblocking: supplied HEAD did not match the candidate
 
-Location: initial git `HEAD`, before verification. Expected `69a6ea23`, actual `83e2d4e8`. `git show --stat HEAD` shows only `docs/board.md` changed. This was corrected locally by detaching at the candidate; the review's evidence therefore does apply to the pin. Coordinator-sized fix: initialize a pinned review checkout at the supplied SHA, or identify the successor as the review checkout in the brief. No product repair is required.
+Location: initial git `HEAD`, before verification. Expected `c5c01c47`, actual `3a1299a0`. `git show --stat HEAD` shows only `docs/board.md` changed. This was corrected locally by detaching at the candidate; the review's evidence therefore does apply to the pin. Coordinator-sized fix: initialize a pinned review checkout at the supplied SHA, or identify the successor as the review checkout in the brief. No product repair is required.
 
 ### N2. Proven, nonblocking: the pinned board still says both rows are running
 
-Location: `docs/board.md:463` and `:464` at the candidate. Rows 001-360 and 001-361 still say `running`, while their implementations, worker notes, amended spec and rebuilt 0.1.174 bundles are present. The initial board-only successor `83e2d4e8` already changes them to done and adds the review/count follow-up rows. Coordinator-sized fix: retain that successor when integrating the report; do not dispatch these rows again. No board edit belongs in this reviewer commit.
+Location: `docs/board.md:463` and `:464` at the candidate. Rows 001-360 and 001-361 still say `running`, while their implementations, worker notes, amended spec and rebuilt 0.1.174 bundles are present. The initial board-only successor `3a1299a0` already changes them to done and adds the review/count follow-up rows. Coordinator-sized fix: retain that successor when integrating the report; do not dispatch these rows again. No board edit belongs in this reviewer commit.
 
 ## What fits
 
@@ -203,4 +203,4 @@ Location: `docs/board.md:463` and `:464` at the candidate. Rows 001-360 and 001-
 1. No product repair wave is required by this review. The red full-suite gate above remains for the coordinator to disposition; its failures passed on one narrow rerun, with their cause unverified. Keep the stored optional `code`, `causes` and `phase` fields and the unchanged diagnostic fingerprint. `recordsForFile` remains the phase owner; runner adapters supply file errors and actual reported test outcomes. Do not turn Vitest's reported SKIP or PASS into per-test FAIL just because a suite hook failed.
 2. 001-373 must cover every retained aggregate wording path: `src/core/status/checks.ts:60`, `src/core/delivery/format.ts:77`, `:356`, `:470`, `src/core/delivery/collapse.ts:81`, `src/cli/verdict.ts:118`, and `plugins/claude-code/skills/squeal/references/commands.md:74` with its generated Codex/Pi copies. Count phase from the stored result or known state before formatting; do not infer setup from error text. Preserve totals, pending/stale/current treatment and delivery caps. Test mixed load/setup/test failures, baseline, overflow, collapsed still-failing lines and run --all's verdict. Historical errors lack phase, so define a conservative fallback instead of guessing their hook.
 3. Budgets remain three cause links, 200 characters per cause message, whole codes, a 300-character summary and the existing 10,000-character delivery cap. afterAll uses setup under the current two-phase contract. Any third phase/word requires a spec amendment, not a reinterpretation of this review.
-4. Scope provenance: `ec64fa0f^` is `d4a019d0`, so the requested range excludes the reporter fix commit itself and its first three suite regressions. Those are in the pinned candidate and were inspected as the integration boundary explicitly requested by the brief. The range contains the empty-describe regression and the cause/phase changes. Include `d4a019d0` in the review coverage attached to a release of 001-360.
+4. Scope provenance: `48349292^` is `4b6a6ee6`, so the requested range excludes the reporter fix commit itself and its first three suite regressions. Those are in the pinned candidate and were inspected as the integration boundary explicitly requested by the brief. The range contains the empty-describe regression and the cause/phase changes. Include `4b6a6ee6` in the review coverage attached to a release of 001-360.

@@ -1,6 +1,6 @@
 # 011-76 notes: the test-file frame beside `location`
 
-Worker e57963f3, 2026-10-21, brief W3 of `../wave-9.md`, base 598ffbd30 (reviewed `cand/0.1.239` plus docs).
+Worker e57963f3, 2026-10-21, brief W3 of `../wave-9.md`, base a3ef0e099 (reviewed `cand/0.1.239` plus docs).
 
 ## Seam map
 
@@ -20,7 +20,7 @@ Worker e57963f3, 2026-10-21, brief W3 of `../wave-9.md`, base 598ffbd30 (reviewe
 ## For R3 (011-77) and 011-75
 
 - `failures` is not in this row (`src/core/status/failures.ts` is 011-75's, then R3's). For its frame, call `testFileFrame(row.check, row.errors)` on each listed stored row. That row is the failure itself, so no key lookup is needed. Print it with `atText`.
-- Test 4: `test/keys/key-format.test.ts` fails at the base 598ffbd30 as it does here. It names only `src/runners/vitest/run.ts:75-78` (review 0.1.239's B2 repair), not a line of this row. This was checked in a throwaway worktree at the base.
+- Test 4: `test/keys/key-format.test.ts` fails at the base a3ef0e099 as it does here. It names only `src/runners/vitest/run.ts:75-78` (review 0.1.239's B2 repair), not a line of this row. This was checked in a throwaway worktree at the base.
 
 ## pytest fixtures
 

@@ -1,10 +1,10 @@
 # Wave 8: candidate 0.1.207
 
-PASS `be25bf0fdb8b52c1780a09790a7844aed970611b`. 0 blockers, 1 should-fix, 2 notes.
+PASS `1eef4e60dd986bb0cb1d40e5ddec817a8d7fb91c`. 0 blockers, 1 should-fix, 2 notes.
 
 ## Verification
 
-HEAD was exactly the pinned candidate. Reviewed `a177145e..be25bf0fdb8b52c1780a09790a7844aed970611b`, board rows 004-67 and 004-66's S1 follow-up, wave-8's 004-67 brief, worker notes, issue-19 research, 004 D8/D9 and their amendments, 005 D6 and its status amendment, and the previous `011-core/reviews/wave-1.8.md` S1. Product files stayed unchanged throughout the review; the checkout was clean during the independent gate.
+HEAD was exactly the pinned candidate. Reviewed `99400c5f..1eef4e60dd986bb0cb1d40e5ddec817a8d7fb91c`, board rows 004-67 and 004-66's S1 follow-up, wave-8's 004-67 brief, worker notes, issue-19 research, 004 D8/D9 and their amendments, 005 D6 and its status amendment, and the previous `011-core/reviews/wave-1.8.md` S1. Product files stayed unchanged throughout the review; the checkout was clean during the independent gate.
 
 ```text
 npm ci
@@ -23,7 +23,7 @@ npm run typecheck
 > tsc --noEmit
 exit 0
 
-npm run check:version -- a177145e
+npm run check:version -- 99400c5f
 version bump: 0.1.206 -> 0.1.207, ok
 exit 0
 
@@ -61,7 +61,7 @@ None.
 
 This is a **should-fix against the coordinator's explicit preservation rule**, not a blocker against 004 D8 or 005 D6. D8's required policy text and the cap still hold. D6's no-further-folding rule concerns adding the path-wait sentence; that sentence still uses the already selected coverage/naming combination, and no old path-wait instruction is lost in the comparison. The no-edit Stop behavior and the row's Done-when regressions are unaffected.
 
-Exact comparison matrix against 0.1.206's source at `a177145e`: five command forms, Vitest off/on with `vitest.config.ts` when on, node:test and pytest counts independently 0/1/2/10/40, and slow tier absent/uncounted with policy off/7 files with policy off/7 files with policy on: 1,000 cells. Project `i` is named `project-i`, with glob `test/project-i/**/*.test.ts`. Commands:
+Exact comparison matrix against 0.1.206's source at `99400c5f`: five command forms, Vitest off/on with `vitest.config.ts` when on, node:test and pytest counts independently 0/1/2/10/40, and slow tier absent/uncounted with policy off/7 files with policy off/7 files with policy on: 1,000 cells. Project `i` is named `project-i`, with glob `test/project-i/**/*.test.ts`. Commands:
 
 1. `squeal` (Claude Code).
 2. `node --disable-warning=ExperimentalWarning "/opt/squeal/dist/cli/squeal.mjs"` (Codex's actual command format, short installation path).
@@ -101,7 +101,7 @@ None.
 - **004-67 store facts:** `unchangedSinceRegistration` reads only the stored registration, daemon start identity and latest worktree revision, inside each caller's transaction. Missing registration or scan evidence, a different daemon, or any newer revision returns false. It does not trust the agent's claim or subtract revisions attributed to another session. A still-registered consumer keeps `since`; an ordinary unregister/register cycle takes up the parked `since` and does not erase edits.
 - **004-67 Stop seam:** the 2 s entry exempts only `MAIN_AGENT`, in the same transaction as its header and policy decision, covering Pi/OpenCode and a missing/untrusted waiting entry. The waiting entry checks after its handoff and before waiting. SubagentStop retains its immediate slow block. The new fixture order makes revision 1 an edit after registration; both-entry regressions cover no edit, one edit and a changed daemon. Known-failure and full-suite policies retain their own decisions.
 - **004-67 instruction surfaces:** the policy-on primer states the requirement starts once a file changes, remains within 1,500 characters in the comparison matrix, and retains the step/criterion and Stop behavior. Off is unchanged. The three shipped skills' step 4, commands and policy agree. OpenCode has no fourth skill copy; the board/brief's reference to four does not denote a missing existing file. 004 and 005 status amendments record the decision.
-- **004-66 S1:** `7b6f53e4` is the cherry-pick of board-referenced `8c7c195c`. The socket callback records the stale age supplied at probe start when it confirms liveness; a fresh next read does not clear that evidence. The new `watchDaemon` regression uses a real socket, allows the callback to finish, recovers the heartbeat before another stale read, and checks both `alive` and `{ staleMs: 20000 }`. No change to verdict/quiet gating or the dead-daemon bound was introduced.
+- **004-66 S1:** `9644565a` is the cherry-pick of board-referenced `8c7c195c`. The socket callback records the stale age supplied at probe start when it confirms liveness; a fresh next read does not clear that evidence. The new `watchDaemon` regression uses a real socket, allows the callback to finish, recovers the heartbeat before another stale read, and checks both `alive` and `{ staleMs: 20000 }`. No change to verdict/quiet gating or the dead-daemon bound was introduced.
 - **Integration:** all eight version files agree on 0.1.207. The independent suite passes the key-format guard and all other key tests, with the format/pin unchanged. Key-relevant sources were not changed by this range, so no re-pin was required.
 
 ## Inputs for the next wave

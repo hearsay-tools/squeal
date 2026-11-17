@@ -1,6 +1,6 @@
 # Probes for 014-01 daemon discovery
 
-Throwaway. Written for `../../daemon-discovery.md` on 2026-10-21, Linux 6.8, Node 24.21.0 (SQLite 3.53.4), Squeal 0.1.235 at `9060a96c9`. Nothing here is product code or a test.
+Throwaway. Written for `../../daemon-discovery.md` on 2026-10-21, Linux 6.8, Node 24.21.0 (SQLite 3.53.4), Squeal 0.1.235 at `0547eee7f`. Nothing here is product code or a test.
 
 Every probe reads the live host without connecting to a daemon socket, without opening a store for writing and without signalling a process it did not start. Stores are opened with `new DatabaseSync(path, { readOnly: true })`, never with Squeal's `openStore`.
 

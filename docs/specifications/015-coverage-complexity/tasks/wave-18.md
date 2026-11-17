@@ -5,7 +5,7 @@ Briefed by coordinator 52e58f23 on 2026-10-26. The human, after 0.1.358 and the 
 ## W1: 015-89
 
 Use /worker. Shape: slice. Starts from main 0.1.358. Outcome: a project whose squeal.config.json does not set `coverage.enabled` takes no coverage; complexity stays on by default; a project that sets `"coverage": {"enabled": true}` behaves exactly as in 0.1.358.
-- Read spec 015 D1 and D8 (**Keys**), `status.md` from 2026-10-26, and commit `a2ab372a2` (015-64, which turned the default on).
+- Read spec 015 D1 and D8 (**Keys**), `status.md` from 2026-10-26, and commit `8cdc34cc6` (015-64, which turned the default on).
 - **Lead.** `src/core/types/policy.ts:344`: `DEFAULT_POLICY.coverage.enabled` to `false`. `untested` and `crap.enabled` stay `true`, since they act only under `coverage.enabled`.
 - **Words.** The three skill copies `plugins/{claude-code,codex,pi}/skills/squeal/references/policy.md` (and their source, if one exists): the default reads `false`, with one opt-in example. The same section still says "its own Vitest runs": since 0.1.358 that is "its own Vitest and node:test runs" (D8 **node:test**). Any other default text you find (status, setup, README).
 - **Owns.** `src/core/types/policy.ts`, the skill references, the tests that assumed the default (a test about coverage sets it on itself), and any default text above. This repository's `squeal.config.json` keeps `"enabled": true`. Ask before any other source file.
@@ -13,7 +13,7 @@ Use /worker. Shape: slice. Starts from main 0.1.358. Outcome: a project whose sq
 
 ## R1: review the 0.1.361 candidate
 
-Use /reviewer. Shape: review. Review the exact candidate SHA in the dispatch against base `ac0f538a7` (main 0.1.359 plus docs). Read W1, D1, D8 **Keys**, the 2026-10-26 default-off decision in status.md, and tasks/015-89/notes.md. Own only `reviews/0.1.361.md`; change no product, test, spec, board or bundle file.
+Use /reviewer. Shape: review. Review the exact candidate SHA in the dispatch against base `3213e2984` (main 0.1.359 plus docs). Read W1, D1, D8 **Keys**, the 2026-10-26 default-off decision in status.md, and tasks/015-89/notes.md. Own only `reviews/0.1.361.md`; change no product, test, spec, board or bundle file.
 
 Check default-off and explicit-on behavior, session-start wording, both runners' keys, skill parity, and committed version and bundle consistency. Complexity stays on and this repository keeps coverage on. A project without the coverage setting changes keys once at upgrade. The notes name broader affected checks with unknown verdicts before the build.
 

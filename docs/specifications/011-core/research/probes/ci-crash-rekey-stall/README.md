@@ -2,7 +2,7 @@
 
 Diagnosis for wave 64 R1. Do not ship these files. The probe imports unchanged Squeal source. It creates one private `/tmp/squeal-crash-cancel-*` fixture, links installed dependencies, and removes its fixture after each invocation. No dependency files are committed.
 
-Source: Squeal `4e66b4b52`, Vitest 5.0.3, Node 22.19.0. The source files studied have no diff from CI candidate `fa02d697cc9ef33134838175aa18faa819be2486`. CI's source and installed runtime excerpts are preserved beside this README.
+Source: Squeal `a176e35de`, Vitest 5.0.3, Node 22.19.0. The source files studied have no diff from CI candidate `36e586f068ec006b975031bab9b1b0a3bc826c7a`. CI's source and installed runtime excerpts are preserved beside this README.
 
 ## Run from the repository root
 

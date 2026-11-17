@@ -18,7 +18,7 @@ Done when: row 011-389's done-when; the new cases failed before; behaviour witho
 
 ## R1 (W1): review of cand/0.1.531
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.531` at `db036aba34f9b08bd05b0c87fa9a25443492424d`; candidate CI run 43978473588. Range `a3ae26cd1..db036aba34f9b08bd05b0c87fa9a25443492424d` (main at 0.1.529): worker 36ba3ab8's four commits (row 011-389: a red test commit, the fix, notes), cherry-picked without conflict, then the 0.1.531 raise and bundles (0.1.530 is coordinator 4d2ecbfc's, in review). Read: board row 011-389; this file's W1; `tasks/011-389/notes.md`; `tasks/011-386/notes.md` "Effects and limits"; `reviews/0.1.529.md` (the pool probe).
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.531` at `73d25081b1932068cffc8e06495f0954bf6eda72`; candidate CI run 43978473588. Range `ee39fb9da..73d25081b1932068cffc8e06495f0954bf6eda72` (main at 0.1.529): worker 36ba3ab8's four commits (row 011-389: a red test commit, the fix, notes), cherry-picked without conflict, then the 0.1.531 raise and bundles (0.1.530 is coordinator 4d2ecbfc's, in review). Read: board row 011-389; this file's W1; `tasks/011-389/notes.md`; `tasks/011-386/notes.md` "Effects and limits"; `reviews/0.1.529.md` (the pool probe).
 
 Check, each as proven, plausible or unverified:
 

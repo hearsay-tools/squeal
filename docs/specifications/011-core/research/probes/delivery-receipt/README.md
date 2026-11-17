@@ -1,6 +1,6 @@
 # Throwaway delivery-receipt probes
 
-Research only, row 011-288. Squeal `ecf1d10b4` (0.1.384), Node 24.22.1,
+Research only, row 011-288. Squeal `b30f1df7c` (0.1.384), Node 24.22.1,
 Vitest 5.0.3. No product code or committed bundle is changed. No real harness
 session runs. No daemon starts: `ensureDaemon` is a stub that returns `alive`.
 The test helpers make temporary repositories and real SQLite stores under `/tmp`.

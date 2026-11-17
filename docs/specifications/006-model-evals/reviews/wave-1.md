@@ -1,14 +1,14 @@
 # 006 wave 1: review of 006-01
 
-Candidate: `69f7eb0f`. Range: `c26cbb78^..69f7eb0f`. Board row: 006-03.
+Candidate: `0de06e31`. Range: `b2566d88^..0de06e31`. Board row: 006-03.
 
 ## Verification
 
-Checks ran on a clean tracked tree detached at `69f7eb0f`. The initial checkout was `5733428b`, three documentation commits beyond the candidate. The parent approved detaching for checks and returning to `cez/888df087` to commit this file. The mismatch was resolved before verification.
+Checks ran on a clean tracked tree detached at `0de06e31`. The initial checkout was `b96ae0d2`, three documentation commits beyond the candidate. The parent approved detaching for checks and returning to `cez/888df087` to commit this file. The mismatch was resolved before verification.
 
 ```text
 $ git rev-parse HEAD
-69f7eb0f81b31d9565429792394cce4f9008daaf
+0de06e31952c3a988ec3ca2083ec779d409318a7
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities

@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `ff5808ebd6e54203487d3b4a668de54a6b821df1`, version 0.1.86, the initial `origin/main` and assigned `HEAD`. The executable landing is `a9f96c91`. Scope: 001-174, 001-178, 001-179, 001-181, 001-191, 001-192 and 001-194; 003-43/45 only at their wait-attribution seam. The nominal delta is `70a99c82..ff5808eb`; 001-191's explicitly assigned change `190f679f` is already in the base and is included in this review. The two explicit prior questions are 003 `reviews/wave-4.md` B1 and `reviews/wave-4.5.md` B1.
+Candidate: `6c384a641fff40738b957c1735ff512c047dd175`, version 0.1.86, the initial `origin/main` and assigned `HEAD`. The executable landing is `dc563f4a`. Scope: 001-174, 001-178, 001-179, 001-181, 001-191, 001-192 and 001-194; 003-43/45 only at their wait-attribution seam. The nominal delta is `b6facff7..6c384a64`; 001-191's explicitly assigned change `f91cd928` is already in the base and is included in this review. The two explicit prior questions are 003 `reviews/wave-4.md` B1 and `reviews/wave-4.5.md` B1.
 
 The gates ran against the clean candidate before writing this report. Node 24.21.0 and Node 22.23.3, Linux. Later movement of the shared `origin/main` ref does not change this candidate. Only this report is committed.
 
 ```text
 $ git rev-parse HEAD
-ff5808ebd6e54203487d3b4a668de54a6b821df1
+6c384a641fff40738b957c1735ff512c047dd175
 
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
@@ -81,7 +81,7 @@ External probes used the candidate's real adapters, scheduler, store, sink and p
 
 ## Verdict
 
-**FAIL ff5808eb**. One proven blocker, one proven should-fix, one documentation nit. Both literal prior B1 reproductions are closed on the integrated candidate on Node 22 and 24. The same completed-sibling boundary remains broken when completion and later growth occur within one revision: the scheduler names the outstanding file correctly, but the CLI treats its previous-key result as having discharged the new key.
+**FAIL 6c384a64**. One proven blocker, one proven should-fix, one documentation nit. Both literal prior B1 reproductions are closed on the integrated candidate on Node 22 and 24. The same completed-sibling boundary remains broken when completion and later growth occur within one revision: the scheduler names the outstanding file correctly, but the CLI treats its previous-key result as having discharged the new key.
 
 ## Blockers
 

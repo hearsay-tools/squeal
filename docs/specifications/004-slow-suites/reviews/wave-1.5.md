@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `e9758a6ba849fcfcfd8d93b59c0a6f3fb293518b`, version 0.1.48.
+Candidate: `ec778773ac0f9bd3e74002ffe1b1c2485d9482a0`, version 0.1.48.
 Range: `8c473c4..e9758a6`. Reviewed `ca5be87` (003-39), `34db923`, `05c4793`, `9ad061b` (004-20), and their 0.1.48 bundles. The intervening 001-146 and 001-147 commits are out of scope. This is the bounded second review of `reviews/wave-1.md`: B1, B2 and S1, then risks opened by their fixes.
 
 The supplied HEAD was `3ab9f33`. Its only difference from the candidate is the review brief's corrected range. All executable verification below ran detached at the exact candidate with no tracked changes. The build left the tracked tree clean, including both plugin bundles. The worker branch was restored before writing this review. See N1.

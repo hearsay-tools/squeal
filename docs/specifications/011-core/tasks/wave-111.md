@@ -32,7 +32,7 @@ Both: lint, typecheck and `squeal status --wait 60000` on the changed paths; rep
 
 ## R1 (W1): review of cand/011-376
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-376` at `22e60ddafc9ccc571d2737eeda7f359203f223f9`; candidate CI run 43854707406. Test files and notes only: no `src/` change, no version raise. Range `d5f73b118..22e60ddafc9ccc571d2737eeda7f359203f223f9`: worker ffae9bc4's one commit (`3ba3200c9`), cherry-picked without conflict. Read: board rows 011-376 and 015-42; this file's W1; `tasks/011-376/notes.md`.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-376` at `44bade888b3ef4ccf2f7d3ab0fe569c3c1ec8146`; candidate CI run 43854707406. Test files and notes only: no `src/` change, no version raise. Range `4f496bea0..44bade888b3ef4ccf2f7d3ab0fe569c3c1ec8146`: worker ffae9bc4's one commit (`3ba3200c9`), cherry-picked without conflict. Read: board rows 011-376 and 015-42; this file's W1; `tasks/011-376/notes.md`.
 
 Check, each as proven, plausible or unverified:
 
@@ -58,6 +58,6 @@ Coordinator at the candidate: lint, typecheck, `check:version origin/main`; `key
 
 ## R3 (W2 repair): narrow re-review of cand/0.1.521
 
-Use /reviewer (reviewer 7360269f, resumed). Pinned to `cand/0.1.521` at `42acd3b9c9bdba3986e12a12e7ffee5aa3e0c044`; candidate CI run 43858225239. The candidate you passed (`9b7b26f1e`) failed CI 43855250932 on one test: `test/store/worktree-meta.test.ts:157`, "reads and writes meta only through a key function, a shared constant or a variable bound to one" (`META_FULL_CHECK_HOLDER` is not in `SHARED_KEY_CONSTANTS`; Node 22 and Node 26, shard 2/3; every other test passed, the rest of the failures are the fixtures' own expected failures). Coordinator repair `42acd3b9c`: one line adds `META_FULL_CHECK_HOLDER` to that list. The stack was rebased onto main `9e33d149b` (row 011-376 landed; its commit dropped from the stack); no other content changed: `git diff 0040b0f6d 42acd3b9c -- src test plugins` shows only main's 011-376 files.
+Use /reviewer (reviewer 7360269f, resumed). Pinned to `cand/0.1.521` at `34fa198f861490f5df591f1b08afb8389bdab959`; candidate CI run 43858225239. The candidate you passed (`9b7b26f1e`) failed CI 43855250932 on one test: `test/store/worktree-meta.test.ts:157`, "reads and writes meta only through a key function, a shared constant or a variable bound to one" (`META_FULL_CHECK_HOLDER` is not in `SHARED_KEY_CONSTANTS`; Node 22 and Node 26, shard 2/3; every other test passed, the rest of the failures are the fixtures' own expected failures). Coordinator repair `34fa198f8`: one line adds `META_FULL_CHECK_HOLDER` to that list. The stack was rebased onto main `459b1b1b7` (row 011-376 landed; its commit dropped from the stack); no other content changed: `git diff 0040b0f6d 34fa198f8 -- src test plugins` shows only main's 011-376 files.
 
 Check, as proven, plausible or unverified: the holder key is a store-wide key like `META_FULL_CHECK` (not a worktree row of the registry), so the list is the right place; nothing else in the candidate escapes the meta-key registry checks; the rebase changed nothing of 011-372 or 011-375. Coordinator: `check:version origin/main`; `worktree-meta`, `key-format`, `version-sensitive` 25/25. Append a section "R3" to `reviews/0.1.521.md` and commit it on your branch.

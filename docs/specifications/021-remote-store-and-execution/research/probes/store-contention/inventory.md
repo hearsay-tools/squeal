@@ -1,6 +1,6 @@
 # Lock failures on record (Q1), throwaway collation
 
-Gathered 2026-11-11 by a sub-agent of researcher a1540808 from `gh issue view` (read-only) and the repository at `0fa197e09`; spot-checked against `issue-162.md`, `issue-158.md`, `issue-176.md`, `001-141/notes.md` and #1 comment 12. Paths: `R` = `docs/specifications/011-core/research/`, `S1` = `docs/specifications/001-core-loop/`, `B` = `docs/board.md`, `BA` = `S1/board-archive.md`. "cN" = comment N of the issue.
+Gathered 2026-11-11 by a sub-agent of researcher a1540808 from `gh issue view` (read-only) and the repository at `777338026`; spot-checked against `issue-162.md`, `issue-158.md`, `issue-176.md`, `001-141/notes.md` and #1 comment 12. Paths: `R` = `docs/specifications/011-core/research/`, `S1` = `docs/specifications/001-core-loop/`, `B` = `docs/board.md`, `BA` = `S1/board-archive.md`. "cN" = comment N of the issue.
 
 ## A. One-shot CLI write, short busy timeout, no retry
 

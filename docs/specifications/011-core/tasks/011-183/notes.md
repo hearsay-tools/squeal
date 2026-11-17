@@ -1,6 +1,6 @@
 # 011-183: an edit made while the daemon replaces its watcher is lost until the idle pass
 
-Worker fa53fd07, coordinator 04a258b0, from main at e65bfa813, 2026-10-24. Shape: slice. Seam: `test/daemon/hold.test.ts` case 2 and `editRecorded`. The coordinator agreed to the watcher fix and its test (request 7bcc3093, decision (a)).
+Worker fa53fd07, coordinator 04a258b0, from main at bdcc92ad0, 2026-10-24. Shape: slice. Seam: `test/daemon/hold.test.ts` case 2 and `editRecorded`. The coordinator agreed to the watcher fix and its test (request 7bcc3093, decision (a)).
 
 ## The cause
 
@@ -17,7 +17,7 @@ The window is the last fs operations of W2's scan, so it needs a descheduled thr
 ## Evidence
 
 - **The directory appears before the edit.** Case 2 with the fixture listed at each step: at `ready` the root holds no `node_modules`; when the command's entry appears it holds `node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json`; the edit follows within about 20 ms.
-- **The loss, forced.** `probe/race.ts` drives the real change feed and chokidar on a scratch repository. It wraps `fs/promises` (`syncBuiltinESMExports`): W2's `lstat` of `src/math.ts` makes the edit and returns 30 ms later, and a watcher's `stat` of that file returns 150 ms late. Results on e65bfa813:
+- **The loss, forced.** `probe/race.ts` drives the real change feed and chokidar on a scratch repository. It wraps `fs/promises` (`syncBuiltinESMExports`): W2's `lstat` of `src/math.ts` makes the edit and returns 30 ms later, and a watcher's `stat` of that file returns 150 ms late. Results on bdcc92ad0:
   - `armed`: swap begins at 564 ms, edit at 567, W1's listener `stat` begins at 568, swap done (W2 ready, W1 closed) at 600. No batch for the edit within 3 s.
   - `armed` with `WAIT_MS=33000`: swap done at 661 ms; the edit's only batch is the idle pass's `interval` batch at 30,677 ms, 30.0 s later.
   - `control` (edit after the swap): the edit's `watch` batch 110 ms after it.
@@ -32,7 +32,7 @@ The window is the last fs operations of W2's scan, so it needs a descheduled thr
 
 ## The fix
 
-`rebuildSpec` (`change-feed.ts`) answers true whenever it updated the watch, so `onDebounced` runs its existing `reconcileNow("watch")` after every spec change, as it did only after one that narrowed the exclusions. The caller's `widened` is now `rewatched`. Commit c75ecc73e, with `test/watcher/rewatch.test.ts`: a Linux backend whose `update` writes `src/a.ts` and drops that file's hints from then on, as the swap did; after `build/` appears, the feed must deliver a batch with `src/a.ts` at its new size. It fails on e65bfa813's `change-feed.ts` ("condition not met in 10000 ms": the test file at its final text, run with that one file put back in a held worktree) and passes with the fix in about 1 s.
+`rebuildSpec` (`change-feed.ts`) answers true whenever it updated the watch, so `onDebounced` runs its existing `reconcileNow("watch")` after every spec change, as it did only after one that narrowed the exclusions. The caller's `widened` is now `rewatched`. Commit c75ecc73e, with `test/watcher/rewatch.test.ts`: a Linux backend whose `update` writes `src/a.ts` and drops that file's hints from then on, as the swap did; after `build/` appears, the feed must deliver a batch with `src/a.ts` at its new size. It fails on bdcc92ad0's `change-feed.ts` ("condition not met in 10000 ms": the test file at its final text, run with that one file put back in a held worktree) and passes with the fix in about 1 s.
 
 Decision the spec did not settle: reconcile after every watch change, not only after a backend replaced its watcher. The feed does not know which backend update replaces a watch. The other update path, `watcher.add` with `ignoreInitial`, also cannot report a change made between the spec's build and the add.
 

@@ -1,4 +1,4 @@
-Revision: 19 · 4f939b1d + 19, dirty
+Revision: 19 · 546d1eb3 + 19, dirty
 Known failures: 0; not current: 1 of 1385 test files (1 queued), 9 tests (9 queued)
 Affected checks: 12018 passed (10634 tests, 1384 test files loaded), 0 running, 10 queued (9 tests, 1 test file loaded), 25 skipped (25 tests)
 Full-suite checkpoint: none completed since revision 0 (the counts are for revision 19; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)

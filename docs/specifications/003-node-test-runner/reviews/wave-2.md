@@ -51,7 +51,7 @@ HEAD is `faa202d`, two commits past the range's end `6fde336`. Both commits chan
 
 ```
 $ git rev-parse HEAD
-faa202d75a9d74119924e00a545a7fb40d71c522
+a2f6a1f0e618df9e7b05b5cffbe320b7c41d2fad
 $ node --version
 v24.21.0
 $ npm ci

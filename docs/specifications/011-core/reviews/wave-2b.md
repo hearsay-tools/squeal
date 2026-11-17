@@ -4,7 +4,7 @@ FAIL af9d0b58fe2397e12b9ff0c6ffa4eb73c7be720f
 
 Two proven blockers (011-18 baseline identity and 011-19 first-error retention), one proven nonblocking retention issue, no nits. 004-70 closes the queue-fidelity finding in 004 `reviews/wave-8.1.md`, Fifth round, "Restore edge cases".
 
-Reviewed 2026-10-18 at the exact candidate SHA. `HEAD` matched and the tree was clean before verification. The range is the candidate side of `origin/main..af9d0b58`; its merge base with the brief's `d02481c3` is `d61eff06893f19c2c3e7e02dcf78922c4d86eeeb`. Local `origin/main` was `5f7f068752e843990cbde485368570ecfe3d3c1b`; the intervening main commits are documentation only. No product code or existing test was edited. The accepted deviations in 011 `status.md` were read: a worktree registration-key meta row and counted current FAIL during a same-key slow rerun are allowed. The blocker concerns which registration's inputs that row actually records.
+Reviewed 2026-10-18 at the exact candidate SHA. `HEAD` matched and the tree was clean before verification. The range is the candidate side of `origin/main..af9d0b58`; its merge base with the brief's `9d1f4f91` is `908ec55284096059993572387409b5fe9ab80ed8`. Local `origin/main` was `d2a638f1ab57c76268974ae2302ea656ed09497a`; the intervening main commits are documentation only. No product code or existing test was edited. The accepted deviations in 011 `status.md` were read: a worktree registration-key meta row and counted current FAIL during a same-key slow rerun are allowed. The blocker concerns which registration's inputs that row actually records.
 
 ## Verification
 
@@ -32,7 +32,7 @@ Installation also printed the existing `node-domexception` deprecation and npm i
 Touched tests, selected from the candidate diff:
 
 ```sh
-git diff --name-only d02481c3...af9d0b58 -- test | tr '\n' '\0' | \
+git diff --name-only 9d1f4f91...af9d0b58 -- test | tr '\n' '\0' | \
   xargs -0 npx vitest run --maxWorkers=2
 ```
 
@@ -156,9 +156,9 @@ Repair B1 and B2 before landing 0.1.217. The repair can keep the accepted worktr
 
 ## Re-review, 2026-10-18
 
-PASS bf198fb314434cb2184f23c792e28dcc0e41313a
+PASS 1bce27e1fd549ed49394c8d2c6a663965eba0910
 
-No remaining blockers, should-fix findings or nits in this bounded re-review. The independent full suite has one existing validation limitation, recorded below; it is not green. B1, B2 and S1 are closed. Reviewed the repair delta since the first FAIL, in particular a9bbe375/52d74672, 12865de3/0197539f, ffc763c2 and bf198fb3, against `tasks/wave-2b.5.md` and C5. HEAD matched the pinned candidate and the tree stayed clean throughout verification. Local `origin/main` was e816d18909eb4a6d04f691259f7898667d2bb45f. No product code or existing test was edited.
+No remaining blockers, should-fix findings or nits in this bounded re-review. The independent full suite has one existing validation limitation, recorded below; it is not green. B1, B2 and S1 are closed. Reviewed the repair delta since the first FAIL, in particular 79a75c65/bb6979fe, d369d649/b4e3b6bd, 2b420f83 and 1bce27e1, against `tasks/wave-2b.5.md` and C5. HEAD matched the pinned candidate and the tree stayed clean throughout verification. Local `origin/main` was b91629eeb5fa589b591597faa4e97cee32ccacca. No product code or existing test was edited.
 
 ### Verification
 

@@ -1,16 +1,16 @@
 # Wave 2.5 review: 006-13
 
-Verdict: **FAIL** at `8480c73d446ad59d2f88aea1b0472580a2c075c6`. Five proven blockers, two non-blocking should-fix notes, no nits. The per-task switch fixes the original T4 scoring direction, but the score still confuses receiving a response with receiving current evidence, and issuing a runner command with running the required tests. One new shell regression loses real edits.
+Verdict: **FAIL** at `72c9872b1066cb7bfaefa37735d312775c92c0a9`. Five proven blockers, two non-blocking should-fix notes, no nits. The per-task switch fixes the original T4 scoring direction, but the score still confuses receiving a response with receiving current evidence, and issuing a runner command with running the required tests. One new shell regression loses real edits.
 
 ## Verification
 
 Reviewed range: `991bd75^..8480c73`, for 006-12, 006-14 and their coordinator follow-ups. The unrelated 001 changes interleaved in this range have their own review and are outside this brief's prosecution.
 
-The assigned worker checkout started at `4425013d3b226bff7bff1c277864d356ffbd5b36`. All executable verification below ran in a separate local clone under `/tmp/squeal-006-13.ZrFC449O/repo`, checked out explicitly at `8480c73d446ad59d2f88aea1b0472580a2c075c6`. Its tracked tree was clean before verification, after building, and after regrading. The checkout difference is recorded, not charged against the candidate. No build ran in the worker checkout. No real subject session ran, and `evals/bin/run-baseline.mjs` was neither executed nor imported.
+The assigned worker checkout started at `5a645d56f7b8fcf57a8a6f4ee7a072d44b40d263`. All executable verification below ran in a separate local clone under `/tmp/squeal-006-13.ZrFC449O/repo`, checked out explicitly at `72c9872b1066cb7bfaefa37735d312775c92c0a9`. Its tracked tree was clean before verification, after building, and after regrading. The checkout difference is recorded, not charged against the candidate. No build ran in the worker checkout. No real subject session ran, and `evals/bin/run-baseline.mjs` was neither executed nor imported.
 
 ```text
 $ git rev-parse HEAD
-8480c73d446ad59d2f88aea1b0472580a2c075c6
+72c9872b1066cb7bfaefa37735d312775c92c0a9
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities

@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `1690cf3e4297f35ed5103c2cb902946fc0279108` (0.1.35). `git rev-parse HEAD` returned that commit. The dispatch identifies the range by landed subjects, not by a single required HEAD: all `001-132` changes after `0c8bd5d`, through `5577036`, and the `793ee5f` plugin build are ancestors of this HEAD. The final commit is the coordinator's board/status update. No candidate mismatch.
+Candidate: `6ba2372f8964e3bf7c600afb07bc4fe8ebba36af` (0.1.35). `git rev-parse HEAD` returned that commit. The dispatch identifies the range by landed subjects, not by a single required HEAD: all `001-132` changes after `0c8bd5d`, through `5577036`, and the `793ee5f` plugin build are ancestors of this HEAD. The final commit is the coordinator's board/status update. No candidate mismatch.
 
 Linux, Node 24.21.0, Vitest 5.0.3. The tree was clean before installation, after the build, after the full suite and after the probes. All verification below was at the candidate, before this findings file was written. The review changes no product code. One full suite, followed only by the four failed files with one worker; no second full proof. The live Squeal daemon was also validating, so the full run shared resources with it and other sessions.
 
@@ -159,7 +159,7 @@ This verifies their recovery in isolation, not that the full suite passed. The b
 
 ## Verdict
 
-**FAIL** `1690cf3e4297f35ed5103c2cb902946fc0279108`.
+**FAIL** `6ba2372f8964e3bf7c600afb07bc4fe8ebba36af`.
 
 Six proven blockers, two should-fix notes (one proven limitation expressly permitted by D4, one plausible contention attribution), one proven documentation nit. The recorder can change a real test's result, omit inputs inside its promised reach, and store and inherit a pass under bytes that did not produce it. None of the verification failures is a blocker in this review.
 

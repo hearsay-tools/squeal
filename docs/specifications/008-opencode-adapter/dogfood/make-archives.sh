@@ -1,14 +1,14 @@
 #!/bin/sh
 # From the agent user, in a checkout of this repository: the release archives install.sh reads
 # through SQUEAL_SOURCE, named as the tag archives, into dogfood-008/src.
-#   squeal--v0.1.184.tar.gz  git archive of main at 4c6d1176 (0.1.184 as landed)
+#   squeal--v0.1.184.tar.gz  git archive of main at 4160bf3c (0.1.184 as landed)
 #   squeal--v0.1.190.tar.gz  the same tree with every "0.1.184" in install.sh, package.json and
 #                            plugins/ replaced by "0.1.190": a later release with no code change,
 #                            standing in for one (the only later candidate, cand/0.1.185, does not
 #                            contain 0.1.184's OpenCode changes)
 # and each release's install.sh beside them, as install-<version>.sh.
 set -eu
-REV=4c6d1176
+REV=4160bf3c
 cd "$(git rev-parse --show-toplevel)"
 D=/home/squeal-e2e/dogfood-008/src
 T=$(mktemp -d)

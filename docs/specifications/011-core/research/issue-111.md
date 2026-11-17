@@ -8,7 +8,7 @@ cannot identify the slow file holding its tier. This is a visibility gap, not
 evidence that an early pass would be safe.
 
 Researcher, 2026-10-27. All source findings below examine Squeal **0.1.365** at
-`040450e1d2d7d2cdb09cfd097f56d3130784322c`. The live probe uses that checkout's
+`dbcbfd610ea1ca218acf0bcd50661cadcccd0c0f`. The live probe uses that checkout's
 committed `plugins/claude-code/dist/cli/squeal.mjs`, Node **24.21.0**, Vitest **5.0.3**.
 The examined scheduler, status-yield and Vitest paths, and that CLI bundle, have
 no diff from tag `squeal--v0.1.365`. The incident also names 0.1.365.
@@ -131,6 +131,6 @@ all modules have ended but run finalization remains open was not live-tested.
   verified timing for Cezar's incident.
 - [011 spec C4/C6/C15](../spec.md) and [status amendment 011-209](../status.md).
 - [Issue-91 research](issue-91.md), a lead from Squeal 0.1.292, and its probe.
-- [Pinned Squeal source tree](https://github.com/hearsay-tools/squeal/tree/040450e1d2d7d2cdb09cfd097f56d3130784322c/src),
+- [Pinned Squeal source tree](https://github.com/hearsay-tools/squeal/tree/dbcbfd610ea1ca218acf0bcd50661cadcccd0c0f/src),
   exact paths and lines cited above; local files read in this checkout.
 - [Throwaway probe and reproduction instructions](probes/issue-111/README.md).

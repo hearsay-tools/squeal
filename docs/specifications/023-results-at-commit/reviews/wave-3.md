@@ -2,7 +2,7 @@
 
 FAIL `f94f09f712632db5bd9e4953ee63692e72bce86c`
 
-Candidate `cand/023-03`, range `b857be645..f94f09f71` (two commits). Row 023-03 only. **2 proven blockers, 0 should-fix, 0 nits.** Both blockers affect `keysAtCommit` and `sideKeys`. The original shrinking-closure and removed-glob cases are fixed, but target closure equivalence is still not proved. No product file was changed.
+Candidate `cand/023-03`, range `d7b5e76f3..f94f09f71` (two commits). Row 023-03 only. **2 proven blockers, 0 should-fix, 0 nits.** Both blockers affect `keysAtCommit` and `sideKeys`. The original shrinking-closure and removed-glob cases are fixed, but target closure equivalence is still not proved. No product file was changed.
 
 ## Blockers
 
@@ -98,7 +98,7 @@ All product checks and external probes ran at the exact candidate on a clean tra
 | `pnpm run lint` | Exit 0: `Checked 3587 files in 3s. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |
 | `pnpm run build` | Exit 0: `tsrs --fast -p tsconfig.build.json && pnpm run build:plugin`; Claude Code, Codex, Pi and OpenCode builds completed; no tracked drift |
-| `git diff --check b857be645..HEAD` | Exit 0, no output |
+| `git diff --check d7b5e76f3..HEAD` | Exit 0, no output |
 | Squeal affected-source command below | Exit 3 after 61.2 s: 906 selected files, 68 current passes, 838 unknown, no known failures. Baseline is lookup-only, so the unknown files were not queued. Broader affected coverage is **unverified**. |
 | Squeal four named tests below | Exit 0: `Named test files at revision 0: no known failures; 4 test files, each with a current result, after 3.0 s.` Whole worktree: 1098 of 1901 test files unknown. Current content-key evidence can be inherited; this is not a fresh full-suite claim. |
 | Initial external probe, command below | Exit 1: **8 passed, 2 failed**, 22.80 s. Expanded static closure failed. Recursive newly added folder differed from A's historical key; the same-metadata follow-up below settled this as expected behavior. |

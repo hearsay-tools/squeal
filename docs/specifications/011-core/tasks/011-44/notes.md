@@ -38,7 +38,7 @@ Worker 304fc6e2, 2026-11-14, brief `tasks/wave-90.md` W1, lead (a) of the row.
 
 Store: a copy of `~/projects/cezar/.git/squeal/store.sqlite` (2.8 GB) made with the SQLite backup API into a private `/tmp` directory, 2026-11-14 15:06Z; 2,451 stored closures, 45.0 MB of closure JSON, 79 writing worktrees, 88,888 test-file key rows. The copy had no marker (cezar's daemons run an earlier release); the "marker" rows set one, as a daemon of this release writes it.
 
-Script: one `selectNamedFiles` call per poll in a store transaction, with no daemon readers (the store rule this row is about), 10 polls per row, `process.cpuUsage()` user plus system. "Before" is the source at `4244f2cb6` (the base); "after" is this branch. Bundled with esbuild from copies of `src/`, run on Node 26. Host load average 11.5 to 13.9 (24 vCPUs), from other sessions and this worktree's Squeal catch-up; no load was made on purpose.
+Script: one `selectNamedFiles` call per poll in a store transaction, with no daemon readers (the store rule this row is about), 10 polls per row, `process.cpuUsage()` user plus system. "Before" is the source at `be96c413a` (the base); "after" is this branch. Bundled with esbuild from copies of `src/`, run on Node 26. Host load average 11.5 to 13.9 (24 vCPUs), from other sessions and this worktree's Squeal catch-up; no load was made on purpose.
 
 | Worktree (its closures) | Path (readers) | Before, median | After, no marker | After, marker: first poll | After, marker: median |
 | --- | --- | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ The first poll with a marker builds the path sets it asks about; every later pol
 
 ## Repair round 1 (2026-11-14)
 
-- Rebased the three commits onto row 011-45's `d52c02e0a` (`git rebase --onto d52c02e0a 4244f2cb6`). No conflict. 011-45 bumps its states marker in `TestFileKeyRepo`'s upserts; this row no longer touches `repos/test-files.ts` (decision 1), so that file is 011-45's as it was.
+- Rebased the three commits onto row 011-45's `d52c02e0a` (`git rebase --onto d52c02e0a be96c413a`). No conflict. 011-45 bumps its states marker in `TestFileKeyRepo`'s upserts; this row no longer touches `repos/test-files.ts` (decision 1), so that file is 011-45's as it was.
 - The trust rule (decision 6): `src/core/store/closure-writes.ts` `trustedClosureWrites`, read by `StoredClosures.read`. The bump moved to the writers (decision 1) after key-format refused the repository's lines.
 - The CPU table above was measured before the rule. The rule adds one `worktrees` list and one `meta` read per registered daemon per poll; on cezar's store copy (about 80 worktree rows) that is small beside the 9 to 19 ms the poll took. Not measured again: the store copy was removed.
 
@@ -66,7 +66,7 @@ The first poll with a marker builds the path sets it asks about; every later pol
 Review 0.1.489 failed the closure marker's writers and trust (B1). Worker 6702c043 repaired both markers in one round; the full record is in `tasks/011-45/notes.md`, section "Repair round for review 0.1.489 (wave 90.5)". For this row:
 
 - Triggers on `test_files` (`squeal_marker_test_files_insert|update|delete`) set `closure-writes` to a new random value for every closure write by any writer of any release. They are in `src/core/store/write-markers.ts`, which replaces `closure-writes.ts`.
-- `storeClosures` (`scheduler/revision.ts`) and `addClosures` (`store/transfer-rows.ts`) no longer call `markClosureWrite`. Both files are back to `5e8dcc223`.
+- `storeClosures` (`scheduler/revision.ts`) and `addClosures` (`store/transfer-rows.ts`) no longer call `markClosureWrite`. Both files are back to `1a2726fb0`.
 - `trustedClosureWrites` trusts the marker only while the three `test_files` triggers exist and the marker has a row, read in the selection's read transaction. `everyDaemonClaims` is gone.
 - `test/cli/older-writers.test.ts` pins the review's sequences for the named selection: an older closure write that adds `START`, then one that drops it, with and without an older daemon's registration between the reads.
 - The source-scan test "is moved by both writers of closures, and by no other code" is deleted. The triggers cover every writer, so no list of writers is kept.

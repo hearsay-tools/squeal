@@ -2,13 +2,13 @@
 
 ## Verification
 
-Candidate `9df8d9db161ede7bd52ff0b13aff32eb9601939e` matches the assigned HEAD. The tree was clean for the candidate checks and throwaway probes. Scope: board row 001-296, the two 001-295 commits (`2ddba8f4`, `dec9c7de`), plugin build `f8163cd4` (0.1.129), and the candidate's coordinator bookkeeping. Read `reviews/wave-13am.md` first; this is a bounded second round on B1, B2 and the retained S1 note, not another review of 001-283.
+Candidate `f62d8a02296a4f6d1fa36358ec4dc87763486564` matches the assigned HEAD. The tree was clean for the candidate checks and throwaway probes. Scope: board row 001-296, the two 001-295 commits (`d269da7a`, `d2fa4637`), plugin build `7be6b347` (0.1.129), and the candidate's coordinator bookkeeping. Read `reviews/wave-13am.md` first; this is a bounded second round on B1, B2 and the retained S1 note, not another review of 001-283.
 
 Commands ran on 2026-10-12 with `env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null`. These are independent Vitest runs, not Squeal checkpoints.
 
 ```text
 $ git rev-parse HEAD
-9df8d9db161ede7bd52ff0b13aff32eb9601939e
+f62d8a02296a4f6d1fa36358ec4dc87763486564
 $ git status --short
 (no output)
 
@@ -79,7 +79,7 @@ Each harness had three failure schedules: unlisted completion before the first r
 
 ## Verdict
 
-**FAIL 9df8d9db.** One proven blocker, two non-blocking notes (one proven, one plausible), no nits. The original listed-file handoff races and obsolete-snapshot schedules are repaired. An unfinished listing can still discharge an unobserved slow failure silently, leaving the original completion obligation unmet.
+**FAIL f62d8a02.** One proven blocker, two non-blocking notes (one proven, one plausible), no nits. The original listed-file handoff races and obsolete-snapshot schedules are repaired. An unfinished listing can still discharge an unobserved slow failure silently, leaving the original completion obligation unmet.
 
 ## Blockers
 

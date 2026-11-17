@@ -2,8 +2,8 @@
 
 ## Verification
 
-Candidate: `cand/0.1.420`, `fe5ac46d212128bb222b1c0eafd35ba135319710`.
-Range: `43fb35087cec16251b9adf146c8dbc7a018f58cd..fe5ac46d212128bb222b1c0eafd35ba135319710`.
+Candidate: `cand/0.1.420`, `0f0c73a37462f053fc89d25c40f7f45c14debd9b`.
+Range: `170e95495f8a1cd305a13579719951a5404d5c18..0f0c73a37462f053fc89d25c40f7f45c14debd9b`.
 Bounded by `reviews/wave-5.md`: re-check B1, B2 and S1, then inspect the repair delta. Inputs include amended D10/D11, the R1 brief in `tasks/wave-5.md`, and `tasks/018-18/notes.md`.
 
 Checks and probes ran at the exact candidate with a clean tracked tree. The probe lived outside the checkout and was removed. No product file changed.
@@ -11,20 +11,20 @@ Checks and probes ran at the exact candidate with a clean tracked tree. The prob
 | Command | Actual result |
 | --- | --- |
 | `git fetch origin cand/0.1.420` | Exit 0 |
-| `git checkout --detach fe5ac46d212128bb222b1c0eafd35ba135319710` | Exit 0 |
-| `git rev-parse HEAD` | `fe5ac46d212128bb222b1c0eafd35ba135319710` |
+| `git checkout --detach 0f0c73a37462f053fc89d25c40f7f45c14debd9b` | Exit 0 |
+| `git rev-parse HEAD` | `0f0c73a37462f053fc89d25c40f7f45c14debd9b` |
 | `git status --porcelain=v1` | Empty, before and after verification |
 | `pnpm install --frozen-lockfile` | Not repeated: dependencies were installed by Cezar before the original review; this delta changes no manifest or lockfile. |
 | `pnpm run lint` | Exit 0. `Checked 2901 files in 1204ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0. `tsrs --fast --noEmit`, no diagnostics |
-| `git diff --check 43fb35087..HEAD` | Exit 0, no output |
+| `git diff --check 170e95495..HEAD` | Exit 0, no output |
 | Local build, local full suite, Squeal full-suite request | Not run, as instructed |
 
 Affected results:
 
 ```text
 ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 src/core/store/transfer-rekey.ts src/core/keys/environment-descriptor.ts test/cli/ci-usage.test.ts
-Revision: 2 · fe5ac46d + 0, dirty not known
+Revision: 2 · 0f0c73a3 + 0, dirty not known
 Pending (556): 200 running, 356 queued
 Current (188): 188 pass
 Named test files have no verdict: the deadline passed after 60.5 s
@@ -59,14 +59,14 @@ A second Squeal read selected those same six files:
 
 ```text
 ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/ci-usage.test.ts test/cli/ci-record.test.ts test/store/transfer-rekey.test.ts test/keys/import-tolerance.test.ts test/status/import-observed.test.ts test/cli/import-rekey.test.ts
-Revision: 2 · fe5ac46d + 0
+Revision: 2 · 0f0c73a3 + 0
 Named test files at revision 2: no known failures; 6 test files, each with a current result, after 18.2 s
 Worktree: known failures 0; not current: 344 of 1533 test files (4 running, 339 queued, 1 unknown)
 ```
 
 Exit 0. The six focused files are current. Broader pending and unknown checks remain unverified.
 
-CI: [run 42638715917](https://github.com/hearsay-tools/squeal/actions/runs/42638715917), for this exact SHA. Queried with `gh run list --commit fe5ac46d212128bb222b1c0eafd35ba135319710 --json databaseId,headSha,status,conclusion,url,name` and `gh run view 42638715917 --json status,conclusion,jobs`. At the last observation, all three Node 22 shards and the Node 24 lint/typecheck/version-sensitive job were in progress; build and bundle checks were pending. These results are **unverified**. No result from the earlier candidate is presented as evidence for this SHA.
+CI: [run 42638715917](https://github.com/hearsay-tools/squeal/actions/runs/42638715917), for this exact SHA. Queried with `gh run list --commit 0f0c73a37462f053fc89d25c40f7f45c14debd9b --json databaseId,headSha,status,conclusion,url,name` and `gh run view 42638715917 --json status,conclusion,jobs`. At the last observation, all three Node 22 shards and the Node 24 lint/typecheck/version-sensitive job were in progress; build and bundle checks were pending. These results are **unverified**. No result from the earlier candidate is presented as evidence for this SHA.
 
 ## Verdict
 

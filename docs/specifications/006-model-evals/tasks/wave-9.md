@@ -30,7 +30,7 @@ Code and tests only:
 The coordinator then runs 006-38 itself, after the 001 coordinator frees the eval slot:
 
 ```sh
-node evals/bin/run-baseline.mjs --atomic --commit 9c762e65 --variant stop-slow --tasks a2-slow
+node evals/bin/run-baseline.mjs --atomic --commit 656ed320 --variant stop-slow --tasks a2-slow
 ```
 
 That is 4 models × 10 repetitions × 2 arms = 80 sessions.

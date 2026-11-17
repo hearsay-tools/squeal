@@ -10,12 +10,12 @@ Released Squeal **0.1.451**, a copy of the Claude Code plugin cache (`~/.claude/
 mkdir -p /tmp/ndr/home /tmp/ndr/tmp /tmp/ndr/out
 cp -a ~/.claude/plugins/cache/hearsay/squeal/0.1.451 /tmp/ndr/squeal-0.1.451
 for c in A B; do
-  git clone -q --no-local <worktree> /tmp/ndr/$c && git -C /tmp/ndr/$c checkout -q 93e3e65cd
+  git clone -q --no-local <worktree> /tmp/ndr/$c && git -C /tmp/ndr/$c checkout -q 156b38cbb
   cp -a <worktree>/node_modules /tmp/ndr/$c/node_modules    # no hard links across devices here
 done
 ```
 
-Both clones are this repository at `93e3e65cd`, with no store (`.git/squeal` absent). The edit (`env.sh`, `edit`) appends one function to `src/core/code/gate/estimate.ts`; both clones get the same diff (md5 `bbbe7f0a…`). `squeal code --base HEAD` then selects 160 Vitest test files (`out/dry-A0.*`, a 1 s budget run that ran nothing).
+Both clones are this repository at `156b38cbb`, with no store (`.git/squeal` absent). The edit (`env.sh`, `edit`) appends one function to `src/core/code/gate/estimate.ts`; both clones get the same diff (md5 `bbbe7f0a…`). `squeal code --base HEAD` then selects 160 Vitest test files (`out/dry-A0.*`, a 1 s budget run that ran nothing).
 
 ## Steps (`steps.sh <step>`, outputs in `/tmp/ndr/out`, copied to `out/`)
 

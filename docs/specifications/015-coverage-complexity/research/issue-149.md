@@ -2,7 +2,7 @@
 
 Keep explicit fixture exclusions and fold the child-run evidence into #144.
 
-Researcher, 2026-11-04. **Synthetic symptom reproduced; original incident not replayed.** Documentation-only research, completed within the 20-minute limit. Examined Squeal commit `4204b3d479ec241424d1ba629f904caf95076c15`, committed CLI **0.1.402**, Node **24.22.1**, Vitest **5.0.3**, Linux, 24 CPUs. Initial one-minute load was **1.61**; corrected probe launch loads were **7.20–7.27**, all below 24. Every fixture and daemon launch passed a load gate. No build, install or full suite ran.
+Researcher, 2026-11-04. **Synthetic symptom reproduced; original incident not replayed.** Documentation-only research, completed within the 20-minute limit. Examined Squeal commit `43a16f75c14e900bac6e1685fff91e085f173744`, committed CLI **0.1.402**, Node **24.22.1**, Vitest **5.0.3**, Linux, 24 CPUs. Initial one-minute load was **1.61**; corrected probe launch loads were **7.20–7.27**, all below 24. Every fixture and daemon launch passed a load gate. No build, install or full suite ran.
 
 ## Questions answered
 
@@ -41,7 +41,7 @@ The first probe used a relative `--config` together with `--root`. Vitest resolv
 
 The fixture README says “Regenerate from the repository root” and gives an explicit config/root/coverage command. It says the saved coverage came from **Vitest 4.1.10**. The report has function counts **2, 1, 0, 1, 1**; the matcher asserts that `unused` has zero calls, zero coverage and CRAP 6. Thus at least one fixture function is intentionally uncalled even during regeneration. These are fetched artifact facts, not fresh execution of that version. They qualify the issue's statement that repository tests execute these sources: the named matcher tests consume prior execution evidence.
 
-**Q5: existing contracts cover both cases** (**read in official docs / read in source code**, Squeal `4204b3d47`). Spec 015 Non-goals and D9 expressly exclude child-only execution. D8 records coverage from Squeal's own test-file runs; a config file or external coverage report alone does not establish a Squeal record. D6/D9 describe the thread limit. D1 defines `coverage.exclude`: a matched source keeps complexity but loses CRAP and untested checks. `src/cli/code-coverage.ts:94–95,221–223` matches exclusions and renders the observed text.
+**Q5: existing contracts cover both cases** (**read in official docs / read in source code**, Squeal `43a16f75c`). Spec 015 Non-goals and D9 expressly exclude child-only execution. D8 records coverage from Squeal's own test-file runs; a config file or external coverage report alone does not establish a Squeal record. D6/D9 describe the thread limit. D1 defines `coverage.exclude`: a matched source keeps complexity but loses CRAP and untested checks. `src/cli/code-coverage.ts:94–95,221–223` matches exclusions and renders the observed text.
 
 The shipped policy guidance already says: “Test helpers shipped inside a package, which only a manual or built-output run uses, are measured as product code” and “Exclude them explicitly here, with globs that leave product helpers checked.” The 2026-10-31 status amendment records this guidance-only decision for 015-100 / #122. The 2026-10-27 amendment rejects automatic broad helper exclusions. #144 remains **open, triaged** in the fetched issue state.
 

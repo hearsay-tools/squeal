@@ -12,7 +12,7 @@ Nothing here opens a live store. Store copies were made on 2026-11-11 at 14:22Z 
 | `store-stats.mjs <copy>` | Rows and bytes per table (`dbstat`) and which tables have a worktree column. |
 | `busy-notes.mjs <copy>` | The busy-store and lock notes the daemons persisted (newest 20 per worktree). |
 | `inventory.md` | Q1: every lock failure on record, with citations. Collated by a sub-agent, spot-checked. |
-| `writers.md` | Q2: every writer, busy timeout, long transaction and table, with source lines at `0fa197e09`. Collated by a sub-agent, spot-checked. |
+| `writers.md` | Q2: every writer, busy timeout, long transaction and table, with source lines at `777338026`. Collated by a sub-agent, spot-checked. |
 | `docs-facts.md` | Quotes from SQLite (3.53.4 and the `begin-concurrent` branch), libSQL, Turso, PostgreSQL, LMDB and `node:sqlite`, with URLs, commits and the retrieval date. Gathered by a sub-agent. |
 
 Outputs in `out/`: `store-stats.txt`, `busy-notes-{squeal,cezar}.txt`, `lockwatch-live.txt` (summary of the 25-minute live watch and the 3 ms watch; raw holds in `lockwatch-live.jsonl.gz` and `lockwatch-fine.jsonl.gz`), `repro-6.jsonl` (the six-worktree run), `repro-holds-standin.jsonl` and `repro-holds-a.jsonl` (holds in the six-worktree run and in a two-worktree trial), `starve.jsonl`.

@@ -1,6 +1,6 @@
 # 019-45 notes: a lint group at `pause` or `stop` is honoured, not ignored
 
-Worker 5a8b7360, 2026-11-05, branch `cez/5a8b7360`. Wave 9 brief, spec 019 D1 as amended 2026-11-05, D4, D5 step 1; 017 D5, D8. Base: `956c7a451`.
+Worker 5a8b7360, 2026-11-05, branch `cez/5a8b7360`. Wave 9 brief, spec 019 D1 as amended 2026-11-05, D4, D5 step 1; 017 D5, D8. Base: `82fc82ae2`.
 
 ## The cause, as found
 

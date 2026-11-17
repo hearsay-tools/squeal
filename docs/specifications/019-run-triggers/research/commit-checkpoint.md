@@ -1,6 +1,6 @@
 # Research: commit-checkpoint
 
-Board row 019-02. Brief: `README.md`, topic `commit-checkpoint`. Source read at `6c5615a55` (0.1.393 line). Experiments: git 2.43.0, installed `squeal` 0.1.392, Node 24.22.1, Linux x64, 24 cores, one-minute load 24 to 28 (above the CPU count, so no timing was measured). Probes: `probes/commit-checkpoint/` (throwaway). External docs retrieved 2026-11-03 with `curl` (WebFetch was blocked in this session).
+Board row 019-02. Brief: `README.md`, topic `commit-checkpoint`. Source read at `be42dedfa` (0.1.393 line). Experiments: git 2.43.0, installed `squeal` 0.1.392, Node 24.22.1, Linux x64, 24 cores, one-minute load 24 to 28 (above the CPU count, so no timing was measured). Probes: `probes/commit-checkpoint/` (throwaway). External docs retrieved 2026-11-03 with `curl` (WebFetch was blocked in this session).
 
 ## Questions answered
 
@@ -93,7 +93,7 @@ The last column is read from the adapters' source, not run: a tool hook sees the
 
 ## Sources
 
-- Source at `6c5615a55`: `src/core/watcher/change-feed.ts`, `src/core/watcher/candidates.ts` (`committedSince`), `src/core/scheduler/head-move.ts`, `src/core/types/watcher.ts`, `src/core/code/pass/head.ts`, `src/core/code/pass/source.ts`, `src/harness/claude-code/hooks/pre-tool-use.ts`, `src/harness/codex/handlers.ts`, `src/harness/opencode/hooks.ts`, `src/harness/pi/extension.ts`, `src/harness/shared/test-command.ts`, `src/harness/shared/deny.ts`, `src/harness/shared/stop.ts`, `src/core/types/policy.ts`, `plugins/claude-code/hooks/hooks.json`, `plugins/codex/hooks/hooks.json`.
+- Source at `be42dedfa`: `src/core/watcher/change-feed.ts`, `src/core/watcher/candidates.ts` (`committedSince`), `src/core/scheduler/head-move.ts`, `src/core/types/watcher.ts`, `src/core/code/pass/head.ts`, `src/core/code/pass/source.ts`, `src/harness/claude-code/hooks/pre-tool-use.ts`, `src/harness/codex/handlers.ts`, `src/harness/opencode/hooks.ts`, `src/harness/pi/extension.ts`, `src/harness/shared/test-command.ts`, `src/harness/shared/deny.ts`, `src/harness/shared/stop.ts`, `src/core/types/policy.ts`, `plugins/claude-code/hooks/hooks.json`, `plugins/codex/hooks/hooks.json`.
 - Specs and decisions: `docs/decisions/0002-content-keyed-shared-store.md`; spec 015 D6 as amended by 015-19, 015-34 and 015-38; spec 005 D1 (exit codes of `run --all --wait`); `010-ci-cost/research/ci-test-time.md`; `004-slow-suites/research/issue-5.md`, `slow-suite-policy.md`; `docs/vision.md`.
 - Probes: `probes/commit-checkpoint/hooks.sh`, `daemon.sh`, `store.mjs`, `transcripts.mjs`, and their `logs/`.
 - `githooks(5)` and `git-rebase(1)`, git 2.43.0 manual pages on this host.

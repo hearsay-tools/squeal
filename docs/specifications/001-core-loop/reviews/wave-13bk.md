@@ -1,16 +1,16 @@
 # Wave 13bk: 001-357 narrow review of 001-356
 
-Candidate: `a83065fea1fc720ea8753977ccdc31b61f16df18` (0.1.157). Range: `8b6fe681..a83065fe`. Scope is repair 001-356 and wave-13bj B1 only. This review does not reopen 001-340, 001-345 or 001-350 outside that boundary.
+Candidate: `ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871` (0.1.157). Range: `152ced86..ebe9ea64`. Scope is repair 001-356 and wave-13bj B1 only. This review does not reopen 001-340, 001-345 or 001-350 outside that boundary.
 
 ## Verdict
 
-PASS `a83065fea1fc720ea8753977ccdc31b61f16df18`: **0 blockers, 1 proven should-fix documentation note, 0 nits**. Wave-13bj B1 is repaired. The original four-case probe no longer serves over 999.0.0, all three new regressions are red without the repair and green with it, and no new product break was proved in the repair scope. The required independent full suite has one unrelated hook-test timeout; its full output and limits are below. PASS is the narrow repair judgment, not a claim that the full suite passed.
+PASS `ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871`: **0 blockers, 1 proven should-fix documentation note, 0 nits**. Wave-13bj B1 is repaired. The original four-case probe no longer serves over 999.0.0, all three new regressions are red without the repair and green with it, and no new product break was proved in the repair scope. The required independent full suite has one unrelated hook-test timeout; its full output and limits are below. PASS is the narrow repair judgment, not a claim that the full suite passed.
 
 ## Verification output
 
 All npm/Vitest/build commands and product probes used a temporary HOME, CODEX_SESSION_ID unset, GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1. CODEX_HOME, CLAUDE_CONFIG_DIR, XDG_CONFIG_HOME, XDG_CACHE_HOME, XDG_DATA_HOME, XDG_STATE_HOME, XDG_RUNTIME_DIR and TMPDIR also pointed into private scratch. No agent CLI, eval runner, real HOME, live store or other worktree was used. Probes imported only this candidate's freshly built dist and created their own fixture repositories.
 
-The review scope was committed early as `8aa5bf9b`, then the tree was detached back to the exact candidate before any gate. HEAD was `a83065fea1fc720ea8753977ccdc31b61f16df18` and tracked status was empty before npm ci, after npm ci, after the build and throughout the full suite. npm ci deleted no tracked node-test symlinks. Reviewer verification uses independent Vitest, as required by the reviewer skill and task; no Squeal result substitutes for it. Only one full suite was requested.
+The review scope was committed early as `8aa5bf9b`, then the tree was detached back to the exact candidate before any gate. HEAD was `ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871` and tracked status was empty before npm ci, after npm ci, after the build and throughout the full suite. npm ci deleted no tracked node-test symlinks. Reviewer verification uses independent Vitest, as required by the reviewer skill and task; no Squeal result substitutes for it. Only one full suite was requested.
 
 ```text
 $ npm ci
@@ -79,7 +79,7 @@ exit 0
 $ git status --short
 [empty after npm ci and npm run build; both committed plugin distributions reproduced]
 $ git rev-parse HEAD
-a83065fea1fc720ea8753977ccdc31b61f16df18
+ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871
 ```
 
 ### Independent full suite
@@ -182,7 +182,7 @@ Supplemental probe snapshots: [edges.mjs](/p/squeal/tasks/0e71eaec-bf3d-4539-a81
 
 ### Exact repair-removal controls
 
-After the full suite completed on a clean candidate, only src/core/daemon/open.ts was temporarily replaced by `git show 672261a8^:src/core/daemon/open.ts`. The three tests stayed at the candidate. This deliberately dirty source run is a discrimination control, not candidate verification. It used `-t 'a lock waiter that cannot yet read'`; the log's command display joins argv without shell quoting. No bundle, test, key pin or board was changed. The candidate file was then restored with git restore --source=a83065fe, producing an empty tracked status, and the six tests in that file were run.
+After the full suite completed on a clean candidate, only src/core/daemon/open.ts was temporarily replaced by `git show 4f95e76a^:src/core/daemon/open.ts`. The three tests stayed at the candidate. This deliberately dirty source run is a discrimination control, not candidate verification. It used `-t 'a lock waiter that cannot yet read'`; the log's command display joins argv without shell quoting. No bundle, test, key pin or board was changed. The candidate file was then restored with git restore --source=ebe9ea64, producing an empty tracked status, and the six tests in that file were run.
 
 ```text
 $ npx vitest run --maxWorkers=4 --reporter=verbose test/daemon/vacant-wait.test.ts -t a lock waiter that cannot yet read
@@ -295,7 +295,7 @@ exit 1
 ```
 
 ```text
-$ git restore --source=a83065fea1fc720ea8753977ccdc31b61f16df18 -- src/core/daemon/open.ts
+$ git restore --source=ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871 -- src/core/daemon/open.ts
 $ git status --short
 [empty]
 $ npx vitest run --maxWorkers=4 --reporter=verbose test/daemon/vacant-wait.test.ts
@@ -320,7 +320,7 @@ exit 0
 $ git status --short
 [empty]
 $ git rev-parse HEAD
-a83065fea1fc720ea8753977ccdc31b61f16df18
+ebe9ea64756a3a30fcc33cb4cd4e86771d7d3871
 ```
 
 Both busy-then-readable tests failed on their result assertion at line 180, after the >=5000 ms premise at line 179 passed. They returned RunningDaemon instead of lost-lock. Their red test durations were 7751/7152 ms; their restored green durations were 7104/7105 ms, with the unchanged lower-bound assertions passing again. The shortened-budget test returned lost-lock without the repair, then lock-wait-timed-out with exactly one note and a free lock with it. The green run also retains the accepted same-version winner and both ordinary newer-version no-note losers. All six passed. No extra full suite was run.

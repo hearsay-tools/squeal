@@ -2,12 +2,12 @@
 
 ## Verification output
 
-Candidate: `1768d17e1b43cd28d7d7de136731f6ae8b2642a7`, equal to `HEAD` and the supplied `origin/main` when the review began. Package version 0.1.89. Reviewed range: `762d7e93..1768d17e`, especially `0f44740c` (implementation), `53428076` (pre-release pin correction), and `059eb7c0` (both plugin bundles). The board-only closeout is `1768d17e`. Linux, Node 24.21.0; selected compatibility checks and the blocker probe also ran on Node 22.23.3. All repository gates ran before this report on a clean tracked tree. The reviewer used the required independent Vitest run, not a Squeal result in its place.
+Candidate: `8a38085d89019f21e68ec42feb775b3195548714`, equal to `HEAD` and the supplied `origin/main` when the review began. Package version 0.1.89. Reviewed range: `db3ade38..8a38085d`, especially `bd844d3e` (implementation), `6377f029` (pre-release pin correction), and `5b9d9011` (both plugin bundles). The board-only closeout is `8a38085d`. Linux, Node 24.21.0; selected compatibility checks and the blocker probe also ran on Node 22.23.3. All repository gates ran before this report on a clean tracked tree. The reviewer used the required independent Vitest run, not a Squeal result in its place.
 
 ```text
 $ git rev-parse HEAD origin/main
-1768d17e1b43cd28d7d7de136731f6ae8b2642a7
-1768d17e1b43cd28d7d7de136731f6ae8b2642a7
+8a38085d89019f21e68ec42feb775b3195548714
+8a38085d89019f21e68ec42feb775b3195548714
 
 $ npm ci
 added 56 packages, and audited 57 packages in 11s
@@ -103,7 +103,7 @@ The independent suite is not fully green: its only failure is the timing compari
 
 ## Verdict
 
-**FAIL `1768d17e`: 1 blocker, 2 should-fix items, 0 nits.** B1 is proven on both supported Nodes. S1 is proven; S2 is plausible. The version-only hash change itself works, the one-time re-key is safe, and daemon step-down still uses the release version. The failure is the guard's incomplete coverage of the meaning of stored results: a later release can keep an unsafe cached pass after changing the code that would now withhold it.
+**FAIL `8a38085d`: 1 blocker, 2 should-fix items, 0 nits.** B1 is proven on both supported Nodes. S1 is proven; S2 is plausible. The version-only hash change itself works, the one-time re-key is safe, and daemon step-down still uses the release version. The failure is the guard's incomplete coverage of the meaning of stored results: a later release can keep an unsafe cached pass after changing the code that would now withhold it.
 
 ## Blockers
 
@@ -188,6 +188,6 @@ Load, clocks, randomness, network, native/non-Node reads, ignored/out-of-worktre
 
 ## Inputs for the next wave
 
-Dispatch one guard-boundary repair for B1, with the external completion-barrier sequence as its regression. Include the transitive semantic helpers in its ownership and preserve the separation between presentation-only changes and result meaning. Its release must advance the global format once and keep historical pins intact; if format 1 has never shipped, the coordinator can explicitly decide whether an unreleased pin correction is safe, as it did for `53428076`. Fold S1's adapter-only exception and S2's build/dependency policy into the brief or explicitly defer them with the human's cost decision. Keep release-based daemon step-down and target-environment hashing unchanged. B1 blocks approval of the promised cross-release cache guarantee; no existing transform/recorder/reporter implementation needs re-prosecution beyond this boundary.
+Dispatch one guard-boundary repair for B1, with the external completion-barrier sequence as its regression. Include the transitive semantic helpers in its ownership and preserve the separation between presentation-only changes and result meaning. Its release must advance the global format once and keep historical pins intact; if format 1 has never shipped, the coordinator can explicitly decide whether an unreleased pin correction is safe, as it did for `6377f029`. Fold S1's adapter-only exception and S2's build/dependency policy into the brief or explicitly defer them with the human's cost decision. Keep release-based daemon step-down and target-environment hashing unchanged. B1 blocks approval of the promised cross-release cache guarantee; no existing transform/recorder/reporter implementation needs re-prosecution beyond this boundary.
 
 All external probes and temporary verification logs were removed after their evidence was transcribed. Only this findings file is committed.

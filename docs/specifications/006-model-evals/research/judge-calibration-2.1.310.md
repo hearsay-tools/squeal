@@ -96,4 +96,4 @@ Fix A or B is a new rubric revision. It requires these steps:
 - `evals/lib/rubric.mjs` (`SYSTEM`, `RUBRIC`), `evals/lib/judge.mjs` (`RUNS`, `schemaOf`, `unorderedOf`, `rubricRevision`), `evals/lib/calibration.mjs` (`calibrate`, `coverageGaps`, `ensureCalibrated`), `evals/lib/behaviours.mjs` (`EXPECTATIONS`), `evals/lib/evidence.mjs` (`answeredRuns`).
 - `test/evals/judge-references.ts` (`BUILD["t1-thousands"]`, `MISTAKES`, `RETAINED`), `test/evals/reference-sessions.ts` (`PENDING_FAILED`), `test/evals/judge-coverage.test.ts`.
 - `evals/results/judge-calibration-claude-{haiku,sonnet}-5-5.e-medium.cc-2.1.{296,300,301,306,308,310}.r-*.json`, every committed file. The cell `t1-thousands.p0.claude-claude-haiku-5-5.e-medium.r3` in `evals/results/2026-10-11-0.1.124.20261011T203431Z-d0d96d.json`.
-- Probe: `research/probes/judge-calibration-2.1.310/render.ts` prints each reference's judge input (verified by experiment, at `4b0bf9402`; no model call).
+- Probe: `research/probes/judge-calibration-2.1.310/render.ts` prints each reference's judge input (verified by experiment, at `bfa4cce75`; no model call).

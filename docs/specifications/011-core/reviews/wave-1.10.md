@@ -4,7 +4,7 @@ FAIL `4de3838933cde4c8b0ef45561d0e0d8e9533664f`: **2 proven blockers, 1 plausibl
 
 ## Verification
 
-Independent review on the pinned candidate, initially and throughout verification a clean tree. Base reference: `origin/main` = `276fbaf005b127d3a126d97fc6a1c4c5f803a1e8`; product range: `git log origin/main..4de38389 -- src test plugins`. The requested coordinator fix `047b1783` is present as `27fe4d7d` in this candidate. No build was run, as this brief explicitly excludes it. No product files changed.
+Independent review on the pinned candidate, initially and throughout verification a clean tree. Base reference: `origin/main` = `6a0d4b9cf48118f5fb787b44fead933b431c63d3`; product range: `git log origin/main..4de38389 -- src test plugins`. The requested coordinator fix `047b1783` is present as `27fe4d7d` in this candidate. No build was run, as this brief explicitly excludes it. No product files changed.
 
 ```text
 $ git rev-parse HEAD
@@ -193,19 +193,19 @@ Output on the clean pinned candidate:
 ```
 
 
-## Re-review: candidate a7c701c8
+## Re-review: candidate 5c3a370d
 
-PASS `a7c701c86a5f9fca5aeccc66fcd33de329fc2546`: **B1 and B2 closed; 0 blocking findings; 2 new nonblocking notes**. N1 is closed. S1 remains accepted by the coordinator in 011 `status.md`.
+PASS `5c3a370d67bf0d4c660838b81378734e3bc43244`: **B1 and B2 closed; 0 blocking findings; 2 new nonblocking notes**. N1 is closed. S1 remains accepted by the coordinator in 011 `status.md`.
 
 ### Independent verification
 
-Bounded by the initial findings above: the B1/B2 repairs, the changed 001-433 scratch test, and `git diff 4de38389 a7c701c8 -- src test plugins`. `origin/main` is `d732e230deb2af576a6c3edd126ad37f52fc317f`. The main move from the earlier review base changed no `src`, `test` or `plugins` files. The product delta contains only `src/core/delivery/{stopped,liveness}.ts`, `src/core/status/snapshot.ts`, `src/harness/shared/ensure.ts`, `test/harness/stopped.test.ts`, `test/daemon/scratch.test.ts`, and corresponding stopped-mark changes in the four plugins' committed bundles. No package, version or key-format source changed.
+Bounded by the initial findings above: the B1/B2 repairs, the changed 001-433 scratch test, and `git diff 4de38389 5c3a370d -- src test plugins`. `origin/main` is `675d3f936f7e9c1ad88758de8f91d3699b55bac5`. The main move from the earlier review base changed no `src`, `test` or `plugins` files. The product delta contains only `src/core/delivery/{stopped,liveness}.ts`, `src/core/status/snapshot.ts`, `src/harness/shared/ensure.ts`, `test/harness/stopped.test.ts`, `test/daemon/scratch.test.ts`, and corresponding stopped-mark changes in the four plugins' committed bundles. No package, version or key-format source changed.
 
 The resumed worktree initially pointed at the old review commit `32ae94e8`. I preserved that branch and switched a clean checkout to the requested candidate before recording any new verification. An install begun at the old commit is excluded; `npm ci` was repeated at the candidate. The candidate does not yet contain this review file, so its initial review above is restored byte for byte from `32ae94e8`, followed by this appended re-review. All checks and probes below ran at the exact candidate with a clean tree, before restoring/appending the review. No build was run, as requested.
 
 ```text
 $ git rev-parse HEAD
-a7c701c86a5f9fca5aeccc66fcd33de329fc2546
+5c3a370d67bf0d4c660838b81378734e3bc43244
 $ git status --short
 (no output)
 
@@ -317,8 +317,8 @@ The clean candidate and SHA were checked again after these runs. The background 
 
 ### Previously blocking findings
 
-- **B1, proven repaired.** `heldStop` now reads by the supplied worktree id even when the row is null; `stopHolds` uses the hook's known id and root. Both live-header paths and the status snapshot pass their worktree id to `asStopped`, so the stop is also described without a row. All changed callers pass the new arguments in the implemented order. The coordinator's pre-rebase `376a0776` is `2b8348eb` here. The new regression leaves the linked worktree row absent and checks that registration and its following tool boundary ensure nothing and name the stop.
-- **B2, proven repaired.** When the stop's print is null, the first successful boundary print is stored with the original `at` and returns `true`; Git recovery does not clear the mark. The next unchanged comparison holds, while a subsequent edit clears it. The coordinator's pre-rebase `227c3071` is `efda8dde` here. This is the fallback C9 now states; edits before the first successful print are not distinguishable and can be missed, as the implementation comment says. The new regression covers adoption, an unchanged repeat, and a later edit.
+- **B1, proven repaired.** `heldStop` now reads by the supplied worktree id even when the row is null; `stopHolds` uses the hook's known id and root. Both live-header paths and the status snapshot pass their worktree id to `asStopped`, so the stop is also described without a row. All changed callers pass the new arguments in the implemented order. The coordinator's pre-rebase `376a0776` is `a0ea77ab` here. The new regression leaves the linked worktree row absent and checks that registration and its following tool boundary ensure nothing and name the stop.
+- **B2, proven repaired.** When the stop's print is null, the first successful boundary print is stored with the original `at` and returns `true`; Git recovery does not clear the mark. The next unchanged comparison holds, while a subsequent edit clears it. The coordinator's pre-rebase `227c3071` is `fad6a6f1` here. This is the fallback C9 now states; edits before the first successful print are not distinguishable and can be missed, as the implementation comment says. The new regression covers adoption, an unchanged repeat, and a later edit.
 
 I extracted and re-ran the original reproduction command above without changing it. Its output on this candidate:
 

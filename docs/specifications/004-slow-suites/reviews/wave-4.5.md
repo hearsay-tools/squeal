@@ -2,7 +2,7 @@
 
 ## Verification
 
-Tested HEAD: `a850a940abd9664aa755e26255657db40642d80f`, version 0.1.63. The brief pins `96cb807..641f95b`. HEAD is the subsequent landing record; `git diff --name-only 641f95b..HEAD` lists only the board, status and task brief. The executable candidate matches `641f95b`. Scope: 004-37, 004-38, 004-39 and their bundles. The intervening 001-164/0.1.62 changes and documentation commits are outside this re-review.
+Tested HEAD: `58a74a933f3875d7f36824b6da65d2a50c812deb`, version 0.1.63. The brief pins `96cb807..641f95b`. HEAD is the subsequent landing record; `git diff --name-only 641f95b..HEAD` lists only the board, status and task brief. The executable candidate matches `641f95b`. Scope: 004-37, 004-38, 004-39 and their bundles. The intervening 001-164/0.1.62 changes and documentation commits are outside this re-review.
 
 This is the second and last round on this slice, bounded by `reviews/wave-4.md` B1 to B4 and S2. The tracked tree was clean throughout executable verification, including after the build. No product code was changed. Independent probes used one private `/tmp` directory, fixture Git repositories/worktrees and fixture stores. No probe opened this repository's store or the cezar checkout. Scratch was removed before the review commit.
 

@@ -2,11 +2,11 @@
 
 ## Verification
 
-All commands and probes below ran at exact candidate `015e38cd5866adade62f7f12a899aba0c8491bd2`, with no tracked product edits. The build left the tracked tree clean; it stayed clean through all checks and probes. Starting HEAD was a later documentation-only commit, recorded as N1 below. After verification I returned to the task branch to commit this findings file alone.
+All commands and probes below ran at exact candidate `8d73c41a6d4ee45865390d52afcb889305d1e93a`, with no tracked product edits. The build left the tracked tree clean; it stayed clean through all checks and probes. Starting HEAD was a later documentation-only commit, recorded as N1 below. After verification I returned to the task branch to commit this findings file alone.
 
 ```text
 $ git rev-parse HEAD
-015e38cd5866adade62f7f12a899aba0c8491bd2
+8d73c41a6d4ee45865390d52afcb889305d1e93a
 $ git status --porcelain
 (empty)
 $ npm ci
@@ -299,7 +299,7 @@ Read: 23 ms. Warm keying: 28 ms. First keying: 1,877 ms, including 1,701 ms scan
 
 ## Verdict
 
-**PASS at `015e38cd5866adade62f7f12a899aba0c8491bd2`.** Counts: **0 blockers, 3 should-fix notes, 1 nit**. All three original blocking proofs in `wave-11b.md` are closed. This is the bounded re-review that the brief requests, not a claim that every dependency-sensitive result now has a sound key. The three additional cases below each retain the complete check key through a result-changing bump. Under the re-review rule, additional cases are notes; they are not promoted to blockers.
+**PASS at `8d73c41a6d4ee45865390d52afcb889305d1e93a`.** Counts: **0 blockers, 3 should-fix notes, 1 nit**. All three original blocking proofs in `wave-11b.md` are closed. This is the bounded re-review that the brief requests, not a claim that every dependency-sensitive result now has a sound key. The three additional cases below each retain the complete check key through a result-changing bump. Under the re-review rule, additional cases are notes; they are not promoted to blockers.
 
 **Are all prior items closed?** B1 to B3, S1 to S3, N1 and N3 are closed for their recorded scenarios. N2 is only partly closed: an ESM import of a types-only package's manifest keys its identity, but a literal `require` of the same manifest does not. N4's guard is implemented and its boundary test passes; actual optimized Vitest execution was not replayed here.
 
@@ -416,7 +416,7 @@ exports.value = require("cjs-pkg").value;
 
 ### N1. Starting HEAD was not the named candidate (proven; nonblocking)
 
-`docs/board.md:210` at starting commit `e91d1b3`; the corresponding task brief was also updated there. The task named build `015e38c`, but the worktree initially held `e91d1b3470bd8b94a4604384441f24f4039d1e7a`. The delta was only `docs/board.md` and `tasks/wave-11.md`, including this running review. I detached at exact build `015e38c` before `npm ci`, all checks and all probes. No evidence from the initial commit is used to claim verification of the candidate. **Fix size:** coordinator dispatch metadata only; no product repair.
+`docs/board.md:210` at starting commit `e91d1b3`; the corresponding task brief was also updated there. The task named build `015e38c`, but the worktree initially held `bd0a88cffad1530f67669c8f596ca34b89b2e526`. The delta was only `docs/board.md` and `tasks/wave-11.md`, including this running review. I detached at exact build `015e38c` before `npm ci`, all checks and all probes. No evidence from the initial commit is used to claim verification of the candidate. **Fix size:** coordinator dispatch metadata only; no product repair.
 
 ## What fits
 

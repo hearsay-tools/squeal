@@ -3,7 +3,7 @@
   "node": "v24.22.1",
   "cli": "~/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
   "scratch": "~/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3",
-  "commit": "6922ff21415850088e3efe558c66b58bf341a5a1",
+  "commit": "6fb35b53318618e858eb53d41325eac4dcfaa8df",
   "cases": [
     {
       "name": "no-python-runner",

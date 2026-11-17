@@ -1,6 +1,6 @@
 # 011-295 notes: daemon presence, the accidental differences
 
-Worker a4cd541d, 2026-11-05 (news, `start`, the reader survey); worker f1255917, 2026-11-05 (the hook's line, the kept cases, the claim, the done-when). Brief: `tasks/wave-70.md` W1. Design: `research/daemon-presence.md` ("Accidental differences", decision 3 as amended 2026-11-05). Terms: `GLOSSARY.md`. Base: main at 45eb4b8a1 (0.1.404).
+Worker a4cd541d, 2026-11-05 (news, `start`, the reader survey); worker f1255917, 2026-11-05 (the hook's line, the kept cases, the claim, the done-when). Brief: `tasks/wave-70.md` W1. Design: `research/daemon-presence.md` ("Accidental differences", decision 3 as amended 2026-11-05). Terms: `GLOSSARY.md`. Base: main at e2e67ff84 (0.1.404).
 
 ## News
 
@@ -30,7 +30,7 @@ The header words a death only beside a start or beside no daemon (`delivery/head
 
 Stored bytes in `liveness-told:<worktree>` per consumer: `{"state":"heartbeat late","notes":[]}`, `{"state":"validating","notes":["handoff ended short"],"short":"0.1.400@…#tok"}`, and so on. The row's key and `writeSlot` are unchanged.
 
-Across releases (`test/presence/told.test.ts`, with 0.1.404's reader and news rule copied verbatim from 45eb4b8a1):
+Across releases (`test/presence/told.test.ts`, with 0.1.404's reader and news rule copied verbatim from e2e67ff84):
 
 - A value 0.1.404 stored (`alive`, `down`, `{ short }`, `{ startingSince }`, none, an unknown object) reads as 0.1.404 read it, and gives news exactly where 0.1.404 gave it, for every presence state.
 - 0.1.404 reads every value this release stores without error: a validating one as `alive` (or `{ short }`), any other as `alive`. So a 0.1.404 hook beside a 0.1.405 one tells a state that does not validate once more, then stores `down`, which this release reads as before.
@@ -200,7 +200,7 @@ At ebd965f86, host load 55 to 73 on 24 CPUs (other tasks' work), 2026-11-05:
 - `pnpm run lint`, `pnpm run typecheck`: pass. No `pnpm run build` (the brief), so the four bundle checks (`plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`, `codex/packaging/runtime.test.ts`) fail on drift until a build.
 - Squeal's affected checks of the changed sources, revision 12: 875 test files pass; 30 still pending at the last read; the four bundle checks fail; two timing failures, below.
 - `test/commit/stop-told-daemon.test.ts`, both cases, failed in Squeal's tier of 148 files at 2.22 load per CPU: the boundary after a commit had no "Commit …; 1 test file still running" line. That boundary waits at most 500 ms for the daemon's pass (row 019-29) and asks for it only after `ensure` found the heartbeat fresh; this row changes neither (the new reads are on the `unavailable` path and on news for a heartbeat that is down). Run alone at this head, `node_modules/.bin/vitest run` of the file: 4 runs, 4 pass (2 tests each). Load.
-- `test/harness/opencode-dispose.test.ts` "serve: an abort of the new turn, then the old Stop's answer, stores nothing" failed in Squeal and alone at this head (2 of 2: the held Stop killed at +2133 and +2034 ms, past its 2000 ms idle deadline), and fails the same way at main 45eb4b8a1 in a private copy (2 of 2: +2385, +2205 ms). Squeal records it flaky at the same inputs on 2026-11-04. Load, not this row.
+- `test/harness/opencode-dispose.test.ts` "serve: an abort of the new turn, then the old Stop's answer, stores nothing" failed in Squeal and alone at this head (2 of 2: the held Stop killed at +2133 and +2034 ms, past its 2000 ms idle deadline), and fails the same way at main e2e67ff84 in a private copy (2 of 2: +2385, +2205 ms). Squeal records it flaky at the same inputs on 2026-11-04. Load, not this row.
 
 ## For the next worker
 

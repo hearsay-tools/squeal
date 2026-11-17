@@ -1,6 +1,6 @@
 # 014-03 What should not be up, and how others list it
 
-Researcher, 2026-10-21. Source examined: this checkout at `9060a96c9` (main, 0.1.235 code). Host: the 24-CPU shared host, installed Squeal 0.1.235 (Claude Code and Codex), one live 0.1.234 daemon. Probe: `probes/should-not-be-up/scan.py`, read-only (README there); its outputs `scan-sizes-20261021T0818Z.txt` (load 41.60) and `scan-20261021T0822Z.txt` (load 24.05) are committed.
+Researcher, 2026-10-21. Source examined: this checkout at `0547eee7f` (main, 0.1.235 code). Host: the 24-CPU shared host, installed Squeal 0.1.235 (Claude Code and Codex), one live 0.1.234 daemon. Probe: `probes/should-not-be-up/scan.py`, read-only (README there); its outputs `scan-sizes-20261021T0818Z.txt` (load 41.60) and `scan-20261021T0822Z.txt` (load 24.05) are committed.
 
 ## Answers
 
@@ -13,7 +13,7 @@ Researcher, 2026-10-21. Source examined: this checkout at `9060a96c9` (main, 0.1
 
 ## 1. The list
 
-Tags: **E** verified by experiment on this host (the probe), **S** read in source code at `9060a96c9` or the specs, **I** inferred.
+Tags: **E** verified by experiment on this host (the probe), **S** read in source code at `0547eee7f` or the specs, **I** inferred.
 
 The rule column describes what `scan.py` does, except for the test-daemon rule, which `scan.py` does not implement. A daemon is a process with `…/squeal.mjs daemon <root>` in its argv. Its worktree id is the name of its lock file in `<common>/squeal/locks/<id>.sqlite`, read from its fds. It "holds the lock" when `/proc/locks` lists its pid on that file's inode (E).
 
@@ -103,6 +103,6 @@ What carries over: one row per process, with state as one word in one column (Do
 ## Sources
 
 - `docs/specifications/011-core/spec.md` C9, C10, C13; `004-slow-suites/spec.md` D2, line 45 (`runner.timeoutMs` per slow file); `012-claude-code-adapter/spec.md` CC4; `001-core-loop/lessons.md` defects 22, 24, 26, 29; `003-node-test-runner/lessons.md` defect 8; `004-slow-suites/lessons.md` (two 0.1.58 daemons, orphans); `009-pi-adapter/lessons.md` defect 2; `docs/board.md` Later (e2e fixtures).
-- Source at `9060a96c9`: `src/core/daemon/{lifecycle,scratch,server,signals,paths}.ts`, `src/core/capacity/{marks,pool}.ts`, `src/core/slow/slot.ts`, `src/core/waiter-lock/waiter-lock.ts`, `src/harness/shared/session-root.ts`, `plugins/claude-code/hooks/hooks.json`, `~/.local/bin/squeal` (launcher format 4).
+- Source at `0547eee7f`: `src/core/daemon/{lifecycle,scratch,server,signals,paths}.ts`, `src/core/capacity/{marks,pool}.ts`, `src/core/slow/slot.ts`, `src/core/waiter-lock/waiter-lock.ts`, `src/harness/shared/session-root.ts`, `plugins/claude-code/hooks/hooks.json`, `~/.local/bin/squeal` (launcher format 4).
 - Docs: https://docs.docker.com/reference/cli/docker/container/ls/, https://docs.docker.com/reference/cli/docker/container/stats/, https://pm2.keymetrics.io/docs/usage/process-management/, https://pm2.keymetrics.io/docs/usage/quick-start/, https://pm2.keymetrics.io/docs/usage/pm2-doc-single-page/, https://docs.gradle.org/current/userguide/gradle_daemon.html (9.8.2), https://nx.dev/docs/reference/nx-commands and https://nx.dev/docs/concepts/nx-daemon (v23), https://turborepo.dev/docs/reference/run and /info (`/daemon` 404), https://facebook.github.io/watchman/docs/cmd/watch-list, `man systemd-cgtop` (systemd 255.4).
 - Probe: `probes/should-not-be-up/` (`scan.py`, README, two scan outputs).

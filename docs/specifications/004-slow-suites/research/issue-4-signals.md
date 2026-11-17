@@ -1,6 +1,6 @@
 # Issue 4 signals: which evidence ranks the slow files an edit likely affects
 
-Researcher, 2026-10-17, Opus 5.5. Brief: `issue-4-signals-brief.md`. This builds on `issue-4-ranking.md`. No design. Squeal at `d8d9aa97` (0.1.211, with C15's promotion, 011-11). Cezarion was read only, through `git show`, `git ls-tree` and `git diff` at fixed revisions, and its live store was opened `readOnly`. Probes and logs are in `probes/issue-4-signals/`. Each probe ran with HOME, the XDG directories and npm's cache under `/tmp/i4s-home`, and `GIT_CONFIG_GLOBAL=/dev/null`.
+Researcher, 2026-10-17, Opus 5.5. Brief: `issue-4-signals-brief.md`. This builds on `issue-4-ranking.md`. No design. Squeal at `6c459717` (0.1.211, with C15's promotion, 011-11). Cezarion was read only, through `git show`, `git ls-tree` and `git diff` at fixed revisions, and its live store was opened `readOnly`. Probes and logs are in `probes/issue-4-signals/`. Each probe ran with HOME, the XDG directories and npm's cache under `/tmp/i4s-home`, and `GIT_CONFIG_GLOBAL=/dev/null`.
 
 ## Questions answered
 
@@ -98,7 +98,7 @@ Its limits weigh against vision filter 4 and goal "start simple":
 ## Sources
 
 - hearsay-tools/squeal#4 and its seven comments (`gh issue view 4 --comments`, 2026-10-17). `issue-4-ranking.md` and `probes/issue-4-ranking/` (`ci-durations.json`).
-- Squeal `d8d9aa97`:
+- Squeal `6c459717`:
   - `src/core/scheduler/queue.ts` (`priorityOf`, `orderedSlow`, `RECENT_TIERS_PER_BACKLOG_TIER`), `tiers.ts` (`joinSpan`), `slow-tier.ts` (`#candidates`, `#trigger`, width), `scheduler.ts` (`promote`)
   - `src/runners/vitest/affected.ts`, `src/core/store/schema.ts` (`test_files.closure_paths`, `file_hashes`)
   - `src/cli/status-wait-promote.ts`

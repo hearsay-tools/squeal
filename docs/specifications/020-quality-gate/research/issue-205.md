@@ -14,7 +14,7 @@ The brief states one reproduction task. These questions split its required evide
 | 2. Is the control accepted, with the safety check still active? | **verified by experiment**: both files are `parts` before mutation; afterwards only the mismatched file is `run`. Both runs exit 0, verdict `pass`, no timeout. | Same |
 | 3. Where is the explanation lost? | **read in source code**: `uncertified()` returns paths; `taken()` reduces that to `null`. No per-file note or refusal data reaches the report. | 0.1.460 tag; matching `parts.ts` and `inputs.ts` in checkout 0.1.463 |
 | 4. Does this identify the original 148 files' cause? | **inferred**: no. The synthetic mismatch proves the reporting gap only. The original refusal causes are not determined because its artifacts and checkout were not replayed. | Incident reports 0.1.460 |
-| 5. What do D7 and D13.2 require today? | **read in source code** (repository spec): D13.2 names evidence origin and strict reuse conditions; D7 describes the report. Neither explicitly requires per-file refusal reasons. | Spec at `2df6d0f2949099de1e9a5fc5805268fcbcf52398` |
+| 5. What do D7 and D13.2 require today? | **read in source code** (repository spec): D13.2 names evidence origin and strict reuse conditions; D7 describes the report. Neither explicitly requires per-file refusal reasons. | Spec at `fa3882caa5f1d41ad23b9d35f32c69c95dba56da` |
 
 ## Experiment
 
@@ -75,7 +75,7 @@ Checks: the bounded probe exited 0 with all assertions passed; recording ran two
 ## Sources
 
 - [Issue 205](https://github.com/hearsay-tools/squeal/issues/205), fetched with `gh issue view 205 --repo hearsay-tools/squeal --json body,comments,url`; incident figures are reported evidence, not independently verified here.
-- [Spec D7 and D13.2](../spec.md), [decision log](../status.md), at checkout commit `2df6d0f2949099de1e9a5fc5805268fcbcf52398`.
+- [Spec D7 and D13.2](../spec.md), [decision log](../status.md), at checkout commit `fa3882caa5f1d41ad23b9d35f32c69c95dba56da`.
 - [Release `parts.ts`](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/code/gate/parts.ts), [input certification](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/ci/inputs.ts), [run report](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/code/gate/runs.ts); read with `git show squeal--v0.1.460:<path>` and local file reads.
 - [Probe and raw evidence](probes/issue-205/README.md), especially `evidence/summary.json`, `load.json`, `commands.json`, and accepted/refused stdout and stderr.
 

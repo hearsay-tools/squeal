@@ -2,7 +2,7 @@
 
 Throwaway. Nothing here is product code or a test of the product. Findings: `../../child-processes.md`.
 
-Every run happened in `/tmp/sq015-r3`: a `git archive` copy of this repository at 2e36f1ed2 in `repo/`, with `npm ci` and `@vitest/coverage-v8@5.0.3`, `c8@12.0.0` and `v8-to-istanbul@9.3.0` added there with `--no-save`. `HOME`, `TMPDIR`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` pointed under `/tmp/sq015-r3`. Before run 2 the copy got this repository's history and tags (a `--shared` clone's `.git`, reset to 2e36f1ed2), so the key tests found their `squeal--v*` tag. Node 24.21.0, Vitest 5.0.3, tsx 4.23.15.
+Every run happened in `/tmp/sq015-r3`: a `git archive` copy of this repository at 4f6e615e6 in `repo/`, with `npm ci` and `@vitest/coverage-v8@5.0.3`, `c8@12.0.0` and `v8-to-istanbul@9.3.0` added there with `--no-save`. `HOME`, `TMPDIR`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` pointed under `/tmp/sq015-r3`. Before run 2 the copy got this repository's history and tags (a `--shared` clone's `.git`, reset to 4f6e615e6), so the key tests found their `squeal--v*` tag. Node 24.21.0, Vitest 5.0.3, tsx 4.23.15.
 
 Runs, all at `--maxWorkers=4`:
 

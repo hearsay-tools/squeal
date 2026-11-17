@@ -1,6 +1,6 @@
 # 011-102 notes: the workarounds for Node below 22.19
 
-Worker 5721e776, brief W2 of `tasks/wave-11.md`, base main at 46b7911c2. Shape: survey, then repair. The host has Node 24.21.0, 24.15.0 and 22.23.3, no 22.19 and no container runtime; none was installed. Each probe reads Node's own docs, changelog and source at the release tags, and a CI run on v22.19.0 where one exists.
+Worker 5721e776, brief W2 of `tasks/wave-11.md`, base main at 3e7776e73. Shape: survey, then repair. The host has Node 24.21.0, 24.15.0 and 22.23.3, no 22.19 and no container runtime; none was installed. Each probe reads Node's own docs, changelog and source at the release tags, and a CI run on v22.19.0 where one exists.
 
 ## Results on Node 22.19
 
@@ -16,8 +16,8 @@ Worker 5721e776, brief W2 of `tasks/wave-11.md`, base main at 46b7911c2. Shape: 
 - **Docs.** `doc/api/sqlite.md` at v22.13.0 and v22.14.0: `path` {string}. From v22.15.0 to v22.19.0: `path` {string | Buffer | URL}.
 - **Changelog.** `CHANGELOG_V22.md`, 22.15.0: "**sqlite,test,doc**: allow Buffer and URL as database location (Edy Silva) [#56991](https://github.com/nodejs/node/pull/56991)", commit 227603dc30.
 - **Source.** `src/node_sqlite.cc` at v22.19.0: `DatabaseSync::Open` passes `default_flags = SQLITE_OPEN_URI` to every `sqlite3_open_v2`, and `ValidateDatabasePath` passes a `URL`'s `href`, which must start `file:`, to it as the location. So SQLite parses `?immutable=1`. At v22.15.0 the same two lines are there. At v22.13.0 and v22.14.0 neither is: the path must be a string and no open passes `SQLITE_OPEN_URI`. This is why review 0.1.239 B1 found a `URL` refused and a `file:` string not opened on 22.13.
-- **CI on v22.19.0.** Run 39712182091 (`cand/0.1.253`, 6a9dff11), job "Node 22 (2/3)" (119636702818), `node: v22.19.0`: `test/ps/work-store.test.ts (7 tests)` passed. Its test "a store no connection holds open, without -wal and -shm, is read and left as it was" opens `new DatabaseSync(<file: URL with search immutable=1>, { readOnly: true })` in `src/core/ps/work.ts` (014-26), reads the rows, and checks that the read made no `-wal` or `-shm`. A WAL store opened without `immutable` makes both, so the parameter took effect. The permit read is the same call on another file.
-- **Change.** `permitRecord` opens `new URL(`${pathToFileURL(path).href}?immutable=1`)` read-only, as 011-58 first did (f8aeab919), and the copy is gone.
+- **CI on v22.19.0.** Run 39712182091 (`cand/0.1.253`, 388a0851), job "Node 22 (2/3)" (119636702818), `node: v22.19.0`: `test/ps/work-store.test.ts (7 tests)` passed. Its test "a store no connection holds open, without -wal and -shm, is read and left as it was" opens `new DatabaseSync(<file: URL with search immutable=1>, { readOnly: true })` in `src/core/ps/work.ts` (014-26), reads the rows, and checks that the read made no `-wal` or `-shm`. A WAL store opened without `immutable` makes both, so the parameter took effect. The permit read is the same call on another file.
+- **Change.** `permitRecord` opens `new URL(`${pathToFileURL(path).href}?immutable=1`)` read-only, as 011-58 first did (1a05ca2c9), and the copy is gone.
 - **Test.** `test/slow/slot-holders.test.ts` "reads the holder in place, through SQLite's immutable URI, and writes no copy (011-102)" sets `TMPDIR` to a missing directory. The copy cannot be made there, so the old code returns `unreadable`; it failed on the base (red) and passes with the change. The file's other three tests read real holders through the same path.
 
 ## (b) `isTransaction`

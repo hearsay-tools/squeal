@@ -59,8 +59,8 @@ The comments on `capacityReader` and `Daemon.#capacity` now say what runs: the r
 
 ## node-test-packages: the failure explained
 
-- **Symptom.** `test/integration/node-test-packages.test.ts` failed main CI on Node 22 at e28f60f9. All three REACHING files appeared once in the runs after the bump: no re-run row at all.
-- **The failure predates the pool.** It was seen in 005's 0.1.159 gate (005-46, filed as 001-363, still planned) and in the 0.1.178 candidate's loaded gate, and 0.1.178 has no pool (it arrived in 8a1e8344, 0.1.179).
+- **Symptom.** `test/integration/node-test-packages.test.ts` failed main CI on Node 22 at 8641452d. All three REACHING files appeared once in the runs after the bump: no re-run row at all.
+- **The failure predates the pool.** It was seen in 005's 0.1.159 gate (005-46, filed as 001-363, still planned) and in the 0.1.178 candidate's loaded gate, and 0.1.178 has no pool (it arrived in 3d3a6275, 0.1.179).
 - **Cause: the test's settle condition.** A 001-171 re-run is queued (`queueReruns`, priority `NOTHING_CHANGED`) after the fail tier's record. Its file's checks are then `current` FAIL. Status counts come from known states (`src/core/status/snapshot.ts`, `breakdown`), so between the fail's record and the re-run's `startTier` status shows 0 pending, every check current and failures present. That is exactly what `settle` accepts, and the test then read `runs()` before the re-run's row existed.
 - **Measured here** (load 60 to 70, 5 runs with timings written to a file):
   - The re-run's row starts 21 to 62 ms after the fail run's end.

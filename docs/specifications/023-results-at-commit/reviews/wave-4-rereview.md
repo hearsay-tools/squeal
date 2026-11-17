@@ -1,6 +1,6 @@
 # Wave 4 re-review: manifest chains and CI evidence
 
-FAIL `389e7febb5b0be4dd2cdc436f1cb2879bf2723c5`
+FAIL `415e40153d2d10d5261aa0ab1c80f6489a1de520`
 
 **1 proven blocker in the CI-hook repair, 0 should-fix, 0 nits.** Both original missing-manifest restart cases are repaired. The new CI hook can still export a pass for the wrong manifest state. This review covers `wave-4.md` B1/B2 and the repair delta expressly named in the re-review brief. Unchanged areas and the held relative shadow-path half were not re-prosecuted.
 
@@ -43,19 +43,19 @@ The unrelated plain test remains exported, as the control requires. Both source 
 
 ## Verification
 
-All product checks, external probes and the read-only count ran at `389e7febb5b0be4dd2cdc436f1cb2879bf2723c5` before this findings file was written, with a clean tracked tree. Test fixtures used the existing helpers' ignored scratch repositories. External probe source and scan snapshots were removed before commit. No product file changed. No local full suite or full-suite checkpoint was requested.
+All product checks, external probes and the read-only count ran at `415e40153d2d10d5261aa0ab1c80f6489a1de520` before this findings file was written, with a clean tracked tree. Test fixtures used the existing helpers' ignored scratch repositories. External probe source and scan snapshots were removed before commit. No product file changed. No local full suite or full-suite checkpoint was requested.
 
-The candidate rebases the manifest implementation onto main `7e28ddf88d7757f71155fec4d00fd1b50d410282`. Relevant repair commits are `f3603fd2a` (B1/B2 and re-resolution test), `4bd2dce1d` (CI manifest scan), `f7011b012` (`exports` root-only rule), `a1aac8e6d` (notes), and `389e7febb` (version/bundles). Unrelated main changes are not re-reviewed here.
+The candidate rebases the manifest implementation onto main `41f46a4212ba96ed5374d1d723f4d9614a7a2ae7`. Relevant repair commits are `10559b73b` (B1/B2 and re-resolution test), `922f47041` (CI manifest scan), `8fd370404` (`exports` root-only rule), `12fe8eaf3` (notes), and `415e40153` (version/bundles). Unrelated main changes are not re-reviewed here.
 
 | Command or evidence | Actual result |
 | --- | --- |
-| `git fetch origin`; `git checkout --detach 389e7febb5b0be4dd2cdc436f1cb2879bf2723c5`; `git rev-parse HEAD` | Exit 0; exact requested candidate |
+| `git fetch origin`; `git checkout --detach 415e40153d2d10d5261aa0ab1c80f6489a1de520`; `git rev-parse HEAD` | Exit 0; exact requested candidate |
 | Dependency setup | Retained the installed dependencies supplied at launch; did not repeat setup, as instructed. |
 | `pnpm run lint` | Exit 0: `Checked 3612 files in 1279ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |
 | `pnpm run build` | Exit 0: TypeScript build and Claude Code, Codex, Pi and OpenCode bundle builds; `git status --short` stayed empty |
-| `pnpm run check:private`, before findings | Exit 0: `private: 6361 added lines in 56 files over 7e28ddf88d7757f71155fec4d00fd1b50d410282, ok`. Warning: `SQUEAL_PRIVATE_DENYLIST` is empty, so that optional denylist rule was skipped. The structural private-material rules ran. |
-| `git diff --check e658d307a HEAD` | Exit 0, no output |
+| `pnpm run check:private`, before findings | Exit 0: `private: 6361 added lines in 56 files over 41f46a4212ba96ed5374d1d723f4d9614a7a2ae7, ok`. Warning: `SQUEAL_PRIVATE_DENYLIST` is empty, so that optional denylist rule was skipped. The structural private-material rules ran. |
+| `git diff --check 9e4ba5b35 HEAD` | Exit 0, no output |
 | Squeal affected-source wait below | Exit 3 after 61.1 s: 646 selected files, 36 current/pass, 610 pending. Broader affected results are **unverified**; no known failure was reported. The checkout itself queued affected work; no full-suite request was made. |
 | Squeal nine named files below | Exit 0: `Named test files at revision 5: no known failures; 9 test files, each with a current result, after 26.2 s.` Whole tree: 658/1918 not current (4 running, 654 queued). Content-key reuse is included; this is not a fresh full-suite claim. |
 | Original B1/B2 external probes | Both **passed** in the three-test external run. The CI case stopped at a fixture cleanliness assertion because Vitest made untracked `node_modules/.vite/`; that was a probe setup error. Total: 2 passed, 1 failed, 6.26 s. |

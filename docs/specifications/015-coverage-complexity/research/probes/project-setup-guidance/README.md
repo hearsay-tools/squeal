@@ -24,7 +24,7 @@ The repository Squeal check ran after the probe:
 
 ```text
 ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/015-coverage-complexity/research/probes/project-setup-guidance/probe.mts
-Revision: 7 · d4fb4611 + 7, dirty
+Revision: 7 · bdfea4eb + 7, dirty
 No verdict: no test file's closure holds docs/specifications/015-coverage-complexity/research/probes/project-setup-guidance/probe.mts. Worktree: known failures 0; not current: 830 of 1229 test files (830 unknown)
 ```
 

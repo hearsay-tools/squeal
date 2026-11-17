@@ -3,7 +3,7 @@
 Recommend treating partial export as a proposed D9 policy change, while keeping incomplete runs untrusted.
 
 **Verdict:** the export refusal is reproduced on Squeal **0.1.430**, commit
-`1ac649d408c9043997fd4eeb0c0ed3a079b1da4c`. A real two-shard control exports;
+`4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c`. A real two-shard control exports;
 a synthetic `crashed` part beside a completed shard refuses. The original
 CI log independently confirms the reported refusal on **0.1.425**. This
 matches the current D9 contract. No product change is proposed here.
@@ -13,9 +13,9 @@ matches the current D9 contract. No product change is proposed here.
 | Question | Answer and tag | Version examined |
 | --- | --- | --- |
 | 1. Does one crashed part prevent completed parts from exporting? | Yes: mixed input exits 1 and creates no export. **verified by experiment**; the crashed header was constructed from a real recorded part. | Squeal 0.1.430; Vitest 5.0.3; Node 24.22.1 |
-| 2. Is that contrary to the current contract? | No. D9 requires all shards passed and refuses an incomplete set. **read in official docs** (repository spec and amendment log). | Spec at `1ac649d408` |
+| 2. Is that contrary to the current contract? | No. D9 requires all shards passed and refuses an incomplete set. **read in official docs** (repository spec and amendment log). | Spec at `4de9b4d96d` |
 | 3. Does deleting the crashed part solve it? | No. The surviving shard 2/2 gives a missing-shard refusal, exit 1. **verified by experiment**. | Squeal 0.1.430 |
-| 4. What must a partial-export decision preserve? | Keep incomplete-run evidence unusable, and retain commit, environment, snapshot, duplicate and input-evidence checks. Partial availability must not imply suite completion. **inferred** from the named guards and D9. | Squeal 0.1.430; spec at `1ac649d408` |
+| 4. What must a partial-export decision preserve? | Keep incomplete-run evidence unusable, and retain commit, environment, snapshot, duplicate and input-evidence checks. Partial availability must not imply suite completion. **inferred** from the named guards and D9. | Squeal 0.1.430; spec at `4de9b4d96d` |
 
 ## Reproduction
 
@@ -54,7 +54,7 @@ no part. Neither was evidence of an actual locally produced `crashed` header.
 
 ## Contract and historical evidence
 
-**read in official docs, spec at `1ac649d408`.** [D9](../spec.md#d9-the-export-job-after-the-shards)
+**read in official docs, spec at `4de9b4d96d`.** [D9](../spec.md#d9-the-export-job-after-the-shards)
 says export runs “after every shard has passed” and refuses “an incomplete
 shard set.” The [status log](../status.md), 2026-11-09 review of 0.1.421 B3,
 records that a missing shard previously produced a partial export with exit 0;
@@ -103,7 +103,7 @@ no product code changed.
 
 ## Source locations
 
-All source paths below were read at `1ac649d408c9043997fd4eeb0c0ed3a079b1da4c`:
+All source paths below were read at `4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c`:
 
 - [export-check.ts](../../../../src/core/ci/export-check.ts), `partsRefusal` (72), `reuseRefusal` (117), `shardRefusal` (175).
 - [export.ts](../../../../src/core/ci/export.ts), pre-key refusal (113) and input certification.

@@ -4,7 +4,7 @@
 
 ## R1: 011-25, an agent's edit of a central source
 
-Use /researcher. Shape: research. Read board row 011-25, spec 011 C4 (steps 3 to 5, catch-up as amended 2026-10-20 by 011-22, the four-tiers turn, claims), C10, `research/catch-up.md` (open question "Agent edits of central sources"), `reviews/wave-5.md` (how catch-up classifies a revision, `isCatchUp`, `Queue.toCatchUp`) and `tasks/011-22/notes.md`. Base: main at or after 8560795d (0.1.226).
+Use /researcher. Shape: research. Read board row 011-25, spec 011 C4 (steps 3 to 5, catch-up as amended 2026-10-20 by 011-22, the four-tiers turn, claims), C10, `research/catch-up.md` (open question "Agent edits of central sources"), `reviews/wave-5.md` (how catch-up classifies a revision, `isCatchUp`, `Queue.toCatchUp`) and `tasks/011-22/notes.md`. Base: main at or after d9e12fb3 (0.1.226).
 
 Evidence (cezar, 0.1.224, `research/catch-up.md`): 62 revisions of 1 to 8 keyed sources re-keyed 200 to 472 test files each and ran them all as an edit's work, tiers of `runner.tierSize` one at a time without a permit; `packages/cezar/src/runs/store.ts` reaches about 220 test files; ba5234dc r13, a 6-source cherry-pick, took 1,454 s for 73 files. Closures are transitive, and the store keeps only closures, not the module graph.
 
@@ -22,7 +22,7 @@ Done when: the findings file answers 1 to 4 and ends with a recommendation, the 
 
 ## W1: 011-31, a step-down cancels its tiers in flight
 
-Use /worker. Shape: code. Read board row 011-31, `tasks/011-30/design.md` sections 1 and 5 (R1) and its "Spec text", spec 011 C9 and C4 step 5 as amended 2026-10-20, `research/issue-47.md` (runs 2 and 4). Base: main at ec6337e6 (0.1.226 released).
+Use /worker. Shape: code. Read board row 011-31, `tasks/011-30/design.md` sections 1 and 5 (R1) and its "Spec text", spec 011 C9 and C4 step 5 as amended 2026-10-20, `research/issue-47.md` (runs 2 and 4). Base: main at 1f951801 (0.1.226 released).
 
 Do R1 as the design states: `onStepDown` in `src/core/daemon/daemon.ts` cancels its tiers in flight (`#cancelTiers()`) before its shutdown, as `onStop` does; `stepDownIfOlder` in `src/harness/shared/ensure.ts` sends `stop` after an accepted step-down, within C8's two round trips. Every lane's tier and every backlog slot is cancelled; files whose module ended keep their results, the rest are queued uncounted, forced ones still forced, one `superseded` note.
 
@@ -32,7 +32,7 @@ Not yours: 011-32 (the handoff claim), 011-33, 011-34; `src/core/scheduler/` bey
 
 ## W2: 011-33, a restart hands the queued work over
 
-Use /worker. Shape: code. Read board row 011-33, `tasks/011-30/design.md` sections 3 and 5 (R3), spec 011 C4 (the "Explicit checkpoints" paragraph as amended 2026-10-20, row 011-30, Q3 (a) and Q5 (a)), `reviews/wave-5.md` (B3: the baseline classifies each unrefined revision on its own, `UnseenChanges` in `bootstrap.ts`). Base: main at ec6337e6.
+Use /worker. Shape: code. Read board row 011-33, `tasks/011-30/design.md` sections 3 and 5 (R3), spec 011 C4 (the "Explicit checkpoints" paragraph as amended 2026-10-20, row 011-30, Q3 (a) and Q5 (a)), `reviews/wave-5.md` (B3: the baseline classifies each unrefined revision on its own, `UnseenChanges` in `bootstrap.ts`). Base: main at 1f951801.
 
 Do R3 as the design states: whatever `baseline.onStart` says, the start baseline queues every file whose row its predecessor left `queued` or `running`, at this daemon's key, unless the lookup finds a result there; ordered by step 4 as of the revisions whose re-key moves are still open for it (edited file or direct importer first group, environment-only second, a catch-up revision's catch-up, else second); a pending re-run of a new failure is queued too (`restoreReruns`, Q5 (a)). Cold-start misses stay as the policy leaves them. The handed-over files go through the same lookup as every miss (`Ledger.settle`/lookup), so when 011-38 lands (formats 13 on read as one, the 001 coordinator's worker 09725721, owning `keying.ts`, `ledger.ts`, `stored-keys.ts`) a row readable at an older format settles without a run: do not add a second lookup path, and do not edit 011-38's files beyond a call site.
 
@@ -42,7 +42,7 @@ Not yours: 011-31, 011-32, 011-34. No version bump and no `KEY_FORMAT_VERSION` c
 
 ## R2: 011-25, which tests stay an edit's work: the edit cut measured
 
-Use /researcher. Shape: research. Read board row 011-25, `research/central-edits.md` (its probes in `research/probes/central-edits/`, which you reuse), spec 011 C4 step 4 and C15 (a named wait promotes a file to the first group). Base: main at or after 84509d92.
+Use /researcher. Shape: research. Read board row 011-25, `research/central-edits.md` (its probes in `research/probes/central-edits/`, which you reuse), spec 011 C4 step 4 and C15 (a named wait promotes a file to the first group). Base: main at or after f8eef4c9.
 
 The human (2026-10-20), on `central-edits.md`'s question "cap the direct importers kept as edits?": measure first. Their proposal: only the test that targets the changed file (its namesake, `store.ts` to `store.test.ts`) stays an edit's work, and every other importer, direct or not, is catch-up. Their concern, which the answer must meet: a rule based on names alone fails in a repository whose tests do not mirror its file names, and there every edit would go to catch-up, losing the edit route that exists for a reason. They also ask whether 150 to 182 test files importing `runs/store.ts` directly is a smell in the project.
 
@@ -83,6 +83,6 @@ Run `flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
 
 ## R3r: re-review of the repaired cand/0.1.229
 
-Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.229` SHA named in the resume; the repair is `2fb497da..<sha>` (after your findings commit, cherry-picked as 2fb497da: the coordinator's two fixes and the re-pin). Read `reviews/wave-6.md` (B1, B2) and append a "Re-review" section to it.
+Use /reviewer. Shape: review, bounded. Pinned to the `cand/0.1.229` SHA named in the resume; the repair is `f9c3b6ab..<sha>` (after your findings commit, cherry-picked as f9c3b6ab: the coordinator's two fixes and the re-pin). Read `reviews/wave-6.md` (B1, B2) and append a "Re-review" section to it.
 
 Check only that: B1 is closed (`fetchEditCut` counts a changed path a closure the runner part fetched holds as a source, so a new source keeps its namesake, or with none every direct importer; `test/scheduler/edit-cut-new-source.test.ts`'s three cases fail with the fix reverted, and your scheduler probes pass); B2 is closed (an instance that does not observe passes only `UNOBSERVED` through the `env` option, a config's own `env.NODE_OPTIONS` keeps its value in the workers and the hash, root or project, and only a project that inherits none gets the cleaned value, left out of its hash alone; `test/runners/vitest/unobserved-project-env.test.ts`'s root cases fail with the fix reverted, and your four adapter probes pass); the original 001-431 fidelity cases still pass under an outer recorder; the format-19 re-pin and the bundles match the tree. The coordinator's gate on this SHA is reported in the resume. Anything outside B1 and B2 is recorded for a later row, not a blocker.

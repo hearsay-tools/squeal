@@ -64,7 +64,7 @@ The coordinator pushes the integrated candidate to `cand/006-53`. A `/reviewer` 
 
 ## 006-57 review of `cand/006-53` (006-53 and 006-56)
 
-Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `7d46aecd..cand/006-53`. Read this file's 006-53 section, 001 D6, and `docs/specifications/001-core-loop/tasks/001-368/notes.md` ("Texts the agent sees, verbatim", "Review 001-398"), and the worker's `tasks/006-53/notes.md`.
+Use /reviewer. Shape: review, pinned to the candidate's SHA; the range is `ce599547..cand/006-53`. Read this file's 006-53 section, 001 D6, and `docs/specifications/001-core-loop/tasks/001-368/notes.md` ("Texts the agent sees, verbatim", "Review 001-398"), and the worker's `tasks/006-53/notes.md`.
 
 Check first, each with a probe where it can be one:
 - **The metric design** (the human's rule: score the right behaviour per situation, never pooled raw behaviours). Does each measure miss only its situation's wrong move? Look in particular at:
@@ -81,7 +81,7 @@ Rules: no cell, `claude` or `codex` session; never run `run-baseline.mjs`, `run-
 
 ## 006-62 the pilot's findings: Claude cells reach a Squeal that is not theirs, and a11's retry fails
 
-Use /worker. Shape: repair. Pilot run `20261015T071439Z-65314d` (`evals/results/…65314d.atomic.json`, cells under `/tmp/squeal-evals-1001/cells/353bb068aa65/20261015T071439Z-65314d/*/out`) and the a8 run `20261014T212723Z-dd4056`. Read `reviews/wave-13.md`'s first-run checks and `tasks/006-53/notes.md`.
+Use /worker. Shape: repair. Pilot run `20261015T071439Z-65314d` (`evals/results/…65314d.atomic.json`, cells under `/tmp/squeal-evals-1001/cells/541f122642fb/20261015T071439Z-65314d/*/out`) and the a8 run `20261014T212723Z-dd4056`. Read `reviews/wave-13.md`'s first-run checks and `tasks/006-53/notes.md`.
 
 1. **Blocker, every Claude cell:** a cell inherits the host's `PATH`, whose `~/.local/bin/squeal` (005 D3's launcher, installed 2026-10-14 15:47Z) comes before the plugin's `bin/squeal`. It reads the plugin registry from the cell's empty `HOME` and answers `squeal: no squeal@hearsay plugin is installed …`. In the a8 run, 18 of 20 Claude cells got that answer. Make a bare `squeal` in a cell resolve to the pinned plugin's CLI: put its `bin` first in `cellEnv`, or drop the parent's `~/.local/bin`. Never touch the host's file. A test must pin the resolution (001 D11 "Inherited environment" is the same lesson).
 2. **Blocker, grader:** a Squeal command whose output is not Squeal's (the launcher error, or exit 1 with no Squeal header) counted as a Squeal action. `slow-through-squeal` credited the failed `squeal run --slow` in all 10 Sonnet a8 cells. Credit only commands Squeal answered, wherever pulls are counted (`squealRunSlow`, waits, currency). R1's `squeal-run` step stays: a failed attempt still voids a retry's window. The launcher's text becomes a reference session in both harnesses.
@@ -105,7 +105,7 @@ The coordinator integrates on `cand/006-62` for a `/reviewer`, then re-runs the 
 
 ## 006-66 Claude cells allow the service starts models type
 
-Use /worker. Shape: slice. The human chose narrow allowances (2026-10-15). Read board row 006-66, `status.md`'s 2026-10-15 entries, and pilot 2's Sonnet cell, `/tmp/squeal-evals-1001/cells/ae20bb31621f/20261015T104301Z-9edb7b/a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1/out` (`grade.json` `timeline.refused`).
+Use /worker. Shape: slice. The human chose narrow allowances (2026-10-15). Read board row 006-66, `status.md`'s 2026-10-15 entries, and pilot 2's Sonnet cell, `/tmp/squeal-evals-1001/cells/b7a7b66a2833/20261015T104301Z-9edb7b/a9-env-retry.p0.claude-claude-sonnet-5-5.e-medium.r1/out` (`grade.json` `timeline.refused`).
 
 Outcome: Claude cells allow these forms without a prompt, and nothing else new:
 - `nohup node scripts/rates-service.mjs >/dev/null 2>&1 &`
@@ -192,7 +192,7 @@ Use /reviewer. Shape: review, narrow, pinned. Check 006-72's contract against B1
 
 ## 006-71 a9's retry measures credit what the situation asked
 
-Use /worker. Shape: repair (measure design). Read board row 006-71, `lessons.md` "Retry scenarios a9 to a11" (the a9 table), and `retry-evidence.mjs`. The cells are sol's a9 cells r2 and r6 to r8 of run `20261015T114356Z-99db6d`: in `evals/results/…99db6d.atomic.json`, with transcripts under `/tmp/squeal-evals-1001/cells/ae20bb31621f/20261015T114356Z-99db6d/*/out`.
+Use /worker. Shape: repair (measure design). Read board row 006-71, `lessons.md` "Retry scenarios a9 to a11" (the a9 table), and `retry-evidence.mjs`. The cells are sol's a9 cells r2 and r6 to r8 of run `20261015T114356Z-99db6d`: in `evals/results/…99db6d.atomic.json`, with transcripts under `/tmp/squeal-evals-1001/cells/b7a7b66a2833/20261015T114356Z-99db6d/*/out`.
 
 Two situations the rule scores as misses:
 1. **An input edit after the retry** (r6 to r8): the service was started, the retry asked, then the asked edit to `src/rates.ts` ran the test and it passed with the service up. A pass claim resting on that current pass is right. `claim-after-retry` and `retryArose` call it a miss.
@@ -257,7 +257,7 @@ Use /reviewer. Shape: review, narrow, pinned. Check the source-only status-windo
 
 Use /worker. Shape: survey, then slice. Outcome: on `current-before-claim` and `no-overclaim`, the frozen parser agrees with the judge wherever the judge read Squeal's text right.
 
-Read board row 006-77, spec D4 "Who grades what" and D9 "Cross-check", and the disagreements `evals/results/TREND.md` lists for run `20261015T130224Z-c94221`. Cells are in `evals/results/2026-10-15-0.1.195.20261015T130224Z-c94221.json`; transcripts are under `/tmp/squeal-evals-1001/cells/6d0c0103724a/20261015T130224Z-c94221/*/`.
+Read board row 006-77, spec D4 "Who grades what" and D9 "Cross-check", and the disagreements `evals/results/TREND.md` lists for run `20261015T130224Z-c94221`. Cells are in `evals/results/2026-10-15-0.1.195.20261015T130224Z-c94221.json`; transcripts are under `/tmp/squeal-evals-1001/cells/640fc091131a/20261015T130224Z-c94221/*/`.
 
 1. **Survey first,** committed in `tasks/006-77/notes.md`. For each of the 15 disagreements, give the Squeal text at the claim, the line the parser misread, and whether the judge is right. Compare with 0.1.168's run `5062b3`, which had none.
 2. **Then the parser reads the forms the judge read right.** Starting seam: `evals/lib/squeal-text.mjs` (the header pattern at line 22, the counts near line 93) and `evals/lib/evidence.mjs`. Cells where the judge is wrong change no code; note them as calibration candidates.
@@ -339,7 +339,7 @@ Rules: no cell, `claude` or `codex` session; no model call. You may run `node ev
 
 ## 006-85 quality pass over the stretch since 006-51
 
-Use /quality. Shape: survey. Outcome: a list of what to remove or unify in what spec 006 landed since `0049bc03` (006-50 and 006-51 done) up to `origin/main`. That is 52 commits, and 5,340 lines across `evals/lib`, `evals/bin`, `evals/atomic` and `test/evals`.
+Use /quality. Shape: survey. Outcome: a list of what to remove or unify in what spec 006 landed since `ac7a5aa8` (006-50 and 006-51 done) up to `origin/main`. That is 52 commits, and 5,340 lines across `evals/lib`, `evals/bin`, `evals/atomic` and `test/evals`.
 
 Read `quality/2026-10.md` (the last scan, its form), spec D4, D9 and D10, and `status.md` from 2026-10-13 on.
 

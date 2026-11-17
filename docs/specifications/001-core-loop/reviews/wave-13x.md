@@ -2,10 +2,10 @@
 
 ## Verdict and verification
 
-**FAIL** at `87d3eecc`: **1 proven blocker, 1 proven should-fix, 0 nits**.
-Range: `10b4c5c0^..87d3eecc`. Scope: 001-243's racy-signature fix, its test, the 0.1.105 bundles and the unreleased key-format 3 re-pin. Row 001-235 supplies the erased-event contract; it is not re-reviewed here. Row 001-236's root-watch recovery remains outside this change.
+**FAIL** at `15abd228`: **1 proven blocker, 1 proven should-fix, 0 nits**.
+Range: `acafda37^..15abd228`. Scope: 001-243's racy-signature fix, its test, the 0.1.105 bundles and the unreleased key-format 3 re-pin. Row 001-235 supplies the erased-event contract; it is not re-reviewed here. Row 001-236's root-watch recovery remains outside this change.
 
-The worker initially had `cb6406fe`, whose delta from the candidate is only `docs/board.md` and `reviews/wave-13w.md`. Verification below ran after detaching at **exactly `87d3eecc`**, with no tracked changes. The worker branch was restored before this report was committed. No product, board or specification changes were made.
+The worker initially had `fc7a89d4`, whose delta from the candidate is only `docs/board.md` and `reviews/wave-13w.md`. Verification below ran after detaching at **exactly `15abd228`**, with no tracked changes. The worker branch was restored before this report was committed. No product, board or specification changes were made.
 
 Commands used the coordinator's environment isolation:
 
@@ -146,7 +146,7 @@ unchanged file + recheck read EMFILE: 1 change hint (conservative false positive
 next same-tick rewrite after failed read: 0 hints (miss)
 ```
 
-The throwaway Node/tsx probe replaced `fs.statSync` and `fs.readFileSync`, synchronized named builtin exports with `syncBuiltinESMExports()`, then imported the unchanged production module. It used real file writes and the public watch/callback boundary, restored the builtins, and removed its fixture. The predecessor control loaded `git show 10b4c5c0^:src/core/watcher/parcel-backend.ts` outside the tree with the unchanged `Exclusions` helper. No probe is included in the commit.
+The throwaway Node/tsx probe replaced `fs.statSync` and `fs.readFileSync`, synchronized named builtin exports with `syncBuiltinESMExports()`, then imported the unchanged production module. It used real file writes and the public watch/callback boundary, restored the builtins, and removed its fixture. The predecessor control loaded `git show acafda37^:src/core/watcher/parcel-backend.ts` outside the tree with the unchanged `Exclusions` helper. No probe is included in the commit.
 
 ## Inputs for the next wave
 

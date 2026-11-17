@@ -4,7 +4,7 @@
 
 **FAIL 210d06c**. Two proven blockers, no should-fix findings, no nits. The e2e proof holds for its fixture on both plugins and both Node versions. The new per-package keys can nevertheless keep a passing result current after an installed-package change makes the test fail.
 
-Reviewed `edb5d35` (003-22), `7112b39` and `c9641f9` (003-18, 002-24), and the `8654424` 0.1.31 bundles against spec 003 and spec 001 D3. Candidate HEAD is `210d06cda252758cdceeb533e7d80153e792126a`. The commits after `c9641f9` declare the copied e2e fixtures as inputs and update the board and briefs. This is the current candidate containing the named range, not a different product implementation.
+Reviewed `edb5d35` (003-22), `7112b39` and `c9641f9` (003-18, 002-24), and the `8654424` 0.1.31 bundles against spec 003 and spec 001 D3. Candidate HEAD is `558f5a7cd195f08a81954eef45fbceaf10a1ba34`. The commits after `c9641f9` declare the copied e2e fixtures as inputs and update the board and briefs. This is the current candidate containing the named range, not a different product implementation.
 
 ## Verification output
 
@@ -14,7 +14,7 @@ The manual Vitest commands are required by the repository and reviewer gate. No 
 
 ```text
 $ git rev-parse HEAD
-210d06cda252758cdceeb533e7d80153e792126a
+558f5a7cd195f08a81954eef45fbceaf10a1ba34
 $ node --version
 v24.21.0
 $ npm ci

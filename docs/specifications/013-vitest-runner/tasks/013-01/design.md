@@ -1,6 +1,6 @@
 # 013-01 design: a touch withholds only what the Vitest instance could have read
 
-Worker, 2026-10-20, board row 013-01 (triage round 8, gh-33, [#33](https://github.com/hearsay-tools/squeal/issues/33)), brief `brief.md`. A draft for the human: once accepted, it amends 013 V5 "Touched files" (task 001-159). Squeal source at `b7f20ee2` (no diff from tag `squeal--v0.1.224` under `src/runners/vitest/`, `src/runners/node-test/` and `src/core/scheduler/`). Probes: Vitest 5.0.3 on Vite 8.3.2, Node 24.21.0, `tsc` 7.0.2, under `/tmp` with `HOME` and `XDG_*` there, one-minute load 8.9 to 22.4 on 24 CPUs; stopped when it reached 41 (`probes/README.md`). No test suite, daemon or build ran in this worktree.
+Worker, 2026-10-20, board row 013-01 (triage round 8, gh-33, [#33](https://github.com/hearsay-tools/squeal/issues/33)), brief `brief.md`. A draft for the human: once accepted, it amends 013 V5 "Touched files" (task 001-159). Squeal source at `3965aa69` (no diff from tag `squeal--v0.1.224` under `src/runners/vitest/`, `src/runners/node-test/` and `src/core/scheduler/`). Probes: Vitest 5.0.3 on Vite 8.3.2, Node 24.21.0, `tsc` 7.0.2, under `/tmp` with `HOME` and `XDG_*` there, one-minute load 8.9 to 22.4 on 24 CPUs; stopped when it reached 41 (`probes/README.md`). No test suite, daemon or build ran in this worktree.
 
 Evidence tags: **verified by experiment** (a probe here), **read in source code**, **read in the store** (a copy of cezar's), **read in spec**, **inferred**.
 

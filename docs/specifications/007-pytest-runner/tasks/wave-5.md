@@ -71,7 +71,7 @@ Use /worker.
 
 ## Review of cand/0.1.195 (007-40 and 007-44)
 
-Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `fa444c86`, which is main 0.1.194 plus 007-40 (`0d2fa0c6`), 007-44 (`bf27a21d`), a key re-pin and the build. The verdict decides whether it may land.
+Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `fa444c86`, which is main 0.1.194 plus 007-40 (`c8753d7d`), 007-44 (`ff23ce07`), a key re-pin and the build. The verdict decides whether it may land.
 
 Shape: review. Scope:
 - 007-40 changes core delivery: `withDependencies` now takes the failing check ids and adds the "No dependencies are installed" flag only when one belongs to a non-pytest project, read from the worktree's policy. Check:
@@ -90,7 +90,7 @@ Use /reviewer.
 
 ## Re-review of cand/0.1.195 (the B1 repair)
 
-Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `adc26b1d`, which is `fa444c86` with the coordinator's B1 repair `998f0dfc`, followed by the same re-pin and the rebuild. The verdict decides whether it may land.
+Outcome: a PASS or FAIL verdict on `cand/0.1.195` at `e6d4fb3b`, which is `fa444c86` with the coordinator's B1 repair `8b583b5d`, followed by the same re-pin and the rebuild. The verdict decides whether it may land.
 
 Shape: narrow re-review, against `reviews/wave-5.5.md` B1. Scope:
 - `nodeFailing` in `src/core/delivery/attribution.ts`. Runner ownership now comes only from a policy that loaded without problems, or from no policy file at all; with problems, or with no worktree row, the sentence is not said.
@@ -102,7 +102,7 @@ Not in scope: 007-44 and the rest of 007-40, which passed.
 
 Owns: `reviews/wave-5.75.md` only, which you commit. Your locked full run (`flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4`) is the landing gate, so name every failing test and say whether it fails alone.
 
-Done when: B1 has a verdict backed by your probe, and the verdict names `adc26b1d`.
+Done when: B1 has a verdict backed by your probe, and the verdict names `e6d4fb3b`.
 
 Use /reviewer.
 

@@ -103,7 +103,7 @@ The accepted residual is unchanged: a test that deliberately names a direct base
 ### Rebase. PASS: picked edits and the shared daemon seams are preserved
 
 ```text
-$ git range-diff ef4e5c78..6b43de67 origin/main..1bedfc23
+$ git range-diff 8373e168..6b43de67 origin/main..1bedfc23
 2c883cbb -> 6ab1c949  007-37 basetemp
 f47754ed -> 68ae7971  pytest[].batchSize
 4b8ccaf6 -> ba5826eb  install guidance
@@ -115,7 +115,7 @@ c4aaadf9 -> 0ad70d4e  startup replacement
 986e9c25 -> 06a56850  topic lookup and startup suppression
 ```
 
-`origin/main` resolved to `24a3f96a8e97c4534c99bb218616a56ea8c14e65`, the re-review brief atop main 0.1.187. For all nine pairs, extraction of each patch's added and removed lines gives identical ordered lists. Five complete patches are byte-identical; the note patches and status amendment differ only in hunk positions/context. Range-diff also shows the new cherry-pick trailers. No picked edit was changed or lost. The old key pin and build were intentionally replaced by `7d9c1ae0` and `1bedfc23`; `df8f2d84` is the additional repair reviewed above.
+`origin/main` resolved to `7b5a254b60e2ec647d724357ea898e196250342f`, the re-review brief atop main 0.1.187. For all nine pairs, extraction of each patch's added and removed lines gives identical ordered lists. Five complete patches are byte-identical; the note patches and status amendment differ only in hunk positions/context. Range-diff also shows the new cherry-pick trailers. No picked edit was changed or lost. The old key pin and build were intentionally replaced by `7d9c1ae0` and `1bedfc23`; `df8f2d84` is the additional repair reviewed above.
 
 The final two-way comparisons provide the seam check:
 

@@ -1,6 +1,6 @@
 # 011-297: the OpenCode end-to-end baseline waits for a losing daemon to exit
 
-Worker aa77ec31, 2026-11-05. Brief: `tasks/wave-70.md`, W3 (on main at c5a6e3957). The same race and fix as row 011-296: `tasks/011-296/notes.md`. Shape: repair, test only. Changed: `test/e2e/opencode-fixture.ts` and this file.
+Worker aa77ec31, 2026-11-05. Brief: `tasks/wave-70.md`, W3 (on main at 75ef2dea1). The same race and fix as row 011-296: `tasks/011-296/notes.md`. Shape: repair, test only. Changed: `test/e2e/opencode-fixture.ts` and this file.
 
 Tags: **verified** (run here), **read** (read in source), **inferred**.
 

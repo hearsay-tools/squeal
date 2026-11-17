@@ -2,7 +2,7 @@
 
 Recommend a bounded compatibility diagnostic and recovery decision. The configuration mismatch is reproduced. Changing session pinning is a separate product decision.
 
-Research date: 2026-10-28. Scope: documentation-only triage of [Squeal #120](https://github.com/hearsay-tools/squeal/issues/120). No repair, build, suite, daemon restart, installation change or real session change. Worktree source: `3bbcbcf805659b7365adb52fc42d1c7c8eb828ea`.
+Research date: 2026-10-28. Scope: documentation-only triage of [Squeal #120](https://github.com/hearsay-tools/squeal/issues/120). No repair, build, suite, daemon restart, installation change or real session change. Worktree source: `bdd31542933bb71d30e62dbd354b7556eb2fe338`.
 
 ## Questions and verdict
 
@@ -72,7 +72,7 @@ Manifest-matched CLI SHA-256:
 
 ## Source evidence and coverage consequence
 
-**read in source code**, release 0.1.368 (`d636093a1e6dd764d520e54f4b6f1fca3fec759b`) and 0.1.369 (`facafbacf19318935a4248868da4b92f444f1e93`):
+**read in source code**, release 0.1.368 (`d0a7675dc3ccc9480f181fbb2cfef7156ecc669a`) and 0.1.369 (`a7fc052f1dea95dbf1ef3f948a3684f26685aa71`):
 
 ```sh
 git diff squeal--v0.1.368 squeal--v0.1.369 -- src/core/daemon/policy.ts src/core/types/policy.ts
@@ -82,13 +82,13 @@ git show squeal--v0.1.369:src/core/daemon/policy-runtime.ts
 git show squeal--v0.1.369:src/core/keys/runtime-files.ts
 ```
 
-The [old loader](https://github.com/hearsay-tools/squeal/blob/d636093a1e6dd764d520e54f4b6f1fca3fec759b/src/core/daemon/config-file.ts#L68) copies defaults, reports each unknown key, and merges recognized siblings. This is not an all-config fallback. `observe.runtimeInputs` still defaults to true. The old `setClosure` adds observed paths without the new exclusion filter.
+The [old loader](https://github.com/hearsay-tools/squeal/blob/d0a7675dc3ccc9480f181fbb2cfef7156ecc669a/src/core/daemon/config-file.ts#L68) copies defaults, reports each unknown key, and merges recognized siblings. This is not an all-config fallback. `observe.runtimeInputs` still defaults to true. The old `setClosure` adds observed paths without the new exclusion filter.
 
-The [new rule owner](https://github.com/hearsay-tools/squeal/blob/facafbacf19318935a4248868da4b92f444f1e93/src/core/keys/runtime-files.ts) selects exact paths for project/test readers. `effective()` removes accepted paths from raw observations. Classification protects declared inputs, test files, policy, manifests and directories. Scheduler `runtimeApplication()` also protects imports, environment/startup files, dependencies and observed modules; unverified closures cannot authorize exclusions. Raw observation storage remains separate from effective key inputs.
+The [new rule owner](https://github.com/hearsay-tools/squeal/blob/a7fc052f1dea95dbf1ef3f948a3684f26685aa71/src/core/keys/runtime-files.ts) selects exact paths for project/test readers. `effective()` removes accepted paths from raw observations. Classification protects declared inputs, test files, policy, manifests and directories. Scheduler `runtimeApplication()` also protects imports, environment/startup files, dependencies and observed modules; unverified closures cannot authorize exclusions. Raw observation storage remains separate from effective key inputs.
 
 Thus the rejected Cezarion rule cannot omit `.ai/qa/test-env.json` from the observed inputs of `e2e` readers. **inferred**: its changing instance bytes can still invalidate their results. This is a loss of the intended exclusion policy, not evidence that those tests stop tracking inputs. The exact affected tests, frequency and time cost were not measured. Acceptance by 0.1.370 proves parsing only; no reader was loaded to prove rule application or absence of protection conflicts.
 
-**read in source code**, current checkout and 002 D7–D9: [adapter/store.ts](https://github.com/hearsay-tools/squeal/blob/3bbcbcf805659b7365adb52fc42d1c7c8eb828ea/src/harness/codex/adapter/store.ts#L54) uses the existing session pin before choosing a current runtime. A missing runtime diagnostic says to start a new Codex session. C10 explicitly permits per-key fallback and continued operation; C6 reports config problems even without a store through `config-problems.ts`. 005 D3 and 002 D8 preserve active pins across updates. The generic config line gives `setup --check`, but does not explain that this key needs a newer runtime or what its absence changes.
+**read in source code**, current checkout and 002 D7–D9: [adapter/store.ts](https://github.com/hearsay-tools/squeal/blob/bdd31542933bb71d30e62dbd354b7556eb2fe338/src/harness/codex/adapter/store.ts#L54) uses the existing session pin before choosing a current runtime. A missing runtime diagnostic says to start a new Codex session. C10 explicitly permits per-key fallback and continued operation; C6 reports config problems even without a store through `config-problems.ts`. 005 D3 and 002 D8 preserve active pins across updates. The generic config line gives `setup --check`, but does not explain that this key needs a newer runtime or what its absence changes.
 
 ## Recommendation and limits
 

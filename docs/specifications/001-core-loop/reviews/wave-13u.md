@@ -2,11 +2,11 @@
 
 ## Verification output
 
-Candidate and clean HEAD: `0fb9052f32bcdf18b569a3546d51128930ea5ce9`, package 0.1.102. Reviewed range: `17d37121..0fb9052f32bcdf18b569a3546d51128930ea5ce9`, bounded to the rows in the brief, including 001-235. Unrelated spec 005/006 planning in that range is outside this review. Linux, Node 24.21.0. Checks ran before writing this report, with no tracked edits. The reviewer ran the full suite directly, independently of Squeal and the supplied coordinator gate. No product, test, bundle or board file was changed.
+Candidate and clean HEAD: `6f33739e56e331c6e14e25149ce4f8103c3c51ac`, package 0.1.102. Reviewed range: `079bfd80..6f33739e56e331c6e14e25149ce4f8103c3c51ac`, bounded to the rows in the brief, including 001-235. Unrelated spec 005/006 planning in that range is outside this review. Linux, Node 24.21.0. Checks ran before writing this report, with no tracked edits. The reviewer ran the full suite directly, independently of Squeal and the supplied coordinator gate. No product, test, bundle or board file was changed.
 
 ```text
 $ git rev-parse HEAD
-0fb9052f32bcdf18b569a3546d51128930ea5ce9
+6f33739e56e331c6e14e25149ce4f8103c3c51ac
 $ git status --short
 (no output)
 
@@ -64,7 +64,7 @@ Additional throwaway probes ran through the candidate's real store, delivery and
 
 ## Verdict
 
-**FAIL** `0fb9052f32bcdf18b569a3546d51128930ea5ce9`: **2 proven blockers, 2 proven should-fix findings, 0 nits**. B1 breaks the edit attribution required by 001-223/224, including a settled line while an edit's file is pending. B2 breaks 001-224's once-per-consumer-session rule on resume. Route these blockers to the human through the coordinator before release.
+**FAIL** `6f33739e56e331c6e14e25149ce4f8103c3c51ac`: **2 proven blockers, 2 proven should-fix findings, 0 nits**. B1 breaks the edit attribution required by 001-223/224, including a settled line while an edit's file is pending. B2 breaks 001-224's once-per-consumer-session rule on resume. Route these blockers to the human through the coordinator before release.
 
 ## Blockers
 

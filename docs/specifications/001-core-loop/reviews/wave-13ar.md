@@ -1,7 +1,7 @@
 # Wave 13ar: 001-307 ignored reads during a warm-up
 
-Candidate: `163d3e7bcb4a8f6af9164426e50ca02b41223b36`.
-Range: `2b0c5532..163d3e7b`. Board row: 001-311.
+Candidate: `e8daf3e5aa6d4d4330a971e5550d0b76b9e17593`.
+Range: `f68ff976..e8daf3e5`. Board row: 001-311.
 Brief: `tasks/wave-13.md`, section 001-307. Contracts: 001 D4, D5, D7, D11; 005 D3 and the accepted conditions in 005 `status.md` (2026-10-10).
 
 ## Verdict
@@ -10,11 +10,11 @@ Brief: `tasks/wave-13.md`, section 001-307. Contracts: 001 D4, D5, D7, D11; 005 
 
 ## Verification output
 
-All checks below ran at exact candidate `163d3e7bcb4a8f6af9164426e50ca02b41223b36` with a clean tracked tree. `git status --porcelain` was empty before the gates, after the build, after the full suite and after the isolated retry. The review file was written afterwards. The independent Vitest run is the requested gate, not Squeal's checkpoint.
+All checks below ran at exact candidate `e8daf3e5aa6d4d4330a971e5550d0b76b9e17593` with a clean tracked tree. `git status --porcelain` was empty before the gates, after the build, after the full suite and after the isolated retry. The review file was written afterwards. The independent Vitest run is the requested gate, not Squeal's checkpoint.
 
 ```text
 $ git rev-parse HEAD
-163d3e7bcb4a8f6af9164426e50ca02b41223b36
+e8daf3e5aa6d4d4330a971e5550d0b76b9e17593
 $ git status --porcelain
 (no output)
 
@@ -124,7 +124,7 @@ Fix: the coordinator adds a dated 001-307 amendment linking D4, the unkeyed meta
 
 ### N1. Proven, resolved for verification: initial HEAD did not match the candidate
 
-The task worktree started at `88138fd41d95730b71dcfa0665ae6ce3bfa9206a`, not `163d3e7b`. `git diff --stat 163d3e7b..88138fd4` showed only `docs/board.md` (3 insertions, 1 deletion). Before the recorded gates, the reviewer switched to a new review branch at the exact candidate and repeated `npm ci`. No evidence from the initial HEAD is used as candidate verification. No product fix is needed.
+The task worktree started at `5bdf7f1895e5aa2068336933f4c6a3c1df0ba079`, not `e8daf3e5`. `git diff --stat e8daf3e5..5bdf7f18` showed only `docs/board.md` (3 insertions, 1 deletion). Before the recorded gates, the reviewer switched to a new review branch at the exact candidate and repeated `npm ci`. No evidence from the initial HEAD is used as candidate verification. No product fix is needed.
 
 ## What fits
 

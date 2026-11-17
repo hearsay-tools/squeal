@@ -1,6 +1,6 @@
 # Wave 51
 
-From main after 0.1.336 (`7e6f62f08`; 0.1.339 is in review on other files), 2026-10-26. The human's card of 2026-10-26: gh-98 "Reword" (row 011-244), gh-101 "Report it" (row 011-245). Row 011-246 is a test-only fix of a flaky case seen in cand/0.1.336's CI. Three rows on disjoint seams. Host load is about 11 to 18 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after 0.1.336 (`e867cd630`; 0.1.339 is in review on other files), 2026-10-26. The human's card of 2026-10-26: gh-98 "Reword" (row 011-244), gh-101 "Report it" (row 011-245). Row 011-246 is a test-only fix of a flaky case seen in cand/0.1.336's CI. Three rows on disjoint seams. Host load is about 11 to 18 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-244 (gh-98), a flaky note says "under the same tracked inputs"
 

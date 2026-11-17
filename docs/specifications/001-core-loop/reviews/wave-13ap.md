@@ -2,13 +2,13 @@
 
 ## Verification
 
-Candidate `ba491ae6b1936d80b71f2cee19534b72923f4c45` matches the assigned HEAD. The candidate tree was clean for all checks and probes. Scope: row 001-303, the 001-302 repair `f7ca11e5`, its spec 004 D9 amendment, and the integrated plugin build `84a4d992` (0.1.130). Read `wave-13am.md` and `wave-13an.md` first. This is a bounded third round on 13an B1 and S2; the watcher changes belong to 001-301 and were not re-prosecuted.
+Candidate `2458687d200a5fb3c0d1ffa4d02754b23d6b24d1` matches the assigned HEAD. The candidate tree was clean for all checks and probes. Scope: row 001-303, the 001-302 repair `1b9ffec2`, its spec 004 D9 amendment, and the integrated plugin build `cb899266` (0.1.130). Read `wave-13am.md` and `wave-13an.md` first. This is a bounded third round on 13an B1 and S2; the watcher changes belong to 001-301 and were not re-prosecuted.
 
 Independent commands and output, 2026-10-12. Lint, typecheck, build, the full Vitest run and the probes used `env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null`. The full suite uses four workers, following the prior review's successful concurrency limit, and is the reviewer's own run, not a Squeal checkpoint.
 
 ```text
 $ git rev-parse HEAD
-ba491ae6b1936d80b71f2cee19534b72923f4c45
+2458687d200a5fb3c0d1ffa4d02754b23d6b24d1
 $ git status --short
 (no output)
 
@@ -44,7 +44,7 @@ Test Files  426 passed | 1 skipped (427)
   Duration  544.35s (tests 97%, import 2%, transform 1%)
 exit 0
 $ git rev-parse HEAD
-ba491ae6b1936d80b71f2cee19534b72923f4c45
+2458687d200a5fb3c0d1ffa4d02754b23d6b24d1
 $ git status --short
 (no output)
 ```
@@ -75,7 +75,7 @@ The failed assertions expected `waiting.decision === "block"` but received `unde
 
 ## Verdict
 
-**FAIL ba491ae6.** One proven blocker, one retained plausible non-blocking note, no nits. The original 13an B1 schedules at the recorded revision and S2 schedules for an already recorded file are repaired separately. Their combination still loses an owed failure: an unlisted file can first fail at the owed revision, then fail at a newer key, without ever joining the waiting entry's tracked file set.
+**FAIL 2458687d.** One proven blocker, one retained plausible non-blocking note, no nits. The original 13an B1 schedules at the recorded revision and S2 schedules for an already recorded file are repaired separately. Their combination still loses an owed failure: an unlisted file can first fail at the owed revision, then fail at a newer key, without ever joining the waiting entry's tracked file set.
 
 ## Blockers
 
@@ -155,4 +155,4 @@ This third-round blocker goes to the human under the brief; the coordinator deci
 
 Keep the sequence: short Stop decides/delivers, then silent `endTurn` atomically records owed files and the unfinished-listing obligation; nudge the daemon; accept the fresh handoff; preserve the covered listing's membership across completion and newer keys; poll; decide from a live read under `BEGIN IMMEDIATE`; claim the idle turn once or cancel if another prompt/wake owns it; deliver only at the accepted revision. Keep one wait deadline and the existing hook budgets.
 
-The fix row should start with the two combined schedules above in both harnesses, prove them red on `ba491ae6`, and retain the passing/observed-queued controls plus the candidate's unrelated-known-failure, later-revision and cancellation tests. The original separate B1/S2 schedules need no new investigation. The coordinator owns any spec amendment, bundle/version/key-format change, board/status bookkeeping and landing decision.
+The fix row should start with the two combined schedules above in both harnesses, prove them red on `2458687d`, and retain the passing/observed-queued controls plus the candidate's unrelated-known-failure, later-revision and cancellation tests. The original separate B1/S2 schedules need no new investigation. The coordinator owns any spec amendment, bundle/version/key-format change, board/status bookkeeping and landing decision.

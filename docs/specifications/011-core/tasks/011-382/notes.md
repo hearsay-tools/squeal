@@ -1,6 +1,6 @@
 # 011-382 notes: the lint pass's edit quiet across a calendar step
 
-Worker 54a85ba0, wave 117 W1, 2026-11-16. Base main `2ca6a943c` (0.1.526). Shape: slice. No version raise.
+Worker 54a85ba0, wave 117 W1, 2026-11-16. Base main `161b1ed9f` (0.1.526). Shape: slice. No version raise.
 
 ## Design
 

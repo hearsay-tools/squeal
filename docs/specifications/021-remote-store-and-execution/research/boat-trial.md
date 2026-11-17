@@ -1,6 +1,6 @@
 # Research: the remote lane on a real second machine (boat.dev)
 
-Row 021-15, brief `../tasks/021-15-boat.md`. Researcher d649a293, 2026-11-12 (all times UTC). Squeal at main `472a13730` (0.1.448 plus docs commits; 0.1.448 was not tagged), the clone's committed build (a rebuild changed no committed file). boat.dev docs fetched 2026-11-12. One sandbox, `bx_djmae9xd`. Throwaway probes and raw numbers: `probes/boat-trial/`.
+Row 021-15, brief `../tasks/021-15-boat.md`. Researcher d649a293, 2026-11-12 (all times UTC). Squeal at main `2e49b0cd3` (0.1.448 plus docs commits; 0.1.448 was not tagged), the clone's committed build (a rebuild changed no committed file). boat.dev docs fetched 2026-11-12. One sandbox, `bx_djmae9xd`. Throwaway probes and raw numbers: `probes/boat-trial/`.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred. "Load" is this host's one-minute load average (24 CPUs).
 
@@ -52,7 +52,7 @@ Remote failures: 22 files need Git (`git rev-parse HEAD`, no `squeal--v*` tag, `
 
 ## Findings
 
-**D1. Coverage on refuses every remote run [exp][src].** With `coverage.enabled: true` (this repository, and the default: `src/core/types/policy.ts:439`, since a6741966c), every remote attempt was "refused: config fields coverage differ; running here". The lane runs the remote host with coverage off (D12; `021-13-14-notes.md` choice 9), and `environmentDifferences` (`src/core/runner-host/remote/environment.ts`) compares the remote Vitest record with the local one, which carries coverage. The trial set `coverage.enabled: false` in the clone to go on. D12 and D11.2 contradict each other as built.
+**D1. Coverage on refuses every remote run [exp][src].** With `coverage.enabled: true` (this repository, and the default: `src/core/types/policy.ts:439`, since 410393d85), every remote attempt was "refused: config fields coverage differ; running here". The lane runs the remote host with coverage off (D12; `021-13-14-notes.md` choice 9), and `environmentDifferences` (`src/core/runner-host/remote/environment.ts`) compares the remote Vitest record with the local one, which carries coverage. The trial set `coverage.enabled: false` in the clone to go on. D12 and D11.2 contradict each other as built.
 
 **D2. Tests that use Git store false failures [exp][src].** The remote tree has no `.git` (D10 sends only `git ls-files -co --exclude-standard`). Ten Git-dependent test files ran remote, were "proven over 411 paths", and were stored as current failures (`Command failed: git rev-parse HEAD`, exit 1); four of them run here passed 66 of 66. The proof covers the closure's blob ids, not the Git state a test reads. On this repository 22 of 1,713 test files are of this kind.
 
@@ -95,5 +95,5 @@ Stopped (`archived`) at 13:38:51; a stopped sandbox costs nothing and boat.dev k
 
 - boat.dev docs, fetched 2026-11-12: https://docs.boat.dev/llms.txt, /api/v1.md, /ssh-access.md, /snapshots/whats-saved.md, /faq.md, /api/reference/sandboxes/create-sandbox.md, /api/reference/agent/configure-sandbox-ssh-key.md, /api/reference/sandboxes/get-sandbox-usage.md, /api/reference/sandboxes/resume-sandbox.md.
 - boat.dev API answers (`GET /limits`, `GET /sandboxes/{id}`, `/usage`), 2026-11-12.
-- Squeal source at `472a13730`: `src/core/runner-host/remote/{settings,environment,lane,tree}.ts`, `src/core/keys/{environment,pnpm-install}.ts`, `src/cli/daemon.ts`.
+- Squeal source at `2e49b0cd3`: `src/core/runner-host/remote/{settings,environment,lane,tree}.ts`, `src/core/keys/{environment,pnpm-install}.ts`, `src/cli/daemon.ts`.
 - Probes and raw numbers: `probes/boat-trial/` (`README.md` lists each file).

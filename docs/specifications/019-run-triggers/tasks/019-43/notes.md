@@ -1,6 +1,6 @@
 # 019-43 notes: a lint group at commit tells the agent which finding (P12)
 
-Worker 488d8b15, 2026-11-04, branch `cez/488d8b15`. Lessons Round 3 P12, proposal (a), by the coordinator's reply of 2026-11-04 (request 03866a5e). Base: `aa9ad97b4`.
+Worker 488d8b15, 2026-11-04, branch `cez/488d8b15`. Lessons Round 3 P12, proposal (a), by the coordinator's reply of 2026-11-04 (request 03866a5e). Base: `1d2e7b32a`.
 
 ## The cause, as found
 

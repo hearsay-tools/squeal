@@ -2,7 +2,7 @@
 
 Throwaway. Nothing here is product code or a test. Findings: `../../typeof-import.md`.
 
-Scratch, all under `/tmp/tir-015-25` (not in git): read-only clones of cezar at `cf9df51a9` (its `origin/main`, 2026-10-24) and `03c905a00`, of squeal at `55afb856a` and `d5018817a`; tree-sitter-typescript cloned from GitHub (`v0.23.2` = `f975a62`, master = `75b3874`, pull request 375 = `2890bf7`); `eslint@10.13.0`, `@typescript-eslint/parser@8.72.0` in `js/`; `tree-sitter-cli@0.27.1` in `cli/`, run with `HOME` and `XDG_CACHE_HOME` under `/tmp/tir-015-25/home`. Both grammars built there with `tree-sitter build --wasm -o <out> .` from `tsx/` (`g-0232.wasm`, `g-pr375.wasm`).
+Scratch, all under `/tmp/tir-015-25` (not in git): read-only clones of cezar at `cf9df51a9` (its `origin/main`, 2026-10-24) and `03c905a00`, of squeal at `852f2edc8` and `5fc50b2b5`; tree-sitter-typescript cloned from GitHub (`v0.23.2` = `f975a62`, master = `75b3874`, pull request 375 = `2890bf7`); `eslint@10.13.0`, `@typescript-eslint/parser@8.72.0` in `js/`; `tree-sitter-cli@0.27.1` in `cli/`, run with `HOME` and `XDG_CACHE_HOME` under `/tmp/tir-015-25/home`. Both grammars built there with `tree-sitter build --wasm -o <out> .` from `tsx/` (`g-0232.wasm`, `g-pr375.wasm`).
 
 | File | What it does | Output |
 | --- | --- | --- |

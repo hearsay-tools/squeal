@@ -1,6 +1,6 @@
 # 011-112: cut files do not share the next tier of the file a yield served
 
-Wave 15 W2. Baseline 804fc3584 (main with 0.1.265). Closes the hold that 011-107 left (`tasks/011-107/notes.md`, "Residual") and review `reviews/0.1.265.md` S1.
+Wave 15 W2. Baseline ca8daf590 (main with 0.1.265). Closes the hold that 011-107 left (`tasks/011-107/notes.md`, "Residual") and review `reviews/0.1.265.md` S1.
 
 ## The rule
 

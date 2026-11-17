@@ -2,7 +2,7 @@
 
 Use /reviewer. Shape: review.
 
-**Outcome:** a verdict on `cand/0.1.199` at the SHA the spawn names, range `b0830050..<sha>`, written to `reviews/wave-15b.md`.
+**Outcome:** a verdict on `cand/0.1.199` at the SHA the spawn names, range `11928327..<sha>`, written to `reviews/wave-15b.md`.
 
 **Read:** board rows 001-424 and 001-426; `tasks/001-424/brief.md` and `notes.md`; spec 001 D3 (environment hash) and D4 (`affected`, recreate).
 

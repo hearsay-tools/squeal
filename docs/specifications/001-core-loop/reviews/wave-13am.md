@@ -2,13 +2,13 @@
 
 ## Verification
 
-Reviewed `bea3ad42..95ad49f5`, board rows 001-285 and 001-283, under the 001-289 brief in `tasks/wave-13.md`. Candidate HEAD was `95ad49f504101d395d096dfdf33c9c2cbaa0e18f`. The tree was clean before and after every candidate check. No product, board or spec changes were made. The report is the only committed change.
+Reviewed `60cfc737..dbebf850`, board rows 001-285 and 001-283, under the 001-289 brief in `tasks/wave-13.md`. Candidate HEAD was `dbebf850098509558b07e83c5f9b72180d8cb326`. The tree was clean before and after every candidate check. No product, board or spec changes were made. The report is the only committed change.
 
 Independent commands and output, 2026-10-12. Lint, typecheck, build and every Vitest invocation used `env -u CODEX_SESSION_ID GIT_CONFIG_GLOBAL=/dev/null`. This is the reviewer's own full run, not a Squeal checkpoint.
 
 ```text
 $ git rev-parse HEAD
-95ad49f504101d395d096dfdf33c9c2cbaa0e18f
+dbebf850098509558b07e83c5f9b72180d8cb326
 $ git status --short
 (no output)
 
@@ -63,7 +63,7 @@ Discriminating probes used the freshly built source modules, two real SQLite con
 
 ## Verdict
 
-**FAIL 95ad49f5.** Two proven blockers, one plausible should-fix note, no nits. The blockers are the waiting Stop's loss of a slow failure at handoff and its acceptance of an obsolete completion snapshot. Neither depends on load, watcher availability or the full-suite failures.
+**FAIL dbebf850.** Two proven blockers, one plausible should-fix note, no nits. The blockers are the waiting Stop's loss of a slow failure at handoff and its acceptance of an obsolete completion snapshot. Neither depends on load, watcher availability or the full-suite failures.
 
 ## Blockers
 

@@ -1,6 +1,6 @@
-FAIL b646f46180bdc4f3ba1a4a54b6afdf2f36af34d4 — 1 proven blocker: B4, introduced by the dot-name exclusion.
+FAIL e9e9f8bfe746c585cc936d6ebcabfa4bc3924edd — 1 proven blocker: B4, introduced by the dot-name exclusion.
 
-Round 2, bounded by `review-0.1.533.md` findings B1/B2/B3/S1/S2/N4 and regressions in their repair. Reviewed candidate `cand/0.1.533`, pinned to the SHA above, against main `23f67d006`. HEAD matched that SHA. The tree was clean before checks and after the build. No product code was changed.
+Round 2, bounded by `review-0.1.533.md` findings B1/B2/B3/S1/S2/N4 and regressions in their repair. Reviewed candidate `cand/0.1.533`, pinned to the SHA above, against main `61904d31b`. HEAD matched that SHA. The tree was clean before checks and after the build. No product code was changed.
 
 ## Verification
 
@@ -46,7 +46,7 @@ test/scheduler/editor-scratch.test.ts
 
 ### B4 — proven: the blanket dot-name exclusion accepts dot-component aliases of private home paths
 
-Location: `scripts/check-private.ts:35`, introduced by repair commit `dbd7208d4`.
+Location: `scripts/check-private.ts:35`, introduced by repair commit `f2db22caa`.
 
 The new username pattern requires its first character to be a letter, number, combining mark, underscore or hyphen. It skips every path whose first component after a home root starts with a dot. A dot can be a directory-navigation component. It is not proof that the path names a file.
 

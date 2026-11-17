@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `86aae79c61e7b8e5efb49f62e7976fecc855a6d0`. `git fetch origin cand/0.1.421`, checkout of that SHA, and `git rev-parse HEAD` confirm the requested candidate. `git status --short` was empty before and after the checks and probes, before writing this file. No product code changed. The probe lived outside the project; its ignored fixture directories removed themselves. The probe script was deleted before this commit. Dependencies were already installed; installation was not repeated. No local build or full suite, as requested.
+Candidate: `30328bc7a517d059f28edf6d9cbaebfcfea12335`. `git fetch origin cand/0.1.421`, checkout of that SHA, and `git rev-parse HEAD` confirm the requested candidate. `git status --short` was empty before and after the checks and probes, before writing this file. No product code changed. The probe lived outside the project; its ignored fixture directories removed themselves. The probe script was deleted before this commit. Dependencies were already installed; installation was not repeated. No local build or full suite, as requested.
 
 This is bounded by `reviews/wave-5-0.1.421.md`. Inspected the repair, amended D8/D9, `status.md` certification decision, `tasks/wave-5.md` section “018-17 R1”, and the worker's repair notes. The rebase's unrelated main changes are outside this review.
 

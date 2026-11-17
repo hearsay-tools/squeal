@@ -1,6 +1,6 @@
 # 011-72: validation holds while the index has unmerged paths (notes)
 
-Board row 011-72, R1 of `tasks/011-61/design.md` (section 4), spec 011 C2 and C9 as amended 2026-10-21. Brief: `tasks/wave-15.md`, W3. Baseline `804fc358` (0.1.265).
+Board row 011-72, R1 of `tasks/011-61/design.md` (section 4), spec 011 C2 and C9 as amended 2026-10-21. Brief: `tasks/wave-15.md`, W3. Baseline `ca8daf59` (0.1.265).
 
 ## Seam map
 

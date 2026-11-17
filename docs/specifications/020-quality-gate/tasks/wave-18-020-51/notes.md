@@ -1,6 +1,6 @@
 # Row 020-51: one keying path for the gate and `ci export`
 
-Worker 5192531d, wave 18, shape slice (a refactor). Base: main at `c5cefb465` (0.1.466, after 020-52).
+Worker 5192531d, wave 18, shape slice (a refactor). Base: main at `d5f008d44` (0.1.466, after 020-52).
 
 ## 1. The keying steps before this row, side by side
 
@@ -22,7 +22,7 @@ Line numbers are at the base commit. "Gate" is the stores lookup of `squeal code
 | 11 | Read | `keys.index.key(ref)`; `loads` is the runner's closure paths, sorted (`stored.ts:309`) | `keys.index.key(ref)`, `keys.index.closure(ref)`, `keyPartsOf` (`export.ts:166`, `:179`) |
 | 12 | Close | The keyer closes its adapters, the scratch store and the temp dir, at `keep` (`stored.ts:242`) | `ciExport` closes the runner; the CLI closes the store and the temp dir |
 
-Steps 5, 6, 8 and 9 were the same code twice. The two fixes the brief names show the cost: `6d436384a` (020-10b) gave the gate's second adapters the base's `coverage.children`, the key's marker (D12.5), and `6d3ad0269` (020-17c) fixed `gatePlace` for a gate Vitest that already observes, so its adapter version ends with `+observe.<recorder>` as a daemon's does. The second fix is also why the gate's own Vitest can now key (section 3, difference 6).
+Steps 5, 6, 8 and 9 were the same code twice. The two fixes the brief names show the cost: `245b79845` (020-10b) gave the gate's second adapters the base's `coverage.children`, the key's marker (D12.5), and `e2c88b234` (020-17c) fixed `gatePlace` for a gate Vitest that already observes, so its adapter version ends with `+observe.<recorder>` as a daemon's does. The second fix is also why the gate's own Vitest can now key (section 3, difference 6).
 
 ## 2. The module's shape
 
@@ -59,8 +59,8 @@ Callers now:
 Why the gate's own adapters key as a daemon's (difference 6). The keys open only when the stores are read (`storedFiles` is not `null`), at the first lookup, after `openRunners` opened every runner. Then:
 
 - Coverage: the gate's runners always collect (`enabled: () => true`); `daemonAdapters` had `coverageOn(policy)`, which is true, since `storedFiles` is `null` otherwise. Both use `coverageProvider()`; the collector stops before any runner opens without one.
-- `coverage.children`: both the base's (`options.children`), the key's marker (D12.5, fix `6d436384a`).
-- Observing: the gate's Vitest observes when `keeping && policy.observe.runtimeInputs`; `keeping` is `options.ran !== undefined`, which `collectWithStores` sets exactly when the stores are read. `daemonVitestOptions` has `policy.observe.runtimeInputs`. Same adapter version, `+observe.<recorder>` (fix `6d3ad0269`).
+- `coverage.children`: both the base's (`options.children`), the key's marker (D12.5, fix `245b79845`).
+- Observing: the gate's Vitest observes when `keeping && policy.observe.runtimeInputs`; `keeping` is `options.ran !== undefined`, which `collectWithStores` sets exactly when the stores are read. `daemonVitestOptions` has `policy.observe.runtimeInputs`. Same adapter version, `+observe.<recorder>` (fix `e2c88b234`).
 - The rest: `cache: false` in both; the worktree's `vitest.exclude`, `excludeProjects`, `nodeTest` entries, `inputs` and `runner.tierSize` in both (`loadPolicy(root)` in the collector, `readPolicy(root)`, which is `loadPolicy(root).policy`, in `storedFiles`). The gate-only options (`note`, `fileStarted`, `teardown`, node:test `closures` and `slots`) are callbacks that no environment or closure holds. `timed`'s proxy passes every call but `run` through.
 
 The CLI tests that read and keep at a daemon's keys are the proof that the keys did not move: `code-gate-stored.test.ts`, `code-gate-keep.test.ts`, `code-gate-keep-node-test.test.ts`, `code-gate-keep-grown*.test.ts`, `code-gate-keep-busy.test.ts`, `code-gate-keep-stop.test.ts`, and the new test, which reads the key of the kept file through `daemonAdapters`.
@@ -86,8 +86,8 @@ All additive.
 
 | Done-when | Evidence |
 | --- | --- |
-| Every existing gate-stored, export and `ci` test passes with no assertion changed | `git diff c5cefb465 -- test/` adds only `test/cli/code-gate-stored-adapters.test.ts`. Squeal at revision 11 (commit `67b24db18`): 346 affected test files selected, 342 pass, 4 known failures, which are the expected bundle drift (section 7). The selection holds every `test/ci/*`, `test/cli/ci-*`, `test/cli/code-gate*` and `test/code/gate/*` file that reads a changed file, among them `stored.test.ts`, `collect-stored.test.ts`, `code-gate-stored.test.ts`, `code-gate-keep*.test.ts`, `export*.test.ts`, `ci-export*.test.ts`. |
-| Key-format and validity cases unchanged | No file under `test/keys/` or `src/core/keys/` changed; `KEY_FORMAT_VERSION` unchanged (`git diff c5cefb465 -- src/core/keys test/keys` is empty). None of these tests reads a changed file, so Squeal did not select them; read on request at revision 11: `test/keys/key-format.test.ts`, `test/keys/check-key.test.ts`, `test/keys/validity/{compare,approved,adapters}.test.ts` pass (Squeal ran the two it had no result for). |
+| Every existing gate-stored, export and `ci` test passes with no assertion changed | `git diff d5f008d44 -- test/` adds only `test/cli/code-gate-stored-adapters.test.ts`. Squeal at revision 11 (commit `67b24db18`): 346 affected test files selected, 342 pass, 4 known failures, which are the expected bundle drift (section 7). The selection holds every `test/ci/*`, `test/cli/ci-*`, `test/cli/code-gate*` and `test/code/gate/*` file that reads a changed file, among them `stored.test.ts`, `collect-stored.test.ts`, `code-gate-stored.test.ts`, `code-gate-keep*.test.ts`, `export*.test.ts`, `ci-export*.test.ts`. |
+| Key-format and validity cases unchanged | No file under `test/keys/` or `src/core/keys/` changed; `KEY_FORMAT_VERSION` unchanged (`git diff d5f008d44 -- src/core/keys test/keys` is empty). None of these tests reads a changed file, so Squeal did not select them; read on request at revision 11: `test/keys/key-format.test.ts`, `test/keys/check-key.test.ts`, `test/keys/validity/{compare,approved,adapters}.test.ts` pass (Squeal ran the two it had no result for). |
 | The same fixture gives byte-identical export output before and after | One-off comparison, section 7: the base's `export.ts` and `stored.ts` (copied beside the new ones for the run, then deleted) and the new code, on one recorded fixture in one process. Export bundle `encodeBundle` sha256 `e3c5728b2afe0d60eacd1b81924e515a6ef4adea64bc46a0ff3df9f4ce49048b`, 2563 bytes, both; counts and uncertified lists equal (5 files, 14 results, 1 failed). The gate's keys of 7 refs over a daemon's store equal, the unlisted one `null` in both. The script is `compare-before-after.test.ts.txt` in this folder. |
 | A test shows the gate run opens one Vitest adapter | `test/cli/code-gate-stored-adapters.test.ts`: a run that keys and keeps a file opens one Vitest; the kept file is at the key `daemonAdapters` gives; the next run reads it from the stores and opens one Vitest. Red with the old wiring (the keys not given the run's adapters): `AssertionError: expected 2 to be 1`. |
 

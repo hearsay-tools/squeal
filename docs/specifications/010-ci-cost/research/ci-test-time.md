@@ -64,7 +64,7 @@ Wall against summed file time: 1,180 s wall and 3,350 s file time on slow runner
 
 B, latest attempt per run: 325 failed runs red on both Nodes, 65 on Node 22 only, 47 on Node 24 only. Per file, across the 769 failed jobs (verified from logs):
 
-- Real Node-22-only defect: `e2e/shipped-plugin.test.ts`, 5 runs on 2026-10-13 from 3dc61b4d, Node 24 green each time. "npm error Cannot read properties of null (reading 'edgesOut')": Node 22.23.3's bundled npm 10.9.9 crashes on `npm install vitest@5.0.3`; worked around in 65acfe0b. Node 24 alone would have missed it, and a user on Node 22 would hit the same npm.
+- Real Node-22-only defect: `e2e/shipped-plugin.test.ts`, 5 runs on 2026-10-13 from cd070c72, Node 24 green each time. "npm error Cannot read properties of null (reading 'edgesOut')": Node 22.23.3's bundled npm 10.9.9 crashes on `npm install vitest@5.0.3`; worked around in c19ab024. Node 24 alone would have missed it, and a user on Node 22 would hit the same npm.
 - Node-22-only flake class: `ENOTEMPTY: directory not empty, rmdir '<tmp>/.git'` in a test's `rmSync(..., { recursive: true, maxRetries: 5 })` cleanup. `policy/repository-inputs` 17 jobs, `cli/setup/candidates` 3, `harness/opencode-dispose` 1; never on Node 24. The cause (a git child still writing during cleanup, and Node 22's removal implementation retrying differently from 24's) is inferred, not read.
 - Node-24-only, small n: `daemon/slow-lane` 3 (empty slow key), five files once each.
 - Both versions, flakes under load: `watcher/reconcile-pass` (11 one-sided, 89 both-sided; "expected 941 to be less than 500"), `watcher/parcel-links` 10 and 34, `integration/node-test-packages` 8 and 4, `daemon/escaped` 6 and 2, `runners/node-test/graph-cost`, `cli/warmup`, `e2e/lifecycle`, `e2e/stop-gap`. These are the bulk of the 112 one-sided runs: the second Node job is a second draw on a flaky test, not a second signal.
@@ -95,7 +95,7 @@ The Free plan's limit is 20 concurrent standard jobs (docs, limits reference); s
 
 ### 5. Reruns
 
-7 of 1500 runs (0.47%) have `run_attempt` 2, each re-running only the failed Node job (B). Causes on attempt 1: `e2e/stop-gap` twice (cand/006-62, cand/0.1.192), `daemon/escaped` (cand/0.1.185), `e2e/pi` (cez/96a798b2), `e2e/shipped-plugin` (main c340e13b; attempt 2 failed again, the npm defect), `daemon/lifecycle` (main), `harness/hung-daemon` (main). Five of seven were Node 22.
+7 of 1500 runs (0.47%) have `run_attempt` 2, each re-running only the failed Node job (B). Causes on attempt 1: `e2e/stop-gap` twice (cand/006-62, cand/0.1.192), `daemon/escaped` (cand/0.1.185), `e2e/pi` (cez/96a798b2), `e2e/shipped-plugin` (main a5f27ad4; attempt 2 failed again, the npm defect), `daemon/lifecycle` (main), `harness/hung-daemon` (main). Five of seven were Node 22.
 
 ## Recommendation
 
@@ -119,4 +119,4 @@ The Free plan's limit is 20 concurrent standard jobs (docs, limits reference); s
 - GitHub Actions limits: https://docs.github.com/en/actions/reference/limits (Free: 20 concurrent jobs).
 - Vitest, Improving Performance: https://vitest.dev/guide/improving-performance (isolation, pools, sharding with blob reports).
 - Vitest 5.0.3 source, `dist/chunks/index.DpLw24bj.js`: `getDefaultThreadsCount`, `BaseSequencer.shard`, `BaseSequencer.sort`.
-- Repository at 811efaed: `.github/workflows/ci.yml`, `vitest.config.ts`, the test and source files named above; commit 65acfe0b.
+- Repository at 811efaed: `.github/workflows/ci.yml`, `vitest.config.ts`, the test and source files named above; commit c19ab024.

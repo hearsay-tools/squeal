@@ -1,6 +1,6 @@
 # 011-75: `failures` by test file, directory and check, with a limit, worker notes (2026-10-21)
 
-Brief W1 of `../wave-9.md` (on main at `b3ab9e004`, not in the base). Base `cand/0.1.239` at `5216be24c`. Design `../011-64/design.md` sections 1 and 5 (R1); spec 011 C6 as amended 2026-10-21 for 011-64. Commit `7b9a1e4a1` (code and tests); this file and `timings.ts` in the next commit.
+Brief W1 of `../wave-9.md` (on main at `63416b2c4`, not in the base). Base `cand/0.1.239` at `b146872fc`. Design `../011-64/design.md` sections 1 and 5 (R1); spec 011 C6 as amended 2026-10-21 for 011-64. Commit `7b9a1e4a1` (code and tests); this file and `timings.ts` in the next commit.
 
 ## Seam map
 

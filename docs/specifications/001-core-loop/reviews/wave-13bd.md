@@ -2,13 +2,13 @@
 
 ## Verification
 
-Bounded second review of wave 13ba B1 for board row 001-333. Range `cb427734..4db621b7`, commits `768b8a38` and `4db621b7`, candidate `4db621b75bb8f1d2de6d71734dfed487ce44e4ab`. Read wave 13ba first and wave 13aw S1 for the original goal. Prior settled findings are not re-prosecuted. Checks and source probes ran against the clean pinned candidate before this findings file was written. No product, board or status edits, eval runs or third-party agent runs.
+Bounded second review of wave 13ba B1 for board row 001-333. Range `a33e298f..b1da27b8`, commits `af49fd90` and `b1da27b8`, candidate `b1da27b8ccc8068560cfd50508684684e889f0e6`. Read wave 13ba first and wave 13aw S1 for the original goal. Prior settled findings are not re-prosecuted. Checks and source probes ran against the clean pinned candidate before this findings file was written. No product, board or status edits, eval runs or third-party agent runs.
 
 Independent verification, 2026-10-13:
 
 ```text
 $ git rev-parse HEAD
-4db621b75bb8f1d2de6d71734dfed487ce44e4ab
+b1da27b8ccc8068560cfd50508684684e889f0e6
 $ git status --short
 (no output)
 
@@ -59,14 +59,14 @@ exit 0
 $ git status --short
 (no output)
 $ git rev-parse HEAD
-4db621b75bb8f1d2de6d71734dfed487ce44e4ab
+b1da27b8ccc8068560cfd50508684684e889f0e6
 ```
 
 npm warned about unknown `store-dir` environment config and install scripts not covered by `allowScripts` for `@parcel/watcher@2.6.0` and `esbuild@0.28.2`. Installation and build succeeded without changing install policy. This is the reviewer's independent full run, not a Squeal checkpoint. The full gate passed once at the pinned clean candidate: 460 files passed, one skipped, 3,886 tests passed and ten skipped, exit 0 in 606.45 s. There were no load timeouts and no retry. The one-minute host load was 12.65 at launch, reached 76.51 during the run, and was 23.56 near completion. The fixture gitdir repair lines, stale-run cleanup line and experimental type-testing notices above did not fail the run.
 
 ## Verdict
 
-**PASS 4db621b7.** Zero blockers, zero should-fix findings, one proven administrative nit. Wave 13ba B1 is fixed. No product repair is required by this review.
+**PASS b1da27b8.** Zero blockers, zero should-fix findings, one proven administrative nit. Wave 13ba B1 is fixed. No product repair is required by this review.
 
 ## Blockers
 
@@ -80,7 +80,7 @@ None.
 
 ### N1. The board still describes the repair as running
 
-**Proven, non-blocking administrative drift.** `docs/board.md:419`, `:425`. Row 001-322 still says review 001-327 is running, although row 001-327 at line 424 records its failure. Row 001-328 is still running although candidate commits `768b8a38` and `4db621b7` have landed the repair as 0.1.150. The task brief identifies this candidate as the landed repair. The process gives board ownership to the coordinator. This is status drift, not a product defect in the candidate range.
+**Proven, non-blocking administrative drift.** `docs/board.md:419`, `:425`. Row 001-322 still says review 001-327 is running, although row 001-327 at line 424 records its failure. Row 001-328 is still running although candidate commits `af49fd90` and `b1da27b8` have landed the repair as 0.1.150. The task brief identifies this candidate as the landed repair. The process gives board ownership to the coordinator. This is status drift, not a product defect in the candidate range.
 
 **Coordinator fix:** when folding this review, record the landed repair and this verdict on the affected rows. Do not dispatch a product worker for it. The reviewer left the board unchanged.
 
@@ -122,7 +122,7 @@ The timestamp check at `stop-wait.ts:69-72` remains unchanged. The probe seeded 
 
 ### Tests and the handoff
 
-The new deterministic tests pin both registrations to `AT`, assert that the timestamp was reused, and drive both harness adapters. In a disposable archive of `4db621b7`, removing only the `forgetStopWait(store, consumer)` call and running:
+The new deterministic tests pin both registrations to `AT`, assert that the timestamp was reused, and drive both harness adapters. In a disposable archive of `b1da27b8`, removing only the `forgetStopWait(store, consumer)` call and running:
 
 ```text
 $ vitest run test/harness/stop-slow-wait.test.ts -t 001-328 --maxWorkers=1

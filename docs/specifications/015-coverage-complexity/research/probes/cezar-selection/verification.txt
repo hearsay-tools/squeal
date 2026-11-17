@@ -20,7 +20,7 @@ Research-file status command:
 ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 docs/specifications/015-coverage-complexity/research/cezar-selection.md docs/specifications/015-coverage-complexity/research/probes/cezar-selection
 Exit: 3
 squeal: this command runs squeal 0.1.368; plugins: Claude Code 0.1.369 and Codex 0.1.368; this Codex session started on 0.1.368 and keeps it until it restarts. Run squeal update to bring the plugins to one version.
-Revision: 49 · d0b48fe8 + 49, dirty
+Revision: 49 · 8e22b9eb + 49, dirty
 No verdict: no test file's closure holds docs/specifications/015-coverage-complexity/research/cezar-selection.md; no test file's closure holds docs/specifications/015-coverage-complexity/research/probes/cezar-selection. Worktree: known failures 0; not current: 5 of 1313 test files (5 unknown)
 
 The research scripts are outside Squeal coverage; they were run and audited directly as the task requires. No full repository suite, product build, product typecheck or plugin rebuild ran. No product file changed.

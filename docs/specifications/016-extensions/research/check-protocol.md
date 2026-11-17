@@ -1,6 +1,6 @@
 # 016-03: a language-neutral check protocol
 
-Brief: `check-protocol-brief.md`. Researcher, 2026-10-24. Evidence: protocol specifications and schemas fetched on 2026-10-24 at the revisions in Sources; Squeal's runner contract at `0822a4440`; probes in `probes/check-protocol/` (Node v24.21.0 TAP and JUnit, real `go test -json` streams from Go's test data, Biome 2.5.15 SARIF and TypeScript 7.0.2 on one file before and after an edit). No Go, Rust, .NET, Gradle or Bazel toolchain is on this host, so those were read, not run.
+Brief: `check-protocol-brief.md`. Researcher, 2026-10-24. Evidence: protocol specifications and schemas fetched on 2026-10-24 at the revisions in Sources; Squeal's runner contract at `a52303814`; probes in `probes/check-protocol/` (Node v24.21.0 TAP and JUnit, real `go test -json` streams from Go's test data, Biome 2.5.15 SARIF and TypeScript 7.0.2 on one file before and after an edit). No Go, Rust, .NET, Gradle or Bazel toolchain is on this host, so those were read, not run.
 
 ## Questions answered
 
@@ -38,7 +38,7 @@ CTRF and pytest-reportlog were not examined.
 
 ## 2. Squeal's needs against the candidates
 
-`RunnerAdapter` at `0822a4440` (`src/core/types/runner.ts`) against what a candidate already carries:
+`RunnerAdapter` at `a52303814` (`src/core/types/runner.ts`) against what a candidate already carries:
 
 | Squeal member or input | Carried by | Squeal must add |
 |---|---|---|
@@ -115,5 +115,5 @@ Fetched 2026-10-24.
 - libtest: github.com/rust-lang/rust at `df87fa6604e33760d4703cccc777a2281bf15a2d`, `library/test/src/formatters/json.rs`, `library/test/src/cli.rs`. nextest at `96cd53a54c410280a49fea71845d67fd1c93d937`, `site/src/docs/machine-readable/{index,list,libtest-json}.md`.
 - Gradle 9.8.2: https://docs.gradle.org/current/javadoc/org/gradle/tooling/TestLauncher.html, `events/test/JvmTestOperationDescriptor.html`, `TestOperationDescriptor.html`, `TestOperationResult.html`, `TestFailureResult.html`, `TestSkippedResult.html`, `Failure.html`.
 - Bazel: github.com/bazelbuild/bazel at `a5c50fcb65841b505ec72840d83381a704e70afa`, `src/main/java/com/google/devtools/build/lib/buildeventstream/proto/build_event_stream.proto`; https://bazel.build/remote/bep.
-- Squeal at `0822a4440`: `src/core/types/runner.ts`, `src/core/types/check.ts`, `src/core/state/fingerprint.ts`, `src/runners/node-test/run/events.ts`, `src/runners/pytest/run/events.ts`; specs 011 C3, C4, C5, C14; 013 V4; 015 D2, D5.
+- Squeal at `a52303814`: `src/core/types/runner.ts`, `src/core/types/check.ts`, `src/core/state/fingerprint.ts`, `src/runners/node-test/run/events.ts`, `src/runners/pytest/run/events.ts`; specs 011 C3, C4, C5, C14; 013 V4; 015 D2, D5.
 - Probes: `probes/check-protocol/README.md`.

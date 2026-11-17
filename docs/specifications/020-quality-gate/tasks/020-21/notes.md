@@ -16,7 +16,7 @@ Worker notes for whoever integrates or reviews the row. Brief: `tasks/wave-8.md`
 
 ## The left-overs of 020-22b
 
-1. **The dead `listed` spread.** It is no longer in `runner-work.ts`: spec 021 (021-08, `12fb9ac35`) moved the commit to `src/core/scheduler/refine-apply.ts`. Removed there. `ledger.commit` reads only `options.refined`.
+1. **The dead `listed` spread.** It is no longer in `runner-work.ts`: spec 021 (021-08, `5316d2a3e`) moved the commit to `src/core/scheduler/refine-apply.ts`. Removed there. `ledger.commit` reads only `options.refined`.
 2. **`lifecycle.ts`** builds its observed keys from `OBSERVED_META_KEYS`. The order of the four keys changes (startup and modules swap). The snapshot is compared only with another taken in the same process, so nothing reads the old order.
 3. **`store-writes.ts`** imports `BUSY_BOUND_MS` from `core/store/sliced-write.ts` and re-exports it; `cli/import.ts` still imports it from `store-writes.ts`.
 

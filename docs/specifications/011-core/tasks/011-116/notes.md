@@ -1,6 +1,6 @@
 # 011-116: an edit's transitive importers and readers share its cut, worker notes (2026-10-22)
 
-Worker da5cf726, brief "## 011-116" of `../toolkit-latency.md`. Base: main at 782764fc5. Sources: 011 C4 step 4 (as amended for 011-25), `../../research/edit-cut.md`, `../../research/edit-latency.md` 3 and 6.1, `../../research/watch-mode-comparison.md` 3 and 5.2.
+Worker da5cf726, brief "## 011-116" of `../toolkit-latency.md`. Base: main at f6572586d. Sources: 011 C4 step 4 (as amended for 011-25), `../../research/edit-cut.md`, `../../research/edit-latency.md` 3 and 6.1, `../../research/watch-mode-comparison.md` 3 and 5.2.
 
 ## The rule
 

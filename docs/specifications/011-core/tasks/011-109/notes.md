@@ -1,6 +1,6 @@
 # 011-109: a regression notice groups checks with one error and location, worker notes (2026-10-22)
 
-Brief W2 of `../wave-13.md`. Base main at `a5901f2bf` (0.1.261). Sources: board row 011-109, `../../../002-codex-adapter/research/issue-71.md`, `docs/triage/2026-10-22-digest.md` group D, spec 011 C5. Commits `cf933d7ef` (format and its tests) and `4f2cfe6c3` (evals parser and its tests); this file in the next commit.
+Brief W2 of `../wave-13.md`. Base main at `f90cc860a` (0.1.261). Sources: board row 011-109, `../../../002-codex-adapter/research/issue-71.md`, `docs/triage/2026-10-22-digest.md` group D, spec 011 C5. Commits `cf933d7ef` (format and its tests) and `4f2cfe6c3` (evals parser and its tests); this file in the next commit.
 
 ## What a group reads like
 

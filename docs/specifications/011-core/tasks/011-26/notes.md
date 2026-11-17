@@ -1,6 +1,6 @@
 # 011-26 notes: `Known failures:` says what is not current
 
-Worker notes for board row 011-26 (011-24 R1, gh-45). Brief: the `## 011-26` section of `../011-24/briefs.md`; design `../011-24/design.md` sections 2 and 5 R1; spec 011 C6 as amended 2026-10-20; `../../research/issue-45.md`. Baseline `2780cb12` (0.1.228, after 011-42's 0.1.227 reshaping of the waits).
+Worker notes for board row 011-26 (011-24 R1, gh-45). Brief: the `## 011-26` section of `../011-24/briefs.md`; design `../011-24/design.md` sections 2 and 5 R1; spec 011 C6 as amended 2026-10-20; `../../research/issue-45.md`. Baseline `74ffb853` (0.1.228, after 011-42's 0.1.227 reshaping of the waits).
 
 ## What changed
 

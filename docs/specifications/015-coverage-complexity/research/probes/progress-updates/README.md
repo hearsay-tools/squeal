@@ -23,4 +23,4 @@ node_modules/.bin/tsx $P/replay-edits.mts $L/logs/sessions/cz5r $L/files/base-ce
 python3 -I $P/tally.py $L/logs/sessions
 ```
 
-Outputs, 2026-10-24, counter version 2 at `55afb856a`: `replay-out.txt`, `tally-out.txt`.
+Outputs, 2026-10-24, counter version 2 at `852f2edc8`: `replay-out.txt`, `tally-out.txt`.

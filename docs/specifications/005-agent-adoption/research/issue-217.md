@@ -6,7 +6,7 @@ The reproduction is partial: guidance omits an entry point, but the command alre
 
 ## Scope and method
 
-Examined on 2026-11-14, within the 20-minute bound. The installed CLI reports **0.1.475**, on Node **v26.13.0**. Its release commit is `95350e5e916f45540b251545a34351bfb2f4c6d1` (`squeal--v0.1.475`). The research checkout is `e9cf07c6b94f59232075f0cba578a74df64d63ae`, package version **0.1.480**. Live commands use the installed 0.1.475 launcher, not the checkout's build.
+Examined on 2026-11-14, within the 20-minute bound. The installed CLI reports **0.1.475**, on Node **v26.13.0**. Its release commit is `6d8d706ffbd288ed735c45644b8efaa8771a515d` (`squeal--v0.1.475`). The research checkout is `5df18dd2416519c2802ca54491209e300eaf0bbf`, package version **0.1.480**. Live commands use the installed 0.1.475 launcher, not the checkout's build.
 
 Initial commands `cat /proc/loadavg`, `getconf _NPROCESSORS_ONLN` and `nproc` gave one-minute load **9.71**, **24 CPUs** and **24** available CPUs at 11:03:42 UTC. Load was checked again before each captured CLI command. Both reach calls started below 24: **8.13** and **8.75**. Reproduction was therefore allowed. Only documented read-only CLI commands ran. No test, warm-up, checkpoint, nested agent session, store decoding or direct `store.sqlite` query ran. No configuration or product file changed.
 
@@ -19,7 +19,7 @@ The brief has no numbered questionnaire. The following questions cover its reque
 | 3. Is it documented elsewhere in the skill? | Yes, `references/commands.md` has a full `squeal reach` section. The skill's reference description names only status, why and run. **read in official docs** | 0.1.475 |
 | 4. Does reach already answer test-selection questions? | Yes: the ranked view shows counts, seconds, path kinds, gateway chains and suggestions; a named environment file shows its setup route and test files. **verified by experiment** | 0.1.475 |
 | 5. Is the reported agent detour and count error reproduced? | Not determined, because no incident transcript or historical state was examined and nested sessions were excluded. The issue is reporter evidence only. **inferred** limitation | Report names 0.1.475 |
-| 6. What constraints govern guidance changes? | 005 D6 treats the primer as the main surface. 015 D11 explicitly keeps reach pull-only and says registration, delivery and status do not name it. A primer addition needs that policy reconciled. **read in official docs** | Specs at checkout `e9cf07c6` |
+| 6. What constraints govern guidance changes? | 005 D6 treats the primer as the main surface. 015 D11 explicitly keeps reach pull-only and says registration, delivery and status do not name it. A primer addition needs that policy reconciled. **read in official docs** | Specs at checkout `5df18dd2` |
 
 ## Findings
 
@@ -46,7 +46,7 @@ The installed setup skill, commands reference and CLI bundle are byte-equal to t
 
 Both outputs report **917 files without a current coverage record**, accounting for **72% of suite seconds**. Their suggestions to obtain missing evidence were not executed. These outputs show a supported answer with uncertainty, not an independent audit of every count. The default ranking uses avoidable seconds, then seconds re-run; it is not a ranking by test-file count. Percentages refer to recorded seconds. **verified by experiment, 0.1.475**.
 
-015 D11 defines reach as trusted test closures **plus project environment files**, including setup, global setup and config closure. The named probe confirms that environment evidence appears as `setup`; it does not independently compare internal closure rows. **read in official docs, checkout `e9cf07c6`; verified by experiment, 0.1.475**.
+015 D11 defines reach as trusted test closures **plus project environment files**, including setup, global setup and config closure. The named probe confirms that environment evidence appears as `setup`; it does not independently compare internal closure rows. **read in official docs, checkout `5df18dd2`; verified by experiment, 0.1.475**.
 
 **5. Keep historical claims separate.** Issue 217 reports Claude Code / `claude-opus-5-5`, about 25 minutes and 30 tool calls, and an intermediate count of 1,204 instead of 1,469 for a cezar setup-chain module. Its sample names 1,816 suite files and 99 manual-group files excluded. Those are historical reporter counts, not this reproduction's results. Neither the agent's choices nor those numbers were verified. **inferred limitation from the fetched issue, reported 0.1.475**.
 
@@ -61,5 +61,5 @@ Open: whether changed wording makes agents choose reach first; whether the histo
 - [Issue 217](https://github.com/hearsay-tools/squeal/issues/217), fetched with `gh issue view 217 --repo hearsay-tools/squeal --json number,title,body,comments,url,createdAt,updatedAt`; no comments at fetch time.
 - [CLI transcript](probes/issue-217/cli.txt), [named-path transcript](probes/issue-217/named.txt), [guidance and issue snapshot](probes/issue-217/guidance.txt), [probe instructions](probes/issue-217/README.md).
 - Installed launcher: `~/.codex/plugins/data/squeal-hearsay/bin/squeal`. Installed texts: `~/.codex/plugins/data/squeal-hearsay/versions/0.1.475/skills/`.
-- [Shared primer at the examined release](https://github.com/hearsay-tools/squeal/blob/95350e5e916f45540b251545a34351bfb2f4c6d1/src/harness/shared/primer.ts), read with `git show squeal--v0.1.475:src/harness/shared/primer.ts`.
-- [005 D6](../spec.md#d6-texts), [005 amendment log](../status.md), [015 D11](../../015-coverage-complexity/spec.md#d11-edit-reach-which-files-make-an-edit-re-run-much-of-the-suite-approved-by-the-human-2026-11-07-name-squeal-reach-coverage-off-option-a-rows-015-108-015-109-015-114-015-115), [015 amendment log](../../015-coverage-complexity/status.md), at checkout `e9cf07c6`.
+- [Shared primer at the examined release](https://github.com/hearsay-tools/squeal/blob/6d8d706ffbd288ed735c45644b8efaa8771a515d/src/harness/shared/primer.ts), read with `git show squeal--v0.1.475:src/harness/shared/primer.ts`.
+- [005 D6](../spec.md#d6-texts), [005 amendment log](../status.md), [015 D11](../../015-coverage-complexity/spec.md#d11-edit-reach-which-files-make-an-edit-re-run-much-of-the-suite-approved-by-the-human-2026-11-07-name-squeal-reach-coverage-off-option-a-rows-015-108-015-109-015-114-015-115), [015 amendment log](../../015-coverage-complexity/status.md), at checkout `5df18dd2`.

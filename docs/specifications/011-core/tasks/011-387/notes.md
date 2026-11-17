@@ -1,6 +1,6 @@
 # 011-387: `backlog-tiers` cancel case, trigger and bound from one source
 
-Worker bdd420d0, wave 117 W3, 2026-11-16. Base main 2ca6a943c (0.1.526). Test-only.
+Worker bdd420d0, wave 117 W3, 2026-11-16. Base main 161b1ed9f (0.1.526). Test-only.
 
 ## Change
 

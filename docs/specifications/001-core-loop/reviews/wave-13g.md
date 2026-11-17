@@ -1,10 +1,10 @@
 # Wave 13g review: unreviewed 001 rows since 0.1.54
 
-PASS `98874f1f70cdd68c495f25078cc057cc6d63029e`. 0 blockers, 0 should-fix, 0 nits. This is the scoped verdict for row 001-175, not a claim that the whole repository gate passed.
+PASS `d04cd3f26918810c7c1eef42c07a29e4d9dcfccf`. 0 blockers, 0 should-fix, 0 nits. This is the scoped verdict for row 001-175, not a claim that the whole repository gate passed.
 
 ## Verification output
 
-Candidate: `git rev-parse HEAD` returned `98874f1f70cdd68c495f25078cc057cc6d63029e`. The worktree was clean before verification and after the plugin build. Node 24.21.0; Vitest 5.0.3. No product file changed for this review.
+Candidate: `git rev-parse HEAD` returned `d04cd3f26918810c7c1eef42c07a29e4d9dcfccf`. The worktree was clean before verification and after the plugin build. Node 24.21.0; Vitest 5.0.3. No product file changed for this review.
 
 ```text
 $ npm ci

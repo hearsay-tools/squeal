@@ -2,7 +2,7 @@
 
 FAIL `4d9367c8df85a2ba578e908829b7acb8ee9674db`: 2 proven blockers, 2 should-fix items, no nits.
 
-Reviewed row 006-57, candidate `cand/006-53`, range `7d46aecd..4d9367c8`. HEAD matched the candidate and the tracked tree was clean for verification and the probes. Only this findings file is changed by the review. Scope: `tasks/wave-13.md`, 006-53 and 006-57; spec 006 D3, D4, D10 and Testing; spec 001 D6; 001-368's notes, including review 001-398 S2; the worker's `tasks/006-53/notes.md`.
+Reviewed row 006-57, candidate `cand/006-53`, range `ce599547..4d9367c8`. HEAD matched the candidate and the tracked tree was clean for verification and the probes. Only this findings file is changed by the review. Scope: `tasks/wave-13.md`, 006-53 and 006-57; spec 006 D3, D4, D10 and Testing; spec 001 D6; 001-368's notes, including review 001-398 S2; the worker's `tasks/006-53/notes.md`.
 
 ## Verification output
 
@@ -251,15 +251,15 @@ The fixture service stops when its port file is removed; this is a genuine envir
 
 ## Re-review 006-61
 
-2026-10-15. PASS `8c4dbb2eba0ba99b850e2c3f0dc93cba069692a6`: no blockers, should-fix items or nits in this narrow re-review.
+2026-10-15. PASS `7b743ac6c547b18e20a3f535c30785de0d542503`: no blockers, should-fix items or nits in this narrow re-review.
 
-Reviewed row 006-61 at the exact candidate SHA, with a clean tracked tree during verification and probes. Scope: `478f538e` (R1), `04383dff` (R2), and `8c4dbb2e` (notes), the three commits after `17ce4ec3`. The coordinator's rules in `tasks/006-53/notes.md` are the contract. Re-ran the 006-59 counterexamples in both harnesses, checked the closed B1/B2/S1/S2 probes, the a9 heal exception, and unchanged non-retry grading. Only this review file is committed; no product, results or board file is edited.
+Reviewed row 006-61 at the exact candidate SHA, with a clean tracked tree during verification and probes. Scope: `1c4c60cf` (R1), `54f5c7d8` (R2), and `7b743ac6` (notes), the three commits after `28a55e38`. The coordinator's rules in `tasks/006-53/notes.md` are the contract. Re-ran the 006-59 counterexamples in both harnesses, checked the closed B1/B2/S1/S2 probes, the a9 heal exception, and unchanged non-retry grading. Only this review file is committed; no product, results or board file is edited.
 
 ### Verification output
 
 ```text
 $ git rev-parse HEAD
-8c4dbb2eba0ba99b850e2c3f0dc93cba069692a6
+7b743ac6c547b18e20a3f535c30785de0d542503
 $ git status --short
 [empty]
 
@@ -288,7 +288,7 @@ $ node_modules/.bin/tsx /tmp/006-61-probes.mts
 PASS: 63 synthetic and injected probes; no real cell or harness session.
 
 $ node /tmp/006-61-compare.mjs
-PASS: 13 files, 1036 non-retry cells, 3208 declared measures; zero differences against 833135b2 and 17ce4ec3; injected squeal-run isolation unchanged in 1036 cells; all result hashes unchanged.
+PASS: 13 files, 1036 non-retry cells, 3208 declared measures; zero differences against cd10296e and 28a55e38; injected squeal-run isolation unchanged in 1036 cells; all result hashes unchanged.
 ```
 
 `npm ci` also printed the `node-domexception` deprecation warning and the install-scripts notice for six packages. Neither prevented installation. Build was excluded by the brief. No eval runner, regrade CLI, real cell, Claude session or Codex session was started by the reviewer. The mandated full suite includes the repository's existing fake-runner tests. The extra probes used only synthetic transcripts and injected staging functions; their temporary scripts are not committed.
@@ -307,6 +307,6 @@ The full run queued behind the coordinator's gate, then completed at this candid
 
 ### Unchanged grading and remaining limits
 
-**Verified read-only:** evaluated every non-retry cell's declared measures in the 13 committed `.atomic.json` and `.atomic-variant.json` files using candidate, pre-round-2 (`17ce4ec3`) and pre-006-53 (`833135b2`) measure functions: 1,036 cells, 3,208 measures, zero differences. These older retained timelines predate `squeal-run`, so a second comparison inserted that kind before every pull and before the claim in each timeline: all 1,036 cells kept their grades. SHA-256 checks confirmed all 13 files unchanged. No results were regenerated.
+**Verified read-only:** evaluated every non-retry cell's declared measures in the 13 committed `.atomic.json` and `.atomic-variant.json` files using candidate, pre-round-2 (`28a55e38`) and pre-006-53 (`cd10296e`) measure functions: 1,036 cells, 3,208 measures, zero differences. These older retained timelines predate `squeal-run`, so a second comparison inserted that kind before every pull and before the claim in each timeline: all 1,036 cells kept their grades. SHA-256 checks confirmed all 13 files unchanged. No results were regenerated.
 
 No further repair is requested within this review's scope. The original first-run checks remain unverified here: real retry/staging timing and provenance, harness child environments and delivery, unrelated fixture failures, and service/socket cleanup. The prior D10 documentation note remains the coordinator's responsibility. No new metric design decision is introduced by this re-review.

@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `8ac9a4c456536a65ce1abf062f9d8859ec4d8687`. `git rev-parse HEAD` matched exactly. `git status --porcelain` was empty before verification, after the build and after the full independent gate. Independent checks ran on this candidate, before writing the findings file. Repair range: `65acfe0b..8ac9a4c4`.
+Candidate: `9e95a6d5171e26e51a018ea86cfd4fc3ebc19594`. `git rev-parse HEAD` matched exactly. `git status --porcelain` was empty before verification, after the build and after the full independent gate. Independent checks ran on this candidate, before writing the findings file. Repair range: `c19ab024..9e95a6d5`.
 
 ```text
 $ npm ci
@@ -105,7 +105,7 @@ Probe repositories and the throwaway probe were removed before committing. The c
 
 ## Verdict
 
-**PASS 8ac9a4c456536a65ce1abf062f9d8859ec4d8687**. Zero blockers, one proven non-blocking should-fix note, zero nits. Review row 001-315. Bounded re-review of `reviews/wave-13as.md`: B1, B2 and B3 are closed; its settled areas were not re-prosecuted. Its checkout note N1 does not recur: this worktree started at the exact requested candidate.
+**PASS 9e95a6d5171e26e51a018ea86cfd4fc3ebc19594**. Zero blockers, one proven non-blocking should-fix note, zero nits. Review row 001-315. Bounded re-review of `reviews/wave-13as.md`: B1, B2 and B3 are closed; its settled areas were not re-prosecuted. Its checkout note N1 does not recur: this worktree started at the exact requested candidate.
 
 ## Blockers
 

@@ -1,6 +1,6 @@
 # 005-99: a task alone in its worktree restarts its daemon at every turn
 
-Researcher of row 005-99 (task fb9aacb2), 2026-11-17, 06:40Z to 07:10Z. Brief: `daemon-restart-per-turn-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `status.md`, `tasks/005-95/notes.md`, `../011-core/research/daemon-memory.md`, `restart-baseline.md`, `daemon-idle-cpu.md`, `hand-runs-2026-11-16.md`. Source at `18d475a5f` (0.1.538); the live daemons ran the installed 0.1.531 bundle. Claude Code 2.1.321.
+Researcher of row 005-99 (task fb9aacb2), 2026-11-17, 06:40Z to 07:10Z. Brief: `daemon-restart-per-turn-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `status.md`, `tasks/005-95/notes.md`, `../011-core/research/daemon-memory.md`, `restart-baseline.md`, `daemon-idle-cpu.md`, `hand-runs-2026-11-16.md`. Source at `8f2b9ecfd` (0.1.538); the live daemons ran the installed 0.1.531 bundle. Claude Code 2.1.321.
 
 Data, read-only: Squawk run logs `~/projects/{cezar,squeal}/.ai/squawk/runs/*.ndjson` changed since 2026-11-14; the daemon logs `~/projects/{cezar,squeal}/.git/squeal/logs/` (they reach back to 2026-11-14 15:00Z, 2.6 days); Claude Code transcripts under `~/.claude/projects/`; the two stores opened `immutable=1`; `/proc` of live daemons. A passive watch of `/proc` ran 06:59Z to 07:09Z. No test, daemon or load was started. Probes: `probes/daemon-restart-per-turn/` (throwaway, README there).
 
@@ -67,7 +67,7 @@ Today no daemon stays idle after its sessions leave: it exits after 3 s. The gap
 
 ## 4. What a start repeats
 
-Read in source code at `18d475a5f`:
+Read in source code at `8f2b9ecfd`:
 
 1. `PRAGMA quick_check` on the whole store at open (`daemon/open.ts:66`, `store/open.ts:208`). 011-313 measured 8.0 GB and 2.0 M reads before serving on a copy of cezar's store. The stores are 4.9 GB (cezar) and 4.0 GB (squeal).
 2. The stat cache: cached paths reconciled, other git-known files hashed (`keys.bootstrap`, `scan`).
@@ -114,7 +114,7 @@ Option A is the only one of the three with a large effect. The tradeoff that dec
 
 ## Sources
 
-- Squeal source at `18d475a5f`: `src/core/daemon/lifecycle.ts` 185-345 (`startTimers`, departure), `daemon.ts` 343-375 and 940-996 (start, `serving`), `open.ts:66`, `src/core/store/open.ts:208`, `host-idle.ts:24`, `runner-idle.ts`, `src/core/scheduler/bootstrap.ts` 62-310 (`scan`, `baseline`, `commitFirst`), `src/core/state/header.ts:109`, `header-part.ts:70`, `src/core/delivery/registered.ts` 140-260 (`park`, `back`), `src/core/types/store-records.ts:303`, `src/harness/shared/session.ts`, `sweep.ts`, `plugins/claude-code/hooks/hooks.json`, `squeal.config.json` and `~/projects/cezar/squeal.config.json` (both `lookup-only`).
+- Squeal source at `8f2b9ecfd`: `src/core/daemon/lifecycle.ts` 185-345 (`startTimers`, departure), `daemon.ts` 343-375 and 940-996 (start, `serving`), `open.ts:66`, `src/core/store/open.ts:208`, `host-idle.ts:24`, `runner-idle.ts`, `src/core/scheduler/bootstrap.ts` 62-310 (`scan`, `baseline`, `commitFirst`), `src/core/state/header.ts:109`, `header-part.ts:70`, `src/core/delivery/registered.ts` 140-260 (`park`, `back`), `src/core/types/store-records.ts:303`, `src/harness/shared/session.ts`, `sweep.ts`, `plugins/claude-code/hooks/hooks.json`, `squeal.config.json` and `~/projects/cezar/squeal.config.json` (both `lookup-only`).
 - Claude Code hooks reference, SessionEnd, fetched 2026-11-17: https://code.claude.com/docs/en/hooks (`reason` table; 1.5 s default budget).
 - Logs and stores as listed at the top; probe outputs in the task's scratch directory, not kept.
 - Earlier findings: `tasks/005-95/notes.md`; `../011-core/research/daemon-memory.md` 1, 3, 3b; `restart-baseline.md` 3; `daemon-idle-cpu.md` 2, 3; `hand-runs-2026-11-16.md` 1.

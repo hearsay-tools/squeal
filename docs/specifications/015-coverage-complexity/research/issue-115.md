@@ -6,7 +6,7 @@ Recommend the existing project size override as the immediate option; require a 
 
 **Verified by experiment, Squeal source 0.1.369:** the default 524,288-byte limit skips both synthetic 611,328-byte TypeScript files before calling the counter. Raising only `complexity.maxFileBytes` to 1,048,576 through the real policy loader counts both files. Each has a function at CC 23, stored as `fail` against threshold 20. This reproduces the size-policy mechanism in [issue #115](https://github.com/hearsay-tools/squeal/issues/115), not the original cezarion session.
 
-Examined on 2026-10-28 at checkout `d7061f459277bd6a262e17097b22978728612cb6`, package 0.1.369, Node v24.22.1. The issue and session CLI use 0.1.368. The relevant counter, pass and policy-validation files have no diff from `squeal--v0.1.368`; the policy type/default file differs only for the unrelated `runtimeFiles` setting. No product code, defaults, spec, status or board changed.
+Examined on 2026-10-28 at checkout `55d56aa06038b2bc9f3e6ee0ba868c071d0c7868`, package 0.1.369, Node v24.22.1. The issue and session CLI use 0.1.368. The relevant counter, pass and policy-validation files have no diff from `squeal--v0.1.368`; the policy type/default file differs only for the unrelated `runtimeFiles` setting. No product code, defaults, spec, status or board changed.
 
 | Question | Answer and evidence tag |
 |---|---|

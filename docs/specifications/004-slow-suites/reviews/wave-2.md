@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `6418a6bb54e04cd91845b902c15032dec568f6d5`, version 0.1.51. The supplied branch starts at `5fb497f`, whose only change after the candidate corrects the review brief's range. Executable checks ran detached at `6418a6b` with no tracked changes. The worker branch was restored before writing this report.
+Candidate: `314bdc71289e449b6d56be6a09e17d96917b3ed3`, version 0.1.51. The supplied branch starts at `5fb497f`, whose only change after the candidate corrects the review brief's range. Executable checks ran detached at `6418a6b` with no tracked changes. The worker branch was restored before writing this report.
 
 Range: `cef8a30..6418a6b`. Reviewed 004-15 (status, provenance, primer, Stop), 004-18 (slow lanes, instances, lane sweeps), 003-40 (preload attribution), and their 0.1.51 bundles. The adjacent 001 work is outside this review. This is the first review of this slice; wave 1.5's closed blockers are controls, not reopened findings.
 

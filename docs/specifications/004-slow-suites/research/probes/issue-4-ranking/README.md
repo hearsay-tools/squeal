@@ -32,4 +32,4 @@ node $P/store-main-r80-90.mjs ~/projects/cezar/.git/squeal/store.sqlite
 
 The `store-*.mjs` scripts open cezarion's live Squeal store with `node:sqlite` `readOnly: true` and write nothing. `tokens.sh` reads cezarion only through `git show` and `git grep` at a fixed revision. Nothing in `~/projects/cezar` was edited.
 
-Run on 2026-10-16 at Squeal `e0ff15a3`, Node 24.21.0, Vitest 5.0.3. The host load was 38.9 at 15:58 and 12.1 at 16:00 local time, on 24 CPUs. Two runs: `logs/run-2026-10-16T14-00-00-929Z.json` (88 s) and `logs/run-2026-10-16T14-02-02-644Z.json` (93 s).
+Run on 2026-10-16 at Squeal `0612dadd`, Node 24.21.0, Vitest 5.0.3. The host load was 38.9 at 15:58 and 12.1 at 16:00 local time, on 24 CPUs. Two runs: `logs/run-2026-10-16T14-00-00-929Z.json` (88 s) and `logs/run-2026-10-16T14-02-02-644Z.json` (93 s).

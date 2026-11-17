@@ -1,14 +1,14 @@
 # Wave 2.6 re-review: 006-18
 
-Verdict: **FAIL** at `8a23c721f70a87f6c1dbcfe10e7f168025bf7c46`. Two proven residual blockers, B2 and B3; two proven non-blocking notes and one plausible design caveat; no nits. All five original reproductions now behave correctly, with their positive counterparts, but the new evidence and scope rules still misgrade nearby cases. This is the second and last review round on this slice. The coordinator takes the verdict to the human; this file does not authorize another repair round.
+Verdict: **FAIL** at `214129f817dc7db7c29e8000372c35e32d76da98`. Two proven residual blockers, B2 and B3; two proven non-blocking notes and one plausible design caveat; no nits. All five original reproductions now behave correctly, with their positive counterparts, but the new evidence and scope rules still misgrade nearby cases. This is the second and last review round on this slice. The coordinator takes the verdict to the human; this file does not authorize another repair round.
 
 ## Verification
 
-Reviewed range: `ed35c083^..8a23c721`, bounded by `reviews/wave-2.5.md` B1 to B5, its S1/S2 notes, and the amended D4 design. The review-writing worktree started at `c1c60f11f0be73be3af60ca14ddcd10003862f4f`, which adds the coordinator's landing record and review brief. All executable verification ran in a separate detached worktree at `/tmp/squeal-006-18-Y1GLmz/candidate`, created with `git worktree add --detach <path> 8a23c721`. The full SHA below is the checked commit. D4 is identical in those two checkouts. The checkout difference is recorded, not charged against the candidate.
+Reviewed range: `91086b54^..214129f8`, bounded by `reviews/wave-2.5.md` B1 to B5, its S1/S2 notes, and the amended D4 design. The review-writing worktree started at `fa2a4099e0ba012def0e2498481d9f2b58f6fe72`, which adds the coordinator's landing record and review brief. All executable verification ran in a separate detached worktree at `/tmp/squeal-006-18-Y1GLmz/candidate`, created with `git worktree add --detach <path> 214129f8`. The full SHA below is the checked commit. D4 is identical in those two checkouts. The checkout difference is recorded, not charged against the candidate.
 
 ```text
 $ git rev-parse HEAD
-8a23c721f70a87f6c1dbcfe10e7f168025bf7c46
+214129f817dc7db7c29e8000372c35e32d76da98
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 found 0 vulnerabilities
@@ -57,7 +57,7 @@ $ git status --short
 [empty: regrade reproduces the committed files byte for byte]
 ```
 
-The regrade's changed-cell counts describe its retained amendment note, not new changes on this rerun. Comparing every cell with `ed35c083^` found only `expectations` changed. Conditions, fingerprints, claims and raw counts are unchanged. None of the 132 old cells has a timeline; the four rules needing it are explicitly not computable, apart from tasks excluded for different knobs. Scratch probes and copies are removed before handoff.
+The regrade's changed-cell counts describe its retained amendment note, not new changes on this rerun. Comparing every cell with `91086b54^` found only `expectations` changed. Conditions, fingerprints, claims and raw counts are unchanged. None of the 132 old cells has a timeline; the four rules needing it are explicitly not computable, apart from tasks excluded for different knobs. Scratch probes and copies are removed before handoff.
 
 ## Prior findings, re-run
 

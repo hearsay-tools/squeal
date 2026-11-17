@@ -1,4 +1,4 @@
-# Probe output, 2026-11-16 (UTC), main 7bd783c9b; stores read-only, 45-day window (live worktrees only)
+# Probe output, 2026-11-16 (UTC), main 4030403ee; stores read-only, 45-day window (live worktrees only)
 
 ## squeal: first tier planned at each edit's revision (edit-tiers.mjs | first-tier.mjs)
 edit -> first tier start ms        n   94 p50 17580 p75 135991 p90 526854 p95 1165656 max 2443184

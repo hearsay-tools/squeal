@@ -1,6 +1,6 @@
 # 011-101: `squeal failures` reads through one repository, worker notes (2026-10-22)
 
-Brief W1 of `../wave-11.md`. Base main at `46b7911c2` (0.1.253, the last release `squeal--v0.1.253`). Commit `3bd520a3a` gives both repositories one `toResult`. The next commit holds this file and one comment in `results.ts`.
+Brief W1 of `../wave-11.md`. Base main at `3e7776e73` (0.1.253, the last release `squeal--v0.1.253`). Commit `3bd520a3a` gives both repositories one `toResult`. The next commit holds this file and one comment in `results.ts`.
 
 ## What landed
 

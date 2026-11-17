@@ -1,6 +1,6 @@
 # 011-175: the 011-137 validity case gives one output on every run
 
-Worker e781447d, wave 30 W5, from main at 905a7ee76 (after 0.1.288), 2026-10-24. Shape: repair (test).
+Worker e781447d, wave 30 W5, from main at 980b01837 (after 0.1.288), 2026-10-24. Shape: repair (test).
 
 ## 1. What CI saw
 

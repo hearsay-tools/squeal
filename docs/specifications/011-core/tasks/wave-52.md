@@ -1,6 +1,6 @@
 # Wave 52
 
-From main after 0.1.345 (`93e710f4e`), 2026-10-26. The human's card of 2026-10-26 on gh-1: "Note + restart check" for Squeal, "Leave as is" for the host. One row. Host load is about 20 to 30 on 24 CPUs, mostly other coordinators' work. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after 0.1.345 (`d76e076b1`), 2026-10-26. The human's card of 2026-10-26 on gh-1: "Note + restart check" for Squeal, "Leave as is" for the host. One row. Host load is about 20 to 30 on 24 CPUs, mostly other coordinators' work. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-250 (gh-1), a daemon stopped by a signal says what stopped it, and a resumed session gets its validation back
 

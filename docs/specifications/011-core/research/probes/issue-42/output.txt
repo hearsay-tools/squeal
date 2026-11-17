@@ -256,7 +256,7 @@ unique part of that name. Status reads the store directly; no daemon needed.
 exit: 3; stdout lines: 40; stderr lines: 0
 --- stderr
 --- stdout
-Revision: 837 · 71e23f77 + 0, dirty not known
+Revision: 837 · edfe60af + 0, dirty not known
 Known failures: 0
 Affected checks: 0 passed, 0 running, 0 queued, 4400 unknown (3932 tests, 468 test files loaded)
 Full-suite checkpoint: none completed since revision 466 (the counts are for revision 837; `squeal run --all` requests one)
@@ -301,7 +301,7 @@ Named test files have no verdict: no daemon has validated since 2026-10-19T16:41
 exit: 3; stdout lines: 40; stderr lines: 0
 --- stderr
 --- stdout
-Revision: 837 · 71e23f77 + 0, dirty not known
+Revision: 837 · edfe60af + 0, dirty not known
 Known failures: 0
 Affected checks: 0 passed, 0 running, 0 queued, 4400 unknown (3932 tests, 468 test files loaded)
 Full-suite checkpoint: none completed since revision 466 (the counts are for revision 837; `squeal run --all` requests one)
@@ -356,7 +356,7 @@ Named test files have no verdict: no daemon has validated since 2026-10-19T16:41
   "worktreeRoot": "~/projects/squeal",
   "revision": 837,
   "commit": {
-    "head": "71e23f779368ec264336da2ef510ca3817c9082e",
+    "head": "edfe60af992ef2dd29daaae0bdeae176f567d2c9",
     "sinceHead": 0,
     "dirty": true
   },
@@ -385,7 +385,7 @@ Named test files have no verdict: no daemon has validated since 2026-10-19T16:41
   "inheritedFileLevelCount": 0,
   "refinedRevision": 837,
   "runnerPartPending": false,
-  "head": "71e23f779368ec264336da2ef510ca3817c9082e",
+  "head": "edfe60af992ef2dd29daaae0bdeae176f567d2c9",
   "dirty": null,
   "dirtyObservedAt": null,
   "daemon": {

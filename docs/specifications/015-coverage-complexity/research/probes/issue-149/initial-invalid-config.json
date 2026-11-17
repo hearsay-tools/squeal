@@ -3,7 +3,7 @@
   "node": "v24.22.1",
   "cli": "~/projects/squeal/.ai/cezar/worktrees/8761624b-490c-4c9c-973f-0205c28b34a7/plugins/claude-code/dist/cli/squeal.mjs",
   "scratch": "~/projects/squeal/.ai/cezar/t/8761624b/sq-issue-149-uJmXNH",
-  "commit": "4204b3d479ec241424d1ba629f904caf95076c15",
+  "commit": "43a16f75c14e900bac6e1685fff91e085f173744",
   "vitest": "5.0.3",
   "cases": [
     {

@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `6c6c596beeafeabb74e52652e505a645deb9605d` (0.1.94), the authorized HEAD. The executable candidate is `89429af0`; `git diff 89429af0..HEAD --stat` names only `docs/board.md` (4 changed lines). Reviewed range: `d6840389..89429af0`; repair commits `bca54d20..bc399dea`. This review is bounded by `reviews/wave-13o.md` B1, B2, S1 and N1 and the brief's additional question about slow re-selection. No prior settled behavior is re-prosecuted. The tracked candidate stayed clean throughout installation, verification and probes.
+Candidate: `1b82b113ed5a44f0fed8b2f933157d75b6c82206` (0.1.94), the authorized HEAD. The executable candidate is `ecce408b`; `git diff ecce408b..HEAD --stat` names only `docs/board.md` (4 changed lines). Reviewed range: `2c8ae8af..ecce408b`; repair commits `0dc695e5..70fe87b1`. This review is bounded by `reviews/wave-13o.md` B1, B2, S1 and N1 and the brief's additional question about slow re-selection. No prior settled behavior is re-prosecuted. The tracked candidate stayed clean throughout installation, verification and probes.
 
 Linux, Node 24.21.0. The claim-specific regressions and both direct probes also ran on Node 22.23.3. Build reproducibility is **unverified**: the brief explicitly forbids `npm run build`, and it was not run. Both shipped CLI bundles contain the re-probe, final permit shrink and settled-pick retry. Format 1's in-place re-pin relies on the brief's statement that it is unreleased.
 
 ```text
 $ git rev-parse HEAD
-6c6c596beeafeabb74e52652e505a645deb9605d
+1b82b113ed5a44f0fed8b2f933157d75b6c82206
 $ git status --short
 (no output)
 
@@ -137,7 +137,7 @@ The private probes use fixed keys and empty stability-input lists to isolate sta
 
 ## Verdict
 
-**PASS `6c6c596b` (executable `89429af0`): 0 blockers, 0 should-fix findings, 0 nits.** B1, B2, S1 and N1 are closed. The in-transaction re-probe preserves the acceptance and claim gates, commits settlements without a run row, and the slow settled-pick retry is safe in the tested interleavings.
+**PASS `1b82b113` (executable `ecce408b`): 0 blockers, 0 should-fix findings, 0 nits.** B1, B2, S1 and N1 are closed. The in-transaction re-probe preserves the acceptance and claim gates, commits settlements without a run row, and the slow settled-pick retry is safe in the tested interleavings.
 
 ## Blockers
 

@@ -1,6 +1,6 @@
 # How many git-ignored paths tests load per run (016-19)
 
-Researcher, 2026-10-25. Squeal at e5e432c81; cezar at e2882a245. Brief: `ignored-paths-brief.md`. It feeds `observed-paths.md` O1 (b): "the core keeps ignored observed paths as extra files for every runner". Probes: `probes/ignored-paths/` (throwaway).
+Researcher, 2026-10-25. Squeal at 6d0433b39; cezar at e2882a245. Brief: `ignored-paths-brief.md`. It feeds `observed-paths.md` O1 (b): "the core keeps ignored observed paths as extra files for every runner". Probes: `probes/ignored-paths/` (throwaway).
 
 ## Questions answered
 
@@ -61,7 +61,7 @@ Run 2 re-ran only the files that had ignored paths in run 1: 254 squeal files an
 | cezar Vitest | 4 | 4 | 1 (`unit-env-jKZGTd`) | 4 | 5 |
 | cezar node:test | 108 | 108 | 108 | 108 | 216 |
 
-Squeal tracks 7,600 files and cezar 2,883 (`git ls-files`). The cost of each kept path under (b), as read in source code at e5e432c81:
+Squeal tracks 7,600 files and cezar 2,883 (`git ls-files`). The cost of each kept path under (b), as read in source code at 6d0433b39:
 
 - **The watcher.** `track` makes each kept path an extra file (`keying.ts:525-535`). Each tier that adds one calls `onExtraFiles`, which swaps the watcher. 011 measured each swap with its reconciliation at 0.3 to 0.6 s. Every reconciliation pass re-stats every extra file (`candidatesForReconcile`, `src/core/watcher/candidates.ts:130`). After one full run, squeal's extras would be 6.5 times its tracked files. After two runs they would be 13 times.
 - **The store.** `observed.<project>` is "shared by every worktree of the repository, merged and never pruned" (`src/core/keys/observed.ts:16-21`). `setClosure` puts the observed paths back into closures (`keying.ts:367`), and `trackUntracked` tracks them again. Under (b), a new daemon in any worktree therefore starts with every scratch path ever seen. The note that `#extra` "only grows during a daemon's life" understates this cost (inferred).
@@ -109,6 +109,6 @@ The table gives distinct ignored file paths kept in run 1, with the paths new in
 
 ## Sources
 
-- Squeal at e5e432c81: `src/runners/observe/{recorder,fs,spawn}.cjs`, `inputs.ts`, `src/runners/vitest/observe.ts`, `src/core/scheduler/{observed,keying,store-decision,ledger,tiers}.ts`, `src/core/keys/observed.ts`, `src/core/watcher/{git,candidates}.ts` and `src/core/types/policy.ts`. Also `observed-paths.md` O1 and Q3, and 009 `lessons.md` observation 4.
+- Squeal at 6d0433b39: `src/runners/observe/{recorder,fs,spawn}.cjs`, `inputs.ts`, `src/runners/vitest/observe.ts`, `src/core/scheduler/{observed,keying,store-decision,ledger,tiers}.ts`, `src/core/keys/observed.ts`, `src/core/watcher/{git,candidates}.ts` and `src/core/types/policy.ts`. Also `observed-paths.md` O1 and Q3, and 009 `lessons.md` observation 4.
 - Cezar at e2882a245 (`~/projects/cezar`): `.gitignore`, `squeal.config.json`, `vitest.config.ts`, `packages/cezar/src/server/server.ts:1384-1415`, `packages/cezar/src/test-task-env.test.ts:81` and `.github/scripts/vitest-actions-report.test.cjs:34`.
 - Probe outputs: `probes/ignored-paths/results-*.json`, `compare-*.json`, `bounds-*.json` and `fixture-output.txt`.

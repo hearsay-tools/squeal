@@ -28,7 +28,7 @@ Done when: the three steps hold; both tests pass several times in a row on the h
 
 ## R1: review of cand/011-336
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43585566919. Pinned to `cand/011-336` at `401fed822c90b6ec0f5a77b49f39686599e85a37`; range `a3d37199e..401fed822`: four commits of worker 398af59b, cherry-picked. Tests only: no product code, no version raise, no bundle change. Read: board rows 011-333 and 011-336, `research/enotempty-cleanup.md`, `tasks/011-336/notes.md`, this file's W1.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43585566919. Pinned to `cand/011-336` at `d1bcfed930cdc33104a05a47c94aaf245a4c8b34`; range `895689730..d1bcfed93`: four commits of worker 398af59b, cherry-picked. Tests only: no product code, no version raise, no bundle change. Read: board rows 011-333 and 011-336, `research/enotempty-cleanup.md`, `tasks/011-336/notes.md`, this file's W1.
 
 Check, each as proven, plausible or unverified:
 

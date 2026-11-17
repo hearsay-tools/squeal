@@ -1,6 +1,6 @@
 # Issue 91: what a named wait shows of a queue yield
 
-Researcher, 2026-10-24, worktree commit `9b48fa424` (Squeal 0.1.292). Incident version: 0.1.289 on hearsay-tools/cezarion at `08a46e8f`. `git log squeal--v0.1.289..9b48fa424` shows no change to `src/core/scheduler/yields.ts`, `src/core/status/next-step.ts`, `src/core/status/standing.ts` or `src/cli/named-file-lines.ts`, so the probe's code matches the incident's for these paths (read in source code).
+Researcher, 2026-10-24, worktree commit `9fda882b0` (Squeal 0.1.292). Incident version: 0.1.289 on hearsay-tools/cezarion at `08a46e8f`. `git log squeal--v0.1.289..9fda882b0` shows no change to `src/core/scheduler/yields.ts`, `src/core/status/next-step.ts`, `src/core/status/standing.ts` or `src/cli/named-file-lines.ts`, so the probe's code matches the incident's for these paths (read in source code).
 
 Verdict: four visibility gaps are reproduced. After a yield, a named wait does not show that a yield happened, which files it cut, how much run time it discarded or how far the restarted tier has run. The runtime cause of the incident is not proved: this probe does not show why the two promoted files were still queued after the restart.
 
@@ -80,6 +80,6 @@ Treat issue 91 as a visibility defect with four reproduced parts (F1 to F4), not
 
 - Issue: `gh issue view 91 -R hearsay-tools/squeal`, read 2026-10-24.
 - Spec 011 C4 step 5, C6, C15; `status.md` entries of 2026-10-21 (001-381, 011-51), 2026-10-22 (011-107, 011-112), 2026-10-24 (011-169).
-- Source at `9b48fa424`: `src/core/scheduler/yields.ts`, `src/core/status/next-step.ts`, `src/core/status/standing.ts`, `src/core/types/standing.ts`, `src/cli/named-file-lines.ts`.
+- Source at `9fda882b0`: `src/core/scheduler/yields.ts`, `src/core/status/next-step.ts`, `src/core/status/standing.ts`, `src/core/types/standing.ts`, `src/cli/named-file-lines.ts`.
 - Lead test: `test/scheduler/tier-yields-ended.test.ts`; fixture source: `test/scheduler/tier-yields-text.test.ts`.
 - Probe: `research/probes/issue-91/` (`yield-visibility.probe.ts`, `observed.txt`, `output.txt`).

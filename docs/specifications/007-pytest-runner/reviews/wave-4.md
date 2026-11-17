@@ -6,7 +6,7 @@ Two proven blockers in the candidate, two proven should-fix findings, one in the
 
 ## Verification output
 
-Reviewed HEAD was `bd86815c75dd9a95a90b3be1bdcab0bcd9377906`; the tree was clean throughout the checks and throwaway probes. `cand/0.1.181` was not a local ref, so the supplied SHA identifies the candidate. `origin/main` had advanced to `71fe87f9`; its common ancestor with the candidate is `cffbb8af970bb8f2559d2706d173433e21c7d4bb`. The candidate range reviewed is therefore `cffbb8af..bd86815c`. The separate landed range is `c84f3720^..a2904a98`.
+Reviewed HEAD was `bd86815c75dd9a95a90b3be1bdcab0bcd9377906`; the tree was clean throughout the checks and throwaway probes. `cand/0.1.181` was not a local ref, so the supplied SHA identifies the candidate. `origin/main` had advanced to `dc4d9bed`; its common ancestor with the candidate is `438c6664be9d2bb9d109242709328caad70a5af7`. The candidate range reviewed is therefore `438c6664..bd86815c`. The separate landed range is `ba05110a^..9e020c2c`.
 
 ```text
 $ git rev-parse HEAD

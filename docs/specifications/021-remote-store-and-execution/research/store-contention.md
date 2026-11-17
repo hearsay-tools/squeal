@@ -1,6 +1,6 @@
 # Store contention: why the local store reports "database is locked", and the smallest fix
 
-Row 021-03, topic `store-contention` of `README.md` (second round). Researcher a1540808, 2026-11-11. Source read at `0fa197e09`; the probes ran the committed bundle `plugins/claude-code/dist/cli/squeal.mjs` (0.1.430), the version every live daemon on this host ran. Node v24.22.1, SQLite 3.53.4, 24 CPUs. Store copies made 14:22Z to 14:23Z with `cp`; live stores were only observed through `/proc/locks` and `/proc/*/fd`, never opened. Probes, raw output and doc quotes: `probes/store-contention/` (throwaway). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
+Row 021-03, topic `store-contention` of `README.md` (second round). Researcher a1540808, 2026-11-11. Source read at `777338026`; the probes ran the committed bundle `plugins/claude-code/dist/cli/squeal.mjs` (0.1.430), the version every live daemon on this host ran. Node v24.22.1, SQLite 3.53.4, 24 CPUs. Store copies made 14:22Z to 14:23Z with `cp`; live stores were only observed through `/proc/locks` and `/proc/*/fd`, never opened. Probes, raw output and doc quotes: `probes/store-contention/` (throwaway). Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
 ## Questions answered
 
@@ -17,7 +17,7 @@ Row 021-03, topic `store-contention` of `README.md` (second round). Researcher a
 
 ### Q1. Inventory, grouped by cause
 
-The full table with citations is in `probes/store-contention/inventory.md`. Summary **[src, docs]** (issue texts read with `gh issue view`, board and findings files at `0fa197e09`):
+The full table with citations is in `probes/store-contention/inventory.md`. Summary **[src, docs]** (issue texts read with `gh issue view`, board and findings files at `777338026`):
 
 | Cause | Incidents | Timeout, retry | What the user saw | State |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@ Notes persisted per worktree (newest 20 kept, so these are lower bounds) **[exp,
 
 ### Q2. The writers today
 
-**[src]** at `0fa197e09`, from `probes/store-contention/writers.md`, which carries the line citations:
+**[src]** at `777338026`, from `probes/store-contention/writers.md`, which carries the line citations:
 
 - **Transaction mode.** Every write is `BEGIN IMMEDIATE` (`connection.ts:47`); reads are deferred `BEGIN` (`connection.ts:65`). Nested writes are savepoints.
 - **Busy timeouts.** Default 1,000 ms (`open.ts:46`). Hooks 1,000 ms (`harness/shared/context.ts:95`); `hold` 1,000 ms with no retry (`cli/hold.ts:252`); `stop` mark and `start` mark clear 2,000 ms with no retry (`cli/stopped-mark.ts:12,68`); `start`'s handoff claim 1,000 ms (`cli/start.ts:266`); `retry`, named waits and `import` 2,000 ms per try inside a 10 s retry loop (`cli/store-writes.ts:20,51`). The daemon: 120 s until ready (`daemon/open.ts:54`), then 5,000 ms (`daemon.ts:852`). Change-feed passes, tier selection and record, `#requeue`, heartbeat, consumer expiry and prune wait a 250 ms slice and retry (`store/busy.ts`, `connection.ts:99-110`). Socket requests (retry, promote, focus, group, full suite), `#reconcilePaths`, refinement apply, CI import, `#register`, baseline and shutdown wait the full 5 s and are not retried.
@@ -131,7 +131,7 @@ What this does not fix: a holder that keeps the lock longer than any bound (the 
 
 ## Sources
 
-- Issues #1, #7, #8, #86, #108, #138, #158, #162, #176, #186 and their comments, `gh issue view --comments`, read 2026-11-11. Board rows 011-104, 011-113, 011-126, 011-212, 011-288, 001-141, 001-161, 001-412, 001-422, gh-108, gh-158, gh-162, gh-176 in `docs/board.md` at `0fa197e09`; `docs/specifications/011-core/research/issue-{1,86,108,138,158,162,176}.md`; `docs/specifications/001-core-loop/research/issue-8-contention.md`; `docs/specifications/001-core-loop/tasks/{001-141,001-161,001-412}/notes.md`. Collated in `probes/store-contention/inventory.md`.
-- Source at `0fa197e09`: `src/core/store/{open,connection,busy,paths,prune}.ts`, `src/core/store/repos/worktrees.ts`, `src/cli/{hold,stopped-mark,store-writes,start}.ts`, `src/core/daemon/{open,daemon,lifecycle}.ts`, `src/core/scheduler/{scheduler,batch,hold-rows}.ts`, `src/core/delivery/{held-connection,prepared,code-source}.ts`, `src/harness/shared/hand-off.ts`. Collated in `probes/store-contention/writers.md`.
+- Issues #1, #7, #8, #86, #108, #138, #158, #162, #176, #186 and their comments, `gh issue view --comments`, read 2026-11-11. Board rows 011-104, 011-113, 011-126, 011-212, 011-288, 001-141, 001-161, 001-412, 001-422, gh-108, gh-158, gh-162, gh-176 in `docs/board.md` at `777338026`; `docs/specifications/011-core/research/issue-{1,86,108,138,158,162,176}.md`; `docs/specifications/001-core-loop/research/issue-8-contention.md`; `docs/specifications/001-core-loop/tasks/{001-141,001-161,001-412}/notes.md`. Collated in `probes/store-contention/inventory.md`.
+- Source at `777338026`: `src/core/store/{open,connection,busy,paths,prune}.ts`, `src/core/store/repos/worktrees.ts`, `src/cli/{hold,stopped-mark,store-writes,start}.ts`, `src/core/daemon/{open,daemon,lifecycle}.ts`, `src/core/scheduler/{scheduler,batch,hold-rows}.ts`, `src/core/delivery/{held-connection,prepared,code-source}.ts`, `src/harness/shared/hand-off.ts`. Collated in `probes/store-contention/writers.md`.
 - SQLite: https://www.sqlite.org/wal.html, https://www.sqlite.org/lang_attach.html, https://www.sqlite.org/lang_transaction.html, https://www.sqlite.org/c3ref/busy_timeout.html; source `version-3.53.4` (b09c88c1) `src/os_unix.c`, `src/main.c`; branch `begin-concurrent` (71f1e0e7) `doc/begin_concurrent.md`. libSQL https://github.com/tursodatabase/libsql (a1d031cb). Turso https://github.com/tursodatabase/turso (0c9fe0dd). PostgreSQL https://www.postgresql.org/docs/current/ (18). LMDB openldap `mdb.master` (59e5488d). Node https://nodejs.org/docs/latest-v24.x/api/sqlite.html. npm: `libsql` 0.5.29, `@tursodatabase/database` 0.8.3, `lmdb` 3.5.9. All retrieved 2026-11-11; quotes in `probes/store-contention/docs-facts.md`.
 - Probes: `probes/store-contention/` (`lock-watch.mjs`, `repro.mjs`, `starve.mjs`, `store-stats.mjs`, `busy-notes.mjs`, `out/`).

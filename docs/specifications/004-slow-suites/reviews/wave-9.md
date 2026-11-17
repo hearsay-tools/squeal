@@ -1,8 +1,8 @@
-PASS 69022c15954f0f9ac33404b66db4479f9b597057
+PASS 2c0cb9b38929d4688c06ab17441892fcfe909b65
 
 # Wave 9 review: setup declarations and owed preconditions
 
-Zero blockers, zero should-fix findings, zero nits. Reviewed rows 004-68 and 004-69 against spec 004 D7/D8 as amended, spec 001 D7 and task 001-219. Range: `origin/main` at `7c555eb33e1ef460a950e4efb02231fbc045d3e9` (0.1.214) through the pinned `cand/0.1.215` commit above. `git rev-parse HEAD` matched the pin and the product tree stayed clean throughout verification. Only this review is committed.
+Zero blockers, zero should-fix findings, zero nits. Reviewed rows 004-68 and 004-69 against spec 004 D7/D8 as amended, spec 001 D7 and task 001-219. Range: `origin/main` at `ba4a97eaa7c6fd50fcfc938ac18795fa9ea966b4` (0.1.214) through the pinned `cand/0.1.215` commit above. `git rev-parse HEAD` matched the pin and the product tree stayed clean throughout verification. Only this review is committed.
 
 ## Verification
 

@@ -3,7 +3,7 @@
 Investigate named-wait latency within claimed tiers before changing claim expiry.
 
 **Verdict:** partially reproduced on Squeal **0.1.430**, commit
-`1ac649d408c9043997fd4eeb0c0ed3a079b1da4c`. Two real schedulers with separate
+`4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c`. Two real schedulers with separate
 connections to one isolated SQLite store reproduced a promoted file waiting on
 another worktree's claimed tier, then running after the owner closed without a
 result. They did **not** reproduce an unbounded wait: a short configured bound
@@ -133,15 +133,15 @@ pnpm exec tsx docs/specifications/011-core/research/probes/issue-179/probe.ts > 
 ```
 
 The diff was empty for those four mechanism files against 0.1.429 release commit
-`95c8a3e6e7f3f799dee0ea4ff0a606505ce22d80`. This establishes unchanged source
+`6c498a358e88ef3eba87edb94df10036d118a6cc`. This establishes unchanged source
 there, not a run of the older runtime.
 
 - [Probe, isolation and commands](probes/issue-179/README.md),
   [recorded output](probes/issue-179/output.jsonl), [script](probes/issue-179/probe.ts).
 - [Spec C4, C6, C7, C15](../spec.md), [amendment log](../status.md).
 - Source at the examined commit:
-  [claims.ts](https://github.com/hearsay-tools/squeal/blob/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core/scheduler/claims.ts),
-  [tiers.ts](https://github.com/hearsay-tools/squeal/blob/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core/scheduler/tiers.ts),
-  [test-files.ts](https://github.com/hearsay-tools/squeal/blob/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core/store/repos/test-files.ts),
-  [standing.ts](https://github.com/hearsay-tools/squeal/blob/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core/status/standing.ts),
-  [policy.ts](https://github.com/hearsay-tools/squeal/blob/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core/types/policy.ts).
+  [claims.ts](https://github.com/hearsay-tools/squeal/blob/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core/scheduler/claims.ts),
+  [tiers.ts](https://github.com/hearsay-tools/squeal/blob/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core/scheduler/tiers.ts),
+  [test-files.ts](https://github.com/hearsay-tools/squeal/blob/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core/store/repos/test-files.ts),
+  [standing.ts](https://github.com/hearsay-tools/squeal/blob/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core/status/standing.ts),
+  [policy.ts](https://github.com/hearsay-tools/squeal/blob/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core/types/policy.ts).

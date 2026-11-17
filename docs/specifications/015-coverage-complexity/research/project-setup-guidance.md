@@ -2,7 +2,7 @@
 
 Recommend a short project-checks reference reached from the existing setup skill. A second skill has no demonstrated benefit yet.
 
-2026-10-27, row 015-90. Research only. Examined Squeal **0.1.359**, commit `d4fb461149952329b8bb1c62f69d0dd6f2c7896b`, Node **24.21.0**. Tags below apply at that version. No product, skill, repository policy, spec or board changed. The disposable projects declare Vitest 5.0.3; no runner was installed or executed there.
+2026-10-27, row 015-90. Research only. Examined Squeal **0.1.359**, commit `bdfea4eb193abba1b3c910fc31538cb097d236a7`, Node **24.21.0**. Tags below apply at that version. No product, skill, repository policy, spec or board changed. The disposable projects declare Vitest 5.0.3; no runner was installed or executed there.
 
 | Question | Answer and evidence |
 | --- | --- |
@@ -85,8 +85,8 @@ This is a fixture-specific proposal, not a template to copy blindly. The [coloca
 
 All source reads use the commit above. No open-web search or external model evaluation ran. Repository URLs are pinned for audit; local files were the material read.
 
-- **S1:** [setup skill](https://github.com/hearsay-tools/squeal/blob/d4fb461149952329b8bb1c62f69d0dd6f2c7896b/plugins/codex/skills/setup/SKILL.md), its identical `plugins/claude-code/skills/setup/SKILL.md`, both sibling `skills/squeal/SKILL.md`, and `references/{policy,commands,reports}.md`.
-- **S2:** [plan source](https://github.com/hearsay-tools/squeal/blob/d4fb461149952329b8bb1c62f69d0dd6f2c7896b/src/cli/setup/plan.ts), sibling `repo.ts`, `runners.ts`, `command.ts`, `questions.ts`, `config-edit.ts`; `src/core/daemon/runner.ts`.
+- **S1:** [setup skill](https://github.com/hearsay-tools/squeal/blob/bdfea4eb193abba1b3c910fc31538cb097d236a7/plugins/codex/skills/setup/SKILL.md), its identical `plugins/claude-code/skills/setup/SKILL.md`, both sibling `skills/squeal/SKILL.md`, and `references/{policy,commands,reports}.md`.
+- **S2:** [plan source](https://github.com/hearsay-tools/squeal/blob/bdfea4eb193abba1b3c910fc31538cb097d236a7/src/cli/setup/plan.ts), sibling `repo.ts`, `runners.ts`, `command.ts`, `questions.ts`, `config-edit.ts`; `src/core/daemon/runner.ts`.
 - **S3:** `src/core/types/policy.ts` defaults; `src/core/daemon/policy.ts`; `src/core/keys/glob.ts`; `src/core/code/crap/checks.ts`; `src/runners/{vitest,node-test}/coverage.ts`.
 - **S4:** `docs/specifications/015-coverage-complexity/spec.md` D1/D6/D8/D9/D10, `status.md` decisions of 2026-10-26/27, `lessons.md` Round 2 C5. These are project documentation, not new measurements in this report.
 - **S5:** `docs/specifications/005-agent-adoption/spec.md` D3 and the named setup/operational skill sources above. The report's experiment evidence is `probes/project-setup-guidance/results.json`.

@@ -44,7 +44,7 @@ Write `research/group-wait-edits.md`: each finding tagged as `CLAUDE.md`'s resea
 Use /researcher. About 45 minutes. Diagnosis only, no fix.
 
 Question: what writes into a test's temporary directory after the test removes it? Three tests failed that way on CI in two days (board rows ci-43472769648 and ci-43160803419):
-- `test/runners/node-test/run.test.ts` "reports nothing of a run stopped after the checkout holding its store went", `rmdir .../.git/squeal/runs/<id>/node-test/edge`, runs 43472769648 and 43485856699 (the test already retries the delete, `32c2dc0aa`);
+- `test/runners/node-test/run.test.ts` "reports nothing of a run stopped after the checkout holding its store went", `rmdir .../.git/squeal/runs/<id>/node-test/edge`, runs 43472769648 and 43485856699 (the test already retries the delete, `d600fc914`);
 - `test/harness/opencode-dispose.test.ts` "serve: input routed to the re-created instance drops the old turn's report", `run.cleanup()`, run 43498778395;
 - `test/daemon/died.test.ts` "an ordinary note before the kill does not hide the death", `helpers.ts:137`, run 43160803419.
 
@@ -54,11 +54,11 @@ Write `research/enotempty-cleanup.md`: per test, the writer (verified or inferre
 
 ## R1 (W1): review of cand/0.1.484
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43594358811. Pinned to `cand/0.1.484` at `12c8c47788f68ebf86bf1af1d251dcdff7050683`; range `4a978153a..12c8c4778`: eight commits of worker e28cc221, cherry-picked onto main without conflict (on the worker branch `7dc5f83f3..063712bf1`, rebased from `f206c9146`), then the 0.1.484 version raise and bundles. Behaviour to compare against: `4a978153a`. Read: board row 011-331, `research/waits.md` (decisions 1 and 3; "Not in scope"), `tasks/011-331/notes.md`, this file's W1, and the two earlier move reviews `reviews/0.1.469.md` and `reviews/0.1.474.md`.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43594358811. Pinned to `cand/0.1.484` at `b145932ff49c15660876fe67f4fef5b3efe70fb7`; range `f56f48bf5..b145932ff`: eight commits of worker e28cc221, cherry-picked onto main without conflict (on the worker branch `7dc5f83f3..063712bf1`, rebased from `0773d8906`), then the 0.1.484 version raise and bundles. Behaviour to compare against: `f56f48bf5`. Read: board row 011-331, `research/waits.md` (decisions 1 and 3; "Not in scope"), `tasks/011-331/notes.md`, this file's W1, and the two earlier move reviews `reviews/0.1.469.md` and `reviews/0.1.474.md`.
 
 Check, each as proven, plausible or unverified:
 
-1. **Nothing a user sees changed.** `status --wait`, `status <path> --wait`, `status <path>` and the file wait of `run --slow --wait` give the same lines, JSON payloads (the `wait` payload included) and exit codes as at `4a978153a`, including which outcome wins when several hold.
+1. **Nothing a user sees changed.** `status --wait`, `status <path> --wait`, `status <path>` and the file wait of `run --slow --wait` give the same lines, JSON payloads (the `wait` payload included) and exit codes as at `f56f48bf5`, including which outcome wins when several hold.
 2. **Reads and timing stay as they were** (review 0.1.403 B2's rule): the settle time, the per-read busy timeout and the deadline's read, the snapshot's raw heartbeat, the sync request, and the order of the store reads; a field is read only where it was before.
 3. **Copies made one rule are the same rule.** The seven copies of "has the daemon's pass reached this read" that `passReached` (`src/cli/wait/synced.ts`) replaces, `verdict.ts` `unsynced` included, had the same effect; any that differed is a named cell, not merged.
 4. **One decision path; replace, don't layer.** The status table tests call the decision and loop the commands call; the two deleted cases of `status-wait-deadline.test.ts` map to table rows (the notes).

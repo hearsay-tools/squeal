@@ -6,7 +6,7 @@ Row 011-252 (gh-1 follow-up; `tasks/wave-55.md` W1; `tasks/011-250/notes.md` F3;
 
 Fixture: a scratch Vitest file under `/tmp/sq252-measure`, outside the worktree, so the worktree's daemon did not run it, with `TMPDIR` under `/tmp`. It used a real git repository (`initRepo`) as the harness fixture's repository (`squealRepo`), because the bundled daemon exits at once in a directory that is not a git worktree. A Claude Code session registered while told alive. The record was then cleared after a heartbeat 60 s old. The test process took the worktree's daemon lock and wrote its start mark (`acquireDaemonLock`, `markStart`), so a start was held with no record and no socket. Then, through the real hook entry points, one boundary each: Codex PostToolUse (`runCodexHook`), Claude Code PostToolBatch and Claude Code Stop (`runHook`). The hooks used the real `ensureDaemon` with `cli` set to the committed bundle `plugins/claude-code/dist/cli/squeal.mjs`, wrapped to count each `spawned` answer. After the boundaries, the test read `/proc` once a second for processes with `daemon <root>` in their arguments, and read the store's daemon notes at the end.
 
-Before (`4cca0c0db`, 22:48 UTC, load 6.3 falling to 5.1 on 24 CPUs):
+Before (`9f0acaf31`, 22:48 UTC, load 6.3 falling to 5.1 on 24 CPUs):
 
 ```text
 +9 ms codex PostToolUse: spawns so far 1 (codex PostToolUse)

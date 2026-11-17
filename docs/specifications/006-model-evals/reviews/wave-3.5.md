@@ -1,12 +1,12 @@
-PASS 8153e236
+PASS 8604c3e5
 
 Zero blockers. B1 is closed. S1's two original boundary failures are repaired, but S1 is not fully closed: one proven nonblocking residual loses runner summary lines when the output is classified as Squeal text. No reference transcript or committed result changed. S1 retains the prior review's should-fix severity; these offline controls demonstrate evidence loss, not an incorrect fixture grade.
 
 ## Verification
 
-Scope: 006-27, `tasks/wave-3.5.md`, `reviews/wave-3.md` B1/S1, D9, range `8153e236^..8153e236`. Only the brief's three questions were examined.
+Scope: 006-27, `tasks/wave-3.5.md`, `reviews/wave-3.md` B1/S1, D9, range `8604c3e5^..8604c3e5`. Only the brief's three questions were examined.
 
-The writing worktree started clean at `19e77171cf4f63314df56e40b4434873791d23c4`, later than the candidate. This is a provenance mismatch, not candidate execution evidence. All checks used a clean `git archive 8153e236` in a separate scratch repository. Before/after probes also loaded an archive of `8153e236^`. Candidate product files were not edited. Probe scripts were outside both archives. Candidate `git status --short` remained empty after the checks. No judge call, subject session, baseline execution/import, or `npm run build` ran. Build verification is unverified and omitted under the bounded brief. The independent Vitest run is the reviewer gate; Squeal was not substituted.
+The writing worktree started clean at `79b013fab60ab8db8997db0c72b623a026cc5786`, later than the candidate. This is a provenance mismatch, not candidate execution evidence. All checks used a clean `git archive 8604c3e5` in a separate scratch repository. Before/after probes also loaded an archive of `8604c3e5^`. Candidate product files were not edited. Probe scripts were outside both archives. Candidate `git status --short` remained empty after the checks. No judge call, subject session, baseline execution/import, or `npm run build` ran. Build verification is unverified and omitted under the bounded brief. The independent Vitest run is the reviewer gate; Squeal was not substituted.
 
 ```text
 npm ci
@@ -107,7 +107,7 @@ Worker-sized repair: preserve both summary and Squeal evidence matches in the wh
 Generated `calibrationReferences(JUDGED, declarations())` separately from the before and candidate archives, then compared all 58 ordered `[name, cell.transcript]` records byte for byte. Zero changed. Their SHA-256 prefix is `ca86109f6bc75314` for that serialization. The rubric revision is `ecc9d69f64f1` on both sides.
 
 ```text
-git diff --exit-code 8153e236^ 8153e236 -- evals/results \
+git diff --exit-code 8604c3e5^ 8604c3e5 -- evals/results \
   test/evals/judge-references.ts test/evals/reference-sessions.ts \
   evals/lib/rubric.mjs evals/tasks
 (no output; exit 0)

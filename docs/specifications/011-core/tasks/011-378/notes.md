@@ -1,6 +1,6 @@
 # 011-378: a test-only quiet point that also sees runner work
 
-Worker 312a691f, wave 113 W1, 2026-11-16. Base: `4accbca09` (main at 0.1.523 plus docs). Shape: slice. Test files only; no `src/` change (the coordinator's decision, survey option 1).
+Worker 312a691f, wave 113 W1, 2026-11-16. Base: `d23d9732c` (main at 0.1.523 plus docs). Shape: slice. Test files only; no `src/` change (the coordinator's decision, survey option 1).
 
 ## The quiet point's contract
 

@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate checked: `29e2f4ede28147b5a981f682b84dc0385937a2a5`, version 0.1.55. The brief pins `35e2769^..265f783`: 003-41, 003-42, 004-25 and their bundles. HEAD is the subsequent documentation-only landing record; its executable files and bundles equal `265f783`. No 001 change preceding `35e2769` is reviewed. The tracked tree was clean throughout executable verification, including after the rebuild.
+Candidate checked: `ffd21f8427795caea395a4b3a4820b6accd36251`, version 0.1.55. The brief pins `35e2769^..265f783`: 003-41, 003-42, 004-25 and their bundles. HEAD is the subsequent documentation-only landing record; its executable files and bundles equal `265f783`. No 001 change preceding `35e2769` is reviewed. The tracked tree was clean throughout executable verification, including after the rebuild.
 
 004-25 is the human-approved third and last review of wave-2.5 B1 and B2. Re-review is bounded by that report. 003-41 and 003-42 receive their first review. The 003-42 brief lives in 004 `tasks/wave-2.6.md`, beside 004-26; 003 `tasks/wave-4.md` contains 003-41.
 

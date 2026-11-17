@@ -24,9 +24,9 @@ Worker d3937b73, 2026-10-27, from `tasks/wave-23.md` W2. Shape: finish, survey, 
 | Where | What it holds | Source |
 | --- | --- | --- |
 | Claude Code plugin cache | 0.1.361 born 00:35:00Z, 0.1.365 born 06:54:50Z, 0.1.366 born 07:37:52Z | `stat -c %W` of each directory |
-| Claude Code install record | user scope and project `~/projects/squeal`: 0.1.366, commit `06a3d1e54`, updated 07:37:52.862Z and 07:37:57.617Z | `installed_plugins.json` |
+| Claude Code install record | user scope and project `~/projects/squeal`: 0.1.366, commit `7926c6e33`, updated 07:37:52.862Z and 07:37:57.617Z | `installed_plugins.json` |
 | Codex plugin cache | 0.1.365 only, born 02:34:32Z; versions directory 0.1.357 to 0.1.365 | `~/.codex/plugins/` |
-| This repository's config at the tag | `coverage.enabled: true`, `coverage.exclude: ["test/**", "src/runners/node-test/runtime/**"]`, complexity on, `baseline.onStart: "lookup-only"` | `git show 06a3d1e54:squeal.config.json` |
+| This repository's config at the tag | `coverage.enabled: true`, `coverage.exclude: ["test/**", "src/runners/node-test/runtime/**"]`, complexity on, `baseline.onStart: "lookup-only"` | `git show 7926c6e33:squeal.config.json` |
 | Default for other projects | coverage off since 0.1.361 (row 015-89) | board |
 
 Live Squeal daemons, from `/proc` and the main store's `worktrees` table:
@@ -129,7 +129,7 @@ No coverage line, told-over line or loader account reached any session after 0.1
 
 **Method.** Round 2's (`part-b.md`, "D10"), unchanged but for the clone, the gate and three recorded fields:
 
-- **Clone.** `git archive squeal--v0.1.366` (commit `06a3d1e54`) with an offline `pnpm install --frozen-lockfile` from the user's store and one commit of its own (`bin/setup.sh`). Round 2's clone of 0.1.349 used npm. Each arm is a fresh reflink copy with its own empty stores and scratch home.
+- **Clone.** `git archive squeal--v0.1.366` (commit `7926c6e33`) with an offline `pnpm install --frozen-lockfile` from the user's store and one commit of its own (`bin/setup.sh`). Round 2's clone of 0.1.349 used npm. Each arm is a fresh reflink copy with its own empty stores and scratch home.
 - **Config.** The arm's commit replaces the `coverage` block with `{ "enabled": false }` or `{ "enabled": true }`: no `coverage.exclude`, as every other project has it. The rest is the tag's config.
 - **Edits.** Round 2's five edits (`part-b/bin/edits.json`). Each `find` text appears once at the tag, so each applies unchanged.
 - **Gate.** Before each arm, not only each pair: a one-minute load at or under 24 (`nproc`), re-read every 5 minutes.

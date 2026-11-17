@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `976bf74fb6aee70c1f0bd9d22dbe7cb67dd81b9d`, package 0.1.92. Range: `ec906520..976bf74f`; implementation `a0fab3e9`, rebuild and unreleased format-1 re-pin `976bf74f`. Initial HEAD was `04d5f21c`, a descendant changing only `docs/board.md`; the reviewer checked out the exact candidate before installing or verifying. All candidate checks below preceded the findings-file edit on a clean tracked tree. The task branch was restored to its original board-only descendant before committing this file; no candidate product bytes changed. Linux, Node 24.21.0; selected checks also ran on Node 22.23.3.
+Candidate: `ca6e5d57367488ee6610326f605cf49d1d98012e`, package 0.1.92. Range: `a6f6be60..ca6e5d57`; implementation `6f56a5f7`, rebuild and unreleased format-1 re-pin `ca6e5d57`. Initial HEAD was `cc913771`, a descendant changing only `docs/board.md`; the reviewer checked out the exact candidate before installing or verifying. All candidate checks below preceded the findings-file edit on a clean tracked tree. The task branch was restored to its original board-only descendant before committing this file; no candidate product bytes changed. Linux, Node 24.21.0; selected checks also ran on Node 22.23.3.
 
 `npm run build` was deliberately **not run**, as the task explicitly instructs. Rebuild reproducibility is **unverified**, not a finding against this wave. The committed bundles were inspected for the moved adapter version constants and format integer. The independent full Vitest run is the reviewer gate; Squeal is recorded separately.
 
 ```text
 $ git rev-parse HEAD
-976bf74fb6aee70c1f0bd9d22dbe7cb67dd81b9d
+ca6e5d57367488ee6610326f605cf49d1d98012e
 $ git status --short
 (no output)
 
@@ -74,7 +74,7 @@ Inherited from other worktrees: none
 
 ## Verdict
 
-**PASS `976bf74f`: 0 blockers, 1 non-blocking should-fix note, 0 nits.** Prior B1, S1 and S2 are closed. The required 001-203 controls hold. Every exemption is safe for result meaning at this candidate; the directory exemptions still require human review when their role changes. S3 below concerns the future boundary sentinel, not a current unguarded acceptance path.
+**PASS `ca6e5d57`: 0 blockers, 1 non-blocking should-fix note, 0 nits.** Prior B1, S1 and S2 are closed. The required 001-203 controls hold. Every exemption is safe for result meaning at this candidate; the directory exemptions still require human review when their role changes. S3 below concerns the future boundary sentinel, not a current unguarded acceptance path.
 
 ## Blockers
 

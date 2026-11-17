@@ -1,7 +1,7 @@
 # Issue 105 findings: which ignored files feed test keys
 
 Researcher, 2026-10-26, row 011-255. Brief: `issue-105-brief.md`. Triage: `issue-105.md`. Probes: `probes/issue-105/` (throwaway).
-Versions examined: Squeal at `93f5bbc53` (0.1.352, `plugins/claude-code/dist`); cezarion at `9a9f617f` (the incident's base) and `ecdde7685` (main); store copies taken 2026-10-26 17:58Z from `~/projects/{cezar,squeal}/.git/squeal/`.
+Versions examined: Squeal at `56e9e890f` (0.1.352, `plugins/claude-code/dist`); cezarion at `9a9f617f` (the incident's base) and `ecdde7685` (main); store copies taken 2026-10-26 17:58Z from `~/projects/{cezar,squeal}/.git/squeal/`.
 
 ## Answers
 
@@ -39,7 +39,7 @@ The hand-run row is the incident: the worker "ran one browser spec", its `global
 - **The bound misses writers outside the test file's process tree.** `scratchOf` (`observed.ts:127-145`) drops a path only below a directory in `observed.written`, which the recorder fills from the test file's worker and its Node children. Vitest's `globalSetup` runs in Vitest's own process, which 011 C12 lists as "Not seen". Cezarion's writers are `test-env-up.sh` (from `globalSetup`, `packages/web/e2e/environment.ts`) and `markStopped` in `.ai/scripts/test-env-lease.mjs` (the detached idle watcher), both at `9a9f617f`.
 - **The set is shared and never pruned.** `src/core/keys/observed.ts:17-21`: "One map per project from test path to paths, shared by every worktree of the repository, merged and never pruned." So a fresh worktree tracks the descriptor before any of its own runs.
 - **Selection.** A changed tracked path re-keys the test files that reference it: `src/core/keys/key-index.ts:206-212`, `rekey` → `this.reverse.referencing(changed)`. A slow file with a moved key is pending.
-- **When this began.** 011 C12 as amended 2026-10-13 said "ignored paths are never keyed". 016 D4 changed that on 2026-10-25 (commits `674a84e0e` to `fa739f3cf`, released in 0.1.313 at 14:48Z). The first cezarion revision that names the descriptor is 2026-10-25 20:01Z; none before, in revisions back to 2026-10-14 (read from store). Research `016-extensions/research/ignored-paths.md` counted clones with no developer state and left this open (its open question 1).
+- **When this began.** 011 C12 as amended 2026-10-13 said "ignored paths are never keyed". 016 D4 changed that on 2026-10-25 (commits `576bec262` to `9ebf05509`, released in 0.1.313 at 14:48Z). The first cezarion revision that names the descriptor is 2026-10-25 20:01Z; none before, in revisions back to 2026-10-14 (read from store). Research `016-extensions/research/ignored-paths.md` counted clones with no developer state and left this open (its open question 1).
 - **The start pass** re-stats what the stat cache inherited, and `#release` (`keying.ts:605-631`) drops an inherited ignored path only when nothing names it. The descriptor stays named, so a change made while no daemon ran becomes a `start` revision: 4 of the 58 in the store, and E1's restart row (verified by experiment).
 
 ## 3. Which ignored files matter
@@ -81,6 +81,6 @@ The waste is not "ignored files count as changes". It is one ignored **runtime-s
 ## Sources
 
 - Issue https://github.com/hearsay-tools/squeal/issues/105 and its triage comment.
-- Squeal `93f5bbc53`: `docs/specifications/011-core/spec.md` C2 (lines 81-88), C3, C11, C12 (line 353); `016-extensions/spec.md` D4 (lines 126-140); `016-extensions/research/ignored-paths.md`; `src/core/watcher/candidates.ts`; `src/core/scheduler/observed.ts`; `src/core/scheduler/keying.ts`; `src/core/keys/observed.ts`; `src/core/keys/key-index.ts`; `src/core/delivery/header.ts`; `src/core/delivery/liveness.ts`; `docs/board.md` rows 004-28, 004-47, 004-81.
+- Squeal `56e9e890f`: `docs/specifications/011-core/spec.md` C2 (lines 81-88), C3, C11, C12 (line 353); `016-extensions/spec.md` D4 (lines 126-140); `016-extensions/research/ignored-paths.md`; `src/core/watcher/candidates.ts`; `src/core/scheduler/observed.ts`; `src/core/scheduler/keying.ts`; `src/core/keys/observed.ts`; `src/core/keys/key-index.ts`; `src/core/delivery/header.ts`; `src/core/delivery/liveness.ts`; `docs/board.md` rows 004-28, 004-47, 004-81.
 - Cezarion (`~/projects/cezar`, https://github.com/hearsay-tools/cezarion) at `9a9f617f`: `squeal.config.json`, `.gitignore`, `packages/web/e2e/vitest.config.ts`, `packages/web/e2e/agent-browser.ts:19`, `.ai/scripts/test-env-up.sh`, `.ai/scripts/test-env-lease.mjs:334-370`, `.ai/scripts/build-e2e.sh`.
 - Store copies: `revisions`, `test_file_keys`, `meta` `observed.*` rows of both repositories.

@@ -1,4 +1,4 @@
-Verification on 2026-11-06, source checkout 7cc32a610bf3d00a331dffa76205f30251fafd79.
+Verification on 2026-11-06, source checkout f0ae452c71367d439af0415f5dd56dfc21e42da2.
 
 node --disable-warning=ExperimentalWarning research/probes/issue-152/probe.mjs
 Exit 0. Runtime 0.1.407, Vitest 5.0.3, Node v24.22.1. Final named selection:
@@ -22,7 +22,7 @@ Exit 0, no output.
 
 ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-152/probe.mjs docs/specifications/011-core/research/issue-152.md
 Exit 3:
-Revision: 31 · 7cc32a61 + 31, dirty
+Revision: 31 · f0ae452c + 31, dirty
 No verdict: no test file's closure holds research/probes/issue-152/probe.mjs; no test file's closure holds docs/specifications/011-core/research/issue-152.md. Worktree: known failures 0; all 1471 test files current
 
 The changed research files select no repository tests. Squeal's code coverage
@@ -34,4 +34,4 @@ and all existing holds were untouched.
 Source continuity check:
 git diff squeal--v0.1.403..HEAD -- src/core/scheduler/tiers.ts src/runners/vitest/reporter.ts src/core/types/runner.ts
 Exit 0, no output. The 0.1.403 tag resolves to
-138bdc6f14f068708dfe9927c8471a3ede8235a8. No live 0.1.403 run was made.
+95f066d68f56f6aef0072b4f907b713c9f8cb327. No live 0.1.403 run was made.

@@ -45,7 +45,7 @@ Use /worker.
 
 ## 006-07 re-review of wave 1.5
 
-Use /reviewer. Range `aa8a5dc4^..1f95673f`: 006-05's two commits, then 006-06's two, on main. Prior findings: `../reviews/wave-1.md`. The second and last round on this slice.
+Use /reviewer. Range `15c612f2^..99dc4ada`: 006-05's two commits, then 006-06's two, on main. Prior findings: `../reviews/wave-1.md`. The second and last round on this slice.
 
 Question: are B1 to B5 closed, and are S1 to S3 addressed? Re-run each original probe against the candidate, then look for the nearest variant of each that still escapes. Examples: a secret in a file type the scan skips; a chained command form the parser does not model; a truth record that is valid JSON but describes an incomplete run; a status JSON with a field the grader does not read; two arms whose fixtures differ in a way the arm check accepts.
 

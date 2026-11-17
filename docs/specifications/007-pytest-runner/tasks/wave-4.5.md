@@ -33,7 +33,7 @@ Outcome: a verdict, PASS or FAIL, on whether `cand/0.1.183` at `6b43de67` repair
 Shape: narrow re-review. Scope:
 - the repair commits `87a86efc` (B1, scrubbing) and `986e9c25` (B2, the start note through `latestNote(topic)`);
 - `test/e2e/pytest.test.ts`, which must pass unchanged with the rebuilt bundles;
-- whether rebasing the candidate onto main `ef4e5c78` (the earlier commits picked again; key 10 re-pinned; version 0.1.183) dropped or changed anything against `bd86815c`. Use `git range-diff`.
+- whether rebasing the candidate onto main `8373e168` (the earlier commits picked again; key 10 re-pinned; version 0.1.183) dropped or changed anything against `bd86815c`. Use `git range-diff`.
 Do not re-review the rest of wave 4; S1 is row 007-42.
 
 Owns: `reviews/wave-4.5.md` only, which you commit. Your full run follows the host test-run policy.
@@ -75,7 +75,7 @@ Outcome: a PASS or FAIL verdict on `cand/0.1.190` at `1bedfc23`, which is `cand/
 
 Shape: narrow re-review. Scope:
 - 007-43's commit `df8f2d84`, against `reviews/wave-4.5.md` B1 and the human's option (d), recorded in `status.md`. Re-run your `data1` and `data2` probe and the `tmp_path` stability probes on both Pythons.
-- The rebase. Main changed `src/core/daemon/daemon.ts` and `src/core/types/scheduler.ts`, which the notes commits also change. Check with `git range-diff ef4e5c78..6b43de67 origin/main..1bedfc23` that every picked commit's patch is unchanged, and that the merged `daemon.ts` still wires `latestNote` and the note topic as `6b43de67` did, next to main's pool and retry changes.
+- The rebase. Main changed `src/core/daemon/daemon.ts` and `src/core/types/scheduler.ts`, which the notes commits also change. Check with `git range-diff 8373e168..6b43de67 origin/main..1bedfc23` that every picked commit's patch is unchanged, and that the merged `daemon.ts` still wires `latestNote` and the note topic as `6b43de67` did, next to main's pool and retry changes.
 - Not in scope: B2, S2 and the rest of wave 4, which already passed.
 
 Owns: `reviews/wave-4.75.md` only, which you commit. Your independent full run follows `docs/process.md` "Test runs on a shared host". The coordinator's gate is also queued on the lock, so wait your turn.

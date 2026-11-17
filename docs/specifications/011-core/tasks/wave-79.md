@@ -35,11 +35,11 @@ Done when: the row's done-when holds; `grep -n "sleep(\|for (;;)" src/cli/run*.t
 
 ## R1: review of cand/0.1.469
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.469` at `b765896215c31b6ebf9e223e3e1ababe1b1cd78e`; range `a8a4216c8..b76589621`: five worker commits of 81156091, cherry-picked (`49c21590a..3d65832b4`), then the 0.1.469 version raise and bundles. The behaviour to compare against is `a8a4216c8`. Read: board row 011-326, `research/waits.md`, `tasks/011-326/notes.md`, this file's W1. Candidate CI: run 43485856699.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.469` at `d894b515f59b3b5b204045c3e6eabbddb1f73026`; range `5b88bb8a8..d894b515f`: five worker commits of 81156091, cherry-picked (`459578ffa..c10277b04`), then the 0.1.469 version raise and bundles. The behaviour to compare against is `5b88bb8a8`. Read: board row 011-326, `research/waits.md`, `tasks/011-326/notes.md`, this file's W1. Candidate CI: run 43485856699.
 
 Check, each as proven, plausible or unverified:
 
-1. **Nothing a user sees changed.** For `run --all [--fast] --wait`, `run --slow [--wait]`, `run <group> [--wait]`, `run <group> <path> --wait` and the lint group: every outcome, line, JSON payload and exit code is the same as at `a8a4216c8`, including the order in which outcomes win when several hold, the deadline comparisons (`>=` in the run waits, `>` in the request loops), the pauses, the fifth-read ping and its socket bound, and which request id a status request names.
+1. **Nothing a user sees changed.** For `run --all [--fast] --wait`, `run --slow [--wait]`, `run <group> [--wait]`, `run <group> <path> --wait` and the lint group: every outcome, line, JSON payload and exit code is the same as at `5b88bb8a8`, including the order in which outcomes win when several hold, the deadline comparisons (`>=` in the run waits, `>` in the request loops), the pauses, the fifth-read ping and its socket bound, and which request id a status request names.
 2. **Reads stay as they were** (the rule of review `0.1.403.md` B2). Per poll, each wait opens the same store, reads the same fields in the same order, and reads a field only where the old code read it. The ping runs after the store closed. Judge the staged decision (notes, "How the decision keeps today's reads") against this.
 3. **One decision path** (the rule of review `0.1.452.md` B1). The table tests call `decideRunWait`, `decideRequest`, `runWait` and `untilTaken` as the commands do; no test holds a copy of the rules.
 4. **Replace, don't layer.** Each deleted case maps to a table, loop or line row that proves the same thing; each case the notes keep is justified; `test/cli/wait/lines.test.ts` is not a second decision surface.

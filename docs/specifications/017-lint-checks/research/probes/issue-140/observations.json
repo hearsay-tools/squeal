@@ -1,7 +1,7 @@
 [
   {
     "version": "0.1.392",
-    "commit": "56764d5455ddae8e9090a6492dc3959574d13cc9",
+    "commit": "9dfbba0f421c5891328faf5ac4fcc1238d60b660",
     "tagBlob": "f5eb36f0a519712fe5c806f6e94878ff46f88099",
     "node": "v24.22.1",
     "oxlint": "1.90.0",

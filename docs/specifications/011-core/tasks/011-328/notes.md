@@ -1,6 +1,6 @@
 # Row 011-328 notes: the run waits read a request's covered files from the scheduler's record
 
-Worker 56bd7a74, 2026-11-14. Brief: `tasks/wave-86.md`, W1. Design: `research/request-intake.md`, "Covered files (011-325)", conditions 2 to 4 and condition 3 as relaxed; `research/waits.md`, "Agreed with sibling designs". Based on `main` at `a147afe8b`.
+Worker 56bd7a74, 2026-11-14. Brief: `tasks/wave-86.md`, W1. Design: `research/request-intake.md`, "Covered files (011-325)", conditions 2 to 4 and condition 3 as relaxed; `research/waits.md`, "Agreed with sibling designs". Based on `main` at `334ec319e`.
 
 ## What changed
 

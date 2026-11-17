@@ -1,6 +1,6 @@
 # 011-77: a failure a retry replaced stays kept, and `why` keeps older failures visible, worker notes (2026-10-22)
 
-Brief W1 of `../wave-14.md`, first commit. Base main at `1bbe7e43f` (0.1.262). Design `../011-64/design.md` section 3, section 4 consequence 3, and section 5 (R3); spec 011 C5, C6 and C7 as amended 2026-10-21 for 011-64.
+Brief W1 of `../wave-14.md`, first commit. Base main at `8285301e6` (0.1.262). Design `../011-64/design.md` section 3, section 4 consequence 3, and section 5 (R3); spec 011 C5, C6 and C7 as amended 2026-10-21 for 011-64.
 
 ## Seam map
 

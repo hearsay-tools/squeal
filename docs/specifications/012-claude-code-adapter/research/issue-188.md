@@ -1,6 +1,6 @@
 # Issue #188: Squeal hook text makes read-only subagents end with a reply to Squeal
 
-Triage research, 2026-11-11, documentation only. Reported on Squeal 0.1.432. Inspected: this worktree at `5ffc3653b` (`package.json` 0.1.432, same as `origin/main`; no `v0.1.432` tag exists to diff against). Claude Code on the host: 2.1.321.
+Triage research, 2026-11-11, documentation only. Reported on Squeal 0.1.432. Inspected: this worktree at `20a1c218a` (`package.json` 0.1.432, same as `origin/main`; no `v0.1.432` tag exists to diff against). Claude Code on the host: 2.1.321.
 
 **Not reproduced.** One-minute load was 45.04 at 17:52:45Z and 55.78 at 17:53:54Z on 24 CPUs (`cat /proc/loadavg`, `nproc`), above the CPU count at both checks. No live probe ran, recorded-hook or real subagent. Every finding below is read in source, read in docs, or inferred.
 
@@ -64,5 +64,5 @@ grep -aoE '.{0,120}hook_event_name:"SubagentStop".{0,200}' <claude 2.1.321 binar
 - `docs/board.md` on `origin/main`, unnumbered 012 seam ("a SubagentStop report restarts the subagent").
 - `docs/specifications/005-agent-adoption/research/instruction-surfaces.md` table 1 and recommendation 5 (`can-c`, Claude Code 2.1.295).
 - `docs/specifications/012-claude-code-adapter/spec.md` CC2, CC4; `docs/specifications/011-core/spec.md` C8 (amendments 2026-10-25 row 011-215, 2026-11-10 row 011-312).
-- Code at `5ffc3653b`: `src/harness/claude-code/hooks/{stop,user-prompt-submit}.ts`, `src/harness/claude-code/fork.ts`, `src/harness/shared/{prompt,stop-lint}.ts`, `src/core/delivery/delivery.ts:290-315`, `src/core/lint/surface/{deliver,told,snapshot}.ts`.
+- Code at `20a1c218a`: `src/harness/claude-code/hooks/{stop,user-prompt-submit}.ts`, `src/harness/claude-code/fork.ts`, `src/harness/shared/{prompt,stop-lint}.ts`, `src/core/delivery/delivery.ts:290-315`, `src/core/lint/surface/{deliver,told,snapshot}.ts`.
 - Claude Code 2.1.321 native binary, `.../@anthropic-ai/claude-code/bin/claude.exe` (minified strings).

@@ -1,6 +1,6 @@
 # Research 016-06: trusting third-party checks
 
-Date: 2026-10-24. Brief: `third-party-trust-brief.md`. Squeal read at HEAD `0822a4440`. Probes: `probes/third-party-trust/` (throwaway; Linux 6.8.0-147, Node 24.21.0, Python 3.12.3, strace 6.8). Web sources fetched on 2026-10-24; versions are listed under Sources.
+Date: 2026-10-24. Brief: `third-party-trust-brief.md`. Squeal read at HEAD `a52303814`. Probes: `probes/third-party-trust/` (throwaway; Linux 6.8.0-147, Node 24.21.0, Python 3.12.3, strace 6.8). Web sources fetched on 2026-10-24; versions are listed under Sources.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 
@@ -83,5 +83,5 @@ Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src
 - Jest: https://jestjs.io/docs/code-transformation; CHANGELOG at `jestjs/jest@61050e93` (30.5.0 to 30.5.2). Vitest: https://vitest.dev/config/cache
 - VS Code: https://code.visualstudio.com/docs/editing/workspaces/workspace-trust, https://code.visualstudio.com/api/extension-guides/workspace-trust
 - Deno: https://docs.deno.com/runtime/fundamentals/security/. pre-commit: https://pre-commit.com/
-- Squeal at `0822a4440`: `docs/specifications/011-core/spec.md` C3, C4, C7, C10, C12, C14; `docs/decisions/0002-content-keyed-shared-store.md`; `src/core/store/schema.ts`; `src/runners/observe/*.cjs`; `src/runners/pytest/runtime/sitecustomize.py`; `src/harness/shared/session.ts`; `docs/specifications/002-codex-adapter/research/codex-hooks.md`
+- Squeal at `a52303814`: `docs/specifications/011-core/spec.md` C3, C4, C7, C10, C12, C14; `docs/decisions/0002-content-keyed-shared-store.md`; `src/core/store/schema.ts`; `src/runners/observe/*.cjs`; `src/runners/pytest/runtime/sitecustomize.py`; `src/harness/shared/session.ts`; `docs/specifications/002-codex-adapter/research/codex-hooks.md`
 - Probes: `probes/third-party-trust/` (`run.sh`, `output.txt`, `sandbox.sh`, `sandbox-output.txt`)

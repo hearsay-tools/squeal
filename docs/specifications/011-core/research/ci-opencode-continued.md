@@ -2,20 +2,20 @@
 
 Row 011-284, wave 63 R2. Examined 2026-10-31. **Verdict:** the failed assertion waits for the first continuation, before the recovery edit. A missed 500 ms idle deadline can reproduce it. A real transition-loss window after the delivery commit is also proven. The failed CI log cannot distinguish these paths, so its exact cause remains **not determined**. Increasing the 30 s assertion timeout is not an evidence-backed repair.
 
-Versions: failed CI `6ceaf9b85abac7d2410b201042e22654f31f7f6e`; local `33cdf29a1bf59087f11deb6b5ef4220f075f599a` (Squeal 0.1.384), Node 24.22.1, Vitest 5.0.3, OpenCode 1.18.35. `git diff 6ceaf9b85 HEAD` is empty for the continued test, its OpenCode helpers/provider, `src/harness/opencode/`, shared Stop, delivery implementation and default policy used below. All source findings below apply to both commits; experiments ran on the local commit.
+Versions: failed CI `e5a0ce991f6287d5ef8f6918aa5472364acb6b5c`; local `a8905870d972d72a30e4689223b15bfbd1ce89a7` (Squeal 0.1.384), Node 24.22.1, Vitest 5.0.3, OpenCode 1.18.35. `git diff e5a0ce991 HEAD` is empty for the continued test, its OpenCode helpers/provider, `src/harness/opencode/`, shared Stop, delivery implementation and default policy used below. All source findings below apply to both commits; experiments ran on the local commit.
 
 ## Questions and answers
 
 | Question from R2 | Answer | Tag and version |
 | --- | --- | --- |
-| 1. Which wait failed, and what ran long? | Line 90's 30,000 ms poll saw one planned model request instead of two. The first reply had finished. No timestamp identifies a slow internal step. | **verified by experiment**: recorded CI execution, `6ceaf9b85`, Node 24.22.1 / Vitest 5.0.3 |
-| 2. Is this a test timing bound or a missed notice? | Exact CI cause not determined: the log lacks idle, bridge and prompt timestamps. The 500 ms product deadline is a plausible trigger. Forced delays prove both a deferred notice and a consumed-but-unreceived transition. | **inferred** for CI; **verified by experiment** for probes, `33cdf29a1`, OpenCode 1.18.35 |
+| 1. Which wait failed, and what ran long? | Line 90's 30,000 ms poll saw one planned model request instead of two. The first reply had finished. No timestamp identifies a slow internal step. | **verified by experiment**: recorded CI execution, `e5a0ce991`, Node 24.22.1 / Vitest 5.0.3 |
+| 2. Is this a test timing bound or a missed notice? | Exact CI cause not determined: the log lacks idle, bridge and prompt timestamps. The 500 ms product deadline is a plausible trigger. Forced delays prove both a deferred notice and a consumed-but-unreceived transition. | **inferred** for CI; **verified by experiment** for probes, `a8905870d`, OpenCode 1.18.35 |
 | 3. What is the smallest repair? | First preserve failure diagnostics in the fixture. Do not change timeouts or infer a test-only flake. For the proven loss window, retain the owed report across bridge failure; its storage/acknowledgement rule needs a separate coordinator decision. | **inferred**, from both source revisions and the probes |
-| 4. What test proves it? | Hold Stop before its handler, then after its delivery commit. Both miss the same deadline. Assert the next user prompt receives the transition exactly once in both cases. The second currently does not. | **verified by experiment** for current behavior; **inferred** repair criterion, `33cdf29a1` |
+| 4. What test proves it? | Hold Stop before its handler, then after its delivery commit. Both miss the same deadline. Assert the next user prompt receives the transition exactly once in both cases. The second currently does not. | **verified by experiment** for current behavior; **inferred** repair criterion, `a8905870d` |
 
 ## 1. What CI actually records
 
-**verified by experiment**, CI execution at `6ceaf9b85`. The fetched [job log][ci] reports:
+**verified by experiment**, CI execution at `e5a0ce991`. The fetched [job log][ci] reports:
 
 | UTC timestamp, 2026-10-31 | Recorded fact |
 | --- | --- |
@@ -35,7 +35,7 @@ These are reporter timestamps, not the start/end times of the poll or bridge. Su
 
 **read in source code**, both revisions. The first case leaves `stop.waitMs` at its default zero (`src/core/types/policy.ts:337`). `hooks.ts:126` gives idle `stop.waitMs + 500 ms` for lookup, Stop and `promptAsync`. `callBridge` kills the bridge group at that deadline and returns `null` (`bridge-client.ts:124`). Spec 008 D4 explicitly requires silence on a deadline miss. The second, passing test sets `stop.waitMs: 1500`, so its idle budget is 2 s. This difference supports a hypothesis, not a diagnosis of the failed job.
 
-**verified by experiment**, `33cdf29a1`, Node 24.22.1 / OpenCode 1.18.35. The [throwaway probe](probes/ci-opencode-continued/README.md) wraps private built files in `/tmp`. It adds an asynchronous 700 ms delay, never CPU load. It keeps the default policy and the original 30 s poll.
+**verified by experiment**, `a8905870d`, Node 24.22.1 / OpenCode 1.18.35. The [throwaway probe](probes/ci-opencode-continued/README.md) wraps private built files in `/tmp`. It adds an asynchronous 700 ms delay, never CPU load. It keeps the default policy and the original 30 s poll.
 
 | Case | First idle duration | Outcome at the poll | Next user prompt |
 | --- | --- | --- | --- |
@@ -66,8 +66,8 @@ Verification: unchanged original file, **2/2 passed**, 18.15 s. Corrected probe,
 ## Sources
 
 - [Failed job][ci], fetched with `gh run view 41190295201 --log-failed` and `--log`; [excerpt](probes/ci-opencode-continued/ci-excerpt.txt).
-- [Test at failed commit](https://github.com/hearsay-tools/squeal/blob/6ceaf9b85abac7d2410b201042e22654f31f7f6e/test/harness/opencode-continued.test.ts); local `test/harness/opencode/real.ts`, `test/helpers/opencode.ts`, `test/fixtures/opencode/scripted-provider.ts`, `test/harness/helpers.ts`.
-- [Idle hook source](https://github.com/hearsay-tools/squeal/blob/6ceaf9b85abac7d2410b201042e22654f31f7f6e/src/harness/opencode/hooks.ts); local `turns.ts`, `bridge-client.ts`, `bridge.ts`, `bridge-turn.ts` in that directory; `src/harness/shared/stop.ts`, `src/core/delivery/delivery.ts`, `src/core/delivery/turn.ts`.
+- [Test at failed commit](https://github.com/hearsay-tools/squeal/blob/e5a0ce991f6287d5ef8f6918aa5472364acb6b5c/test/harness/opencode-continued.test.ts); local `test/harness/opencode/real.ts`, `test/helpers/opencode.ts`, `test/fixtures/opencode/scripted-provider.ts`, `test/harness/helpers.ts`.
+- [Idle hook source](https://github.com/hearsay-tools/squeal/blob/e5a0ce991f6287d5ef8f6918aa5472364acb6b5c/src/harness/opencode/hooks.ts); local `turns.ts`, `bridge-client.ts`, `bridge.ts`, `bridge-turn.ts` in that directory; `src/harness/shared/stop.ts`, `src/core/delivery/delivery.ts`, `src/core/delivery/turn.ts`.
 - [OpenCode spec D3–D5](../../008-opencode-adapter/spec.md), its `status.md`; 011 C8 and wave 63 R2. These are repository documents, not external API documentation. No recalled API or open-web source was used.
 
 [ci]: https://github.com/hearsay-tools/squeal/actions/runs/41190295201/job/124505534282

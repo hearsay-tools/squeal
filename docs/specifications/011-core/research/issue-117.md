@@ -16,7 +16,7 @@ fixed. No implementation or policy change is proposed by this research.
 
 ## Environment and exact commands
 
-Source: `2970f9b3581b2b58d8edec14034da528687fab32`, package version **0.1.370**.
+Source: `e8012aaa011973f459f3d8334bbcd08c8cb9d0ec`, package version **0.1.370**.
 The session primer also names installed Squeal **0.1.370**, but the probe imports
 source, not the installed bundle. The shared harness labels its synthetic scheduler
 version `0.0.0-test`; this is fixture metadata, not the source version.

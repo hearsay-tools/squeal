@@ -2,7 +2,7 @@
 
 FAIL c5c7797bb63ff13e712d07764b042d5d37b9d382
 
-Four blocking findings, all **proven**. One nonblocking process note. Reviewed range: `89511aa3c..c5c7797bb`, main 0.1.250 to candidate `cand/0.1.252`. The candidate was HEAD throughout verification. No product code was changed. No end command printed by `ps` was executed.
+Four blocking findings, all **proven**. One nonblocking process note. Reviewed range: `6a23af64e..c5c7797bb`, main 0.1.250 to candidate `cand/0.1.252`. The candidate was HEAD throughout verification. No product code was changed. No end command printed by `ps` was executed.
 
 ## Verification
 
@@ -27,7 +27,7 @@ $ npm run build
 > tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
 $ git status --short
 (no output)
-$ node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts 89511aa3c c5c7797bb
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts 6a23af64e c5c7797bb
 version bump: 0.1.250 -> 0.1.252, ok
 ```
 

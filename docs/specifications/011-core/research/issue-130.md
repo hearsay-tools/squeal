@@ -2,7 +2,7 @@
 
 Treat #130 as a decision about the named-wait contract, not a proven regression from #109.
 
-Read https://github.com/hearsay-tools/squeal/issues/130 on 2026-10-31 with `gh issue view 130 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt`. It has no comments. Source and specification examined at `e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc` (package 0.1.384). Experiments use the installed Codex runtime 0.1.383 and the committed Claude Code CLI bundle 0.1.384, without a build. Node: v24.22.1. Both CLI and daemon use the same bundle within each experiment.
+Read https://github.com/hearsay-tools/squeal/issues/130 on 2026-10-31 with `gh issue view 130 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt`. It has no comments. Source and specification examined at `0bfafb150ff7ca3581f910554ff4e8aca777438b` (package 0.1.384). Experiments use the installed Codex runtime 0.1.383 and the committed Claude Code CLI bundle 0.1.384, without a build. Node: v24.22.1. Both CLI and daemon use the same bundle within each experiment.
 
 Initial `cat /proc/loadavg` gave **8.14 / 5.32 / 8.81**, and `getconf _NPROCESSORS_ONLN` gave **24**. Probe-start one-minute loads were **9.72** and **8.82**, below 24. The probes generated no host load. They used one temporary repository and one tiny Vitest file each. Only their own daemons were suspended or stopped.
 
@@ -13,7 +13,7 @@ Initial `cat /proc/loadavg` gave **8.14 / 5.32 / 8.81**, and `getconf _NPROCESSO
 | 1 | Can current selected passes coexist with exit 3 and a late heartbeat on an accepting socket? | Yes. Installed 0.1.383 returned exit 3 after 61.261 s for `--wait 60000`, with the file `current`/`pass` at revision 0 and `selection.result: none`, `reason: lapsed`. The 0.1.384 repeat with `--wait 3000` took 4.139 s. **verified by experiment**, 0.1.383 and 0.1.384. |
 | 2 | Does socket acceptance prove a reply or a completed sync? | No. With the owned daemon under SIGSTOP, ping and sync connections succeeded, but neither replied within 2 s. **verified by experiment**, both versions. |
 | 3 | Does a responding daemon with a completed sync escape the heartbeat gate? | No. With only the isolated heartbeat timestamp held old, ping replied, a separate sync-status request reported stored revision 0, and the selected file stayed current/pass. The named wait still returned `none/lapsed`, exit 3. **verified by experiment**, both versions. This proves that a completed sync is possible during the lapse; the CLI JSON does not expose its own internal sync state. |
-| 4 | Is this current contract behavior, or a demonstrated #109 regression? | Current contract behavior. C15 explicitly gives a lapsed heartbeat priority over the file classes. The #109 implementation was wording only and left verdicts and exit codes unchanged. **read in source code**, `e59ed2260` and release `2e62ee7c3` (0.1.383); no regression established. |
+| 4 | Is this current contract behavior, or a demonstrated #109 regression? | Current contract behavior. C15 explicitly gives a lapsed heartbeat priority over the file classes. The #109 implementation was wording only and left verdicts and exit codes unchanged. **read in source code**, `0bfafb150` and release `2ac244a70` (0.1.383); no regression established. |
 | 5 | Do these probes reproduce the original incident and its cause? | Only the narrow observable symptom. The incident's runtime version and full output were not retained. Its six files, revision 8, load 20–130, restarts, queue delays and missing “pass over edits” were not replayed. The cause and exact gates of that incident are **not determined, because** the required runtime and diagnostic evidence are missing. |
 
 ## Findings
@@ -32,7 +32,7 @@ The second case separates heartbeat age from socket responsiveness. An SQLite tr
 
 ### 2. Three different facts
 
-**read in source code, `e59ed2260`, 0.1.384.** The relevant rules are also present in 0.1.383. `git diff squeal--v0.1.383 HEAD -- src/cli/verdict.ts src/cli/wait-liveness.ts src/cli/status-sync.ts` is empty; the changes in `status-wait-paths.ts` concern promotion lifetime, not this gate.
+**read in source code, `0bfafb150`, 0.1.384.** The relevant rules are also present in 0.1.383. `git diff squeal--v0.1.383 HEAD -- src/cli/verdict.ts src/cli/wait-liveness.ts src/cli/status-sync.ts` is empty; the changes in `status-wait-paths.ts` concern promotion lifetime, not this gate.
 
 - `src/cli/wait-liveness.ts:236`: `listening` treats a ping reply or a request error after connection as a listening socket. It does not make that stale heartbeat `alive`. `watchDaemon` keeps the wait going as `lapsed`.
 - `src/cli/status-sync.ts`: sync asks for reconciliation, then waits for its stored revision. A ping is not this answer. C6 requires revision-aware evidence so an edit not yet reconciled cannot take an older pass.
@@ -44,7 +44,7 @@ C9 also distinguishes a socket that accepts but never replies from a progressing
 
 ### 3. Relation to #109
 
-**read in source code, `e59ed2260`.** C15's 2026-10-25 amendment (011-206) explicitly orders `no-daemon`, then `lapsed`, before other gates. The current `status.md` keeps that contract; its later 011-283 amendment concerns named-wait order. The board's done row 011-276 and `tasks/011-276/notes.md` record the human's 2026-10-30 choice: wording only, no new classification. The notes state:
+**read in source code, `0bfafb150`.** C15's 2026-10-25 amendment (011-206) explicitly orders `no-daemon`, then `lapsed`, before other gates. The current `status.md` keeps that contract; its later 011-283 amendment concerns named-wait order. The board's done row 011-276 and `tasks/011-276/notes.md` record the human's 2026-10-30 choice: wording only, no new classification. The notes state:
 
 > The liveness decision (`daemonLiveness`, alive or down) is unchanged, so are the verdicts, exit codes, news rules and ensure.
 
@@ -61,8 +61,8 @@ Verification: both probe processes exited 0. Assertions over the saved JSON conf
 ## Sources and artifacts
 
 - [Issue #130](https://github.com/hearsay-tools/squeal/issues/130), fetched as above.
-- Local spec `docs/specifications/011-core/spec.md`, C6, C9 and C15; `status.md`; `docs/process.md`, `vision.md`, `styleguide.md`, `board.md` at `e59ed2260`.
-- [0.1.383 source](https://github.com/hearsay-tools/squeal/tree/2e62ee7c3), and paths cited above at [examined HEAD](https://github.com/hearsay-tools/squeal/tree/e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc).
+- Local spec `docs/specifications/011-core/spec.md`, C6, C9 and C15; `status.md`; `docs/process.md`, `vision.md`, `styleguide.md`, `board.md` at `0bfafb150`.
+- [0.1.383 source](https://github.com/hearsay-tools/squeal/tree/2ac244a70), and paths cited above at [examined HEAD](https://github.com/hearsay-tools/squeal/tree/0bfafb150ff7ca3581f910554ff4e8aca777438b).
 - `tasks/011-276/notes.md`; [issue-109 findings](issue-109.md).
 - [Probe script](probes/issue-130/probe.py), [commands](probes/issue-130/README.md), [0.1.383 output](probes/issue-130/output-0.1.383.jsonl), [0.1.384 output](probes/issue-130/output-0.1.384.jsonl).
 - CLI SHA-256: installed 0.1.383 `39fffcd770606a6486a0601a2dac5fb64906ec14f9c58286ed40874dcda4fe2b`; committed 0.1.384 `b09ec4c9a0d00f763daa15ce775f54889fc596d6744f1e1f824e9a6fb4af821a`.

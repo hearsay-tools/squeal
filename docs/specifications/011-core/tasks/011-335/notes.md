@@ -1,6 +1,6 @@
 # Row 011-335 notes: group and narrow requests wait for a pass started after them
 
-Worker 99f00902, 2026-11-14. Brief: `tasks/wave-82.md`, "W1, part 2: row 011-335", as written in `2f0d863d6` (a later docs commit, `f4f0390b4`, removed the section by accident; coordinator 9ddca779 confirmed the text and restored it on main at `747de4c7d`). Design: `research/group-wait-edits.md`, F1, F2 and the "In the daemon" placement the human chose.
+Worker 99f00902, 2026-11-14. Brief: `tasks/wave-82.md`, "W1, part 2: row 011-335", as written in `f32ad403d` (a later docs commit, `513645922`, removed the section by accident; coordinator 9ddca779 confirmed the text and restored it on main at `823a457d7`). Design: `research/group-wait-edits.md`, F1, F2 and the "In the daemon" placement the human chose.
 
 ## What changed
 

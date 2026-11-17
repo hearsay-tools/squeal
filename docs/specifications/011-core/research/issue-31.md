@@ -1,7 +1,7 @@
 # Issue 31: edited fast tests behind broad dependent suites
 
 Researcher findings, 2026-10-17. Source: hearsay-tools/squeal#31 (opened 2026-10-17T11:24Z, Squeal 0.1.199,
-from cezarion#1225). Examined at checkout `276fbaf0` (package 0.1.208) and tag `squeal--v0.1.199`.
+from cezarion#1225). Examined at checkout `6a0d4b9c` (package 0.1.208) and tag `squeal--v0.1.199`.
 
 **Verdict: reproduced in a synthetic scheduler probe, not reproduced live.** The real `RunQueue` and
 `joinSpan` rank a directly edited test file *after* a long direct importer of the same edited source
@@ -113,5 +113,5 @@ is scenario F as a `RunQueue` unit test.
 - cezarion `packages/cezar/src/workflows/worker-wait-durability.test.ts` history, `gh api repos/hearsay-tools/cezarion/commits?path=…`
 - `src/core/scheduler/queue.ts` (`priorityOf`, `RunQueue.ordered`, `sorted`), `sharing.ts` (`joinSpan`),
   `tiers.ts` (`selectTier`), `ledger.ts` (`settle`, `recentOf`, line 301), `bootstrap.ts` lines 150-167,
-  `src/core/status/why.ts` (`resolve`), `format-why.ts` line 24, at `276fbaf0` and `squeal--v0.1.199`
+  `src/core/status/why.ts` (`resolve`), `format-why.ts` line 24, at `6a0d4b9c` and `squeal--v0.1.199`
 - `docs/specifications/011-core/spec.md` C4 step 4, C6, C15; `status.md`

@@ -1,6 +1,6 @@
 # 016-23 a git-ignored directory's listing keys the test file that read it: notes
 
-Worker 411f4070, 2026-10-25. Brief: `tasks/wave-3.md`, section 016-23. Shape: repair. Code read at `817c6ffbb`. The coordinator approved the design (request of 2026-10-25, items 1 to 6) before the first product edit.
+Worker 411f4070, 2026-10-25. Brief: `tasks/wave-3.md`, section 016-23. Shape: repair. Code read at `2ca11b9cc`. The coordinator approved the design (request of 2026-10-25, items 1 to 6) before the first product edit.
 
 ## Cause
 

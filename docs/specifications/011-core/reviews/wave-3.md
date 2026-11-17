@@ -4,7 +4,7 @@
 
 ## Verification output
 
-Pinned candidate and range: `origin/main..79f1d5febdcfa1ceac6afe2c65f46ffb92dd9433`; local `origin/main` was `9f068159635c07e94dfa10cbe0a644955446f11d`. HEAD matched the pin. `git status --porcelain=v1` was empty before installation, after build, and after the independent suite. All commands below exited 0 at that clean candidate, before this review file was written.
+Pinned candidate and range: `origin/main..79f1d5febdcfa1ceac6afe2c65f46ffb92dd9433`; local `origin/main` was `700c4cc7aa2c057087bd508c55cbb8cc27e7ca62`. HEAD matched the pin. `git status --porcelain=v1` was empty before installation, after build, and after the independent suite. All commands below exited 0 at that clean candidate, before this review file was written.
 
 ```text
 $ npm ci

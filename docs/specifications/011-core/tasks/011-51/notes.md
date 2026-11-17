@@ -1,6 +1,6 @@
 # 011-51: a running tier yields, worker notes (2026-10-21)
 
-Brief W2 of `../wave-7.md`; spec 011 C4 step 5 and C15 as amended 2026-10-21; `../../research/running-tier-yields.md`. Base `44790d62`. Commits `fdac3ed4` and `22bbd0cb` touch `src/core/types/standing.ts`, `src/core/types/store.ts` and `src/core/status/standing.ts` by the coordinator's agreement of 2026-10-21; `0eac5159`, `e3ac50cb`, `fdb11548` and `57f4176e` are the row.
+Brief W2 of `../wave-7.md`; spec 011 C4 step 5 and C15 as amended 2026-10-21; `../../research/running-tier-yields.md`. Base `b9d56f25`. Commits `fdac3ed4` and `22bbd0cb` touch `src/core/types/standing.ts`, `src/core/types/store.ts` and `src/core/status/standing.ts` by the coordinator's agreement of 2026-10-21; `0eac5159`, `e3ac50cb`, `fdb11548` and `57f4176e` are the row.
 
 ## Seam map
 

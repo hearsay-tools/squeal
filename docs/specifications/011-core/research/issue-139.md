@@ -2,7 +2,7 @@
 
 Recommend retaining #139 as an explanation gap with capacity as a candidate dependency; do not assign the original incident a cause.
 
-2026-11-03. Research baseline: `4f939b1d6b22b584c6eb180ed8f0f12986fa9521`, Squeal 0.1.393. Also probed exact release source `squeal--v0.1.390`, commit `5d93ab1720d4e457739168e8b59cf2ae113f22c1`. Node v24.22.1; installed dependencies reused. Documentation and throwaway probes only. Existing holds stand.
+2026-11-03. Research baseline: `546d1eb366a3df309b5c4ee4a46a5d3fdcc775ac`, Squeal 0.1.393. Also probed exact release source `squeal--v0.1.390`, commit `62f1dc7e74a5c490e0bbbb4afd10036dbe2165b7`. Node v24.22.1; installed dependencies reused. Documentation and throwaway probes only. Existing holds stand.
 
 ## Answers
 
@@ -55,7 +55,7 @@ Open: the original pool allocation and host load; the four files' queue classes;
 ## Sources and reproducibility
 
 - [Issue 139](https://github.com/hearsay-tools/squeal/issues/139), fetched 2026-11-03; reporter evidence, not an independently observed incident.
-- [0.1.390 source](https://github.com/hearsay-tools/squeal/tree/5d93ab1720d4e457739168e8b59cf2ae113f22c1/src/core): paths and functions above. Current baseline `4f939b1d6b22b584c6eb180ed8f0f12986fa9521`.
+- [0.1.390 source](https://github.com/hearsay-tools/squeal/tree/62f1dc7e74a5c490e0bbbb4afd10036dbe2165b7/src/core): paths and functions above. Current baseline `546d1eb366a3df309b5c4ee4a46a5d3fdcc775ac`.
 - [Probe and exact commands](probes/issue-139/README.md), [0.1.390 output](probes/issue-139/v0.1.390.jsonl), [0.1.393 output](probes/issue-139/v0.1.393.jsonl). Source extraction uses `git archive squeal--v0.1.390 src package.json`; runs use `pnpm exec tsx` under a 45 s shell timeout.
 - [Spec C4/C6/C10/C15](../spec.md), [amendments](../status.md), [board](../../../board.md), [gh-87](issue-87.md), [gh-95](../../003-node-test-runner/research/issue-95.md), [gh-127](issue-127.md), [gh-40](issue-40.md).
 

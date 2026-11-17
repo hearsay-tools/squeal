@@ -1,6 +1,6 @@
 # What Squeal's environment changes in test processes
 
-Board row 001-387, researcher, 2026-10-14. Squeal 0.1.180 (`fe7b6f08`; built CLI `plugins/claude-code/dist/cli/squeal.mjs`), Node 22.23.3 and 24.21.0, Vitest 5.0.4. The probes are throwaway and live under `/tmp/r387/`. Each ran with a temporary `HOME`, `XDG_CONFIG_HOME` and `XDG_RUNTIME_DIR`, and the daemon probe ran under `env -i`, so it saw only dummy values set by the probe. Per the brief, only this file is committed.
+Board row 001-387, researcher, 2026-10-14. Squeal 0.1.180 (`70bdffd9`; built CLI `plugins/claude-code/dist/cli/squeal.mjs`), Node 22.23.3 and 24.21.0, Vitest 5.0.4. The probes are throwaway and live under `/tmp/r387/`. Each ran with a temporary `HOME`, `XDG_CONFIG_HOME` and `XDG_RUNTIME_DIR`, and the daemon probe ran under `env -i`, so it saw only dummy values set by the probe. Per the brief, only this file is committed.
 
 Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src]** read in source code, **[inf]** inferred.
 

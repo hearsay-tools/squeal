@@ -112,7 +112,7 @@ Not removed, because `yields.ts` takes only the one edit above (coordinator, req
 
 ## 6. Tests
 
-New (each red on the base commit `bb3b29116`, run in a private copy with a stub `publishedBatches` that returns an empty map):
+New (each red on the base commit `8e87f486f`, run in a private copy with a stub `publishedBatches` that returns an empty map):
 
 - `test/scheduler/batch-tier.test.ts` (catch-up fixture, `batch-fixture.ts`): test 1 (red: the first tier took the 24 shortest); test 2 at 4 slots, past the deadline, a re-wait forms no batch and the backlog gets one tier between the batch's tiers (red: shortest first, and with the published checks removed, the tier after the first held `test/p012.test.ts` and three more of P); past the deadline an edit's work does not cancel the batch's tier (red: `cancelled` true), the coordinator's test; test 5's second half, a later wait of 4 files of 60 s starts after the batch, with the backlog's one tier between (red: `cancelled` true, the tier was cut).
 - `test/scheduler/batch-select.test.ts` (`selectTier` on a `Ledger`): test 6, 7 waits of 4 files and 28 backlog files alternate (red: the 7 batches ran first); batches follow one another with no backlog; a re-wait past the first deadline forms no batch (red).

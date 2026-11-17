@@ -1,6 +1,6 @@
 # 011-86 notes: one Node floor, 22.19
 
-Worker c0e11c37, brief W2 of `tasks/wave-10.md`, base main at ed5423b04. Row 011-86 was not on the board at the base; the work follows the brief.
+Worker c0e11c37, brief W2 of `tasks/wave-10.md`, base main at 62903a85d. Row 011-86 was not on the board at the base; the work follows the brief.
 
 ## Where the floor lives now
 

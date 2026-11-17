@@ -2,7 +2,7 @@
 
 Recommendation: adopt one rule, "named demand", in option B (waits only, kept in the store) as the first slice. Option A extends it later to retries and named slow files. Four of the six items are cases of the rule. Two items need a split, because they are not about what a wait owns: gh-123's regex selection and gh-125's foreground handoff.
 
-Researcher, row 011-273, 2026-10-31. Brief: `tasks/wave-60.md` R1. Worktree commit `b34b00682` (Squeal 0.1.379 source; scheduler unchanged since 0.1.378). Probe: `probes/011-273/` (`probe.test.ts`, output `result.txt`), run at load 21.4 to 23.0 on 24 CPUs, 5 of 5 passed. No product code changed.
+Researcher, row 011-273, 2026-10-31. Brief: `tasks/wave-60.md` R1. Worktree commit `a02a4ef54` (Squeal 0.1.379 source; scheduler unchanged since 0.1.378). Probe: `probes/011-273/` (`probe.test.ts`, output `result.txt`), run at load 21.4 to 23.0 on 24 CPUs, 5 of 5 passed. No product code changed.
 
 ## Questions answered
 
@@ -35,7 +35,7 @@ Sentences 2 to 5 are today's batch (rows 011-268 and 011-269) with three changes
 
 **F4. The focused row drops an open wait's outcomes (verified by experiment, P4).** `writeFocused` keeps 20 files. One wait's 24 runs lose `rows-01` to `rows-04`. `research/issue-123.md` F3 showed that such a wait then runs to its deadline and exits 3 (0.1.374).
 
-**F5. A named slow file waits for unrelated fast work (read in source code, 0.1.379; verified by experiment on 0.1.365 in `004/research/issue-110.md`).** `SlowTier.#fastFirst` is `editPending() || (!requested && !fastIdle())`. Its only change since 0.1.365 is `da18c8487` (runtime policy identity), and `orderedBatches` excludes slow files. So a named slow file still waits until the fast backlog has drained, unless `run --slow` was asked.
+**F5. A named slow file waits for unrelated fast work (read in source code, 0.1.379; verified by experiment on 0.1.365 in `004/research/issue-110.md`).** `SlowTier.#fastFirst` is `editPending() || (!requested && !fastIdle())`. Its only change since 0.1.365 is `59988e5c9` (runtime policy identity), and `orderedBatches` excludes slow files. So a named slow file still waits until the fast backlog has drained, unless `run --slow` was asked.
 
 **F6. A requested slow run starts beside a batch's tier (read in source code).** A batch's tier has kind `backlog` (`tiers.ts:425`), and `Scheduler.#editPending` excludes backlog tiers. So an explicit `run --slow` starts beside it, as review 0.1.377 S2 showed by fixture. Spec 004 D2 allows this beside backlog.
 
@@ -102,9 +102,9 @@ Option A adds: a `retry <file>` placed behind the load gate starts at the first 
 
 ## Sources
 
-- Brief `tasks/wave-60.md` R1. Board rows gh-110, gh-116, gh-123, gh-125, gh-127, 011-265 to 011-269, at `b34b00682`.
+- Brief `tasks/wave-60.md` R1. Board rows gh-110, gh-116, gh-123, gh-125, gh-127, 011-265 to 011-269, at `a02a4ef54`.
 - Research: `004-slow-suites/research/issue-110.md`, `research/issue-116.md`, `issue-123.md`, `issue-125.md`, `issue-127.md`, `named-wait-batches.md`, `issue-79-gate.md`.
 - Reviews: `reviews/0.1.377.md` (B1, S2, S3), `0.1.377-r2.md`, `0.1.378.md` (B1, S1), `0.1.378-r2.md` (N1).
 - Spec 011 C4 step 5, C5, C9, C10, C15, and `status.md` lines of 2026-10-28 and 2026-10-29. Spec 004 D2.
-- Source at `b34b00682`: `src/core/scheduler/promotions.ts` (`add`, `publishedBatches`), `queue.ts` (`orderedBatches`, `hasFirstGroup`, `tierSelected`), `tiers.ts` (`selectTier`, line 425 kind), `retries.ts` (`queueDue`), `slow-tier.ts` (`#fastFirst`), `scheduler.ts` (`#editPending`), `handover.ts`, `focused-row.ts` (`FOCUSED_FILES`, `writeFocused`), `src/cli/status-wait-paths.ts` (lines 308 to 324), `src/cli/main.ts` (lines 129, 133).
+- Source at `a02a4ef54`: `src/core/scheduler/promotions.ts` (`add`, `publishedBatches`), `queue.ts` (`orderedBatches`, `hasFirstGroup`, `tierSelected`), `tiers.ts` (`selectTier`, line 425 kind), `retries.ts` (`queueDue`), `slow-tier.ts` (`#fastFirst`), `scheduler.ts` (`#editPending`), `handover.ts`, `focused-row.ts` (`FOCUSED_FILES`, `writeFocused`), `src/cli/status-wait-paths.ts` (lines 308 to 324), `src/cli/main.ts` (lines 129, 133).
 - Probe: `probes/011-273/probe.test.ts`, run as `env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run --config docs/specifications/011-core/research/probes/011-273/vitest.config.ts --silent=false --reporter=verbose`. Output in `probes/011-273/result.txt`.

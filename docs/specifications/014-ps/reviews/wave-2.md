@@ -3,7 +3,7 @@ FAIL 29ef2f05303be1ab83ab89a9e34420e8514c2709
 Four proven blockers, zero should-fix items, three proven notes.
 
 Candidate: `cand/0.1.240`, pinned to `29ef2f05303be1ab83ab89a9e34420e8514c2709`.
-Range: `63c6cd37e..29ef2f053`. Row 014-13 reviews wave 2 against amended spec 014 D1, D7, D8 and D10 and `tasks/wave-2.md`. No product code changed. The review uses the last three wave 2 amendment lines in `status.md`.
+Range: `f8f39c3a2..29ef2f053`. Row 014-13 reviews wave 2 against amended spec 014 D1, D7, D8 and D10 and `tasks/wave-2.md`. No product code changed. The review uses the last three wave 2 amendment lines in `status.md`.
 
 ## Verification output
 

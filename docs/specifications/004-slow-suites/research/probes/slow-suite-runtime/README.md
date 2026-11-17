@@ -2,7 +2,7 @@
 
 Throwaway research, not production code or a benchmark guarantee. Board 004-02.
 
-Examined Squeal 0.1.30 at `25580c8368d57dae987be84434b01e4f6da08cfa`, Cezar 0.15.1 at `13351da86ed4e44bb89ad54c284ab0115dc82c6b`, Node 24.21.0, Vitest 5.0.3, Linux 6.8.0-142-generic, 24 available CPUs and 46.65 GiB host RAM. Squeal tsx 4.23.15, Cezar tsx 4.23.0. All runs use private committed-source copies, with Squeal's literal `/tmp` paths and Cezar's Git preload temp path redirected under one `mkdtemp` root. For full verification, the scratch-path assertion also follows the private prefix; a never-executed command literal in the Codex hash fixture is preserved unchanged so its recorded hash remains valid. These containment edits are the only Squeal source/test changes in those copies. Copied builds are not the repository's live Squeal store.
+Examined Squeal 0.1.30 at `0fd0c78de214edb66d0d53e1bfe70781cf710614`, Cezar 0.15.1 at `13351da86ed4e44bb89ad54c284ab0115dc82c6b`, Node 24.21.0, Vitest 5.0.3, Linux 6.8.0-142-generic, 24 available CPUs and 46.65 GiB host RAM. Squeal tsx 4.23.15, Cezar tsx 4.23.0. All runs use private committed-source copies, with Squeal's literal `/tmp` paths and Cezar's Git preload temp path redirected under one `mkdtemp` root. For full verification, the scratch-path assertion also follows the private prefix; a never-executed command literal in the Codex hash fixture is preserved unchanged so its recorded hash remains valid. These containment edits are the only Squeal source/test changes in those copies. Copied builds are not the repository's live Squeal store.
 
 Run `npm ci` in the research worktree first, then:
 

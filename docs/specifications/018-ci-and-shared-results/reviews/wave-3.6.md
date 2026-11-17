@@ -3,7 +3,7 @@
 ## Verification
 
 Reviewed candidate `cand/0.1.419` at `38a156cab8485d4e83b8d57e2cc60d53c0ae9bdd`.
-Range: `7f69b24e0..38a156cab`, including implementation `ffbee2249`, activity-rule amendment `a17361f92`, and bundle commit `38a156cab`.
+Range: `8be40bd06..38a156cab`, including implementation `ffbee2249`, activity-rule amendment `a17361f92`, and bundle commit `38a156cab`.
 All checks and probes below ran at that exact commit with an empty `git status --porcelain`. The only subsequent checkout edit is this report.
 
 ```text

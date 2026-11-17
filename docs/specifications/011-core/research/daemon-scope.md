@@ -1,6 +1,6 @@
 # 011-52: one daemon per repository instead of one per worktree
 
-Researcher, 2026-10-21. Brief: `daemon-scope-brief.md`. Source examined: this checkout at `082b19e15` (0.1.235 code). Live host: 24 CPUs, Linux 6.8.0-147, Node v24.21.0, installed Squeal 0.1.234 and 0.1.235, cezar on Vitest 4.1.10 and Vite 8.1.4. The live host was read only through `/proc` and stores opened `mode=ro`. No socket was opened. No process was signalled or reniced. Probes: `probes/daemon-scope/` (throwaway, README there). The one-minute load was 21.8 to 46.8 during the work. The one live experiment (two Vitest roots in one process) ran at load 23.9, after a wait for the load to fall below 24.
+Researcher, 2026-10-21. Brief: `daemon-scope-brief.md`. Source examined: this checkout at `f438f8891` (0.1.235 code). Live host: 24 CPUs, Linux 6.8.0-147, Node v24.21.0, installed Squeal 0.1.234 and 0.1.235, cezar on Vitest 4.1.10 and Vite 8.1.4. The live host was read only through `/proc` and stores opened `mode=ro`. No socket was opened. No process was signalled or reniced. Probes: `probes/daemon-scope/` (throwaway, README there). The one-minute load was 21.8 to 46.8 during the work. The one live experiment (two Vitest roots in one process) ran at load 23.9, after a wait for the load to fall below 24.
 
 ## Answers
 
@@ -115,7 +115,7 @@ The tools that run user code from one checkout (Bazel, Nx, Gradle's build) keep 
 
 - Specs: 011 C1, C7, C9, C10 (Capacity, Inherited environment), C13; 004 D2; `001-core-loop/research/host-capacity.md` 4C and recommendation 5; `daemon-under-harnesses.md` 1 and 2; `watcher-daemon-and-shared-store.md`; `014-ps/research/process-measurement.md`, `should-not-be-up.md` and their logs.
 - Issues: hearsay-tools/squeal #27, #47, #50, #58, #60, #61, #63, #69 (`gh issue view`); `research/issue-27.md`, `issue-47.md`, `issue-50.md`, `issue-61.md`, `issue-63.md`.
-- Source at `082b19e15`: `src/core/daemon/{scratch,signals,slow-instance,daemon}.ts`, `src/core/keys/environment.ts`, `src/core/capacity/{marks,pool}.ts`, `src/runners/vitest/adapter.ts`.
+- Source at `f438f8891`: `src/core/daemon/{scratch,signals,slow-instance,daemon}.ts`, `src/core/keys/environment.ts`, `src/core/capacity/{marks,pool}.ts`, `src/runners/vitest/adapter.ts`.
 - Vitest 4.1.10: `~/projects/cezar/node_modules/.pnpm/vitest@4.1.10_…/node_modules/vitest/dist/chunks/cli-api.BK8pd4xc.js` lines 3084, 3162, 3651, 11435; `startVitestModuleRunner.DB-7oCpn.js:636`; `node.js:78`.
 - Docs: https://bazel.build/run/client-server, https://docs.gradle.org/current/userguide/gradle_daemon.html (9.8.2), https://nx.dev/docs/concepts/nx-daemon, https://turborepo.dev/docs/reference/run, https://facebook.github.io/watchman/docs/cli-options, https://facebook.github.io/watchman/docs/cmd/watch-project, https://github.com/microsoft/TypeScript/wiki/Standalone-Server-(tsserver), https://rust-analyzer.github.io/book/configuration.html.
 - Live host, read-only: `/proc/<pid>/{stat,status,smaps,cmdline,fd}`, `/proc/{loadavg,meminfo,uptime}`; stores `cezar`, `squeal`, `project-a` `.git/squeal/store.sqlite` with `mode=ro`.

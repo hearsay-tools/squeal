@@ -8,7 +8,7 @@ On SIGTERM the teardown kills the session's group and then waits for the daemon.
 session's `close` resolves `runSession` during that wait, and the lifecycle goes on as if the
 session had ended by itself. The S2 test (`run-cell.test.ts`, "tears down the session, the daemon
 and the scratch when the runner is terminated") now checks what starts after the signal. At
-f9e09794e, before the fix, all five new checks failed in one run:
+e52e5dcae, before the fix, all five new checks failed in one run:
 
 - `runner.log`: `terminated by SIGTERM`, then `session end {"signal":"SIGKILL",...}` 170 ms later,
   then no refusal.
@@ -75,7 +75,7 @@ For a later row; each is outside this row's files or the done-when.
 
 At 04c04cabb, 2026-10-23:
 
-- Red first: the five checks above failed at f9e09794e. With the old `session.mjs` restored under
+- Red first: the five checks above failed at e52e5dcae. With the old `session.mjs` restored under
   the new `run-cell.mjs` (whose guard then never fires), the S2 test and both new
   `kill-running.test.ts` checks failed; restored.
 - `test/evals/run-cell.test.ts`, 10 of 10 single-file runs (8 of 8 tests each) beside one locked

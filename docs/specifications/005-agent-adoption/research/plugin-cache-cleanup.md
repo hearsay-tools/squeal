@@ -1,6 +1,6 @@
 # Plugin cache cleanup: which layer deletes an old version a live session names (005-72)
 
-Date: 2026-10-21. Brief: `plugin-cache-cleanup-brief.md`. Issues: [#48](https://github.com/hearsay-tools/squeal/issues/48), [#70](https://github.com/hearsay-tools/squeal/issues/70) (proposed). Versions examined: Codex 0.160.1 (`rust-v0.160.1`, `d27764b82`), the host's Claude Code 2.1.306 (bundled JS read as text), the Claude Code docs as fetched today, Squeal at `705d4c022`.
+Date: 2026-10-21. Brief: `plugin-cache-cleanup-brief.md`. Issues: [#48](https://github.com/hearsay-tools/squeal/issues/48), [#70](https://github.com/hearsay-tools/squeal/issues/70) (proposed). Versions examined: Codex 0.160.1 (`rust-v0.160.1`, `d27764b82`), the host's Claude Code 2.1.306 (bundled JS read as text), the Claude Code docs as fetched today, Squeal at `f92b3d9a6`.
 
 ## Answers
 

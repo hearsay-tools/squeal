@@ -10,7 +10,7 @@
   },
   "version": "0.1.420",
   "node": "v24.22.1",
-  "commit": "674ffbc690fc78775a7432e42aa5c5ca43d31546",
+  "commit": "3e91368c6a1392a15578331db220260090edebdf",
   "condition": {
     "state": "ready",
     "loaders": [],

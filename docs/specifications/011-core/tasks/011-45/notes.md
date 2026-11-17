@@ -97,14 +97,14 @@ The fallback wait ended `timeout` with 0 transitions where a full read gives `ne
   - The daemon calls it in `#register`, in the registration transaction, before `releaseRunning`.
 - Trust (`statesMark`, `trustedClosureWrites`):
   - The marker's table's triggers all exist (by name in `sqlite_master`), and the marker has a row. This is read in the reader's read transaction, beside the marker and the rows.
-  - Otherwise the reader reads in full each poll, as at `5e8dcc223`: a store no daemon of this release opened, a dropped trigger (a release that makes a table again), a removed worktree (its row goes after its rows), or a test's store with no connection.
+  - Otherwise the reader reads in full each poll, as at `1a2726fb0`: a store no daemon of this release opened, a dropped trigger (a release that makes a table again), a removed worktree (its row goes after its rows), or a test's store with no connection.
   - A change to a trigger's body must take a new name. A reader checks names, not bodies.
 
 ### Deleted (replace, not layer)
 
-- The repositories' bumps: `KnownStateRepo.upsertMany` and `TestFileKeyRepo.upsertMany` (`repos/states.ts`, `repos/test-files.ts`, back to `5e8dcc223`).
-- The ledger commit's removal bump (`scheduler/ledger.ts`, back to `5e8dcc223`).
-- `storeClosures`' and `addClosures`' `markClosureWrite` (`scheduler/revision.ts`, `store/transfer-rows.ts`, back to `5e8dcc223`).
+- The repositories' bumps: `KnownStateRepo.upsertMany` and `TestFileKeyRepo.upsertMany` (`repos/states.ts`, `repos/test-files.ts`, back to `1a2726fb0`).
+- The ledger commit's removal bump (`scheduler/ledger.ts`, back to `1a2726fb0`).
+- `storeClosures`' and `addClosures`' `markClosureWrite` (`scheduler/revision.ts`, `store/transfer-rows.ts`, back to `1a2726fb0`).
 - The registration's `claimStatesMarker` (`daemon/daemon.ts`; `ensureWriteMarkers` takes its line).
 - `everyDaemonClaims`, `bumpStatesMarker`, `bumpStatesMarkerOf`, `claimStatesMarker`, `markClosureWrite`, `closureWrites`, and the files `src/core/store/states-marker.ts` and `src/core/store/closure-writes.ts`.
 - The writer source-scan tests: "leaves the removals to the ledger's commit" (`test/store/states-marker.test.ts`) and "is moved by both writers of closures, and by no other code" (`test/cli/stored-closures.test.ts`).
@@ -126,7 +126,7 @@ The fallback wait ended `timeout` with 0 transitions where a full read gives `ne
 ### Checks
 
 - `pnpm run lint`: `Checked 3430 files`, no fixes. `pnpm run typecheck`: clean.
-- `test/keys/key-format.test.ts` passes with no raise (Squeal, revision 53). The repositories, `ledger.ts`, `revision.ts` and `transfer-rows.ts` are back to `5e8dcc223`. `write-markers.ts` is imported only by `daemon.ts` and the waits, which are off the validity path.
+- `test/keys/key-format.test.ts` passes with no raise (Squeal, revision 53). The repositories, `ledger.ts`, `revision.ts` and `transfer-rows.ts` are back to `1a2726fb0`. `write-markers.ts` is imported only by `daemon.ts` and the waits, which are off the validity path.
 - Run directly while Squeal had them queued (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run <paths>`). Six focused files: 35 of 36 passed; the failing one counted the full read's list after counting moved in place, and was fixed in the test. Then `write-markers`, `stored-closures` and the daemon test: 17 of 17 passed.
 
 ### Cost of the triggers

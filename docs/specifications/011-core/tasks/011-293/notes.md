@@ -121,7 +121,7 @@ At 5bbd4cc9e: `pnpm run lint` and `pnpm run typecheck` pass. Squeal at revision 
 
 ## R1: repair of review 0.1.403 (B1, B2)
 
-Review: `reviews/0.1.403.md` (FAIL a5152c810). Parent's repair request, 2026-11-04.
+Review: `reviews/0.1.403.md` (FAIL acfedac71). Parent's repair request, 2026-11-04.
 
 ### B1: a fresh heartbeat holds no stop
 
@@ -168,7 +168,7 @@ At 222b04cfe: `pnpm run lint` and `pnpm run typecheck` pass. 27 presence, hook, 
 
 ## R2: repair of review 0.1.403-r2 (B2)
 
-Review: `reviews/0.1.403-r2.md` (FAIL 7f2ed2a59, B2 only; B1 resolved). The human approved this round, 2026-11-05; the parent's repair request names the two fixes and the expected-reads column.
+Review: `reviews/0.1.403-r2.md` (FAIL f5611c653, B2 only; B1 resolved). The human approved this round, 2026-11-05; the parent's repair request names the two fixes and the expected-reads column.
 
 ### The fix
 
@@ -194,7 +194,7 @@ Review: `reviews/0.1.403-r2.md` (FAIL 7f2ed2a59, B2 only; B1 resolved). The huma
 
 The log holds each meta key (presence keys by name: `exit`, `notes`, `claim`, `short`, `rest`, `stop`, `feed`, `told`; others without the worktree id), each worktree row read (`row`), each `.starting` and `.spawned` file read, and each lock probe (`probe`). The header's reads before the daemon's (the header's rows and the holds) are three constants in `trace.ts`. The expected lists are literals in `reads-rows.ts` and `reads-stop.ts`.
 
-How the lists were made: a throwaway probe in a private `/tmp` directory, outside the repo, over `git archive 4204b3d47 src package.json test/status/helpers.ts test/store/helpers.ts` with copies of the table's fixture and rows. It ran the old expressions (status: `withDaemonFacts(asStopped(raw))`; header and told header: the old `readLiveHeader`, `withTold`; news: the old `livenessChange`; edit line: `withLateHeartbeat`; hook stop: `heldStop`; hook handoff: the old `handOver` read, its body copied; short handoff: `readShortHandoff`; wait: the old `stoppingOf`) over scratch stores with the same facts, with the same spies. 423 traces. Against the new code: 242 identical, 181 reading less, none adding or moving a read, and no value differing. The probe was deleted; only the lists are committed. Reverting the stopped order fails 141 of the column's cases; destructuring `start` and `marks` before news's told-start guard fails exactly the three told-start rows the review names.
+How the lists were made: a throwaway probe in a private `/tmp` directory, outside the repo, over `git archive 43a16f75c src package.json test/status/helpers.ts test/store/helpers.ts` with copies of the table's fixture and rows. It ran the old expressions (status: `withDaemonFacts(asStopped(raw))`; header and told header: the old `readLiveHeader`, `withTold`; news: the old `livenessChange`; edit line: `withLateHeartbeat`; hook stop: `heldStop`; hook handoff: the old `handOver` read, its body copied; short handoff: `readShortHandoff`; wait: the old `stoppingOf`) over scratch stores with the same facts, with the same spies. 423 traces. Against the new code: 242 identical, 181 reading less, none adding or moving a read, and no value differing. The probe was deleted; only the lists are committed. Reverting the stopped order fails 141 of the column's cases; destructuring `start` and `marks` before news's told-start guard fails exactly the three told-start rows the review names.
 
 ### Where the new code reads less
 

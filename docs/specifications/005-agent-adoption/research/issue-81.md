@@ -1,6 +1,6 @@
 # Issue 81: a Codex catalog skill path that an update deletes
 
-Date: 2026-10-23. Issue: https://github.com/hearsay-tools/squeal/issues/81. Related: closed [#48](https://github.com/hearsay-tools/squeal/issues/48), `issue-48.md`, `plugin-cache-cleanup.md`, spec 005 D3 and D6, spec 002 D1. Versions: Squeal checkout 0.1.276 (`ed9c18b64`), installed Codex plugin 0.1.275 then 0.1.276, Codex CLI 0.160.1 (from the session log). Time box: 20 minutes.
+Date: 2026-10-23. Issue: https://github.com/hearsay-tools/squeal/issues/81. Related: closed [#48](https://github.com/hearsay-tools/squeal/issues/48), `issue-48.md`, `plugin-cache-cleanup.md`, spec 005 D3 and D6, spec 002 D1. Versions: Squeal checkout 0.1.276 (`956921014`), installed Codex plugin 0.1.275 then 0.1.276, Codex CLI 0.160.1 (from the session log). Time box: 20 minutes.
 
 Verdict: **reproduced synthetically; no live update replayed.** The probe deletes a simulated catalog skill path while the saved skill copy and the stable launcher survive. The probe ran at load 45.11 on 24 CPUs, contrary to the required skip rule; retain this as limited evidence, not a compliant live reproduction. This is a recurrence of a gap that 005-73 left on purpose, not a regression of 005-73. The real session also did not get the saved-skill line, and no SessionStart text was found in the inspected log.
 
@@ -8,7 +8,7 @@ Verdict: **reproduced synthetically; no live update replayed.** The probe delete
 
 | # | Question | Answer | Tag |
 |---|---|---|---|
-| 1 | Can the catalog path disappear while the saved skill and launcher survive? | Yes. After Codex's install of the next version, the catalog path gives `No such file or directory`, the saved copy `<PLUGIN_DATA>/versions/<old>/skills/squeal/SKILL.md` reads, and `<PLUGIN_DATA>/bin/squeal` exists. | Verified by experiment (probe, Squeal `src/` at `ed9c18b64`); matched in the real session log (read-only). |
+| 1 | Can the catalog path disappear while the saved skill and launcher survive? | Yes. After Codex's install of the next version, the catalog path gives `No such file or directory`, the saved copy `<PLUGIN_DATA>/versions/<old>/skills/squeal/SKILL.md` reads, and `<PLUGIN_DATA>/bin/squeal` exists. | Verified by experiment (probe, Squeal `src/` at `956921014`); matched in the real session log (read-only). |
 | 2 | Catalog path or primer path? | Catalog path. Codex renders the catalog (`squeal:squeal` with `.../cache/hearsay/squeal/0.1.275/...`) into the thread's initial context. The primer the session got named the launcher `~/.codex/plugins/data/squeal-hearsay/bin/squeal`, which worked. | Read in the session log; catalog rendering read in source code in `plugin-cache-cleanup.md` 2. |
 | 3 | Regression of 005-73, or recurrence of #48? | Recurrence of the catalog half of #48. 005-73 fixed the primer CLI and the FAIL line (still fixed here). It did not change the catalog: `src/harness/codex/kept.ts` says "Codex's skill catalog keeps naming the cache directory a later install deletes", and the fix is one line in SessionStart and SubagentStart text only. | Read in source code; status.md 2026-10-21 (005-73). |
 | 4 | Why did the reviewer have to search? | The session got no `Squeal's skill for this session, kept across plugin updates` line. Its first Squeal text was a registration from a hook after the first tool calls, and `skillLine` is added only on SessionStart and SubagentStart (`src/harness/codex/handlers.ts` 40 and 148; UserPromptSubmit 51 and PostToolUse 93 pass none). Why no SessionStart text arrived is not determined. | Read in the session log and source code; the cause of the missing SessionStart text is not determined. |
@@ -65,7 +65,7 @@ The coordinator decides. Evidence for the choice:
 ## Sources
 
 - Issue #81 and #48, `gh issue view <n> -R hearsay-tools/squeal --comments`, 2026-10-23.
-- Squeal at `ed9c18b64`: `plugins/codex/skills/squeal/SKILL.md`, `plugins/codex/hooks/hooks.json`, `plugins/codex/bin/squeal-launcher`, `src/harness/shared/version-copies.ts` (`keepVersion`, `prune`), `src/harness/codex/kept.ts` (`skillLine`, `keepOnSpawn`), `src/harness/codex/handlers.ts` 40, 51, 93, 148, `src/harness/codex/command.ts`, `src/harness/codex/output.ts` (`capContext`).
+- Squeal at `956921014`: `plugins/codex/skills/squeal/SKILL.md`, `plugins/codex/hooks/hooks.json`, `plugins/codex/bin/squeal-launcher`, `src/harness/shared/version-copies.ts` (`keepVersion`, `prune`), `src/harness/codex/kept.ts` (`skillLine`, `keepOnSpawn`), `src/harness/codex/handlers.ts` 40, 51, 93, 148, `src/harness/codex/command.ts`, `src/harness/codex/output.ts` (`capContext`).
 - Spec 005 D3 (2026-10-21 and 2026-10-22 amendments), D6; `status.md` entries 005-73 and 005-81; spec 002 D1; `research/plugin-cache-cleanup.md`; `research/issue-48.md`.
 - Host, read-only: the session log above; `ls` and `stat` of `~/.codex/plugins/cache/hearsay/squeal/` and `~/.codex/plugins/data/squeal-hearsay/{versions,bin/squeal}`.
 - Probe: `probes/issue-81/README.md`, `probe.mts`, `run.txt`.

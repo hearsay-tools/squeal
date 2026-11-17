@@ -2,7 +2,7 @@
 
 Throwaway probe for `011-core/research/streaming-lanes.md`. Not product code; nothing imports it.
 
-- `prototype.patch`: applied to a scratch clone of `53932ce8` only, selected by `SQUEAL_PROTO`
+- `prototype.patch`: applied to a scratch clone of `c11ab072` only, selected by `SQUEAL_PROTO`
   (and `SQUEAL_PROTO_CANCEL=drain|kill`, `SQUEAL_PROTO_BESIDE=1`; a per-run process mark for
   slots and beside tiers in `escaped.ts`):
   `today` (unset behaves the same), `w1` (W1's rule on node:test lanes: one round of
@@ -31,7 +31,7 @@ Throwaway probe for `011-core/research/streaming-lanes.md`. Not product code; no
 
 Run (from a scratch directory, never the real pool or a real session):
 
-    git clone <this repo> /tmp/r2sl/squeal && git -C /tmp/r2sl/squeal checkout 53932ce8
+    git clone <this repo> /tmp/r2sl/squeal && git -C /tmp/r2sl/squeal checkout c11ab072
     (cd /tmp/r2sl/squeal && npm ci && git apply <this dir>/prototype.patch && npm run build)
     ./run-arms.sh /tmp/r2sl/squeal/plugins/claude-code/dist/cli/squeal.mjs <this dir>
     node cezar.mjs; node alternate.mjs

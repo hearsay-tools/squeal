@@ -10,9 +10,9 @@ The original cause is **not determined**, because issue 131 records neither the
 exact warning nor the incident version, launcher path, session identity or marker
 state. Do not infer a second warning implementation from that report.
 
-Research date: 2026-10-31. Checkout `e59ed2260d21616ddd529f8a5a5dcf4dde8dc2fc`,
+Research date: 2026-10-31. Checkout `0bfafb150ff7ca3581f910554ff4e8aca777438b`,
 package 0.1.384. Examined release 0.1.383 at commit
-`2e62ee7c30f7fe06197dd08800a1fd1bf312d9f0` (annotated tag object
+`2ac244a7094b722abad46825d0e8b0b40d1b4c77` (annotated tag object
 `7e58c75551acadb71f6ff75e5141f77629fad9ac`). Both have identical format-8 launcher
 bytes, SHA-256 `40cc06b2aafeb239cd5b84d2a58858c4a18067d257636c54abffe288ea6e31e6`.
 The session's installed launcher has that same hash (read-only comparison).
@@ -26,7 +26,7 @@ The brief supplies no numbered questions. These four questions make its scope ex
 | 1. Does an unchanged pinned-session warning repeat? Run isolated launcher fixtures. | No with writable state: first call warns, next two do not, for both data and terminal launchers. | **verified by experiment**, format 8, 0.1.383/0.1.384 identical launcher |
 | 2. Can the symptom occur without changing the pin? Force a failed marker write. | Yes: all three calls warn, preserve the pinned runtime and forward the status arguments. This matches D3's stated fallback. | **verified by experiment**, same launcher |
 | 3. Is this separate from issue 85's deduplication? Read both issues and launcher source. | Different text suffix, same `notice()` function. Issue 85's existing contract includes the version running Codex sessions keep. A distinct incident warning remains unproven. | **read in source code**, 0.1.383/0.1.384; issue records fetched 2026-10-31 |
-| 4. Which sections own a follow-up? Read 005 and 002 specs. | 005 D3 owns notice persistence and cadence; D6 owns user-facing text. 002 D7–D9 owns adapter/runtime separation, update selection and immutable session pins. | **read in official docs**, repository specs at `e59ed2260` |
+| 4. Which sections own a follow-up? Read 005 and 002 specs. | 005 D3 owns notice persistence and cadence; D6 owns user-facing text. 002 D7–D9 owns adapter/runtime separation, update selection and immutable session pins. | **read in official docs**, repository specs at `0bfafb150` |
 
 ## Evidence per question
 
@@ -81,7 +81,7 @@ accepts `CODEX_SESSION_ID` or `CODEX_THREAD_ID` (lines 113–132); notice scope 
 the former but not the latter (lines 175–176). The thread-only probe therefore
 confirms machine-scoped suppression, not per-thread suppression.
 
-**read in official docs, 005 status/spec at `e59ed2260`.** Row 005-84 already
+**read in official docs, 005 status/spec at `0bfafb150`.** Row 005-84 already
 records limits: A/B/A can print A twice, and concurrent calls can both print.
 The marker is bounded to 64 scopes. None of concurrency, scope eviction or
 alternating version states was attributed to this incident or tested here.
@@ -140,7 +140,7 @@ flags the throwaway script as untested/CRAP because no suite loads it; the direc
 
 - [Issue 131](https://github.com/hearsay-tools/squeal/issues/131), body and empty comments fetched through `gh`, 2026-10-31.
 - [Issue 85](https://github.com/hearsay-tools/squeal/issues/85), including [release comment](https://github.com/hearsay-tools/squeal/issues/85#issuecomment-6414484220), fetched through `gh`, 2026-10-31.
-- [Launcher at release 0.1.383](https://github.com/hearsay-tools/squeal/blob/2e62ee7c30f7fe06197dd08800a1fd1bf312d9f0/plugins/claude-code/bin/squeal-launcher#L113), read from local Git; lines 113–132 and 170–212.
+- [Launcher at release 0.1.383](https://github.com/hearsay-tools/squeal/blob/2ac244a7094b722abad46825d0e8b0b40d1b4c77/plugins/claude-code/bin/squeal-launcher#L113), read from local Git; lines 113–132 and 170–212.
 - [005 spec D3/D6](../spec.md), [005 status](../status.md), [002 spec D7–D9](../../002-codex-adapter/spec.md), [002 status](../../002-codex-adapter/status.md), all at checkout above.
 - Existing tests read, not run: `test/cli/launcher.test.ts` and `test/cli/launcher-codex-runtime.test.ts`.
 - Probe: [`docs/specifications/005-agent-adoption/research/probes/issue-131/`](probes/issue-131/), with `probe.mjs`, `README.md` and captured `output.jsonl`.

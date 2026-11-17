@@ -11,7 +11,7 @@ stalled main thread, not only the scheduler lock. Keep lint keys stable over a
 closure that grows during linting.
 
 Row 011-303, wave 71, W2. Source examined: Squeal **0.1.407**
-(`squeal--v0.1.407`, `7fd4a39c9`; `src/` is the same at this branch's base).
+(`squeal--v0.1.407`, `41b6a48fb`; `src/` is the same at this branch's base).
 Incident runtime: 0.1.407 (Codex plugin `versions/0.1.407`). All times UTC.
 
 ## Questions and answers

@@ -67,7 +67,7 @@ For spec 005 D1: `run --slow --wait` now exits 3 on a refused pass, as `run --al
 
 ### After the rebase onto 0.1.484 (coordinator's request, 2026-11-14)
 
-The branch was rebased from `01a380627` onto `origin/main` at `1f63535dc` (rows 011-331, 011-334 and 011-336). No conflict: main changed `run-lint-group.ts` (the `stoppedText` import now from `wait/stopped.ts`) and `test/cli/run-group.test.ts` (row 011-334's locked-store row) in hunks apart from this row's. No code on main reads `NO_PASS`, `afterPass` or the old texts beside this row's files; `run-slow.ts` still calls `statusWaitCommand` from `status-wait.ts`, which 011-331 kept.
+The branch was rebased from `951ae8db4` onto `origin/main` at `7a6770bc2` (rows 011-331, 011-334 and 011-336). No conflict: main changed `run-lint-group.ts` (the `stoppedText` import now from `wait/stopped.ts`) and `test/cli/run-group.test.ts` (row 011-334's locked-store row) in hunks apart from this row's. No code on main reads `NO_PASS`, `afterPass` or the old texts beside this row's files; `run-slow.ts` still calls `statusWaitCommand` from `status-wait.ts`, which 011-331 kept.
 
 - `pnpm run lint`: clean (3409 files). `pnpm run typecheck`: clean.
 - `squeal status --wait 60000`, revision 16 (`c19519455`): the 23 test files above (the ten named, the run and intake tests nearest the change, key-format and version-sensitive) all current and passing.

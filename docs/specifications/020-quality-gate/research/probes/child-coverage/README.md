@@ -2,7 +2,7 @@
 
 Throwaway. Nothing here is product code or a test of the product. Findings: `../../child-coverage.md`.
 
-Versions: this repository at `1e8b506ed`, Node 24.22.1, Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Scratch: `.ai/cezar/t/0989b0c0/cc` (outside git; raw V8 files stay there). No daemon, no agent session, no product file changed. Host: 24 vCPUs, one-minute load 21 to 33 during the runs (named in each output).
+Versions: this repository at `fae073967`, Node 24.22.1, Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Scratch: `.ai/cezar/t/0989b0c0/cc` (outside git; raw V8 files stay there). No daemon, no agent session, no product file changed. Host: 24 vCPUs, one-minute load 21 to 33 during the runs (named in each output).
 
 - `fixture.mjs`: writes a small project. Sources reached only through children: `src/work.ts` (tsx child), `src/plain.mjs` (plain child, spawned with `env: { PATH }` in one test), `src/lib.ts` (an esbuild bundle with an inline map), `src/killed.mjs` (child ended by SIGKILL), `src/late.mjs` (detached child that exits 1.5 s after it starts). Two Vitest files, one node:test file. It also writes the two prototype seams:
   - `provider-children.mjs`: Squeal's `provider.mjs` wrapped. `startCoverage`, and each `takeCoverage` after it, point the worker's `NODE_V8_COVERAGE` at a new directory, and log the test file, the worker pid and the directory.

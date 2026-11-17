@@ -1,7 +1,7 @@
 # Wave 13ay: review of the test-only 001-309 landing
 
-Candidate: `373df1da1a1cefc391de99df833f7b195f5606bd`.
-Range: `b36a5b5b..373df1da`. Implementation row: 001-309. Review task: 001-324.
+Candidate: `9b39b97b24d81ea9de08862a035e262ad743688c`.
+Range: `e7005ee1..9b39b97b`. Implementation row: 001-309. Review task: 001-324.
 Contracts: the row's eight named conditions and done-when; 001 D2, D10 and D12; the existing node:test enumeration contract (003 D6). Inputs: `tasks/001-309/notes.md`, `spec.md`, `status.md`, the diff and the immediate callers/callees.
 
 ## Verdict
@@ -14,7 +14,7 @@ All repository gates ran at the exact assigned candidate with a clean tracked tr
 
 ```text
 $ git rev-parse HEAD
-373df1da1a1cefc391de99df833f7b195f5606bd
+9b39b97b24d81ea9de08862a035e262ad743688c
 $ git status --porcelain
 (no output)
 
@@ -63,7 +63,7 @@ npm warn Unknown env config "store-dir". This will stop working in the next majo
 $ git status --porcelain
 (no output after build)
 
-$ git diff --quiet b36a5b5b..373df1da -- src plugins package.json package-lock.json vitest.config.ts
+$ git diff --quiet e7005ee1..9b39b97b -- src plugins package.json package-lock.json vitest.config.ts
 (exit 0: no product/build/config change)
 ```
 
@@ -243,7 +243,7 @@ Breaking changes might not follow SemVer, please pin Vitest's version when using
 (exit 0)
 
 $ git rev-parse HEAD
-373df1da1a1cefc391de99df833f7b195f5606bd
+9b39b97b24d81ea9de08862a035e262ad743688c
 $ git status --porcelain
 (no output after both gates)
 ```

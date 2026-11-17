@@ -1,6 +1,6 @@
 # 015-52 notes: a test file is never judged as source, also before its runner listing
 
-Worker fcd7c198, 2026-10-25. Briefs: `tasks/wave-8.md` W1, then R11 (repair after review 0.1.315: B1, B2, N1). Shape: repair. Rebased onto `origin/main` at 0.1.313 (`c7ab3c0a9`). The pass changes are inside the brief's ownership (`src/core/code/pass/**` and its tests). The scheduler part is outside it, by agreement, in one commit of its own (`15c7e389f`): requests `07557174`, `9e9fe36a`, `bf3feab6` and `e86a66d4`, coordinator 52e58f23, with 011's conditions. No bundles, no version, no key change.
+Worker fcd7c198, 2026-10-25. Briefs: `tasks/wave-8.md` W1, then R11 (repair after review 0.1.315: B1, B2, N1). Shape: repair. Rebased onto `origin/main` at 0.1.313 (`cfbc7466c`). The pass changes are inside the brief's ownership (`src/core/code/pass/**` and its tests). The scheduler part is outside it, by agreement, in one commit of its own (`15c7e389f`): requests `07557174`, `9e9fe36a`, `bf3feab6` and `e86a66d4`, coordinator 52e58f23, with 011's conditions. No bundles, no version, no key change.
 
 ## The causes
 

@@ -1,16 +1,16 @@
 # 005 wave 1.5 re-review
 
-PASS `2f39c11a6d79b78f140ed67d5cb4f4699d995b1d`: **0 blockers**, 1 proven nonblocking should-fix residual (S2), no nits. B1, B2, B3 and S1 are closed. S2's original case is closed; its completed-before-read variant is not.
+PASS `d86b9f95e27b4d65c605976b9690dfffea07cfde`: **0 blockers**, 1 proven nonblocking should-fix residual (S2), no nits. B1, B2, B3 and S1 are closed. S2's original case is closed; its completed-before-read variant is not.
 
 ## Verification
 
-Exact candidate confirmed by `git rev-parse HEAD`; no checkout mismatch. Reviewed the 005-22, 005-23, 005-24 and 0.1.134 build commits (`54a79b7a..2f39c11a`), bounded by `reviews/wave-1.md` and brief 005-25. Inputs include the 2026-10-13 amendments to D3, D4 and D5. No source or board edit, delegation, Claude subject session or Codex subject session. The independent suite was `npx vitest run`, not a Squeal checkpoint.
+Exact candidate confirmed by `git rev-parse HEAD`; no checkout mismatch. Reviewed the 005-22, 005-23, 005-24 and 0.1.134 build commits (`fd434a47..d86b9f95`), bounded by `reviews/wave-1.md` and brief 005-25. Inputs include the 2026-10-13 amendments to D3, D4 and D5. No source or board edit, delegation, Claude subject session or Codex subject session. The independent suite was `npx vitest run`, not a Squeal checkpoint.
 
 All commands and probes ran at the exact candidate on a clean tree, before this report was written. Output below retains substantive results. Build left the committed bundles unchanged.
 
 ```text
 $ git rev-parse HEAD
-2f39c11a6d79b78f140ed67d5cb4f4699d995b1d
+d86b9f95e27b4d65c605976b9690dfffea07cfde
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
 18 packages are looking for funding

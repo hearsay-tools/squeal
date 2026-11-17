@@ -2,11 +2,11 @@
 
 ## Verification output
 
-Product candidate: `a69ba49d1b9596df0d5046b999f699e8f4a069ac` (0.1.151). Actual clean checkout: `53922de1d99f7a2e298aaa57741d9e5a9265b0bf`. `git diff a69ba49d..53922de1 --name-only` lists only `docs/board.md` and this spec's `status.md`. The HEAD mismatch is N1; no product mismatch. Review range is the 005-34, 005-35 and 005-36 commits from `0cbf6429` through `6a5bf2e3`, plus their `a69ba49d` build. 001 and 006 changes are excluded.
+Product candidate: `6f43a50ac9620d28d0416d52462fc07b2ca12944` (0.1.151). Actual clean checkout: `e096cec58db8b80f03e809fd724df7718f98ac70`. `git diff 6f43a50a..e096cec5 --name-only` lists only `docs/board.md` and this spec's `status.md`. The HEAD mismatch is N1; no product mismatch. Review range is the 005-34, 005-35 and 005-36 commits from `40a312aa` through `bf309612`, plus their `6f43a50a` build. 001 and 006 changes are excluded.
 
 The prior findings file is `reviews/wave-3.md`; scope is B1 to B4, S1 and their nearest variants, as `tasks/wave-3.md` 005-37 requests. The 2026-10-13 wave 3.5 amendment is the current contract. No source changes or model session. Reviewer-owned probes invoke no real Claude/Codex CLI. The repository suite includes its isolated real Codex plugin/trust integration; the parent explicitly authorized that suite unchanged after the first attempt was interrupted. Standalone probes use synthetic stores, a real checkpoint tracker, a socket stand-in and executable harness stubs. Their homes and roots are inside this worktree's ignored `node_modules/.review-00537/` directory. `/proc/self/fd/<fd>/daemon.sock` aliases that directory to fit the Unix socket path limit.
 
-All routine commands below exited 0 on clean `53922de1`. The exact build SHA's verification is **unverified** under the reviewer provenance rule; the product-identical checkout's results are verified. The full suite is the independent reviewer run, not Squeal's checkpoint.
+All routine commands below exited 0 on clean `e096cec5`. The exact build SHA's verification is **unverified** under the reviewer provenance rule; the product-identical checkout's results are verified. The full suite is the independent reviewer run, not Squeal's checkpoint.
 
 ```text
 $ npm ci
@@ -92,7 +92,7 @@ exit 0
 
 ```text
 $ npx vitest run --maxWorkers=4
-INTERRUPTED by the reviewer, exit 143; started at clean 53922de1.
+INTERRUPTED by the reviewer, exit 143; started at clean e096cec5.
 No completed full-suite verdict. Two unchanged stop-slow timing cases had failed.
 The parent authorized one replacement capped full run, unchanged.
 ```
@@ -133,7 +133,7 @@ At clock 1234, a real completed-before-read join reports 0 reused and 1 run by i
 
 ### S1: repaired by the formatter-aligned examples
 
-The skill and references show current/pending and passed/running/queued counts with their test/file parts, including inherited counts. The collapsed-head example was updated in `d87cd7fa` to the 005-34 output. Setup skill copies and Squeal reference copies are identical; Squeal skill bodies match after the existing Codex-only CLI-resolution note is removed. The Claude Squeal body is 4,877 characters; setup is below its 5,000-character test budget. The Codex body is 5,205 including its existing note (already 5,022 before this range), not a newly introduced budget-policy finding. No harness discovery or model-compliance claim is made.
+The skill and references show current/pending and passed/running/queued counts with their test/file parts, including inherited counts. The collapsed-head example was updated in `5fa40840` to the 005-34 output. Setup skill copies and Squeal reference copies are identical; Squeal skill bodies match after the existing Codex-only CLI-resolution note is removed. The Claude Squeal body is 4,877 characters; setup is below its 5,000-character test budget. The Codex body is 5,205 including its existing note (already 5,022 before this range), not a newly introduced budget-policy finding. No harness discovery or model-compliance claim is made.
 
 ## Should-fix
 
@@ -149,7 +149,7 @@ The skill and references show current/pending and passed/running/queued counts w
 
 ### N1. Proven, nonblocking: checkout HEAD differs from the product build candidate
 
-`git rev-parse HEAD` was `53922de1`, not `a69ba49d`. The two changed files are board/status documentation, with no source or bundle difference. This records verification provenance; do not repair board/status or include unrelated 001/006 work.
+`git rev-parse HEAD` was `e096cec5`, not `6f43a50a`. The two changed files are board/status documentation, with no source or bundle difference. This records verification provenance; do not repair board/status or include unrelated 001/006 work.
 
 ## What fits
 
@@ -170,7 +170,7 @@ The skill and references show current/pending and passed/running/queued counts w
 
 ## Final independent full-suite verification
 
-The parent-authorized replacement started and ended on clean review-only commit `965d92247fdff876278525fcd246c11364925766`. Source, tests, bundles and package metadata are identical to `a69ba49d`; `git diff --quiet a69ba49d -- src test plugins package.json package-lock.json` exits 0. This is verified for `965d9224`, and **unverified for the exact candidate SHA** under the reviewer's provenance rule. No source changed during the run. The suite ran unchanged, including its own isolated Codex integration as the parent permitted; reviewer-owned probes used only stubs.
+The parent-authorized replacement started and ended on clean review-only commit `965d92247fdff876278525fcd246c11364925766`. Source, tests, bundles and package metadata are identical to `6f43a50a`; `git diff --quiet 6f43a50a -- src test plugins package.json package-lock.json` exits 0. This is verified for `965d9224`, and **unverified for the exact candidate SHA** under the reviewer's provenance rule. No source changed during the run. The suite ran unchanged, including its own isolated Codex integration as the parent permitted; reviewer-owned probes used only stubs.
 
 ```text
 $ npx vitest run --maxWorkers=4
@@ -204,7 +204,7 @@ $ git rev-parse HEAD
 $ git status --short
 (empty after suite, before this final report extension)
 
-$ git diff --quiet a69ba49d -- src test plugins package.json package-lock.json
+$ git diff --quiet 6f43a50a -- src test plugins package.json package-lock.json
 exit 0
 ```
 

@@ -1,6 +1,6 @@
 # Wave 12b review: backlog tiers and daemon step-down
 
-Candidate: `9c23b22357863601887da8ada8bed10acb1711b0` (0.1.33). Reviewed 001-124's cherry-picks `5c55b80`, `eedb4d2`, `71a7ca1`, `a177ea7` and 001-125's `74052fb`, `3b48f7f`, `1af0f22`, including both committed bundles. Original worker ranges: `9a6872f..61facb7` and `3cf205a..79b0d43`.
+Candidate: `559f4c32d0719052c2e20a289fbe243889b2f9a7` (0.1.33). Reviewed 001-124's cherry-picks `5c55b80`, `eedb4d2`, `71a7ca1`, `a177ea7` and 001-125's `74052fb`, `3b48f7f`, `1af0f22`, including both committed bundles. Original worker ranges: `9a6872f..61facb7` and `3cf205a..79b0d43`.
 
 **FAIL: 1 proven blocker, 1 proven should-fix note, 1 proven provenance nit.** No plausible or unverified product finding. This is an initial review, not a re-review of wave-12.md.
 
@@ -10,7 +10,7 @@ All commands and probes below ran on a clean detached checkout of the exact cand
 
 ```text
 $ git rev-parse HEAD
-9c23b22357863601887da8ada8bed10acb1711b0
+559f4c32d0719052c2e20a289fbe243889b2f9a7
 
 $ npm ci
 added 56 packages, and audited 57 packages in 1s
@@ -117,7 +117,7 @@ The independent run deadline still initiates cancellation. It is not an end-to-e
 
 ### N1. Proven provenance mismatch at assignment, corrected for verification
 
-Initial `git rev-parse HEAD` was `7ec5085b8a978e6ec5b6eb8ddf64dd3b53404a45`, not the named candidate `9c23b22`. `git diff --stat 9c23b22..7ec5085` contained only `docs/board.md` and `docs/specifications/001-core-loop/tasks/wave-12.md`. Verification and probes ran after explicitly checking out `9c23b22`; the assigned branch was restored for the findings-only commit. No code or build evidence was taken at the mismatched HEAD. Nonblocking; dispatch the exact SHA when possible.
+Initial `git rev-parse HEAD` was `8d00c231a8c2a8949224e6c62ca643a5bf562742`, not the named candidate `9c23b22`. `git diff --stat 9c23b22..7ec5085` contained only `docs/board.md` and `docs/specifications/001-core-loop/tasks/wave-12.md`. Verification and probes ran after explicitly checking out `9c23b22`; the assigned branch was restored for the findings-only commit. No code or build evidence was taken at the mismatched HEAD. Nonblocking; dispatch the exact SHA when possible.
 
 ## What fits
 

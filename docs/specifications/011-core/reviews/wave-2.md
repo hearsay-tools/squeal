@@ -1,6 +1,6 @@
 FAIL e25d4229c2411c0e5147874c95ed09579d701d1b
 
-Review of spec 011 wave 2 (011-15, 011-16, 011-17) and the approved stdout-only slice of 003-47. One proven blocker, two non-blocking notes, one documentation nit. Candidate `cand/0.1.216`, baseline `origin/main` at `ba019273b5ca8c1f0944494c71bdb9bce1b3411c` (0.1.215). HEAD matched the pinned candidate and the tracked tree was clean throughout the gates and probes. No product files changed. Build omitted as the dispatch explicitly requires.
+Review of spec 011 wave 2 (011-15, 011-16, 011-17) and the approved stdout-only slice of 003-47. One proven blocker, two non-blocking notes, one documentation nit. Candidate `cand/0.1.216`, baseline `origin/main` at `953f527c6807d56eaa493da3dbd4f65a24b17148` (0.1.215). HEAD matched the pinned candidate and the tracked tree was clean throughout the gates and probes. No product files changed. Build omitted as the dispatch explicitly requires.
 
 ## Verification output
 
@@ -194,15 +194,15 @@ The independent probe lived under `/tmp/squeal-review-wave2-fx3cprct`, with scra
 
 ## Re-review
 
-PASS 4feb215558fb474086133cb99e8ba7292befb9b0
+PASS 5accf0cf7d50b16eb8eb42d60d619ad7e9007527
 
-Re-review of B1, S1, S2 and N1 at `cand/0.1.216`, plus the first review of 004-71 against 004 D8's 2026-10-18 amendment and `tasks/wave-10.md`. No blockers, no new should-fix findings or nits. The scope remains 011-15, 011-16, 011-17 and the approved stdout-only 003-47 slice, with 004-71 added. The narrow product delta since `e25d4229` is the stale-FAIL classification, retry reason and wait count repairs, the policy-aware quiet line, and the rebuilt bundles/key pin. The candidate SHA matched HEAD and the tracked tree stayed clean through every gate and probe. `origin/main` was `0ca490008bbc2474aff0e5f739e186be3878b94d` (0.1.215). Build omitted as explicitly dispatched.
+Re-review of B1, S1, S2 and N1 at `cand/0.1.216`, plus the first review of 004-71 against 004 D8's 2026-10-18 amendment and `tasks/wave-10.md`. No blockers, no new should-fix findings or nits. The scope remains 011-15, 011-16, 011-17 and the approved stdout-only 003-47 slice, with 004-71 added. The narrow product delta since `e25d4229` is the stale-FAIL classification, retry reason and wait count repairs, the policy-aware quiet line, and the rebuilt bundles/key pin. The candidate SHA matched HEAD and the tracked tree stayed clean through every gate and probe. `origin/main` was `d28345afdce0500a1774db89224df58dcb32656d` (0.1.215). Build omitted as explicitly dispatched.
 
 ### Verification output
 
 ```text
 $ git rev-parse HEAD
-4feb215558fb474086133cb99e8ba7292befb9b0
+5accf0cf7d50b16eb8eb42d60d619ad7e9007527
 $ git status --short
 (no output)
 
@@ -277,7 +277,7 @@ Breaking changes might not follow SemVer, please pin Vitest's version when using
              at least ~22.93s faster with isolate: false — reuses workers across files instead of one per file
 (exit 0)
 
-$ git diff --check origin/main..4feb215558fb474086133cb99e8ba7292befb9b0
+$ git diff --check origin/main..5accf0cf7d50b16eb8eb42d60d619ad7e9007527
 (no output; exit 0)
 $ git status --short
 (no output)

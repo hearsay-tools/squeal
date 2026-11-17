@@ -5,7 +5,7 @@ Throwaway probe for `016-extensions/research/runner-kit.md` (brief 016-10). Not 
 - `scenarios.ts`: three runner-neutral scenarios. Each is a fixture of abstract modules (a value, a re-export, a test, a test that loads a module by a computed path, a test whose import is missing), an edit script, and the outcome of each check after each step.
 - `packs.ts`: one pack per runner (Vitest, node:test, pytest). A pack gives each module's path and text in its runner's language, the project files, the full name of a check, how the adapter opens, where the adapter keeps observed paths, and the scenarios its spec documents it does not meet.
 - `kit.ts`: the driver. It writes the fixture, then drives the adapter through `RunnerAdapter` alone (`testFiles`, `run`, `invalidate`, `affected`, `closure`). It prints one line per assertion and one verdict per (scenario, runner): `PASS`, `FAIL`, `KNOWN` (fails as the pack says it will) or `UNEXPECTED PASS`. There is no daemon, store or scheduler: the kit checks outcomes, and transitions stay with the core.
-- `output.txt`: a full run at `f6320cd7e` (2026-10-24): 8 PASS, 1 KNOWN, exit 0.
+- `output.txt`: a full run at `acb96dfa6` (2026-10-24): 8 PASS, 1 KNOWN, exit 0.
 - `output-shared-logs.txt`: the pytest pack with `RUNNER_KIT_SHARED_LOGS=1`, which gives every run the same `logDir`. The pytest adapter then reads the first run's events and reports stale passes. The daemon always gives a fresh directory per run (`src/core/scheduler/tiers.ts:476`).
 
 Run it from a scratch directory. Every environment variable points under `/tmp`. The Python environment was made offline from the uv cache, outside the worktree:

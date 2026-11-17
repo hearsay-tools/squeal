@@ -27,7 +27,7 @@ gh issue list --repo hearsay-tools/squeal --state open --limit 200 --json number
 
 Verified by intake commands: load averages 42.39, 42.43, 39.72; CPU count 24. Issue remains open, labelled friction and needs-triage at intake.
 
-Read in source code at main `1b2e889da4f7de9425c016abed21f660245a8cdf`: `src/core/code/gate/report.ts:150` represents failed entries as path plus test-name strings. `src/core/code/gate/collect.ts:206` closes adapters and recursively removes the temporary directory in its finally block. These seams support the reported concern; they do not establish which upstream assertion or child-process bytes were available.
+Read in source code at main `9cc17481c61862a292583665d8b168d09d6e27b3`: `src/core/code/gate/report.ts:150` represents failed entries as path plus test-name strings. `src/core/code/gate/collect.ts:206` closes adapters and recursively removes the temporary directory in its finally block. These seams support the reported concern; they do not establish which upstream assertion or child-process bytes were available.
 
 Reported in issue, not independently reproduced: `squeal code --base origin/main --json > quality.json` on 0.1.447 exited 3 after its 600-second budget. The node:test run named two failed tests in `packages/cezar/test/unit/web-typecheck.test.ts` but exposed no assertion messages, stacks or child output. Their causes remain unknown. No false pass was reported.
 

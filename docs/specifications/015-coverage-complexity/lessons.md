@@ -10,7 +10,7 @@ Worker d90b7aae, 2026-11-07 22:46Z to 2026-11-08 00:00Z, resumed by coordinator 
 
 - **Candidate.** `plugins/claude-code/dist` of `2e996bd8b`, taken with `git archive` and pinned in a copy. Nothing was built.
 - **Store copies.** Taken at 22:47Z with their `-wal` and `-shm`, at load 16.6 / 12.7 / 13.3 (1, 5 and 15 minutes) on 24 CPUs. Each passed `PRAGMA quick_check`. Neither real store had any import table yet, so phase A is an upgrade from 0.1.413 and 0.1.414. The real stores and checkouts were only read.
-- **Clones.** The same commits as in round 1: squeal `e36b8d509`, cezar `5f7c94cf3`. Each got its own fresh store copy, and nothing of round 1's stores was used. The cezar copy still held the 10 backslash paths of issue #166, and `strip-backslash.mjs` removed them, as in round 1.
+- **Clones.** The same commits as in round 1: squeal `bc282b63d`, cezar `5f7c94cf3`. Each got its own fresh store copy, and nothing of round 1's stores was used. The cezar copy still held the 10 backslash paths of issue #166, and `strip-backslash.mjs` removed them, as in round 1.
 - **Phase A.** The store as copied. `sample.mjs` read the daemon's process tree CPU, the load, a digest of the worktree's keys, the walks stored at current keys and the re-walk marker, once a second.
 - **Phase B.** A second fresh copy with its `test_files` rows dropped, so the start walks every closure. This judges the setup, config, factory and second-list cases with every test file counted.
 - **No test ran.** Each clone's store has 0 runs, 0 results and 0 revisions of its own worktree.
@@ -122,7 +122,7 @@ Worker d90b7aae, 2026-11-07, 15:03Z to 15:30Z. The brief is `tasks/wave-29.md`, 
 
 - **Candidate.** The CLI and daemon of `f70cedb92` (`plugins/claude-code/dist`), pinned in a copy. No other daemon touched the scratch stores.
 - **Store copies.** Taken at 15:03Z with their `-wal` and `-shm`, at load 8.6 / 14.4 / 19.1 (1, 5 and 15 minutes) on 24 CPUs: squeal `store.sqlite` and `code.sqlite`; cezar `store.sqlite`, `code.sqlite` and `lint.sqlite`. `PRAGMA quick_check` passed on each. The real stores, `~/projects/squeal` and `~/projects/cezar` were only read.
-- **Clones.** Squeal at `e36b8d509`: the candidate's code before wave 28 and after 015-106, without 015-108 and 015-109. The candidate commit itself has current results for 169 test files only, because 015-108 changes `src/core/types/runner.ts`, which the `src/core/types/index.ts` barrel puts in nearly every key. `e36b8d509` has 1,481 of 1,490 current, so its coverage records are at current keys. Cezar at `5f7c94cf3` (main, 2026-11-07 12:18Z): the newest commit with `baseline.onStart: lookup-only`; `6805796bb` has more stored results but `lookup-then-run-missing`. Both clones were installed with `pnpm install --frozen-lockfile --offline`.
+- **Clones.** Squeal at `bc282b63d`: the candidate's code before wave 28 and after 015-106, without 015-108 and 015-109. The candidate commit itself has current results for 169 test files only, because 015-108 changes `src/core/types/runner.ts`, which the `src/core/types/index.ts` barrel puts in nearly every key. `bc282b63d` has 1,481 of 1,490 current, so its coverage records are at current keys. Cezar at `5f7c94cf3` (main, 2026-11-07 12:18Z): the newest commit with `baseline.onStart: lookup-only`; `6805796bb` has more stored results but `lookup-then-run-missing`. Both clones were installed with `pnpm install --frozen-lockfile --offline`.
 - **Cezar crash, issue #166.** The first cezar daemon exited at start: `closure of server:packages/cezar/src/home/read-process.test.ts: expected a worktree-relative path, got "\home\agent\AppData\Local\Hearsay Squawk\cache"`. The released 0.1.413 does the same: the copy holds 53 such notes from 9 cezar worktrees, 14:14Z to 15:03Z. Two cezar tests use Windows paths as file names; on Linux these are names with backslashes, and `meta observed.server` keeps 10 of them. With the coordinator's approval, `strip-backslash.mjs` removed these 10 paths from the cezar copy only. The crash is issue #166 and is not a row of this proof.
 - **Phase A, the store as copied.** The candidate daemon started in each clone. Under lookup-only it finds stored results and runs nothing. It walks only the test files with no stored closure: 9 in squeal, 996 in cezar.
 - **Phase B, every closure walked.** `drop-closures.mjs` deleted the `test_files` rows of each copy; the restarted daemon then walked every closure and stored its edges and environment files. Keys did not change: squeal kept 1,481 current, cezar 1,679. Phase B is the full answer; phase A is what a user gets after an upgrade.
@@ -150,7 +150,7 @@ The scratch daemons cost the following, in the clones only. Squeal phase A start
 
 ### The comparison
 
-**Squeal** (`e36b8d509`; 1,490 test files, 6,301 s; 516 edits from 2026-10-06 to 2026-11-07):
+**Squeal** (`bc282b63d`; 1,490 test files, 6,301 s; 516 edits from 2026-10-06 to 2026-11-07):
 
 | Research finding | The report | Match |
 | --- | --- | --- |
@@ -160,7 +160,7 @@ The scratch daemons cost the following, in the clones only. Squeal phase A start
 | `src/core/types/state.ts` holds types only | In the 9-file barrel group with the generic barrel suggestion. The types-only text goes to `types/policy.ts`, which exports a value | no (defect 4) |
 | Global teardown path | Gone from `src/`: no `src/` file has a setup path. `test/global-teardown.ts` and `test/daemon/strays.ts` still read setup at 100% reach (the config's `globalSetup`), at ranks 513 and 514 with 0 avoidable seconds | yes |
 
-| Share of pair-seconds, every source once / real edits | Research (`bc58ad12f`) | Report |
+| Share of pair-seconds, every source once / real edits | Research (`bbeb184b6`) | Report |
 | --- | --- | --- |
 | barrel | 41.1% / 45.6% | 40.9% / 45.2% |
 | test helper | 16.2% / 11.6% | 8.5% / 10.2% |
@@ -549,7 +549,7 @@ What these sessions say on the open questions:
 | Isolation | The OS user `squeal-e2e`, case root `/home/squeal-e2e/runs/d1510`; credentials by name only (`tasks/015-10/part-c.md`) |
 | Squeal | 0.1.284 from `git archive squeal--v0.1.284`, at user scope in the case's Claude Code |
 | Harness and model | Claude Code 2.1.300, `claude -p --model sonnet` (`claude-sonnet-5-5`), bypass permissions |
-| squeal clone | `d5018817a` (origin/main), complexity on with `docs/**` excluded: 1,204 files counted, 81 functions over 20 (60 in `src`), 4 files in parse errors with no function in them |
+| squeal clone | `5fc50b2b5` (origin/main), complexity on with `docs/**` excluded: 1,204 files counted, 81 functions over 20 (60 in `src`), 4 files in parse errors with no function in them |
 | cezar clone | `03c905a00`, complexity on with the default include and exclude: 944 files counted, 267 functions over 20, 1 function in a parse error, 1 file too big (`packages/cezar/src/workflows/run.ts`, 560 KiB) |
 | Sessions | 06:46Z to 07:16Z. Planned: kinds 1 to 4 of the brief in each repository. Added: `sq5` and `cz5r`, refactors told to go in steps, because `sq2` and `cz2` refactored in one edit each; `sq6`, a session that fast-forwards first, for `window.md`'s pulled `STILL FAIL`; `cz6`, a second try at kind 3, because `cz3` stayed under 20 |
 | Load gate | Until 07:05Z a session started only at a one-minute load of 24 or below. Then the human dropped the gate ("complexity is cheap"), and sessions started at once with the load recorded |
@@ -595,7 +595,7 @@ Times are seconds from the session's start. "Edit to line" is from the end of th
 | — | nothing at 22, after the second round | — | Its own `squeal code` showed CC 22 | Yes: still over, quiet by D5 |
 | 49.0 | `PASS complexity: removeCommand (src/cli/remove.ts:44) is 19, at or under 20` | 0.6 s | Final checks; "now at CC 19, down from 28" | Yes |
 
-**sq6 (squeal, added).** Task: fast-forward the branch `work` from `ab376e7fd` to `dogfood`, then make `--reason` accept any letter case. Load 22.0; 24 s.
+**sq6 (squeal, added).** Task: fast-forward the branch `work` from `ffe89a48a` to `dogfood`, then make `--reason` accept any letter case. Load 22.0; 24 s.
 
 | t | SQUEAL line | Edit to line | Agent's next action | Right? |
 | --- | --- | --- | --- | --- |

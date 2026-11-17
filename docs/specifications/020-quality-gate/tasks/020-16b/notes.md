@@ -1,6 +1,6 @@
 # 020-16b notes: a `prepare` command for node:test entries
 
-Worker 26adafd0, 2026-11-11. Spec D15, on the gate as of `dcafbc887`. For a reviewer and whoever continues.
+Worker 26adafd0, 2026-11-11. Spec D15, on the gate as of `77f3da8cf`. For a reviewer and whoever continues.
 
 ## Seam map
 

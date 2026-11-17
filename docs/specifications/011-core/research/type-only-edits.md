@@ -2,7 +2,7 @@
 
 Researcher of row 011-149, 2026-10-23, 13:17Z to 13:55Z. Brief: `research/type-only-edits-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `research/edit-load.md` (findings 1 and 3), `research/key-format-guard.md`, 011 C3, C12, C14 and `status.md` (011-37, 011-60, 011-85).
 
-Versions: clones under `/tmp/to149` of squeal `88f90431c` (Vitest 5.0.3, Vite 8.3.2, rolldown 1.2.12, esbuild 0.28.2, TypeScript 7.0.2), cezar `565fd3eaf` (Vitest 4.1.10, Vite 8.1.4, esbuild 0.28.1, tsx), the client monorepo `7f939fb9` (Vitest 4.1.11, Vite 8.3.4); Node 24.21.0. Store copies taken 13:20Z. One-minute load 25 to 64 during the probes. Probes, outputs and how to re-run each: `probes/type-only-edits/README.md`.
+Versions: clones under `/tmp/to149` of squeal `9d2dc7bd6` (Vitest 5.0.3, Vite 8.3.2, rolldown 1.2.12, esbuild 0.28.2, TypeScript 7.0.2), cezar `565fd3eaf` (Vitest 4.1.10, Vite 8.1.4, esbuild 0.28.1, tsx), the client monorepo `7f939fb9` (Vitest 4.1.11, Vite 8.3.4); Node 24.21.0. Store copies taken 13:20Z. One-minute load 25 to 64 during the probes. Probes, outputs and how to re-run each: `probes/type-only-edits/README.md`.
 
 **Terms.** An *edit* is one path of a `watch` revision with its old and new blob. *Agent* edits are revisions of at most 3 paths; *bulk* revisions (pulls, rebases, checkouts) have more. An edit is *evaluable* when both blobs are in git and both transform. Three key variants: **K1** the emitted code and its source map's `mappings` are equal; **K2** the emitted code is equal; **K3** the emitted code is equal after an oxc reprint without comments. *Recorded seconds* are the last file-level duration of each re-keyed test file (`checks.kind = 'file'`); *stored seconds* are the file results stored in the window after the edit. CPU-seconds use 011-143's 0.32 to 0.59 CPU-s per recorded second.
 
@@ -115,7 +115,7 @@ The saving is small and narrow. K2 keeps about 1% of squeal's and 0.5% of cezar'
 
 - Store copies: `~/projects/{squeal,cezar,client-monorepo}/.git/squeal/store.sqlite` with `-wal` and `-shm`, 2026-10-23 13:20Z; blobs read with `git cat-file` from each repository's `.git`.
 - Vite 8.3.2 `dist/node/chunks/node.js` (`transformWithOxc`, `oxcPlugin`); Vitest 5.0.3 `dist/chunks/index.DpLw24bj.js:6926`; rolldown 1.2.12 `minifySync` and `CodegenOptions` (`dist/shared/binding-tzp6Hc_3.d.mts`); Node 24.21.0 `module.stripTypeScriptTypes`.
-- Squeal source at `4e1ba068a`: `src/core/keys/{check-key,closure,key-index,former,key-format}.ts`, `src/core/hash/hasher.ts`, `src/core/state/fingerprint.ts`, `src/runners/vitest/{graph,touched}.ts`, `src/runners/observe/inputs.ts`, `src/harness/build.ts`, `test/keys/validity/entries/global.ts`, `test/store/child/register-ts.mjs`; spec 011 C3, C12, C14; `status.md` 011-37, 011-60, 011-85.
+- Squeal source at `592b292f2`: `src/core/keys/{check-key,closure,key-index,former,key-format}.ts`, `src/core/hash/hasher.ts`, `src/core/state/fingerprint.ts`, `src/runners/vitest/{graph,touched}.ts`, `src/runners/observe/inputs.ts`, `src/harness/build.ts`, `test/keys/validity/entries/global.ts`, `test/store/child/register-ts.mjs`; spec 011 C3, C12, C14; `status.md` 011-37, 011-60, 011-85.
 - `squeal.config.json` of squeal and cezar at the clone commits; the client monorepo's untracked copy at 13:40Z.
 - 011-143 (`research/edit-load.md`): CPU per recorded second and the 72 h work totals.
 - Probes: `probes/type-only-edits/` (README lists each script, its outputs in `out/` and the commands).

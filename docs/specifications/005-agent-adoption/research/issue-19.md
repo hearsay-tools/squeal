@@ -1,6 +1,6 @@
 # Issue 19: a read-only review told to run the slow tier
 
-Reviewed 2026-10-17 at commit `63c2f9ab` (package version 0.1.203), installed Squeal 0.1.199. Source: [hearsay-tools/squeal#19](https://github.com/hearsay-tools/squeal/issues/19), labelled `friction`, filed 2026-10-16. Documentation triage only: no product code, spec, status, skill or board edit.
+Reviewed 2026-10-17 at commit `3c399007` (package version 0.1.203), installed Squeal 0.1.199. Source: [hearsay-tools/squeal#19](https://github.com/hearsay-tools/squeal/issues/19), labelled `friction`, filed 2026-10-16. Documentation triage only: no product code, spec, status, skill or board edit.
 
 ## Questions answered
 
@@ -26,7 +26,7 @@ Skill step 4 in both 0.1.199 copies: "Before you say the task is done, make the 
 
 > Slow test files run when you pause between turns; this repository does not require them before you finish: say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not; ${run} runs them now.
 
-Both branches are in the committed `plugins/claude-code/dist/session-start.mjs`. Skill step 4 now says "If the last one says `Stop waits`, they are required … Without `Stop waits`, say how many are not current." Under that text, a cezarion review that claims nothing about slow tests has no instruction to run them. 004 `status.md` (2026-10-16) records 004-62 as shipped in 0.1.202, with the review PASS at `52bd2d2a`. Tag: read in source code. Not measured: no session has read the new primer during a read-only review (006's `a2-slow` is pending the next atomic tier, per 004 `status.md`).
+Both branches are in the committed `plugins/claude-code/dist/session-start.mjs`. Skill step 4 now says "If the last one says `Stop waits`, they are required … Without `Stop waits`, say how many are not current." Under that text, a cezarion review that claims nothing about slow tests has no instruction to run them. 004 `status.md` (2026-10-16) records 004-62 as shipped in 0.1.202, with the review PASS at `4efdd982`. Tag: read in source code. Not measured: no session has read the new primer during a read-only review (006's `a2-slow` is pending the next atomic tier, per 004 `status.md`).
 
 **4. What is still open on main.** Two gaps remain with the policy on:
 

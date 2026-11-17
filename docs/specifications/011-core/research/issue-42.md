@@ -6,7 +6,7 @@ Recommendation: treat [issue 42](https://github.com/hearsay-tools/squeal/issues/
 
 **Reproduced.** Both reported behaviours reproduce on shipped 0.1.222: paths without `--wait` exit 2 with the usage error, and `--wait 1 <path>...` prints the full worktree snapshot, including 20 listed unrelated files without a result, before the selected files' lines and verdict.
 
-Examined 2026-10-19, Squeal **0.1.222** (installed plugin bundle `~/.claude/plugins/cache/hearsay/squeal/0.1.222/dist/cli/squeal.mjs`; `squeal --version` on the PATH also prints 0.1.222), Node **v24.21.0**, source checkout `ccb2d700`. Tag `squeal--v0.1.222` resolves to commit `1612b9e0`; `git diff --stat squeal--v0.1.222 HEAD -- src/cli src/core/status` is empty, so the source read below is the shipped source. Load at the live probe: **9.20 / 18.63 / 20.29** on **24 CPUs** (one-minute below the CPU count, so the probe ran). No build, full suite, product, spec, status, skill or board change. Existing holds stand.
+Examined 2026-10-19, Squeal **0.1.222** (installed plugin bundle `~/.claude/plugins/cache/hearsay/squeal/0.1.222/dist/cli/squeal.mjs`; `squeal --version` on the PATH also prints 0.1.222), Node **v24.21.0**, source checkout `c6693bcf`. Tag `squeal--v0.1.222` resolves to commit `4e4f2a36`; `git diff --stat squeal--v0.1.222 HEAD -- src/cli src/core/status` is empty, so the source read below is the shipped source. Load at the live probe: **9.20 / 18.63 / 20.29** on **24 CPUs** (one-minute below the CPU count, so the probe ran). No build, full suite, product, spec, status, skill or board change. Existing holds stand.
 
 The probe ran in the main checkout `~/projects/squeal` (revision 837, no daemon running, no dependencies installed, 468 test files without a result). Snapshot status only reads the store; the named wait's daemon sync only connects and spawns nothing (`src/cli/status-sync.ts:43`), and with no daemon no `promote` request lands. This worktree's own store could not serve: its daemon had not listed the test files (no dependencies installed).
 
@@ -46,7 +46,7 @@ exit: 2; stdout lines: 0; stderr lines: 79
 
 ```text
 exit: 3; stdout lines: 40; stderr lines: 0
-Revision: 837 · 71e23f77 + 0, dirty not known
+Revision: 837 · edfe60af + 0, dirty not known
 Affected checks: 0 passed, 0 running, 0 queued, 4400 unknown (3932 tests, 468 test files loaded)
 ...
 Inherited from other worktrees: none (every current result here was run in this worktree)
@@ -80,6 +80,6 @@ The issue's "inherited provenance" appears here as the `Inherited from other wor
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/42 (read 2026-10-19, no comments).
-- `src/cli/main.ts:193–216`, `src/cli/wait-arg.ts`, `src/cli/status-wait.ts:430–470`, `src/cli/status-wait-paths.ts:325–370`, `src/cli/status-wait-lines.ts:258–278`, `src/cli/status-sync.ts:43`, `test/cli/status-wait-paths.test.ts:285–290`, at `ccb2d700` (no diff from tag `squeal--v0.1.222` in `src/cli`, `src/core/status`).
+- `src/cli/main.ts:193–216`, `src/cli/wait-arg.ts`, `src/cli/status-wait.ts:430–470`, `src/cli/status-wait-paths.ts:325–370`, `src/cli/status-wait-lines.ts:258–278`, `src/cli/status-sync.ts:43`, `test/cli/status-wait-paths.test.ts:285–290`, at `c6693bcf` (no diff from tag `squeal--v0.1.222` in `src/cli`, `src/core/status`).
 - `docs/specifications/011-core/spec.md` C6, C15; `docs/specifications/005-agent-adoption/spec.md` D2; `docs/specifications/005-agent-adoption/status.md` (2026-10-17, 005-67/005-68).
 - Probe: `research/probes/issue-42/probe.sh`, `README.md`, `output.txt`.

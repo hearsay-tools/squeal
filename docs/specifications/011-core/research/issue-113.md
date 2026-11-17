@@ -2,7 +2,7 @@
 
 Treat issue 113 as a reproduced slow-tier recording defect; retain the existing holds until a separately approved fix is reviewed.
 
-Examined Squeal **0.1.369**, checkout `cbdfa22c5ef59a414a7217eb0202de738af0f13b`, on Linux with Node **v24.22.1**, 2026-10-28. The bounded synthetic probe uses real scheduler, keying, state sink and SQLite code with a fake passing runner. It changes no product code and starts no daemon or browser. The original Cezarion worktree and its stopped daemon were not touched.
+Examined Squeal **0.1.369**, checkout `36ddbfe1760af76b70cf67645dd911144b98a0da`, on Linux with Node **v24.22.1**, 2026-10-28. The bounded synthetic probe uses real scheduler, keying, state sink and SQLite code with a fake passing runner. It changes no product code and starts no daemon or browser. The original Cezarion worktree and its stopped daemon were not touched.
 
 ## Questions and verdicts
 
@@ -52,7 +52,7 @@ Verification commands: `pnpm exec biome check docs/specifications/011-core/resea
 ## Sources and artifacts
 
 - Issue fetched with `gh issue view 113 --repo hearsay-tools/squeal --json title,body,comments,url`: https://github.com/hearsay-tools/squeal/issues/113 (no comments at read). The 326 runs and browser starvation are reporter evidence, not measurements by this probe.
-- Source revision: https://github.com/hearsay-tools/squeal/tree/cbdfa22c5ef59a414a7217eb0202de738af0f13b ; paths and lines above.
+- Source revision: https://github.com/hearsay-tools/squeal/tree/36ddbfe1760af76b70cf67645dd911144b98a0da ; paths and lines above.
 - Local policy/validity sources: `docs/specifications/011-core/spec.md` C2/C3/C4/C5; `docs/specifications/011-core/status.md`; `src/core/keys/runtime-files.ts`; `src/core/types/policy.ts`.
 - Fixture and exact output: `docs/specifications/011-core/research/probes/issue-113/probe.ts`, `README.md`, `output.jsonl`. Only repository sources named by the task and issue were consulted; no open-web search.
 

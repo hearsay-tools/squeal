@@ -1,6 +1,6 @@
 # Wave 13bl: review 001-369 of 001-349
 
-Candidate: `58eff841f71af0699108f6bf574feea2ff00cef2` (0.1.164). Review scope: the eight contiguous 001-349 commits, `e1c4faad` through coordinator build `58eff841`, against spec 001 D3, D4, D7, D9 and D11. No product file or board edit.
+Candidate: `6421dc1724388c37aa7c03754dd2289834b87425` (0.1.164). Review scope: the eight contiguous 001-349 commits, `22a8fd03` through coordinator build `6421dc17`, against spec 001 D3, D4, D7, D9 and D11. No product file or board edit.
 
 ## Verdict
 
@@ -99,7 +99,7 @@ exit 0
 
 ```text
 $ git rev-parse HEAD
-58eff841f71af0699108f6bf574feea2ff00cef2
+6421dc1724388c37aa7c03754dd2289834b87425
 $ git status --short
 (no output)
 $ git diff --exit-code -- plugins/claude-code/dist plugins/codex/dist

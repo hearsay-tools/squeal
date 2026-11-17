@@ -1,6 +1,6 @@
 # 011-242 notes: dead helpers gone, one owner for repeated rules
 
-Worker 9e9705ba, 2026-10-26. Wave 48 W2. Row 011-242; `quality/2026-10-26-b.md` slices 1, 2, 4 to 8, 10 and 12. Baseline `9622b9ed0`. No line, JSON field, key or adapter version changes.
+Worker 9e9705ba, 2026-10-26. Wave 48 W2. Row 011-242; `quality/2026-10-26-b.md` slices 1, 2, 4 to 8, 10 and 12. Baseline `12cbdf38f`. No line, JSON field, key or adapter version changes.
 
 ## Slices
 

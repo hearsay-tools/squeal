@@ -1,6 +1,6 @@
 # 011-25: worker notes (brief W3 of `tasks/wave-6.md`)
 
-Worker 56c669b1, 2026-10-20. Base: main at eff7ae33 (this brief's commit). 011-38 has not landed on main, so no rebase. Cut (n+K) as C4 step 4 states it after the 2026-10-20 amendment: a revision of fewer than 10 keyed paths keeps as an edit's work its added and edited test files, each changed source's namesakes among the files it re-keyed (or, for a source with none, the runner's direct importers of it), and the `runner.tierSize` shortest other direct importers by last-known duration. Everything else it re-keys is catch-up.
+Worker 56c669b1, 2026-10-20. Base: main at 8d330dcc (this brief's commit). 011-38 has not landed on main, so no rebase. Cut (n+K) as C4 step 4 states it after the 2026-10-20 amendment: a revision of fewer than 10 keyed paths keeps as an edit's work its added and edited test files, each changed source's namesakes among the files it re-keyed (or, for a source with none, the runner's direct importers of it), and the `runner.tierSize` shortest other direct importers by last-known duration. Everything else it re-keys is catch-up.
 
 ## Seams
 
@@ -62,4 +62,4 @@ The scheduler sources are guarded, so this row raises the key format. As the bri
 
 ## Verification
 
-On `5d8d030e`, rebased onto main `e34c7b62` (whose new commits change docs only). `npm run lint` and `npm run typecheck` are clean. `squeal run --all --wait` (Squeal 0.1.226) completed checkpoint `9c8d6e0c` at revision 32 and exited 1: 740 test files current, 7,033 checks passed, 7 skipped, 9 known failures. Seven of the failures are the expected ones above. The other two are row 001-431's recorder-fidelity tests (`observe-fidelity.test.ts:119`, `run-reads-fidelity.test.ts:116`), which fail under Squeal's daemon on main too. Load was 12 to 84 on 24 CPUs during the session.
+On `5d8d030e`, rebased onto main `779713e5` (whose new commits change docs only). `npm run lint` and `npm run typecheck` are clean. `squeal run --all --wait` (Squeal 0.1.226) completed checkpoint `9c8d6e0c` at revision 32 and exited 1: 740 test files current, 7,033 checks passed, 7 skipped, 9 known failures. Seven of the failures are the expected ones above. The other two are row 001-431's recorder-fidelity tests (`observe-fidelity.test.ts:119`, `run-reads-fidelity.test.ts:116`), which fail under Squeal's daemon on main too. Load was 12 to 84 on 24 CPUs during the session.

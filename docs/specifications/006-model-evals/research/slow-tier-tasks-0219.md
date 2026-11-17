@@ -13,7 +13,7 @@ Researcher, 2026-10-19, against `tasks/006-92.md`. Read only: run `20261018T2116
 
 ## 1. What changed between 4fc7da and cd33f5
 
-**Primer** (quoted from the cells). In 0.1.216, Codex at the cell's 217-character CLI got no CLI path: "Wait only when you need a result before your next step, on the CLI SQUEAL messages name: `status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `status --wait 60000` or a checkpoint, `run --all --wait`." In 0.1.219 it gets: "Wait only when you need a result, as before you finish: `<CLI> status --wait 60000`." That is 004-78's `short` form (`d3c87faf`, `src/harness/shared/primer.ts`). The slow sentence is the same in both: "this repository does not require them before you finish: say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not".
+**Primer** (quoted from the cells). In 0.1.216, Codex at the cell's 217-character CLI got no CLI path: "Wait only when you need a result before your next step, on the CLI SQUEAL messages name: `status --wait 60000 <path>...` for the verdict on files you just changed; before you finish, `status --wait 60000` or a checkpoint, `run --all --wait`." In 0.1.219 it gets: "Wait only when you need a result, as before you finish: `<CLI> status --wait 60000`." That is 004-78's `short` form (`7b998793`, `src/harness/shared/primer.ts`). The slow sentence is the same in both: "this repository does not require them before you finish: say slow tests pass only when the latest `Slow tier:` line states every slow file is current, else say how many are not".
 
 **Commands**, Luna's `unknown` claims, by the wait they ran (`stated.txt`):
 
@@ -76,8 +76,8 @@ If 004-80's measured `quietMs` plus the slow run is short enough that the human 
 
 ## Sources
 
-- Cells: `/tmp/squeal-evals-1001/cells/9902354698a8/20261018T211619Z-cd33f5/*/out/` (`events.jsonl`, `grade.json`) and `98beb8cd9f3b/20261018T184306Z-4fc7da/*/out/`.
+- Cells: `/tmp/squeal-evals-1001/cells/9902354698a8/20261018T211619Z-cd33f5/*/out/` (`events.jsonl`, `grade.json`) and `e99ffa66dc68/20261018T184306Z-4fc7da/*/out/`.
 - Results: `/tmp/rel-0219-results/2026-10-18-0.1.219.20261018T211619Z-cd33f5.atomic.json` and `ATOMIC.md`; `/tmp/rel-0216-results/regraded/*.atomic.json`; `evals/results/2026-10-16-0.1.199.20261016T061730Z-07d7ab.atomic.json`.
-- Code at `5aef3302`: `src/harness/shared/primer.ts` (`d3c87faf`, 004-78), `src/cli/named-files.ts` (`pauseOnlyIds`, `a841c4f3`), `evals/lib/slow-claim.mjs`, `evals/lib/atomic-measures.mjs`, `evals/lib/squeal-text.mjs`, `evals/bin/run-cell.mjs` (`loadHold`), `evals/atomic/atomic.json`, `evals/ledgerline/squeal.config.json`, `evals/ledgerline/test/slow/ledger.test.ts`, `evals/variants/stop-slow.json`.
+- Code at `9dcdf371`: `src/harness/shared/primer.ts` (`7b998793`, 004-78), `src/cli/named-files.ts` (`pauseOnlyIds`, `986f0653`), `evals/lib/slow-claim.mjs`, `evals/lib/atomic-measures.mjs`, `evals/lib/squeal-text.mjs`, `evals/bin/run-cell.mjs` (`loadHold`), `evals/atomic/atomic.json`, `evals/ledgerline/squeal.config.json`, `evals/ledgerline/test/slow/ledger.test.ts`, `evals/variants/stop-slow.json`.
 - Specs: 006 `spec.md` D10 and `status.md` (2026-10-18, 2026-10-19); 004 `spec.md` D2, D3, D7, D8, D9 as amended by 004-79, `status.md`, `tasks/004-79/amendment.md`, `tasks/004-78/notes.md`, `tasks/wave-13.md`; 004 `research/atomic-flags-0215.md`.
 - Probes: `probes/slow-tier-tasks-0219/` (`cells.py`, `stated.mjs`, `sessions.py`, `timing.py` and their outputs).

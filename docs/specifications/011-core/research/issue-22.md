@@ -4,7 +4,7 @@
 
 Reproduced on 0.1.199. After `squeal stop` exits 0 with `Squeal daemon stopped for <root>`, the next Claude Code Stop hook spawns a new daemon, every time, at the same revision with nothing pending: three cycles out of three. The PostToolBatch hook does the same, and in a real session it fires first, after the Bash call that ran `squeal stop`, so the daemon is back before the turn even reaches Stop. With no hook after the stop, no daemon came back within 15 s, so the hooks are the only restarter seen.
 
-Host load before the live run: `11.55 18.52 23.88` (`uptime`) on 24 CPUs (`nproc`), so it went ahead. During the runs: `20.91` at the first start, `19.42` at the second, `21.63` and `20.52` at their ends. Exercised: the installed Claude Code plugin 0.1.199, `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/{session-start,post-tool-batch,stop,session-end}.mjs` and its `dist/cli/squeal.mjs`, run with `node` directly. Source read: this checkout, 0.1.203 (`package.json`) at `1e412a2e`, not exercised; the same function exists in the 0.1.199 bundles (`dist/stop.mjs:5356`, `dist/post-tool-batch.mjs:5404`, `ensureIfStale`). No shared daemon was touched: each run used a fresh `/tmp/squeal-issue22-*` with its own `HOME` and `XDG_RUNTIME_DIR`, stopped and killed only daemons whose arguments named that root, and removed it; `pgrep -af squeal-issue22` was empty afterwards.
+Host load before the live run: `11.55 18.52 23.88` (`uptime`) on 24 CPUs (`nproc`), so it went ahead. During the runs: `20.91` at the first start, `19.42` at the second, `21.63` and `20.52` at their ends. Exercised: the installed Claude Code plugin 0.1.199, `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/{session-start,post-tool-batch,stop,session-end}.mjs` and its `dist/cli/squeal.mjs`, run with `node` directly. Source read: this checkout, 0.1.203 (`package.json`) at `165e79dd`, not exercised; the same function exists in the 0.1.199 bundles (`dist/stop.mjs:5356`, `dist/post-tool-batch.mjs:5404`, `ensureIfStale`). No shared daemon was touched: each run used a fresh `/tmp/squeal-issue22-*` with its own `HOME` and `XDG_RUNTIME_DIR`, stopped and killed only daemons whose arguments named that root, and removed it; `pgrep -af squeal-issue22` was empty afterwards.
 
 ## Questions answered
 
@@ -13,9 +13,9 @@ Host load before the live run: `11.55 18.52 23.88` (`uptime`) on 24 CPUs (`nproc
 | 1 | Does a Stop hook after `squeal stop` start a daemon with nothing pending? | Yes, 3 of 3 cycles, one daemon each, within 3 s | verified by experiment, 0.1.199 |
 | 2 | Does anything else restart it with no hook? | Nothing within 15 s | verified by experiment, 0.1.199 |
 | 3 | Does PostToolBatch (the `squeal stop` Bash call's own boundary) restart it? | Yes, and it fires before Stop in a real turn | verified by experiment, 0.1.199 |
-| 4 | Why | Both hooks call `ensureIfStale`, which spawns whenever the recorded heartbeat is not alive; a stop clears the record, and nothing records that the stop was asked for | read in source code, 0.1.203 at `1e412a2e`; same function in 0.1.199 dist |
+| 4 | Why | Both hooks call `ensureIfStale`, which spawns whenever the recorded heartbeat is not alive; a stop clears the record, and nothing records that the stop was asked for | read in source code, 0.1.203 at `165e79dd`; same function in 0.1.199 dist |
 | 5 | What the agent is told | Once, "SQUEAL · no daemon is validating at revision 0" as hook context; later spawns silent in the probe | verified by experiment, 0.1.199 |
-| 6 | Owning spec sections | 011 C8 (each tool boundary and end of turn ensures a daemon) and C9 (the stop, the rest); 012 CC2 states the PostToolBatch and Stop mapping | read in spec at `1e412a2e` |
+| 6 | Owning spec sections | 011 C8 (each tool boundary and end of turn ensures a daemon) and C9 (the stop, the rest); 012 CC2 states the PostToolBatch and Stop mapping | read in spec at `165e79dd` |
 
 ## Findings
 
@@ -60,7 +60,7 @@ Treat #22 as reproduced and scoped to 011 C8 and C9: today no state survives `sq
 ## Sources
 
 - https://github.com/hearsay-tools/squeal/issues/22 (fetched with `gh issue view 22 --json`, 2026-10-17)
-- `docs/specifications/011-core/spec.md` C8, C9; `docs/specifications/012-claude-code-adapter/spec.md` CC2, at `1e412a2e`
-- `src/harness/shared/ensure.ts`, `src/harness/shared/stop.ts`, `src/harness/shared/deliver.ts`, `src/cli/stop.ts`, `src/core/daemon/daemon.ts`, `src/core/delivery/format.ts`, at `1e412a2e`
+- `docs/specifications/011-core/spec.md` C8, C9; `docs/specifications/012-claude-code-adapter/spec.md` CC2, at `165e79dd`
+- `src/harness/shared/ensure.ts`, `src/harness/shared/stop.ts`, `src/harness/shared/deliver.ts`, `src/cli/stop.ts`, `src/core/daemon/daemon.ts`, `src/core/delivery/format.ts`, at `165e79dd`
 - `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/` (exercised)
 - `docs/specifications/011-core/research/probes/issue-22/` (probe and outputs)

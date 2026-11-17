@@ -1,6 +1,6 @@
 # 011-164 notes: a run's report keeps only its summary
 
-Worker d7b1cd18, brief W5 of `tasks/wave-26.md`, base main at 9f77f4f4c.
+Worker d7b1cd18, brief W5 of `tasks/wave-26.md`, base main at 3d56ba8ad.
 
 ## What changed
 
@@ -35,7 +35,7 @@ I measured no pytest run: neither store on this host holds a pytest run log. The
 
 ## The key-format alarm, and node:test
 
-The first commit (dcee7280f) also changed node:test's writer. `test/keys/key-format.test.ts` "moves only when the validity path's outputs differ from the last release's" then failed: `NODE_TEST_ADAPTER_VERSION (src/runners/node-test/version.ts): changed lines no case runs, each needing a case under test/keys/validity/cases/: src/runners/node-test/run/run.ts:291 ... :292`. No `adapter:node-test` case kind exists (`tasks/011-41/notes.md`, decision 5), so no node:test code change can pass the alarm. Row 011-144 met the same block (revert d5676f8f8). Vitest and pytest passed: their adapter cases run the new lines.
+The first commit (dcee7280f) also changed node:test's writer. `test/keys/key-format.test.ts` "moves only when the validity path's outputs differ from the last release's" then failed: `NODE_TEST_ADAPTER_VERSION (src/runners/node-test/version.ts): changed lines no case runs, each needing a case under test/keys/validity/cases/: src/runners/node-test/run/run.ts:291 ... :292`. No `adapter:node-test` case kind exists (`tasks/011-41/notes.md`, decision 5), so no node:test code change can pass the alarm. Row 011-144 met the same block (revert 6b7193949). Vitest and pytest passed: their adapter cases run the new lines.
 
 The coordinator's decision (request 4844e2ea, option a): revert only the node:test writer and its test check (6bae78daf). node:test's `run.json` keeps the full report until 011-48's node half builds the `adapter:node-test` kind. No `NODE_TEST_ADAPTER_VERSION` raise: a release must not re-key every check for a log format. The helper takes any fields beside the report, so the follow-up is one line: `writeFileSync(join(logDir, "run.json"), runLogJson({ cwd: log.cwd, files }, log.report))`, plus the test check in dcee7280f's `test/runners/node-test/run.test.ts`.
 

@@ -1,6 +1,6 @@
 # 016-13 The observed-path survey
 
-Researcher 33ca81bf, 2026-10-25. Brief: `tasks/wave-0.md`, section 016-13; spec D4, goals 5 and 6. Code read at `793dfc3d4` (main, 2026-10-25). Probe: `probes/observed-paths/` (Node 24.21.0, tsx from the worktree, scratch repository under `/tmp`).
+Researcher 33ca81bf, 2026-10-25. Brief: `tasks/wave-0.md`, section 016-13; spec D4, goals 5 and 6. Code read at `7a919c957` (main, 2026-10-25). Probe: `probes/observed-paths/` (Node 24.21.0, tsx from the worktree, scratch repository under `/tmp`).
 
 ## Questions answered
 
@@ -91,6 +91,6 @@ Fallback, if the human keeps the knowledge in the adapter: one read-only view pa
 
 ## Sources
 
-- Code at `793dfc3d4`: `src/core/scheduler/{observed,store-decision,tiers,record,environment-growth,growth,keying,edit-cut,refinement,revision,bootstrap,link-target}.ts`, `src/core/keys/observed.ts`, `src/core/daemon/{node-test,pytest}-runners.ts`, `src/core/daemon/lifecycle.ts:346`, `src/core/types/{runner,watcher,policy}.ts`, `src/runners/node-test/{adapter,adapter-project,adapter-observed}.ts`, `src/runners/node-test/run/{observed,run}.ts`, `src/runners/node-test/runtime/recorder.cjs`, `src/runners/pytest/{adapter,adapter-observed}.ts`, `src/runners/pytest/run/observed.ts`, `src/runners/pytest/runtime/{squeal_pytest,sitecustomize}.py`, `src/runners/vitest/observe.ts`, `src/runners/observe/inputs.ts`, `src/core/fs/worktree-paths.ts`.
+- Code at `7a919c957`: `src/core/scheduler/{observed,store-decision,tiers,record,environment-growth,growth,keying,edit-cut,refinement,revision,bootstrap,link-target}.ts`, `src/core/keys/observed.ts`, `src/core/daemon/{node-test,pytest}-runners.ts`, `src/core/daemon/lifecycle.ts:346`, `src/core/types/{runner,watcher,policy}.ts`, `src/runners/node-test/{adapter,adapter-project,adapter-observed}.ts`, `src/runners/node-test/run/{observed,run}.ts`, `src/runners/node-test/runtime/recorder.cjs`, `src/runners/pytest/{adapter,adapter-observed}.ts`, `src/runners/pytest/run/observed.ts`, `src/runners/pytest/runtime/{squeal_pytest,sitecustomize}.py`, `src/runners/vitest/observe.ts`, `src/runners/observe/inputs.ts`, `src/core/fs/worktree-paths.ts`.
 - Specs: 011 `spec.md` C3 (closure, the observed set, ignored paths, adapter versions), C4 (focused tiers), C7, C12, C14; 016 `spec.md` D4; 007 `tasks/007-55-notes.md` (known gaps); 009 `lessons.md` observation 4; board rows 007-47, 007-52, 007-55, 007-56.
 - Probe: `probes/observed-paths/probe.ts`, output `probes/observed-paths/output.txt`. Run in `/tmp/obs-probe.j0At` with `HOME`, `TMPDIR`, `XDG_RUNTIME_DIR` and `XDG_CONFIG_HOME` set there. No daemon and no store were opened.

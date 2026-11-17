@@ -1,8 +1,8 @@
 # 001-366: what a backlog tier's budget should bound when its files run in parallel
 
-Researcher R1 of 011 wave 3, 2026-10-19. Brief: `tasks/wave-3.md` R1 (moved from 001 wave 19 at `036be0a0`). Read: `docs/vision.md`, `docs/styleguide.md`, 011 C4 step 5, C9, C10 Capacity, `../005-agent-adoption/lessons.md` proposed row 5, board rows 001-366 and 001-381.
+Researcher R1 of 011 wave 3, 2026-10-19. Brief: `tasks/wave-3.md` R1 (moved from 001 wave 19 at `a9156c90`). Read: `docs/vision.md`, `docs/styleguide.md`, 011 C4 step 5, C9, C10 Capacity, `../005-agent-adoption/lessons.md` proposed row 5, board rows 001-366 and 001-381.
 
-Versions: Squeal `fb6d3164` (0.1.222), the scheduler and runners as read at `036be0a0` (no `src/` change between them). Vitest 5.0.3, Node v24.21.0, 24 CPUs. The live probe ran a scratch clone of `fb6d3164` built with `npm run build`, its bundle `plugins/claude-code/dist/cli/squeal.mjs`, with HOME, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` and `XDG_STATE_HOME` under `/tmp/bwb/s-<arm>` and each fixture's store in its own `.git/squeal`; no real pool, store or session was written. Cezar's store was only read, through a `readOnly` connection. The one-minute load is given beside each measurement; it stayed between 2.58 and 7.83 on 24, below the brief's hold at 8.
+Versions: Squeal `1b44267c` (0.1.222), the scheduler and runners as read at `a9156c90` (no `src/` change between them). Vitest 5.0.3, Node v24.21.0, 24 CPUs. The live probe ran a scratch clone of `1b44267c` built with `npm run build`, its bundle `plugins/claude-code/dist/cli/squeal.mjs`, with HOME, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` and `XDG_STATE_HOME` under `/tmp/bwb/s-<arm>` and each fixture's store in its own `.git/squeal`; no real pool, store or session was written. Cezar's store was only read, through a `readOnly` connection. The one-minute load is given beside each measurement; it stayed between 2.58 and 7.83 on 24, below the brief's hold at 8.
 
 ## Questions answered
 
@@ -96,7 +96,7 @@ Budget a backlog tier by its expected wall time under the workers it will run wi
 
 ## Sources
 
-- Squeal `fb6d3164` / `036be0a0`: `src/core/scheduler/backlog.ts`, `tiers.ts` (`selectTier`, `startTier`, `recordTier`), `claims.ts` (`backlogSize`), `capacity.ts`; `src/core/capacity/pool.ts`; `src/runners/vitest/{run,width,adapter}.ts`; `src/runners/node-test/{adapter-project.ts,run/run.ts}`; `src/runners/pytest/adapter-run.ts`; `src/core/daemon/{node-test,pytest}-runners.ts`.
+- Squeal `1b44267c` / `a9156c90`: `src/core/scheduler/backlog.ts`, `tiers.ts` (`selectTier`, `startTier`, `recordTier`), `claims.ts` (`backlogSize`), `capacity.ts`; `src/core/capacity/pool.ts`; `src/runners/vitest/{run,width,adapter}.ts`; `src/runners/node-test/{adapter-project.ts,run/run.ts}`; `src/runners/pytest/adapter-run.ts`; `src/core/daemon/{node-test,pytest}-runners.ts`.
 - Spec 011 C4 step 5, C9, C10; `../005-agent-adoption/lessons.md` row 5; `../001-core-loop/research/host-capacity.md`.
 - Vitest 5.0.3 `dist/chunks/index.DpLw24bj.js` `BaseSequencer` (npm tarball, installed in the probe).
 - Cezar main worktree store, `runs` and `results` of checkpoint `701f50`, 2026-10-19, read-only.

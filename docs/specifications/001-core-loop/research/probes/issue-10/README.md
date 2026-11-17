@@ -8,7 +8,7 @@ Throwaway. Not product code, not tested, kept as the record of how the findings 
 - `drive-touch.sh <dir> <squeal.mjs> [full|none]`: runs the edit. Once `status --json` shows a test file running, it calls `rebuild.sh <dir> 1`, then `status --wait 60000 packages/web/src/lib/nav-contract.test.ts`.
 - `file-state.sh <dir> <squeal.mjs>`: prints the edited unit test's row from `status --json`: revision, file-level passes, and its `unknownTestFiles` entry.
 
-The runs used pinned CLIs: 0.1.199 at `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, and HEAD as this branch's committed `plugins/claude-code/dist/cli/squeal.mjs` (0.1.200, bundle last built at 30ec91a2, main 25d65b2d). Each daemon was started with `UNIT_SLEEP_MS=4000 node <cli> start .` (unset for `a199` and `b199`) and stopped with `node <cli> stop <dir>`. The fixtures lived under `.ai/cezar/t/44230d34/` and were removed afterwards.
+The runs used pinned CLIs: 0.1.199 at `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, and HEAD as this branch's committed `plugins/claude-code/dist/cli/squeal.mjs` (0.1.200, bundle last built at 77d486ac, main 25d65b2d). Each daemon was started with `UNIT_SLEEP_MS=4000 node <cli> start .` (unset for `a199` and `b199`) and stopped with `node <cli> stop <dir>`. The fixtures lived under `.ai/cezar/t/44230d34/` and were removed afterwards.
 
 ## Replay commands
 

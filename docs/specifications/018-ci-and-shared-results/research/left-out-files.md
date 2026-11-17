@@ -1,6 +1,6 @@
 # Left-out files in squawk's export (row 018-40)
 
-Researcher, 2026-11-12. Run: `hearsay-tools/squawk` merge group run 43188846583 at `cc3cead4`, Squeal 0.1.443 (`ebd52be86`). The source files cited below did not change between `v0.1.443` and this branch's base `2c4d01751`. Probes: `probes/left-out-files/` (throwaway).
+Researcher, 2026-11-12. Run: `hearsay-tools/squawk` merge group run 43188846583 at `cc3cead4`, Squeal 0.1.443 (`4d4e8f1f0`). The source files cited below did not change between `v0.1.443` and this branch's base `a4a080701`. Probes: `probes/left-out-files/` (throwaway).
 
 **Method.** I replayed the export locally (`verified by experiment`). I used a fresh clone of squawk at `cc3cead4`, the job's own steps (`pnpm install --frozen-lockfile`, no build) and the run's eight downloaded parts. Squeal 0.1.443 was patched only to write its full left-out list. The replay gives the same result as CI: 1484 exported, 24272 results, 150 + 31 left out. All 1484 keys and the environment hashes equal those in CI's `squeal-results.json.gz`. For each of the 4495 left-out (file, input) pairs, `classify.mjs` compares the file's own shard evidence, the other shards' evidence, the file's observed reads and the clone's content.
 

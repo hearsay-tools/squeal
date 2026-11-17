@@ -1,6 +1,6 @@
 # 016-10 one correctness kit for every runner: findings
 
-Researcher 016-10, 2026-10-24, at `f6320cd7e`. Brief: `runner-kit-brief.md`. Probes: `probes/runner-kit/` (throwaway). Vitest 5.0.3, Node 24.21.0, pytest 9.1.1 on Python 3.12.3.
+Researcher 016-10, 2026-10-24, at `acb96dfa6`. Brief: `runner-kit-brief.md`. Probes: `probes/runner-kit/` (throwaway). Vitest 5.0.3, Node 24.21.0, pytest 9.1.1 on Python 3.12.3.
 
 ## Questions answered
 
@@ -14,7 +14,7 @@ Researcher 016-10, 2026-10-24, at `f6320cd7e`. Brief: `runner-kit-brief.md`. Pro
 
 ## Findings
 
-### 1. Inventory (read in source code, `f6320cd7e`)
+### 1. Inventory (read in source code, `acb96dfa6`)
 
 Each cell names a test at the adapter level (A), or at the daemon or end-to-end level (D) when no adapter test exists. "core" means a runner-agnostic test with a fake adapter.
 
@@ -114,7 +114,7 @@ The kit gives the slot; the variants are runner knowledge. A third-party author 
 
 ## Sources
 
-- `src/core/types/runner.ts:200-340`; `src/runners/{vitest/index.ts,node-test/adapter.ts,pytest/adapter.ts}`; `src/runners/pytest/run/{run.ts:186,bytecode.ts}`; `src/core/scheduler/{tiers.ts:476,observed.ts}`; `src/runners/vitest/dynamic.ts`, at `f6320cd7e`.
+- `src/core/types/runner.ts:200-340`; `src/runners/{vitest/index.ts,node-test/adapter.ts,pytest/adapter.ts}`; `src/runners/pytest/run/{run.ts:186,bytecode.ts}`; `src/core/scheduler/{tiers.ts:476,observed.ts}`; `src/runners/vitest/dynamic.ts`, at `acb96dfa6`.
 - `docs/specifications/011-core/spec.md` C3, C4, C5, C12 (line 337), C14; `docs/specifications/007-pytest-runner/spec.md:60`; `docs/board.md:596`.
 - Reviews: `docs/specifications/003-node-test-runner/reviews/wave-{1,2,2.5,2.6,2.7,3,3.5,4,4.5}.md`; `docs/specifications/007-pytest-runner/reviews/*.md` (14 files); `docs/specifications/013-vitest-runner/reviews/0.1.250.md`.
 - Tests: `test/runners/{vitest,node-test,pytest}/`, `test/integration/`, `test/e2e/`, `test/scheduler/runs.test.ts`, `test/keys/validity/{case.ts,harness/,cases/adapter/}`.

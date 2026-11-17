@@ -20,7 +20,7 @@ Done when: a delivery after an edit names up to three paths and "and N more"; an
 
 Use /worker. Shape: finish.
 
-Worker 10635869 stopped when its coordinator ended at a usage limit (2026-10-26). Its five commits, rebased with no conflict onto main `093f29861`, are your baseline (branch `int/011-262`, head `67cb472b8`). Main moved about 500 commits since, among them the `runtimeFiles` policy of 0.1.369 in `src/core/scheduler/keying.ts`.
+Worker 10635869 stopped when its coordinator ended at a usage limit (2026-10-26). Its five commits, rebased with no conflict onto main `b66c411e2`, are your baseline (branch `int/011-262`, head `67cb472b8`). Main moved about 500 commits since, among them the `runtimeFiles` policy of 0.1.369 in `src/core/scheduler/keying.ts`.
 
 Read: W1 above; `tasks/011-262/notes.md` ("What is left", "The shape"). The shape stays as approved there; send me any change to it first.
 

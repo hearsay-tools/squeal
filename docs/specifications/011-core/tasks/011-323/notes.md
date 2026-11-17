@@ -1,6 +1,6 @@
 # Row 011-323 notes: the shared rules reach every request
 
-Worker ec4b104d, 2026-11-13. Brief: `tasks/wave-81.md`, W1. Design: `research/request-intake.md`, differences 1 and 2. Base `371cc8f8c` (origin/main after 0.1.475 and review 0.1.474-r2; first written on `66448a5fb`).
+Worker ec4b104d, 2026-11-13. Brief: `tasks/wave-81.md`, W1. Design: `research/request-intake.md`, differences 1 and 2. Base `39eec1f1d` (origin/main after 0.1.475 and review 0.1.474-r2; first written on `2e91fabdc`).
 
 Commits:
 

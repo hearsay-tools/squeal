@@ -1,6 +1,6 @@
 # 011-271 notes: `run --slow --wait` waits through delayed acceptance
 
-Row 011-271 (`tasks/wave-60.md` W1, gh-119). Worker run `c90dd5a3`, 2026-10-31. Baseline: `b34b00682`.
+Row 011-271 (`tasks/wave-60.md` W1, gh-119). Worker run `c90dd5a3`, 2026-10-31. Baseline: `a02a4ef54`.
 
 ## What changed
 
@@ -13,7 +13,7 @@ Row 011-271 (`tasks/wave-60.md` W1, gh-119). Worker run `c90dd5a3`, 2026-10-31. 
 
 ## Tests
 
-`test/cli/run-slow-accept.test.ts` (new). Each `run-slow-status` poll moves a faked `Date` (only `Date`; timers stay real) on by 1.5 s, so 10 s of acceptance passes in about one second of real time. All four tests failed on `b34b00682` and pass with the change:
+`test/cli/run-slow-accept.test.ts` (new). Each `run-slow-status` poll moves a faked `Date` (only `Date`; timers stay real) on by 1.5 s, so 10 s of acceptance passes in about one second of real time. All four tests failed on `a02a4ef54` and pass with the change:
 
 1. Taken at 15 s under `--wait 20000`: it reaches the result wait and returns on quiet, exit 0.
 2. Taken at 15 s under `--wait 16000`, slow file never finishes: the result wait times out in less than 8 s (it gets about 1 s, not 16 s), exit 3.
@@ -37,7 +37,7 @@ Kept, unchanged and passing: prompt acceptance, no slow files, unsupported and o
 
 ## R1: review 0.1.382 B2, the pending line
 
-Wave 60.5 RP1, on `cand/0.1.382` `a4821729c`. Wording only: no daemon or scheduler change.
+Wave 60.5 RP1, on `cand/0.1.382` `42a359648`. Wording only: no daemon or scheduler change.
 
 - The pending line under "What changed" said "so no slow file has a result". A request the daemon has not taken proves nothing about results already in the store: a slow file can be current from before, or a slow run can finish while the request waits. The line now says only what is known of the request:
   `Returned on timeout after 3.1 s: the daemon has not taken slow tier request s1 yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.`

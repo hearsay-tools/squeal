@@ -1,6 +1,6 @@
 # Issue 20 reproduction: filesystem errors under Squeal's tmp root
 
-Brief: `issue-20-brief.md` (triage row gh-20). Researcher run on 2026-10-17, load 11.9 to 16.8 on 24 CPUs. Squeal exercised: installed plugin 0.1.199 (`e36fea56`), copied into a scratch directory. Source read: this checkout at `de61aeac` (0.1.203). Vitest 4.1.10. Cezarion read at `82f97570c` (`new-task.e2e.ts` and `fixture-server.ts` last changed in `064bc4c15`). Probe: `probes/issue-20/` (`run.sh`, `store-scan.mjs`, `fixture/`, observed outputs).
+Brief: `issue-20-brief.md` (triage row gh-20). Researcher run on 2026-10-17, load 11.9 to 16.8 on 24 CPUs. Squeal exercised: installed plugin 0.1.199 (`c5a4c70c`), copied into a scratch directory. Source read: this checkout at `0ffa9afc` (0.1.203). Vitest 4.1.10. Cezarion read at `82f97570c` (`new-task.e2e.ts` and `fixture-server.ts` last changed in `064bc4c15`). Probe: `probes/issue-20/` (`run.sh`, `store-scan.mjs`, `fixture/`, observed outputs).
 
 ## Answers
 
@@ -33,7 +33,7 @@ Known failures: 2 (2 test files that did not load)
 
 `squeal why` shows the summary, location and fingerprint (`Error: ENOTEMPTY, Directory not empty: <tmp>/tmp/<hex>/i20-race-UU02b4 '…' @ test/race.test.ts:37:3`), the history, the full stack and the run log. For an intermittent file it adds `Flaky: PASS -> FAIL under the same inputs (key …)`. *Verified by experiment.*
 
-The source path, *read in source code (de61aeac)*:
+The source path, *read in source code (0ffa9afc)*:
 
 - `src/runners/vitest/run.ts:208` collects `RunReport.fileErrors`.
 - `src/core/scheduler/records.ts:92` stamps each of them `phase: "setup"` when any test of the file reported, else `"load"`. Vitest does not mark which hook threw (task 001-361), so an `afterAll` error is a "setup" error.
@@ -111,7 +111,7 @@ The gh-28 fingerprint fix is a precondition: otherwise every recurrence of such 
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/20 and its comments; triage `issue-20.md`.
-- Squeal source at `de61aeac`: `src/core/daemon/scratch.ts`, `src/core/daemon/paths.ts:94-102`, `src/core/scheduler/records.ts:88-95`, `src/core/state/fingerprint.ts:26-60,106`, `src/core/status/checks.ts:71`, `src/core/retry/text.ts:83`, `src/runners/vitest/broken.ts:14-19,64-82`, `src/core/store/schema.ts`, `src/core/store/prune.ts:68-125`.
+- Squeal source at `0ffa9afc`: `src/core/daemon/scratch.ts`, `src/core/daemon/paths.ts:94-102`, `src/core/scheduler/records.ts:88-95`, `src/core/state/fingerprint.ts:26-60,106`, `src/core/status/checks.ts:71`, `src/core/retry/text.ts:83`, `src/runners/vitest/broken.ts:14-19,64-82`, `src/core/store/schema.ts`, `src/core/store/prune.ts:68-125`.
 - Specs: 011 C5 (re-run once per key, slow files excluded, setup check), C13, C14; 013 V4, V8; 004 D2, D4.
 - Cezarion at `82f97570c`: `packages/web/e2e/new-task.e2e.ts:36-89`, `packages/web/e2e/fixture-server.ts:6-30`.
 - Vitest 4.1.10: `vitest/dist/chunks/cli-api.BK8pd4xc.js:10640, 13020`.

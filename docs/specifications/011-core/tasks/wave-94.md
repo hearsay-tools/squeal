@@ -42,7 +42,7 @@ Done when: the equality test; CPU per quiet poll on a cezar store copy before an
 
 ## R1 (W1): review of cand/0.1.504
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43632404705. Pinned to `cand/0.1.504` at `66bb054eb880c720814cd2678fa8d3abaf58a489`; range `cf5f9f00c..66bb054eb`: one commit of worker 291305a0 (`251bd35bb`, cherry-picked from `7a169dcc0` without conflict), then the 0.1.504 raise and bundles. Behaviour to compare against: `cf5f9f00c`. Read: board row 011-343, `research/issue-214.md` (F2, F7, question 4), `tasks/011-343/notes.md`, this file's W1.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43632404705. Pinned to `cand/0.1.504` at `3726942e506a754f8d43d797e7343fa5f6d304ee`; range `eb2470931..3726942e5`: one commit of worker 291305a0 (`d3672f9df`, cherry-picked from `7a169dcc0` without conflict), then the 0.1.504 raise and bundles. Behaviour to compare against: `eb2470931`. Read: board row 011-343, `research/issue-214.md` (F2, F7, question 4), `tasks/011-343/notes.md`, this file's W1.
 
 Check, each as proven, plausible or unverified:
 
@@ -55,13 +55,13 @@ The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `v
 
 ## R2 (W2): review of cand/0.1.505
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43635424483. Pinned to `cand/0.1.505` at `ba176011e9ac68ed3ce6de6c6be6cea6d5e58833`; range `c075347d8..ba176011e`: three commits of worker 7d9aa85a (`87785f624`, `580250526`, `657e88140`, cherry-picked from `e85930fbb..a4301c423` without conflict), then the 0.1.505 raise and bundles. It sits on 0.1.504 (row 011-343, reviewed in `reviews/0.1.504.md`; `f9fcc2b64..c075347d8`), which lands on main first. Behaviour to compare against: `c075347d8`. Read: board row 011-344, `tasks/011-344/notes.md`, this file's W2, `reviews/0.1.487.md`, `tasks/011-49/notes.md`.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43635424483. Pinned to `cand/0.1.505` at `acf3e7d49bdd60b6e7824481dea3828613d8b1cb`; range `0735d8af8..acf3e7d49`: three commits of worker 7d9aa85a (`6688b956f`, `b60b414e2`, `37661488d`, cherry-picked from `e85930fbb..a4301c423` without conflict), then the 0.1.505 raise and bundles. It sits on 0.1.504 (row 011-343, reviewed in `reviews/0.1.504.md`; `3f1f5dc7d..0735d8af8`), which lands on main first. Behaviour to compare against: `0735d8af8`. Read: board row 011-344, `tasks/011-344/notes.md`, this file's W2, `reviews/0.1.487.md`, `tasks/011-49/notes.md`.
 
 Grants beyond W2's list (coordinator, 2026-11-14): `src/core/daemon/ensure.ts` (`ProbeOptions.signal`, passed to the lookup ping only); `src/cli/wait-liveness.ts` (`DaemonWatch.stop()`), `src/cli/wait/wait.ts` (`StatusPoll.stop`), one stop line each in `src/cli/wait/status.ts` and `src/cli/wait/named.ts`. The worker found that the liveness watch's ping also held the process about 1.4 s.
 
 Check, each as proven, plausible or unverified:
 
-1. **The process ends near its outcome.** `status <path> --wait` and `status --wait` against a socket that accepts and never answers exit within about 300 ms of their outcome line, every connection closed; codes and lines as at `c075347d8`. `test/cli/status-wait-paused.test.ts` fails on the base.
+1. **The process ends near its outcome.** `status <path> --wait` and `status --wait` against a socket that accepts and never answers exit within about 300 ms of their outcome line, every connection closed; codes and lines as at `0735d8af8`. `test/cli/status-wait-paused.test.ts` fails on the base.
 2. **Nothing changes before the outcome.** No liveness decision, sync answer, read or timing before the wait decides differs; `stop` runs only after it. `src/core/presence/` untouched.
 3. **The signal is safe.** `requestDaemon` with an aborted or aborting signal closes its socket, clears its timer and rejects once; every caller that passes no signal behaves as before (the 2 s bound); the snapshot of row 011-49 is unchanged.
 4. **Scope**: the files above, their tests and notes, apart from the version and bundles; no key change; `src/cli/code*.ts` untouched.
@@ -70,7 +70,7 @@ The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `v
 
 ## R3 (W3): review of cand/0.1.506
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43637995391. Pinned to `cand/0.1.506` at `b09f0095ca32423c8e510ab9ddb263a74dfd59e5`; range `f38b0c9b5..b09f0095c`: five commits of worker 14e7717d (`a250d14fc`, `04fa4a022`, `df430fc8e`, `662d98e87`, `ae1267cc4`, cherry-picked from `864224a8b..9c3c1f5dd` without conflict), then the 0.1.506 raise and bundles. It sits on 0.1.505 (row 011-344, `reviews/0.1.505.md`), which lands on main first. Behaviour to compare against: `f38b0c9b5`. Read: board row 011-345, `tasks/011-345/notes.md`, this file's W3, `tasks/011-45/notes.md` (with its repair round), `reviews/0.1.489-r2.md`, `src/core/state/header.ts`, `src/core/state/header-part.ts`.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43637995391. Pinned to `cand/0.1.506` at `68874bcc29f513933a79369aa90ef1205f562a55`; range `ed213f7bb..68874bcc2`: five commits of worker 14e7717d (`ecb4e2b5f`, `b482ffc00`, `0c874f495`, `6dbf0af88`, `8864b14e2`, cherry-picked from `864224a8b..9c3c1f5dd` without conflict), then the 0.1.506 raise and bundles. It sits on 0.1.505 (row 011-344, `reviews/0.1.505.md`), which lands on main first. Behaviour to compare against: `ed213f7bb`. Read: board row 011-345, `tasks/011-345/notes.md`, this file's W3, `tasks/011-45/notes.md` (with its repair round), `reviews/0.1.489-r2.md`, `src/core/state/header.ts`, `src/core/state/header-part.ts`.
 
 Grant beyond W3's list (coordinator, 2026-11-14): `src/core/state/slow.ts` and `src/core/state/groups.ts`, an additive split of each lane's state into counts and activity read fresh; every other caller gets the same object.
 

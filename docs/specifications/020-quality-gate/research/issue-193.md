@@ -3,7 +3,7 @@
 Research for hearsay-tools/squeal#193 (reported on 0.1.443, 2026-11-12).
 Probed with the packaged 0.1.443 CLI
 (`~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`, Node
-v26.13.0). Source read at `e5e3ba77c` (`squeal--v0.1.443-5`); `git diff --stat
+v26.13.0). Source read at `2efaabc5e` (`squeal--v0.1.443-5`); `git diff --stat
 squeal--v0.1.443 HEAD -- src` is empty, so the source is 0.1.443's.
 
 Verdict: **duplicate not reproduced; the scope gaps are confirmed.** In five
@@ -143,7 +143,7 @@ a key that exists.
   `src/runners/node-test/adapter.ts:60-77`, `src/core/code/gate/runners.ts:67-120`,
   `src/core/code/gate/collect.ts:131-250`, `src/cli/code-gate.ts:88-215`,
   `src/cli/code-gate-stored.ts:25-181`, `src/core/types/policy.ts:63-68,243`,
-  at `e5e3ba77c`.
+  at `2efaabc5e`.
 - `docs/specifications/020-quality-gate/spec.md` D3.1, D14.4.
 - 0.1.443 bundle: `~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`.
 - Probe and results: `research/probes/issue-193/`.

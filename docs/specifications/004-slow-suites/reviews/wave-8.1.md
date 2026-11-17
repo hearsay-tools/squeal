@@ -2,7 +2,7 @@
 
 FAIL d58e3d050d8f5c87ea9b48de3d7d2d9d9503d21e
 
-Four proven blockers, one proven should-fix, no nits. Reviewed on 2026-10-17, detached at the pinned candidate, against `origin/main` at `719c83c2d89b0892958f1da99fddddc2700021e7` (13 commits). The verdict covers 004-65 step 2, issues #3 and #16, D2, D5, D7, D8 and D9, including the accepted amendment and D8's further amendment in `85f5cce9`. Row 004-68's setup command listing is excluded as directed.
+Four proven blockers, one proven should-fix, no nits. Reviewed on 2026-10-17, detached at the pinned candidate, against `origin/main` at `b3ee7f284669ea1ec4cdc63afa4a69e874e00a59` (13 commits). The verdict covers 004-65 step 2, issues #3 and #16, D2, D5, D7, D8 and D9, including the accepted amendment and D8's further amendment in `85f5cce9`. Row 004-68's setup command listing is excluded as directed.
 
 ## Verification
 
@@ -182,7 +182,7 @@ Keep the accepted D7/D8 contract and the setup-listing exclusion. Repair the fou
 
 FAIL 1fb4855d5d46b6d6912503465979dd5484f04ce5
 
-One unresolved proven blocker, B1. B2, B3, B4 and S1 are closed. No new should-fix items or nits. Reviewed detached at the pinned `cand/0.1.214` on 2026-10-17, against `origin/main` at `d39572deb7a16723d8da46004174870850eb79cf` (0.1.213). This round covers the prior findings and repair 1's fix scopes, including the explicitly requested residual-header judgment and restart behavior. It does not reopen the setup-listing exclusion or the rest of the original review.
+One unresolved proven blocker, B1. B2, B3, B4 and S1 are closed. No new should-fix items or nits. Reviewed detached at the pinned `cand/0.1.214` on 2026-10-17, against `origin/main` at `7d89d54bba3c4ab3ab91398f0a20cad697efc16c` (0.1.213). This round covers the prior findings and repair 1's fix scopes, including the explicitly requested residual-header judgment and restart behavior. It does not reopen the setup-listing exclusion or the rest of the original review.
 
 ### Verification
 
@@ -330,7 +330,7 @@ B1 remains the only blocker. The async-check, fast-lane verdict, per-ref policy 
 
 FAIL fc0b4ef8c0a06f3263a1abef70767d609980d1ea
 
-One proven B1 blocker remains at the publication boundary. No additional should-fix items or nits. The settled-state and restart defects from the re-review are fixed. This human-authorized third round covers B1 alone, the repair-2 delta and its callers. B2-B4, S1, row 004-68 and the other original findings stay closed or excluded. Reviewed across 2026-10-17/18 at the exact pinned candidate, against the supplied main commit `82f57951` (0.1.213).
+One proven B1 blocker remains at the publication boundary. No additional should-fix items or nits. The settled-state and restart defects from the re-review are fixed. This human-authorized third round covers B1 alone, the repair-2 delta and its callers. B2-B4, S1, row 004-68 and the other original findings stay closed or excluded. Reviewed across 2026-10-17/18 at the exact pinned candidate, against the supplied main commit `635dd732` (0.1.213).
 
 ### Verification
 
@@ -354,12 +354,12 @@ npm run check:version -- origin/main
 version bump: 0.1.213 -> 0.1.214, ok
 (exit 0)
 
-npm run check:version -- 82f57951
+npm run check:version -- 635dd732
 version bump: 0.1.213 -> 0.1.214, ok
 (exit 0)
 ```
 
-Installation also printed the existing deprecation and install-script approval notices. The local `origin/main` ref had advanced to `9e31be27` when inspected during the gate; the second version check explicitly covers the supplied comparison commit. This does not change the pinned candidate or the review scope.
+Installation also printed the existing deprecation and install-script approval notices. The local `origin/main` ref had advanced to `16713d37` when inspected during the gate; the second version check explicitly covers the supplied comparison commit. This does not change the pinned candidate or the review scope.
 
 Touched tests and their slow-tier integration callers:
 
@@ -491,7 +491,7 @@ FAIL cc4d94017ced4841c9b108349b36f5ae3c3ccb33
 
 Two proven regressions in transaction-error handling block this candidate. No additional should-fix items or nits. Successful skip, lift and requeue publication is atomic and closes the third-round visibility window. The added transaction boundaries, however, lose retry state on a busy requeue and roll back a checkpoint end after its in-memory tracker has discarded it. This human-authorized fourth round covers only repair 3 and what its transaction now encloses. B2-B4, S1, 004-68 and the other original findings remain closed or excluded. Settled-state behavior is revisited below only where the added transaction causes a regression.
 
-Reviewed on 2026-10-18 at the exact pinned candidate, against local `origin/main` at `b1a97cbd06455b9ed95b01b3fbc0584b4624cbb1` (0.1.213). The supplied 1a28cb64-equivalent repair is `5eeb453446b5bcb8f19932823b99f8e3b143af2a` here. The other source delta from the third-round pin is the key-source hash re-pin.
+Reviewed on 2026-10-18 at the exact pinned candidate, against local `origin/main` at `c12b340063d41cd8cf5c657dcab3a97f3bcc4765` (0.1.213). The supplied 1a28cb64-equivalent repair is `5eeb453446b5bcb8f19932823b99f8e3b143af2a` here. The other source delta from the third-round pin is the key-source hash re-pin.
 
 ### Verification
 
@@ -666,11 +666,11 @@ Keep the single database transaction and its internal publication/refresh order.
 
 ## Fifth round
 
-PASS d026213ef3944a6c624286c2db6de7a4e9420d4f
+PASS bf258cdc2b3a735c7ec03b0dd21a57f0e845c133
 
-No blocking findings. One proven nonblocking queue-restoration limitation, one proven pre-existing restart defect for a separate row, no nits. R1 and R2 of the Fourth round are closed through the public scheduler. Successful skip, lift and requeue remain atomic to independent readers. This verdict covers the human-authorized Repair 4 delta only: `c007af01`, its regressions and helper changes, the notes, key re-pin and rebuilt bundles. B2-B4, the original S1, settled-state/restart fixes and 004-68 are not reopened.
+No blocking findings. One proven nonblocking queue-restoration limitation, one proven pre-existing restart defect for a separate row, no nits. R1 and R2 of the Fourth round are closed through the public scheduler. Successful skip, lift and requeue remain atomic to independent readers. This verdict covers the human-authorized Repair 4 delta only: `d99097f1`, its regressions and helper changes, the notes, key re-pin and rebuilt bundles. B2-B4, the original S1, settled-state/restart fixes and 004-68 are not reopened.
 
-Reviewed on 2026-10-18 at the exact candidate pin, against local `origin/main` at `2e71fe3c865404f9801d955064fa1d890efc2e7e` (0.1.213). The repair changes `SlowSkips.#atomically`, `Ledger.hold` and `Checkpoints.hold`; no product code was edited during review.
+Reviewed on 2026-10-18 at the exact candidate pin, against local `origin/main` at `29b9c02f19b4b3e55e079ee78decc4b0929a95a5` (0.1.213). The repair changes `SlowSkips.#atomically`, `Ledger.hold` and `Checkpoints.hold`; no product code was edited during review.
 
 ### Verification
 
@@ -767,7 +767,7 @@ Duration  4.16s
 
 The seven cases cover same-revision failed-lift retry, queue restoration, the setup buffer, rollback followed only by shutdown/restart, shutdown without rollback, requeue rollback after the ledger's nested commit, and joined checkpoint lanes. Characterization assertions explicitly expect the limitations described below; a green characterization does not make those behaviors correct.
 
-**Pre-repair controls:** copy the candidate's source tree under `/tmp` and restore only `slow-skip.ts`, `ledger.ts` and `checkpoints.ts` from `c007af01^`. Other source, dependencies, fixture setup and fault conditions stay the same.
+**Pre-repair controls:** copy the candidate's source tree under `/tmp` and restore only `slow-skip.ts`, `ledger.ts` and `checkpoints.ts` from `d99097f1^`. Other source, dependencies, fixture setup and fault conditions stay the same.
 
 ```text
 # The identical Fourth-round public-scheduler assertions on pre-repair sources:

@@ -118,7 +118,7 @@ The trust check runs whenever `installedDependencies` reads the install, not per
 
 ## Third round (review 0.1.282 B2.1)
 
-The re-review of `cand/0.1.282` at `b26f2e1eb` (`reviews/0.1.282.md`, "Re-review") closed B1, B2 and S1 and found one proven blocker, B2.1. The human asked for a third narrow round: a rebase onto main, the 011-158 interaction, and the B2.1 fix.
+The re-review of `cand/0.1.282` at `c80aaf9a6` (`reviews/0.1.282.md`, "Re-review") closed B1, B2 and S1 and found one proven blocker, B2.1. The human asked for a third narrow round: a rebase onto main, the 011-158 interaction, and the B2.1 fix.
 
 ### Rebase onto main
 

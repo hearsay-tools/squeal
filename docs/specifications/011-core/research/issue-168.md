@@ -14,7 +14,7 @@ status or skill changed. Existing holds stand.
 | 1. Can a clean fast-forward before any session edit cause a lint Stop hold? | **Yes, reproduced on 0.1.422**, with one inherited pending path and clean Git status. `verified by experiment` |
 | 2. Can it deliver FAIL CRAP as “code changes”? | **Yes, reproduced on 0.1.422.** CRAP 2 → 72 yielded “1 code change”; the next unchanged delivery was silent. This is an actual state transition. `verified by experiment` |
 | 3. Does that prove the code subsystem marked the function as an agent edit? | **No.** The code store marked the path as pulled and kept its edit marks null. Separately, a status line incorrectly said “Squeal saw your edit.” `verified by experiment`, 0.1.422 |
-| 4. Can base-commit results safely replace validation here? | **Not determined**, because this probe has no validated B result from a second worktree or matching-key comparison. Commit ancestry alone is insufficient under 011 C3 and 017 D5. `read in source code` / `inferred`, checkout a97402f5 |
+| 4. Can base-commit results safely replace validation here? | **Not determined**, because this probe has no validated B result from a second worktree or matching-key comparison. Commit ancestry alone is insufficient under 011 C3 and 017 D5. `read in source code` / `inferred`, checkout c35c82ac |
 
 ## Experiment
 
@@ -22,7 +22,7 @@ Runtime: installed Squeal **0.1.422**, Node **24.22.1**, ESLint **10.13.0**.
 Claude Code hook bundles came from tag `squeal--v0.1.422`, commit
 `fd1a98f70478bfdd7f18c64c97830e72d915d06d`; the CLI came from
 `~/.codex/plugins/data/squeal-hearsay/versions/0.1.422/dist/cli/squeal.mjs`.
-The checkout is `a97402f5e1f1d90a91feb41c30ad86db93555644` (0.1.423).
+The checkout is `c35c82ac8da425776734ff245545a4b0a9bdf838` (0.1.423).
 The source functions cited below are unchanged from the examined tag.
 
 Initial host load was **4.60/24 CPUs**. Each live attempt checked again before
@@ -91,7 +91,7 @@ groups. Neither selection tests whether Git brought the path. 011 C2 records
 changed bytes as revisions with HEAD/dirty provenance. A clean tree is not an
 unchanged revision.
 
-**Read in source code, 0.1.422, and repository spec at a97402f5.** 015 D6 says
+**Read in source code, 0.1.422, and repository spec at c35c82ac.** 015 D6 says
 “a FAIL from git is told.” Status amendment 2026-10-27 and board row **015-83**
 record the human's choice to keep pull coverage notices. `code-delta.ts::toldKind`
 retains a new fail from Git. `code-format.ts::codeChanges` counts result changes;
@@ -100,7 +100,7 @@ retains a new fail from Git. `code-format.ts::codeChanges` counts result changes
 known-failure counts and leaves code blocking off by default. The observed CRAP
 notice satisfies these rules; its heading alone does not prove false edit marks.
 
-**Read in source code/spec, a97402f5; inference for the proposal.** 011 C3 keys
+**Read in source code/spec, c35c82ac; inference for the proposal.** 011 C3 keys
 results by inputs, never commit identity. 017 D5 includes file bytes, computed
 configuration and its closure, tool/provider versions, installed packages and
 keyed environment. D7 already looks up each key and uses hits without linting.

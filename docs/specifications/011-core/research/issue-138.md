@@ -12,7 +12,7 @@ number. Neither probe identifies the original incident's lock holder.
 
 The brief's question is split into five checks below. Experiments and source
 were read on 2026-11-03 Europe/Warsaw. Product source: 0.1.393,
-`99d1a0e551097cd6cef71b4fe441205263900c30`. Incident runtime and second CLI
+`ad3da1ceaa1657dc30f68ce5502dc9896ab927a5`. Incident runtime and second CLI
 probe: 0.1.390, tag commit `ee3531548ed52c4ba692b48b0ae430d9c4965e48`.
 
 | Question | Answer, evidence tag and version |

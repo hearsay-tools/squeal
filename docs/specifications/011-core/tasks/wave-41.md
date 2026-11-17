@@ -1,6 +1,6 @@
 # Wave 41
 
-From main after 0.1.319 (`533929e94`), 2026-10-25. Two rows from the human's triage round 10 with the most sightings, on disjoint seams: a named wait that asks for the run it waits on (W1, gh-82), and a slow instance that frees its environment when its lane stops (W2, gh-78 with six sightings, and gh-90). Host load is about 42 on 24 CPUs, so the wave holds at two. 011-213 (`retry.ts`, after W1), 011-215, 011-209, 011-217 and 011-219 follow.
+From main after 0.1.319 (`a33127fc1`), 2026-10-25. Two rows from the human's triage round 10 with the most sightings, on disjoint seams: a named wait that asks for the run it waits on (W1, gh-82), and a slow instance that frees its environment when its lane stops (W2, gh-78 with six sightings, and gh-90). Host load is about 42 on 24 CPUs, so the wave holds at two. 011-213 (`retry.ts`, after W1), 011-215, 011-209, 011-217 and 011-219 follow.
 
 ## W1: 011-207, a named wait asks one run of each stale or unknown file named by its own path
 

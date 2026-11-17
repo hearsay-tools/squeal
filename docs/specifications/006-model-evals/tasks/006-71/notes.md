@@ -1,6 +1,6 @@
 # 006-71: worker notes
 
-Worker, 2026-10-15. Brief: `tasks/wave-13.md`, "006-71 a9's retry measures credit what the situation asked". Evidence read: sol's a9 cells r2 and r6 to r8 of run `20261015T114356Z-99db6d`, from the committed `.atomic.json` (retained timelines) and the transcripts under `/tmp/squeal-evals-1001/cells/ae20bb31621f/20261015T114356Z-99db6d/*/out` (read only). No cell, session, regrade CLI or build ran.
+Worker, 2026-10-15. Brief: `tasks/wave-13.md`, "006-71 a9's retry measures credit what the situation asked". Evidence read: sol's a9 cells r2 and r6 to r8 of run `20261015T114356Z-99db6d`, from the committed `.atomic.json` (retained timelines) and the transcripts under `/tmp/squeal-evals-1001/cells/b7a7b66a2833/20261015T114356Z-99db6d/*/out` (read only). No cell, session, regrade CLI or build ran.
 
 ## What the cells did
 
@@ -94,7 +94,7 @@ Pinned, and already right on the candidate:
 
 sol's r6 to r8 stay `true` and r2 stays `null` (`retry-situation.test.ts`, unchanged).
 
-**Committed cells (in memory only).** All 1,179 cells were checked under base `78f140dd`, the 006-71 candidate `ab205437`, and this commit. Against the base, the same four sol a9 cells change as in the table above. Against the 006-71 candidate, none differ.
+**Committed cells (in memory only).** All 1,179 cells were checked under base `9f2b9076`, the 006-71 candidate `ab205437`, and this commit. Against the base, the same four sol a9 cells change as in the table above. Against the 006-71 candidate, none differ.
 
 ## 006-78: repair round 3, after re-review 006-76
 
@@ -136,5 +136,5 @@ The other rows were already pinned and keep their results:
 r2 and r6 to r8 keep their results (`retry-situation.test.ts`, unchanged).
 
 **Committed cells (in memory only).** All 1,179 cells were compared:
-- against the original base `78f140dd` and the reviewer's base `431c1d3f`: only sol's `99db6d` a9 r2, r6, r7 and r8 differ, as in the table above;
+- against the original base `9f2b9076` and the reviewer's base `70bee288`: only sol's `99db6d` a9 r2, r6, r7 and r8 differ, as in the table above;
 - against 006-75's `73bb06a1`: none differ.

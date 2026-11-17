@@ -8,7 +8,7 @@ Each script builds in a fresh `/tmp` scratch directory with its own `HOME`, `XDG
 
 `fake.test.cjs` stands in for a test file whose checks shell out. It reads `data-node.txt` in Node, then starts: Python reading `data-py.txt` from a `-c` string; a dynamically linked C reader (`reader.c`) with `data-dyn.txt` as its argument; the same reader statically linked with `data-static.txt` as its argument; the static reader again, with its path in `$PROBE_DATA` (`data-env.txt`); and `sh -c "cat data-sh.txt"`.
 
-- A runs it under Squeal's own recorder (`src/runners/observe/*.cjs` copied at HEAD 0822a4440), as a `--require` with `SQUEAL_OBSERVE`, as C12 delivers it.
+- A runs it under Squeal's own recorder (`src/runners/observe/*.cjs` copied at HEAD a52303814), as a `--require` with `SQUEAL_OBSERVE`, as C12 delivers it.
 - B runs it under `strace -f` (ptrace), with no recorder.
 - C runs the two C readers under `shim.c`, an `LD_PRELOAD` tracer that interposes libc's `open`, `open64` and `openat`.
 

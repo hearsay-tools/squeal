@@ -1,10 +1,10 @@
-PASS 717f7167989eea314ec7abcf5bd7b541ec1277d7
+PASS 17f6ea3df99f6660093e0bf913d15efe4904810b
 
 # Wave 6 review
 
 Zero blockers, zero should-fix findings, one nonblocking documentation nit. This verdict covers row 014-38 and the release build. It does not claim a green full suite or green CI.
 
-Candidate: `cand/0.1.258`, pinned to `717f7167989eea314ec7abcf5bd7b541ec1277d7`. Range: `49117be08..717f71679`. Reviewed against `tasks/wave-6.md`, the human's 2026-10-22 decision after Round 3 in `status.md`, and D7. No product code changed during this review. No end command printed by `ps` was run.
+Candidate: `cand/0.1.258`, pinned to `17f6ea3df99f6660093e0bf913d15efe4904810b`. Range: `ef0f6dfc7..17f6ea3df`. Reviewed against `tasks/wave-6.md`, the human's 2026-10-22 decision after Round 3 in `status.md`, and D7. No product code changed during this review. No end command printed by `ps` was run.
 
 ## Verification
 
@@ -12,7 +12,7 @@ Candidate: `cand/0.1.258`, pinned to `717f7167989eea314ec7abcf5bd7b541ec1277d7`.
 
 ```text
 $ git rev-parse HEAD
-717f7167989eea314ec7abcf5bd7b541ec1277d7
+17f6ea3df99f6660093e0bf913d15efe4904810b
 $ npm ci
 added 196 packages, and audited 197 packages in 16s
 $ npm run lint
@@ -22,7 +22,7 @@ Checked 1723 files in 1141ms. No fixes applied.
 $ npm run typecheck
 > squeal@0.1.258 typecheck
 > tsc --noEmit
-$ npm run check:version -- 49117be08 717f7167989eea314ec7abcf5bd7b541ec1277d7
+$ npm run check:version -- ef0f6dfc7 17f6ea3df99f6660093e0bf913d15efe4904810b
 version bump: 0.1.256 -> 0.1.258, ok
 $ git status --short
 (no output before writing this report)
@@ -48,7 +48,7 @@ The brief assigns the locked full run to the coordinator. This review reads `/tm
 The locked run finished with exit 1 on the exact candidate. `/tmp/014-w6-gate.log`:
 
 ```text
-start 2026-10-22T07:39:43Z 717f7167989eea314ec7abcf5bd7b541ec1277d7
+start 2026-10-22T07:39:43Z 17f6ea3df99f6660093e0bf913d15efe4904810b
 exit 1 2026-10-22T08:04:54Z
 ```
 
@@ -85,7 +85,7 @@ Both failures are in `test/e2e/opencode.test.ts`: the baseline-and-delivery case
 
 The reviewer's background Squeal also reports the unchanged OpenCode dispose abort case as FAIL at revision 0: its held Stop was killed at +2151 ms against the +2000 ms idle deadline. `squeal why` shows the same failure on earlier commits; it matches the timing problem recorded in board row 008-38. This is not a passing background verdict and was not retried by the reviewer.
 
-The coordinator reran the failed shard as **attempt 2** after observing that main passed both cases at 06:14 and 06:47 UTC, and that the install timeout matches the npm-outage pattern recorded by 011 in `36cb64b00`. Attempt 2 completed with `failure` at the same candidate SHA. Both OpenCode cases now passed, in 11,686 and 12,258 ms. Its only failures are the two `slow-slot-fair.test.ts` cases already listed above: the 10-second teardown timeout and a probe count of 454 instead of 440. Its totals remain:
+The coordinator reran the failed shard as **attempt 2** after observing that main passed both cases at 06:14 and 06:47 UTC, and that the install timeout matches the npm-outage pattern recorded by 011 in `ab47e4192`. Attempt 2 completed with `failure` at the same candidate SHA. Both OpenCode cases now passed, in 11,686 and 12,258 ms. Its only failures are the two `slow-slot-fair.test.ts` cases already listed above: the 10-second teardown timeout and a probe count of 454 instead of 440. Its totals remain:
 
 ```text
 Test Files  1 failed | 290 passed | 1 skipped (292)

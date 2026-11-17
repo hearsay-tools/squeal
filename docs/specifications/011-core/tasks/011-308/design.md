@@ -1,6 +1,6 @@
 # Design: a named wait's batch does not wait for the CPU pool, and the wait says when it waits for CPU
 
-Rows 011-308 and 011-309. Coordinator 83be4a7a, 2026-11-07. Source: `research/wait-timeouts.md` (main `bc58ad12f`), change 1 and the recommendation's output line; the human chose both on 2026-11-07 (task 7d611fc4). Not in scope: change 2 (a busy-core ceiling for background tiers, rejected as too tied to one machine), changes 3 and 4. Status: draft, awaits the human.
+Rows 011-308 and 011-309. Coordinator 83be4a7a, 2026-11-07. Source: `research/wait-timeouts.md` (main `bbeb184b6`), change 1 and the recommendation's output line; the human chose both on 2026-11-07 (task 7d611fc4). Not in scope: change 2 (a busy-core ceiling for background tiers, rejected as too tied to one machine), changes 3 and 4. Status: draft, awaits the human.
 
 ## Today
 

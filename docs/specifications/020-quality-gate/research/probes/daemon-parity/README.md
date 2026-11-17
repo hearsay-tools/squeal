@@ -14,4 +14,4 @@ Every probe is read-only. The store probes open `<common-dir>/squeal/{store,code
 
 `<common-dir>` was `~/projects/squeal/.git`. The stores are live: other daemons wrote to them during the runs, so counts can differ by a few rows between runs.
 
-Squeal at `1e8b506ed` (0.1.423 plus docs), Node v24.22.1, Vitest 5.0.3. One-minute load: 24 to 28 during every run (24 vCPUs).
+Squeal at `fae073967` (0.1.423 plus docs), Node v24.22.1, Vitest 5.0.3. One-minute load: 24 to 28 during every run (24 vCPUs).

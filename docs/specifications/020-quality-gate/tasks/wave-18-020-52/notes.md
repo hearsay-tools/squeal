@@ -1,6 +1,6 @@
 # Row 020-52: one rule for "may this CI part stand for a run here"
 
-Worker 6542818c, wave 18, shape slice (a refactor). Base: main at `7d081d646`.
+Worker 6542818c, wave 18, shape slice (a refactor). Base: main at `ebda525a6`.
 
 ## 1. Refusal branches before this row, side by side
 
@@ -96,7 +96,7 @@ Export-only branches that stay in `export.ts`, because they are not reasons of D
 
 | Done-when | Evidence |
 | --- | --- |
-| Every existing parts, export and `ci` test passes with no assertion changed | No existing test file changed (`git diff 7d081d646 -- test/` adds only `test/ci/reuse.test.ts`). Squeal at revision 14: `test/code/gate/parts{,-refused,-environment}.test.ts`, `test/code/gate/report-refused.test.ts`, `test/ci/export{,-check,-evidence,-keys,-formats,-snapshot,-wrapper}.test.ts`, `test/ci/inputs{,-here}.test.ts`, and the CLI tests `test/cli/ci-{export,export-children,publish,record,usage}.test.ts`, `test/cli/code-gate-parts{,-cases,-environment,-link,-unstarted}.test.ts`, `test/cli/code-gate-stored.test.ts` all pass. |
+| Every existing parts, export and `ci` test passes with no assertion changed | No existing test file changed (`git diff ebda525a6 -- test/` adds only `test/ci/reuse.test.ts`). Squeal at revision 14: `test/code/gate/parts{,-refused,-environment}.test.ts`, `test/code/gate/report-refused.test.ts`, `test/ci/export{,-check,-evidence,-keys,-formats,-snapshot,-wrapper}.test.ts`, `test/ci/inputs{,-here}.test.ts`, and the CLI tests `test/cli/ci-{export,export-children,publish,record,usage}.test.ts`, `test/cli/code-gate-parts{,-cases,-environment,-link,-unstarted}.test.ts`, `test/cli/code-gate-stored.test.ts` all pass. |
 | Each refusal reason of D13.2 comes from the one module | `grep -rnE 'reason: "(duplicate\|unusable\|environment\|closure\|input\|record\|unread\|source)"' src/` finds them in `src/core/ci/reuse.ts` only (two unrelated hits in `status-wait-ask-store.ts` and `crap/loaders.ts` are other types). |
 | A test per deliberate difference | Section 3, column "Test": `test/ci/reuse.test.ts`, 11 tests. |
 | No change to report fields, stderr text, exit codes or exports | The gate's report and stderr tests (`parts-refused`, `report-refused`, `code-gate-parts*`) and the export's text, counts and bundle tests (`export*`, `ci-export*`) pass unchanged. |

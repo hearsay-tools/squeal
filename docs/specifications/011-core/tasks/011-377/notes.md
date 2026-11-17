@@ -1,6 +1,6 @@
 # Row 011-377: waits that count from a stored calendar time
 
-Worker 2249b18f, wave 112 W1 (`tasks/wave-112.md`), from main at 0.1.523 (`8c9e04358`).
+Worker 2249b18f, wave 112 W1 (`tasks/wave-112.md`), from main at 0.1.523 (`96346201c`).
 
 ## Design
 

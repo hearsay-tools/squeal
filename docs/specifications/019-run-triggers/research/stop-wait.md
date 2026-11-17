@@ -1,6 +1,6 @@
 # Research: stop-wait
 
-Row 019-03, topic `stop-wait` of `README.md`. Source read at Squeal `6c5615a55` (0.1.393). External: Claude Code hooks docs (`code.claude.com/docs/en/hooks.md`, fetched 2026-11-02), Claude Code 2.1.300 run as `squeal-e2e` (the host's own is 2.1.316), Codex source at tag `rust-v0.164.0` (`6aaac69`, the host's 0.164.0). Cezarion store copied with `VACUUM INTO` on 2026-11-03 and read from the copy. Probes: `probes/stop-wait/` (throwaway).
+Row 019-03, topic `stop-wait` of `README.md`. Source read at Squeal `be42dedfa` (0.1.393). External: Claude Code hooks docs (`code.claude.com/docs/en/hooks.md`, fetched 2026-11-02), Claude Code 2.1.300 run as `squeal-e2e` (the host's own is 2.1.316), Codex source at tag `rust-v0.164.0` (`6aaac69`, the host's 0.164.0). Cezarion store copied with `VACUUM INTO` on 2026-11-03 and read from the copy. Probes: `probes/stop-wait/` (throwaway).
 
 ## Questions answered
 
@@ -89,7 +89,7 @@ A "pass" is consecutive slow runs in one worktree. Its wall time excludes the gu
 
 ## Sources
 
-- Squeal `6c5615a55`: `src/harness/shared/stop.ts`, `stop-slow.ts`, `no-edit.ts`; `src/core/slow/stop-wait.ts`; `src/core/state/slow.ts`; `src/core/scheduler/slow-tier.ts`, `scheduler.ts`; `src/harness/claude-code/hooks/stop*.ts`; `src/harness/codex/handlers.ts`; `src/harness/opencode/bridge-turn.ts`, `hooks.ts`; `src/harness/pi/run.ts`, `extension.ts`; `plugins/claude-code/hooks/hooks.json`, `plugins/codex/hooks/hooks.json`; spec 004 D2, D3, D7 to D9.
+- Squeal `be42dedfa`: `src/harness/shared/stop.ts`, `stop-slow.ts`, `no-edit.ts`; `src/core/slow/stop-wait.ts`; `src/core/state/slow.ts`; `src/core/scheduler/slow-tier.ts`, `scheduler.ts`; `src/harness/claude-code/hooks/stop*.ts`; `src/harness/codex/handlers.ts`; `src/harness/opencode/bridge-turn.ts`, `hooks.ts`; `src/harness/pi/run.ts`, `extension.ts`; `plugins/claude-code/hooks/hooks.json`, `plugins/codex/hooks/hooks.json`; spec 004 D2, D3, D7 to D9.
 - Claude Code hooks reference, https://code.claude.com/docs/en/hooks.md, fetched 2026-11-02: "Common fields", "Timeouts", "Stop" input and the 8-continuation cap.
 - Codex `rust-v0.164.0` (`6aaac694`): https://github.com/openai/codex/blob/rust-v0.164.0/codex-rs/hooks/src/engine/discovery.rs, `codex-rs/core/src/session/turn.rs`, `codex-rs/hooks/src/events/stop.rs`.
 - Prior research: `../../001-core-loop/research/slow-claims.md`, `../../002-codex-adapter/research/codex-hooks.md`, `../../004-slow-suites/research/slow-tier-role.md`, `../../008-opencode-adapter/research/opencode-plugins.md`, `../../009-pi-adapter/research/pi-extension-events.md`.

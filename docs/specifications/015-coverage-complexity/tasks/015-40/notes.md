@@ -1,6 +1,6 @@
 # 015-40 notes: the coverage measures follow D6 and D7
 
-Worker f0ed5308, 2026-10-24. Brief: `tasks/wave-3.md` W1, with 015-39 and 015-33. Starts from main at 0.1.297 (e538c7788). Wording of the told line: `status.md`, the coordinator, 2026-10-24. The edit to `src/core/types/code-delivery.ts`, outside the brief's ownership, was agreed with the coordinator (reply to request `cb17fc53`): additive fields in `CodeNews` only.
+Worker f0ed5308, 2026-10-24. Brief: `tasks/wave-3.md` W1, with 015-39 and 015-33. Starts from main at 0.1.297 (0b1023db1). Wording of the told line: `status.md`, the coordinator, 2026-10-24. The edit to `src/core/types/code-delivery.ts`, outside the brief's ownership, was agreed with the coordinator (reply to request `cb17fc53`): additive fields in `CodeNews` only.
 
 ## Amendment text for spec.md
 

@@ -17,7 +17,7 @@ squeal retry packages/cezar/src/delegation/workspace.test.ts --reason load
 squeal status --wait 60000 packages/cezar/src/delegation/workspace.test.ts
 ```
 
-**Verified by inspection command:** `cat /proc/loadavg` returned `69.67 46.98 35.94 75/2659 2818424`; `getconf _NPROCESSORS_ONLN` returned `24`. `package.json` names 0.1.377. Baseline: origin/main `054ee4b399b07ebd0c9237010a6984b8ec5c7b4c`.
+**Verified by inspection command:** `cat /proc/loadavg` returned `69.67 46.98 35.94 75/2659 2818424`; `getconf _NPROCESSORS_ONLN` returned `24`. `package.json` names 0.1.377. Baseline: origin/main `ddb858c15ade0f6467dec983aa20ab8ac4488f35`.
 
 **Read in specification:** C5 queues a qualified retry at its normal priority. Its 600 s bound limits waiting for the load gate, not start time after qualification. C4 governs tier order and interruption. C15 promotes named waits and protects selected running work; C6 reports pending state. A claimed retry and an open load gate do not alone prove that its runner started. No product source experiment was performed.
 

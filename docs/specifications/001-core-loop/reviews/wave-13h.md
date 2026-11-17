@@ -4,7 +4,7 @@ PASS 78f51e6
 
 No proven blockers, two proven should-fix notes, no nits. Wave-13f B3, B4 and S1 are closed for the non-browser Vitest instances tested here. The candidate's slow-instance repair works, but its committed regression does not discriminate that repair. The registration note can describe a configuration that is no longer current.
 
-Reviewed `431bc7e..78f51e6`, the assigned 0.1.69 baseline through the exact 0.1.72 bundle landing. The assigned checkout began at `28adb35`, two documentation-only commits later. All candidate gates and probes ran detached at `78f51e6a2e7ad9dce920a56511589807383677b4`, with a clean tracked tree. Returned to `cez/e668ca64` only to commit this report. Read wave-13 through wave-13f, task 001-176's notes, the wave brief, board, spec and amendment log. Rows 001-170 and 001-173 were considered only at the state-publication and Vitest-reporter seams; other coordinators' changes were not reviewed.
+Reviewed `431bc7e..78f51e6`, the assigned 0.1.69 baseline through the exact 0.1.72 bundle landing. The assigned checkout began at `28adb35`, two documentation-only commits later. All candidate gates and probes ran detached at `65e8de6462d491b0d824b91d5db1957f34e3ac73`, with a clean tracked tree. Returned to `cez/e668ca64` only to commit this report. Read wave-13 through wave-13f, task 001-176's notes, the wave brief, board, spec and amendment log. Rows 001-170 and 001-173 were considered only at the state-publication and Vitest-reporter seams; other coordinators' changes were not reviewed.
 
 ## Verification
 
@@ -12,7 +12,7 @@ Node 24.21.0, Linux. Main gate: Vitest 5.0.3, Vite 8.3.2. Independent compatibil
 
 ```text
 $ git rev-parse HEAD
-78f51e6a2e7ad9dce920a56511589807383677b4
+65e8de6462d491b0d824b91d5db1957f34e3ac73
 
 $ npm ci
 added 56 packages, and audited 57 packages in 3s

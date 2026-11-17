@@ -6,7 +6,7 @@ Coordinator 6e3bce1c, 2026-11-01. The human approved row 006-100 on 2026-11-01 (
 
 Use /worker. Shape: repair.
 
-Outcome: on a pin at or after `e34c9bc1f` (0.1.368), a Codex cell finds the shipped Codex CLI, trusts its hooks and reaches a daemon, as a fresh Codex install does; pins before it work as today.
+Outcome: on a pin at or after `4fa5c3c0c` (0.1.368), a Codex cell finds the shipped Codex CLI, trusts its hooks and reaches a daemon, as a fresh Codex install does; pins before it work as today.
 
 Evidence: atomic run `20261031T221020Z-ec45fb` on 0.1.387, kept in `evals/results/invalid/` with its README. Its log showed `ERR_MODULE_NOT_FOUND` for `<pin>/plugins/codex/dist/cli/squeal.mjs` at the trust step, warm-up and end status. In 0 of 100 graded Codex cells did a daemon show in the timeline.
 
@@ -20,8 +20,8 @@ Done when: a test resolves the CLI for a pin tree with the old layout and one wi
 
 ## R1: review of 006-100
 
-Use /reviewer. Shape: review. Candidate `cand/006-100` at `db208094272b94d693effcfb85c21435fa561786` (main `9eaec5eb0` plus three commits: `db5eb6957`, `3b1668d52`, `db2080942`); CI run 41284781091. Range `9eaec5eb0..db2080942`.
+Use /reviewer. Shape: review. Candidate `cand/006-100` at `c1df3a705531258fc07a07954eaa839c2f3fabd7` (main `e65bea14f` plus three commits: `efed0bc9b`, `dbbd5a279`, `c1df3a705`); CI run 41284781091. Range `e65bea14f..c1df3a705`.
 
 Read: the brief above, `tasks/006-100-notes.md`, spec 002 D7 to D9, spec 006 D3 (cells) and D10 (atomic tier).
 
-Check: (1) a Codex cell on a pin from 0.1.368 on runs that pin's own runtime, never the frozen seed, for every Squeal command the cell makes and for the session's hooks and bare `squeal`; (2) pins before `e34c9bc1f` are unchanged; (3) `MissingPinCli` stops a run in `run-baseline.mjs` before any cell (it runs after judge calibration; say whether that order costs anything); (4) the cell's background runtime download (notes) cannot change which runtime the session measures; (5) the `noskill` variant still removes the skill a Codex session sees, or name what it now measures; (6) no cell path can reach the real HOME. The coordinator's smoke: cell `a7-stale.p0.codex-gpt-6.1-sol.e-medium.r1`, run `20261101T072509Z-c7a6f0`, graded `claim-true` and `current-before-claim` true, end status showed a daemon. **Never run `evals/bin/*.mjs`, not even `--help`: it starts a real run.** No full suite. Write `reviews/006-100.md` with PASS or FAIL and commit it alone.
+Check: (1) a Codex cell on a pin from 0.1.368 on runs that pin's own runtime, never the frozen seed, for every Squeal command the cell makes and for the session's hooks and bare `squeal`; (2) pins before `4fa5c3c0c` are unchanged; (3) `MissingPinCli` stops a run in `run-baseline.mjs` before any cell (it runs after judge calibration; say whether that order costs anything); (4) the cell's background runtime download (notes) cannot change which runtime the session measures; (5) the `noskill` variant still removes the skill a Codex session sees, or name what it now measures; (6) no cell path can reach the real HOME. The coordinator's smoke: cell `a7-stale.p0.codex-gpt-6.1-sol.e-medium.r1`, run `20261101T072509Z-c7a6f0`, graded `claim-true` and `current-before-claim` true, end status showed a daemon. **Never run `evals/bin/*.mjs`, not even `--help`: it starts a real run.** No full suite. Write `reviews/006-100.md` with PASS or FAIL and commit it alone.

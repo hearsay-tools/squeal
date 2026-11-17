@@ -12,4 +12,4 @@ The probe checks load before creating its fixture and before each daemon start. 
 
 Each child has a 15-second kill bound. The control runs with `baseline.onStart=lookup-only`, coverage and complexity disabled. Cleanup stops the probe's child and removes only its own temporary directory. No existing repository store or worktree is read or changed. The literal `~` in the bad path is test data, not a path the probe opens.
 
-The captured run used Squeal 0.1.414 at `b509d603f483e5b869eb11b6cfecc744b057193e`, Node v24.22.1 on Linux. It exited 0. All four daemon cases ran; none were skipped. `result.jsonl` preserves the assertions' observations; `stderr.txt` contains only Git's scratch-worktree creation notice.
+The captured run used Squeal 0.1.414 at `28814707808f0941c0767ff27e82e568621b3367`, Node v24.22.1 on Linux. It exited 0. All four daemon cases ran; none were skipped. `result.jsonl` preserves the assertions' observations; `stderr.txt` contains only Git's scratch-worktree creation notice.

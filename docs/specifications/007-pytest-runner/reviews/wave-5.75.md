@@ -2,13 +2,13 @@
 
 ## Verdict
 
-**FAIL adc26b1d1bdceeffa24b1eb1a21eed47c18d0d46** (`cand/0.1.195`). One proven blocker, medium severity: wave-5.5 B1 remains open for pytest checks in non-`.py` files. No additional should-fix items or nits.
+**FAIL e6d4fb3b5c4e4b271afdb076fad44a86693df382** (`cand/0.1.195`). One proven blocker, medium severity: wave-5.5 B1 remains open for pytest checks in non-`.py` files. No additional should-fix items or nits.
 
-Scope: `fa444c86..adc26b1d`, specifically repair `998f0dfc`, its regression tests, the matching bundle changes, and both dependency-warning callers. The re-pin has no net change from the earlier candidate. 007-44 and the rest of 007-40 retain the prior review's conclusions.
+Scope: `fa444c86..e6d4fb3b`, specifically repair `8b583b5d`, its regression tests, the matching bundle changes, and both dependency-warning callers. The re-pin has no net change from the earlier candidate. 007-44 and the rest of 007-40 retain the prior review's conclusions.
 
 ## Verification
 
-The worktree was clean and `git rev-parse HEAD` was `adc26b1d1bdceeffa24b1eb1a21eed47c18d0d46` during verification and the probes. Node v24.21.0. Probe scripts and fixtures were outside the worktree and removed before committing this review.
+The worktree was clean and `git rev-parse HEAD` was `e6d4fb3b5c4e4b271afdb076fad44a86693df382` during verification and the probes. Node v24.21.0. Probe scripts and fixtures were outside the worktree and removed before committing this review.
 
 ```text
 $ npm ci
@@ -132,4 +132,4 @@ None beyond B1's required coverage.
 
 ## Inputs for the next decision
 
-B1 is not closed at `adc26b1d`. This is the second failing review round of the slice; process step 6 sends the decision to the human through the coordinator. No changes to 007-44 are requested. Any further repair must distinguish a stored pytest result from an implicit Node result without relying on the current policy's complement, and prove both callers with the doctest case above.
+B1 is not closed at `e6d4fb3b`. This is the second failing review round of the slice; process step 6 sends the decision to the human through the coordinator. No changes to 007-44 are requested. Any further repair must distinguish a stored pytest result from an implicit Node result without relying on the current policy's complement, and prove both callers with the doctest case above.

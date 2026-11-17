@@ -1,7 +1,7 @@
 # Wave 13ao review
 
-Candidate: `ba491ae6b1936d80b71f2cee19534b72923f4c45` (0.1.130).
-Range: `40d05958..ba491ae6b1936d80b71f2cee19534b72923f4c45`.
+Candidate: `2458687d200a5fb3c0d1ffa4d02754b23d6b24d1` (0.1.130).
+Range: `abf8119f..2458687d200a5fb3c0d1ffa4d02754b23d6b24d1`.
 Rows: 001-299 and 001-300; reviewer row 001-301.
 Contracts: 001 goals 3 and 5, D1, D2 and D12; board rows' done-when; `research/nested-worktree-watch.md` R1 to R3.
 
@@ -11,7 +11,7 @@ HEAD matched the assigned candidate before installation. The tracked tree was cl
 
 ```text
 $ git rev-parse HEAD
-ba491ae6b1936d80b71f2cee19534b72923f4c45
+2458687d200a5fb3c0d1ffa4d02754b23d6b24d1
 $ git status --short
 [empty]
 

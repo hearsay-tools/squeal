@@ -6,7 +6,7 @@ Throwaway. Written for `research/edit-load.md`, 2026-10-23. Nothing here is prod
 
 - Every repository is a `git clone` under `/tmp/el143` (never `git worktree add`). Dependencies are copied from an installed checkout at the same commit (`cp -a node_modules`, and toolkit's `.venv`), never fetched.
 - Every command runs through `env.sh`: `env -i` with `HOME`, `XDG_*` (`XDG_RUNTIME_DIR` too, so the permit pool and daemon sockets are private), `TMPDIR`, npm, pnpm, corepack and uv homes under `/tmp/el143`. `PLUGIN_ROOT` and `PLUGIN_DATA` are never set.
-- Squeal is the squeal clone's committed `plugins/claude-code/dist/cli/squeal.mjs` at `800cb629d` (0.1.274). No build.
+- Squeal is the squeal clone's committed `plugins/claude-code/dist/cli/squeal.mjs` at `3873532fd` (0.1.274). No build.
 - A store is read only from a copy (`store.sqlite` with its `-wal` and `-shm`). Run logs (`report.json`) are read in place, read only.
 - Every probe runs at nice 10 in its own systemd user scope, pinned with `taskset` to 4 CPUs (question 4: 8 CPUs, by the coordinator's reply of 2026-10-23), with at most 4 Vitest workers where the probe sets the count.
 
@@ -39,7 +39,7 @@ Throwaway. Written for `research/edit-load.md`, 2026-10-23. Nothing here is prod
 ```sh
 S=/tmp/el143; P=<this folder>
 mkdir -p $S/{home,run,tmp,logs,an} $S/xdg/{config,cache,data,state}; chmod 700 $S/run; cp $P/*.sh $S/
-git clone ~/projects/squeal $S/squeal-q1 && git -C $S/squeal-q1 checkout 800cb629d   # then cp -a node_modules
+git clone ~/projects/squeal $S/squeal-q1 && git -C $S/squeal-q1 checkout 3873532fd   # then cp -a node_modules
 # a daemon per clone, lookup-only so nothing runs until an edit (add "baseline": {"onStart": "lookup-only"})
 systemd-run --user --scope --unit el143-q1sq taskset -c 16-19 nice -n 10 $S/env.sh node $S/squeal-q1/plugins/claude-code/dist/cli/squeal.mjs start
 # question 1: one edit per class, then its summary

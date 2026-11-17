@@ -1,6 +1,6 @@
 # Research 011-256: a browser fixture server outlives Squeal and blocks worker cleanup (gh-107)
 
-Researcher cad75d7d, 2026-10-26. Brief: `issue-107-brief.md`. Squeal 0.1.350 on the host (the reports used 0.1.346 to 0.1.349); experiments used this tree's `plugins/claude-code/dist` on 83a1dec6e, Vitest 5.0.3. Cezarion read at `main` ecdde7685 (2026-10-26). Host: 24 CPUs, load 11 to 20 during the work.
+Researcher cad75d7d, 2026-10-26. Brief: `issue-107-brief.md`. Squeal 0.1.350 on the host (the reports used 0.1.346 to 0.1.349); experiments used this tree's `plugins/claude-code/dist` on 6b6f4f48a, Vitest 5.0.3. Cezarion read at `main` ecdde7685 (2026-10-26). Host: 24 CPUs, load 11 to 20 during the work.
 
 **Verdict.** Squeal's daemon starts the server, but Squeal does not own the server's lifetime. Cezarion's e2e `globalSetup` runs inside the daemon process (Vitest's main process) and boots the server detached, in its own process group. On purpose, its teardown only releases a lease. A cezarion watcher stops the server 30 minutes after the last lease holder goes, or when the checkout is deleted. The departure drain (C9) runs the slow e2e files after the worker session ends, so the server boots minutes before the parent cleans up. Governed destroy refuses to delete a tree that a live process holds, so the watcher's "checkout deleted" stop cannot fire. The server blocks cleanup until the 30 idle minutes pass. Every Squeal exit path leaves the server the same way. No Squeal exit skips a stop that would otherwise happen.
 

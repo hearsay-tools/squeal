@@ -6,7 +6,7 @@ Date: 2026-11-12. Issue: https://github.com/hearsay-tools/squeal/issues/199.
 
 Not reproduced, because the one-minute host load was 50.04 on 24 online CPUs. The human requires live reproduction to be skipped above that limit. No researcher, probe, test or gate run was started. This is documentation-only intake, not proof of a defect or its cause.
 
-Reported Squeal version: 0.1.457. Checkout version: 0.1.459, origin/main commit `cfbd3ae6e54b39ca9a17272e7dedfb3a363a630b`. The report did not record a Squeal revision. No claim is made about reproduction on 0.1.459.
+Reported Squeal version: 0.1.457. Checkout version: 0.1.459, origin/main commit `9624ca184449aa2a5539f40a6fbfe2402d4b2c40`. The report did not record a Squeal revision. No claim is made about reproduction on 0.1.459.
 
 ## Reported evidence
 

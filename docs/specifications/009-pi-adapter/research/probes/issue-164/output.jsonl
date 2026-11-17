@@ -1,4 +1,4 @@
-{"version":"0.1.414","commit":"b509d603f483e5b869eb11b6cfecc744b057193e","node":"v24.22.1"}
+{"version":"0.1.414","commit":"28814707808f0941c0767ff27e82e568621b3367","node":"v24.22.1"}
 {"load":{"at":"2026-11-07T21:46:15.595Z","oneMinute":14.95,"cpus":24}}
 {"load":{"at":"2026-11-07T21:46:15.681Z","oneMinute":14.95,"cpus":24}}
 {"label":"no store 1","command":["~/.nvm/versions/node/v24.22.1/bin/node","--disable-warning=ExperimentalWarning","<repo>/plugins/pi/dist/cli/squeal.mjs","status"],"cwd":"<scratch>/project","session":"issue-164-synthetic","code":1,"stdout":"Status unavailable, no Squeal store at <scratch>/project/.git/squeal/store.sqlite\nPi: no Squeal consumer is registered for this session in this worktree (PI_SESSION_ID issue-164-synthetic). Either the Squeal Pi extension is not loaded in it, or it has not registered the session yet: a session that started before the store existed registers at its next tool call. Without the extension, install it with pi install <repo>/plugins/pi, then start Pi again.\n","stderr":""}

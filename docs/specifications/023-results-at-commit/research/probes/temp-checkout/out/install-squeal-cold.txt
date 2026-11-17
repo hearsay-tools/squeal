@@ -1,4 +1,4 @@
-label=squeal-cold commit=5150132e37d63c07a762523acda69589965bdd1c pm=pnpm cache=cold
+label=squeal-cold commit=40efe47f5c4bb77342d23aa863a56fba75ba1ea8 pm=pnpm cache=cold
 bg_rx_15s_bytes=1038222
 load_before=22.11
 worktree_add_s=1.441391101

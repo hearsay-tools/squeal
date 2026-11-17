@@ -4,7 +4,7 @@ The sharpest divergence is diagnostic identity: a content anchor survives the te
 
 Judge 016-08, 2026-10-24. Inputs: [Opus 016-03](check-protocol.md), [Astra 016-07](check-protocol-astra.md), and the [five-question brief](check-protocol-brief.md). No experiment or product change was made. The research rules prohibit timings and test-suite runs.
 
-Opus read Squeal at `0822a4440`; Astra read `ef41742aae3e5600e61e3d9ac556c6f5ab88a112`. Their cited `RunnerAdapter` and 011 C3/C4/C14 have no diff between those commits. Both used LSP 3.17 at `baf2db31`, BSP source `9097c782`, MTP source `8ad685a8`, SARIF 2.1.0, and Node v24.21.0 for their probes. Version differences that matter are named below. Judgments and proposed rules are **inferred** from the cited evidence. An experiment outranks documentation only for the case it exercised.
+Opus read Squeal at `a52303814`; Astra read `88b4d7554538b5200395d9a3d102155b0a4920e8`. Their cited `RunnerAdapter` and 011 C3/C4/C14 have no diff between those commits. Both used LSP 3.17 at `baf2db31`, BSP source `9097c782`, MTP source `8ad685a8`, SARIF 2.1.0, and Node v24.21.0 for their probes. Version differences that matter are named below. Judgments and proposed rules are **inferred** from the cited evidence. An experiment outranks documentation only for the case it exercised.
 
 ## Divergences and decisions
 

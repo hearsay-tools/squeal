@@ -26,4 +26,4 @@ Worker notes for whoever continues the row or reviews it.
 ## Not done here
 
 - D16.5, whether a copied body at a new identity should be judged, is still open.
-- Bundles (`plugins/*/dist`) and `plugins/codex-runtime/runtime.json` are not rebuilt; the row does not own them. The baseline already drifted: its `src` changed after the last bundle commit (`ec095ee30`), and `ba819d9e4` changed `commands.md` without the manifest. `test/harness/pi/package.test.ts` (bundle differs from the build) and `test/harness/codex/runtime-release/limits.test.ts` (`commands.md` sha256) fail for that reason; the next bundle commit fixes both.
+- Bundles (`plugins/*/dist`) and `plugins/codex-runtime/runtime.json` are not rebuilt; the row does not own them. The baseline already drifted: its `src` changed after the last bundle commit (`bc3543384`), and `ba819d9e4` changed `commands.md` without the manifest. `test/harness/pi/package.test.ts` (bundle differs from the build) and `test/harness/codex/runtime-release/limits.test.ts` (`commands.md` sha256) fail for that reason; the next bundle commit fixes both.

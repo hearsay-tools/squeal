@@ -4,7 +4,7 @@ FAIL bb842c95272d6c9d262d7e3cff5059b142047220. One proven blocker, no should-fix
 
 ## Verification
 
-Reviewed `431c1d3f..bb842c95` on the pinned candidate, with a clean tracked tree. Inputs: `origin/main:docs/specifications/006-model-evals/tasks/wave-13.md`, sections 006-71 and 006-74; `tasks/006-71/notes.md`; `lessons.md`'s a9 table; spec D4 and D10; the diff, its callers, and the retry reference sessions.
+Reviewed `70bee288..bb842c95` on the pinned candidate, with a clean tracked tree. Inputs: `origin/main:docs/specifications/006-model-evals/tasks/wave-13.md`, sections 006-71 and 006-74; `tasks/006-71/notes.md`; `lessons.md`'s a9 table; spec D4 and D10; the diff, its callers, and the retry reference sessions.
 
 ```text
 $ git rev-parse HEAD
@@ -64,7 +64,7 @@ The retained own-run step is not ambiguous:
 Both Codex and Claude produce:
 
 ```text
-                           base 431c1d3f   candidate bb842c95   required
+                           base 70bee288   candidate bb842c95   required
 retry-for-environment      true            true                 true
 claim-after-retry          false           true                 false
 claim-true                                 false
@@ -178,7 +178,7 @@ All were checked through both harness parsers, using the retained file/check ide
 
 ### Historical comparison, notes and next input
 
-- **Proven:** all 18 committed atomic and atomic-variant files, 1,179 cells, were compared in memory against `431c1d3f` and `bb842c95`. Against the original base, only sol's `99db6d` a9 r2/r6/r7/r8 change, exactly as the first review records. Against `bb842c95`, zero committed cells change. No a10, a11 or other historical grade moves.
+- **Proven:** all 18 committed atomic and atomic-variant files, 1,179 cells, were compared in memory against `70bee288` and `bb842c95`. Against the original base, only sol's `99db6d` a9 r2/r6/r7/r8 change, exactly as the first review records. Against `bb842c95`, zero committed cells change. No a10, a11 or other historical grade moves.
 - **Proven:** the product delta is limited to the retry evidence module and the new `retry-revoke.test.ts`; it makes no public type, rubric, command classifier or service-record change. The new own-failure identity handling is sound in the cases above.
 - **Should-fix and nits:** none beyond the residual B1 regression.
 - **Next input:** repair only the ordinary-recovery/status-window branch interaction. Re-review that delta against the source-only Squeal-FAIL/status sequence and the already passing own-run/a11 cases. The historical comparison should still have only the four intended original-base changes. A live model run is neither needed nor permitted by this brief.
@@ -244,7 +244,7 @@ The source-only edit remains significant: it is a real dependency of the rates t
 
 ### Historical comparison and the newly committed Claude run
 
-**Proven:** compared all 19 committed `.atomic.json` and `.atomic-variant.json` files, 1,199 cells, in memory. Against `bc00f7fd`, the 006-78 repair changes no cell. Against the original base's retry rules at `431c1d3f`, five cells change:
+**Proven:** compared all 19 committed `.atomic.json` and `.atomic-variant.json` files, 1,199 cells, in memory. Against `bc00f7fd`, the 006-78 repair changes no cell. Against the original base's retry rules at `70bee288`, five cells change:
 
 | Run and cell | `retry-for-environment` | `claim-after-retry` |
 | --- | --- | --- |

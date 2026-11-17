@@ -1,6 +1,6 @@
 # Row 020-60 notes: the gate names failures from the stores, and can rerun them (#200, #214)
 
-Worker 24bdc546, wave 22, shape slice. Base `479ff5d66`.
+Worker 24bdc546, wave 22, shape slice. Base `df30d4a6f`.
 
 ## What changed
 

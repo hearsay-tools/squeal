@@ -37,7 +37,7 @@ A merge hold and a touched input are evidence, not decision kinds. The decision 
 
 The alarm's global entries (`test/keys/validity/entries/global.ts`) bundle `observed.ts`, `stability.ts` and `store-decision.ts`, among others. Bundled with a metafile at this branch: `record.ts`, `tiers.ts` and `record-tier.ts` are not in that bundle, and neither is any file of `src/core/run-evidence/`.
 
-- Before this row, the record's evidence lines under the alarm were `prepareObserved`'s, in `observed.ts` (lines 220 to 226 at `47763ba72`): the size check, the listing filter over the observed reads (four lines), the snapshot (`snapshotInputs`) and the change check (`changedSince`). The rest of the record's evidence and its composition (`record.ts`, `tiers.ts`) never were under the alarm.
+- Before this row, the record's evidence lines under the alarm were `prepareObserved`'s, in `observed.ts` (lines 220 to 226 at `a22350cea`): the size check, the listing filter over the observed reads (four lines), the snapshot (`snapshotInputs`) and the change check (`changedSince`). The rest of the record's evidence and its composition (`record.ts`, `tiers.ts`) never were under the alarm.
 - After R1 B2, those seven lines are `observedMoves` in `src/core/run-evidence/sources.ts` (lines 48 to 54), outside the bundle. `prepareObserved` is one line calling `observedGrowth`. The helpers they call, `snapshotInputs` and `changedSince` in `stability.ts`, stay in the bundle, and so do `barredByTouch`, `tierEnd` and `storeDecision`.
 - The move passed the alarm with no raise once the assemble harness ran `prepareObserved` (commit `07edbe2e9`, accepted by the coordinator): the alarm holds each changed line of a bundled file to a case at the side that has it, the old body at the last release and the thin one at the candidate.
 - The coordinator proposes a later row to make the run evidence module an alarm entry.
@@ -98,7 +98,7 @@ The revision-only row shows it: a file added to a directory a test file lists, d
 
 ## Checks (R1)
 
-- Grep over `src`: no call of `snapshotInputs`, `changedSince`, `barredByTouch` or `prepareObserved` outside `src/core/run-evidence/`; their definitions stay in `stability.ts` and `observed.ts`, and `prepareObserved` calls neither helper. `observed.ts` imports nothing of the module. `git diff 47763ba72 -- src/core/scheduler/store-decision.ts` is empty.
+- Grep over `src`: no call of `snapshotInputs`, `changedSince`, `barredByTouch` or `prepareObserved` outside `src/core/run-evidence/`; their definitions stay in `stability.ts` and `observed.ts`, and `prepareObserved` calls neither helper. `observed.ts` imports nothing of the module. `git diff a22350cea -- src/core/scheduler/store-decision.ts` is empty.
 - `squeal status --wait`: the table, `keep.test.ts`, `code-gate-keep.test.ts`, the record path's scheduler tests (`busy-withhold`, `withheld-touch`, `withheld-retry`, `withholds`, `busy-merge`, `busy-record`, `merge-hold-setup`, `merge-hold-records`, `merge-hold`, `held-setups`, `stopping-crash`, `reinstall`, `command-hold`, `barrier`, `touched`, `observed-growth`), `test/keys/key-format.test.ts` and `test/keys/validity/` pass. Later results are in the worker's final message.
 - `test/daemon/drain-wait.test.ts` failed once at load 0.82 per CPU (the daemon still ran after 120 s while another daemon held the slow slot) and passed on `squeal retry --reason load` at the same inputs.
 - `pnpm run lint` and `pnpm run typecheck` pass.

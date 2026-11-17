@@ -37,7 +37,7 @@ Worker 0b51c4f8, 2026-11-02. Spec D1, D5, D7, D8, D11; brief `tasks/wave-5.md` W
 
 ## An older Squeal meeting an oxlint row (the parent's condition for keeping schema 1)
 
-0.1.391's `checkFrom` throws `squeal store: tool has unexpected value oxlint` on an oxlint check row. Only rows of its own worktree reach it: states, transitions and views are read per worktree, and results by `(path, tool)`. So only a downgrade in a worktree a newer Squeal linted with oxlint meets it. Measured on 0.1.391's own code (`git archive 55a9aaa61`, a probe test in scratch with an oxlint pending state in the worktree):
+0.1.391's `checkFrom` throws `squeal store: tool has unexpected value oxlint` on an oxlint check row. Only rows of its own worktree reach it: states, transitions and views are read per worktree, and results by `(path, tool)`. So only a downgrade in a worktree a newer Squeal linted with oxlint meets it. Measured on 0.1.391's own code (`git archive 1a1f23a68`, a probe test in scratch with an oxlint pending state in the worktree):
 
 | Path | 0.1.391 |
 | --- | --- |

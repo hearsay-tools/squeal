@@ -2,7 +2,7 @@
 
 ## Verification
 
-Reviewed on Linux, Node 24.21.0, at clean HEAD `7940dd50fd831be69b70176ff57c4b19a33e63b1`, before writing this file. The dispatch names build `dbeb862`; HEAD differs by a documentation-only commit (N1). `git diff dbeb862 HEAD -- src test plugins package.json package-lock.json` produced no output. The landed implementation commits are `c6f43cc`, `ff2f444`, `a31ad92`, `b530416`, cherry-picked from `17d7e19`, `1dc7af6`, `c079bfa`, `10e0bcc`; the bundle/version commit is `dbeb862` (0.1.32).
+Reviewed on Linux, Node 24.21.0, at clean HEAD `155283a95ed947aa7cc0b49327ef74387770d478`, before writing this file. The dispatch names build `dbeb862`; HEAD differs by a documentation-only commit (N1). `git diff dbeb862 HEAD -- src test plugins package.json package-lock.json` produced no output. The landed implementation commits are `c6f43cc`, `ff2f444`, `a31ad92`, `b530416`, cherry-picked from `17d7e19`, `1dc7af6`, `c079bfa`, `10e0bcc`; the bundle/version commit is `dbeb862` (0.1.32).
 
 The following gate ran once. Install, lint, typecheck and build succeeded. Build left `git status --short` empty: neither plugin's committed bundles drifted. The full suite reported 204 passing files, 1 skipped file, 1,687 passing tests and 10 skipped tests. These are results at the actual clean HEAD, not an exact-checkout verification of `dbeb862`. Under the reviewer rule, verification at the supplied SHA is **unverified**; product and test bytes are identical, as checked above. No check result is a finding against the wave.
 
@@ -60,7 +60,7 @@ repair: gitdir incorrect: ~/projects/squeal/.ai/cezar/worktrees/435f4dcc-8f6c-40
 
 ## Verdict
 
-**PASS at `7940dd50fd831be69b70176ff57c4b19a33e63b1`.** Zero blockers, one should-fix (proven), one nit (proven). No plausible product finding. Live interactive SIGKILL and an actual Cezar controller destruction remain unverified; successful substitute probes are described precisely below.
+**PASS at `155283a95ed947aa7cc0b49327ef74387770d478`.** Zero blockers, one should-fix (proven), one nit (proven). No plausible product finding. Live interactive SIGKILL and an actual Cezar controller destruction remain unverified; successful substitute probes are described precisely below.
 
 The departure path keeps a daemon while another consumer is registered, honors clear/resume during the grace, drops a dead or reused process identity, and finishes the tier before exiting. No proven break of a spec goal or the row's done-when was found. This is not a claim that every harness mode was validated.
 

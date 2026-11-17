@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 root = pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip())
-ref = '181054dd748f2834b423a23b1cababd0d520dd5d'
+ref = 'f7aed802784d33b09af23a1c525f7a0b76d3f797'
 version = json.loads(subprocess.check_output(['git','show',ref+':package.json']))['version']
 def command(*args, cwd=None, **kwargs):
     return subprocess.check_output(args, cwd=cwd, stderr=subprocess.PIPE, **kwargs)

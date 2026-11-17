@@ -6,7 +6,7 @@ Recommendation: treat [issue 44](https://github.com/hearsay-tools/squeal/issues/
 
 **Reproduced in its core shape, synthetic fixture.** On shipped 0.1.223 a named wait on one edited test file printed 36 lines of whole-worktree status, including 20 per-file `no result: never run at this key: the baseline is lookup-only, so nothing queued it` lines about files it did not name and `and 4 more test files`, before `Selected:` (line 38 of 39) and the verdict (line 39). The issue's scale (about 18,000 checks, an `Inherited from other worktrees:` breakdown, 42 listed files) and its Vitest-plus-inherited-baseline setup were **not reproduced**.
 
-Examined 2026-10-19, Squeal **0.1.223**: installed plugin bundle `~/.claude/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs` (`--version` 0.1.223; `squeal --version` on the PATH also 0.1.223). Node v24.21.0. Source read at this worktree's `2ee1e3bf`; tag `squeal--v0.1.223` is `ac19ab38`, and `git diff --stat squeal--v0.1.222 squeal--v0.1.223 -- src/cli src/core/status` and `git diff --stat squeal--v0.1.223 HEAD -- src/cli src/core/status` are both empty, so the source read is the shipped source, and gh-42's 0.1.222 reading of the same seam still applies.
+Examined 2026-10-19, Squeal **0.1.223**: installed plugin bundle `~/.claude/plugins/cache/hearsay/squeal/0.1.223/dist/cli/squeal.mjs` (`--version` 0.1.223; `squeal --version` on the PATH also 0.1.223). Node v24.21.0. Source read at this worktree's `a36d1177`; tag `squeal--v0.1.223` is `ac19ab38`, and `git diff --stat squeal--v0.1.222 squeal--v0.1.223 -- src/cli src/core/status` and `git diff --stat squeal--v0.1.223 HEAD -- src/cli src/core/status` are both empty, so the source read is the shipped source, and gh-42's 0.1.222 reading of the same seam still applies.
 
 **Host load.** Before work: `uptime` gave 3.70 / 5.54 / 7.57 on `nproc` 24, below the CPU count. Immediately before the live probe `/proc/loadavg` read **24.57** / 13.70 / 10.35, above 24; the probe had been launched in the same command and ran anyway (one daemon, one node:test file of about 0.5 s). That breaks the brief's skip rule; it is recorded here, not hidden. The output shape it shows is the print order, which load does not change (S1); no timing claim is drawn from it. After: 24.30. No second run was made. The coordinator subsequently added a pre-start load guard to the saved probe; that revised script was syntax-checked, not run.
 
@@ -58,7 +58,7 @@ Selected: test/f01.test.mjs
 Named test files at revision 1: no known failures; 1 test file, each with a current result, after 0.5 s. Worktree: known failures 0; checks 0 running, 0 queued
 ```
 
-## Source (read in source code, at 2ee1e3bf = shipped 0.1.223 for these paths)
+## Source (read in source code, at a36d1177 = shipped 0.1.223 for these paths)
 
 - **S1.** `src/cli/status-wait-lines.ts:258-266` `namedText`: `` `${formatStatus(wait.result, now, command)}\n${lines.join("\n")}\n` `` with `lines` = `selectedLine`, `namedFailures`, `namedClassLines`, `namedLine`. `wait.result` is the whole worktree's snapshot (`buildSnapshot(store, root, ...)`, `src/cli/status-wait-paths.ts:288`). Nothing scopes or drops a section for a named wait.
 - **S2.** `src/cli/status-wait-paths.ts:338-370` `namedWaitCommand`: text goes through `namedText`; `--json` writes the snapshot plus `wait` to stdout and the selected and verdict lines to stderr.
@@ -79,7 +79,7 @@ Named test files at revision 1: no known failures; 1 test file, each with a curr
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/44 (read with `gh issue view 44 -R hearsay-tools/squeal`, 2026-10-19).
 - `docs/specifications/011-core/spec.md` C6, C15; `docs/specifications/005-agent-adoption/spec.md` D2; `docs/board.md` rows 011-10 and gh-42; `research/issue-42.md`, `research/issue-26.md`.
-- `src/cli/status-wait-lines.ts`, `src/cli/status-wait-paths.ts`, `src/core/status/unknown-files.ts`, `src/core/status/format-status.ts` at 2ee1e3bf.
+- `src/cli/status-wait-lines.ts`, `src/cli/status-wait-paths.ts`, `src/core/status/unknown-files.ts`, `src/core/status/format-status.ts` at a36d1177.
 - Probe: `research/probes/issue-44/probe.sh`, `output.txt`.
 
 ## Human direction, 2026-10-19

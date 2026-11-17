@@ -1,6 +1,6 @@
 # capture-saving: what a capture reporter would really save (row 018-25)
 
-Researcher for spec 018, 2026-11-10. Brief: `tasks/wave-6.md`, "018-25"; it answers `local-capture.md` recommendation 3 and open question 3 (the human, 2026-11-10: "Capture: Yes, measure"). Squeal source at `19b8f2660`. Records: Claude Code transcripts and Codex rollouts of squeal's and cezar's worktrees (this session excluded), and copies of both stores taken 2026-11-10 09:31Z (`quick_check` ok). No agent CLI ran, no daemon, no test. Load 2.6 to 3.9 on 24 vCPUs; nothing was timed. Probes: `probes/capture-saving/` (throwaway). Tags: **[exp]** verified by experiment, **[src]** read in source code, **[inf]** inferred.
+Researcher for spec 018, 2026-11-10. Brief: `tasks/wave-6.md`, "018-25"; it answers `local-capture.md` recommendation 3 and open question 3 (the human, 2026-11-10: "Capture: Yes, measure"). Squeal source at `14719dc75`. Records: Claude Code transcripts and Codex rollouts of squeal's and cezar's worktrees (this session excluded), and copies of both stores taken 2026-11-10 09:31Z (`quick_check` ok). No agent CLI ran, no daemon, no test. Load 2.6 to 3.9 on 24 vCPUs; nothing was timed. Probes: `probes/capture-saving/` (throwaway). Tags: **[exp]** verified by experiment, **[src]** read in source code, **[inf]** inferred.
 
 **Window.** 6 days, 2026-11-04 00:00Z to 2026-11-10 00:00Z, not 7. The stores prune runs after 7 days (`store/prune.ts`, spec 001 D8) **[src]**: squeal keeps runs from 2026-11-03 14:34Z, cezar the bulk from 11-03 09:00Z **[exp]**, so a manual run on 11-03 would lose the daemon runs before it. The cezar store also holds no daemon run from 2026-11-07 15:00Z to 11-09 08:00Z (41 h) **[exp]** (`out-daemon-seconds.txt`); the 332 cezar runs of storable shape with no daemon run anywhere in the store within 2 h of their start are set apart, since no daemon ran there for a capture to save.
 
@@ -79,7 +79,7 @@ A file-second is one test file's wall time in one worker, about one CPU core whi
 
 ## Sources
 
-- Squeal at `19b8f2660`: `src/core/store/{schema,prune}.ts`, `src/core/store/repos/{worktrees,results}.ts`, `src/core/fs/git-layout.ts`, `src/core/keys/check-key.ts`, `src/runners/vitest/environment.ts`; cezar `squeal.config.json` and `package.json` scripts.
+- Squeal at `14719dc75`: `src/core/store/{schema,prune}.ts`, `src/core/store/repos/{worktrees,results}.ts`, `src/core/fs/git-layout.ts`, `src/core/keys/check-key.ts`, `src/runners/vitest/environment.ts`; cezar `squeal.config.json` and `package.json` scripts.
 - Store copies: `~/projects/{squeal,cezar}/.git/squeal/store.sqlite` (with `-wal`, `-shm`), 2026-11-10 09:31Z, deleted after use.
 - Transcripts: `~/.claude/projects/-home-user-projects-{squeal,cezar}*` (main and `subagents/` files), `~/.codex/sessions/2026/11/{02..10}`; read-only.
 - Earlier findings: `local-capture.md` (row 018-22), `main-results.md`.

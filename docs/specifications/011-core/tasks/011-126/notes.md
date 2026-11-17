@@ -1,17 +1,17 @@
 # 011-126: the pump's writes on a busy store stop holding the event loop
 
-Wave 20 W1, worker e8b08f00, from main 56c542f86 (0.1.272). Shape: slice.
+Wave 20 W1, worker e8b08f00, from main 96c7a07e6 (0.1.272). Shape: slice.
 
 ## Answer
 
 A tier that records while another connection holds the store's write lock no longer holds the daemon's event loop for 5 s per write. The pump's record, its requeue and the selection (lookups, a tier's start) now wait a 250 ms slice, as a batch's pass does. A record that gives up keeps the run's results and tries again at its turn, so the tier's files do not run again. The results land once the lock frees.
 
-| Measure | Before (56c542f86) | After |
+| Measure | Before (96c7a07e6) | After |
 |---|---|---|
 | `test/scheduler/busy-hold.test.ts`, the daemon's 5 s busy timeout, a 6 s hold, in process | longest event-loop hold 10,077 ms; the edit's file ran twice | 261 ms; ran once |
 | `test/daemon/busy-tier.test.ts`, a 12 s hold from a second process, the slow tier ending 2 s into it | one hold of 10,019 ms from the record's start; note "6 files of a tier queued again" | holds of 250 to 509 ms; the slow file ran once; the edit's revision 55 ms after the free; note "the results of 6 files, the heartbeat, consumer expiry, revision 1" |
 
-The "before" daemon run used `scheduler.ts` and `busy-resume.ts` from 56c542f86 with this row's test (`git show 56c542f86:<path> > <path>`, one run, then `git checkout HEAD -- <path>`). The "after" runs were 4 of 4 passes. The longest hold, 509 ms, is two slices in one tick. Up to three retriers can stack in one tick: the feed's pass, the timers' group and the pump, which comes to about 750 ms. The 1 s bound holds by that margin.
+The "before" daemon run used `scheduler.ts` and `busy-resume.ts` from 96c7a07e6 with this row's test (`git show 96c7a07e6:<path> > <path>`, one run, then `git checkout HEAD -- <path>`). The "after" runs were 4 of 4 passes. The longest hold, 509 ms, is two slices in one tick. Up to three retriers can stack in one tick: the feed's pass, the timers' group and the pump, which comes to about 750 ms. The 1 s bound holds by that margin.
 
 The event loop is still held for most of the hold, in pieces of 250 ms. The record retries as the feed's pass does: a slice, then the backoff pause, and the timers' sliced writes take the gaps. The 011-122 notes describe the same profile for the feed alone.
 

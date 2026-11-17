@@ -1,10 +1,10 @@
-PASS 726ef233e6dbeaab785844bf42690c2bfe142a3f
+PASS 592fcae9ae46a6403da51c35ab310aa6af1a6a21
 
 # Wave 12 review: 004-81
 
-Latest verdict: **PASS** on `726ef233e6dbeaab785844bf42690c2bfe142a3f`; B1 and B2 are closed. See the dated re-review below. The original review remains as the record of the first candidate.
+Latest verdict: **PASS** on `592fcae9ae46a6403da51c35ab310aa6af1a6a21`; B1 and B2 are closed. See the dated re-review below. The original review remains as the record of the first candidate.
 
-Original verdict (2026-10-19): **FAIL**, 2 proven blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.220`, pinned HEAD `fd9b1a1f1d77b827d270d8678b0ba7e60daee90d`; base `origin/main` at `2929a3fa29bc2710c06843a2719a2ea021f8de48` (0.1.219). The blockers are two consumers of the new file exclusion that still assume Squeal's listing describes Vitest's complete suite.
+Original verdict (2026-10-19): **FAIL**, 2 proven blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.220`, pinned HEAD `3481c3b600f67b986082a26528be2a3d0318b8d8`; base `origin/main` at `83701fb9dc4b7654bb6fd4db6d494fcd1b5dd3ae` (0.1.219). The blockers are two consumers of the new file exclusion that still assume Squeal's listing describes Vitest's complete suite.
 
 ## Verification
 
@@ -12,7 +12,7 @@ All commands and probes below ran at the pinned candidate with no tracked or unt
 
 ```text
 $ git rev-parse HEAD
-fd9b1a1f1d77b827d270d8678b0ba7e60daee90d
+3481c3b600f67b986082a26528be2a3d0318b8d8
 $ git status --porcelain=v1
 (no output)
 
@@ -118,7 +118,7 @@ None. The coordinator's separate Pi timing observation is assessed below; it is 
 - **Legacy configurations:** no migration or fatal config rejection. Under 001 D11, `slow.precondition` becomes an unknown-key problem while the known slow fields apply. A `nodeTest[]` entry retaining `precondition` is skipped with an explicit unknown-key/project-skipped problem, as 003 D1 requires for any invalid entry. Pytest has no recognized precondition either; its generic project-entry validation rejects that entry with a note. Old `inputs` declarations are still valid: tracked files can remain ordinary inputs, but the removed special admission of gitignored artifacts no longer keys them. Old `slow-artifacts:` and `slow-skips:` metadata is inert, not migrated or read. The dedicated legacy-policy regression asserts the slow/node:test outcomes.
 - **Deletion and inheritance:** precondition execution, skipped-tier readers/writers/text, artifact keys/records and artifact provenance are removed throughout the scheduler, state sink, status and Stop callers. `Ledger.probe(key)` has one signature at all changed callers; byte-identical slow keys now inherit and wait on claims as fast files do, retaining the unconfirmed inherited-failure guard. The slow inheritance and claims tests now cover files with no artifact declaration. Stop's no-edit exemption, live-revision transaction, wait bound and daemon-lapse behavior remain.
 - **Version/key invalidation:** package, lockfile, installer, plugin manifests/packages and embedded bundles name 0.1.220. `KEY_FORMAT_VERSION` is 13, with a new hash while 11 and 12 remain unchanged. Dropping artifact inputs changes key meaning and warrants the bump. The guard now watches the surviving slow classifier in place of the deleted inheritance module.
-- **Collateral changes:** setup skills remove the obsolete artifact question and constrain the retained `--input` escape to committed runtime inputs; references describe the current slow line and new exclusion; warm-up no longer suggests declaring an ignored build output. The e2e scenarios' fake CLI is committed fixture content, so its ordinary declared input and byte changes still support the tests; their artifact-specific assertions correctly give way to ordinary failure provenance. The real-CLI artifact-proposal bullet is removed while its other setup coverage stays. The changes are grouped in thematic commits `46e19480` (setup, skill, hint, real-CLI), `929f52ba` (slow e2e) and `a7e3dd76` (README and reference texts), rather than a separate commit for each collateral path.
+- **Collateral changes:** setup skills remove the obsolete artifact question and constrain the retained `--input` escape to committed runtime inputs; references describe the current slow line and new exclusion; warm-up no longer suggests declaring an ignored build output. The e2e scenarios' fake CLI is committed fixture content, so its ordinary declared input and byte changes still support the tests; their artifact-specific assertions correctly give way to ordinary failure provenance. The real-CLI artifact-proposal bullet is removed while its other setup coverage stays. The changes are grouped in thematic commits `59de43aa` (setup, skill, hint, real-CLI), `74b0a012` (slow e2e) and `fe38f36c` (README and reference texts), rather than a separate commit for each collateral path.
 - **Retained build-output finder:** `src/cli/setup/build-outputs.ts` is unused at runtime and tested separately. It is the old evidence finder renamed and detached, with `holdsArtifact` removed. Retention has a concrete specification owner: amended 005 D3 "Slow tests and build-output tests", step 2, requires these manifest/build-script/named-directory evidence sources; 005-70 is the next planned consumer. It does not preserve the deleted artifact-key rule or proposal. It should acquire that caller in 005-70, not become a permanent unused API.
 - **Historical eval text:** the production diff in `evals/lib/squeal-text.mjs` changes comments only. Parsers retain the older artifact, source-change and skipped wording, while current producer tests use the new line. `test/evals/slow-claim.test.ts` explicitly retains historical line cases. No eval runner was invoked.
 
@@ -138,7 +138,7 @@ There is no proven 004-81 latency regression. The measured failing path includes
 
 ## Re-review — 2026-10-19
 
-Candidate: `cand/0.1.220`, pinned and independently verified at clean HEAD `726ef233e6dbeaab785844bf42690c2bfe142a3f`. **PASS: 0 open blockers, 0 new should-fix, 0 new nits.** This re-review is bounded by B1/B2 above and the delta from `fd9b1a1f`: the two repair commits, rebuilt bundles, the key hash and the version-sensitive test exemption. No settled part of the original review was re-prosecuted.
+Candidate: `cand/0.1.220`, pinned and independently verified at clean HEAD `592fcae9ae46a6403da51c35ab310aa6af1a6a21`. **PASS: 0 open blockers, 0 new should-fix, 0 new nits.** This re-review is bounded by B1/B2 above and the delta from `3481c3b6`: the two repair commits, rebuilt bundles, the key hash and the version-sensitive test exemption. No settled part of the original review was re-prosecuted.
 
 ### B1 — closed (proven)
 
@@ -160,7 +160,7 @@ All checks below ran after `npm ci` at the pinned HEAD with a clean tree; this r
 
 ```text
 $ git rev-parse HEAD
-726ef233e6dbeaab785844bf42690c2bfe142a3f
+592fcae9ae46a6403da51c35ab310aa6af1a6a21
 $ git status --porcelain=v1
 (no output)
 $ npm ci

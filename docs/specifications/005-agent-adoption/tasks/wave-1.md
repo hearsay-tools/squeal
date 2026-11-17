@@ -54,7 +54,7 @@ Use /worker. Shape: slice, one commit per part. Runs beside 005-11.
 
 Use /reviewer. Shape: review.
 
-**Range:** `ce1425a1^..d1d3522a` on main: 005-10 (0.1.132), 005-11 and 005-12 (0.1.133). Ignore other coordinators' commits in the range (001, 006).
+**Range:** `bc01e70f^..1c80372b` on main: 005-10 (0.1.132), 005-11 and 005-12 (0.1.133). Ignore other coordinators' commits in the range (001, 006).
 
 **Read:** spec 005 D1 to D5 with their 2026-10-12 and 2026-10-13 notes, `status.md` (the accepted choices for each row), the briefs above.
 

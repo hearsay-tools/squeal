@@ -1,6 +1,6 @@
 # Issue 68: test runs during an unresolved git merge
 
-Researcher findings for hearsay-tools/squeal#68, 2026-10-21. Squeal 0.1.235 source (`package.json`), branch `cez/b2299644` at `2a5252387`; the probe ran the committed Claude Code bundle `plugins/claude-code/dist` (`cli/squeal.mjs` byte-identical to the installed Codex 0.1.235 CLI, `--version` 0.1.235). Vitest 5.0.5, Node 24.21.0, git 2.43.0. Host: 24 CPUs, 1-minute load 2.77 at start, 2.15 and 1.90 before the two probe runs, below the CPU count, so the probe ran. Reproduction only. Nothing is designed or implemented. The existing holds stand.
+Researcher findings for hearsay-tools/squeal#68, 2026-10-21. Squeal 0.1.235 source (`package.json`), branch `cez/b2299644` at `3a9b15a88`; the probe ran the committed Claude Code bundle `plugins/claude-code/dist` (`cli/squeal.mjs` byte-identical to the installed Codex 0.1.235 CLI, `--version` 0.1.235). Vitest 5.0.5, Node 24.21.0, git 2.43.0. Host: 24 CPUs, 1-minute load 2.77 at start, 2.15 and 1.90 before the two probe runs, below the CPU count, so the probe ran. Reproduction only. Nothing is designed or implemented. The existing holds stand.
 
 **Verdict.** Reproduced. While `git ls-files -u` lists a path, Squeal 0.1.235 records a revision for the conflicted file, runs the test files that import it, and stores and delivers `Transform failed with 1 error:` failures. `status` and the hook say nothing about the merge. The first revision after resolution runs the same files again and reports FAIL -> PASS. One fact bears on the issue's proposed rule: that revision is the write of the resolved bytes, while `git ls-files -u` still lists the path. `git add` and `git commit` create no revision.
 
@@ -66,5 +66,5 @@ Measured:
 
 - hearsay-tools/squeal#68 (`gh issue view 68`, read 2026-10-21).
 - `docs/specifications/011-core/spec.md` C2, C4, C6, C8; `status.md`.
-- `src/core/hash/git-index.ts`, `src/core/watcher/paths.ts`, `src/core/daemon-loop/head.ts`, `src/core/scheduler/head-move.ts` at `2a5252387`.
+- `src/core/hash/git-index.ts`, `src/core/watcher/paths.ts`, `src/core/daemon-loop/head.ts`, `src/core/scheduler/head-move.ts` at `3a9b15a88`.
 - `probes/issue-68/` (throwaway recipe and fixture).

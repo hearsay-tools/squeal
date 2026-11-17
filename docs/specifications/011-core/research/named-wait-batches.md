@@ -2,7 +2,7 @@
 
 Recommendation: take the human's batch, with two changes. Run the edit's tier beside the batch, not after it. Give the backlog one tier after each batch tier. With those changes, the 56-file gate reaches its verdict in 327 to 364 s at 11 workers. The recorded traces took 1,978 and 2,053 s. An edit's own files then do not wait for the batch.
 
-Researcher, row 011-267, 2026-10-29. Brief: `tasks/wave-59.md` R1. Worktree commit `bb063a9b7` (Squeal 0.1.377 source). Evidence: cezar's store, read-only, and the two agents' own session logs. Probes: `probes/011-267/` (README lists every command).
+Researcher, row 011-267, 2026-10-29. Brief: `tasks/wave-59.md` R1. Worktree commit `fc1d05080` (Squeal 0.1.377 source). Evidence: cezar's store, read-only, and the two agents' own session logs. Probes: `probes/011-267/` (README lists every command).
 
 ## Questions answered
 
@@ -119,8 +119,8 @@ Review S3 (row 011-266) is real under today's rules too: in the heavy stream, un
 
 ## Sources
 
-- Brief `tasks/wave-59.md` R1; board rows 011-265, 011-266, 011-267 and gh-125; `research/issue-79-gate.md`, `research/issue-125.md`; spec 011 C4 steps 4 and 5, C10, C15 at `bb063a9b7`.
-- Source at `bb063a9b7`: `src/core/scheduler/tiers.ts` (`selectTier`), `queue.ts` (`ordered`, `tierSelected`, `backlogTurn`), `sharing.ts` (`joinSpan`), `backlog.ts` (`BacklogWall`), `src/runners/vitest/index.ts` (the slow tier's own instance).
+- Brief `tasks/wave-59.md` R1; board rows 011-265, 011-266, 011-267 and gh-125; `research/issue-79-gate.md`, `research/issue-125.md`; spec 011 C4 steps 4 and 5, C10, C15 at `fc1d05080`.
+- Source at `fc1d05080`: `src/core/scheduler/tiers.ts` (`selectTier`), `queue.ts` (`ordered`, `tierSelected`, `backlogTurn`), `sharing.ts` (`joinSpan`), `backlog.ts` (`BacklogWall`), `src/runners/vitest/index.ts` (the slow tier's own instance).
 - cezar, read-only: `~/projects/cezar/.git/squeal/store.sqlite` (`runs`, `results`, `checks`, `revisions`, `meta`) and `runs/<id>/report.json`. Trial record `.ai/cezar/worktrees/563b3d1c-…/.ai/qa/2141/squeal-trial.md` and `parity-*.json`. `vitest.config.ts`, `.github/scripts/ci-test-sequencer.mjs`, `node_modules/vitest` 4.1.10 `BaseSequencer`.
 - Agent session logs: `~/.codex/sessions/2026/10/29/rollout-2026-10-29T02-19-17-01a1853d-6b87-….jsonl` (0.1.374) and `rollout-2026-10-29T10-26-02-01a186fb-0ea2-….jsonl` (0.1.377).
 - Probes: `probes/011-267/` with outputs `replay-output.txt`, `cases-output*.txt`, `perfile-output.txt`, `widths-output.txt`, `width-inferred-output.txt`, `summary.txt`, and data `traces.json`, `waits.json`, `lastknown.json`, `replay.jsonl`, `cases-W*.jsonl`. Load at the last run: 11.76 on 24 CPUs (`load.json`); the model does not depend on load.

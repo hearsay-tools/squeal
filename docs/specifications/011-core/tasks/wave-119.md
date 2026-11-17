@@ -22,7 +22,7 @@ Done when: the contract's five write-side needs hold, each with a test; the star
 
 ## R1 (W1): review of cand/0.1.535
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.535` at `91010bc4c963aae7e330bd4f16dc6d0d36074ed3`; candidate CI run 43986958678. Range `d86c0b9af..91010bc4c963aae7e330bd4f16dc6d0d36074ed3` (main at 0.1.531): worker 74012cb8's four commits (row 005-96: design, the write, notes, the lock-turn probe), cherry-picked without conflict, then the 0.1.535 raise and bundles (0.1.532 to 0.1.534 are other coordinators', not on main yet). Read: board row 005-96; this file's W1; `docs/specifications/005-agent-adoption/tasks/005-96/contract.md` and `notes.md`; `docs/specifications/005-agent-adoption/reviews/0.1.530-r2.md` R2-B1.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.535` at `91010bc4c963aae7e330bd4f16dc6d0d36074ed3`; candidate CI run 43986958678. Range `6b28ff1e0..91010bc4c963aae7e330bd4f16dc6d0d36074ed3` (main at 0.1.531): worker 74012cb8's four commits (row 005-96: design, the write, notes, the lock-turn probe), cherry-picked without conflict, then the 0.1.535 raise and bundles (0.1.532 to 0.1.534 are other coordinators', not on main yet). Read: board row 005-96; this file's W1; `docs/specifications/005-agent-adoption/tasks/005-96/contract.md` and `notes.md`; `docs/specifications/005-agent-adoption/reviews/0.1.530-r2.md` R2-B1.
 
 Check, each as proven, plausible or unverified:
 
@@ -44,7 +44,7 @@ Done when: both regressions pass and the new one failed before; the contract's f
 
 ## R2 (W1 repair): narrow re-review of cand/0.1.535
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.535` at `aad106e9272d0aa93ff60942ccf6333696f2c995`; candidate CI run 43993122038. Rebuilt on main `a5aa5584d` (0.1.534): worker 74012cb8's four first-round commits (unchanged), its repair (`88ea38856` the fix, `d177b3764` busy-record's fault target, `7192e4c0b`, `0ff4cc358` notes), then the 0.1.535 raise and bundles. Narrow: the repair, against `reviews/0.1.535.md` B1. Read that review and `docs/specifications/005-agent-adoption/tasks/005-96/notes.md` "Repair after review 0.1.535".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.535` at `ea5a6733dcd90f0bccd60d53204109fb3fe30fae`; candidate CI run 43993122038. Rebuilt on main `80641a0b9` (0.1.534): worker 74012cb8's four first-round commits (unchanged), its repair (`88ea38856` the fix, `d177b3764` busy-record's fault target, `7192e4c0b`, `0ff4cc358` notes), then the 0.1.535 raise and bundles. Narrow: the repair, against `reviews/0.1.535.md` B1. Read that review and `docs/specifications/005-agent-adoption/tasks/005-96/notes.md` "Repair after review 0.1.535".
 
 Check, each as proven, plausible or unverified:
 

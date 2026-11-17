@@ -1,6 +1,6 @@
 # 011-243 notes: a named wait with no verdict names what its passes cover and the next step
 
-Row 011-243 (gh-99, the human's option A+, 2026-10-26). Wave 49 W2, brief `tasks/wave-49.md`, baseline `89f458320`. Worker 3c663d30.
+Row 011-243 (gh-99, the human's option A+, 2026-10-26). Wave 49 W2, brief `tasks/wave-49.md`, baseline `ca405690d`. Worker 3c663d30.
 
 ## Cause
 

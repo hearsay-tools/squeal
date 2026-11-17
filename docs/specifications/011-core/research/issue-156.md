@@ -4,7 +4,7 @@ Make the lint Stop timeout name its effective budget and `stop.slowWaitMs`, and 
 
 ## Scope and versions
 
-Research only, 2026-11-07, within the 15-minute bound. Inspected and probed **Squeal 0.1.414**, checkout `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`, **Node v24.22.1**, **pnpm 12.15.0**, Linux, **24 CPUs**. The session-pinned runtime is also 0.1.414; the experiment imports checkout source, not the installed bundle. Read the local release source for **0.1.408**, `8dc8bc38f72d034f1e65d6d482d4857a89bfeaa1`, the version investigated in the issue. The original timeout's version, revision and output were not recorded.
+Research only, 2026-11-07, within the 15-minute bound. Inspected and probed **Squeal 0.1.414**, checkout `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`, **Node v24.22.1**, **pnpm 12.15.0**, Linux, **24 CPUs**. The session-pinned runtime is also 0.1.414; the experiment imports checkout source, not the installed bundle. Read the local release source for **0.1.408**, `a19c5deba848dc14f166589242df007863f14643`, the version investigated in the issue. The original timeout's version, revision and output were not recorded.
 
 `cat /proc/loadavg; nproc` gave `18.96 9.52 7.82 11/3887 3140533` and `24` initially; the later check gave `16.51 9.87 7.99 14/3725 3149610` and `24`. The synthetic probe recorded one-minute load **16.46**, below 24. No live probe was needed or run. No original two-minute wait, daemon, linter or full suite was launched. Existing holds stand; no implementation is authorized.
 
@@ -57,7 +57,7 @@ It also gives the 3540000 ms cap. Line 22 gives `stop.waitMs`, default 0, with i
 
 `git diff squeal--v0.1.408 HEAD -- plugins/claude-code/skills/squeal/references/policy.md` returned no output. The checkout and installed 0.1.414 policy references both hash to `9dbecec4df4ee4eefb639295ba9541f2af54f54f33aa725acc37bcdf0cf6a7dc` (SHA-256).
 
-**read in official docs, checkout d3f363054.** Relevant contracts:
+**read in official docs, checkout b598e5dc8.** Relevant contracts:
 
 - **011 C8:** shared hook behavior and bounded execution apply across harnesses.
 - **019 D2:** the resolver separately records whether Stop waits for a group; default slow behavior remains compatible.
@@ -78,7 +78,7 @@ Open: the original hook's full output, effective policy, elapsed time and daemon
 ## Sources and verification
 
 - Fetched issues: [#156](https://github.com/hearsay-tools/squeal/issues/156), [#154](https://github.com/hearsay-tools/squeal/issues/154). Exact commands: [probe README](probes/issue-156/README.md).
-- Local source at `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`: `src/core/{daemon/policy.ts,state/required.ts,slow/stop-wait.ts}`, `src/harness/shared/{stop.ts,stop-slow.ts,stop-required.ts,stop-lint.ts}`. [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1).
+- Local source at `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`: `src/core/{daemon/policy.ts,state/required.ts,slow/stop-wait.ts}`, `src/harness/shared/{stop.ts,stop-slow.ts,stop-required.ts,stop-lint.ts}`. [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a).
 - Official project reference: `plugins/claude-code/skills/squeal/references/policy.md`; installed copy `~/.codex/plugins/data/squeal-hearsay/versions/0.1.414/skills/squeal/references/policy.md`. Historical source: tag `squeal--v0.1.408` at the commit above.
 - Specs and amendment logs: `docs/specifications/011-core/{spec,status}.md`, `019-run-triggers/{spec,status}.md`, `017-lint-checks/{spec,status}.md` at the inspected commit.
 - Probe assertions passed; no product test suite, build or typecheck was needed for this research-only change. Additional checks are recorded below.

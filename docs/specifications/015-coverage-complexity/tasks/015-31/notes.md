@@ -1,6 +1,6 @@
 # 015-31 notes: a held edit reports no crossing that only a later threshold change made
 
-Worker f9416aba, 2026-10-24. From main at 5b7c15914 (0.1.293 on main). Brief: `tasks/wave-2.md`, "W3: 015-31". Finding: `reviews/0.1.293-r2.md` N1. No bundle was built and the version was not raised.
+Worker f9416aba, 2026-10-24. From main at a9d088c2d (0.1.293 on main). Brief: `tasks/wave-2.md`, "W3: 015-31". Finding: `reviews/0.1.293-r2.md` N1. No bundle was built and the version was not raised.
 
 ## The defect
 

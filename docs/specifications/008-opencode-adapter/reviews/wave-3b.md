@@ -1,6 +1,6 @@
 # 008 wave 3b review
 
-Verdict: **FAIL 5f425783**. **2 proven blockers**, no separate should-fix or nit findings. Exact candidate: `5f4257834a6c7a12b595b352f6caa329752839b3`, `cand/0.1.188`. Range: `fc323b37..5f425783`. Reviewed 2026-10-15 against spec 008 goal 4, D3 to D5, the 008-32 brief fetched from `origin/main`, lessons defect 5 and session 030-s4, and `reviews/wave-3.md` including its passing repair round.
+Verdict: **FAIL 9a48aae1**. **2 proven blockers**, no separate should-fix or nit findings. Exact candidate: `9a48aae128da1b420eefd40d0decad1bdfc57d05`, `cand/0.1.188`. Range: `fb9e9a4c..9a48aae1`. Reviewed 2026-10-15 against spec 008 goal 4, D3 to D5, the 008-32 brief fetched from `origin/main`, lessons defect 5 and session 030-s4, and `reviews/wave-3.md` including its passing repair round.
 
 ## Verification output
 
@@ -8,7 +8,7 @@ All candidate commands and probes ran at the exact candidate with a clean tracke
 
 ```text
 $ git rev-parse HEAD
-5f4257834a6c7a12b595b352f6caa329752839b3
+9a48aae128da1b420eefd40d0decad1bdfc57d05
 $ git status --short
 (no output)
 $ npm ci
@@ -190,9 +190,9 @@ None separate from B1 and B2. The focused barrier failure above remains in the v
 - Keep one idle deadline, the existing 3-second disposal deadline and reserve, root/child identity, disposal's supersession checks and ordinary `run --continue` storage. This review does not reopen wave 3's settled storage design.
 - Re-review the exact repaired candidate and rebuilt bundles. The coordinator retains its independent host-lock gate and branch-CI responsibility. This report claims no independent full-suite verdict.
 
-## Round 2: repair re-review at 74f093ba
+## Round 2: repair re-review at a6bf2e4f
 
-Verdict: **FAIL 74f093ba**. **B1 closed; B2 remains a proven blocker.** No new blocker, should-fix or nit. Reviewed 2026-10-15 at exact candidate `74f093babc6cf20c9535e7fa180b911adbdd8e78`, range `5f425783..74f093ba`, against the first round above and the 008-33 brief fetched from `origin/main`. Scope: the coordinator's `4ec92772` abort repair and hook test, `f4f1c3c5` deadline slack removal, `d3978509` bundle, and 008-33's three test commits (`d7e0a0ad`, `73affe97`, `74f093ba`).
+Verdict: **FAIL a6bf2e4f**. **B1 closed; B2 remains a proven blocker.** No new blocker, should-fix or nit. Reviewed 2026-10-15 at exact candidate `a6bf2e4f57b055c06b50590e793ff16a88ce25ba`, range `9a48aae1..a6bf2e4f`, against the first round above and the 008-33 brief fetched from `origin/main`. Scope: the coordinator's `d0bdc1a3` abort repair and hook test, `70e060b1` deadline slack removal, `babed404` bundle, and 008-33's three test commits (`7bd1bbe8`, `f6583ace`, `a6bf2e4f`).
 
 ### Verification output
 
@@ -200,7 +200,7 @@ The candidate was clean for the build, checks and external probes. Real OpenCode
 
 ```text
 $ git rev-parse HEAD
-74f093babc6cf20c9535e7fa180b911adbdd8e78
+a6bf2e4f57b055c06b50590e793ff16a88ce25ba
 $ git status --short
 (no output)
 $ npm ci
@@ -309,9 +309,9 @@ Losing evidence converts the same early loss into permission to retry. The compl
 - **Proven by experiment:** all six pure held-Stop cases and its new real deadline-kill test passed. The original B1 abort and B2 early-loss probes are repaired; the extra B1 replay preserves delivery at the next real prompt.
 - No product repair is requested for B1. B2 remains in the timeline's test-only ownership. This narrow round does not reopen the reviewed continuation, pending-file wake, child or disposal-supersession design. Per process step 6, a second FAIL goes to the human through the coordinator.
 
-## Round 3: B2-only re-review at 854d66ae
+## Round 3: B2-only re-review at 6634e809
 
-Verdict: **PASS 854d66ae**. **B2 closed; 0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `854d66aed2a0c368e3c4bbf365242eb7f92ed231`, range `74f093ba..854d66ae`: one test-only commit, `test/e2e/opencode-timeline.ts` and `test/e2e/opencode-timeline.test.ts`. This human-authorized round checks only Round 2's "B2: still open", read after `git fetch origin` from `origin/main` (`efc02ad3`). B1 and the other settled product behavior stay outside this round.
+Verdict: **PASS 6634e809**. **B2 closed; 0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `6634e8094e2b39f378515dfec616290a8401afdd`, range `a6bf2e4f..6634e809`: one test-only commit, `test/e2e/opencode-timeline.ts` and `test/e2e/opencode-timeline.test.ts`. This human-authorized round checks only Round 2's "B2: still open", read after `git fetch origin` from `origin/main` (`cf64de12`). B1 and the other settled product behavior stay outside this round.
 
 ### Verification output
 
@@ -319,7 +319,7 @@ The candidate was clean for all checks and probes below, and remained clean afte
 
 ```text
 $ git rev-parse HEAD
-854d66aed2a0c368e3c4bbf365242eb7f92ed231
+6634e8094e2b39f378515dfec616290a8401afdd
 $ git status --short
 (no output)
 $ npm ci
@@ -397,7 +397,7 @@ B2's requested repair and paired regression are complete. No further repair is r
 
 ## Round 4: shared-file re-review at 63289a86
 
-Verdict: **PASS 63289a86**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `63289a86abccc899884d42ea8240b89a46278baf` (`cand/0.1.192`). This is row 008-35, read after `git fetch origin` from `origin/main` at `b35512d1408a4109fd7e97a743f9637f26fcf302`. Scope is process step 6's shared-file re-review after Round 3's PASS on `854d66ae`: the eight version files and 31 bundles also changed by intervening main work. B1, B2 and the other settled OpenCode behavior are not reopened.
+Verdict: **PASS 63289a86**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `63289a86abccc899884d42ea8240b89a46278baf` (`cand/0.1.192`). This is row 008-35, read after `git fetch origin` from `origin/main` at `5367ac9d23d1039810c6cc57295560860fe4f2b1`. Scope is process step 6's shared-file re-review after Round 3's PASS on `6634e809`: the eight version files and 31 bundles also changed by intervening main work. B1, B2 and the other settled OpenCode behavior are not reopened.
 
 ### Verification output
 
@@ -406,7 +406,7 @@ HEAD matched the assigned candidate and the worktree was clean before installati
 ```text
 $ git rev-parse HEAD origin/main
 63289a86abccc899884d42ea8240b89a46278baf
-b35512d1408a4109fd7e97a743f9637f26fcf302
+5367ac9d23d1039810c6cc57295560860fe4f2b1
 $ git status --short
 (no output)
 $ npm ci
@@ -452,21 +452,21 @@ $ git status --short
 Content comparison also completed at the clean candidate:
 
 ```text
-$ git range-diff --no-color --creation-factor=80 981e2ce7..854d66ae 837f3424^..f6b22661
+$ git range-diff --no-color --creation-factor=80 5f9c3e8a..6634e809 837f3424^..f6b22661
 14 non-build commits paired in order; each pair differs only in its
 commit message's added cherry-pick trailer. No patch hunk differs.
-5f425783 and d3978509 are omitted build commits, with no counterpart.
+9a48aae1 and babed404 are omitted build commits, with no counterpart.
 exit 0
-$ git range-diff --no-color 74f093ba..854d66ae e0f14111..f6b22661
-854d66ae -> f6b22661: only the added cherry-pick trailer differs.
+$ git range-diff --no-color a6bf2e4f..6634e809 e0f14111..f6b22661
+6634e809 -> f6b22661: only the added cherry-pick trailer differs.
 exit 0
 ```
 
-The range-diff output above is summarized. As a separate content check, a read-only Python comparison obtained each ordered non-build commit's patch with `git diff <commit>^ <commit> --no-ext-diff --binary`: all 14 original/rebased pairs were byte-identical. It also compared every source/test file changed by `981e2ce7..854d66ae` with its copy at HEAD: all 14 files were byte-identical.
+The range-diff output above is summarized. As a separate content check, a read-only Python comparison obtained each ordered non-build commit's patch with `git diff <commit>^ <commit> --no-ext-diff --binary`: all 14 original/rebased pairs were byte-identical. It also compared every source/test file changed by `5f9c3e8a..6634e809` with its copy at HEAD: all 14 files were byte-identical.
 
 ### What fits
 
-- **Proven by Git content comparison:** the shared non-doc paths of `981e2ce7..854d66ae` and `981e2ce7..837f3424^` are exactly eight version files and 31 files under `plugins/*/dist`. There is no shared source, test or eval path. The candidate's separate OpenCode plugin bundle also rebuilt without drift. The cherry-pick introduces no content change to the previously reviewed patches, including Round 3's B2 repair.
+- **Proven by Git content comparison:** the shared non-doc paths of `5f9c3e8a..6634e809` and `5f9c3e8a..837f3424^` are exactly eight version files and 31 files under `plugins/*/dist`. There is no shared source, test or eval path. The candidate's separate OpenCode plugin bundle also rebuilt without drift. The cherry-pick introduces no content change to the previously reviewed patches, including Round 3's B2 repair.
 - **Proven by parsed metadata and diff:** `package.json`, `plugins/{claude-code,pi,opencode}/package.json`, `plugins/claude-code/.claude-plugin/plugin.json`, `plugins/codex/.codex-plugin/plugin.json`, `install.sh`'s `SQUEAL_VERSION`, and both root and `packages[""].version` in `package-lock.json` all contain `0.1.192`. Those eight files change only their versions from `0.1.190`; no dependency, export or install logic changes. The version gate against the fetched main passes.
 - **Proven by clean installation and build:** the committed bundles reproduce from this candidate's lockfile and combined source tree. `npm ci` and `npm run build` leave no tracked drift. Lint and typecheck pass on that same clean tree.
 - **Proven by source comparison and the targeted test:** `src/core/keys/key-format.ts` is byte-identical to fetched main, including `KEY_FORMAT_VERSION = 10` and its current pin `5f033c149d273283caf5babd97a9f657b81a158e2ef107821a067cfb870d92d5`. All 29 key-format tests pass, so combining these reviewed OpenCode changes with main requires no further key re-pin in this candidate. This does not claim that main's guarded-source pin is identical to the earlier 0.1.188 tree.
@@ -476,9 +476,9 @@ The range-diff output above is summarized. As a separate content check, a read-o
 No repair is requested in this scope. Preserve the exact candidate and its reproducible bundles. Round 3's settled findings stand; its load-sensitive real-test notes remain qualified as written. This PASS covers the shared files at `63289a86`, with no independent full-suite verdict from this worker. The coordinator owns the remaining landing gate and CI decision.
 
 
-## Round 5: shared-file re-review at 9ffd66f4
+## Round 5: shared-file re-review at 8942d0fe
 
-Verdict: **PASS 9ffd66f4**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `9ffd66f43a6285c163694ba0ee9d3f7982e752d1` (`cand/0.1.192`). Row 008-36 was read after `git fetch origin` from `origin/main` at `cd79540c56c42cdc24a0ce3da0663b871bc529d7`. This round covers process step 6's shared files after 007-42 landed 0.1.191 (`85d830c5`), following Round 4's PASS at `63289a86`. The 14 non-build commits were re-picked onto `7f739bc6`, then built and versioned once. B1, B2 and the other settled OpenCode behavior remain closed and outside this round.
+Verdict: **PASS 8942d0fe**. **0 blockers, 0 should-fix findings, 0 nits.** Reviewed 2026-10-15 at exact candidate `8942d0feadb527471a3d73099b451cce94b05f87` (`cand/0.1.192`). Row 008-36 was read after `git fetch origin` from `origin/main` at `2b5ad4131082dd658bd65b4aa007f558ec7ec6e2`. This round covers process step 6's shared files after 007-42 landed 0.1.191 (`8ef90ca2`), following Round 4's PASS at `63289a86`. The 14 non-build commits were re-picked onto `9379d517`, then built and versioned once. B1, B2 and the other settled OpenCode behavior remain closed and outside this round.
 
 ### Verification output
 
@@ -486,8 +486,8 @@ HEAD matched the assigned candidate. The worktree was clean before installation 
 
 ```text
 $ git rev-parse HEAD origin/main
-9ffd66f43a6285c163694ba0ee9d3f7982e752d1
-cd79540c56c42cdc24a0ce3da0663b871bc529d7
+8942d0feadb527471a3d73099b451cce94b05f87
+2b5ad4131082dd658bd65b4aa007f558ec7ec6e2
 $ git status --short
 (no output)
 $ npm ci
@@ -532,28 +532,28 @@ The Git comparison ran on the same clean candidate:
 
 ```text
 $ git range-diff --no-color '63289a86~15..63289a86~1' 'HEAD~15..HEAD~1'
- 1: 837f3424 =  1: 16a4bb59
- 2: b17ff54d =  2: bab92f0a
- 3: 4c5a8f3a =  3: 455ac4cf
- 4: c3ba3cef =  4: d977252e
- 5: 3478535c =  5: 77140223
- 6: 0685b5bc =  6: cfb94901
- 7: 4cf4c624 =  7: 40153c7d
- 8: 2930b56c =  8: 61fd8923
- 9: b69ab6f1 =  9: 07d84780
-10: b64dcc77 = 10: df161fac
-11: b00b958a = 11: ef3543ad
-12: 6e53f421 = 12: 746c94c5
-13: e0f14111 = 13: e3b4ab63
-14: f6b22661 = 14: bd7f8dda
+ 1: 837f3424 =  1: e60aac31
+ 2: b17ff54d =  2: 2a77fb4d
+ 3: 4c5a8f3a =  3: 0ce57a84
+ 4: c3ba3cef =  4: c229d7f9
+ 5: 3478535c =  5: b748f225
+ 6: 0685b5bc =  6: 49d0ebfc
+ 7: 4cf4c624 =  7: 5a7e01b2
+ 8: 2930b56c =  8: fc721f0a
+ 9: b69ab6f1 =  9: 0ab900b2
+10: b64dcc77 = 10: d7732d84
+11: b00b958a = 11: 384dd787
+12: 6e53f421 = 12: 6353e402
+13: e0f14111 = 13: 56a2de30
+14: f6b22661 = 14: e84cc40a
 exit 0
 ```
 
-The range-diff above omits subjects only. An additional read-only Python comparison of `git diff --no-ext-diff --binary <commit>^ <commit>` confirmed all 14 ordered patch pairs are byte-identical. All 14 source/test files touched by the previously reviewed candidate are also byte-identical between `63289a86` and `9ffd66f4`.
+The range-diff above omits subjects only. An additional read-only Python comparison of `git diff --no-ext-diff --binary <commit>^ <commit>` confirmed all 14 ordered patch pairs are byte-identical. All 14 source/test files touched by the previously reviewed candidate are also byte-identical between `63289a86` and `8942d0fe`.
 
 ### What fits
 
-- **Proven by Git comparison:** intersecting the non-doc paths changed by `63289a86~15..63289a86` with those changed by `63289a86~15..9ffd66f4~15` gives exactly eight version files and 31 files under `plugins/*/dist`. No source, test or eval path is shared. Fetched main differs from the new base `7f739bc6` only in the board and wave-3 task brief. The new build commit changes only version metadata and bundles.
+- **Proven by Git comparison:** intersecting the non-doc paths changed by `63289a86~15..63289a86` with those changed by `63289a86~15..8942d0fe~15` gives exactly eight version files and 31 files under `plugins/*/dist`. No source, test or eval path is shared. Fetched main differs from the new base `9379d517` only in the board and wave-3 task brief. The new build commit changes only version metadata and bundles.
 - **Proven by parsed metadata and diff:** version `0.1.192` appears in root `package.json`, all three plugin package files (`claude-code`, `pi`, `opencode`), both manifests (`claude-code`, `codex`), `install.sh`'s `SQUEAL_VERSION`, and both root and `packages[""].version` in `package-lock.json`. These eight files change only their versions from `0.1.191`. The version gate against fetched main passes.
 - **Proven by clean installation and build:** the committed bundles reproduce from the combined source tree and lockfile without tracked drift. Lint and typecheck pass on the same clean candidate. This verifies that the shared bundles include the combined sources without carrying the earlier build commit forward.
 - **Proven by source comparison and the targeted test:** 007-42's `src/runners/pytest/adapter.ts`, `test/runners/pytest/adapter-files.test.ts` and `src/core/keys/key-format.ts` are preserved byte-for-byte from the new main base. The key-format file also matches fetched main: format remains 10 with pin `a0457b0f84c025c51a5ee196d689b6d45d2f08278081680696cffaceededf806`. All 29 key-format tests pass. No additional re-pin is required by this candidate.
@@ -564,4 +564,4 @@ None in this scope. No plausible or unverified defect is raised. **Unverified in
 
 ### Inputs for landing
 
-No repair is requested. This PASS applies to the shared files at exact candidate `9ffd66f43a6285c163694ba0ee9d3f7982e752d1`. Keep the reproduced bundles and 007's key pin. The coordinator owns the remaining landing gate under the host lock and CI decision.
+No repair is requested. This PASS applies to the shared files at exact candidate `8942d0feadb527471a3d73099b451cce94b05f87`. Keep the reproduced bundles and 007's key pin. The coordinator owns the remaining landing gate under the host lock and CI decision.

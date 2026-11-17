@@ -34,13 +34,13 @@ Worker a9b595a0, 2026-10-24. What 015-06 (the pass), 015-07 (delivery), 015-08 a
 6. **Default parameters** count on the parameter's `=`, so a default whose value is itself a decision (`b = a ? 1 : 2`) adds 2, as in ESLint. The first draft counted the value node and missed one in `src/core/daemon/escaped.ts`.
 7. **ESLint read TypeScript as written**, through `@typescript-eslint/parser` 8.72.0. The research stripped types with Node's `stripTypeScriptTypes`, which fails on 5 of 605 files (parameter properties); with the parser, all 605 are compared.
 8. **Comparison keys.** ESLint's counts are keyed by a function's end (ESLint places an arrow at its `=>`), radon's by its start. Functions that end together (`a => b => …`) share a key and are compared as a sorted list.
-9. **The pinned commit** is `e90e0030c`, the `squeal--v0.1.279` release on main, so that history rewrites on an integration branch cannot remove it. `corpus.test.ts` reads it with one `git cat-file --batch`; CI's Node 22 shards check out the full history.
+9. **The pinned commit** is `7517daa5d`, the `squeal--v0.1.279` release on main, so that history rewrites on an integration branch cannot remove it. `corpus.test.ts` reads it with one `git cat-file --batch`; CI's Node 22 shards check out the full history.
 
 ## Results
 
 - Constructs fixtures (`constructs.ts`, `view.tsx`, `plain.cjs`): 77 functions, every key equal to ESLint 10.13.0's classic counts. `constructs.py`: 44 of 44 equal radon 6.0.1, plus the 2 methods radon drops.
-- `src/` at `e90e0030c`: 605 files, 7,042 functions, every file equal to ESLint's counts.
-- Python at `e90e0030c`: 289 files, 488 functions, all equal to radon's.
+- `src/` at `7517daa5d`: 605 files, 7,042 functions, every file equal to ESLint's counts.
+- Python at `7517daa5d`: 289 files, 488 functions, all equal to radon's.
 - The research's Python corpus, checked once and not stored: coverage 7.17, radon 6.0.1, lizard 1.24.2 and mccabe 0.7.0 sources (192 files): 2,191 of 2,191 functions equal radon's, plus 2 methods of a class nested in a function in `lizard.py`.
 
 ## For the next rows

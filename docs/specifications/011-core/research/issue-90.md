@@ -11,7 +11,7 @@ Not reproduced: the original Claude session. The brief forbids real browser proj
 | # | Question | Answer | Tag |
 |---|---|---|---|
 | 1 | Does a Bash edit clear an explicit `squeal stop`? | Yes. The PostToolBatch after the edit spawns a daemon (silent), and the next boundary says "a daemon is validating again at revision 1" | verified by experiment, 0.1.279 and 0.1.283 |
-| 2 | Is that by design? | Yes: C9 stopped mark, the tree print, "A different print clears the mark and the boundary ensures a daemon" | read in spec at `ad3a48d65`; read in source code |
+| 2 | Is that by design? | Yes: C9 stopped mark, the tree print, "A different print clears the mark and the boundary ensures a daemon" | read in spec at `91719aa2c`; read in source code |
 | 3 | Does the hook restart itself queue the affected slow files? | No, under `lookup-only`: "3 not run at revision 1. Squeal has not queued them" | verified by experiment, both versions |
 | 4 | What queues the whole slow tier? | The next edit seen by the restarted daemon: "Revision 2 · … + 2 … Slow tier: 3 pending … queued 3 test files". The tier ran about 4 s later | verified by experiment, both versions |
 | 5 | Does the incident's output match 3 or 4? | 4: its quoted block is `SQUEAL · revision 2`, `Revision 2 · 2dd06d83 + 2`, "queued 91 test files", which is leg C's shape | inferred from the issue text and the probe output |
@@ -19,7 +19,7 @@ Not reproduced: the original Claude session. The brief forbids real browser proj
 
 ## Method
 
-Load before the live runs: `uptime` 1.46 / 2.91 / 2.75 / 2.64 (one-minute) on `nproc` 24, so the probe went ahead. After the runs: 3.61, 3.79. Squeal exercised: the plugin cache `~/.claude/plugins/cache/hearsay/squeal/0.1.279` (the incident's version) and `…/0.1.283` (`squeal --version` printed each). Source read: this checkout, 0.1.283 (`package.json`), at `ad3a48d65`.
+Load before the live runs: `uptime` 1.46 / 2.91 / 2.75 / 2.64 (one-minute) on `nproc` 24, so the probe went ahead. After the runs: 3.61, 3.79. Squeal exercised: the plugin cache `~/.claude/plugins/cache/hearsay/squeal/0.1.279` (the incident's version) and `…/0.1.283` (`squeal --version` printed each). Source read: this checkout, 0.1.283 (`package.json`), at `91719aa2c`.
 
 Commands, from `/tmp`:
 
@@ -56,7 +56,7 @@ Treat #90 as a duplicate of #49 in substance: the hold it asks for shipped in 0.
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/90, and #49 (closed), read with `gh issue view`.
-- Spec: `docs/specifications/011-core/spec.md` at `ad3a48d65`, C4 (lines 110 to 160), C8 (242 to 256), C9 stopped mark (266) and *Holds* (268 to 272). `status.md` entries for 011-08 (lines 20 and 21) and 011-61, 011-72 to 011-74 (67, 95 to 100). `docs/board.md` rows gh-49, gh-68, 011-72 to 011-74.
-- Code at `ad3a48d65`: `src/core/delivery/stopped.ts` (`stopHolds`, `treePrint`), `src/harness/shared/ensure.ts:72`, `src/cli/stopped-mark.ts`, `src/core/scheduler/bootstrap.ts:201` and `:232`, `src/core/delivery/format.ts:337` (`sawEditLine`).
+- Spec: `docs/specifications/011-core/spec.md` at `91719aa2c`, C4 (lines 110 to 160), C8 (242 to 256), C9 stopped mark (266) and *Holds* (268 to 272). `status.md` entries for 011-08 (lines 20 and 21) and 011-61, 011-72 to 011-74 (67, 95 to 100). `docs/board.md` rows gh-49, gh-68, 011-72 to 011-74.
+- Code at `91719aa2c`: `src/core/delivery/stopped.ts` (`stopHolds`, `treePrint`), `src/harness/shared/ensure.ts:72`, `src/cli/stopped-mark.ts`, `src/core/scheduler/bootstrap.ts:201` and `:232`, `src/core/delivery/format.ts:337` (`sawEditLine`).
 - Earlier research: `research/issue-22.md` (the probe this one adapts), `research/issue-49.md`.
 - Probe and outputs: `research/probes/issue-90/probe.mjs`, `README.md`, `output-0.1.279.txt`, `output-0.1.283.txt`.

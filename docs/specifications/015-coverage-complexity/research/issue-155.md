@@ -2,13 +2,13 @@
 
 Recommend one change in output, not in collection: give a function with no coverage judgement an explicit pending state and reason in `squeal code`, naming the loader it waits for.
 
-Researcher, 2026-11-06, 20-minute limit. Documentation-only. **Partly reproduced on the installed 0.1.407 runtime; the original Cezarion runs were not replayed.** Examined Squeal commit `adbdeb991a915c7c66937d9e0d0845066b78b9f8` (package 0.1.407), installed Claude Code plugin CLI 0.1.407, Node v24.22.1, Vitest 5.0.3, Linux, 24 CPUs. Initial one-minute load 13.28; every daemon start and observation passed the gate (loads 12.01 to 15.84). No build, install, product suite or full suite ran. All probe daemons stopped; `pgrep -af sq-issue-155` returned nothing afterwards.
+Researcher, 2026-11-06, 20-minute limit. Documentation-only. **Partly reproduced on the installed 0.1.407 runtime; the original Cezarion runs were not replayed.** Examined Squeal commit `47fd6fe1a9fdd3f13ea3f47e3c7ff70dfa47e37f` (package 0.1.407), installed Claude Code plugin CLI 0.1.407, Node v24.22.1, Vitest 5.0.3, Linux, 24 CPUs. Initial one-minute load 13.28; every daemon start and observation passed the gate (loads 12.01 to 15.84). No build, install, product suite or full suite ran. All probe daemons stopped; `pgrep -af sq-issue-155` returned nothing afterwards.
 
 ## Verdict
 
 - **Current verdict vs coverage record.** A current passing verdict for the test file the agent names does not mean the coverage step has judged the function. D9 waits for a current record from *every* test file whose import closure holds the source, and the coverage step judges after the results land. Between those two moments, 0.1.407 prints a new function with complexity and nothing else: no `coverage` key in JSON, no `pending`, no reason. That matches the issue's "crap: null with no reason" for new functions.
 - **Not a coverage gap for the three named file kinds.** Object-property arrows, `*.testkit.ts` helpers and node:test `.cjs` sources all get CRAP from Squeal's own runs in the probe, initially and after an edit.
-- **Spec drift found.** Coverage is on by default since 0.1.373 (commit `a6741966c`, "fix: enable coverage by default"), but spec D1 and `status.md` still say off since 015-89. Cezarion sets no `coverage` key, so it relies on that default.
+- **Spec drift found.** Coverage is on by default since 0.1.373 (commit `410393d85`, "fix: enable coverage by default"), but spec D1 and `status.md` still say off since 015-89. Cezarion sets no `coverage` key, so it relies on that default.
 
 ## Questions answered
 
@@ -73,7 +73,7 @@ Synthetic fixture with one test file per source, one slow file, tiny sources and
 
 - Issue: `gh issue view 155 -R hearsay-tools/squeal`; comments via `gh api repos/hearsay-tools/cezarion/issues/comments/<id>` for 6532356979, 6541965659, 6542149952, 6542306757, 6549073451, 6556765618, 6586632987.
 - Cezarion config history: `gh api 'repos/hearsay-tools/cezarion/commits?path=squeal.config.json&since=2026-10-20T00:00:00Z'` and each file at its commit; `packages/cezar/vitest.config.ts` and `vitest.setup.ts` at `35dfc8c0e3e052c819e1de7a92f29752538eb00e`.
-- Squeal source at `adbdeb991`: `src/core/types/policy.ts:389`, `src/core/code/crap/loaders.ts`, `src/core/code/crap/file.ts`, `src/cli/code-crap-reason.ts`, `src/cli/code-coverage.ts`, `src/core/code/coverage/runtime.ts:35-43`; `git log -L389,389:src/core/types/policy.ts`.
+- Squeal source at `47fd6fe1a`: `src/core/types/policy.ts:389`, `src/core/code/crap/loaders.ts`, `src/core/code/crap/file.ts`, `src/cli/code-crap-reason.ts`, `src/cli/code-coverage.ts`, `src/core/code/coverage/runtime.ts:35-43`; `git log -L389,389:src/core/types/policy.ts`.
 - Spec: `docs/specifications/015-coverage-complexity/spec.md` D1, D6, D8, D9; `status.md` lines 126, 134, 140, 219.
 - Probe: [`probes/issue-155/`](probes/issue-155/README.md), outputs `results*.json`.
 - Related research: `issue-129.md`, `issue-135.md`, `issue-144.md`, `issue-149.md`.

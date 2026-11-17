@@ -1,6 +1,6 @@
 # 011-186: the daily measurement names the process trees behind its samples
 
-Worker 2dc2e2e1, from main at e65bfa813, 2026-10-24. Shape: slice (probe and runbook). No product change. Coordinator 04a258b0 agreed to the two `analyze.py` fixes and chose step 4 only (answers to this worker's three requests, 2026-10-24, 20:00Z to 20:05Z).
+Worker 2dc2e2e1, from main at bdcc92ad0, 2026-10-24. Shape: slice (probe and runbook). No product change. Coordinator 04a258b0 agreed to the two `analyze.py` fixes and chose step 4 only (answers to this worker's three requests, 2026-10-24, 20:00Z to 20:05Z).
 
 ## Answers
 
@@ -72,7 +72,7 @@ The question: can the baseline (Squeal 70% of busy CPU) be derived again from an
 - `measured` The raw sample is gone: `t/3800fd79/` does not exist. The artifact keeps only the owners' totals (`DATA.owners`): cezar `007cdd17` 11.14, an integration full-suite check 4.40, squeal `716a6766` 3.56, cezar `2686d16a` 2.12, the cockpit and agent sessions 1.87, short-lived processes adopted by systemd 1.30, 15 other Squeal daemons 0.70, the rest 0.20. Without each process's times at both ends, the part before the window cannot be taken off.
 - `measured` No other raw sample is kept. Of the files over 200 KB changed since 2026-10-20 under `squeal/.ai/cezar/t/`, `cezar/.ai/cezar/t/` and `/tmp` (depth 4), only this row's two trials have `sample.py`'s `cpu0` key. The 2026-10-23 daily's three samples are not among them; the 2026-10-24 daily took none (eval run).
 - `inferred` The trees' total exceeds the busy CPU by at least 2.0 cores (25.3 against at most 23.3), and by more if the trees explained less than all of busy (this row's trials: 92 to 93%). Which trees hold the excess is not known. With no error in Squeal's trees, 17.5 of 23.3 is 75%; each core of error in them takes about 4 points off. Trial 1's error was 5.36 of 8.10 cores in one Squeal tree, so the true share could be far lower.
-- `inferred` The report's script was not `analyze.py` (that came on 2026-10-22, `6dd4608d3`). Its daemon table lists six Codex daemons and its owners count "15 other Squeal daemons", so the second defect may not apply to it. Which install path those Codex daemons had is not known.
+- `inferred` The report's script was not `analyze.py` (that came on 2026-10-22, `f11bc4aff`). Its daemon table lists six Codex daemons and its owners count "15 other Squeal daemons", so the second defect may not apply to it. Which install path those Codex daemons had is not known.
 
 So the first daily after these fixes gives the first C2 value on the corrected count; the 70% stays in the table as the old count's baseline.
 

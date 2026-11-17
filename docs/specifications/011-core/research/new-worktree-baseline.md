@@ -1,6 +1,6 @@
 # 011-299: why a new worktree's first baseline runs so much
 
-Researcher of row 011-299, 2026-11-05 22:50Z to 2026-11-06 00:30Z (Europe/Warsaw 23:50 to 01:30). Brief: `research/new-worktree-baseline-brief.md`. Read: `research/restart-baseline.md` and its probes; `019-run-triggers/research/load-split.md` and `probes/load-split/baseline.cjs`; `git show 24aa26286:docs/specifications/011-core/research/completed-donor-inheritance.md`; spec 011 C3; `src/core/keys/check-key.ts`, `environment-hash.ts`, `environment.ts`, `observed.ts`, `runtime-files.ts`, `store/schema.ts` at squeal `a58b4dc85` (0.1.406).
+Researcher of row 011-299, 2026-11-05 22:50Z to 2026-11-06 00:30Z (Europe/Warsaw 23:50 to 01:30). Brief: `research/new-worktree-baseline-brief.md`. Read: `research/restart-baseline.md` and its probes; `019-run-triggers/research/load-split.md` and `probes/load-split/baseline.cjs`; `git show 24aa26286:docs/specifications/011-core/research/completed-donor-inheritance.md`; spec 011 C3; `src/core/keys/check-key.ts`, `environment-hash.ts`, `environment.ts`, `observed.ts`, `runtime-files.ts`, `store/schema.ts` at squeal `23b0bf64f` (0.1.406).
 
 Data: one copy of cezar's store (`store.sqlite` with `-wal` and `-shm`), taken 2026-11-05T23:07Z (a first copy at 22:56Z was lost when scratch was wiped; the counts of both agree). Window as `load-split.md`: 72 h to 2026-11-05T16:50Z. cezar's git repository, read only. Fixture runs: a fresh repository under my `$TMPDIR`, 8 Vitest files, nice 10, 4 host slots, Squeal 0.1.406, removed at the end. No test ran in a cezar or squeal worktree. Load1 during the fixture runs: 26 to 38 (24 CPUs). Probes and re-run steps: `probes/new-worktree-baseline/README.md`.
 
@@ -108,6 +108,6 @@ None as design. For the coordinator's next step, the numbers say: a new worktree
 
 - Store copy: `~/projects/cezar/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-11-05T23:07Z; run logs `runs/<id>/report.json` read in place. `~/projects/cezar/squeal.config.json`, `.ai/cezar/config.json`, and installed `node_modules/.pnpm/lock.yaml` of the 47 live checkouts, read 2026-11-05.
 - cezar git: origin/main at `4160527d3` (2026-11-05T22:22Z); `git ls-tree`, `diff`, `merge-base`, `rev-list`.
-- Source at squeal `a58b4dc85` (0.1.406): `src/core/keys/check-key.ts` (`checkKey`, `keyFromSegments`), `src/core/keys/environment-hash.ts`, `src/core/keys/environment.ts:110-181`, `src/core/keys/observed.ts:16-25`, `src/core/keys/runtime-files.ts` (`runtimeIdentity`), `src/core/store/schema.ts`.
+- Source at squeal `23b0bf64f` (0.1.406): `src/core/keys/check-key.ts` (`checkKey`, `keyFromSegments`), `src/core/keys/environment-hash.ts`, `src/core/keys/environment.ts:110-181`, `src/core/keys/observed.ts:16-25`, `src/core/keys/runtime-files.ts` (`runtimeIdentity`), `src/core/store/schema.ts`.
 - Earlier findings: `research/restart-baseline.md`; `019-run-triggers/research/load-split.md` sections 1 and 2; `completed-donor-inheritance.md` at commit `24aa26286`.
 - Probes: `probes/new-worktree-baseline/` (README lists each script, the fixture results and the commands).

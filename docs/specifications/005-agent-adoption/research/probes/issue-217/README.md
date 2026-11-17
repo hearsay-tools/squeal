@@ -1,6 +1,6 @@
 # Throwaway evidence: issue 217
 
-These are read-only probe transcripts, not tests or product code. They capture installed Squeal 0.1.475 on 2026-11-14 in the research worktree at `e9cf07c6b94f59232075f0cba578a74df64d63ae`. No dependencies or executable fixture are needed. Do not expect live history counts to stay fixed. Trailing whitespace in the captured text is trimmed.
+These are read-only probe transcripts, not tests or product code. They capture installed Squeal 0.1.475 on 2026-11-14 in the research worktree at `5df18dd2416519c2802ca54491209e300eaf0bbf`. No dependencies or executable fixture are needed. Do not expect live history counts to stay fixed. Trailing whitespace in the captured text is trimmed.
 
 - `cli.txt`: full version, help, command help and ranked reach output. Each command records its host load, CPU count, UTC timestamp, exit code and elapsed seconds.
 - `named.txt`: named environment-path output with the same metadata.

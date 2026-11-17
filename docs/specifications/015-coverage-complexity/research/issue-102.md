@@ -2,7 +2,7 @@
 
 Date: 2026-10-26. Issue: https://github.com/hearsay-tools/squeal/issues/102. Spec 015 D8, spec 013 (Vitest adapter). Researcher, documentation only.
 
-Versions examined: Vitest 4.1.10 and 5.0.5, each with Vite 8.3.5, Node 24.21.0, jsdom and happy-dom latest; the provider is `plugins/codex/dist/coverage/provider.mjs` at 93e710f4e (0.1.345, same bytes as 0.1.342 for this question). Read-only: cezarion's installed Vitest 4.1.10 and Vite 8.1.4.
+Versions examined: Vitest 4.1.10 and 5.0.5, each with Vite 8.3.5, Node 24.21.0, jsdom and happy-dom latest; the provider is `plugins/codex/dist/coverage/provider.mjs` at d76e076b1 (0.1.345, same bytes as 0.1.342 for this question). Read-only: cezarion's installed Vitest 4.1.10 and Vite 8.1.4.
 
 ## Answers
 
@@ -103,7 +103,7 @@ Seam: `src/runners/vitest/coverage.ts:56` (`customProviderModule: this.provider`
 
 ## Q4. Fallback
 
-Today, read in source code at 93e710f4e:
+Today, read in source code at d76e076b1:
 
 - The instance starts: `createVitest` and `standalone()` succeed, because the main process loads the provider (Q2). So `#start` does not throw, and nothing about the start fails.
 - The failure is per worker at run time. A reporter's `onTestRunEnd` gets it as an unhandled error with no `VITEST_TEST_PATH`; its `stack` does not hold the cause, and `cause` is `{ message: "Cannot find module '/@fs/…/provider.mjs'", code: "ERR_MODULE_NOT_FOUND" }` (fix probe, verified by experiment).
@@ -152,5 +152,5 @@ Ship option A in `#start` beside `withoutOptimizer`, with a regression test that
 - Issue: https://github.com/hearsay-tools/squeal/issues/102 (read with `gh issue view 102 --repo hearsay-tools/squeal --comments`).
 - Vitest 4.1.10 and 5.0.5, Vite 8.3.5, installed by `run.sh` from npm under `/tmp/issue-102/v<version>/node_modules/`: files and lines named above.
 - cezarion, read only: `~/projects/cezar/vitest.config.ts`, `packages/web/vitest.config.ts`, installed `vitest@4.1.10`, `vite@8.1.4`.
-- Squeal at 93e710f4e: `src/runners/vitest/coverage.ts`, `adapter.ts`, `optimizer.ts`, `broken.ts`, `run.ts`, `results.ts`, `reporter.ts`, `src/core/code/coverage/runtime.ts`, `plugins/codex/dist/coverage/provider.mjs`.
+- Squeal at d76e076b1: `src/runners/vitest/coverage.ts`, `adapter.ts`, `optimizer.ts`, `broken.ts`, `run.ts`, `results.ts`, `reporter.ts`, `src/core/code/coverage/runtime.ts`, `plugins/codex/dist/coverage/provider.mjs`.
 - Probes: `research/probes/issue-102/` beside this file (`run.sh`, `variants.sh`, `fixes.sh`, `probe-fix.mjs`, configs).

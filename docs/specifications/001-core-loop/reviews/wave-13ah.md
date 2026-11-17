@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `589844c3`, package 0.1.122, `KEY_FORMAT_VERSION = 7`. Range: `3ee7d64d..589844c3`. Initial HEAD: `8a3643525e4606e3d42f8339ab9af645480df015`. `git diff --name-only 589844c3..HEAD` lists only `docs/board.md`; all executable sources, tests, manifests and distributions match the candidate. The checkout was clean throughout verification and the external probes. Linux, Node 24.21.0, Vitest 5.0.3.
+Candidate: `0d2d6dff`, package 0.1.122, `KEY_FORMAT_VERSION = 7`. Range: `642cc337..0d2d6dff`. Initial HEAD: `eb66b9a96506c2c97f5140cb6cee171d42a59d4f`. `git diff --name-only 0d2d6dff..HEAD` lists only `docs/board.md`; all executable sources, tests, manifests and distributions match the candidate. The checkout was clean throughout verification and the external probes. Linux, Node 24.21.0, Vitest 5.0.3.
 
 This review is bounded by 001-274, `reviews/wave-13ag.md` B1 and the brief's exit, incarnation, clearing and pruning questions. No product, test, board, spec, status or distribution file was edited. The explicitly forbidden `npm run build` was not run. Bundle reproducibility and macOS are **unverified**, not findings. Existing daemon test helpers compile private source fixtures with `tsc`; they do not rebuild the committed bundles. No eval runner or repository script was run to check evals. The independent suite includes their existing unit tests.
 
@@ -97,13 +97,13 @@ $ cmp plugins/claude-code/dist/cli/squeal.mjs plugins/codex/dist/cli/squeal.mjs
 
 The independent full suite is **not green**. Five failures are 5 s timeouts; the sixth is a tier-membership assertion: two files explicitly handed to one batch run in separate tiers. Every failed file passes one targeted retry with the same environment and worker cap, without edits or timeout changes. These retries do not replace the failed full gate. Load sensitivity is **plausible**, not established as the cause. Host load reached 44.50 while the full run was active; automatic Squeal validation and the brief probe replays overlapped parts of that run. The failing tests and scheduler/watch paths are unchanged in the reviewed range. No additional spec break caused by the shutdown-marker change is proven by those failures. The full run printed two fixture gitdir-repair notices and an earlier-run process cleanup. No second full suite was run.
 
-The replay restores wave-13ag's published probe source in a private directory, substitutes this checkout and 0.1.122 for candidate paths and simulated identities, and keeps historical sources unchanged: actual 0.1.112 ledger/handlers/CLI from `cf7e8a2c`, the base wait from `6864b726`, actual 0.1.115 CLI from `2ec0efa1`, actual tokenless 0.1.116 CLI/registration/daemon from `d9fe66ba`. It uses production keys, ledgers, store, sockets and waits with controlled mutation schedules, and real candidate stop, step-down and restart. Three additional real-daemon probes isolate the new row from notes and test mismatching evidence. The cleanup probe invokes public `startDaemon` and normal `store.prune` on real linked worktrees; its pre-change control uses sources archived from `3ee7d64d`.
+The replay restores wave-13ag's published probe source in a private directory, substitutes this checkout and 0.1.122 for candidate paths and simulated identities, and keeps historical sources unchanged: actual 0.1.112 ledger/handlers/CLI from `d58dd59c`, the base wait from `860f6464`, actual 0.1.115 CLI from `eecab4cb`, actual tokenless 0.1.116 CLI/registration/daemon from `7481623e`. It uses production keys, ledgers, store, sockets and waits with controlled mutation schedules, and real candidate stop, step-down and restart. Three additional real-daemon probes isolate the new row from notes and test mismatching evidence. The cleanup probe invokes public `startDaemon` and normal `store.prune` on real linked worktrees; its pre-change control uses sources archived from `642cc337`.
 
 Replayable [probe source snapshot](/p/squeal/tasks/856a3635-c087-43f0-ba4a-77fce450f815/files?artifact=a92a4ab5-3ab6-4e5e-845a-42d8a80567a2). Complete captured [verification output snapshot](/p/squeal/tasks/856a3635-c087-43f0-ba4a-77fce450f815/files?artifact=602d7841-4ee4-4210-9060-e256618ab754).
 
 ## Verdict
 
-**FAIL 589844c3: 1 proven blocker, 0 should-fix, 0 nits.**
+**FAIL 0d2d6dff: 1 proven blocker, 0 should-fix, 0 nits.**
 
 Wave-13ag B1's startup-churn failure closes. The shutdown guarantee survives note eviction and retains death attribution and succession semantics in every requested replay. A new cleanup failure remains: a start that fails before registration creates a durable exit row with no worktree record, so normal removed-worktree pruning never visits it. This violates 001-274's explicit done-when, "worktree removal leaves no `daemon-exit:` row".
 
@@ -131,7 +131,7 @@ after removal and prune = { mark: "0.1.122@<start>#<token>" }
 required mark === null assertion: FAIL
 ```
 
-The same socket failure under the pre-change sources (`3ee7d64d`) leaves no exit row and passes. A candidate that registers, stops, has its linked root removed and is pruned returns `worktreesRemoved = 1` and removes the row. The defect is confined to rows written before their owning registration exists. One row remains per distinct failed, never-registered worktree until another daemon successfully registers it or an explicit caller removes its ID. No false test result or false death sentence is established by this probe.
+The same socket failure under the pre-change sources (`642cc337`) leaves no exit row and passes. A candidate that registers, stops, has its linked root removed and is pruned returns `worktreesRemoved = 1` and removes the row. The defect is confined to rows written before their owning registration exists. One row remains per distinct failed, never-registered worktree until another daemon successfully registers it or an explicit caller removes its ID. No false test result or false death sentence is established by this probe.
 
 One worker's fix: ensure pre-registration failures cannot create an exit row without a prunable owner, while preserving the durable mark for an incarnation whose shutdown is in progress. Do not create a predecessor's liveness claim or delete its valid evidence merely to handle a failed successor. Add the failed-socket-start/removal/prune regression and keep the registered-worktree control, startup-churn pair, row-only proof and original death/succession cases. Ownership can stay in `daemon.ts` plus daemon/store regression tests; the coordinator owns any necessary version, key pin and bundles.
 

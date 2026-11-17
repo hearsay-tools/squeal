@@ -71,7 +71,7 @@ Spawned by coordinator 52e58f23 on 2026-10-24 (reviewer 5cbd5f63, codex gpt-6.1-
 
 ### Review 015-09: candidate 0.1.283 (spec 015 waves 0 and 1)
 
-Use /reviewer. Candidate `cand/0.1.283` at de9deb5bcde5861eb8e284c7a45406a69657fa73. Range: `origin/main` (ab48c6833)..de9deb5bc, the 015-04 to 015-08 commits plus one build commit (bundles, version 0.1.283). Write `docs/specifications/015-coverage-complexity/reviews/0.1.283.md` and commit it on your branch.
+Use /reviewer. Candidate `cand/0.1.283` at de9deb5bcde5861eb8e284c7a45406a69657fa73. Range: `origin/main` (729d5be67)..de9deb5bc, the 015-04 to 015-08 commits plus one build commit (bundles, version 0.1.283). Write `docs/specifications/015-coverage-complexity/reviews/0.1.283.md` and commit it on your branch.
 
 Read `docs/specifications/015-coverage-complexity/spec.md` (D1 to D7; D8 to D10 are wave 2 and out of scope), `status.md`, the notes under `tasks/015-04/` to `tasks/015-08/`, and `tasks/wave-0.md`, `tasks/wave-1.md`.
 
@@ -121,7 +121,7 @@ S1 (a transient counter error leaves a file pending) is not in this repair; it i
 
 ### Re-review 015-09 round 2: candidate 0.1.283 after the repair
 
-Use /reviewer. Narrow re-review against `docs/specifications/015-coverage-complexity/reviews/0.1.283.md`. Candidate `cand/0.1.283` at 4506aa0bb2bcaee54e856163bf7ab1b2a683387f (force-pushed over de9deb5bc). The waves 0 and 1 commits are unchanged and rebased onto main (docs only moved). The repair range is `5d9a5c2cf..4506aa0bb`: 015-16 (B1, B3, B4; worker notes `tasks/015-16/notes.md`), 015-17 (B2, B5; `tasks/015-17/notes.md`), and one rebuilt bundle commit (version 0.1.283). Brief of the repair: `tasks/wave-1.md`, "Repair of review 0.1.283". Write `reviews/0.1.283-r2.md` and commit it on your branch.
+Use /reviewer. Narrow re-review against `docs/specifications/015-coverage-complexity/reviews/0.1.283.md`. Candidate `cand/0.1.283` at 0cff4650974ef3bed2c5d7073256809fde386262 (force-pushed over de9deb5bc). The waves 0 and 1 commits are unchanged and rebased onto main (docs only moved). The repair range is `859d6490d..0cff46509`: 015-16 (B1, B3, B4; worker notes `tasks/015-16/notes.md`), 015-17 (B2, B5; `tasks/015-17/notes.md`), and one rebuilt bundle commit (version 0.1.283). Brief of the repair: `tasks/wave-1.md`, "Repair of review 0.1.283". Write `reviews/0.1.283-r2.md` and commit it on your branch.
 
 Check, with proof:
 1. B1 to B5. Is each fixed as its "Worker-sized fix" paragraph asks? Re-run each reproduction from the round-1 file on the candidate.

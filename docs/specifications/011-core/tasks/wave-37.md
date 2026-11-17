@@ -1,6 +1,6 @@
 # Wave 37
 
-From main after 0.1.307 (`e13894aed`), 2026-10-25. Two tests-only rows on disjoint files: the step-down test's fixture race (W1) and the model-based scheduler test (W2). Neither changes `src/`, so they land with the next release that has a product change, or alone as tests.
+From main after 0.1.307 (`7b2991dc3`), 2026-10-25. Two tests-only rows on disjoint files: the step-down test's fixture race (W1) and the model-based scheduler test (W2). Neither changes `src/`, so they land with the next release that has a product change, or alone as tests.
 
 ## W1: 011-203, `step-down-lanes.test.ts:209` and the fixture's edit inside the run
 

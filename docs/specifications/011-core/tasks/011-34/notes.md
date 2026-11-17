@@ -1,6 +1,6 @@
 # 011-34 notes (W1 of wave 12, 2026-10-22)
 
-The stopping reading: 011 C9 as amended 2026-10-20, design `tasks/011-30/design.md` section 4 and R4. Base 637e408d0 (row 011-32 on main's db1b15068). Brief `tasks/wave-12.md`, W1.
+The stopping reading: 011 C9 as amended 2026-10-20, design `tasks/011-30/design.md` section 4 and R4. Base 637e408d0 (row 011-32 on main's cebd16f98). Brief `tasks/wave-12.md`, W1.
 
 ## Ownership
 

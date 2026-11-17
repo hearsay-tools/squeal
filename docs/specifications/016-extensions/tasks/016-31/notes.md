@@ -1,6 +1,6 @@
 # 016-31 another worktree's observed path reaches this daemon's key after its own write: notes
 
-Worker 00f19154 (resumed after 016-29), 2026-10-25. Brief: `tasks/wave-7.md`. Shape: repair. Code read at `ead6d6db0` (main, after squeal 0.1.323). The coordinator approved the design before the fix (request f77f728d, reply 89d802f3), with 011's agreement: design D1, not D2, and the two assertions changed. No C3 change is owed.
+Worker 00f19154 (resumed after 016-29), 2026-10-25. Brief: `tasks/wave-7.md`. Shape: repair. Code read at `aeaf20141` (main, after squeal 0.1.323). The coordinator approved the design before the fix (request f77f728d, reply 89d802f3), with 011's agreement: design D1, not D2, and the two assertions changed. No C3 change is owed.
 
 ## Cause
 

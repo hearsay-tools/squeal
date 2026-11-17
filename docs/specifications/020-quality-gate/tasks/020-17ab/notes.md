@@ -1,6 +1,6 @@
 # 020-17ab notes: the estimate and the order (D17.1, D17.2)
 
-Worker fc234d55, 2026-11-11, on `cand/0.1.432` (`0bf414568`).
+Worker fc234d55, 2026-11-11, on `cand/0.1.432` (`e379f43b0`).
 
 ## Seam map
 

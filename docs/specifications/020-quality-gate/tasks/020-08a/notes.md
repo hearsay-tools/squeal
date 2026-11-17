@@ -1,6 +1,6 @@
 # 020-08a notes: coverage records in `ci record` parts
 
-Worker afa19f56, 2026-11-10, on `cez/afa19f56` from `4c0080a9e`. Spec D13 items 1 and 3 to 6.
+Worker afa19f56, 2026-11-10, on `cez/afa19f56` from `1bd0e448f`. Spec D13 items 1 and 3 to 6.
 
 ## Seam map
 

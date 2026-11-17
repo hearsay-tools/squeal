@@ -1,6 +1,6 @@
 # Wave 49
 
-From main (`2663ee397`, code 0.1.333; 0.1.334 is in review on other files), 2026-10-26. The human's card of 2026-10-26: 011-234 "build the fix now", gh-99 option A+ (row 011-243), 011-235 "yes". Three rows on disjoint seams. Host load is about 13 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main (`2ad685889`, code 0.1.333; 0.1.334 is in review on other files), 2026-10-26. The human's card of 2026-10-26: 011-234 "build the fix now", gh-99 option A+ (row 011-243), 011-235 "yes". Three rows on disjoint seams. Host load is about 13 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-234, a source path selects the readers from this worktree's own closures
 

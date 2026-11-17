@@ -1,6 +1,6 @@
 # Row 011-334 notes: the reads beside the run waits give a line, not a stack, on a busy store
 
-Worker ac85bcd7, 2026-11-14. Brief: `tasks/wave-88.md`, W1 (shape: repair, test first). Source: review `reviews/0.1.474.md` N1; `tasks/011-327/notes.md` decision 13. Based on `main` at `ad52e994a`.
+Worker ac85bcd7, 2026-11-14. Brief: `tasks/wave-88.md`, W1 (shape: repair, test first). Source: review `reviews/0.1.474.md` N1; `tasks/011-327/notes.md` decision 13. Based on `main` at `2764fd6d9`.
 
 ## Commits
 

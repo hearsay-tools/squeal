@@ -1,6 +1,6 @@
 # 011-66: a tier that crashes while its daemon stops is queued once more, worker notes (2026-10-22)
 
-Brief W1 of `../wave-13.md`, base `a5901f2bf` (0.1.261). Evidence `../../research/issue-50.md`, symptom 2 and its Recommendation. Spec 011 C4, C9 and D12's no-loop rule.
+Brief W1 of `../wave-13.md`, base `f90cc860a` (0.1.261). Evidence `../../research/issue-50.md`, symptom 2 and its Recommendation. Spec 011 C4, C9 and D12's no-loop rule.
 
 ## What changed
 

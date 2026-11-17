@@ -1,6 +1,6 @@
 # 019-42 notes: `wait-reads.test.ts` counted one poll too many
 
-Worker 67b6f6ad, 2026-11-04. Shape: repair. CI 41810579375 at `64ed7667e` (Node 22, shard 2/3, load average 2.6): "status --wait <path> reads the selected files' states, and every state only at its end" failed with `expected 7 to be less than or equal to 6` in `between`. The test took 2514 ms, so the runner was not slow.
+Worker 67b6f6ad, 2026-11-04. Shape: repair. CI 41810579375 at `c6d1a3bc6` (Node 22, shard 2/3, load average 2.6): "status --wait <path> reads the selected files' states, and every state only at its end" failed with `expected 7 to be less than or equal to 6` in `between`. The test took 2514 ms, so the runner was not slow.
 
 ## Cause
 
@@ -12,15 +12,15 @@ Spec 019 did not add a read or a poll. The wait's deadline timer did it: Node tr
 
 All probes ran in copies of the tree under the task's scratch directory (`git archive`, `node_modules` symlinked, `node_modules/.bin/vitest` run directly), not in the worktree. Host: 24 cores, load average 12 to 18 from other sessions during the probes.
 
-1. **Did 019 add a read?** `git log -p b1255533f..c5b7803f5` on `status-wait-lines.ts` and `status-wait-paths.ts` shows one commit, `910ed3def` (019-24). Its only change to the wait is `...leftGroupsOf(root, leftForPause)` in the result of the final read. That reads the policy file (`readPolicy`), not the store, and only once, at the end. The rest is line text. 019-25 (`9d07daf30`) did not touch these files.
+1. **Did 019 add a read?** `git log -p a40487185..ee7006203` on `status-wait-lines.ts` and `status-wait-paths.ts` shows one commit, `b088f6b94` (019-24). Its only change to the wait is `...leftGroupsOf(root, leftForPause)` in the result of the final read. That reads the policy file (`readPolicy`), not the store, and only once, at the end. The rest is line text. 019-25 (`56710fc8a`) did not touch these files.
 2. **Store sessions of `status --wait 2500 <path>`**, the failing test's own call. A probe test logged when each store session opened, what it read and who opened it. 10 waits at each tree:
 
    | tree | polls (sessions that read file states), per wait |
    |---|---|
-   | `b1255533f` | 5 5 5 5 5 5 5 6 6 5 |
-   | `c5b7803f5`, this row's base on main (`src` and `test` as at the CI commit `64ed7667e`) | 6 6 6 5 5 6 5 5 5 5 |
+   | `a40487185` | 5 5 5 5 5 5 5 6 6 5 |
+   | `ee7006203`, this row's base on main (`src` and `test` as at the CI commit `c6d1a3bc6`) | 6 6 6 5 5 6 5 5 5 5 |
 
-   Both trees have the same timeline and one read per poll: for example, at `c5b7803f5`, 1 ms, 6 ms, 1007 ms, 2013 ms, 2502 ms (early), 2504 ms (deadline, the only session that reads every state). All sessions come from the one `waitForNamed` call.
+   Both trees have the same timeline and one read per poll: for example, at `ee7006203`, 1 ms, 6 ms, 1007 ms, 2013 ms, 2502 ms (early), 2504 ms (deadline, the only session that reads every state). All sessions come from the one `waitForNamed` call.
 3. **Slow reads do not cause it.** With every state read blocked 5, 20 or 40 ms (`Atomics.wait`, no CPU used), 5 waits each gave 5 or 6 polls. A slow read leaves fewer early reads, not more.
 4. **The timer alone gives it.** A plain Node loop with the wait's clock rule and no store (`final = elapsed >= timeout`; pause `min(1000, remaining)`), timeout 37.3 ms, 400 waits per read time:
 

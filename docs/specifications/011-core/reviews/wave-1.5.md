@@ -1,10 +1,10 @@
 # Wave 1.5 re-review: 011-01 B1 and S1
 
-PASS `6e1f965bacaa1588fdb6d0b3394f7d5a29fda0cf`: 0 blockers, 0 should-fix findings, 0 additional notes. B1 and S1 are closed.
+PASS `64cc55c24efbfb5635a714da1e0bfeae73318bd7`: 0 blockers, 0 should-fix findings, 0 additional notes. B1 and S1 are closed.
 
 ## Verification
 
-Reviewed the exact `cand/0.1.204` candidate, HEAD `6e1f965bacaa1588fdb6d0b3394f7d5a29fda0cf`. The worktree was clean before and after verification. Scope is only `3c9949a8..6e1f965b`: diagnostic repair `97ea3e21`, bundles `3f50fb72`, retry-budget repair `d700f79b`, bundles `6e1f965b`. The prior review was read with `git show origin/main:docs/specifications/011-core/reviews/wave-1.md`; the accepted wording deviation was read from `origin/main:docs/specifications/011-core/status.md`. No product files were edited.
+Reviewed the exact `cand/0.1.204` candidate, HEAD `64cc55c24efbfb5635a714da1e0bfeae73318bd7`. The worktree was clean before and after verification. Scope is only `7098449f..64cc55c2`: diagnostic repair `f940be15`, bundles `1ea178fc`, retry-budget repair `370405d5`, bundles `64cc55c2`. The prior review was read with `git show origin/main:docs/specifications/011-core/reviews/wave-1.md`; the accepted wording deviation was read from `origin/main:docs/specifications/011-core/status.md`. No product files were edited.
 
 Independent checks in this worktree:
 
@@ -35,7 +35,7 @@ exit 0
 $ git status --short
 (no output)
 
-$ git diff --check 3c9949a8..6e1f965b
+$ git diff --check 7098449f..64cc55c2
 (no output)
 exit 0
 

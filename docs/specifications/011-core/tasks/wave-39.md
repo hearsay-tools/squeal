@@ -1,6 +1,6 @@
 # Wave 39
 
-From main after 0.1.314 (`5d71a17cb`), 2026-10-25. Two rows from the human's triage round 10 on disjoint seams, so they run in parallel: what the first header after the listing says (W1), and a selection's verdict (W2). 011-205 goes first among the header rows because 011-207, 011-211's text and 011-215 wait for it. 011-212 and 011-214 follow in the next wave; host load holds this one at two workers.
+From main after 0.1.314 (`5530669f2`), 2026-10-25. Two rows from the human's triage round 10 on disjoint seams, so they run in parallel: what the first header after the listing says (W1), and a selection's verdict (W2). 011-205 goes first among the header rows because 011-207, 011-211's text and 011-215 wait for it. 011-212 and 011-214 follow in the next wave; host load holds this one at two workers.
 
 ## W1: 011-205, the first header after the listing says what is current and inherited
 

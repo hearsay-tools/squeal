@@ -2,7 +2,7 @@
 # 008-30, from the agent user in a checkout of this repository: one release archive install.sh
 # reads through SQUEAL_SOURCE, a `git archive` of <rev> named as its tag archive, with that
 # release's install.sh beside it, into dogfood-008/src. The version is the one <rev>'s install.sh
-# names. Usage: sh make-archive.sh <rev>   (008-30 used origin/main at b4067d55, 0.1.186)
+# names. Usage: sh make-archive.sh <rev>   (008-30 used origin/main at 3c88fb6a, 0.1.186)
 set -eu
 REV=$1
 cd "$(git rev-parse --show-toplevel)"

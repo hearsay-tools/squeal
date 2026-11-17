@@ -2,11 +2,11 @@
 
 ## Problem
 
-CI on `hearsay-tools/squeal` (`.github/workflows/ci.yml` at 6dddcbf4) runs on every push to every branch: two Node jobs (22 and 24) of about 20 minutes each, nothing cancelled or skipped. In the 81 hours to 2026-10-15 14:47 UTC it ran 951 times for 27,790 job-minutes (`research/ci-run-triggers.md` 1):
+CI on `hearsay-tools/squeal` (`.github/workflows/ci.yml` at c276dbf4) runs on every push to every branch: two Node jobs (22 and 24) of about 20 minutes each, nothing cancelled or skipped. In the 81 hours to 2026-10-15 14:47 UTC it ran 951 times for 27,790 job-minutes (`research/ci-run-triggers.md` 1):
 
 - 594 runs were docs-only pushes. 106 of them failed on code that was already tested: flakes.
 - 342 runs were on `cez/*`, `exp/*`, `hold/*` and tags, whose CI nothing in the process reads.
-- 272 re-tested a SHA another ref was testing at the same second, mostly the old coordinator double push to a task branch and `main` (removed from the skill in 81f80792; sessions started before it still do it).
+- 272 re-tested a SHA another ref was testing at the same second, mostly the old coordinator double push to a task branch and `main` (removed from the skill in 7df5d74c; sessions started before it still do it).
 
 The organisation is on GitHub's Free plan: one pool of 20 concurrent jobs, shared with cezarion. The pool was full for 25.6% of the window, and Squeal's Node jobs then queued (p90 8.8 min, max 72 min; `ci-run-triggers.md` 5).
 
@@ -18,7 +18,7 @@ Each job's Test step is 19.6 of its 20.2 minutes. It almost doubled in five days
 - G2. A push that changes only `docs/` (outside `docs/**/probes/**`) starts no run.
 - G3. A run costs about 25 job-minutes instead of 40.4, and its Test wall time is under 9 minutes instead of about 19.
 - G4. No signal the process reads is lost: every `cand/*` push and every main code landing gets the full suite, the `version` job compares every main push's range, and the version-sensitive tests still run on Node 22 and 24.
-- G5. Over three days after landing, CI uses at most 120 job-minutes per hour, against 572 measured after 81f80792.
+- G5. Over three days after landing, CI uses at most 120 job-minutes per hour, against 572 measured after 7df5d74c.
 
 ## Non-goals
 
@@ -146,13 +146,13 @@ A docs commit lands through a branch: push `cand/docs-<id8>`, wait for `CI passe
 
 ## Open questions
 
-1. The landing re-test (the human). A main landing whose code equals a green candidate's (a fast-forward, or a rebase over docs-only commits) runs the full suite again. The 16 hours after 81f80792 had 48 candidate runs, each one's landing a repeat. A gate could skip the test jobs when a green `cand/*` run exists for a commit whose diff to HEAD is docs-only, and keep `version`. Decide after 010-20's numbers.
+1. The landing re-test (the human). A main landing whose code equals a green candidate's (a fast-forward, or a rebase over docs-only commits) runs the full suite again. The 16 hours after 7df5d74c had 48 candidate runs, each one's landing a repeat. A gate could skip the test jobs when a green `cand/*` run exists for a commit whose diff to HEAD is docs-only, and keep `version`. Decide after 010-20's numbers.
 2. Is `maxWorkers: 4` faster than Vitest's default of 3 on a 4-vCPU runner (`ci-test-time.md` open questions)? Measure it on one SHA, three runs each, after 010-20, since the measurement spends concurrency.
 3. The organisation's real concurrent-job limit (the human). Combined peaks of 38 jobs contradict the documented 20. Reading it needs `admin:org` or GitHub Support.
 
 ## References
 
 - `research/ci-run-triggers.md`, `research/ci-test-time.md` (2026-10-15).
-- `.github/workflows/ci.yml` and `scripts/check-version-bump.ts` at 6dddcbf4; commit 81f80792 (review before main; the coordinator push line).
+- `.github/workflows/ci.yml` and `scripts/check-version-bump.ts` at c276dbf4; commit 7df5d74c (review before main; the coordinator push line).
 - `docs/process.md` step 5; `.agents/skills/coordinator/SKILL.md` section 6.
 - Board Later: load-sensitive tests; 002's Codex `dist` drift.

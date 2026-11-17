@@ -1,6 +1,6 @@
 # 011-55: a promoted file under another worktree's claim makes no tier yield, worker notes (2026-10-23)
 
-Brief W4 of `../wave-18.md`; spec 011 C15 and C7 (claims); `../011-51/notes.md`, "Open for later rows", item 1. Base `e051dfc1a` (0.1.270). Commit `86de93c03` is the row.
+Brief W4 of `../wave-18.md`; spec 011 C15 and C7 (claims); `../011-51/notes.md`, "Open for later rows", item 1. Base `42fa5b0ee` (0.1.270). Commit `86de93c03` is the row.
 
 ## Seam map
 

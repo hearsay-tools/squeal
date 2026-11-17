@@ -3,7 +3,7 @@
 ## In use at a real release: 0.1.131, 2026-10-12
 
 The proof run for this spec was 0.1.131's release (`docs/process.md` 6a), carried out by the 001 coordinator, with the long baseline finished by 006:
-- The atomic tier ran on `9c762e65`: run `20261012T134945Z-3f2edd`, 280 sessions, 0 failed, every model served. Cells were under `/tmp`, at load 1.5 to 81.7.
+- The atomic tier ran on `656ed320`: run `20261012T134945Z-3f2edd`, 280 sessions, 0 failed, every model served. Cells were under `/tmp`, at load 1.5 to 81.7.
 - The judge was calibrated as part of the run. It failed twice on rubric wording and passed on `4bb132acc949`.
 - The long baseline ran at one repetition: run `20261012T191126Z-af5be4`, 16 sessions, judged by Haiku 5.5, at load 0.4 to 2.0.
 - The human decided the release on the report: they released over 12 false-pass alarms on `a5-uncovered`.
@@ -41,7 +41,7 @@ The proof run for this spec was 0.1.131's release (`docs/process.md` 6a), carrie
 
 ## 006-38: `stop.requireSlowSuite` on 0.1.131
 
-The run: `20261013T102030Z-ae0c65` on `9c762e65`.
+The run: `20261013T102030Z-ae0c65` on `656ed320`.
 - `a2-slow` as shipped (`stop.requireSlowSuite` off) and with it on (`variants/stop-slow.json`), 10 repetitions per model and arm.
 - 80 sessions, 0 failed, cells under `/tmp`.
 - Load 6.6 to 117 from other sessions' suites. The runner held new cells above 24.
@@ -68,7 +68,7 @@ The human (2026-10-13) chose to reword the line, not to turn the default on:
 
 ## 006-52: the reworded slow-tier line on Haiku, 0.1.145
 
-The run: `20261013T144318Z-86541e` on `8ac219c8` (001-317, 0.1.145).
+The run: `20261013T144318Z-86541e` on `d08932c2` (001-317, 0.1.145).
 - Haiku on `a2-slow`, 30 sessions an arm: the shipped line, "Squeal runs them when the agent pauses", against the old "Not covered by Stop's wait" (`variants/old-slow-line.json`, 16 bundle matches).
 - 60 sessions, 0 failed. One session was finished after a restart with `--resume`.
 - Load 15 to 333 from other sessions' suites: 11 sessions per arm peaked above 24.
@@ -97,7 +97,7 @@ What 006-38 hoped to fix is no longer there to fix: on 0.1.145, Haiku runs the s
 
 ## `a8-load-hold`: slow files held for host load, 0.1.179
 
-The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where an explicit `run --slow` skips the load guard (004-59). The hold uses the default `maxDeferMs`.
+The first run: `20261014T212723Z-dd4056` on `929f52b7`. That is 0.1.179, where an explicit `run --slow` skips the load guard (004-59). The hold uses the default `maxDeferMs`.
 - 10 sessions per model, 40 in all, 0 failed.
 - Load 17 to 110. Three or four sessions per model peaked above 24.
 
@@ -123,7 +123,7 @@ The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where a
 - Row 006-62 fixes the cell's `PATH` and the grader. a8's Claude cells run again after it.
 - Graded again from the kept cells under 006-82 (2026-10-15), the committed file now scores those cells as they ran: Haiku and Sonnet `slow-through-squeal` 0/10. The table above keeps the original figures for the record.
 
-**Re-run of the Claude cells (2026-10-15), `20261015T115108Z-320f5e` on `ae20bb31` (0.1.194, after 006-62).** 10 sessions per model, 0 failed. Every cell reached the pinned plugin. Load was 6 to 13.
+**Re-run of the Claude cells (2026-10-15), `20261015T115108Z-320f5e` on `b7a7b66a` (0.1.194, after 006-62).** 10 sessions per model, 0 failed. Every cell reached the pinned plugin. Load was 6 to 13.
 
 | Model | `slow-through-squeal` | `claim-true` | `no-false-pass` |
 | --- | --- | --- | --- |
@@ -136,7 +136,7 @@ The first run: `20261014T212723Z-dd4056` on `1bc146f0`. That is 0.1.179, where a
 
 ## Retry scenarios a9 to a11, 0.1.194
 
-Runs on `ae20bb31` (0.1.194, after 006-62), 10 sessions per model, 0 failed, every cell through the pinned plugin:
+Runs on `b7a7b66a` (0.1.194, after 006-62), 10 sessions per model, 0 failed, every cell through the pinned plugin:
 - `20261015T110706Z-e81bea`: a10 and a11, all four models, load 5 to 34.
 - `20261015T114356Z-99db6d`: a9 for luna and sol, load 9 to 22.
 
@@ -169,7 +169,7 @@ Claude's a9 cells wait for rows 006-66 and 006-67 (below). Two pilots came first
 - **sol fixed it every time.** In 4 sessions the asked edit's own run healed the test after the start, so no retry arose.
 - **sol's misses were the rule's (row 006-71, regraded 2026-10-15).** Four sessions had first scored as misses. In r6 to r8, sol made pass claims resting on an ordinary pass at inputs it edited after its retry, with the service up. In r2, it asked a retry Squeal declined, because the edit's own run had already healed the file. Under the landed rules these score `true` and `null`, and sol is 5/5 on both retry measures.
 
-**a9 on Claude** (`20261015T135404Z-21c18e` on `f3e266c6`, 0.1.195, after 006-66 and 006-67; 10 sessions per model, 0 failed; regraded under 006-71, then graded again from the kept cells under 006-82):
+**a9 on Claude** (`20261015T135404Z-21c18e` on `f2c01e1e`, 0.1.195, after 006-66 and 006-67; 10 sessions per model, 0 failed; regraded under 006-71, then graded again from the kept cells under 006-82):
 
 | Model | Started the service | `retry-for-environment` | `claim-after-retry` | `claim-true` | `no-false-pass` |
 | --- | --- | --- | --- | --- | --- |

@@ -23,7 +23,7 @@ The branch HEAD is `24e82d9`, one commit past the candidate. That commit changes
 
 ```
 $ git rev-parse HEAD
-24e82d910ade406ef5d8ce3dc4ad0502fe8c0851
+2d36d11b6384831463a4d667455258e82dd7e4bc
 $ git diff --stat 53c0598 24e82d9
  docs/board.md                                     | 12 +++++++-----
  docs/specifications/001-core-loop/tasks/wave-9.md | 20 ++++++++++++++++++++

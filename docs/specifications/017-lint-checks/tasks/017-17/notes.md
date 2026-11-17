@@ -1,6 +1,6 @@
 # 017-17 to 017-20: ESLint worker repairs from dogfood 017-13
 
-Worker 4b6522b5, 2026-11-01. Wave 4 W1 (`../wave-4.md`), shape repair. The rows and their done-when are `../../lessons.md` Round 1, Proposed rows L3, L4, L1 and L2. This one file covers the four rows. Commits on `cez/4b6522b5`, base `a64a454f9`:
+Worker 4b6522b5, 2026-11-01. Wave 4 W1 (`../wave-4.md`), shape repair. The rows and their done-when are `../../lessons.md` Round 1, Proposed rows L3, L4, L1 and L2. This one file covers the four rows. Commits on `cez/4b6522b5`, base `9687fad2f`:
 
 | Row | Commit | Test |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 # Issue 77: handover blocks validation and status waits
 
-Date: 2026-10-22. Documentation-only triage against origin/main `7f02076292d852ab1cd06df61e204d4bda898aef`.
+Date: 2026-10-22. Documentation-only triage against origin/main `521cdf7e6327847837041f868459f8b86e7b39da`.
 
 ## Fit and owner
 

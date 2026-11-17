@@ -20,4 +20,4 @@ node $P/cost.mjs ~/projects/cezar packages/web/src/routes/task-thread/markdown.t
 npx vitest run --config $P/vitest.config.ts --root $P
 ```
 
-Run on 2026-10-17 at Squeal `d8d9aa97`, Node 24.21.0 and Vitest 5.0.3, on 24 CPUs. The two scheduler runs started at load 22.5 and 9.0. The calm cost run was at load 10.2. An earlier cost run, started at load 29 and above the shared host's hold, was discarded and replaced.
+Run on 2026-10-17 at Squeal `6c459717`, Node 24.21.0 and Vitest 5.0.3, on 24 CPUs. The two scheduler runs started at load 22.5 and 9.0. The calm cost run was at load 10.2. An earlier cost run, started at load 29 and above the shared host's hold, was discarded and replaced.

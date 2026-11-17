@@ -1,6 +1,6 @@
 # 011-246 notes: the WAL-switch test's lock holder failed its own COMMIT
 
-Worker 466e7d75, brief W3 of `tasks/wave-51.md`, base main at 0885eec11. Shape: repair (tests only). Host Node 24.21.0; the probe also ran on 22.23.3.
+Worker 466e7d75, brief W3 of `tasks/wave-51.md`, base main at ba25017ad. Shape: repair (tests only). Host Node 24.21.0; the probe also ran on 22.23.3.
 
 ## Cause
 
@@ -10,7 +10,7 @@ The opener (`switchToWal`, `src/core/store/open.ts:172`) retries `PRAGMA journal
 
 In rollback mode, `COMMIT` writes the database file, so it needs the EXCLUSIVE lock, and EXCLUSIVE needs every SHARED lock gone. If the holder's timer fires while one of the opener's attempts holds SHARED, the holder takes PENDING and finds the SHARED lock. SQLite calls the busy handler in this case: the docs of `sqlite3_busy_handler` name the process that holds RESERVED and wants EXCLUSIVE as the one that may wait, and the reader that wants to upgrade as the one that gets SQLITE_BUSY at once. With a busy timeout of 0 there is no handler, so `COMMIT` failed at once with "database is locked". The exception in the timer callback made the holder exit 1, and the test failed at `expect(await released).toBe(0)` (`expected 1 to be +0`).
 
-The window is the time an attempt holds SHARED, against a 5 ms period, so the failure is rare. Load makes it more likely: an opener that loses the CPU while it holds SHARED widens the window. That fits both sightings: cand/0.1.336's CI 40302302055, Node 22 (1/3), and 006's gate on `f4b3b6ec` under load. Neither wave changed store code.
+The window is the time an attempt holds SHARED, against a 5 ms period, so the failure is rare. Load makes it more likely: an opener that loses the CPU while it holds SHARED widens the window. That fits both sightings: cand/0.1.336's CI 40302302055, Node 22 (1/3), and 006's gate on `00ebd38d` under load. Neither wave changed store code.
 
 With a busy timeout, the holder's PENDING lock blocks the opener's next SHARED lock (the opener's own busy timeout waits there, and `switchToWal` retries a busy error anyway). The current SHARED lock ends with its statement, the holder gets EXCLUSIVE and commits, and the opener then switches the file. No deadlock: the opener never waits while it holds SHARED.
 
@@ -42,7 +42,7 @@ reader.exec("COMMIT");
 **Deliberate break** (reverted before the commit). The test's opener changed to never wait: `openStore(commonDir, { busyTimeoutMs: 0 })` in place of `open(commonDir)`, so it has no busy timeout and `switchToWal` has no retry time. With the holder fix in place, Squeal at revision 2:
 
 ```
-Revision: 2 · 0885eec1 + 2, dirty
+Revision: 2 · ba25017a + 2, dirty
 Selected: test/store/opening.test.ts
   FAIL  test/store/opening.test.ts > store opened by concurrent processes (task 001-207) > waits out a write lock another process holds when it switches the file into WAL
         database is locked (ERR_SQLITE_ERROR)
@@ -53,7 +53,7 @@ Named test files at revision 2: 1 known failure: 1 test; 1 test file, each with 
 After the revert, at revision 3:
 
 ```
-Revision: 3 · 0885eec1 + 3, dirty
+Revision: 3 · ba25017a + 3, dirty
 Selected: test/store/opening.test.ts
 Named test files at revision 3: no known failures; 1 test file, each with a current result, after 2.4 s.
 ```

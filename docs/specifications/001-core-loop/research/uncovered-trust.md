@@ -1,6 +1,6 @@
 # Research: why luna trusts Squeal's count over an uncovered suite
 
-Board row 001-308, brief in `tasks/wave-13.md`. Read only. No eval, no `claude`, no `codex` and no repository script ran. The method was static reading of the cells' rollouts (`out/harness/**`), `out/events.jsonl` and `out/grade.json`; the retained transcripts in `evals/results/*.json`; Squeal's source at `87eeacc3`; and two Squeal stores, opened read-only (`immutable=1`). `C` below is `/tmp/squeal-evals-1001/cells`. Cells under `/tmp` may be gone later, so each claim names the path it was read from.
+Board row 001-308, brief in `tasks/wave-13.md`. Read only. No eval, no `claude`, no `codex` and no repository script ran. The method was static reading of the cells' rollouts (`out/harness/**`), `out/events.jsonl` and `out/grade.json`; the retained transcripts in `evals/results/*.json`; Squeal's source at `954aeec5`; and two Squeal stores, opened read-only (`immutable=1`). `C` below is `/tmp/squeal-evals-1001/cells`. Cells under `/tmp` may be gone later, so each claim names the path it was read from.
 
 Tags: **verified** means read in the named transcript or file and counted; **source** means read in source code; **inferred** means reasoned from those.
 
@@ -15,7 +15,7 @@ Tags: **verified** means read in the named transcript or file and counted; **sou
 
 ## 1. What separates the sessions that ran the node:test suite
 
-**Who ran it.** In run 3f2edd (0.1.131, `C/9c762e650a76/20261012T134945Z-3f2edd/a5-uncovered.*/out/grade.json`, `nodeTestRuns`):
+**Who ran it.** In run 3f2edd (0.1.131, `C/656ed32023bd/20261012T134945Z-3f2edd/a5-uncovered.*/out/grade.json`, `nodeTestRuns`):
 
 | Model | ran it after the edit | false pass |
 | --- | --- | --- |
@@ -94,8 +94,8 @@ A variant patches strings in `plugins/*/dist` with find and replace, including t
 
 ## Sources
 
-- Cells: `C/9c762e650a76/20261012T134945Z-3f2edd/{a5-uncovered,a6-daemon-down}.p0.*`, `C/87d6fd57583f/20261012T204136Z-378f99/a5-uncovered.p0.codex-gpt-6-luna.*`, `C/31696be329aa/20261012T213850Z-cae7a8/a5-uncovered.p0.codex-gpt-6-luna.*`, `C/9c762e650a76/20261012T214807Z-23e193/a5-uncovered.p0.codex-gpt-6-luna.e-xhigh.*`; each `out/harness/**/rollout-*.jsonl` (Codex), `out/events.jsonl` (Claude), `out/grade.json`, `work/{package.json,README.md,AGENTS.md}`.
+- Cells: `C/656ed32023bd/20261012T134945Z-3f2edd/{a5-uncovered,a6-daemon-down}.p0.*`, `C/13f6de48fc11/20261012T204136Z-378f99/a5-uncovered.p0.codex-gpt-6-luna.*`, `C/0480383185b0/20261012T213850Z-cae7a8/a5-uncovered.p0.codex-gpt-6-luna.*`, `C/656ed32023bd/20261012T214807Z-23e193/a5-uncovered.p0.codex-gpt-6-luna.e-xhigh.*`; each `out/harness/**/rollout-*.jsonl` (Codex), `out/events.jsonl` (Claude), `out/grade.json`, `work/{package.json,README.md,AGENTS.md}`.
 - Results: `evals/results/2026-10-11-0.1.123.20261011T194614Z-215639.json`, `2026-10-11-0.1.124.20261011T203431Z-d0d96d.json`, `2026-10-12-0.1.131.20261012T191126Z-af5be4.json` (t2 transcripts), `TREND.md`.
-- Squeal at `87eeacc3`: `src/harness/shared/{primer,deliver,stop}.ts`, `src/cli/{status-wait-lines,status-wait-edit}.ts`, `src/core/status/format-status.ts`, `src/core/types/status.ts`, `src/core/keys/closure.ts`, `src/core/store/schema.ts`, `src/core/delivery/format.ts`, `plugins/codex/skills/squeal/SKILL.md`, `evals/atomic/{atomic.json,*.txt}`, `evals/tasks/t2-weekend.txt`, `evals/variants/slow-step.json`, `evals/lib/variant.mjs`.
+- Squeal at `954aeec5`: `src/harness/shared/{primer,deliver,stop}.ts`, `src/cli/{status-wait-lines,status-wait-edit}.ts`, `src/core/status/format-status.ts`, `src/core/types/status.ts`, `src/core/keys/closure.ts`, `src/core/store/schema.ts`, `src/core/delivery/format.ts`, `plugins/codex/skills/squeal/SKILL.md`, `evals/atomic/{atomic.json,*.txt}`, `evals/tasks/t2-weekend.txt`, `evals/variants/slow-step.json`, `evals/lib/variant.mjs`.
 - Stores, read-only: Squeal's `<git-common-dir>/squeal/store.sqlite`, cezar's (`~/projects/cezar`); git logs of Squeal, cezar and `~/projects/client-monorepo`, last 300 non-merge commits, 2026-10-13.
 - Prior research: `research/uncovered-suites.md` (001-290), `006-model-evals/status.md`.

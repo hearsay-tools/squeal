@@ -79,7 +79,7 @@ Cezar `lint` command. The fixture and exact child commands are in the probe.
 
 ## Q3–Q4: what the code and contracts establish
 
-**read in source code**, Squeal `1c74feb5768324fc89e894e9989e445d7b25b480`
+**read in source code**, Squeal `a7aee30712fa5fc3630508eec5d259e9a85dbc5c`
 (package 0.1.497): `src/core/types/lint.ts` and `lint/store/checks.ts` define
 only `eslint` and `oxlint`. `lint/provider/oxlint/provider.ts` calls oxlint
 with `--format json --threads 1 -- <paths>`. It does not call `scripts.lint`.
@@ -134,6 +134,6 @@ claim; no suite run is needed for this documentation-only research.
 
 - Fetched with `gh issue view 219 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt,updatedAt`: [#219](https://github.com/hearsay-tools/squeal/issues/219), updated 2026-11-14. Original observations are reporter claims.
 - Fetched with `gh issue view 170 --repo hearsay-tools/squeal --json title,body,url`: [#170](https://github.com/hearsay-tools/squeal/issues/170). Availability contrast only; not rerun here.
-- [Squeal source at examined commit](https://github.com/hearsay-tools/squeal/tree/1c74feb5768324fc89e894e9989e445d7b25b480/src/core), paths cited above; [017 spec](../spec.md) D2/D8/D11 and [019 spec](../../019-run-triggers/spec.md) D5, with both amendment logs read.
+- [Squeal source at examined commit](https://github.com/hearsay-tools/squeal/tree/a7aee30712fa5fc3630508eec5d259e9a85dbc5c/src/core), paths cited above; [017 spec](../spec.md) D2/D8/D11 and [019 spec](../../019-run-triggers/spec.md) D5, with both amendment logs read.
 - Local Cezar source: `~/projects/cezar` at the pinned revision above; `package.json`, `packages/cezar/src/lint/run.ts`, `packages/cezar/src/ast-grep-rules.testkit.ts`, `.ai/ast-grep/rules/active-run-literal.yml` and its rule tests.
 - [Probe README](probes/issue-219/README.md), [script](probes/issue-219/run.mts), [captured output](probes/issue-219/result.json). The README pins external helper/rule hashes and documents the reduced command.

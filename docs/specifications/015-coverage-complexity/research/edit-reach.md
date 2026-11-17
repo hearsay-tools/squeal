@@ -2,7 +2,7 @@
 
 Researcher, 2026-11-07, 10:20Z to 11:50Z. The human asked whether a suite that needs many runs per edit signals code or tests that are too coupled. Read: `docs/vision.md`, `docs/styleguide.md`, this spec's `status.md`, `011-core/research/edit-load.md` and its probes, `011-core/research/host-load.md`, `new-worktree-baseline/hubs.cjs`, and Squeal's keying code (below).
 
-Versions: cezar `d6fed8685` (main, 2026-11-07 10:04Z; `squeal.config.json` with the browser group `at: manual`), squeal `bc58ad12f` (main). Read-only clones under `/tmp/er015`. Store copies (with `-wal` and `-shm`) and `report.json` copies taken 11:25Z: cezar 34,248 run reports, 752 watch revisions 2026-10-14 to 11-07; squeal 8,159 reports, 1,523 watch revisions 2026-10-06 to 11-07. No test, build or benchmark ran. Probes: `probes/edit-reach/README.md`.
+Versions: cezar `d6fed8685` (main, 2026-11-07 10:04Z; `squeal.config.json` with the browser group `at: manual`), squeal `bbeb184b6` (main). Read-only clones under `/tmp/er015`. Store copies (with `-wal` and `-shm`) and `report.json` copies taken 11:25Z: cezar 34,248 run reports, 752 watch revisions 2026-10-14 to 11-07; squeal 8,159 reports, 1,523 watch revisions 2026-10-06 to 11-07. No test, build or benchmark ran. Probes: `probes/edit-reach/README.md`.
 
 **Units.** *Recorded seconds* of a test file: the median of its `fileDurations` over the stored run reports (cezar 1,646 of 1,780 files, 133 from summed test durations, 1 none; squeal 1,498 of 1,504, 6 none), measured on this loaded host. *Share*: the re-keyed files' seconds over the automatic suite (cezar 1,683 files, 11,715 s, without the 97 manual browser files of 2,148 s; squeal 1,504 files, 6,696 s). A *pair* is one (source file, test file it re-keys); *pair-seconds* weight a pair by the test file's seconds. "Every source edited once" weights each source file equally; "real edits" weights it by its count in the store's watch revisions of 1 to 3 paths (cezar 211 source edits of 87 files; squeal 137 of 64; small samples).
 
@@ -120,7 +120,7 @@ Yes, read-only and pull-only (vision: "push transitions, pull state"), for examp
 
 ## Sources
 
-- Squeal source at `bc58ad12f`: `src/core/keys/closure.ts` (`assembleClosure`), `src/runners/vitest/graph.ts` (`importClosure`, static and dynamic deps), `environment.ts` and `project.ts` (setup and config files in the environment), `src/core/keys/observed.ts`, `src/core/store/schema.ts`, `src/core/code/store/schema.ts`, `src/core/code/coverage/{record,parts,types}.ts`.
+- Squeal source at `bbeb184b6`: `src/core/keys/closure.ts` (`assembleClosure`), `src/runners/vitest/graph.ts` (`importClosure`, static and dynamic deps), `environment.ts` and `project.ts` (setup and config files in the environment), `src/core/keys/observed.ts`, `src/core/store/schema.ts`, `src/core/code/store/schema.ts`, `src/core/code/coverage/{record,parts,types}.ts`.
 - Cezar at `d6fed8685`: `squeal.config.json`, `vitest.config.ts`, `packages/{cezar,web}/vitest.{config,setup}.ts`, the testkits named above.
 - Store copies: `~/projects/cezar/.git/squeal/store.sqlite`, `~/projects/squeal/.git/squeal/{store,code}.sqlite`, with their `runs/*/report.json`.
 - Earlier research: `docs/specifications/011-core/research/edit-load.md` (findings 1 and 3), `host-load.md`.

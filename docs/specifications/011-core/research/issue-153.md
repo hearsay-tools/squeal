@@ -4,7 +4,7 @@ Keep the read-only policy decision with #150, and investigate Stop provenance an
 
 ## Scope and versions
 
-Research only, 2026-11-06. Inspected checkout `50f399db24467437a5d3d7a9788a31514e8a0d41`, package and shipped CLI **0.1.407**, Node **24.22.1**, Vitest **5.0.3**, Linux, **24 CPUs**. Issue [#153](https://github.com/hearsay-tools/squeal/issues/153) reports parent 0.1.407 and a worker daemon command at 0.1.404. That does not establish the version of each Stop hook. Also read the local release-tag source at `squeal--v0.1.404` (`3b066c002`). No incident worktree, browser, Cezar environment or nested worker was run. All probes used the inspected checkout. No product change is authorized.
+Research only, 2026-11-06. Inspected checkout `db202b5047bdb5a25ced6afca3c4c11dc6ad55d4`, package and shipped CLI **0.1.407**, Node **24.22.1**, Vitest **5.0.3**, Linux, **24 CPUs**. Issue [#153](https://github.com/hearsay-tools/squeal/issues/153) reports parent 0.1.407 and a worker daemon command at 0.1.404. That does not establish the version of each Stop hook. Also read the local release-tag source at `squeal--v0.1.404` (`8b7145ffe`). No incident worktree, browser, Cezar environment or nested worker was run. All probes used the inspected checkout. No product change is authorized.
 
 Initial one-minute load: **4.90**. Immediately before the synthetic probe: **3.74**. Before the two live cases: **3.68**, **3.54**. Each was below 24; each script checks this itself. Commands and raw observations are preserved under `docs/specifications/011-core/research/probes/issue-153/`. The probe work finished inside the 20-minute bound.
 
@@ -65,7 +65,7 @@ Outstanding incident evidence: exact Stop-hook version/path and full block text;
 ## Sources and verification
 
 - `gh issue view 153 --repo hearsay-tools/squeal --json body,url,state`; also fetched `gh issue view <150|147|78> --repo hearsay-tools/squeal --json number,title,state,body,comments`. [#150](https://github.com/hearsay-tools/squeal/issues/150), [#147](https://github.com/hearsay-tools/squeal/issues/147), [#78](https://github.com/hearsay-tools/squeal/issues/78). Incident assertions are reports, not verified facts.
-- Repository source at [50f399db](https://github.com/hearsay-tools/squeal/tree/50f399db24467437a5d3d7a9788a31514e8a0d41): paths cited above; `src/harness/shared/stop-slow.ts`, `stop-required.ts`, `stop-lint.ts`; `src/core/state/required.ts`; `src/cli/stop.ts` and `stop-waits.ts`.
+- Repository source at [db202b50](https://github.com/hearsay-tools/squeal/tree/db202b5047bdb5a25ced6afca3c4c11dc6ad55d4): paths cited above; `src/harness/shared/stop-slow.ts`, `stop-required.ts`, `stop-lint.ts`; `src/core/state/required.ts`; `src/cli/stop.ts` and `stop-waits.ts`.
 - `git show squeal--v0.1.404:src/harness/shared/stop-lint.ts`; release [0.1.404](https://github.com/hearsay-tools/squeal/tree/squeal--v0.1.404). No 0.1.404 runtime probe.
 - `docs/vision.md`; 011 C8/C9/C10 and status; 017 D8 and status; 004 D2/D9 and status; 019 D1/D4 and status for the lint extension those files reference.
 - [Probe scripts, commands and raw outputs](probes/issue-153/README.md). No product tests, full suites, e2e, browser environment or nested workers were launched. Squeal reports these throwaway scripts as untested because no repository test loads them; they were executed directly as research probes.

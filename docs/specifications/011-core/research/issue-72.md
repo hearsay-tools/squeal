@@ -1,6 +1,6 @@
 # Issue 72: active verification across plugin runtime removal
 
-Date: 2026-10-21. Source: [issue #72](https://github.com/hearsay-tools/squeal/issues/72), an agent-reported `friction` issue. Squeal 0.1.238 (this worktree at `c17caeea0`, `plugins/claude-code` as built and committed). Host: one-minute load 9.70 before the work, 11.92 and 16.00 at the two runs, 24 CPUs, so the live reproduction ran. Node 24.21.0, Vitest 5.0.3.
+Date: 2026-10-21. Source: [issue #72](https://github.com/hearsay-tools/squeal/issues/72), an agent-reported `friction` issue. Squeal 0.1.238 (this worktree at `7c68cb22b`, `plugins/claude-code` as built and committed). Host: one-minute load 9.70 before the work, 11.92 and 16.00 at the two runs, 24 CPUs, so the live reproduction ran. Node 24.21.0, Vitest 5.0.3.
 
 ## Verdict
 

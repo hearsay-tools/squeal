@@ -1,6 +1,6 @@
 # Daemon presence: one module for what is known about a worktree's daemon
 
-Design brief from the architecture review of 2026-11-04 (main at 5d5dfa899, 0.1.402; Cezar task 4fac6c7f, report artifact e7f3508b). Rows 011-293, 011-294 and 011-295. Terms: `GLOSSARY.md` (Daemon presence, Presence view, Presence state, Presence event, Resting, Stopped by request, Gone). The decisions below are the human's, taken one at a time on 2026-11-04.
+Design brief from the architecture review of 2026-11-04 (main at 37ce2ad64, 0.1.402; Cezar task 4fac6c7f, report artifact e7f3508b). Rows 011-293, 011-294 and 011-295. Terms: `GLOSSARY.md` (Daemon presence, Presence view, Presence state, Presence event, Resting, Stopped by request, Gone). The decisions below are the human's, taken one at a time on 2026-11-04.
 
 ## Problem
 
@@ -14,10 +14,10 @@ No single module owns the rule "what is this worktree's daemon doing now". The f
 - The raw heartbeat check is written 7 times. `delivery/liveness.ts:37` and `status/snapshot.ts:284` are word for word the same.
 - The writers and the keys sit in `types/daemon.ts` and `types/store.ts`. What a value means is decided again by each reader. Two different functions are both named `marksOf`. `ps/flags.ts:258` re-derives `lifecycle.ts`'s exit rules.
 - Since 2026-10-15 the files involved have 98 commits, 54 of them fixes. The repeated subject is that a new fact reached some readers and a review found the others, for example:
-  - b605644af "every reader tells a starting daemon from a stopped one"
-  - 474f18f1a "a current start wins over a stop in every reader"
-  - 8d2895485 "a wait reads the handoff as the status it prints"
-  - d6050f4e5 "a wait reads a stale record's replacement start as status does"
+  - ddf3640d7 "every reader tells a starting daemon from a stopped one"
+  - 4bacf67af "a current start wins over a stop in every reader"
+  - 4a05caefe "a wait reads the handoff as the status it prints"
+  - bebcd653d "a wait reads a stale record's replacement start as status does"
 
 ## Decisions (the human, 2026-11-04)
 

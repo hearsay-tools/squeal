@@ -1,7 +1,7 @@
 # Wave 14 review (006-88)
 
 Candidate: `cand/006-86`, pinned to `3a72bfec6828bea248e53cc771f6a449f9356581`.
-Range: `origin/main..3a72bfec`, with `origin/main` at `9faaf5d676076a32f1c516cbd1a2d203e610fc2e`.
+Range: `origin/main..3a72bfec`, with `origin/main` at `cc6c8c1faf4163f5e8038d1d1d2765f63f027b3e`.
 Rows: 006-86 and 006-87. Reviewed in a separate detached worktree at the pinned SHA; this report is committed separately.
 
 ## Verdict

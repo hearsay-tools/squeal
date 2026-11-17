@@ -55,7 +55,7 @@ Use /reviewer. Range: the 005-21, 005-15 and 005-19 commits and the 0.1.146 buil
 
 **Rules:** no model session, never the real `claude` or `codex`; stub CLIs in scratch homes only; scratch roots inside your own directory. Output `reviews/wave-3.md` on your branch; change no source.
 
-# Wave 3.5: repairs from `reviews/wave-3.md` (FAIL at `2247281c`)
+# Wave 3.5: repairs from `reviews/wave-3.md` (FAIL at `5977350f`)
 
 Three workers on disjoint files, then one narrow re-review. Code and text only: no model session, never the real `claude` or `codex`, scratch homes and stub CLIs. Every full run is `npx vitest run --maxWorkers=4` (host load). Leave bundles, `package.json`'s version and `docs/board.md` to the coordinator.
 

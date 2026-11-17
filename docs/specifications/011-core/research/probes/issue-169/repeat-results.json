@@ -19,7 +19,7 @@
       "utc": "2026-11-10T04:14:24.122966+00:00",
       "load_1m": 3.083984375,
       "exit_code": 0,
-      "stdout": "db3224c0f8203bf92363cfbbd87f89f191a8fdfe\n",
+      "stdout": "b13a79e71275bea9ce3b15b6e16b2b73ab2f2edc\n",
       "stderr": ""
     },
     {
@@ -70,7 +70,7 @@
       "utc": "2026-11-10T04:14:26.319270+00:00",
       "load_1m": 3.083984375,
       "exit_code": 3,
-      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file`\n",
+      "stdout": "Revision: 6 \u00b7 b13a79e7 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file`\n",
       "stderr": ""
     },
     {
@@ -99,7 +99,7 @@
       "utc": "2026-11-10T04:14:28.077621+00:00",
       "load_1m": 3.083984375,
       "exit_code": 3,
-      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nCurrent (2):\n  2 pass: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nNamed test files have no verdict: 2 test files passed at revision 6; the daemon has not stored its pass over the latest edits, so these results may not cover them. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file-lines.test.ts test/cli/named-file-end.test.ts`\n",
+      "stdout": "Revision: 6 \u00b7 b13a79e7 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nCurrent (2):\n  2 pass: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nNamed test files have no verdict: 2 test files passed at revision 6; the daemon has not stored its pass over the latest edits, so these results may not cover them. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file-lines.test.ts test/cli/named-file-end.test.ts`\n",
       "stderr": ""
     },
     {
@@ -126,7 +126,7 @@
       "utc": "2026-11-10T04:14:29.969801+00:00",
       "load_1m": 3.0771484375,
       "exit_code": 3,
-      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/commit. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/commit`\n",
+      "stdout": "Revision: 6 \u00b7 b13a79e7 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/commit. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/commit`\n",
       "stderr": ""
     },
     {
@@ -139,7 +139,7 @@
       "utc": "2026-11-10T04:14:31.447922+00:00",
       "load_1m": 3.0771484375,
       "exit_code": 3,
-      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts\nCurrent (1):\n  1 pass: test/cli/named-file-lines.test.ts\nNamed test files have no verdict: 1 test file passed at revision 6; the daemon has not stored its pass over the latest edits, so this result may not cover them; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file test/cli/named-file-lines.test.ts`\n",
+      "stdout": "Revision: 6 \u00b7 b13a79e7 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts\nCurrent (1):\n  1 pass: test/cli/named-file-lines.test.ts\nNamed test files have no verdict: 1 test file passed at revision 6; the daemon has not stored its pass over the latest edits, so this result may not cover them; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file test/cli/named-file-lines.test.ts`\n",
       "stderr": ""
     }
   ]

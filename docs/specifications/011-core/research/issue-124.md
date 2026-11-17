@@ -2,7 +2,7 @@
 
 Treat this as a request for startup ordering across worktrees. Preserve the existing worktree-local stop contract. A parent stop does not hold a child by design. An explicit child stop can be placed before its first hook when the orchestrator exposes that interval. Live reproduction was skipped because load exceeded CPU count.
 
-Examined 2026-10-28: installed Squeal **0.1.374**, Node **v24.22.1**; repository source at `b6e326e9ac1a35fcf27c9ff6bf28489551a090f6`. Scope: [issue 124](https://github.com/hearsay-tools/squeal/issues/124), spec 011 C6/C8/C9, related C1. No product, board, spec, status or skill edits.
+Examined 2026-10-28: installed Squeal **0.1.374**, Node **v24.22.1**; repository source at `9890dce6c9e196e8e8e039e655c109e2d33a0e89`. Scope: [issue 124](https://github.com/hearsay-tools/squeal/issues/124), spec 011 C6/C8/C9, related C1. No product, board, spec, status or skill edits.
 
 | Question | Answer | Evidence |
 | --- | --- | --- |

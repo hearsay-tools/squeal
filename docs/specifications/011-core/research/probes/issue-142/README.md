@@ -17,7 +17,7 @@ An optional first argument replaces the version directory. The probe requires
 version 0.1.390. Each invocation checks one-minute load against CPU count and
 skips the case if load is higher. Each CLI wait requests 1,500 ms.
 
-The store-seeding imports come from checkout `8ce4f23fc18c67cb1259b894fed74f395c0c02b5`
+The store-seeding imports come from checkout `2432fc1128f402063f6aef0ca232ca75b296d615`
 (package 0.1.393). Store, identity, socket and relevant status sources are unchanged
 from release `squeal--v0.1.390`, commit `ee3531548ed52c4ba692b48b0ae430d9c4965e48`.
 The tested CLI comes directly from the installed bundle, with no build or edits.

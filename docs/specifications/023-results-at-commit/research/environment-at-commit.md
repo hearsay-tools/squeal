@@ -4,7 +4,7 @@ When commit X's lockfile, runner config, setup files or Node pin differ from thi
 
 Short answer: yes for most recent commits, and with no new table. Squeal computes the installed-dependency part from X's committed lockfile, which is exact on every commit tried. It then looks up a stored environment whose git-held inputs equal X's. The `environments` table already holds these, and Squeal never prunes it. Over the last 7 days this recovers 100% of Squeal's and 78.3% of squawk's "not determined" test files. A record by commit recovers 2.6% and 9.1%. The rest needs the install at X that the auto-run makes anyway: its hash equals the live daemons' hash on 3 of 3 commits.
 
-Source read at `d2678e570` (Squeal 0.1.523). The daemons in the experiments are the released 0.1.523 on Node v26.13.0. Stores were copied read-only on 2026-11-16 between 15:43Z and 16:09Z, at a one-minute load of 12 to 34 on 24 CPUs. No timing is a finding. Probes: `probes/environment-at-commit/` (its README lists each script and its output).
+Source read at `c13564931` (Squeal 0.1.523). The daemons in the experiments are the released 0.1.523 on Node v26.13.0. Stores were copied read-only on 2026-11-16 between 15:43Z and 16:09Z, at a one-minute load of 12 to 34 on 24 CPUs. No timing is a finding. Probes: `probes/environment-at-commit/` (its README lists each script and its output).
 
 ## Questions answered
 
@@ -26,9 +26,9 @@ The environment hash encodes these fields (`src/core/keys/environment-hash.ts`, 
 |---|---|---|
 | Key format, adapter version | Squeal constants | No. They are this Squeal's by design (read in source code). |
 | Node version, platform, arch, allow-listed variables | `process` (`coreEnvironmentInputs`, `environment.ts`) | No. They are this machine's (question 4). |
-| Runner name and version | The installed runner package | Yes. The committed lockfile names `vitest 5.0.3` at `d2678e570` and `1a92af9d1`, and `4.1.10` in squawk, as the descriptors hold (verified by experiment). For node:test projects the runner version is the version of the `node` on `PATH`, so it is a machine input (read in source code, `src/runners/node-test/adapter-environment.ts`). |
+| Runner name and version | The installed runner package | Yes. The committed lockfile names `vitest 5.0.3` at `c13564931` and `bf1cf446e`, and `4.1.10` in squawk, as the descriptors hold (verified by experiment). For node:test projects the runner version is the version of the `node` on `PATH`, so it is a machine input (read in source code, `src/runners/node-test/adapter-environment.ts`). |
 | Runner files (config, its imports, setup closures) | The file hash of each listed path | Yes. The hash is the git blob id (018 finding, 0 differences on 25,458 paths). The scratch hashes in question 3 reproduce them. |
-| Installed dependencies, whole-fingerprint mode | `node_modules/.pnpm/lock.yaml` without linked specifiers (`installedDependencies`, `environment.ts`; `withoutLinkedSpecifiers`, `pnpm-lockfile.ts`) | Yes, from the committed `pnpm-lock.yaml`. pnpm 12 writes it as two YAML documents, and the installed file is byte-equal to the second (verified by experiment on `d2678e570`, `1a92af9d1` and squawk `2cab1e991`). The value computed from git equals the daemon's on all three (`installed-from-git.mjs`). In the stores, 3 of 5 Squeal descriptors and 315 of 331 squawk descriptors equal the value computed from a lockfile committed on some ref since 2026-10-25 (`installed-match.mjs`). The others came from installs no committed lockfile describes. |
+| Installed dependencies, whole-fingerprint mode | `node_modules/.pnpm/lock.yaml` without linked specifiers (`installedDependencies`, `environment.ts`; `withoutLinkedSpecifiers`, `pnpm-lockfile.ts`) | Yes, from the committed `pnpm-lock.yaml`. pnpm 12 writes it as two YAML documents, and the installed file is byte-equal to the second (verified by experiment on `c13564931`, `bf1cf446e` and squawk `2cab1e991`). The value computed from git equals the daemon's on all three (`installed-from-git.mjs`). In the stores, 3 of 5 Squeal descriptors and 315 of 331 squawk descriptors equal the value computed from a lockfile committed on some ref since 2026-10-25 (`installed-match.mjs`). The others came from installs no committed lockfile describes. |
 | Installed dependencies, stale install | The package folders on disk (`stalePnpmLockfile`, `pnpm-install.ts`) | No. Staleness is judged from file times in `node_modules` (read in source code). |
 | Installed dependencies, per-package mode (task 001-105) | Graph identities, on-disk scans for types-only and opaque packages, the runner's environment packages | No. These need the install and a runner load (read in source code, `dependencies.ts`, `pnpm-graph.ts`). The 318 descriptors that match a lockfile above hold whole-mode values, so at least 318 of the 336 recorded environments use the whole mode (verified by experiment). In whole mode the per-file dependency segment is empty, so it needs nothing from X. |
 | Resolved config | Vitest loads and runs the config; node:test adds the Node build hash | No. Equal runner files mean an equal config only when the config reads nothing else. squawk's `web` config runs `packages/cezar/scripts/product-identity.mjs` in a child process, and that script reads `src/home/identity.ts`, which is not a runner file. In squawk, 16 groups of descriptors have equal git-held inputs, installs and versions but more than one hash. The fields that differ are `web` `serializedDefines` (13 local, 2 CI) and node:test `execPath` and `nodeBuild` (7, machine) (`config-only.mjs`, verified by experiment). Squeal: 0 such groups. |
@@ -45,7 +45,7 @@ Clean commits a local daemon had over 7 days come from revisions plus clean resu
 | Squeal | 550 (79 a day) | 1 | 550 | 74 | 40 KB | 5 rows, 20 KB |
 | squawk | 716 (102 a day) | 7 | 5,012 | 84 | 413 KB | 331 rows, 1.49 MB |
 
-Share recovered (`share.mjs`, verified by experiment). The asker is a worktree at its `HEAD`: this one at `d2678e570` for Squeal, and squawk's main checkout at `2cab1e991`. The population is every first-parent main commit X of the last 7 days times the asker's test files. A file is "not determined" when X's blobs at the asker's runner files, or X's lockfile, differ from the asker's (the 018 rule). The pin file is not counted.
+Share recovered (`share.mjs`, verified by experiment). The asker is a worktree at its `HEAD`: this one at `c13564931` for Squeal, and squawk's main checkout at `2cab1e991`. The population is every first-parent main commit X of the last 7 days times the asker's test files. A file is "not determined" when X's blobs at the asker's runner files, or X's lockfile, differ from the asker's (the 018 rule). The pin file is not counted.
 
 | | Squeal | squawk |
 |---|---|---|
@@ -57,7 +57,7 @@ Share recovered (`share.mjs`, verified by experiment). The asker is a worktree a
 | look up a stored environment with equal inputs (existing table) | 100% (one hash each) | 78.3% (70.4% one hash, 7.9% more than one) |
 | any of the three | 100% | 78.3% |
 
-By commit age, squawk's lookup recovers 100% under 1 day and from 1 to 3 days, and 68.9% from 3 to 7 days, where the Node move (2026-11-11) and a node:test adapter change (2026-11-12) end older matches. A record by commit recovers 8.1%, 14.9% and 7.2%. Squeal's not-determined files are all 3 to 7 days old: they are the commits before the lockfile change `467cb3d51` (`by-age.mjs`).
+By commit age, squawk's lookup recovers 100% under 1 day and from 1 to 3 days, and 68.9% from 3 to 7 days, where the Node move (2026-11-11) and a node:test adapter change (2026-11-12) end older matches. A record by commit recovers 8.1%, 14.9% and 7.2%. Squeal's not-determined files are all 3 to 7 days old: they are the commits before the lockfile change `7c272cf35` (`by-age.mjs`).
 
 A record by commit has two more faults. It records the tree's install, not the commit's lockfile, so a stale install is stored as X's environment (question 3: 1 of 35 live worktrees). And a Node or adapter change ends every record at once.
 
@@ -65,8 +65,8 @@ A record by commit has two more faults. It records the tree's install, not the c
 
 Method (verified by experiment): scratch clones under `$TMPDIR`, `pnpm install --frozen-lockfile --prefer-offline`, a 0.1.523 daemon started in each and stopped, and its hash read from the clone's own store.
 
-- Squeal `d2678e570` (lockfile after `467cb3d51`): `63bf6a90cd44…`. This worktree's daemon at the same commit keys with the same hash. 338 worktree rows in the live store keyed with it.
-- Squeal `1a92af9d1` (the lockfile before): `f272b4c907fd…`. Live daemons first recorded it on 2026-11-11 at 18:45Z, and 38 worktree rows keyed with it. The two lockfiles differ in 108 lines.
+- Squeal `c13564931` (lockfile after `7c272cf35`): `63bf6a90cd44…`. This worktree's daemon at the same commit keys with the same hash. 338 worktree rows in the live store keyed with it.
+- Squeal `bf1cf446e` (the lockfile before): `f272b4c907fd…`. Live daemons first recorded it on 2026-11-11 at 18:45Z, and 38 worktree rows keyed with it. The two lockfiles differ in 108 lines.
 - squawk `2cab1e991`: all 7 project hashes equal hashes that live daemons recorded and key with (82 to 326 worktree rows each). The main checkout's own daemon at that commit differs from the scratch install in `installedDependencies` only. Its `node_modules/.pnpm/lock.yaml` dates from 2026-11-06 and is not that commit's lockfile. The scratch install equals the value computed from git (`57887cc8…`).
 - Live worktrees whose installed part differs from their `HEAD`'s committed lockfile: 0 of 17 (Squeal) and 1 of 18 (squawk) (`stale-installs.mjs`).
 
@@ -74,7 +74,7 @@ So the install at X gives X's hash as committed. A daemon at X gives the same ha
 
 ### 4. Machine inputs
 
-- Node, platform and arch are `process.version`, `process.platform` and `process.arch` of the daemon (`coreEnvironmentInputs`; read in source code). The scratch daemon at `1a92af9d1` recorded v26.13.0, the machine's Node (verified by experiment).
+- Node, platform and arch are `process.version`, `process.platform` and `process.arch` of the daemon (`coreEnvironmentInputs`; read in source code). The scratch daemon at `bf1cf446e` recorded v26.13.0, the machine's Node (verified by experiment).
 - squawk added `.node-version` 26.13.0 on 2026-11-10 at 10:29Z. Local daemons still recorded 84 Node v24.22.1 environments after that, until the host's Node moved on 2026-11-11 at 18:40Z. The pin did not decide the hash (verified by experiment).
 - 1 Squeal pair and 15 squawk pairs of Vitest hashes are equal in every part except Node. Every pair is two different hashes (`node-pairs.mjs`, verified by experiment). A result recorded under another Node is never found: a miss by design.
 - node:test runs the `node` on `PATH` and keys its build (read in source code). On a host whose version manager switches Node by directory, a temporary checkout at X could run X's pinned Node (inferred; this host's nvm does not switch, not tested).
@@ -100,8 +100,8 @@ The tradeoff that decides this: a one-hash match is exact only when the config r
 
 ## Sources
 
-- Code at `d2678e570`: `src/core/keys/environment-hash.ts`, `environment.ts`, `environment-descriptor.ts`, `dependencies.ts`, `pnpm-install.ts`, `pnpm-lockfile.ts`, `pnpm-graph.ts`; `src/runners/vitest/environment.ts`; `src/runners/node-test/adapter-environment.ts`; `src/core/store/environments.ts`, `imports.ts`, `import-edges.ts`, `schema.ts`; `src/core/scheduler/keying.ts` (lines 300 to 345).
-- First finding: `../../018-ci-and-shared-results/research/results-at-commit.md` (lands `f17f9146b`).
-- Stores, read-only: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`. Git: Squeal `d2678e570`, `1a92af9d1`, `467cb3d51`; squawk `2cab1e991` (main checkout `HEAD`) and `5621be917` (`.node-version` added). squawk files read: `packages/web/vite.config.ts`, `packages/web/product-identity.ts`, `packages/cezar/scripts/product-identity.mjs`.
+- Code at `c13564931`: `src/core/keys/environment-hash.ts`, `environment.ts`, `environment-descriptor.ts`, `dependencies.ts`, `pnpm-install.ts`, `pnpm-lockfile.ts`, `pnpm-graph.ts`; `src/runners/vitest/environment.ts`; `src/runners/node-test/adapter-environment.ts`; `src/core/store/environments.ts`, `imports.ts`, `import-edges.ts`, `schema.ts`; `src/core/scheduler/keying.ts` (lines 300 to 345).
+- First finding: `../../018-ci-and-shared-results/research/results-at-commit.md` (lands `ad1ed8676`).
+- Stores, read-only: `~/projects/squeal/.git/squeal/store.sqlite`, `~/projects/cezar/.git/squeal/store.sqlite`. Git: Squeal `c13564931`, `bf1cf446e`, `7c272cf35`; squawk `2cab1e991` (main checkout `HEAD`) and `5621be917` (`.node-version` added). squawk files read: `packages/web/vite.config.ts`, `packages/web/product-identity.ts`, `packages/cezar/scripts/product-identity.mjs`.
 - Squeal binary: `~/.claude/plugins/cache/hearsay/squeal/0.1.523/dist/cli/squeal.mjs` (the release the live daemons run).
 - Probes and outputs: `probes/environment-at-commit/` (README).

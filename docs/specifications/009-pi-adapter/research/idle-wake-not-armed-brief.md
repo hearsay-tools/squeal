@@ -8,7 +8,7 @@ Use /researcher. Shape: research. Coordinator: session 4d2ecbfc, 2026-11-17. Out
 |---|---|---|---|---|
 | [43946095378](https://github.com/hearsay-tools/squeal/actions/runs/43946095378) attempt 1 | cand/0.1.526 | Node 26 (2/3) | `test/e2e/pi.test.ts:190` | timed out after 20000 ms waiting for the idle wake (`test/e2e/support.ts:43`) |
 | [43987606521](https://github.com/hearsay-tools/squeal/actions/runs/43987606521) attempt 1 | cand/0.1.534 `bb8c83bbe` | Node 22 (1/3) | `test/integration/pi-wake.test.ts` "rpc: a failing result landing after the run settled starts exactly one run carrying it" | the idle wake was never armed (`:66`, 10 s) |
-| [43992379130](https://github.com/hearsay-tools/squeal/actions/runs/43992379130) attempt 1 | main `35630aa4d` (0.1.534) | Node 22 (2/3) | `test/e2e/pi.test.ts:190` | timed out after 20000 ms waiting for the idle wake |
+| [43992379130](https://github.com/hearsay-tools/squeal/actions/runs/43992379130) attempt 1 | main `3478e3e7f` (0.1.534) | Node 22 (2/3) | `test/e2e/pi.test.ts:190` | timed out after 20000 ms waiting for the idle wake |
 
 Three sightings in one day, in two test files, on two Node versions; none on the board before 2026-11-16.
 

@@ -1,6 +1,6 @@
 # 011-379: class-A files wait with `rest()`
 
-Worker f3c9eb6b, wave 114 W1, 2026-11-16. Base: `b058cd9b7` (0.1.524). Shape: slice.
+Worker f3c9eb6b, wave 114 W1, 2026-11-16. Base: `0bce31956` (0.1.524). Shape: slice.
 
 ## Answer
 

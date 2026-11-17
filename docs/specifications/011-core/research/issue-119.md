@@ -22,7 +22,7 @@ The reported **0.1.369** incident was not executed or timed here.
 Initial host reading at **2026-10-28 11:44:23 UTC**: one-minute load
 **19.9653**, **24 CPUs**. Probes were permitted. Loads at their starts were
 8.59, 10.60 and 14.05. Node was **v24.22.1** on Linux. Checkout:
-`9e4206a2d72738d6964b955aa0dc7073796f4d15`, version **0.1.370**.
+`2e2ff78f22ee35a42c8a4203ae404c2ebe283c01`, version **0.1.370**.
 
 All commands below use `node --disable-warning=ExperimentalWarning
 <checkout>/plugins/claude-code/dist/cli/squeal.mjs` as `CLI`. Full absolute argv
@@ -107,6 +107,6 @@ probe README. No repository-suite pass is claimed.
 ## Sources
 
 - [Issue 119](https://github.com/hearsay-tools/squeal/issues/119), fetched with `gh issue view 119 --repo hearsay-tools/squeal --json title,body,url,comments` on 2026-10-28; reported version 0.1.369, no elapsed timing.
-- [CLI source at tested commit](https://github.com/hearsay-tools/squeal/blob/9e4206a2d72738d6964b955aa0dc7073796f4d15/src/cli/run-slow.ts), and the local source paths above; inspected through `sed`, `nl`, `rg` and `git diff squeal--v0.1.369 HEAD -- <paths>`.
+- [CLI source at tested commit](https://github.com/hearsay-tools/squeal/blob/2e2ff78f22ee35a42c8a4203ae404c2ebe283c01/src/cli/run-slow.ts), and the local source paths above; inspected through `sed`, `nl`, `rg` and `git diff squeal--v0.1.369 HEAD -- <paths>`.
 - [011 spec](../spec.md), C4/C6/C15, and [amendments](../status.md); [004 spec](../../004-slow-suites/spec.md), D2/D3/D8/D9, at the tested commit.
 - [Probe scripts and raw results](probes/issue-119/README.md).

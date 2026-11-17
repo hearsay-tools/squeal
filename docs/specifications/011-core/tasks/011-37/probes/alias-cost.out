@@ -1,4 +1,4 @@
-## d75e1bde, load 19.36 on 24 CPUs, node v24.21.0
+## 0f67de98, load 19.36 on 24 CPUs, node v24.21.0
 ## extra check keys per missed file
 closure 50 paths, 5 formats	32.6 us each
 closure 300 paths, 5 formats	115.2 us each

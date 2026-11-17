@@ -112,7 +112,7 @@ Use /worker. Shape: repair. Starts from `int/015b-r1` (the 0.1.290 candidate wit
 
 ## 015-24 round 2: re-review of candidate 0.1.290
 
-Use /reviewer. Candidate `cand/0.1.290`, pinned to the SHA named in the spawn; the first round's file is `reviews/0.1.290.md` (FAIL on `8d4d6f63e`, B1). Write `reviews/0.1.290-r2.md` and commit it on your branch.
+Use /reviewer. Candidate `cand/0.1.290`, pinned to the SHA named in the spawn; the first round's file is `reviews/0.1.290.md` (FAIL on `733df4fe6`, B1). Write `reviews/0.1.290-r2.md` and commit it on your branch.
 1. **B1.** Check the repair against B1's reproduction and its repair scope. Check that delivery, status, Stop and `squeal code --changed` agree on the resume boundary and on the fresh one.
 2. **015-27, new since round 1, in full.** Read its brief (W6 above), `status.md` 2026-10-24 and `tasks/015-27/notes.md`. The agreed decisions are: a new `squeal code --told`; `CodeNews.toldOver` and `Delta.knownFailures`; the idle waiter reads the told count, but only with test news; the test count is status's `Known failures`; no test line at Stop. Check:
    - the count and `--told` agree;

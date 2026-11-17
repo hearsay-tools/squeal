@@ -3,7 +3,7 @@
 Researcher, 2026-10-19. Question from the brief: reproduce hearsay-tools/squeal#43 (timeout to
 `unknown`, no automatic retry, recovery through `squeal retry --reason load`, the named wait's
 guidance) cheaply, without spending 600 s. Squeal **0.1.223** (`squeal --version`; worktree at
-`27f11ea3`, `squeal--v0.1.223-3`, docs-only commits after the tag). Host: 24 CPUs (`nproc`),
+`30bce54e`, `squeal--v0.1.223-3`, docs-only commits after the tag). Host: 24 CPUs (`nproc`),
 one-minute load 2.19 to 3.18 during the probe (`/proc/loadavg`), so the brief's "load above CPU
 count" stop did not apply. Product read-only; no implementation proposed beyond options.
 
@@ -128,8 +128,8 @@ the agent otherwise produces by hand.
 ## Sources
 
 - hearsay-tools/squeal#43 (`gh issue view 43`, 2026-10-19).
-- `docs/specifications/011-core/spec.md` C4 (line 126), C5 (169, 177), C10 (250), C13 (299), C15 (322-354), at `27f11ea3`.
+- `docs/specifications/011-core/spec.md` C4 (line 126), C5 (169, 177), C10 (250), C13 (299), C15 (322-354), at `30bce54e`.
 - `docs/specifications/013-vitest-runner/spec.md` V4, V8, V9 (no timeout rule of their own; V8 defers to C4 and C13; line 19 covers a run rejecting during a timeout's cancellation).
-- Source at `27f11ea3`: `src/core/scheduler/timeout-split.ts`, `src/core/scheduler/tiers.ts:583-588`,
+- Source at `30bce54e`: `src/core/scheduler/timeout-split.ts`, `src/core/scheduler/tiers.ts:583-588`,
   `src/cli/retry.ts:191-197`, `src/cli/status-wait-lines.ts:173-200`, `src/core/types/policy.ts:73-77,272`.
 - Probe: `docs/specifications/011-core/research/probes/issue-43/` (setup script and README; the fixture lives in `/tmp`).

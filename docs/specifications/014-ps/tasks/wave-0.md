@@ -18,7 +18,7 @@ Use /worker. Shape: slice.
 
 ## 014-05 review of wave 0
 
-Use /reviewer. Shape: review. Pinned to the candidate SHA the dispatch names, on `cand/014-04`; the range is from `f1e3b1c31` (the approved spec) to it.
+Use /reviewer. Shape: review. Pinned to the candidate SHA the dispatch names, on `cand/014-04`; the range is from `2d18a7f96` (the approved spec) to it.
 
 **Outcome.** A verdict on whether the wave 0 seam can carry waves 1 and 2 without a change to its interface.
 

@@ -9,7 +9,7 @@ Throwaway probe for `011-core/research/backlog-wall-budget.md`. Not product code
   `run --all --force --wait` with the durations known, optionally an edit of both quick sources
   mid-tier (then `run --all --wait` again, since an edit ends the forced wait with exit 3);
   dumps the store's `runs`.
-- `prototype.patch`: the prototype rule, applied to a scratch clone of `fb6d3164` only, behind
+- `prototype.patch`: the prototype rule, applied to a scratch clone of `1b44267c` only, behind
   `SQUEAL_PROTO_WALL=1`; with it unset the same build is today's rule.
 - `model.mjs`, `sweep.mjs`: the selection rules replayed offline on fixed durations (no runner).
 - `cezar-replay.mjs`: the same on cezar's 2026-10-19 checkpoint (`results/cezar-701f50.json`,
@@ -20,7 +20,7 @@ Throwaway probe for `011-core/research/backlog-wall-budget.md`. Not product code
 
 Run (from a scratch directory, never the real pool or a real session):
 
-    git clone <this repo> /tmp/bwb/squeal && git -C /tmp/bwb/squeal checkout fb6d3164
+    git clone <this repo> /tmp/bwb/squeal && git -C /tmp/bwb/squeal checkout 1b44267c
     (cd /tmp/bwb/squeal && npm ci && git apply <this dir>/prototype.patch && npm run build)
     cp -a /tmp/bwb/squeal/plugins/claude-code /tmp/bwb/plugin
     node make-fixture.mjs /tmp/bwb/fx-a /tmp/bwb/install   # install: a dir with vitest 5.0.3 installed

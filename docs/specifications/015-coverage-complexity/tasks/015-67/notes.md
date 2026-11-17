@@ -1,6 +1,6 @@
 # 015-67 notes: an exclude change and a move in one pass tell the change once
 
-Worker e6a4deab, 2026-10-26. Brief: `tasks/wave-13.md` W1. Shape: repair. Starts from main 0.1.341 (`081ab75c6`). Findings: `reviews/0.1.341.md` B2 and N1.
+Worker e6a4deab, 2026-10-26. Brief: `tasks/wave-13.md` W1. Shape: repair. Starts from main 0.1.341 (`4f3a408dd`). Findings: `reviews/0.1.341.md` B2 and N1.
 
 ## B2: the defect
 

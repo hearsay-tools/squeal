@@ -4,7 +4,7 @@ Recommend reviewing C4's ten-keyed-path rule for concurrent test edits before ch
 
 **Mechanism reproduced; original incident not reproduced.** The rule expressly includes edited tests. The current queue then removes their edited-file priority inside catch-up. This is specified behaviour, not evidence of a new scheduler regression. Existing holds stand; no implementation is authorized.
 
-Research date: 2026-11-13. Source baseline: `b5eba8432c317fa259495873e6a223d4501cf142`, package **0.1.465**. Incident: **0.1.464**, tag `ff4c9c2f1608ec88c79c77481b976ba5e5be7575`. The examined scheduler directory, slow classifier and status files have no diff between them. Probe: Node **v26.13.0**, 24 CPUs and 24 available CPUs, one-minute load **0.89** (five/fifteen minutes 1.50/6.68). Initial load was 0.99. The load guard allowed the isolated experiment. No cezarion worktree or live daemon was touched.
+Research date: 2026-11-13. Source baseline: `f694fb22174a13765ee696ec7aa1b5b4360f26be`, package **0.1.465**. Incident: **0.1.464**, tag `ff4c9c2f1608ec88c79c77481b976ba5e5be7575`. The examined scheduler directory, slow classifier and status files have no diff between them. Probe: Node **v26.13.0**, 24 CPUs and 24 available CPUs, one-minute load **0.89** (five/fifteen minutes 1.50/6.68). Initial load was 0.99. The load guard allowed the isolated experiment. No cezarion worktree or live daemon was touched.
 
 `~/.codex/plugins/data/squeal-hearsay/bin/squeal --version` returned **0.1.464**, with the notice that this Codex session stays pinned to 0.1.464 while the Claude Code plugin is 0.1.465. The experiment imports checkout source; it does not invoke either runtime.
 
@@ -66,7 +66,7 @@ To attribute the incident, obtain its per-revision changed keyed paths; the five
 
 - [Issue 209](https://github.com/hearsay-tools/squeal/issues/209), fetched with `gh issue view 209 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt`.
 - [Release source](https://github.com/hearsay-tools/squeal/tree/ff4c9c2f1608ec88c79c77481b976ba5e5be7575): `src/core/scheduler/{revision,ledger,queue}.ts`, `src/core/slow/classify.ts`, `src/cli/{status-wait,status-wait-lines}.ts`.
-- Project docs at `b5eba8432`: `docs/specifications/011-core/spec.md` C4/C6/C9/C15 and `status.md`; `docs/specifications/004-slow-suites/spec.md` D1/D2; `011-core/research/issue-181.md` and `issue-185.md`.
+- Project docs at `f694fb221`: `docs/specifications/011-core/spec.md` C4/C6/C9/C15 and `status.md`; `docs/specifications/004-slow-suites/spec.md` D1/D2; `011-core/research/issue-181.md` and `issue-185.md`.
 - Experiment: `research/probes/issue-209/{probe.ts,README.md,output.jsonl,issue.json}`. No external web search or product changes.
 
 The coordinator moved the preserved probes from repository-root `research/probes/issue-209/` to this spec’s `research/probes/issue-209/`, as the triage scope requires. Commands and scoped status above record the original experiment paths. The probe’s relative imports were adjusted for the move.

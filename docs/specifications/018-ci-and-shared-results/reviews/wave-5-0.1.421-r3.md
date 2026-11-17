@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `3fa3f9189d86d8e51c23abb311554f5e4bb06e2c`. `git rev-parse HEAD` returned that exact SHA. Reviewed `origin/main..3fa3f9189d86d8e51c23abb311554f5e4bb06e2c`; the local `origin/main` was `674ffbc690fc78775a7432e42aa5c5ca43d31546`. This is a bounded re-review of `wave-5-0.1.421.md` and `wave-5-0.1.421-r2.md`, including the new R2/R3 hook and the cases the brief names. Read D8/D9, the amendment log, the R1/R2/R3 briefs and the worker notes.
+Candidate: `57af18d7c6ddd6a277f2a88ccd23c2d02934e0d4`. `git rev-parse HEAD` returned that exact SHA. Reviewed `origin/main..57af18d7c6ddd6a277f2a88ccd23c2d02934e0d4`; the local `origin/main` was `3e91368c6a1392a15578331db220260090edebdf`. This is a bounded re-review of `wave-5-0.1.421.md` and `wave-5-0.1.421-r2.md`, including the new R2/R3 hook and the cases the brief names. Read D8/D9, the amendment log, the R1/R2/R3 briefs and the worker notes.
 
 The candidate tree was clean before and after all checks and probes, before writing this report. No product source or test changed. Dependencies were installed by Cezar; the brief expressly forbids repeating installation. No build or local full suite was run, as requested. Temporary scripts and fixtures lived below this task's `$TMPDIR`, outside the worktree, and were removed before this report's commit.
 

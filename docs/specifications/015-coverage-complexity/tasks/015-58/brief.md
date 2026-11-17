@@ -2,7 +2,7 @@
 
 Use /researcher. Briefed by coordinator 52e58f23 on 2026-10-25.
 
-**Question.** In the coordinator's worktree at revision 251 (main `d8de0754a`, Squeal 0.1.321, coverage on), `squeal code test/keys/validity/harness/assemble.ts` lists all 16 functions as "no in-process test that Squeal runs reaches it", `assemble` included, with CRAP up to 306. A pull delivered `FAIL CRAP` and `FAIL uncovered` for `relist` (line 150, new in 016-24). Is this true, or a false failure? Spec 015 D9 says a false failure is the defect the pending rule exists to prevent.
+**Question.** In the coordinator's worktree at revision 251 (main `53af645ae`, Squeal 0.1.321, coverage on), `squeal code test/keys/validity/harness/assemble.ts` lists all 16 functions as "no in-process test that Squeal runs reaches it", `assemble` included, with CRAP up to 306. A pull delivered `FAIL CRAP` and `FAIL uncovered` for `relist` (line 150, new in 016-24). Is this true, or a false failure? Spec 015 D9 says a false failure is the defect the pending rule exists to prevent.
 
 **Find out, with evidence from the real stores and code, read-only:**
 1. Which test files load `assemble.ts` (C3's closures), and whether any of them runs `assemble` in the Vitest worker's own process.

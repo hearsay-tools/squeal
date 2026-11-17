@@ -2,15 +2,15 @@
 
 ## Verification and verdict
 
-**FAIL `f8f972523d39d6591fe849a5a013a026eeb67bb6`. Four proven blockers, zero should-fix findings, zero nits.** Reviewed `668e6dfd..f8f97252` for row 001-388. The findings concern 001-382's implementation; incidental eval and release changes were inspected too. The candidate was checked out detached before verification. `git rev-parse HEAD` matched the supplied candidate. The tree was clean before and after the build, throughout the independent suite and the external probes. No candidate code was edited.
+**FAIL `ae08a7310364132b363a70f670f6691579929ea0`. Four proven blockers, zero should-fix findings, zero nits.** Reviewed `f46602f8..ae08a731` for row 001-388. The findings concern 001-382's implementation; incidental eval and release changes were inspected too. The candidate was checked out detached before verification. `git rev-parse HEAD` matched the supplied candidate. The tree was clean before and after the build, throughout the independent suite and the external probes. No candidate code was edited.
 
 Commands and captured output at the candidate:
 
 ```text
-$ git checkout --detach f8f97252
-HEAD is now at f8f97252 build(plugin): rebuild the plugins for 001-382; version 0.1.180; key format 10 re-pinned (unreleased); D4 to D7 amended
+$ git checkout --detach ae08a731
+HEAD is now at ae08a731 build(plugin): rebuild the plugins for 001-382; version 0.1.180; key format 10 re-pinned (unreleased); D4 to D7 amended
 $ git rev-parse HEAD
-f8f972523d39d6591fe849a5a013a026eeb67bb6
+ae08a7310364132b363a70f670f6691579929ea0
 
 $ npm ci
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead

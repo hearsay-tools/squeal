@@ -2,7 +2,7 @@
 
 ## Verification
 
-Candidate: `c764599e`, version 0.1.91. Range: `003248a8^..c764599e` (004-57, D8 amendment and both plugin bundles). Initial HEAD was `ec906520`, one documentation-only commit beyond the candidate. All checks and probes below ran after checking out the exact candidate, on a clean tracked tree. The final report is committed on the assigned branch, retaining its task instructions. There is no remaining executable mismatch.
+Candidate: `3d77c586`, version 0.1.91. Range: `4690b667^..3d77c586` (004-57, D8 amendment and both plugin bundles). Initial HEAD was `a6f6be60`, one documentation-only commit beyond the candidate. All checks and probes below ran after checking out the exact candidate, on a clean tracked tree. The final report is committed on the assigned branch, retaining its task instructions. There is no remaining executable mismatch.
 
 The independent reviewer gate uses direct Vitest, as the reviewer skill and repository instructions require. Squeal's checkpoint is recorded separately. No product, test, policy, board or status changes were made.
 
@@ -122,7 +122,7 @@ These are fresh static-closure counts over tracked files, not the implementation
 
 ## Verdict
 
-**PASS at `c764599e` (0.1.91).** Zero blockers, zero new should-fix findings, zero nits. The original cross-file exclusion in `reviews/wave-6.md` S1 is closed within the amended D8 definition. This is the first review of 004-57, bounded by S1 and the new delta. Earlier settled findings and other lanes are outside the range.
+**PASS at `3d77c586` (0.1.91).** Zero blockers, zero new should-fix findings, zero nits. The original cross-file exclusion in `reviews/wave-6.md` S1 is closed within the amended D8 definition. This is the first review of 004-57, bounded by S1 and the new delta. Earlier settled findings and other lanes are outside the range.
 
 PASS is the bounded review verdict. The initial independent full-suite gate failed, and Squeal completed with two known failures. Passing isolated reruns do not make either original gate green.
 

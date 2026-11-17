@@ -1,8 +1,8 @@
 # Results: loaded-module recording for node:test and pytest
 
 Run 2026-11-14 on Node v26.13.0 and pytest 9.2.0 / Python 3.11.15, Squeal at
-2856d26e8. Scripts and re-run steps are in `README.md`. Tags: **exp** = verified by
-experiment here, **src** = read in source at 2856d26e8, **docs** = official docs,
+9aef0ef9e. Scripts and re-run steps are in `README.md`. Tags: **exp** = verified by
+experiment here, **src** = read in source at 9aef0ef9e, **docs** = official docs,
 **inf** = inferred.
 
 ## 1. What Squeal already does

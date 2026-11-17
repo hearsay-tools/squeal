@@ -1,6 +1,6 @@
 // Throwaway (glob-membership, Q4): which test files' stored closure lists hold
 // a module whose source at <ref> matches Squeal's DYNAMIC_SPECIFIER regex
-// (src/runners/vitest/dynamic.ts at 75e44e78f), and which hold a module whose
+// (src/runners/vitest/dynamic.ts at d1337f9f2), and which hold a module whose
 // syntax tree has a real `import.meta.glob(...)` call or an `import()` of a
 // template literal with a substitution (esbuild strips types, acorn parses). Paths matched by
 // the repository's policy `inputs` (declared inputs, not modules) are listed

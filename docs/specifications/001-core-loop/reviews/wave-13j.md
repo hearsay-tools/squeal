@@ -2,12 +2,12 @@
 
 ## Verification output
 
-Candidate: `fd0fe7eb7412f0e2f564ed38a5d88d6531f99b47`, `origin/main`, package version 0.1.78. Clean tree before verification. Node 24.21.0, Linux. Range `f725736..fd0fe7e`; second round bounded by `reviews/wave-13i.md`. Rows 001-184 and 001-185 are examined only at these repairs' seams. Other lanes' interleaved changes are outside this review.
+Candidate: `42b841bb905692f5bf391871e131b5005021b5fa`, `origin/main`, package version 0.1.78. Clean tree before verification. Node 24.21.0, Linux. Range `f725736..fd0fe7e`; second round bounded by `reviews/wave-13i.md`. Rows 001-184 and 001-185 are examined only at these repairs' seams. Other lanes' interleaved changes are outside this review.
 
 ```text
 $ git rev-parse HEAD origin/main
-fd0fe7eb7412f0e2f564ed38a5d88d6531f99b47
-fd0fe7eb7412f0e2f564ed38a5d88d6531f99b47
+42b841bb905692f5bf391871e131b5005021b5fa
+42b841bb905692f5bf391871e131b5005021b5fa
 
 $ npm ci
 added 56 packages, and audited 57 packages in 1s

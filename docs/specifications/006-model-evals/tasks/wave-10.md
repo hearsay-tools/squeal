@@ -8,7 +8,7 @@ Use /quality. Shape: survey.
 
 Read `docs/vision.md`, `docs/styleguide.md`, `../spec.md` and `../status.md`.
 
-**Stretch:** `c26cbb78` (006-01, the prototype moved into `evals/`) to `origin/main`, limited to `evals/`, `test/evals/` and `docs/specifications/006-model-evals/`. There is no earlier file under `../quality/`.
+**Stretch:** `b2566d88` (006-01, the prototype moved into `evals/`) to `origin/main`, limited to `evals/`, `test/evals/` and `docs/specifications/006-model-evals/`. There is no earlier file under `../quality/`.
 
 **Leads, offered, not required:**
 - Code that served a decision the human later reversed: the long tasks' drop flag, the under-90% list and pooled behaviours (D6, D7, D10, amended 2026-10-12).

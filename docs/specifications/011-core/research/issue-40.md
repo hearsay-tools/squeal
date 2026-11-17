@@ -1,6 +1,6 @@
 # Research: issue 40, why named files stay pending through a status wait
 
-Researcher, 2026-10-19, worktree `cez/195a9b5b` at 036be0a0. [Issue #40](https://github.com/hearsay-tools/squeal/issues/40): a session waited three times (`squeal status --wait 60000 <31 test files>`), each ending `15 test files still pending at revision 20`, while status said `0 running`, 239 queued, at load 12 to 14; `npm test` then passed the 31 files in about 10 minutes. Incident Squeal version unknown.
+Researcher, 2026-10-19, worktree `cez/195a9b5b` at a9156c90. [Issue #40](https://github.com/hearsay-tools/squeal/issues/40): a session waited three times (`squeal status --wait 60000 <31 test files>`), each ending `15 test files still pending at revision 20`, while status said `0 running`, 239 queued, at load 12 to 14; `npm test` then passed the 31 files in about 10 minutes. Incident Squeal version unknown.
 
 Environment: installed `squeal` 0.1.222 (`~/.local/bin/squeal`), worktree `package.json` 0.1.222, CLI under test `plugins/claude-code/dist/cli/squeal.mjs` (0.1.222), Vitest 5.0.3 from a sibling worktree's `node_modules` (symlinked, read only). Host: 24 CPUs (`nproc`), one-minute load 3.34 to 4.53 throughout (`/proc/loadavg`), so live probes were allowed. No broad suite, no build. The full 10-minute incident was not recreated.
 
@@ -74,6 +74,6 @@ Run A preceded the probe's edit that added the 1.5 s wait; run B used the commit
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/40 (`gh issue view 40 -R hearsay-tools/squeal`, 2026-10-19).
 - Spec 011 C4 step 4, C6, C10 Capacity, C15; `status.md` lines for 011-03, 011-11/12, 011-13; Spec 004 D2 and its `slow.*` keys.
-- Board rows 011-11, 011-12, 011-13, 011-16, 011-17, 001-381 (`docs/board.md` at 036be0a0).
-- Source at 036be0a0: `src/cli/named-file-lines.ts`, `src/cli/named-files.ts`, `src/cli/status-wait-promote.ts`, `src/core/scheduler/queue.ts`; tests `test/scheduler/promotion.test.ts`, `test/scheduler/queue-promotion.test.ts`.
+- Board rows 011-11, 011-12, 011-13, 011-16, 011-17, 001-381 (`docs/board.md` at a9156c90).
+- Source at a9156c90: `src/cli/named-file-lines.ts`, `src/cli/named-files.ts`, `src/cli/status-wait-promote.ts`, `src/core/scheduler/queue.ts`; tests `test/scheduler/promotion.test.ts`, `test/scheduler/queue-promotion.test.ts`.
 - Probe: `probes/issue-40/` (throwaway).

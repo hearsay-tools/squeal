@@ -1,6 +1,6 @@
 # R4 notes: repair of review 0.1.295 B1, the import rewrite (015-29)
 
-Worker 614996d3, 2026-10-24. From `5e18ed2b0` (`int/015d-r1`). Brief: `tasks/wave-2.md` R4. Finding: `reviews/0.1.295.md` B1.
+Worker 614996d3, 2026-10-24. From `882bd011e` (`int/015d-r1`). Brief: `tasks/wave-2.md` R4. Finding: `reviews/0.1.295.md` B1.
 
 ## Seam map
 
@@ -28,14 +28,14 @@ In each B1 form the smallest node over `import` is `string_fragment`, `comment` 
 
 `test/code/count/type-import.test.ts`, block "`import(…)` text across two tokens (review 0.1.295 B1)". Each form expects `errors: []` and `[["hidden", 2]]`:
 
-| Form | Text | At `5e18ed2b0` |
+| Form | Text | At `882bd011e` |
 |---|---|---|
 | two strings (the review's reproduction) | `const s = "typeof import('"; function hidden(a) { return a ? 1 : 2; }; const t = "')";` | no function, no error |
 | two comments | `/* typeof import(' */ function hidden(a) { return a ? 1 : 2 } /* ') */` | no function, no error |
 | a string in a template's substitution, then the template's text | ``const s = `${"typeof import('" + (function hidden(a) { return a ? 1 : 2; })()}')`;`` | no function, one error over the line |
 | two regular expressions | `const r = /typeof import('|x)/; function hidden(a) { return a ? 1 : 2; } const u = /(')/;` | no function, no error |
 
-All four failed at `5e18ed2b0` (Squeal, revision 2 and 3: 4 FAIL) and pass with the fix (revision 4: FAIL -> PASS). ESLint 10.13.0 `complexity` on `@typescript-eslint/parser` 8.72.0 (the researcher's scratch install in `/tmp/tir-015-25/js`) reports `hidden` at 2 in all four.
+All four failed at `882bd011e` (Squeal, revision 2 and 3: 4 FAIL) and pass with the fix (revision 4: FAIL -> PASS). ESLint 10.13.0 `complexity` on `@typescript-eslint/parser` 8.72.0 (the researcher's scratch install in `/tmp/tir-015-25/js`) reports `hidden` at 2 in all four.
 
 Choices the brief left open:
 
@@ -47,14 +47,14 @@ The two type-import fixtures and the quoted-key test pass unchanged.
 
 ## The comparison
 
-Every git-listed JS and TS file outside `docs/`, `fixtures/` and `dist/`, counted by `5e18ed2b0`'s counter (`git archive 5e18ed2b0 src`) and by this row's. Fields compared per function: name, occurrence, CC, start line, start column and body hash; and each file's error ranges.
+Every git-listed JS and TS file outside `docs/`, `fixtures/` and `dist/`, counted by `882bd011e`'s counter (`git archive 882bd011e src`) and by this row's. Fields compared per function: name, occurrence, CC, start line, start column and body hash; and each file's error ranges.
 
-| Tree | Files | Functions (`5e18ed2b0`, R4) | Files with errors (`5e18ed2b0`, R4) | Files changed |
+| Tree | Files | Functions (`882bd011e`, R4) | Files with errors (`882bd011e`, R4) | Files changed |
 |---|---|---|---|---|
-| squeal at `69927c2b5` (`5e18ed2b0` plus this row's two files) | 1,994 | 31,340, 31,340 | 0, 0 | 0 |
+| squeal at `69927c2b5` (`882bd011e` plus this row's two files) | 1,994 | 31,340, 31,340 | 0, 0 | 0 |
 | cezar at `e2882a245` (read only) | 1,924 | 57,014, 57,014 | 0, 0 | 0 |
 
-The squeal file set is 1,994, not 015-29's 1,972: the tree has grown since `5b7c15914`.
+The squeal file set is 1,994, not 015-29's 1,972: the tree has grown since `a9d088c2d`.
 
 The candidates the regex finds:
 
@@ -63,13 +63,13 @@ The candidates the regex finds:
 | squeal | 21 | 19 | 55 | 34 | 21: 4 in comments, 17 in strings, all in `parser.ts` and `type-import.test.ts` |
 | cezar | 72 | 72 | 93 | 93 | 0 |
 
-`5e18ed2b0`'s counter rewrites all 21 rejected sites, in this repository's own comments and strings; 3 of them are this row's new tests. That changed no count, because each of these matches stays inside one token.
+`882bd011e`'s counter rewrites all 21 rejected sites, in this repository's own comments and strings; 3 of them are this row's new tests. That changed no count, because each of these matches stays inside one token.
 
 ## Cost
 
 The second parse is the cost, only in a file with an accepted candidate. cezar's 72 such files, median of five passes per process, five alternated pairs, one-minute load 27 to 36 on 24 CPUs:
 
-| Pair | `5e18ed2b0` ms | R4 ms |
+| Pair | `882bd011e` ms | R4 ms |
 |---|---|---|
 | 1 | 797 | 1,331 |
 | 2 | 797 | 1,171 |

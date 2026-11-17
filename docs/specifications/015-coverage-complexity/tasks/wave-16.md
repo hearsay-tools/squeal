@@ -38,7 +38,7 @@ Checks (`docs/process.md`): lint, typecheck, Squeal's affected results or target
 
 ## 015-77 R1: re-review of candidate 0.1.354 after repair R1
 
-Use /reviewer. Candidate `cand/0.1.354`, pinned to the SHA in the spawn: the reviewed `efd6e1247` plus two commits, `c33bcd5c2` (the repair) and `5f3eec6f8` (the rebuilt bundles). Write `reviews/0.1.354-r2.md` and commit it alone on your branch.
+Use /reviewer. Candidate `cand/0.1.354`, pinned to the SHA in the spawn: the reviewed `4dc55619c` plus two commits, `34a84364e` (the repair) and `6c1207aa7` (the rebuilt bundles). Write `reviews/0.1.354-r2.md` and commit it alone on your branch.
 
 Read `reviews/0.1.354.md` (B1 and "Input for the repair review") and the repair commit. Check, with proof where you can:
 1. **B1.** A function a current Vitest record proved keeps its states and evidence beside a node:test loader, in `squeal code` text and JSON and in the no-path totals (`test/code/crap/not-measured.test.ts`, the mixed case); your own probe from round 1 now passes.

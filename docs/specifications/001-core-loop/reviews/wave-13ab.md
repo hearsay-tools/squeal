@@ -1,12 +1,12 @@
 # Wave 13ab review (001-251)
 
-PASS `cb947c2576ba188e5b164144d74adc249685444f`. B1, B2, B3 and S1 from `wave-13aa.md` are closed. No new product blocker; one proven, nonblocking documentation note.
+PASS `1197468eae2548f911025ef0dcc6a4dc53384bf0`. B1, B2, B3 and S1 from `wave-13aa.md` are closed. No new product blocker; one proven, nonblocking documentation note.
 
-Range: `1b762976..cb947c25`. Bounded second-round review of the 001-250 repair, including its 0.1.110 rebuild and in-place re-pin of unreleased `KEY_FORMAT_VERSION` 4. The previous review's settled timing-test and watcher-recovery judgments are not re-prosecuted.
+Range: `62241cdb..1197468e`. Bounded second-round review of the 001-250 repair, including its 0.1.110 rebuild and in-place re-pin of unreleased `KEY_FORMAT_VERSION` 4. The previous review's settled timing-test and watcher-recovery judgments are not re-prosecuted.
 
 ## Verification
 
-Verification started on a clean tree at `5bd94d1ec36c127ff23df0e2dea1f2e43245876e`, not exactly the candidate. `git diff --stat cb947c25..HEAD` showed only `docs/board.md` (two insertions, two deletions). Product sources, tests, configuration and committed bundles match the requested candidate. The exact-candidate checkout check is **unverified**; the following outputs are independently verified at the stated documentation successor. No project file changed while checks ran; probes and the draft stayed outside the tree.
+Verification started on a clean tree at `c7e75401aaf623ad144f72a852523c96c5b373e9`, not exactly the candidate. `git diff --stat 1197468e..HEAD` showed only `docs/board.md` (two insertions, two deletions). Product sources, tests, configuration and committed bundles match the requested candidate. The exact-candidate checkout check is **unverified**; the following outputs are independently verified at the stated documentation successor. No project file changed while checks ran; probes and the draft stayed outside the tree.
 
 ```text
 npm ci
@@ -76,7 +76,7 @@ None from the repair or repeated first-round probes.
 
 `src/harness/shared/coverage.ts:52` uses the same rule as `src/core/daemon/daemon.ts:326`: build Vitest when no node:test project is configured, or when `vitestDetected(root)` detects it. `primer.ts:48` renders both the opening and its test-running instruction from that representation.
 
-Repeated the original node:test-only probe with a real policy, manifest containing only `{"type":"module"}`, no Vitest/Vite config, a real SQLite store, and both SessionStart handlers. Daemon ensure was stubbed; no claim is made that a real daemon completed a listing. The before module was loaded from `1b762976` with imports redirected to the unchanged supporting modules; candidate hooks used candidate sources.
+Repeated the original node:test-only probe with a real policy, manifest containing only `{"type":"module"}`, no Vitest/Vite config, a real SQLite store, and both SessionStart handlers. Daemon ensure was stubbed; no claim is made that a real daemon completed a listing. The before module was loaded from `62241cdb` with imports redirected to the unchanged supporting modules; candidate hooks used candidate sources.
 
 ```text
 BEFORE: Squeal covers Vitest and node:test project "scripts" (scripts/*.test.mjs).

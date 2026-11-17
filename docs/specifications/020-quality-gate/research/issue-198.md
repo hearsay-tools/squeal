@@ -4,7 +4,7 @@
 
 Not reproduced live, because the one-minute host load was 37.89, 40.82 and 42.96 on 24 online CPUs at three checks (13:20 to 13:21 UTC, 2026-11-12). The triage brief requires skipping live work above the CPU count. No probe ran and no `research/probes/issue-198/` fixture was written.
 
-From source on main `c23ca67aa` (Squeal 0.1.449, installed runtime `squeal --version` 0.1.449; the report names 0.1.447), every behaviour the issue reports is the designed behaviour:
+From source on main `051fd160e` (Squeal 0.1.449, installed runtime `squeal --version` 0.1.449; the report names 0.1.447), every behaviour the issue reports is the designed behaviour:
 
 1. A file in the root config's `configFileDependencies` selects every test file of each project. Read in source.
 2. The same file is a key input of every test file, so stored results from before the edit cannot serve. Read in source.
@@ -40,7 +40,7 @@ The comment cites spec 001 D4: Squeal adds "all test files of a project when a s
 
 **Q3. Over-budget start.** `src/core/code/gate/estimate.ts`: "It is advice: the run always starts, and the verdict does not read it." `src/cli/code-gate-text.ts:227` prints the issue's line, ending "The run starts anyway." Spec D17.1 and status 2026-11-11 record this as the coordinator's call from `research/wide-import.md` open question 2. Tag: read in source code and spec.
 
-**Q4. Retention with a daemon.** `src/core/code/gate/keep.ts` `#write` takes the worktree's daemon lock; when `acquireDaemonLock` returns `null` it prints "`N` completed test files were not kept in the stores: a daemon runs in this worktree, and it keeps its own" and writes nothing. The daemon keeps only what it runs itself, so the 327 gate-completed files are lost for a retry. D17.5 keeps this note "as today" and names row 021-20; board row 021-20 part two (the gate keeper through the daemon) is in repair R2 on `cand/0.1.450`. Tag: read in source code and `docs/board.md` at `c23ca67aa`.
+**Q4. Retention with a daemon.** `src/core/code/gate/keep.ts` `#write` takes the worktree's daemon lock; when `acquireDaemonLock` returns `null` it prints "`N` completed test files were not kept in the stores: a daemon runs in this worktree, and it keeps its own" and writes nothing. The daemon keeps only what it runs itself, so the 327 gate-completed files are lost for a retry. D17.5 keeps this note "as today" and names row 021-20; board row 021-20 part two (the gate keeper through the daemon) is in repair R2 on `cand/0.1.450`. Tag: read in source code and `docs/board.md` at `051fd160e`.
 
 ## Limits
 
@@ -61,10 +61,10 @@ Incomplete semantics stay as they are: an unfinished selected file keeps the ver
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/198 (read with `gh issue view 198 -R hearsay-tools/squeal --json title,body,comments,state,createdAt`, 2026-11-12 13:20 UTC).
-- `src/runners/vitest/project.ts` (`projectConfigFiles`, `isProjectInput`), `src/runners/vitest/affected.ts`, `src/runners/vitest/environment.ts`, `src/core/code/gate/report.ts` (`verdictOf`), `src/core/code/gate/evaluate.ts`, `src/core/code/gate/estimate.ts`, `src/core/code/gate/keep.ts` (`#write`), `src/cli/code-gate-text.ts`, all at `c23ca67aa`.
+- `src/runners/vitest/project.ts` (`projectConfigFiles`, `isProjectInput`), `src/runners/vitest/affected.ts`, `src/runners/vitest/environment.ts`, `src/core/code/gate/report.ts` (`verdictOf`), `src/core/code/gate/evaluate.ts`, `src/core/code/gate/estimate.ts`, `src/core/code/gate/keep.ts` (`#write`), `src/cli/code-gate-text.ts`, all at `051fd160e`.
 - Spec 020 D3, D5, D7, D11.7, D13, D17 and `status.md`; `docs/board.md` rows 021-20 and 020-28.
 - Commands: `cat /proc/loadavg`, `getconf _NPROCESSORS_ONLN`, `squeal --version`, `grep`/`sed` over the files above.
 
 ## Landing-time update
 
-Read in git history and the board after the research: main `8a1185f0e` contains 0.1.450 and row 021-20 part two (keeper writes through a serving daemon), with its R2 review PASS and candidate CI 43223198834 green; release is pending. The daemon-present loss described above is evidence about 0.1.447/0.1.449, not a claim about 0.1.450. No live retention check ran. Selection and the advice-only budget rule remain separate human decisions.
+Read in git history and the board after the research: main `ca23710e1` contains 0.1.450 and row 021-20 part two (keeper writes through a serving daemon), with its R2 review PASS and candidate CI 43223198834 green; release is pending. The daemon-present loss described above is evidence about 0.1.447/0.1.449, not a claim about 0.1.450. No live retention check ran. Selection and the advice-only budget rule remain separate human decisions.

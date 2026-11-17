@@ -32,6 +32,6 @@ Use /worker.
 
 ## 009-14 review of wave 0
 
-Shape: review. `/reviewer` over wave 0's landing, `a19b6638..8d401144` (009-10, 009-11, the key re-pin). Focus: D4, that no Squeal call can hold Pi past its deadline or keep Node alive (the worker's `unref`, timers, a worker that never starts); idempotent registration and `reload`; `session_shutdown` reasons; the fixture's isolation (`test/helpers/pi.ts` against `research/wave-0-checks.md`); `plugins/pi/` as a Pi package (manifest, peers, bundle imports). Write `docs/specifications/009-pi-adapter/reviews/wave-0.md`.
+Shape: review. `/reviewer` over wave 0's landing, `82dd655d..bd028b70` (009-10, 009-11, the key re-pin). Focus: D4, that no Squeal call can hold Pi past its deadline or keep Node alive (the worker's `unref`, timers, a worker that never starts); idempotent registration and `reload`; `session_shutdown` reasons; the fixture's isolation (`test/helpers/pi.ts` against `research/wave-0-checks.md`); `plugins/pi/` as a Pi package (manifest, peers, bundle imports). Write `docs/specifications/009-pi-adapter/reviews/wave-0.md`.
 
 Use /reviewer.

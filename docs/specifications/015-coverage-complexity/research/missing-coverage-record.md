@@ -1,6 +1,6 @@
 # A completed passing result with no coverage record (015-79, dogfood C2)
 
-Researcher 8813a5db, 2026-10-27. The brief is `tasks/wave-19.md`, W2. Baseline `776712148`. Vitest 5.0.3 in this worktree. The daemons on this host were 0.1.347 to 0.1.359. The probes are in `probes/missing-coverage-record/`, marked throwaway. No product file changed.
+Researcher 8813a5db, 2026-10-27. The brief is `tasks/wave-19.md`, W2. Baseline `b5a929151`. Vitest 5.0.3 in this worktree. The daemons on this host were 0.1.347 to 0.1.359. The probes are in `probes/missing-coverage-record/`, marked throwaway. No product file changed.
 
 ## Answers
 
@@ -71,10 +71,10 @@ A narrow repair in the writer that a worker can take now. It is not a D8 exclusi
 
 ## Sources
 
-- `src/core/code/coverage/writer.ts`, `mapper.ts`, `map-worker.ts`, `pace.ts`, `provider.mjs`, `types.ts`, `runtime.ts` at `776712148`.
-- `src/runners/vitest/coverage.ts:217-248` (`coveredFiles`) and `src/runners/vitest/adapter.ts:595-735` at `776712148`.
-- `src/core/store/open.ts:39`, `src/core/store/connection.ts`, `src/core/store/busy.ts`, `src/core/code/store/prune.ts`, `prune-main.ts` and `src/core/daemon/lifecycle.ts:390-415` at `776712148`.
-- `src/cli/daemon.ts:26` and `src/core/daemon/ensure.ts:217-221` at `776712148`.
+- `src/core/code/coverage/writer.ts`, `mapper.ts`, `map-worker.ts`, `pace.ts`, `provider.mjs`, `types.ts`, `runtime.ts` at `b5a929151`.
+- `src/runners/vitest/coverage.ts:217-248` (`coveredFiles`) and `src/runners/vitest/adapter.ts:595-735` at `b5a929151`.
+- `src/core/store/open.ts:39`, `src/core/store/connection.ts`, `src/core/store/busy.ts`, `src/core/code/store/prune.ts`, `prune-main.ts` and `src/core/daemon/lifecycle.ts:390-415` at `b5a929151`.
+- `src/cli/daemon.ts:26` and `src/core/daemon/ensure.ts:217-221` at `b5a929151`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/index.ggMXe2IF.js:181-191`, `index.DpLw24bj.js:10685`, `:10763-11010`, `:11892-11920`, `:21108-21150`.
 - The shared stores `~/projects/squeal/.git/squeal/{store,code}.sqlite` and run logs `…/runs/<id>/`, read-only, 2026-10-26 23:00Z to 2026-10-27 00:30Z.
 - Spec D8 and D9, `lessons.md` Round 2 C2 and Unknown states, `test/code/coverage/writer-stored.test.ts`, `test/scheduler/backlog-slots-overhead.test.ts`.

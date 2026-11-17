@@ -1,6 +1,6 @@
 # 005-84 (gh-85): the version-mismatch notice prints once per version pair per session
 
-Worker 0ad34ff8, wave 11 W2, baseline c652d5a4a, 2026-10-26.
+Worker 0ad34ff8, wave 11 W2, baseline b043ddfff, 2026-10-26.
 
 ## Cause
 
@@ -31,7 +31,7 @@ So the launcher reads the first non-empty of `CLAUDE_CODE_SESSION_ID`, `CODEX_SE
 
 1. Mark location, above.
 2. The wording of the one line, above.
-3. Format 6 to 7. The update tests (`test/cli/update.test.ts`, `update-pi.test.ts`, `update-opencode.test.ts`, `test/real-cli/update.real.ts`) move with it, in the launcher commit, as d533265f7 did.
+3. Format 6 to 7. The update tests (`test/cli/update.test.ts`, `update-pi.test.ts`, `update-opencode.test.ts`, `test/real-cli/update.real.ts`) move with it, in the launcher commit, as 3dce80b60 did.
 4. The three copies under `plugins/{codex,pi,opencode}/bin/` are a plain `cp` of the source. There was no `npm run build`.
 5. `test/harness/codex/version-copies.test.ts:112` (W1's file) gets its one expected string in a standalone commit.
 

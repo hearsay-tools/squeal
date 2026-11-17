@@ -2,7 +2,7 @@
 
 ## Verification
 
-Tested HEAD: `7c9109ac20f8fc1ee9178deae07169df2904f703`, version 0.1.68. Executable candidate: `caec2ce`, the range endpoint in the 004-45 brief. `git diff --name-only caec2ce..HEAD` lists only the board, status and wave-4.7 brief. There is no executable candidate mismatch. The landed fix is `43840d5` and the priority-test change is `7aa5223`; comparisons with the brief's `c379e6d` and `8604813` show identical owned-file contents. The 005 documentation is outside scope.
+Tested HEAD: `13a43be0c26ddfcc448549d45d06998ad0630a37`, version 0.1.68. Executable candidate: `caec2ce`, the range endpoint in the 004-45 brief. `git diff --name-only caec2ce..HEAD` lists only the board, status and wave-4.7 brief. There is no executable candidate mismatch. The landed fix is `43840d5` and the priority-test change is `7aa5223`; comparisons with the brief's `c379e6d` and `8604813` show identical owned-file contents. The 005 documentation is outside scope.
 
 This is the second and last round for 004-33, bounded by `reviews/wave-4.6.md` B1 and the 004-44 delta: ignored discovery on nonempty intervals, preserving both diffs and their cache updates, installed-lockfile discovery, and the touch rule. Earlier closures and 004-35 were not re-prosecuted. No product code, board or status was changed.
 

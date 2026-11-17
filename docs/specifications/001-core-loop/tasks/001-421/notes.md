@@ -4,7 +4,7 @@
 
 ### What CI saw
 
-Main CI run 38769103748 on 419359c1, Node 24.21.0 (the same version as this
+Main CI run 38769103748 on f4ed03a7, Node 24.21.0 (the same version as this
 host): `end: "timed-out"`, `results: []`, but `completedFiles` held
 `edge/test/busy-loop.test.ts`; the case took 3046 ms. It was not a timeout of
 the test: the 3046 ms is the 3000 ms deadline plus about 46 ms of teardown, and
@@ -55,7 +55,7 @@ The case now reads its own premise and the meaning from `run.json`:
 
 ### What CI saw
 
-Run 38765313680 on f0a8810d, Node 22: `runs(main, wt2).slice(from)` after
+Run 38765313680 on 76e869d8, Node 22: `runs(main, wt2).slice(from)` after
 `uv sync` in wt2 held a revision-1 run of the three pytest files with `end:
 "completed"`, where the case expected only `crashed` tiers.
 

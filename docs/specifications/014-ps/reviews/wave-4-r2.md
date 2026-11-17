@@ -1,7 +1,7 @@
 # Wave 4, round 2 review: PASS
 
-Candidate: `cand/0.1.248`, `a8ba68050354243734380f10baa96ac0223c19b2`.
-Repair range: `29ca7cc8d..a8ba68050`. Base: `485be5770`.
+Candidate: `cand/0.1.248`, `8b98ee4249ba8d9970c8a3aca9cbbeace4a98691`.
+Repair range: `00115446f..8b98ee424`. Base: `f7c355701`.
 Prior findings: `reviews/wave-4.md`. Reviewed on Linux, Node v24.21.0.
 
 No remaining blocker in this narrow re-review. B1, B2, B3 and S1 are fixed. N1 is a proven residual limit, explicitly accepted and named in D3 and the amendment log. This verdict does not assert an unconditional no-file-created guarantee. No product code changed during review.
@@ -10,7 +10,7 @@ No remaining blocker in this narrow re-review. B1, B2, B3 and S1 are fixed. N1 i
 
 `HEAD` matched the supplied candidate. No tracked product file differed during verification; the review draft was the only untracked path. The focused tests used a fresh archive of the exact candidate.
 
-The coordinator stopped the unfinished full run at the former pin `f7c35e849` when 0.1.247 landed. That run supplies no full-suite result. The re-pin puts the same wave on main `485be5770` and updates the release to 0.1.248. A direct diff from `f7c35e849` to `a8ba68050` is empty for `src/core/ps`, `src/cli/ps.ts`, `test/ps`, `test/e2e/ps*.ts` and `docs/specifications/014-ps`. The new main's unrelated changes remain outside this narrow review; the exact-SHA full gate covers their integration.
+The coordinator stopped the unfinished full run at the former pin `6bb871d49` when 0.1.247 landed. That run supplies no full-suite result. The re-pin puts the same wave on main `f7c355701` and updates the release to 0.1.248. A direct diff from `6bb871d49` to `8b98ee424` is empty for `src/core/ps`, `src/cli/ps.ts`, `test/ps`, `test/e2e/ps*.ts` and `docs/specifications/014-ps`. The new main's unrelated changes remain outside this narrow review; the exact-SHA full gate covers their integration.
 
 ```text
 $ npm ci
@@ -32,7 +32,7 @@ $ npm run build
 > tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
 exit 0
 
-$ npm run check:version -- 485be5770 HEAD
+$ npm run check:version -- f7c355701 HEAD
 version bump: 0.1.247 -> 0.1.248, ok
 exit 0
 
@@ -46,7 +46,7 @@ The brief permits the coordinator's independent gate on this exact SHA. Its work
 
 ```text
 $ nohup setsid flock /run/user/$(id -u)/squeal-full-run.lock npx vitest run --maxWorkers=4
-start 2026-10-21T21:47:05Z a8ba68050354243734380f10baa96ac0223c19b2
+start 2026-10-21T21:47:05Z 8b98ee4249ba8d9970c8a3aca9cbbeace4a98691
 Test Files  1 failed | 844 passed | 2 skipped (847)
 Tests       1 failed | 7269 passed | 11 skipped (7281)
 Duration    1328.16s
@@ -69,7 +69,7 @@ The three rerun attempts killed the held Stop at +2,016, +2,016 and +2,229 ms, a
 
 The supplemental Squeal status returned without a daemon, with `Known failures: 0; not current: 828 of 828 test files`. That is not passing evidence and was not used instead of the independent gate.
 
-The targeted proof used disposable before and candidate trees outside the project. They had the candidate's tests, configuration and dependencies. The before tree replaced only `work.ts`, `flags-leftovers.ts`, `measure.ts`, `snapshot-unknown.ts` and `cli/ps.ts` with their `735bb6cf3` versions, which a direct diff confirms equal their rebased `29ca7cc8d` versions. This isolates the repairs without mixing in the old base's test-race changes. These are regression probes, not full-suite results at the old commit.
+The targeted proof used disposable before and candidate trees outside the project. They had the candidate's tests, configuration and dependencies. The before tree replaced only `work.ts`, `flags-leftovers.ts`, `measure.ts`, `snapshot-unknown.ts` and `cli/ps.ts` with their `2748d7f5d` versions, which a direct diff confirms equal their rebased `00115446f` versions. This isolates the repairs without mixing in the old base's test-race changes. These are regression probes, not full-suite results at the old commit.
 
 ```text
 before, --maxWorkers=1, TMPDIR=/tmp:

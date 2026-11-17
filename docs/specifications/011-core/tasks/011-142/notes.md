@@ -1,6 +1,6 @@
 # 011-142: the pytest deadline case kills only after the file before the deadline reported
 
-Worker 07ee1929, wave 31 W8, from main at 36ee11d02 (after 0.1.291), 2026-10-24. Shape: repair (test).
+Worker 07ee1929, wave 31 W8, from main at 95f26c192 (after 0.1.291), 2026-10-24. Shape: repair (test).
 
 ## 1. What failed
 
@@ -19,7 +19,7 @@ A scratch test, outside the repository, calls `compare` as `pytest.test.ts:34` d
 
 | Batch | Code | Repetitions | Legs that stored `test_first.py` | Both legs stored nothing | One leg only | Comparison ms (min / median / max) | Load (1 min) |
 |---|---|---|---|---|---|---|---|
-| red | main 36ee11d02 | 8 | 1 of 16 | 7 | 1 | 12,942 / 14,619 / 16,256 | 43 to 70 |
+| red | main 95f26c192 | 8 | 1 of 16 | 7 | 1 | 12,942 / 14,619 / 16,256 | 43 to 70 |
 | green | 7899f6f39, the hold | 20 | 40 of 40 | 0 | 0 | 12,215 / 29,587 / 53,573 | 33 to 79 |
 
 *Read from the scratch test's records.*

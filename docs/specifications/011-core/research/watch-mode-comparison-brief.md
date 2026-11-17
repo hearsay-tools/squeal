@@ -12,7 +12,7 @@ Use /researcher. Shape: research. Outcome: for each scenario on three repositori
 
 ## Scenarios, at least
 
-- **squeal** (main at 0.1.265, `da73c4984`): a body edit of a module that a few tests import directly, then its revert; an edit that breaks one test; an edit of a test file.
+- **squeal** (main at 0.1.265, `45e556d87`): a body edit of a module that a few tests import directly, then its revert; an edit that breaks one test; an edit of a test file.
 - **cezar** (pnpm, Vitest projects): the same three.
 - **The client monorepo** (`7f939fb9`, after `uv sync` in each tool, as in the live checkout): the 011-115 sequence on `plugin-tools/estimate-pricing/cli.py`, with and without a vim swap file; a body edit of `estimate_pricing/rules.py`; a TS edit under `tools/generator/src`.
 

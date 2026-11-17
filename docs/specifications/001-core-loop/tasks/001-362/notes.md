@@ -1,6 +1,6 @@
 # 001-362 notes: a daemon start beside long writers fails before ready
 
-005-52's full run on `7f1acb09` failed `test/daemon/busy-store.test.ts:83`. The daemon of start 1 exited 1 with "could not start serving: database is locked" (its notes held only that one note, so starts 2 and 3 never ran). The cause is the test, not the product: its two writers raced for the lock and could leave it free for less than SQLite's busy handler can use, for minutes on end. The repair gives the writers a shared schedule. No product code changed.
+005-52's full run on `e2155e4f` failed `test/daemon/busy-store.test.ts:83`. The daemon of start 1 exited 1 with "could not start serving: database is locked" (its notes held only that one note, so starts 2 and 3 never ran). The cause is the test, not the product: its two writers raced for the lock and could leave it free for less than SQLite's busy handler can use, for minutes on end. The repair gives the writers a shared schedule. No product code changed.
 
 ## The failing statement (measured)
 

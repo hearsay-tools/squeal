@@ -8,7 +8,7 @@ All fixtures, settings, daemon stores, binaries and fetched source lived beneath
 
 Pinned inputs:
 
-- `git archive 9848df0571da95cdfd0fe7b8303873deb0fa8414 plugins` extracted to the scratch root; Squeal 0.1.67. Claude `--plugin-dir` points to the copy; Codex session flags declare copied hooks with expanded paths and disable installed plugins. The hooks used trust bypass only in these test invocations.
+- `git archive dd2eb90ba451e7b24881b10c7241c7184d728fa0 plugins` extracted to the scratch root; Squeal 0.1.67. Claude `--plugin-dir` points to the copy; Codex session flags declare copied hooks with expanded paths and disable installed plugins. The hooks used trust bypass only in these test invocations.
 - Claude 2.1.295 native executable copied into the scratch root, model `claude-sonnet-5-5`; Codex 0.160.1 native executable **and its sibling `codex-code-mode-host`** copied there, default configured model `gpt-6.1-sol`. Binary and plugin hashes: `logs/pins.json` (raw logs removed).
 - A full copy of the same repository commit under `repo/`, `npm ci --ignore-scripts`, supplies Vitest 5.0.3 via fixture `node_modules` symlinks. Each fixture is its own git repository with one passing test. Daemons and stores are independent from the product checkout. `substitute.py` changes its own test to fail and records executions outside its fixture's root.
 - Subject shell permissions are deliberately different by harness: Claude normal approval mode with a small allow-list; Codex full-access/bypass mode as used by earlier research on this host. This measures rewrite support, not permission parity.

@@ -1,6 +1,6 @@
 # 011-133: what starts the old-version daemons (gh-75, gh-77)
 
-Researcher R1 of wave 22, 2026-10-23, from main e81754965 (0.1.273). Brief: [issue-75-77-brief.md](issue-75-77-brief.md).
+Researcher R1 of wave 22, 2026-10-23, from main 178c6e5cc (0.1.273). Brief: [issue-75-77-brief.md](issue-75-77-brief.md).
 
 **Answer.** A kept copy with the wrong code starts the old daemons. Squeal keeps a copy of each Codex plugin version under `<PLUGIN_DATA>/versions/<version>/`. On this host the copy named `0.1.273` holds 0.1.272 code, and the copy named `0.1.272` holds 0.1.271 code. A Codex hook spawns its daemon from the copy of its own version number and never checks the code in it. A newer hook steps the old daemon down, claims the handoff and spawns its successor from that copy. The successor registers at the old version, so the next newer hook steps it down again. Nothing ends the cycle until the session ends. 0.1.273 still loops in this way (verified by experiment).
 

@@ -1,6 +1,6 @@
 # Research: issue 51, a named wait behind a large requeue
 
-Researcher, 2026-10-20, worktree `cez/7fae8031` at ea76593b (`package.json` 0.1.228). [Issue #51](https://github.com/hearsay-tools/squeal/issues/51): after a base-branch merge requeued 303 test files in cezarion (PR #1312), four `squeal status --wait 60000 packages/cezar/src/test-wait-discipline.test.ts` calls each printed `pending — queued behind the vitest tier running since 14:07:17`; the file then read `running since 14:11:37 in the vitest lane`. Load 84 on 24 CPUs. Reported on Squeal 0.1.226. The issue asks that a named queued file start before every unnamed file of its revision, that the wait say so, and for a regression test.
+Researcher, 2026-10-20, worktree `cez/7fae8031` at 59913217 (`package.json` 0.1.228). [Issue #51](https://github.com/hearsay-tools/squeal/issues/51): after a base-branch merge requeued 303 test files in cezarion (PR #1312), four `squeal status --wait 60000 packages/cezar/src/test-wait-discipline.test.ts` calls each printed `pending — queued behind the vitest tier running since 14:07:17`; the file then read `running since 14:11:37 in the vitest lane`. Load 84 on 24 CPUs. Reported on Squeal 0.1.226. The issue asks that a named queued file start before every unnamed file of its revision, that the wait say so, and for a regression test.
 
 Environment: host 24 CPUs (`nproc`); one-minute load 13.52 at the start (below the CPU count, so a probe was allowed), 17.55 at the first probe run, 43.47 when the recorded run started (`results.txt` header; above the CPU count, so no further live run was made). The probe is synthetic and in-process: a fake runner, a real store and a real scheduler, with no Vitest child processes and no timings in its assertions; the load does not change the order it checks. `npm ci --ignore-scripts` in this worktree, Vitest 5.0.3. No build, no suite. The original cezar session was not replayed: its store, daemon log and timings are not available here.
 
@@ -37,7 +37,7 @@ What would shorten this wait is cutting the running tier: 001-381 (planned, the 
 
 ## 3. The missing `promoted` label
 
-**Read in source code** at ea76593b:
+**Read in source code** at 59913217:
 - `src/cli/status-wait-paths.ts` `waitForNamed`: the promotion is sent once, at the first ready read, with `options.timeoutMs - elapsed()`, the time left in the wait. The loop then pauses `min(pollMs, remaining)` and makes its final read when `elapsed() >= timeoutMs`.
 - `src/core/scheduler/scheduler.ts` `promote`: `until = context.now() + withinMs`, the wait's deadline on the daemon's clock, plus transit time.
 - `src/core/scheduler/promotions.ts` `promotedIds`: the CLI counts a published promotion only while `p.until > now`.
@@ -66,7 +66,7 @@ Holds preserved: 001-381 stays the owner of cancelling or splitting a running ti
 - Spec: `docs/specifications/011-core/spec.md` C4 (step 4, step 5, lanes), C6, C15; `status.md` lines for 011-03, 011-11 to 011-13, 001-366, 011-21, 011-22, 011-25.
 - Board rows: 001-381, 011-03, 011-11, 011-12, 011-13, 011-24, 011-27, gh-40 / gh-38 folded into 011-24 (`docs/board.md`).
 - Prior research: `research/issue-40.md` sections 2 and the "Promoted label not seen" note.
-- Source at ea76593b: `src/cli/status-wait-paths.ts`, `src/cli/status-wait-promote.ts`, `src/cli/named-files.ts`, `src/cli/named-file-lines.ts`, `src/core/scheduler/promotions.ts`, `src/core/scheduler/scheduler.ts`, `src/core/scheduler/queue.ts`; tests `test/scheduler/promotion.test.ts`, `test/scheduler/catch-up-order.test.ts`, `test/scheduler/catch-up-fixture.ts`.
+- Source at 59913217: `src/cli/status-wait-paths.ts`, `src/cli/status-wait-promote.ts`, `src/cli/named-files.ts`, `src/cli/named-file-lines.ts`, `src/core/scheduler/promotions.ts`, `src/core/scheduler/scheduler.ts`, `src/core/scheduler/queue.ts`; tests `test/scheduler/promotion.test.ts`, `test/scheduler/catch-up-order.test.ts`, `test/scheduler/catch-up-fixture.ts`.
 - Probe: `probes/issue-51/` (README, probe, config, `results.txt`). Command: `npx vitest run -c docs/specifications/011-core/research/probes/issue-51/vitest.config.ts --reporter=verbose`.
 
 ## Coordinator documentation checks

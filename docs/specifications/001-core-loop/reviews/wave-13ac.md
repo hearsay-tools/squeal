@@ -2,13 +2,13 @@
 
 ## Verification output
 
-Candidate: `9a9354a50728492964e32be284a1f58428242586`, package 0.1.114. HEAD matched the assigned candidate. Range: `8e5e5462..9a9354a5`. Scope: 001-253, 001-255, 001-258, 001-254, their rebuilt distributions and the repository-inputs teardown fix. Research documents 001-256, 001-180, 001-218 and 001-182 are inputs, not executable changes. Spec 006's eval implementation/reviews interleaved in the range are outside this assigned product review; the full suite includes their tests.
+Candidate: `78373eb37b0b3e83ed4fe2d1c152826e5db22ede`, package 0.1.114. HEAD matched the assigned candidate. Range: `dad7edbd..78373eb3`. Scope: 001-253, 001-255, 001-258, 001-254, their rebuilt distributions and the repository-inputs teardown fix. Research documents 001-256, 001-180, 001-218 and 001-182 are inputs, not executable changes. Spec 006's eval implementation/reviews interleaved in the range are outside this assigned product review; the full suite includes their tests.
 
 All checks and external probes ran at the exact candidate with a clean tracked tree, before writing this report. Linux, Node 24.21.0, Vitest 5.0.3. The independent full suite ran directly as explicitly required, with `GIT_CONFIG_GLOBAL=/dev/null` and `CODEX_SESSION_ID` unset; it was not replaced by Squeal. No product, test, board, specification, status or distribution file was edited. Only this report is committed.
 
 ```text
 $ git rev-parse HEAD
-9a9354a50728492964e32be284a1f58428242586
+78373eb37b0b3e83ed4fe2d1c152826e5db22ede
 $ git status --short
 (no output)
 
@@ -59,7 +59,7 @@ All five complete failed files passed in the single serial retry at the same cle
 
 ## Verdict
 
-**FAIL 9a9354a5: 1 proven blocker, 0 should-fix, 1 proven documentation nit.**
+**FAIL 78373eb3: 1 proven blocker, 0 should-fix, 1 proven documentation nit.**
 
 001-253, 001-255 and 001-254 keep their required product behavior. The store-based wait keeps the named prior regressions when the daemon writes moves throughout the wait, and removes their per-request retention machinery. Its mixed-version guarantee fails when an older daemon replaces a newer one after the sync answer and before refinement. This is the edge already named in 001-258's notes, now reproduced at the production socket/store/CLI boundaries.
 
@@ -77,7 +77,7 @@ Reproduction:
 
 1. A live newer daemon has an empty moves row from a completed earlier revision. Revision 4 is stored, with refinement still at 3. A test file still has its earlier PASS and key; its new key is discovered by the runner part, rather than the initial content re-key.
 2. Start the candidate public wait. The actual candidate `syncDaemon` talks to the candidate handler over a private Unix socket and receives `{state: "synced", revision: 4, moves: true}`. The CLI initially reads `refining`.
-3. Replace that server with the actual pre-258 handler from 0.1.112 (`cf7e8a2c`). Update the worktree's daemon record to the older successor. The actual predecessor `Ledger.settle(..., {keyedAt: 4})` queues the runner-discovered key, and `Ledger.commit({refined: 4})` writes its pending states and refined revision. Its code writes the legacy re-key row but does not touch `rekeyed-moves`.
+3. Replace that server with the actual pre-258 handler from 0.1.112 (`d58dd59c`). Update the worktree's daemon record to the older successor. The actual predecessor `Ledger.settle(..., {keyedAt: 4})` queues the runner-discovered key, and `Ledger.commit({refined: 4})` writes its pending states and refined revision. Its code writes the legacy re-key row but does not touch `rekeyed-moves`.
 4. Before any result at that key, the candidate wait accepts the unchanged empty row. It returns `quiet`, zero edit files and zero edit pending. The key remains `queued`; the snapshot itself honestly contains two pending checks.
 
 | Writer after the sync | Capability used | Result with the key still queued |

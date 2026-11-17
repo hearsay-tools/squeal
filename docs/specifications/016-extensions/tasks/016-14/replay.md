@@ -12,7 +12,7 @@ Worker 016-14, 2026-10-25. Spec 016 goal 3: replaying three past defects on a sc
 
 ## 1. Row 007-29: a shared bytecode cache
 
-The defect: every pytest run used one `PYTHONPYCACHEPREFIX`, kept across runs. CPython accepts a `.pyc` whose source has the same whole-second mtime and size, so a same-size edit in the same second ran the old code. Fix: `e2a09088f`, a prefix of each run's own.
+The defect: every pytest run used one `PYTHONPYCACHEPREFIX`, kept across runs. CPython accepts a `.pyc` whose source has the same whole-second mtime and size, so a same-size edit in the same second ran the old code. Fix: `c94e3697f`, a prefix of each run's own.
 
 Scratch commit `4479c40377c0d976d669c7a9eccaf32e40f18f0a` on `replay/016-14-007-29`:
 
@@ -71,7 +71,7 @@ The `--require` and quoted `NODE_OPTIONS` forms fail the same line for `src/hidd
 
 ## 3. 011 `reviews/0.1.287.md` B1: an interrupted `it.fails` reads as passed
 
-The defect: `cutShort` took a test's final state as proof that the cancel did not cut it. An `it.fails` test that a step-down interrupted, with an `afterEach` that throws on the aborted signal, ends `passed`, so the module was completed with a pass. Fix: `0b0656070`, only the states reported before the cancel count.
+The defect: `cutShort` took a test's final state as proof that the cancel did not cut it. An `it.fails` test that a step-down interrupted, with an `afterEach` that throws on the aborted signal, ends `passed`, so the module was completed with a pass. Fix: `36a22f93b`, only the states reported before the cancel count.
 
 Scratch commit `08fe1a221cc17c88793a3f6a2293d3d9dcf77834` on `replay/016-14-011-0.1.287-b1`:
 

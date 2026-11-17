@@ -177,7 +177,7 @@
   },
   "sq-a": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-a",
-   "head": "1dcc79aa9011e900dd68c939d23bf3321cda4b4e",
+   "head": "9820b54b537d1c59712f6a560a95bd70a7aa9b4a",
    "listed": 1907,
    "chosen": 1907,
    "keyed": 1907,
@@ -202,7 +202,7 @@
   },
   "sq-b-n1": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-b",
-   "head": "74aab4211a5b4df62e20fc0f13d1c0e406f10ccd",
+   "head": "c40cef15ea590921521dc63692f907d7c9256d75",
    "listed": 1907,
    "chosen": 1,
    "keyed": 1,
@@ -227,7 +227,7 @@
   },
   "sq-b-n10": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-b",
-   "head": "74aab4211a5b4df62e20fc0f13d1c0e406f10ccd",
+   "head": "c40cef15ea590921521dc63692f907d7c9256d75",
    "listed": 1907,
    "chosen": 10,
    "keyed": 10,
@@ -252,7 +252,7 @@
   },
   "sq-b-n100": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-b",
-   "head": "74aab4211a5b4df62e20fc0f13d1c0e406f10ccd",
+   "head": "c40cef15ea590921521dc63692f907d7c9256d75",
    "listed": 1907,
    "chosen": 100,
    "keyed": 100,
@@ -277,7 +277,7 @@
   },
   "sq-b": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-b",
-   "head": "74aab4211a5b4df62e20fc0f13d1c0e406f10ccd",
+   "head": "c40cef15ea590921521dc63692f907d7c9256d75",
    "listed": 1907,
    "chosen": 1907,
    "keyed": 1907,
@@ -302,7 +302,7 @@
   },
   "sq-c": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-c",
-   "head": "18d475a5f52aadc0e05a236aac8bb12553cacfa2",
+   "head": "8f2b9ecfd7fc5083738b0336935444efb944aa44",
    "listed": 1907,
    "chosen": 1907,
    "keyed": 1907,
@@ -327,7 +327,7 @@
   },
   "sq-d": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-d",
-   "head": "737db5966df9289f1e18147ae2e1269dbb680fda",
+   "head": "ad4f00cb26ca1c1370e8beb581630fa2b16bc769",
    "listed": 1898,
    "chosen": 1898,
    "keyed": 1898,
@@ -403,7 +403,7 @@
   "sq-a": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-a",
    "worktreeId": "7308c42d8aac306f",
-   "head": "1dcc79aa9011e900dd68c939d23bf3321cda4b4e",
+   "head": "9820b54b537d1c59712f6a560a95bd70a7aa9b4a",
    "baselineMs": 88106,
    "phases": {
     "revisionMs": null,
@@ -427,7 +427,7 @@
   "sq-b": {
    "root": "~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-b",
    "worktreeId": "b8851542a1e6a550",
-   "head": "74aab4211a5b4df62e20fc0f13d1c0e406f10ccd",
+   "head": "c40cef15ea590921521dc63692f907d7c9256d75",
    "baselineMs": 82403,
    "phases": {
     "revisionMs": null,

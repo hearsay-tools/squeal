@@ -4,7 +4,7 @@
  "date": "2026-10-11",
  "run": "20261011T091309Z-f8befa",
  "squealVersion": "0.1.110",
- "commit": "903600d867ad52ba35779951e6fb627858d40472",
+ "commit": "4fd0f0aefd08f3931883f0df89f808b76d9a401e",
  "conditions": {
   "fixture": "b192f479e3a40f6f621c9be4982b06ac7a74055b",
   "tasks": {

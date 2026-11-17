@@ -40,7 +40,7 @@ Use /worker. Shape: repair. Resumes worker f0ed5308 on its branch `cez/f0ed5308`
 
 ## 015-41 round 2: re-review of candidate 0.1.299
 
-Use /reviewer. Resumes reviewer 1458394f. Candidate `cand/0.1.299` at 2611bc70e, rebased on main at 0.1.298 with no source change from main; round 1 is `reviews/0.1.299.md` (FAIL on 6671841a5, B1; kept as `review/0.1.299-round1`). Write `reviews/0.1.299-r2.md` and commit it on your branch. The candidate is wave 3 again, plus repair R7 (d94d8dd07, `tasks/R7/notes.md`) and a new build commit.
+Use /reviewer. Resumes reviewer 1458394f. Candidate `cand/0.1.299` at 360b7c9e7, rebased on main at 0.1.298 with no source change from main; round 1 is `reviews/0.1.299.md` (FAIL on ebe377bce, B1; kept as `review/0.1.299-round1`). Write `reviews/0.1.299-r2.md` and commit it on your branch. The candidate is wave 3 again, plus repair R7 (c8eabeabe, `tasks/R7/notes.md`) and a new build commit.
 - Check B1's proof against R7: your four steps, an own edit after the pull, and R7's accepted limit (provenance per file: a pull that changes another function of the file leaves a pending own edit untold, never a false line).
 - What passed round 1: re-read only where R7 touches it (`crap/step.ts`, `crap/summary.ts`, new `crap/brought.ts`). Confirm the candidate's CI is green.
 

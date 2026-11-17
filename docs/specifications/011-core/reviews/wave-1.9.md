@@ -1,10 +1,10 @@
 # Wave 1.9: candidate 0.1.208
 
-PASS `bc3065c2a8ea0d5a0c48aa6f8e20cc244e11dc2e`. 0 blockers, 1 should-fix, 0 nits.
+PASS `1d72b54feffd7859f94bd2664cb9d81dc6ce9e1c`. 0 blockers, 1 should-fix, 0 nits.
 
 ## Verification
 
-HEAD matched the assigned candidate exactly. All verification ran at that commit on a clean tracked tree, before this findings file was written. Reviewed `a32a6f09..bc3065c2`, with `1a82867e` treated as board documentation, against board rows 011-09 and 011-10, their wave-1 briefs, 011 C1/C6/C9, 005 D1/D2 and 004 D9, including the three amendment logs at `bc3065c2`. The local `origin/main` was `3b1b8d32`; its additions since `a32a6f09` are board documentation only.
+HEAD matched the assigned candidate exactly. All verification ran at that commit on a clean tracked tree, before this findings file was written. Reviewed `aefe9b55..1d72b54f`, with `ea06391d` treated as board documentation, against board rows 011-09 and 011-10, their wave-1 briefs, 011 C1/C6/C9, 005 D1/D2 and 004 D9, including the three amendment logs at `1d72b54f`. The local `origin/main` was `2014a033`; its additions since `aefe9b55` are board documentation only.
 
 Commands and output:
 
@@ -79,7 +79,7 @@ None.
 - **Checkpoint exception retained:** `run --all --wait` still uses its independent checkpoint formatter, with the verdict first as 005 D1 requires. Its implementation is unchanged; `run-all-verdict.test.ts` retains the first-line assertions.
 - **Skill conflict resolved:** the three `references/commands.md` files are byte-identical. The three `SKILL.md` bodies match after removing the harness-specific launcher paragraph. Step 3 and command references say the wait verdict is last; step 4 still says slow files are required "once you edit", and the slow command reference retains "once you change a file". The checkpoint command reference still explicitly says first line. The primer source and its cap were not changed.
 - **011-09 root isolation:** explicit arguments resolve against the CLI cwd, must exist, and must equal the canonical worktree root before `daemonSocket` or `askDaemon` runs. A removed linked worktree and a directory left at its former path cannot fall through to the enclosing checkout. An existing non-root path exits 1 and stops nothing, as accepted in 011's amendment log. A valid root without a daemon exits 0. The no-argument route still calls `worktreeRoot(undefined, io)`. The new socket-observing regressions cover missing/relative paths, linked roots without daemons, removed roots with leftover directories and a successful explicit-root stop; existing no-argument and shutdown-bound tests remain applicable.
-- **Specs agree:** 011 C6 describes snapshot first, verdict last and worktree suffix counts; C9 records explicit-root rejection and no-argument resolution; 005 D2 gives the named output order while D1 preserves checkpoint-first; 004 D9 moves the lapse explanation to the last verdict line. Each amendment is logged. No status/board repair was made; the newer board-only `3b1b8d32` already puts these rows in review.
+- **Specs agree:** 011 C6 describes snapshot first, verdict last and worktree suffix counts; C9 records explicit-root rejection and no-argument resolution; 005 D2 gives the named output order while D1 preserves checkpoint-first; 004 D9 moves the lapse explanation to the last verdict line. Each amendment is logged. No status/board repair was made; the newer board-only `2014a033` already puts these rows in review.
 
 ## Inputs for the next wave
 

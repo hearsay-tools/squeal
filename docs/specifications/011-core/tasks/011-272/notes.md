@@ -33,7 +33,7 @@ Wave 60 W2, repair. Wording only: no scheduler change, no new scheduler field.
 
 ## R1: review 0.1.382 B1, the `slot` words
 
-Wave 60.5 RP1, on `cand/0.1.382` `a4821729c`. Wording only: no scheduler change, no new scheduler field.
+Wave 60.5 RP1, on `cand/0.1.382` `42a359648`. Wording only: no scheduler change, no new scheduler field.
 
 - The slow tier publishes `waiting: slot` for two resources: a slow slot it cannot take (`#waitAtSlot`) and a shared worker pool that refuses a permit (`WAIT_FOR_CAPACITY`, `slow-tier.ts` `#tryRun`). `retryWaitOf` copies either to `{kind: "slot"}`, so the old words "the slow tier waits for the slow slot" claimed one resource the record does not prove. The seam bullet above ("The words say 'the slow slot'") no longer holds.
 - `holdText` (`src/core/retry/text.ts`), one renderer for the receipt and status, now says: "the slow tier waits for capacity; whether the slow slot or the shared worker pool holds it is not known". JSON keeps `waits: {kind: "slot"}`.

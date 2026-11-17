@@ -1,6 +1,6 @@
 # Model evals: baseline
 
-Board row 005-07. The 005-06 prototype (`probes/model-evals/`), run once on current Squeal as the first point of spec 006's trend. Squeal plugins 0.1.101, pinned by `git archive` of `8c11e5b3`; shipped texts only (`p0`). Claude Code 2.1.296 with `claude-haiku-5-5` and `claude-sonnet-5-5`; Codex CLI 0.160.1 with `gpt-6-luna` and `gpt-6.1-sol`. Every session ran at effort `medium`. Vitest 5.0.3, Node 24.21.0, fixture commit `cbfaa0a` in every cell (as in the pilot). Run 2026-10-10, 17:57 to 18:50, on this host (24 CPUs). Plans: `probes/model-evals/plan-baseline.txt`, `plan-baseline-t3.txt`. Logs: `probes/model-evals/logs/baseline-2026-10-10/`.
+Board row 005-07. The 005-06 prototype (`probes/model-evals/`), run once on current Squeal as the first point of spec 006's trend. Squeal plugins 0.1.101, pinned by `git archive` of `86806cf3`; shipped texts only (`p0`). Claude Code 2.1.296 with `claude-haiku-5-5` and `claude-sonnet-5-5`; Codex CLI 0.160.1 with `gpt-6-luna` and `gpt-6.1-sol`. Every session ran at effort `medium`. Vitest 5.0.3, Node 24.21.0, fixture commit `cbfaa0a` in every cell (as in the pilot). Run 2026-10-10, 17:57 to 18:50, on this host (24 CPUs). Plans: `probes/model-evals/plan-baseline.txt`, `plan-baseline-t3.txt`. Logs: `probes/model-evals/logs/baseline-2026-10-10/`.
 
 The matrix: T1, T2 and T4, 4 models, 3 repetitions each, 36 sessions. T3 got one repetition per model (4 sessions) after a check cell showed its events. 7 earlier sessions ran before the effort was pinned. They are kept as `effort: default` and counted apart. That makes 47 subject sessions of the 48 allowed.
 
@@ -12,7 +12,7 @@ The matrix: T1, T2 and T4, 4 models, 3 repetitions each, 36 sessions. T3 got one
 | 2 | Against the pilot's `p0` cells | False claims fell from 2 of 20 to 0 of 36. Both of the pilot's `p0` false claims were Haiku 4.5's. Claude Code's own Vitest runs rose from 0 of 10 to 6 of 18, all on T2. node:test was run when scripts were edited in 11 of 12 T2 sessions, against 4 of 8. | verified by experiment; causes inferred |
 | 3 | Haiku 4.5 against Haiku 5.5 | Haiku 5.5 made no false claim and no forbidden edit (Haiku 4.5: 4 false of 8 on T1 and T2 across the pilot, and the one T4 contract edit). It never loaded the skill (Haiku 4.5: 4 of 5 `p0` sessions). It ran the full suite itself on every T2. It cost about $0.01 per session against $0.14. | verified by experiment |
 | 4 | Effort | Pinned at `medium` and confirmed in both harnesses' own records. Claude Code's default was already `medium` for Haiku 5.5 and Sonnet 5.5. Codex's default records no level. The pilot ran at each model's unrecorded default. | verified by experiment |
-| 5 | Squeal's version | The model-facing texts are unchanged since the pilot's pin `458287d`: primer, skill and the slow-tier sentence. 0.1.99 to 0.1.101 changed the scheduler and watcher internals and `squeal why`. Temp-file headers (001-216) went from the pilot's 7 of 18 Claude Code sessions to 0 of 24 here. | read in source code (`git diff 458287d 8c11e5b3 -- src`); verified by experiment |
+| 5 | Squeal's version | The model-facing texts are unchanged since the pilot's pin `458287d`: primer, skill and the slow-tier sentence. 0.1.99 to 0.1.101 changed the scheduler and watcher internals and `squeal why`. Temp-file headers (001-216) went from the pilot's 7 of 18 Claude Code sessions to 0 of 24 here. | read in source code (`git diff 458287d 86806cf3 -- src`); verified by experiment |
 
 ## Behaviour per model
 
@@ -109,6 +109,6 @@ Take this file's table as the trend's first point: 0.1.101, effort `medium`, Hai
 
 ## Sources
 
-- This repository at `8c11e5b3`: `src/harness/shared/primer.ts` (lines 25 to 35), `src/harness/claude-code/hooks/session-end.ts`, `src/harness/shared/session.ts`, `git diff --stat 458287d 8c11e5b3 -- src`; `research/model-evals.md` (the pilot); `research/README.md` (the topic).
+- This repository at `86806cf3`: `src/harness/shared/primer.ts` (lines 25 to 35), `src/harness/claude-code/hooks/session-end.ts`, `src/harness/shared/session.ts`, `git diff --stat 458287d 86806cf3 -- src`; `research/model-evals.md` (the pilot); `research/README.md` (the topic).
 - `claude --help` (2.1.296: `--effort <level>`), `codex exec --help` (0.160.1: `-c key=value`).
 - Probes: `probes/model-evals/plan-baseline.txt`, `plan-baseline-t3.txt`, `bin/`, `logs/baseline-2026-10-10/` (`sessions.tsv`, `summary.md`, `cells/<id>.grade.json`, `cells/<id>.calls.txt` (raw logs removed)), and the pilot's `logs/cells/` (raw logs removed).

@@ -8,7 +8,7 @@ Written by the coordinator from worker dc0607a2's final report; the brief asked 
 
 ## Fix
 
-`9895ac1ee` (worker; `212b692cc` on cand/0.1.332): `check()` runs `pruneCommandHolds` and the note loop in one `store.transaction`. The coordinator's three conditions, as the worker checked them:
+`9895ac1ee` (worker; `827c61be5` on cand/0.1.332): `check()` runs `pruneCommandHolds` and the note loop in one `store.transaction`. The coordinator's three conditions, as the worker checked them:
 
 1. Same connection. `CommandHold` writes through the scheduler's own `options.store`, so the note is a savepoint inside the removal's transaction. Case 3 of the new test spies on that store's `meta.set` and sees the note written while a second connection still sees the entry.
 2. Only store writes inside. The body is `pruneCommandHolds` and `#note`; `#note` is `appendNote` with `onError` only in its catch. A busy store fails when the transaction starts, before the body runs. A note write that fails for another reason rolls back the note alone, and the removal is saved, as before the fix.
@@ -16,7 +16,7 @@ Written by the coordinator from worker dc0607a2's final report; the brief asked 
 
 ## Evidence
 
-Test: `c315e8806` (worker; `d848faad2` on the candidate), `test/scheduler/command-hold-note.test.ts`. Before the fix (Squeal, revision 1), a second store connection saw 0 entries and no note at the moment the note was written: `expected [ { entries: +0, notes: [] }, …] to deeply equal [ { entries: 2, notes: [] }, …]`. Cases 1 and 3 fail without the fix and pass with it.
+Test: `c315e8806` (worker; `23b82bfc3` on the candidate), `test/scheduler/command-hold-note.test.ts`. Before the fix (Squeal, revision 1), a second store connection saw 0 entries and no note at the moment the note was written: `expected [ { entries: +0, notes: [] }, …] to deeply equal [ { entries: 2, notes: [] }, …]`. Cases 1 and 3 fail without the fix and pass with it.
 
 `hold.test.ts` case 2 alone, 20 runs in a row: 20 of 20 passed, 13 to 16 s each, at a 1-minute load of 23.4 to 34.8 on 24 CPUs, the host's own load. The miss was rare on main, so these runs show stability, not the fix; the unit test is the proof. `hold.test.ts` is unchanged: with the fix, its read right after the removal is exact.
 

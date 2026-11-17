@@ -23,5 +23,5 @@ Wave 15 W2. Commit: `3cd635d2`. Tests: `test/daemon/repeated-notes.test.ts`, `te
 
 - `repeated-notes.test.ts`: three daemon starts on a fixture with two node:test projects, each with a computed `import()`.
   - Expected: 2 closure notes, one per topic; 3 `daemon stopped: signal` notes in the store; one status line counting 3; three lines under `--notes`.
-  - On `a439bbb9` it fails: 6 closure notes with no topic.
-- `slow-artifact-count.test.ts`: 25 globs give a 122-character line. `--json` lists all 25, and `--notes` lists them under the line. One artifact is named, with no list. On `a439bbb9` the line joined all 25 names.
+  - On `b7f07d33` it fails: 6 closure notes with no topic.
+- `slow-artifact-count.test.ts`: 25 globs give a 122-character line. `--json` lists all 25, and `--notes` lists them under the line. One artifact is named, with no list. On `b7f07d33` the line joined all 25 names.

@@ -18,7 +18,7 @@ Discharges never feed `keyedAt`, so 003 wave-4.5 B1 (a growth re-keying complete
 
 - `test/scheduler/environment-growth-same-revision.test.ts`: B1's probe on the real node:test adapter, two waits at once, the ordinary one and the control whose session was last told revision 1.
 - `test/scheduler/resolved-wait.test.ts`: S1's probe on the real Vitest adapter; the sync sequence releases math's failing run and waits for its FAIL before `refined()` and the answer.
-- Both fail at 7bf2efef (the base) on Node 24.21.0 and 22.23.3: the B1 wait ended quiet while a's re-run was held; the S1 wait returned quiet, not news.
+- Both fail at 00363cc8 (the base) on Node 24.21.0 and 22.23.3: the B1 wait ended quiet while a's re-run was held; the S1 wait returned quiet, not news.
 - `test/scheduler/rekeyed.test.ts`: resolved entries by time; a later move is owed again.
 - `test/daemon/sync.test.ts`: `resolvedSince` parsed, passed by the handler and through the desk thread.
 - `test/cli/status-wait-window.test.ts`: the fake daemon names what the real one would; the B1 case at the unit level (A observed at revision 2, named at 2).

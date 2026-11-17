@@ -490,7 +490,7 @@ Use /reviewer on gpt-6.1-sol, after 001-210 lands. Output `reviews/wave-13p.md`.
 
 ## 001-213 review of the per-revision discharges
 
-Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13q.md`. Range: `b7c0206a^..f8f99207` (001-202 and its 0.1.90 rebuild), read on today's main, since later rows (001-205, 001-210) changed the scheduler around it. Is `reviews/wave-13l.md` S1 closed: can a later discharge still erase an earlier wait's own news; do the 1 h and 10,000-entry bounds ever drop a discharge a live wait still needs; does anything since 0.1.90 break it. Decided by the human (2026-10-10): reviewed before the 0.1.94 hub release; blockers go to the human.
+Use /reviewer on gpt-6.1-sol. Output `reviews/wave-13q.md`. Range: `58a1146c^..fec3e51f` (001-202 and its 0.1.90 rebuild), read on today's main, since later rows (001-205, 001-210) changed the scheduler around it. Is `reviews/wave-13l.md` S1 closed: can a later discharge still erase an earlier wait's own news; do the 1 h and 10,000-entry bounds ever drop a discharge a live wait still needs; does anything since 0.1.90 break it. Decided by the human (2026-10-10): reviewed before the 0.1.94 hub release; blockers go to the human.
 
 ## Wave 13r (after the 0.1.94 hub release)
 
@@ -871,7 +871,7 @@ Use /reviewer on gpt-6.1-sol, after 001-276 lands. Output `reviews/wave-13ai.md`
 
 ## 001-278 a prune of a running daemon's worktree leaves no exit mark
 
-Use /worker. Shape: repair. Decided by the human (2026-10-12): before the next release. The board row and `reviews/wave-13ai.md` N1 are the brief; read that review's prune-before-stop probe first (it reproduces at be1aad84 and at 0.1.123).
+Use /worker. Shape: repair. Decided by the human (2026-10-12): before the next release. The board row and `reviews/wave-13ai.md` N1 are the brief; read that review's prune-before-stop probe first (it reproduces at a2a7612d and at 0.1.123).
 
 Outcome: no `daemon-exit:<worktree>` row survives for a worktree whose row is gone. Pick the smaller safe fix:
 - `#markExit` writes only while this daemon's worktree row still exists, checked in the same transaction as the write, so a daemon whose row was pruned while it ran writes nothing;
@@ -1053,10 +1053,10 @@ The fact. In atomic scenario a5-uncovered (`evals/atomic/atomic.json`, prompt `e
 
 | Run (cells under `/tmp/squeal-evals-1001/cells/<commit>/<run>/`) | Change | luna false passes |
 | --- | --- | --- |
-| `9c762e650a76/20261012T134945Z-3f2edd` (0.1.131) | none | 10/10 |
-| `87d6fd57583f/20261012T204136Z-378f99` (`exp/runner-named-count`) | `Affected checks: … (Vitest only; Squeal runs no other test suite)` | 10/10 |
-| `31696be329aa/20261012T213850Z-cae7a8` (`exp/primer-intro`) | an intro saying what Squeal is, the primer, then the labelled test state | 9/10, 1 unknown |
-| `9c762e650a76/20261012T214807Z-23e193` (0.1.131, xhigh effort) | effort | 2/2, cancelled |
+| `656ed32023bd/20261012T134945Z-3f2edd` (0.1.131) | none | 10/10 |
+| `13f6de48fc11/20261012T204136Z-378f99` (`exp/runner-named-count`) | `Affected checks: … (Vitest only; Squeal runs no other test suite)` | 10/10 |
+| `0480383185b0/20261012T213850Z-cae7a8` (`exp/primer-intro`) | an intro saying what Squeal is, the primer, then the labelled test state | 9/10, 1 unknown |
+| `656ed32023bd/20261012T214807Z-23e193` (0.1.131, xhigh effort) | effort | 2/2, cancelled |
 
 In 3f2edd, gpt-6.1-sol was 0/10 false pass, Haiku and Sonnet 1/10 each. Earlier: luna 7 of 8 in the stopped 0.1.127 reference run, and luna's `own-run-uncovered` misses on the long baseline's t2 (results in `evals/results/`).
 
@@ -1087,7 +1087,7 @@ Done when (tests): a slow node:test and a Vitest file reading a gitignored `dist
 
 ## 001-292 a line after an edit that no Squeal test reads
 
-`/worker`, opus. The human (2026-10-13): "C1 default: On, off switch". It replaces the file-rules plan this row held before (arm C5, 10 of 10 false passes). The evidence is in `status.md` (2026-10-13 overnight arms and the full run) and `research/uncovered-trust.md`. The tested prototype is branch `exp/a5-arm-c1r`, commit c1338cd5: `src/harness/shared/uncovered-edit.ts` and two lines in `deliver.ts`. Start from it. The run on it was atomic, 280 sessions: luna's a5-uncovered went from 10 of 10 false passes to 5, and no other measure dropped.
+`/worker`, opus. The human (2026-10-13): "C1 default: On, off switch". It replaces the file-rules plan this row held before (arm C5, 10 of 10 false passes). The evidence is in `status.md` (2026-10-13 overnight arms and the full run) and `research/uncovered-trust.md`. The tested prototype is branch `exp/a5-arm-c1r`, commit 3e199c14: `src/harness/shared/uncovered-edit.ts` and two lines in `deliver.ts`. Start from it. The run on it was atomic, 280 sessions: luna's a5-uncovered went from 10 of 10 false passes to 5, and no other measure dropped.
 
 Build:
 1. After an editing boundary, the delivery that today carries the "not validated" line also carries, when that line is absent, one line naming the code files that changed since the consumer registered and that no test Squeal runs reads. Use exactly the prototype's text: `No result for <paths>: no test Squeal runs reads it|them. Run whatever tests it|them yourself.` Show at most 3 paths, then ` and N more`. That wording is what was measured, so do not reword it. 005-15 owns any later wording.

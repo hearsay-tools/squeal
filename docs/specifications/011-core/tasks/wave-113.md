@@ -20,7 +20,7 @@ Owns: the builders and the 14 fixtures the survey names for row H, a new helper 
 
 ## R1 (W1): review of cand/011-378
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-378` at `7ada936623fc36eb8ed256c438db057ebf0dd0f2`; candidate CI run 43903971514. Test files and notes only: no `src/` change, no version raise. Range `314d8c1aa..7ada936623fc36eb8ed256c438db057ebf0dd0f2`: worker 312a691f's seven commits (row 011-378), cherry-picked without conflict. Read: board rows 011-371 and 011-378; this file's W1; `tasks/011-378/notes.md`; `tasks/011-371/survey.md` ("Row H", the fixture table); `GLOSSARY.md` "Rest".
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/011-378` at `919aa8499207a63768c4d2f2717ce88d91b5d617`; candidate CI run 43903971514. Test files and notes only: no `src/` change, no version raise. Range `f6c03b822..919aa8499207a63768c4d2f2717ce88d91b5d617`: worker 312a691f's seven commits (row 011-378), cherry-picked without conflict. Read: board rows 011-371 and 011-378; this file's W1; `tasks/011-378/notes.md`; `tasks/011-371/survey.md` ("Row H", the fixture table); `GLOSSARY.md` "Rest".
 
 Check, each as proven, plausible or unverified:
 

@@ -31,7 +31,7 @@ R=/tmp/r114b; S=$R/cand/plugins/claude-code/dist/cli/squeal.mjs; mkdir -p $R/sto
 git -C <this repo> archive 2e996bd8b plugins/claude-code | tar -x -C $R/cand
 for p in squeal cezar; do C=$(git -C ~/projects/$p rev-parse --path-format=absolute --git-common-dir)/squeal
   for f in store code lint; do [ -f $C/$f.sqlite ] && cp $C/$f.sqlite* $R/stores/$p/; done; cp $C/repository-id $R/stores/$p/; done
-# clones at squeal e36b8d509 and cezar 5f7c94cf3, pnpm install --frozen-lockfile --offline, as in round 1
+# clones at squeal bc282b63d and cezar 5f7c94cf3, pnpm install --frozen-lockfile --offline, as in round 1
 for p in squeal cezar; do mkdir -p <clone>/$p/.git/squeal && cp $R/stores/$p/* <clone>/$p/.git/squeal/; done
 node ../strip-backslash.mjs <clone>/cezar/.git/squeal/store.sqlite
 # phase A, per clone:

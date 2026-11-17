@@ -2,7 +2,7 @@
 
 Throwaway. Nothing here is product code or a test; delete it once spec 018 is written.
 
-All runs were on this host on 2026-10-31, Node 24.22.1, git 2.43.0, Linux x64, with the Squeal CLI bundle of commit 6053220eb (`plugins/claude-code/dist/cli/squeal.mjs`, version 0.1.387). One-minute load average 8.6 to 11.2 on 24 CPUs. No test of this repository ran.
+All runs were on this host on 2026-10-31, Node 24.22.1, git 2.43.0, Linux x64, with the Squeal CLI bundle of commit 9beda4d78 (`plugins/claude-code/dist/cli/squeal.mjs`, version 0.1.387). One-minute load average 8.6 to 11.2 on 24 CPUs. No test of this repository ran.
 
 | Script | What it does |
 |---|---|

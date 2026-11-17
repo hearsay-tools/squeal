@@ -137,7 +137,7 @@ Owner: **Rolldown** (the native binding makes the uncollectable root). Vite can 
 
 ## Sources
 
-- Squeal source at `60d695f8a`: `src/runners/vitest/adapter.ts` (`#start`, `#instance`, `#recreate`, `#invalidate`, `close`), `broken.ts` (`closeBroken`), `run.ts` (`abandon`), `startup.ts` (`closeRejected`), `src/core/daemon/slow-instance.ts`, `runner.ts`, `src/core/scheduler/refinement.ts`; spec 013 V1, V5, V8; 004 D2.
+- Squeal source at `42ecae118`: `src/runners/vitest/adapter.ts` (`#start`, `#instance`, `#recreate`, `#invalidate`, `close`), `broken.ts` (`closeBroken`), `run.ts` (`abandon`), `startup.ts` (`closeRejected`), `src/core/daemon/slow-instance.ts`, `runner.ts`, `src/core/scheduler/refinement.ts`; spec 013 V1, V5, V8; 004 D2.
 - Research: `../../011-core/research/daemon-memory.md` 3 and its probes.
 - Vite 8.1.4, 8.3.5 and 7.3.7 from npm (`npm pack`): `dist/node/chunks/node.js` (`perEnvironmentOrWorkerPlugin`, `oxcResolvePlugin`).
 - Rolldown tags `v1.1.5` and `v1.2.15`, https://github.com/rolldown/rolldown: `crates/rolldown_binding/src/options/plugin/config/binding_vite_resolve_plugin_config.rs`, `crates/rolldown_binding/src/types/js_callback.rs`, `crates/rolldown_binding/src/options/plugin/binding_callable_builtin_plugin.rs`, `packages/rolldown/src/builtin-plugin/constructors.ts` and `utils.ts`. napi 3.14.2 (`Cargo.lock`, 1.2.15).

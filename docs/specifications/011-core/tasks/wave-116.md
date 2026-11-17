@@ -21,7 +21,7 @@ Done when: `git grep -nE "scheduler\??\.idle\(|Pick<Scheduler, \"idle\">"` finds
 
 ## R1 (W1): review of cand/0.1.526
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.526` at `bf94e943458d924b236c9d63835023192071c830`; candidate CI run 43939351910. Range `bbd3f9d99..bf94e943458d924b236c9d63835023192071c830`: worker 98337e28's two commits (row 011-371), cherry-picked without conflict, then the 0.1.526 raise and bundles (0.1.525 is coordinator 4d2ecbfc's, not yet on main). Read: board row 011-371; this file's W1; `tasks/011-371/notes.md`; `reviews/011-380-b4-b6.md` N1.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.526` at `bf94e943458d924b236c9d63835023192071c830`; candidate CI run 43939351910. Range `e7ce7be1b..bf94e943458d924b236c9d63835023192071c830`: worker 98337e28's two commits (row 011-371), cherry-picked without conflict, then the 0.1.526 raise and bundles (0.1.525 is coordinator 4d2ecbfc's, not yet on main). Read: board row 011-371; this file's W1; `tasks/011-371/notes.md`; `reviews/011-380-b4-b6.md` N1.
 
 Check, each as proven, plausible or unverified:
 

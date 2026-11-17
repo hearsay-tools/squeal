@@ -1,7 +1,7 @@
 # 005-97 worker notes (wave 18 W1)
 
 Worker session 5a844516, 2026-11-17. Shape: finish. The late and caught-up messages carried from
-`origin/wip/005-93` (88ad9a358, built on 0.1.529) onto main (dfbc9241c), on main's own count
+`origin/wip/005-93` (190abb535, built on 0.1.529) onto main (8c439ee46), on main's own count
 (0.1.534), the scheduler's record (0.1.535, row 005-96) and the 0.1.537 texts.
 
 ## Seam map

@@ -14,7 +14,7 @@ Existing holds stand. This report authorizes no implementation or policy change.
 | Question from the brief | Answer and evidence tag | Version examined |
 | --- | --- | --- |
 | 1. Does an unrelated failure mark a fully covered passing callback `test-failed`? | Yes, with both files selected; all-pass control passes. **verified by experiment** | Packaged 0.1.465 |
-| 2. Is the cause run-wide or function-specific? | One boolean covers all selected evidence, not just that function's loaders. **read in source code** | Checkout 0.1.465, `9273ca81243c08be207eeedde8eaecc2f8bf93af` |
+| 2. Is the cause run-wide or function-specific? | One boolean covers all selected evidence, not just that function's loaders. **read in source code** | Checkout 0.1.465, `dadda04dbd50397f5fed4d78e966d0c1c33af703` |
 | 3. What is the normative policy? | D5 requires “No selected test failed”; D11.2 keeps failures as a gate input. **read in official docs** | Spec 020 at that checkout |
 | 4. Does this require high load or stored evidence? | Neither is required. A fresh failure below CPU-count load reproduces it. Same-byte reuse preserves it. **verified by experiment** | Packaged 0.1.465 |
 | 5. How does it relate to #200 and load retries? | Stored failure persistence overlaps #200; run-wide attribution also happens before storage. A load cause for the original incident is not determined. **inferred** | Probe 0.1.465; issue reports 0.1.464 / 0.1.457 |
@@ -153,7 +153,7 @@ not current (unknown). No product-suite pass is claimed.
   [issue 200](https://github.com/hearsay-tools/squeal/issues/200), fetched with
   `gh` on 2026-11-13. Reporter accounts are not independent experiments.
 - [Spec 020](../spec.md), D3/D5/D6/D7/D11/D17, and [status](../status.md).
-- [Evaluator at examined SHA](https://github.com/hearsay-tools/squeal/blob/9273ca81243c08be207eeedde8eaecc2f8bf93af/src/core/code/gate/evaluate.ts#L252).
+- [Evaluator at examined SHA](https://github.com/hearsay-tools/squeal/blob/dadda04dbd50397f5fed4d78e966d0c1c33af703/src/core/code/gate/evaluate.ts#L252).
   Other read source files at the same SHA: `src/core/code/gate/{rule,runs,stored,lanes}.ts`,
   `src/core/scheduler/rerun.ts`, `src/core/retry/load.ts`.
 - [Earlier #200 research](issue-200.md); [probe instructions](probes/issue-210/README.md).

@@ -42,7 +42,7 @@ The plan also names a file with Squeal instructions outside the managed block, a
 
 Use /reviewer.
 
-**Outcome.** `docs/specifications/001-core-loop/reviews/wave-005-52.md`, which reviews `0298c91b` (001-352) and `0cca04a8` with `caba8922` (001-354).
+**Outcome.** `docs/specifications/001-core-loop/reviews/wave-005-52.md`, which reviews `4df38d1a` (001-352) and `31c17fc0` with `9af25477` (001-354).
 
 **Scope.** Only these three commits:
 - 001-352: `test/daemon/slow-lane.test.ts` now renames its started file into place, instead of reading a half-written one.
@@ -67,7 +67,7 @@ Write the file within 15 minutes of starting, then extend it.
 
 Use /reviewer.
 
-**Outcome.** `reviews/wave-7.md` on `970af7ba..32168eec` (005-47), at 0.1.160. Write it within 15 minutes of starting, then extend it.
+**Outcome.** `reviews/wave-7.md` on `970af7ba..178bc5a3` (005-47), at 0.1.160. Write it within 15 minutes of starting, then extend it.
 
 **Check.**
 - No gate line that is negated, names Squeal, or describes the command is reworded.
@@ -126,7 +126,7 @@ Anything not matched is a mention: the plan lists it with the reason "not an ins
 
 Use /reviewer.
 
-**Outcome.** `reviews/wave-7.5.md` on `f6f75749` (005-55) at 0.1.162. Write it within 15 minutes of starting, then extend it.
+**Outcome.** `reviews/wave-7.5.md` on `34227367` (005-55) at 0.1.162. Write it within 15 minutes of starting, then extend it.
 
 **Check.**
 - B1 to B3 of `reviews/wave-7.md` hold: re-run the review's own fixtures on the candidate.
@@ -157,7 +157,7 @@ Use /worker.
 **Read.**
 - `reviews/wave-7.5.md`, R1, R2 and "Inputs for the next wave";
 - spec 005 D5;
-- `src/cli/setup/gates.ts` as of `f6f75749`.
+- `src/cli/setup/gates.ts` as of `34227367`.
 
 **Shape.** A repair.
 
@@ -188,13 +188,13 @@ Use /reviewer.
 
 ## Wave 7.7: `--yes` keeps every gate line (005-60, 005-61)
 
-The human decided on 2026-10-14, after 005-59: `--yes` keeps every gate line, and 005-59's N1, N2 and S1 become row 005-62 after the release. The coordinator made 005-60 itself, as `c8d5d54d` with its bundle `1a6b14f0` (0.1.167).
+The human decided on 2026-10-14, after 005-59: `--yes` keeps every gate line, and 005-59's N1, N2 and S1 become row 005-62 after the release. The coordinator made 005-60 itself, as `25e8476e` with its bundle `7751aeca` (0.1.167).
 
 ### 005-61 short review of 005-60
 
 Use /reviewer.
 
-**Outcome.** `reviews/wave-7.7.md` on `c8d5d54d`, at its bundle commit `1a6b14f0`. Write it within 10 minutes of starting.
+**Outcome.** `reviews/wave-7.7.md` on `25e8476e`, at its bundle commit `7751aeca`. Write it within 10 minutes of starting.
 
 **Check.**
 - `squeal setup --yes` with no `--gate` flag rewords no gate line, and says "kept gate line" for each.

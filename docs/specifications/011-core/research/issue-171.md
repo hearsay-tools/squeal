@@ -1,7 +1,7 @@
 # Issue 171: repeated failure blocks after an expected-failure commit
 
 Researcher findings, 2026-11-10. Source examined: Squeal 0.1.426 (`package.json`
-at `6bb387fec`, the version the issue reports). Issue:
+at `ec2c45309`, the version the issue reports). Issue:
 <https://github.com/hearsay-tools/squeal/issues/171>.
 
 Host load: 13.58 / 24 CPUs (one-minute) at 16:09Z, 17.38 before the probe,
@@ -112,7 +112,7 @@ for the whole worktree.
 
 - Issue 171, read with `gh issue view 171 -R hearsay-tools/squeal`.
 - `docs/specifications/011-core/spec.md` C5 (lines 162–201), C8 (258–274),
-  C9 (275–313), at `6bb387fec`.
+  C9 (275–313), at `ec2c45309`.
 - `src/core/delivery/format.ts` (lines 63, 66, 266–286, 296–336),
   `src/core/delivery/delivery.ts` (180–200), `src/core/delivery/delta.ts`
   (`planDelta`, line 154), `src/cli/hold.ts`, file list of `src/cli/`.

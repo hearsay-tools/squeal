@@ -1,6 +1,6 @@
 # Row 020-48: the gate keeps run-time readers while a daemon serves (#206)
 
-Worker 2e2bd6e8, 2026-11-13. Brief `../wave-17.md`, section 020-48. Research `../../research/issue-206.md` and `../../research/no-daemon-reuse.md` (option 2, "the serving daemon"). Base `f15692098` (main at 0.1.464).
+Worker 2e2bd6e8, 2026-11-13. Brief `../wave-17.md`, section 020-48. Research `../../research/issue-206.md` and `../../research/no-daemon-reuse.md` (option 2, "the serving daemon"). Base `e5d25a9eb` (main at 0.1.464).
 
 ## Change
 
@@ -82,7 +82,7 @@ The finding: `partsOf` never split one file's reads and counted only the entries
 
 **Fix** (`src/core/code/gate/keep-sent.ts`, `partsOf`, `SeenParts`): a part is counted as the write that sends it, `{"kind":"seen","seen":[...]}`, from the frame's 25 bytes, each entry's empty shape, each path's JSON and every comma. Paths go in one at a time, in the order `add`, `direct`, `modules`. A path that does not fit closes the part; the file goes on in a new entry of the same `ref` in the next part (an entry left with no path is taken back out of the closed part). The merge adds paths to sets (`mergeSeen`), so the entries of one file across parts merge to the whole lists. One exception: a path that alone with its file's ref passes the bound goes in a part of its own, over the bound; at 4 MiB that takes a path of about 4 MiB, which no file system gives. The bound counts the write, not the request around it: the type, id, worktree and schema add a few hundred bytes, under the 32 MiB line limit. Sequence and waits do not change: the `seen` parts first, then each file's coverage and results; one 30 s busy bound; the owed input check after a pause; an older daemon's refusal of the first part costs only the grown files.
 
-**D17.3 wording.** The spec on `origin/main` (`2ab1588ff`) does not yet hold this row's amendment, so the change is to the proposed text above: "in parts of at most 4 MiB" becomes "each write at most 4 MiB as JSON; a test file's reads that do not fit go on in the next one". With the fix, the bound is true as written; no other spec text changes.
+**D17.3 wording.** The spec on `origin/main` (`e4fabf191`) does not yet hold this row's amendment, so the change is to the proposed text above: "in parts of at most 4 MiB" becomes "each write at most 4 MiB as JSON; a test file's reads that do not fit go on in the next one". With the fix, the bound is true as written; no other spec text changes.
 
 **Tests** (`test/daemon/keep-seen.test.ts`), each red on the old `partsOf` first (4 of 4 failed in a direct run), then green:
 

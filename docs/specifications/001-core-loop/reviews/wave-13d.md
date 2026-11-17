@@ -4,7 +4,7 @@ FAIL b36faa4
 
 Two proven blockers (B1, B2), two proven should-fix notes (S1, S2), no nits. Prior wave-13c B1 and S1 are closed. The cache inventory is incomplete: a declared input can lose its virtual-module evidence, and processed CSS can retain another project file's bytes without evidence for those bytes.
 
-Reviewed `65c280b..b36faa4`, the exact 0.1.58 bundle landing on `origin/main`. The starting checkout was `955b88a`, a later board-only commit. Verification and external probes ran after detaching at `b36faa41e9a2a3554b9ea0bc02f65452c862fb30`, with a clean tracked tree. Returned to the assigned branch only to commit this report. The intervening spec 003/004 landings are outside this review except at the slow-instance seam. No board or product files were edited.
+Reviewed `65c280b..b36faa4`, the exact 0.1.58 bundle landing on `origin/main`. The starting checkout was `955b88a`, a later board-only commit. Verification and external probes ran after detaching at `36e0da3eb90ff54f4f2f0229c74cf17993da15fd`, with a clean tracked tree. Returned to the assigned branch only to commit this report. The intervening spec 003/004 landings are outside this review except at the slow-instance seam. No board or product files were edited.
 
 ## Verification
 

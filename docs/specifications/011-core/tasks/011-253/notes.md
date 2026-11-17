@@ -1,6 +1,6 @@
 # 011-253 notes: a first failure with no earlier pass at its inputs is not called a load flake
 
-Row 011-253 (gh-103; wave 54 W1, `tasks/wave-54.md`; triage `research/issue-103.md`; 011 C5, C7). Worker run `8c9027d4`, 2026-10-26. Baseline `83a1dec6e`.
+Row 011-253 (gh-103; wave 54 W1, `tasks/wave-54.md`; triage `research/issue-103.md`; 011 C5, C7). Worker run `8c9027d4`, 2026-10-26. Baseline `6b6f4f48a`.
 
 ## Cause
 

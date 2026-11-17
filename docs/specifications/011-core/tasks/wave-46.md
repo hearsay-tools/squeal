@@ -1,6 +1,6 @@
 # Wave 46
 
-From main after 0.1.332 (`d76c3ac9b`), 2026-10-26. Five rows on disjoint seams: one research row on a selection that may miss readers (W1), one product fix (W2) and three test-only rows (W3 to W5). Host load is about 13 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite. Gh-99 waits for the human and is not in this wave.
+From main after 0.1.332 (`9c21dcdce`), 2026-10-26. Five rows on disjoint seams: one research row on a selection that may miss readers (W1), one product fix (W2) and three test-only rows (W3 to W5). Host load is about 13 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite. Gh-99 waits for the human and is not in this wave.
 
 ## W1: 011-233, a source path's selection named other test files at each revision
 

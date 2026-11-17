@@ -43,7 +43,7 @@ Use /worker. Shape: repair. Resumes worker c9034b32 on its branch `cez/c9034b32`
 
 ## 015-43 round 2: re-review of candidate 0.1.305
 
-Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message, on main at 0.1.302 (docs only moved); round 1 is `reviews/0.1.305.md` (FAIL on 1347d8452, B1 and B2; kept as `review/0.1.305-round1`). Write `reviews/0.1.305-r2.md` and commit it on your branch. The candidate is 015-42 again, plus repair R8 (`fix(R8)` commits, brief `tasks/wave-4.md` R8) and a new build commit.
+Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message, on main at 0.1.302 (docs only moved); round 1 is `reviews/0.1.305.md` (FAIL on 90a99e39b, B1 and B2; kept as `review/0.1.305-round1`). Write `reviews/0.1.305-r2.md` and commit it on your branch. The candidate is 015-42 again, plus repair R8 (`fix(R8)` commits, brief `tasks/wave-4.md` R8) and a new build commit.
 - Check B1 and B2 against R8 with your own probes: hit to no-hit and no-hit to hit; an injected exit after the read with the real bundled worker.
 - S1 and S2 are row 015-45, not this round. D10's wording now says each job waits its own time.
 - What passed round 1: re-read only where R8 touches it (`crap/cache.ts`, `coverage/map-worker.ts`, `mapper.ts`, `writer.ts`). Confirm the candidate's CI is green.
@@ -60,7 +60,7 @@ Use /worker. Shape: repair. Resumes worker c9034b32 on its branch `cez/c9034b32`
 
 ## 015-43 round 3: re-review of candidate 0.1.305 (the last round)
 
-Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message. Round 2 is `reviews/0.1.305-r2.md` (FAIL on 044da86f0, B1; kept as `review/0.1.305-round2`). Write `reviews/0.1.305-r3.md` and commit it on your branch. The candidate is round 2's, plus repair R9 (`fix(R9)`, brief `tasks/wave-4.md` R9) and a new build commit.
+Use /reviewer. Resumes reviewer 4a7491eb. Candidate `cand/0.1.305` at the SHA named in the message. Round 2 is `reviews/0.1.305-r2.md` (FAIL on 58d07667c, B1; kept as `review/0.1.305-round2`). Write `reviews/0.1.305-r3.md` and commit it on your branch. The candidate is round 2's, plus repair R9 (`fix(R9)`, brief `tasks/wave-4.md` R9) and a new build commit.
 - Check B1 with your round-2 probe through the real `createCodePass` and `soon()`, in both directions, and with a second notification while a `soon` timer is pending.
 - Re-read only R9's delta and the bundle build. Confirm the candidate's CI is green.
 

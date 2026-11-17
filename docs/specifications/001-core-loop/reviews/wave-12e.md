@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate: `4be4e3e907ac7b8328551605101042af99fd9daa` (0.1.38). `git rev-parse HEAD` returned that SHA. The brief names landed subjects and the plugin build, rather than requiring an exact HEAD. `f53107a` (build), `3ee09df` (null-byte fix), and both repair rows are ancestors; HEAD is the subsequent board/status commit. No candidate mismatch.
+Candidate: `e8f6083bea8939e5d1bd911dd3d2275b5f78d428` (0.1.38). `git rev-parse HEAD` returned that SHA. The brief names landed subjects and the plugin build, rather than requiring an exact HEAD. `f53107a` (build), `3ee09df` (null-byte fix), and both repair rows are ancestors; HEAD is the subsequent board/status commit. No candidate mismatch.
 
 Linux, Node 24.21.0, Vitest 5.0.3, 2026-10-08. The tree was clean before installation, after the build, after the full suite, and after all probes. Both plugin bundles reproduced without drift. All evidence below was collected at this candidate before writing this file. Observation was explicitly on in every recorder/scheduler probe, with no declared `inputs`. Off runs are the stated parity controls. The review changes no product code.
 
@@ -127,7 +127,7 @@ Probes ran as external drivers with `node --import tsx` against this worktree's 
 
 ## Verdict
 
-**FAIL** `4be4e3e907ac7b8328551605101042af99fd9daa`.
+**FAIL** `e8f6083bea8939e5d1bd911dd3d2275b5f78d428`.
 
 One proven blocker: wave 12d **B5 remains open**. Five earlier blockers are repaired in the discriminating scenarios below. Three proven nonblocking notes: the carried S2 directory-stat limitation and the newly requested nested-recorder and null-byte cases. Zero separate nits. New cases remain notes under the bounded re-review rule; they are not silently promoted to new blockers.
 

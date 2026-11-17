@@ -1,6 +1,6 @@
 # 015-18 notes: a failed count is retried
 
-Worker 327ffa01, 2026-10-24. From main at 55afb856a. Review 0.1.283 S1. The sibling row 013-07 owns `src/runners/vitest/adapter.ts` only.
+Worker 327ffa01, 2026-10-24. From main at 852f2edc8. Review 0.1.283 S1. The sibling row 013-07 owns `src/runners/vitest/adapter.ts` only.
 
 ## Decisions
 

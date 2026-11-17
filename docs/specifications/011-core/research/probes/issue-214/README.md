@@ -31,5 +31,5 @@ failure or a failure to make progress in a live daemon.
 Finally the real retry command parser rejects `--wait`. The probe does not
 test completion of a live `status --wait` or a daemon restart.
 
-Examined: Squeal 0.1.477 at `b12273f596f01c4d82535860dbafcd9bc43b6476`,
+Examined: Squeal 0.1.477 at `7c32e512b4beee27422ae219c5094148bcbcd5de`,
 Node v26.13.0, pnpm 12.15.0. See the findings file for sources and limits.

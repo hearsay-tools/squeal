@@ -73,7 +73,7 @@ Done when:
 - A path touched on every run gives one note and stops.
 - Vitest and node:test runs are unchanged.
 - Lint, typecheck and the full suite are green.
-- 007-17's e2e (`cez/dcd4db61`, `0fbcaedf`), merged onto your branch for one CI run only, is green on both Node versions; paste that run.
+- 007-17's e2e (`cez/dcd4db61`, `8a691667`), merged onto your branch for one CI run only, is green on both Node versions; paste that run.
 
 Use /worker.
 

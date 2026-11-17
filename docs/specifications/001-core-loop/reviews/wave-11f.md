@@ -2,15 +2,15 @@
 
 ## Verification
 
-Candidate: `015e38cd5866adade62f7f12a899aba0c8491bd2` (0.1.23). Scope: the landed equivalents `c7398c1`, `e6d49d0`, `96c53a9`, `a6057ab`, `b882699`, `e39970d`, `7e3b4e6`, and their build in `015e38c`. These carry the seven worker commits named in the brief; the unrelated 001-109 implementation in the build is outside this review.
+Candidate: `8d73c41a6d4ee45865390d52afcb889305d1e93a` (0.1.23). Scope: the landed equivalents `c7398c1`, `e6d49d0`, `96c53a9`, `a6057ab`, `b882699`, `e39970d`, `7e3b4e6`, and their build in `015e38c`. These carry the seven worker commits named in the brief; the unrelated 001-109 implementation in the build is outside this review.
 
-Initial `HEAD` was `e91d1b3470bd8b94a4604384441f24f4039d1e7a`. It differs from the requested candidate only in `docs/board.md` and `tasks/wave-11.md`. N1 records that mismatch. All verification and probes below ran after switching to detached `015e38c`, with empty `git status --short` before and after build and probes. The task branch was restored before writing this review. Throwaway probes lived under ignored `node_modules/.cache/wave11f` and were removed.
+Initial `HEAD` was `bd0a88cffad1530f67669c8f596ca34b89b2e526`. It differs from the requested candidate only in `docs/board.md` and `tasks/wave-11.md`. N1 records that mismatch. All verification and probes below ran after switching to detached `015e38c`, with empty `git status --short` before and after build and probes. The task branch was restored before writing this review. Throwaway probes lived under ignored `node_modules/.cache/wave11f` and were removed.
 
 Commands and output:
 
 ```text
 $ git rev-parse HEAD
-015e38cd5866adade62f7f12a899aba0c8491bd2
+8d73c41a6d4ee45865390d52afcb889305d1e93a
 $ npm ci
 added 56 packages, and audited 57 packages in 13s
 18 packages are looking for funding
@@ -232,7 +232,7 @@ codex after checkpoint: {"files":6,"counts":{"current":13,"pending":0,"stale":0,
 
 ## Verdict
 
-**FAIL 015e38cd5866adade62f7f12a899aba0c8491bd2**.
+**FAIL 8d73c41a6d4ee45865390d52afcb889305d1e93a**.
 
 1 blocking finding, 2 should-fix notes, 1 nit. B1, S1 and N1 are **proven**; S2 is **plausible**. Verification limitations above are not findings against the wave.
 

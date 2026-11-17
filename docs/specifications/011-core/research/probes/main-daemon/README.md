@@ -7,7 +7,7 @@ Throwaway. Written for `research/main-daemon.md`, 2026-10-23. Nothing here is pr
 - Store copies only: `store.sqlite` with `-wal` and `-shm` of squeal, cezar and the client monorepo, copied to `/tmp/md157/stores/` at 16:57:03Z (`copy-ms` 1792774623677). No live store, socket or permit pool is opened.
 - The real repositories' git objects and reflogs are read with `git ls-tree`, `git cat-file`, `git merge-base --is-ancestor`, `git for-each-ref` and `git --no-optional-locks status` only.
 - Live daemons are read with `ps` and `/proc/<pid>/stat` only (`sample-main.sh`).
-- The one daemon experiment runs in `/tmp/md157/x`: a `git clone --no-local` of squeal, and a `git worktree add` on that clone, never on a real repository. `envrun.sh` starts every command with `env -i`, `HOME`, `XDG_*`, `TMPDIR`, `CODEX_HOME` and the npm, pnpm and corepack homes under `/tmp/md157`, at nice 10. `PLUGIN_ROOT`, `PLUGIN_DATA` and every `SQUEAL_*` variable are unset. The commit (`46dac522c`) has `baseline.onStart: "lookup-only"`, so no test ran. Started 17:15:07Z, stopped 17:17:05Z with `squeal stop`.
+- The one daemon experiment runs in `/tmp/md157/x`: a `git clone --no-local` of squeal, and a `git worktree add` on that clone, never on a real repository. `envrun.sh` starts every command with `env -i`, `HOME`, `XDG_*`, `TMPDIR`, `CODEX_HOME` and the npm, pnpm and corepack homes under `/tmp/md157`, at nice 10. `PLUGIN_ROOT`, `PLUGIN_DATA` and every `SQUEAL_*` variable are unset. The commit (`bdff33045`) has `baseline.onStart: "lookup-only"`, so no test ran. Started 17:15:07Z, stopped 17:17:05Z with `squeal stop`.
 - Removed at the end: `rm -rf /tmp/md157`.
 
 ## Files
@@ -47,7 +47,7 @@ done
 nice -n 10 node $P/validate.mjs stores/client-monorepo/store.sqlite ~/projects/client-monorepo   # question 4: main against linked keys in a store
 sh $P/sample-main.sh $S/main-ps.tsv 40 30                                                # questions 2 and 3, ps only
 cp -a ~/.claude/plugins/cache/hearsay/squeal/0.1.278 $S/bundle; cp $P/envrun.sh $S/        # questions 1 and 4: the pair
-sh $P/mkpair.sh 46dac522c && sh $P/runpair.sh $S/an/pair1 && node $P/pairkeys.mjs $S/an/pair1/store.sqlite
+sh $P/mkpair.sh bdff33045 && sh $P/runpair.sh $S/an/pair1 && node $P/pairkeys.mjs $S/an/pair1/store.sqlite
 sh $P/layouts.sh $S/layouts                                                              # question 4
 rm -rf /tmp/md157
 ```

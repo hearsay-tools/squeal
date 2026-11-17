@@ -5,7 +5,7 @@ Throwaway. Written 2026-11-07 for `../../edit-relevance.md`. Nothing here is pro
 ## Rules these probes keep
 
 - Read only. Store copies (`store.sqlite` and `code.sqlite`, each with `-wal` and `-shm`) and `report.json` copies were taken at 2026-11-07 13:25Z into the task's scratch folder and opened with `node:sqlite` `readOnly`. No live store or daemon socket was opened.
-- Clones at named commits for the static import graph: squeal `31e9dd7bd`, cezar `84e1fd9c9` (both main at the copy).
+- Clones at named commits for the static import graph: squeal `31f7d595f`, cezar `84e1fd9c9` (both main at the copy).
 - Blobs are read with `git cat-file` from each repository's common `.git`, one at a time, at nice 10. Nothing is written to a repository.
 - No test, build or benchmark ran. `squeal stop --until-start` ran in the researcher's worktree first.
 
@@ -28,7 +28,7 @@ S=<scratch>; mkdir -p $S/stores/{cezar,squeal}
 for p in cezar squeal; do C=$(git -C ~/projects/$p rev-parse --path-format=absolute --git-common-dir)/squeal
   cp $C/store.sqlite* $C/code.sqlite* $S/stores/$p/; mkdir -p $S/runs-$p
   (cd $C/runs && find . -maxdepth 2 -name report.json -print0 | tar cf - --null -T -) | tar xf - -C $S/runs-$p; done
-git clone -q ~/projects/squeal $S/squeal && git -C $S/squeal checkout -q 31e9dd7bd
+git clone -q ~/projects/squeal $S/squeal && git -C $S/squeal checkout -q 31f7d595f
 git clone -q ~/projects/cezar $S/cezar && git -C $S/cezar checkout -q 84e1fd9c9
 # edit the paths in spec-*.json, then:
 for f in squeal-any squeal cezar-any cezar; do nice -n 10 node --max-old-space-size=8192 order.mjs spec-$f.json $S/order-$f.json; node summary.mjs $S/order-$f.json > summary-$f.json; done

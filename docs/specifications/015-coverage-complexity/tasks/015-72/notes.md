@@ -4,7 +4,7 @@ Worker 3dfcf1e4, 2026-10-26. Brief: `tasks/wave-15.md` W1. Shape: repair. Findin
 
 ## Base
 
-The worktree started on `72732f353`, 526 commits behind main. The brief says "starts from main 0.1.349", so the branch was fast-forwarded to `origin/main` at `b61615309` ("docs(board): wave 15 running"), which holds `35083d2d4` (build: squeal 0.1.349). No commit of this row sat on the old base.
+The worktree started on `385f83192`, 526 commits behind main. The brief says "starts from main 0.1.349", so the branch was fast-forwarded to `origin/main` at `d03df26fc` ("docs(board): wave 15 running"), which holds `c8dbf81e2` (build: squeal 0.1.349). No commit of this row sat on the old base.
 
 ## The fix
 

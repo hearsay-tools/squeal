@@ -77,7 +77,7 @@ There are two exceptions:
 
 ## Import cycles
 
-- **The check:** strongly connected components of the static value-import graph over `src/` and `test/`. Type-only imports do not count; re-exports do. The graph was built at the base (`2fc4ad13f`) and at this branch.
+- **The check:** strongly connected components of the static value-import graph over `src/` and `test/`. Type-only imports do not count; re-exports do. The graph was built at the base (`28b17c099`) and at this branch.
 - **The result:** the same 4 cycles of the same 18 files, before and after, and none passes through a barrel:
   - `src/core/scheduler/{backlog,focused,promoted-tier,quiet,record-tier,revision,slots,tiers}.ts`;
   - `src/cli/{named-print,status-wait-ask-store,status-wait-lines,status-wait-paths,status-wait,store-writes}.ts`;

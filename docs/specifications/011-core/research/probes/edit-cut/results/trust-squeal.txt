@@ -1,4 +1,4 @@
-squeal at dbe345510ccac4a0e632207e2f41b7d341931ef5: 737 test files, exact 609, recall 0.949, precision 1.000
+squeal at f34204493daaeb1a7d7176f2c2cfc0950bb6c0ad: 737 test files, exact 609, recall 0.949, precision 1.000
 closure paths the static graph misses, by how many closures hold them:
   64 src/runners/observe/recorder.cjs
   47 src/runners/node-test/runtime/recorder.cjs

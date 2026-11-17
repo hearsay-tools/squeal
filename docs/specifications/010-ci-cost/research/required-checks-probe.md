@@ -136,4 +136,4 @@ The probe workflow's 17 runs stay in the Actions history under the names "Probe 
   - `/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets` (required status checks, strict and loose, app source);
   - `/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches`.
 - GitHub API: `repos/hearsay-tools/squeal/rulesets` (create, update, delete of 25193915 only), `…/commits/<sha>/check-runs`, `…/commits/<sha>/check-suites`, `…/actions/runs?head_sha=…`, `…/actions/workflows/probe-010-13.yml/runs`, `apps/github-actions`; run lists of squeal's CI and cezarion for 19:20 to 21:10 UTC.
-- `research/ci-pr-flow.md`, `research/ci-run-triggers.md`, `status.md` and `.github/workflows/ci.yml` at origin/main 8a0c5065.
+- `research/ci-pr-flow.md`, `research/ci-run-triggers.md`, `status.md` and `.github/workflows/ci.yml` at origin/main 6fac8ee1.

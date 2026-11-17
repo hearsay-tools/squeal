@@ -2,7 +2,7 @@
 
 FAIL `337b2fa565cb900dae98e8e6fa5acb725396a204`
 
-Candidate `cand/023-16`, range `4be3e91ae9923800710f4702a3e32c3fe27e8237..337b2fa56`, five commits, row 023-16. **3 proven blockers, 0 should-fix items, 0 nits.** The checkout keyer fixes the earlier regression cases. The fast path still returns current passes for different target keys. The default install can outlive its owner and the next sweep. No product file was changed.
+Candidate `cand/023-16`, range `f68703126319bee348a9ea9e60faba0e94f7a9e8..337b2fa56`, five commits, row 023-16. **3 proven blockers, 0 should-fix items, 0 nits.** The checkout keyer fixes the earlier regression cases. The fast path still returns current passes for different target keys. The default install can outlive its owner and the next sweep. No product file was changed.
 
 ## Blockers
 
@@ -120,8 +120,8 @@ All product checks and probes used the exact candidate on a clean tracked tree. 
 | `pnpm run lint` | Exit 0: `Checked 3610 files in 2s. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |
 | `pnpm run build` | Exit 0: `tsrs --fast -p tsconfig.build.json && pnpm run build:plugin`; Claude Code, Codex, Pi and OpenCode builds completed without tracked drift |
-| `git diff --check 4be3e91ae..HEAD` | Exit 0, no output |
-| `pnpm run check:private`, before commit | Exit 0: `private: 1532 added lines in 12 files over 4be3e91ae9923800710f4702a3e32c3fe27e8237, ok`. Warning: the private denylist is empty locally, so that rule was skipped. The script scans committed HEAD; a separate search of this staged review found no absolute home paths. |
+| `git diff --check f68703126..HEAD` | Exit 0, no output |
+| `pnpm run check:private`, before commit | Exit 0: `private: 1532 added lines in 12 files over f68703126319bee348a9ea9e60faba0e94f7a9e8, ok`. Warning: the private denylist is empty locally, so that rule was skipped. The script scans committed HEAD; a separate search of this staged review found no absolute home paths. |
 | Squeal affected-source command below | Exit 3 after 61.2 s: 360 selected files, **288 current passes, 5 queued, 67 unknown**, no known failures. Broader affected coverage is **unverified**. |
 | Squeal six named tests below | Exit 0 after 2.0 s: `Named test files at revision 0: no known failures; 6 test files, each with a current result.` Worktree: 323 of 1911 not current, 9 queued and 314 unknown. Current keys can inherit results; this is not a fresh full-suite claim. |
 | Initial external probe, `timeout 600 pnpm exec vitest run --config <probe>/vitest.config.mjs` | Exit 1: 2 failed, 5.20 s. One proved B1; the workspace probe had a duplicate fixture commit error, corrected before the next run. That fixture error is not a candidate finding. |

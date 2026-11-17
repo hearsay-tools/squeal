@@ -49,16 +49,16 @@ Run the independent full suite under the host lock: `flock /run/user/$(id -u)/sq
 
 ## R4: repair of review 0.1.295 B1, the import rewrite (015-29)
 
-Use /worker. Shape: repair. Starts from `5e18ed2b0` (`int/015d-r1`: 015-29, 015-31 and 015-11 on 0.1.294, no build commit). R5 runs beside it. Outcome: the `import("…")` rewrite changes only real import syntax, never text inside or across strings, comments, templates or regular expressions.
+Use /worker. Shape: repair. Starts from `882bd011e` (`int/015d-r1`: 015-29, 015-31 and 015-11 on 0.1.294, no build commit). R5 runs beside it. Outcome: the `import("…")` rewrite changes only real import syntax, never text inside or across strings, comments, templates or regular expressions.
 - Read `reviews/0.1.295.md` B1, spec D3 with its 2026-10-24 amendment, `tasks/015-29/notes.md` and `research/typeof-import.md`.
 - **Lead.** In `tsxInput` (`src/core/code/count/parser.ts`), keep the regex as the candidate finder. Accept a match only when a parse of the unrewritten text puts `import` in no string, comment, template or regex, and reads the quoted part as one string whose range is the match's literal. Parse twice only when a candidate exists. Another token-aware scan is fine if it meets the done-when.
 - **Keep.** The same-length replacement; names and body hashes from the file's own text; `COUNTER_VERSION` 3 (never released, so no raise).
 - **Owns.** `src/core/code/count/**`, `test/code/count/**`. Leave `src/runners/**`, `src/core/code/coverage/**` and `src/core/code/pass/**` alone.
-- **Done when.** The review's reproduction is a test, red first: `hidden` counted at CC 2. The same holds for a two-comment form (`/* typeof import(' */ function f(a) { return a ? 1 : 2 } /* ') */`), a template form and a regex-literal form. Both type-import fixtures and the quoted-key test still pass. The 1,972-file comparison in `tasks/015-29/notes.md`, re-run against `5e18ed2b0`'s counter, gives 0 changed functions and 0 files with errors. Lint, typecheck and `squeal run --all --wait` pass (bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
+- **Done when.** The review's reproduction is a test, red first: `hidden` counted at CC 2. The same holds for a two-comment form (`/* typeof import(' */ function f(a) { return a ? 1 : 2 } /* ') */`), a template form and a regex-literal form. Both type-import fixtures and the quoted-key test still pass. The 1,972-file comparison in `tasks/015-29/notes.md`, re-run against `882bd011e`'s counter, gives 0 changed functions and 0 files with errors. Lint, typecheck and `squeal run --all --wait` pass (bundle-drift failures expected); paste the output. Do not build bundles or raise the version.
 
 ## R5: repair of review 0.1.295 B2 to B4, the coverage boundary (015-11)
 
-Use /worker. Shape: repair. Starts from `5e18ed2b0`, beside R4. Outcome: a setup file's inspector import turns coverage off for its project's files, the cancelled-run rule is pinned by a test, and the mapping test passes on Node 22 and 24.
+Use /worker. Shape: repair. Starts from `882bd011e`, beside R4. Outcome: a setup file's inspector import turns coverage off for its project's files, the cancelled-run rule is pinned by a test, and the mapping test passes on Node 22 and 24.
 - Read `reviews/0.1.295.md` B2 to B4, spec D8 with its 2026-10-24 amendments (B3's sentence corrected, see `status.md`), and `tasks/015-11/notes.md`.
 - **B2.** `inspectorFiles` (`src/runners/vitest/coverage.ts`) also reads each project's setup closure (`ProjectInputs.setup` in `src/runners/vitest/project.ts`). When it imports `node:inspector` or `inspector`, every selected file of that project takes no coverage and is named in the note. Keep the direct, transitive and `isolate: false` cases.
 - **B3, the coordinator's decision.** A test file that completed whole before a cancellation keeps its record; no product change. Add the review's probe as a test: a cancelled run with one completed sibling stores that sibling's record, and none for the file the cancel stopped, whose payload is deleted. Assert that hung, crashed and rejected runs delete every payload, where no test does yet.
@@ -68,7 +68,7 @@ Use /worker. Shape: repair. Starts from `5e18ed2b0`, beside R4. Outcome: a setup
 
 ## 015-32 round 2: re-review of candidate 0.1.295
 
-Use /reviewer. Candidate `cand/0.1.295`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.295.md` (FAIL on 2bf279d0d, B1 to B4; that SHA is kept as `review/0.1.295-round1`). Write `reviews/0.1.295-r2.md` and commit it on your branch. The candidate is 015-29, 015-31 and 015-11 again, plus repairs R4 (B1) and R5 (B2 to B4) and a new build commit, on main at 0.1.294 and docs since.
+Use /reviewer. Candidate `cand/0.1.295`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.295.md` (FAIL on d430b01e0, B1 to B4; that SHA is kept as `review/0.1.295-round1`). Write `reviews/0.1.295-r2.md` and commit it on your branch. The candidate is 015-29, 015-31 and 015-11 again, plus repairs R4 (B1) and R5 (B2 to B4) and a new build commit, on main at 0.1.294 and docs since.
 - Check each blocker's reproduction and repair scope against R4 and R5 (`tasks/R4/notes.md`, `tasks/R5/notes.md`). B3 is the coordinator's decision, not a code repair: D8 now keeps the record of a file that completed whole before a cancel (`status.md`, 2026-10-24); judge the rule and R5's test that pins it. R5 also fixed a defect it found: a crashed or rejected run with coverage on threw a `TypeError` after `closeEmptied`; check that fix and its validity case.
 - 015-31 and the rest of 015-11 passed round 1: re-read only where the repairs touch them.
 - Confirm the candidate's CI is green, the Node 22 shards included.
@@ -112,7 +112,7 @@ Use /worker. Shape: repair. Starts from `int/015f-r1` (0.1.295 with waves 1d and
 
 ## 015-13 round 2: re-review of candidate 0.1.297
 
-Use /reviewer. Candidate `cand/0.1.297`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.297.md` (FAIL on 8a8beff80, B1 to B5, S1; that SHA is kept as `review/0.1.297-round1`). Write `reviews/0.1.297-r2.md` and commit it on your branch. The candidate is waves 1d and 2b again, plus repair R6 (`tasks/R6/notes.md`), the B5 repair and row 015-38 (`tasks/015-38/notes.md`, brief `tasks/wave-1d.md` W2 and its addition), and a new build commit, now on 0.1.296.
+Use /reviewer. Candidate `cand/0.1.297`, pinned to the SHA named in the spawn; round 1 is `reviews/0.1.297.md` (FAIL on 54799e465, B1 to B5, S1; that SHA is kept as `review/0.1.297-round1`). Write `reviews/0.1.297-r2.md` and commit it on your branch. The candidate is waves 1d and 2b again, plus repair R6 (`tasks/R6/notes.md`), the B5 repair and row 015-38 (`tasks/015-38/notes.md`, brief `tasks/wave-1d.md` W2 and its addition), and a new build commit, now on 0.1.296.
 - Check each blocker's proof and repair scope against R6 and the B5 commit, and S1.
 - R6 also made a record change the review did not ask for: two V8 functions at one span stay two entries (`COVERAGE_PROVIDER_VERSION` 2), for a single arrow field read as run on Node 24. Check it, the one-time re-key, and the agreed `Scheduler.keyIndex()` and `test/version-sensitive.txt` line.
 - **015-38 is new scope:** a `PASS` or `RESOLVED` that git brought, for a function held by count only, is not told; a `FAIL` is. Check it against D6 as amended, including its accepted limits and the coordinator's reading for `crap` and `uncovered`.

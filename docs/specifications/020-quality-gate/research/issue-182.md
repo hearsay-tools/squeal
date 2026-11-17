@@ -8,7 +8,7 @@ is research for triage, not approval to implement. Existing holds stand.
 
 ## Scope and questions
 
-Research date: 2026-11-11. Source checkout: `52191ab4335b7ec194d4176d6b19f75f3f304c80`.
+Research date: 2026-11-11. Source checkout: `13d592d527408ff96cfcb16ea2f3ecffbb495bc4`.
 The brief supplies the questions below; there is no research README for this
 spec. Evidence is one synthetic test, the installed runtime and source reads.
 

@@ -1,6 +1,6 @@
 # 001-352 notes: the slow-lane test read an empty "started" file
 
-Main CI, Node 24, run 38468906634 on 98f88637: `test/daemon/slow-lane.test.ts:57` read `''` from `started` where `/^[^:]+:slow:vitest$/` was expected. The file ran 62 s, beside a full suite of 469 files.
+Main CI, Node 24, run 38468906634 on 8d6c23af: `test/daemon/slow-lane.test.ts:57` read `''` from `started` where `/^[^:]+:slow:vitest$/` was expected. The file ran 62 s, beside a full suite of 469 files.
 
 ## Cause: the read raced the write
 

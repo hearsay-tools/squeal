@@ -2,7 +2,7 @@
 
 ## Verification output
 
-Candidate and actual initial HEAD: `d72438e90b6c5d19b9a5b306e475e2fc125e8d5f`, package 0.1.120. Range: `d9fe66ba..d72438e90b6c5d19b9a5b306e475e2fc125e8d5f`. Linux, Node 24.21.0, Vitest 5.0.3. The tree was clean during the full gate and final probes. Spec 006 changes interleaved in this range are outside the assigned wave; their tests are included in the independent suite. The parent's later `1819ee6c` test-only git-GC fix was not included or reviewed.
+Candidate and actual initial HEAD: `d46b57ed4132f200ed68f74e25231125917233de`, package 0.1.120. Range: `7481623e..d46b57ed4132f200ed68f74e25231125917233de`. Linux, Node 24.21.0, Vitest 5.0.3. The tree was clean during the full gate and final probes. Spec 006 changes interleaved in this range are outside the assigned wave; their tests are included in the independent suite. The parent's later `b278d99c` test-only git-GC fix was not included or reviewed.
 
 No product, test, board, spec, status or distribution file was edited. No eval runner or repository script was run to check evals. The explicitly forbidden `npm run build` was not run. Build reproducibility and macOS are **unverified**, not findings or blockers. Daemon test helpers compile private source fixtures as the required suite normally does; they do not rebuild committed plugin bundles. Both committed CLI bundles compare byte-identical.
 
@@ -65,7 +65,7 @@ $ cmp plugins/claude-code/dist/cli/squeal.mjs plugins/codex/dist/cli/squeal.mjs
 
 The independent full suite is **green**; no retry was required. The coordinator's earlier status-wait timeout does not recur in this run. The suite printed two fixture gitdir-repair notices and one earlier-run process cleanup; neither produced an error. Concurrent Squeal baseline timing failures recovered under identical inputs and its checkpoint completed, but neither the baseline nor the coordinator gate replaces this independent run. Sampled host load ranged from about 28 down to 7 during probes. The two required new behavior probes below establish blockers despite the full suite passing.
 
-The 35-probe replay adapts 001-269's saved external probes to token-bearing candidate registrations and handlers; the after-window control now expects a joined window and timeout. It retains actual 0.1.112 ledger/handler/CLI sources from `cf7e8a2c`, the base wait from `6864b726`, and the actual 0.1.115 CLI from `2ec0efa1`. Two added probes use the actual 0.1.116 registration/handler and CLI from `d9fe66ba`. All legacy sources remain unchanged. The probes control runner closures and mutation scheduling, use production keys/ledgers/store/sockets/waits, and include actual candidate daemon stop, step-down and restart. They do not claim to launch complete older daemon processes.
+The 35-probe replay adapts 001-269's saved external probes to token-bearing candidate registrations and handlers; the after-window control now expects a joined window and timeout. It retains actual 0.1.112 ledger/handler/CLI sources from `d58dd59c`, the base wait from `860f6464`, and the actual 0.1.115 CLI from `eecab4cb`. Two added probes use the actual 0.1.116 registration/handler and CLI from `7481623e`. All legacy sources remain unchanged. The probes control runner closures and mutation scheduling, use production keys/ledgers/store/sockets/waits, and include actual candidate daemon stop, step-down and restart. They do not claim to launch complete older daemon processes.
 
 Replayable [probe source snapshot](/p/squeal/tasks/3c042f05-1624-48d0-9fb7-5921f982ee82/files?artifact=13e5ba6c-1bdc-4873-bd0c-a90a0d4d78f9). The [verification output snapshot](/p/squeal/tasks/3c042f05-1624-48d0-9fb7-5921f982ee82/files?artifact=2f448572-0477-47c2-9cd5-08332540bdd6) preserves the complete independent gate and final external probe outputs.
 
@@ -73,7 +73,7 @@ Two preliminary probe mistakes were corrected externally: the death control call
 
 ## Verdict
 
-**FAIL d72438e9: 2 proven blockers, 1 should-fix, 0 nits.**
+**FAIL d46b57ed: 2 proven blockers, 1 should-fix, 0 nits.**
 
 001-263 suppresses a real death after an ordinary note. 001-264 repairs file-module stamps but leaves virtual modules' declared-input stamps behind when invalidation drops their transform. Both violate the assigned behavior, and B2 also violates the vision's current-state honesty rule. The blockers were reported to the parent during review; the human decides the next repair/review round.
 

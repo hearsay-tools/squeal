@@ -1,6 +1,6 @@
 # 011-105: removals at the key-format raise, and the raise to 21
 
-Worker 7298f244, wave 66 W3 (`../wave-66.md`), base `3edfabbe0`, 2026-10-31 to 2026-11-01.
+Worker 7298f244, wave 66 W3 (`../wave-66.md`), base `15d98905d`, 2026-10-31 to 2026-11-01.
 
 ## Commits
 

@@ -1,6 +1,6 @@
 # 015-64 notes: switches for the coverage checks, an exclude, and the code features on by default
 
-Worker d211a86b, 2026-10-26. Brief: `tasks/wave-12.md` W1. Shape: slice. Starts from main at `1ddf0eaf4`. Two agreements with the coordinator: `5f3cdd7e` (the store's `removeMeasure` takes optional paths) and `a3056400` (option (a): this row adds the delivery's summary line itself).
+Worker d211a86b, 2026-10-26. Brief: `tasks/wave-12.md` W1. Shape: slice. Starts from main at `1766a8249`. Two agreements with the coordinator: `5f3cdd7e` (the store's `removeMeasure` takes optional paths) and `a3056400` (option (a): this row adds the delivery's summary line itself).
 
 ## What changed
 

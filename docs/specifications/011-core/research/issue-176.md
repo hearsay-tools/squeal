@@ -15,7 +15,7 @@ revision 0, host load 31–58 on 24 CPUs. It contains no status JSON or lock sta
 This is the reporter's account, not an independently verified incident trace.
 
 Experiments used the committed CLI bundle at **0.1.430**, checkout
-`1ac649d408c9043997fd4eeb0c0ed3a079b1da4c`, Node **24.22.1**, Vitest **5.0.3**.
+`4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c`, Node **24.22.1**, Vitest **5.0.3**.
 Initial load was **16.39 / 24 CPUs**. Per-probe loads were **13.94, 15.79,
 16.56 and 14.61**; none required skipping. Each fixture had an isolated store,
 an empty test selection and a lookup-only baseline. No product files, existing
@@ -122,7 +122,7 @@ the raw output. These tiny fixtures do not reproduce Cezar's scale.
   [script](probes/issue-176/probe.mjs), [lock preload](probes/issue-176/preload.mjs),
   [raw commands, outputs and exit codes](probes/issue-176/output.jsonl).
 - [Spec C6/C7/C9/C13/C15](../spec.md), [amendment log](../status.md).
-- [Source at examined commit](https://github.com/hearsay-tools/squeal/tree/1ac649d408c9043997fd4eeb0c0ed3a079b1da4c/src/core):
+- [Source at examined commit](https://github.com/hearsay-tools/squeal/tree/4de9b4d96d36dd4e8bb4cc37356492b0d30b5c3c/src/core):
   paths above are relative to `src/core/`; deadline text is in
   `src/cli/group-pending.ts:49–104`.
 - `git rev-parse squeal--v0.1.427` → `92fdb03d63c07954bb22fefef032c15cce61c06b`.

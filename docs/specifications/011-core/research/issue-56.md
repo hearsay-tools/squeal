@@ -1,8 +1,8 @@
 # Issue 56: a Vitest result stays current after the script its child process loads appears
 
-Researcher, 2026-10-20, branch `cez/04b7163c` at `4763f3612`. Squeal 0.1.231 (the installed plugin
+Researcher, 2026-10-20, branch `cez/04b7163c` at `aa2de17c7`. Squeal 0.1.231 (the installed plugin
 `~/.claude/plugins/cache/hearsay/squeal/0.1.231`; its `dist/observe/recorder.cjs` and `spawn.cjs` are
-byte-identical to `src/runners/observe/*` at `4763f3612`). Node v24.21.0, Vitest 4.1.10, 24 CPUs.
+byte-identical to `src/runners/observe/*` at `aa2de17c7`). Node v24.21.0, Vitest 4.1.10, 24 CPUs.
 Load before each live run: 14.13 (recorder probe), 10.47 (daemon probe), both under 24.
 Issue: hearsay-tools/squeal#56 (incident: cezarion worktree, Squeal 0.1.231, hearsay-tools/cezarion#1305).
 
@@ -102,7 +102,7 @@ assumes the `meta` key is `observed.<project>` with an empty project name. The c
 ## Sources
 
 - hearsay-tools/squeal#56, `gh issue view 56 -R hearsay-tools/squeal`, read 2026-10-20.
-- `src/runners/observe/recorder.cjs:1-40, 186-205`; `src/runners/observe/spawn.cjs:136-197` at `4763f3612` (read in source code).
+- `src/runners/observe/recorder.cjs:1-40, 186-205`; `src/runners/observe/spawn.cjs:136-197` at `aa2de17c7` (read in source code).
 - `docs/specifications/011-core/spec.md` C3 (Closure, Environment hash), C12; `docs/specifications/013-vitest-runner/spec.md` V3, V10.
 - `src/core/daemon/policy.ts:30-44` (the `inputs` shape).
 - Probes: `docs/specifications/011-core/research/probes/issue-56/` (`recorder-probe.mjs`, `run.sh`, `fixture/`, outputs).

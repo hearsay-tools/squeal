@@ -23,7 +23,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const W = dirname(here);
 const R = "/home/squeal-e2e/runs/d1510";
 const CWD = `${R}/${repo}`;
-const BASE = { squeal: "d5018817aa3c2f6e09126a8d18cfc59389a810c9", cezar: "03c905a00c449c7a6257e2d0d3c16383cd267743" }[repo];
+const BASE = { squeal: "5fc50b2b5d44392611e7ebd6af6dd630c4d6beb9", cezar: "03c905a00c449c7a6257e2d0d3c16383cd267743" }[repo];
 // cz4 and cz5 shared the cezar clone and cz5's reset wiped
 // cz4's edits. The lock makes that impossible.
 mkdirSync(join(W, "locks"), { recursive: true });
@@ -61,7 +61,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 tryAs(["git", "reset", "-q", "--hard", BASE]);
 tryAs(["git", "clean", "-fdq"]);
 // sq6 starts on a branch `work` behind the base, so the session's own fast-forward is a pull.
-const CHECKOUT = { sq6: "ab376e7fd27b043d530aff3729333dde80fec735" }[id.replace(/r$/, "")];
+const CHECKOUT = { sq6: "ffe89a48a93d1f015b30658bbdb29e26456c95b1" }[id.replace(/r$/, "")];
 if (CHECKOUT) meta.checkout = tryAs(["git", "checkout", "-q", "-B", "work", CHECKOUT]) || `work at ${CHECKOUT}`;
 else tryAs(["git", "checkout", "-q", "dogfood"]);
 // A daemon exits 3 s after its last session ends: start one, so the reset is counted before the

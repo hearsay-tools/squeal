@@ -1,7 +1,7 @@
 # Wave 13ak review
 
-Candidate: `1896e49cd6f65d2d696776196bd16348ad5ca983`.
-Range: `2c691397..1896e49cd6f65d2d696776196bd16348ad5ca983`.
+Candidate: `ae6d5dc72f8beefbdfab29155a54958de879ecab`.
+Range: `96b49313..ae6d5dc72f8beefbdfab29155a54958de879ecab`.
 Rows: 001-281 and 001-282, review 001-286. Intent: `research/slow-claims.md`, sections 2 and 4; 001 D7, D9 and goal 3; 004 D2, D3 and D9.
 
 ## Verification output
@@ -10,7 +10,7 @@ The checkout matched the candidate and was clean for the checks and probes. Node
 
 ```text
 $ git rev-parse HEAD
-1896e49cd6f65d2d696776196bd16348ad5ca983
+ae6d5dc72f8beefbdfab29155a54958de879ecab
 
 $ npm ci
 added 56 packages, and audited 57 packages in 1s

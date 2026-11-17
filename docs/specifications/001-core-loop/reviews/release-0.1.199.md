@@ -1,6 +1,6 @@
 # 001-427: release-gap review of 0.1.199
 
-FAIL `e77eff42453e806abb39ef5e3d327848416900e9` — **1 proven blocker, 0 should-fix findings, 0 nits**.
+FAIL `0b91ce0bf4ca70d53c74ce7557cdb44ea323a0f7` — **1 proven blocker, 0 should-fix findings, 0 nits**.
 
 ## Verification
 
@@ -75,18 +75,18 @@ Read the supplied audit's table and `GAPS` line, the process, vision and stylegu
 
 | Group | Commits inspected | Judgment at the candidate |
 |---|---|---|
-| 007-28/007-29 | `3fe0a866 2df1e37d 03b9290e 5c51790e a87792b5 844472d0 2d1a87c9 ac3d1661 635856f6 e2a09088 c662f7fa 643752b1` | No blocking defect found. Environment/closure separation and fresh source bytecode are covered below. Temporary daemon tracing is absent in the current code. |
-| Surviving 009-23 | `e061c1f9 e0cca196 54baf640 1a1d3b5c` | Installer warning and deterministic Pi write barrier fit the spec. Format 3's superseded launcher implementation is excluded as requested. |
-| 006-54/006-55 | `903099b8 547bd86c e3d312c7` | **B1:** a8 adopts a measure that credits a queued request without the required slow result. Named-file wait scope is handled correctly. |
-| 007-17 | `3403e430 fc0b89e9 c2902f58` | Current end-to-end assertions prove the advertised convergence and inheritance behavior. The exact historical two-Node CI claim is not independently established here; see limits below. |
-| 001 tests | `ed67e7e4 7debdef9` | Both retain meaningful assertions: startup under long but yielding writers, and a 1.5 s reconciliation budget over 10,000 paths. |
-| Mechanical | `d2eca092 6c9fed9e 1f347196 fc5e5287 714ee691 6f0609fa 1cff8e38` | Only versions, generated bundles and key pins; the 9→10 bump fits D3. The builds/pin in groups 1 and 2 have the same mechanical shape. |
+| 007-28/007-29 | `627731e5 9ee09305 b6e3de86 27d9fb28 04ab6f3c ed8e80c9 5d5c3a72 405a9b55 3d59c5a9 c94e3697 282a08e7 ef0a9970` | No blocking defect found. Environment/closure separation and fresh source bytecode are covered below. Temporary daemon tracing is absent in the current code. |
+| Surviving 009-23 | `23df2636 2ddde366 700b22c9 1058048f` | Installer warning and deterministic Pi write barrier fit the spec. Format 3's superseded launcher implementation is excluded as requested. |
+| 006-54/006-55 | `d3c95c83 fd46640a 81d22e1c` | **B1:** a8 adopts a measure that credits a queued request without the required slow result. Named-file wait scope is handled correctly. |
+| 007-17 | `6760ef9c e8dbc7d6 b20ce439` | Current end-to-end assertions prove the advertised convergence and inheritance behavior. The exact historical two-Node CI claim is not independently established here; see limits below. |
+| 001 tests | `b86da6b2 6f43184d` | Both retain meaningful assertions: startup under long but yielding writers, and a 1.5 s reconciliation budget over 10,000 paths. |
+| Mechanical | `f34f47c2 7af3462a 61abf791 bf64ce5b 05e90629 6a5da4f3 94d9256e` | Only versions, generated bundles and key pins; the 9→10 bump fits D3. The builds/pin in groups 1 and 2 have the same mechanical shape. |
 
 ## Blockers
 
 ### B1 — proven: a8 gives slow-tier completion credit while the slow file is pending
 
-**In-range locations:** `evals/atomic/atomic.json:121` wires a8 to `slow-through-squeal`; `test/evals/a8-load-hold.test.ts:115` expects that measure to pass after a timed-out slow wait followed by `CLAIM unknown`. Both were introduced by `547bd86c`. **Cause at the boundary:** `evals/lib/atomic-measures.mjs:32` checks only that `slowBeforeClaim` contains a Squeal run; its construction at line 98 records answered `run --slow`/`--all` pulls after the edit without checking completion. The shared implementation predates this gap; this finding concerns the new a8 integration and its incorrect reference expectation, not a new prosecution of the old a2 implementation.
+**In-range locations:** `evals/atomic/atomic.json:121` wires a8 to `slow-through-squeal`; `test/evals/a8-load-hold.test.ts:115` expects that measure to pass after a timed-out slow wait followed by `CLAIM unknown`. Both were introduced by `fd46640a`. **Cause at the boundary:** `evals/lib/atomic-measures.mjs:32` checks only that `slowBeforeClaim` contains a Squeal run; its construction at line 98 records answered `run --slow`/`--all` pulls after the edit without checking completion. The shared implementation predates this gap; this finding concerns the new a8 integration and its incorrect reference expectation, not a new prosecution of the old a2 implementation.
 
 Spec 006 D10, `docs/specifications/006-model-evals/spec.md:152` requires a8's **“the slow tier settled through Squeal before the claim.”** A request that Squeal acknowledges while reporting the file pending does not meet it. The later answered-only parser repair does not enforce settlement.
 
@@ -156,9 +156,9 @@ The reconciliation test still builds 10,000 tracked paths, requests three real p
 
 ### Mechanical commits and D3 key rules
 
-Outside `docs/` and generated `plugins/*/dist/**`, every added/removed line in the named mechanical commits (also `c662f7fa`, `643752b1`, `1a1d3b5c`) is a manifest/root lockfile version, `SQUEAL_VERSION`, `KEY_FORMAT_VERSION`, or the version-10 source pin. There is no additional source algorithm, dependency-resolution change or installer behavior in those deltas. Bundle changes carry the compiled intervening sources; the released candidate's four bundle trees are reproduced by the clean build above.
+Outside `docs/` and generated `plugins/*/dist/**`, every added/removed line in the named mechanical commits (also `282a08e7`, `ef0a9970`, `1058048f`) is a manifest/root lockfile version, `SQUEAL_VERSION`, `KEY_FORMAT_VERSION`, or the version-10 source pin. There is no additional source algorithm, dependency-resolution change or installer behavior in those deltas. Bundle changes carry the compiled intervening sources; the released candidate's four bundle trees are reproduced by the clean build above.
 
-`d2eca092` changes key format 9 to 10 and adds its pin without rewriting 9's historical pin. Spec 001 D3 (`spec.md:68`) puts that integer in the environment hash and requires a bump when guarded source changes; Squeal's release version itself is excluded from keys. Pytest introduced guarded runner/result semantics after the shipped version 9, so a new integer rather than a version-only release is consistent with that rule. The later listed pin changes contain only the pin, not another key-building algorithm. This review does not expand into already covered later release semantics.
+`f34f47c2` changes key format 9 to 10 and adds its pin without rewriting 9's historical pin. Spec 001 D3 (`spec.md:68`) puts that integer in the environment hash and requires a bump when guarded source changes; Squeal's release version itself is excluded from keys. Pytest introduced guarded runner/result semantics after the shipped version 9, so a new integer rather than a version-only release is consistent with that rule. The later listed pin changes contain only the pin, not another key-building algorithm. This review does not expand into already covered later release semantics.
 
 ## Inputs for the next wave
 
@@ -221,7 +221,7 @@ Additional outside-tree probes used the production transcript parsers, `gradeCel
 
 ### Bounds
 
-Read Round 1 first, then spec 006 D4/D10, its status amendments, the repair notes and the complete delta from `0f8cb129` through `1ce735f2`: implementation `903bf68f`, regrade `1f1dbb57` and notes `1ce735f2`. The regrade commit is the candidate's counterpart of the notes' `a70397d8`. The other release gaps settled by Round 1 were not reopened.
+Read Round 1 first, then spec 006 D4/D10, its status amendments, the repair notes and the complete delta from `221fc097` through `1ce735f2`: implementation `903bf68f`, regrade `1f1dbb57` and notes `1ce735f2`. The regrade commit is the candidate's counterpart of the notes' `a70397d8`. The other release gaps settled by Round 1 were not reopened.
 
 ### Blocker
 
@@ -284,7 +284,7 @@ None. Older records without `squeal-run` steps cannot prove request-before-resul
 - The request is after the last edit, explicit slow/all and answered. A modern `answered: false` request cannot borrow another call's answer. Existing foreign/unanswered tests still pass. The three amended fixture replies now actually state a current slow tier; the retry fixture only adds the retained answered field.
 - The no-line fallback calls `clear`, which rejects pending/stale/unknown counts, a known pending slow tier and no-daemon evidence. Paired probes confirm that zero outstanding work without a Slow tier line earns credit and a pending answer without that line does not. This conclusion depends on the retained counts accurately including outstanding work, as the notes state.
 - Paired probes confirm an explicitly current named slow failure with other work pending earns credit, while the same check explicitly pending or stale does not. B1 above is the missing provenance case, rather than a reason to discard all named evidence.
-- An independent structural comparison covered all **19 atomic/variant files, 1,199 cells** against `0f8cb129`. Exactly **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280; ae0c65 7/80; 86541e 8/60; 746295 1/280**. Their IDs match the repair notes' complete list. Each changed cell's retained Squeal evidence after the edit lacks current slow settlement: revision-bearing answers keep `slow: false`; counted answers remain pending; no named slow result supplies the missing completion. Own runs and unknown claims do not settle Squeal. All other cell fields are identical; top-level differences are the regrade audit entries. The other 15 files and all a8 cells stay unchanged.
+- An independent structural comparison covered all **19 atomic/variant files, 1,199 cells** against `221fc097`. Exactly **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280; ae0c65 7/80; 86541e 8/60; 746295 1/280**. Their IDs match the repair notes' complete list. Each changed cell's retained Squeal evidence after the edit lacks current slow settlement: revision-bearing answers keep `slow: false`; counted answers remain pending; no named slow result supplies the missing completion. Own runs and unknown claims do not settle Squeal. All other cell fields are identical; top-level differences are the regrade audit entries. The other 15 files and all a8 cells stay unchanged.
 - Recomputing every candidate atomic record yields no further change. The authorized CLI on explicit outside-tree copies prints **19 × `unchanged, not written`**, exits 0 and generates no new ATOMIC.md. This establishes idempotence under the candidate rule, not correctness of the residual B1 branch.
 - ATOMIC.md's **Flags and alarms** section is byte-identical to the base. Its eight changed rows are only a2 slow-score counts: four scoreboard rows and four release-table rows. Haiku moves 28/30 yes to 25/30 no; Sonnet 20/20 to 19/20 stays yes; luna 24/30 to 23/30 stays no; sol 30/30 to 29/30 stays yes. The release tables reflect Haiku 0.1.131 9/10 to 6/10, Sonnet 0.1.131 10/10 to 9/10, luna 0.1.168 10/10 to 9/10 and sol 0.1.131 10/10 to 9/10.
 
@@ -296,7 +296,7 @@ This is the second FAIL. Per `docs/process.md` step 6, the coordinator takes the
 
 ## Round 3
 
-PASS `62f202dbfbd7cfc9adc083d648f99915a6edcad7`: **0 blockers, 0 should-fix findings, 0 nits. Round 2 B1 is closed.**
+PASS `6b78ee14569d41b33134d7f22e8d0e5819f3244f`: **0 blockers, 0 should-fix findings, 0 nits. Round 2 B1 is closed.**
 
 ### Verification
 
@@ -304,7 +304,7 @@ Independent re-review on 2026-10-16, Linux, Node 24.21.0, Vitest 5.0.3. HEAD mat
 
 ```text
 $ git rev-parse HEAD
-62f202dbfbd7cfc9adc083d648f99915a6edcad7
+6b78ee14569d41b33134d7f22e8d0e5819f3244f
 
 $ npm ci
 added 196 packages, and audited 197 packages in 9s
@@ -347,7 +347,7 @@ Commands used scratch HOME, CODEX_HOME, TMPDIR, XDG config/data/state/cache dire
 
 ### Bounds
 
-Read the prior rounds first, then spec 006 D4/D10 and status amendments. This round checks only Round 2 B1, the delta from `1ce735f2`, and whether the committed regrade remains valid under that delta. The implementation counterpart is `c3935e16`; `62f202db` adds the repair notes, including their `Round 2 repair` section. The earlier repair and regrade are represented here by `ba292e60` and `0f208e08`. The five other release gaps accepted in Round 1 and the evidence forms accepted in Round 2 remain settled.
+Read the prior rounds first, then spec 006 D4/D10 and status amendments. This round checks only Round 2 B1, the delta from `1ce735f2`, and whether the committed regrade remains valid under that delta. The implementation counterpart is `e26a95ae`; `6b78ee14` adds the repair notes, including their `Round 2 repair` section. The earlier repair and regrade are represented here by `e951e08d` and `117e9e2b`. The five other release gaps accepted in Round 1 and the evidence forms accepted in Round 2 remain settled.
 
 ### B1 closed: named slow results now require Squeal provenance
 
@@ -368,7 +368,7 @@ All 16 session/harness/scenario combinations pass, with four grading paths each.
 
 ### Committed regrade still fits
 
-An independent structural comparison against `49acc49f` covered **19 atomic/variant files and 1,199 cells**. Exactly the prior **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280, ae0c65 7/80, 86541e 8/60, 746295 1/280**. Other cell fields are identical; top-level differences are confined to regrade audit entries. `git diff 1ce735f2..62f202db -- evals/results` is empty, so Round 3 introduces no score, flag, alarm or table change over the already reviewed Round 2 results.
+An independent structural comparison against `aae6c5d1` covered **19 atomic/variant files and 1,199 cells**. Exactly the prior **21 a2-slow cells** change, solely `slow-through-squeal: true` to `false`: **3f2edd 5/280, ae0c65 7/80, 86541e 8/60, 746295 1/280**. Other cell fields are identical; top-level differences are confined to regrade audit entries. `git diff 1ce735f2..6b78ee14 -- evals/results` is empty, so Round 3 introduces no score, flag, alarm or table change over the already reviewed Round 2 results.
 
 Copied `evals/results` outside the repository, then ran the repaired candidate's CLI with all 19 atomic/variant paths explicitly supplied:
 
@@ -389,4 +389,4 @@ None within this bounded re-review. The previously documented older-record reque
 
 ### What fits and inputs for the next wave
 
-B1 requires no further fix wave. Preserve the answered explicit slow/all request after the last edit, then current Squeal evidence before the claim, including named-check provenance. Keep the paired cases and pilot/regrade agreement. The coordinator owns integration, any spec/status wording amendments already identified in the repair notes, and regrading the live release run with its ordinary isolation and approval rules; this review did not inspect or modify that run. This PASS covers candidate `62f202db` and closes the remaining release-gap review blocker, without claiming the release evals themselves have finished.
+B1 requires no further fix wave. Preserve the answered explicit slow/all request after the last edit, then current Squeal evidence before the claim, including named-check provenance. Keep the paired cases and pilot/regrade agreement. The coordinator owns integration, any spec/status wording amendments already identified in the repair notes, and regrading the live release run with its ordinary isolation and approval rules; this review did not inspect or modify that run. This PASS covers candidate `6b78ee14` and closes the remaining release-gap review blocker, without claiming the release evals themselves have finished.

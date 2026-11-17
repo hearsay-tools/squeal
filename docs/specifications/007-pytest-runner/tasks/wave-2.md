@@ -32,7 +32,7 @@ Use /worker.
 
 ## 007-16 review of waves 0 and 1
 
-Shape: review. `/reviewer` over `638fb159..a67407f8` (0.1.161 and 0.1.163), including `0ba56c76`'s refactor of `src/core/daemon/policy-node-test.ts`, which is live for every `nodeTest` config (005 flagged it; the next hub release waits on this review). Nothing in `src/runners/pytest/` is wired into the daemon yet, so judge it as a library against the spec. Focus:
+Shape: review. `/reviewer` over `d1b62fa1..fffd011a` (0.1.161 and 0.1.163), including `0ba56c76`'s refactor of `src/core/daemon/policy-node-test.ts`, which is live for every `nodeTest` config (005 flagged it; the next hub release waits on this review). Nothing in `src/runners/pytest/` is wired into the daemon yet, so judge it as a library against the spec. Focus:
 - Whether the refactor is behaviour-preserving for `nodeTest`: messages, defaults, the duplicate-name rule.
 - Keys: closure hashes equal across synced worktrees and with and without `.venv`; D4's amended candidate rule; the environment hash's `<worktree>` rewrite.
 - D2's refusal states: no environment, an editable install outside the worktree, a sync during a run.

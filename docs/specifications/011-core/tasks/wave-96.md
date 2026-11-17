@@ -22,12 +22,12 @@ Done when: the row's done-when holds: a holder-and-waiter test on a scratch stor
 
 ## R1 (W1): review of cand/0.1.509
 
-Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.509` at `2ccc9ca5801da50a8ee55b13a2b786f35722362c`; candidate CI run 43651038536. Range `b1036b3fb..2ccc9ca58`: six commits of worker 912adabb (cherry-picked from `71460d84d..56cca082c` without conflict), then the 0.1.509 raise and bundles. Read: board row 011-350, this file's W1, `tasks/011-350/notes.md`, `../020-quality-gate/research/issue-220.md` Q1.
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.509` at `c3e5cfbe0928266ff15f82bcabc6643cdbb0db3d`; candidate CI run 43651038536. Range `43e605fca..c3e5cfbe0`: six commits of worker 912adabb (cherry-picked from `71460d84d..56cca082c` without conflict), then the 0.1.509 raise and bundles. Read: board row 011-350, this file's W1, `tasks/011-350/notes.md`, `../020-quality-gate/research/issue-220.md` Q1.
 
 Check, each as proven, plausible or unverified:
 
 1. **Turns.** Every back-to-back write loop of the code-store prune (`deleteInBatches`, `pruneParts`, the vacuum steps) and of `importSliced` now pauses after each committed slice by `turnGapMs`, derived from the slice's own hold. No loop of write transactions in those paths still runs with no pause.
-2. **Same prune.** The code prune deletes the same rows as at `b1036b3fb` (counts, coverage, parts, checks, views, per-worktree rows, meta), in 256-row batches, with no store format change; the daemon still runs it after the main prune, logs a failure as `code prune failed`, closes the code store on every path (done, stop, throw), and `stop()` ends it between slices.
+2. **Same prune.** The code prune deletes the same rows as at `43e605fca` (counts, coverage, parts, checks, views, per-worktree rows, meta), in 256-row batches, with no store format change; the daemon still runs it after the main prune, logs a failure as `code prune failed`, closes the code store on every path (done, stop, throw), and `stop()` ends it between slices.
 3. **Busy handling.** A busy code store now retries the one slice through `SlicedPrune`, not the whole prune through `retries.run`: no slice holds the event loop past `BUSY_SLICE_MS` on the code store's connection, and nothing that `retries.run` gave (its log lines, its grouping) is lost where a user reads it.
 4. **Import.** The pause covers the daemon import, the shared reader and the CLI import; a refused try does not count as a hold; `stopped` and `ImportStopped` behave as before.
 5. **Tests.** The holder-and-waiter tests fail without the pause (notes) and are not host-tuned; the 30 s timeouts are acceptable.

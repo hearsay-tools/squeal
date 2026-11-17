@@ -1,6 +1,6 @@
 # 008 wave 3 review
 
-Verdict: **FAIL ceea98c2**. **1 proven blocker**, 1 plausible should-fix note, no nits. Exact candidate: `ceea98c24386f13d1b56d9a4f44be8445740c543`, `cand/0.1.186`. Range: `19379f39..ceea98c2`. Reviewed 2026-10-15 against spec 008 goals 4 and 6, D3 to D5 and D7 as amended, the 008-27 brief on `origin/main`, `reviews/wave-2.md`, and lessons defects 1, 2 and 4(a).
+Verdict: **FAIL ceea98c2**. **1 proven blocker**, 1 plausible should-fix note, no nits. Exact candidate: `ceea98c24386f13d1b56d9a4f44be8445740c543`, `cand/0.1.186`. Range: `d181b540..ceea98c2`. Reviewed 2026-10-15 against spec 008 goals 4 and 6, D3 to D5 and D7 as amended, the 008-27 brief on `origin/main`, `reviews/wave-2.md`, and lessons defects 1, 2 and 4(a).
 
 ## Verification output
 

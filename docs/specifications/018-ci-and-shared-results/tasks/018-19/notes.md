@@ -25,7 +25,7 @@ Worker 4c277630, 2026-11-09. For the coordinator and whoever touches the node:te
 
 ## Evidence
 
-- `pnpm exec tsx test/keys/validity/compare-refs.ts 57fda39b7 HEAD adapter:node-test` at `e7313780d`: only the node:test component fired (global 21, vitest 3, pytest 4, recorder 6 did not); all 7 `adapter:node-test` cases "keys differ, outputs equal"; 0 uncovered lines.
+- `pnpm exec tsx test/keys/validity/compare-refs.ts 70d3dd91b HEAD adapter:node-test` at `e7313780d`: only the node:test component fired (global 21, vitest 3, pytest 4, recorder 6 did not); all 7 `adapter:node-test` cases "keys differ, outputs equal"; 0 uncovered lines.
 - The tests fake other builds with a `/bin/sh` wrapper `node` that `--require`s a preload redefining `process.config`, `process.versions`, `process.platform` or `process.arch` (all configurable on Node 24). One build at two paths uses a hard link, with a copy as fallback across file systems.
 
 ## Not done here

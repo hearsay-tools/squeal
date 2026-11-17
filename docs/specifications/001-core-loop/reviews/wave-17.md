@@ -2,7 +2,7 @@
 
 Verdict: **FAIL**. One proven blocker, no should-fix items, no nits.
 
-Candidate: `cand/0.1.201`, pinned to `f9c29e11071ab245fb5e4dc15a4aba283d8d5ebf`. Product range: `4bde168e..f9c29e11`, five commits. `git diff 8737cdc0 4bde168e -- src test` is empty. Reviewed W1 and W2 of `tasks/wave-17.md`, issue [#1](https://github.com/hearsay-tools/squeal/issues/1), spec 001 D8, D10 and D12, and `tasks/001-422/notes.md`. This review covers the first issue criterion; the other issue criteria are not claims of this wave.
+Candidate: `cand/0.1.201`, pinned to `b8b1a21a25ce59893870dfd500efdc4cf8067fb0`. Product range: `06d0379f..b8b1a21a`, five commits. `git diff cfb3b034 06d0379f -- src test` is empty. Reviewed W1 and W2 of `tasks/wave-17.md`, issue [#1](https://github.com/hearsay-tools/squeal/issues/1), spec 001 D8, D10 and D12, and `tasks/001-422/notes.md`. This review covers the first issue criterion; the other issue criteria are not claims of this wave.
 
 ## Verification
 
@@ -11,7 +11,7 @@ All primary checks ran at the pinned candidate with no tracked changes. `npm run
 `git rev-parse HEAD`:
 
 ```text
-f9c29e11071ab245fb5e4dc15a4aba283d8d5ebf
+b8b1a21a25ce59893870dfd500efdc4cf8067fb0
 ```
 
 `npm ci`, exit 0:
@@ -89,7 +89,7 @@ Squeal's separate baseline reported the two known daemon-only failures of row 00
 
 ### Regression sensitivity
 
-**Proven.** Exported `4bde168e` outside the worktree, overlaid the five new test files and `test/scheduler/helpers.ts`, and used the candidate's installed dependencies. Its source is identical to `8737cdc0`. Ran:
+**Proven.** Exported `06d0379f` outside the worktree, overlaid the five new test files and `test/scheduler/helpers.ts`, and used the candidate's installed dependencies. Its source is identical to `cfb3b034`. Ran:
 
 ```sh
 npx vitest run test/store/busy-slice.test.ts test/watcher/batch-retry.test.ts test/scheduler/busy-record.test.ts test/daemon/busy-edit.test.ts test/daemon/sliced-writes.test.ts --maxWorkers=1
@@ -124,7 +124,7 @@ Failure sequence:
 
 A deterministic probe uses the real scheduler harness and runner. It defers only the busy-resume callback, injects one busy record error and then one non-busy record error, and delivers the saved callback after the latter stall. Before delivery there are two runs; after delivery there are four. No product source or bundle is patched. Deferring delivery controls the ordering rather than relying on a host's timing. This same outstanding timer can coexist with other in-flight tiers.
 
-Command in a disposable export of `f9c29e11`:
+Command in a disposable export of `b8b1a21a`:
 
 ```sh
 npx vitest run test/scheduler/review-busy-stall.test.ts --maxWorkers=1
@@ -226,7 +226,7 @@ The pump and tier records still use their 5 s wait, as W1 explicitly requires, s
 
 Verdict: **PASS**. Round-1 B1 closed. No blockers, should-fix items or nits in this narrow re-review.
 
-Candidate: `cand/0.1.203`, pinned to `7483a2e126734ae8b7ee3b5291d95a3623aa1cfe`. Brief: W3 of `tasks/wave-17.md` read from main commit `4d9b6929`. The reviewed delta is repair `e9cb1445` and build `7483a2e1`, plus the rebase onto main 0.1.202. Round 1 remains the review of the rest of 001-422.
+Candidate: `cand/0.1.203`, pinned to `fcaed2df7036cf39a70508f3dc4cf1e627d84211`. Brief: W3 of `tasks/wave-17.md` read from main commit `10196da8`. The reviewed delta is repair `48087c8e` and build `fcaed2df`, plus the rebase onto main 0.1.202. Round 1 remains the review of the rest of 001-422.
 
 ### Verification
 
@@ -235,7 +235,7 @@ Primary checks ran at the pinned SHA with no tracked changes. `npm run build` le
 `git rev-parse HEAD`:
 
 ```text
-7483a2e126734ae8b7ee3b5291d95a3623aa1cfe
+fcaed2df7036cf39a70508f3dc4cf1e627d84211
 ```
 
 `npm ci`, exit 0:
@@ -314,11 +314,11 @@ Squeal's separate revision-0 baseline reported exactly the known row 001-431 dae
 ### B1 and W3 evidence
 
 - **Proven: original B1 probe passes.** Re-ran round 1's verbatim `review-busy-stall.test.ts` against the candidate, alongside `test/scheduler/busy-record.test.ts` and `test/store/busy-slice.test.ts`, with `--maxWorkers=1`: exit 0, 3 files and 10 tests passed, 17.95 s. Delivering the obsolete callback after the later non-busy stall leaves the run count at 2.
-- **Proven: both repair regressions discriminate behaviorally.** In the same export, replaced only `src/core/scheduler/busy-resume.ts`, `src/core/scheduler/scheduler.ts` and `src/core/store/busy.ts` with their pre-repair contents from `ce2612dc`, retaining the candidate's tests. `npx vitest run test/scheduler/busy-record.test.ts -t 'starts nothing' --maxWorkers=1` exits 1: both selected tests fail, one test skipped, 8.18 s. The first has 4 runs instead of 2 at line 170; the second has 3 instead of 1 at line 212. These are assertion failures after real scheduler runs, not absent exports or load failures.
+- **Proven: both repair regressions discriminate behaviorally.** In the same export, replaced only `src/core/scheduler/busy-resume.ts`, `src/core/scheduler/scheduler.ts` and `src/core/store/busy.ts` with their pre-repair contents from `55590088`, retaining the candidate's tests. `npx vitest run test/scheduler/busy-record.test.ts -t 'starts nothing' --maxWorkers=1` exits 1: both selected tests fail, one test skipped, 8.18 s. The first has 4 runs instead of 2 at line 170; the second has 3 instead of 1 at line 212. These are assertion failures after real scheduler runs, not absent exports or load failures.
 - **Proven: the wake only restarts a busy-stalled pump.** The callback at `src/core/scheduler/scheduler.ts:129` requires `#stalled && !#failed`. A non-busy error sets `#failed`, clears the outstanding timer through `abandon()`, and a subsequent busy error from another lane cannot re-arm it. A new pump clears `#failed`, so later busy episodes remain eligible. The first regression covers a successful selection ending the earlier wait before the later non-busy record error; the second covers a non-busy selection error taking over an unresolved wait.
 - **Proven: abandoning the wait makes no false success note.** `BusyResume.abandon()` calls `BusyWaits.abandoned`, which removes that waiter's names rather than saying it ran. The second scheduler ordering produces no busy-episode note, including after its next batch succeeds. The store regression also leaves only the heartbeat in a mixed episode's note, and an entirely abandoned episode emits none.
 - **Proven: a landing lane does not suppress a busy lane's wake, and a later busy episode resumes.** A separate real-harness probe creates Vitest and node:test lanes, holds both after one edit, makes the Vitest tier's record give up busy, and holds its resume callback. It lets node:test record successfully before delivering the callback. The queued Vitest tier then runs again without another batch. A fresh later edit fails its record busy once and resumes from its own callback too. Both episodes produce a note, with no scheduler errors. This deliberately covers `landed()` ending the wait while the pump remains busy-stalled: gating the callback on `BusyResume.waiting` instead would lose this wake. Command: `npx vitest run test/scheduler/review-lanes.test.ts test/keys/key-format.test.ts --maxWorkers=1`, exit 0, 2 files and 30 tests passed, 9.22 s.
-- **Proven: the rebase preserves the reviewed product patch.** The `src/` and `test/` patch of `4bde168e..f9c29e11` is byte-identical to `bfbf4bf5..ce2612dc` after excluding `src/core/keys/key-format.ts`. The incoming main delta is 004-62's primer/coverage wording and its tests; the B1 repair shares no source with it. Version 0.1.203 matches root/install/plugin metadata, the key-format guard passes with format 11, and all four plugin builds leave no drift. No local release tag carries format 11; the in-place re-pin follows W3's explicit unreleased-format exception.
+- **Proven: the rebase preserves the reviewed product patch.** The `src/` and `test/` patch of `06d0379f..b8b1a21a` is byte-identical to `78d1a496..55590088` after excluding `src/core/keys/key-format.ts`. The incoming main delta is 004-62's primer/coverage wording and its tests; the B1 repair shares no source with it. Version 0.1.203 matches root/install/plugin metadata, the key-format guard passes with format 11, and all four plugin builds leave no drift. No local release tag carries format 11; the in-place re-pin follows W3's explicit unreleased-format exception.
 
 ### Blockers, should-fix and nits
 

@@ -9,7 +9,7 @@
 | `observe.mjs` | A `node --import` preload for the oxlint process: records the modules and files its JavaScript side loads and reads. It cannot see what the Rust binding or tsgolint read. | used by `replay.mjs`, `cases.sh` |
 | `cases.sh` | Q1, Q2. One-off inputs: tsconfig `paths`, tsconfig `strict` under a typed rule, a config above the root, a TypeScript config and its import, a git-ignored file walked or named, thread count. | `out/cases.txt` |
 | `output.sh` | Q4. JSON for findings, a parse error and configs that do not load, on 1.90.0, 1.80.0 and 1.64.0. | `out/output.txt`, `out/column.txt` |
-| `cost.mjs` | Q3. CPU, wall time and peak RSS of a fresh CLI per run, through GNU `time`, interleaved, at nice 10, with the one-minute load. Project: a copy of Squeal's `src/` at `834bf0730` (855 files). | `out/cost-*.json` |
+| `cost.mjs` | Q3. CPU, wall time and peak RSS of a fresh CLI per run, through GNU `time`, interleaved, at nice 10, with the one-minute load. Project: a copy of Squeal's `src/` at `b4bb0e58f` (855 files). | `out/cost-*.json` |
 | `lsp.mjs` | Q3. `oxlint --lsp` driven as an editor: first result, CPU per edit, RSS; a dependency edited on disk; a JS plugin edited on disk (env `PLUGIN_EDIT`). | `out/lsp-*.json` |
 | `contain.mjs` | Q3. A JS plugin that blocks (sleeping, no CPU), throws, exits or throws late; a kill during a type-aware run by process group and by pid alone. | `out/contain.json` |
 | `inworker.mjs` | Q3. oxlint's CLI entry inside a `worker_threads` worker of a host whose cwd is elsewhere. | `out/inworker.txt` |

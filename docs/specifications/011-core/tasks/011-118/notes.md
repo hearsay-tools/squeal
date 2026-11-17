@@ -9,7 +9,7 @@ Worker f443efd5, 2026-10-22. Brief: `tasks/toolkit-latency.md`, section 011-118.
 Fix (`src/core/scheduler/ledger.ts`, one call in that branch): when the file is `current` after the branch (`classify`), `checkpoints.done(ref, null)`. Choices the spec did not settle:
 
 - `by` is `null`. A forced `run --all` is strict and counts only its own tiers (001-217). An old result at the old key is no run of the forced checkpoint, so a strict file does not count here.
-- `classify(file) === "current"` leaves out the branch's other cases. A key the tier in flight runs is `running`, and that tier's result calls `done`. A key at which the file is `unknown` is not done. Under wave 15's merge hold (row 011-72, 0.1.266) a held key never enters the branch through `resultKey`, so a held file is never counted. The branch rebased onto main at `0cb635de4` (0.1.266) without a conflict.
+- `classify(file) === "current"` leaves out the branch's other cases. A key the tier in flight runs is `running`, and that tier's result calls `done`. A key at which the file is `unknown` is not done. Under wave 15's merge hold (row 011-72, 0.1.266) a held key never enters the branch through `resultKey`, so a held file is never counted. The branch rebased onto main at `10d34ecc1` (0.1.266) without a conflict.
 
 Regression: `test/scheduler/checkpoint-lookup.test.ts`, E8 over a real Vitest run with observed inputs. The swap file's run is held at the gate. Without the fix it fails at `expected null to be 'completed'` right after the removal's batch.
 

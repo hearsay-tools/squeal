@@ -8,4 +8,4 @@ Run from the repository root, with the one-minute load below the CPU count:
 
     env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run --config docs/specifications/011-core/research/probes/011-273/vitest.config.ts --silent=false --reporter=verbose
 
-Recorded run: 2026-10-31, commit `b34b00682`, Vitest 5.0.3, load 21.4 to 23.0 on 24 CPUs, 5 of 5 passed in 1.2 s. Output in `result.txt`.
+Recorded run: 2026-10-31, commit `a02a4ef54`, Vitest 5.0.3, load 21.4 to 23.0 on 24 CPUs, 5 of 5 passed in 1.2 s. Output in `result.txt`.

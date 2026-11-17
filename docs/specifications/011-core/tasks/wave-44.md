@@ -1,6 +1,6 @@
 # Wave 44
 
-From main after 0.1.329 (`93e66377e`), 2026-10-26. Four rows on disjoint seams. W1 closes 0.1.325's known limit (the human's decision card c63f05ef). W2 is the human's triage round 10, W group C. W3 and W4 are repo-local test rows. Host load is about 17 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
+From main after 0.1.329 (`c9d2b96cb`), 2026-10-26. Four rows on disjoint seams. W1 closes 0.1.325's known limit (the human's decision card c63f05ef). W2 is the human's triage round 10, W group C. W3 and W4 are repo-local test rows. Host load is about 17 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite.
 
 ## W1: 011-224, the request history writes the fact of each request it drops
 
@@ -36,7 +36,7 @@ Use /worker. Shape: repair. Row 011-225.
 
 Outcome: the cause of the case's one failure is named with evidence and fixed.
 
-Read the row; commit `febcbce2a` (the waiter decides once more); `test/daemon/vacant-wait.test.ts:161`.
+Read the row; commit `311c85a3b` (the waiter decides once more); `test/daemon/vacant-wait.test.ts:161`.
 
 Seam: the waiter's second read in `src/core/daemon/open.ts`, as 0.1.329 left it. First step, offered as a lead: find the order of events in which the case gets a ready daemon instead of `{ reason: "lost-lock" }`. Decide from that whether the test or the product is wrong. If the product is wrong, send one request before you change `open.ts`.
 

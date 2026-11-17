@@ -1,6 +1,6 @@
 # Issue 143: a Vitest start parses a conflicted config during the merge hold
 
-Researcher findings for hearsay-tools/squeal#143, 2026-11-03. Live probes ran the Claude Code bundle 0.1.390 (`~/.claude/plugins/cache/hearsay/squeal/0.1.390/dist`, `--version` 0.1.390), the version the issue names. Source read at `8ce4f23fc` (`package.json` 0.1.393); `git log f91a22e59..HEAD` (0.1.390 release commit to HEAD) lists no commit under `src/core/scheduler`, `src/core/state`, `src/core/daemon-loop` or `src/runners/vitest`, so the read code is the code that ran. The installed CLI is 0.1.392; it was not run. Vitest 5.0.3, Node 24.22.1, git 2.43.0. Host: 24 CPUs; one-minute load 5.37 before the work, 3.59 at run A, 7.14 at run B, all below the CPU count. Reproduction only. Nothing is designed. Existing holds stand.
+Researcher findings for hearsay-tools/squeal#143, 2026-11-03. Live probes ran the Claude Code bundle 0.1.390 (`~/.claude/plugins/cache/hearsay/squeal/0.1.390/dist`, `--version` 0.1.390), the version the issue names. Source read at `2432fc112` (`package.json` 0.1.393); `git log 8139bbb1f..HEAD` (0.1.390 release commit to HEAD) lists no commit under `src/core/scheduler`, `src/core/state`, `src/core/daemon-loop` or `src/runners/vitest`, so the read code is the code that ran. The installed CLI is 0.1.392; it was not run. Vitest 5.0.3, Node 24.22.1, git 2.43.0. Host: 24 CPUs; one-minute load 5.37 before the work, 3.59 at run A, 7.14 at run B, all below the CPU count. Reproduction only. Nothing is designed. Existing holds stand.
 
 **Verdict.** Partly reproduced. During the merge hold, 0.1.390 reloads Vitest for the changed `vitest.config.ts`, Vitest parses the conflicted bytes and fails (`[PARSE_ERROR] Encountered diff marker`), and every test file becomes UNKNOWN at the conflict's revision. The hook delivers the 4 UNKNOWN checks beside the hold line. This is runner startup (the revision's runner part: `invalidate`, `environment`, `testFiles`, `affected`), not a tier: no test runs and no result is stored. The second half, UNKNOWN that persists after resolution, did not reproduce: the write of the resolved config reloads Vitest successfully, the files go to queued, and `git add` ends the hold and runs them to PASS. 0.1.390 matches the written contract: C9 holds tiers, not the runner part, and C4 makes a failed invalidation UNKNOWN at its revision. The issue's expected behaviour is a contract change, not a defect against today's text.
 
@@ -64,6 +64,6 @@ A first attempt of run A ran without Vitest installed (an npm `ETARGET` under `-
 
 - hearsay-tools/squeal#143 (`gh issue view 143 --comments`, read 2026-11-03; the bot comment links #68).
 - `docs/specifications/011-core/spec.md` C2, C4 (line 142), C9 *Holds*; `status.md` entries for 011-61, 011-72, 011-73, 011-128; `docs/specifications/013-vitest-runner/spec.md` lines 23, 60, 64.
-- `src/core/scheduler/refinement.ts:95-136` at `8ce4f23fc`.
+- `src/core/scheduler/refinement.ts:95-136` at `2432fc112`.
 - `research/issue-68.md` and `probes/issue-68/` (the prior reproduction this probe follows).
 - `probes/issue-143/` (throwaway recipe and fixture).

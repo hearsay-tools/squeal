@@ -73,7 +73,7 @@ const versionIn = (file) => {
 
 /**
  * The Squeal a cell of `harness` runs from `pin` (row 006-100): `{ cli, runtime }`. Claude Code,
- * and Codex before `e34c9bc1f` (0.1.368), run the plugin's own `dist/cli/squeal.mjs`, `runtime`
+ * and Codex before `4fa5c3c0c` (0.1.368), run the plugin's own `dist/cli/squeal.mjs`, `runtime`
  * `null`. Since then the Codex plugin is a fixed adapter, `hooks/hooks.json` beside a `seed/`
  * (spec 002 D7, the launcher's test), whose seed stays the 0.1.368 build; the commit's runtime
  * is `plugins/codex-runtime`, `runtime` `{ root, version }`, which `install.sh` provisions and

@@ -28,8 +28,8 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 | --- | --- |
 | `as-user.sh` | Runs a command as the dogfood user: clean environment, `HOME`, `TMPDIR` and `XDG_*` inside `dogfood-008`, a `PATH` whose only harness is `opencode`, `OPENCODE_DISABLE_AUTOUPDATE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1`. `-C <dir>` sets the cwd. |
 | `setup.sh`, `opencode.json` | The sandbox, OpenCode's global config (provider `cliproxy` at the proxy, `@ai-sdk/openai-compatible`, the three models), the remeda clone and `npm ci`. |
-| `make-archives.sh` | The release archives `install.sh` reads through `SQUEAL_SOURCE`: 0.1.184 (`git archive` of `4c6d1176`) and 0.1.190 (the same tree relabelled: a later version with no code change). |
-| `make-archive.sh` | 008-30: one release archive and its `install.sh` from a revision (`sh make-archive.sh b4067d55`, 0.1.186). |
+| `make-archives.sh` | The release archives `install.sh` reads through `SQUEAL_SOURCE`: 0.1.184 (`git archive` of `4160bf3c`) and 0.1.190 (the same tree relabelled: a later version with no code change). |
+| `make-archive.sh` | 008-30: one release archive and its `install.sh` from a revision (`sh make-archive.sh 3c88fb6a`, 0.1.186). |
 | `install-version.sh` | 008-37: runs one version's `install.sh` (the full install) as the dogfood user from the archive `make-archive.sh` wrote, recording the transcript, the install record and `squeal --version` in `logs/install-<version>.txt` (`sh install-version.sh 0.1.192`). |
 | `settle.sh` | 008-37: before a session, `git checkout` of remeda's edits and one full-suite checkpoint of the installed Squeal, then `squeal stop`; the transcript goes to `logs/<name>.txt`. |
 | `copy-cezar.sh` | Copies the installed Cezar into `cezar-source/`. |

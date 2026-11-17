@@ -6,7 +6,7 @@ The reported warning, success exit and generic persistence guidance reproduce on
 
 ## Scope and evidence
 
-Research on 2026-11-07, commit `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`, Squeal **0.1.414**, Node **v24.22.1**, Linux, 24 logical CPUs. The issue reported **0.1.409**; that version was not run. Initial `/proc/loadavg` was `13.11 7.91 7.28`; `getconf _NPROCESSORS_ONLN` returned `24`. The retained probe began at **22:41:21 Europe/Warsaw**, with load **17.52, 11.36, 8.62**, and ended with one-minute load **17.80**. Both gates allowed reproduction.
+Research on 2026-11-07, commit `b598e5dc8129c5c7848b9c5ace2887a03e9ab12a`, Squeal **0.1.414**, Node **v24.22.1**, Linux, 24 logical CPUs. The issue reported **0.1.409**; that version was not run. Initial `/proc/loadavg` was `13.11 7.91 7.28`; `getconf _NPROCESSORS_ONLN` returned `24`. The retained probe began at **22:41:21 Europe/Warsaw**, with load **17.52, 11.36, 8.62**, and ended with one-minute load **17.80**. Both gates allowed reproduction.
 
 The committed `plugins/claude-code/dist/cli/squeal.mjs` and session runtime `~/.codex/plugins/data/squeal-hearsay/versions/0.1.414/dist/cli/squeal.mjs` have the same SHA-256:
 
@@ -91,5 +91,5 @@ Sources fetched/read on 2026-11-07:
 
 - [Issue #158](https://github.com/hearsay-tools/squeal/issues/158), body and recurrence comment; [#108](https://github.com/hearsay-tools/squeal/issues/108); [#147](https://github.com/hearsay-tools/squeal/issues/147).
 - [Spec C9/C13](../spec.md), [amendment log](../status.md), and `docs/board.md` entries gh-108 and gh-147 at the examined commit.
-- [stop.ts at examined commit](https://github.com/hearsay-tools/squeal/blob/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1/src/cli/stop.ts), `src/cli/stopped-mark.ts`, `src/cli/start.ts`, `src/core/presence/events.ts`, `src/core/presence/stored.ts`, `src/core/delivery/stopped.ts`, `src/core/store/connection.ts`, `src/core/store/paths.ts`.
+- [stop.ts at examined commit](https://github.com/hearsay-tools/squeal/blob/b598e5dc8129c5c7848b9c5ace2887a03e9ab12a/src/cli/stop.ts), `src/cli/stopped-mark.ts`, `src/cli/start.ts`, `src/core/presence/events.ts`, `src/core/presence/stored.ts`, `src/core/delivery/stopped.ts`, `src/core/store/connection.ts`, `src/core/store/paths.ts`.
 - `test/cli/stop-mark.test.ts` supplies the existing stand-in-socket fixture pattern; it was read, not run.

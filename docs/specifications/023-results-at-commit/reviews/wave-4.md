@@ -1,8 +1,8 @@
 # Wave 4: manifests in the Vitest closure
 
-FAIL `e658d307a566f5a12c51fbbcf9c7cb8560586f1b`
+FAIL `9e4ba5b3522570327f6cc2b1c7ee68426248c82d`
 
-Candidate `cand/0.1.542`. **2 proven blockers, 0 should-fix, 0 nits.** Reviewed the three commits above fetched `origin/main`: `afaad4c31` (manifest implementation), `619d7ea0b` (notes), `e658d307a` (version and bundles). Diff base: `4c780ac062442546280ae897678d917c229b3664`. HEAD matched the requested candidate. Lint, typecheck and build passed on a clean tracked tree; all six named Squeal checks are current/pass. Full-suite CI is still in progress. Verification details follow the blockers.
+Candidate `cand/0.1.542`. **2 proven blockers, 0 should-fix, 0 nits.** Reviewed the three commits above fetched `origin/main`: `ccb5449c6` (manifest implementation), `0a3706fba` (notes), `9e4ba5b35` (version and bundles). Diff base: `e1e2500c64d9b80f94c7740813d6af446f6a3908`. HEAD matched the requested candidate. Lint, typecheck and build passed on a clean tracked tree; all six named Squeal checks are current/pass. Full-suite CI is still in progress. Verification details follow the blockers.
 
 Scope is row 023-14's **manifest part**. The relative shadow-path half is held, as the brief directs. Wave 3 B2 supplies the manifest-retarget failure scenario; this review does not reopen the held commit-key implementation or its other findings.
 
@@ -50,12 +50,12 @@ The initial closure contains `packages/shared/package.json` and `packages/shared
 
 ## Verification
 
-All product checks and probes ran with HEAD at `e658d307a566f5a12c51fbbcf9c7cb8560586f1b` and a clean tracked tree. Fixture changes were confined to the test helpers' ignored scratch repositories. Probe sources and configuration were outside the worktree and removed before the review commit. No product file was edited. No full suite or full-suite checkpoint was requested. None of the changed tests matches the configured `test/e2e/**` exclusion.
+All product checks and probes ran with HEAD at `9e4ba5b3522570327f6cc2b1c7ee68426248c82d` and a clean tracked tree. Fixture changes were confined to the test helpers' ignored scratch repositories. Probe sources and configuration were outside the worktree and removed before the review commit. No product file was edited. No full suite or full-suite checkpoint was requested. None of the changed tests matches the configured `test/e2e/**` exclusion.
 
 | Command or evidence | Actual result |
 | --- | --- |
-| `git rev-parse HEAD` | Exact requested candidate, `e658d307a566f5a12c51fbbcf9c7cb8560586f1b` |
-| `git fetch origin`; `git log --oneline origin/main..e658d307a566f5a12c51fbbcf9c7cb8560586f1b` | Exit 0; the three commits listed above. Fetched main was `4316bf4aaf01b6350c59a110c99068f4533446e6`. |
+| `git rev-parse HEAD` | Exact requested candidate, `9e4ba5b3522570327f6cc2b1c7ee68426248c82d` |
+| `git fetch origin`; `git log --oneline origin/main..9e4ba5b3522570327f6cc2b1c7ee68426248c82d` | Exit 0; the three commits listed above. Fetched main was `395a2a8b712e14836d51425b81e241dbb5a93d60`. |
 | Dependency setup | Squawk reports `pnpm install --frozen-lockfile` completed in 1 s before launch. Not repeated, as instructed. No install stdout supplied. |
 | `pnpm run lint` | Exit 0: `Checked 3601 files in 1477ms. No fixes applied.` |
 | `pnpm run typecheck` | Exit 0: `tsrs --fast --noEmit` |

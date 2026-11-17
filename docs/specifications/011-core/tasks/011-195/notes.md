@@ -1,6 +1,6 @@
 # 011-195 notes: a model-based test of the scheduler in the suite
 
-Worker W2 of wave 37, 2026-10-25. Base `7fbbfd54` (main after 0.1.307). Commits `ddf8a9801`, `ea1496ab2`, `2f31ae86e` and the seed cut with these notes.
+Worker W2 of wave 37, 2026-10-25. Base `c5308266` (main after 0.1.307). Commits `ddf8a9801`, `ea1496ab2`, `2f31ae86e` and the seed cut with these notes.
 
 ## What the suite has now
 
@@ -26,8 +26,8 @@ Each old tree is `git archive <commit>` into the scratch folder, with `node_modu
 | `5ecb377a8` (R398 pre-fix) | A, B, F | B: R398's shortest (event 4: "tier stands named, but s3 and P rank before every unended file ()"), the deadline sweep at readings 5 to 11. A as on 0.1.300 (readings 4 to 7); F as on 0.1.300 and seed 15. |
 | `69d6328bf` (R398 fix) | A, B, F | B: the deadline sweep at readings 5 to 10 only; R398's shortest and seed 31 pass. |
 | `231ecaeb0` (R397 pre-fix) | A, B, F | B: the deadline sweep at readings 5 to 10. |
-| `b862d2f2d` (R397 fix) | A, F | B passes. |
-| main `7fbbfd54` + this row | none | 6 of 6 pass, 23 runs (below). |
+| `7505b4949` (R397 fix) | A, F | B passes. |
+| main `c5308266` + this row | none | 6 of 6 pass, 23 runs (below). |
 
 So: on `squeal--v0.1.300` the file fails F's reproduction and seed 60; main has 011-194 and 011-196 (which replaced 011-193), and the file passes on it. R398's shortest fails on `5ecb377a8` and passes on its fix. F's reproduction alone, played 10 times on `squeal--v0.1.300`, dropped s4's promotion 10 of 10 times.
 

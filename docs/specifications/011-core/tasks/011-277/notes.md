@@ -73,7 +73,7 @@ My choices:
 
 ## Left to the coordinator's build
 
-The bundles (`cli/squeal.mjs` in the Codex runtime, Pi and OpenCode packages) and the Codex runtime's copy of `references/commands.md` are build outputs: the runtime copy carries a sha256 in its manifest, and past reference edits (`b80d225a7`) left it to the release. This row edits the Claude Code and Pi copies only. Until the build, `test/harness/skill.test.ts` ("the same ... in the Codex and Pi copies"), `test/harness/codex/packaging/runtime.test.ts` and the three packages' "exactly as `npm run build:plugin` produces them" checks report that drift.
+The bundles (`cli/squeal.mjs` in the Codex runtime, Pi and OpenCode packages) and the Codex runtime's copy of `references/commands.md` are build outputs: the runtime copy carries a sha256 in its manifest, and past reference edits (`492c8eb7b`) left it to the release. This row edits the Claude Code and Pi copies only. Until the build, `test/harness/skill.test.ts` ("the same ... in the Codex and Pi copies"), `test/harness/codex/packaging/runtime.test.ts` and the three packages' "exactly as `npm run build:plugin` produces them" checks report that drift.
 
 ## R1: the saved socket first (review 0.1.383 B1)
 

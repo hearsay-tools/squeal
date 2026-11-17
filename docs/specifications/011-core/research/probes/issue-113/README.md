@@ -23,7 +23,7 @@ reports the descriptor read and optionally rewrites it during each passing run.
 The slow slot uses a private directory and the real default host-load reader.
 
 `output.jsonl` is the final four-case run on Squeal 0.1.369 at
-`cbdfa22c5ef59a414a7217eb0202de738af0f13b`, Node v24.22.1. It contains load gates,
+`36ddbfe1760af76b70cf67645dd911144b98a0da`, Node v24.22.1. It contains load gates,
 run IDs, completion states, current keys, pending phases, stored rows and applied
 runtime policies. A passing result here means the fake runner returned a pass;
 it does not mean a browser test ran.

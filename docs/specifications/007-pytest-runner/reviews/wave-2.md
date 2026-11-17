@@ -1,7 +1,7 @@
 # 007 wave 2 review
 
 Candidate: `62b9ea96dcdcb617d260e2266a3841aa1ce6a886`.
-Range: `34ce2b57..62b9ea96dcdcb617d260e2266a3841aa1ce6a886`.
+Range: `1f69b4da..62b9ea96dcdcb617d260e2266a3841aa1ce6a886`.
 Rows: 007-14, 007-15, 007-19. Reviewer: Codex, 2026-10-14.
 
 **FAIL: five proven blockers; no should-fix findings or nits.** Accepted plugin bundle and key-format drift are not findings. The review changes no product code.

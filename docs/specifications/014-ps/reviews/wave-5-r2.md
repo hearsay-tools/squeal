@@ -1,21 +1,21 @@
 # Wave 5 review, round 2
 
-PASS 8e2dda4ad5281ed958b99baa170d9e24988c5f6b
+PASS 5ddacf59176f83c464c23e89f9e891c951bd0037
 
 Zero blocking findings. All four prior blockers are fixed, proven by regression tests that fail against the old sources. One plausible nonblocking note remains.
 
-Candidate: `cand/0.1.252` at `8e2dda4ad5281ed958b99baa170d9e24988c5f6b`. This is a narrow re-review of B1 to B4 in `reviews/wave-5.md`, the repair delta, and the CI comparison fix. The rebase includes main `d1a92f446` with documentation changes only. No product code was changed by the reviewer. No end command printed by `ps` was executed.
+Candidate: `cand/0.1.252` at `5ddacf59176f83c464c23e89f9e891c951bd0037`. This is a narrow re-review of B1 to B4 in `reviews/wave-5.md`, the repair delta, and the CI comparison fix. The rebase includes main `481a2dbf0` with documentation changes only. No product code was changed by the reviewer. No end command printed by `ps` was executed.
 
 ## Verification
 
 The requested fetch, detached checkout and dependency install ran first:
 
 ```text
-$ git fetch origin && git checkout --detach 8e2dda4ad && npm ci
-HEAD is now at 8e2dda4ad chore(release): 0.1.252 bundles rebuilt after the wave 5 review repairs
+$ git fetch origin && git checkout --detach 5ddacf591 && npm ci
+HEAD is now at 5ddacf591 chore(release): 0.1.252 bundles rebuilt after the wave 5 review repairs
 added 196 packages, and audited 197 packages in 11s
 $ git rev-parse HEAD
-8e2dda4ad5281ed958b99baa170d9e24988c5f6b
+5ddacf59176f83c464c23e89f9e891c951bd0037
 $ npm run lint
 > squeal@0.1.252 lint
 > biome check .
@@ -30,7 +30,7 @@ $ npm run build
 > tsx src/harness/claude-code/build.ts && tsx src/harness/codex/build.ts && tsx src/harness/pi/build.ts && tsx src/harness/opencode/build.ts
 $ git status --short
 (no output)
-$ node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts 89511aa3c 8e2dda4ad
+$ node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version-bump.ts 6a23af64e 5ddacf591
 version bump: 0.1.250 -> 0.1.252, ok
 ```
 
@@ -43,7 +43,7 @@ The coordinator's independent full gate passed on this exact candidate. It used 
 `/tmp/014-w5-gate.log`:
 
 ```text
-start 2026-10-22T00:44:03Z 8e2dda4ad5281ed958b99baa170d9e24988c5f6b
+start 2026-10-22T00:44:03Z 5ddacf59176f83c464c23e89f9e891c951bd0037
 exit 0 2026-10-22T01:00:03Z
 ```
 
@@ -60,11 +60,11 @@ exit 0 2026-10-22T01:00:03Z
 
 The omitted lines are fixture gitdir repair messages, cleanup of one earlier run's process, experimental typecheck warnings and Vitest's worker-isolation performance hint. No test failed, including the named dispose-race flake.
 
-CI run `39701541931` also completed with `success` on `8e2dda4ad5281ed958b99baa170d9e24988c5f6b`: all three Node 22 shards and the Node 24 lint/typecheck/version-sensitive job passed. The nightly and main-branch version job were skipped as configured; the version check above ran locally.
+CI run `39701541931` also completed with `success` on `5ddacf59176f83c464c23e89f9e891c951bd0037`: all three Node 22 shards and the Node 24 lint/typecheck/version-sensitive job passed. The nightly and main-branch version job were skipped as configured; the version check above ran locally.
 
 ### Regression proof against old and repaired sources
 
-A disposable scratch tree held the candidate's tests and fixtures. For the first run, its `src/core/ps/{discover,flags,host,model,snapshot}.ts` and `test/evals/fake-cell.ts` were replaced by the round 1 sources from `c5c7797bb`. The second run restored those files from `8e2dda4ad`. The candidate checkout stayed clean. The scratch tree was removed after the comparison.
+A disposable scratch tree held the candidate's tests and fixtures. For the first run, its `src/core/ps/{discover,flags,host,model,snapshot}.ts` and `test/evals/fake-cell.ts` were replaced by the round 1 sources from `c5c7797bb`. The second run restored those files from `5ddacf591`. The candidate checkout stayed clean. The scratch tree was removed after the comparison.
 
 Both runs used the same command, with the installed Vitest entry resolved from the candidate's dependencies:
 

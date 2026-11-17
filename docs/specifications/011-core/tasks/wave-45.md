@@ -1,6 +1,6 @@
 # Wave 45
 
-From main after 0.1.331 (`81f88ecf5`), 2026-10-26. Four rows on disjoint seams: two product fixes from review notes (W1, W2) and two tests that failed once on CI (W3, W4). Host load is about 20 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite. Gh-99 waits for the human and is not in this wave.
+From main after 0.1.331 (`66e26a375`), 2026-10-26. Four rows on disjoint seams: two product fixes from review notes (W1, W2) and two tests that failed once on CI (W3, W4). Host load is about 20 on 24 CPUs. Verification follows `docs/process.md`, "Test runs on a shared host" (2026-10-25): no `squeal run --all` and no local full suite. Gh-99 waits for the human and is not in this wave.
 
 ## W1: 011-201, the committed-file recovery reads HEAD in reftable repositories
 

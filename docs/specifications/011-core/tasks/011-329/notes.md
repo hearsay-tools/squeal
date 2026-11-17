@@ -128,7 +128,7 @@ How the hosted rows reach each phase:
 - Each host's adapter notes its missing `cwd` once ("is not a directory"). The count of these notes is the count of hosts started: 1 after `open`, 2 after the call that follows the idle close. No `/proc` read, so the rows hold on every platform.
 - The idle close: `idleMs` answers 0 at `open`, then 1 for one `testFiles` call, whose end arms a 1 ms timer. A 50 ms timer started after it fires after it, so the next read is of the parked adapter. The second host shows that the first closed.
 
-### Against the base (`73abdb9e1`)
+### Against the base (`05f601e91`)
 
 - In-process pytest: the base adapter stated only `focuses: true` (`pytest/adapter.ts:348` there). The old fallbacks gave omitted 0, slow width 3 (the files), width 8 (the grant), part `""`, beside false, slot `null`, focus true, lane `""`. Now width 4 then 6, beside true, slot 5 or 2. These are the three answers N1 names; the other five columns are the base's.
 - Hosted recovering runners: at the base the recovering runner took the width from its `tierWidth` option (`runner.tierSize`), beside and slot from its options (true; 1, or the batch size), and focus from its option (node:test none, so false; pytest true). Omitted, slow width and part came from the proxy (the host sent 0 and no widths: 0, 3, `""`). Lane was no member: `""`. Today's answers are the same in each phase. No difference outside N1.

@@ -1,6 +1,6 @@
 # 011-153: catch-up of an edit waits for 120 s of quiet
 
-Worker notes, wave 25 (W1), from main `7e585a601` (after 0.1.278). Commits `fab06d900`, `32e00dc02`, `8734a8528` and the later ones the summary lists.
+Worker notes, wave 25 (W1), from main `ccab4d647` (after 0.1.278). Commits `fab06d900`, `32e00dc02`, `8734a8528` and the later ones the summary lists.
 
 ## 1. What changed
 

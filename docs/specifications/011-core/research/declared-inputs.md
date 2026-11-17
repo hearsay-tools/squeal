@@ -2,7 +2,7 @@
 
 Researcher of row 011-150, 2026-10-23, 13:17Z to 14:10Z. Brief: `research/declared-inputs-brief.md`. Read: `docs/vision.md`, `docs/styleguide.md`, `research/edit-load.md`, `research/host-load.md` 3, spec 011 C3, C10 (`inputs`, `observe.runtimeInputs`), C12, each repository's `squeal.config.json`.
 
-Versions: squeal source at `4e1ba068a` (glob compiler `src/core/keys/glob.ts`, keying `src/core/scheduler/keying.ts`); configs of squeal `88f90431c`, cezar `565fd3eaf`, the client monorepo (untracked) and project-a (untracked). Store copies taken 13:19Z; every 72-hour window ends at the store's last revision, 13:14Z. Cezar build: TypeScript 7.0.2, Vite 8.1.4 (rolldown 1.1.5). Load1 20 to 50 during the builds. Probes and how to re-run each: `probes/declared-inputs/README.md`.
+Versions: squeal source at `592b292f2` (glob compiler `src/core/keys/glob.ts`, keying `src/core/scheduler/keying.ts`); configs of squeal `9d2dc7bd6`, cezar `565fd3eaf`, the client monorepo (untracked) and project-a (untracked). Store copies taken 13:19Z; every 72-hour window ends at the store's last revision, 13:14Z. Cezar build: TypeScript 7.0.2, Vite 8.1.4 (rolldown 1.1.5). Load1 20 to 50 during the builds. Probes and how to re-run each: `probes/declared-inputs/README.md`.
 
 **Units.** *Recorded seconds* (s): per test file, the sum of each check's newest stored duration, as in `edit-load.md`. *Re-keyed* means the edit changed the file's key; it is not what ran. A file re-keyed by several changed paths takes the first route of: the edited file itself, an import, a declared input, an observed read.
 
@@ -104,7 +104,7 @@ Re-keys without an import, 72 h (recorded s; share of the non-import total of 36
 | observed, `test/integration` | 1,173 | 30,093 (8%) | a daemon from source; 182 `src` files per file |
 | observed, `test/scheduler`, `test/keys`, `test/cli` | 1,312 | 45,244 (13%) | fixtures; `key-format.test.ts` reads sources to hash them |
 
-*read from store copies, read in source code (squeal `4e1ba068a`); "why" per folder inferred from the observed paths and the helpers.* Commit `1b298a1c9` gave the reason for the `src/**/*.ts` input: "bundles built from src". esbuild reads files in its native binary, and the recorder wraps Node's `fs` only (C12). 21 of the 49 test files in the store that carry `src/**/*.ts` observe no `src` file at all. *read in source code, read from store.* The bundles' import closure, from the 35 entry points of `bundleOptions` and each plugin's `entries/`, holds 572 of the 597 `src/**/*.ts` files. Narrowing the input to that closure would have saved 839 s of the 38,839 declared-alone s (3 edits). *read in source code (walk), read from store.*
+*read from store copies, read in source code (squeal `592b292f2`); "why" per folder inferred from the observed paths and the helpers.* Commit `5a5b57c60` gave the reason for the `src/**/*.ts` input: "bundles built from src". esbuild reads files in its native binary, and the recorder wraps Node's `fs` only (C12). 21 of the 49 test files in the store that carry `src/**/*.ts` observe no `src` file at all. *read in source code, read from store.* The bundles' import closure, from the 35 entry points of `bundleOptions` and each plugin's `entries/`, holds 572 of the 597 `src/**/*.ts` files. Narrowing the input to that closure would have saved 839 s of the 38,839 declared-alone s (3 edits). *read in source code (walk), read from store.*
 
 FAIL transitions, 72 h: 116 test files.
 
@@ -142,8 +142,8 @@ None: the brief asks for numbers, not design. The evidence supports three statem
 ## Sources
 
 - Store copies: `~/projects/{squeal,cezar,client-monorepo,project-a}/.git/squeal/store.sqlite` with `-wal` and `-shm`, copied 2026-10-23 13:19Z; tables `test_files`, `meta` (`observed.*`, `nodeTest.observed.*`, `pytest.observed.*`), `revisions`, `transitions`, `results`, `runs`.
-- Configs: `git show 88f90431c:squeal.config.json` (squeal), `git show 565fd3eaf:squeal.config.json` (cezar), `~/projects/client-monorepo/squeal.config.json`, `~/projects/project-a/squeal.config.json`.
-- squeal source at `4e1ba068a`: `src/core/keys/glob.ts`, `src/core/keys/closure.ts` (`assembleClosure`, `createDeclaredInputs`), `src/core/scheduler/keying.ts`, `src/core/daemon/node-test-runners.ts`, `src/harness/build.ts` (`bundleOptions`), `test/harness/bundle-helpers.ts`, `test/harness/codex/cache-fixture.ts`, `test/harness/pi/helpers.ts`; commit `1b298a1c9`; spec 011 C3, C10, C12.
+- Configs: `git show 9d2dc7bd6:squeal.config.json` (squeal), `git show 565fd3eaf:squeal.config.json` (cezar), `~/projects/client-monorepo/squeal.config.json`, `~/projects/project-a/squeal.config.json`.
+- squeal source at `592b292f2`: `src/core/keys/glob.ts`, `src/core/keys/closure.ts` (`assembleClosure`, `createDeclaredInputs`), `src/core/scheduler/keying.ts`, `src/core/daemon/node-test-runners.ts`, `src/harness/build.ts` (`bundleOptions`), `test/harness/bundle-helpers.ts`, `test/harness/codex/cache-fixture.ts`, `test/harness/pi/helpers.ts`; commit `5a5b57c60`; spec 011 C3, C10, C12.
 - cezar source at `565fd3eaf`: `packages/web/e2e/vitest.config.ts`, `packages/web/e2e/environment.ts`, `.ai/scripts/build-e2e.sh`, `.ai/scripts/test-env-up.sh`, `packages/cezar/tsconfig.json`, `packages/web/index.html`, `.ai/browsers/agent-browser.md`; package metadata of `typescript` 7.0.2 (per-platform binaries) and `vite` 8.1.4, `rolldown` 1.1.5 (native bindings).
 - Experiment: a scratch clone of cezar at `565fd3eaf` under `/tmp/di150`, `node_modules` copied from the main checkout, `build-diff.sh` 2026-10-23 13:40Z to 13:50Z; the clone and logs are removed, the hashes are in finding 2.
 - Probes: `probes/declared-inputs/` (README lists each script and the commands).

@@ -2,7 +2,7 @@
 
 Research fixtures only. Do not ship or add to the product test suite. No dependency installation is needed; use the repository's installed `tsx`. Never commit `node_modules`.
 
-Source: Squeal 0.1.389, commit `6e573c80bbad0c295e35b7a50d912ff151ffa3d1`; Node v24.22.1, pnpm 12.15.0. Run from the repository root.
+Source: Squeal 0.1.389, commit `3a38415904caae24b19eb7a57ef843039be17e70`; Node v24.22.1, pnpm 12.15.0. Run from the repository root.
 
 ## Isolated probe
 

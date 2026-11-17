@@ -1,6 +1,6 @@
 # 016-24 and 016-26 ignored listings in one worktree, and absent directories: notes
 
-Worker 6d8a1279, 2026-10-25. Brief: `tasks/wave-4.md`, section "016-24 and 016-26". Shape: repair. Code read at `feb3edfb8`. The coordinator approved the design (request 673d3013) before the first product edit: re-read at each revision, the names a run leaves are the names seen, an absent marker and an empty marker, no `KEY_FORMAT_VERSION` raise. It also gave this row the one `listedByRun` call in `src/core/scheduler/observed.ts` (decision A) and the assemble-harness steps (decision B, agreed for 011).
+Worker 6d8a1279, 2026-10-25. Brief: `tasks/wave-4.md`, section "016-24 and 016-26". Shape: repair. Code read at `eefd4983e`. The coordinator approved the design (request 673d3013) before the first product edit: re-read at each revision, the names a run leaves are the names seen, an absent marker and an empty marker, no `KEY_FORMAT_VERSION` raise. It also gave this row the one `listedByRun` call in `src/core/scheduler/observed.ts` (decision A) and the assemble-harness steps (decision B, agreed for 011).
 
 ## Causes
 

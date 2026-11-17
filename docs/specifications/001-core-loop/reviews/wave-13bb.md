@@ -1,8 +1,8 @@
 # Wave 13bb: review of 001-320
 
-**FAIL ee834518e84d18f9334722a305167f7ae39fb646**
+**FAIL d60adc696055bcbfb774c4fa85d4fa92f05dc597**
 
-Range: `3844efe7..ee834518`, pinned to the requested candidate. Reviewer row: 001-329. One **proven blocker**, no should-fix findings, two **proven nits**. The blocker is incomplete test stabilization against the row's done-when, not a demonstrated product regression.
+Range: `d8f80386..d60adc69`, pinned to the requested candidate. Reviewer row: 001-329. One **proven blocker**, no should-fix findings, two **proven nits**. The blocker is incomplete test stabilization against the row's done-when, not a demonstrated product regression.
 
 ## Verification
 
@@ -23,7 +23,7 @@ env -u CODEX_SESSION_ID \
 
 ```text
 $ git rev-parse HEAD
-ee834518e84d18f9334722a305167f7ae39fb646
+d60adc696055bcbfb774c4fa85d4fa92f05dc597
 $ git status --porcelain
 [no output]
 

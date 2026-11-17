@@ -3,7 +3,7 @@
 Recommend treating #110 as evidence for #78's remaining named slow-file demand, with a human decision on changing lane eligibility.
 
 **Verdict:** reproduced on Squeal **0.1.365**, commit
-`faa43f8823fd7a047c3491e9d39d61024632bd5a`, on 2026-10-27. A named slow-file
+`7865e11e22a0172b1bd71b0a4aaf4998bd742dfd`, on 2026-10-27. A named slow-file
 wait stayed pending after the current fast tier ended and another fast
 backlog tier started. Promotion worked within the slow lane once fast work
 drained. This matches 004 D2; it does not establish a broken fast promotion.
@@ -13,8 +13,8 @@ drained. This matches 004 D2; it does not establish a broken fast promotion.
 | Question | Method and version | Answer and tag |
 | --- | --- | --- |
 | 1. Does a named slow wait remain behind unrelated queued fast work after the current tier? | Isolated real CLI/daemon probe, 0.1.365; three gated fast files and two slow files | Yes. The next fast tier started while the named slow file stayed pending. **verified by experiment** |
-| 2. Is promotion lost, or does lane eligibility still bind? | Same probe; read scheduler at `faa43f882` and 004 D2 / 011 C15 | Named `slow-z` ran before `slow-a` after the fast drain. `#fastFirst()` checks the fast backlog before selecting slow candidates. **verified by experiment** for order; **read in source code** for the gate |
-| 3. How does this overlap #79 and #78? | Fetch all three GitHub issues and comments; read board and 004 amendment log at `faa43f882` | #79 concerns fast-file promotion. #78 still asks for one named slow run with a stored result; its lease-release part shipped in 0.1.325. Treat #110 as overlapping that remaining demand. **inferred**, from the fetched issue records and shipped-history docs |
+| 2. Is promotion lost, or does lane eligibility still bind? | Same probe; read scheduler at `7865e11e2` and 004 D2 / 011 C15 | Named `slow-z` ran before `slow-a` after the fast drain. `#fastFirst()` checks the fast backlog before selecting slow candidates. **verified by experiment** for order; **read in source code** for the gate |
+| 3. How does this overlap #79 and #78? | Fetch all three GitHub issues and comments; read board and 004 amendment log at `7865e11e2` | #79 concerns fast-file promotion. #78 still asks for one named slow run with a stored result; its lease-release part shipped in 0.1.325. Treat #110 as overlapping that remaining demand. **inferred**, from the fetched issue records and shipped-history docs |
 
 ## 1. Live reproduction
 
@@ -68,7 +68,7 @@ reason. The probe stopped its daemon successfully and removed its fixture.
 
 ## 2. Why the next fast tier still wins
 
-**read in source code — 0.1.365, `faa43f882`.**
+**read in source code — 0.1.365, `7865e11e2`.**
 [`slow-tier.ts`](../../../../src/core/scheduler/slow-tier.ts), `#fastFirst()`:
 
 ```ts
@@ -82,7 +82,7 @@ returns false while fast work is queued or running. `promote()` changes
 queue priority and pumps scheduling; it does not call `requestSlowSuite()`.
 The probe's observed order and status match these branches.
 
-**read in official docs — repository contracts at `faa43f882`.** 004 D2 says
+**read in official docs — repository contracts at `7865e11e2`.** 004 D2 says
 background fast work “holds it back too ... unless `squeal run --slow`
 asked.” 011 C15 says a promoted slow file “leads its own tier's order when
 the tier runs.” C15's in-turn wording still describes the older idle rule;
@@ -130,6 +130,6 @@ binary. No repository test suite, lint, typecheck or build was run; product
 code was unchanged.
 
 - [Probe and method](probes/issue-110/README.md), [script](probes/issue-110/probe.mjs), [retained output](probes/issue-110/result.jsonl).
-- [004 spec](../spec.md), D2/D3/D7/D8; [004 status](../status.md), 2026-10-14, 2026-10-19 and 2026-10-25 amendments; [011 C15](../../011-core/spec.md#c15-named-demand), all at `faa43f882`.
-- Source at the examined commit: [slow eligibility](https://github.com/hearsay-tools/squeal/blob/faa43f8823fd7a047c3491e9d39d61024632bd5a/src/core/scheduler/slow-tier.ts#L271), [promotion](https://github.com/hearsay-tools/squeal/blob/faa43f8823fd7a047c3491e9d39d61024632bd5a/src/core/scheduler/scheduler.ts#L651), [fast idle](https://github.com/hearsay-tools/squeal/blob/faa43f8823fd7a047c3491e9d39d61024632bd5a/src/core/scheduler/scheduler.ts#L1264).
+- [004 spec](../spec.md), D2/D3/D7/D8; [004 status](../status.md), 2026-10-14, 2026-10-19 and 2026-10-25 amendments; [011 C15](../../011-core/spec.md#c15-named-demand), all at `7865e11e2`.
+- Source at the examined commit: [slow eligibility](https://github.com/hearsay-tools/squeal/blob/7865e11e22a0172b1bd71b0a4aaf4998bd742dfd/src/core/scheduler/slow-tier.ts#L271), [promotion](https://github.com/hearsay-tools/squeal/blob/7865e11e22a0172b1bd71b0a4aaf4998bd742dfd/src/core/scheduler/scheduler.ts#L651), [fast idle](https://github.com/hearsay-tools/squeal/blob/7865e11e22a0172b1bd71b0a4aaf4998bd742dfd/src/core/scheduler/scheduler.ts#L1264).
 - Issue sources: `gh issue view 110 --repo hearsay-tools/squeal --json number,title,body,comments,state,url`, repeated for `79` and `78`; URLs linked above. Read-only; no issue comments posted.

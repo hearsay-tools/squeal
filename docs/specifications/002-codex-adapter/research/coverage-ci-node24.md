@@ -16,7 +16,7 @@ Research: 2026-10-27, within the 20-minute bound. Product, tests, generated file
 
 ## Exact comparison
 
-**Verified by experiment.** Main `40259a9e48f76a6fd5fd128c6e6efb37bcbf771e` and candidate `9401c1d083df042fe85a44d66d73495515bf0ebe`, Linux x86_64. Both detached scratch worktrees used the installed dependencies: Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Their lockfiles and coverage source/test paths have no diff. That equality supports the controlled comparison; it is not the causal proof by itself.
+**Verified by experiment.** Main `1876b58e3be58bfbb47d8d6a7ba1b293a78c7648` and candidate `9401c1d083df042fe85a44d66d73495515bf0ebe`, Linux x86_64. Both detached scratch worktrees used the installed dependencies: Vitest 5.0.3, tsx 4.23.15, esbuild 0.28.2. Their lockfiles and coverage source/test paths have no diff. That equality supports the controlled comparison; it is not the causal proof by itself.
 
 For each tree and each `V` in `24.21.0 24.22.1`:
 
@@ -28,8 +28,8 @@ PATH=~/.nvm/versions/node/v${V}/bin:$PATH \
 
 | Commit | Node | Result | Vitest duration |
 | --- | --- | --- | --- |
-| Main `40259a9e4` | 24.21.0 | Exit 0; 7 passed | 3.44 s |
-| Main `40259a9e4` | 24.22.1 | Exit 1; 5 passed, 2 failed | 3.36 s |
+| Main `1876b58e3` | 24.21.0 | Exit 0; 7 passed | 3.44 s |
+| Main `1876b58e3` | 24.22.1 | Exit 1; 5 passed, 2 failed | 3.36 s |
 | Candidate `9401c1d08` | 24.21.0 | Exit 0; 7 passed | 3.34 s |
 | Candidate `9401c1d08` | 24.22.1 | Exit 1; 5 passed, 2 failed | 3.59 s |
 

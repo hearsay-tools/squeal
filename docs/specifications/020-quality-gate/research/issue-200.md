@@ -8,7 +8,7 @@ Not reproduced, because the one-minute host load was 27.50 on 24 CPUs. The triag
 
 ## Evidence
 
-**Read in issue #200:** The reporter used Squeal 0.1.457 in a squawk worktree. A node:test failure under reported load about 45/24 CPUs made all 96 changed functions incomplete with `test-failed`. The unchanged second run reused the failed file from `store`, had null duration, and exited 3. The reporter says stderr omitted stored-failure provenance and recovery guidance. An explicit load retry plus a named wait cleared the failure; a third gate passed. This incident was not independently replayed. Current checkout version: 0.1.459 at origin/main `f6129e4e26e20d095bc65db138c5f32698650e64`.
+**Read in issue #200:** The reporter used Squeal 0.1.457 in a squawk worktree. A node:test failure under reported load about 45/24 CPUs made all 96 changed functions incomplete with `test-failed`. The unchanged second run reused the failed file from `store`, had null duration, and exited 3. The reporter says stderr omitted stored-failure provenance and recovery guidance. An explicit load retry plus a named wait cleared the failure; a third gate passed. This incident was not independently replayed. Current checkout version: 0.1.459 at origin/main `16d042ff2cf77bfaf840aed0ce222990fd0197cb`.
 
 Reporter commands, preserved as evidence rather than commands run in triage:
 

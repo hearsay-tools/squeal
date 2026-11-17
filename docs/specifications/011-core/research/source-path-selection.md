@@ -2,7 +2,7 @@
 
 Researcher W1 of 011 wave 46, 2026-10-26. Brief: `tasks/wave-46.md` W1. Read: `docs/vision.md`, `docs/styleguide.md`, `docs/process.md`, board row 011-233, `tasks/011-219/notes.md` "Squeal's selection", spec 005 D2, spec 011 C7 (the `test_files` table) and C10 (`baseline.onStart`).
 
-Versions: the source read is this worktree at `eec505f3b` (main after 0.1.332). The CLI that ran is the installed Squeal 0.1.332. Worker 1b3ef9fa's tree and its store are gone (no copy was kept), so its own revisions 5 to 7 are not replayed. No live store was opened: the experiments are a fixture store driven through the product's selection and wait code, and read-only `squeal status --json` reads in this worktree, which edited no file any test reads. The one-minute load was 13 to 23 on 24 CPUs. Probes: `probes/source-path-selection/` (its README lists each).
+Versions: the source read is this worktree at `958591e4a` (main after 0.1.332). The CLI that ran is the installed Squeal 0.1.332. Worker 1b3ef9fa's tree and its store are gone (no copy was kept), so its own revisions 5 to 7 are not replayed. No live store was opened: the experiments are a fixture store driven through the product's selection and wait code, and read-only `squeal status --json` reads in this worktree, which edited no file any test reads. The one-minute load was 13 to 23 on 24 CPUs. Probes: `probes/source-path-selection/` (its README lists each).
 
 ## Questions answered
 
@@ -78,6 +78,6 @@ Until the row lands: name the reader test files by their own paths, as the wave-
 
 ## Sources
 
-- `src/cli/named-selection.ts:75,143`; `src/core/scheduler/revision.ts:233-284`; `refinement.ts:96-205,229-260`; `record-tier.ts:214-232`; `bootstrap.ts:140-200`; `edit-cut.ts:45-80`; `src/core/store/prune.ts:87-100`; `src/core/store/repos/worktrees.ts:20-28`; `src/cli/status-paths.ts:93-105`; `src/cli/status-wait-paths.ts:287-302`, all at `eec505f3b`.
+- `src/cli/named-selection.ts:75,143`; `src/core/scheduler/revision.ts:233-284`; `refinement.ts:96-205,229-260`; `record-tier.ts:214-232`; `bootstrap.ts:140-200`; `edit-cut.ts:45-80`; `src/core/store/prune.ts:87-100`; `src/core/store/repos/worktrees.ts:20-28`; `src/cli/status-paths.ts:93-105`; `src/cli/status-wait-paths.ts:287-302`, all at `958591e4a`.
 - Spec 005 D2; spec 011 C3, C7, C10; `tasks/011-219/notes.md`; `test/cli/status-wait-paths.test.ts` ("uses another worktree's closure only while its key for the file is this worktree's").
 - Probes: `probes/source-path-selection/` (`selection.probe.ts`, `sample.sh`, `reads.sh`, `results/`).

@@ -16,7 +16,7 @@
             "url": "https://github.com/hearsay-tools/squeal.git",
             "path": "plugins/claude-code",
             "ref": "squeal--v0.1.367",
-            "sha": "6709eb4d72d51d472a02602839c4d6d0c1f4c629"
+            "sha": "5ba42a5a4dc2f9b5bc7eaac99422704aa5ce7069"
           }
         }
       ]
@@ -33,7 +33,7 @@
             "url": "https://github.com/hearsay-tools/squeal.git",
             "path": "plugins/codex",
             "ref": "squeal--v0.1.367",
-            "sha": "6709eb4d72d51d472a02602839c4d6d0c1f4c629"
+            "sha": "5ba42a5a4dc2f9b5bc7eaac99422704aa5ce7069"
           }
         }
       ]

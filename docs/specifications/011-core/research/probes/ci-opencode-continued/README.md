@@ -2,7 +2,7 @@
 
 Row 011-284, wave 63 R2. These probes are research only. They do not change product code, checked-in bundles, timeout values or test policy. Runtime fixtures and built bundles live in private `/tmp` directories; no `node_modules` is committed.
 
-Sources: Squeal `33cdf29a1`, Node 24.22.1, Vitest 5.0.3, OpenCode 1.18.35. The relevant test, fixture and OpenCode source files are unchanged from failed CI commit `6ceaf9b85`.
+Sources: Squeal `a8905870d`, Node 24.22.1, Vitest 5.0.3, OpenCode 1.18.35. The relevant test, fixture and OpenCode source files are unchanged from failed CI commit `e5a0ce991`.
 
 Run from the repository root, alone, only below the host's CPU count in load:
 

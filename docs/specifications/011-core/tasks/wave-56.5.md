@@ -1,6 +1,6 @@
 # Wave 56.5: repair of review 0.1.379 (row 011-262)
 
-Coordinator cbd3888a, 2026-10-30. Review `reviews/0.1.379.md` FAIL on cand/0.1.379 `f6b681f2c`. Host policy as wave 56. Not yours: the board, spec text, `status.md`, bundles (`plugins/*/dist`), versions. No `pnpm run build`.
+Coordinator cbd3888a, 2026-10-30. Review `reviews/0.1.379.md` FAIL on cand/0.1.379 `390ecad6a`. Host policy as wave 56. Not yours: the board, spec text, `status.md`, bundles (`plugins/*/dist`), versions. No `pnpm run build`.
 
 ## R1: B1, S1 and S2 (worker 408523d6, resumed)
 

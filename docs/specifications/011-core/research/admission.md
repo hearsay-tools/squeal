@@ -1,6 +1,6 @@
 # Admission: one answer to "may a tier start in this lane now, one file or several"
 
-Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 5). Rechecked on main at `cda899453` on 2026-11-14 by design session b711eb60. Terms: `GLOSSARY.md` (Start facts, Admission, Lane, Request intake). The decisions below are the human's, taken one at a time on 2026-11-14. Rows 011-340 to 011-342. Approved row 011-321 runs in the same lane as a separate row.
+Design brief from the architecture review of 2026-11-12 (Cezar task af6c0b3f, report artifact d8b46fe2, card 5). Rechecked on main at `3843270a3` on 2026-11-14 by design session b711eb60. Terms: `GLOSSARY.md` (Start facts, Admission, Lane, Request intake). The decisions below are the human's, taken one at a time on 2026-11-14. Rows 011-340 to 011-342. Approved row 011-321 runs in the same lane as a separate row.
 
 ## Problem
 
@@ -12,7 +12,7 @@ Before a tier starts, the scheduler checks about seven facts:
 - the lane's own rules: one tier per group, the groups named in `after` go first, an edit's work goes first;
 - for a slow lane, whether it takes one file or several.
 
-Each path that starts a tier, or reports whether work is left, reads these facts in its own shape (read in source code at `cda899453`):
+Each path that starts a tier, or reports whether work is left, reads these facts in its own shape (read in source code at `3843270a3`):
 
 | Path | Where | What it reads |
 |---|---|---|
@@ -38,7 +38,7 @@ About 30 reads of these facts in all. `SlowHost` passes them to each slow lane a
 |---|---|---|
 | Review blockers where the start rule was wrong | 9, in 9 FAIL rounds, 2 of them failed on this alone | 3 |
 | Of those, in this card's scope | 6 | 1: 019 `reviews/0.1.398.md` B2, `after` counted queued files no commit asked for |
-| Fix commits that added a start check to one more path | 6 | 3 (`ff9912603` and `f732f87f4`, one rule in two places on one day; `ba04bbde2`) |
+| Fix commits that added a start check to one more path | 6 | 3 (`ed26c0aed` and `d41612ac4`, one rule in two places on one day; `574cd3919`) |
 
 The most common cause: a fact checked before a wait and not again after it. It caused 3 blockers:
 - 004 `reviews/wave-1.md` B1, the idle trigger;

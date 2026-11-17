@@ -2,7 +2,7 @@
 
 FAIL `6943dc40e852015686fa71bec6d8407557fea0c1`: **1 proven blocker, 0 should-fix, 0 nits**.
 
-Reviewed range: `4c1a127f..6943dc40`, candidate `cand/006-66`. The worktree started clean at the pinned candidate. Brief: the 006-68 section of `tasks/wave-13.md` fetched from `origin/main`, including its alignment, isolation and metric checks. No product code changed during this review.
+Reviewed range: `438450a7..6943dc40`, candidate `cand/006-66`. The worktree started clean at the pinned candidate. Brief: the 006-68 section of `tasks/wave-13.md` fetched from `origin/main`, including its alignment, isolation and metric checks. No product code changed during this review.
 
 ## Verification output
 
@@ -321,7 +321,7 @@ The independent probe completed 24 both-harness cases, four legacy stdout contro
 
 ### Legacy cells: proven unchanged without a record
 
-Loaded the pre-006-67 grader and its library/fixture dependencies from `d4284c12` into a temporary directory. Compared its full grade object with this candidate's for all 76 retained a9/a10 event timelines without a record: **28 Claude, 48 Codex, zero differences**. The historical events were parsed identically for each side; no saved grade or cell was written.
+Loaded the pre-006-67 grader and its library/fixture dependencies from `8dc46be9` into a temporary directory. Compared its full grade object with this candidate's for all 76 retained a9/a10 event timelines without a record: **28 Claude, 48 Codex, zero differences**. The historical events were parsed identically for each side; no saved grade or cell was written.
 
 Separately recomputed measures in memory with the library function for all **15 committed atomic result files, 1059 cells**: zero measure changes and no retained-timeline changes. Direct both-harness controls confirm that without a record, printed listening still earns credit and a start followed by a retry in the same call keeps its legacy credit. `node --check`'s intentional classifier correction from 006-69 remains in place.
 

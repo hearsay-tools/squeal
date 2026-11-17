@@ -1,6 +1,6 @@
 # Wave 1.5: repair of review 0.1.493
 
-Review `reviews/0.1.493.md` FAIL on `cand/0.1.493` `d5d89179b`. Two repairs in parallel on disjoint seams, from the candidate head. The coordinator rebuilds the bundles and re-pushes the candidate; one re-review follows. Read the review in full first, then spec 022 D1 to D4 and `tasks/022-03/notes.md`. Verify with `squeal status --wait 60000 <changed-path>...`, lint, typecheck and `pnpm exec vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts`. No full suite, no `pnpm run build`. Commit on your branch.
+Review `reviews/0.1.493.md` FAIL on `cand/0.1.493` `ecd67b33f`. Two repairs in parallel on disjoint seams, from the candidate head. The coordinator rebuilds the bundles and re-pushes the candidate; one re-review follows. Read the review in full first, then spec 022 D1 to D4 and `tasks/022-03/notes.md`. Verify with `squeal status --wait 60000 <changed-path>...`, lint, typecheck and `pnpm exec vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts`. No full suite, no `pnpm run build`. Commit on your branch.
 
 ## 022-03r B1: CI export carries the run's loaded modules — repair
 

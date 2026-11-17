@@ -1,6 +1,6 @@
 # One CI run gives the project's coverage report and Squeal's per-file records (row 020-26, #189)
 
-Researcher: e308738e, 2026-11-11. Brief: `issue-189-brief.md`. Probes: `probes/ci-coverage-both/` (throwaway). Versions examined: Vitest 5.0.3 and `@vitest/coverage-v8` 5.0.3 (Squeal's dev dependency), Vitest 4.1.10 and `@vitest/coverage-v8` 4.1.10 (cezarion's, read in `~/projects/cezar/node_modules`, never written), `@vitest/coverage-istanbul` 5.0.3, Squeal at `ae1e61c1b` (`src/runners/vitest/ci-runtime/`, `plugins/claude-code/dist/`), cezarion at `249c8783b`.
+Researcher: e308738e, 2026-11-11. Brief: `issue-189-brief.md`. Probes: `probes/ci-coverage-both/` (throwaway). Versions examined: Vitest 5.0.3 and `@vitest/coverage-v8` 5.0.3 (Squeal's dev dependency), Vitest 4.1.10 and `@vitest/coverage-v8` 4.1.10 (cezarion's, read in `~/projects/cezar/node_modules`, never written), `@vitest/coverage-istanbul` 5.0.3, Squeal at `0d05adc1d` (`src/runners/vitest/ci-runtime/`, `plugins/claude-code/dist/`), cezarion at `249c8783b`.
 
 **Verdict: wrap.** Squeal can keep the project's V8 provider and read the same per-test-file payload it already gets from its own provider. On the fixture, on both Vitest versions, the records were byte for byte the records Squeal's own provider gives, and the project's report and exit code did not change. On one real cezarion shard, the tee gave a record for each of 422 test files at no cost above noise. Replacing the provider is not needed and would rebuild most of `@vitest/coverage-v8`. An Istanbul or custom provider still yields.
 

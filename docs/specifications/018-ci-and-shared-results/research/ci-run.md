@@ -1,6 +1,6 @@
 # ci-run: Squeal as the thing that runs tests in a CI job
 
-Researcher findings for spec 018, topic `ci-run` (row 018-01). Examined 2026-10-31: source at 6053220eb (Squeal 0.1.387), the CLI bundle `plugins/claude-code/dist/cli/squeal.mjs` of that commit, Vitest 5.0.3, Node 24.22.1, git 2.43.0. Experiments ran in fixture clones under `$TMPDIR` (`probes/ci-run/`, outputs in `probes/ci-run/results/`). GitHub was read only (`gh run list`, `gh run view --log`, `gh api .../jobs`). Key portability across machines is topic `result-import`; this file does not measure it.
+Researcher findings for spec 018, topic `ci-run` (row 018-01). Examined 2026-10-31: source at 9beda4d78 (Squeal 0.1.387), the CLI bundle `plugins/claude-code/dist/cli/squeal.mjs` of that commit, Vitest 5.0.3, Node 24.22.1, git 2.43.0. Experiments ran in fixture clones under `$TMPDIR` (`probes/ci-run/`, outputs in `probes/ci-run/results/`). GitHub was read only (`gh run list`, `gh run view --log`, `gh api .../jobs`). Key portability across machines is topic `result-import`; this file does not measure it.
 
 ## Questions answered
 
@@ -92,7 +92,7 @@ CI failures in the window (47 runs since 2026-10-29 15:00 UTC: 21 main pushes, 2
 
 | Run | Where | Failing file | Key against the import source | A skip would have hidden it? |
 |---|---|---|---|---|
-| 41205434002 | main push 51b138d2b (docs only) | `test/scheduler/backlog-quiet-exempt.test.ts` ("expected ... length of 1 but got 2") | unchanged since landing 66736c305, which passed | **Yes.** It was a test race, repaired in the test by d0f8149ba (row 011-285, its message cites this run) |
+| 41205434002 | main push 91d869415 (docs only) | `test/scheduler/backlog-quiet-exempt.test.ts` ("expected ... length of 1 but got 2") | unchanged since landing 27a30c927, which passed | **Yes.** It was a test race, repaired in the test by 6b521bf91 (row 011-285, its message cites this run) |
 | 41190295201 | nightly, Node 24 | `test/harness/opencode-continued.test.ts` ("Matcher did not succeed in time") | content unchanged since the Node 22 landing, but the Node version differs, so the key differs | No |
 | 41174976034 | `cand/0.1.383-r2` | `test/cli/stop-removed.test.ts` | new test file | No |
 | 41172825570 | `cand/0.1.383`, Node 24 | `test/runners/node-test/graph-cost.test.ts` (ratio 1.007, expected below 1) | changed | No |
@@ -125,7 +125,7 @@ Not determined, because no experiment was cheap here: Squeal's overhead against 
 
 ## Sources
 
-- Source at 6053220eb: `src/cli/run.ts`, `src/cli/warmup.ts`, `src/cli/start.ts`, `src/cli/main.ts` (help text), `src/core/daemon/paths.ts`, `src/core/daemon/user-config.ts`, `src/core/keys/environment.ts`, `src/core/keys/observed.ts`, `src/runners/vitest/environment.ts`, `src/runners/vitest/adapter.ts`, `src/core/types/policy.ts`, `.github/workflows/ci.yml`, `package.json`, `README.md`, `docs/process.md`, `docs/specifications/001-core-loop/spec.md` (D3, D4).
+- Source at 9beda4d78: `src/cli/run.ts`, `src/cli/warmup.ts`, `src/cli/start.ts`, `src/cli/main.ts` (help text), `src/core/daemon/paths.ts`, `src/core/daemon/user-config.ts`, `src/core/keys/environment.ts`, `src/core/keys/observed.ts`, `src/runners/vitest/environment.ts`, `src/runners/vitest/adapter.ts`, `src/core/types/policy.ts`, `.github/workflows/ci.yml`, `package.json`, `README.md`, `docs/process.md`, `docs/specifications/001-core-loop/spec.md` (D3, D4).
 - Vitest 5.0.3 `dist/chunks/defaults.D2ip7f-X.js:51` (`allowOnly: !isCI`), `dist/chunks/cac.DfDGTQ9W.js:950`.
 - Store: a `node:sqlite` `backup()` copy of `<common dir>/squeal/store.sqlite` taken 2026-10-31 22:47 local, read-only, deleted after use. Tables `test_files` (closures) and `results`.
 - GitHub, read 2026-10-31: `gh run list --workflow ci.yml` (main pushes, and all runs created after 2026-10-29 15:00 UTC); job logs of runs 41226020041, 41205434002, 41190295201, 41174976034, 41172825570 (`gh run view --job/--log-failed`).

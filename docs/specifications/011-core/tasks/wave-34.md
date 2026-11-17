@@ -1,6 +1,6 @@
 # Wave 34
 
-From main `50f6ce4fa` after 0.1.301 (015's), 2026-10-25. Four rows on disjoint seams: pnpm's key readers (W1), the scheduler's promotions and yield clock (W2), the named selection and a forwarder (W3), and a daemon test's heartbeat bound (W4). They ship together in one release, 0.1.302 or the next free version. W2 and W3 both edit `src/core/scheduler/focused.ts`, in different functions (below). Row 011-195, the model-based test, is wave 35: its invariants need 011-193 and 011-194 on its base.
+From main `0baf62d71` after 0.1.301 (015's), 2026-10-25. Four rows on disjoint seams: pnpm's key readers (W1), the scheduler's promotions and yield clock (W2), the named selection and a forwarder (W3), and a daemon test's heartbeat bound (W4). They ship together in one release, 0.1.302 or the next free version. W2 and W3 both edit `src/core/scheduler/focused.ts`, in different functions (below). Row 011-195, the model-based test, is wave 35: its invariants need 011-193 and 011-194 on its base.
 
 ## W1: 011-190 with quality slice 5, pnpm's readers under complexity 20
 

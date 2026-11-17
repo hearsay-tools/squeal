@@ -140,4 +140,4 @@ Fetched 2026-10-24. Clones were shallow, under `/tmp/hl016`, and removed afterwa
 - MCP: `modelcontextprotocol/modelcontextprotocol` main, `docs/specification/2025-11-25/server/resources.mdx` and `docs/specification/2026-07-28/changelog.mdx`; https://github.com/modelcontextprotocol/conformance README
 - Claude Code channels: https://code.claude.com/docs/en/channels.md, https://code.claude.com/docs/en/channels-reference.md
 - AGENTS.md: https://agents.md/
-- Squeal at HEAD 0822a444: `docs/specifications/011-core/spec.md` C8 and C14, `src/core/types/delivery.ts`, `plugins/claude-code/hooks/hooks.json`, `src/harness/*`
+- Squeal at HEAD a5230381: `docs/specifications/011-core/spec.md` C8 and C14, `src/core/types/delivery.ts`, `plugins/claude-code/hooks/hooks.json`, `src/harness/*`

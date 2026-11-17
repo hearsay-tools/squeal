@@ -1,8 +1,8 @@
-PASS bad0673d1c581765d0642902cf77a7b3991a411a
+PASS bac81462c0af7c28765483e71e3e82971c4bc413
 
 # Wave 14 review: an agent knows it can wait for slow files
 
-Counts: 0 blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.222`, row 004-83; range `origin/main..bad0673d`, merge base `36acabe3cc2956ea5a37d797751b6e5d448063bb` (0.1.221). Reviewed against `tasks/wave-14.md`, the 2026-10-19 amendment to D8/004-71, D9 and the worker's `tasks/004-83/notes.md`.
+Counts: 0 blockers, 0 should-fix, 0 nits. Candidate `cand/0.1.222`, row 004-83; range `origin/main..bac81462`, merge base `f491d61f1d4f6e278e3a915ac2adb47699f28408` (0.1.221). Reviewed against `tasks/wave-14.md`, the 2026-10-19 amendment to D8/004-71, D9 and the worker's `tasks/004-83/notes.md`.
 
 ## Verification output
 
@@ -10,7 +10,7 @@ All required checks ran at the exact candidate on a clean tracked and untracked 
 
 ```text
 $ git rev-parse HEAD
-bad0673d1c581765d0642902cf77a7b3991a411a
+bac81462c0af7c28765483e71e3e82971c4bc413
 $ git status --short
 (no output)
 

@@ -1,6 +1,6 @@
 # 005 Agent adoption: dogfooding lessons
 
-Board row 005-18, 2026-10-14. Spec 005 `## Testing`, the Proof bullets, with D7 and D8. Squeal at `f8d3c10a` (plugins 0.1.156). "Since the release" runs after the release and is not here.
+Board row 005-18, 2026-10-14. Spec 005 `## Testing`, the Proof bullets, with D7 and D8. Squeal at `7f96063a` (plugins 0.1.156). "Since the release" runs after the release and is not here.
 
 
 ## The Proof bullets, answered
@@ -35,7 +35,7 @@ Load: the brief asks for calm load. Sessions started only below 24 (the CPU coun
 
 Each R1 run has its `atomic-compare.md` beside it. Cost: $0.09 for the 20 Claude Code sessions; Codex reports tokens only. The gate-squeal condition (the reworded gate) got no cells, by the coordinator's decision: 005-02 measured it (no full Vitest run in 5 of 5 sessions, against 5 of 5 under a Vitest gate) and part 3 measures it in real sessions.
 
-Isolation: every session and the runner ran as `squeal-e2e` through `research/probes/dogfood/as-e2e.mjs`, 005-17's command line (`sudo -n [--preserve-env=<names>] -u squeal-e2e -H env [-i] …`, cwd `/`), with every scratch directory and `SQ_EVALS_ROOT` under `/home/squeal-e2e/runs/sq18-p1`. The repository went in as a `git bundle` of `f8d3c10a`, so the results files name the real commit (the coordinator's Q1). Credentials by name only (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, the Codex provider's key variable); the runner's `$HOME/.codex/config.toml` holds `codexConfig`'s allow-listed fields only. The runner's own scan: 0 files held a secret in any cell.
+Isolation: every session and the runner ran as `squeal-e2e` through `research/probes/dogfood/as-e2e.mjs`, 005-17's command line (`sudo -n [--preserve-env=<names>] -u squeal-e2e -H env [-i] …`, cwd `/`), with every scratch directory and `SQ_EVALS_ROOT` under `/home/squeal-e2e/runs/sq18-p1`. The repository went in as a `git bundle` of `7f96063a`, so the results files name the real commit (the coordinator's Q1). Credentials by name only (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, the Codex provider's key variable); the runner's `$HOME/.codex/config.toml` holds `codexConfig`'s allow-listed fields only. The runner's own scan: 0 files held a secret in any cell.
 
 "Cold" is real at the start: in every cold session the first Squeal evidence was "no daemon, every result unknown"; the agent edited before Squeal had any result, then waited for it (20 waits in 12 cold sessions, no sleep). On this fixture (7 fast files, one 12 s slow file) Squeal caught up within the session; part 2 is the large repository.
 
@@ -94,7 +94,7 @@ From `research/probes/dogfood/part1-cells.json` (`analyze-part1.py`): load is th
 
 ### What ran
 
-Everything ran as `squeal-e2e` through `as-e2e.mjs`, under `/home/squeal-e2e/runs/sq18-cz`. Squeal is the pinned plugin build of `f8d3c10a` (0.1.156), the same as part 1. Cezar is `git archive` of `~/projects/cezar` at `5dbb4b09`, in three copies, each installed with `corepack pnpm install --frozen-lockfile` (pnpm 12.11.2, never `npm ci`) and built with `pnpm run build`:
+Everything ran as `squeal-e2e` through `as-e2e.mjs`, under `/home/squeal-e2e/runs/sq18-cz`. Squeal is the pinned plugin build of `7f96063a` (0.1.156), the same as part 1. Cezar is `git archive` of `~/projects/cezar` at `5dbb4b09`, in three copies, each installed with `corepack pnpm install --frozen-lockfile` (pnpm 12.11.2, never `npm ci`) and built with `pnpm run build`:
 
 - `asis/`: cezar as it is, with the `squeal.config.json` its agents wrote in `20880223` (#1017), `bbab66e9`, `af156319` and `5dbb4b09`. Arm (a).
 - `fresh/`: a `git worktree` of `asis` at a commit that only removes `squeal.config.json`, so it shares `asis`'s store as a cezar task worktree shares its main checkout's. Arm (b): `squeal setup --yes` (every default, warm-up included).

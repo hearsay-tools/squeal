@@ -1,6 +1,6 @@
 # 008 wave 2 review
 
-Verdict: **PASS 20647e10**. **0 proven blockers**, 1 proven should-fix note, no nits. Reviewed 2026-10-15 (Europe/Warsaw). Exact candidate: `20647e1005368879e3c811406e44effadbc4b1be`, `cand/0.1.184`; range `38c71b05..20647e10`. Scope: 008-21, 008-22, 008-19, the coordinator's test edits and the version/bundle integration. The 008-23 brief was read from `origin/main`. This is the candidate review; the full-suite evidence is qualified below.
+Verdict: **PASS 20647e10**. **0 proven blockers**, 1 proven should-fix note, no nits. Reviewed 2026-10-15 (Europe/Warsaw). Exact candidate: `20647e1005368879e3c811406e44effadbc4b1be`, `cand/0.1.184`; range `7a8bcdbe..20647e10`. Scope: 008-21, 008-22, 008-19, the coordinator's test edits and the version/bundle integration. The 008-23 brief was read from `origin/main`. This is the candidate review; the full-suite evidence is qualified below.
 
 ## Verification output
 
@@ -32,7 +32,7 @@ $ npm run build
 exit 0
 $ git status --short
 (no output)
-$ git diff --check 38c71b05..20647e10
+$ git diff --check 7a8bcdbe..20647e10
 (no output)
 exit 0
 ```

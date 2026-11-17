@@ -50,7 +50,7 @@ A node:test or pytest lane runs its backlog as up to W slots: each holds one per
 - Why records gather: each commit's sink call lists every known state (`mergeApplied`), 55 to 340 ms on cezar's store, and the node:sqlite call holds the thread. Slots that end during a commit are not seen until it ends. Without the gather, ends stagger and commits stay near one per file: 224 of 300 at a 100 ms sink, 1.61 times one tier; 300 at 50 ms, 1.39 times.
 - `KEY_FORMAT_VERSION` 16, hash `054b5d7c…7e9c`. `test/version-sensitive.txt` lists `test/scheduler/backlog-slots`.
 
-## Tests (the brief's done-when; red on main at 89a69023 in a detached worktree)
+## Tests (the brief's done-when; red on main at d7164339 in a detached worktree)
 
 | # | Test | Here | On main |
 |---|---|---|---|

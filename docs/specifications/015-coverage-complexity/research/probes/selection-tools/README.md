@@ -1,6 +1,6 @@
 # Selection tools probes
 
-Throwaway research for 015-96. These scripts create isolated temporary fixtures. They do not open a Squeal store, change product configuration, or run the repository suite. The scripts read product source at `d6d75dbe63ee60ec072af547a1d08911f6678a09`. Run from that checkout with its installed pnpm dependencies. Outputs are evidence, not a selector supported by Squeal.
+Throwaway research for 015-96. These scripts create isolated temporary fixtures. They do not open a Squeal store, change product configuration, or run the repository suite. The scripts read product source at `5e0f51f4e949223f39ecac287318a806ace849ac`. Run from that checkout with its installed pnpm dependencies. Outputs are evidence, not a selector supported by Squeal.
 
 ## Reproduce
 

@@ -38,7 +38,7 @@ HEAD was `f83a34b`, one commit past the candidate. It changes only `docs/board.m
 
 ```
 $ git rev-parse HEAD
-9d92249f739321c25f95af7f8b9fd2b7b8bbaeb2
+157e20f40a972807532fbaa63446ba6934d40308
 $ npm ci
 added 56 packages, and audited 57 packages in 2s ... found 0 vulnerabilities (install-scripts warnings for @parcel/watcher and esbuild)
 $ npm run lint

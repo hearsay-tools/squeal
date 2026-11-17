@@ -483,7 +483,7 @@ index 7824f93be..ba864c23c 100644
 +      # Squeal's action, as in the shards; it never fails the job (hearsay-tools/squeal spec 018 D20).
 +      - name: Set up Squeal
 +        continue-on-error: true
-+        uses: hearsay-tools/squeal/ci@ebd52be86287031f36c0f4fae8d4afbc90f2568a # v0.1.443
++        uses: hearsay-tools/squeal/ci@4d4e8f1f00cfbfad13a70ee2296b53ceb8ec6671 # v0.1.443
 +
 +      # The gate's exit code is its verdict: 0 pass, 1 violations, 3 incomplete, 2 a setup or
 +      # usage error. Its budget is twice the default 600 s, so a slow build still gives a report;

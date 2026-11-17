@@ -2,14 +2,14 @@
 
 Verdict: **FAIL**. Two proven blockers, one plausible should-fix, no nits.
 
-Candidate: `cand/0.1.200`, pinned to `4a1c7f6adb764e07694f51f4b46a20ce174f89cc`. Range: `e0ff15a3..4a1c7f6a`. Reviewed W1 and W2 of `tasks/wave-16.md`, issue [#2](https://github.com/hearsay-tools/squeal/issues/2), D10 as amended on 2026-10-16, and D12. No product source was edited.
+Candidate: `cand/0.1.200`, pinned to `e02fc31af83529d10fff7ab0df12782492dddbac`. Range: `0612dadd..e02fc31a`. Reviewed W1 and W2 of `tasks/wave-16.md`, issue [#2](https://github.com/hearsay-tools/squeal/issues/2), D10 as amended on 2026-10-16, and D12. No product source was edited.
 
 ## Verification
 
 `git rev-parse HEAD`:
 
 ```text
-4a1c7f6adb764e07694f51f4b46a20ce174f89cc
+e02fc31af83529d10fff7ab0df12782492dddbac
 ```
 
 All checks and both probes used the pinned candidate source and built bundles. `git status --short` was empty before verification and after the probes; `npm run build` left no tracked changes. A documentation-only draft of this review was temporarily untracked during the full run, then kept outside the tree until the results were ready. No product, test or configuration file changed. The final commit changes only this findings file.
@@ -236,14 +236,14 @@ Repair B1 at the ownership boundary, preserving the daemon's initial stranger ex
 
 Verdict: **PASS**. No proven blockers, one plausible should-fix remaining from S1, no nits. This verdict supersedes Round 1 for the candidate below; it does not assert that unrelated suite failures are repaired.
 
-Candidate: `cand/0.1.200`, pinned to `b43375cc292e3eb3181b243c929bf89c7d4ccb28`. Bounded re-review of Round 1 B1, B2 and S1. Inspected repair `56744c0c`, regenerated bundles/key-format-11 pin `30ec91a2`, and the new tests. The Round 1 file is present through `d4b4576e`. No product source, test or configuration was edited.
+Candidate: `cand/0.1.200`, pinned to `a71f97ae2bfe77bec8602460fce79b796f2da96d`. Bounded re-review of Round 1 B1, B2 and S1. Inspected repair `5a893a1c`, regenerated bundles/key-format-11 pin `77d486ac`, and the new tests. The Round 1 file is present through `5aabe96f`. No product source, test or configuration was edited.
 
 ### Round 2 verification
 
 `git rev-parse HEAD`:
 
 ```text
-b43375cc292e3eb3181b243c929bf89c7d4ccb28
+a71f97ae2bfe77bec8602460fce79b796f2da96d
 ```
 
 All checks and probes ran at this pinned candidate with a clean tracked tree. The build produced no tracked drift. This Round 2 draft stayed outside the repository until verification finished; the final commit changes this findings file alone.

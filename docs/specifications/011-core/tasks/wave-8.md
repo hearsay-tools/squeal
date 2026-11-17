@@ -161,17 +161,17 @@ Isolation: read only. No signal, `squeal stop`, `retry` or `run` on that daemon 
 
 ## R2r: re-review of the repaired cand/0.1.239
 
-Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at 2b3b75047; the repair is `5216be24c..2b3b75047`: the coordinator's fix (B1 and B2), your findings commit, and the rebuilt bundles. Read `reviews/0.1.239.md` (B1, B2) and append a "Re-review" section to it.
+Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at 047f6ee43; the repair is `b146872fc..047f6ee43`: the coordinator's fix (B1 and B2), your findings commit, and the rebuilt bundles. Read `reviews/0.1.239.md` (B1, B2) and append a "Re-review" section to it.
 
 Check only that:
 - B1 is closed: `permitRecord` in `src/core/slow/slot.ts` reads the holder row from a private copy of the permit file, which needs no lock and no URI; a live holder reads as `holder` on Node 22.13 (`/tmp/node-v22.13.0-linux-x64/bin/node`) and on 24; the missing and unreadable states, several permits and the private-directory checks hold; the copy is removed on every path; `test/slow/slot-holders.test.ts` fails on 22.13 with the fix reverted.
 - B2 is closed: a signal aborted before `execute` writes the cause note; `test/runners/vitest/cancel-cause.test.ts`'s new case covers each named cause and the unknown one, with no result and no completed file, and fails with the fix reverted.
 - The bundles match the tree, and the version stays 0.1.239.
 
-The coordinator's full gate on 2b3b75047 is reported in the resume. Run only the files above, on both Node versions. Anything outside B1 and B2 is recorded for a later row, not a blocker.
+The coordinator's full gate on 047f6ee43 is reported in the resume. Run only the files above, on both Node versions. Anything outside B1 and B2 is recorded for a later row, not a blocker.
 
 ## R2c: check of the key-format case on cand/0.1.239
 
-Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at c9eae56c1. CI on 2b3b75047 failed `test/keys/key-format.test.ts`: no validity case ran `src/runners/vitest/run.ts` lines 75 to 78, the B2 repair. The range `2b3b75047..c9eae56c1` is your re-review commit, the coordinator's C6 wording fix (docs), and one test commit: `cancelBefore` in `test/keys/validity/case.ts`, the harness's early abort in `harness/vitest.ts`, one case in `cases/adapter/vitest.ts`.
+Use /reviewer. Shape: review, bounded. Pinned to `cand/0.1.239` at 8370ca75c. CI on 047f6ee43 failed `test/keys/key-format.test.ts`: no validity case ran `src/runners/vitest/run.ts` lines 75 to 78, the B2 repair. The range `047f6ee43..8370ca75c` is your re-review commit, the coordinator's C6 wording fix (docs), and one test commit: `cancelBefore` in `test/keys/validity/case.ts`, the harness's early abort in `harness/vitest.ts`, one case in `cases/adapter/vitest.ts`.
 
-Check only that: the range changes no file under `src/` and no bundle; the new case runs the early-abort branch, and the alarm passes on Node 22.13 and 24; with the case removed, the alarm fails on those lines; the harness change leaves every other case's compared outputs unchanged; `test/keys/` passes. Append a "Check of c9eae56c1" section with PASS or FAIL to `reviews/0.1.239.md` and commit it. Nothing outside this range is a blocker.
+Check only that: the range changes no file under `src/` and no bundle; the new case runs the early-abort branch, and the alarm passes on Node 22.13 and 24; with the case removed, the alarm fails on those lines; the harness change leaves every other case's compared outputs unchanged; `test/keys/` passes. Append a "Check of 8370ca75c" section with PASS or FAIL to `reviews/0.1.239.md` and commit it. Nothing outside this range is a blocker.

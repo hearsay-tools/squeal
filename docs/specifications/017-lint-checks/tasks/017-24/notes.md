@@ -1,12 +1,12 @@
 # 017-24 and 017-27: ESLint worker repairs, wave 5 W2
 
-Worker 52f2079c, 2026-11-02. Wave 5 W2 (`../wave-5.md`), shape repair. Rows on the board; `../../lessons.md` L7; `../../reviews/0.1.391.md` N1. This one file covers both rows. Commits as `cand/0.1.392` holds them; the wave 5.5 repairs (review `../../reviews/0.1.392.md` B1 and B2) are on `cez/52f2079c`, on top of `cand/0.1.392` (`baa9cb628`):
+Worker 52f2079c, 2026-11-02. Wave 5 W2 (`../wave-5.md`), shape repair. Rows on the board; `../../lessons.md` L7; `../../reviews/0.1.391.md` N1. This one file covers both rows. Commits as `cand/0.1.392` holds them; the wave 5.5 repairs (review `../../reviews/0.1.392.md` B1 and B2) are on `cez/52f2079c`, on top of `cand/0.1.392` (`d2aed6664`):
 
 | Row | Commit | Tests |
 | --- | --- | --- |
-| 017-27 (N1) | `6dfcdceac`, `981075b2b` (Node 22), `a4d9af477` (in-thread test) | `test/lint/provider/cwd.test.ts` (second case), `test/lint/provider/rooted.test.ts` |
+| 017-27 (N1) | `711c45d5a`, `32a5ade62` (Node 22), `8290a4572` (in-thread test) | `test/lint/provider/cwd.test.ts` (second case), `test/lint/provider/rooted.test.ts` |
 | 017-27, review 0.1.392 B1 | `5b11fdac6` | `test/lint/provider/upgrade.test.ts`, `test/lint/provider/provider.test.ts` |
-| 017-24 (L7) | `c68f4112f`, `f39e384c5` (replay reference), `4d6730e76` (ESLint 9 recording) | `test/lint/provider/nested.test.ts`, `test/lint/provider/lookup.test.ts`, `test/lint/provider/replay-eslint9.test.ts` |
+| 017-24 (L7) | `e4705975a`, `a2fca6e10` (replay reference), `b9d545b39` (ESLint 9 recording) | `test/lint/provider/nested.test.ts`, `test/lint/provider/lookup.test.ts`, `test/lint/provider/replay-eslint9.test.ts` |
 | 017-24, review 0.1.392 B2 | `11cb37049` | `test/lint/provider/nested.test.ts` (`.storybook` and git-ignored `dist/` cases), `test/lint/provider/lookup.test.ts` |
 
 Each real-ESLint test was red before its fix, for the reason the row names, and is green after it.

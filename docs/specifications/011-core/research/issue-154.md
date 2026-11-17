@@ -10,7 +10,7 @@ acceptance observable before deciding whether priority must change.
 
 The brief names one investigation. These questions separate its claims.
 All source findings examine Squeal **0.1.407**, checkout
-`073202425b43dff08117739a086d5395e08b5b8e`.
+`d94ad6effecb434bff274642baecba98473c7ab6`.
 
 | Question | Answer and evidence tag |
 | --- | --- |
@@ -153,7 +153,7 @@ verification. No test suite was run or claimed as a new pass.
 
 - Issue fetched with `gh` above: <https://github.com/hearsay-tools/squeal/issues/154>.
 - Version-pinned source tree (paths and lines above):
-  <https://github.com/hearsay-tools/squeal/tree/073202425b43dff08117739a086d5395e08b5b8e/src>.
+  <https://github.com/hearsay-tools/squeal/tree/d94ad6effecb434bff274642baecba98473c7ab6/src>.
 - Local specs: `docs/vision.md`; `docs/specifications/011-core/spec.md`
   C4/C6/C9/C10/C15 and `status.md`; `019-run-triggers/spec.md` D1/D4/D6 and
   `status.md`; `017-lint-checks/spec.md` D8 and `status.md`.

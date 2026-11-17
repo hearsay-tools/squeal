@@ -12,7 +12,7 @@ Throwaway. Written for `research/declared-inputs.md`, 2026-10-23. Nothing here i
 
 | File | Measures | Question |
 |---|---|---|
-| `globre.py` | the policy `inputs` glob, copied from squeal `src/core/keys/glob.ts` at `4e1ba068a` | all |
+| `globre.py` | the policy `inputs` glob, copied from squeal `src/core/keys/glob.ts` at `592b292f2` | all |
 | `walk.py` | files at a commit, and a regex walk of static and dynamic imports (type-only imports dropped), with squeal's and cezar's resolvers | all |
 | `routes.py <repo> <store> <checkout> <commit> <config> <hours> <out.json>` | per edit (watch revision of 1 to 9 paths) the test files re-keyed and why: own file, import, declared, observed; per (test glob, input glob) the files covered, the carriers and the declared-alone seconds; the walk's accuracy against the stored graph (`walk` line, `MISS` samples on stderr) | 1, 3 |
 | `fails.py <store> <config> <hours> <file regex> <out.json>` | each test file that turned to FAIL, the paths changed in its worktree since its previous result, the route of each, what came next, the failure summary | 2, 3 |
@@ -28,12 +28,12 @@ Throwaway. Written for `research/declared-inputs.md`, 2026-10-23. Nothing here i
 S=/tmp/di150; P=<this folder>
 mkdir -p $S/stores $S/an $S/logs $S/home $S/tmp $S/run $S/xdg/config $S/xdg/cache $S/xdg/data $S/xdg/state; chmod 700 $S/run
 for r in squeal cezar client-monorepo project-a; do mkdir -p $S/stores/$r; cp ~/projects/$r/.git/squeal/store.sqlite* $S/stores/$r/; done
-git -C ~/projects/squeal show 88f90431c:squeal.config.json > $S/an/squeal.config.json
+git -C ~/projects/squeal show 9d2dc7bd6:squeal.config.json > $S/an/squeal.config.json
 git -C ~/projects/cezar show 565fd3eaf:squeal.config.json > $S/an/cezar.config.json
 cp ~/projects/client-monorepo/squeal.config.json $S/an/client-monorepo.config.json
 cd $S
 # question 1 (and the route split question 3 uses)
-nice -n 10 python3 -I $P/routes.py squeal stores/squeal/store.sqlite ~/projects/squeal 88f90431c an/squeal.config.json 72 an/routes-squeal.json
+nice -n 10 python3 -I $P/routes.py squeal stores/squeal/store.sqlite ~/projects/squeal 9d2dc7bd6 an/squeal.config.json 72 an/routes-squeal.json
 nice -n 10 python3 -I $P/routes.py cezar stores/cezar/store.sqlite ~/projects/cezar 565fd3eaf an/cezar.config.json 72 an/routes-cezar.json
 nice -n 10 python3 -I $P/routes.py client-monorepo stores/client-monorepo/store.sqlite ~/projects/client-monorepo 7f939fb9 an/client-monorepo.config.json 72 an/routes-toolkit.json
 # question 2: FAIL transitions of the specs (72 h, then the whole store), narrower sets, eager and lazy modules
@@ -50,7 +50,7 @@ sh $S/build-diff.sh $S/cezar t-cezar-test packages/cezar/src/server/git.test.ts 
 sh $S/build-diff.sh $S/cezar l-web-literal packages/web/src/routes/task-thread/activity-summary.tsx literal
 # question 3: FAIL transitions of squeal, bundle closure
 nice -n 10 python3 -I $P/fails.py stores/squeal/store.sqlite an/squeal.config.json 72 '.' an/fails-squeal.json
-nice -n 10 python3 -I $P/bundle-closure.py ~/projects/squeal 88f90431c an/routes-squeal.json stores/squeal/store.sqlite
+nice -n 10 python3 -I $P/bundle-closure.py ~/projects/squeal 9d2dc7bd6 an/routes-squeal.json stores/squeal/store.sqlite
 ```
 
 The per-folder and per-carrier tables of question 3 and the FAIL classification are short Python one-liners over `routes-squeal.json` and `fails-squeal.json`; each takes the route of the changed paths (`inClosure`), the `next` outcome and the `summary` field.

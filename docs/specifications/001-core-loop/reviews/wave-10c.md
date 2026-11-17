@@ -24,7 +24,7 @@ HEAD is `ecb1acf`, one commit past the 001-94 candidate. That commit changes onl
 
 ```
 $ git rev-parse HEAD
-ecb1acfabc58319a7c9f806a2794634e366f2682
+a58b02dea421db6e03361e82207208e93d0a63ba
 $ git diff --stat 192c187 HEAD -- . ':!docs'
 (empty)
 $ npm ci

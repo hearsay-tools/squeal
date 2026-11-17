@@ -4,7 +4,7 @@ For each test: what it waited on, why load broke the wait, and the fix. None sho
 
 ## (1) `test/daemon/lifecycle.test.ts`: replacement after SIGKILL
 
-**Cause: a clock bound.** `if (!LOADED) expect(elapsed).toBeLessThan(1_000)`. `LOADED` means a load average above 8, and a CI runner with a few cores is oversubscribed well below that (5,510 ms at `7e7dc512`).
+**Cause: a clock bound.** `if (!LOADED) expect(elapsed).toBeLessThan(1_000)`. `LOADED` means a load average above 8, and a CI runner with a few cores is oversubscribed well below that (5,510 ms at `58577929`).
 
 **Fix: pair it with the work.** The same test now measures the first daemon's cold start (spawn to the first ping answer) under the same load. The replacement must serve in under 3 times that. The cold start creates the store that the replacement only opens, so it does more work. A replacement held up by what the dead daemon left behind (its socket file, its lock) would show up against it. The lock is SQLite `BEGIN EXCLUSIVE` and the OS releases it on death (`src/core/daemon/lock.ts`), so nothing in that path waits on a timer. The D10 200 ms target is still printed and never asserted. Measured here alone: replacement 251 ms, cold 277 ms.
 

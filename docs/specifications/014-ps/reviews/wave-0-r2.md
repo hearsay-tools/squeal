@@ -1,20 +1,20 @@
 # Wave 0 re-review, round 2
 
-PASS ab817c04e10e4eb4bd0bbd0ae588e79f23670c35
+PASS 0c08e26311135d7f1b8e03e3bad7fc93de8bc73a
 
 Zero blockers, zero remaining should-fix items, zero new findings.
 
 ## Verification output
 
-Pinned candidate: `cand/014-04` at `ab817c04e10e4eb4bd0bbd0ae588e79f23670c35`. This re-review is bounded by B1 and S1 in `reviews/wave-0.md` and the repair delta `4b5d200a7..ab817c04e`.
+Pinned candidate: `cand/014-04` at `0c08e26311135d7f1b8e03e3bad7fc93de8bc73a`. This re-review is bounded by B1 and S1 in `reviews/wave-0.md` and the repair delta `96d0a34c0..0c08e2631`.
 
-The delta contains only repairs `3589079a2` and `85f2fc629`, plus the unchanged first-round report cherry-picked as `ab817c04e`. The changed files are `shape.ts`, `model.ts`, two `test/ps` files, the D8 spec block, its amendment log, and that report. `proc.ts`, `source.ts`, bundles, dependency files and all other product files are unchanged.
+The delta contains only repairs `0bbc6c82f` and `2a1c704ce`, plus the unchanged first-round report cherry-picked as `0c08e2631`. The changed files are `shape.ts`, `model.ts`, two `test/ps` files, the D8 spec block, its amendment log, and that report. `proc.ts`, `source.ts`, bundles, dependency files and all other product files are unchanged.
 
 Dependencies from the earlier `npm ci` remain installed. `package.json` and `package-lock.json` have no delta, so another install was not needed. All checks below ran at the exact candidate with a clean tracked tree. Only this report was written afterward.
 
 ```text
 $ git rev-parse HEAD
-ab817c04e10e4eb4bd0bbd0ae588e79f23670c35
+0c08e26311135d7f1b8e03e3bad7fc93de8bc73a
 $ git status --short
 (no output)
 
@@ -56,6 +56,6 @@ An actual root run was not performed. The repaired branch condition directly rem
 
 ### N1 resolved outside this candidate
 
-Commit `2cf8e9be6` changes the board's 014-04 row to `review` and 014-05 to `running`. Its diff was checked. The candidate retains its pinned board snapshot; this re-review does not reopen the documentation nit or edit the board.
+Commit `c886e419c` changes the board's 014-04 row to `review` and 014-05 to `running`. Its diff was checked. The candidate retains its pinned board snapshot; this re-review does not reopen the documentation nit or edit the board.
 
 No new issue was found in the bounded repair delta. The first-round findings outside this delta remain settled.

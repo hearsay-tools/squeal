@@ -1,6 +1,6 @@
 # Wave 59.5: repair of review 0.1.378 B1
 
-Coordinator 81e2c6a1, 2026-10-29. Review `reviews/0.1.378.md` FAIL on `cand/0.1.378` `8132f702d`: B1 proven. Host policy as wave 59. Not yours: the board, spec, `status.md`, bundles, version.
+Coordinator 81e2c6a1, 2026-10-29. Review `reviews/0.1.378.md` FAIL on `cand/0.1.378` `555d1c813`: B1 proven. Host policy as wave 59. Not yours: the board, spec, `status.md`, bundles, version.
 
 ## RP1: B1, the backlog's turn after each batch tier
 

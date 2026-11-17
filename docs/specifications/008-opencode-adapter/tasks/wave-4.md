@@ -6,7 +6,7 @@ Use /quality. Shape: survey.
 
 Read `docs/vision.md`, `docs/styleguide.md`, `../spec.md`, `../status.md` and `../lessons.md`'s Defects sections.
 
-**Stretch:** `abe708ca` (008-10, the bridge client) to `163882d7` (0.1.192), limited to `src/harness/opencode/`, `src/cli/opencode/`, the OpenCode parts of `install.sh` and `src/cli/update.ts`, `test/harness/opencode*`, `test/e2e/opencode*` and `test/helpers/opencode.ts`. There is no earlier file under `../quality/`; 009's `../../009-pi-adapter/quality/2026-10.md` covers Pi's sibling code.
+**Stretch:** `f4609121` (008-10, the bridge client) to `9af8fc8b` (0.1.192), limited to `src/harness/opencode/`, `src/cli/opencode/`, the OpenCode parts of `install.sh` and `src/cli/update.ts`, `test/harness/opencode*`, `test/e2e/opencode*` and `test/helpers/opencode.ts`. There is no earlier file under `../quality/`; 009's `../../009-pi-adapter/quality/2026-10.md` covers Pi's sibling code.
 
 **Leads, offered, not required:**
 - `turns.ts` grew by repairs (008-16, 008-25, 008-28, 008-31, 008-33): state flags (`open`, `continued`, `aborted`, `epoch`, `held`, `own`) that could be one turn state.

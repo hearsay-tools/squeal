@@ -1,6 +1,6 @@
 # Issue 59: a named wait with one unmatched path returns at once
 
-Research for hearsay-tools/squeal#59, 2026-10-20. Documentation only: no product, spec, status or board edit. Code read at commit `dab2ef658` (package version 0.1.232). Live probes ran on copies of the installed plugins 0.1.232 and 0.1.231. Probes: `probes/issue-59/`.
+Research for hearsay-tools/squeal#59, 2026-10-20. Documentation only: no product, spec, status or board edit. Code read at commit `b709a73d8` (package version 0.1.232). Live probes ran on copies of the installed plugins 0.1.232 and 0.1.231. Probes: `probes/issue-59/`.
 
 **Host load before each live probe** (the one-minute load against 24 CPUs, from `/proc/loadavg` and `nproc`): 6.62 before `run.sh` on 0.1.232, 10.07 before `run.sh` on 0.1.231, 7.92 before `run-startup.sh` on 0.1.232. Every load was below the CPU count, so every probe ran. The parent's load at dispatch was 9.63. The research took about 5 minutes of wall time (253 s at the last probe).
 
@@ -34,7 +34,7 @@ Command: `sh probes/issue-59/run.sh [plugin-dir]`. Each call is `squeal status -
 
 The stderr line on every unmatched call is `No verdict: no test file's closure holds test/nope.test.ts.` followed by the worktree's clause. So the first half of the issue reproduces: one unmatched path ends a wait that the matched files still need. The other half (an answer that names nothing) does not.
 
-Source (read in source code, `src/cli/status-wait-paths.ts` at `dab2ef658`):
+Source (read in source code, `src/cli/status-wait-paths.ts` at `b709a73d8`):
 
 - `selectNamedFiles` (line 80) puts every path with no hit into `unmatched` (line 104) and keeps the hits in `files`. The two lists are independent.
 - `waitForNamed` (line 279) computes `ready` (line 310): the daemon is alive, its sync pass reached the read's revision, and the runner part is done. The outcome chain then puts `ready && selection.unmatched.length > 0 ? "unmatched"` (line 328) before `slow`, before `settled` and before the poll goes on. So the first ready read ends the wait, whatever the matched files' state.
@@ -70,7 +70,7 @@ The synthetic repository has 2 or 302 files and one Vitest project. The incident
 ## Sources
 
 - hearsay-tools/squeal#59 (`gh issue view 59`, read 2026-10-20).
-- `src/cli/status-wait-paths.ts`, `src/cli/status-wait-lines.ts`, `src/cli/named-file-lines.ts` (`unmatchedText`, line 181), `src/cli/verdict.ts`, at `dab2ef658`.
+- `src/cli/status-wait-paths.ts`, `src/cli/status-wait-lines.ts`, `src/cli/named-file-lines.ts` (`unmatchedText`, line 181), `src/cli/verdict.ts`, at `b709a73d8`.
 - `docs/specifications/005-agent-adoption/spec.md` D2 (line 63); `docs/specifications/011-core/spec.md` C6 and C15 (the 2026-10-20 amendment).
 - Plugins `~/.claude/plugins/cache/hearsay/squeal/0.1.231` and `0.1.232`, copied into each probe's scratch directory.
 - Probes and outputs: `probes/issue-59/` (`run.sh`, `run-startup.sh`, `summarize.mjs`, `fixture/`, `output-*.txt`).

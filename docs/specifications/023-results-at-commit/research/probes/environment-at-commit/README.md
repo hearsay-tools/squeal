@@ -22,6 +22,6 @@ Rules kept: live stores are opened read-only (`readOnly: true`, `PRAGMA query_on
 | `stale-installs.mjs <scratch>` | 3 | live worktrees whose installed part differs from their `HEAD`'s lockfile | `out/stale-installs-*.json` |
 | `node-pairs.mjs <scratch>` | 4 | hashes equal in every part except Node | `out/node-pairs-*.json` |
 
-`installed-from-git.mjs`, `installed-match.mjs`, `share.mjs` and `stale-installs.mjs` re-implement, for the probe only, the whole-fingerprint branch of `installedDependencies` (`src/core/keys/environment.ts`) and `withoutLinkedSpecifiers` (`src/core/keys/pnpm-lockfile.ts`) at `d2678e570`.
+`installed-from-git.mjs`, `installed-match.mjs`, `share.mjs` and `stale-installs.mjs` re-implement, for the probe only, the whole-fingerprint branch of `installedDependencies` (`src/core/keys/environment.ts`) and `withoutLinkedSpecifiers` (`src/core/keys/pnpm-lockfile.ts`) at `c13564931`.
 
 `share.mjs` writes its per-commit rows to stderr; they were kept in `$TMPDIR/eac/share-*-rows.jsonl` for `by-age.mjs` and the flagged-project count, and are not committed.

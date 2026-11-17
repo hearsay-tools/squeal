@@ -1,7 +1,7 @@
 # Issue 54: a passing same-key load retry replaces the failure
 
 Researcher findings for hearsay-tools/squeal#54, 2026-10-20. Squeal 0.1.230 source (`package.json`),
-worktree branch `cez/b6f9e4e2` at `d86fcb409`. Reproduction only: no design or implementation is
+worktree branch `cez/b6f9e4e2` at `2ce467986`. Reproduction only: no design or implementation is
 proposed here, and the existing holds stand.
 
 **Verdict.** Reproduced, synthetically, on the current source. A passing `--reason load` retry at the

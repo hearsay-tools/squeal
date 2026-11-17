@@ -3,7 +3,7 @@
 ## Verification
 
 Candidate: `cand/010-10`, `bf0a41fbd3f6e57d55dd079f89f31d76d937fe04`.
-Range: `origin/main...bf0a41fb -- .github .claude test`, with `origin/main` at `f8a9e5f754b9bf74e7fff242481e20e17a6dce13`.
+Range: `origin/main...bf0a41fb -- .github .claude test`, with `origin/main` at `193d3e76a156b123ef8afd9c1a49c6765c2bc422`.
 Reviewed 010-10 and 010-12 against spec 010 D1 to D7 and the dated amendments.
 The task checkout initially had the docs-only briefing commit `cab33a48`; before verification I created `review/010-11` at the exact candidate. No product files were edited.
 

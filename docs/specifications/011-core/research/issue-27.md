@@ -4,7 +4,7 @@
 
 Not reproduced as stated on 0.1.199. In an isolated linked worktree laid out as cezar's, a session-started daemon exited 3.2 s after the last session's SessionEnd, and 5.3 s after the session's harness process died with no SessionEnd; with two sessions on the root it stayed up until the second ended. It survived only while the session's harness process stayed alive after a turn Stop (20 s observed, by spec until `daemon.unusedExitMinutes`, 30 min). In this no-runner fixture the daemon ended with its session; what the probe cannot settle is whether the reported worker's session had ended. The report's survival needs one of: the worker's Claude process still alive after its last turn (a turn ended, the session did not), a slow-file drain (C9, up to `daemon.idleExitMinutes`, 60 min), or a harness record the daemon cannot check. Which one held is not determined, because the cezarion sessions were not inspected.
 
-Host load before the run: `1.58 2.58 4.33` on 24 CPUs (`nproc`); `2.42` at the first check; `7.28` at the probe's end. Exercised: the installed Claude Code plugin 0.1.199 (`~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/{session-start,stop,session-end}.mjs`, `dist/cli/squeal.mjs`; `squeal --version` prints `0.1.199`). Source read: this checkout, 0.1.203 (`package.json`) at `a0e2fc5a`, not exercised. Cezar read, not exercised: installed `@wjarka/cezarion` 0.16.0-dev.1886. No shared daemon or session was touched; no agent session was created.
+Host load before the run: `1.58 2.58 4.33` on 24 CPUs (`nproc`); `2.42` at the first check; `7.28` at the probe's end. Exercised: the installed Claude Code plugin 0.1.199 (`~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/{session-start,stop,session-end}.mjs`, `dist/cli/squeal.mjs`; `squeal --version` prints `0.1.199`). Source read: this checkout, 0.1.203 (`package.json`) at `de06a1d8`, not exercised. Cezar read, not exercised: installed `@wjarka/cezarion` 0.16.0-dev.1886. No shared daemon or session was touched; no agent session was created.
 
 ## Questions answered
 
@@ -16,7 +16,7 @@ Host load before the run: `1.58 2.58 4.33` on 24 CPUs (`nproc`); `2.42` at the f
 | 4 | Does one session ending stop a daemon another session shares? | No, stayed 12 s while the second was registered | verified by experiment, 0.1.199 |
 | 5 | What can keep the daemon after the last session | A slow-file drain (≤ 60 min), a consumer whose harness is unrecorded or in another PID namespace (10 min waiterless or 12 h expiry), or a still-live harness (≤ 30 min unused bound) | read in source code, 0.1.203; spec 011 C9 |
 | 6 | Does daemon survival alone make cezar refuse a resume? | Only if cezar's probe sees it: a recorded process of the generation alive, or any process whose cwd is under the worktree or scratch. The daemon's cwd is `<common-dir>/squeal/` except during a runner call; its esbuild and Vitest children hold the root | read in source code, cezarion 0.16.0-dev.1886; spec 011 C9 |
-| 7 | Owning spec sections | 011 C9 (exit rules, drain, cwd), C8 (harness process record), 012 CC2 (SessionEnd unregisters), CC4 (liveness) | read in spec at `a0e2fc5a` |
+| 7 | Owning spec sections | 011 C9 (exit rules, drain, cwd), C8 (harness process record), 012 CC2 (SessionEnd unregisters), CC4 (liveness) | read in spec at `de06a1d8` |
 
 ## Findings
 
@@ -61,8 +61,8 @@ Do not treat #27 as "the daemon outlives its session": the daemon ends 3 to 6 s 
 ## Sources
 
 - hearsay-tools/squeal#27 and its comment, `gh issue view 27 --repo hearsay-tools/squeal --comments`, read 2026-10-17.
-- Spec 011 C8, C9 (`docs/specifications/011-core/spec.md` at `a0e2fc5a`); 012 CC2, CC4.
-- `src/core/daemon/lifecycle.ts`, `src/core/delivery/expiry.ts`, `src/harness/shared/session.ts`, `src/harness/shared/sweep.ts`, `src/harness/claude-code/hooks/session-end.ts` at `a0e2fc5a` (0.1.203).
+- Spec 011 C8, C9 (`docs/specifications/011-core/spec.md` at `de06a1d8`); 012 CC2, CC4.
+- `src/core/daemon/lifecycle.ts`, `src/core/delivery/expiry.ts`, `src/harness/shared/session.ts`, `src/harness/shared/sweep.ts`, `src/harness/claude-code/hooks/session-end.ts` at `de06a1d8` (0.1.203).
 - Installed plugin `~/.claude/plugins/cache/hearsay/squeal/0.1.199/dist/`.
 - Installed cezarion 0.16.0-dev.1886: `dist/workflows/run.js:604,714,820,2188`, `dist/delegation/process-liveness.js:206-240`.
 - Probe: `research/probes/issue-27/` (`probe.mjs`, `harness.mjs`, `output-run1.txt`, `README.md`).

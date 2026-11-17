@@ -1,6 +1,6 @@
 # 011-106: a daemon whose own runtime is gone starts no tier and exits as reinstalled, worker notes (2026-10-22)
 
-Brief W1 of `../wave-13.md`, base `a5901f2bf` (0.1.261), after 011-66 in the same branch. Evidence `../../research/issue-72.md` and its probe `../../research/probes/issue-72/probe.sh`; digest `docs/triage/2026-10-22-digest.md` group A. Spec 011 C9 and C11.
+Brief W1 of `../wave-13.md`, base `f90cc860a` (0.1.261), after 011-66 in the same branch. Evidence `../../research/issue-72.md` and its probe `../../research/probes/issue-72/probe.sh`; digest `docs/triage/2026-10-22-digest.md` group A. Spec 011 C9 and C11.
 
 ## What changed
 
@@ -51,7 +51,7 @@ All three fail on the 011-66 commit without this row's source change: copy A's d
 ## Verification at `1bdb4ddde`
 
 - `squeal run --all --wait`, revision 27: 867 test files current, 5 known failures, exit 1. Four are bundle drift: the plugin, Codex, OpenCode and Pi bundle tests name `cli/ps.mjs`, which bundles `WORKTREE_META_ROWS` and so its new `interrupted` row. Bundles are the coordinator's to rebuild.
-- The fifth is `test/scheduler/backlog-slots-overhead.test.ts` test 3, a 011-99 file. It fails on the base too. Run alone with `npx vitest run`, alternating base `a5901f2bf` (a detached worktree sharing this `node_modules`) and this head, at one-minute load 4.5 to 8.3 on 24 CPUs: base 1.24 and 1.25 times one tier's time, head 1.23 and 1.24, against its bound of 1.2. Board row 011-99 records the same failure on main at the CPU limits.
+- The fifth is `test/scheduler/backlog-slots-overhead.test.ts` test 3, a 011-99 file. It fails on the base too. Run alone with `npx vitest run`, alternating base `f90cc860a` (a detached worktree sharing this `node_modules`) and this head, at one-minute load 4.5 to 8.3 on 24 CPUs: base 1.24 and 1.25 times one tier's time, head 1.23 and 1.24, against its bound of 1.2. Board row 011-99 records the same failure on main at the CPU limits.
 - `test/keys/key-format.test.ts`, `test/store/worktree-meta.test.ts` and `test/daemon/restart-handover-signal.test.ts` (011-65) pass.
 
 ## Repair of review 0.1.262, B2: a rejected tier applies no setup outcome (brief W5 of `../wave-13.md`)

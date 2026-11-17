@@ -15,7 +15,7 @@ seed 173 vitest FAIL C at event 7: test/q.test.ts cut 2 times at one key
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 wall 181.54 s, user 19.24 s, sys 20.49 s, maxrss 362532 KB
 load after: 24.53 23.56 25.65 52/2913 3231814
-== r397 fix b862d2f2d INV=A,B,C,D,E KIND=vitest SEEDS=1-173
+== r397 fix 7505b4949 INV=A,B,C,D,E KIND=vitest SEEDS=1-173
 load before: 24.53 23.56 25.65 32/2720 3232778
 seed 97 vitest FAIL A at event 12: tier of f/p.test.ts cut at 60 s with no promoted file ranked before it (beat Infinity)
 seed 173 vitest FAIL C at event 7: test/q.test.ts cut 2 times at one key
@@ -27,7 +27,7 @@ load before: 39.73 29.15 27.33 49/2817 3374092
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 wall 312.20 s, user 28.25 s, sys 31.80 s, maxrss 318392 KB
 load after: 42.87 36.97 31.06 7/2742 3610476
-== r345 fix 3a8d364e4 INV=C,D,E KIND=vitest SEEDS=1-300
+== r345 fix 5427e2956 INV=C,D,E KIND=vitest SEEDS=1-300
 load before: 42.87 36.97 31.06 15/2732 3610725
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 wall 310.71 s, user 28.64 s, sys 32.95 s, maxrss 329396 KB

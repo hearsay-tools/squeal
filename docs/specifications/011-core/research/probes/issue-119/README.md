@@ -8,7 +8,7 @@ one-minute load **19.96533203125**, **24 CPUs** (`os.getloadavg()[0]`,
 `os.cpu_count()` in Python). Each probe also checks load before it starts and
 exits 77 without running if it exceeds the CPU count.
 
-Tested checkout: `9e4206a2d72738d6964b955aa0dc7073796f4d15`, Squeal **0.1.370**,
+Tested checkout: `2e2ff78f22ee35a42c8a4203ae404c2ebe283c01`, Squeal **0.1.370**,
 Node **v24.22.1**, Linux. The issue reports **0.1.369**, which was not executed.
 The committed Claude Code bundle is used as-is. No build or repository suite runs.
 
@@ -50,7 +50,7 @@ Final affected check:
 
 ```text
 $ ~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-119/probe.ts research/probes/issue-119/live.py
-Revision: 17 · 9e4206a2 + 17, dirty
+Revision: 17 · 2e2ff78f + 17, dirty
 No verdict: no test file's closure holds research/probes/issue-119/probe.ts; no test file's closure holds research/probes/issue-119/live.py. Worktree: known failures 0; not current: 1290 of 1314 test files (1290 unknown)
 ```
 

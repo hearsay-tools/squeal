@@ -2,16 +2,16 @@
 
 ## Verification output
 
-Requested candidate: `d3cbd205`, package 0.1.99. Range: `d9d268d9..d3cbd205`, bounded to `wave-13s.md` B2 and repair 001-229. HEAD is `a5a1415814fe9c4e9f7914bc929da71efb26adcb`, a mismatch with the requested candidate. `git diff d3cbd205..HEAD --name-only` lists only `docs/board.md`: the coordinator's task-status update. There is no executable, test, configuration or dependency delta. The checks below ran at that HEAD with a clean tracked tree, before this report. They verify executable-equivalent inputs; an exact-HEAD gate at `d3cbd205` is **unverified**. This report does not review the identity fix, process changes or spec 005 research in the range.
+Requested candidate: `4603e0ab`, package 0.1.99. Range: `da23ae78..4603e0ab`, bounded to `wave-13s.md` B2 and repair 001-229. HEAD is `7b97bd08bebac62664a6f97bcf3d34e138607be8`, a mismatch with the requested candidate. `git diff 4603e0ab..HEAD --name-only` lists only `docs/board.md`: the coordinator's task-status update. There is no executable, test, configuration or dependency delta. The checks below ran at that HEAD with a clean tracked tree, before this report. They verify executable-equivalent inputs; an exact-HEAD gate at `4603e0ab` is **unverified**. This report does not review the identity fix, process changes or spec 005 research in the range.
 
 Linux, Node 24.21.0. The independent full Vitest suite ran directly as required for reviewers. It was not replaced by the coordinator's supplied gate or Squeal's background results. `npm run build` was forbidden and was not run. Build reproducibility is **unverified**, not a blocker. Inspection confirms both committed CLI bundles carry the new expiry timer and scheduler rejection path; that is not a rebuild.
 
 ```text
 $ git rev-parse HEAD
-a5a1415814fe9c4e9f7914bc929da71efb26adcb
+7b97bd08bebac62664a6f97bcf3d34e138607be8
 $ git status --short
 (no output)
-$ git diff d3cbd205..HEAD --name-only
+$ git diff 4603e0ab..HEAD --name-only
 docs/board.md
 
 $ npm ci
@@ -53,7 +53,7 @@ Duration 8.00s
 (exit 0; no unhandled error)
 
 $ node --import tsx --input-type=module <no-operation deadline probe>
-# Unmodified predecessor Discharges from d9d268d9 and candidate Discharges.
+# Unmodified predecessor Discharges from da23ae78 and candidate Discharges.
 # Three protected entries, cap 1, entries older than the hour at expiry.
 # Only setTimeout delays scaled: one real millisecond represents one minute.
 # No discharge, hold or membership read after taking the holds.
@@ -74,13 +74,13 @@ $ node --import tsx --input-type=module <delayed-callback probe>
 
 The full suite was not green. Two tests exceeded their 5 s timeout (`harness/user-prompt-submit.test.ts:25`, `harness/codex/review.test.ts:66`). A symlink watch did not meet its condition within 3 s (`watcher/linked-dirs.test.ts:94`). Two hooks exceeded their 2 s budget: 6,016.85 ms (`e2e/lifecycle.test.ts:80`) and 2,494.01 ms (`e2e/transitions.test.ts:46`). There were no unhandled errors. All changed test files, the 40-request eviction regression, the no-operation stalled-refinement regression, race controls and key-format guard passed in this full run.
 
-Host one-minute load sampled 12.49 to 95.86 during the full run and 5.22 after the serial rerun. A causal link between these five failures and the B2 repair is **unverified**. All five complete files passed serially under unchanged inputs, assertions and timeouts. This does not change the independent full result. The coordinator's supplied 2,440-pass/3-timeout gate and green CI at `f8addfaa` are context, not this review's evidence.
+Host one-minute load sampled 12.49 to 95.86 during the full run and 5.22 after the serial rerun. A causal link between these five failures and the B2 repair is **unverified**. All five complete files passed serially under unchanged inputs, assertions and timeouts. This does not change the independent full result. The coordinator's supplied 2,440-pass/3-timeout gate and green CI at `56f2918e` are context, not this review's evidence.
 
 The external end-path probe used the actual initialized scheduler and its actual discharge ledger. Only `refined()` was replaced by a controlled promise; Vitest's Date and timeout clock simulated the hour. `getEventListeners(signal, "abort")` checks listener removal, and `vi.getTimerCount()` checks timer cleanup. It also rejects the losing refinement promise after expiry or forget and lets the event loop run, covering a failure after the answer has already failed. The no-operation red/green and delayed-callback probes exercise the discharge API with synthetic entries and scaled timers, not an actual hour-long daemon run. All probes were outside the tracked tree and removed before committing.
 
 ## Verdict
 
-**PASS d3cbd205: 0 blockers, 1 proven should-fix note, 0 nits.** The prior B2 reproduction is closed: refinement may remain suspended, no other discharge operation is required, expiry ends the hold and fails the answer, and history protected only by that hold is pruned using the deadline. The new delayed-callback behavior in S1 is an advisory note under the bounded re-review, not another round on unrelated settled findings. The independent full-suite result is reported above without converting a serial recovery into a green full run.
+**PASS 4603e0ab: 0 blockers, 1 proven should-fix note, 0 nits.** The prior B2 reproduction is closed: refinement may remain suspended, no other discharge operation is required, expiry ends the hold and fails the answer, and history protected only by that hold is pruned using the deadline. The new delayed-callback behavior in S1 is an advisory note under the bounded re-review, not another round on unrelated settled findings. The independent full-suite result is reported above without converting a serial recovery into a green full run.
 
 ## Blockers
 

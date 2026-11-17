@@ -1,6 +1,6 @@
 # Issue 86: `retry` fails on a transient store write lock
 
-Researcher findings, 2026-10-23, at main `78d42b7db` (0.1.279). Documentation only: no design, no implementation. Existing holds stand.
+Researcher findings, 2026-10-23, at main `63c1973e0` (0.1.279). Documentation only: no design, no implementation. Existing holds stand.
 
 ## Verdict
 
@@ -26,7 +26,7 @@ The CLI has one wait (2 s) and no retry. Nothing between `askRetry` and the proc
 
 **Reported incident** (issue report, not independently verified). hearsay-tools/squeal#86, Squeal 0.1.278, 2026-10-23, during hearsay-tools/cezarion#1549, several worktrees on one store. `squeal retry packages/web/e2e/session-footer.e2e.ts --reason load` exited 1 with `ERR_SQLITE_ERROR`, errcode 5, from `BEGIN IMMEDIATE` in `Connection.transaction`, called by `askRetry` and `retryCommand`. The next invocation printed `Retry queued (reason: load)`. No daemon crash was seen. Load and the lock holder were not recorded.
 
-**Synthetic probe** (verified by experiment, 0.1.279 source at `78d42b7db` through `tsx`, Node v24.21.0). Host 24 CPUs. One-minute load at the first try: 27.11, above the CPU count, so the probe skipped itself (`SKIP: load above CPU count`). A wait loop rechecked every 10 s and ran the probe at load 22.19 (2026-10-23T21:48:38+02:00).
+**Synthetic probe** (verified by experiment, 0.1.279 source at `63c1973e0` through `tsx`, Node v24.21.0). Host 24 CPUs. One-minute load at the first try: 27.11, above the CPU count, so the probe skipped itself (`SKIP: load above CPU count`). A wait loop rechecked every 10 s and ran the probe at load 22.19 (2026-10-23T21:48:38+02:00).
 
 Command, from the worktree root: `timeout 120 npx tsx docs/specifications/011-core/research/probes/issue-86/probe.ts`. The probe creates a fresh store under `mkdtemp(/tmp/i86-*)`, takes the write lock in a child process (`holder.mjs`: `BEGIN IMMEDIATE`, hold, `COMMIT`), calls `askRetry` with the CLI's 2,000 ms busy timeout and deletes the directory. It never opens the live store. Full output: `probes/issue-86/output-run1.txt`.
 
@@ -60,6 +60,6 @@ The bound itself (2 s now) is a spec decision; this file names no value.
 ## Sources
 
 - hearsay-tools/squeal#86: https://github.com/hearsay-tools/squeal/issues/86 (read 2026-10-23).
-- `src/cli/retry.ts`, `src/cli/daemon-access.ts`, `src/cli/main.ts`, `src/core/retry/records.ts`, `src/core/store/connection.ts`, `src/core/store/open.ts` at `78d42b7db`; tag `squeal--v0.1.278` for the diff.
+- `src/cli/retry.ts`, `src/cli/daemon-access.ts`, `src/cli/main.ts`, `src/core/retry/records.ts`, `src/core/store/connection.ts`, `src/core/store/open.ts` at `63c1973e0`; tag `squeal--v0.1.278` for the diff.
 - `docs/specifications/011-core/spec.md` C7 (busy timeouts, past long holders) and C13 ("Store busy past a write's wait"); `status.md` 2026-10-17 (011-01).
 - Probe: `docs/specifications/011-core/research/probes/issue-86/` (`probe.ts`, `holder.mjs`, `output-run1.txt`, `README.md`).

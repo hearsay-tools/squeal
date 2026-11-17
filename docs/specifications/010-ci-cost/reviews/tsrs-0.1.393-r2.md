@@ -2,22 +2,22 @@
 
 ## Verification
 
-Reviewed on 2026-11-02 under `tasks/tsrs-review.md`, section "Narrow re-review after CI". Prior review: `tsrs-0.1.393.md`, PASS for `8ca0eead0948e90ff70560fa9ae70e0c321f5fbe`. This review covers only the delta from that commit.
+Reviewed on 2026-11-02 under `tasks/tsrs-review.md`, section "Narrow re-review after CI". Prior review: `tsrs-0.1.393.md`, PASS for `243fcc4b702e9bd4629ab1e9af6cd72f2d2b71cd`. This review covers only the delta from that commit.
 
 All local checks ran on the clean candidate before writing this report:
 
 ```text
 git rev-parse HEAD
-24a8a63b6f19f81987330e5a333e24e6ffd53ed9
+a753102e4acedbc8c19dffe7c9c0563d0c295886
 git status --short
 (empty)
-git diff --name-only 8ca0eead0 24a8a63b6f19f81987330e5a333e24e6ffd53ed9
+git diff --name-only 243fcc4b7 a753102e4acedbc8c19dffe7c9c0563d0c295886
 docs/specifications/010-ci-cost/reviews/tsrs-0.1.393.md
 docs/specifications/010-ci-cost/tasks/010-34/notes.md
 docs/specifications/010-ci-cost/tasks/tsrs-review.md
 install.sh
 
-git diff 8ca0eead0 24a8a63b6f19f81987330e5a333e24e6ffd53ed9 -- install.sh
+git diff 243fcc4b7 a753102e4acedbc8c19dffe7c9c0563d0c295886 -- install.sh
 -SQUEAL_VERSION=0.1.392
 +SQUEAL_VERSION=0.1.393
 
@@ -25,7 +25,7 @@ sh -n install.sh
 exit 0, no output
 bash -n install.sh
 exit 0, no output
-git diff --check 8ca0eead0 24a8a63b6f19f81987330e5a333e24e6ffd53ed9
+git diff --check 243fcc4b7 a753102e4acedbc8c19dffe7c9c0563d0c295886
 exit 0, no output
 ```
 
@@ -88,11 +88,11 @@ Test Files: 1 failed | 469 passed (470)
 Tests: 1 failed | 3756 passed | 2 skipped (3759)
 ```
 
-`gh run view 41435918555 --json headSha,status,conclusion,jobs` confirms [current CI](https://github.com/hearsay-tools/squeal/actions/runs/41435918555) belongs to `24a8a63b6f19f81987330e5a333e24e6ffd53ed9`. At the final inspection it remains **in_progress**: all three Node 22 shards are in Test; the Node 24 job has completed successfully, including lint, typecheck, version-sensitive tests, build and bundle checks. All four frozen installs passed. Node 22 build and bundle checks are still pending. Full-suite CI remains **unverified**. The prior failed run is not passing evidence for this candidate.
+`gh run view 41435918555 --json headSha,status,conclusion,jobs` confirms [current CI](https://github.com/hearsay-tools/squeal/actions/runs/41435918555) belongs to `a753102e4acedbc8c19dffe7c9c0563d0c295886`. At the final inspection it remains **in_progress**: all three Node 22 shards are in Test; the Node 24 job has completed successfully, including lint, typecheck, version-sensitive tests, build and bundle checks. All four frozen installs passed. Node 22 build and bundle checks are still pending. Full-suite CI remains **unverified**. The prior failed run is not passing evidence for this candidate.
 
 ## Verdict
 
-**PASS 24a8a63b6f19f81987330e5a333e24e6ffd53ed9**
+**PASS a753102e4acedbc8c19dffe7c9c0563d0c295886**
 
 0 blockers, 0 should-fix findings, 0 nits. Pending CI and the stated affected-test limits are not findings. This review does not establish full-suite coverage or authorize a release.
 

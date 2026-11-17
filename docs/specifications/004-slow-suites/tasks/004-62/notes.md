@@ -25,10 +25,10 @@ Wave 7 W1, slice. Spec 004 D8 as amended 2026-10-16, D9, `research/issue-5.md`.
 1. On-wording: "and Stop waits for them". D8 says "Stop waits for them (D9)". Until a harness's waiting entry has run, Stop holds once instead of waiting, which the line says and the primer does not.
 2. Off-wording ends "`run --slow --wait 60000` runs them now". The brief named the command with `--wait`, and its waiting is implied, not spelled out, to stay within the cap.
 3. Under the 5000-char budget, the skill marks the policy with the substring `Stop waits`, not the whole ending. `commands.md` carries the full ending.
-4. `research/probes/issue-5/probe.ts` is outside W1's ownership. Its hand-built `Coverage` needed `requireSlowSuite` to show the two primers. That one-line edit stands alone in commit `776af0a7`, and the coordinator was asked (request `41ef74b0`). `output.txt` stays as the triage's record. This row's output is below.
+4. `research/probes/issue-5/probe.ts` is outside W1's ownership. Its hand-built `Coverage` needed `requireSlowSuite` to show the two primers. That one-line edit stands alone in commit `6055c25e`, and the coordinator was asked (request `41ef74b0`). `output.txt` stays as the triage's record. This row's output is below.
 5. The brief says to read `docs/styleguide.md` on agent-facing text, but it has no section on that (it has `## Agent work` only). I followed the existing primer and skill voice.
 
-## Probe output (`npx tsx docs/specifications/004-slow-suites/research/probes/issue-5/probe.ts`, at 776af0a7)
+## Probe output (`npx tsx docs/specifications/004-slow-suites/research/probes/issue-5/probe.ts`, at 6055c25e)
 
     === stop.requireSlowSuite: false (policy read: false, stopSlowWaitMs: null)
     --- primer, Claude Code (squeal on PATH)
@@ -56,4 +56,4 @@ Wave 7 W1, slice. Spec 004 D8 as amended 2026-10-16, D9, `research/issue-5.md`.
 
 - `plugins/*/dist` drifts from the build: `primer.ts` is bundled. Expect the bundle-equality tests (`test/harness/pi/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them", and the Claude Code, Codex and OpenCode equivalents) to fail until the coordinator rebuilds. This row did not run `npm run build`.
 - 006's `a2-slow` and `current-before-claim` read the new default-off primer at the next release's atomic tier (board row).
-- Full-suite checkpoint at revision 28 (848fbd3d): 6 known failures. Four are the bundle drift above (`codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`, `plugin.test.ts`). Two failed under host load and pass alone (`npx vitest run` of both, 5 of 5, load average 12 to 26): `test/runners/node-test/run-reads-fidelity.test.ts` and `test/runners/vitest/observe-fidelity.test.ts`. Neither touches this row's files. They are named here and were not investigated further.
+- Full-suite checkpoint at revision 28 (c9107116): 6 known failures. Four are the bundle drift above (`codex/plugin.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`, `plugin.test.ts`). Two failed under host load and pass alone (`npx vitest run` of both, 5 of 5, load average 12 to 26): `test/runners/node-test/run-reads-fidelity.test.ts` and `test/runners/vitest/observe-fidelity.test.ts`. Neither touches this row's files. They are named here and were not investigated further.

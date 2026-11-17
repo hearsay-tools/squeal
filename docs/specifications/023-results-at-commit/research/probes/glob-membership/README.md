@@ -23,4 +23,4 @@ Scenarios in `scenarios.sh`:
 - S7: a shadowing `src/registry.js` and a retargeted `package.json` `imports` entry, at restart and live.
 - S8: a template-literal `import()`: what its closure holds.
 
-The squawk repository is `~/projects/cezar`; its main was `8599516b2` and Squeal's `aaa03f8c8` when read.
+The squawk repository is `~/projects/cezar`; its main was `8599516b2` and Squeal's `35b806131` when read.

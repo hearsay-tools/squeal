@@ -1,6 +1,6 @@
 # R5 notes: repair of review 0.1.295 B2 to B4, the coverage boundary (015-11)
 
-Brief: "R5" in `../wave-2.md` (on `origin/main`). Findings: `../../reviews/0.1.295.md` B2, B3 and B4. Spec: D8 with its 2026-10-24 amendments, B3's sentence corrected in `status.md`. The tree starts from `5e18ed2b0`, beside R4 (the counter); nothing under `src/core/code/count/**` changed.
+Brief: "R5" in `../wave-2.md` (on `origin/main`). Findings: `../../reviews/0.1.295.md` B2, B3 and B4. Spec: D8 with its 2026-10-24 amendments, B3's sentence corrected in `status.md`. The tree starts from `882bd011e`, beside R4 (the counter); nothing under `src/core/code/count/**` changed.
 
 ## What changed
 
@@ -51,4 +51,4 @@ A test file's helper for coverage moved to `test/runners/vitest/coverage-helpers
 
 - **A hung run's late payloads.** `abandon` closes the instance in the background. A worker of that run that finishes later writes its payload into the abandoned instance's reports directory, and nothing takes it. The directory goes when the adapter closes (`#coverageDirs`). Deleting the directory when the instance is dropped could race the writer, which may still read payloads of earlier clean runs from that directory.
 - **The setup walk runs per run**, like the test-file walk (015-11 residue). One walk per project per run; cheap here.
-- **Bundles.** `dist/coverage/provider.mjs` is not in the committed bundles at `5e18ed2b0`, so the bundle-drift tests fail as the brief expects. `provider.mjs` itself is unchanged by this row.
+- **Bundles.** `dist/coverage/provider.mjs` is not in the committed bundles at `882bd011e`, so the bundle-drift tests fail as the brief expects. `provider.mjs` itself is unchanged by this row.

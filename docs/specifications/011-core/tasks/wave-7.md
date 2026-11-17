@@ -4,7 +4,7 @@ The human, 2026-10-21: widen 001-381 to any running tier a newer revision supers
 
 ## R1: 001-381, a running tier yields to a newer revision or a named wait
 
-Use /researcher. Shape: research. Read board row 001-381 (cases a to c), spec 011 C4 (step 5, claims, the four-tiers turn) and C15 (Rank), `research/issue-63.md`, `research/issue-51.md`, `research/catch-up.md`, and issue [#69](https://github.com/hearsay-tools/squeal/issues/69) with its comment. Base: main at 9ba34257 or later.
+Use /researcher. Shape: research. Read board row 001-381 (cases a to c), spec 011 C4 (step 5, claims, the four-tiers turn) and C15 (Rank), `research/issue-63.md`, `research/issue-51.md`, `research/catch-up.md`, and issue [#69](https://github.com/hearsay-tools/squeal/issues/69) with its comment. Base: main at da73be4e or later.
 
 Outcome: the rule by which a running tier yields at a file boundary, and the C4 and C15 sentences that say it.
 
@@ -20,7 +20,7 @@ Done when: the findings file answers 1 to 4 and ends with a recommendation, the 
 
 ## W1: 011-50, file-level `why` returns in seconds
 
-Use /worker. Shape: slice. Read board row 011-50 and `research/issue-55.md`. Base: main at 9ba34257 or later.
+Use /worker. Shape: slice. Read board row 011-50 and `research/issue-55.md`. Base: main at da73be4e or later.
 
 Seam: `resolve()` in `src/core/status/why.ts`, the `findIndex` filter that removes repeats from `named`. First edit: keep a `Set` of each check's identity (what `sameCheck` compares) and drop repeats in one pass, in order of first appearance as now.
 

@@ -1,7 +1,7 @@
 # Issue #192: the one-shot gate drops completed results under a held store write lock
 
 Research for hearsay-tools/squeal#192 (reported on 0.1.440, 2026-11-12).
-Inspected at `edc289eab` (0.1.442). The gate's keep path is the same in
+Inspected at `6deb6d611` (0.1.442). The gate's keep path is the same in
 both: `git diff --stat squeal--v0.1.440 HEAD` over
 `src/core/code/gate/`, `src/core/store/{sliced-write,busy,connection}.ts`
 and `src/cli/code-gate-stored.ts` is empty.
@@ -152,7 +152,7 @@ delay. Two parts, smallest first:
 ## Sources
 
 - Issue: https://github.com/hearsay-tools/squeal/issues/192 (read with `gh issue view 192 -R hearsay-tools/squeal`).
-- Source at `edc289eab`: `src/core/code/gate/keep.ts`, `src/core/code/gate/collect.ts:193`, `src/core/code/gate/stored.ts:90-138`, `src/core/store/sliced-write.ts`, `src/core/store/busy.ts`, `src/core/store/lock-holders.ts`, `src/cli/store-writes.ts:84`.
+- Source at `6deb6d611`: `src/core/code/gate/keep.ts`, `src/core/code/gate/collect.ts:193`, `src/core/code/gate/stored.ts:90-138`, `src/core/store/sliced-write.ts`, `src/core/store/busy.ts`, `src/core/store/lock-holders.ts`, `src/cli/store-writes.ts:84`.
 - Tests: `test/code/gate/keep.test.ts:169-245`.
 - Specs: `docs/specifications/020-quality-gate/spec.md` D11.7 (line 191) and D17.3 (line 274); `docs/specifications/021-remote-store-and-execution/spec.md` D1, D5, D15; its `status.md` line 33; `docs/board.md` row 021-20.
 - Probe: `research/probes/issue-192/` (README, `gate-lock.probe.ts`, `vitest.config.ts`, `evidence-2026-11-12.txt`).

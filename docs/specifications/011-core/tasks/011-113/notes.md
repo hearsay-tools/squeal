@@ -1,6 +1,6 @@
 # 011-113: a status read gives up on a busy store after 3 ms
 
-Wave 15, W1, repair, from main with 0.1.265 (`804fc3584`). Two fix commits, then these notes.
+Wave 15, W1, repair, from main with 0.1.265 (`ca8daf590`). Two fix commits, then these notes.
 
 ## The step that gave up
 
@@ -18,7 +18,7 @@ Reproduced on the first local run of `test/integration/pytest-environment.test.t
   Connection.read       src/core/store/connection.ts:70
 ```
 
-The lookup came with 011-76 (`e1d42c41d`, 2026-10-21). Only a read of a failure with a location and a key the state sink recorded (`readFailureKeys`) reaches it. In the pytest test, `settle` polls through `until`, which retries a throw, so its early BUSY results were hidden. The last, unguarded `status(main)` failed.
+The lookup came with 011-76 (`d64d9d07c`, 2026-10-21). Only a read of a failure with a location and a key the state sink recorded (`readFailureKeys`) reaches it. In the pytest test, `settle` polls through `until`, which retries a throw, so its early BUSY results were hidden. The last, unguarded `status(main)` failed.
 
 ## What was ruled out
 

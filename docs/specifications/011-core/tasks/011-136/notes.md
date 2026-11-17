@@ -1,6 +1,6 @@
 # 011-136: the backlog files an edit's cancel cut after they started
 
-Worker 1ac8625f, wave 30 W7 (`tasks/wave-30.md`), from main at 1fec05b84, 2026-10-24. Shape: survey. No product change.
+Worker 1ac8625f, wave 30 W7 (`tasks/wave-30.md`), from main at 0f4237520, 2026-10-24. Shape: survey. No product change.
 
 ## Answers
 
@@ -14,7 +14,7 @@ Worker 1ac8625f, wave 30 W7 (`tasks/wave-30.md`), from main at 1fec05b84, 2026-1
 ## 1. Sources
 
 - Copies of this host's two stores, each with its `-wal` and `-shm`, then its run logs, back to back: squeal's copy ended at 09:22:21Z and cezar's at 09:22:26Z, under `nice -n 10` and `ionice -c3` (load 54.9 on 24 CPUs). Read only, in the worker's scratch directory. No live store or socket was opened, no test or eval ran.
-- `waste.mjs` from main at 1fec05b84 on both copies, 24 hours to 2026-10-24T09:22:15Z (`probes/results/waste-*.json`).
+- `waste.mjs` from main at 0f4237520 on both copies, 24 hours to 2026-10-24T09:22:15Z (`probes/results/waste-*.json`).
 - Two probes in this folder, each read only on a copy: `probes/cut.mjs` (each tier the cause "an edit arrived during a backlog tier" cancelled, file by file, with the revisions and runs around it) and `probes/order.mjs` (the order the tier's modules ended in, and a model of a longest-first order). Their output for this window is in `probes/results/`. Short scratch scripts read the events around a run, a later run's test durations and the store's schema; their results are quoted below.
 - Source read: Vitest 5.0.3 (`node_modules/vitest/dist/chunks/index.DpLw24bj.js`, `index.ggMXe2IF.js`), `src/core/scheduler/{quiet,yields,backlog}.ts`, `src/runners/vitest/reporter.ts`, both projects' `squeal.config.json`. Both run `baseline.onStart: "lookup-only"`, so a backlog tier holds catch-up, `run --all` checkpoints and re-runs, not misses.
 

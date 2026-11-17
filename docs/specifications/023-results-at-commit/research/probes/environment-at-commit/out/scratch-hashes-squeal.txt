@@ -1,8 +1,8 @@
 # Environment hash a Squeal 0.1.523 daemon (Node v26.13.0) recorded in each scratch clone after
 # `pnpm install --frozen-lockfile --prefer-offline`, read from the clone's own store
 # (worktree_environment_hashes joined to environments). 2026-11-16 15:47Z. Output copied verbatim.
-x1 (d2678e570) 63bf6a90cd44a28307dd1c2ecf184303ea683b990c6013feb0d06ed209013125 v26.13.0 3+observe.6 5.0.3 installed dbfaa96fe258d4e97e821d60595421171f52d41d262387eb4dc786801132a984
-x2 (1a92af9d1) f272b4c907fd3cab6c1f64e98841e40d868f54165229e82c105884b59aefacc1 v26.13.0 3+observe.6 5.0.3 installed 9c56ba5e4e57917c389e1e1a28ea4137a98c5f2c1d7304c80915388fab359e7a
-# Live store (copy of 15:44Z): this worktree (087110d8, at d2678e570) keys with 63bf6a90cd44…;
+x1 (c13564931) 63bf6a90cd44a28307dd1c2ecf184303ea683b990c6013feb0d06ed209013125 v26.13.0 3+observe.6 5.0.3 installed dbfaa96fe258d4e97e821d60595421171f52d41d262387eb4dc786801132a984
+x2 (bf1cf446e) f272b4c907fd3cab6c1f64e98841e40d868f54165229e82c105884b59aefacc1 v26.13.0 3+observe.6 5.0.3 installed 9c56ba5e4e57917c389e1e1a28ea4137a98c5f2c1d7304c80915388fab359e7a
+# Live store (copy of 15:44Z): this worktree (087110d8, at c13564931) keys with 63bf6a90cd44…;
 # f272b4c907fd… was first recorded 2026-11-11T18:45:53Z and keyed 38 worktree rows; the two
 # descriptors differ only in installedDependencies.

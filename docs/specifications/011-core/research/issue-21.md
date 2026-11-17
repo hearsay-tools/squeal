@@ -4,7 +4,7 @@
 
 Reproduced on 0.1.199, with one difference from the issue: `squeal status` exits 1 in a repository with no store, not 0. In a scratch Git repository whose `squeal.config.json` holds `"inputs": { "a.test.mjs": ["!docs/**"] }`, `squeal status` and `status --json` say only that there is no store; `setup --check` names the problem and exits 1; `setup --plan --json` names it under `config.problems` and `outdated` and exits 0. A valid-config control gives the same `status` output, and `setup --check` exits 0 with `Nothing is outdated.`
 
-Host load at the start: `17.35 27.06 25.43` on 24 CPUs (`nproc`), so the live run went ahead. Load during the probes: `17.31`; at the end: `18.81`. CLI exercised: 0.1.199, `~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, run with `node` directly and once through the PATH launcher `~/.local/bin/squeal`, which also resolved 0.1.199. Checkout: 0.1.203 (`package.json`) at `7122a0c3`, not exercised. No daemon, store, build, install or test suite was started; `.git/squeal` was absent after every run.
+Host load at the start: `17.35 27.06 25.43` on 24 CPUs (`nproc`), so the live run went ahead. Load during the probes: `17.31`; at the end: `18.81`. CLI exercised: 0.1.199, `~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, run with `node` directly and once through the PATH launcher `~/.local/bin/squeal`, which also resolved 0.1.199. Checkout: 0.1.203 (`package.json`) at `345b6445`, not exercised. No daemon, store, build, install or test suite was started; `.git/squeal` was absent after every run.
 
 ## Questions answered
 
@@ -16,7 +16,7 @@ Host load at the start: `17.35 27.06 25.43` on 24 CPUs (`nproc`), so the live ru
 | 4 | Does `setup --plan --json` report it? | Yes, `config.problems` and `outdated`, exit 0 | verified by experiment, 0.1.199 |
 | 5 | Valid control | No problem lines, `Nothing is outdated.`, `--check` exit 0, `status` unchanged | verified by experiment, 0.1.199 |
 | 6 | Does `status` show it when a daemon has run? | Probably yes, as a daemon note, but not tested | read in source code, 0.1.199 dist; not run |
-| 7 | Owning spec sections | 011 C6 (status), C10 (loader and its one note), C8 (session header); 005 D3 (`setup --check`) | read in spec, 011 at `7122a0c3` |
+| 7 | Owning spec sections | 011 C6 (status), C10 (loader and its one note), C8 (session header); 005 D3 (`setup --check`) | read in spec, 011 at `345b6445` |
 
 ## Findings
 
@@ -67,6 +67,6 @@ Treat #21 as reproduced, scoped to 011 C6: `status` (text and `--json`) runs the
 ## Sources
 
 - Issue: `gh issue view 21 --repo hearsay-tools/squeal`, read 2026-10-17.
-- Spec: `docs/specifications/011-core/spec.md` C6, C8, C10 and `status.md` at `7122a0c3`; `docs/specifications/005-agent-adoption/spec.md` D3.
+- Spec: `docs/specifications/011-core/spec.md` C6, C8, C10 and `status.md` at `345b6445`; `docs/specifications/005-agent-adoption/spec.md` D3.
 - Source: `~/.codex/plugins/cache/hearsay/squeal/0.1.199/dist/cli/squeal.mjs`, lines 2869 (`describeProblems`), 2883 (`compiles`), 6485 to 6527 (`withStatusStore`), 46186 (`Notes:`), 50075 and 50092 (policy notes).
 - Probe: `probes/issue-21/probe.sh` and `output-negated.txt`, `output-valid.txt`, `output-brace.txt`. Commands: `cat /proc/loadavg`, `nproc`, `sh probe.sh negated|valid|brace`. The launcher check ran by hand in a scratch repository: `squeal --version` (0.1.199, exit 0), `squeal status` (exit 1), `squeal status | cat` (`PIPESTATUS` `1 0`).

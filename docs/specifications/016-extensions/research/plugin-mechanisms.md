@@ -1,6 +1,6 @@
 # 016-02: plugin mechanisms of developer tools
 
-Researcher findings for brief `plugin-mechanisms-brief.md`, 2026-10-24. Sources were read at the release tags in Sources. Probes are in `probes/plugin-mechanisms/`, with their output. Squeal's code was read at `0822a4440`. Wire formats are left to 016-03, adoption to 016-05 and cache correctness to 016-06.
+Researcher findings for brief `plugin-mechanisms-brief.md`, 2026-10-24. Sources were read at the release tags in Sources. Probes are in `probes/plugin-mechanisms/`, with their output. Squeal's code was read at `a52303814`. Wire formats are left to 016-03, adoption to 016-05 and cache correctness to 016-06.
 
 ## Questions answered
 
@@ -34,7 +34,7 @@ Researcher findings for brief `plugin-mechanisms-brief.md`, 2026-10-24. Sources 
 
 Tags: read in official docs and read in source code at the versions shown. neotest was added because it is the closest analogue to a many-language test-runner adapter: six functions, 42 adapters named in its README (commit `27bf921`, 2026-08-16). The adapter builds the command and parses results. The core owns the process.
 
-Squeal today (read in source code, `0822a4440`): runner adapters are TypeScript modules inside the daemon (`src/core/types/runner.ts`). Vitest is imported in-process through `vitest/node` (`src/runners/vitest/load.ts`). pytest runs as a child process that loads Squeal's own pytest plugin (`src/runners/pytest/runtime/squeal_pytest.py`), which sends events back. node:test runs as a child process group (`src/runners/node-test/run/process.ts`). So Squeal already uses both shapes: an in-process adapter, and a process with a plugin inside the tool.
+Squeal today (read in source code, `a52303814`): runner adapters are TypeScript modules inside the daemon (`src/core/types/runner.ts`). Vitest is imported in-process through `vitest/node` (`src/runners/vitest/load.ts`). pytest runs as a child process that loads Squeal's own pytest plugin (`src/runners/pytest/runtime/squeal_pytest.py`), which sends events back. node:test runs as a child process group (`src/runners/node-test/run/process.ts`). So Squeal already uses both shapes: an in-process adapter, and a process with a plugin inside the tool.
 
 ### 2. Contract version
 

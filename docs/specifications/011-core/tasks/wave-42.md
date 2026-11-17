@@ -1,6 +1,6 @@
 # Wave 42
 
-From main after 0.1.325 (`def5dc915`), 2026-10-25. Two rows of the human's triage round 10, on disjoint seams: a load retry that runs after a bounded wait (W1, gh-92), and Stop news that waits for the next boundary (W2, gh-93). Host load is about 40 on 24 CPUs, so the wave holds at two. 011-224 (`src/core/retry/records.ts`) follows W1. 011-209, 011-217, 011-219, 011-221, 011-222 and 011-201 follow.
+From main after 0.1.325 (`e962bc0e8`), 2026-10-25. Two rows of the human's triage round 10, on disjoint seams: a load retry that runs after a bounded wait (W1, gh-92), and Stop news that waits for the next boundary (W2, gh-93). Host load is about 40 on 24 CPUs, so the wave holds at two. 011-224 (`src/core/retry/records.ts`) follows W1. 011-209, 011-217, 011-219, 011-221, 011-222 and 011-201 follow.
 
 ## W1: 011-213, a load retry runs once after waiting 600 s for the load gate
 

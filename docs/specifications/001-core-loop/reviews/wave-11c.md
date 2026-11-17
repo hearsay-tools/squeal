@@ -40,7 +40,7 @@ HEAD is `fc2bbbd`, two docs commits past the rebuild. `git diff --stat c61a98e f
 
 ```
 $ git rev-parse HEAD
-fc2bbbd6a146354d05773389ac33b4bbc5734a95
+3de312b16ea7dae3e2ccafc3d0daf04b2d608ab0
 $ npm ci
 (ok; install-scripts warnings for @parcel/watcher and esbuild)
 $ npm run lint

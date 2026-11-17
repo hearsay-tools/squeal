@@ -1,6 +1,6 @@
 # 015-23 notes: two parse errors that need not be
 
-Worker 3aad76a7, 2026-10-24. From `main` at 923c5a2e2. Brief: `tasks/wave-1b.md` W4. The sibling rows 015-19, 015-20 and 015-22 work on disjoint files.
+Worker 3aad76a7, 2026-10-24. From `main` at 88764f564. Brief: `tasks/wave-1b.md` W4. The sibling rows 015-19, 015-20 and 015-22 work on disjoint files.
 
 ## Seam map
 

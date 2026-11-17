@@ -20,7 +20,7 @@ The branch HEAD is `ede877f`, one commit past the candidate. That commit changes
 
 ```
 $ git rev-parse HEAD
-ede877fb44d077c8f3cb936ff7a0f12422ae6a66
+c2026ec6cb4a51fa826208cd019f0296f4e75c53
 $ git show --stat ede877f
  docs/board.md                                     |  7 ++++---
  docs/specifications/001-core-loop/tasks/wave-9.md | 12 ++++++++++++

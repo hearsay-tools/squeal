@@ -30,7 +30,7 @@ Wording (never fails): the changed and touched sets `observedMoves` gave, and ea
 
 Overlay: in `observedMoves`, `return { growth, ...(await changedSince(before, paths, context.hasher)) };` becomes `return { growth, changed: new Set(), touched: new Set() };`.
 
-- Before this row (commit `64cbaa996`): `result.fired` is `false`. The test failed with `expected false to be true` at the `fired` assertion. This reproduces N1.
+- Before this row (commit `57b0eb3fe`): `result.fired` is `false`. The test failed with `expected false to be true` at the `fired` assertion. This reproduces N1.
 - After: `fired` is `true`, `uncovered` is `[]`, and the new case reports two differences:
   - `test/changed.test.ts: unstable: data/changed.txt at the last release, store at moved:test/changed.test.ts at the candidate (the candidate stores more)`
   - `test/touched.test.ts: requeue at the last release, store at moved:test/touched.test.ts at the candidate (the candidate stores more)`

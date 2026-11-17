@@ -1,4 +1,4 @@
-$ cat /proc/loadavg: 6.87 6.71 8.50 11/2275 4016990; nproc: 24; git: 9b48fa424; package.json 0.1.292
+$ cat /proc/loadavg: 6.87 6.71 8.50 11/2275 4016990; nproc: 24; git: 9fda882b0; package.json 0.1.292
 $ npx vitest run --config docs/specifications/011-core/research/probes/issue-92/vitest.config.ts --reporter=verbose --silent=false
 
  RUN  v5.0.3 ~/projects/squeal/.ai/cezar/worktrees/777777f6-72d9-42df-9a87-7ed1366028e9

@@ -1,6 +1,6 @@
 # 011-172: quality 2026-10-24 slices 2, 7, 8, 9, 10 and 12
 
-Wave 29 W4, `tasks/wave-29.md`, from main 897e3e357. Slice 6 went with 011-171 (W3). Each slice is one or two commits that name it. No behaviour or printed text changes; the key-format alarm (`test/keys/key-format.test.ts`) passes with no version moved.
+Wave 29 W4, `tasks/wave-29.md`, from main 37e56d09a. Slice 6 went with 011-171 (W3). Each slice is one or two commits that name it. No behaviour or printed text changes; the key-format alarm (`test/keys/key-format.test.ts`) passes with no version moved.
 
 ## 1. What changed
 

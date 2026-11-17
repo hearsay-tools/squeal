@@ -43,7 +43,7 @@ Copy: `~/projects/cezar/.git/squeal/store.sqlite` (2.5 GB) by the SQLite backup 
 
 The tables below are the final code (commit 3). The first measurement, on commit 2, gave the same result: before medians 90.3 and 90.9 ms, after 1.3 and 1.4 ms, load average 9.2 to 9.9.
 
-Each poll runs in one `readTransaction`; CPU is `process.cpuUsage` (user + system) per poll; 3 warm-up pairs, then 15 pairs in alternating order. "Before" is the quiet poll as at `427e4b049`: `statesMark` + `readHeader` over the kept states and rows (the news was already kept). It is measured on this branch, where `readHeader` does the same work through `headerPart` + `headerWith`, in the same process as "after". Host load average 8.6 to 8.9 on 24 vCPUs, the host's real load from parallel coordinators; no load was made on purpose.
+Each poll runs in one `readTransaction`; CPU is `process.cpuUsage` (user + system) per poll; 3 warm-up pairs, then 15 pairs in alternating order. "Before" is the quiet poll as at `0316b32a3`: `statesMark` + `readHeader` over the kept states and rows (the news was already kept). It is measured on this branch, where `readHeader` does the same work through `headerPart` + `headerWith`, in the same process as "after". Host load average 8.6 to 8.9 on 24 vCPUs, the host's real load from parallel coordinators; no load was made on purpose.
 
 | Run | Before, ms (sorted) | Median | After, ms (sorted) | Median |
 |---|---|---|---|---|

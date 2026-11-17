@@ -1,6 +1,6 @@
 # Review of cand/0.1.250 (013-06)
 
-Use /reviewer. Shape: review. Pinned to the `cand/0.1.250` SHA named in the spawn; the range is `b9062dd94..<sha>`: 013-06's two code commits (`feat(013-06)`, the validity cases by agreement), the worker's notes and the release commit (0.1.250, bundles; no key-format or adapter version raise).
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.250` SHA named in the spawn; the range is `35428eafc..<sha>`: 013-06's two code commits (`feat(013-06)`, the validity cases by agreement), the worker's notes and the release commit (0.1.250, bundles; no key-format or adapter version raise).
 
 Read `brief.md` and `notes.md` beside this file, `../../research/vitest-close-leak.md` 1, 3 and its recommendation, 013 V1 and V8, and 004 D2. Check that:
 - every awaited close in the brief empties the instance after the close resolves: `#recreate`, the adapter's `close()` (also the slow pass's, through `withSlowInstance`), `closeBroken`, `closeRejected`; `abandon` is unchanged;

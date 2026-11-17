@@ -1,6 +1,6 @@
 # Row 011-376: the coverage writer's turn test on CI
 
-Worker ffae9bc4, wave 111 W1, 2026-11-16. Base main d5f73b118.
+Worker ffae9bc4, wave 111 W1, 2026-11-16. Base main 4f496bea0.
 
 ## Cause
 

@@ -14,7 +14,7 @@ Triage, 2026-11-15. [Issue #224](https://github.com/hearsay-tools/squeal/issues/
 
 ## Duplicate and shipped-work check
 
-**Read in board and prior research:** fetched `origin/main` at `d4dd56b30a22ac8aa64bb4629afa362b9f2addcc`. Searched its board for `#224`, `gh-224`, retention/contention symptoms and the named test files. No existing issue-224 row or named-file row. Checked open issues with `gh issue list --repo hearsay-tools/squeal --state open --limit 200 --json number,title,labels`, including `triaged` issues: no exact open duplicate. Open #216 covers broader interruption/load recovery; #138 and #176 cover daemon progress under locks.
+**Read in board and prior research:** fetched `origin/main` at `5250edd5f284216a0f66997fe183b3ff92b032dd`. Searched its board for `#224`, `gh-224`, retention/contention symptoms and the named test files. No existing issue-224 row or named-file row. Checked open issues with `gh issue list --repo hearsay-tools/squeal --state open --limit 200 --json number,title,labels`, including `triaged` issues: no exact open duplicate. Open #216 covers broader interruption/load recovery; #138 and #176 cover daemon progress under locks.
 
 Closed #201 covers loss after the keep bound; closed #202 covers post-report blocking. Closed #220 is the same pre-0.1.511 retention symptom. Its [research](issue-220.md) verified that the old bound counted from the first refusal even while writes landed. The partial retention in #224 is consistent with that cause, but does not independently prove it. The spec 020 owner confirmed this interpretation by peer message on 2026-11-15 and recommended retrying on 0.1.511 or later.
 

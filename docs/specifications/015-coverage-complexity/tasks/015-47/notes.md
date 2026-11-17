@@ -1,6 +1,6 @@
 # 015-47 notes: a recount's seed of coverage states is sliced
 
-Worker 34afe933, 2026-10-25. Brief: `tasks/wave-6.md` W1, then its repair R10 (review 0.1.311 B1). Starts from main at 0.1.309 (`ca76cc5aa`). Shape: repair. All changed code is inside the brief's ownership (`src/core/code/crap/**`, `src/core/code/pass/index.ts` and their tests), plus `src/core/code/pass/types.ts` and `src/core/code/pass/pass.ts` for R10 by coordinator agreement (reply to request `a49357d0`, option a). Records, `COVERAGE_PROVIDER_VERSION` and result keys are unchanged.
+Worker 34afe933, 2026-10-25. Brief: `tasks/wave-6.md` W1, then its repair R10 (review 0.1.311 B1). Starts from main at 0.1.309 (`18bd42bf5`). Shape: repair. All changed code is inside the brief's ownership (`src/core/code/crap/**`, `src/core/code/pass/index.ts` and their tests), plus `src/core/code/pass/types.ts` and `src/core/code/pass/pass.ts` for R10 by coordinator agreement (reply to request `a49357d0`, option a). Records, `COVERAGE_PROVIDER_VERSION` and result keys are unchanged.
 
 ## What changed
 

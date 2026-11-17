@@ -1,6 +1,6 @@
 # 015 wave 1d notes: the complexity defects from the working day
 
-Worker 91422c1b, 2026-10-24. Brief: `tasks/wave-1d.md` W1, rows 015-34 to 015-37. From main `0aff41b56` (0.1.295).
+Worker 91422c1b, 2026-10-24. Brief: `tasks/wave-1d.md` W1, rows 015-34 to 015-37. From main `e6d2adbdf` (0.1.295).
 
 ## 015-34: an operation git stopped is not the agent's edit
 
