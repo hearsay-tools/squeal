@@ -139,6 +139,33 @@ function projectOf(project) {
   };
 }
 
+// Row 023-14: the Vitest adapter keys each manifest on a loaded module's
+// folder chain (`resolution-inputs.ts`), which Vite 8 reads in its native
+// resolver, out of the evidence's sight. Reading them here, present or
+// absent, gives the evidence of each (spec 018 D9). Bounded: only
+// `package.json` in the folders of loaded project modules and their
+// parents up to the root, each folder once, nothing under `node_modules`.
+// A read that fails gives no evidence, so the export leaves the file out.
+function readManifests(vitest) {
+  const root = vitest.config.root;
+  const seen = new Set();
+  for (const project of vitest.projects) {
+    const graph = project.vite?.environments?.ssr?.moduleGraph;
+    for (const id of graph?.idToModuleMap?.keys() ?? []) {
+      if (!path.isAbsolute(id) || id.split(path.sep).includes("node_modules")) continue;
+      if (!id.startsWith(`${root}${path.sep}`)) continue;
+      for (let dir = path.dirname(id); !seen.has(dir); dir = path.dirname(dir)) {
+        seen.add(dir);
+        const manifest = path.join(dir, "package.json");
+        try {
+          if (fs.existsSync(manifest)) fs.readFileSync(manifest);
+        } catch {}
+        if (dir === root || path.dirname(dir) === dir) break;
+      }
+    }
+  }
+}
+
 function reporterFor(vitest, file, settings, fail, modules) {
   // A reporter that throws fails the run: every error goes to the file instead.
   // Its time is Squeal's (`clock.cjs`, row 018-29).
@@ -156,6 +183,7 @@ function reporterFor(vitest, file, settings, fail, modules) {
     }),
     // `covered`: the coverage `coveredReporter` waited for (spec 020 D13).
     onTestRunEnd: safe((_modules, unhandledErrors, reason, covered) => {
+      readManifests(vitest);
       const env = {};
       for (const name of settings.variables) {
         if (process.env[name] !== undefined) env[name] = process.env[name];
