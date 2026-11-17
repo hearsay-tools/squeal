@@ -104,9 +104,11 @@ describe("the hook's Not validated line says what status says (row 011-295)", ()
     expect(text).toContain(
       `no daemon has validated since ${ISO}; results are as of revision 1; it died without shutting down, between runs; \`squeal start\` starts one.`,
     );
-    expect(lines.at(-1)).toBe(
-      `Not validated: no daemon has validated since ${ISO}; the last daemon died without shutting down, between runs; \`squeal start\` starts one; ${NO_RESULT}`,
+    // Row 005-116: the header names the death and `squeal start`; the line does not repeat them.
+    expect(lines.join("\n")).toContain(
+      "The last daemon died without shutting down, between runs. A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way. `squeal start` starts one.",
     );
+    expect(lines.at(-1)).toBe(`Not validated: no daemon has validated since ${ISO}; ${NO_RESULT}`);
     expect(lines.join("\n")).not.toContain("late");
   });
 
@@ -165,5 +167,66 @@ describe("the hook's Not validated line says what status says (row 011-295)", ()
     const handing = `handing over from 0.0.0-test to 0.1.999 since ${ISO}; 0.1.999 serves once the old daemon's lock frees`;
     expect(text).toContain(`Daemon: handing over from 0.0.0-test to 0.1.999 since ${ISO} (20 s)`);
     expect(lines.at(-1)).toBe(`Not validated: the daemon is ${handing}; ${NO_RESULT}`);
+  });
+});
+
+/*
+ * Row 005-116, review 0.1.554 B2: the hook's death report carries `squeal start` when no daemon
+ * and no successor runs, once in the whole message, wherever the death is said.
+ */
+describe("a death's restart command, once per message (row 005-116)", () => {
+  const CAUSE = "ends a daemon this way.";
+  const starts = (text: string) => text.match(/`squeal start`/g)?.length ?? 0;
+  const context = (out: HookResult) =>
+    (JSON.parse(out.stdout) as { hookSpecificOutput?: { additionalContext?: string } })
+      .hookSpecificOutput?.additionalContext ?? "";
+
+  /** Listed test files, then the daemon died with no successor. */
+  function dead(): SquealRepo {
+    const r = squealRepo();
+    r.apply(r.pass());
+    r.daemon("stale", LAST);
+    lock(r).release();
+    return r;
+  }
+
+  it("a registration with listed files names the cause and `squeal start` once", async () => {
+    // The first tool boundary registers (`registerOwing`), and no Not validated line follows.
+    const said = (await edit(dead())).join("\n");
+    expect(said).toMatch(/^SQUEAL · registered at revision 1$/m);
+    expect(said).toContain("The last daemon died without shutting down, between runs.");
+    expect(said).toContain(CAUSE);
+    expect(said).not.toContain("Not validated");
+    expect(starts(said)).toBe(1);
+  });
+
+  it("SessionStart, whose hook starts a successor, says it is starting and never `squeal start`", async () => {
+    const r = dead();
+    const said = context(
+      await runHook("session-start", recorded("session-start", r.root), unavailable()),
+    );
+    expect(said).toContain("A daemon is starting; results are as of revision 1.");
+    expect(said).toContain(CAUSE);
+    expect(starts(said.split("\n\n")[0] ?? "")).toBe(0);
+  });
+
+  it("an edit's report with the Not validated line says it once", async () => {
+    const r = await registered();
+    r.daemon("stale", LAST);
+    lock(r).release();
+    const said = (await edit(r)).join("\n");
+    expect(said).toContain(CAUSE);
+    expect(said).toContain(`Not validated: no daemon has validated since ${ISO}`);
+    expect(starts(said)).toBe(1);
+  });
+
+  it("Stop after it says it at most once", async () => {
+    const r = await registered();
+    r.daemon("stale", LAST);
+    lock(r).release();
+    await edit(r);
+    const out = await runHook("stop", recorded("stop", r.root), unavailable());
+    const said = `${out.stdout}${out.stderr ?? ""}`;
+    expect(starts(said.replaceAll("\\`", "`"))).toBeLessThanOrEqual(1);
   });
 });

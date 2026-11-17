@@ -285,7 +285,12 @@ export function headerParts(
   form: HeaderForm = "full",
   told: Pick<
     Delta,
-    "slowTierChanged" | "countsOwed" | "groupTiersChanged" | "commitChanged" | "ownEdits"
+    | "slowTierChanged"
+    | "countsOwed"
+    | "groupTiersChanged"
+    | "commitChanged"
+    | "ownEdits"
+    | "editsLate"
   > = {},
 ): HeaderParts {
   const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
@@ -365,7 +370,22 @@ function livenessSentence(
     daemon.since === null
       ? "No daemon is running"
       : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  return ` ${since}; results are as of revision ${revision}.${died}`;
+  // Row 005-116 (review 0.1.554 B2): with no daemon or successor running, the death says what
+  // starts one; `notValidatedLine` leaves it out of the same message (`headerRestarts`).
+  const restart = died === "" ? "" : ` ${restartText(command)}`;
+  return ` ${since}; results are as of revision ${revision}.${died}${restart}`;
+}
+
+/** Row 005-116: what starts a daemon after a death, said once per message. */
+const restartText = (command: string) => `\`${command} start\` starts one.`;
+
+/**
+ * Row 005-116 (review 0.1.554 B2): whether a header of `daemon` names a death and what starts a
+ * daemon: a death with no daemon or successor running. A message whose header does leaves both
+ * out of its Not validated line.
+ */
+export function headerRestarts(daemon: DaemonLiveness | undefined): boolean {
+  return noneRunning(daemon) && daemon.died !== undefined;
 }
 
 type Down = DaemonLiveness & { readonly state: "down" };

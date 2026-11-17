@@ -104,11 +104,12 @@ function whyLine(check: CheckId, command: string): string {
  * it made gets no result until a daemon validates again. Whether it changed
  * anything is unknown, so the line does not say it did (review wave 11f, S1).
  * Row 011-295: it says the daemon as status does: stopping, late, or no
- * daemon, with a death and what starts one.
+ * daemon, with a death and what starts one. `deathTold`: the message's header said both.
  */
 export function notValidatedLine(
   daemon: DaemonLiveness & { readonly state: "down" },
   command: string = SQUEAL_COMMAND,
+  { deathTold = false }: { readonly deathTold?: boolean } = {},
 ): string {
   if (daemon.stopping !== undefined) {
     return `Not validated: the daemon is ${stoppingText(daemon.stopping, command)}; any change this call made has no result.`;
@@ -122,10 +123,13 @@ export function notValidatedLine(
     daemon.since === null
       ? "no daemon is running"
       : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  // Row 005-116 (review 0.1.554 B2): a header in the same message that said the death and what
+  // starts a daemon (`headerRestarts`) is not repeated; while a start runs, no `squeal start`.
+  const start = daemon.startingSince === undefined ? `; \`${command} start\` starts one` : "";
   const died =
-    daemon.died === undefined
+    daemon.died === undefined || deathTold
       ? ""
-      : `; the last daemon ${deathHookText(daemon.died)}; \`${command} start\` starts one`;
+      : `; the last daemon ${deathHookText(daemon.died)}${start}`;
   return `Not validated: ${since}${died}; any change this call made has no result.`;
 }
 

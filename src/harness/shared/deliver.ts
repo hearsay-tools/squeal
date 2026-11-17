@@ -1,5 +1,6 @@
 import { syncOnHeadMove } from "../../core/commit/boundary.js";
 import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/format.js";
+import { headerRestarts } from "../../core/delivery/header.js";
 import { readEditLine } from "../../core/presence/narrow.js";
 import type { HookContext } from "./context.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
@@ -86,7 +87,9 @@ export async function deliver(
     await syncOnHeadMove(context.store, context.consumer.worktreeId, context.root);
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
-  const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
+  // Row 005-116: a header that said the death and `squeal start` is not repeated by the line.
+  const deathTold = delta !== null && headerRestarts(delta.header.daemon);
+  const down = edited && ensured === "unavailable" ? notValidated(context, deps, deathTold) : null;
   const line = down ?? (edited ? await context.write(() => uncoveredEditLine(context)) : null);
   const room = MESSAGE_CAP_CHARS - (line === null ? 0 : line.length + 1);
   const text = delta === null ? null : formatDelta(delta, deps.command, room);
@@ -101,8 +104,8 @@ export async function deliver(
  * 011-295: it says a death or a stopping daemon as status does; read only
  * here, after an edit no daemon could take.
  */
-function notValidated(context: HookContext, deps: HookDeps): string | null {
+function notValidated(context: HookContext, deps: HookDeps, deathTold: boolean): string | null {
   const at = (deps.now ?? Date.now)();
   const live = readEditLine(context.store, context.consumer.worktreeId, at);
-  return live.state === "down" ? notValidatedLine(live, deps.command) : null;
+  return live.state === "down" ? notValidatedLine(live, deps.command, { deathTold }) : null;
 }

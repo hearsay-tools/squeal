@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/format.js";
+import { formatDelta, notValidatedLine } from "../../src/core/delivery/format.js";
+import { headerParts } from "../../src/core/delivery/header.js";
 import { DIED_FILES_SHOWN, deathHookText, deathText } from "../../src/core/status/died.js";
 import type { Delta } from "../../src/core/types/delivery.js";
 import type { DaemonLiveness } from "../../src/core/types/status.js";
@@ -74,7 +75,7 @@ describe("a hook header naming a dead daemon (task 001-263, row 005-116)", () =>
   it("says it died after since when none validated", () => {
     const text = formatDelta(delta({ state: "down", since: AT, died }));
     expect(text).toContain(
-      ` No daemon has validated since ${ISO}; results are as of revision 4. ${said}`,
+      ` No daemon has validated since ${ISO}; results are as of revision 4. ${said} \`squeal start\` starts one.`,
     );
     expect(text).not.toContain("r1");
     expect(text).not.toContain("revision 3");
@@ -83,5 +84,41 @@ describe("a hook header naming a dead daemon (task 001-263, row 005-116)", () =>
   it("says it died after a successor that is starting", () => {
     const text = formatDelta(delta({ state: "down", since: AT, startingSince: AT + 1, died }));
     expect(text).toContain(` A daemon is starting; results are as of revision 4. ${said}`);
+    expect(text).not.toContain("squeal start");
+  });
+});
+
+describe("the Not validated line beside a death (row 005-116, review 0.1.554 B2)", () => {
+  const died = { runs: [{ id: "r1", revision: 3, testFiles: files(1) }] };
+  const down = { state: "down", since: AT, died } as const;
+
+  it("names the death and `squeal start` when the header did not", () => {
+    expect(notValidatedLine(down)).toBe(
+      `Not validated: no daemon has validated since ${ISO}; the last daemon died without shutting down while running test/0.test.ts; \`squeal start\` starts one; any change this call made has no result.`,
+    );
+  });
+
+  it("leaves both to a header that said them", () => {
+    expect(notValidatedLine(down, "squeal", { deathTold: true })).toBe(
+      `Not validated: no daemon has validated since ${ISO}; any change this call made has no result.`,
+    );
+  });
+
+  it("never says `squeal start` while a successor is starting", () => {
+    expect(notValidatedLine({ ...down, startingSince: AT + 1 })).not.toContain("squeal start");
+  });
+});
+
+describe("headerParts' input (review 0.1.554 S1)", () => {
+  it("takes the late line it leaves the delay to", () => {
+    const listing = {
+      ...delta({ state: "alive", lastHeartbeatAt: AT }).header,
+      runnerPartPending: true,
+    };
+    expect(headerParts(listing, "squeal", "news").line).toContain("not yet listed");
+    const parts = headerParts(listing, "squeal", "news", {
+      editsLate: { kind: "unlisted", revision: 4 },
+    });
+    expect(parts.line).not.toContain("not yet listed");
   });
 });
