@@ -142,7 +142,7 @@ async function registrationText({ store, wt }: Seeded): Promise<string> {
 }
 
 function stopText({ store, wt }: Seeded): string {
-  const header = readLiveHeader(store, wt, NOW);
+  const header = readLiveHeader(store, wt, NOW, { commonDir: undefined });
   const failures = store.knownStates.list(wt).filter((s) => s.outcome === "fail");
   return statusText(header, failures as never);
 }
@@ -181,9 +181,13 @@ describe("Known failures says what is not current (011-26, gh-45 zero)", () => {
     expect(knownLine(await registrationText(w))).toBe(HOOK_ZERO);
     expect(knownLine(stopText(w))).toBe(HOOK_ZERO);
     const failures: { check: CheckId; validity: Validity }[] = [];
-    expect(knownFailuresLine(failures, "squeal", readLiveHeader(w.store, w.wt, NOW))).toBe(
-      HOOK_ZERO,
-    );
+    expect(
+      knownFailuresLine(
+        failures,
+        "squeal",
+        readLiveHeader(w.store, w.wt, NOW, { commonDir: undefined }),
+      ),
+    ).toBe(HOOK_ZERO);
   });
 
   it("at the end of both waits' verdict lines", () => {

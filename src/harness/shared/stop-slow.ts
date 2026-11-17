@@ -51,6 +51,16 @@ export const STOP_SLOW_HANDOFF_SLACK_MS = HOOK_TIMEOUT_MS;
 /** A daemon down this long while Stop waits will not run the slow files; the wait ends. */
 export const STOP_SLOW_DOWN_MS = 10_000;
 
+/**
+ * The daemon is down for the wait's `STOP_SLOW_DOWN_MS` rule (row 005-115, the coordinator's
+ * decision): down, and not in a start whose mark names a live, running process. A start
+ * stopped (row 005-111, `startStopped`) or one whose process is gone (no `start` mark) is down.
+ */
+function daemonDown({ daemon }: Pick<StatusHeader, "daemon">): boolean {
+  if (daemon?.state !== "down") return false;
+  return daemon.startMark !== "start" || daemon.startStopped === true;
+}
+
 /** How often the waiting entry re-reads the store. */
 export const STOP_SLOW_POLL_MS = 250;
 
@@ -159,11 +169,15 @@ interface WaitRead extends RequiredRead {
 
 /** One read transaction; `clock` is read after the states and keys, inside it. */
 function read(context: HookContext, required: StopRequired, clock: () => EpochMs): WaitRead {
-  const { store, consumer } = context;
+  const { store, consumer, commonDir } = context;
   return readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, clock(), states, null, keys);
+    const header = readLiveHeader(store, consumer.worktreeId, clock(), {
+      commonDir,
+      states,
+      keys,
+    });
     const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
     return {
       states,
@@ -249,7 +263,7 @@ async function waitForRequired(
       continue;
     }
     const now = elapsed();
-    downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
+    downSince = daemonDown(last.header) ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
     const over = left <= 0 || down || stoppedByRequest(last.header);

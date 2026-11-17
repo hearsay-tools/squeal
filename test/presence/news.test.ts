@@ -81,7 +81,9 @@ describe("news tells a late heartbeat and a death once per consumer (row 011-295
     const { store, id, boundary, to, c1 } = await twoConsumers({ heartbeat: -2_000, feed: -1_000 });
     to(FEED_LATE_MS);
     store.transaction(() => recordHeartbeat(store, id, at(FEED_LATE_MS - 1_000)));
-    expect(readLiveHeader(store, id, at(FEED_LATE_MS)).daemon).toMatchObject({ late: {} });
+    expect(
+      readLiveHeader(store, id, at(FEED_LATE_MS), { commonDir: undefined }).daemon,
+    ).toMatchObject({ late: {} });
     expect(await boundary(c1)).toBeNull();
   });
 });

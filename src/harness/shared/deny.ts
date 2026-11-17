@@ -107,13 +107,17 @@ export function denyCurrentTestCommand(
   command: TestCommand,
   now: EpochMs,
 ): Promise<string | null> {
-  const { store, consumer } = context;
+  const { store, consumer, commonDir } = context;
   return context.write(() =>
     store.transaction(() => {
       if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
       const states = store.knownStates.list(consumer.worktreeId);
       const keys = store.testFileKeys.list(consumer.worktreeId);
-      const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+      const header = readLiveHeader(store, consumer.worktreeId, now, {
+        commonDir,
+        states,
+        keys,
+      });
       if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
       if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
       // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2). Its

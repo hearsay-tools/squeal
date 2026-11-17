@@ -81,7 +81,10 @@ async function readers(r: SquealRepo, now: number) {
     json: JSON.parse(await cli(["status", "--json"])).daemon,
     plain: await cli(["status"]),
     full: await cli(["status", "--full"]),
-    header: headerLines(readLiveHeader(r.store, id, now as EpochMs), "squeal").join("\n"),
+    header: headerLines(
+      readLiveHeader(r.store, id, now as EpochMs, { commonDir: undefined }),
+      "squeal",
+    ).join("\n"),
     wait: watch.judge(r.store.worktrees.get(id)?.daemon ?? null, now as EpochMs),
   };
 }

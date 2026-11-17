@@ -115,7 +115,7 @@ export async function pass(keys: WorktreeKeys, at: () => Promise<HeadState> = he
  */
 export const headerLine = (form: "news" | "full", since: RevisionNumber | null = null) =>
   headerLines(
-    readLiveHeader(repo.store, worktreeIdFor(repo.root), NOW, undefined, since),
+    readLiveHeader(repo.store, worktreeIdFor(repo.root), NOW, { commonDir: undefined, since }),
     "squeal",
     form,
   )[0];

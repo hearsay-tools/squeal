@@ -353,15 +353,11 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Row 005-97: the live header is read once, and only when late may be said or news goes out.
       const live = once(() =>
         withTold(
-          readLiveHeader(
-            store,
-            consumer.worktreeId,
-            at,
+          readLiveHeader(store, consumer.worktreeId, at, {
+            commonDir: options.commonDir,
             states,
-            toldRevision(store, consumer),
-            undefined,
-            options.commonDir,
-          ),
+            since: toldRevision(store, consumer),
+          }),
           toldLiveness(store, consumer),
           at,
         ),
@@ -590,15 +586,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       recordViewMark(store, consumer, mark === null ? null : { mark, at });
       // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
       const told = startingSince === undefined ? null : { startingSince };
-      const read = readLiveHeader(
-        store,
-        consumer.worktreeId,
-        at,
+      const read = readLiveHeader(store, consumer.worktreeId, at, {
+        commonDir: options.commonDir,
         states,
-        null,
-        undefined,
-        options.commonDir,
-      );
+      });
       const live = told === null ? read : withTold(read, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(

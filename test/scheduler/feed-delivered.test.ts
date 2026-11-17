@@ -96,7 +96,7 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
     const outputs = () => {
       const status = readStatus(root, { now: () => clock });
       if (!status.available) throw new Error(status.message);
-      const header = readLiveHeader(store, worktreeId, clock);
+      const header = readLiveHeader(store, worktreeId, clock, { commonDir: undefined });
       return {
         status: formatStatus(status, clock),
         stop: statusText(header, []),

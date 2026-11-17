@@ -88,7 +88,7 @@ async function outputs(w: Seeded) {
   if (!status.available) throw new Error(status.message);
   const consumer: Consumer = { worktreeId: wt, sessionId: "s1", agentId: "main" };
   const delivery = createDelivery(store, { status: fixedStatus(), now: () => NOW });
-  const header = readLiveHeader(store, wt, NOW);
+  const header = readLiveHeader(store, wt, NOW, { commonDir: undefined });
   return {
     status: formatStatus(status, NOW),
     daemon: status.daemon,

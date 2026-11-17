@@ -249,7 +249,7 @@ describe("a daemon a hook started that holds no lock yet (row 011-251)", () => {
 
   it("the hooks' registration and change delivery, through formatRegistration and formatDelta", () => {
     const { store, id } = spawned();
-    const header = readLiveHeader(store, id, NOW as EpochMs);
+    const header = readLiveHeader(store, id, NOW as EpochMs, { commonDir: undefined });
     expect(header.daemon).toMatchObject({ state: "down", startMark: "spawn" });
     const registration = formatRegistration({ header, knownFailures: [] } as never);
     const delta = formatDelta({ header, entries: [], slowTierChanged: true } as never);

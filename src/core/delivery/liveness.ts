@@ -25,6 +25,23 @@ import { readSlot, writeSlot } from "./slots.js";
 // Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
 export type { ToldLiveness } from "../presence/told.js";
 
+/** What `readLiveHeader` reads beside the worktree and the time. */
+export interface LiveHeaderRead {
+  /**
+   * The repository's common Git directory: it finds the lock, and so the start, of a worktree
+   * with no row (row 005-108). A required key, so no reader leaves it out (row 005-115);
+   * `undefined` only where the caller has none (a delivery made without one), which reads no
+   * start for a worktree with no row.
+   */
+  readonly commonDir: AbsolutePath | undefined;
+  /** The worktree's known states, when the caller read them in the same transaction. */
+  readonly states?: readonly KnownState[];
+  /** The revision last told; the header names the paths changed since (`changedSince`). */
+  readonly since?: RevisionNumber | null;
+  /** The worktree's test file keys, when the caller read them in the same transaction. */
+  readonly keys?: readonly TestFileKeyRecord[];
+}
+
 /**
  * The shared header (D6) with the worktree's daemon presence as delivered
  * text reads it (`headerView`), the paths
@@ -32,16 +49,13 @@ export type { ToldLiveness } from "../presence/told.js";
  * message names (task 001-85; task 001-89, review wave 10 S4 (b)), those
  * of them git ignores (row 011-262), and the installed lockfile those
  * changes wrote, if any (task 001-94, S1). `commonDir` finds the lock of a
- * worktree with no row (row 005-108).
+ * worktree with no row (row 005-108), for every reader (row 005-115).
  */
 export function readLiveHeader(
   store: Store,
   worktreeId: WorktreeId,
   now: EpochMs,
-  states?: readonly KnownState[],
-  since: RevisionNumber | null = null,
-  keys?: readonly TestFileKeyRecord[],
-  commonDir?: AbsolutePath,
+  { commonDir, states, since = null, keys }: LiveHeaderRead,
 ): StatusHeader {
   const worktree = store.worktrees.get(worktreeId);
   const presence = readPresence(store, worktreeId, now, worktree, commonDir);

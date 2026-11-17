@@ -71,7 +71,7 @@ function stopping({ heartbeat = "down", claimAt, locked = true }: Options = {}) 
   if (locked) releases.push(() => lock.release());
   else lock.release();
   const status = (at: EpochMs = NOW) => readStatus(repo.main, { now: () => at }) as StatusSnapshot;
-  const header = (at: EpochMs = NOW) => readLiveHeader(store, wt, at);
+  const header = (at: EpochMs = NOW) => readLiveHeader(store, wt, at, { commonDir: undefined });
   return { repo, store, wt, status, header };
 }
 

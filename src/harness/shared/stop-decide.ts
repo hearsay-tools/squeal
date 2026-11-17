@@ -179,12 +179,16 @@ export function holdsNow(
 
 /** One read of the checks Stop requires and the known failures, inside a transaction. */
 function readRequired(
-  { store, consumer }: HookContext,
+  { store, consumer, commonDir }: HookContext,
   now: EpochMs,
 ): RequiredRead & { readonly failures: readonly KnownFailure[] } {
   const states = store.knownStates.list(consumer.worktreeId);
   const keys = store.testFileKeys.list(consumer.worktreeId);
-  const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+  const header = readLiveHeader(store, consumer.worktreeId, now, {
+    commonDir,
+    states,
+    keys,
+  });
   const failures = states.flatMap((s) => toKnownFailure(s, header.revision) ?? []);
   const current = failures.filter((f) => f.validity === "current");
   return { states, keys, header, failures, current };

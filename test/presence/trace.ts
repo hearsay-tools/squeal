@@ -101,9 +101,9 @@ const consumer = (id: WorktreeId) => ({ worktreeId: id, sessionId: "s1", agentId
 const run: Record<ViewName, (i: ViewInput) => unknown> = {
   // `buildSnapshot`: the row, then the status view of it.
   status: ({ store, id, now }) => statusView(readPresence(store, id, now, store.worktrees.get(id))),
-  header: ({ store, id, now }) => readLiveHeader(store, id, now).daemon,
+  header: ({ store, id, now }) => readLiveHeader(store, id, now, { commonDir: undefined }).daemon,
   toldHeader: ({ store, id, now, told }) =>
-    withTold(readLiveHeader(store, id, now), told, now).daemon,
+    withTold(readLiveHeader(store, id, now, { commonDir: undefined }), told, now).daemon,
   news: ({ store, id, now }) => store.transaction(() => livenessChange(store, consumer(id), now)),
   editLine: ({ store, id, now }) => readEditLine(store, id, now),
   hookStop: ({ store, id, now, row }) => readHookStop(store, id, row, now),

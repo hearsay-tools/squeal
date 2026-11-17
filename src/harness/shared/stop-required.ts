@@ -250,11 +250,15 @@ export function stoppedText(
   at: EpochMs,
   command: string = SQUEAL_COMMAND,
 ): string | null {
-  const { store, consumer } = context;
+  const { store, consumer, commonDir } = context;
   const read = readTransaction(store, () => {
     const states = store.knownStates.list(consumer.worktreeId);
     const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, at, states, null, keys);
+    const header = readLiveHeader(store, consumer.worktreeId, at, {
+      commonDir,
+      states,
+      keys,
+    });
     if (!stoppedByRequest(header) || unchangedSinceRegistration(context)) return null;
     return { header, open: requiredOpen(context, required, { states, keys, header }) };
   });
