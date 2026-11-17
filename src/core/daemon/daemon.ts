@@ -1012,6 +1012,7 @@ class Daemon {
           now: this.#now,
           note: (text) => this.#note(text),
           log: this.#log,
+          storeFault: this.#storeFault,
         });
       }
       this.#log(`serving ${root} on ${this.#socketPath}`);

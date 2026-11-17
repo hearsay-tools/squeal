@@ -103,6 +103,8 @@ export interface FullCheckContext {
   /** A persisted note, for status. */
   readonly note: (text: string) => void;
   readonly log: (line: string) => void;
+  /** Row 011-391: shown a failure of the claim's store work first (`storeFaults`). */
+  readonly storeFault?: (error: unknown) => boolean;
   /** Default `runFullCheck`; `label` is the check's `storeCheckLabel`. */
   readonly run?: (database: AbsolutePath, label: string) => FullCheck;
 }
@@ -166,7 +168,9 @@ class FullCheckOwner {
         () => this.#stopped,
       );
     } catch (error) {
-      log(`full integrity check not claimed: ${String(error)}`);
+      if (this.#context.storeFault?.(error) !== true) {
+        log(`full integrity check not claimed: ${String(error)}`);
+      }
       return;
     }
     if (claim === undefined || claim === null) return;
