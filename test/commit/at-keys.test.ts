@@ -250,4 +250,26 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     expect(plain !== undefined && "stored" in plain ? plain.stored : []).toHaveLength(1);
     expect(bytes()).toBe(before);
   });
+
+  it("names every file not determined when the checkout's install fails, kept ones too", async () => {
+    const f = fixture({
+      ...PLAIN_FILES,
+      "src/a.ts": "export const value = 1;\n",
+      [TEST.path]: testOf("a", 1),
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const value = 3;\n" });
+    const install = async () =>
+      ({ ok: false, command: "npm ci", ms: 1, reason: "exit 1", log: "" }) as const;
+    const keys = await keysAtCommit({
+      ...keying(f, install),
+      root: f.root,
+      commit: a,
+      files: [PLAIN, TEST],
+    });
+    const failed = { notDetermined: { reason: "install", detail: "npm ci: exit 1" } };
+    expect(keys.files.get(testFileId(PLAIN))).toEqual(failed);
+    expect(keys.files.get(testFileId(TEST))).toEqual(failed);
+    expect(f.checkouts()).toEqual([]);
+  });
 });
