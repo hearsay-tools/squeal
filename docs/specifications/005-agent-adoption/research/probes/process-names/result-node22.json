@@ -280,7 +280,7 @@
       "cmdline": [
         "squeal ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000"
       ],
-      "ps": "squeal /home/ag squeal ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
+      "ps": "squeal ~ squeal ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/versions/0.1.366/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/cezar/t/b1510c20/squeal-process-names-2OBB5R/project with spaces --await-lock 60000",
       "js": {
         "before": {
           "argv": [

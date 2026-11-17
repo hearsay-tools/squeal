@@ -1481,7 +1481,7 @@
    "ussKb": null,
    "swapPssKb": null,
    "smapsMs": null,
-   "cmd": "node ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-a40d-da404bf87248/packages/cezar/scripts/mock-pi-rpc.mjs --mode rpc --extension /home/age"
+   "cmd": "node ~/projects/cezar/.ai/cezar/worktrees/f1ca49e6-a062-4dee-a40d-da404bf87248/packages/cezar/scripts/mock-pi-rpc.mjs --mode rpc --extension ~"
   },
   {
    "pid": 2358695,
