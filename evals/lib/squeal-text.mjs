@@ -14,10 +14,12 @@
  * stop or exit reads `the daemon's heartbeat is late` (`Daemon: heartbeat late` in status), which
  * validates nothing either. From row 005-108 a daemon that holds the lock in a start past one
  * minute is said once: `a daemon is still starting` in the title, `A daemon has been starting
- * since <time>` after it.
+ * since <time>` after it. From row 005-111 such a start whose process is stopped is said once:
+ * `a starting daemon may be stopped` in the title, `A daemon has been starting since <time>, and
+ * it may be stopped` after it.
  */
 export const NO_DAEMON =
-  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|and no daemon is running; |no daemon is validating|[Tt]he daemon's heartbeat is late|^Daemon: heartbeat late|A daemon (?:is|has been) starting|a daemon is still starting|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered|(?:holds this worktree's lock but|a hook started a daemon that) does not serve yet/m;
+  /Not validated: no daemon|Returned without a daemon|^Daemon: (?:no daemon|stopping|handing over)|No daemon (?:is running|has validated)|and no daemon is running; |no daemon is validating|[Tt]he daemon's heartbeat is late|^Daemon: heartbeat late|A daemon (?:is|has been) starting|a daemon is still starting|a starting daemon may be stopped|^Named test files have no verdict(?: at revision \d+)?: (?:no daemon|the handoff)|^ {2}no daemon has validated|[Tt]he daemon is (?:stopping|handing over)|so no daemon follows it|but no daemon of Squeal \S+ or later answered|(?:holds this worktree's lock but|a hook started a daemon that) does not serve yet/m;
 
 /**
  * Another program's reply in place of Squeal's, one per call it answered (row 006-62): the

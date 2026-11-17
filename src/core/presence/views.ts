@@ -34,7 +34,7 @@ type Alive = Extract<DaemonLiveness, { readonly state: "alive" }>;
  */
 export function statusView(p: Presence): DaemonLiveness {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
+  return withStartState(p, withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))));
 }
 
 /**
@@ -47,7 +47,7 @@ export function headerView(p: Presence, told?: ToldLiveness): DaemonLiveness {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
   const rested = withRest(p, withStop(p, p.heartbeat));
   const live = withLateHeartbeat(p, withRecordFacts(p, rested));
-  return withSlowStart(told === undefined ? live : withToldStart(live, told, p.at), p.at);
+  return withStartState(p, told === undefined ? live : withToldStart(live, told, p.at));
 }
 
 /**
@@ -65,11 +65,12 @@ export function newsChange(
   p: Presence,
   told: ToldLiveness,
 ): { readonly change: DaemonLiveness | null; readonly forgetRest: boolean } {
-  const live = withSlowStart(newsView(p, told), p.at);
+  const live = withStartState(p, newsView(p, told));
   let forgetRest = false;
   if (live.state === "down" && live.stopped !== true) {
-    // Row 005-108: a start is news once, when it outlasts `DAEMON_START_SLOW_MS`.
-    if (live.startingSince !== undefined && live.startSlow !== true) {
+    // Row 005-108: a start is news once, when it outlasts `DAEMON_START_SLOW_MS`; row 005-111:
+    // or once its process is seen stopped.
+    if (live.startingSince !== undefined && live.startSlow !== true && live.startStopped !== true) {
       return { change: null, forgetRest };
     }
     if (p.rest?.kind === "quiet") return { change: null, forgetRest };
@@ -124,15 +125,20 @@ export function withToldStart(
 }
 
 /**
- * Row 005-108: a daemon that has held the worktree's lock in its start, not
- * registered, for longer than `DAEMON_START_SLOW_MS` at `at` starts slowly:
- * it is starting while its process lives, and a delivery says so once.
+ * Row 005-111: a daemon starting by its start mark (`startMark` `start`, the marks already read)
+ * whose process is stopped (`processStopped`) is starting and stopped; a start a consumer was
+ * told of reads no marks (review 0.1.403-r2 B2) until its grace ends. Else row 005-108: a daemon
+ * that has held the worktree's lock in its start, not registered, for longer than
+ * `DAEMON_START_SLOW_MS` starts slowly: it is starting while its process lives, and a delivery
+ * says so once.
  */
-function withSlowStart(live: DaemonLiveness, at: EpochMs): DaemonLiveness {
+function withStartState(p: Presence, live: DaemonLiveness): DaemonLiveness {
   if (live.state !== "down" || live.startMark !== "start" || live.startingSince === undefined) {
     return live;
   }
-  return at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
+  const marks = p.marks;
+  if (marks?.kind === "locked" && marks.stopped === true) return { ...live, startStopped: true };
+  return p.at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
 }
 
 /** A down `live` without a stop: a start a consumer was told of wins over it. */
@@ -160,6 +166,7 @@ export function toldOf(live: DaemonLiveness): ToldPresence {
   if (live.stopping !== undefined) return { state: "stopping", notes: [] };
   if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
   if (live.startingSince !== undefined) {
+    if (live.startStopped === true) return { state: "starting", notes: [...died, "start stopped"] };
     return { state: "starting", notes: live.startSlow === true ? [...died, "start slow"] : died };
   }
   if (live.resting === true) return { state: "resting", notes: [] };

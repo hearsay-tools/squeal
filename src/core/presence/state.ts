@@ -22,7 +22,8 @@ export type PresenceNote =
   | "last one died"
   | "handoff ended short"
   | "change feed late"
-  | "start slow";
+  | "start slow"
+  | "start stopped";
 
 /** The state `presence` is in, and its notes, highest priority first (decision 3). */
 export function presenceState(presence: Presence): {

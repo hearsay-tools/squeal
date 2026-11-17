@@ -15,6 +15,7 @@ import {
   ageText,
   holdAcrossEditsText,
   lateHeartbeatDetail,
+  startStoppedText,
   untilStartText,
 } from "./status-detail.js";
 import { stoppingNext, stoppingState } from "./stopping.js";
@@ -203,6 +204,10 @@ function daemonText(
  * `null` when no start is read.
  */
 export function startText(daemon: StatusSnapshot["daemon"], locked = false): string | null {
+  // Row 005-111: a start whose process is stopped says so, and since when.
+  if (daemon.state === "down" && daemon.startStopped === true) {
+    return startStoppedText(daemon.startingSince ?? null);
+  }
   const marked = daemon.state === "down" && daemon.startingSince !== undefined;
   return locked || marked ? lockedText(daemon) : null;
 }

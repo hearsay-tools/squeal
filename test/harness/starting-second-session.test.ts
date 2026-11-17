@@ -2,6 +2,7 @@ import { rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DAEMON_START_SLOW_MS } from "../../src/core/presence/heartbeat.js";
 import { startMarkFor } from "../../src/core/presence/marks.js";
+import { utcTimeText } from "../../src/core/text.js";
 import { holdStart, newWorktree, T } from "./starting-fixture.js";
 
 /*
@@ -13,7 +14,7 @@ import { holdStart, newWorktree, T } from "./starting-fixture.js";
  */
 
 const OTHER = "0f3c2a51-7d1e-4b8a-9c55-2e6f1d0b4a77";
-const MARK = new Date(T).toISOString();
+const MARK = utcTimeText(T);
 const SLOW = `A daemon has been starting since ${MARK}`;
 const BOUND = DAEMON_START_SLOW_MS + 1_000;
 

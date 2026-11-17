@@ -117,7 +117,12 @@ function daemonLine(s: StatusSnapshot, now: EpochMs, command: string): string {
       ? "Daemon: no daemon running"
       : `Daemon: no daemon running since ${new Date(s.daemon.since).toISOString()}`;
   // Row 011-251 (the coordinator, 2026-10-26): a mark beside the lock says one starts.
-  const down = s.daemon.startingSince === undefined ? since : `${since}; a daemon is starting`;
+  // Row 005-111: one whose process is stopped says so, as the hooks do.
+  const starting =
+    s.daemon.startStopped === true
+      ? startStoppedText(s.daemon.startingSince ?? null)
+      : "a daemon is starting";
+  const down = s.daemon.startingSince === undefined ? since : `${since}; ${starting}`;
   // Task 001-263: a daemon that died without its stop note is named, with what it was running.
   if (s.daemon.died === undefined) return down;
   return `${down}; it ${deathText(s.daemon.died)}. ${DEATH_CAUSE}`;
@@ -214,4 +219,19 @@ function foldedText(what: string, list: readonly DaemonNote[], command: string):
     `stopped ${processes} ${what}, in ${plural(list.length, "note")} since ${since}: ` +
     `${byCommand.join("; ")} (\`${command} status --notes\` lists each)`
   );
+}
+
+/**
+ * Row 005-111: `a daemon has been starting since <time>, and it may be stopped: no results come
+ * until it runs again`, of a start whose process is stopped, in hooks and status alike; `time`
+ * formats `since` (hooks: `utcTimeText`; status: ISO, as its neighbours). As of a registered
+ * daemon's late heartbeat: what is known and since when; never `squeal start`, which would wait
+ * for its lock, and no pid (`squeal ps` names it).
+ */
+export function startStoppedText(
+  since: number | null,
+  time: (at: number) => string = (at) => new Date(at).toISOString(),
+): string {
+  const at = since === null ? "" : ` since ${time(since)}`;
+  return `a daemon has been starting${at}, and it may be stopped: no results come until it runs again`;
 }

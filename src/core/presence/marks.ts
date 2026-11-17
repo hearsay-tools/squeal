@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { acquireDaemonLock } from "../daemon/lock.js";
-import { lifeOf } from "../daemon/terminate.js";
+import { type Life, lifeOf } from "../daemon/terminate.js";
 import { isRecord } from "../fs/json.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
@@ -31,8 +31,15 @@ export function spawnMarkFor(lockFile: AbsolutePath): AbsolutePath {
  * the spawn mark is then never read.
  */
 export interface LockMarks {
-  /** The live process the start mark names, and when the mark was written; `null` with none. */
-  readonly start: () => { readonly pid: number; readonly since: EpochMs } | null;
+  /**
+   * The live process the start mark names, when the mark was written, and whether the process
+   * is stopped (`processStopped`, row 005-111); `null` with none.
+   */
+  readonly start: () => {
+    readonly pid: number;
+    readonly since: EpochMs;
+    readonly stopped: boolean;
+  } | null;
   /** The spawn mark's time; `null` with none, or one that cannot be read. */
   readonly spawnedAt: () => EpochMs | null;
 }
@@ -42,15 +49,24 @@ export function readLockMarks(lockFile: AbsolutePath, now: EpochMs): LockMarks {
   return {
     start: once(() => {
       const pid = markedPid(lockFile);
-      return pid === null ? null : { pid, since: writtenAt(startMarkFor(lockFile), now) };
+      if (pid === null) return null;
+      const since = writtenAt(startMarkFor(lockFile), now);
+      return { pid, since, stopped: processStopped(pid) };
     }),
     spawnedAt: once(() => spawnedAt(lockFile)),
   };
 }
 
-/** A start `startOf` reads. */
+/**
+ * A start `startOf` reads; `stopped`, the locked start's process is stopped (row 005-111).
+ */
 export type DaemonStart =
-  | { readonly kind: "locked"; readonly since: EpochMs; readonly pid: number }
+  | {
+      readonly kind: "locked";
+      readonly since: EpochMs;
+      readonly pid: number;
+      readonly stopped?: true;
+    }
   | { readonly kind: "spawned"; readonly since: EpochMs };
 
 /**
@@ -66,7 +82,10 @@ export function startOf(
   heartbeatAt: EpochMs | null = null,
 ): DaemonStart | null {
   const start = marks.start();
-  if (start !== null) return { kind: "locked", since: start.since, pid: start.pid };
+  if (start !== null) {
+    const { since, pid, stopped } = start;
+    return { kind: "locked", since, pid, ...(stopped ? { stopped: true } : {}) };
+  }
   const at = marks.spawnedAt();
   if (at === null || Math.abs(now - at) > DAEMON_START_GRACE_MS) return null;
   return heartbeatAt !== null && heartbeatAt >= at ? null : { kind: "spawned", since: at };
@@ -89,6 +108,18 @@ export function daemonStart(
  */
 export function startMarked(lockFile: AbsolutePath): boolean {
   return markedPid(lockFile) !== null;
+}
+
+/**
+ * Row 005-111: whether the process `pid` is stopped (`/proc/<pid>/stat` state `T` or `t`), as
+ * `life` reads it. Linux only: elsewhere no state is read, and a process reads as running.
+ */
+export function processStopped(
+  pid: number,
+  platform: NodeJS.Platform = process.platform,
+  life: (pid: number) => Life | null = lifeOf,
+): boolean {
+  return platform === "linux" && life(pid)?.stopped === true;
 }
 
 /** The spawn mark's time beside `lockFile`; `null` with none, or one that cannot be read or parsed. */

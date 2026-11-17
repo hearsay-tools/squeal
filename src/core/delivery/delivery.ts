@@ -639,8 +639,11 @@ function tellAtRegistration(
 ): void {
   const starting = header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
   const daemon = header.daemon === undefined ? null : toldAtRegistration(header.daemon);
-  // Row 005-108 (review 0.1.547 B1): a slow start the registration said is told, not said again.
-  const slow = header.daemon?.state === "down" && header.daemon.startSlow === true;
+  // Row 005-108 (review 0.1.547 B1): a slow start the registration said is told, not said again;
+  // row 005-111: so is a start whose process is stopped.
+  const slow =
+    header.daemon?.state === "down" &&
+    (header.daemon.startSlow === true || header.daemon.startStopped === true);
   tellLiveness(store, consumer, starting && !slow ? told : daemon);
   tellRevision(store, consumer, header.revision);
   tellSlowTier(store, consumer, header.slowTier);

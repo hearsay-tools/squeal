@@ -148,10 +148,14 @@ export function statOf(pid: number): ProcessEntry | null {
   return life === null || life.dying ? null : entryOf(life);
 }
 
-/** A process as `/proc/<pid>/stat` has it, the dying included; `zombie`, its leader exited. */
+/**
+ * A process as `/proc/<pid>/stat` has it, the dying included; `zombie`, its leader exited;
+ * `stopped`, the state `T` (a job-control stop, SIGSTOP) or `t` (a tracing stop), row 005-111.
+ */
 export interface Life extends ProcessEntry {
   readonly dying: boolean;
   readonly zombie: boolean;
+  readonly stopped: boolean;
 }
 
 /** `PF_EXITING` in the stat line's flags: the thread is in the kernel's exit. */
@@ -174,7 +178,7 @@ export function lifeOf(pid: number): Life | null {
     pgrp: Number(fields[2]),
     start: Number(fields[19]),
   };
-  return { ...entry, dying, zombie };
+  return { ...entry, dying, zombie, stopped: fields[0] === "T" || fields[0] === "t" };
 }
 
 /**

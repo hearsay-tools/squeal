@@ -512,6 +512,10 @@ function livenessTitle(
   if (liveness?.state === "alive") {
     return `SQUEAL · a daemon is validating again at revision ${revision}: its heartbeat is current`;
   }
+  // Row 005-111: a starting daemon whose process is stopped; the header after it says since when.
+  if (liveness?.state === "down" && liveness.startStopped === true) {
+    return `SQUEAL · a starting daemon may be stopped at revision ${revision}`;
+  }
   // Row 005-108: the header after it says since when; never `squeal start`.
   if (liveness?.state === "down" && liveness.startSlow === true) {
     return `SQUEAL · a daemon is still starting at revision ${revision}`;

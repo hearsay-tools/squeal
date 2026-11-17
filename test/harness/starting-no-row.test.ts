@@ -7,6 +7,7 @@ import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS } from "../../src/core/presence/heartbeat.js";
 import { startMarkFor } from "../../src/core/presence/marks.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
@@ -96,7 +97,7 @@ describe("a new worktree whose daemon's start outlasts DAEMON_START_SLOW_MS (row
     expect(before).toEqual(["", "", ""]);
     expect(slow).toBe(
       "SQUEAL · a daemon is still starting at revision 0\n" +
-        `Revision 0: A daemon has been starting since ${new Date(T + 1_000).toISOString()}, ` +
+        `Revision 0: A daemon has been starting since ${utcTimeText(T + 1_000)}, ` +
         "and Squeal has no results in this worktree yet.",
     );
     // The evals read it as no daemon validating (`NO_DAEMON`).

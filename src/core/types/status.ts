@@ -510,6 +510,12 @@ export type DaemonLiveness =
        */
       readonly startSlow?: true;
       /**
+       * Row 005-111: with `startMark` `start`, the process that marked the start is stopped
+       * (`/proc/<pid>/stat` state `T` or `t`, Linux only); one delivery says it may be stopped,
+       * and since when. Said in place of `startSlow`.
+       */
+      readonly startStopped?: true;
+      /**
        * Task 001-415, review 001-417 B2: the daemon stopped unused and no
        * hook has started its successor yet; delivered headers only, status
        * leaves it out.
