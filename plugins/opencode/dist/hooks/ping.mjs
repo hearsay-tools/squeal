@@ -595,15 +595,15 @@ function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+// src/core/store/mark.ts
+import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
 
 // src/core/store/open.ts
-import { DatabaseSync } from "node:sqlite";
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/schema.ts
 var V1 = `
@@ -838,6 +838,9 @@ var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN check
 
 // src/core/store/open.ts
 var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
+
+// src/core/code/store/open.ts
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
 var V12 = `
@@ -1366,7 +1369,7 @@ var UNCONFIGURED3 = {
 };
 
 // src/core/lint/store/open.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
 var V13 = `
@@ -1437,7 +1440,7 @@ var LINT_MIGRATIONS = [(db) => db.exec(V13)];
 var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
 // src/core/daemon/lock.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
 // src/core/daemon/test-pause.ts
 import { channel } from "node:diagnostics_channel";
@@ -1565,7 +1568,7 @@ function waitedText(ms) {
 var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
 // src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
@@ -1723,7 +1726,7 @@ var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 var CAPACITY_RECHECK_MS = 2e3;
 
 // src/core/waiter-lock/waiter-lock.ts
-import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 
 // src/core/delivery/prepared.ts
 function endInOrder(items, end, undo) {

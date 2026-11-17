@@ -234,6 +234,8 @@ Squeal loads Vitest from the project under validation, resolved from the worktre
 - Watcher backend error or dropped-events signal: full reconciliation pass; a note in status.
 - Store busy past a write's wait: no `database is locked` note. The change feed's pass, the lifecycle timers and the pump retry as D8 says, and one note per busy episode names the wait.
 - Store unreadable or corrupt: `integrity_check` on daemon start; on failure the file is moved aside, a fresh store is created, status says the baseline was lost.
+
+  Amended 2026-11-18 (row 011-391; 011 "store failures" as amended 2026-10-25 and 2026-11-18): no check runs at a daemon start beyond the open's own reads. A store whose open fails as corrupt, that the daily full `integrity_check` found faulty, or in which a daemon's or hook's read or write hit damage is moved aside by the next daemon start; a fresh store is created, and status says the baseline was lost and what found the damage.
 - Dead daemon: hooks still serve status and deltas from the store; status says the daemon is down and since when.
 - Hook internal error: exit 0, no output. The daemon has no log file in v1; persisted notes in the store's `meta` row are the record, the notes a topic replaced included (up to 3 per topic), and reading the latest note per topic is what replaces one in status (D7); a daemon that dies during start writes a note before any step that can throw after the store opens.
 - Several Squeal versions on one store: newer schema wins; older daemons exit (D8).
