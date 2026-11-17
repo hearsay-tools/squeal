@@ -3241,7 +3241,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.539";
+  if (true) return "0.1.540";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15826,10 +15826,6 @@ function groupLanesOf(tiers, ownerOf) {
   const byName = new Map((tiers ?? []).map((tier) => [tier.name, tier]));
   return (ref2) => byName.get(ownerOf(ref2)) ?? null;
 }
-
-// src/core/scheduler/calendar-steps.ts
-var CALENDAR_STEP_MS = 100;
-var SURE_SAMPLE_MS = CALENDAR_STEP_MS / 2;
 
 // src/core/scheduler/pool-wait.ts
 function poolWaitMetaKey(worktreeId) {
