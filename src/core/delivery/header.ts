@@ -14,6 +14,7 @@ import { shortText, stoppingText } from "../status/stopping.js";
 import { plural } from "../text.js";
 import type { Delta, OwnEdits } from "../types/delivery.js";
 import type { DaemonLiveness, StatusHeader } from "../types/status.js";
+import { lateMaySay } from "./late.js";
 import { installSentences } from "./provenance.js";
 
 /*
@@ -178,7 +179,8 @@ function holdsText(header: StatusHeader, command: string): string {
  * (`Revision 12 (changed src/a.ts): 3 of the 9 test files your edits affect
  * have not run.`); a consumer with no edit since its count began gets no
  * count, so the line ends after the changed paths. The sentences on a late
- * change feed and an unlisted revision stay after it. `squeal status` keeps
+ * change feed and an unlisted revision stay after it, except while files are
+ * owed and a late message may say them (row 005-97, `lateMaySay`). `squeal status` keeps
  * the worktree's counts. Row 011-262 (gh-105): it names the changed paths as
  * the full form does, so an agent sees why checks re-ran.
  */
@@ -199,12 +201,24 @@ function newsLine(
   }
   const own = told.ownEdits;
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  return `${line}${incompleteText(header, command)}${daemonText(header, command)}`;
+  const latePart = own !== undefined && own.owed > 0 && lateMaySay(header);
+  return `${line}${latePart ? "" : incompleteText(header, command)}${daemonText(header, command)}`;
 }
 
 /** `the 9 test files your edits affect`, `the 1 test file your edits affect`. */
 function affected(files: number): string {
   return `the ${plural(files, "test file")} your edits affect`;
+}
+
+/**
+ * `3 of the 9 test files your edits affect have not run`; `the 1 test file your edits affect
+ * has not run` when every one is owed. The own count's and the late line's words (row 005-97).
+ */
+export function notRunText(owed: number, files: number): string {
+  const verb = owed === 1 ? "has" : "have";
+  return owed === files
+    ? `${affected(files)} ${verb} not run`
+    : `${owed} of ${affected(files)} ${verb} not run`;
 }
 
 /**
@@ -214,13 +228,10 @@ function affected(files: number): string {
  * `…; 1 with no result (unknown).` "The test files your edits affect", never "re-keyed".
  */
 export function ownCountText({ files, owed, unknown = 0 }: OwnEdits): string {
-  const verb = owed === 1 ? "has" : "have";
   const count =
-    owed === files
-      ? `${affected(files)} ${verb} not run`
-      : owed > 0
-        ? `${owed} of ${affected(files)} ${verb} not run`
-        : `${affected(files)} ${files === 1 ? "has run" : "have all run"}`;
+    owed > 0
+      ? notRunText(owed, files)
+      : `${affected(files)} ${files === 1 ? "has run" : "have all run"}`;
   // Review 0.1.530 B4: a file that ran with no result is said, so "run" never reads as passed.
   return unknown === 0 ? `${count}.` : `${count}; ${unknown} with no result (unknown).`;
 }

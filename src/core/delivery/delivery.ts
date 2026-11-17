@@ -6,6 +6,7 @@ import {
   registerLint,
 } from "../lint/surface/deliver.js";
 import type { LintStoreSource } from "../lint/surface/source.js";
+import { once } from "../presence/once.js";
 import { toldOf } from "../presence/views.js";
 import { withRecorded } from "../retry/recorded.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
@@ -51,7 +52,15 @@ import { commitNews, tellCommit } from "./commit-told.js";
 import { recordVersion } from "./consumer-version.js";
 import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { carriesEditResult, type EditNotes, editNotes, startEdits } from "./edits.js";
+import {
+  type Boundary,
+  carriesEditResult,
+  type EditNotes,
+  editNotes,
+  editTold,
+  startEdits,
+  tellEdits,
+} from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import { holdFree } from "./held-connection.js";
@@ -133,6 +142,8 @@ interface DeliverOptions {
   readonly stop?: boolean;
   /** Deliver only while the worktree's latest revision is this one (`ToolBoundaryOptions`). */
   readonly atRevision?: RevisionNumber;
+  /** A tool boundary that is not a Stop: where late and caught up are said (row 005-97). */
+  readonly boundary?: boolean;
 }
 
 interface Selection {
@@ -239,6 +250,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       idle = false,
       stop = false,
       atRevision,
+      boundary = false,
     }: DeliverOptions,
   ): Delta | null {
     /** What to deliver, and for the waiter the turn state trimmed of what is no longer owed. */
@@ -320,23 +332,35 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // and since row 019-38 (lessons Round 2 P8) at Stop too: once, with its hold or as news.
       const commit = liveness ? commitNews(store, consumer) : undefined;
       const news = tests || code !== null || lint !== null || commit !== undefined;
-      const notes = ownNotes(store, consumer, states, { liveness, idle, news });
-      const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
+      // Row 005-97: the live header is read once, and only when late may be said or news goes out.
+      const live = once(() =>
+        withTold(
+          readLiveHeader(store, consumer.worktreeId, at, states, toldRevision(store, consumer)),
+          toldLiveness(store, consumer),
+          at,
+        ),
+      );
+      const notes = ownNotes(store, consumer, states, {
+        liveness,
+        idle,
+        news,
+        boundary: boundary ? { at, header: live } : null,
+      });
+      // Row 005-97: late and caught up deliver by themselves; a new failure ends a late state.
+      const told = editTold(notes, delta.entries, liveness && !stop);
+      const delivered = news || told.speaks;
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
         if (selection.trim !== null) writeTurn(store, consumer, selection.trim);
         return null;
       }
       if (idle) startTurn(store, consumer);
-      const told = toldRevision(store, consumer);
-      const read = readLiveHeader(store, consumer.worktreeId, at, states, told);
-      const live = withTold(read, toldLiveness(store, consumer), at);
-      tellRevision(store, consumer, live.revision);
+      tellRevision(store, consumer, live().revision);
       const { entries, header, stillFailing } = annotate(
         store,
         consumer,
         delta.entries,
-        live,
+        live(),
         states,
       );
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
@@ -348,7 +372,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (commit !== undefined) tellCommit(store, consumer, commit);
       // Row 011-205: once, the counts a consumer that registered before the listing is owed.
       const countsOwed = payCounts(store, consumer, header);
-      notes?.tell(ownShown(stop, countsOwed, header));
+      tellEdits(store, consumer, notes, {
+        shown: ownShown(stop, countsOwed, header),
+        failed: told.failed,
+      });
       const sawEdit =
         notes === null ||
         carriesEditResult(
@@ -375,9 +402,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         ...(groupsChanged.length > 0 ? { groupTiersChanged: groupsChanged } : {}),
         ...(commit === undefined ? {} : { commitChanged: true as const }),
         ...countsOwed,
-        ...(sawEdit === undefined ? {} : { sawEdit }),
-        // Row 005-93 (c): the news header counts the consumer's own test files.
-        ...(notes?.own === undefined ? {} : { ownEdits: notes.own }),
+        // Row 005-93 (c): the news header counts the consumer's own test files; row 005-97: late.
+        ...told.parts(sawEdit),
         ...sideParts(code, lint, states),
       };
     });
@@ -448,6 +474,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           heardFrom: true,
           liveness: true,
           stop,
+          boundary: !stop,
           ...(atRevision === undefined ? {} : { atRevision }),
         }),
       ),
@@ -583,10 +610,15 @@ function ownNotes(
   store: Store,
   consumer: Consumer,
   states: readonly KnownState[],
-  { liveness, idle, news }: { liveness: boolean; idle: boolean; news: boolean },
+  {
+    liveness,
+    idle,
+    news,
+    boundary,
+  }: { liveness: boolean; idle: boolean; news: boolean; boundary: Boundary | null },
 ): EditNotes | null {
   if (!liveness && !news) return null;
-  return editNotes(store, consumer, states, news, !liveness && !idle);
+  return editNotes(store, consumer, states, news, { countOnly: !liveness && !idle, boundary });
 }
 
 /**

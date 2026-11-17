@@ -41,6 +41,7 @@ import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { currentFilesText, type HeaderForm, headerLines, headerParts } from "./header.js";
+import { caughtUpLine, lateLine } from "./late-format.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
 import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 
@@ -452,11 +453,17 @@ export function sawEditLine(queued: number, quiet: string | null = null, done = 
   );
 }
 
-/** The line on the consumer's own edits, after the header (001-224). */
-function editLines({ sawEdit, ownEdits, header }: Delta, command: string): string[] {
-  if (sawEdit === undefined) return [];
+/** The lines on the consumer's own edits, after the header (001-224; row 005-97's late and caught up). */
+function editLines(
+  { sawEdit, ownEdits, editsLate, caughtUp, header }: Delta,
+  command: string,
+): string[] {
   const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
-  return [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)];
+  return [
+    ...(sawEdit === undefined ? [] : [sawEditLine(sawEdit.queued, quiet, ownEdits?.owed === 0)]),
+    ...(editsLate === undefined ? [] : [lateLine(editsLate, command)]),
+    ...(caughtUp === undefined ? [] : [caughtUpLine(caughtUp)]),
+  ];
 }
 
 const checksOf = (entries: readonly DeltaEntry[]) => entries.map((e) => e.check);

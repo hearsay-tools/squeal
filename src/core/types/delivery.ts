@@ -258,6 +258,10 @@ export interface Delta {
    * news header in place of the worktree's queue. Absent for a consumer with no edit since.
    */
   readonly ownEdits?: OwnEdits;
+  /** Row 005-97 (a): the results for the consumer's edits are late; said once per late state. */
+  readonly editsLate?: EditsLate;
+  /** Row 005-97 (b): Squeal caught up after a late notice; once, never without one before it. */
+  readonly caughtUp?: CaughtUp;
   /**
    * Task 001-407: the slow tier's state differs from what this consumer was
    * last shown, so a change delivery carries the slow-tier line.
@@ -316,6 +320,36 @@ export interface OwnEdits {
   readonly files: number;
   readonly owed: number;
   readonly unknown?: number;
+}
+
+/**
+ * Row 005-97 (a), `tasks/005-93/design.md` section 4: why the results for the consumer's edits
+ * are late at `revision`. `owed`: `owed` of its `files` have not run, `ageMs` after its edit at
+ * `editRevision`; `named` lists them when there are 3 or fewer. `unread`: the change feed has not
+ * read edits made after `since`. `unlisted`: `runners` have not listed `revision`'s files.
+ */
+export type EditsLate =
+  | {
+      readonly kind: "owed";
+      readonly revision: RevisionNumber;
+      readonly owed: number;
+      readonly files: number;
+      readonly editRevision: RevisionNumber;
+      readonly ageMs: number;
+      readonly named?: readonly string[];
+    }
+  | { readonly kind: "unread"; readonly revision: RevisionNumber; readonly since: EpochMs }
+  | {
+      readonly kind: "unlisted";
+      readonly revision: RevisionNumber;
+      readonly runners?: readonly string[];
+    };
+
+/** Row 005-97 (b): every one of `files` has run at `revision`; `unknown` of them gave no result. */
+export interface CaughtUp {
+  readonly revision: RevisionNumber;
+  readonly files: number;
+  readonly unknown: number;
 }
 
 /** Options of `HarnessDelivery.onToolBoundary`. */

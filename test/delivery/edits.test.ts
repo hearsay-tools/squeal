@@ -74,7 +74,8 @@ function resolved(file: TestFileRef): void {
 function edit(paths: readonly string[], refinedTo = Number.NaN): void {
   revision = store.revisions.append({
     worktreeId: WT,
-    createdAt: 1,
+    // Row 005-97: now, so no result here reads as late (`test/delivery/late.test.ts` tests late).
+    createdAt: Date.now(),
     head: null,
     dirty: true,
     trigger: "watch",

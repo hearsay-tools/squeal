@@ -115,7 +115,8 @@ function edit(refs: readonly TestFileRef[] = [FILE], to: CheckKey = key("b")): v
   const latest = store.revisions.latest(WT)?.number ?? 0;
   const revision = store.revisions.append({
     worktreeId: WT,
-    createdAt: latest + 1,
+    // Row 005-97: now, so no result here reads as late (`test/delivery/late.test.ts` tests late).
+    createdAt: Date.now(),
     head: null,
     dirty: true,
     trigger: "watch",

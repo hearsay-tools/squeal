@@ -6,13 +6,16 @@ import { groupKind } from "./slow-told.js";
 
 /**
  * Row 005-91 (c): a title's words for the lines a delivery with no changed check, liveness or
- * hold carries: the edit line (001-224), the owed counts (011-205), each group line
- * (019-16; its kind, as `groupKind` tells it), the slow-tier line, a lint line with no change
- * to count (017 D8) and the commit line.
+ * hold carries: the edit lines (001-224; row 005-97's late and caught up), the owed counts
+ * (011-205), each group line (019-16; its kind, as `groupKind` tells it), the slow-tier line, a
+ * lint line with no change to count (017 D8) and the commit line.
  */
 export function contentWords(delta: Delta): string[] {
   const { sawEdit, header } = delta;
   const words: string[] = [];
+  // Row 005-97: the late and caught-up notices title their delivery.
+  if (delta.editsLate !== undefined) words.push("results for your edits are late");
+  if (delta.caughtUp !== undefined) words.push("caught up");
   if (sawEdit !== undefined) {
     // No test group at `edit`: the files wait for their groups' moments, so none was queued.
     const did = header.noTestsAtEdit === true ? "affects" : "queued";
