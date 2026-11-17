@@ -326,7 +326,17 @@ No eval was run. Every atomic cell starts warm on `evals/ledgerline` (`evals/ato
 
 The run, once the code lands: the atomic tier on Sonnet and Sol on the candidate, no new flag against the last atomic run (`20261101T080144Z-c020b2`, 0.1.387), and no alarm. The evals parser gate must read the new forms before the run: `evals/lib/squeal-text.mjs` finds counts with `/^Known failures: (\d+)/m` and the header regex (lines 298 to 387). Under R1 a registration has no pending, stale or unknown counts, so the parser reads "all N test files are current" as nothing pending, stale or unknown and "X of N test files are current" as not settled. a7 is the cell that would show R1's cost.
 
-## Open choices
+## Decided (the human, 2026-11-17)
+
+- C1: R1, the registration without worktree counts.
+- C2: (a), Stop takes the registration's form.
+- C3: (a), no checkpoint clause in the primer's wait.
+- C4: (a), UTC, named.
+- C5: (a), no slow-tier line at 0 slow files.
+- C6: yes, `status --wait`'s "re-keyed" line changes too.
+- C7: the revision definition is unchanged.
+
+## Open choices (as asked; answers above)
 
 - **C1. The registration's counts.** R1 (recommended): no worktree counts; the `Known failures` line says how many test files are current. R2: the worktree's test-file counts with a gloss each. R1 follows the human's table; R2 keeps a stale or pending start visible in the hook.
 - **C2. Stop's header.** (a, recommended) Stop takes the registration's form; only `squeal status` keeps the full header. (b) Stop keeps today's full header. Stop is a hook; the agent reads it before a claim.
