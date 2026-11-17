@@ -78,6 +78,7 @@ function poolWaits(
   return new PoolWaits({
     now: clock.now,
     elapsed: clock.elapsed,
+    steps,
     log,
     publish: poolWaitsPublish(store, WT as never, steps),
   });
@@ -245,6 +246,55 @@ describe("row 011-389: the pool's wait keeps its times on elapsed time", () => {
     expect(lines.filter((l) => l.startsWith("the pool refused"))).toHaveLength(2);
     const row = JSON.parse(store.meta.get(poolWaitMetaKey(WT as never)) ?? "{}");
     expect(row.lanes[""].since).toBe(clock.now());
+    store.close();
+  });
+});
+
+/*
+ * Row 011-390 (review 0.1.531 S1): the pool's wait takes a calendar step
+ * from the scheduler's `CalendarSteps`, whose sample brackets the calendar
+ * between two elapsed readings, not from its own two readings. A thread
+ * pause between its calendar and elapsed reading moves both clocks alike:
+ * no step, no extra write.
+ */
+describe("row 011-390: a pause between the pool wait's readings is no calendar step", () => {
+  it("keeps one start write until the 10 s refresh is due", () => {
+    const virtual = virtualClock(10_000_000);
+    const start = virtual.now();
+    const store = liveStore(start);
+    const { steps, clock } = daemonClock(virtual, start);
+    let pause = 0;
+    const writes: number[] = [];
+    const publish = poolWaitsPublish(store, WT as never, steps);
+    const waits = new PoolWaits({
+      now: clock.now,
+      // The thread pauses after the calendar reading: both clocks advance before elapsed is read.
+      elapsed: () => {
+        virtual.advance(pause);
+        pause = 0;
+        return clock.elapsed();
+      },
+      steps,
+      log: () => {},
+      publish: (lanes, at) => {
+        writes.push(at);
+        publish(lanes, at);
+      },
+    });
+    waits.refused("", GATE);
+    virtual.advance(2_000);
+    pause = 200;
+    waits.refused("", GATE);
+    for (let i = 0; i < 3; i++) {
+      virtual.advance(2_000);
+      waits.refused("", GATE);
+    }
+    expect(steps.total).toBe(0);
+    expect(writes).toEqual([start]);
+    // 10.2 s of elapsed time since the start write: the refresh is due.
+    virtual.advance(2_000);
+    waits.refused("", GATE);
+    expect(writes).toHaveLength(2);
     store.close();
   });
 });

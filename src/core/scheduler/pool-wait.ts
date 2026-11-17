@@ -2,7 +2,7 @@ import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { PoolGate, PoolWait } from "../types/standing.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
-import { CALENDAR_STEP_MS, type CalendarSteps } from "./calendar-steps.js";
+import type { CalendarSteps } from "./calendar-steps.js";
 import { CAPACITY_RECHECK_MS } from "./capacity.js";
 
 /*
@@ -25,6 +25,11 @@ import { CAPACITY_RECHECK_MS } from "./capacity.js";
  * nor logs negative seconds. `since` and the row's `at` stay calendar times
  * for status, as row 011-377's owners keep stored stamps; a refusal after a
  * step writes the row again, so its `at` is fresh in today's calendar.
+ *
+ * Row 011-390 (review 0.1.531 S1): the step is the scheduler's
+ * (`PoolWaitsOptions.steps`), whose sample brackets the calendar between two
+ * elapsed readings and leaves an unsure one out, not a difference of this
+ * owner's own two readings, which a thread pause between them moves.
  */
 
 /** How often a wait that goes on writes its row again, with the pool's latest reading. */
@@ -110,6 +115,11 @@ export interface PoolWaitsOptions {
    * (`Clock.elapsed`); without it, `now`.
    */
   readonly elapsed?: () => number;
+  /**
+   * Row 011-390: the calendar steps `now` tells (`steppedClock`); a step
+   * since the last write writes the row again at once. Without it, none.
+   */
+  readonly steps?: Pick<CalendarSteps, "total">;
   /** The daemon's log: one line at a wait's start and one at its grant. */
   readonly log: (line: string) => void;
   /** Writes the waits for status (`publishPoolWaits`); a throw is left to the next write. */
@@ -126,8 +136,8 @@ export class PoolWaits {
   >();
   /** When the row was last written, in elapsed time; `null` before, or after a write that failed. */
   #publishedAt: number | null = null;
-  /** `calendar - elapsed` at the last write: a change of it is a calendar step since. */
-  #publishedOffset = 0;
+  /** `steps.total` at the last write: a change of it is a calendar step since. */
+  #publishedSteps = 0;
   /** The row may hold a wait: the last write had one, or failed. */
   #written = false;
 
@@ -153,7 +163,7 @@ export class PoolWaits {
     } else if (
       this.#publishedAt === null ||
       elapsed - this.#publishedAt >= POOL_WAIT_REFRESH_MS ||
-      Math.abs(now - elapsed - this.#publishedOffset) >= CALENDAR_STEP_MS
+      this.#steps() !== this.#publishedSteps
     ) {
       this.#publish(now, elapsed);
     }
@@ -180,6 +190,11 @@ export class PoolWaits {
     if (this.#written) this.#publish(this.#options.now(), this.#elapsed());
   }
 
+  /** The sum of the calendar steps told so far; 0 without `steps`. */
+  #steps(): number {
+    return this.#options.steps?.total ?? 0;
+  }
+
   /** `lane`'s wait, if its last refusal is within the freshness at `elapsed`. */
   #live(lane: string, elapsed: number) {
     const entry = this.#lanes.get(lane);
@@ -194,7 +209,7 @@ export class PoolWaits {
     try {
       this.#options.publish(waits, now as EpochMs);
       this.#publishedAt = elapsed;
-      this.#publishedOffset = now - elapsed;
+      this.#publishedSteps = this.#steps();
       this.#written = waits.size > 0;
     } catch {
       // A status row only: the next refusal or grant writes it again.
