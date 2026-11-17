@@ -27,6 +27,8 @@ const MADE = [
   "coverage_parts_used",
   "coverage_recorded",
   "coverage_stored",
+  "states_edited",
+  "states_failing",
 ];
 const at = (resultKey: string) => ({ resultKey, providerVersion: 2 });
 

@@ -22,7 +22,7 @@ import {
 } from "../types/code-delivery.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Consumer } from "../types/delivery.js";
-import { coverageMeasures, evidenceOf, failingOf, isCoverage } from "./code-coverage.js";
+import { coverageMeasures, evidenceOf, isCoverage } from "./code-coverage.js";
 import {
   type CodeBound,
   codeKey,
@@ -31,6 +31,7 @@ import {
   planCodeDelta,
   seedEntry,
 } from "./code-delta.js";
+import { type CodeReads, codeReads } from "./code-reads.js";
 import { type CodeSource, heldWrite, withCode } from "./code-source.js";
 import { summaryChanged, withToldOver } from "./code-told.js";
 import { type LoaderCount, withUntested } from "./code-untested.js";
@@ -129,30 +130,17 @@ export function lastTransition(
   );
 }
 
-/** Every function failing now in the worktree. */
-const failingIn = (store: CodeStore, worktreeId: WorktreeId) =>
-  store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
-
 /**
  * Seeds `consumer`'s view with every failing state, told by count (D6), and
  * marks when. A function with no entry reads `pass` (lessons round 1, P5).
  */
-function seed(
-  store: CodeStore,
-  consumer: Consumer,
-  failing: readonly CodeKnownState[],
-  at: EpochMs,
-): void {
+function seed(store: CodeStore, consumer: Consumer, reads: CodeReads, at: EpochMs): void {
   store.views.clear(consumer);
   // Spec 015 D9 (row 015-12): the failing `crap` and `uncovered` states too, while judged.
-  const covered = failingOf(
-    store,
-    consumer.worktreeId,
-    coverageMeasures(store, consumer.worktreeId),
-  );
+  const covered = coverageMeasures(store, consumer.worktreeId);
   store.views.writeMany(
     consumer,
-    [...failing, ...covered].map((s) => seedEntry(s, at)),
+    reads.failing([MEASURE, ...covered]).map((s) => seedEntry(s, at)),
   );
   writeJson(store, seededKey(consumer), at);
 }
@@ -173,20 +161,20 @@ export function registerCode(
   const notMeasured = names.length === 0 ? {} : { notMeasured: names };
   const read = withCode(source, ({ store, complexity }) =>
     store.transaction((): CodeRegistration => {
-      const failing = failingIn(store, worktreeId);
+      const reads = codeReads(store, worktreeId);
       // 015-37: a recount newer than the registration's clock is in the count it gives (015-40: CRAP's too).
       const recounted = Math.max(
         readRecount(store, worktreeId)?.at ?? 0,
         readCrapRecount(store.meta, worktreeId)?.at ?? 0,
       );
-      seed(store, consumer, failing, Math.max(at, recounted));
+      seed(store, consumer, reads, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       // 015-35: a new worktree's store is the common dir's; until its first count ends, no state is
       // its count, and that count tells the consumer its number.
       const counted = readCursor(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
       const counting = counted && done === total ? {} : { counting: { done, total } };
-      const over = failing.length;
+      const over = reads.failing([MEASURE]).length;
       return { v: 1, threshold: complexity.threshold, over, ...counting, ...notMeasured };
     }),
   );
@@ -305,7 +293,7 @@ interface CodeStep {
 function summaryNews(
   store: CodeStore,
   worktreeId: WorktreeId,
-  over: number,
+  reads: CodeReads,
   seededAt: EpochMs,
 ): { readonly news: CodeNews; readonly newest: EpochMs } | null {
   const recount = readRecount(store, worktreeId);
@@ -315,13 +303,13 @@ function summaryNews(
   const crapRecounted = crap !== null && crap.at > seededAt;
   const changed = change !== null && change.at > seededAt;
   if (!recounted && !crapRecounted && !changed) return null;
-  const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
+  const crapOver = () => reads.failing(["crap"]).length;
   return {
     news: {
       v: 1,
       entries: [],
       more: 0,
-      ...(recounted ? { recount: { ...recount, over } } : {}),
+      ...(recounted ? { recount: { ...recount, over: reads.failing([MEASURE]).length } } : {}),
       // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
       ...(crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {}),
       // Row 015-64: a coverage check switched off or files newly excluded (D1).
@@ -331,35 +319,36 @@ function summaryNews(
   };
 }
 
-/** The delivery's code part; with `write`, the view and told marks it changes are written. */
+/**
+ * The delivery's code part; with `write`, the view and told marks it
+ * changes are written. `reads` is the transaction's (row 015-127).
+ */
 function codeStep(
   store: CodeStore,
   consumer: Consumer,
   { at, since, limit }: { at: EpochMs; since: CodeBound | null; limit: number },
   write: boolean,
+  reads: CodeReads,
 ): CodeStep {
   const { worktreeId } = consumer;
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
-  const failing = failingIn(store, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write);
   const big = tooBig.length === 0 ? {} : { tooBig };
-  const summary = summaryNews(store, worktreeId, failing.length, seededAt);
+  const summary = summaryNews(store, worktreeId, reads, seededAt);
   if (summary !== null) {
     // 015-37: a hook reads its clock before this transaction, so a recount may be newer than
     // it; seeded at the recount's time at least, the next hook finds the summary told.
-    if (write) seed(store, consumer, failing, Math.max(at, summary.newest));
+    if (write) seed(store, consumer, reads, Math.max(at, summary.newest));
     return { news: { ...summary.news, ...big }, writes: true };
   }
   // Spec 015 D9 (row 015-12): `crap` and `uncovered` beside complexity, while the daemon judges them.
   const covered = coverageMeasures(store, worktreeId);
   const measures: readonly CodeMeasure[] = [MEASURE, ...covered];
   // Row 015-40: the coverage step marks D6's first edit for `crap` and `uncovered` too.
-  const edits = new Map(
-    measures.flatMap((m) => store.states.edits(worktreeId, m)).map((e) => [codeKey(e), e]),
-  );
+  const edits = new Map(reads.edits(measures).map((e) => [codeKey(e), e]));
   const view = store.views.list(consumer).filter((v) => measures.includes(v.measure));
-  const judged = [...failing, ...failingOf(store, worktreeId, covered)];
+  const judged = reads.failing(measures);
   const plan = planCodeDelta({
     view,
     states: statesFor(store, worktreeId, judged, view, measures),
@@ -434,27 +423,41 @@ export function tellCode(
   if (!changes && !toldOver) return null;
   const told = withCode(source, (access) => {
     const { store, complexity } = access;
+    const { worktreeId } = consumer;
     const seen = since();
-    const over = (news: CodeNews | null) =>
-      toldOver ? withToldOver(store, consumer, news, complexity, seen) : news;
+    // Row 015-127: the told-over count takes the failing states its transaction's step read.
+    const judged = (reads: CodeReads) =>
+      reads.failing([MEASURE, ...coverageMeasures(store, worktreeId)]);
+    const over = (news: CodeNews | null, reads?: CodeReads) =>
+      toldOver
+        ? withToldOver(store, consumer, news, complexity, seen, reads && judged(reads))
+        : news;
+    // Row 015-84: the summary is written as sent, so read first whether it changed.
+    const changed = (reads?: CodeReads) =>
+      summaryChanged(store, consumer, complexity, seen, reads && judged(reads));
     if (changes) {
       const input = { at, since: seen, limit: complexity.maxFileBytes };
-      if (store.read(() => codeStep(store, consumer, input, false)).writes) {
+      // Read-only first; with nothing to write, the summary's check shares its reads.
+      const first = store.read(() => {
+        const reads = codeReads(store, worktreeId);
+        if (codeStep(store, consumer, input, false, reads).writes) return "write";
+        return toldOver && changed(reads) ? "summary" : "none";
+      });
+      if (first === "write") {
+        // Another transaction, which may see other states: it reads them again.
         return heldWrite(
           access,
-          () =>
-            over(
-              withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders),
-            ),
+          () => {
+            const reads = codeReads(store, worktreeId);
+            const step = codeStep(store, consumer, input, true, reads);
+            return over(withUntested(store, consumer, step.news, loaders), reads);
+          },
           holds,
         );
       }
+      return first === "summary" ? heldWrite(access, () => over(null), holds) : null;
     }
-    if (!toldOver) return null;
-    // Row 015-84: the summary is written as sent, so read first whether it changed.
-    return store.read(() => summaryChanged(store, consumer, complexity, seen))
-      ? heldWrite(access, () => over(null), holds)
-      : null;
+    return store.read(() => changed()) ? heldWrite(access, () => over(null), holds) : null;
   });
   return told === "missing" ? null : told;
 }

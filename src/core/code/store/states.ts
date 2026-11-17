@@ -2,7 +2,7 @@ import { num, numOrNull, oneOf, str } from "../../store/codec.js";
 import type { Connection, Params, Row } from "../../store/connection.js";
 import type { CodeCheckId, CodeKnownState, CodeMeasure, CodeOutcome } from "../../types/code.js";
 import type { RelativePath, WorktreeId } from "../../types/common.js";
-import type { CodeEdit, CodeStateRepo } from "./types.js";
+import type { CodeEdit, CodeStateFilter, CodeStateRepo } from "./types.js";
 
 export const MEASURES = [
   "complexity",
@@ -52,19 +52,40 @@ export function checkFrom(row: Row): CodeCheckId {
 }
 
 /**
+ * `CODE_INDEXES`' partial indexes of `states` (row 015-127): the failing
+ * states and the edited ones of a worktree, which a tool boundary reads.
+ */
+export const STATES_FAILING = "states_failing";
+export const STATES_EDITED = "states_edited";
+
+/** Which of `names` the file has; a store a reader opened before any creating open has none. */
+function indexesIn(conn: Connection, names: readonly string[]): ReadonlySet<string> {
+  const rows = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(names),
+  );
+  return new Set(rows.map((row) => str(row, "name")));
+}
+
+/**
  * Row 015-45: the `FROM` of a read of states, through its first `WHERE`
  * term, and its parameters. With `paths`, each path's checks are read
  * first and their states by key, in that order (`CROSS JOIN`), so a few
  * files' states come without a scan of every state of the worktree: 37,299
- * rows, 48 to 65 ms cold, on 011-197's store.
+ * rows, 48 to 65 ms cold, on 011-197's store. Without them, `index` names
+ * the partial index the read's predicates imply (row 015-127): SQLite's
+ * planner otherwise keeps the primary key, a scan of every state of the
+ * worktree, 260,000 on 005-110's copy.
  */
 function statesOf(
   worktreeId: WorktreeId,
   paths: readonly RelativePath[] | undefined,
+  index: string | null,
 ): { readonly from: string; readonly params: Params } {
   if (paths === undefined) {
+    const states = index === null ? "states s" : `states s INDEXED BY ${index}`;
     return {
-      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      from: `${states} JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?`,
       params: [worktreeId],
     };
   }
@@ -77,18 +98,40 @@ function statesOf(
   };
 }
 
+/**
+ * The `WHERE` terms of `filter`'s measure and outcome, only those it names,
+ * so the planner sees each (row 015-127). `fail` is a literal, which
+ * implies `states_failing`'s own `WHERE`.
+ */
+function filterTerms(filter: CodeStateFilter): { readonly sql: string; readonly params: Params } {
+  const terms: string[] = [];
+  const params: (string | number)[] = [];
+  if (filter.measure !== undefined) {
+    terms.push("AND s.measure = ?");
+    params.push(filter.measure);
+  }
+  if (filter.outcome === "fail") terms.push("AND s.outcome = 'fail'");
+  else if (filter.outcome !== undefined) {
+    terms.push("AND s.outcome = ?");
+    params.push(filter.outcome);
+  }
+  return { sql: terms.join(" "), params };
+}
+
 export function createStateRepo(conn: Connection): CodeStateRepo {
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const named = (index: string, used: boolean) => (used && indexed.has(index) ? index : null);
   return {
     list(worktreeId, filter = {}) {
-      const { from, params } = statesOf(worktreeId, filter.paths);
+      const index = named(STATES_FAILING, filter.outcome === "fail");
+      const { from, params } = statesOf(worktreeId, filter.paths, index);
+      const terms = filterTerms(filter);
       return conn
         .all(
-          `SELECT s.*, ${CHECK_COLUMNS} FROM ${from}
-             AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
+          `SELECT s.*, ${CHECK_COLUMNS} FROM ${from} ${terms.sql}
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
           ...params,
-          ...Array(2).fill(filter.measure ?? null),
-          ...Array(2).fill(filter.outcome ?? null),
+          ...terms.params,
         )
         .map((row) => toState(worktreeId, row));
     },
@@ -116,7 +159,7 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
       });
     },
     edits(worktreeId, measure, paths) {
-      const { from, params } = statesOf(worktreeId, paths);
+      const { from, params } = statesOf(worktreeId, paths, named(STATES_EDITED, true));
       return conn
         .all(
           `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS} FROM ${from}
