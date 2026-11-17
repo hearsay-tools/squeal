@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { importCommand } from "../../src/cli/import.js";
@@ -16,7 +16,14 @@ import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
  * maps to `src/reg-a.ts`. A clone at a commit that retargets the entry
  * imports the export: that test's pass must not be imported, and the other
  * test's is. The clone at the export's own commit is the control. The
- * shard's evidence holds the manifests (018 D9), so the export keeps both.
+ * shard's evidence holds the root manifest (018 D9), so the export keeps both.
+ *
+ * Reviews/wave-4.md B1 and B2 chains into workspace packages: Vite 8 reads
+ * those manifests in its native resolver, so no shard's evidence holds them,
+ * and the human dropped the CI step that read them (2026-11-17,
+ * reviews/wave-4-rereview.md B1). The export leaves each chain test out as
+ * uncertified, and no import takes a pass for it, at the export's commit or
+ * at one that changes its chain.
  */
 
 const REG = "test/reg.test.ts";
@@ -25,7 +32,40 @@ const READS_A: CheckId = { kind: "test", project: "", testPath: REG, fullName: "
 const COUNTS: CheckId = { kind: "test", project: "", testPath: COUNT, fullName: "counts one" };
 
 const manifest = (target: string) =>
-  `${JSON.stringify({ name: "resolution-import", private: true, type: "module", imports: { "#reg": target } })}\n`;
+  `${JSON.stringify({ name: "resolution-import", private: true, type: "module", imports: { "#reg": target, "#chosen": "@w/one" } })}\n`;
+
+/** Reviews/wave-4.md B1 and B2: a test per chain into a workspace package, each expecting "a". */
+const CHAINS = {
+  b1: { path: "test/b1.test.ts", specifier: "#chosen" },
+  b2: { path: "test/b2.test.ts", specifier: "@w/two/sub" },
+  b2add: { path: "test/b2add.test.ts", specifier: "@w/three/sub" },
+} as const;
+type ChainName = keyof typeof CHAINS;
+const readsA = (name: ChainName): CheckId => ({
+  kind: "test",
+  project: "",
+  testPath: CHAINS[name].path,
+  fullName: "reads a",
+});
+const json = (data: unknown) => `${JSON.stringify(data)}\n`;
+const pkg = (name: string, extra: Record<string, unknown> = {}) =>
+  json({ name, private: true, type: "module", ...extra });
+const value = (v: string) => `export const value = "${v}";\n`;
+
+/** The one manifest change per chain that makes its import read "b". */
+const CHANGES: Readonly<Record<ChainName, Record<string, string>>> = {
+  b1: { "packages/one/package.json": pkg("@w/one", { exports: "./b.ts" }) },
+  b2: { "packages/two/sub/package.json": json({ type: "module", main: "./b.ts" }) },
+  b2add: { "packages/three/sub/package.json": json({ type: "module", main: "./b.ts" }) },
+};
+
+/** Workspace links, relative so a clone keeps them: `node_modules/@w/<name>` to `packages/<name>`. */
+function links(root: string): void {
+  mkdirSync(join(root, "node_modules/@w"), { recursive: true });
+  for (const name of ["one", "two", "three"]) {
+    symlinkSync(`../../packages/${name}`, join(root, "node_modules/@w", name));
+  }
+}
 
 const FILES: Record<string, string> = {
   "package.json": manifest("./src/reg-a.ts"),
@@ -37,6 +77,22 @@ const FILES: Record<string, string> = {
     'import { expect, it } from "vitest";\nimport { value } from "#reg";\nit("reads a", () => expect(value).toBe("a"));\n',
   [COUNT]:
     'import { expect, it } from "vitest";\nimport { count } from "../src/registry.ts";\nit("counts one", () => expect(count).toBe(1));\n',
+  "packages/one/package.json": pkg("@w/one", { exports: "./a.ts" }),
+  "packages/one/a.ts": value("a"),
+  "packages/one/b.ts": value("b"),
+  "packages/two/package.json": pkg("@w/two"),
+  "packages/two/sub/package.json": json({ type: "module", main: "./a.ts" }),
+  "packages/two/sub/a.ts": value("a"),
+  "packages/two/sub/b.ts": value("b"),
+  "packages/three/package.json": pkg("@w/three"),
+  "packages/three/sub/index.ts": value("a"),
+  "packages/three/sub/b.ts": value("b"),
+  ...Object.fromEntries(
+    Object.values(CHAINS).map(({ path, specifier }) => [
+      path,
+      `import { expect, it } from "vitest";\nimport { value } from "${specifier}";\nit("reads a", () => expect(value).toBe("a"));\n`,
+    ]),
+  ),
 };
 
 function io(cwd: string): CliIo & { out: string[] } {
@@ -46,7 +102,7 @@ function io(cwd: string): CliIo & { out: string[] } {
 }
 
 /** CI's export of `origin`'s commit, recorded with `CI` unset so the environments are equal. */
-async function exported(origin: string): Promise<string> {
+async function exported(origin: string, said: (text: string) => void = () => {}): Promise<string> {
   const job = cloneOf(origin, "ci");
   const parts = join(dirname(origin), "parts");
   const recorded = await recordVitest(job, parts, ["--update=none"], { CI: "" });
@@ -57,6 +113,7 @@ async function exported(origin: string): Promise<string> {
     CI: "",
   });
   expect(made.code, made.said).toBe(0);
+  said(made.said);
   return file;
 }
 
@@ -82,8 +139,15 @@ async function imported(
   });
   await h.scheduler.start();
   await h.quiet();
-  const states = { reg: h.sink.stateOf(READS_A), count: h.sink.stateOf(COUNTS) };
-  expect([...h.runsOf(REG), ...h.runsOf(COUNT)]).toEqual([]);
+  const states = {
+    reg: h.sink.stateOf(READS_A),
+    count: h.sink.stateOf(COUNTS),
+    b1: h.sink.stateOf(readsA("b1")),
+    b2: h.sink.stateOf(readsA("b2")),
+    b2add: h.sink.stateOf(readsA("b2add")),
+  };
+  const tests = [REG, COUNT, ...Object.values(CHAINS).map((c) => c.path)];
+  expect(tests.flatMap((t) => h.runsOf(t))).toEqual([]);
   await h.scheduler.close();
   await h.runner.close();
   return states;
@@ -95,11 +159,19 @@ describe("a CI import and what decides an import's resolution (row 023-14)", () 
   it("imports the passes at the export's commit, and not the retargeted one", {
     timeout: 300_000,
   }, async () => {
-    const origin = committed(scratch("resolution-import"), FILES);
-    const file = await exported(origin);
+    const origin = committed(scratch("resolution-import"), FILES, links);
+    let said = "";
+    const file = await exported(origin, (text) => {
+      said += text;
+    });
+    // The chain tests' manifests are in no shard's evidence: the export leaves each out.
+    for (const { path } of Object.values(CHAINS)) {
+      expect(said).toContain(`left out ${path}: its shard recorded other content, or none, for`);
+    }
+    expect(said).not.toContain(`left out ${REG}`);
     const same = await imported(origin, file, "same", {});
-    expect(same.reg).toMatchObject(CURRENT_PASS);
-    expect(same.count).toMatchObject(CURRENT_PASS);
+    expect(same).toMatchObject({ reg: CURRENT_PASS, count: CURRENT_PASS });
+    expect([same.b1, same.b2, same.b2add]).toEqual([null, null, null]);
 
     const retargeted = await imported(origin, file, "retargeted", {
       "package.json": manifest("./src/reg-b.ts"),
@@ -107,4 +179,16 @@ describe("a CI import and what decides an import's resolution (row 023-14)", () 
     expect(retargeted.reg).not.toMatchObject(CURRENT_PASS);
     expect(retargeted.count).toMatchObject(CURRENT_PASS);
   });
+
+  it.each(Object.keys(CHANGES) as ChainName[])(
+    "reviews/wave-4.md: no import takes %s's pass at a commit that changes a manifest on its chain",
+    { timeout: 300_000 },
+    async (chain) => {
+      const origin = committed(scratch(`resolution-${chain}`), FILES, links);
+      const file = await exported(origin);
+      const changed = await imported(origin, file, chain, CHANGES[chain]);
+      expect([changed.b1, changed.b2, changed.b2add]).toEqual([null, null, null]);
+      expect(changed).toMatchObject({ reg: CURRENT_PASS, count: CURRENT_PASS });
+    },
+  );
 });
