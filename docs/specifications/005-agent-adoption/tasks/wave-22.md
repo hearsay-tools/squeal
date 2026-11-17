@@ -35,3 +35,11 @@ Owns: `src/core/presence/{heartbeat,findings,events,lock-events}.ts`, `src/harne
 Done when: the reproducing test; tests for a spawn whose process died (told as now, after the grace), a daemon that holds the lock and never answers because it is stopped (SIGSTOP, lessons defect 22: told as now), and a slow start (starting, no `squeal start`); the texts before and after in your notes; the rules above.
 
 Final message: the cause with file and line; each state's text before and after; check results.
+
+## Review brief: candidate 0.1.546
+
+Use /reviewer. Row 005-107 (section W1 above); the range is the candidate's commits over `origin/main` at its base. A repair of 0.1.541's decision C, in the released 0.1.542: a Pi session could read its registration text twice with no kill (main CI 44114276401, `test/e2e/pi.test.ts:116`).
+
+The fix: the Pi worker (`src/harness/pi/worker.ts`, `serve`) starts a request only after the daemon has written what the previous commit sent; with nothing pending a request starts at once. Check: the interleaving the worker names (the run start reads the owed mark before the daemon wrote the clear) with your own probe against a real daemon; that the wait cannot hang a session (a daemon that dies or never answers while a write is pending: bounded, and what the agent then sees); the order of requests and the idle waiter; the kill cases of 0.1.541 (`test/harness/registration-owed-harnesses.test.ts`); that `test/e2e/pi.test.ts` runs against the built bundle. Judge the worker's decision to leave OpenCode unchanged: its bridge commits at the plugin's verdict without waiting for the daemon's write (`bridge.ts:207-221`), and the next check runs in a new process after a model round trip; say whether a duplicate is reachable there and whether it needs a row. The second commit is test only (`test/helpers/pi-wake-trace.test.ts`: a signed offset; review N1 of `../../009-pi-adapter/reviews/009-30-r3.md`).
+
+No full suite; affected files directly; e2e files one at a time, `timeout 900`. A check that needs a commit ID is read from CI. Findings file: `reviews/0.1.546.md`, PASS or FAIL, committed. Write `~`, never a `/home/<user>/` path; the private-material check also rejects the company name and local project folder names.

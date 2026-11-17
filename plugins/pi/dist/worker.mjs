@@ -3242,7 +3242,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.545";
+  if (true) return "0.1.546";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -19164,6 +19164,7 @@ function verdictsOf(data) {
 function serve(port, deps, verdicts) {
   const waits = /* @__PURE__ */ new Map();
   const slot2 = verdicts === void 0 ? null : new Int32Array(verdicts);
+  const writes = new HandedWrites();
   port.on("message", (message) => {
     if ("cancel" in message) {
       waits.get(message.cancel)?.abort();
@@ -19174,13 +19175,14 @@ function serve(port, deps, verdicts) {
     if (cancel !== null) waits.set(id, cancel);
     const answer = (message2) => port.postMessage(message2);
     const handOff = slot2 === null ? null : new HandOff();
-    handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal).then(
+    writes.after(() => handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal)).then(
       (result) => {
         if (slot2 === null || handOff === null || !handOff.pending) {
           return answer({ id, ok: true, answer: result });
         }
         const post = () => answer({ id, ok: true, answer: result, held: true });
         handOff.settle(awaitVerdict(slot2, id, HAND_OFF_BOUND_MS, post) === "commit");
+        writes.add(handOff.sent());
       },
       () => {
         handOff?.abandon();
@@ -19189,6 +19191,21 @@ function serve(port, deps, verdicts) {
     ).finally(() => waits.delete(id));
   });
 }
+var HandedWrites = class {
+  #pending = null;
+  /** Adds `written`, which never rejects (`HandOff.sent`). */
+  add(written) {
+    const all = this.#pending === null ? written : Promise.all([this.#pending, written]);
+    const pending2 = all.then(() => {
+      if (this.#pending === pending2) this.#pending = null;
+    });
+    this.#pending = pending2;
+  }
+  /** Runs `start` once every write added so far is written; at once when none is pending. */
+  after(start) {
+    return this.#pending === null ? start() : this.#pending.then(start);
+  }
+};
 
 // src/harness/pi/entries/worker.ts
 if (parentPort !== null) {
