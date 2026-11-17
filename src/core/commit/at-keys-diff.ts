@@ -2,8 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { runGit, splitNul } from "../fs/git.js";
 import { isRecord } from "../fs/json.js";
-import { inputGlobs } from "../keys/closure.js";
-import { createInputMatcher } from "../keys/glob.js";
+import { createDeclaredInputs } from "../keys/closure.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { CommitSide, Difference } from "./at-keys-fast.js";
@@ -38,11 +37,15 @@ export async function hereNames(root: AbsolutePath): Promise<Map<RelativePath, S
   return entryNames([...tracked, ...untracked]);
 }
 
-/** What differs between `commit` and this worktree now, under the worktree's `policy`. */
+/**
+ * What differs between `commit` and this worktree now, under the worktree's
+ * `policy`, with `files` the commit's: its declared inputs are matched there.
+ */
 export async function differenceAt(
   root: AbsolutePath,
   commit: string,
   policy: Policy,
+  files: Iterable<RelativePath>,
 ): Promise<Difference> {
   const args = ["diff", "--name-status", "--no-renames", "-z", commit, "--"];
   const fields = splitNul(await runGit(root, args, { timeoutMs: LS_TREE_TIMEOUT_MS }));
@@ -67,7 +70,7 @@ export async function differenceAt(
     changed,
     addedOrDeleted,
     manifests,
-    declared: createInputMatcher(inputGlobs(policy.inputs)),
+    declared: createDeclaredInputs(policy.inputs, files).for,
   };
 }
 
