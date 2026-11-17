@@ -161,7 +161,7 @@ To pin the release's source instead, clone its tag and check the commit that the
 
 ```sh
 SQUEAL_VERSION=0.1.423
-SQUEAL_COMMIT=2b2ed97ed4ec4c0200f7a537e26e353131c21ce7
+SQUEAL_COMMIT=2f5ce0879cc822615eef57de9cbc011ed95aaecd
 git -c advice.detachedHead=false clone --quiet --depth 1 --branch "squeal--v$SQUEAL_VERSION" https://github.com/hearsay-tools/squeal.git "$RUNNER_TEMP/squeal-source"
 head=$(git -C "$RUNNER_TEMP/squeal-source" rev-parse HEAD)
 [ "$head" = "$SQUEAL_COMMIT" ] || { echo "squeal--v$SQUEAL_VERSION is at $head, not $SQUEAL_COMMIT: refused" >&2; exit 1; }
@@ -169,6 +169,8 @@ node "$RUNNER_TEMP/squeal-source/plugins/claude-code/dist/cli/squeal.mjs" --vers
 ```
 
 The CLI is then `plugins/claude-code/dist/cli/squeal.mjs` in the clone, in place of `dist/cli/squeal.mjs` in the asset's directory.
+
+The repository's history was rewritten on 2026-11-17, and every commit ID changed; tags kept their names. The descriptors of releases before 0.1.531 still name the commit from before the rewrite as `releaseCommit`. For those releases, take the commit from the tag instead: `git ls-remote https://github.com/hearsay-tools/squeal.git 'refs/tags/squeal--v<version>^{}'`. The asset's SHA-256 did not change.
 
 ### When the check says incomplete
 
@@ -276,4 +278,4 @@ No step needs `continue-on-error`.
 
 Every Squeal release moves the tag `v0`, so your CI follows Squeal's releases with no change to the workflow. `v0` stays on releases whose CI setup is compatible: the action's inputs (it has none), the commands it provides and their arguments. A release that would break a workflow written for `v0` starts `v1`, and `v0` stays on the last compatible release. A change in the format Squeal records results in is not such a break: while CI and a developer run releases with different formats, that developer's Squeal does not use CI's results.
 
-To pin one exact commit instead, write the commit of a release in `uses:` and keep the tag in a comment, for example `uses: hearsay-tools/squeal/ci@<commit> # v0`. Renovate keeps such a pin current: with the preset `helpers:pinGitHubActionDigests` it writes the pin itself and opens a pull request each time `v0` moves. Dependabot keeps it current too: each release also carries a plain `v<version>` tag, for example `uses: hearsay-tools/squeal/ci@<commit> # v0.1.440`.
+To pin one exact commit instead, write the commit of a release in `uses:` and keep the tag in a comment, for example `uses: hearsay-tools/squeal/ci@<commit> # v0`. Renovate keeps such a pin current: with the preset `helpers:pinGitHubActionDigests` it writes the pin itself and opens a pull request each time `v0` moves. Dependabot keeps it current too: each release also carries a plain `v<version>` tag, for example `uses: hearsay-tools/squeal/ci@<commit> # v0.1.440`. A commit pin written before the history rewrite of 2026-11-17 names a commit that no longer exists: move it to the tag's new commit.
