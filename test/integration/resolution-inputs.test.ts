@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { CheckId } from "../../src/core/types/check.js";
@@ -11,15 +11,17 @@ import { type Harness, openHarness } from "../scheduler/vitest-harness.js";
 /*
  * Row 023-14, `023 research/glob-membership.md` S7 with the real Vitest
  * adapter: a test imports `#reg`, which the root `package.json` maps to
- * `src/reg-a.ts`. A retargeted entry, made while no daemon ran or in another
- * worktree, must not read as the stored pass. A test that imports nothing
- * through a manifest keeps its pass.
+ * `src/reg-a.ts`, and another imports `../src/registry`, which Vite resolves
+ * to `src/registry.ts` while no `src/registry.js` exists. A retargeted entry
+ * or a shadowing `registry.js`, made while no daemon ran or in another
+ * worktree, must not read as the stored pass.
  */
 
 const REG = "test/reg.test.ts";
 const COUNT = "test/registry.test.ts";
 const READS_A: CheckId = { kind: "test", project: "", testPath: REG, fullName: "reads a" };
 const COUNTS: CheckId = { kind: "test", project: "", testPath: COUNT, fullName: "counts one" };
+const SHADOW = "src/registry.js";
 
 const FILES: Record<string, string> = {
   "src/reg-a.ts": 'export const value = "a";\n',
@@ -72,7 +74,7 @@ async function stop(h: Harness): Promise<void> {
 const CURRENT_PASS = { outcome: "pass", validity: "current" };
 
 describe("what decides an import's resolution, in keys (row 023-14)", SLOW, () => {
-  it("a restart reads a retargeted `imports` entry as stale, and its undo reuses the pass", async () => {
+  it("a restart reads a retargeted `imports` entry and a shadowing file as stale, and their undo reuses the pass", async () => {
     const repo = resolutionRepo();
     const store = openRepoStore(repo.commonDir);
     const start = (runMissing = false) => startIn(repo.main, store, repo.commonDir, runMissing);
@@ -87,35 +89,47 @@ describe("what decides an import's resolution, in keys (row 023-14)", SLOW, () =
     expect(second.sink.stateOf(READS_A)?.validity).toBe("stale");
     expect(second.sink.stateOf(COUNTS)).toMatchObject(CURRENT_PASS);
     await stop(second);
-
-    // Undone: the stored pass is the one at this content, reused with no run.
     imports(repo.main, "./src/reg-a.ts");
+
+    // S7: `registry.js` added beside `registry.ts`; Vite tries `.js` first, and `vitest run` reads 99.
+    writeFileSync(join(repo.main, SHADOW), "export const count = 99;\n");
     const third = await start();
+    expect(third.sink.stateOf(COUNTS)?.validity).toBe("stale");
     expect(third.sink.stateOf(READS_A)).toMatchObject(CURRENT_PASS);
-    expect(third.runsOf(REG)).toEqual([]);
     await stop(third);
+
+    // Both undone: the stored passes are the ones at this content, reused with no run.
+    rmSync(join(repo.main, SHADOW));
+    const fourth = await start();
+    expect(fourth.sink.stateOf(COUNTS)).toMatchObject(CURRENT_PASS);
+    expect(fourth.sink.stateOf(READS_A)).toMatchObject(CURRENT_PASS);
+    expect([...fourth.runsOf(COUNT), ...fourth.runsOf(REG)]).toEqual([]);
+    await stop(fourth);
   });
 
-  it("a second worktree at a commit that retargets the entry does not inherit its pass", async () => {
+  it("a second worktree at a commit that retargets the entry and adds the shadow inherits neither pass", async () => {
     const repo = resolutionRepo();
     const store = openRepoStore(repo.commonDir);
     const first = await startIn(repo.main, store, repo.commonDir, true);
     expect(first.sink.stateOf(READS_A)).toMatchObject(CURRENT_PASS);
+    expect(first.sink.stateOf(COUNTS)).toMatchObject(CURRENT_PASS);
     await stop(first);
 
-    // The control: a worktree at the same commit inherits it.
+    // The control: a worktree at the same commit inherits both.
     const same = addWorktree(repo.main, repo.dir, "same");
     const control = await startIn(same, store, repo.commonDir);
     expect(control.sink.stateOf(READS_A)).toMatchObject(CURRENT_PASS);
+    expect(control.sink.stateOf(COUNTS)).toMatchObject(CURRENT_PASS);
     await stop(control);
 
     const other = addWorktree(repo.main, repo.dir, "other");
     imports(other, "./src/reg-b.ts");
-    commit(other, "retarget");
+    writeFileSync(join(other, SHADOW), "export const count = 99;\n");
+    commit(other, "retarget and shadow");
     const second = await startIn(other, store, repo.commonDir);
-    // No state at all: the stored pass is not at this worktree's key, and lookup-only runs nothing.
+    // No state at all: neither stored pass is at this worktree's key, and lookup-only runs nothing.
     expect(second.sink.stateOf(READS_A)).toBeNull();
-    expect(second.sink.stateOf(COUNTS)).toMatchObject(CURRENT_PASS);
+    expect(second.sink.stateOf(COUNTS)).toBeNull();
     await stop(second);
   });
 });

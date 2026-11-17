@@ -1,5 +1,5 @@
 import { existsSync, realpathSync, statSync } from "node:fs";
-import { dirname, extname, join } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -8,14 +8,15 @@ import { LANGS, type Node, type ParseAst, walk } from "./glob-listing.js";
 import { builtinOf, type ImportClosure, packageName } from "./graph.js";
 
 /**
- * Row 023-14 (`023 research/glob-membership.md` 3, S7): the manifests that
- * decide how a module's imports resolve, though no closure file's bytes
- * change when they change. Each enters the closure as a path, an absent one
+ * Row 023-14 (`023 research/glob-membership.md` 3, S7): files that decide
+ * how a module's imports resolve, though no closure file's bytes change when
+ * they appear or change. Each enters the closure as a path, an absent one
  * hashing as absent (spec 001 D3), so a restart, another worktree and a CI
- * import key the change as the running daemon sees it (D4). A CI shard's
- * evidence holds them: Vite reads each module's nearest `package.json` in
- * JavaScript (018 D9).
+ * import key the change as the running daemon sees it (D4).
  *
+ * - For a relative import, every path Vite tries before the one it resolved
+ *   (`shadowsOf`): a `registry.js` beside an imported `registry.ts`, an
+ *   `index` file, a folder's `package.json`.
  * - For a `#` import, the `package.json` Vite reads its `imports` from: the
  *   nearest one above the importer, and each absent one on the way there.
  * - For a bare import that resolves to a project folder (a workspace link,
@@ -23,24 +24,26 @@ import { builtinOf, type ImportClosure, packageName } from "./graph.js";
  *   whose `exports` or `main` picked the file.
  *
  * Not modelled: tsconfig `paths` and aliases (closures are declared
- * incomplete, D3), the target of a `#` entry, and a file that shadows a
- * relative import's target (a `registry.js` beside an imported
- * `registry.ts`): Vite 8 probes those in its native resolver, so no CI
- * shard's evidence holds their absence (row 023-14 notes).
+ * incomplete, D3), the target of a `#` entry, and a relative `require`.
+ *
+ * Open (row 023-14, option A): Vite 8 probes a relative import's paths in
+ * its native resolver, so no CI shard's evidence holds the absence of a
+ * shadow path, and `ci export` leaves out every file whose closure holds
+ * one (018 D9). The manifests are evidenced: Vite reads each module's
+ * nearest `package.json` in JavaScript.
  */
 
-/** The import specifiers of one module that read a manifest, as its source writes them. */
+/** The import specifiers of one module, by kind, as its source writes them. */
 export interface ModuleSpecifiers {
-  /** Whether it imports a `#` subpath. */
+  readonly relative: readonly string[];
   readonly subpath: boolean;
-  /** Its bare specifiers, builtins left out. */
   readonly bare: readonly string[];
 }
 
-const NONE: ModuleSpecifiers = { subpath: false, bare: [] };
+const NONE: ModuleSpecifiers = { relative: [], subpath: false, bare: [] };
 
 /**
- * The `#` and bare specifiers of `source`'s value imports and re-exports and its
+ * The literal specifiers of `source`'s value imports and re-exports and its
  * literal `import()`, read from its syntax tree: type-only ones are erased
  * and resolve nothing, and text in a comment or string gives none. `null`
  * when the module cannot be read here (not a script by its extension, or a
@@ -57,16 +60,19 @@ export async function moduleSpecifiers(
   );
   const program = await parsing.catch(() => null);
   if (program === null) return null;
+  const relative = new Set<string>();
   const bare = new Set<string>();
   let subpath = false;
   walk(program, (node) => {
     const specifier = specifierOf(node);
     if (specifier === null) return;
     const path = specifier.split("?")[0] ?? specifier;
-    if (path.startsWith("#")) subpath = true;
+    if (path.startsWith("./") || path.startsWith("../") || path === "." || path === "..")
+      relative.add(path);
+    else if (path.startsWith("#")) subpath = true;
     else if (builtinOf(path) === null && packageName(path) !== null) bare.add(path);
   });
-  return { subpath, bare: [...bare] };
+  return { relative: [...relative], subpath, bare: [...bare] };
 }
 
 function specifierOf(node: Node): string | null {
@@ -80,6 +86,48 @@ function specifierOf(node: Node): string | null {
   const imported = kind === "ImportExpression" ? (node.source as Node | undefined) : null;
   const value = (source ?? imported)?.value;
   return typeof value === "string" ? value : null;
+}
+
+/** Vite resolves a JavaScript specifier to these TypeScript twins, in its order (`tryCleanFsResolve`). */
+const TWINS: Readonly<Record<string, readonly string[]>> = {
+  ".js": [".ts", ".tsx"],
+  ".jsx": [".tsx"],
+  ".mjs": [".mts"],
+  ".cjs": [".cts"],
+};
+
+/**
+ * Every path Vite 8's `tryCleanFsResolve` tries for `path`, an import's
+ * target as written, in its order: the file, its TypeScript twins, the file
+ * with each extension, then as a folder its `package.json` and `index` with
+ * each extension.
+ */
+export function viteOrder(path: AbsolutePath, extensions: readonly string[]): AbsolutePath[] {
+  const ext = extname(path);
+  const stem = path.slice(0, path.length - ext.length);
+  return [
+    path,
+    ...(TWINS[ext] ?? []).map((twin) => `${stem}${twin}`),
+    ...extensions.map((e) => `${path}${e}`),
+    join(path, "package.json"),
+    ...extensions.map((e) => join(path, `index${e}`)),
+  ];
+}
+
+/**
+ * The paths Vite tries before the one it resolved `path` to, one of
+ * `targets` (the importer's targets): any of them appearing would win. All
+ * of them when none is a target, as when a folder's `package.json` names an
+ * entry, or Vite left the import unresolved (its candidates are D3's).
+ */
+export function shadowsOf(
+  path: AbsolutePath,
+  targets: ReadonlySet<AbsolutePath>,
+  extensions: readonly string[],
+): AbsolutePath[] {
+  const order = viteOrder(path, extensions);
+  const resolved = order.findIndex((candidate) => targets.has(candidate));
+  return resolved < 0 ? order : order.slice(0, resolved);
 }
 
 /**
@@ -135,20 +183,28 @@ function manifestName(manifest: AbsolutePath | undefined): unknown {
 }
 
 /**
- * One walked module's resolution inputs (the module doc). None when its
- * source cannot be read or parsed: its imports then key as before.
+ * One walked module's resolution inputs (the module doc), `targets` being
+ * its import targets. None when its source cannot be read or parsed: its
+ * imports then key as before.
  */
 export async function moduleResolutionInputs(
   file: AbsolutePath,
+  targets: ReadonlySet<AbsolutePath>,
+  extensions: readonly string[],
   paths: WorktreePaths,
   parse: ParseAst,
 ): Promise<AbsolutePath[]> {
   const source = readSource(file);
   const specifiers =
     source === null ? NONE : ((await moduleSpecifiers(file, source, parse)) ?? NONE);
-  if (!specifiers.subpath && specifiers.bare.length === 0) return [];
-  const nearest = nearestManifests(dirname(file), paths.root);
-  const out = new Set<AbsolutePath>(specifiers.subpath ? nearest : []);
+  const out = new Set<AbsolutePath>();
+  for (const specifier of specifiers.relative) {
+    const path = resolve(dirname(file), specifier);
+    for (const shadow of shadowsOf(path, targets, extensions)) out.add(shadow);
+  }
+  const looks = specifiers.subpath || specifiers.bare.length > 0;
+  const nearest = looks ? nearestManifests(dirname(file), paths.root) : [];
+  if (specifiers.subpath) for (const manifest of nearest) out.add(manifest);
   if (specifiers.bare.length === 0) return [...out];
   const own = { nearest, name: manifestName(nearest.at(-1)) };
   for (const specifier of specifiers.bare) {
@@ -157,7 +213,7 @@ export async function moduleResolutionInputs(
   return [...out];
 }
 
-/** Inputs per transform object: a re-transform reads the source again. */
+/** Inputs per transform object: a re-transform reads the source and the targets again. */
 const read = new WeakMap<object, Promise<AbsolutePath[]>>();
 
 /**
@@ -168,15 +224,18 @@ const read = new WeakMap<object, Promise<AbsolutePath[]>>();
 export async function resolutionInputs(
   project: TestProject,
   graph: ImportClosure,
+  extensions: readonly string[],
   paths: WorktreePaths,
   parse: ParseAst,
 ): Promise<Set<AbsolutePath>> {
   const environment = project.vite.environments.ssr;
   const out = new Set<AbsolutePath>();
-  for (const file of graph.edges?.keys() ?? []) {
+  for (const [file, edges] of graph.edges ?? []) {
     const transform = environment?.moduleGraph.getModuleById(file)?.transformResult;
     if (!paths.isProjectFile(file) || !transform) continue;
-    const inputs = read.get(transform) ?? moduleResolutionInputs(file, paths, parse);
+    const targets = new Set([...edges.static, ...edges.dynamic]);
+    const inputs =
+      read.get(transform) ?? moduleResolutionInputs(file, targets, extensions, paths, parse);
     read.set(transform, inputs);
     for (const path of await inputs) out.add(path);
   }

@@ -545,12 +545,13 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
       // Spec 001 D3: the snapshot path whether or not the file exists, and
       // every resolution candidate of an unresolved import, so the key
       // changes when one appears, incrementally and at bootstrap (review B1).
-      // Row 023-14: the manifests its `#` and workspace imports read (`resolution-inputs.ts`).
+      // Row 023-14: what decides how its imports resolve (`resolution-inputs.ts`).
+      const extensions = resolveExtensions(project);
       const parse = this.#node.parseAst;
       const files = new Set([
         ...graph.files,
-        ...missingCandidates(graph, resolveExtensions(project)),
-        ...(await resolutionInputs(project, graph, this.paths, parse)),
+        ...missingCandidates(graph, extensions),
+        ...(await resolutionInputs(project, graph, extensions, this.paths, parse)),
       ]);
       files.add(snapshotPath(project, abs));
       const paths = [...files]

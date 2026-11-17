@@ -10,6 +10,9 @@ import { openHarness } from "../scheduler/vitest-harness.js";
 import { daemonCoverage } from "./export-harness.js";
 import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
 
+const SHADOWED_COUNT =
+  'import { expect, it } from "vitest";\nimport { count } from "../src/registry";\nit("counts one", () => expect(count).toBe(1));\n';
+
 /*
  * Row 023-14, `023 research/glob-membership.md` S7 through a CI import, with
  * the real Vitest adapter: CI records and exports at a commit where `#reg`
@@ -46,7 +49,7 @@ function io(cwd: string): CliIo & { out: string[] } {
 }
 
 /** CI's export of `origin`'s commit, recorded with `CI` unset so the environments are equal. */
-async function exported(origin: string): Promise<string> {
+async function exported(origin: string, said: (text: string) => void = () => {}): Promise<string> {
   const job = cloneOf(origin, "ci");
   const parts = join(dirname(origin), "parts");
   const recorded = await recordVitest(job, parts, ["--update=none"], { CI: "" });
@@ -57,6 +60,7 @@ async function exported(origin: string): Promise<string> {
     CI: "",
   });
   expect(made.code, made.said).toBe(0);
+  said(made.said);
   return file;
 }
 
@@ -106,5 +110,24 @@ describe("a CI import and what decides an import's resolution (row 023-14)", () 
     });
     expect(retargeted.reg).not.toMatchObject(CURRENT_PASS);
     expect(retargeted.count).toMatchObject(CURRENT_PASS);
+  });
+
+  // Open (row 023-14, option A): Vite 8 probes `src/registry.js` in its native resolver, so the
+  // shard holds no evidence of its absence and the export leaves the file out (018 D9). A row
+  // that records that evidence turns this into an import of the pass.
+  it("leaves out a file whose closure holds a shadow path the shard did not probe", {
+    timeout: 300_000,
+  }, async () => {
+    const origin = committed(scratch("resolution-shadow"), { ...FILES, [COUNT]: SHADOWED_COUNT });
+    let said = "";
+    const file = await exported(origin, (text) => {
+      said += text;
+    });
+    expect(said).toContain(
+      "left out test/registry.test.ts: its shard recorded other content, or none, for src/registry,",
+    );
+    const same = await imported(origin, file, "same", {});
+    expect(same.reg).toMatchObject(CURRENT_PASS);
+    expect(same.count).toBeNull();
   });
 });
