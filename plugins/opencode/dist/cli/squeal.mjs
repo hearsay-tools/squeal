@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.543";
+  if (true) return "0.1.544";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -106679,20 +106679,24 @@ function readMarker(folder) {
     return null;
   }
   if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
-  const { owner: owner2, commit, commonDir, createdAt } = value;
+  const { owner: owner2, commit, commonDir, createdAt, group } = value;
   if (typeof owner2.pid !== "number") return null;
   if (typeof commit !== "string" || typeof commonDir !== "string") return null;
   if (typeof createdAt !== "number") return null;
   return {
     v: MARKER_VERSION,
-    owner: {
-      pid: owner2.pid,
-      startTime: typeof owner2.startTime === "number" ? owner2.startTime : null,
-      pidNamespace: typeof owner2.pidNamespace === "string" ? owner2.pidNamespace : null
-    },
+    owner: leaseOf(owner2),
     commit,
     commonDir,
-    createdAt
+    createdAt,
+    ...isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {}
+  };
+}
+function leaseOf(value) {
+  return {
+    pid: value.pid,
+    startTime: typeof value.startTime === "number" ? value.startTime : null,
+    pidNamespace: typeof value.pidNamespace === "string" ? value.pidNamespace : null
   };
 }
 function ownerState(marker) {

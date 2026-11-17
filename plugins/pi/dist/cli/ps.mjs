@@ -2516,20 +2516,24 @@ function readMarker(folder) {
     return null;
   }
   if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
-  const { owner, commit, commonDir, createdAt } = value;
+  const { owner, commit, commonDir, createdAt, group } = value;
   if (typeof owner.pid !== "number") return null;
   if (typeof commit !== "string" || typeof commonDir !== "string") return null;
   if (typeof createdAt !== "number") return null;
   return {
     v: MARKER_VERSION,
-    owner: {
-      pid: owner.pid,
-      startTime: typeof owner.startTime === "number" ? owner.startTime : null,
-      pidNamespace: typeof owner.pidNamespace === "string" ? owner.pidNamespace : null
-    },
+    owner: leaseOf(owner),
     commit,
     commonDir,
-    createdAt
+    createdAt,
+    ...isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {}
+  };
+}
+function leaseOf(value) {
+  return {
+    pid: value.pid,
+    startTime: typeof value.startTime === "number" ? value.startTime : null,
+    pidNamespace: typeof value.pidNamespace === "string" ? value.pidNamespace : null
   };
 }
 function ownerState(marker) {
