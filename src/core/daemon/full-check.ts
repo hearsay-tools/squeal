@@ -122,7 +122,7 @@ export const RELEASE_WITHIN_MS = DAEMON_START_BUSY_TIMEOUT_MS;
 /**
  * Row 011-226, once the daemon serves: takes the day's claim and, holding
  * it, runs the full check off the main thread. A fault marks the store
- * (`markStore`) and leaves a note; every daemon on the store exits at its
+ * (`markFault`) and leaves a note; every daemon on the store exits at its
  * next heartbeat (`storeCondemned`), and the next start moves the store
  * aside. Row 011-235: the claim stays only once the check answered (passed,
  * or a fault marked). A check that could not run, one the returned function

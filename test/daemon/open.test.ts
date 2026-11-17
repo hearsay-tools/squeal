@@ -5,14 +5,14 @@ import type { DaemonExit } from "../../src/core/types/daemon.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
-const integrityChecks = vi.hoisted(() => ({ count: 0 }));
+const storeOpens = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock("../../src/core/store/open.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/core/store/open.js")>();
   return {
     ...actual,
     openStore: ((...args: Parameters<typeof actual.openStore>) => {
-      if (args[1]?.checkIntegrity !== undefined) integrityChecks.count++;
+      if (args[1]?.recoverFaults === true) storeOpens.count++;
       return actual.openStore(...args);
     }) as typeof actual.openStore,
   };
@@ -30,11 +30,11 @@ afterEach(() => {
     daemon.lock.release();
   }
   for (const repo of repos.splice(0)) repo.cleanup();
-  integrityChecks.count = 0;
+  storeOpens.count = 0;
 });
 
 describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
-  it("five concurrent starts run the integrity check once: losers never open the store", async () => {
+  it("five concurrent starts open the store once: losers never open it", async () => {
     const repo = createFixtureRepo();
     repos.push(repo);
     // An existing store: the winner opens it once. A start that creates it opens it again
@@ -52,7 +52,7 @@ describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
     const losers = results.filter((r): r is DaemonExit => "reason" in r);
     expect(winners).toHaveLength(1);
     expect(losers.map((exit) => exit.reason)).toEqual(Array(4).fill("lost-lock"));
-    expect(integrityChecks.count).toBe(1);
+    expect(storeOpens.count).toBe(1);
   });
 
   it("releases the lock when the store cannot be opened, so the next start can try", async () => {
@@ -124,7 +124,7 @@ describe("openDaemon: a lost lock with no daemon recorded (task 001-340, D10)", 
       expect(readNotes(repo)).toEqual([
         "a daemon gave up: the lock was still held after 300 ms with no daemon serving; the next hook boundary starts one",
       ]);
-      expect(integrityChecks.count).toBe(0);
+      expect(storeOpens.count).toBe(0);
     } finally {
       lock.release();
     }

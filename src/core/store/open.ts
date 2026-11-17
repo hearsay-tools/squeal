@@ -17,12 +17,18 @@ export interface OpenStoreOptions {
    */
   readonly create?: boolean;
   /**
-   * On the mark a found fault left (`markStore`), or on a corruption error
-   * the open itself throws, move the file aside and start a fresh store
-   * (spec 001 D12). A daemon's start passes it. Default none: a corrupt file
-   * is reported, never moved.
+   * On the mark a found fault left (`markFault` in
+   * `src/core/daemon/store-fault.ts`), or on a corruption error the open
+   * itself throws, move the file aside and start a fresh store (spec 001 D12
+   * as amended by row 011-391). A daemon's start passes `true`. Default
+   * `false`: a corrupt file is reported, never moved, and no mark is read.
+   * No check reads the whole store at a start (row 011-391: one took 82.7 s
+   * cold on a 4.9 GB store); damage elsewhere is found by the daily full
+   * check, which runs in its own process (`src/core/daemon/full-check.ts`,
+   * row 011-226), or by the first read or write that hits it, and either
+   * marks the store.
    */
-  readonly checkIntegrity?: IntegrityCheck;
+  readonly recoverFaults?: boolean;
   /** Busy timeout for this connection. Default `DEFAULT_BUSY_TIMEOUT_MS`. */
   readonly busyTimeoutMs?: number;
   /** Clock for the move-aside file name and the recovery note. */
@@ -34,16 +40,6 @@ export interface OpenStoreOptions {
    */
   readonly connection?: (db: DatabaseSync) => Connection;
 }
-
-/**
- * `mark`: the mark and the open's own reads only. Row 011-391: no check
- * reads the whole store at a start (its `quick_check` took 82.7 s cold on a
- * 4.9 GB store); damage elsewhere is found by the full `integrity_check`,
- * which runs in its own process (`src/core/daemon/full-check.ts`, row
- * 011-226), or by the first read or write that hits it, and either marks
- * the store.
- */
-export type IntegrityCheck = "mark";
 
 /** Fits inside the 2 s hook budget (spec 001 D9); the daemon may pass more. */
 export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
@@ -93,7 +89,7 @@ export function openStore(
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
-  if (options.checkIntegrity === undefined) return { reason: "corrupt", movedTo: null };
+  if (options.recoverFaults !== true) return { reason: "corrupt", movedTo: null };
   return recover(paths, options);
 }
 
@@ -109,7 +105,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
       db.close();
       return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
     }
-    if (options.checkIntegrity !== undefined) {
+    if (options.recoverFaults === true) {
       // Row 011-226: a found fault's mark moves the store aside as a fault found now does.
       // Row 011-391: only a mark that names this file; one that names another goes.
       dropStaleMark(paths.database);
@@ -205,14 +201,13 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 10_000)}`);
     lock.exec("BEGIN EXCLUSIVE");
-    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "mark" });
+    const again = connect(paths, options);
     if (!("corrupt" in again)) return again;
 
     const now = options.now ?? Date.now;
     const at = now();
     const movedTo = moveAside(paths.database, at);
-    const { checkIntegrity: _, ...unchecked } = options;
-    const fresh = connect(paths, unchecked);
+    const fresh = connect(paths, { ...options, recoverFaults: false });
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
       const note = JSON.stringify({ at, movedTo, reason: again.corrupt, ...foundBy(again.mark) });

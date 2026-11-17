@@ -47,7 +47,7 @@ const CORRUPT = Object.assign(new Error("database disk image is malformed"), { e
 function recoverElsewhere(commonDir: string): void {
   const { database } = storePaths(commonDir);
   writeFileSync(markPath(database), JSON.stringify({ at: 1, problem: "found elsewhere" }));
-  const fresh = openStore(commonDir, { checkIntegrity: "mark", now: () => 3 });
+  const fresh = openStore(commonDir, { recoverFaults: true, now: () => 3 });
   if ("reason" in fresh) throw new Error(JSON.stringify(fresh));
   fresh.meta.set("fresh", "yes");
   fresh.close();
@@ -58,7 +58,7 @@ function expectFreshKept(commonDir: string): void {
   const { database } = storePaths(commonDir);
   expect(existsSync(markPath(database))).toBe(false);
   expect(storeCondemned(commonDir, storeFileOf(commonDir))).toBeNull();
-  const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 9 });
+  const store = openStore(commonDir, { recoverFaults: true, now: () => 9 });
   if ("reason" in store) throw new Error(JSON.stringify(store));
   try {
     expect(store.meta.get("fresh")).toBe("yes");
@@ -192,7 +192,7 @@ describe("the binding alone, with no lock (review of cand/0.1.545, B1)", () => {
 
     expect(readStoreMark(commonDir)).toBeNull();
     expect(storeCondemned(commonDir, storeFileOf(commonDir))).toBeNull();
-    const store = openStore(commonDir, { checkIntegrity: "mark" });
+    const store = openStore(commonDir, { recoverFaults: true });
     if ("reason" in store) throw new Error(JSON.stringify(store));
     try {
       expect(store.meta.get("kept")).toBe("yes");

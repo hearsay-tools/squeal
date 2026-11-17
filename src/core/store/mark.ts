@@ -43,15 +43,6 @@ export interface StoreMark {
 
 const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook"];
 
-/**
- * Row 011-226: marks the store as damaged (a failed full check; row 011-391,
- * a read or write that hit damage). Every daemon on the file it names exits
- * at its next heartbeat, and the next checked open moves that file aside.
- */
-export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
-  writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
-}
-
 /** The mark beside the store that names the file at its path now; `null` with none. */
 export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
   return currentMark(storePaths(commonDir).database);

@@ -31,8 +31,9 @@ import {
  * Codex process dies with it, and the session resumes. Its SessionStart said
  * "A daemon is starting"; a wait 49 s later said the daemon stopped and named
  * `squeal start`. The daemon a hook spawns registers only once it holds the
- * lock and opened the store, which `quick_check` makes slow on a large store;
- * till then the wait read the cleared record as a stopped daemon.
+ * lock and opened the store; till it registers, the wait read the cleared
+ * record as a stopped daemon. On a large store that took long while a start
+ * still ran `quick_check` (removed by row 011-391).
  */
 
 const suite = daemonSuite();

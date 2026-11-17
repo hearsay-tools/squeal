@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { isBusy } from "../../src/core/store/connection.js";
-import { markStore, readStoreMark } from "../../src/core/store/mark.js";
+import { readStoreMark } from "../../src/core/store/mark.js";
 import {
   inspectConnection,
   isCorruption,
@@ -17,7 +17,7 @@ import { type Migration, migrate, SCHEMA_VERSION } from "../../src/core/store/sc
 import type { WorktreeId } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import { damageHeader, damageTablePages, seedConsumer } from "./damage.js";
-import { fakeCommonDir, open, seedIndexFault } from "./helpers.js";
+import { fakeCommonDir, markStore, open, seedIndexFault } from "./helpers.js";
 
 const realPrepare = DatabaseSync.prototype.prepare;
 const realExec = DatabaseSync.prototype.exec;
@@ -156,7 +156,7 @@ describe("openStore", () => {
     const writer = new DatabaseSync(storePaths(commonDir).database);
     writer.exec("BEGIN IMMEDIATE");
     try {
-      const store = openStore(commonDir, { busyTimeoutMs: 0, checkIntegrity: "mark" });
+      const store = openStore(commonDir, { busyTimeoutMs: 0, recoverFaults: true });
       if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
       expect(store.meta.get("kept")).toBe("yes");
       store.close();
@@ -180,7 +180,7 @@ describe("openStore", () => {
     seedDatabase(database, "CREATE TABLE future(x); PRAGMA user_version = 99;");
 
     expect(openStore(commonDir)).toEqual({ reason: "newer-schema", found: 99, supported: 1 });
-    expect(openStore(commonDir, { create: false, checkIntegrity: "mark" })).toEqual({
+    expect(openStore(commonDir, { create: false, recoverFaults: true })).toEqual({
       reason: "newer-schema",
       found: 99,
       supported: 1,
@@ -205,7 +205,7 @@ describe("openStore", () => {
     mkdirSync(dir);
     writeFileSync(database, Buffer.alloc(8192, 7));
 
-    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 1_700_000_000_000 });
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 1_700_000_000_000 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.schemaVersion).toBe(1);
@@ -227,7 +227,7 @@ describe("openStore", () => {
     open(commonDir).meta.set("kept", "yes");
     damageHeader(commonDir);
 
-    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 5 });
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 5 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.meta.get("kept")).toBeNull();
@@ -261,7 +261,7 @@ describe("openStore", () => {
     });
     let store: ReturnType<typeof openStore>;
     try {
-      store = openStore(commonDir, { checkIntegrity: "mark", now: () => 5 });
+      store = openStore(commonDir, { recoverFaults: true, now: () => 5 });
     } finally {
       prepare.mockRestore();
       exec.mockRestore();
@@ -308,7 +308,7 @@ describe("the full check's mark at a checked open (row 011-226)", () => {
     const { dir } = storePaths(commonDir);
     seedIndexFault(commonDir);
 
-    opened(commonDir, { checkIntegrity: "mark", now: () => 7 }, (store) => {
+    opened(commonDir, { recoverFaults: true, now: () => 7 }, (store) => {
       expect(store.meta.get(META_STORE_RECOVERED)).toBeNull();
     });
     expect(readdirSync(dir).filter((name) => name.includes("corrupt"))).toEqual([]);
@@ -327,7 +327,7 @@ describe("the full check's mark at a checked open (row 011-226)", () => {
     // A hook's open checks nothing and leaves the store where it is.
     opened(commonDir, { create: false }, (store) => expect(store.meta.get("kept")).toBe("yes"));
 
-    opened(commonDir, { checkIntegrity: "mark", now: () => 9 }, (store) => {
+    opened(commonDir, { recoverFaults: true, now: () => 9 }, (store) => {
       expect(store.meta.get("kept")).toBeNull();
       expect(JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null")).toEqual({
         at: 9,
@@ -342,7 +342,7 @@ describe("the full check's mark at a checked open (row 011-226)", () => {
     expect(readdirSync(dir)).toContain("store.sqlite.corrupt-9.check-failed");
 
     // The fresh store is not moved again.
-    opened(commonDir, { checkIntegrity: "mark", now: () => 10 }, (store) => {
+    opened(commonDir, { recoverFaults: true, now: () => 10 }, (store) => {
       expect(JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null")).toMatchObject({ at: 9 });
     });
   });
@@ -360,7 +360,7 @@ describe("a mark that a read or write left (row 011-391)", () => {
       found: "daemon",
     });
 
-    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 8 });
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 8 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.meta.get("kept")).toBeNull();
@@ -384,7 +384,7 @@ describe("a mark that a read or write left (row 011-391)", () => {
 
     expect(readStoreMark(commonDir)).toBeNull();
     expect(existsSync(`${database}.check-failed`)).toBe(true);
-    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 8 });
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 8 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.meta.get("kept")).toBe("yes");
@@ -410,7 +410,7 @@ describe("a mark that a read or write left (row 011-391)", () => {
       file: { dev: own.dev, ino: own.ino },
     });
 
-    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 8 });
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 8 });
     if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
     try {
       expect(store.meta.get("kept")).toBeNull();

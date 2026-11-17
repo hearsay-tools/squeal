@@ -504,8 +504,10 @@ export interface Store {
  * Why a store could not be opened.
  *
  * Spec 001 D8: "A daemon that finds a `user_version` newer than it
- * understands exits". D12: "Store unreadable or corrupt: `integrity_check` on
- * daemon start; on failure the file is moved aside".
+ * understands exits". D12 as amended 2026-11-18 (row 011-391): no check runs
+ * at a daemon start beyond the open's own reads; a store whose open fails as
+ * corrupt, or that a found fault marked, is moved aside by the next daemon
+ * start.
  */
 export type StoreOpenFailure =
   | { readonly reason: "missing" }

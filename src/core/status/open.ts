@@ -55,8 +55,8 @@ export function unavailable(
 
 /**
  * Opens the store of the worktree containing `cwd` for reading and runs `fn`.
- * Never creates the store and never runs `integrity_check` (that is daemon
- * start, D12). `fn` runs in one read transaction, so it sees one committed
+ * Never creates the store and never moves a damaged one aside (that is a
+ * daemon start, D12 as amended by row 011-391). `fn` runs in one read transaction, so it sees one committed
  * state of the store (lessons defect 23). Every failure becomes a `StatusUnavailable`: missing store,
  * newer schema (D8), unreadable file, or a lock held past the busy timeout
  * and `busyRetryMs`, whose message says how long it waited. Each attempt

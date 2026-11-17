@@ -3,9 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach } from "vitest";
+import { markPath, type StoreMark } from "../../src/core/store/mark.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { CheckId, TestCheckId } from "../../src/core/types/check.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { ResultRecord, WorktreeRecord } from "../../src/core/types/store-records.js";
@@ -138,4 +140,14 @@ export function knownState(worktreeId: string, check: CheckId): KnownState {
     summary: "boom",
     fingerprint: "Error: boom",
   };
+}
+
+/**
+ * Writes `mark` beside the store as it is, with no lock and no check of the
+ * file at the path: a mark as a writer before row 011-391 left it, or one
+ * that names the file a test chose. The product writes marks with
+ * `markUnder` (`markFault` in `src/core/daemon/store-fault.ts`).
+ */
+export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
+  writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
 }

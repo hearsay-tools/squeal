@@ -69,7 +69,8 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
  * Spec 001 D10 as amended after the wave 3 review: the daemon takes the
- * lock "before opening the store, so losers never run the integrity check".
+ * lock before it opens the store, so a loser never opens it (the check that
+ * phrase names there no longer runs at a start, row 011-391).
  */
 export async function openDaemon(
   rootArgument: string,
@@ -94,8 +95,8 @@ export async function openDaemon(
   }
   const worktreeId = worktreeIdFor(root);
 
-  // Before the store: a loser never runs `integrity_check` (review S8). The
-  // lock file needs only the store directory.
+  // Before the store: a loser never opens it (review S8). The lock file
+  // needs only the store directory.
   let lock: TakenLock;
   const waitMs = awaitLockMs ?? vacantLockWaitMs;
   try {
@@ -227,7 +228,7 @@ function openStoreFile(
   for (let attempt = 1; ; attempt++) {
     const before = storeFileOf(commonDir);
     const store = openStore(commonDir, {
-      checkIntegrity: "mark",
+      recoverFaults: true,
       busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now,
     });
