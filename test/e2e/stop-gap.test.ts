@@ -31,10 +31,13 @@ import { MATH } from "./sources.js";
  * Since task 011-08 a SessionStart after `squeal stop` starts nothing until
  * the next edit, so the agent edits in the gap first. Row 011-20: the stop
  * leaves its mark only once it saw the socket go, so that SessionStart can
- * find none, spawn, and read the mark while it waits for the spawned daemon's
- * heartbeat, which CI's loaded runners did six times. The stop pauses before
- * its mark (`testPause("stop-mark")`) until the SessionStart spawned, so the
- * mark lands in that wait every time.
+ * find none and spawn, and the mark lands after it said a daemon is starting,
+ * which CI's loaded runners did six times. The stop pauses before its mark
+ * (`testPause("stop-mark")`) until the SessionStart spawned, so the mark
+ * lands after the registration every time. Row 005-98: the SessionStart
+ * registers before it spawns and waits for no heartbeat, so it can end before
+ * or after the mark; what holds either way is that the told start wins over
+ * the mark, and the replacement voids it at its first heartbeat.
  */
 
 const fixture = e2eSuite();
@@ -69,22 +72,19 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
         expect(stopMark(e.main), "no mark yet").toBeNull();
         // Task 011-08: an edit while the daemon shuts down clears the stop's mark.
         writeFileSync(join(e.main, "edited-in-the-gap.txt"), "edit\n");
-        let registered = false;
-        const starting = e
-          .hook("session-start", e.main, { session_id: "third-session" })
-          .finally(() => {
-            registered = true;
-          });
-        // It found no mark and spawned; the mark lands while it waits for a heartbeat.
+        const starting = e.hook("session-start", e.main, { session_id: "third-session" });
+        // It found no mark and spawned. Row 005-98: it registered before the spawn and said a
+        // daemon is starting; it waits for no heartbeat, so it may end before the mark lands.
         const spawned = await soon(30_000, () => cliProcess(e, "daemon", first.pid));
         expect(spawned, "the SessionStart spawned a replacement").not.toBeNull();
         resume(stopping ?? 0);
         expect(await soon(30_000, () => stopMark(e.main)), "the stop's mark").not.toBeNull();
-        expect(registered, "the mark landed before the SessionStart registered").toBe(false);
         const start = await starting;
         expect(start.code).toBe(0);
-        // Row 011-20: the daemon it spawned voids the mark at its first heartbeat.
         expect(start.text).toContain("A daemon is starting");
+        // Row 011-20: the start the session was told of wins over the mark that landed after it.
+        const boundary = await e.hook("post-tool-batch", e.main, { session_id: "third-session" });
+        expect(boundary.text ?? "").not.toContain("stopped by request");
         // Long enough for the replacement to try the lock: before task 001-340 it lost it and exited.
         await sleep(FROZEN_MS);
         expect.soft(stopped, "stop has not said stopped while the lock is held").toBe(false);
@@ -98,6 +98,8 @@ describe.runIf(process.platform === "linux").each(PLUGINS)(
       expect(done).toMatchObject({ code: 0, stdout: stoppedLine(e.main) });
       const second = await e.daemonReady(e.main, first.pid);
       expect(second.pid).not.toBe(first.pid);
+      // Row 011-20: the daemon the SessionStart spawned voided the mark at its first heartbeat.
+      expect(stopMark(e.main), "the stop's mark after the replacement's heartbeat").toBeNull();
       const status = await e.status(e.main);
       expect(status.daemonNotes.map((n) => n.text)).not.toContainEqual(
         expect.stringMatching(/gave up/),
