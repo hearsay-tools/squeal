@@ -129,12 +129,16 @@ export const CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
  * record's `recorded_at` without its blob: a `coverage` row holds the blob,
  * 25 KiB on 011-197's store, so the table's own key reads take 0.1 ms each.
  * `coverage_recorded` gives prune the records stored before a time (row
- * 015-85).
+ * 015-85). `counts_keys` holds only a count's key, so the uncounted-files
+ * read (`files.uncounted`) looks each file up in narrow pages, not in the
+ * table's rows of 3.5 to 7.9 KB of `functions` (row 005-103: 193 to 3.1 ms
+ * on a copy); the planner keeps the primary key unless the read names it.
  */
 export const CODE_INDEXES: Readonly<Record<string, string>> = {
   coverage_stored:
     "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
   coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
+  counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
 };
 
 /**

@@ -37,7 +37,17 @@ export function createCountRepo(conn: Connection): CodeCountRepo {
   };
 }
 
+/** `CODE_INDEXES`' key-only index of `counts`, which `uncounted` names when the file has it. */
+const COUNT_KEYS = "counts_keys";
+
 export function createFileRepo(conn: Connection): CodeFileRepo {
+  // Row 005-103: a store a reader opened before any creating open has no such index.
+  const keyed =
+    conn.get(
+      "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?",
+      COUNT_KEYS,
+    ) !== null;
+  const counts = keyed ? `counts c INDEXED BY ${COUNT_KEYS}` : "counts c";
   return {
     list(worktreeId, paths) {
       const rows =
@@ -55,7 +65,7 @@ export function createFileRepo(conn: Connection): CodeFileRepo {
       return conn
         .all(
           `SELECT * FROM files f WHERE f.worktree_id = ? AND f.too_big = 0 AND NOT EXISTS (
-             SELECT 1 FROM counts c WHERE c.blob = f.blob AND c.language = f.language
+             SELECT 1 FROM ${counts} WHERE c.blob = f.blob AND c.language = f.language
                AND c.counter_version = f.counter_version)
            ORDER BY f.path`,
           worktreeId,

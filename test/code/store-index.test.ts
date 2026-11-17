@@ -21,7 +21,13 @@ import { commonDir, open } from "./helpers.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const child = fileURLToPath(new URL("./child/holder.ts", import.meta.url));
-const MADE = ["coverage_parts", "coverage_parts_used", "coverage_recorded", "coverage_stored"];
+const MADE = [
+  "counts_keys",
+  "coverage_parts",
+  "coverage_parts_used",
+  "coverage_recorded",
+  "coverage_stored",
+];
 const at = (resultKey: string) => ({ resultKey, providerVersion: 2 });
 
 /** Which of the tables and indexes open makes the file holds. */
