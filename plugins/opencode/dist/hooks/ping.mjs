@@ -595,732 +595,15 @@ function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-// src/core/daemon/lock.ts
-import { DatabaseSync } from "node:sqlite";
+// src/core/code/store/open.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 var slices = new AsyncLocalStorage();
 
-// src/core/daemon/test-pause.ts
-import { channel } from "node:diagnostics_channel";
-var TEST_PAUSE_CHANNEL = "squeal:test-pause";
-var pauses = channel(TEST_PAUSE_CHANNEL);
-
-// src/core/daemon/terminate.ts
-import { readdirSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-var TICKS_PER_SECOND = 100;
-var COMMAND_CHARS = 120;
-async function commandLine(pid) {
-  try {
-    const text = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
-    return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
-  } catch {
-    return "";
-  }
-}
-function uptimeTicks() {
-  if (process.platform !== "linux") return 0;
-  try {
-    return Math.floor(
-      Number(readFileSync("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
-    );
-  } catch {
-    return 0;
-  }
-}
-
-// src/core/presence/stored.ts
-var SUCCESSOR_LOCK_WAIT_MS = 12e4;
-var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
-
-// src/core/types/watcher.ts
-var WATCHER_TIMINGS = {
-  quietMs: 100,
-  maxBatchMs: 500,
-  reconcileIntervalMs: 3e4
-};
-
-// src/core/status/feed-late.ts
-var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
-
-// src/core/state/slow-text.ts
-function holdsText(maxHolds) {
-  return maxHolds === void 0 || maxHolds <= 1 ? "once" : `up to ${maxHolds} times in a turn`;
-}
-
-// src/core/retry/kept.ts
-var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
-
-// src/core/retry/gate.ts
-var LOAD_RETRY_WAIT_MS = 6e5;
-
-// src/core/retry/text.ts
-function waitedText(ms) {
-  return durationText(ms, Math.floor);
-}
-var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
-
-// src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync2, readlinkSync } from "node:fs";
-function readProcStat(pid) {
-  let text;
-  try {
-    text = readFileSync2(`/proc/${pid}/stat`, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-  const open = text.indexOf("(");
-  const close = text.lastIndexOf(")");
-  const rest = text.slice(close + 2).split(" ");
-  const ppid = Number(rest[1]);
-  const startTime = Number(rest[19]);
-  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
-    throw new Error(`unreadable /proc/${pid}/stat`);
-  }
-  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
-}
-function pidNamespace() {
-  try {
-    return readlinkSync("/proc/self/ns/pid");
-  } catch {
-    return null;
-  }
-}
-
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-
-// src/core/code/gate/rule.ts
-var UNRUN_GAPS = ["not-prepared", "not-finished"];
-var UNRUN = new Set(UNRUN_GAPS);
-
-// src/core/delivery/code-coverage-words.ts
-var NOT_RUN = "no test runs it in the test's own thread";
-var NOT_RUN_CHILDREN = "no test runs it, in the test's own thread or in a process or thread the test starts";
-var UNMEASURED = "Squeal does not measure worker threads or child processes.";
-var LOWER_BOUND = "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
-var UNTESTED = `untested: ${NOT_RUN}`;
-var UNTESTED_CHILDREN = `untested: ${NOT_RUN_CHILDREN}`;
-var MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
-var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
-
-// src/runners/node-test/describe.ts
-var UNCONFIGURED = { nodeTest: [] };
-var NODE_TEST = {
-  runner: "node-test",
-  name: "node:test",
-  fallback: false,
-  unconfigured: UNCONFIGURED,
-  projects: (policy) => policy.nodeTest,
-  coverage: ({ projects }) => ({ nodeTest: projects }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
-  excluded: () => null,
-  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
-  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
-  resolves: () => true,
-  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
-  slowProjects: (policy) => policy.nodeTest
-};
-function nodeTestCommand(words, projects) {
-  const at = words.indexOf("--test");
-  if (at === -1) return null;
-  const argv = words.slice(1, at);
-  const args = words.slice(at + 1);
-  if (args.length === 0) return null;
-  const project = projects.find(
-    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
-  );
-  if (project === void 0) return null;
-  if (same(project.include, args))
-    return { runner: "node-test", project: project.name, files: null };
-  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
-  return { runner: "node-test", project: project.name, files: args };
-}
-function same(a, b) {
-  return a.length === b.length && a.every((word, i) => word === b[i]);
-}
-function nodeTestFiles(command, listing) {
-  const own = listing.files.filter((ref2) => ref2.project === command.project);
-  if (command.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
-  const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
-  return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
-}
-
-// src/runners/pytest/describe.ts
-import { realpathSync } from "node:fs";
-import { join as join3, resolve as resolve2 } from "node:path";
-
-// src/runners/pytest/environment/discover.ts
-import { existsSync, readdirSync as readdirSync2, readFileSync as readFileSync3, statSync } from "node:fs";
-import { basename, dirname, isAbsolute as isAbsolute4, join as join2, relative as relative2, resolve } from "node:path";
-
-// src/core/fs/paths.ts
-import { isAbsolute as isAbsolute3, join, relative, sep } from "node:path";
-function toRelative(root, abs) {
-  const rel = relative(root, abs);
-  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute3(rel)) return null;
-  return sep === "/" ? rel : rel.split(sep).join("/");
-}
-function toAbsolute(root, rel) {
-  return join(root, ...rel.split("/"));
-}
-
-// src/runners/pytest/environment/discover.ts
-function projectDir(root, project) {
-  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
-}
-function discoverEnvironment(root, project) {
-  const cwd = projectDir(root, project);
-  if (project.python !== void 0) {
-    const declared = resolve(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join2(declared, "bin", "python"));
-    if (existsSync(declared)) return found("declared", dirname(dirname(declared)), declared);
-    const target = basename(declared).startsWith("python") ? dirname(dirname(declared)) : declared;
-    return none(root, cwd, [declared], target);
-  }
-  const venv = join2(cwd, ".venv");
-  if (existsSync(join2(venv, "pyvenv.cfg"))) return found("venv", venv, join2(venv, "bin", "python"));
-  const pdm = pdmPython(root, cwd);
-  if (pdm !== null) return found("pdm-python", dirname(dirname(pdm)), pdm);
-  return none(root, cwd, [venv, join2(cwd, ".pdm-python")], venv);
-}
-function found(source, env, python) {
-  return { kind: "found", source, env, python };
-}
-function pdmPython(root, cwd) {
-  let text;
-  try {
-    text = readFileSync3(join2(cwd, ".pdm-python"), "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-  if (!isAbsolute4(text) || toRelative(root, text) === null || !existsSync(text)) return null;
-  return text;
-}
-var LOCKFILES = [
-  ["uv.lock", "uv sync"],
-  ["poetry.lock", "poetry install"],
-  ["pdm.lock", "pdm install"]
-];
-var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
-function none(root, cwd, looked, target) {
-  const venv = relative2(cwd, target) || ".";
-  const dirs = [];
-  for (let dir = cwd; ; dir = dirname(dir)) {
-    dirs.push(dir);
-    if (toRelative(root, dir) === null) break;
-  }
-  for (const dir of dirs) {
-    const hit = LOCKFILES.find(([file]) => existsSync(join2(dir, file)));
-    if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join2(dir, hit[0]) };
-  }
-  for (const dir of dirs) {
-    const files = requirementsIn(dir).map((file) => join2(dir, file));
-    if (files.length === 0) continue;
-    const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
-    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
-    return { kind: "none", looked, command, from: files[0] };
-  }
-  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
-}
-function requirementsIn(dir) {
-  let names2;
-  try {
-    names2 = readdirSync2(dir);
-  } catch (error) {
-    if (isMissing(error)) return [];
-    throw error;
-  }
-  return names2.filter((name2) => REQUIREMENTS.test(name2)).sort();
-}
-function isDirectory(path) {
-  try {
-    return statSync(path).isDirectory();
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
-}
-
-// src/runners/pytest/describe.ts
-var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
-var PYTEST = {
-  runner: "pytest",
-  name: "pytest",
-  fallback: false,
-  unconfigured: {},
-  projects: (policy) => policy.pytest,
-  coverage: ({ projects }) => ({ pytest: projects }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
-  excluded: () => null,
-  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
-  command: (words, context) => pytestCommand(words, context.pytest ?? []),
-  resolves: () => true,
-  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
-  // `slowFiles` and `slowGlobs` read `pytest[].slow` from the policy itself (004 D1, 007 D1; row 019-10).
-  slowProjects: () => []
-};
-function pytestHere(root, cwd, projects) {
-  return projects.flatMap((project) => {
-    const dir = projectDir(root, project);
-    if (realPath(dir) !== cwd) return [];
-    let env = null;
-    try {
-      const found2 = discoverEnvironment(root, project);
-      if (found2.kind === "found") env = found2.env;
-    } catch {
-    }
-    return [{ project, dir, env }];
-  });
-}
-function realPath(path) {
-  try {
-    return realpathSync(resolve2(path));
-  } catch {
-    return null;
-  }
-}
-function pytestCommand(words, here) {
-  if (here.length !== 1) return null;
-  const { project, dir, env } = here[0];
-  if (Object.keys(project.env).length > 0) return null;
-  const start = invocation(words, dir, env);
-  if (start === null) return null;
-  const rest = words.slice(start);
-  const { args } = project;
-  if (!args.every((arg, i) => rest[i] === arg)) return null;
-  const paths = [];
-  for (const word of rest.slice(args.length)) {
-    if (OUTPUT_FLAG.test(word)) continue;
-    const path = word.split("::")[0];
-    if (word.startsWith("-") || path === "") return null;
-    paths.push(resolve2(dir, path));
-  }
-  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
-}
-function invocation(words, dir, env) {
-  const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join3(env, "bin", name2);
-  if (first === "pytest" || inEnv("pytest")) return 1;
-  if (first === "uv" && second === "run" && third === "pytest") return 3;
-  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
-  return null;
-}
-function pytestFiles(command, listing) {
-  if (command.paths === null) return null;
-  const own = listing.files.filter((ref2) => ref2.project === command.project);
-  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
-  return own.filter((ref2) => named3.has(ref2.path));
-}
-
-// src/runners/vitest/describe.ts
-import { existsSync as existsSync2, readFileSync as readFileSync5 } from "node:fs";
-import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolve as resolve3 } from "node:path";
-
-// src/core/daemon/runner.ts
-import { readdirSync as readdirSync3, readFileSync as readFileSync4 } from "node:fs";
-import { join as join4, posix as posix3 } from "node:path";
-
-// src/core/types/runner-traits.ts
-function declareTraits(stated = {}) {
-  const { omittedTestFiles, slowWidth, tierWidth, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
-  const { focuses, lane } = stated;
-  return {
-    omittedTestFiles: () => omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles) => Math.max(1, slowWidth?.(testFiles) ?? testFiles.length),
-    tierWidth: (testFile, grant) => Math.max(1, tierWidth?.(testFile, grant) ?? grant),
-    tierPart: (testFile) => tierPart?.(testFile) ?? "",
-    besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => {
-      const files = backlogSlot2?.(testFile) ?? null;
-      return files === null ? null : Math.max(1, Math.floor(files));
-    },
-    focuses: (testFile) => focuses?.(testFile) ?? false,
-    lane: (testFile) => lane?.(testFile) ?? ""
-  };
-}
-var NO_TRAITS = declareTraits();
-
-// src/core/daemon/runner.ts
-var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-function vitestDetected(root) {
-  let names2;
-  try {
-    names2 = readdirSync3(root);
-  } catch {
-    return false;
-  }
-  if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
-  return listsVitest(readManifest(join4(root, "package.json")));
-}
-function listsVitest(manifest) {
-  if (!isRecord(manifest)) return false;
-  return ["dependencies", "devDependencies"].some((field) => {
-    const deps = manifest[field];
-    return isRecord(deps) && Object.hasOwn(deps, "vitest");
-  });
-}
-function readManifest(path) {
-  try {
-    return JSON.parse(readFileSync4(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-// src/runners/vitest/describe.ts
-var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
-var CONFIG_NAMES = ["vitest.config", "vite.config"];
-var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
-var REPORTER = "--reporter";
-var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
-var VITEST = {
-  runner: "vitest",
-  name: "Vitest",
-  fallback: true,
-  unconfigured: UNCONFIGURED2,
-  projects: () => [],
-  coverage({ policy, root, configured }) {
-    const vitest = !configured || vitestDetected(root);
-    return {
-      vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
-      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
-    };
-  },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? []
-  }),
-  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
-  excluded(coverage) {
-    const globs4 = coverage.vitestExcludedFiles ?? [];
-    return globs4.length === 0 ? null : excludedFilesText(globs4);
-  },
-  context: (_policy, root, cwd) => ({
-    scripts: cwd === root ? rootScripts(root) : {}
-  }),
-  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
-  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
-  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
-  resolves: (live) => live.vitest.exclude.length === 0,
-  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
-  slowProjects: () => []
-};
-function vitestCommand(words) {
-  const start = words[0] === "npx" ? 1 : 0;
-  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
-  const filters = [];
-  const rest = words.slice(start + 2);
-  for (let i = 0; i < rest.length; i++) {
-    const word = rest[i];
-    if (word === "--silent") {
-      const next = rest[i + 1];
-      if (next !== void 0 && !next.startsWith("-")) {
-        if (!SILENT_VALUES.has(next)) return null;
-        i++;
-      }
-    } else if (word.startsWith("--silent=")) {
-      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
-    } else if (word === REPORTER) {
-      const next = rest[i + 1];
-      if (next === void 0 || next.startsWith("-")) return null;
-      i++;
-    } else if (word.startsWith(`${REPORTER}=`)) {
-      if (word === `${REPORTER}=`) return null;
-    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
-      return null;
-    } else {
-      filters.push(word);
-    }
-  }
-  return { runner: "vitest", filters };
-}
-function npmCommand(words, { scripts }, split) {
-  if (words[0] !== "npm") return null;
-  const name2 = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
-  if (name2 === void 0) return null;
-  if (!Object.hasOwn(scripts, name2)) return null;
-  if (Object.hasOwn(scripts, `pre${name2}`) || Object.hasOwn(scripts, `post${name2}`)) return null;
-  const script = split(scripts[name2]);
-  return script === null ? null : vitestCommand(script);
-}
-function vitestFiles(command, listing) {
-  const { root, configured } = listing;
-  if (listing.omitted !== 0) return null;
-  const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
-  if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
-  if (command.filters.length === 0) return vitest;
-  const selected2 = /* @__PURE__ */ new Set();
-  for (const filter of command.filters) {
-    const hits = vitest.filter((ref2) => matchesFilter(join5(root, ref2.path), filter, root));
-    if (hits.length === 0) return null;
-    for (const ref2 of hits) selected2.add(ref2);
-  }
-  return vitest.filter((ref2) => selected2.has(ref2));
-}
-function matchesFilter(file, filter, root) {
-  if (isAbsolute5(filter) && file.startsWith(filter)) return true;
-  const testFile = relative3(root, file).toLocaleLowerCase();
-  const rel = relative3(root, resolve3(root, filter));
-  const relativePath = filter.endsWith("/") ? join5(rel, "/") : rel;
-  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
-}
-function rootScripts(root) {
-  try {
-    const manifest = JSON.parse(readFileSync5(join5(root, "package.json"), "utf8"));
-    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
-    return Object.fromEntries(
-      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
-    );
-  } catch {
-    return {};
-  }
-}
-function configFile(root) {
-  for (const name2 of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync2(join5(root, `${name2}${extension}`))) return `${name2}${extension}`;
-    }
-  }
-  return null;
-}
-
-// src/runners/descriptions.ts
-var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
-var UNCONFIGURED3 = {
-  ...VITEST.unconfigured,
-  ...NODE_TEST.unconfigured,
-  ...PYTEST.unconfigured
-};
-
-// src/core/slow/rank.ts
-var MAX_READ_BYTES = 1024 * 1024;
-
-// src/core/store/codec.ts
-var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-
-// src/core/store/repos/replaced.ts
-var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
-  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
-  WHERE r.key = ? AND r.outcome = 'fail'`;
-
-// src/core/store/prune-rules.ts
-var DAY_MS = 24 * 60 * 60 * 1e3;
-var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-  WHERE k.key IS NOT NULL`;
-var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
-var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
-  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
-    SELECT 1 FROM results n
-    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
-      AND (n.recorded_at > results.recorded_at
-           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
-
-// src/core/store/repos/results.ts
-var SELECT_RESULTS = `
-  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
-  FROM results r
-  JOIN checks c ON c.id = r.check_id
-  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
-var NEWEST_OF_FILE = `${SELECT_RESULTS}
-  WHERE c.project = ? AND c.test_path = ? AND r.key = (
-    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
-    WHERE c2.project = ? AND c2.test_path = ?
-    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
-  ORDER BY c.kind, c.full_name`;
-
-// src/core/store/repos/states.ts
-var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
-
-// src/core/scheduler/queue.ts
-var Group = { first: 0, catchUp: 1, second: 2 };
-var GROUP_ORDER = {
-  edits: [Group.first, Group.catchUp, Group.second],
-  turn: [Group.catchUp, Group.second, Group.first]
-};
-
-// src/core/scheduler/rekeyed-moves.ts
-var MOVES_RETENTION_MS = 60 * 6e4;
-
-// src/core/slow/slot.ts
-import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
-
-// src/core/slow/slot-files.ts
-var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/daemon/outlived.ts
-import { execFile } from "node:child_process";
-import { readdirSync as readdirSync4, readFileSync as readFileSync6 } from "node:fs";
-import { readFile as readFile2 } from "node:fs/promises";
-import { promisify } from "node:util";
-
-// src/runners/process/recorders.ts
-var UNOBSERVED = JSON.stringify({ out: "" });
-
-// src/core/daemon/outlived.ts
-var PF_EXITING = 4;
-var CHUNK = 64;
-function procRow(pid) {
-  let text;
-  try {
-    text = readFileSync6(`/proc/${pid}/stat`, "latin1");
-  } catch {
-    return null;
-  }
-  const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
-  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING) !== 0) return null;
-  return {
-    pid,
-    ppid: Number(fields[1]),
-    pgrp: Number(fields[2]),
-    session: Number(fields[3]),
-    start: Number(fields[19])
-  };
-}
-var PROC = {
-  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
-  async list() {
-    const names2 = readdirSync4("/proc").filter((name2) => /^\d+$/.test(name2));
-    const rows = [];
-    for (let at = 0; at < names2.length; at += CHUNK) {
-      if (at > 0) await new Promise((done) => setImmediate(done));
-      for (const name2 of names2.slice(at, at + CHUNK)) {
-        const row = procRow(Number(name2));
-        if (row !== null) rows.push(row);
-      }
-    }
-    return rows;
-  },
-  async variable(pid, variable) {
-    let environ;
-    try {
-      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
-    } catch {
-      return null;
-    }
-    const needle = `\0${variable}=`;
-    const at = environ.indexOf(needle);
-    if (at < 0) return null;
-    const end = environ.indexOf("\0", at + needle.length);
-    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
-  },
-  running: async (found2) => found2.flatMap(({ pid, start }) => {
-    const row = procRow(pid);
-    return row?.start === start ? [row] : [];
-  }),
-  command: commandLine
-};
-var run = promisify(execFile);
-var COMMAND_CHARS2 = 120;
-var PS_TIMEOUT_MS = 2e3;
-var PS_MAX_BYTES = 16 * 1024 * 1024;
-var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
-function psLines(text) {
-  return text.split("\n").flatMap((line) => {
-    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
-    if (state === void 0 || state.startsWith("Z")) return [];
-    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
-    if (!Number.isInteger(start)) return [];
-    const row = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
-    return [{ row, shown: shown ?? "" }];
-  });
-}
-function shownValue(shown, name2) {
-  const needle = ` ${name2}=`;
-  const at = shown.indexOf(needle);
-  if (at < 0 || shown.includes(needle, at + 1)) return null;
-  const end = shown.indexOf(" ", at + needle.length);
-  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
-}
-function psTable(calls) {
-  let shown = /* @__PURE__ */ new Map();
-  async function list() {
-    let lines;
-    try {
-      lines = psLines(await calls.listing());
-    } catch (error) {
-      shown = /* @__PURE__ */ new Map();
-      throw error;
-    }
-    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
-    return lines.map(({ row }) => row);
-  }
-  return {
-    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
-    list,
-    variable: async (pid, name2) => {
-      const line = shown.get(pid);
-      return line === void 0 ? null : shownValue(line, name2);
-    },
-    running: async (found2) => (await list()).filter(
-      (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
-    ),
-    command: calls.command
-  };
-}
-var PS = psTable({
-  async listing() {
-    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
-    const { stdout } = await run("ps", args, {
-      env: { ...process.env, LC_ALL: "C" },
-      timeout: PS_TIMEOUT_MS,
-      maxBuffer: PS_MAX_BYTES
-    });
-    return stdout;
-  },
-  async command(pid) {
-    try {
-      const args = ["-ww", "-o", "command=", "-p", String(pid)];
-      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
-      const text = stdout.trim();
-      return text.length > COMMAND_CHARS2 ? `${text.slice(0, COMMAND_CHARS2 - 3)}...` : text;
-    } catch {
-      return "";
-    }
-  }
-});
-var NONE = {
-  mark: () => 0,
-  list: async () => [],
-  variable: async () => null,
-  running: async () => [],
-  command: async () => ""
-};
-var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS : NONE;
-
-// src/core/daemon/escaped.ts
-var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
-
-// src/core/ps/proc.ts
-var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
-
-// src/core/capacity/pool.ts
-var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
-
-// src/core/scheduler/capacity.ts
-var CAPACITY_RECHECK_MS = 2e3;
-
-// src/core/delivery/format.ts
-var SQUEAL_COMMAND = "squeal";
-
-// src/core/code/store/open.ts
-import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-
 // src/core/store/open.ts
-import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/schema.ts
 var V1 = `
@@ -1516,6 +799,43 @@ CREATE TABLE consumer_views (
 var MIGRATIONS = [(db) => db.exec(V1)];
 var SCHEMA_VERSION = MIGRATIONS.length;
 
+// src/core/store/codec.ts
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
+// src/core/store/repos/replaced.ts
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+
+// src/core/store/prune-rules.ts
+var DAY_MS = 24 * 60 * 60 * 1e3;
+var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
+var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
+
+// src/core/store/repos/results.ts
+var SELECT_RESULTS = `
+  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
+  FROM results r
+  JOIN checks c ON c.id = r.check_id
+  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
+
+// src/core/store/repos/states.ts
+var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
 // src/core/store/open.ts
 var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
 
@@ -1647,8 +967,406 @@ for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 
+// src/runners/node-test/describe.ts
+var UNCONFIGURED = { nodeTest: [] };
+var NODE_TEST = {
+  runner: "node-test",
+  name: "node:test",
+  fallback: false,
+  unconfigured: UNCONFIGURED,
+  projects: (policy) => policy.nodeTest,
+  coverage: ({ projects }) => ({ nodeTest: projects }),
+  built: (coverage) => coverage.nodeTest.length > 0,
+  covered: (coverage) => ({ projects: coverage.nodeTest }),
+  excluded: () => null,
+  context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
+  command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "node-test" ? nodeTestFiles(command, listing) : null,
+  slowProjects: (policy) => policy.nodeTest
+};
+function nodeTestCommand(words, projects) {
+  const at = words.indexOf("--test");
+  if (at === -1) return null;
+  const argv = words.slice(1, at);
+  const args = words.slice(at + 1);
+  if (args.length === 0) return null;
+  const project = projects.find(
+    (p) => (p.node ?? "node") === words[0] && (p.cwd === void 0 || p.cwd === "." || p.cwd === "") && Object.keys(p.env).length === 0 && same(p.argv, argv)
+  );
+  if (project === void 0) return null;
+  if (same(project.include, args))
+    return { runner: "node-test", project: project.name, files: null };
+  if (args.some((arg) => arg.startsWith("-") || /[*?[\]{}]/.test(arg))) return null;
+  return { runner: "node-test", project: project.name, files: args };
+}
+function same(a, b) {
+  return a.length === b.length && a.every((word, i) => word === b[i]);
+}
+function nodeTestFiles(command, listing) {
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
+  if (command.files === null) return own.length === 0 ? null : own;
+  const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
+  const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
+}
+
+// src/runners/pytest/describe.ts
+import { realpathSync } from "node:fs";
+import { join as join3, resolve as resolve2 } from "node:path";
+
+// src/runners/pytest/environment/discover.ts
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute as isAbsolute4, join as join2, relative as relative2, resolve } from "node:path";
+
+// src/core/fs/paths.ts
+import { isAbsolute as isAbsolute3, join, relative, sep } from "node:path";
+function toRelative(root, abs) {
+  const rel = relative(root, abs);
+  if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute3(rel)) return null;
+  return sep === "/" ? rel : rel.split(sep).join("/");
+}
+function toAbsolute(root, rel) {
+  return join(root, ...rel.split("/"));
+}
+
+// src/runners/pytest/environment/discover.ts
+function projectDir(root, project) {
+  return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
+}
+function discoverEnvironment(root, project) {
+  const cwd = projectDir(root, project);
+  if (project.python !== void 0) {
+    const declared = resolve(cwd, project.python);
+    if (isDirectory(declared)) return found("declared", declared, join2(declared, "bin", "python"));
+    if (existsSync(declared)) return found("declared", dirname(dirname(declared)), declared);
+    const target = basename(declared).startsWith("python") ? dirname(dirname(declared)) : declared;
+    return none(root, cwd, [declared], target);
+  }
+  const venv = join2(cwd, ".venv");
+  if (existsSync(join2(venv, "pyvenv.cfg"))) return found("venv", venv, join2(venv, "bin", "python"));
+  const pdm = pdmPython(root, cwd);
+  if (pdm !== null) return found("pdm-python", dirname(dirname(pdm)), pdm);
+  return none(root, cwd, [venv, join2(cwd, ".pdm-python")], venv);
+}
+function found(source, env, python) {
+  return { kind: "found", source, env, python };
+}
+function pdmPython(root, cwd) {
+  let text;
+  try {
+    text = readFileSync(join2(cwd, ".pdm-python"), "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+  if (!isAbsolute4(text) || toRelative(root, text) === null || !existsSync(text)) return null;
+  return text;
+}
+var LOCKFILES = [
+  ["uv.lock", "uv sync"],
+  ["poetry.lock", "poetry install"],
+  ["pdm.lock", "pdm install"]
+];
+var REQUIREMENTS = /^(?:[\w.-]+[-_])?requirements(?:[-_.][\w.-]+)?\.txt$/;
+function none(root, cwd, looked, target) {
+  const venv = relative2(cwd, target) || ".";
+  const dirs = [];
+  for (let dir = cwd; ; dir = dirname(dir)) {
+    dirs.push(dir);
+    if (toRelative(root, dir) === null) break;
+  }
+  for (const dir of dirs) {
+    const hit = LOCKFILES.find(([file]) => existsSync(join2(dir, file)));
+    if (hit !== void 0)
+      return { kind: "none", looked, command: hit[1], from: join2(dir, hit[0]) };
+  }
+  for (const dir of dirs) {
+    const files = requirementsIn(dir).map((file) => join2(dir, file));
+    if (files.length === 0) continue;
+    const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
+    return { kind: "none", looked, command, from: files[0] };
+  }
+  return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
+}
+function requirementsIn(dir) {
+  let names2;
+  try {
+    names2 = readdirSync(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+  return names2.filter((name2) => REQUIREMENTS.test(name2)).sort();
+}
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+// src/runners/pytest/describe.ts
+var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|no))$/;
+var PYTEST = {
+  runner: "pytest",
+  name: "pytest",
+  fallback: false,
+  unconfigured: {},
+  projects: (policy) => policy.pytest,
+  coverage: ({ projects }) => ({ pytest: projects }),
+  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
+  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
+  excluded: () => null,
+  context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
+  command: (words, context) => pytestCommand(words, context.pytest ?? []),
+  resolves: () => true,
+  files: (command, listing) => command.runner === "pytest" ? pytestFiles(command, listing) : null,
+  // `slowFiles` and `slowGlobs` read `pytest[].slow` from the policy itself (004 D1, 007 D1; row 019-10).
+  slowProjects: () => []
+};
+function pytestHere(root, cwd, projects) {
+  return projects.flatMap((project) => {
+    const dir = projectDir(root, project);
+    if (realPath(dir) !== cwd) return [];
+    let env = null;
+    try {
+      const found2 = discoverEnvironment(root, project);
+      if (found2.kind === "found") env = found2.env;
+    } catch {
+    }
+    return [{ project, dir, env }];
+  });
+}
+function realPath(path) {
+  try {
+    return realpathSync(resolve2(path));
+  } catch {
+    return null;
+  }
+}
+function pytestCommand(words, here) {
+  if (here.length !== 1) return null;
+  const { project, dir, env } = here[0];
+  if (Object.keys(project.env).length > 0) return null;
+  const start = invocation(words, dir, env);
+  if (start === null) return null;
+  const rest = words.slice(start);
+  const { args } = project;
+  if (!args.every((arg, i) => rest[i] === arg)) return null;
+  const paths = [];
+  for (const word of rest.slice(args.length)) {
+    if (OUTPUT_FLAG.test(word)) continue;
+    const path = word.split("::")[0];
+    if (word.startsWith("-") || path === "") return null;
+    paths.push(resolve2(dir, path));
+  }
+  return { runner: "pytest", project: project.name, paths: paths.length === 0 ? null : paths };
+}
+function invocation(words, dir, env) {
+  const [first, second, third] = words;
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve2(dir, first) === join3(env, "bin", name2);
+  if (first === "pytest" || inEnv("pytest")) return 1;
+  if (first === "uv" && second === "run" && third === "pytest") return 3;
+  if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
+  return null;
+}
+function pytestFiles(command, listing) {
+  if (command.paths === null) return null;
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
+  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
+  return own.filter((ref2) => named3.has(ref2.path));
+}
+
+// src/runners/vitest/describe.ts
+import { existsSync as existsSync2, readFileSync as readFileSync3 } from "node:fs";
+import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolve as resolve3 } from "node:path";
+
+// src/core/daemon/runner.ts
+import { readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
+import { join as join4, posix as posix3 } from "node:path";
+
+// src/core/types/runner-traits.ts
+function declareTraits(stated = {}) {
+  const { omittedTestFiles, slowWidth, tierWidth, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
+  const { focuses, lane } = stated;
+  return {
+    omittedTestFiles: () => omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => Math.max(1, slowWidth?.(testFiles) ?? testFiles.length),
+    tierWidth: (testFile, grant) => Math.max(1, tierWidth?.(testFile, grant) ?? grant),
+    tierPart: (testFile) => tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => {
+      const files = backlogSlot2?.(testFile) ?? null;
+      return files === null ? null : Math.max(1, Math.floor(files));
+    },
+    focuses: (testFile) => focuses?.(testFile) ?? false,
+    lane: (testFile) => lane?.(testFile) ?? ""
+  };
+}
+var NO_TRAITS = declareTraits();
+
+// src/core/daemon/runner.ts
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names2;
+  try {
+    names2 = readdirSync2(root);
+  } catch {
+    return false;
+  }
+  if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
+  return listsVitest(readManifest2(join4(root, "package.json")));
+}
+function listsVitest(manifest) {
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+function readManifest2(path) {
+  try {
+    return JSON.parse(readFileSync2(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// src/runners/vitest/describe.ts
+var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
+var CONFIG_NAMES = ["vitest.config", "vite.config"];
+var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var REPORTER = "--reporter";
+var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
+var VITEST = {
+  runner: "vitest",
+  name: "Vitest",
+  fallback: true,
+  unconfigured: UNCONFIGURED2,
+  projects: () => [],
+  coverage({ policy, root, configured }) {
+    const vitest = !configured || vitestDetected(root);
+    return {
+      vitest,
+      vitestConfig: vitest ? configFile(root) : null,
+      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
+      vitestExcludedFiles: vitest ? policy.vitest.exclude : []
+    };
+  },
+  built: (coverage) => coverage.vitest,
+  covered: (coverage) => ({
+    config: coverage.vitestConfig,
+    excludedProjects: coverage.vitestExcluded ?? []
+  }),
+  // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
+  excluded(coverage) {
+    const globs4 = coverage.vitestExcludedFiles ?? [];
+    return globs4.length === 0 ? null : excludedFilesText(globs4);
+  },
+  context: (_policy, root, cwd) => ({
+    scripts: cwd === root ? rootScripts(root) : {}
+  }),
+  command: (words, context, split) => context.atRoot === false ? null : vitestCommand(words) ?? npmCommand(words, context, split),
+  // 004 D7: a file `vitest.exclude` drops is one a bare Vitest command still runs; read live, so
+  // an exclusion added since the last listing counts too (review 004 wave-12 B2).
+  resolves: (live) => live.vitest.exclude.length === 0,
+  files: (command, listing) => command.runner === "vitest" ? vitestFiles(command, listing) : null,
+  slowProjects: () => []
+};
+function vitestCommand(words) {
+  const start = words[0] === "npx" ? 1 : 0;
+  if (words[start] !== "vitest" || words[start + 1] !== "run") return null;
+  const filters = [];
+  const rest = words.slice(start + 2);
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word === "--silent") {
+      const next = rest[i + 1];
+      if (next !== void 0 && !next.startsWith("-")) {
+        if (!SILENT_VALUES.has(next)) return null;
+        i++;
+      }
+    } else if (word.startsWith("--silent=")) {
+      if (!SILENT_VALUES.has(word.slice("--silent=".length))) return null;
+    } else if (word === REPORTER) {
+      const next = rest[i + 1];
+      if (next === void 0 || next.startsWith("-")) return null;
+      i++;
+    } else if (word.startsWith(`${REPORTER}=`)) {
+      if (word === `${REPORTER}=`) return null;
+    } else if (word.startsWith("-") || word === "" || /:\d+(-\d+)?$/.test(word)) {
+      return null;
+    } else {
+      filters.push(word);
+    }
+  }
+  return { runner: "vitest", filters };
+}
+function npmCommand(words, { scripts }, split) {
+  if (words[0] !== "npm") return null;
+  const name2 = words.length === 2 && words[1] === "test" ? "test" : words.length === 3 && words[1] === "run" ? words[2] : void 0;
+  if (name2 === void 0) return null;
+  if (!Object.hasOwn(scripts, name2)) return null;
+  if (Object.hasOwn(scripts, `pre${name2}`) || Object.hasOwn(scripts, `post${name2}`)) return null;
+  const script = split(scripts[name2]);
+  return script === null ? null : vitestCommand(script);
+}
+function vitestFiles(command, listing) {
+  const { root, configured } = listing;
+  if (listing.omitted !== 0) return null;
+  const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
+  if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
+  if (command.filters.length === 0) return vitest;
+  const selected2 = /* @__PURE__ */ new Set();
+  for (const filter of command.filters) {
+    const hits = vitest.filter((ref2) => matchesFilter(join5(root, ref2.path), filter, root));
+    if (hits.length === 0) return null;
+    for (const ref2 of hits) selected2.add(ref2);
+  }
+  return vitest.filter((ref2) => selected2.has(ref2));
+}
+function matchesFilter(file, filter, root) {
+  if (isAbsolute5(filter) && file.startsWith(filter)) return true;
+  const testFile = relative3(root, file).toLocaleLowerCase();
+  const rel = relative3(root, resolve3(root, filter));
+  const relativePath = filter.endsWith("/") ? join5(rel, "/") : rel;
+  return testFile.includes(filter.toLocaleLowerCase()) || testFile.includes(relativePath.toLocaleLowerCase());
+}
+function rootScripts(root) {
+  try {
+    const manifest = JSON.parse(readFileSync3(join5(root, "package.json"), "utf8"));
+    if (!isRecord(manifest) || !isRecord(manifest.scripts)) return {};
+    return Object.fromEntries(
+      Object.entries(manifest.scripts).filter(([, text]) => typeof text === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+function configFile(root) {
+  for (const name2 of CONFIG_NAMES) {
+    for (const extension of CONFIG_EXTENSIONS) {
+      if (existsSync2(join5(root, `${name2}${extension}`))) return `${name2}${extension}`;
+    }
+  }
+  return null;
+}
+
+// src/runners/descriptions.ts
+var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
+var UNCONFIGURED3 = {
+  ...VITEST.unconfigured,
+  ...NODE_TEST.unconfigured,
+  ...PYTEST.unconfigured
+};
+
 // src/core/lint/store/open.ts
-import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/lint/store/schema.ts
 var V13 = `
@@ -1718,6 +1436,55 @@ CREATE TABLE views (
 var LINT_MIGRATIONS = [(db) => db.exec(V13)];
 var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
+// src/core/daemon/lock.ts
+import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
+
+// src/core/daemon/test-pause.ts
+import { channel } from "node:diagnostics_channel";
+var TEST_PAUSE_CHANNEL = "squeal:test-pause";
+var pauses = channel(TEST_PAUSE_CHANNEL);
+
+// src/core/daemon/terminate.ts
+import { readdirSync as readdirSync3, readFileSync as readFileSync4 } from "node:fs";
+import { readFile } from "node:fs/promises";
+var TICKS_PER_SECOND = 100;
+var COMMAND_CHARS = 120;
+async function commandLine(pid) {
+  try {
+    const text = (await readFile(`/proc/${pid}/cmdline`, "utf8")).replaceAll("\0", " ").trim();
+    return text.length > COMMAND_CHARS ? `${text.slice(0, COMMAND_CHARS - 3)}...` : text;
+  } catch {
+    return "";
+  }
+}
+function uptimeTicks() {
+  if (process.platform !== "linux") return 0;
+  try {
+    return Math.floor(
+      Number(readFileSync4("/proc/uptime", "utf8").split(" ")[0]) * TICKS_PER_SECOND
+    );
+  } catch {
+    return 0;
+  }
+}
+
+// src/core/presence/stored.ts
+var SUCCESSOR_LOCK_WAIT_MS = 12e4;
+var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
+
+// src/core/types/watcher.ts
+var WATCHER_TIMINGS = {
+  quietMs: 100,
+  maxBatchMs: 500,
+  reconcileIntervalMs: 3e4
+};
+
+// src/core/status/feed-late.ts
+var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
+
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var HOOK_TIMEOUT_MS = 2e3;
@@ -1727,6 +1494,233 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
+
+// src/core/code/gate/rule.ts
+var UNRUN_GAPS = ["not-prepared", "not-finished"];
+var UNRUN = new Set(UNRUN_GAPS);
+
+// src/core/delivery/code-coverage-words.ts
+var NOT_RUN = "no test runs it in the test's own thread";
+var NOT_RUN_CHILDREN = "no test runs it, in the test's own thread or in a process or thread the test starts";
+var UNMEASURED = "Squeal does not measure worker threads or child processes.";
+var LOWER_BOUND = "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
+var UNTESTED = `untested: ${NOT_RUN}`;
+var UNTESTED_CHILDREN = `untested: ${NOT_RUN_CHILDREN}`;
+var MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
+var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
+
+// src/core/slow/rank.ts
+var MAX_READ_BYTES = 1024 * 1024;
+
+// src/core/delivery/harness-process.ts
+import { readFileSync as readFileSync5, readlinkSync } from "node:fs";
+function readProcStat(pid) {
+  let text;
+  try {
+    text = readFileSync5(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open = text.indexOf("(");
+  const close = text.lastIndexOf(")");
+  const rest = text.slice(close + 2).split(" ");
+  const ppid = Number(rest[1]);
+  const startTime = Number(rest[19]);
+  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+
+// src/core/scheduler/queue.ts
+var Group = { first: 0, catchUp: 1, second: 2 };
+var GROUP_ORDER = {
+  edits: [Group.first, Group.catchUp, Group.second],
+  turn: [Group.catchUp, Group.second, Group.first]
+};
+
+// src/core/scheduler/rekeyed-moves.ts
+var MOVES_RETENTION_MS = 60 * 6e4;
+
+// src/core/retry/gate.ts
+var LOAD_RETRY_WAIT_MS = 6e5;
+
+// src/core/state/slow-text.ts
+function holdsText(maxHolds) {
+  return maxHolds === void 0 || maxHolds <= 1 ? "once" : `up to ${maxHolds} times in a turn`;
+}
+
+// src/core/retry/text.ts
+function waitedText(ms) {
+  return durationText(ms, Math.floor);
+}
+var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
+
+// src/core/slow/slot.ts
+import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
+
+// src/core/slow/slot-files.ts
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/daemon/outlived.ts
+import { execFile } from "node:child_process";
+import { readdirSync as readdirSync4, readFileSync as readFileSync6 } from "node:fs";
+import { readFile as readFile2 } from "node:fs/promises";
+import { promisify } from "node:util";
+
+// src/runners/process/recorders.ts
+var UNOBSERVED = JSON.stringify({ out: "" });
+
+// src/core/daemon/outlived.ts
+var PF_EXITING = 4;
+var CHUNK = 64;
+function procRow(pid) {
+  let text;
+  try {
+    text = readFileSync6(`/proc/${pid}/stat`, "latin1");
+  } catch {
+    return null;
+  }
+  const fields = text.slice(text.lastIndexOf(")") + 2).split(" ");
+  if (fields[0] === "Z" || fields[0] === "X" || (Number(fields[6]) & PF_EXITING) !== 0) return null;
+  return {
+    pid,
+    ppid: Number(fields[1]),
+    pgrp: Number(fields[2]),
+    session: Number(fields[3]),
+    start: Number(fields[19])
+  };
+}
+var PROC = {
+  mark: (msAgo = 0) => Math.max(0, uptimeTicks() - TICKS_PER_SECOND - Math.ceil(msAgo * TICKS_PER_SECOND / 1e3)),
+  async list() {
+    const names2 = readdirSync4("/proc").filter((name2) => /^\d+$/.test(name2));
+    const rows = [];
+    for (let at = 0; at < names2.length; at += CHUNK) {
+      if (at > 0) await new Promise((done) => setImmediate(done));
+      for (const name2 of names2.slice(at, at + CHUNK)) {
+        const row = procRow(Number(name2));
+        if (row !== null) rows.push(row);
+      }
+    }
+    return rows;
+  },
+  async variable(pid, variable) {
+    let environ;
+    try {
+      environ = `\0${await readFile2(`/proc/${pid}/environ`, "latin1")}`;
+    } catch {
+      return null;
+    }
+    const needle = `\0${variable}=`;
+    const at = environ.indexOf(needle);
+    if (at < 0) return null;
+    const end = environ.indexOf("\0", at + needle.length);
+    return environ.slice(at + needle.length, end < 0 ? void 0 : end);
+  },
+  running: async (found2) => found2.flatMap(({ pid, start }) => {
+    const row = procRow(pid);
+    return row?.start === start ? [row] : [];
+  }),
+  command: commandLine
+};
+var run = promisify(execFile);
+var COMMAND_CHARS2 = 120;
+var PS_TIMEOUT_MS = 2e3;
+var PS_MAX_BYTES = 16 * 1024 * 1024;
+var PS_LINE = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+\S+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(.*)$/;
+function psLines(text) {
+  return text.split("\n").flatMap((line) => {
+    const [, pid, ppid, pgrp, state, month, day, time, year, shown] = PS_LINE.exec(line) ?? [];
+    if (state === void 0 || state.startsWith("Z")) return [];
+    const start = Date.parse(`${month} ${day} ${year} ${time}`) / 1e3;
+    if (!Number.isInteger(start)) return [];
+    const row = { pid: Number(pid), ppid: Number(ppid), pgrp: Number(pgrp), session: null, start };
+    return [{ row, shown: shown ?? "" }];
+  });
+}
+function shownValue(shown, name2) {
+  const needle = ` ${name2}=`;
+  const at = shown.indexOf(needle);
+  if (at < 0 || shown.includes(needle, at + 1)) return null;
+  const end = shown.indexOf(" ", at + needle.length);
+  return shown.slice(at + needle.length, end < 0 ? void 0 : end);
+}
+function psTable(calls) {
+  let shown = /* @__PURE__ */ new Map();
+  async function list() {
+    let lines;
+    try {
+      lines = psLines(await calls.listing());
+    } catch (error) {
+      shown = /* @__PURE__ */ new Map();
+      throw error;
+    }
+    shown = new Map(lines.map((line) => [line.row.pid, line.shown]));
+    return lines.map(({ row }) => row);
+  }
+  return {
+    mark: (msAgo = 0) => Math.floor((Date.now() - msAgo) / 1e3) - 1,
+    list,
+    variable: async (pid, name2) => {
+      const line = shown.get(pid);
+      return line === void 0 ? null : shownValue(line, name2);
+    },
+    running: async (found2) => (await list()).filter(
+      (row) => found2.some(({ pid, start }) => row.pid === pid && row.start === start)
+    ),
+    command: calls.command
+  };
+}
+var PS = psTable({
+  async listing() {
+    const args = ["-A", "-E", "-ww", "-o", "pid=,ppid=,pgid=,stat=,lstart=,command="];
+    const { stdout } = await run("ps", args, {
+      env: { ...process.env, LC_ALL: "C" },
+      timeout: PS_TIMEOUT_MS,
+      maxBuffer: PS_MAX_BYTES
+    });
+    return stdout;
+  },
+  async command(pid) {
+    try {
+      const args = ["-ww", "-o", "command=", "-p", String(pid)];
+      const { stdout } = await run("ps", args, { timeout: PS_TIMEOUT_MS });
+      const text = stdout.trim();
+      return text.length > COMMAND_CHARS2 ? `${text.slice(0, COMMAND_CHARS2 - 3)}...` : text;
+    } catch {
+      return "";
+    }
+  }
+});
+var NONE = {
+  mark: () => 0,
+  list: async () => [],
+  variable: async () => null,
+  running: async () => [],
+  command: async () => ""
+};
+var HOST = process.platform === "linux" ? PROC : process.platform === "darwin" ? PS : NONE;
+
+// src/core/daemon/escaped.ts
+var CHILD_VARIABLE = "SQUEAL_DAEMON_CHILD";
+
+// src/core/ps/proc.ts
+var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
+
+// src/core/capacity/pool.ts
+var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
+
+// src/core/scheduler/capacity.ts
+var CAPACITY_RECHECK_MS = 2e3;
 
 // src/core/waiter-lock/waiter-lock.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
@@ -1887,6 +1881,12 @@ function findHarnessProcess(lookup = {}) {
   }
   return null;
 }
+
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/delivery/format.ts
+var SQUEAL_COMMAND = "squeal";
 
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;

@@ -17881,6 +17881,19 @@ function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = DEFAULT_
 ${tail}`;
 }
 
+// src/harness/shared/owed.ts
+async function registerOwing(context, deps, owed2, options = {}) {
+  const registration2 = await context.delivery.register(context.consumer, {
+    ...options,
+    owesText: owed2
+  });
+  return owed2.primer ? withPrimer(registration2, deps.command, coverageOf(context)) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
+}
+async function sayOwed(context, deps, options) {
+  const owed2 = owedRegistration(context.store, context.consumer);
+  return owed2 === null ? null : registerOwing(context, deps, owed2, options);
+}
+
 // src/harness/shared/stop.ts
 import { setTimeout as sleep4 } from "node:timers/promises";
 
@@ -18622,90 +18635,6 @@ async function waitForDelta(context, timeoutMs, signal) {
   }
 }
 
-// src/harness/pi/run.ts
-var consumerInput = (session) => ({ session_id: session.sessionId });
-var PI_EDIT_TOOLS = /* @__PURE__ */ new Set(["edit", "write"]);
-var SILENT_RUN = { primer: null, news: null };
-async function startRun(session, deps) {
-  const location2 = locate(session.cwd);
-  if (location2 === null || !usesSqueal(location2)) return SILENT_RUN;
-  const answer = await withContext(consumerInput(session), location2, deps, async (context) => {
-    const section = primer(deps.command, coverageOf(context));
-    if (context.store.consumers.get(context.consumer) !== null) {
-      const delta = await context.delivery.startTurn(context.consumer);
-      return { primer: section, news: delta === null ? null : formatDelta(delta, deps.command) };
-    }
-    const now = (deps.now ?? Date.now)();
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    const alive = daemonLiveness(record, now).state === "alive";
-    const first = alive ? null : await registerFirst(location2, deps, context);
-    const startingSince = first?.startingSince;
-    const registration2 = await context.delivery.register(context.consumer, {
-      inTurn: true,
-      ...startingSince === void 0 ? {} : { startingSince }
-    });
-    await first?.ensure();
-    return {
-      primer: section,
-      news: formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command)
-    };
-  });
-  return answer ?? SILENT_RUN;
-}
-async function toolCall(call, deps) {
-  const location2 = locate(call.cwd);
-  if (location2 === null) return null;
-  const edit = PI_EDIT_TOOLS.has(call.toolName);
-  const policy = readPolicy(location2.root);
-  const testCommand = call.toolName === "bash" ? testCommandOf(location2, policy, {
-    toolName: "Bash",
-    cwd: call.cwd,
-    ...call.command === void 0 ? {} : { command: call.command }
-  }) : null;
-  if (!edit && testCommand === null) return null;
-  return withContext(consumerInput(call), location2, deps, async (context) => {
-    const denied = edit ? await denyOnRegression(context, policy, {
-      edit: true,
-      toolName: call.toolName,
-      command: deps.command
-    }) : null;
-    if (denied !== null || testCommand === null) return denied;
-    return denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)());
-  });
-}
-async function settle(session, deps) {
-  const location2 = locate(session.cwd);
-  if (location2 === null) return { report: null };
-  const outcome = await stopTurn(
-    { ...consumerInput(session), stopHookActive: false, harness: "pi" },
-    location2,
-    deps
-  );
-  if (outcome === null) return { report: null };
-  return { report: "block" in outcome ? outcome.block : outcome.news };
-}
-async function endRun(session, deps) {
-  const location2 = locate(session.cwd);
-  if (location2 === null) return null;
-  await withContext(consumerInput(session), location2, deps, async (context) => {
-    await context.delivery.endTurn(context.consumer);
-    return null;
-  });
-  return null;
-}
-var IDLE_WAIT_MS = 354e4;
-async function idleWait(session, deps, signal) {
-  const location2 = locate(session.cwd);
-  if (location2 === null) return null;
-  return waitIdle(
-    consumerInput(session),
-    location2,
-    deps,
-    deps.waiterTimeoutMs ?? IDLE_WAIT_MS,
-    signal
-  );
-}
-
 // src/core/commit/boundary.ts
 import { setTimeout as sleep6 } from "node:timers/promises";
 var HEAD_MOVE_WAIT_MS = 500;
@@ -18737,19 +18666,6 @@ async function syncOnHeadMove(store, worktreeId, root, bounds = {}) {
 function pending(answer) {
   if (answer === null || !answer.ok || answer.type !== "sync") return null;
   return answer.revision === null && answer.error === null ? answer.requestId : null;
-}
-
-// src/harness/shared/owed.ts
-async function registerOwing(context, deps, owed2, options = {}) {
-  const registration2 = await context.delivery.register(context.consumer, {
-    ...options,
-    owesText: owed2
-  });
-  return owed2.primer ? withPrimer(registration2, deps.command, coverageOf(context)) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
-}
-async function sayOwed(context, deps, options) {
-  const owed2 = owedRegistration(context.store, context.consumer);
-  return owed2 === null ? null : registerOwing(context, deps, owed2, options);
 }
 
 // src/harness/shared/uncovered-edit.ts
@@ -18875,16 +18791,18 @@ async function endSession(input, locations, deps) {
 
 // src/harness/pi/session.ts
 var SWEEP_REASONS = /* @__PURE__ */ new Set(["startup", "resume"]);
-var consumerInput2 = (session) => ({ session_id: session.sessionId });
+var consumerInput = (session) => ({ session_id: session.sessionId });
+var PI_OWED = { primer: false };
 async function startSession(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null || !usesSqueal(location2)) return null;
   let ensured = false;
-  const text2 = await withContext(consumerInput2(session), location2, deps, async (context) => {
+  const text2 = await withContext(consumerInput(session), location2, deps, async (context) => {
     ensured = true;
     const first = await registerFirst(location2, deps, context);
     const text3 = await registerAtStart(session, context, deps, first.startingSince);
     await first.ensure();
+    if (text3 !== null) await context.delivery.registrationSent(context.consumer);
     return text3;
   });
   if (!ensured) await ensure(location2, deps);
@@ -18899,25 +18817,111 @@ async function registerAtStart(session, context, deps, startingSince) {
       except: context.consumer
     });
   }
-  const registration2 = await context.delivery.register(context.consumer, {
+  return registerOwing(context, deps, PI_OWED, {
     atStart: !reload,
     ...startingSince === void 0 ? {} : { startingSince }
   });
-  return formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
 }
 async function shutdownSession(session, deps) {
   const location2 = locate(session.cwd);
-  if (location2 !== null) await endSession(consumerInput2(session), [location2], deps);
+  if (location2 !== null) await endSession(consumerInput(session), [location2], deps);
   return null;
 }
 async function toolBoundary(session, deps, edited = true) {
   const location2 = locate(session.cwd);
   if (location2 === null) return null;
   return withContext(
-    consumerInput2(session),
+    consumerInput(session),
     location2,
     deps,
     (context) => deliver(context, deps, edited)
+  );
+}
+
+// src/harness/pi/run.ts
+var consumerInput2 = (session) => ({ session_id: session.sessionId });
+var PI_EDIT_TOOLS = /* @__PURE__ */ new Set(["edit", "write"]);
+var SILENT_RUN = { primer: null, news: null };
+async function startRun(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null || !usesSqueal(location2)) return SILENT_RUN;
+  const answer = await withContext(consumerInput2(session), location2, deps, async (context) => {
+    const section = primer(deps.command, coverageOf(context));
+    if (context.store.consumers.get(context.consumer) !== null) {
+      const owed2 = await sayOwed(context, deps, { inTurn: true });
+      if (owed2 !== null) {
+        await context.delivery.registrationSent(context.consumer);
+        return { primer: section, news: owed2 };
+      }
+      const delta = await context.delivery.startTurn(context.consumer);
+      return { primer: section, news: delta === null ? null : formatDelta(delta, deps.command) };
+    }
+    const now = (deps.now ?? Date.now)();
+    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+    const alive = daemonLiveness(record, now).state === "alive";
+    const first = alive ? null : await registerFirst(location2, deps, context);
+    const startingSince = first?.startingSince;
+    const news = await registerOwing(context, deps, PI_OWED, {
+      inTurn: true,
+      ...startingSince === void 0 ? {} : { startingSince }
+    });
+    await first?.ensure();
+    await context.delivery.registrationSent(context.consumer);
+    return { primer: section, news };
+  });
+  return answer ?? SILENT_RUN;
+}
+async function toolCall(call, deps) {
+  const location2 = locate(call.cwd);
+  if (location2 === null) return null;
+  const edit = PI_EDIT_TOOLS.has(call.toolName);
+  const policy = readPolicy(location2.root);
+  const testCommand = call.toolName === "bash" ? testCommandOf(location2, policy, {
+    toolName: "Bash",
+    cwd: call.cwd,
+    ...call.command === void 0 ? {} : { command: call.command }
+  }) : null;
+  if (!edit && testCommand === null) return null;
+  return withContext(consumerInput2(call), location2, deps, async (context) => {
+    const denied = edit ? await denyOnRegression(context, policy, {
+      edit: true,
+      toolName: call.toolName,
+      command: deps.command
+    }) : null;
+    if (denied !== null || testCommand === null) return denied;
+    return denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)());
+  });
+}
+async function settle(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return { report: null };
+  const outcome = await stopTurn(
+    { ...consumerInput2(session), stopHookActive: false, harness: "pi" },
+    location2,
+    deps
+  );
+  if (outcome === null) return { report: null };
+  return { report: "block" in outcome ? outcome.block : outcome.news };
+}
+async function endRun(session, deps) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return null;
+  await withContext(consumerInput2(session), location2, deps, async (context) => {
+    await context.delivery.endTurn(context.consumer);
+    return null;
+  });
+  return null;
+}
+var IDLE_WAIT_MS = 354e4;
+async function idleWait(session, deps, signal) {
+  const location2 = locate(session.cwd);
+  if (location2 === null) return null;
+  return waitIdle(
+    consumerInput2(session),
+    location2,
+    deps,
+    deps.waiterTimeoutMs ?? IDLE_WAIT_MS,
+    signal
   );
 }
 
