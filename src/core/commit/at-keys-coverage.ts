@@ -13,6 +13,7 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash, TestFileRef } from "../types/keys.js";
 import type { PolicyInputs } from "../types/policy.js";
 import { blobText } from "./at-environment-lockfile.js";
+import { GLOB_CALL, globCallsHere, listingGap, namesOf } from "./at-keys-globs.js";
 
 /*
  * Spec 023 D2.1, review of wave 1 B1: this worktree's closure list proves a
@@ -53,6 +54,8 @@ export interface CoverageInput {
   readonly paths: Iterable<RelativePath>;
   /** Policy `inputs`. */
   readonly inputs: PolicyInputs;
+  /** The modules of a project a walk recorded glob folders for (`globListings.<project>`, fix A). */
+  readonly walked: (project: string) => ReadonlySet<RelativePath>;
 }
 
 /** Extensions a resolution tries, and those it reads a stem of. */
@@ -68,38 +71,42 @@ const SOURCE_OF: Readonly<Record<string, readonly string[]>> = {
 const BUILTINS = new Set(builtinModules);
 /** Files read at once. */
 const READS = 16;
+/** Extensions of files that import nothing, a changed one of which needs no reading. */
+const LEAF =
+  /\.(?:json|txt|md|snap|css|scss|sass|less|svg|png|jpe?g|gif|webp|ico|ya?ml|html?|csv|xml|wasm|map|toml|lock)$/i;
 
 /** The coverage of closure lists at the target, its changed modules read once. */
 export async function targetCoverage(input: CoverageInput): Promise<Coverage> {
   await parserReady;
   const { root, blobs, here } = input;
   const differs = (path: RelativePath) => (blobs.get(path) ?? null) !== (here.get(path) ?? null);
-  const changed = [...new Set(input.paths)].filter(
+  const paths = [...new Set(input.paths)];
+  const changed = paths.filter(
     (path) => listedDirectory(path) === null && PARSED.test(path) && differs(path),
   );
   const target = new Map<RelativePath, ParsedModule | null>();
   const current = new Map<RelativePath, ParsedModule | null>();
+  const globbing = await globCallsHere(root, paths);
   for (let at = 0; at < changed.length; at += READS) {
     await Promise.all(
       changed.slice(at, at + READS).map(async (path) => {
         const blob = blobs.get(path);
-        target.set(path, blob === undefined ? null : parseModule(await blobText(root, blob), path));
+        const there = blob === undefined ? null : await blobText(root, blob);
+        target.set(path, there === null ? null : parseModule(there, path));
+        if (there !== null && GLOB_CALL.test(there)) globbing.add(path);
         const text = await readOrNull(join(root, path));
         current.set(path, text === null ? null : parseModule(text, path));
       }),
     );
   }
+  const names = namesOf(blobs, here);
   const byStem = new Map<string, RelativePath[]>();
   for (const path of blobs.keys()) {
     const stem = stemOf(path);
     if (stem !== null) byStem.set(stem, [...(byStem.get(stem) ?? []), path]);
   }
   const declared = createDeclaredInputs(input.inputs, blobs.keys());
-  return (ref, closure, open) => {
-    const list = new Set(closure);
-    if (!blobs.has(ref.path)) return "the test file is absent at the commit";
-    const missing = declared.for(ref.path).find((path) => !list.has(path));
-    if (missing !== undefined) return `declared input ${missing} at the commit is not in the list`;
+  const stems = (closure: readonly RelativePath[], list: ReadonlySet<RelativePath>) => {
     for (const path of closure) {
       const stem = stemOf(path);
       const others = stem === null ? [] : (byStem.get(stem) ?? []);
@@ -108,6 +115,19 @@ export async function targetCoverage(input: CoverageInput): Promise<Coverage> {
         return `${outside} at the commit can take the place of ${path}`;
       }
     }
+    return null;
+  };
+  // Fix A: a glob reads its folder's file set; its listing in the list must cover it.
+  const globs = (ref: TestFileRef, closure: readonly RelativePath[]) => {
+    const walked = input.walked(ref.project);
+    for (const path of closure.filter((p) => globbing.has(p))) {
+      if (differs(path)) return `${path} globs files and differs at the commit`;
+      if (!walked.has(path)) return `${path} globs files, and no walk recorded its folders`;
+    }
+    return null;
+  };
+  /** Once a list file differs: what a run there reads beyond the list's imports. */
+  const changes = (closure: readonly RelativePath[], open: Parameters<Coverage>[2]) => {
     const first = closure.find(differs);
     if (first === undefined) return null;
     if (open.observed)
@@ -115,6 +135,13 @@ export async function targetCoverage(input: CoverageInput): Promise<Coverage> {
     if (open.parts.dependencies !== "" || open.parts.runtime !== "") {
       return `its key parts at the commit are not known: ${first} differs`;
     }
+    const opaque = closure.find(
+      (path) =>
+        listedDirectory(path) === null && !PARSED.test(path) && !LEAF.test(path) && differs(path),
+    );
+    return opaque === undefined ? null : `the imports of ${opaque} at the commit are not read`;
+  };
+  const imports = (closure: readonly RelativePath[], list: ReadonlySet<RelativePath>) => {
     for (const path of closure) {
       const module = target.get(path);
       if (module === undefined || module === null) continue;
@@ -122,6 +149,16 @@ export async function targetCoverage(input: CoverageInput): Promise<Coverage> {
       if (gap !== null) return gap;
     }
     return null;
+  };
+  return (ref, closure, open) => {
+    const list = new Set(closure);
+    if (!blobs.has(ref.path)) return "the test file is absent at the commit";
+    const missing = declared.for(ref.path).find((path) => !list.has(path));
+    if (missing !== undefined) return `declared input ${missing} at the commit is not in the list`;
+    const first = stems(closure, list) ?? globs(ref, closure) ?? listingGap(closure, list, names);
+    if (first !== null) return first;
+    if (!closure.some(differs)) return null;
+    return changes(closure, open) ?? imports(closure, list);
   };
 }
 

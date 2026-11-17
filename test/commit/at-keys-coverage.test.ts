@@ -28,6 +28,11 @@ const FILES: Readonly<Record<string, string>> = {
   "src/x/index.ts": "export {};\n",
   "src/x.ts": "export {};\n",
   "data/one.txt": "one\n",
+  "src/view.vue": '<script setup>import { a } from "./a";</script>\n',
+  "src/plugins/kept.ts": 'export const name = "kept";\n',
+  "src/plugins/old.ts": 'export const name = "old";\n',
+  "src/registry.ts":
+    'const plugins = import.meta.glob("./plugins/*.ts", { eager: true });\nexport const count = Object.keys(plugins).length;\n',
 };
 
 let root = "";
@@ -55,7 +60,13 @@ const open = { parts: NO_PARTS, observed: false };
 async function gap(
   list: string[],
   changed: string[] = [],
-  options: { gone?: string[]; inputs?: PolicyInputs; observed?: boolean; parts?: boolean } = {},
+  options: {
+    gone?: string[];
+    inputs?: PolicyInputs;
+    observed?: boolean;
+    parts?: boolean;
+    walked?: string[];
+  } = {},
 ): Promise<string | null> {
   const here = new Map(blobs);
   for (const path of changed) here.set(path, "changed");
@@ -66,6 +77,7 @@ async function gap(
     here,
     paths: list,
     inputs: options.inputs ?? [],
+    walked: () => new Set(options.walked ?? []),
   });
   return coverage(ref, list, {
     observed: options.observed ?? false,
@@ -131,10 +143,47 @@ describe("targetCoverage (review of wave 1 B1)", () => {
       "declared input data/one.txt at the commit is not in the list",
     );
     expect(await gap([...LIST, "data/one.txt"], [], { inputs })).toBeNull();
-    const coverage = await targetCoverage({ root, blobs, here: blobs, paths: [], inputs: [] });
+    const coverage = await targetCoverage({
+      root,
+      blobs,
+      here: blobs,
+      paths: [],
+      inputs: [],
+      walked: () => new Set(),
+    });
     expect(coverage({ project: "", path: "test/gone.test.ts" }, [], open)).toBe(
       "the test file is absent at the commit",
     );
+  });
+});
+
+describe("targetCoverage of a glob (row 023-03 after fix A, re-review B1)", () => {
+  const GLOB = [T, "src/registry.ts", "src/plugins/kept.ts", "src/plugins/"];
+  const walked = ["src/registry.ts"];
+
+  it("leaves open a listed folder that holds, at the commit, a file the list lacks", async () => {
+    expect(await gap(GLOB, [], { gone: ["src/plugins/old.ts"], walked })).toBe(
+      "src/plugins/old.ts at the commit is in the listed folder src/plugins/, not in the list",
+    );
+    expect(
+      await gap([...GLOB, "src/plugins/old.ts"], [], { gone: ["src/plugins/old.ts"], walked }),
+    ).toBeNull();
+    expect(await gap([...GLOB, "src/plugins/old.ts"], [], { walked })).toBeNull();
+  });
+
+  it("leaves open a glob module no walk recorded, or one that changed", async () => {
+    const all = [...GLOB, "src/plugins/old.ts"];
+    expect(await gap(all)).toBe("src/registry.ts globs files, and no walk recorded its folders");
+    expect(await gap(all, ["src/registry.ts"], { walked })).toBe(
+      "src/registry.ts globs files and differs at the commit",
+    );
+  });
+
+  it("leaves open a changed module it cannot parse", async () => {
+    expect(await gap([T, "src/view.vue", "src/a.ts", "src/b.ts"], ["src/view.vue"])).toBe(
+      "the imports of src/view.vue at the commit are not read",
+    );
+    expect(await gap([T, "data/one.txt"], ["data/one.txt"])).toBeNull();
   });
 });
 

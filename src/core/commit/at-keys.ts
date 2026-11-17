@@ -1,5 +1,6 @@
 import { readObjectFormat } from "../hash/git-index.js";
 import { assembleClosure, isClosurePath } from "../keys/closure.js";
+import { GlobListings, globListingsMetaKey } from "../keys/glob-listings.js";
 import { observedMetaKey, readSharedEntries } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { projectEnvironments, worktreeEnvironment } from "../store/environments.js";
@@ -159,6 +160,7 @@ export function localClosures(
   files: readonly TestFileRef[],
 ): Map<string, LocalClosure> {
   const observed = new Map<ProjectName, Record<string, RelativePath[]>>();
+  const globs = new GlobListings(store);
   const out = new Map<string, LocalClosure>();
   for (const file of files) {
     const ref: TestFileRef = { project: file.project, path: file.path };
@@ -170,7 +172,13 @@ export function localClosures(
       observed.set(ref.project, entries);
     }
     const extra = (entries[ref.path] ?? []).filter(isClosurePath);
-    const paths = assembleClosure({ testFile: ref, paths: stored }, [], extra).paths;
+    // Row 023-13 (fix A): its modules' glob folders, as `WorktreeKeys.setClosure` merges them.
+    const globbed = globs.of(ref.project, stored);
+    const paths = assembleClosure(
+      { testFile: ref, paths: stored },
+      [],
+      [...extra, ...globbed],
+    ).paths;
     out.set(testFileId(ref), { paths, observed: extra.length > 0 });
   }
   return out;
@@ -251,7 +259,16 @@ export async function keysAtBlobs(
   const paths = [...closures.values()].flatMap((closure) => closure.paths);
   const untracked = await untrackedInputs(root, paths);
   const here = new Map(store.fileHashes.list(worktreeId).map((r) => [r.path, r.hash]));
-  const coverage = await targetCoverage({ root, blobs, here, paths, inputs: input.inputs });
+  const walked = (project: ProjectName) =>
+    new Set(Object.keys(readSharedEntries(store, globListingsMetaKey(project))));
+  const coverage = await targetCoverage({
+    root,
+    blobs,
+    here,
+    paths,
+    inputs: input.inputs,
+    walked,
+  });
   const format = await readObjectFormat(root);
   const projects = [...new Set(files.map((file) => file.project))];
   const environments = new Map<ProjectName, EnvironmentAt>();
