@@ -51,8 +51,12 @@ export interface Difference {
   readonly addedOrDeleted: ReadonlySet<RelativePath>;
   /** Changed `package.json` files whose resolution fields differ, or that one side lacks. */
   readonly manifests: ReadonlySet<RelativePath>;
-  /** The policy's declared inputs of a test file at the commit, from its tree. */
-  readonly declared: (testFile: RelativePath) => readonly RelativePath[];
+  /**
+   * A path the policy declares as an input of `testFile` at the commit and
+   * not now, or now and not at the commit, each matched over that side's
+   * files; `null` when the two sets are equal.
+   */
+  readonly declared: (testFile: RelativePath) => RelativePath | null;
 }
 
 /** Installed lockfiles and the committed lockfile each one is installed from. */
@@ -92,11 +96,9 @@ export function changedInput(
     if (why !== null) return why;
     if (listedDirectory(path) === null && !PATTERN.test(path)) folders.add(folderOf(path));
   }
-  // 4: the commit's declared inputs are inputs here, so the checks above compare them.
-  const inputs = new Set(file.paths);
-  for (const path of diff.declared(file.path)) {
-    if (!inputs.has(path)) return `${path} is a declared input at the commit, not here`;
-  }
+  // 4: the same declared inputs on both sides; the checks above compare their blobs.
+  const declared = diff.declared(file.path);
+  if (declared !== null) return `${declared} is a declared input on one side only`;
   const guarded = guardedFolders(file.closure);
   for (const path of diff.changed) {
     // The policy steers declared inputs and the environment's variables: its change moves keys

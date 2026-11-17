@@ -29,12 +29,32 @@ export async function commitSide(root: AbsolutePath, commit: string): Promise<Co
  * untracked ones. A listing's key reads these names (`Listings`).
  */
 export async function hereNames(root: AbsolutePath): Promise<Map<RelativePath, Set<string>>> {
+  return entryNames(await hereFiles(root));
+}
+
+/** The files present in this worktree that git does not ignore. */
+async function hereFiles(root: AbsolutePath): Promise<RelativePath[]> {
   const list = async (args: string[]) =>
     splitNul(await runGit(root, ["ls-files", "-z", ...args], { timeoutMs: LS_TREE_TIMEOUT_MS }));
   const deleted = new Set(await list(["--deleted"]));
   const tracked = (await list(["--cached"])).filter((path) => !deleted.has(path));
-  const untracked = await list(["--others", "--exclude-standard"]);
-  return entryNames([...tracked, ...untracked]);
+  return [...tracked, ...(await list(["--others", "--exclude-standard"]))];
+}
+
+/** `Difference.declared`: the policy's inputs matched over the commit's files and over these. */
+function declaredDiffers(
+  policy: Policy,
+  there: Iterable<RelativePath>,
+  here: Iterable<RelativePath>,
+): Difference["declared"] {
+  const atCommit = createDeclaredInputs(policy.inputs, there);
+  const now = createDeclaredInputs(policy.inputs, here);
+  return (testFile) => {
+    const a = atCommit.for(testFile);
+    const b = new Set(now.for(testFile));
+    for (const path of a) if (!b.delete(path)) return path;
+    return b.values().next().value ?? null;
+  };
 }
 
 /**
@@ -70,7 +90,7 @@ export async function differenceAt(
     changed,
     addedOrDeleted,
     manifests,
-    declared: createDeclaredInputs(policy.inputs, files).for,
+    declared: declaredDiffers(policy, files, await hereFiles(root)),
   };
 }
 

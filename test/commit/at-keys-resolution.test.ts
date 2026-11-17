@@ -156,7 +156,7 @@ describe("keys at a commit where resolution or the config moves (review wave-5)"
       via: "walk",
     });
     expect(keys.changed.get(testFileId(TEST))).toBe(
-      "data/b.txt is a declared input at the commit, not here",
+      "data/b.txt is a declared input on one side only",
     );
   });
 });
