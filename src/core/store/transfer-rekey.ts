@@ -56,7 +56,7 @@ export interface Rekeyed {
   readonly observed: ObservedEntries;
 }
 
-const NO_PARTS: KeyParts = { dependencies: "", runtime: "" };
+export const NO_PARTS: KeyParts = { dependencies: "", runtime: "" };
 
 const MAP_KEY = {
   observed: observedMetaKey,
@@ -114,7 +114,7 @@ export function rekeyFiles(
 }
 
 /** Whether `file`'s exported key comes out of its own list over the commit, with the export's environment hash. */
-function proven(
+export function proven(
   file: ExportedTestFile,
   environment: ExportedEnvironment,
   at: (path: RelativePath) => string,
@@ -156,7 +156,7 @@ export function rekeyedHash(
 }
 
 /** The check key over `paths`, each `at` the commit (`checkKey`'s encoding). */
-function keyOver(
+export function keyOver(
   environment: EnvironmentHash,
   testFile: TestFileRef,
   paths: readonly RelativePath[],
@@ -173,7 +173,7 @@ function keyOver(
  * commit holds no file there; a listing by the entry names of the commit's
  * tree, `ABSENT_LISTING` for a directory it does not hold.
  */
-function commitSegments(
+export function commitSegments(
   blobs: ReadonlyMap<RelativePath, FileHash>,
 ): (path: RelativePath) => string {
   let names: Map<RelativePath, Set<string>> | null = null;

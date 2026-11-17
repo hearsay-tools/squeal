@@ -147,6 +147,12 @@ export interface ResultRecord {
   readonly summary: string | null;
   readonly errors: readonly CheckError[];
   readonly provenance: Provenance;
+  /**
+   * Spec 023 D3 (row 023-17): `"ci"` on a record built from CI's export of
+   * a commit (`refs/squeal/<sha>`), which no store holds; absent on every
+   * stored row, whose origin its provenance gives.
+   */
+  readonly origin?: "ci";
 }
 
 /**

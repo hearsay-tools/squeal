@@ -1,3 +1,4 @@
+import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -10,6 +11,7 @@ import {
   resolveCommit,
   withStores,
 } from "./at-keys-checkout.js";
+import { type CiCall, ciSettled } from "./at-keys-ci.js";
 import type { CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
 import { committedBlobs } from "./tree.js";
 
@@ -21,6 +23,12 @@ import { committedBlobs } from "./tree.js";
  * checkout at the commit (`at-keys-walk.ts`), after a warm frozen install:
  * the human dropped the fast path on 2026-11-17, after three reviews found
  * it reused current keys where the commit resolves imports otherwise.
+ *
+ * Row 023-17: before the checkout, CI's export of the commit
+ * (`at-keys-ci.ts`) settles the files it holds and proves here, with CI's
+ * passes; only the rest go to the checkout, and none is made when CI
+ * settles every named file. With no named files the checkout still lists
+ * them, and a file CI settles takes CI's answer.
  */
 
 export interface KeysAt {
@@ -38,6 +46,16 @@ export interface KeysAt {
   readonly checkoutMs: number | null;
   /** Whether the shared store could be read; without it every `stored` is empty. */
   readonly store: boolean;
+  /**
+   * Row 023-17: the export CI's results came from (`sourceLabel`) and the
+   * files it settled, or why none was used (`missed`); absent when the CI
+   * step was off.
+   */
+  readonly ci?: {
+    readonly source: string | null;
+    readonly settled: number;
+    readonly missed: string | null;
+  };
 }
 
 export interface KeysAtOptions extends KeyingOptions, CheckoutOptions {
@@ -47,6 +65,8 @@ export interface KeysAtOptions extends KeyingOptions, CheckoutOptions {
   readonly commit: string;
   /** The test files to key; every file the adapters at the commit list by default. */
   readonly files?: readonly TestFileRef[];
+  /** Row 023-17: CI's export of the commit settles files first; on by default, `false` turns it off. */
+  readonly ci?: CiCall | false;
 }
 
 /** D2 as amended: each test file's key at `options.commit`, by the keyer in a checkout there. */
@@ -56,19 +76,29 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
   const commit = await resolveCommit(root, options.commit);
   return withStores(commonDir, async (main) => {
     const files = new Map<string, KeyAt>();
+    const blobs = await committedBlobs(root, commit);
     let asked: readonly TestFileRef[] | null = null;
     if (options.files !== undefined) {
       // A named file the commit lacks needs no checkout.
-      const blobs = await committedBlobs(root, commit);
       for (const ref of options.files) {
         if (!blobs.has(ref.path)) files.set(testFileId(ref), absent(ref.path, commit));
       }
       asked = options.files.filter((ref) => blobs.has(ref.path));
-      if (asked.length === 0)
-        return { commit, files, failure: null, checkoutMs: null, store: main !== null };
     }
+    const store = main !== null;
+    let ci: KeysAt["ci"];
+    if (options.ci !== false) {
+      const input = { root, commit, main, policy: readPolicy(root), blobs };
+      const settled = await ciSettled(input, asked, options.ci);
+      for (const [id, key] of settled.files) files.set(id, key);
+      ci = { source: settled.source, settled: settled.files.size, missed: settled.missed };
+      if (asked !== null) asked = asked.filter((ref) => !settled.files.has(testFileId(ref)));
+    }
+    const ciPart = ci === undefined ? {} : { ci };
+    if (asked !== null && asked.length === 0)
+      return { commit, files, failure: null, checkoutMs: null, store, ...ciPart };
     const at = await inCheckout(main, { root, commonDir, commit }, asked, options);
-    for (const [id, key] of at.files) files.set(id, key);
-    return { commit, files, failure: at.failure, checkoutMs: at.ms, store: main !== null };
+    for (const [id, key] of at.files) if (!files.has(id)) files.set(id, key);
+    return { commit, files, failure: at.failure, checkoutMs: at.ms, store, ...ciPart };
   });
 }
