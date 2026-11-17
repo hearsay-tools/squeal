@@ -156,7 +156,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     h.gate.before = () => {
       runs++;
       // The tier's record fails otherwise.
-      if (runs === 1) writes.fail(new Error("not a busy store"));
+      if (runs === 1) writes.fail(new Error("not a busy store"), "recordTier");
     };
     try {
       // The edit's selection gives up on a busy store.
