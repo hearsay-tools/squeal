@@ -73,7 +73,8 @@ export function newsChange(
     if (live.startingSince !== undefined && live.startSlow !== true && live.startStopped !== true) {
       return { change: null, forgetRest };
     }
-    if (p.rest?.kind === "quiet") return { change: null, forgetRest };
+    // Review 0.1.551 B1: a stopped start is said over a quiet rest; a running one stays quiet.
+    if (p.rest?.kind === "quiet" && live.startStopped !== true) return { change: null, forgetRest };
     forgetRest = p.rest?.kind === "overdue";
   }
   return { change: alreadyTold(told, toldOf(live)) ? null : live, forgetRest };

@@ -64,6 +64,14 @@ Not Linux: unchanged; a stopped process reads as a slow start.
 socket, so it prints `No daemon running for <root>; …` and leaves the stop mark. It does not
 contradict the hook, since no daemon serves; it does not name the stopped start.
 
+## Repair: review 0.1.551 B1 (a stopped start after a rest)
+
+After the last daemon rested (record cleared, rest mark), an external start whose process is
+stopped was hidden: `newsChange` dropped every news as a quiet rest, while `squeal status` said it
+may be stopped. A stopped start now passes that filter and is told once; a running start after a
+rest stays quiet as before; no hook spawns while its start mark names a live process
+(`test/harness/starting-stopped.test.ts`, "a start after the last daemon rested").
+
 ## Time format
 
 Hooks print times as `utcTimeText` (`HH:MM:SS UTC`, 005-94 C4), the coordinator's steer from the

@@ -1,9 +1,17 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import type { Life } from "../../src/core/daemon/terminate.js";
+import { markRest } from "../../src/core/presence/events.js";
 import { DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS } from "../../src/core/presence/heartbeat.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
 import { utcTimeText } from "../../src/core/text.js";
-import { holdStart, newWorktree, T } from "./starting-fixture.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { recorded, squealRepo } from "./helpers.js";
+import { holdStart, newWorktree, T, text } from "./starting-fixture.js";
 
 /*
  * Row 005-111 (005-108's open point): a daemon stopped (SIGSTOP) while it holds the lock and its
@@ -124,5 +132,59 @@ describe("a stopped starting daemon off Linux (row 005-111: no state read, as be
 
     expect(before).toBe("");
     expect(slow).toBe(SLOW);
+  });
+});
+
+/**
+ * Review 0.1.551 B1: a worktree whose daemon heartbeat last at `T`, cleared its record and rested
+ * at `T + 500`; a session registered then. No hook spawns here, so no spawn mark follows the rest.
+ */
+async function restedWorktree() {
+  const r = squealRepo();
+  r.daemon("stale", T);
+  r.store.worktrees.setDaemon(r.worktreeId, null);
+  markRest(r.store, r.worktreeId, (T + 500) as EpochMs);
+  let clock = T + 500;
+  const spawns: number[] = [];
+  const deps: HookDeps = {
+    env: {},
+    now: () => clock,
+    ensureDaemon: async () => {
+      spawns.push(clock - T);
+      return "unavailable";
+    },
+  };
+  await runHook("session-start", recorded("session-start", r.root), deps);
+  const lockFile = lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
+  mkdirSync(dirname(lockFile), { recursive: true });
+  const batch = async (ms: number) => {
+    clock = T + ms;
+    return text(await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps));
+  };
+  return { batch, lockFile, spawns };
+}
+
+describe("a start after the last daemon rested (review 0.1.551 B1)", () => {
+  it("is said once when its process is stopped, not hidden as a quiet rest", async () => {
+    const { batch, lockFile, spawns } = await restedWorktree();
+    holdStart(lockFile, 1_000);
+    stoppedPids.add(process.pid);
+
+    const said = [await batch(11_000), await batch(20_000)];
+
+    expect(said[0]).toContain(
+      `A daemon has been starting since ${since}, and it may be stopped: no results come until it runs again`,
+    );
+    expect(said[0]).not.toContain("start`");
+    expect(said[1]).toBe("");
+    // 005-108's rule: no hook spawns while the start mark names a live process.
+    expect(spawns.filter((ms) => ms >= 1_000)).toEqual([]);
+  });
+
+  it("stays quiet while its process runs, as before", async () => {
+    const { batch, lockFile } = await restedWorktree();
+    holdStart(lockFile, 1_000);
+
+    expect([await batch(11_000), await batch(20_000)]).toEqual(["", ""]);
   });
 });
