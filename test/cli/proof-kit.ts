@@ -38,7 +38,7 @@ export async function prove(
   const full = { case: null, timeoutSeconds: PROOF_TIMEOUT_SECONDS, json: true, ...args };
   const code = await proofCommand(full, io, options);
   const text = out.join("");
-  const report = full.json ? JSON.parse(text) : null;
+  const report = full.json && text !== "" ? JSON.parse(text) : null;
   return {
     code,
     out: text,
