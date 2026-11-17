@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.556";
+  if (true) return "0.1.557";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -406,6 +406,49 @@ var init_paths = __esm({
   }
 });
 
+// src/core/presence/heartbeat.ts
+function heartbeatGraceMs(intervalMs) {
+  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
+}
+function heartbeatAge(record2, now) {
+  return now - record2.heartbeatAt;
+}
+function heartbeatFresh(record2, now) {
+  return heartbeatAge(record2, now) <= heartbeatGraceMs(record2.heartbeatIntervalMs);
+}
+function heartbeatLateBy(record2, now) {
+  return heartbeatFresh(record2, now) ? null : heartbeatAge(record2, now);
+}
+function heartbeatGraceEnd(record2) {
+  return record2.heartbeatAt + heartbeatGraceMs(record2.heartbeatIntervalMs);
+}
+function beatBetween(first2, second) {
+  return second.heartbeatAt > first2.heartbeatAt;
+}
+function lastHeartbeat(row2) {
+  return row2?.daemon?.heartbeatAt ?? row2?.lastHeartbeatAt ?? null;
+}
+function claimLiveness(now) {
+  return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+}
+function daemonLiveness(record2, now, lastHeartbeatAt = null) {
+  if (record2 === null) return { state: "down", since: lastHeartbeatAt };
+  if (heartbeatFresh(record2, now)) return { state: "alive", lastHeartbeatAt: record2.heartbeatAt };
+  return { state: "down", since: record2.heartbeatAt };
+}
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
+var HEARTBEAT_GRACE_INTERVALS, DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS;
+var init_heartbeat = __esm({
+  "src/core/presence/heartbeat.ts"() {
+    "use strict";
+    HEARTBEAT_GRACE_INTERVALS = 2;
+    DAEMON_START_GRACE_MS = 1e4;
+    DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+  }
+});
+
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
 function observeWrites(next) {
@@ -695,49 +738,6 @@ var init_terminate = __esm({
     COMMAND_CHARS = 120;
     PROC = { stat: statOf, commandLine, signal, uptime: uptimeTicks };
     PF_EXITING = 4;
-  }
-});
-
-// src/core/presence/heartbeat.ts
-function heartbeatGraceMs(intervalMs) {
-  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
-}
-function heartbeatAge(record2, now) {
-  return now - record2.heartbeatAt;
-}
-function heartbeatFresh(record2, now) {
-  return heartbeatAge(record2, now) <= heartbeatGraceMs(record2.heartbeatIntervalMs);
-}
-function heartbeatLateBy(record2, now) {
-  return heartbeatFresh(record2, now) ? null : heartbeatAge(record2, now);
-}
-function heartbeatGraceEnd(record2) {
-  return record2.heartbeatAt + heartbeatGraceMs(record2.heartbeatIntervalMs);
-}
-function beatBetween(first2, second) {
-  return second.heartbeatAt > first2.heartbeatAt;
-}
-function lastHeartbeat(row2) {
-  return row2?.daemon?.heartbeatAt ?? row2?.lastHeartbeatAt ?? null;
-}
-function claimLiveness(now) {
-  return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
-}
-function daemonLiveness(record2, now, lastHeartbeatAt = null) {
-  if (record2 === null) return { state: "down", since: lastHeartbeatAt };
-  if (heartbeatFresh(record2, now)) return { state: "alive", lastHeartbeatAt: record2.heartbeatAt };
-  return { state: "down", since: record2.heartbeatAt };
-}
-function worktreeLiveness(worktree, now) {
-  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-}
-var HEARTBEAT_GRACE_INTERVALS, DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS;
-var init_heartbeat = __esm({
-  "src/core/presence/heartbeat.ts"() {
-    "use strict";
-    HEARTBEAT_GRACE_INTERVALS = 2;
-    DAEMON_START_GRACE_MS = 1e4;
-    DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
   }
 });
 
@@ -18194,7 +18194,7 @@ function openStore(commonDir, options = {}) {
   }
   const opened3 = connect(paths, options);
   if (!("corrupt" in opened3)) return opened3;
-  if (options.checkIntegrity === void 0) return { reason: "corrupt", movedTo: null };
+  if (options.recoverFaults !== true) return { reason: "corrupt", movedTo: null };
   return recover(paths, options);
 }
 function connect(paths, options) {
@@ -18207,7 +18207,7 @@ function connect(paths, options) {
       db.close();
       return { reason: "newer-schema", found: found4, supported: SCHEMA_VERSION };
     }
-    if (options.checkIntegrity !== void 0) {
+    if (options.recoverFaults === true) {
       dropStaleMark(paths.database);
       const mark = currentMark(paths.database);
       if (mark !== null) {
@@ -18272,13 +18272,12 @@ function recover(paths, options) {
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
-    const again2 = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "mark" });
+    const again2 = connect(paths, options);
     if (!("corrupt" in again2)) return again2;
     const now = options.now ?? Date.now;
     const at2 = now();
     const movedTo = moveAside(paths.database, at2);
-    const { checkIntegrity: _, ...unchecked2 } = options;
-    const fresh = connect(paths, unchecked2);
+    const fresh = connect(paths, { ...options, recoverFaults: false });
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
       const note = JSON.stringify({ at: at2, movedTo, reason: again2.corrupt, ...foundBy(again2.mark) });
@@ -76765,6 +76764,7 @@ init_daemon();
 init_notes();
 init_paths();
 init_daemon();
+init_heartbeat();
 
 // src/core/presence/marks.ts
 import { existsSync, readFileSync as readFileSync3, statSync } from "node:fs";
@@ -76849,6 +76849,7 @@ function tryLock(db) {
 // src/core/presence/marks.ts
 init_terminate();
 init_json();
+init_paths();
 init_heartbeat();
 
 // src/core/presence/once.ts
@@ -76861,6 +76862,9 @@ function once(read6) {
 }
 
 // src/core/presence/marks.ts
+function lockFileOf(row2, orElse) {
+  return row2 === null || row2 === void 0 ? orElse : lockFileFor(row2.commonDir, row2.id);
+}
 function startMarkFor(lockFile2) {
   return `${lockFile2}.starting`;
 }
@@ -76952,11 +76956,12 @@ function readPresenceFacts(store, worktreeId, now, row2, commonDir) {
     if (incarnation === null) return void 0;
     return readDaemonNotes(store, worktreeId).find((n) => n.exitOf === incarnation);
   });
-  const lockFile2 = once(() => {
-    const w2 = worktree();
-    if (w2 !== null) return lockFileFor(w2.commonDir, w2.id);
-    return commonDir === void 0 ? null : lockFileFor(commonDir, worktreeId);
-  });
+  const lockFile2 = once(
+    () => lockFileOf(
+      worktree(),
+      commonDir === void 0 ? void 0 : lockFileFor(commonDir, worktreeId)
+    )
+  );
   return {
     worktreeId,
     row: worktree,
@@ -76974,11 +76979,11 @@ function readPresenceFacts(store, worktreeId, now, row2, commonDir) {
     feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
     marks: once(() => {
       const file = lockFile2();
-      return file === null ? null : readLockMarks(file, now);
+      return file === void 0 ? null : readLockMarks(file, now);
     }),
     lockFree: once(() => {
       const file = lockFile2();
-      return file !== null && lockFree(file);
+      return file !== void 0 && lockFree(file);
     }),
     inFlight: once(() => {
       const w2 = worktree();
@@ -76992,7 +76997,7 @@ function resumesRest(store, row2) {
   return row2 !== null && restAfterHeartbeats(readRest(store, row2.id), row2) !== null;
 }
 function restAfterHeartbeats(rest2, row2) {
-  const heartbeat = row2.daemon?.heartbeatAt ?? row2.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  const heartbeat = lastHeartbeat(row2) ?? Number.POSITIVE_INFINITY;
   return rest2 === null || rest2.at < heartbeat ? null : rest2;
 }
 
@@ -77043,7 +77048,6 @@ function delaysLines(header2, command) {
 }
 
 // src/core/presence/findings.ts
-init_paths();
 init_daemon();
 init_heartbeat();
 init_stored();
@@ -77146,7 +77150,7 @@ function decidePresence(facts, at2) {
   const heartbeatLate = once(() => {
     const daemon = record2();
     if (!down() || daemon === null || shutDown() || start2() !== null || stopped()) return null;
-    return died() === null ? { ageMs: at2 - daemon.heartbeatAt } : null;
+    return died() === null ? { ageMs: heartbeatAge(daemon, at2) } : null;
   });
   return {
     facts,
@@ -77228,7 +77232,7 @@ function withStop(p, live) {
   if (!p.stopped) return live;
   return { ...live, stopped: true, ...p.stop?.untilStart === true ? { untilStart: true } : {} };
 }
-function withRecordFacts(p, live) {
+function withRecordFacts(p, live, deathUnderStop = true) {
   if (p.record === null) {
     const stopping2 = p.stopping;
     if (stopping2 !== null) return { ...live, stopping: stopping2 };
@@ -77236,8 +77240,10 @@ function withRecordFacts(p, live) {
     return withStart(live, p.start);
   }
   if (!p.shutDown) {
+    if (live.startingSince !== void 0) return live;
     const start3 = p.start;
     if (start3 !== null) return withStart(live, start3);
+    if (!deathUnderStop && live.stopped === true) return live;
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
@@ -87282,7 +87288,7 @@ function waitView(i3) {
   }
   if (alive2) return { liveness: { state: "alive" }, forget: "all" };
   if ((i3.marks()?.start() ?? null) !== null) return { ...lockedReading, forget: "dead" };
-  const ask2 = at2 - record2.heartbeatAt;
+  const ask2 = heartbeatAge(record2, at2);
   const boundAt = record2.heartbeatAt + record2.heartbeatIntervalMs + HANDOFF_BOUND_MS;
   if (i3.socket === "stopping" && at2 >= boundAt) {
     return { liveness: { state: "down", reason: "handoff" }, ask: ask2 };
@@ -99222,7 +99228,7 @@ function openStoreFile(commonDir, now) {
   for (let attempt = 1; ; attempt++) {
     const before4 = storeFileOf(commonDir);
     const store = openStore(commonDir, {
-      checkIntegrity: "mark",
+      recoverFaults: true,
       busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now
     });

@@ -158,6 +158,7 @@ function squealExtension(start) {
     let continued = false;
     let ended = false;
     let lastPrimer = null;
+    let primed = false;
     let waiting2 = null;
     const ask = async (ctx, request, deadlineMs) => {
       try {
@@ -218,6 +219,7 @@ function squealExtension(start) {
     });
     pi.on("before_agent_start", async (event, ctx) => {
       startRun();
+      primed = false;
       const answer = await ask(ctx, { kind: "run" }, EVENT_DEADLINE_MS);
       try {
         lastPrimer = answer?.primer ?? lastPrimer;
@@ -226,6 +228,7 @@ function squealExtension(start) {
             0,
             PRIMER_SECTION_CAP_CHARS
           );
+          primed = true;
         }
       } catch {
       }
@@ -235,7 +238,12 @@ function squealExtension(start) {
       const tools = event.toolResults.map((result) => result.toolName);
       if (tools.length === 0) return void 0;
       const edited = tools.some((name) => !READ_ONLY_TOOLS.has(name));
-      const text = await ask(ctx, { kind: "boundary", edited }, EVENT_DEADLINE_MS);
+      const request = {
+        kind: "boundary",
+        edited,
+        ...primed ? { primed: true } : {}
+      };
+      const text = await ask(ctx, request, EVENT_DEADLINE_MS);
       return text === null ? void 0 : { entries: [entry(text)] };
     });
     pi.on("tool_call", async (event, ctx) => {

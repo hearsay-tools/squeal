@@ -1439,6 +1439,10 @@ CREATE TABLE views (
 var LINT_MIGRATIONS = [(db) => db.exec(V13)];
 var LINT_SCHEMA_VERSION = LINT_MIGRATIONS.length;
 
+// src/core/presence/heartbeat.ts
+var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+
 // src/core/daemon/lock.ts
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 
@@ -1470,10 +1474,6 @@ function uptimeTicks() {
     return 0;
   }
 }
-
-// src/core/presence/heartbeat.ts
-var DAEMON_START_GRACE_MS = 1e4;
-var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
 
 // src/core/presence/stored.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
@@ -2112,6 +2112,9 @@ function bridgeDeps(module, host) {
     env: process.env,
     cli,
     command: opencodeCommand(cli),
+    // Row 005-117: the primer is the system prompt's (D3): every answer that registers carries it
+    // in its own `primer` field when the plugin has none (`hooks.ts`), for the next request.
+    registrationPrimer: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid })
   };
 }

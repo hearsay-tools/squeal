@@ -3211,7 +3211,7 @@ function openStore(commonDir, options = {}) {
   }
   const opened = connect(paths, options);
   if (!("corrupt" in opened)) return opened;
-  if (options.checkIntegrity === void 0) return { reason: "corrupt", movedTo: null };
+  if (options.recoverFaults !== true) return { reason: "corrupt", movedTo: null };
   return recover(paths, options);
 }
 function connect(paths, options) {
@@ -3224,7 +3224,7 @@ function connect(paths, options) {
       db.close();
       return { reason: "newer-schema", found: found2, supported: SCHEMA_VERSION };
     }
-    if (options.checkIntegrity !== void 0) {
+    if (options.recoverFaults === true) {
       dropStaleMark(paths.database);
       const mark = currentMark(paths.database);
       if (mark !== null) {
@@ -3289,13 +3289,12 @@ function recover(paths, options) {
   try {
     lock2.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock2.exec("BEGIN EXCLUSIVE");
-    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "mark" });
+    const again = connect(paths, options);
     if (!("corrupt" in again)) return again;
     const now = options.now ?? Date.now;
     const at = now();
     const movedTo = moveAside(paths.database, at);
-    const { checkIntegrity: _, ...unchecked } = options;
-    const fresh2 = connect(paths, unchecked);
+    const fresh2 = connect(paths, { ...options, recoverFaults: false });
     if ("corrupt" in fresh2) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh2)) {
       const note = JSON.stringify({ at, movedTo, reason: again.corrupt, ...foundBy(again.mark) });
@@ -6351,6 +6350,35 @@ function daemonIncarnation(daemon) {
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
+// src/core/presence/heartbeat.ts
+var HEARTBEAT_GRACE_INTERVALS = 2;
+var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+var LATE_HEARTBEAT_NEWS_MS = 6e4;
+function heartbeatGraceMs(intervalMs) {
+  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
+}
+function heartbeatAge(record, now) {
+  return now - record.heartbeatAt;
+}
+function heartbeatFresh(record, now) {
+  return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
+}
+function lastHeartbeat(row) {
+  return row?.daemon?.heartbeatAt ?? row?.lastHeartbeatAt ?? null;
+}
+function claimLiveness(now) {
+  return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
+}
+function daemonLiveness(record, now, lastHeartbeatAt = null) {
+  if (record === null) return { state: "down", since: lastHeartbeatAt };
+  if (heartbeatFresh(record, now)) return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
+  return { state: "down", since: record.heartbeatAt };
+}
+function worktreeLiveness(worktree, now) {
+  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
+}
+
 // src/core/presence/marks.ts
 import { existsSync as existsSync8, readFileSync as readFileSync7, statSync as statSync4 } from "node:fs";
 
@@ -6453,35 +6481,10 @@ function uptimeTicks() {
   }
 }
 
-// src/core/presence/heartbeat.ts
-var HEARTBEAT_GRACE_INTERVALS = 2;
-var DAEMON_START_GRACE_MS = 1e4;
-var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
-function heartbeatGraceMs(intervalMs) {
-  return HEARTBEAT_GRACE_INTERVALS * intervalMs;
-}
-function heartbeatAge(record, now) {
-  return now - record.heartbeatAt;
-}
-function heartbeatFresh(record, now) {
-  return heartbeatAge(record, now) <= heartbeatGraceMs(record.heartbeatIntervalMs);
-}
-function lastHeartbeat(row) {
-  return row?.daemon?.heartbeatAt ?? row?.lastHeartbeatAt ?? null;
-}
-function claimLiveness(now) {
-  return { now, graceIntervals: HEARTBEAT_GRACE_INTERVALS };
-}
-function daemonLiveness(record, now, lastHeartbeatAt = null) {
-  if (record === null) return { state: "down", since: lastHeartbeatAt };
-  if (heartbeatFresh(record, now)) return { state: "alive", lastHeartbeatAt: record.heartbeatAt };
-  return { state: "down", since: record.heartbeatAt };
-}
-function worktreeLiveness(worktree, now) {
-  return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
-}
-
 // src/core/presence/marks.ts
+function lockFileOf(row, orElse) {
+  return row === null || row === void 0 ? orElse : lockFileFor(row.commonDir, row.id);
+}
 function startMarkFor(lockFile) {
   return `${lockFile}.starting`;
 }
@@ -6656,11 +6659,12 @@ function readPresenceFacts(store, worktreeId, now, row, commonDir) {
     if (incarnation === null) return void 0;
     return readDaemonNotes(store, worktreeId).find((n) => n.exitOf === incarnation);
   });
-  const lockFile = once(() => {
-    const w = worktree();
-    if (w !== null) return lockFileFor(w.commonDir, w.id);
-    return commonDir === void 0 ? null : lockFileFor(commonDir, worktreeId);
-  });
+  const lockFile = once(
+    () => lockFileOf(
+      worktree(),
+      commonDir === void 0 ? void 0 : lockFileFor(commonDir, worktreeId)
+    )
+  );
   return {
     worktreeId,
     row: worktree,
@@ -6678,11 +6682,11 @@ function readPresenceFacts(store, worktreeId, now, row, commonDir) {
     feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
     marks: once(() => {
       const file = lockFile();
-      return file === null ? null : readLockMarks(file, now);
+      return file === void 0 ? null : readLockMarks(file, now);
     }),
     lockFree: once(() => {
       const file = lockFile();
-      return file !== null && lockFree(file);
+      return file !== void 0 && lockFree(file);
     }),
     inFlight: once(() => {
       const w = worktree();
@@ -6693,7 +6697,7 @@ function readPresenceFacts(store, worktreeId, now, row, commonDir) {
   };
 }
 function restAfterHeartbeats(rest, row) {
-  const heartbeat = row.daemon?.heartbeatAt ?? row.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  const heartbeat = lastHeartbeat(row) ?? Number.POSITIVE_INFINITY;
   return rest === null || rest.at < heartbeat ? null : rest;
 }
 
@@ -6809,7 +6813,7 @@ function decidePresence(facts, at) {
   const heartbeatLate = once(() => {
     const daemon = record();
     if (!down() || daemon === null || shutDown() || start() !== null || stopped()) return null;
-    return died() === null ? { ageMs: at - daemon.heartbeatAt } : null;
+    return died() === null ? { ageMs: heartbeatAge(daemon, at) } : null;
   });
   return {
     facts,
@@ -6918,7 +6922,14 @@ function newsChange(p, told) {
     if (p.rest?.kind === "quiet" && live.startStopped !== true) return { change: null, forgetRest: forgetRest2 };
     forgetRest2 = p.rest?.kind === "overdue";
   }
+  if (shortLate(live)) return { change: null, forgetRest: forgetRest2 };
   return { change: alreadyTold(told, toldOf(live)) ? null : live, forgetRest: forgetRest2 };
+}
+function shortLate(live) {
+  return live.state === "down" && live.heartbeatLate !== void 0 && live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS;
+}
+function toldAtRegistration(live) {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
 }
 function withToldStart(live, told, at) {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
@@ -6979,7 +6990,7 @@ function withRest(p, live) {
   const { spawnedAt: spawnedAt2 } = p.rest;
   return spawnedAt2 === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt2 };
 }
-function withRecordFacts(p, live) {
+function withRecordFacts(p, live, deathUnderStop = true) {
   if (p.record === null) {
     const stopping2 = p.stopping;
     if (stopping2 !== null) return { ...live, stopping: stopping2 };
@@ -6987,8 +6998,10 @@ function withRecordFacts(p, live) {
     return withStart(live, p.start);
   }
   if (!p.shutDown) {
+    if (live.startingSince !== void 0) return live;
     const start2 = p.start;
     if (start2 !== null) return withStart(live, start2);
+    if (!deathUnderStop && live.stopped === true) return live;
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
@@ -7007,26 +7020,8 @@ function withLateHeartbeat(p, live) {
 function newsView(p, told) {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
-  const stopped = live.startingSince === void 0 ? withStop(p, live) : live;
-  if (p.record === null) {
-    const stopping2 = p.stopping;
-    if (stopping2 !== null) return { ...stopped, stopping: stopping2 };
-    if (stopped.stopped === true || stopped.startingSince !== void 0) return stopped;
-    return withStart(stopped, p.start);
-  }
-  if (!p.shutDown) {
-    if (stopped.startingSince !== void 0) return stopped;
-    const marks = p.marks;
-    if (marks?.kind === "locked")
-      return { ...stopped, startingSince: marks.since, startMark: "start" };
-    if (stopped.stopped === true) return stopped;
-    const died = p.died();
-    return died === null ? withLateHeartbeat(p, stopped) : { ...stopped, died };
-  }
-  const start = p.start;
-  if (start !== null) return withStart(stopped, start);
-  const stopping = p.stopping;
-  return stopping === null ? stopped : { ...stopped, stopping };
+  if (live.startingSince !== void 0) return withRecordFacts(p, live, false);
+  return withLateHeartbeat(p, withRecordFacts(p, withStop(p, live), false));
 }
 
 // src/core/slow/state.ts
@@ -8191,7 +8186,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.556";
+  if (true) return "0.1.557";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11866,18 +11861,11 @@ function tellLiveness(store, consumer, told) {
 function withTold(header, told, at) {
   return header.daemon === void 0 ? header : { ...header, daemon: withToldStart(header.daemon, told, at) };
 }
-var LATE_HEARTBEAT_NEWS_MS = 6e4;
-function shortLate(live) {
-  return live.state === "down" && live.heartbeatLate !== void 0 && live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS;
-}
-function toldAtRegistration(live) {
-  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
-}
 function livenessChange(store, consumer, at, commonDir) {
   const presence = readPresence(store, consumer.worktreeId, at, void 0, commonDir);
   const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
-  return change2 !== null && shortLate(change2) ? null : change2;
+  return change2;
 }
 function revisionMetaKey(worktreeId) {
   return worktreeMetaKey("revisionTold", worktreeId);
