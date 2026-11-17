@@ -22,7 +22,8 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  * - a store no daemon of 0.1.545 or later served (`releasedStore`): every registration seeds
  *   the full copy and every delivery writes each state never told, the reference;
  * - a store with birth marks (`freshStore`): the registration seeds the rows not `pass`, and
- *   the first delivery to a consumer owed the counts seeds its writes the same way.
+ *   every unrestricted delivery seeds its writes the same way (`markedWrites`), the first one
+ *   after the listing included; a peek keeps its writes.
  *
  * Every registration's and delivery's text must be the same, later deliveries included.
  */
@@ -165,7 +166,7 @@ describe("the seeded first delivery after the listing against the full write (ro
   for (let i = 0; i < RUNS; i++) await run(rand, tally);
 
   it("delivers and seeds often enough to mean something", () => {
-    // Seed 11 at 300 runs: 2,608 deliveries, 259 with text, 101 that seeded their writes.
+    // Seed 11 at 300 runs: 2,608 deliveries, 259 with text, 153 that seeded their writes.
     expect(tally.told).toBeGreaterThan(RUNS / 2);
     expect(tally.seeded).toBeGreaterThan(RUNS / 4);
     expect(tally.sparser).toBeGreaterThan(RUNS);

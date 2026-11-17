@@ -98,7 +98,7 @@ import {
   writeTurn,
 } from "./turn.js";
 import { recordUncoveredTold } from "./uncovered.js";
-import { listingWrites, markedView, recordViewMark, registrationSeed } from "./view-mark.js";
+import { markedView, markedWrites, recordViewMark, registrationSeed } from "./view-mark.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -313,10 +313,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const view = store.views.list(consumer);
       const delta = plan(consumer, states, at, selection.only, view);
       store.views.removeMany(consumer, delta.removals);
-      // Row 005-113: owed the counts, the never-told passes are seeded as a registration's.
+      // Row 005-113: the never-told passes are seeded as a registration's: the mark, no rows.
       store.views.writeMany(
         consumer,
-        listingWrites(store, consumer, { view, at, restricted: selection.only !== null }, delta),
+        markedWrites(store, consumer, { view, at, restricted: selection.only !== null }, delta),
       );
       // Row 011-73 (C8 as amended 2026-10-21): a hold's start and end, told as liveness is.
       // Row 011-215: at Stop both wait for the next boundary, unless beside a transition or an action.

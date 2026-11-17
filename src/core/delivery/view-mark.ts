@@ -6,7 +6,6 @@ import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Consumer, ViewEntry } from "../types/delivery.js";
 import type { KnownState } from "../types/state.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
-import { owesCounts } from "./counts-owed.js";
 import { viewThroughMark } from "./delta.js";
 import { readSlot, writeSlot } from "./slots.js";
 
@@ -72,21 +71,25 @@ function underMark<T extends { readonly outcome: string }>(
 
 /**
  * Row 005-113 (011 `research/unlisted-after-start.md` R1): the view writes
- * of a delivery to a consumer owed the counts, a consumer that registered
- * before the test files were listed. Its first delivery after the listing
- * planned one write per state it was never told, every pass among them.
- * Those writes are seeded as a registration at this moment seeds them
- * (`underMark`): the passes never told are left out and the store's high
- * mark is kept, so each reads as the told pass the write would have stored
- * (`markedView`). What the delivery tells is planned before and unchanged.
+ * of an unrestricted delivery. A plan writes one entry per state it was never
+ * told, every pass among them: a session that registered before the test
+ * files were listed planned one per listed state at its first delivery after
+ * the listing. Those writes are seeded as a registration at this moment
+ * seeds them (`underMark`): the passes never told are left out and the
+ * store's high mark is kept, so each reads as the told pass the write would
+ * have stored (`markedView`). What the delivery tells is planned before and
+ * unchanged. Any delivery may do it, not only the first after the listing,
+ * so a restricted one that carried the owed counts leaves no full write to
+ * the next.
  *
  * `view` is the consumer's stored entries the plan read, `writes` its
  * writes; a plan `restricted` to some entries (`keep`, the waiter's) writes
  * no silent pass and keeps its writes. A write over an entry, a recovery, is
- * kept. A store that keeps no marks keeps every write. Call inside the
- * delivery's transaction, before the writes.
+ * kept. A store that keeps no marks keeps every write. The mark is written
+ * only when a pass is left out. Call inside the delivery's transaction,
+ * before the writes.
  */
-export function listingWrites(
+export function markedWrites(
   store: Store,
   consumer: Consumer,
   {
@@ -96,7 +99,7 @@ export function listingWrites(
   }: { readonly view: readonly ViewEntry[]; readonly at: EpochMs; readonly restricted: boolean },
   { writes }: { readonly writes: readonly ViewEntry[] },
 ): readonly ViewEntry[] {
-  if (restricted || !owesCounts(store, consumer)) return writes;
+  if (restricted) return writes;
   const held = new Set(view.map((v) => checkIdentity(v.check)));
   const untold = writes.filter((w) => !held.has(checkIdentity(w.check)));
   const { rows, mark } = underMark(store, untold);

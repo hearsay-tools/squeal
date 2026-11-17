@@ -22,7 +22,9 @@ import { fixedStatus, liveDaemon } from "./fakes.js";
  * listing wrote one view row per state it was never told, every pass among them, which on a
  * large store took longer than a hook's 2 s, was killed and rolled back at every boundary. It
  * now writes the rows that are not `pass` and keeps the store's high birth mark, as a
- * registration at that moment does (row 005-106); what it tells is unchanged.
+ * registration at that moment does (row 005-106); what it tells is unchanged. Every
+ * unrestricted delivery does the same, so a peek that carried the counts first leaves no full
+ * write behind.
  */
 
 const C1: Consumer = { worktreeId: WT, sessionId: "s1", agentId: "main" };
@@ -140,24 +142,65 @@ describe("the first delivery after the listing (row 005-113)", () => {
     expect(viewMarkOf(store, C1)).toBeNull();
   });
 
-  it("seeds only the consumer owed the counts; one registered after the listing keeps its seed", async () => {
+  it("moves each session's mark only at its own delivery that leaves a pass out", async () => {
     await delivery.register(C1, { atStart: true });
     list();
     await delivery.register(C2, { atStart: true });
     const registered = viewMarkOf(store, C2);
     land(MINE, "fail");
     expect(said(await delivery.onToolBoundary(C2))).toEqual(["mine:pass-to-fail:pass"]);
+    expect(viewMarkOf(store, C2)).toEqual(registered);
     // The audit log holds the pass the consumer was never told, as with the full write.
     expect(said(await delivery.onToolBoundary(C1))).toEqual([
       "mine:pass-to-fail:pass",
       "inherited:first-seen-fail:null",
     ]);
     expect(rowsOf(C1)).toEqual(["inherited=fail", "mine=fail"]);
-    expect(viewMarkOf(store, C2)).toEqual(registered);
-    // Paid, the counts are not owed again: a pass born later is written as before.
-    land(check("later", OWN), "pass");
+    // Paid, the counts are not owed; a pass born later is still left out and the mark moves.
+    const later = check("later", OWN);
+    land(later, "pass");
     expect(await delivery.onToolBoundary(C1)).toBeNull();
-    expect(rowsOf(C1)).toEqual(["inherited=fail", "later=pass", "mine=fail"]);
+    expect(rowsOf(C1)).toEqual(["inherited=fail", "mine=fail"]);
+    expect(viewMarkOf(store, C1)?.mark).toBe(currentBirthMark(store));
+    expect(viewMarkOf(store, C2)).toEqual(registered);
+    land(later, "fail");
+    expect(said(await delivery.onToolBoundary(C1))).toEqual(["later:pass-to-fail:pass"]);
+    expect(said(await delivery.onToolBoundary(C2))).toEqual(["later:pass-to-fail:pass"]);
+  });
+
+  it("writes no mark when no pass is left out", async () => {
+    list();
+    await delivery.register(C1, { atStart: true });
+    const registered = viewMarkOf(store, C1);
+    land(MINE, "fail");
+    expect(said(await delivery.onToolBoundary(C1))).toEqual(["mine:pass-to-fail:pass"]);
+    expect(viewMarkOf(store, C1)).toEqual(registered);
+  });
+
+  /** The gap of the owed-only seed: a peek carries the owed counts, then a tool boundary. */
+  async function peekPaysFirst(): Promise<{ texts: string[]; rows: number }> {
+    await delivery.register(C1, { atStart: true });
+    list();
+    const peek = await delivery.peek(C1, { kinds: ["first-seen-fail"] });
+    expect(peek?.countsOwed).toBeDefined();
+    land(MINE, "fail");
+    const next = await delivery.onToolBoundary(C1);
+    land(MINE, "pass", "again");
+    const after = await delivery.onToolBoundary(C1);
+    const texts = [peek, next, after].map((d) => (d === null ? "null" : formatDelta(d)));
+    return { texts, rows: rowsOf(C1).length };
+  }
+
+  it("seeds the boundary after a peek that carried the owed counts, and tells what the full write tells", async () => {
+    use(releasedStore());
+    const reference = await peekPaysFirst();
+    expect(reference.rows).toBe(N + 2);
+    use(freshStore());
+    const seeded = await peekPaysFirst();
+    expect(seeded.texts).toEqual(reference.texts);
+    expect(seeded.texts[1]).toContain("mine");
+    expect(seeded.rows).toBe(2);
+    expect(viewMarkOf(store, C1)?.mark).toBe(currentBirthMark(store));
   });
 
   it("commits the writes and the mark with the delivery, or neither", async () => {

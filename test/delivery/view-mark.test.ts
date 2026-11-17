@@ -97,8 +97,13 @@ describe("a registration on a store that keeps birth marks (row 005-106)", () =>
     expect(await told()).toEqual([["n", "first-seen-fail"]]);
     const later = check("later");
     land(later, "pass");
+    expect(names(untoldStates(store, C1))).toEqual(["later"]);
     expect(await told()).toBeNull();
-    expect(names(store.views.list(C1))).toEqual(["b", "later", "n"]);
+    // Row 005-113: told silently through a new mark, not an entry.
+    expect(names(store.views.list(C1))).toEqual(["b", "n"]);
+    expect(untoldStates(store, C1)).toEqual([]);
+    land(later, "fail");
+    expect(await told()).toEqual([["later", "pass-to-fail"]]);
   });
 
   it("counts as never told only the states born after it (the waiter's untold)", async () => {

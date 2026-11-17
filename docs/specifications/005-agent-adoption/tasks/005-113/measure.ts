@@ -4,7 +4,9 @@
 //   A. a session registered before the listing (empty view, counts owed); the listing writes
 //      N states (inherited passes and FAILS inherited failures); then its first and second
 //      tool boundary, each with one own flip as news;
-//   B. a session registered after the listing; its first tool boundary.
+//   B. a session registered after the listing; its first tool boundary;
+//   C. a new test file of 45 passing tests lands with A's own flip; A's next tool boundary, and
+//      whether it wrote A's mark; then 10 writes of A's mark slot alone, each its own commit.
 // Prints one JSON line per round: times in ms and A's view rows after each boundary.
 // Run: node_modules/.bin/tsx <this file> <src-root> <N> <rounds>   (never pnpm exec)
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -21,6 +23,7 @@ const { ensureBirthMarks } = await imp("src/core/store/state-born.ts");
 const { createStateSink } = await imp("src/core/state/sink.ts");
 const { createDelivery } = await imp("src/core/delivery/delivery.ts");
 const { describeFailure } = await imp("src/core/state/fingerprint.ts");
+const { recordViewMark, viewMarkOf } = await imp("src/core/delivery/view-mark.ts");
 const { fixedStatus, liveDaemon } = await imp("test/delivery/fakes.ts");
 
 const TESTS_PER_FILE = 45;
@@ -93,8 +96,27 @@ for (let round = 0; round < Number(ROUNDS); round++) {
   const [registerAfter] = await ms(() => delivery.register(B, { atStart: true }));
   flip();
   const [boundaryB] = await ms(() => delivery.onToolBoundary(B));
+  const fresh = Array.from({ length: TESTS_PER_FILE }, (_, t) =>
+    record({ kind: "test", project: "", testPath: "src/new.test.ts", fullName: `n${t}` } as never, "knew", "pass", WT));
+  store.testFileKeys.upsertMany([{ worktreeId: WT, testFile: { project: "", path: "src/new.test.ts" }, key: "knew", revision: 1, pending: null }]);
+  store.results.putMany(fresh);
+  sink.applyResults(WT, 0, fresh, { checkpointId: null });
+  flip();
+  const markBefore = viewMarkOf(store, A)?.mark ?? null;
+  const rowsBefore = rows("before");
+  const [newFileBoundary] = await ms(() => delivery.onToolBoundary(A));
+  const newFileRows = rows("before") - rowsBefore;
+  const newFileMarkWritten = (viewMarkOf(store, A)?.mark ?? null) !== markBefore;
+  const slot: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const t = performance.now();
+    store.transaction(() => recordViewMark(store, A, { mark: 1_000_000 + i, at: 1 }));
+    slot.push(performance.now() - t);
+  }
+  slot.sort((a, b) => a - b);
   console.log(JSON.stringify({ round, states: n, load1m: load, firstBoundaryAfterListing: first, countsOwed: d1?.countsOwed !== undefined,
-    toldInFirst: d1?.entries.length ?? 0, rowsAfterFirst, secondBoundary: second, registerAfter, boundaryRegisteredAfter: boundaryB }));
+    toldInFirst: d1?.entries.length ?? 0, rowsAfterFirst, secondBoundary: second, registerAfter, boundaryRegisteredAfter: boundaryB,
+    newFileBoundary, newFileRows, newFileMarkWritten, slotWriteMedianMs: Number(((slot[4] + slot[5]) / 2).toFixed(2)) }));
   store.close();
   rmSync(base, { recursive: true, force: true });
 }

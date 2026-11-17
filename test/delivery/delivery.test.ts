@@ -210,11 +210,12 @@ describe("onToolBoundary", () => {
     expect(await kindsFor(C1)).toEqual(["fail-to-pass"]);
   });
 
-  it("writes a pass never told to anyone into the view silently", async () => {
+  it("tells a pass never told to anyone silently", async () => {
     await delivery.register(C1);
     apply(pass());
     expect(await delivery.onToolBoundary(C1)).toBeNull();
-    expect(store.views.list(C1).map((v) => v.outcome)).toEqual(["pass"]);
+    // Row 005-113: the delivery keeps the store's birth mark in place of the entry.
+    expect(store.views.list(C1)).toEqual([]);
     apply(fail());
     expect(await kindsFor(C1)).toEqual(["pass-to-fail"]);
   });
