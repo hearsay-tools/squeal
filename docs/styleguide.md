@@ -36,6 +36,7 @@ Conventions for code, specs and agent work in this repo. Humans own this file an
 - Research, implementation and review are separate tasks, ideally separate workers.
 - Status claims need evidence: paste the command and its output, not "tests pass".
 - Scheduled maintenance tasks keep specs, docs and dead code honest. They open PRs; they do not merge.
+- Never commit absolute home paths (write `~`), recorded agent session logs or transcripts, or names of private client repositories. The "Private material" CI check (`pnpm run check:private`) fails a push that adds them (the human, 2026-11-17).
 
 ## Writing
 
