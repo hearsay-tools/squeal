@@ -24,8 +24,6 @@ import { readSlot, writeSlot } from "./slots.js";
 
 // Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
 export type { ToldLiveness } from "../presence/told.js";
-// Row 005-118: the short-late-heartbeat rule is presence's news rule (`newsChange`).
-export { toldAtRegistration } from "../presence/views.js";
 
 /** What `readLiveHeader` reads beside the worktree and the time. */
 export interface LiveHeaderRead {

@@ -7,7 +7,7 @@ import {
 } from "../lint/surface/deliver.js";
 import type { LintStoreSource } from "../lint/surface/source.js";
 import { once } from "../presence/once.js";
-import { toldOf } from "../presence/views.js";
+import { toldAtRegistration, toldOf } from "../presence/views.js";
 import { withRecorded } from "../retry/recorded.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/baseline.js";
@@ -75,7 +75,6 @@ import {
   type ToldLiveness,
   tellLiveness,
   tellRevision,
-  toldAtRegistration,
   toldLiveness,
   toldRevision,
   withTold,
