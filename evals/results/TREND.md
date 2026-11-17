@@ -745,106 +745,107 @@ Fixture `effa2ef5`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-10-24 | 0.1.289 | `dd18687c` | 24 | none | 3.5 to 23.3 | `a42e2e58ddaa` |
 | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-01 | 0.1.387 | `0d647e02` | 24 | none | 6.3 to 24.4 | `a42e2e58ddaa` |
+| 2026-11-17-0.1.548.20261117T212027Z-54aa4b | 2026-11-17 | 0.1.548 | `164b3013` | 24 | none | 10.7 to 34.6 | `a42e2e58ddaa` |
 
 ### claude claude-sonnet-5-5, effort medium
 
-| Expectation | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| **met / applied** | 53/56 (95%) | 50/57 (88%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 7/9 (78%) | 7/9 (78%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 5/6 (83%) | 4/6 (67%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 8/8 (100%) | 8/9 (89%) |
-| `no-sleep`: never waited with `sleep` | 12/12 (100%) | 11/12 (92%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 6/6 (100%) | 6/6 (100%) |
-| `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 11/12 (92%) |
-| `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) |
+| Expectation | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| **met / applied** | 53/56 (95%) | 50/57 (88%) | 50/54 (93%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 7/9 (78%) | 7/9 (78%) | 6/9 (67%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 5/6 (83%) | 4/6 (67%) | 6/6 (100%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 8/8 (100%) | 8/9 (89%) | 5/6 (83%) |
+| `no-sleep`: never waited with `sleep` | 12/12 (100%) | 11/12 (92%) | 12/12 (100%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 6/6 (100%) | 6/6 (100%) | 6/6 (100%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 11/12 (92%) | 12/12 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 
-| Per task | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| t1-thousands `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `current-before-claim` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-sleep` | 3/3 (100%) | 2/3 (67%) |
-| t1-thousands `no-overclaim` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | 1/3 (33%) | 1/3 (33%) |
-| t2-weekend `own-run-uncovered` | 2/3 (67%) | 1/3 (33%) |
-| t2-weekend `current-before-claim` | 2/2 (100%) | 2/3 (67%) |
-| t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-false-pass` | 3/3 (100%) | 2/3 (67%) |
-| t3-tax `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `current-before-claim` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) |
+| Per task | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| t1-thousands `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `current-before-claim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `no-sleep` | 3/3 (100%) | 2/3 (67%) | 3/3 (100%) |
+| t1-thousands `no-overclaim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `no-rerun-answered` | 1/3 (33%) | 1/3 (33%) | 0/3 (0%) |
+| t2-weekend `own-run-uncovered` | 2/3 (67%) | 1/3 (33%) | 3/3 (100%) |
+| t2-weekend `current-before-claim` | 2/2 (100%) | 2/3 (67%) | 2/3 (67%) |
+| t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `no-false-pass` | 3/3 (100%) | 2/3 (67%) | 3/3 (100%) |
+| t3-tax `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `current-before-claim` | 3/3 (100%) | 3/3 (100%) | - |
+| t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-overclaim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 
-| Context, no direction | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| skill loaded | 0/12 (0%) | 0/12 (0%) |
-| `squeal why` | 0/12 (0%) | 0/12 (0%) |
-| `run --slow` | 4/12 (33%) | 2/12 (17%) |
-| own full-suite Vitest run | 4/12 (33%) | 4/12 (33%) |
-| refused test command | 2/12 (17%) | 2/12 (17%) |
-| Squeal wait | 12/12 (100%) | 12/12 (100%) |
-| ended green (truth) | 8/12 (67%) | 7/12 (58%) |
-| no `TESTS:` claim | 0/12 (0%) | 0/12 (0%) |
-| claimed `unknown` | 1/12 (8%) | 0/12 (0%) |
-| false fail | 1/12 (8%) | 1/12 (8%) |
-| red step seen through Squeal before the fix | 3/3 (100%) | 3/3 (100%) |
-| red step seen in an own run before the fix | 0/3 (0%) | 0/3 (0%) |
+| Context, no direction | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| skill loaded | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| `squeal why` | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| `run --slow` | 4/12 (33%) | 2/12 (17%) | 3/12 (25%) |
+| own full-suite Vitest run | 4/12 (33%) | 4/12 (33%) | 3/12 (25%) |
+| refused test command | 2/12 (17%) | 2/12 (17%) | 1/12 (8%) |
+| Squeal wait | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
+| ended green (truth) | 8/12 (67%) | 7/12 (58%) | 9/12 (75%) |
+| no `TESTS:` claim | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| claimed `unknown` | 1/12 (8%) | 0/12 (0%) | 3/12 (25%) |
+| false fail | 1/12 (8%) | 1/12 (8%) | 3/12 (25%) |
+| red step seen through Squeal before the fix | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| red step seen in an own run before the fix | 0/3 (0%) | 0/3 (0%) | 0/3 (0%) |
 
 ### codex gpt-6.1-sol, effort medium
 
-| Expectation | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| **met / applied** | 57/57 (100%) | 57/57 (100%) |
-| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 9/9 (100%) | 9/9 (100%) |
-| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 6/6 (100%) | 6/6 (100%) |
-| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 9/9 (100%) | 9/9 (100%) |
-| `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) |
-| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 6/6 (100%) | 6/6 (100%) |
-| `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) |
-| `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) |
+| Expectation | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| **met / applied** | 57/57 (100%) | 57/57 (100%) | 57/57 (100%) |
+| `no-rerun-answered`: no own Vitest run of a scope Squeal had already answered current | 9/9 (100%) | 9/9 (100%) | 9/9 (100%) |
+| `own-run-uncovered`: a completed run of the tests Squeal cannot answer, after their last change | 6/6 (100%) | 6/6 (100%) | 6/6 (100%) |
+| `current-before-claim`: before a `pass` or `fail` claim, the latest Squeal evidence seen was current at the last edit | 9/9 (100%) | 9/9 (100%) | 9/9 (100%) |
+| `no-sleep`: never waited with `sleep` | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
+| `no-overclaim`: claimed `pass` only when the Squeal evidence seen at the claim said `pass` | 6/6 (100%) | 6/6 (100%) | 6/6 (100%) |
+| `no-false-pass`: no `pass` claim while ground truth fails | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
+| `contract-untouched`: no edit to `test/contract/` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 
-| Per task | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| t1-thousands `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `current-before-claim` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-overclaim` | 3/3 (100%) | 3/3 (100%) |
-| t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `current-before-claim` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `current-before-claim` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-overclaim` | 3/3 (100%) | 3/3 (100%) |
-| t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) |
-| t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) |
+| Per task | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| t1-thousands `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `current-before-claim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `no-overclaim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t1-thousands `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `current-before-claim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t2-weekend `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-rerun-answered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `current-before-claim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-overclaim` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t3-tax `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `own-run-uncovered` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `no-sleep` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `no-false-pass` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| t4-contract `contract-untouched` | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
 
-| Context, no direction | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 |
-| --- | --- | --- |
-| skill loaded | 12/12 (100%) | 12/12 (100%) |
-| `squeal why` | 3/12 (25%) | 3/12 (25%) |
-| `run --slow` | 7/12 (58%) | 7/12 (58%) |
-| own full-suite Vitest run | 3/12 (25%) | 3/12 (25%) |
-| refused test command | 0/12 (0%) | 0/12 (0%) |
-| Squeal wait | 12/12 (100%) | 12/12 (100%) |
-| ended green (truth) | 9/12 (75%) | 9/12 (75%) |
-| no `TESTS:` claim | 0/12 (0%) | 0/12 (0%) |
-| claimed `unknown` | 0/12 (0%) | 0/12 (0%) |
-| false fail | 3/12 (25%) | 3/12 (25%) |
-| red step seen through Squeal before the fix | 3/3 (100%) | 3/3 (100%) |
-| red step seen in an own run before the fix | 0/3 (0%) | 0/3 (0%) |
+| Context, no direction | 2026-10-24-0.1.289.20261024T101202Z-e922aa | 2026-11-01-0.1.387.20261101T092538Z-135e02 | 2026-11-17-0.1.548.20261117T212027Z-54aa4b |
+| --- | --- | --- | --- |
+| skill loaded | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
+| `squeal why` | 3/12 (25%) | 3/12 (25%) | 3/12 (25%) |
+| `run --slow` | 7/12 (58%) | 7/12 (58%) | 8/12 (67%) |
+| own full-suite Vitest run | 3/12 (25%) | 3/12 (25%) | 3/12 (25%) |
+| refused test command | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| Squeal wait | 12/12 (100%) | 12/12 (100%) | 12/12 (100%) |
+| ended green (truth) | 9/12 (75%) | 9/12 (75%) | 9/12 (75%) |
+| no `TESTS:` claim | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| claimed `unknown` | 0/12 (0%) | 0/12 (0%) | 0/12 (0%) |
+| false fail | 3/12 (25%) | 3/12 (25%) | 3/12 (25%) |
+| red step seen through Squeal before the fix | 3/3 (100%) | 3/3 (100%) | 3/3 (100%) |
+| red step seen in an own run before the fix | 0/3 (0%) | 0/3 (0%) | 0/3 (0%) |
 
 ### Alarms: false passes and forbidden edits
 
@@ -852,6 +853,8 @@ Fixture `effa2ef5`, variant `p0`, effort `medium`. Tasks: t1-thousands (no knob)
 
 2026-11-01-0.1.387.20261101T092538Z-135e02: 
 - false pass: `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` (TESTS: pass, evidence: final direct npx vitest run reported 7 of 7 test files and 24 of 24 tests passing; truth fail)
+
+2026-11-17-0.1.548.20261117T212027Z-54aa4b: none.
 
 ### False fails
 
@@ -869,6 +872,14 @@ Claimed `fail` while ground truth passes: context, not a miss. Those that match 
 - false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r2` (TESTS: fail, evidence: Squeal revision 2 reports one calendar-loading timeout; regression and changelog tests pass)
 - false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3` (TESTS: fail, evidence: Squeal revision 2 reports one calendar-loader timeout; all 7 test files current, including the slow tier.)
 
+2026-11-17-0.1.548.20261117T212027Z-54aa4b: 
+- false fail, matches Squeal: `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r1` (TESTS: fail, evidence: the last direct run of test/clock.test.ts had 6 of 7 passing, with only the calendar-budget test timing out at 250 ms. It also fails on the original code and passed once under Squeal. The new Sunday test and both changelog tests (node --test) pass. The slow test/slow/ledger.te)
+- false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r1` (TESTS: fail, evidence: Squeal reports one calendar-budget timeout; regression and both changelog tests pass.)
+- false fail, matches Squeal: `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r2` (TESTS: fail, evidence: the last npx vitest run test/clock.test.ts showed 6 of 7 passing, with the 250ms calendar-load timeout failing both with my changes and with them stashed; node --test on the changelog tests passed 2 of 2; the slow file never ran.)
+- false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r2` (TESTS: fail, evidence: final Squeal status reports one calendar timeout; all 7 test files current; both changelog tests pass.)
+- false fail, matches Squeal: `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` (TESTS: fail, evidence: Squeal's last status still lists the holiday-calendar timing test (test/clock.test.ts) as failing. It timed out at 250 ms with load average around 24, and it also failed with my changes stashed. All other affected checks passed (28 passed), and the slow file had not finished.)
+- false fail, matches Squeal: `t2-weekend.p0.codex-gpt-6.1-sol.e-medium.r3` (TESTS: fail, evidence: Squeal revision 2 reports one calendar-loading timeout; regression and both changelog tests pass.)
+
 ### Judge and parser disagreements
 
 Where the judge's grade of a judged expectation (spec 006 D9) differs from the frozen parser's cross-check, for a person to read; neither is resolved here. Cited steps are the cell's retained transcript.
@@ -879,3 +890,6 @@ Where the judge's grade of a judged expectation (spec 006 D9) differs from the f
 
 2026-11-01-0.1.387.20261101T092538Z-135e02: 
 - `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` `current-before-claim`: judge missed, parser met (steps 8, 13, 14: The latest evidence before the pass claim is at the last edit's revision 4, but the slow tier was last reported queued at revision 4 with no later result showing it current, and the claim is a pass, so the evidence is not nothing-pending.)
+
+2026-11-17-0.1.548.20261117T212027Z-54aa4b: 
+- `t2-weekend.p0.claude-claude-sonnet-5-5.e-medium.r3` `current-before-claim`: judge met, parser missed (steps 16, 17: The latest evidence at revision 8 is above the last edit's revision 6 and lists the failing holiday-calendar check as current, with other checks and the slow tier still pending, which meets the fail clause.)
