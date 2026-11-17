@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.541";
+  if (true) return "0.1.542";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -17869,7 +17869,7 @@ function migrate(db, migrations = MIGRATIONS) {
   }
   return userVersion(db);
 }
-var V1, MIGRATIONS, SCHEMA_VERSION;
+var V1, MIGRATIONS, SCHEMA_VERSION, STORE_INDEXES;
 var init_schema = __esm({
   "src/core/store/schema.ts"() {
     "use strict";
@@ -18066,6 +18066,9 @@ CREATE TABLE consumer_views (
 `;
     MIGRATIONS = [(db) => db.exec(V1)];
     SCHEMA_VERSION = MIGRATIONS.length;
+    STORE_INDEXES = {
+      runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL"
+    };
   }
 });
 
@@ -18138,10 +18141,24 @@ function connect(paths, options) {
     db.exec("PRAGMA synchronous = NORMAL");
     db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
     const version2 = migrate(db);
+    if (options.create !== false) makeIndexes(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version2, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
+    throw error;
+  }
+}
+function makeIndexes(db) {
+  const found3 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent2 = () => Object.entries(STORE_INDEXES).filter(([name3]) => found3.get(name3) === void 0);
+  if (absent2().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent2()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }
@@ -18337,7 +18354,8 @@ CREATE TABLE coverage (
     CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
     CODE_INDEXES = {
       coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
-      coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)"
+      coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
+      counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)"
     };
     CODE_TABLES = {
       coverage_parts: `
@@ -18380,6 +18398,11 @@ function createCountRepo(conn) {
   };
 }
 function createFileRepo(conn) {
+  const keyed = conn.get(
+    "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?",
+    COUNT_KEYS
+  ) !== null;
+  const counts = keyed ? `counts c INDEXED BY ${COUNT_KEYS}` : "counts c";
   return {
     list(worktreeId, paths) {
       const rows = paths === void 0 ? conn.all("SELECT * FROM files WHERE worktree_id = ? ORDER BY path", worktreeId) : conn.all(
@@ -18393,7 +18416,7 @@ function createFileRepo(conn) {
     uncounted(worktreeId) {
       return conn.all(
         `SELECT * FROM files f WHERE f.worktree_id = ? AND f.too_big = 0 AND NOT EXISTS (
-             SELECT 1 FROM counts c WHERE c.blob = f.blob AND c.language = f.language
+             SELECT 1 FROM ${counts} WHERE c.blob = f.blob AND c.language = f.language
                AND c.counter_version = f.counter_version)
            ORDER BY f.path`,
         worktreeId
@@ -18449,7 +18472,7 @@ function toFile(row2) {
     ...num(row2, "too_big") === 1 ? { tooBig: true } : {}
   };
 }
-var LANGUAGES;
+var LANGUAGES, COUNT_KEYS;
 var init_counts = __esm({
   "src/core/code/store/counts.ts"() {
     "use strict";
@@ -18459,6 +18482,7 @@ var init_counts = __esm({
       "javascript",
       "python"
     ];
+    COUNT_KEYS = "counts_keys";
   }
 });
 
@@ -19848,7 +19872,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
     const version2 = migrate(db, CODE_MIGRATIONS);
-    if (options.create !== false) makeIndexes(db);
+    if (options.create !== false) makeIndexes2(db);
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version2, path);
   } catch (error) {
     db?.close();
@@ -19856,7 +19880,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     throw error;
   }
 }
-function makeIndexes(db) {
+function makeIndexes2(db) {
   const found3 = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?");
   const absent2 = () => Object.entries({ ...CODE_TABLES, ...CODE_INDEXES }).filter(
     ([name3]) => found3.get(name3) === void 0

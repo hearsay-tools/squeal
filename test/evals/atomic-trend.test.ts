@@ -275,7 +275,17 @@ describe("ATOMIC.md from the committed atomic results", () => {
   const SONNET_A5 = "a5-uncovered.p0.claude-claude-sonnet-5-5.";
   const SONNET_A5_FROM = "20261025T193952Z-4d48cf";
   const SONNET_A5_CEILING = 0.2;
+  // In the order the trend lists them: by scenario, then by model.
   const ACCEPTED_FLAGS = [
+    // Row 005-100: on 0.1.537 a registration in a running session started the consumer's own
+    // count again, so a failure delivery said nothing of the rest (1/9). Fixed in 0.1.541: the
+    // same scenario on its candidate reads 10/10 (run 20261117T081435Z-9e1dee).
+    {
+      run: "20261117T044149Z-67329a",
+      model: "codex gpt-6.1-sol",
+      scenario: "a4-pending",
+      measure: "no-claim-on-pending",
+    },
     { run: HAIKU_A5_FROM, model: HAIKU, scenario: "a5-uncovered", measure: "own-run-covers" },
   ];
   const ACCEPTED = (a: { run: string; cell: string }) =>

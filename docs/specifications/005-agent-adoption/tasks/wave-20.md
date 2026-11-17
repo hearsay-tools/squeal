@@ -29,3 +29,17 @@ Owns: `src/harness/shared/{session,prompt}.ts`, the OpenCode bridge and Pi start
 Done when: the equality test; query-plan tests that the two reads use their index; a migration test from the released schema; `test/delivery`, `test/store` and the affected harness tests pass; the registration's SQL time on the findings' probe is reported before and after (run the probe on the researcher's store copies only if they still exist; else say not measured).
 
 Final message: per part, what changed; the measured before and after; check results.
+
+## Review brief: candidate 0.1.542
+
+Use /reviewer. Rows 005-102 and 005-103, and the eval result files of 2026-11-17; the range is the candidate's commits over `origin/main` at its base. The repository's history was rewritten on 2026-11-17: use the candidate's own commits, not IDs from older notes.
+
+Decisions made during the work (`tasks/005-103/notes.md`), to hold the code to:
+
+- 005-102: a start whose registration throws still starts the daemon, in every start path that registers first.
+- The two indexes are additive, made at open when absent, with no `user_version` raise (the brief's migration step was wrong: a raise makes every released version refuse the store). Made by the daemon's open, never by a hook. An older Squeal reads and writes a store that has them.
+- The view seed is one `json_each` statement of the rows the hook read, with check ids from the same read as the states the registration text is made from. Not `INSERT ... SELECT FROM known_states`: under spec 021 D15 the daemon performs the write later, and a state committed between the read and the write would be seeded as told and its news lost.
+- The seed lives in `src/core/store/view-seed.ts`, outside the validity bundle.
+- `test/evals/atomic-trend.test.ts` lists the 0.1.537 flag (Sol, a4-pending) as accepted: fixed in 0.1.541, 10/10 on its candidate. Two commit IDs in the result files were replaced by their IDs in the rewritten history; the 0.1.541 re-check names a candidate commit that was never on main.
+
+Check: the equality of the seeded view with `writeMany` on every state kind and a retired check; the D15 gap test; the JSON parameter at 32,000 and 200,000 states; an index's creation under a busy store and in a read-only or `create: false` open; the uncounted read with and without its index; a registration that throws at each point, per harness; `test/keys/key-format.test.ts` and the validity cases on the candidate (the worker could not run them: no release tag was an ancestor in its old-history worktree). No full suite; affected files directly; e2e files that read a changed path one at a time, `timeout 900`. Findings file: `reviews/0.1.542.md`, PASS or FAIL, committed. Write `~`, never a `/home/<user>/` path; the private-material check also rejects the company name and local project folder names.

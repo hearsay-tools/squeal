@@ -3242,7 +3242,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.541";
+  if (true) return "0.1.542";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8417,6 +8417,9 @@ CREATE TABLE consumer_views (
 `;
 var MIGRATIONS = [(db) => db.exec(V1)];
 var SCHEMA_VERSION = MIGRATIONS.length;
+var STORE_INDEXES = {
+  runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL"
+};
 function userVersion(db) {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
 }
@@ -8500,10 +8503,24 @@ function connect(paths, options) {
     db.exec("PRAGMA synchronous = NORMAL");
     db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
     const version = migrate(db);
+    if (options.create !== false) makeIndexes(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
+    throw error;
+  }
+}
+function makeIndexes(db) {
+  const found2 = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent2 = () => Object.entries(STORE_INDEXES).filter(([name2]) => found2.get(name2) === void 0);
+  if (absent2().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent2()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }
@@ -8666,7 +8683,8 @@ var CODE_MIGRATIONS = [(db) => db.exec(V12)];
 var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 var CODE_INDEXES = {
   coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
-  coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)"
+  coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
+  counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)"
 };
 var CODE_TABLES = {
   coverage_parts: `
@@ -8711,7 +8729,13 @@ function createCountRepo(conn) {
     }
   };
 }
+var COUNT_KEYS = "counts_keys";
 function createFileRepo(conn) {
+  const keyed = conn.get(
+    "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?",
+    COUNT_KEYS
+  ) !== null;
+  const counts = keyed ? `counts c INDEXED BY ${COUNT_KEYS}` : "counts c";
   return {
     list(worktreeId, paths) {
       const rows = paths === void 0 ? conn.all("SELECT * FROM files WHERE worktree_id = ? ORDER BY path", worktreeId) : conn.all(
@@ -8725,7 +8749,7 @@ function createFileRepo(conn) {
     uncounted(worktreeId) {
       return conn.all(
         `SELECT * FROM files f WHERE f.worktree_id = ? AND f.too_big = 0 AND NOT EXISTS (
-             SELECT 1 FROM counts c WHERE c.blob = f.blob AND c.language = f.language
+             SELECT 1 FROM ${counts} WHERE c.blob = f.blob AND c.language = f.language
                AND c.counter_version = f.counter_version)
            ORDER BY f.path`,
         worktreeId
@@ -9638,7 +9662,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     switchToWal(db, busyTimeoutMs);
     db.exec("PRAGMA synchronous = NORMAL");
     const version = migrate(db, CODE_MIGRATIONS);
-    if (options.create !== false) makeIndexes(db);
+    if (options.create !== false) makeIndexes2(db);
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);
   } catch (error) {
     db?.close();
@@ -9646,7 +9670,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     throw error;
   }
 }
-function makeIndexes(db) {
+function makeIndexes2(db) {
   const found2 = db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?");
   const absent2 = () => Object.entries({ ...CODE_TABLES, ...CODE_INDEXES }).filter(
     ([name2]) => found2.get(name2) === void 0
@@ -11582,6 +11606,38 @@ function isHeader(value) {
   const h = value;
   const source = h.source;
   return typeof h.squealVersion === "string" && typeof h.keyFormat === "number" && (typeof h.commit === "string" || h.commit === null) && typeof h.dirty === "boolean" && typeof h.createdAt === "number" && typeof source === "object" && source !== null && (source.kind === "local" || source.kind === "github");
+}
+
+// src/core/store/view-seed.ts
+function statesToSeed(store, worktreeId) {
+  const rows = connectionOf(store).all(
+    `${SELECT_STATES} WHERE s.worktree_id = ? ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    worktreeId
+  );
+  const states = [];
+  const seed2 = [];
+  for (const row of rows) {
+    const state = toKnownState(row);
+    states.push(state);
+    seed2.push({
+      checkId: num(row, "check_id"),
+      outcome: state.outcome,
+      fingerprint: state.fingerprint
+    });
+  }
+  return { states, seed: seed2 };
+}
+function seedView(store, consumer, rows, toldAt) {
+  connectionOf(store).run(
+    `INSERT OR REPLACE INTO consumer_views
+       (worktree_id, session_id, agent_id, check_id, outcome, fingerprint, told_at)
+     SELECT ?, ?, ?, j.value ->> 0, j.value ->> 1, j.value ->> 2, ? FROM json_each(?) j`,
+    consumer.worktreeId,
+    consumer.sessionId,
+    consumer.agentId,
+    toldAt,
+    JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint]))
+  );
 }
 
 // src/core/keys/hidden-lockfile.ts
@@ -14397,12 +14453,9 @@ function createDelivery(store, options) {
       oweRegistration(store, consumer, owesText ?? null);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
-      const states = store.knownStates.list(consumer.worktreeId);
+      const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
       if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      store.views.writeMany(
-        consumer,
-        states.map((s) => toView2(s, at))
-      );
+      seedView(store, consumer, seed2, at);
       const told = startingSince === void 0 ? null : { startingSince };
       const read4 = readLiveHeader(store, consumer.worktreeId, at, states);
       const live = told === null ? read4 : withTold(read4, told, at);
@@ -17894,6 +17947,70 @@ async function sayOwed(context, deps, options) {
   return owed2 === null ? null : registerOwing(context, deps, owed2, options);
 }
 
+// src/harness/shared/sweep.ts
+async function unregisterSession(context, sessionId, options) {
+  const { store, delivery } = context;
+  const worktrees = /* @__PURE__ */ new Set([
+    context.consumer.worktreeId,
+    ...store.worktrees.list().map((w) => w.id)
+  ]);
+  const consumers = [...worktrees].flatMap(
+    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same2(consumer, options.except))
+  );
+  const errors = [];
+  const attempt = async (fn) => {
+    try {
+      await fn();
+    } catch (error) {
+      errors.push(error);
+    }
+  };
+  for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
+  await attempt(
+    () => dropCode(context.code, consumers, {
+      worktrees: [...worktrees],
+      registered: [...worktrees].flatMap((id) => store.consumers.list(id).map((r) => r.consumer))
+    })
+  );
+  await attempt(() => dropLint(context.lint, consumers));
+  if (options.removeLocks) {
+    const { locksDir } = storePaths(context.commonDir);
+    for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      `squeal: ${errors.length} errors unregistering session ${sessionId}`
+    );
+  }
+  return consumers;
+}
+function same2(a, b) {
+  return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
+}
+
+// src/harness/shared/session.ts
+async function registerThenEnsure(first, register) {
+  let registered;
+  try {
+    registered = await register();
+  } catch (error) {
+    await first?.ensure().catch(() => void 0);
+    throw error;
+  }
+  await first?.ensure();
+  return registered;
+}
+async function endSession(input, locations, deps) {
+  for (const at of locations) {
+    await withContext(input, at, deps, async (context) => {
+      await unregisterSession(context, input.session_id, { removeLocks: true });
+      return null;
+    });
+  }
+}
+
 // src/harness/shared/stop.ts
 import { setTimeout as sleep4 } from "node:timers/promises";
 
@@ -18736,59 +18853,6 @@ function notValidated(context, deps) {
   return live.state === "down" ? notValidatedLine(live, deps.command) : null;
 }
 
-// src/harness/shared/sweep.ts
-async function unregisterSession(context, sessionId, options) {
-  const { store, delivery } = context;
-  const worktrees = /* @__PURE__ */ new Set([
-    context.consumer.worktreeId,
-    ...store.worktrees.list().map((w) => w.id)
-  ]);
-  const consumers = [...worktrees].flatMap(
-    (id) => store.consumers.list(id).map((record) => record.consumer).filter((consumer) => consumer.sessionId === sessionId && !same2(consumer, options.except))
-  );
-  const errors = [];
-  const attempt = async (fn) => {
-    try {
-      await fn();
-    } catch (error) {
-      errors.push(error);
-    }
-  };
-  for (const consumer of consumers) await attempt(() => delivery.unregister(consumer));
-  await attempt(
-    () => dropCode(context.code, consumers, {
-      worktrees: [...worktrees],
-      registered: [...worktrees].flatMap((id) => store.consumers.list(id).map((r) => r.consumer))
-    })
-  );
-  await attempt(() => dropLint(context.lint, consumers));
-  if (options.removeLocks) {
-    const { locksDir } = storePaths(context.commonDir);
-    for (const consumer of consumers) await attempt(() => removeWaiterLock(locksDir, consumer));
-  }
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) {
-    throw new AggregateError(
-      errors,
-      `squeal: ${errors.length} errors unregistering session ${sessionId}`
-    );
-  }
-  return consumers;
-}
-function same2(a, b) {
-  return b !== void 0 && a.worktreeId === b.worktreeId && a.sessionId === b.sessionId && a.agentId === b.agentId;
-}
-
-// src/harness/shared/session.ts
-async function endSession(input, locations, deps) {
-  for (const at of locations) {
-    await withContext(input, at, deps, async (context) => {
-      await unregisterSession(context, input.session_id, { removeLocks: true });
-      return null;
-    });
-  }
-}
-
 // src/harness/pi/session.ts
 var SWEEP_REASONS = /* @__PURE__ */ new Set(["startup", "resume"]);
 var consumerInput = (session) => ({ session_id: session.sessionId });
@@ -18800,8 +18864,10 @@ async function startSession(session, deps) {
   const text2 = await withContext(consumerInput(session), location2, deps, async (context) => {
     ensured = true;
     const first = await registerFirst(location2, deps, context);
-    const text3 = await registerAtStart(session, context, deps, first.startingSince);
-    await first.ensure();
+    const text3 = await registerThenEnsure(
+      first,
+      () => registerAtStart(session, context, deps, first.startingSince)
+    );
     if (text3 !== null) await context.delivery.registrationSent(context.consumer);
     return text3;
   });
@@ -18861,11 +18927,13 @@ async function startRun(session, deps) {
     const alive = daemonLiveness(record, now).state === "alive";
     const first = alive ? null : await registerFirst(location2, deps, context);
     const startingSince = first?.startingSince;
-    const news = await registerOwing(context, deps, PI_OWED, {
-      inTurn: true,
-      ...startingSince === void 0 ? {} : { startingSince }
-    });
-    await first?.ensure();
+    const news = await registerThenEnsure(
+      first,
+      () => registerOwing(context, deps, PI_OWED, {
+        inTurn: true,
+        ...startingSince === void 0 ? {} : { startingSince }
+      })
+    );
     await context.delivery.registrationSent(context.consumer);
     return { primer: section, news };
   });
