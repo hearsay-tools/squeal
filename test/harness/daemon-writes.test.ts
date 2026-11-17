@@ -148,7 +148,7 @@ describe("hooks while a daemon serves (021-16)", () => {
   );
 
   it(
-    "take the lease again once its client died, after the lease's time, and tell what that client did not",
+    "take the lease at once when its client died, within the lease's time, and tell what that client did not (row 011-393)",
     async () => {
       const { r } = await serving();
       await hook(r, "session-start");
@@ -170,8 +170,6 @@ describe("hooks while a daemon serves (021-16)", () => {
       expect(taken).toMatchObject({ ok: true, token: expect.any(String) });
       child.kill("SIGKILL");
       await new Promise((done) => child.once("exit", done));
-      expect((await hook(r, "post-tool-batch")).stdout).not.toContain(TRANSITION);
-      await new Promise((done) => setTimeout(done, LEASE_TTL_MS + 200));
       expect((await hook(r, "post-tool-batch")).stdout).toContain(TRANSITION);
     },
     LEASE_TTL_MS * 4,
