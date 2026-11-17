@@ -35,6 +35,7 @@ const SHARED_KEY_FUNCTIONS = [
   "observedDirectMetaKey",
   "observedStartupMetaKey",
   "observedModulesMetaKey",
+  "globListingsMetaKey",
   "slowTokensMetaKey",
 ];
 /** `meta` key constants of rows shared across worktrees. */
