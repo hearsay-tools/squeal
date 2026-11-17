@@ -77,7 +77,7 @@ export interface StoredOptions {
 }
 
 /** A file's key as a daemon here gives it, and the sources its runner's closure loads. */
-interface Keyed {
+export interface Keyed {
   readonly key: CheckKey;
   readonly loads: readonly RelativePath[];
 }
@@ -218,7 +218,7 @@ function evidenceAt(
   };
 }
 
-interface Stores {
+export interface Stores {
   readonly main: Store;
   readonly code: CodeStore;
   close(): void;
@@ -228,7 +228,9 @@ interface Stores {
  * Each store over a read-only connection, absent when its file is missing;
  * `null` when one exists that cannot be read as this Squeal's.
  */
-function readStores(commonDir: AbsolutePath): (Partial<Stores> & Pick<Stores, "close">) | null {
+export function readStores(
+  commonDir: AbsolutePath,
+): (Partial<Stores> & Pick<Stores, "close">) | null {
   const paths = storePaths(commonDir);
   const codePath = codeStorePath(commonDir);
   // An unreadable store is no store: every file runs.
@@ -255,7 +257,7 @@ function readStores(commonDir: AbsolutePath): (Partial<Stores> & Pick<Stores, "c
   };
 }
 
-interface Keyer {
+export interface Keyer {
   keyed(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, Keyed>>;
   /** The daemon's keys and hasher behind `keyed`: the keeper checks a run's inputs with them. */
   readonly keys: WorktreeKeys;
@@ -268,7 +270,7 @@ interface Keyer {
  * at a daemon's start, with the adapters' environments and the observed
  * rows of `main` for their projects (`openDaemonKeying`, row 020-51).
  */
-async function openKeyer(options: StoredOptions, main: Store | undefined): Promise<Keyer> {
+export async function openKeyer(options: StoredOptions, main: Store | undefined): Promise<Keyer> {
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-keys-"));
   // Row 020-51: the run's own adapters when it opened them; else a set this keyer opens and closes.
   const own: RunnerAdapter[] = [];
