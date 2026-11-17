@@ -7,8 +7,8 @@ const source = (path: string) => pathToFileURL(resolve(process.argv[2] ?? '.', p
 const { waitForGroup } = await import(source('src/cli/run-group-wait.ts'));
 const { worktreeIdFor } = await import(source('src/core/fs/git-layout.ts'));
 const { openStore, isStoreOpenFailure } = await import(source('src/core/store/open.ts'));
-import type { AbsolutePath, RelativePath, RevisionNumber } from '../../../src/core/types/common.js';
-import type { CheckKey } from '../../../src/core/types/keys.js';
+import type { AbsolutePath, RelativePath, RevisionNumber } from '../../../../../../src/core/types/common.js';
+import type { CheckKey } from '../../../../../../src/core/types/keys.js';
 const load = loadavg()[0];
 console.log(JSON.stringify({at:new Date().toISOString(),load,cpus:cpus().length,node:process.version}));
 if (load > cpus().length) { console.log('SKIP: load exceeds CPU count'); process.exit(0); }

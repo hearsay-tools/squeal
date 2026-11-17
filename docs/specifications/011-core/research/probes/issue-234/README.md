@@ -14,9 +14,9 @@ selected status between the requests, then stops only its fixture daemon.
 From the repository root, the exact command used was:
 
 ```sh
-node research/probes/issue-234/live.mjs \
+node docs/specifications/011-core/research/probes/issue-234/live.mjs \
   ~/.codex/plugins/data/squeal-hearsay/versions/0.1.531/dist/cli/squeal.mjs \
-  node_modules > research/probes/issue-234/live-output.txt
+  node_modules > docs/specifications/011-core/research/probes/issue-234/live-output.txt
 ```
 
 The output replaces only the temporary root with `<fixture>` and the home path
@@ -31,14 +31,14 @@ It does not run a test runner or start a daemon. The synthetic daemon record has
 no socket server; the settled and expired-deadline branches do not need one.
 
 ```sh
-pnpm exec tsx research/probes/issue-234/snapshot.ts \
-  > research/probes/issue-234/snapshot-output.txt 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-234/snapshot.ts \
+  > docs/specifications/011-core/research/probes/issue-234/snapshot-output.txt 2>&1
 
 probe_source=$(mktemp -d /tmp/sq234-source-XXXXXX)
 git archive squeal--v0.1.531 src package.json | tar -x -C "$probe_source"
 ln -s "$PWD/node_modules" "$probe_source/node_modules"
-pnpm exec tsx research/probes/issue-234/snapshot.ts "$probe_source" \
-  > research/probes/issue-234/snapshot-531-output.txt 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-234/snapshot.ts "$probe_source" \
+  > docs/specifications/011-core/research/probes/issue-234/snapshot-531-output.txt 2>&1
 probe_code=$?
 rm -rf "$probe_source"
 exit "$probe_code"

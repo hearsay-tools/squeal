@@ -22,7 +22,7 @@ The brief supplies no numbered questions. The table below covers its questions. 
 
 **verified by experiment · 0.1.531.** Initial host check: one-minute load 12.11, 24 CPUs (24 available). At live start, load was 8.65/24. Node was 26.13.0; installed Vitest was 5.0.3. The pinned runtime printed version `0.1.531`. The checkout was `b0da5d149d445ea92c8517497141a7ed6dbbcc96` (package 0.1.543); the runtime was not built from that checkout. Tag `squeal--v0.1.531` resolves to `daf50f82e48e697545cfb7a378f4d46b03ce8a27`.
 
-Exact invocation and fixture construction are in [the probe README](../../../../research/probes/issue-234/README.md). Its first request printed:
+Exact invocation and fixture construction are in [the probe README](probes/issue-234/README.md). Its first request printed:
 
 ```text
 $ squeal run run-loop test/a.test.ts test/b.test.ts --wait 60000
@@ -35,7 +35,7 @@ Affected checks: 4 passed (2 tests, 2 test files loaded), 0 running, 0 queued
 exit=0
 ```
 
-The following `squeal status test/a.test.ts test/b.test.ts` said `2 test files, each with a current result`. Repeating the run said `0 queued by this request` and `all current; none runs again`, exit 0. Full output is [live-output.txt](../../../../research/probes/issue-234/live-output.txt). Start, both requests, selected status and stop all exited 0.
+The following `squeal status test/a.test.ts test/b.test.ts` said `2 test files, each with a current result`. Repeating the run said `0 queued by this request` and `all current; none runs again`, exit 0. Full output is [live-output.txt](probes/issue-234/live-output.txt). Start, both requests, selected status and stop all exited 0.
 
 **read in source code · 0.1.531 and unchanged relevant code at 0.1.543.** `src/cli/run-group-narrow.ts:109–134` constructs `line` from the taken request before waiting. `narrowText` at lines 164–190 describes that request as `queued, which run now`. `src/cli/run-group-wait.ts:53–65` prints the final verdict, then this old line, then a new worktree status read. `endedLine` at lines 116–140 also prints the historical count as `queued by this request`. The second line does not label itself historical. This explains the live output.
 
@@ -47,7 +47,7 @@ The following `squeal status test/a.test.ts test/b.test.ts` said `2 test files, 
 
 ### 3. Separate snapshot race and pending control
 
-**verified by experiment · source 0.1.531 and 0.1.543.** [snapshot.ts](../../../../research/probes/issue-234/snapshot.ts) seeds one current file, calls the actual `waitForGroup`, then queues that file in its first stdout callback. This places a write precisely between the completed verdict and `readStatus`. The output is:
+**verified by experiment · source 0.1.531 and 0.1.543.** [snapshot.ts](probes/issue-234/snapshot.ts) seeds one current file, calls the actual `waitForGroup`, then queues that file in its first stdout callback. This places a write precisely between the completed verdict and `readStatus`. The output is:
 
 ```text
 Selected test files of group run-loop completed at revision 0: no known failures; 1 test file, 1 queued by this request
@@ -58,7 +58,7 @@ Queued: 1 test file: test/a.test.ts
 exit=0
 ```
 
-The control begins with that file already queued and the deadline expired. It prints `have no verdict: the deadline passed with 1 test file pending at revision 0`, exit 3. Final source-probe loads were 10.13/24 on 0.1.543 and 8.50/24 on 0.1.531. See [0.1.531 output](../../../../research/probes/issue-234/snapshot-531-output.txt) and [0.1.543 output](../../../../research/probes/issue-234/snapshot-output.txt).
+The control begins with that file already queued and the deadline expired. It prints `have no verdict: the deadline passed with 1 test file pending at revision 0`, exit 3. Final source-probe loads were 10.13/24 on 0.1.543 and 8.50/24 on 0.1.531. See [0.1.531 output](probes/issue-234/snapshot-531-output.txt) and [0.1.543 output](probes/issue-234/snapshot-output.txt).
 
 **read in source code · 0.1.531 and 0.1.543.** The group wait reads classes and verdict inside one status-store read transaction (`src/cli/wait/wait.ts`, `worktreeRead`; `src/core/status/open.ts`, `readOnce`). `RUN_WAITS.group` in `src/cli/wait/table.ts:254–264` waits while files are pending. `src/cli/verdict.ts:235–258` refuses a clean result for pending, unlisted or non-current selected files. `src/core/state/file-class.ts:18–31` treats a queued file row as pending even if its retained checks are current. The later `readStatus` is outside that transaction. The probe proves the output boundary can mix states; it does not establish a live scheduler race or a false verdict within one read.
 
