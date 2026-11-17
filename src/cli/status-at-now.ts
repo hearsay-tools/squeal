@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { withKeyer } from "../core/commit/at-keys-walk.js";
+import { closureFor } from "../core/delivery/closure.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { worktreeLiveness } from "../core/presence/heartbeat.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../core/types/common.js";
@@ -34,6 +35,8 @@ export interface NowInput {
   ) => Promise<readonly RunnerAdapter[]>;
   readonly squealVersion: string;
   readonly env: NodeJS.ProcessEnv;
+  /** Row 023-08: key in the working tree even with a live daemon (its closure was not trusted). */
+  readonly keyed?: boolean;
 }
 
 export interface NowSide {
@@ -41,12 +44,22 @@ export interface NowSide {
   /** The test files listed now that the paths select. */
   readonly refs: readonly TestFileRef[];
   readonly state: (ref: TestFileRef) => SideState;
+  /**
+   * Row 023-08: the paths `ref`'s closure loads now: the daemon's stored
+   * closure when it is this worktree's, the keyer's walk without a daemon;
+   * `undefined` when neither gives one.
+   */
+  readonly loads: (ref: TestFileRef) => readonly RelativePath[] | undefined;
 }
 
 /** The current side of `input.paths`'s test files. */
 export async function nowSide(input: NowInput): Promise<NowSide> {
   const row = input.main?.worktrees.get(input.worktreeId) ?? null;
-  if (input.main !== null && worktreeLiveness(row, input.now).state === "alive") {
+  if (
+    input.keyed !== true &&
+    input.main !== null &&
+    worktreeLiveness(row, input.now).state === "alive"
+  ) {
     return daemonSide(input, input.main);
   }
   return keyedSide(input);
@@ -63,7 +76,10 @@ function daemonSide(input: NowInput, main: Store): NowSide {
   const revision = rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
   // Read now: the store closes when this side is returned.
   const states = new Map<string, SideState>();
+  const closures = new Map<string, readonly RelativePath[] | undefined>();
+  const closureOf = closureFor(main, input.worktreeId);
   for (const ref of refs) {
+    closures.set(testFileId(ref), closureOf(ref));
     const row = byId.get(testFileId(ref));
     if (row === undefined) continue;
     if (row.key === null) {
@@ -79,7 +95,8 @@ function daemonSide(input: NowInput, main: Store): NowSide {
   }
   const state = (ref: TestFileRef) =>
     states.get(testFileId(ref)) ?? unlisted(input.root, ref, "the daemon lists no such test file");
-  return { source: { kind: "daemon", revision }, refs, state };
+  const loads = (ref: TestFileRef) => closures.get(testFileId(ref));
+  return { source: { kind: "daemon", revision }, refs, state, loads };
 }
 
 /** D3 with no daemon: the gate's keyer in the working tree, and the results at its keys. */
@@ -90,9 +107,11 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
     const refs = select([...all.values()], input.paths);
     const keyed = await keyer.keyed(refs);
     const states = new Map<string, SideState>();
+    const closures = new Map<string, readonly RelativePath[]>();
     for (const ref of refs) {
       const at = keyed.get(ref);
       const id = testFileId(ref);
+      if (at !== undefined) closures.set(id, at.loads);
       if (at === undefined)
         states.set(id, { state: "not determined", reason: "no runner keyed it" });
       else
@@ -103,7 +122,8 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
     }
     const state = (ref: TestFileRef) =>
       states.get(testFileId(ref)) ?? unlisted(root, ref, "no runner lists it");
-    return { source: { kind: "stored" }, refs, state };
+    const loads = (ref: TestFileRef) => closures.get(testFileId(ref));
+    return { source: { kind: "stored" }, refs, state, loads };
   });
 }
 

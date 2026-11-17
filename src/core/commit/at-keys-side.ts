@@ -1,21 +1,23 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { copyIntoCheckout } from "../checkout/checkout.js";
-import { runGit } from "../fs/git.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
   absent,
+  type CheckoutHooks,
   commonDirOf,
   inCheckout,
   type KeyAt,
   resolveCommit,
   withStores,
 } from "./at-keys-checkout.js";
+import { type CommitEntry, commitEntries } from "./at-keys-verify.js";
 import type { CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
-import { committedBlobs, LS_TREE_TIMEOUT_MS } from "./tree.js";
+import { LS_TREE_TIMEOUT_MS } from "./tree.js";
 
 /*
  * Spec 023 D5.1 (row 023-16): a side's keys. A side is a mixed tree, so no
@@ -23,7 +25,7 @@ import { committedBlobs, LS_TREE_TIMEOUT_MS } from "./tree.js";
  * the side's code version, with the side's test files copied in.
  */
 
-export interface SideKeysOptions extends KeyingOptions, CheckoutOptions {
+export interface SideKeysOptions extends KeyingOptions, CheckoutOptions, CheckoutHooks {
   readonly root: AbsolutePath;
   /** The side's code version: the checkout's commit. */
   readonly code: string;
@@ -31,6 +33,12 @@ export interface SideKeysOptions extends KeyingOptions, CheckoutOptions {
   readonly tests: string | null;
   /** The named test files: only they take part, copied from `tests` into the checkout. */
   readonly files: readonly TestFileRef[];
+  /**
+   * Row 023-08 (D5.2): further paths copied from `tests` into the checkout
+   * with the named files, the test-side files the test version holds
+   * otherwise than the code version; those `tests` lacks are left out.
+   */
+  readonly also?: readonly RelativePath[];
 }
 
 /** D5.1: the key of each named test file on a side, test version over code version. */
@@ -38,7 +46,8 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
   const { root, files } = options;
   const commonDir = commonDirOf(root);
   const commit = await resolveCommit(root, options.code);
-  const source = await testSource(root, options.tests, files);
+  const named = files.map((ref) => ref.path);
+  const source = await testSource(root, options.tests, [...named, ...(options.also ?? [])]);
   try {
     return await withStores(commonDir, async (main) => {
       const out = new Map<string, KeyAt>();
@@ -47,14 +56,12 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
         if (source.absent.has(ref.path)) out.set(testFileId(ref), absent(ref.path, options.tests));
       }
       if (copied.length === 0) return out;
+      const paths = [...source.written];
       const prepare = async (checkout: { tree: AbsolutePath }) =>
-        copyIntoCheckout(
-          checkout,
-          source.from,
-          copied.map((ref) => ref.path),
-        );
-      const paths = copied.map((ref) => ref.path);
-      const input = { root, commonDir, commit, prepare, copied: paths };
+        copyIntoCheckout(checkout, source.from, paths);
+      // Row 023-08: the side's expected tree, its copies at the test version's mode and blob.
+      const skip = paths.filter((path) => !source.expected.has(path));
+      const input = { root, commonDir, commit, prepare, copied: skip, expected: source.expected };
       const at = await inCheckout(main, input, copied, options);
       // Row 023-07: a checkout the install changed gives no key that is the commit's.
       const changed: KeyAt | null =
@@ -75,30 +82,57 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
   }
 }
 
-/** The test files of `tests` in a folder to copy from; `absent` names those the version lacks. */
+/** The test files of `tests` to copy in; their folder, those the version lacks, and those written. */
+interface TestSource {
+  readonly from: AbsolutePath;
+  readonly absent: ReadonlySet<RelativePath>;
+  /** The paths to copy, in order. */
+  readonly written: readonly RelativePath[];
+  /** Row 023-08: each written path's entry at `tests`; empty for the worktree's files. */
+  readonly expected: ReadonlyMap<RelativePath, CommitEntry>;
+  remove(): void;
+}
+
+/** The largest blob copied in. */
+const MAX_BLOB_BYTES = 256 * 1024 * 1024;
+
+/** The files of `tests` in a folder to copy from; `absent` names those the version lacks. */
 async function testSource(
   root: AbsolutePath,
   tests: string | null,
-  files: readonly TestFileRef[],
-): Promise<{ from: AbsolutePath; absent: Set<RelativePath>; remove: () => void }> {
+  paths: readonly RelativePath[],
+): Promise<TestSource> {
+  const unique = [...new Set(paths)];
   if (tests === null) {
-    const missing = files.map((ref) => ref.path).filter((path) => !existsSync(join(root, path)));
-    return { from: root, absent: new Set(missing), remove: () => {} };
+    const missing = new Set(unique.filter((path) => !existsSync(join(root, path))));
+    const written = unique.filter((path) => !missing.has(path));
+    return { from: root, absent: missing, written, expected: new Map(), remove: () => {} };
   }
   const commit = await resolveCommit(root, tests);
-  const blobs = await committedBlobs(root, commit);
+  const entries = await commitEntries(root, commit);
   const from = mkdtempSync(join(tmpdir(), "squeal-side-tests-")) as AbsolutePath;
   const absentAt = new Set<RelativePath>();
-  for (const { path } of files) {
-    if (!blobs.has(path)) {
+  const written: RelativePath[] = [];
+  const expected = new Map<RelativePath, CommitEntry>();
+  for (const path of unique) {
+    const entry = entries.get(path);
+    if (entry === undefined) {
       absentAt.add(path);
       continue;
     }
-    const text = await runGit(root, ["cat-file", "blob", blobs.get(path) as string], {
-      timeoutMs: LS_TREE_TIMEOUT_MS,
+    // Bytes, not text: a fixture's blob must keep its bytes to match its entry.
+    const bytes = execFileSync("git", ["cat-file", "blob", entry.blob], {
+      cwd: root,
+      maxBuffer: MAX_BLOB_BYTES,
+      timeout: LS_TREE_TIMEOUT_MS,
     });
     mkdirSync(dirname(join(from, path)), { recursive: true });
-    writeFileSync(join(from, path), text);
+    writeFileSync(join(from, path), bytes);
+    written.push(path);
+    // A link is copied as its target's text; only a regular file can match its entry.
+    if (entry.mode === "100755") chmodSync(join(from, path), 0o755);
+    if (entry.mode !== "120000") expected.set(path, entry);
   }
-  return { from, absent: absentAt, remove: () => rmSync(from, { recursive: true, force: true }) };
+  const remove = () => rmSync(from, { recursive: true, force: true });
+  return { from, absent: absentAt, written, expected, remove };
 }

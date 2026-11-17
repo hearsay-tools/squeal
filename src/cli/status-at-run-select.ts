@@ -106,12 +106,14 @@ async function refuse(
  * (the install made it), or in the user's worktree untracked at `HEAD` (a
  * generated input the checkout lacks). A path absent from both, a
  * resolution candidate or a snapshot not written yet, reads absent at the
- * commit as here: no reason. `null` when none.
+ * commit as here: no reason. `null` when none. Row 023-08: `copied`
+ * names the paths a proof side wrote into the checkout on purpose.
  */
-async function needsOf(input: {
+export async function needsOf(input: {
   readonly root: AbsolutePath;
   readonly commit: string;
   readonly tree: AbsolutePath;
+  readonly copied?: ReadonlySet<RelativePath>;
 }): Promise<(file: KeyedFile) => string | null> {
   const { root, tree } = input;
   const atCommit = await committedBlobs(root, input.commit);
@@ -119,7 +121,7 @@ async function needsOf(input: {
   return (file) => {
     if (!("key" in file.at)) return null;
     for (const path of file.at.loads ?? []) {
-      if (atCommit.has(path)) continue;
+      if (atCommit.has(path) || input.copied?.has(path) === true) continue;
       const generated = !atHead.has(path) && existsSync(join(root, path));
       if (existsSync(join(tree, path)) || generated) return path;
     }

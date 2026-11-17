@@ -21,7 +21,7 @@ import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import type { Store } from "../types/store.js";
-import { checkoutChange } from "./at-keys-verify.js";
+import { type CommitEntry, checkoutChange } from "./at-keys-verify.js";
 
 /*
  * Spec 023 D2 as amended and D4 (row 023-16): the keys of the files the
@@ -152,6 +152,11 @@ export async function withCheckout<T>(
      * commit's by design, so the input check against the commit skips them.
      */
     readonly copied?: readonly RelativePath[];
+    /**
+     * Row 023-08: paths `prepare` writes in that the check compares with
+     * these entries instead of the commit's (a proof side's expected tree).
+     */
+    readonly expected?: ReadonlyMap<RelativePath, CommitEntry>;
   },
   options: CheckoutOptions,
   body: (checkout: Checkout, install: InstallResult, change: CheckoutChange) => Promise<T>,
@@ -190,7 +195,7 @@ export async function withCheckout<T>(
     // compared with the commit's tree after the install; a difference anywhere is told to `body`.
     const checkStarted = performance.now();
     const skip = new Set(input.copied ?? []);
-    const path = await checkoutChange(root, checkout.tree, checkout.commit, skip);
+    const path = await checkoutChange(root, checkout.tree, checkout.commit, skip, input.expected);
     const change = { path, ms: Math.round(performance.now() - checkStarted) };
     return await body(checkout, install, change);
   } finally {

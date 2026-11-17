@@ -28,6 +28,7 @@ import { runCommand } from "./run.js";
 import { runnerHostCommand } from "./runner-host.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
+import { parseProof, proofCommand } from "./proof.js";
 import { asksAt, parseAt, statusAtCommand } from "./status-at.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
@@ -83,6 +84,16 @@ Usage:
                                 every one, after an estimate) and stores them at the
                                 commit's keys, within one --timeout (600 s, the
                                 checkout and install included)
+  squeal proof <test file>... --base <commit> [--case source|test] [--timeout <seconds>] [--json]
+                                A red proof per named test file over committed HEAD:
+                                red is the test at HEAD over the code at --base
+                                (source) or the test at --base over the code at HEAD
+                                (test), green is HEAD; each side is read from the
+                                store first and runs in a temporary checkout only
+                                without a result. Verdicts: proven, not red, red for
+                                another reason, not green, not comparable, with the
+                                red side's failure text; exit 0 all proven, 1 not
+                                red or not green, 3 unknown, 2 on a usage error
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
@@ -330,6 +341,7 @@ type Command = (args: readonly string[], io: CliIo) => number | Promise<number>;
 /** Every command `main` dispatches, by name. */
 const COMMANDS: Readonly<Record<string, Command>> = {
   status: (args, io) => (asksAt(args) ? statusAt(args, io) : status(args, io)),
+  proof,
   why,
   failures: failuresCommand,
   code: codeCommand,
@@ -455,6 +467,17 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
 function statusAt(args: readonly string[], io: CliIo): number | Promise<number> {
   const at = parseAt(args);
   return typeof at === "string" ? usage("status", at, io) : statusAtCommand(at, io);
+}
+
+/** Spec 023 D5 (row 023-08): `proof`; row 023-11's options are refused in one line. */
+function proof(args: readonly string[], io: CliIo): number | Promise<number> {
+  const parsed = parseProof(args);
+  if ("usage" in parsed) return usage("proof", parsed.usage, io);
+  if ("notBuilt" in parsed) {
+    io.stderr(`squeal proof: ${parsed.notBuilt}\n`);
+    return 2;
+  }
+  return proofCommand(parsed, io);
 }
 
 function why(args: readonly string[], io: CliIo): number {

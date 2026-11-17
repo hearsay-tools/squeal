@@ -51,14 +51,20 @@ const PARALLEL = 32;
  * does not hold as `commit` does: gone, another kind, another mode,
  * other bytes or another link target; `null` when every tracked path
  * matches. `skip` names paths written in on purpose (D5.2's test copies).
+ * Row 023-08: `expected` holds paths the checkout must hold otherwise than
+ * the commit (a proof side's copies at their test version's mode and
+ * blob), over the commit's own and beside them: the side's expected tree.
  */
 export async function checkoutChange(
   root: AbsolutePath,
   tree: AbsolutePath,
   commit: string,
   skip: ReadonlySet<RelativePath> = new Set(),
+  expected: ReadonlyMap<RelativePath, CommitEntry> = new Map(),
 ): Promise<RelativePath | null> {
-  const entries = [...(await commitEntries(root, commit))].filter(([path]) => !skip.has(path));
+  const all = await commitEntries(root, commit);
+  for (const [path, entry] of expected) all.set(path, entry);
+  const entries = [...all].filter(([path]) => !skip.has(path));
   const format = await readObjectFormat(root);
   for (let at = 0; at < entries.length; at += PARALLEL) {
     const batch = entries.slice(at, at + PARALLEL);

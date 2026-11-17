@@ -110,12 +110,9 @@ interface Located {
 
 /** The worktree, the commit and the paths `args` name; a setup problem as a string. */
 async function locate(args: AtArgs, io: CliIo): Promise<Located | string> {
-  const given = resolve(io.cwd ?? process.cwd());
-  // The root is a real path (`findWorktreeRoot`); paths are read from the real cwd too.
-  const cwd = (existsSync(given) ? realpathSync(given) : given) as AbsolutePath;
-  const root = findWorktreeRoot(cwd);
-  const commonDir = root === null ? null : resolveCommonDir(root);
-  if (root === null || commonDir === null) return `${cwd} is not in a git worktree`;
+  const where = worktreeOf(io);
+  if (typeof where === "string") return where;
+  const { cwd, root, commonDir } = where;
   let commit: string;
   try {
     commit = await resolveCommit(root, args.commit);
@@ -130,6 +127,19 @@ async function locate(args: AtArgs, io: CliIo): Promise<Located | string> {
     paths.push(rel);
   }
   return { root, commonDir, commit, paths };
+}
+
+/** The worktree the command runs in, from the real cwd; a setup problem as a string. */
+export function worktreeOf(
+  io: CliIo,
+): { cwd: AbsolutePath; root: AbsolutePath; commonDir: AbsolutePath } | string {
+  const given = resolve(io.cwd ?? process.cwd());
+  // The root is a real path (`findWorktreeRoot`); paths are read from the real cwd too.
+  const cwd = (existsSync(given) ? realpathSync(given) : given) as AbsolutePath;
+  const root = findWorktreeRoot(cwd);
+  const commonDir = root === null ? null : resolveCommonDir(root);
+  if (root === null || commonDir === null) return `${cwd} is not in a git worktree`;
+  return { cwd, root, commonDir };
 }
 
 /** D1: exit 0 when every file is known on both sides, 3 when one is not, 2 on a usage or setup error. */
@@ -232,7 +242,7 @@ function unionRefs(
 }
 
 /** `path`, given from `cwd`, relative to `root` in git's form; `null` outside it. */
-function inRoot(root: AbsolutePath, cwd: AbsolutePath, path: string): RelativePath | null {
+export function inRoot(root: AbsolutePath, cwd: AbsolutePath, path: string): RelativePath | null {
   const rel = relative(root, resolve(cwd, path));
   if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
   return rel.split(sep).join("/");
