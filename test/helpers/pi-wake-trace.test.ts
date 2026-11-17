@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { tempDir } from "../store/helpers.js";
 import {
   type ArmWait,
@@ -160,24 +160,24 @@ describe("awaitArmed at its deadline", () => {
     expect(message).toMatch(/^the idle wake was never armed: .* within 200 ms\n/);
     expect(message).toMatch(/Times are from the wait's start, \d{4}-/);
     // The first observation's offset is whatever the clock read: a tick may pass before it.
-    expect(message).toMatch(/\+\d+ ms {2}1 consumer\(s\), lock absent\n/);
+    expect(message).toMatch(/[+-]\d+ ms {2}1 consumer\(s\), lock absent\n/);
     expect(message).toContain(`Pi process (it runs the waiter thread): pid ${pid}, alive`);
     expect(message).toContain("no exit recorded (still running).");
     expect(message).toMatch(
-      /Waiter \(delivery worker thread\): started 1 time\(s\), thread 1 at -\d+ ms/,
+      /Waiter \(delivery worker thread\): started 1 time\(s\), thread 1 at [+-]\d+ ms/,
     );
     expect(message).toMatch(
-      /thread 1: its exit listener ran, code 3, at -\d+ ms; Pi saw it exit with code 3 at -\d+ ms/,
+      /thread 1: its exit listener ran, code 3, at [+-]\d+ ms; Pi saw it exit with code 3 at [+-]\d+ ms/,
     );
-    expect(message).toMatch(/Arm: 1 agent_settled event\(s\), at -\d+ ms; 1 wait request\(s\)/);
-    expect(message).toMatch(/wait 7 on thread 1 at -\d+ ms: no answer/);
-    expect(message).toMatch(/-\d+ ms {2}thread 1 worker-in id 6 request endTurn\n/);
+    expect(message).toMatch(/Arm: 1 agent_settled event\(s\), at [+-]\d+ ms; 1 wait request\(s\)/);
+    expect(message).toMatch(/wait 7 on thread 1 at [+-]\d+ ms: no answer/);
+    expect(message).toMatch(/[+-]\d+ ms {2}thread 1 worker-in id 6 request endTurn\n/);
     expect(message).toMatch(
-      /-\d+ ms {2}thread 1 worker-out id 6 ok true held unknown answer null\n/,
+      /[+-]\d+ ms {2}thread 1 worker-out id 6 ok true held unknown answer null\n/,
     );
-    expect(message).toMatch(/-\d+ ms {2}pi event agent_settled\n/);
+    expect(message).toMatch(/[+-]\d+ ms {2}pi event agent_settled\n/);
     expect(message).toMatch(
-      /\nPi stderr: wrote 23 bytes in \d+ writes, first at -\d+ ms, last at -\d+ ms\.$/,
+      /\nPi stderr: wrote 23 bytes in \d+ writes, first at [+-]\d+ ms, last at [+-]\d+ ms\.$/,
     );
     // The Node child inherited the preload and recorded nothing.
     expect(new Set(trace.read().map((l) => l.pid))).toEqual(new Set([pid]));
@@ -217,7 +217,17 @@ describe("awaitArmed at its deadline", () => {
     const { trace, dir } = await standIn(true, ["terminate"]);
     const message = await timeout(trace, dir);
     // terminate() stops the worker before its own exit listener runs; Pi's side still sees it.
-    expect(message).toMatch(/thread 1: Pi saw it exit with code 1 at -\d+ ms/);
+    expect(message).toMatch(/thread 1: Pi saw it exit with code 1 at [+-]\d+ ms/);
+    // Row 005-107: the exit can come in the wait's first millisecond, or after it starts.
+    const ended = trace.read().find((l) => l.kind === "worker-ended")?.t;
+    expect(ended).toBeTypeOf("number");
+    for (const offset of [-1, 0, 1]) {
+      vi.spyOn(Date, "now").mockReturnValueOnce((ended as number) - offset);
+      const forced = await timeout(trace, dir);
+      vi.restoreAllMocks();
+      const signed = offset < 0 ? String(offset) : `+${offset}`;
+      expect(forced).toContain(`thread 1: Pi saw it exit with code 1 at ${signed} ms`);
+    }
   });
 
   it("prints only fixed facts, whatever text Pi, its worker, an error or a probe wrote", {
@@ -232,7 +242,8 @@ describe("awaitArmed at its deadline", () => {
       throw error;
     });
     // The arbitrary text reached the trace's step records, so the report had it to print.
-    expect(JSON.stringify(trace.read())).toContain(MARKER);
+    // Review 009-30-r3 N1: a boolean, so a failure never prints the trace.
+    expect(JSON.stringify(trace.read()).includes(MARKER)).toBe(true);
     expect(message).toContain(`2 consumer(s), lock not read`);
     expect(message).toContain(`probe threw, code other`);
     expect(message).toMatch(/pi event other command other\n/);
@@ -240,7 +251,7 @@ describe("awaitArmed at its deadline", () => {
     expect(message).toMatch(/worker-in id unknown request other\n/);
     expect(message).toMatch(/worker-out id unknown ok true held unknown answer text\n/);
     expect(message).toMatch(/Pi saw an error event, \w+, at/);
-    expect(message).toMatch(/Pi stderr: wrote \d+ bytes in \d+ writes, first at -\d+ ms/);
+    expect(message).toMatch(/Pi stderr: wrote \d+ bytes in \d+ writes, first at [+-]\d+ ms/);
     expect(unexpectedTokens(message)).toEqual([]);
   });
 
