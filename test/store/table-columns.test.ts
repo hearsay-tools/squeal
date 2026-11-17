@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/paths.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import { ensureBirthMarks } from "../../src/core/store/state-born.js";
 import { fakeCommonDir, open } from "./helpers.js";
 
 /*
@@ -142,6 +143,10 @@ const COLUMNS: Readonly<Record<number, Readonly<Record<string, readonly string[]
       "updated_at INTEGER",
       "updated_by TEXT",
     ],
+    // Row 005-105: made at a daemon's registration (`ensureBirthMarks`), with SQLite's
+    // `AUTOINCREMENT` counter table.
+    sqlite_sequence: ["name ", "seq "],
+    state_born: ["id INTEGER", "worktree_id TEXT", "check_id INTEGER"],
     transitions: [
       "id INTEGER",
       "worktree_id TEXT",
@@ -195,6 +200,7 @@ describe("store: each table's columns per user_version (011 C7)", () => {
   it("are the listed ones in the store a daemon opens, at the version it writes", () => {
     const commonDir = fakeCommonDir();
     const store = open(commonDir);
+    ensureBirthMarks(store);
     expect(store.schemaVersion).toBe(SCHEMA_VERSION);
     expect(tableColumns(storePaths(commonDir).database)).toEqual(COLUMNS[SCHEMA_VERSION]);
   });

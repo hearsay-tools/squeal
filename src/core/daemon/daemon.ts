@@ -24,6 +24,7 @@ import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import { setBusyTimeout } from "../store/open.js";
 import { lockFileFor } from "../store/paths.js";
+import { ensureBirthMarks } from "../store/state-born.js";
 import { ensureWriteMarkers } from "../store/write-markers.js";
 import type { Capacity } from "../types/capacity.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
@@ -523,6 +524,8 @@ class Daemon {
       this.#resumesRest = resumesRest(store, existing);
       // Rows 011-44 and 011-45: the triggers that move the write markers, for every writer after.
       ensureWriteMarkers(store);
+      // Row 005-105: the triggers that keep each known state's birth mark, with the marks of today's.
+      ensureBirthMarks(store);
       store.testFileKeys.releaseRunning(id);
       // Row 011-32: a daemon serves, so the handoff a hook claimed ends at the clock's first reading.
       recordRegistration(store, {
