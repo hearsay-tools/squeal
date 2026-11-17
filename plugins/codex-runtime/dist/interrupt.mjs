@@ -361,10 +361,10 @@ function plural(count2, word) {
 function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
+var pad2 = (n) => String(n).padStart(2, "0");
 function timeText(at) {
   const date = new Date(at);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 function durationText(ms, round = Math.round) {
   const seconds = Math.max(0, round(ms / 1e3));
@@ -7994,7 +7994,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.535";
+  if (true) return "0.1.537";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14827,7 +14827,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
     ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
   ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`
+    `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`
   ];
   const most = Math.max(
     0,
@@ -14847,20 +14847,22 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     covers2,
     notCovered(coverage)
   ].join(" ");
-  let text2 = "";
-  for (const arrival of arrivals) {
-    text2 = folded(sentences(arrival, []), coverage, most);
-    if (text2.length <= PRIMER_CAP_CHARS) return text2;
-  }
-  for (const dropped of droppable(coverage)) {
+  for (const dropped of [[], ...droppable(coverage)]) {
     for (const arrival of arrivals) {
       const kept3 = withPathWait(sentences(arrival, dropped), coverage, most);
       if (kept3 !== null) return kept3;
     }
   }
+  let text2 = "";
+  for (const dropped of [[], ...droppable(coverage)]) {
+    for (const arrival of arrivals) {
+      text2 = folded(sentences(arrival, dropped), coverage, most);
+      if (text2.length <= PRIMER_CAP_CHARS) return text2;
+    }
+  }
   return text2;
 }
-var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it.";
 function droppable(coverage) {
   const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
   const order = [...first, "retry", "run yourself", "revision"];
@@ -14903,11 +14905,11 @@ function waitSentence(command, naming, form, quiet = false) {
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
   const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
-  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  const finish = `${cli("status --wait 60000", false)} before you finish.`;
   if (quiet) {
     return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
   }
-  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed, and ${finish}`;
 }
 var AT = {
   edit: "after each edit",

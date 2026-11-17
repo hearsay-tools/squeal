@@ -22,3 +22,25 @@ Owns: `src/harness/shared/{primer,text,stop-text}.ts`, `src/core/delivery/{heade
 Done when: a test per changed text, red first; each removed fact still printed by `squeal status` or `status --full`; primer lengths for texts.md's three coverages printed in your notes; no function newly over the complexity threshold (`squeal code`); lint, typecheck, affected tests current; key-format and the four e2e files pass.
 
 Final message: each text before and after as built, where it differs from texts.md and why; the primer lengths; every e2e file you ran with its result; what the atomic eval's parser needed.
+
+## Review of cand/0.1.537
+
+Use /reviewer. Shape: review. Pinned to the `cand/0.1.537` SHA named in the spawn; the range is from the base named there to that SHA. It holds row 005-94: six commits of worker 8ac2fa50 (cherry-picked with `-x`) and one coordinator commit (the release 0.1.537 with bundles and this section). Read row 005-94, this file, `tasks/005-94/texts.md` ("Decided" first), `tasks/005-94/notes.md` (the decisions the texts did not settle), `status.md` 2026-11-16 and 2026-11-17, `docs/vision.md` principle 1.
+
+Judge:
+- Each hook text against `texts.md`'s "After" and the human's choices (C1 R1, C2 Stop takes the same form, C3 no checkpoint clause, C4 UTC named, C5 no slow-tier line at 0 slow files, C6 "affect" in `status --wait`, C7 the revision definition unchanged). Each of the worker's own decisions in `notes.md`: accept, or a finding.
+- No fact is lost: the counts, the checkpoint, Inherited, Imported, "test files without checks" and the `· sha + N, dirty` suffix are still printed by `squeal status` or `status --full`, with a test for each.
+- The registration and Stop never read as a pass they do not have: `X of Y test files are current` is true to the header's counts for every validity mix; the unlisted and no-daemon forms; a stored failure is always said; the cap (10,000 characters) still holds with many failures.
+- The primer: every coverage of the test matrix within `PRIMER_CAP_CHARS`; the path wait wherever it fits; Codex's long CLI path still named at the wait (004-78); `trailingPrimer` still finds every primer; no sentence an eval cell depends on is lost without a note.
+- The late-feed sentence: UTC is what the clock prints, on a host in another zone too; "asks it to read them" is what `status --wait` does.
+- Parsers: `evals/lib/squeal-text.mjs` and `grade.mjs` round-trip the real formatters, old and new registration and Stop; a registration with files not current never parses as all current.
+- The spec edits (005 D1, D6; 001 D6, D7) say what the code does.
+- Complexity: no function newly over the threshold.
+
+No full suite and no full-suite checkpoint; candidate CI is the full suite: name its run and result (a red `test/e2e/pi.test.ts:190` or `pi-wake.test.ts` "never armed" alone is the known defect of board row ci-43987606521: say so, do not count it). `test/e2e/**` is outside Squeal's coverage: say which e2e files you ran directly. Write `reviews/0.1.537.md` and commit it on your branch. Write `~`, never a `/home/<user>/` path.
+
+## Re-review of cand/0.1.537 (the one round)
+
+Use /reviewer. Pinned to the new `cand/0.1.537` SHA named in the message (the branch was rebuilt on main; the range is from the base named there). On top of what you reviewed: three worker commits that answer `reviews/0.1.537.md` (B1: `test/e2e/worktrees.test.ts` reads the inherited results in `status --full`, `test/delivery/ignored-paths.test.ts` reads the commit as status names it; S1: the e2e quiet point waits for open test file runs, `expectAgrees` compares strictly, a regression in `test/delivery/e2e-agree.test.ts`; N1: 001 D6 narrowed) and a new release commit with rebuilt bundles.
+
+Judge only: B1, S1 and N1 are closed; S1's finding (a test race: the re-run of a new failure was open when the hook read) is what the code shows, and no check that would catch a registration claiming more than status was weakened; no new defect; the bundles match. Write `reviews/0.1.537-r2.md` with PASS or FAIL and commit it on your branch. No full suite, no build. Name the candidate CI run and its state (a red `test/e2e/pi.test.ts:190` or `pi-wake.test.ts` "never armed" alone is the known defect of board row ci-43987606521). Write `~`, never a `/home/<user>/` path.

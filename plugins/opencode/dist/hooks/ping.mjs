@@ -1905,7 +1905,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
     ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
   ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`
+    `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`
   ];
   const most = Math.max(
     0,
@@ -1925,20 +1925,22 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     covers2,
     notCovered(coverage)
   ].join(" ");
-  let text = "";
-  for (const arrival of arrivals) {
-    text = folded(sentences(arrival, []), coverage, most);
-    if (text.length <= PRIMER_CAP_CHARS) return text;
-  }
-  for (const dropped of droppable(coverage)) {
+  for (const dropped of [[], ...droppable(coverage)]) {
     for (const arrival of arrivals) {
       const kept2 = withPathWait(sentences(arrival, dropped), coverage, most);
       if (kept2 !== null) return kept2;
     }
   }
+  let text = "";
+  for (const dropped of [[], ...droppable(coverage)]) {
+    for (const arrival of arrivals) {
+      text = folded(sentences(arrival, dropped), coverage, most);
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
+  }
   return text;
 }
-var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.";
+var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it.";
 function droppable(coverage) {
   const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
   const order = [...first, "retry", "run yourself", "revision"];
@@ -1981,11 +1983,11 @@ function waitSentence(command, naming, form, quiet = false) {
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
   const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
-  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  const finish = `${cli("status --wait 60000", false)} before you finish.`;
   if (quiet) {
     return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
   }
-  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed, and ${finish}`;
 }
 var AT = {
   edit: "after each edit",
