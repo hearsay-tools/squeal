@@ -72,4 +72,90 @@ describe("a killed run's checkout (row 023-16, D6)", SLOW, () => {
     expect(existsSync(tree)).toBe(false);
     expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
   });
+
+  it("stops its default install, npm ci held in preinstall, at the next run's sweep (review wave-5 B3)", async () => {
+    const manifest = {
+      name: "fixture",
+      type: "module",
+      scripts: { preinstall: "node hold.mjs" },
+    };
+    const lock = {
+      name: "fixture",
+      lockfileVersion: 3,
+      requires: true,
+      packages: { "": { name: "fixture" } },
+    };
+    const f = fixture({
+      "package.json": `${JSON.stringify(manifest)}\n`,
+      "package-lock.json": `${JSON.stringify(lock)}\n`,
+      "hold.mjs": HOLD,
+      "src/a.ts": source(1),
+      [TEST.path]: TEST_TEXT,
+    });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": source(2) });
+    const held = join(f.dir, "held");
+    const env = {
+      ...process.env,
+      HOLD_OUT: held,
+      npm_config_audit: "false",
+      npm_config_fund: "false",
+      npm_config_update_notifier: "false",
+    };
+    const args = [CHILD, f.root, a, f.cacheRoot, join(f.dir, "made"), TEST.path, "default"];
+    const child = spawn(process.execPath, ["--import", TSX, ...args], { stdio: "ignore", env });
+    const exited = new Promise((done) => child.once("exit", done));
+    let pid = 0;
+    try {
+      try {
+        await waitFor(held, 60_000);
+      } finally {
+        child.kill("SIGKILL");
+        await exited;
+      }
+      pid = Number(readFileSync(held, "utf8"));
+      // The owner is gone; its install lives on in a group of its own.
+      expect(alive(pid)).toBe(true);
+      expect(f.checkouts()).toHaveLength(1);
+
+      const keys = await keysAtCommit({
+        ...keying(f, linkInstall().install),
+        root: f.root,
+        commit: a,
+        files: [TEST],
+      });
+      expect(keys.files.get(testFileId(TEST))).toMatchObject({ via: "walk" });
+      expect(await gone(pid, 10_000)).toBe(true);
+      expect(f.checkouts()).toEqual([]);
+      expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+    } finally {
+      if (pid > 0 && alive(pid)) process.kill(pid, "SIGKILL");
+    }
+  });
 });
+
+/** Writes its pid where `HOLD_OUT` says, then waits. */
+const HOLD = [
+  'import { writeFileSync } from "node:fs";',
+  "writeFileSync(process.env.HOLD_OUT, String(process.pid));",
+  "setInterval(() => {}, 1000);",
+  "",
+].join("\n");
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function gone(pid: number, ms: number): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  while (alive(pid)) {
+    if (Date.now() > deadline) return false;
+    await delay(50);
+  }
+  return true;
+}
