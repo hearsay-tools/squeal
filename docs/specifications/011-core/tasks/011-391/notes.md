@@ -19,6 +19,8 @@ Worker notes, wave 121 (W1). Branch `cez/9a16acba`.
 
 Not marked, on purpose: corruption from the code store or the lint store (other files). The code pass's and lint passes' `onError`, the code prune (`"code prune"`) and `requestKeep` (it opens the code store) do not reach the classifier. `isCorruption` cannot tell which file threw, so only paths that touch the main store only are wired.
 
+Two narrow cases can still pass another store's corruption to the classifier, accepted here and open to the review: (1) a hook's `withContext` catch also sees a failure of `prepared.commit()`, which can commit a held code-store write (row 011-288); the code and lint reads themselves swallow their errors (`withCode`, `withLint`). (2) A daemon's start failure (`#startFailed`, including `#run`) classifies any error; today the code, lint and coverage stores open lazily after the start and report through their own `onError`, so none reaches it.
+
 A mark is never written over a mark already there, and never beside a file other than the one the daemon (or hook) opened: when another start moved that file aside, the mark would condemn the fresh store. The daemon compares `storeFileOf` with the file it recorded at the open; the hook stats the path before its open and compares again at the mark. The hook's window is between that stat and its open (microseconds).
 
 ## How long a new store goes unchecked
