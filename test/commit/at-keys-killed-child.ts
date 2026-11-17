@@ -8,15 +8,17 @@ import type { AbsolutePath } from "../../src/core/types/common.js";
  * Row 023-16: a run of `keysAtCommit` that stops inside its checkout's
  * install, for `at-keys-killed.test.ts` to SIGKILL. Arguments: the
  * worktree, the commit, the cache root, the file it writes when the
- * checkout exists, and the test file to key.
+ * checkout exists, the test file to key, and `default` to run the default
+ * install instead (review wave-5 B3), which writes nothing itself.
  */
 
-const [root, commit, cacheRoot, made, path] = process.argv.slice(2) as [
+const [root, commit, cacheRoot, made, path, install] = process.argv.slice(2) as [
   AbsolutePath,
   string,
   AbsolutePath,
   string,
   string,
+  string | undefined,
 ];
 await keysAtCommit({
   root,
@@ -26,8 +28,12 @@ await keysAtCommit({
   adapters: daemonAdapters,
   squealVersion: squealVersion(),
   env: process.env,
-  install: async (tree) => {
-    writeFileSync(made, tree);
-    return new Promise(() => {});
-  },
+  ...(install === "default"
+    ? {}
+    : {
+        install: async (tree: AbsolutePath) => {
+          writeFileSync(made, tree);
+          return new Promise<never>(() => {});
+        },
+      }),
 });
