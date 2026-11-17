@@ -31,6 +31,8 @@ export function workerDeps(module: URL): HookDeps {
     env: process.env,
     cli,
     command: piCommand(cli),
+    // Row 005-117: the primer is in each run's system prompt (D3 `before_agent_start`).
+    registrationPrimer: false,
     harnessProcess: () => findHarnessProcess({ ppid: process.pid }),
   };
 }
@@ -121,8 +123,8 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
  * Row 005-107: the writes a verdict sent to the daemon serving the store
  * (spec 021 D15), which the host does not wait for: it has its answer
  * before them. A request that comes next starts once they are written, so
- * it reads what the request before it committed; a Pi session start's
- * cleared header, for one, is not said again by the run Pi starts next.
+ * it reads what the request before it committed; a failure a tool
+ * boundary delivered, for one, is not delivered again by the run Pi starts next.
  * The Claude Code and Codex wrappers wait for the same writes before their
  * process ends (`writeThenCommit`). With none pending, a request starts at
  * once, as before. A write that failed or got no answer within its bound

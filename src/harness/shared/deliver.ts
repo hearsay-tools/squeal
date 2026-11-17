@@ -5,7 +5,7 @@ import { readEditLine } from "../../core/presence/narrow.js";
 import type { HookContext } from "./context.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered } from "./hook.js";
-import { registerOwing, sayOwed } from "./owed.js";
+import { registerSaying, sayOwed } from "./owed.js";
 import { uncoveredEditLine } from "./uncovered-edit.js";
 
 /**
@@ -67,22 +67,12 @@ export async function deliver(
   const at = (deps.now ?? Date.now)();
   const ensured = await ensureIfStale(context, deps);
   // Row 005-98: a registration whose text was never handed over says it now, with the primer
-  // its first hook owed or without (a resume), and hands it over last.
+  // its first hook owed or without (a resume); either is handed over last.
+  const options = { inTurn: true, ...startingAfter(ensured, at) };
   const owed = isRegistered(context)
-    ? await sayOwed(context, deps, { inTurn: true, ...startingAfter(ensured, at) })
-    : await registerOwing(
-        context,
-        deps,
-        { primer: true },
-        {
-          inTurn: true,
-          ...startingAfter(ensured, at),
-        },
-      );
-  if (owed !== null) {
-    await context.delivery.registrationSent(context.consumer);
-    return owed;
-  }
+    ? await sayOwed(context, deps, options)
+    : await registerSaying(context, deps, options);
+  if (owed !== null) return owed;
   if (edited && ensured === "fresh") {
     await syncOnHeadMove(context.store, context.consumer.worktreeId, context.root);
   }

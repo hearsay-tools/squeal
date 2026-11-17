@@ -35,6 +35,12 @@ export interface HookDeps {
    */
   readonly command?: string;
   /**
+   * Row 005-117: whether this harness's registration text carries the primer. Default `true`
+   * (Claude Code, Codex); `false` where the primer goes in the system prompt (Pi's run start,
+   * OpenCode's `primer` answers), so it is not said twice.
+   */
+  readonly registrationPrimer?: boolean;
+  /**
    * The epoch clock. Default `Date.now`. It must advance with real elapsed
    * time, at most a constant offset from `Date.now`: the waiting Stop entry
    * reads its process start in this frame, once, as `now() - performance.now()`

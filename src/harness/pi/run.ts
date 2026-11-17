@@ -1,19 +1,14 @@
 import { readPolicy } from "../../core/daemon/policy.js";
-import { formatDelta } from "../../core/delivery/format.js";
-import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
-import { registerFirst } from "../shared/ensure.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
-import { registerOwing, sayOwed } from "../shared/owed.js";
 import { primer } from "../shared/primer.js";
-import { registerThenEnsure } from "../shared/session.js";
+import { turnNews } from "../shared/prompt.js";
 import { stopTurn } from "../shared/stop.js";
 import { waitIdle } from "../shared/waiter.js";
 import { entered, type PiDeps } from "./handed.js";
 import type { PiSession, RunAnswer, SettleAnswer } from "./protocol.js";
-import { PI_OWED } from "./session.js";
 
 /*
  * The worker's side of spec 009 D3 for one run, from its prompt to its
@@ -42,30 +37,8 @@ export async function startRun(session: PiSession, deps: PiDeps): Promise<RunAns
     // Review 0.1.546 B1: a registration this worker handed is not owed again.
     const context = await entered(opened, deps);
     const section = primer(deps.command, coverageOf(context));
-    if (context.store.consumers.get(context.consumer) !== null) {
-      // Row 005-98: a registration whose header never reached the host is the run's news.
-      const owed = await sayOwed(context, deps, { inTurn: true });
-      if (owed !== null) {
-        await context.delivery.registrationSent(context.consumer);
-        return { primer: section, news: owed };
-      }
-      const delta = await context.delivery.startTurn(context.consumer);
-      return { primer: section, news: delta === null ? null : formatDelta(delta, deps.command) };
-    }
-    const now = (deps.now ?? Date.now)();
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
-    const alive = daemonLiveness(record, now).state === "alive";
-    const first = alive ? null : await registerFirst(location, deps, context);
-    const startingSince = first?.startingSince;
-    const news = await registerThenEnsure(first, () =>
-      registerOwing(context, deps, PI_OWED, {
-        inTurn: true,
-        ...(startingSince === undefined ? {} : { startingSince }),
-      }),
-    );
-    await context.delivery.registrationSent(context.consumer);
-    return { primer: section, news };
+    // Row 005-117: the prompt's news, as 001's prompt registers; the primer is `section`.
+    return { primer: section, news: await turnNews(context, location, deps, { register: true }) };
   });
   return answer ?? SILENT_RUN;
 }

@@ -1,10 +1,10 @@
 import type { EpochMs } from "../../core/types/common.js";
 import { type HookContext, locate, usesSqueal } from "../shared/context.js";
 import { deliver } from "../shared/deliver.js";
-import { ensure, registerFirst } from "../shared/ensure.js";
+import { ensure } from "../shared/ensure.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
-import { registerOwing } from "../shared/owed.js";
-import { endSession, registerThenEnsure } from "../shared/session.js";
+import { owedOf, registerAndHandOver, registerOwing } from "../shared/owed.js";
+import { endSession } from "../shared/session.js";
 import { unregisterSession } from "../shared/sweep.js";
 import { entered, type PiDeps } from "./handed.js";
 import type { PiSession, StartReason } from "./protocol.js";
@@ -18,12 +18,6 @@ import type { PiSession, StartReason } from "./protocol.js";
 const SWEEP_REASONS: ReadonlySet<StartReason> = new Set(["startup", "resume"]);
 
 const consumerInput = (session: PiSession) => ({ session_id: session.sessionId });
-
-/**
- * Row 005-98: what a Pi registration owes until the host has its answer: the header alone,
- * since the primer goes in the system prompt of every run (D3 `before_agent_start`).
- */
-export const PI_OWED = { primer: false } as const;
 
 /**
  * `session_start`: ensure the daemon, register, and return the registration
@@ -47,14 +41,13 @@ export async function startSession(
     ensured = true;
     // Review 0.1.546 B1: the worker keeps the registration it hands here.
     const context = await entered(opened, deps);
-    // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
-    const first = await registerFirst(location, deps, context);
-    const text = await registerThenEnsure(first, () =>
-      registerAtStart(session, context, deps, first.startingSince),
-    );
-    // Last: the text is handed over once the host has the answer (decision C).
-    if (text !== null) await context.delivery.registrationSent(context.consumer);
-    return text;
+    // Row 005-98: the registration first, then the daemon's start, then the hand-over.
+    return registerAndHandOver(context, location, deps, {
+      say: async (startingSince) => {
+        const text = await registerAtStart(session, context, deps, startingSince);
+        return text === null ? null : { text, owes: true };
+      },
+    });
   });
   if (!ensured) await ensure(location, deps);
   return text;
@@ -77,7 +70,7 @@ async function registerAtStart(
   }
   // After a reload the run may go on: its earlier tool calls may be in the registration revision.
   // Row 005-98: it owes its header, with no primer: Pi's primer is in each run's system prompt.
-  return registerOwing(context, deps, PI_OWED, {
+  return registerOwing(context, deps, owedOf(deps), {
     atStart: !reload,
     ...(startingSince === undefined ? {} : { startingSince }),
   });

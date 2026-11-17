@@ -4,14 +4,14 @@ import { readPolicy } from "../../core/daemon/policy.js";
 import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";
-import { ensure, registerFirst } from "../shared/ensure.js";
+import { ensure } from "../shared/ensure.js";
 import { HAND_OFF_BOUND_MS, HandOff, type OutputStream, written } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
 import { type HookDeps, isRegistered, withContext } from "../shared/hook.js";
-import { registerOwing } from "../shared/owed.js";
+import { registerAndHandOver } from "../shared/owed.js";
 import { primer } from "../shared/primer.js";
 import { submitPrompt } from "../shared/prompt.js";
-import { endSession, registerThenEnsure } from "../shared/session.js";
+import { endSession } from "../shared/session.js";
 import { type Ack, ackOf, awaitSignal, ignoreVerdictSignal } from "./bridge-verdict.js";
 import type { OcAnswer, OcAnswers, OcConsumer, OcHost, OcKind, OcRequest } from "./protocol.js";
 
@@ -49,6 +49,8 @@ export function bridgeDeps(module: URL, host: OcHost): HookDeps {
     env: process.env,
     cli,
     command: opencodeCommand(cli),
+    // Row 005-117: the primer is the system prompt's (D3), in the answers' own `primer` field.
+    registrationPrimer: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid }),
   };
 }
@@ -81,23 +83,11 @@ export async function register(
     deps,
     async (context) => {
       ensured = true;
-      // Row 005-98: the registration first, then the daemon's start, inside the event's deadline.
-      const first = await registerFirst(location, deps, context);
-      const { startingSince } = first;
-      // Row 005-98: it owes its header alone; the primer is the system prompt's (D3).
-      const header = await registerThenEnsure(first, () =>
-        registerOwing(
-          context,
-          deps,
-          { primer: false },
-          {
-            atStart: true,
-            ...(startingSince === undefined ? {} : { startingSince }),
-          },
-        ),
-      );
-      // Last: the header is handed over at the plugin's verdict (decision C).
-      await context.delivery.registrationSent(context.consumer);
+      // Row 005-98: the registration first, then the daemon's start, then the hand-over at the
+      // plugin's verdict (decision C). It owes its header alone: the primer is the system prompt's (D3).
+      const header = await registerAndHandOver(context, location, deps, {
+        register: { atStart: true },
+      });
       return {
         header,
         registered: true,

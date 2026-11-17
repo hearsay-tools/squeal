@@ -1,9 +1,9 @@
 import type { EpochMs } from "../../core/types/common.js";
 import { type ConsumerInput, type HookContext, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
-import { ensure, registerFirst, type StartFirst } from "./ensure.js";
+import { ensure } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { registerOwing } from "./owed.js";
+import { owedOf, registerAndHandOver, registerOwing, type Said } from "./owed.js";
 import { primer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
 
@@ -20,7 +20,7 @@ const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
  * heartbeat, so a hook killed at its 2 s timeout while a daemon starts has
  * registered (`registerFirst`); the registration says a daemon is starting
  * when the store holds no fresh heartbeat (task 001-156). Row 005-102: a
- * registration that throws still ensures the daemon (`registerThenEnsure`).
+ * registration that throws still ensures the daemon (`registerAndHandOver`).
  *
  * Lessons, defect 5: a session start (not a subagent's) with source `startup`
  * or `resume` means any earlier run of that session id is gone, so every
@@ -50,38 +50,13 @@ export async function startSession(
   const text = await withContext(input, location, deps, async (context) => {
     // The store is open already: its daemon record spares the probe a second open (S8).
     ensured = true;
-    // Row 005-98: the registration first, then the daemon's start, inside the hook's timeout.
-    const first = await registerFirst(location, deps, context);
-    const text = await registerThenEnsure(first, () =>
-      registerAtStart(input, context, deps, first.startingSince),
-    );
-    // Last: the text is handed over once the hook's output is written (decision C).
-    if (text.owes) await context.delivery.registrationSent(context.consumer);
-    return text.text;
+    // Row 005-98: the registration first, then the daemon's start, then the hand-over.
+    return registerAndHandOver(context, location, deps, {
+      say: (startingSince) => registerAtStart(input, context, deps, startingSince),
+    });
   });
   if (!ensured) await ensure(location, deps);
   return text;
-}
-
-/**
- * Row 005-102: `register`, then the daemon's start `first.ensure()`, also when `register` throws
- * (a busy store, any error), as before 0.1.541, when the start came first; else the daemon would
- * start only at the first tool boundary. The registration's error is the one thrown, and an
- * ensure that fails after it is not said. `first` `null`: nothing to start (a daemon is alive).
- */
-export async function registerThenEnsure<T>(
-  first: StartFirst | null,
-  register: () => Promise<T>,
-): Promise<T> {
-  let registered: T;
-  try {
-    registered = await register();
-  } catch (error) {
-    await first?.ensure().catch(() => undefined);
-    throw error;
-  }
-  await first?.ensure();
-  return registered;
 }
 
 /**
@@ -93,7 +68,7 @@ async function registerAtStart(
   context: HookContext,
   deps: HookDeps,
   startingSince: EpochMs | undefined,
-): Promise<{ readonly text: string; readonly owes: boolean }> {
+): Promise<Said> {
   // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
   // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
   // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
@@ -107,7 +82,7 @@ async function registerAtStart(
     });
   }
   // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
-  const owed = { primer: !(main && input.source === "resume") };
+  const owed = owedOf(deps, main && input.source === "resume");
   // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
   const text = await registerOwing(context, deps, owed, {
     atStart: input.source !== "compact",

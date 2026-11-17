@@ -1,10 +1,7 @@
 import { formatDelta } from "../../core/delivery/format.js";
-import { daemonLiveness } from "../../core/presence/heartbeat.js";
-import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
-import { registerFirst } from "./ensure.js";
+import { type ConsumerInput, type HookContext, type HookLocation, usesSqueal } from "./context.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { registerOwing, sayOwed } from "./owed.js";
-import { registerThenEnsure } from "./session.js";
+import { registerAndHandOver, sayOwed } from "./owed.js";
 
 /**
  * A user prompt (task 001-47; lessons, defects 8 and 10). A prompt starts a
@@ -35,37 +32,32 @@ export function submitPrompt(
   options: { readonly register: boolean },
 ): Promise<string | null> {
   if (!usesSqueal(location)) return Promise.resolve(null);
-  return withContext(input, location, deps, async (context) => {
-    const now = (deps.now ?? Date.now)();
-    if (isRegistered(context)) {
-      // Row 005-98: a registration whose text was never handed over says it, in the turn.
-      const owed = await sayOwed(context, deps, { inTurn: true });
-      if (owed !== null) {
-        await context.delivery.registrationSent(context.consumer);
-        return owed;
-      }
-      const delta = await context.delivery.startTurn(context.consumer);
-      return delta === null ? null : formatDelta(delta, deps.command);
-    }
-    if (!options.register) return null;
-    const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
-    const alive = daemonLiveness(record, now).state === "alive";
-    // Row 005-98: the registration first, then the daemon's start, inside the hook's timeout.
-    const first = alive ? null : await registerFirst(location, deps, context);
-    const startingSince = first?.startingSince;
-    // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
-    const text = await registerThenEnsure(first, () =>
-      registerOwing(
-        context,
-        deps,
-        { primer: true },
-        {
-          inTurn: true,
-          ...(startingSince === undefined ? {} : { startingSince }),
-        },
-      ),
-    );
-    await context.delivery.registrationSent(context.consumer);
-    return text;
+  return withContext(input, location, deps, (context) =>
+    turnNews(context, location, deps, options),
+  );
+}
+
+/**
+ * `submitPrompt`'s text for `context`, opened: Pi's run start says it as the run's news too
+ * (row 005-117).
+ */
+export async function turnNews(
+  context: HookContext,
+  location: HookLocation,
+  deps: HookDeps,
+  options: { readonly register: boolean },
+): Promise<string | null> {
+  if (isRegistered(context)) {
+    // Row 005-98: a registration whose text was never handed over says it, in the turn.
+    const owed = await sayOwed(context, deps, { inTurn: true });
+    if (owed !== null) return owed;
+    const delta = await context.delivery.startTurn(context.consumer);
+    return delta === null ? null : formatDelta(delta, deps.command);
+  }
+  if (!options.register) return null;
+  // In a turn in the registration's transaction: nothing lands untold in between (review wave 10, S1).
+  return registerAndHandOver(context, location, deps, {
+    whenDown: true,
+    register: { inTurn: true },
   });
 }
