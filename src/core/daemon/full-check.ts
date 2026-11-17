@@ -10,7 +10,7 @@ import type { Store } from "../types/store.js";
 import { type Claim, claimFullCheck, keepClaim, releaseClaim } from "./full-check-claim.js";
 import { TEST_NICE } from "./low-priority.js";
 import { DAEMON_START_BUSY_TIMEOUT_MS } from "./open.js";
-import { markFault, storeFileOrNull } from "./store-fault.js";
+import { DAEMON_MARK_WAIT_MS, markFault, storeFileOrNull } from "./store-fault.js";
 import type { StoreFile } from "./store-file.js";
 
 /** The check stops at this many problems: a store that has them is moved aside anyway. */
@@ -235,7 +235,7 @@ class FullCheckOwner {
 
 function failed(context: FullCheckContext, file: StoreFile | null, mark: StoreMark): void {
   try {
-    markFault(context.commonDir, file, mark);
+    markFault(context.commonDir, file, mark, DAEMON_MARK_WAIT_MS);
   } catch (error) {
     context.log(`could not mark the store: ${String(error)}`);
   }

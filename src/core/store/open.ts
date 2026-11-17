@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { Store, StoreOpenFailure } from "../types/store.js";
 import { Connection, isBusy, rollback } from "./connection.js";
-import { currentMark, dropStaleMark, markPath, type StoreMark } from "./mark.js";
+import { currentMark, dropStaleMark, markPath, RECOVERY_LOCK, type StoreMark } from "./mark.js";
 import { type StorePaths, storePaths } from "./paths.js";
 import { migrate, SCHEMA_VERSION, STORE_INDEXES, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
@@ -201,7 +201,7 @@ export function isCorruption(error: unknown): boolean {
  */
 function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpenFailure {
   mkdirSync(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync(join(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync(join(paths.locksDir, RECOVERY_LOCK));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 10_000)}`);
     lock.exec("BEGIN EXCLUSIVE");

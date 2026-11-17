@@ -108,7 +108,12 @@ export async function withContext<T>(
   if (context === null) return null;
   let handed = false;
   try {
-    const result = await fn(context);
+    // Row 011-391: only `fn`'s own reads and writes of the main store mark it; a held code-store
+    // write's commit below fails apart (review of cand/0.1.545, S1).
+    const result = await fn(context).catch((error: unknown) => {
+      context.faulted?.(error);
+      throw error;
+    });
     if (deps.handOff !== undefined && context.prepared?.pending === true) {
       deps.handOff.take(context.prepared, context.close, context.sent);
       handed = true;
@@ -120,8 +125,6 @@ export async function withContext<T>(
     return result;
   } catch (error) {
     if (process.env.SQUEAL_DEBUG_CONTEXT) console.error("DEBUG withContext", error);
-    // Row 011-391: a read or write that hit the store's damage marks it; the hook stays silent.
-    context.faulted?.(error);
     context.prepared?.abandon();
     await context.sent().catch(() => {});
     throw error;

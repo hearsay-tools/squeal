@@ -1,27 +1,31 @@
-import { markStore, readStoreMark, type StoreMark } from "../store/mark.js";
+import { type MarkOutcome, markUnder, type StoreMark } from "../store/mark.js";
 import { isCorruption } from "../store/open.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
-import { faultFound, type StoreFile, sameFile, storeFileOf } from "./store-file.js";
+import { faultFound, type StoreFile, storeFileOf } from "./store-file.js";
+
+/** How long a daemon's mark waits for the recovery lock: once, on its main thread. */
+export const DAEMON_MARK_WAIT_MS = 1_000;
+
+/** How long a hook's mark waits for it: only on the corruption path, inside the 2 s hook budget. */
+export const HOOK_MARK_WAIT_MS = 200;
 
 /**
- * Row 011-391: the one place a found fault is marked. The mark names `file`,
- * the store file its finder opened (`StoreMark.file`), so a start that moved
- * that file aside and put a fresh store at the path leaves the fresh one
- * unmarked: an open ignores and removes a mark that names another file
- * (review of cand/0.1.545, B1). It writes nothing without a file, nor while
- * another file is at the path, nor over a mark that names the file at the
- * path. Throws when the mark cannot be written.
+ * Row 011-391: the one place a found fault is marked (`markUnder`). The mark
+ * names `file`, the store file its finder opened (`StoreMark.file`), and is
+ * written under the lock a move-aside holds, after a check that `file` is
+ * still at the path and no mark names it (review of cand/0.1.545, B1). So a
+ * start that moved that file aside and put a fresh store at the path never
+ * finds the fresh one marked; and a mark that names another file, however
+ * written, is ignored and removed by the next checked open. Nothing is
+ * written without a file. Throws when the lock or the mark cannot be written.
  */
 export function markFault(
   commonDir: AbsolutePath,
   file: StoreFile | null,
   mark: Omit<StoreMark, "file">,
-): void {
-  if (file === null) return;
-  const at = storeFileOf(commonDir);
-  if (at === null || !sameFile(at, file)) return;
-  if (readStoreMark(commonDir) !== null) return;
-  markStore(commonDir, { ...mark, file: { dev: file.dev, ino: file.ino } });
+  waitMs: number,
+): MarkOutcome | null {
+  return file === null ? null : markUnder(commonDir, file, mark, waitMs);
 }
 
 /** The problem a hook's mark names when the store did not open. */
@@ -40,7 +44,7 @@ export function markHookFault(
   now: () => EpochMs,
 ): void {
   try {
-    markFault(commonDir, file, { at: now(), problem, found: "hook" });
+    markFault(commonDir, file, { at: now(), problem, found: "hook" }, HOOK_MARK_WAIT_MS);
   } catch {
     // Best effort: the store stays unmarked, and the hook silent.
   }
@@ -82,7 +86,9 @@ export function storeFaults(context: StoreFaultContext): (error: unknown) => boo
     seen = true;
     const mark: StoreMark = { at: context.now(), problem: String(error), found: "daemon" };
     try {
-      markFault(context.commonDir, context.storeFile, mark);
+      const outcome = markFault(context.commonDir, context.storeFile, mark, DAEMON_MARK_WAIT_MS);
+      if (outcome === "busy")
+        context.log("could not mark the store: the recovery lock stayed held");
     } catch (markError) {
       context.log(`could not mark the store: ${String(markError)}`);
     }

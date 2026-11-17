@@ -1,6 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
+import { rollback } from "./connection.js";
 import { storePaths } from "./paths.js";
 
 /**
@@ -44,6 +55,54 @@ export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
 /** The mark beside the store that names the file at its path now; `null` with none. */
 export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
   return currentMark(storePaths(commonDir).database);
+}
+
+/** The lock a move-aside holds (`recover` in `open.ts`); a mark is written under it too. */
+export const RECOVERY_LOCK = "store-recovery.sqlite";
+
+/**
+ * What `markUnder` did: wrote the mark; kept a mark that names the file
+ * already there; wrote nothing because another file is at the path (a start
+ * moved `file` aside); or wrote nothing because the lock stayed held.
+ */
+export type MarkOutcome = "marked" | "kept" | "replaced" | "busy";
+
+/**
+ * Row 011-391 (review of cand/0.1.545, B1): marks `file`, under the lock a
+ * move-aside holds (`RECOVERY_LOCK`, `BEGIN EXCLUSIVE`), waiting for it at
+ * most `waitMs`. Under the lock it checks that `file` is still the one at
+ * the path and that no mark names it, then writes the mark naming it: a
+ * move-aside never runs between the check and the write. The first mark is
+ * kept. Throws when the lock or the mark cannot be written.
+ */
+export function markUnder(
+  commonDir: AbsolutePath,
+  file: MarkedFile,
+  mark: Omit<StoreMark, "file">,
+  waitMs: number,
+): MarkOutcome {
+  const paths = storePaths(commonDir);
+  mkdirSync(paths.locksDir, { recursive: true });
+  const lock = new DatabaseSync(join(paths.locksDir, RECOVERY_LOCK));
+  try {
+    lock.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.round(waitMs))}`);
+    try {
+      lock.exec("BEGIN EXCLUSIVE");
+    } catch (error) {
+      if ([5, 6].includes(((error as { errcode?: number }).errcode ?? 0) & 0xff)) return "busy";
+      throw error;
+    }
+    const at = statSync(paths.database, { throwIfNoEntry: false });
+    if (at === undefined || at.dev !== file.dev || at.ino !== file.ino) return "replaced";
+    dropStaleMark(paths.database);
+    if (currentMark(paths.database) !== null) return "kept";
+    const named = { ...mark, file: { dev: file.dev, ino: file.ino } };
+    writeFileSync(markPath(paths.database), JSON.stringify(named), { flag: "wx" });
+    return "marked";
+  } finally {
+    rollback(lock);
+    lock.close();
+  }
 }
 
 export function markPath(database: string): string {

@@ -168,7 +168,6 @@ export function openContext(
     const parts = { write, sent, faulted, close };
     return { ...location, store, delivery, consumer, code, lint, ...prepared, ...parts };
   } catch (error) {
-    faulted(error);
     store.close();
     throw error;
   }
