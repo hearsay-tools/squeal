@@ -30,6 +30,11 @@ export function forgetCounts(store: Store, consumer: Consumer): void {
   writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
 }
 
+/** Whether `consumer` is owed the counts: it registered before the listing and no delivery carried them yet. */
+export function owesCounts(store: Store, consumer: Consumer): boolean {
+  return readSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer) === true;
+}
+
 /**
  * At a delivery: `Delta.countsOwed` when `consumer` is owed the counts and
  * `header` is listed, which pays them; nothing otherwise. Call inside a
@@ -40,9 +45,8 @@ export function payCounts(
   consumer: Consumer,
   header: StatusHeader,
 ): Pick<Delta, "countsOwed"> {
-  const key = countsOwedMetaKey(consumer.worktreeId);
-  if (owed(header) || readSlot(store, key, consumer) !== true) return {};
-  writeSlot(store, key, consumer, null);
+  if (owed(header) || !owesCounts(store, consumer)) return {};
+  writeSlot(store, countsOwedMetaKey(consumer.worktreeId), consumer, null);
   const root = store.worktrees.get(consumer.worktreeId)?.root;
   const lookupOnly = root !== undefined && readPolicy(root).baseline.onStart === "lookup-only";
   return { countsOwed: { lookupOnly } };
