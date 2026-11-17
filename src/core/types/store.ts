@@ -373,6 +373,7 @@ export const WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
   turn: { prefix: "turn:", owner: "delivery/turn" },
   edits: { prefix: "edits:", owner: "delivery/edits" },
+  editTimings: { prefix: "edit-timings:", owner: "scheduler/edit-timings" },
   harnessProcess: { prefix: "harness-process:", owner: "delivery/harness-process" },
   departed: { prefix: "departed:", owner: "delivery/expiry" },
   consumerVersion: { prefix: "consumer-version:", owner: "delivery/consumer-version" },
