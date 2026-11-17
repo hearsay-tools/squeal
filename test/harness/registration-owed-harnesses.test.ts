@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { owedRegistration } from "../../src/core/delivery/registration-owed.js";
 import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { bridgeDeps, register } from "../../src/harness/opencode/bridge.js";
-import { after } from "../../src/harness/opencode/bridge-turn.js";
+import { after as toolResult } from "../../src/harness/opencode/bridge-turn.js";
 import { startRun } from "../../src/harness/pi/run.js";
 import { startSession, toolBoundary } from "../../src/harness/pi/session.js";
 import { workerDeps } from "../../src/harness/pi/worker.js";
@@ -153,11 +153,13 @@ describe("OpenCode: a register killed during the daemon's start (row 005-98 C)",
     );
     await registered(r);
     r.daemon("alive");
-    const first = (await after({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text;
+    const first = (await toolResult({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text;
     expect(first).toMatch(FIRST_FAIL);
     expect(first).toContain("FAIL");
     expect(first).not.toContain(PRIMER_OPENING);
-    expect((await after({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text).toBeNull();
+    expect(
+      (await toolResult({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text,
+    ).toBeNull();
     h.release();
     await start;
   });
@@ -170,7 +172,7 @@ describe("OpenCode: a register killed during the daemon's start (row 005-98 C)",
       expect(answer.header).toContain("FAIL");
       if (taken) handOff.commit();
       else handOff.abandon();
-      const text = (await after({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text;
+      const text = (await toolResult({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text;
       if (taken) expect(text).toBeNull();
       else expect(text).toContain("FAIL");
     }
@@ -179,6 +181,8 @@ describe("OpenCode: a register killed during the daemon's start (row 005-98 C)",
   it("a register that completed leaves nothing owed", async () => {
     const r = failing();
     await register({ kind: "register", ...about(r) }, ocDeps());
-    expect((await after({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text).toBeNull();
+    expect(
+      (await toolResult({ kind: "after", ...about(r), tool: "bash" }, ocDeps())).text,
+    ).toBeNull();
   });
 });
