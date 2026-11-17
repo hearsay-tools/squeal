@@ -11,6 +11,7 @@ import {
   squealMessages,
 } from "../harness/pi/real-pi.js";
 import { type PiRequest, type PiRun, piUnavailable, textOf } from "../helpers/pi.js";
+import { awaitArmed, wakeTrace } from "../helpers/pi-wake-trace.js";
 import { fixtureInstall, type Install } from "./install.js";
 import { filesUnder, installedPackages, PiE2E, type PiE2EOptions } from "./pi-fixture.js";
 import { MATH, SLOW } from "./sources.js";
@@ -187,21 +188,38 @@ describe.skipIf(unavailable !== undefined)(
       await e2e.baseline();
       const known = new Set(e2e.sessions());
       let armed = false;
+      // Only this case loads the trace preload, which records and changes nothing Pi does.
+      const trace = wakeTrace();
+      ctx.onTestFinished(() => trace.cleanup());
       const run = await e2e.run(
         {
           mode: "rpc",
+          env: trace.env,
           // The run ends while its edit's slow re-run is pending; Pi starts the next run itself.
           prompts: [
             "work",
             {
               type: "idle",
               land: async () => {
-                // Armed: the wake holds the waiter lock of the session's consumer.
-                await until("the idle wake", 20_000, async () => {
-                  const session = e2e.sessions().find((id) => !known.has(id));
-                  if (session === undefined) return null;
-                  const state = waiterLockState(e2e.store.locksDir, e2e.consumer(session));
-                  return state === "held" ? state : null;
+                // Armed: the wake holds the waiter lock of the session's consumer. At 20 s it
+                // throws what it saw and what Pi's trace recorded (row 009-30).
+                await awaitArmed({
+                  headline: "timed out after 20000 ms waiting for the idle wake",
+                  boundMs: 20_000,
+                  pollMs: 150,
+                  probe: () => {
+                    const sessions = e2e.sessions();
+                    const session = sessions.find((id) => !known.has(id));
+                    return {
+                      consumers: sessions.map((id) => (known.has(id) ? `${id} (baseline)` : id)),
+                      lock:
+                        session === undefined
+                          ? "not read: no session registered after the baseline"
+                          : waiterLockState(e2e.store.locksDir, e2e.consumer(session)),
+                    };
+                  },
+                  trace,
+                  piCwd: e2e.project,
                 });
                 armed = true;
               },
