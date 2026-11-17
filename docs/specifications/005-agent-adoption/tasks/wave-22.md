@@ -19,3 +19,19 @@ Owns: `src/harness/pi/{session,run}.ts` and the Pi delivery path they call, thei
 Done when: a deterministic test that fails on main with the registration twice and passes with the fix; the kill cases of 0.1.541 still hold (`test/harness/registration-owed-harnesses.test.ts`); `test/e2e/pi.test.ts` run directly 5 times, each `timeout 900`, all passing; the helper test passes with offsets of -1, 0 and +1 ms forced.
 
 Final message: the interleaving, with file and line; what OpenCode does; check results.
+
+## W2: 005-108, a daemon that is still starting is not told as "no daemon is running"
+
+Use /worker. Shape: repair, cause first. Outcome: while a daemon the session start spawned is still starting, no hook tells the agent that no daemon runs or to run `squeal start`.
+
+Evidence (the human's screenshot, 2026-11-18, a new worktree of another repository on the released 0.1.542; its store is 4.9 GB and its daemon's start takes 13 to 83 s in `quick_check`, `research/session-start-cost.md` section 7). SessionStart, startup: "SQUEAL · registered at revision 0 / Revision 0: Squeal is still starting in this worktree and has no results yet. …" with the primer: correct. The first PostToolBatch, after two skill loads and one tool call: "SQUEAL · no daemon is validating at revision 0 / Revision 0: Squeal has no results in this worktree yet, and no daemon is running; `squeal start` starts one." The coordinator's reading, not verified: `registerFirst` told the daemon as starting from the hook's time; `DAEMON_START_GRACE_MS` is 10 s (`src/core/presence/heartbeat.ts:25`); the start outlasted it, so `ensureIfStale` found no fresh heartbeat, the daemon held its lock and did not answer, and the result was told as "unavailable".
+
+First, no code: reproduce it in a test with a daemon whose start is held longer than the grace (a held store open; do not sleep for real time where a clock can be injected), and name the path from `ensureIfStale` to that text. If the cause is another one, stop and report.
+
+Then: a daemon process that holds the worktree's lock and has not written its record yet is "starting", for as long as that process lives; the grace applies to a spawn whose process is gone or never took the lock. The message while it starts repeats nothing (the session heard "still starting" at its start); if the start outlasts a bound derived from the store's own start history or a plain multiple of the grace, one message says the daemon is still starting and since when, never `squeal start`. Say what Stop and `squeal status` print in that state, and make them agree. Row 011-391 removes the whole-store check from the start (candidate 0.1.545): do not depend on it; a slow start has other causes.
+
+Owns: `src/core/presence/{heartbeat,findings,events,lock-events}.ts`, `src/harness/shared/{ensure,deliver}.ts` (the liveness result only), the text for this state in `src/core/delivery/format.ts` or where it is made, their tests, the evals parsers and skill copies if a sentence changes. Leave alone: `src/core/daemon/**`, `src/core/store/**`, `src/harness/pi/**` (row 005-107, another worker).
+
+Done when: the reproducing test; tests for a spawn whose process died (told as now, after the grace), a daemon that holds the lock and never answers because it is stopped (SIGSTOP, lessons defect 22: told as now), and a slow start (starting, no `squeal start`); the texts before and after in your notes; the rules above.
+
+Final message: the cause with file and line; each state's text before and after; check results.
