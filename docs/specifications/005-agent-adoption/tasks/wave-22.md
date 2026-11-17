@@ -57,3 +57,17 @@ Rules: no version raise, no `pnpm run build`, no full suite, no push. Keep a not
 Owns: `src/harness/pi/**`, `src/harness/opencode/**`, their tests. Leave alone: `src/core/**`, `src/harness/shared/**` (ask first if the cause is there).
 
 Final message: per part, the change, its proof test, and what a frozen or dead daemon gives; check results with log paths.
+
+## Review brief: candidate 0.1.547
+
+Use /reviewer. Two rows in one candidate; the range is the candidate's commits over `origin/main` at its base. Give each row its own section and verdict line, then one PASS or FAIL for the candidate.
+
+**Row 005-108** (section W2 above; notes `tasks/005-108/notes.md` with every text before and after). A new worktree has no worktree row until its daemon registers; presence found the daemon's lock only through the row, so after the 10 s grace hooks and status said "no daemon is running; `squeal start` starts one", and each tool boundary started one more daemon (4 extra in the worker's reproduction). The fix reads the lock when the row is missing, starts no second daemon while a start is current, and says once, after 60 s, that a daemon is still starting. Attack: a spawn whose process died (told as before, after the grace); a daemon stopped with SIGSTOP during its start (the worker says it reads as a slow start: judge whether that is acceptable or a blocker); two sessions in one new worktree; a lock file left by a dead process; whether any path can now hide a daemon that really is gone; that the 60 s is not tuned to one host (it is a fixed bound: say whether a machine-derived one is needed); a hook's time when the row is missing (the lock read); Stop and `squeal status` agree with the hooks; every reader of the changed sentences in `test/`, `evals/lib` and the skill copies.
+
+**Row 005-106** (`tasks/wave-21.md` part 2; notes `tasks/005-106/notes.md` with the per-rule table and timings; source `research/consumer-view-design.md`). A registration seeds the view with the states that are not passing and keeps the store's birth mark; a check with no view entry that existed at the registration reads as the pass it was. The 001 D6 sentence is in this candidate. Attack: each of the 16 rules against its test; the equivalence test (real `planDelta`, 10,000 runs, seed 11): try other seeds and longer sequences yourself; a session registered before the upgrade; a store without birth marks, and one where a trigger is missing; a re-registration and a parked view (the own count of 005-100, the late state of 005-97); a retired check; the mixed-version case on record; the worker's departures (a Proxy-wrapped store reads as unmarked, so two idle tests keep the full copy; two row assertions in `delivery.test.ts` changed from `[B]` to `[]`): judge each.
+
+Both rows touch `src/core/delivery/delivery.ts`: check the merge kept both (005-108 the options plumbing, 005-106 `registerNow` and the plan's view).
+
+No full suite; affected files directly; e2e files that read a changed path one at a time, `timeout 900`. A check that needs a commit ID is read from CI. Findings file: `reviews/0.1.547.md`, committed. Write `~`, never a `/home/<user>/` path; the private-material check also rejects the company name and local project folder names.
+
+Note, 2026-11-18: this candidate was reviewed as 0.1.547 (`reviews/0.1.547.md`, `reviews/0.1.547-r2.md`) and landed as 0.1.548, rebuilt on the 0.1.547 another coordinator landed first; the row files are identical to the reviewed commit.

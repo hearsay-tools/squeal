@@ -56,6 +56,7 @@ var WORKTREE_META_ROWS = {
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
+  viewMark: { prefix: "view-mark:", owner: "delivery/view-mark" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -6433,6 +6434,7 @@ function uptimeTicks() {
 // src/core/presence/heartbeat.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
 var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
 function heartbeatGraceMs(intervalMs) {
   return HEARTBEAT_GRACE_INTERVALS * intervalMs;
 }
@@ -6616,7 +6618,7 @@ function parsed(text2) {
 }
 
 // src/core/presence/facts.ts
-function readPresenceFacts(store, worktreeId, now, row) {
+function readPresenceFacts(store, worktreeId, now, row, commonDir) {
   const worktree = once(() => row === void 0 ? store.worktrees.get(worktreeId) : row);
   const self = once(() => daemonIncarnation(worktree()?.daemon ?? null));
   const exitNote = once(() => {
@@ -6626,7 +6628,8 @@ function readPresenceFacts(store, worktreeId, now, row) {
   });
   const lockFile = once(() => {
     const w = worktree();
-    return w === null ? null : lockFileFor(w.commonDir, w.id);
+    if (w !== null) return lockFileFor(w.commonDir, w.id);
+    return commonDir === void 0 ? null : lockFileFor(commonDir, worktreeId);
   });
   return {
     worktreeId,
@@ -6748,8 +6751,8 @@ function stoppingOf(facts, record, shutDown, heartbeat, marks, at) {
     overdue: at >= boundAt
   };
 }
-function startOfMarks(facts, record, down, stopping, marks) {
-  if (!down || facts.row() === null) return null;
+function startOfMarks(record, down, stopping, marks) {
+  if (!down) return null;
   const start = marks();
   if (start === null) return null;
   const mark = start.kind === "locked" ? "start" : "spawn";
@@ -6780,8 +6783,8 @@ function lateOf2(facts, record, heartbeat, stopping, at) {
 }
 
 // src/core/presence/decide.ts
-function readPresence(store, worktreeId, now, row) {
-  return decidePresence(readPresenceFacts(store, worktreeId, now, row), now);
+function readPresence(store, worktreeId, now, row, commonDir) {
+  return decidePresence(readPresenceFacts(store, worktreeId, now, row, commonDir), now);
 }
 function decidePresence(facts, at) {
   const record = once(() => facts.row()?.daemon ?? null);
@@ -6796,7 +6799,7 @@ function decidePresence(facts, at) {
   const stop = once(() => heldStop(facts, heartbeat()));
   const stopped = once(() => !startCurrent() && stop() !== null);
   const stopping = once(() => stoppingOf(facts, record(), shutDown, heartbeat(), marks, at));
-  const start = once(() => startOfMarks(facts, record(), down(), stopping, marks));
+  const start = once(() => startOfMarks(record(), down(), stopping, marks));
   const died = once(() => {
     if (!down() || record() === null || shutDown() || marks() !== null) return null;
     return facts.lockFree() ? { runs: facts.inFlight() } : null;
@@ -6866,7 +6869,8 @@ var STATES = /* @__PURE__ */ new Set([
 var NOTES = /* @__PURE__ */ new Set([
   "last one died",
   "handoff ended short",
-  "change feed late"
+  "change feed late",
+  "start slow"
 ]);
 function readTold2(value) {
   if (value === "down") return "down";
@@ -6896,19 +6900,21 @@ function alreadyTold(told, now) {
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat)));
+  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
 }
 function headerView(p, told) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
   const rested = withRest(p, withStop(p, p.heartbeat));
   const live = withLateHeartbeat(p, withRecordFacts(p, rested));
-  return told === void 0 ? live : withToldStart(live, told, p.at);
+  return withSlowStart(told === void 0 ? live : withToldStart(live, told, p.at), p.at);
 }
 function newsChange(p, told) {
-  const live = newsView(p, told);
+  const live = withSlowStart(newsView(p, told), p.at);
   let forgetRest2 = false;
   if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== void 0) return { change: null, forgetRest: forgetRest2 };
+    if (live.startingSince !== void 0 && live.startSlow !== true) {
+      return { change: null, forgetRest: forgetRest2 };
+    }
     if (p.rest?.kind === "quiet") return { change: null, forgetRest: forgetRest2 };
     forgetRest2 = p.rest?.kind === "overdue";
   }
@@ -6916,11 +6922,18 @@ function newsChange(p, told) {
 }
 function withToldStart(live, told, at) {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
+  if (live.startMark === "start") return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;
   const { heartbeatLate: _late, ...starting } = withoutStop(live);
   return { ...starting, startingSince };
+}
+function withSlowStart(live, at) {
+  if (live.state !== "down" || live.startMark !== "start" || live.startingSince === void 0) {
+    return live;
+  }
+  return at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
 }
 function withoutStop(live) {
   const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
@@ -6934,7 +6947,9 @@ function toldOf(live) {
   const died = live.died === void 0 ? [] : ["last one died"];
   if (live.stopping !== void 0) return { state: "stopping", notes: [] };
   if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
-  if (live.startingSince !== void 0) return { state: "starting", notes: died };
+  if (live.startingSince !== void 0) {
+    return { state: "starting", notes: live.startSlow === true ? [...died, "start slow"] : died };
+  }
   if (live.resting === true) return { state: "resting", notes: [] };
   if (live.heartbeatLate !== void 0) return { state: "heartbeat late", notes: [] };
   return { state: "gone", notes: died };
@@ -6962,7 +6977,6 @@ function withRest(p, live) {
   return spawnedAt2 === void 0 ? { ...live, resting: true } : { ...live, startingSince: spawnedAt2 };
 }
 function withRecordFacts(p, live) {
-  if (p.facts.row() === null) return live;
   if (p.record === null) {
     const stopping2 = p.stopping;
     if (stopping2 !== null) return { ...live, stopping: stopping2 };
@@ -6991,7 +7005,6 @@ function newsView(p, told) {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
   const stopped = live.startingSince === void 0 ? withStop(p, live) : live;
-  if (p.facts.row() === null) return stopped;
   if (p.record === null) {
     const stopping2 = p.stopping;
     if (stopping2 !== null) return { ...stopped, stopping: stopping2 };
@@ -8205,7 +8218,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.547";
+  if (true) return "0.1.548";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8404,6 +8417,28 @@ function seedView(store, consumer, rows, toldAt) {
     toldAt,
     JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint]))
   );
+}
+function checksBornAfter(store, worktreeId, mark) {
+  const rows = connectionOf(store).all(
+    `SELECT ${CHECK_COLUMNS} FROM state_born b JOIN checks c ON c.id = b.check_id
+     WHERE b.worktree_id = ? AND b.id > ?`,
+    worktreeId,
+    mark
+  );
+  return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
+}
+function untoldBornAfter(store, consumer, mark) {
+  return connectionOf(store).all(
+    `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
+       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
+         SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+    consumer.worktreeId,
+    mark,
+    consumer.sessionId,
+    consumer.agentId
+  ).map(toKnownState);
 }
 
 // src/core/types/store-records.ts
@@ -10650,6 +10685,11 @@ function restrictPlan(plan, keep) {
     removals: plan.removals.filter((c) => ids.has(checkIdentity(c)))
   };
 }
+function viewThroughMark(view, states, bornBefore, toldAt) {
+  const told = new Set(view.map((v) => checkIdentity(v.check)));
+  const passes = states.filter((s) => !told.has(checkIdentity(s.check)) && bornBefore(s)).map((s) => ({ check: s.check, outcome: "pass", fingerprint: null, toldAt }));
+  return passes.length === 0 ? view : [...view, ...passes];
+}
 function toView2(state, toldAt) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
 }
@@ -12076,9 +12116,9 @@ function forgetRest(store, worktreeId) {
 }
 
 // src/core/delivery/liveness.ts
-function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
+function readLiveHeader(store, worktreeId, now, states, since = null, keys, commonDir) {
   const worktree = store.worktrees.get(worktreeId);
-  const presence = readPresence(store, worktreeId, now, worktree);
+  const presence = readPresence(store, worktreeId, now, worktree, commonDir);
   const runs = openRuns(store, worktree, presence.heartbeat);
   const open2 = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
   const header = readHeader(store, worktreeId, states, keys, void 0, open2);
@@ -12124,8 +12164,8 @@ function shortLate(live) {
 function toldAtRegistration(live) {
   return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
 }
-function livenessChange(store, consumer, at) {
-  const presence = readPresence(store, consumer.worktreeId, at);
+function livenessChange(store, consumer, at, commonDir) {
+  const presence = readPresence(store, consumer.worktreeId, at, void 0, commonDir);
   const { change: change2, forgetRest: overdue } = newsChange(presence, toldLiveness(store, consumer));
   if (overdue) forgetRest(store, consumer.worktreeId);
   return change2 !== null && shortLate(change2) ? null : change2;
@@ -12195,6 +12235,78 @@ function toldKinds(stored4) {
 }
 function tellGroupTiers(store, consumer, groups2) {
   writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
+}
+
+// src/core/store/state-born.ts
+var TRIGGERS2 = {
+  squeal_born_known_states_insert: `AFTER INSERT ON known_states BEGIN
+    INSERT INTO state_born (worktree_id, check_id) SELECT NEW.worktree_id, NEW.check_id
+      WHERE NOT EXISTS (SELECT 1 FROM state_born
+        WHERE worktree_id = NEW.worktree_id AND check_id = NEW.check_id)
+      ON CONFLICT DO NOTHING;
+  END`,
+  squeal_born_known_states_delete: `AFTER DELETE ON known_states BEGIN
+    DELETE FROM state_born WHERE worktree_id = OLD.worktree_id AND check_id = OLD.check_id;
+  END`
+};
+function connectionIn(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+function armed(conn) {
+  const names3 = new Set(
+    conn.all(
+      `SELECT name FROM sqlite_master WHERE (type = 'table' AND name = 'state_born')
+           OR (type = 'trigger' AND name LIKE 'squeal_born_%')`
+    ).map((row) => String(row.name))
+  );
+  return names3.has("state_born") && Object.keys(TRIGGERS2).every((name2) => names3.has(name2));
+}
+function currentBirthMark(store) {
+  const conn = connectionIn(store);
+  if (conn === null || !armed(conn)) return null;
+  const row = conn.get("SELECT seq FROM sqlite_sequence WHERE name = 'state_born'");
+  return row === null ? 0 : num(row, "seq");
+}
+
+// src/core/delivery/view-mark.ts
+function viewMarkMetaKey(worktreeId) {
+  return worktreeMetaKey("viewMark", worktreeId);
+}
+function viewMarkOf(store, consumer) {
+  const value = readSlot(store, viewMarkMetaKey(consumer.worktreeId), consumer);
+  if (!isRecord(value) || typeof value.mark !== "number" || typeof value.at !== "number") {
+    return null;
+  }
+  return { mark: value.mark, at: value.at };
+}
+function registrationSeed(store, seed2) {
+  const mark = currentBirthMark(store);
+  if (mark === null) return { rows: seed2, mark: null };
+  return { rows: seed2.filter((row) => row.outcome !== "pass"), mark };
+}
+function recordViewMark(store, consumer, mark) {
+  const key = viewMarkMetaKey(consumer.worktreeId);
+  if (mark === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, mark);
+}
+function trustedMark(store, consumer) {
+  const mark = viewMarkOf(store, consumer);
+  return mark === null || currentBirthMark(store) === null ? null : mark;
+}
+function markedView(store, consumer, view, states) {
+  const mark = trustedMark(store, consumer);
+  if (mark === null) return view;
+  const after = checksBornAfter(store, consumer.worktreeId, mark.mark);
+  return viewThroughMark(view, states, (s) => !after.has(checkIdentity(s.check)), mark.at);
+}
+function untoldStates(store, consumer) {
+  const mark = trustedMark(store, consumer);
+  if (mark === null) return store.knownStates.untold(consumer);
+  return untoldBornAfter(store, consumer, mark.mark);
 }
 
 // src/core/delivery/turn.ts
@@ -12288,7 +12400,7 @@ function owedScope(store, consumer) {
   }
   const files2 = state.testFiles.map(fromTestFileId);
   const owed2 = files2.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files2);
-  const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
+  const untold = state.newTestFiles ? untoldStates(store, consumer) : [];
   const seen = new Set(owed2.map((s) => checkIdentity(s.check)));
   return {
     states: [...owed2, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
@@ -12540,7 +12652,8 @@ function createDelivery(store, options) {
   function plan(consumer, states, toldAt, keep, view = store.views.list(consumer)) {
     const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
-      view,
+      // Row 005-106: a state with no entry born before the registration's mark was a told pass.
+      view: markedView(store, consumer, view, states),
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
@@ -12579,7 +12692,7 @@ function createDelivery(store, options) {
       const states = scope?.states ?? store.knownStates.list(consumer.worktreeId);
       const selection = select(states, scope?.keys);
       if (selection === "silent") return null;
-      const quiet = !liveness || livenessChange(store, consumer, now()) === null && holdsChange(store, consumer, now()) === null;
+      const quiet = !liveness || livenessChange(store, consumer, now(), options.commonDir) === null && holdsChange(store, consumer, now()) === null;
       const empty = isEmpty(plan(consumer, states, now(), selection.only, scope?.view));
       if (quiet && empty && selection.trim === null) return null;
     }
@@ -12600,7 +12713,7 @@ function createDelivery(store, options) {
       const { live: changed, held: holds2 } = toldAtStop(
         { stop, transitions: delta2.entries.length > 0 },
         {
-          live: liveness ? livenessChange(store, consumer, at) : null,
+          live: liveness ? livenessChange(store, consumer, at, options.commonDir) : null,
           held: liveness ? holdsChange(store, consumer, at) : null
         }
       );
@@ -12622,7 +12735,15 @@ function createDelivery(store, options) {
       const news = tests2 || code !== null || lint2 !== null || commit !== void 0;
       const live = once(
         () => withTold(
-          readLiveHeader(store, consumer.worktreeId, at, states, toldRevision(store, consumer)),
+          readLiveHeader(
+            store,
+            consumer.worktreeId,
+            at,
+            states,
+            toldRevision(store, consumer),
+            void 0,
+            options.commonDir
+          ),
           toldLiveness(store, consumer),
           at
         )
@@ -12782,9 +12903,19 @@ function createDelivery(store, options) {
       markLeaving(store, consumer, null);
       const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
       if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      seedView(store, consumer, seed2, at);
+      const { rows, mark } = registrationSeed(store, seed2);
+      seedView(store, consumer, rows, at);
+      recordViewMark(store, consumer, mark === null ? null : { mark, at });
       const told = startingSince === void 0 ? null : { startingSince };
-      const read4 = readLiveHeader(store, consumer.worktreeId, at, states);
+      const read4 = readLiveHeader(
+        store,
+        consumer.worktreeId,
+        at,
+        states,
+        null,
+        void 0,
+        options.commonDir
+      );
       const live = told === null ? read4 : withTold(read4, told, at);
       const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
       const header = withDependencies(
@@ -12818,7 +12949,8 @@ function createDelivery(store, options) {
 function tellAtRegistration(store, consumer, header, told, at) {
   const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
   const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-  tellLiveness(store, consumer, starting ? told : daemon);
+  const slow = header.daemon?.state === "down" && header.daemon.startSlow === true;
+  tellLiveness(store, consumer, starting && !slow ? told : daemon);
   tellRevision(store, consumer, header.revision);
   tellSlowTier(store, consumer, header.slowTier);
   tellGroupTiers(store, consumer, header.groupTiers);
@@ -15250,7 +15382,8 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = statusView(readPresence(store, worktreeId, now, worktree));
+  const rowless = worktree === null ? resolveCommonDir(root) ?? void 0 : void 0;
+  const daemon = statusView(readPresence(store, worktreeId, now, worktree, rowless));
   const runs = openRuns(store, worktree, daemon);
   const held = openFiles(runs);
   const holds2 = readHolds(store, worktree, daemon, now);
@@ -15505,7 +15638,9 @@ function openContext(input, location2, options = {}) {
       lint: lint2,
       ...prepare2 === void 0 ? {} : { prepare: prepare2 },
       // Row 011-312: a registration records the commit `HEAD` names here.
-      root: location2.root
+      root: location2.root,
+      // Row 005-108: a worktree with no row yet reads its daemon's start by this lock.
+      commonDir: location2.commonDir
     });
     const close = () => store.close();
     const prepared = prepare2 === void 0 ? {} : { prepared: prepare2.reports };
@@ -16192,6 +16327,9 @@ function noResultsText(command) {
 function unlistedLine(header, command) {
   if (header.testFilesListed !== false) return null;
   const { daemon } = header;
+  if (daemon?.state === "down" && daemon.startSlow === true) {
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+  }
   if (noneRunning(daemon)) {
     return `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
   }
@@ -16308,6 +16446,9 @@ function livenessSentence(daemon, revision, command) {
   if (stop === "until-edit")
     return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   const died = diedText(daemon);
+  if (daemon.startSlow === true) {
+    return ` ${slowStartText(daemon)}; results are as of revision ${revision}.${died}`;
+  }
   if (daemon.startingSince !== void 0) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
   }
@@ -16319,6 +16460,10 @@ function livenessSentence(daemon, revision, command) {
   }
   const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
   return ` ${since}; results are as of revision ${revision}.${died}`;
+}
+function slowStartText(daemon) {
+  const since = daemon.startingSince === void 0 ? "" : ` since ${new Date(daemon.startingSince).toISOString()}`;
+  return `A daemon has been starting${since}`;
 }
 function diedText(daemon) {
   return daemon.died === void 0 ? "" : ` The last daemon ${deathText(daemon.died)}. ${DEATH_CAUSE}`;
@@ -16619,6 +16764,9 @@ function livenessTitle(liveness, header, command) {
   }
   if (liveness?.state === "alive") {
     return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
+  }
+  if (liveness?.state === "down" && liveness.startSlow === true) {
+    return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
   }
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }

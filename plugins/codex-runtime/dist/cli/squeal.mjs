@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.547";
+  if (true) return "0.1.548";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -239,6 +239,7 @@ var init_store = __esm({
       holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
       leaving: { prefix: "leaving:", owner: "delivery/leaving" },
       registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
+      viewMark: { prefix: "view-mark:", owner: "delivery/view-mark" },
       notes: { prefix: "notes.", owner: "notes" },
       refined: { prefix: "refined.", owner: "scheduler/refined" },
       awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },
@@ -730,12 +731,13 @@ function daemonLiveness(record2, now, lastHeartbeatAt = null) {
 function worktreeLiveness(worktree, now) {
   return daemonLiveness(worktree?.daemon ?? null, now, worktree?.lastHeartbeatAt ?? null);
 }
-var HEARTBEAT_GRACE_INTERVALS, DAEMON_START_GRACE_MS;
+var HEARTBEAT_GRACE_INTERVALS, DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS;
 var init_heartbeat = __esm({
   "src/core/presence/heartbeat.ts"() {
     "use strict";
     HEARTBEAT_GRACE_INTERVALS = 2;
     DAEMON_START_GRACE_MS = 1e4;
+    DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
   }
 });
 
@@ -31495,6 +31497,106 @@ var init_events = __esm({
   }
 });
 
+// src/core/delivery/delta.ts
+function beforeFailing(history2, state) {
+  const last = history2.at(-1);
+  if (state.outcome !== "fail" || last?.to !== "fail" || !sameFingerprint(last.toFingerprint, state.fingerprint)) {
+    return null;
+  }
+  const at2 = history2.findLastIndex((t) => t.kind !== "fail-changed");
+  const entered = history2[at2];
+  if (entered?.from == null) return null;
+  const passed = entered.from === "unknown" ? passBeforeUnknown(history2, at2) : null;
+  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
+}
+function passBeforeUnknown(history2, end) {
+  for (let i3 = end - 1; i3 >= 0 && history2[i3]?.to === "unknown"; i3--) {
+    const from = history2[i3]?.from;
+    if (from === "pass") return { outcome: "pass", fingerprint: null };
+    if (from !== "unknown") return null;
+  }
+  return null;
+}
+function isBaselineEntry(e) {
+  return e.kind !== "fail-retired" && e.baseline === true;
+}
+function toView2(state, toldAt) {
+  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
+}
+function originNames(state, input) {
+  const origin = state.origin;
+  if (origin?.kind === "inherited") {
+    const originRoot = input.rootOf(origin.worktreeId);
+    return originRoot === null ? {} : { originRoot };
+  }
+  if (origin?.kind !== "imported") return {};
+  const originSource = input.sourceOf?.(origin.importId) ?? null;
+  return originSource === null ? {} : { originSource };
+}
+function planDelta(input) {
+  const told3 = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
+  const entries3 = [];
+  const writes = [];
+  for (const state of input.states) {
+    const id = checkIdentity(state.check);
+    const before4 = told3.get(id) ?? null;
+    told3.delete(id);
+    const prior = (before4 === null || before4.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
+    const from = before4 === null || prior?.outcome === "pass" ? prior : before4;
+    const kind = transitionKind(from, state);
+    if (kind === "to-unknown" && from?.outcome === "pass" && input.ownEdit?.(state) === true) {
+      continue;
+    }
+    if (before4 === null || kind !== null) writes.push(toView2(state, input.toldAt));
+    if (kind === null) continue;
+    const baseline2 = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
+    entries3.push({
+      check: state.check,
+      kind,
+      from: from?.outcome ?? null,
+      to: state.outcome,
+      validity: state.validity,
+      observedAt: state.observedAt ?? input.revision,
+      origin: state.origin ?? { kind: "own" },
+      ...originNames(state, input),
+      summary: state.summary,
+      location: state.location,
+      ...baseline2 ? { baseline: baseline2 } : {}
+    });
+  }
+  for (const view of told3.values()) {
+    if (view.outcome !== "fail") continue;
+    entries3.push({
+      check: view.check,
+      kind: "fail-retired",
+      from: "fail",
+      to: null,
+      fingerprint: view.fingerprint,
+      observedAt: input.revision
+    });
+  }
+  const sorted3 = entries3.map((entry4, i3) => ({ entry: entry4, i: i3 })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry4 }) => entry4);
+  return { entries: sorted3, writes, removals: [...told3.values()].map((v) => v.check) };
+}
+var RANK, rank;
+var init_delta = __esm({
+  "src/core/delivery/delta.ts"() {
+    "use strict";
+    init_derive();
+    init_fingerprint();
+    init_transitions();
+    RANK = {
+      "pass-to-fail": 0,
+      "first-seen-fail": 0,
+      "fail-changed": 1,
+      "to-unknown": 3,
+      "fail-to-pass": 4,
+      "fail-retired": 5
+    };
+    rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
+  }
+});
+
 // src/core/shared/git.ts
 import { spawn as spawn4 } from "node:child_process";
 function gitCall(cwd, args2, call2) {
@@ -53958,6 +54060,68 @@ var init_adapter2 = __esm({
   }
 });
 
+// src/core/store/state-born.ts
+function connectionIn2(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+function armed2(conn) {
+  const names8 = new Set(
+    conn.all(
+      `SELECT name FROM sqlite_master WHERE (type = 'table' AND name = 'state_born')
+           OR (type = 'trigger' AND name LIKE 'squeal_born_%')`
+    ).map((row2) => String(row2.name))
+  );
+  return names8.has("state_born") && Object.keys(TRIGGERS3).every((name3) => names8.has(name3));
+}
+function ensureBirthMarks(store) {
+  const conn = connectionIn2(store);
+  if (conn === null || armed2(conn)) return;
+  conn.transaction(() => {
+    conn.db.exec(TABLE);
+    for (const [name3, body2] of Object.entries(TRIGGERS3)) {
+      conn.db.exec(`CREATE TRIGGER IF NOT EXISTS ${name3} ${body2}`);
+    }
+    conn.run(
+      `DELETE FROM state_born WHERE NOT EXISTS (SELECT 1 FROM known_states s
+         WHERE s.worktree_id = state_born.worktree_id AND s.check_id = state_born.check_id)`
+    );
+    conn.run(
+      `INSERT INTO state_born (worktree_id, check_id)
+         SELECT worktree_id, check_id FROM known_states WHERE true
+       ON CONFLICT DO NOTHING`
+    );
+  });
+}
+var TABLE, TRIGGERS3;
+var init_state_born = __esm({
+  "src/core/store/state-born.ts"() {
+    "use strict";
+    init_codec();
+    init_store2();
+    TABLE = `CREATE TABLE IF NOT EXISTS state_born (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  worktree_id TEXT NOT NULL,
+  check_id INTEGER NOT NULL,
+  UNIQUE (worktree_id, check_id)
+) STRICT`;
+    TRIGGERS3 = {
+      squeal_born_known_states_insert: `AFTER INSERT ON known_states BEGIN
+    INSERT INTO state_born (worktree_id, check_id) SELECT NEW.worktree_id, NEW.check_id
+      WHERE NOT EXISTS (SELECT 1 FROM state_born
+        WHERE worktree_id = NEW.worktree_id AND check_id = NEW.check_id)
+      ON CONFLICT DO NOTHING;
+  END`,
+      squeal_born_known_states_delete: `AFTER DELETE ON known_states BEGIN
+    DELETE FROM state_born WHERE worktree_id = OLD.worktree_id AND check_id = OLD.check_id;
+  END`
+    };
+  }
+});
+
 // src/core/commit/tree.ts
 async function committedBlobs(root, commit) {
   const out2 = await runGit(root, lsTreeArgs(commit), { timeoutMs: LS_TREE_TIMEOUT_MS });
@@ -54374,6 +54538,31 @@ var init_leaving = __esm({
   }
 });
 
+// src/core/store/view-seed.ts
+var init_view_seed = __esm({
+  "src/core/store/view-seed.ts"() {
+    "use strict";
+    init_derive();
+    init_codec();
+    init_states();
+    init_store2();
+  }
+});
+
+// src/core/delivery/view-mark.ts
+var init_view_mark = __esm({
+  "src/core/delivery/view-mark.ts"() {
+    "use strict";
+    init_json();
+    init_derive();
+    init_state_born();
+    init_view_seed();
+    init_store();
+    init_delta();
+    init_slots();
+  }
+});
+
 // src/core/delivery/turn.ts
 function turnMetaKey(worktreeId) {
   return worktreeMetaKey("turn", worktreeId);
@@ -54421,6 +54610,7 @@ var init_turn = __esm({
     init_store();
     init_leaving();
     init_slots();
+    init_view_mark();
     START_IDLE = { turn: "idle", testFiles: [], newTestFiles: false };
     IN_TURN = { turn: "in-turn" };
   }
@@ -76718,7 +76908,7 @@ function writtenAt(path, now) {
 
 // src/core/presence/facts.ts
 init_stored();
-function readPresenceFacts(store, worktreeId, now, row2) {
+function readPresenceFacts(store, worktreeId, now, row2, commonDir) {
   const worktree = once(() => row2 === void 0 ? store.worktrees.get(worktreeId) : row2);
   const self = once(() => daemonIncarnation(worktree()?.daemon ?? null));
   const exitNote = once(() => {
@@ -76728,7 +76918,8 @@ function readPresenceFacts(store, worktreeId, now, row2) {
   });
   const lockFile2 = once(() => {
     const w2 = worktree();
-    return w2 === null ? null : lockFileFor(w2.commonDir, w2.id);
+    if (w2 !== null) return lockFileFor(w2.commonDir, w2.id);
+    return commonDir === void 0 ? null : lockFileFor(commonDir, worktreeId);
   });
   return {
     worktreeId,
@@ -76859,8 +77050,8 @@ function stoppingOf(facts, record2, shutDown, heartbeat, marks, at2) {
     overdue: at2 >= boundAt
   };
 }
-function startOfMarks(facts, record2, down, stopping, marks) {
-  if (!down || facts.row() === null) return null;
+function startOfMarks(record2, down, stopping, marks) {
+  if (!down) return null;
   const start2 = marks();
   if (start2 === null) return null;
   const mark = start2.kind === "locked" ? "start" : "spawn";
@@ -76892,8 +77083,8 @@ function lateOf2(facts, record2, heartbeat, stopping, at2) {
 
 // src/core/presence/decide.ts
 init_heartbeat();
-function readPresence(store, worktreeId, now, row2) {
-  return decidePresence(readPresenceFacts(store, worktreeId, now, row2), now);
+function readPresence(store, worktreeId, now, row2, commonDir) {
+  return decidePresence(readPresenceFacts(store, worktreeId, now, row2, commonDir), now);
 }
 function decidePresence(facts, at2) {
   const record2 = once(() => facts.row()?.daemon ?? null);
@@ -76908,7 +77099,7 @@ function decidePresence(facts, at2) {
   const stop2 = once(() => heldStop(facts, heartbeat()));
   const stopped = once(() => !startCurrent() && stop2() !== null);
   const stopping = once(() => stoppingOf(facts, record2(), shutDown, heartbeat(), marks, at2));
-  const start2 = once(() => startOfMarks(facts, record2(), down(), stopping, marks));
+  const start2 = once(() => startOfMarks(record2(), down(), stopping, marks));
   const died = once(() => {
     if (!down() || record2() === null || shutDown() || marks() !== null) return null;
     return facts.lockFree() ? { runs: facts.inFlight() } : null;
@@ -76974,7 +77165,13 @@ init_json();
 // src/core/presence/views.ts
 function statusView(p) {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat)));
+  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
+}
+function withSlowStart(live, at2) {
+  if (live.state !== "down" || live.startMark !== "start" || live.startingSince === void 0) {
+    return live;
+  }
+  return at2 - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
 }
 function stopOf(live) {
   if (live?.state !== "down" || live.stopped !== true || live.startingSince !== void 0) {
@@ -76994,7 +77191,6 @@ function withStop(p, live) {
   return { ...live, stopped: true, ...p.stop?.untilStart === true ? { untilStart: true } : {} };
 }
 function withRecordFacts(p, live) {
-  if (p.facts.row() === null) return live;
   if (p.record === null) {
     const stopping2 = p.stopping;
     if (stopping2 !== null) return { ...live, stopping: stopping2 };
@@ -81754,7 +81950,8 @@ function snapshot2(store, worktreeId, root, now, hostLoadNow = hostLoad, shell =
   if (revision === null) notes.push("no revision recorded for this worktree yet");
   const recovered = recoveryNote(store.meta.get(META_STORE_RECOVERED));
   if (recovered !== null) notes.push(recovered);
-  const daemon = statusView(readPresence(store, worktreeId, now, worktree));
+  const rowless = worktree === null ? resolveCommonDir(root) ?? void 0 : void 0;
+  const daemon = statusView(readPresence(store, worktreeId, now, worktree, rowless));
   const runs = openRuns(store, worktree, daemon);
   const held3 = openFiles(runs);
   const holds4 = readHolds(store, worktree, daemon, now);
@@ -88499,101 +88696,8 @@ function splitNews(window2, entries3) {
   return { own, other: entries3.length - own };
 }
 
-// src/core/delivery/delta.ts
-init_derive();
-init_fingerprint();
-init_transitions();
-function beforeFailing(history2, state) {
-  const last = history2.at(-1);
-  if (state.outcome !== "fail" || last?.to !== "fail" || !sameFingerprint(last.toFingerprint, state.fingerprint)) {
-    return null;
-  }
-  const at2 = history2.findLastIndex((t) => t.kind !== "fail-changed");
-  const entered = history2[at2];
-  if (entered?.from == null) return null;
-  const passed = entered.from === "unknown" ? passBeforeUnknown(history2, at2) : null;
-  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
-}
-function passBeforeUnknown(history2, end) {
-  for (let i3 = end - 1; i3 >= 0 && history2[i3]?.to === "unknown"; i3--) {
-    const from = history2[i3]?.from;
-    if (from === "pass") return { outcome: "pass", fingerprint: null };
-    if (from !== "unknown") return null;
-  }
-  return null;
-}
-var RANK = {
-  "pass-to-fail": 0,
-  "first-seen-fail": 0,
-  "fail-changed": 1,
-  "to-unknown": 3,
-  "fail-to-pass": 4,
-  "fail-retired": 5
-};
-var rank = (e) => isBaselineEntry(e) ? 2 : RANK[e.kind];
-function isBaselineEntry(e) {
-  return e.kind !== "fail-retired" && e.baseline === true;
-}
-function toView2(state, toldAt) {
-  return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
-}
-function originNames(state, input) {
-  const origin = state.origin;
-  if (origin?.kind === "inherited") {
-    const originRoot = input.rootOf(origin.worktreeId);
-    return originRoot === null ? {} : { originRoot };
-  }
-  if (origin?.kind !== "imported") return {};
-  const originSource = input.sourceOf?.(origin.importId) ?? null;
-  return originSource === null ? {} : { originSource };
-}
-function planDelta(input) {
-  const told3 = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
-  const entries3 = [];
-  const writes = [];
-  for (const state of input.states) {
-    const id = checkIdentity(state.check);
-    const before4 = told3.get(id) ?? null;
-    told3.delete(id);
-    const prior = (before4 === null || before4.outcome === "unknown") && state.outcome === "fail" && input.history !== void 0 ? beforeFailing(input.history(state.check), state) : null;
-    const from = before4 === null || prior?.outcome === "pass" ? prior : before4;
-    const kind = transitionKind(from, state);
-    if (kind === "to-unknown" && from?.outcome === "pass" && input.ownEdit?.(state) === true) {
-      continue;
-    }
-    if (before4 === null || kind !== null) writes.push(toView2(state, input.toldAt));
-    if (kind === null) continue;
-    const baseline2 = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
-    entries3.push({
-      check: state.check,
-      kind,
-      from: from?.outcome ?? null,
-      to: state.outcome,
-      validity: state.validity,
-      observedAt: state.observedAt ?? input.revision,
-      origin: state.origin ?? { kind: "own" },
-      ...originNames(state, input),
-      summary: state.summary,
-      location: state.location,
-      ...baseline2 ? { baseline: baseline2 } : {}
-    });
-  }
-  for (const view of told3.values()) {
-    if (view.outcome !== "fail") continue;
-    entries3.push({
-      check: view.check,
-      kind: "fail-retired",
-      from: "fail",
-      to: null,
-      fingerprint: view.fingerprint,
-      observedAt: input.revision
-    });
-  }
-  const sorted3 = entries3.map((entry4, i3) => ({ entry: entry4, i: i3 })).sort((a, b) => rank(a.entry) - rank(b.entry) || a.i - b.i).map(({ entry: entry4 }) => entry4);
-  return { entries: sorted3, writes, removals: [...told3.values()].map((v) => v.check) };
-}
-
 // src/cli/status-wait-held.ts
+init_delta();
 init_reverse_index();
 init_derive();
 init_header();
@@ -97893,64 +97997,7 @@ init_busy();
 init_connection();
 init_open();
 init_paths();
-
-// src/core/store/state-born.ts
-init_codec();
-init_store2();
-var TABLE = `CREATE TABLE IF NOT EXISTS state_born (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  worktree_id TEXT NOT NULL,
-  check_id INTEGER NOT NULL,
-  UNIQUE (worktree_id, check_id)
-) STRICT`;
-var TRIGGERS3 = {
-  squeal_born_known_states_insert: `AFTER INSERT ON known_states BEGIN
-    INSERT INTO state_born (worktree_id, check_id) SELECT NEW.worktree_id, NEW.check_id
-      WHERE NOT EXISTS (SELECT 1 FROM state_born
-        WHERE worktree_id = NEW.worktree_id AND check_id = NEW.check_id)
-      ON CONFLICT DO NOTHING;
-  END`,
-  squeal_born_known_states_delete: `AFTER DELETE ON known_states BEGIN
-    DELETE FROM state_born WHERE worktree_id = OLD.worktree_id AND check_id = OLD.check_id;
-  END`
-};
-function connectionIn2(store) {
-  try {
-    return connectionOf(store);
-  } catch {
-    return null;
-  }
-}
-function armed2(conn) {
-  const names8 = new Set(
-    conn.all(
-      `SELECT name FROM sqlite_master WHERE (type = 'table' AND name = 'state_born')
-           OR (type = 'trigger' AND name LIKE 'squeal_born_%')`
-    ).map((row2) => String(row2.name))
-  );
-  return names8.has("state_born") && Object.keys(TRIGGERS3).every((name3) => names8.has(name3));
-}
-function ensureBirthMarks(store) {
-  const conn = connectionIn2(store);
-  if (conn === null || armed2(conn)) return;
-  conn.transaction(() => {
-    conn.db.exec(TABLE);
-    for (const [name3, body2] of Object.entries(TRIGGERS3)) {
-      conn.db.exec(`CREATE TRIGGER IF NOT EXISTS ${name3} ${body2}`);
-    }
-    conn.run(
-      `DELETE FROM state_born WHERE NOT EXISTS (SELECT 1 FROM known_states s
-         WHERE s.worktree_id = state_born.worktree_id AND s.check_id = state_born.check_id)`
-    );
-    conn.run(
-      `INSERT INTO state_born (worktree_id, check_id)
-         SELECT worktree_id, check_id FROM known_states WHERE true
-       ON CONFLICT DO NOTHING`
-    );
-  });
-}
-
-// src/core/daemon/daemon.ts
+init_state_born();
 init_daemon();
 init_policy();
 init_runner();

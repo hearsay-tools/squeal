@@ -759,6 +759,8 @@ function codexRuntimeVersion(plugins, marketplace) {
 
 // src/core/presence/heartbeat.ts
 var HEARTBEAT_GRACE_INTERVALS = 2;
+var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
 function heartbeatGraceMs(intervalMs) {
   return HEARTBEAT_GRACE_INTERVALS * intervalMs;
 }
@@ -811,6 +813,7 @@ var WORKTREE_META_ROWS = {
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
+  viewMark: { prefix: "view-mark:", owner: "delivery/view-mark" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },

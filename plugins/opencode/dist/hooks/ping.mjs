@@ -1471,6 +1471,10 @@ function uptimeTicks() {
   }
 }
 
+// src/core/presence/heartbeat.ts
+var DAEMON_START_GRACE_MS = 1e4;
+var DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+
 // src/core/presence/stored.ts
 var SUCCESSOR_LOCK_WAIT_MS = 12e4;
 var HANDOFF_BOUND_MS = SUCCESSOR_LOCK_WAIT_MS + 1e4;
