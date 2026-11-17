@@ -240,6 +240,17 @@ export const rowReads: Readonly<Record<string, Readonly<Record<ViewName, string>
     shortHandoff: "short",
     waitStopping: "exit notes",
   },
+  "a heartbeat late by a minute or more, its lock held": {
+    status: "row .starting .spawned stop exit notes probe",
+    header: `${HEADER_DOWN} .starting .spawned stop exit notes probe`,
+    toldHeader: `${HEADER_DOWN} .starting .spawned stop exit notes probe`,
+    news: "told row .starting .spawned stop exit notes probe",
+    editLine: "row exit notes .starting .spawned probe",
+    hookStop: "stop",
+    hookHandoff: "short claim exit notes",
+    shortHandoff: "short",
+    waitStopping: "exit notes",
+  },
   "a death: a stale record, no shutdown, its lock free": {
     status: "row .starting .spawned stop exit notes probe in-flight",
     header: `${HEADER_DOWN} .starting .spawned stop exit notes probe in-flight`,

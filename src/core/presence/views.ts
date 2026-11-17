@@ -2,7 +2,11 @@ import type { EpochMs } from "../types/common.js";
 import type { DaemonLiveness } from "../types/status.js";
 import { decidePresence, type MarkedStart, type Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
-import { DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS } from "./heartbeat.js";
+import {
+  DAEMON_START_GRACE_MS,
+  DAEMON_START_SLOW_MS,
+  LATE_HEARTBEAT_NEWS_MS,
+} from "./heartbeat.js";
 import type { PresenceNote } from "./state.js";
 import { alreadyTold, type ToldLiveness, type ToldPresence } from "./told.js";
 
@@ -59,7 +63,9 @@ export function headerView(p: Presence, told?: ToldLiveness): DaemonLiveness {
  * nor its first heartbeat, nor one that rests (`Presence.rest`); a rest
  * whose restart is overdue is forgotten (`forgetRest`), so this and every
  * later boundary report the daemon down. Row 011-140: a daemon that ended
- * its handoff short is told once, whatever was told before.
+ * its handoff short is told once, whatever was told before. Row 005-91 (a),
+ * moved here by row 005-118: a late heartbeat younger than
+ * `LATE_HEARTBEAT_NEWS_MS` is no news.
  */
 export function newsChange(
   p: Presence,
@@ -77,7 +83,26 @@ export function newsChange(
     if (p.rest?.kind === "quiet" && live.startStopped !== true) return { change: null, forgetRest };
     forgetRest = p.rest?.kind === "overdue";
   }
+  // Row 005-91 (a): a short late heartbeat is no news, so its recovery is none either.
+  if (shortLate(live)) return { change: null, forgetRest };
   return { change: alreadyTold(told, toldOf(live)) ? null : live, forgetRest };
+}
+
+/** A late heartbeat younger than `LATE_HEARTBEAT_NEWS_MS`. Its header still says it. */
+function shortLate(live: DaemonLiveness): boolean {
+  return (
+    live.state === "down" &&
+    live.heartbeatLate !== undefined &&
+    live.heartbeatLate.ageMs < LATE_HEARTBEAT_NEWS_MS
+  );
+}
+
+/**
+ * What a registration tells of `live` (`toldOf`). Row 005-91 (a): a short late heartbeat is
+ * told as a validating daemon, so neither it nor its recovery is news after it.
+ */
+export function toldAtRegistration(live: DaemonLiveness): ToldPresence {
+  return shortLate(live) ? { state: "validating", notes: [] } : toldOf(live);
 }
 
 /**

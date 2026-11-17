@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
-import { LATE_HEARTBEAT_NEWS_MS, livenessMetaKey } from "../../src/core/delivery/liveness.js";
+import { livenessMetaKey } from "../../src/core/delivery/liveness.js";
+import { LATE_HEARTBEAT_NEWS_MS } from "../../src/core/presence/heartbeat.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
 import type { StateSink } from "../../src/core/types/state.js";

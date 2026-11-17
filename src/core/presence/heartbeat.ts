@@ -33,6 +33,15 @@ export const DAEMON_START_GRACE_MS = 10_000;
  */
 export const DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
 
+/**
+ * Row 005-91 (a): how old a late heartbeat must be before it is news by itself. In 4 days of
+ * transcripts a late heartbeat was 14 s old at the median and under 30 s in 63 of 68, and
+ * "validating again" followed 31 s later at the median: a busy daemon, not one an agent acts on.
+ * A fixed time, not a factor of the daemon's heartbeat interval: that interval is 5 s on every
+ * machine (only tests set another), so 12 intervals would read the same and say less.
+ */
+export const LATE_HEARTBEAT_NEWS_MS = 60_000;
+
 /** How late a heartbeat of interval `intervalMs` may be and still count (`HEARTBEAT_GRACE_INTERVALS`). */
 export function heartbeatGraceMs(intervalMs: number): number {
   return HEARTBEAT_GRACE_INTERVALS * intervalMs;

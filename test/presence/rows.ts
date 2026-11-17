@@ -139,6 +139,8 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, exit: "other", lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
+    // Row 005-91 (a), in presence since row 005-118: under `LATE_HEARTBEAT_NEWS_MS`, no news.
+    news: null,
   },
   {
     name: "a shutdown whose lock is free",
@@ -176,6 +178,8 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, spawnMark: -1_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
+    // Row 005-91 (a), in presence since row 005-118: under `LATE_HEARTBEAT_NEWS_MS`, no news.
+    news: null,
   },
   {
     name: "a rest, which status says as no daemon",
@@ -214,6 +218,16 @@ export const rows: readonly Row[] = [
     stored: { heartbeat: -12_000, lock: "held" },
     state: "heartbeat late",
     status: { ...stale, heartbeatLate: late },
+    // Row 005-91 (a), in presence since row 005-118: under `LATE_HEARTBEAT_NEWS_MS`, no news.
+    news: null,
+  },
+  {
+    // Row 005-91 (a), in presence since row 005-118: a late heartbeat of `LATE_HEARTBEAT_NEWS_MS`
+    // or more is news.
+    name: "a heartbeat late by a minute or more, its lock held",
+    stored: { heartbeat: -60_000, lock: "held" },
+    state: "heartbeat late",
+    status: { state: "down", since: at(-60_000), heartbeatLate: { ageMs: 60_000 } },
   },
   {
     name: "a death: a stale record, no shutdown, its lock free",
