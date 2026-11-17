@@ -70,6 +70,7 @@ import {
   snapshotPath,
 } from "./project.js";
 import { createSquealReporter, RunCollector } from "./reporter.js";
+import { resolutionInputs } from "./resolution-inputs.js";
 import { compareRefs, enumeratedChecks } from "./results.js";
 import { abandon, buildReport, execute, unattributedErrors, writeRunLog } from "./run.js";
 import { invalidateStale, SourceStamps } from "./sources.js";
@@ -544,9 +545,12 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
       // Spec 001 D3: the snapshot path whether or not the file exists, and
       // every resolution candidate of an unresolved import, so the key
       // changes when one appears, incrementally and at bootstrap (review B1).
+      // Row 023-14: the manifests its `#` and workspace imports read (`resolution-inputs.ts`).
+      const parse = this.#node.parseAst;
       const files = new Set([
         ...graph.files,
         ...missingCandidates(graph, resolveExtensions(project)),
+        ...(await resolutionInputs(project, graph, this.paths, parse)),
       ]);
       files.add(snapshotPath(project, abs));
       const paths = [...files]
@@ -561,7 +565,7 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
         this.#sources.readHash(project.vite.environments.ssr, file);
       const imports = fileImports(graph, this.paths, read, this.#imports);
       // Row 023-13: the folders its modules' globs list, which the core keys it with.
-      const globs = await moduleGlobs(project, graph, this.paths, this.#node.parseAst);
+      const globs = await moduleGlobs(project, graph, this.paths, parse);
       return { testFile, paths, packages, imports, ...(globs.length > 0 ? { globs } : {}) };
     });
   }
