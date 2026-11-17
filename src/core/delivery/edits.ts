@@ -98,39 +98,49 @@ export interface EditNotes {
   readonly own?: OwnEdits;
   /** The test files (`testFileId`) the edits affect, the ones `sawEdit` counts. */
   readonly rekeyed: ReadonlySet<string>;
-  /** Records what was said: 001-224 once, and once none is owed, edits count from this revision. */
-  readonly tell: () => void;
+  /**
+   * Records what was said: 001-224 once; and once none is owed, edits count from this revision,
+   * only when the delivery's header `shown` the own count (review 0.1.534 B1: a Stop's full
+   * header and the owed full counts hide it, so they leave the count for later news).
+   */
+  readonly tell: (shown: boolean) => void;
 }
 
 /**
  * The notes on `consumer`'s edits after its edit state's revision. `null` with nothing to say,
  * before any edit, or for a consumer registered before these notes (no edit state).
  * `delivering` says the delivery has other news; without it, and with 001-224 said, only the
- * edit state is read.
+ * edit state is read. `countOnly` is a peek's (review 0.1.534 B2): its news header counts the
+ * consumer's own files as any other, but it says no first-edit line and spends none.
  */
 export function editNotes(
   store: Store,
   consumer: Consumer,
   states: readonly KnownState[],
   delivering: boolean,
+  countOnly = false,
 ): EditNotes | null {
   const state = readState(store, consumer);
   // Once 001-224 was said, only a delivery with other news carries a note.
-  if (state === null || (state.said && !delivering)) return null;
+  if (state === null || ((state.said || countOnly) && !delivering)) return null;
   const own = readOwn(store, consumer, state.since, states);
   // An edit that queued nothing (one made while awaiting an install) has no results to come.
   if (own === null || own.files === 0) return null;
-  const sawEdit = state.said ? undefined : { queued: own.files };
+  const sawEdit = state.said || countOnly ? undefined : { queued: own.files };
   const moved = own.owed === 0;
   return {
     ...(sawEdit === undefined ? {} : { sawEdit }),
     own: ownCount(own),
     rekeyed: own.rekeyed,
-    tell: () => {
+    tell: (shown) => {
+      const move = moved && shown;
       // Written only when it changes: once per said line, never per quiet delivery.
-      if (!moved && sawEdit === undefined) return;
-      writeState(store, consumer, { since: moved ? own.revision : state.since, said: true });
-      if (moved) prune(store, consumer.worktreeId);
+      if (!move && sawEdit === undefined) return;
+      writeState(store, consumer, {
+        since: move ? own.revision : state.since,
+        said: state.said || sawEdit !== undefined,
+      });
+      if (move) prune(store, consumer.worktreeId);
     },
   };
 }

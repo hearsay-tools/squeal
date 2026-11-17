@@ -51,7 +51,7 @@ import { commitNews, tellCommit } from "./commit-told.js";
 import { recordVersion } from "./consumer-version.js";
 import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan, toView } from "./delta.js";
-import { carriesEditResult, editNotes, startEdits } from "./edits.js";
+import { carriesEditResult, type EditNotes, editNotes, startEdits } from "./edits.js";
 import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import { holdFree } from "./held-connection.js";
@@ -320,7 +320,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // and since row 019-38 (lessons Round 2 P8) at Stop too: once, with its hold or as news.
       const commit = liveness ? commitNews(store, consumer) : undefined;
       const news = tests || code !== null || lint !== null || commit !== undefined;
-      const notes = liveness || (idle && news) ? editNotes(store, consumer, states, news) : null;
+      const notes = ownNotes(store, consumer, states, { liveness, idle, news });
       const delivered = news || (liveness && !stop && notes?.sawEdit !== undefined);
       if (heardFrom || delivered) store.consumers.touch(consumer, at, delivered);
       if (!delivered) {
@@ -339,7 +339,6 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
         live,
         states,
       );
-      notes?.tell();
       // Task 001-407: a change delivery shows the slow-tier line when it changed; Stop always does.
       const slowChanged = slowTierChanged(store, consumer, header.slowTier);
       if (stop || slowChanged) tellSlowTier(store, consumer, header.slowTier);
@@ -349,6 +348,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       if (commit !== undefined) tellCommit(store, consumer, commit);
       // Row 011-205: once, the counts a consumer that registered before the listing is owed.
       const countsOwed = payCounts(store, consumer, header);
+      notes?.tell(ownShown(stop, countsOwed, header));
       const sawEdit =
         notes === null ||
         carriesEditResult(
@@ -572,4 +572,31 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       };
     });
   }
+}
+
+/**
+ * The notes on the consumer's own edits for a delivery. Review 0.1.534 B2: a peek (neither a
+ * boundary's nor the waiter's delivery) counts the consumer's own files in its news header too,
+ * and says no first-edit line.
+ */
+function ownNotes(
+  store: Store,
+  consumer: Consumer,
+  states: readonly KnownState[],
+  { liveness, idle, news }: { liveness: boolean; idle: boolean; news: boolean },
+): EditNotes | null {
+  if (!liveness && !news) return null;
+  return editNotes(store, consumer, states, news, !liveness && !idle);
+}
+
+/**
+ * Review 0.1.534 B1: the own count is acknowledged only by a header that shows it: not Stop's
+ * full form, not the owed full counts, not the unlisted form.
+ */
+function ownShown(
+  stop: boolean,
+  counts: Pick<Delta, "countsOwed">,
+  header: Delta["header"],
+): boolean {
+  return !stop && counts.countsOwed === undefined && header.testFilesListed !== false;
 }

@@ -386,3 +386,62 @@ describe("the scheduler's re-key record, as delivery prunes it", () => {
     expect(readRekeyed(store, WT).size).toBe(0);
   });
 });
+
+describe("the own count is acknowledged only where it is shown (review 0.1.534 B1)", () => {
+  it("a Stop's full header leaves the count for the next news, which says it once", async () => {
+    await delivery.register(C1);
+    editA();
+    expect(await text()).toMatch(NOT_RUN);
+    finishA();
+    otherNews("b2");
+    // Stop renders the full header (`src/harness/shared/stop.ts`), which shows no own count.
+    const stopped = await delivery.onToolBoundary(C1, { stop: true });
+    expect(stopped).not.toBeNull();
+    if (stopped === null) return;
+    expect(formatDelta(stopped, "squeal", undefined, "full")).not.toMatch(ALL_RAN);
+    expect(readRekeyed(store, WT).size).toBe(1);
+    otherNews("b3");
+    expect(await text()).toMatch(ALL_RAN);
+    expect(readRekeyed(store, WT).size).toBe(0);
+    otherNews("b4");
+    expect(await text()).not.toMatch(ALL_RAN);
+  });
+});
+
+describe("a peek's news header counts the consumer's own files (review 0.1.534 B2)", () => {
+  const peeked = async () => {
+    const delta = await delivery.peek(C1, { kinds: ["pass-to-fail", "first-seen-fail"] });
+    return delta === null ? null : formatDelta(delta);
+  };
+
+  it("says a file of an earlier edit has not run, with no first-edit line", async () => {
+    await delivery.register(C1);
+    editA();
+    otherNews("b2");
+    const said = await peeked();
+    expect(said).toMatch(NOT_RUN);
+    expect(said).not.toMatch(SAW);
+    // The first-edit line is not spent by a peek: the next boundary still says it.
+    otherNews("b3");
+    expect(await text()).toMatch(SAW);
+  });
+
+  it("says all have run once the file finished, and resets the count once", async () => {
+    await delivery.register(C1);
+    editA();
+    await text();
+    finishA();
+    otherNews("b2");
+    expect(await peeked()).toMatch(ALL_RAN);
+    otherNews("b3");
+    expect(await text()).not.toMatch(ALL_RAN);
+  });
+
+  it("gives no count to a consumer with no edit", async () => {
+    await delivery.register(C1);
+    otherNews("b2");
+    const said = await peeked();
+    expect(said).not.toMatch(ALL_RAN);
+    expect(said).not.toMatch(NOT_RUN);
+  });
+});
