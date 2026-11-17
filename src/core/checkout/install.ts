@@ -21,6 +21,11 @@ export interface InstallOptions {
   readonly timeoutMs: number;
   /** The install's environment; `process.env` by default. */
   readonly env?: NodeJS.ProcessEnv;
+  /**
+   * Told the install's process group, its leader's pid, once it starts: the
+   * caller records it, so a sweep stops it when the caller dies (row 023-16).
+   */
+  readonly started?: (group: number) => void;
 }
 
 export type InstallResult =
@@ -55,6 +60,7 @@ export async function installCheckout(
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    if (child.pid !== undefined) options.started?.(child.pid);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;

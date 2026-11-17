@@ -103,11 +103,25 @@ describe("the fast path (row 023-16)", () => {
     );
   });
 
-  it("6: refuses an added or deleted twin of an input module", () => {
-    const diff = diffOf(["src/a.tsx"], { addedOrDeleted: new Set(["src/a.tsx"]) });
-    expect(check(FILES, FILES, diff)).toBe(
-      "src/a.tsx was added or deleted beside an input module of the same name",
-    );
+  it("6: refuses an added or deleted resolution candidate of an input module (review wave-5 B1)", () => {
+    const moved = (path: string, inputs = INPUTS) =>
+      check(FILES, FILES, diffOf([path], { addedOrDeleted: new Set([path]) }), [], inputs);
+    const reason = (path: string) =>
+      `${path} was added or deleted where an input module's import may resolve`;
+    // An extension twin.
+    expect(moved("src/a.tsx")).toBe(reason("src/a.tsx"));
+    // A folder index or a folder's manifest beside a file input.
+    expect(moved("src/a/index.ts")).toBe(reason("src/a/index.ts"));
+    expect(moved("src/a/package.json")).toBe(reason("src/a/package.json"));
+    // A file beside a folder index input, the review's case: `src/a.ts` deleted, `../src/a` now `src/a/index.ts`.
+    const index = { path: "test/a.test.ts", paths: ["test/a.test.ts", "src/a/index.ts"] };
+    const { "src/a.ts": _, ...rest } = FILES;
+    const here = { ...rest, "src/a/index.ts": "i1" };
+    const diff = diffOf(["src/a.ts"], { addedOrDeleted: new Set(["src/a.ts"]) });
+    expect(check({ ...here, "src/a.ts": "a1" }, here, diff, [], index)).toBe(reason("src/a.ts"));
+    // A file resolution never reaches, and a module of another name, keep the key.
+    expect(moved("src/a.md")).toBeNull();
+    expect(moved("src/c.ts")).toBeNull();
   });
 
   it("7, 8: refuses a manifest's resolution change or a tsconfig change on the inputs' path, not elsewhere", () => {
