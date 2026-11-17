@@ -19,9 +19,10 @@ export type PiRequest =
   | ({ readonly kind: "shutdown" } & PiSession)
   /**
    * A tool boundary (D3 `turn_end`): the undelivered delta as text, or `null`.
-   * `edited` when a tool of the batch may have changed files.
+   * `edited` when a tool of the batch may have changed files; `primed` when the run's system
+   * prompt has the primer, so a registration here leaves it out (review 0.1.556).
    */
-  | ({ readonly kind: "boundary"; readonly edited: boolean } & PiSession)
+  | ({ readonly kind: "boundary"; readonly edited: boolean; readonly primed?: true } & PiSession)
   /** `before_agent_start` (D3): the primer and the run's news. */
   | ({ readonly kind: "run" } & PiSession)
   /**

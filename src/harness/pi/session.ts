@@ -86,9 +86,11 @@ export async function shutdownSession(session: PiSession, deps: HookDeps): Promi
 /**
  * A tool boundary: the consumer's delta as text, registering one that is not
  * (shared `deliver`); `edited` when a call of the batch may have changed files.
+ * Review 0.1.556: a registration here says the primer unless `session.primed`, the run's
+ * system prompt has it; a store that came after the run's start gave that run none.
  */
 export async function toolBoundary(
-  session: PiSession,
+  session: PiSession & { readonly primed?: true },
   deps: PiDeps,
   edited = true,
 ): Promise<string | null> {
@@ -96,6 +98,10 @@ export async function toolBoundary(
   if (location === null) return null;
   // Review 0.1.546 B1: a registration this worker handed is not owed again.
   return withContext(consumerInput(session), location, deps, async (context) =>
-    deliver(await entered(context, deps), deps, edited),
+    deliver(
+      await entered(context, deps),
+      { ...deps, registrationPrimer: session.primed !== true },
+      edited,
+    ),
   );
 }

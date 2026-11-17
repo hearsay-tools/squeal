@@ -102,6 +102,30 @@ describe("turn_end", () => {
   });
 });
 
+describe("turn_end after a run with or without the primer (review 0.1.556)", () => {
+  it("says the run's system prompt has the primer only when the run set it", async () => {
+    const { pi, worker } = await started({
+      sequences: {
+        run: [
+          { primer: null, news: null },
+          { primer: "Squeal runs", news: null },
+        ],
+      },
+    });
+    await prompt(pi).result;
+    await pi.fire("turn_end", toolResults("bash"), ctx);
+    expect(worker.seen.at(-1)).toEqual({
+      kind: "boundary",
+      edited: true,
+      sessionId: SESSION,
+      cwd: "/repo",
+    });
+    await prompt(pi).result;
+    await pi.fire("turn_end", toolResults("bash"), ctx);
+    expect(worker.seen.at(-1)).toMatchObject({ kind: "boundary", primed: true });
+  });
+});
+
 describe("tool_call", () => {
   it("blocks a writer with the worker's reason", async () => {
     const { pi, worker } = await started({ answers: { toolCall: "SQUEAL · denied" } });

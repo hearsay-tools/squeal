@@ -49,7 +49,8 @@ export function bridgeDeps(module: URL, host: OcHost): HookDeps {
     env: process.env,
     cli,
     command: opencodeCommand(cli),
-    // Row 005-117: the primer is the system prompt's (D3), in the answers' own `primer` field.
+    // Row 005-117: the primer is the system prompt's (D3): every answer that registers carries it
+    // in its own `primer` field when the plugin has none (`hooks.ts`), for the next request.
     registrationPrimer: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid }),
   };

@@ -35,9 +35,10 @@ export interface HookDeps {
    */
   readonly command?: string;
   /**
-   * Row 005-117: whether this harness's registration text carries the primer. Default `true`
-   * (Claude Code, Codex); `false` where the primer goes in the system prompt (Pi's run start,
-   * OpenCode's `primer` answers), so it is not said twice.
+   * Row 005-117: whether a registration's text carries the primer. Default `true` (Claude Code,
+   * Codex). `false` only where the session's system prompt has the primer: Pi's session and run
+   * starts and a tool boundary of a run whose start set it (review 0.1.556), and OpenCode, whose
+   * plugin takes the primer with every registration's answer for its system prompt.
    */
   readonly registrationPrimer?: boolean;
   /**

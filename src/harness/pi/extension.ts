@@ -73,7 +73,8 @@ type About<K extends PiRequest["kind"]> = Omit<Extract<PiRequest, { kind: K }>, 
  *   not: Squeal has neither continued nor ended it, and the idle wake is
  *   cancelled. It sets the primer section, the last one the worker gave
  *   when this call gives none, and returns the run's news as its message.
- * - `turn_end` after tool calls delivers the delta as one entry; the final
+ * - `turn_end` after tool calls delivers the delta as one entry, and says
+ *   whether the run's system prompt has the primer (review 0.1.556); the final
  *   `turn_end`, with no tool calls, delivers nothing (the settle speaks).
  * - `tool_call` blocks an `edit` or `write` over an undelivered regression,
  *   and a `bash` test command under 005 D8, with the worker's reason.
@@ -100,6 +101,8 @@ export function squealExtension(
     let continued = false;
     let ended = false;
     let lastPrimer: string | null = null;
+    // Review 0.1.556: whether this run's system prompt has the primer (set at its start).
+    let primed = false;
     let waiting: PendingWait | null = null;
 
     /** Asks the worker about `ctx`'s session; `null` after shutdown, before a start, or on a miss. */
@@ -175,6 +178,7 @@ export function squealExtension(
 
     pi.on("before_agent_start", async (event, ctx) => {
       startRun();
+      primed = false;
       const answer = await ask(ctx, { kind: "run" }, EVENT_DEADLINE_MS);
       try {
         lastPrimer = answer?.primer ?? lastPrimer;
@@ -183,6 +187,7 @@ export function squealExtension(
             0,
             PRIMER_SECTION_CAP_CHARS,
           );
+          primed = true;
         }
       } catch {
         // A frozen options object: the run goes without the primer.
@@ -194,7 +199,13 @@ export function squealExtension(
       const tools = event.toolResults.map((result) => result.toolName);
       if (tools.length === 0) return undefined;
       const edited = tools.some((name) => !READ_ONLY_TOOLS.has(name));
-      const text = await ask(ctx, { kind: "boundary", edited }, EVENT_DEADLINE_MS);
+      // A consumer that registers here hears the primer unless the run's system prompt has it.
+      const request: About<"boundary"> = {
+        kind: "boundary",
+        edited,
+        ...(primed ? { primed: true as const } : {}),
+      };
+      const text = await ask(ctx, request, EVENT_DEADLINE_MS);
       return text === null ? undefined : { entries: [entry(text)] };
     });
 

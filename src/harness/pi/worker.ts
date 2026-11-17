@@ -31,7 +31,8 @@ export function workerDeps(module: URL): HookDeps {
     env: process.env,
     cli,
     command: piCommand(cli),
-    // Row 005-117: the primer is in each run's system prompt (D3 `before_agent_start`).
+    // Row 005-117: the primer is in each run's system prompt (D3 `before_agent_start`); a tool
+    // boundary of a run with none says it (`toolBoundary`, review 0.1.556).
     registrationPrimer: false,
     harnessProcess: () => findHarnessProcess({ ppid: process.pid }),
   };
