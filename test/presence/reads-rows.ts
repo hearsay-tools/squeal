@@ -3,7 +3,7 @@ import { HEADER_ALIVE, HEADER_DOWN, HEADER_NO_ROW, type ViewName } from "./trace
 /*
  * Row 011-293, review 0.1.403-r2 B2: the reads each view makes for each row of
  * `rows.ts`, in order (`trace.ts` names them). Each list is what the old code at
- * 4204b3d47 read for the same stored facts, less the repeats and unused reads
+ * 43a16f75c read for the same stored facts, less the repeats and unused reads
  * `tasks/011-293/notes.md` section R2 names. A read added, dropped or moved fails
  * `reads.test.ts`.
  */

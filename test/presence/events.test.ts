@@ -34,7 +34,7 @@ import { fakeCommonDir, open, worktree } from "../store/helpers.js";
  * literals below were read from the old writers (`daemon/start-mark.ts`,
  * `delivery/liveness.ts`, `delivery/stopped.ts`, `delivery/handoff.ts`,
  * `status/feed-late.ts` and the inline writes of `daemon/daemon.ts` and
- * `daemon/lifecycle.ts` at b9ef6a7e3): this file ran green against them
+ * `daemon/lifecycle.ts` at dad77eec3): this file ran green against them
  * before they moved. A daemon of the previous release reads these bytes.
  */
 

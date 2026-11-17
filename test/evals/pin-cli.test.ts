@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { pathFirst, squealBin } from "../../evals/lib/index.mjs";
 import { MissingPinCli, pinSqueal, retainCodexRuntime } from "../../evals/lib/prepare.mjs";
 
-// Row 006-100: since e34c9bc1f (0.1.368) the Codex plugin is a fixed adapter with a frozen seed,
+// Row 006-100: since 4fa5c3c0c (0.1.368) the Codex plugin is a fixed adapter with a frozen seed,
 // and the commit's runtime is plugins/codex-runtime. The atomic run 20261031T221020Z-ec45fb on
 // 0.1.387 still ran plugins/codex/dist/cli/squeal.mjs: ERR_MODULE_NOT_FOUND at the trust step,
 // warm-up and end status, and 0 of 100 graded Codex cells showed a daemon.
@@ -51,7 +51,7 @@ function runtimeTree(dir: string, version: string, word: string) {
   );
 }
 
-/** A pin before e34c9bc1f: each plugin carries its own CLI. */
+/** A pin before 4fa5c3c0c: each plugin carries its own CLI. */
 function oldPin() {
   const pin = join(temp(), "pin");
   write(join(pin, "plugins/claude-code", CLI), says("pinned claude-code"));
@@ -60,7 +60,7 @@ function oldPin() {
   return pin;
 }
 
-/** A pin from e34c9bc1f on: a fixed adapter (hooks and seed) and the commit's runtime beside it. */
+/** A pin from 4fa5c3c0c on: a fixed adapter (hooks and seed) and the commit's runtime beside it. */
 function newPin({ runtime = "0.1.387" }: { runtime?: string | null } = {}) {
   const pin = join(temp(), "pin");
   write(join(pin, "plugins/claude-code", CLI), says("pinned claude-code"));

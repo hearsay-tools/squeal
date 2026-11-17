@@ -43,7 +43,7 @@ import { stepDownKit } from "./step-down-helpers.js";
 const suite = daemonSuite();
 const { HOOKS, hasCommit, releasedCli, start, exitWithin, sockets } = stepDownKit(suite);
 /** The last release before the step-down request, and before a stop cancels a tier. */
-const PRE_CANCEL = "8654424";
+const PRE_CANCEL = "a23fb89";
 const hasPreCancel = hasCommit(PRE_CANCEL) && process.platform === "linux";
 
 /** A test file whose tier runs `ms`; `started` appears when it starts. */

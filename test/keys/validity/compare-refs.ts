@@ -11,7 +11,7 @@ import { failures, reportedChanges, wordingChanges } from "./verdict.js";
 
 /*
  * A one-off comparison of two refs, for a verdict on a past window (task
- * 011-37 section 4: the 12->13 cases at 2639208a and 87d7ced6) or on a
+ * 011-37 section 4: the 12->13 cases at 3433ae62 and 325022b0) or on a
  * change before it is a release (013-02's barrier cases at 17 and 18):
  *
  *   pnpm exec tsx test/keys/validity/compare-refs.ts <baseline-ref> <candidate-ref> [kind...]

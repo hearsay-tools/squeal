@@ -33,7 +33,7 @@ import {
 const fixture = e2eSuite();
 
 /** The reviewed candidate of 0.1.393 (board, row 010-34). */
-const V0_1_393 = "24a8a63b6";
+const V0_1_393 = "a753102e4";
 
 const ALL = [...UNIT_FILES, ...E2E_FILES].length;
 /** Every check of the fixture: 5 tests and a file-level check per test file. */

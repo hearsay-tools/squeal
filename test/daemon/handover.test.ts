@@ -32,8 +32,8 @@ const {
   exitWithin,
 } = stepDownKit(suite);
 /** Releases 0.1.31 (before the step-down request) and 0.1.32 (before this row). */
-const R31 = "8654424";
-const R32 = "dbeb862";
+const R31 = "a23fb89";
+const R32 = "2a31f7c";
 const hasReleases = hasCommit(R31) && hasCommit(R32) && process.platform === "linux";
 
 /** Runs released Claude Code hook bundle `name` of `dist` for `sessionId`, as hooks.json does. */

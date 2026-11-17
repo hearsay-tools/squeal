@@ -28,7 +28,7 @@ import { at, type Stored, scratch } from "./fixture.js";
  * probed none. One log holds, in order, each presence meta key read, each
  * read of a mark file beside the lock, and each lock probe. Where the old
  * reader read more, the row says what it read; the old reads are from the
- * review's probe and the code at 4204b3d47.
+ * review's probe and the code at 43a16f75c.
  */
 
 const log = vi.hoisted(() => ({ events: [] as string[], on: false }));

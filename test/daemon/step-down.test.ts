@@ -49,7 +49,7 @@ const {
   exitWithin,
 } = stepDownKit(suite);
 /** The last release before the step-down request: its daemon answers it "unknown request type". */
-const PRE_STEP_DOWN = "8654424";
+const PRE_STEP_DOWN = "a23fb89";
 const hasPreStepDown = hasCommit(PRE_STEP_DOWN);
 /** Under a loaded host: Vitest's cancel forces its workers after 1 s, the shutdown follows (as `stop-cancel`). */
 const STEP_DOWN_WITHIN_MS = 15_000;

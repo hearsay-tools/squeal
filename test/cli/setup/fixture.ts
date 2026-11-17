@@ -32,12 +32,12 @@ export function scratch(prefix: string): string {
 
 export const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
-/** The gate line of this repository's `CLAUDE.md` before `97144d9`. */
+/** The gate line of this repository's `CLAUDE.md` before `4ebea88`. */
 export const VITEST_GATE =
   "Verification: `npm run lint`, `npm run typecheck`, `npm run build`, and `npx vitest run`. Paste the output in your final message.";
 
 /**
- * A repository shaped like this one at `2513bbdc` (`research/wave-0-checks.md`
+ * A repository shaped like this one at `978a8a48` (`research/wave-0-checks.md`
  * 7): a root package with `bin` and `files` naming `dist` and `plugins`, a
  * `tsc` build into the gitignored `dist`, the bundles under `plugins/*\/dist`
  * tracked, e2e tests naming both, `AGENTS.md -> CLAUDE.md`, and a config with

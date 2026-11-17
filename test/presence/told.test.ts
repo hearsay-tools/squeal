@@ -13,7 +13,7 @@ import { at, SELF, scratch, VERSION } from "./fixture.js";
  * notes the header said. A value a release before this row stored reads as
  * that release read it; that release reads a value this one stores without
  * error. `previous` is 0.1.404's reader and its news rule, copied verbatim
- * from `delivery/liveness.ts` and `presence/views.ts` at 45eb4b8a1.
+ * from `delivery/liveness.ts` and `presence/views.ts` at e2e67ff84.
  */
 
 type PreviousTold =

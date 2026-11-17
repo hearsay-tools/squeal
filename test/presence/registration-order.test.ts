@@ -8,7 +8,7 @@ import { createFixtureRepo, SLOW } from "../daemon/helpers.js";
 /*
  * Review 0.1.404 B1 (row 011-294): a daemon's registration reads the clock
  * and the worktree's layout where it read them before the move. Before it,
- * `#register` (b9ef6a7e3, `daemon.ts` lines 453-475) ran, in one
+ * `#register` (dad77eec3, `daemon.ts` lines 453-475) ran, in one
  * transaction: the predecessor's runs released, the exit mark, the clock as
  * the handoff ends, `endHandoff` (the claim read and deleted, the short mark
  * deleted), the layout (`linkedWorktreeDir`), `worktrees.upsert`, the clock
@@ -124,7 +124,7 @@ describe(
       if ("reason" in daemon) throw new Error(daemon.message);
       onTestFinished(() => daemon.stop("stop-requested").then(() => undefined));
 
-      // The old order, from b9ef6a7e3's `#register`; soft, so the heartbeat's checks report too.
+      // The old order, from dad77eec3's `#register`; soft, so the heartbeat's checks report too.
       expect
         .soft(trace.ops)
         .toEqual([

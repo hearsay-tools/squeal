@@ -137,7 +137,7 @@ describe.skipIf(unavailable !== undefined)("a continued turn in OpenCode", () =>
         await expect.poll(() => existsSync(seen), { timeout: 30_000 }).toBe(true);
         writeFileSync(release, "");
         await sleep(QUIET_MS);
-        // At 5f425783 the re-armed wait delivered the recovery here, a second continuation.
+        // At 9a48aae1 the re-armed wait delivered the recovery here, a second continuation.
         expect(planned(live.requests)).toHaveLength(2);
         await live.message(NEXT);
       },

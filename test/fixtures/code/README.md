@@ -22,7 +22,7 @@ To make them again, outside the repository:
 ```sh
 mkdir -p /tmp/cc/js && cd /tmp/cc/js && npm init -y && npm i --ignore-scripts eslint@10.13.0 @typescript-eslint/parser@8.72.0 typescript@5
 uv venv /tmp/cc/venv && uv pip install --python /tmp/cc/venv/bin/python radon==6.0.1
-PIN=e90e0030ccfef2ee90eabe9db3046c398ebdd3e5   # squeal--v0.1.279, on main
+PIN=7517daa5d41ea0d90304efc0aef9b94eeaf3f23a   # squeal--v0.1.279, on main
 mkdir -p /tmp/cc/pin && git -C <repo> archive $PIN | tar -x -C /tmp/cc/pin
 cd <repo>/test/fixtures/code
 DEPS=/tmp/cc/js node reference/eslint-counts.cjs . constructs.eslint.json constructs.ts view.tsx plain.cjs

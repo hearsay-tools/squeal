@@ -8,7 +8,7 @@ import { traceView, VIEWS } from "./trace.js";
 /*
  * Row 011-293, review 0.1.403-r2 B2: the table's expected-reads column. For
  * each row and each view, the reads the view makes, in order, are the ones
- * stated (`reads-rows.ts`, `reads-stop.ts`): what the old code at 4204b3d47
+ * stated (`reads-rows.ts`, `reads-stop.ts`): what the old code at 43a16f75c
  * read, less the reductions `tasks/011-293/notes.md` section R2 names. The
  * mocks log each mark file read and each lock probe into `traceLog`.
  */

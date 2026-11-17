@@ -16,7 +16,7 @@ import { observing } from "./one-write-path-fixture.js";
  * Row 016-23: a test file that lists a git-ignored directory is keyed by the
  * names the directory holds on disk, so a worktree whose directory holds
  * other names than the run that made a result does not inherit it. Main
- * `1119021a6` dropped the listing, and 0.1.313 hashed it as no names.
+ * `36cab1170` dropped the listing, and 0.1.313 hashed it as no names.
  * Row 016-24: each revision reads those names again, and the names a run of
  * a file that listed the directory leaves there are that run's own.
  */

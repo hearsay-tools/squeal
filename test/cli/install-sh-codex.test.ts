@@ -30,7 +30,7 @@ const FIXED: FixedCodex = {
 };
 const RELEASE = "0.1.370";
 const RELEASE_LAUNCHER = laterLauncher(99);
-/** The launcher format 7, as `install.sh` copied it before the fixed plugin (005-84, f0c99a2e7). */
+/** The launcher format 7, as `install.sh` copied it before the fixed plugin (005-84, 98c5c9565). */
 const FORMAT_7 = readFileSync(join(REPO_ROOT, "test/fixtures/codex/launcher-format-7"), "utf8");
 const formatOf = (text: string) => Number(/^# squeal-launcher format (\d+)$/m.exec(text)?.[1]);
 

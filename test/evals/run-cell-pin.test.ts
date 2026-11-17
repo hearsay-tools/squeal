@@ -28,7 +28,7 @@ const lines = (p: string) =>
 const squealCalls = (f: FakeRoot) => lines(join(f.log, "squeal")).map((l) => JSON.parse(l).args[0]);
 
 /**
- * The fake root's pin in the layout of e34c9bc1f on: the Codex plugin a fixed adapter, its seed a
+ * The fake root's pin in the layout of 4fa5c3c0c on: the Codex plugin a fixed adapter, its seed a
  * CLI that must not run, and the fake Squeal moved to `plugins/codex-runtime` at 0.1.387, where
  * it logs the path it runs from.
  */
