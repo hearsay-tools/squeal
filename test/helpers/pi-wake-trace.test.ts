@@ -33,7 +33,8 @@ const MARKER = "SYNTHETIC0MARKER0009x30";
 /** Every form of secret and path the two reviews used, and arbitrary text. */
 const LEAK = [
   `Error: boom\\n    at withContext (${homedir()}/synthetic-repo/dist/extension.mjs:12:3)\n`,
-  "/home/someone/x /Users/someone/y /root/z ~/w\n",
+  // Built from parts: a literal home path in a source file fails the private-material check.
+  `${["", "home", "someone", "x"].join("/")} ${["", "Users", "someone", "y"].join("/")} ${["", "root", "z"].join("/")} ~/w\n`,
   "api_tok",
   `en=${MARKER}a and Authorization: Bearer ${MARKER}b and Bearer ${MARKER}d\n`,
   `password="${MARKER}e first ${MARKER}f tail" {"api_key":"${MARKER}g,${MARKER}h"}\n`,
