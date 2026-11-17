@@ -126,6 +126,10 @@ describe("the fast path (row 023-16)", () => {
     expect(check(FILES, FILES, elsewhere)).toBeNull();
   });
 
+  it("refuses every file when the policy file changed", () => {
+    expect(check(FILES, FILES, diffOf(["squeal.config.json"]))).toBe("squeal.config.json changed");
+  });
+
   it("9: refuses an input git does not hold here", () => {
     expect(check(FILES, FILES, diffOf([]), ["src/a.ts"])).toBe("src/a.ts is not held by git here");
   });

@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { POLICY_FILE } from "../daemon/policy.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { listedDirectory } from "../keys/observed.js";
 import type { RelativePath } from "../types/common.js";
@@ -94,6 +95,9 @@ export function changedInput(
   }
   const inputs = new Set(file.paths);
   for (const path of diff.changed) {
+    // The policy steers declared inputs and the environment's variables: its change moves keys
+    // through paths the current inputs do not list.
+    if (path === POLICY_FILE) return `${path} changed`;
     // 4: a changed path a declared pattern of the policy names.
     if (diff.declared(path)) return `${path} is a declared input and changed`;
     // 6: an added or deleted twin of an input module, which resolution may take instead.
