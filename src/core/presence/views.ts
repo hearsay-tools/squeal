@@ -106,6 +106,7 @@ export function editLineView(facts: PresenceFacts, at: EpochMs): DaemonLiveness 
  * since is still starting until `DAEMON_START_GRACE_MS` passed. A heartbeat
  * after the spawn ends the start. A starting daemon is not stopped by either
  * stop (row 011-20, review 0.1.357 B1), and its heartbeat is not late (row 011-276).
+ * A start the lock's mark names keeps its own time (row 005-108).
  */
 export function withToldStart(
   live: DaemonLiveness,
@@ -113,6 +114,8 @@ export function withToldStart(
   at: EpochMs,
 ): DaemonLiveness {
   if (live.state === "alive" || typeof told !== "object" || !("startingSince" in told)) return live;
+  // Row 005-108 (review 0.1.547 B1): a start the lock's mark names is the real one, its time too.
+  if (live.startMark === "start") return live;
   const { startingSince } = told;
   const heartbeatSince = live.since !== null && live.since >= startingSince;
   if (heartbeatSince || at - startingSince > DAEMON_START_GRACE_MS) return live;

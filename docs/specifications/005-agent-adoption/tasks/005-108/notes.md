@@ -118,3 +118,58 @@ spawned before second 53 leaves that note. With the guard, none is spawned.
 
 Bundles: `plugins/*/dist` drift from these sources (the package tests fail on main's bundles
 until the coordinator builds); no build in this worktree per the wave rules.
+
+## Repair: review 0.1.547 B1 (a second session during one slow start)
+
+Base: `cand/0.1.547` (`ca67710d8`), branch `cez/bce98856-r`. Row 005-106's lines in
+`registerNow` are untouched.
+
+Cause, as the review reads it, reproduced with the production hooks
+(`test/harness/starting-second-session.test.ts`): session B registers at +90 s during one start
+whose mark is at T. `registerFirst` gives B a synthetic `startingSince` of its own time, and
+`withToldStart` (`src/core/presence/views.ts`) put that time over the marked start's while
+keeping `startSlow`. `tellAtRegistration` (`src/core/delivery/delivery.ts`) then stored only the
+synthetic `{ startingSince }`, so B's next boundary past its 10 s grace read the slow start from
+the mark and said it again. Before the repair:
+
+```
+B registration: Revision 0: A daemon has been starting since 2026-11-18T09:01:30.000Z, and Squeal has no results in this worktree yet.
+B at +101 s:    SQUEAL · a daemon is still starting at revision 0
+                Revision 0: A daemon has been starting since 2026-11-18T09:00:00.000Z, and Squeal has no results in this worktree yet.
+```
+
+Repair (2 source lines):
+
+- `withToldStart`: a start the lock's mark names (`startMark: "start"`) is returned as it is, so
+  its time is the mark's. The grace fallback stays for a spawn with no observed start.
+- `tellAtRegistration`: a header that said a slow start is told as said (`toldAtRegistration`,
+  state `starting` with the note `start slow`), not as the synthetic start.
+
+After: B's registration says `since 2026-11-18T09:00:00.000Z`; its boundary at +101 s says
+nothing; no hook spawns a second daemon.
+
+Tests (`test/harness/starting-second-session.test.ts`, 6):
+
+- the reviewer case: A told at +85 s, B registered at +90 s with the mark's time, silent at
+  +101 s, spawns `[0]`;
+- B registered at +30 s, before the bound: no slow sentence in its registration, one notice at
+  the bound with the mark's time, then silent;
+- the first session unchanged: one notice at the bound;
+- a resumed session (`source: resume`) past the bound: the mark's time in its registration, silent
+  at its next boundary;
+- after a told slow start, a start that dies is told `no daemon is running`, and one that
+  registers is told `a daemon is validating again`.
+
+Commands and results:
+
+- `timeout 300 node_modules/.bin/vitest run test/harness/starting-second-session.test.ts` with
+  the two source edits reverted: 4 failed, 2 passed (the before-bound and first-session cases
+  hold before the repair too). With them: 6 passed.
+- `timeout 300 node_modules/.bin/vitest run test/harness/starting-second-session.test.ts test/harness/starting-no-row.test.ts`: 2 files, all passed.
+- `pnpm run lint`, `pnpm run typecheck`: clean.
+- The held-start fixture moved to `test/harness/starting-fixture.ts`, shared by both test files.
+- `squeal status --wait 570000 <the 5 changed paths>` at revision 52: 952 test files, each with a
+  current result; 4 known failures, all the bundle checks (`plugin.test.ts`,
+  `codex/packaging/runtime.test.ts`, `opencode/package.test.ts`, `pi/package.test.ts`: the
+  committed bundles of 0.1.547 differ from the changed sources; no build here). The worktree is
+  all 1939 test files current.
