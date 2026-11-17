@@ -28,6 +28,7 @@ import { runCommand } from "./run.js";
 import { runnerHostCommand } from "./runner-host.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
+import { asksAt, parseAt, statusAtCommand } from "./status-at.js";
 import { statusCommand } from "./status-command.js";
 import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
@@ -69,6 +70,14 @@ Usage:
                                 path whose name holds the text, and returns with their
                                 outcome, not the file's verdict: exit 1 when one
                                 failed, else 3 (--json: selection.focused)
+  squeal status --at <commit> [<path>...] [--json]
+                                Each test file's stored result at the commit's key
+                                (keyed in a temporary checkout there; nothing runs)
+                                beside its state now: pass, fail, no result, absent
+                                or not determined, with where the result came from;
+                                lists the files that changed or are unknown, then
+                                counts; exit 0 when every file is known on both
+                                sides, 3 when one is not, 2 on a usage or setup error
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints
@@ -315,7 +324,7 @@ type Command = (args: readonly string[], io: CliIo) => number | Promise<number>;
 
 /** Every command `main` dispatches, by name. */
 const COMMANDS: Readonly<Record<string, Command>> = {
-  status,
+  status: (args, io) => (asksAt(args) ? statusAt(args, io) : status(args, io)),
   why,
   failures: failuresCommand,
   code: codeCommand,
@@ -435,6 +444,12 @@ function status(args: readonly string[], io: CliIo): number | Promise<number> {
     `${formatStatus(result, now(), statusCommand(env), { full, allNotes, base })}${harness ?? ""}`;
   io.stdout(parsed.json ? json(result) : human());
   return result.available ? 0 : 1;
+}
+
+/** Spec 023 D1 (row 023-06): `status --at <commit>`, which takes no other status option. */
+function statusAt(args: readonly string[], io: CliIo): number | Promise<number> {
+  const at = parseAt(args);
+  return typeof at === "string" ? usage("status", at, io) : statusAtCommand(at, io);
 }
 
 function why(args: readonly string[], io: CliIo): number {
