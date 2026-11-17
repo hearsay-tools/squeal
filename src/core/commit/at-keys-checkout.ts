@@ -2,8 +2,8 @@ import { readStores } from "../code/gate/stored.js";
 import { runGit } from "../fs/git.js";
 import { resolveCommonDir } from "../fs/git-layout.js";
 import { testFileId } from "../keys/reverse-index.js";
-import type { AbsolutePath, ProjectName, RelativePath } from "../types/common.js";
-import type { CheckKey, EnvironmentHash, TestFileRef } from "../types/keys.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import {
@@ -16,10 +16,11 @@ import {
 
 /*
  * Row 023-16: what `keysAtCommit` and `sideKeys` share: the answer's
- * shape, and the one step in the checkout. There the keyer reads each
- * project's environment at the commit, keeps a current key the fast path
- * passed only when its project's environment hash is equal (review wave-5
- * B2), and walks the rest.
+ * shape, and the one step in the checkout. The human dropped the fast path
+ * on 2026-11-17 after three reviews found current keys reused for commits
+ * whose resolution differs (`reviews/wave-5*.md`): every asked file is
+ * keyed by the gate's keyer in the checkout at the commit, exact by
+ * construction.
  */
 
 export type NotDeterminedReason =
@@ -32,92 +33,67 @@ export type NotDeterminedReason =
   /** The checkout's install failed. */
   | "install";
 
+export interface NotDetermined {
+  readonly reason: NotDeterminedReason;
+  readonly detail: string;
+}
+
 export type KeyAt =
   | {
+      /** The key the gate's keyer gives the file in the checkout at the commit. */
       readonly key: CheckKey;
-      /**
-       * `unchanged`: the current key, its inputs and its environment equal at
-       * the commit; `walk`: the keyer in a checkout at the commit gave it.
-       */
-      readonly via: "unchanged" | "walk";
       /** The shared store's results at the key for this file; empty when it holds none. */
       readonly stored: readonly ResultRecord[];
     }
-  | { readonly notDetermined: { readonly reason: NotDeterminedReason; readonly detail: string } };
-
-/** A file the fast path passed: its current key, kept when its environment is equal there. */
-export interface Kept {
-  readonly ref: TestFileRef;
-  readonly key: CheckKey;
-}
-
-export interface InCheckout {
-  /** Files the fast path passed, by `testFileId`. */
-  readonly kept: ReadonlyMap<string, Kept>;
-  /** Each project's environment hash here. */
-  readonly environments: ReadonlyMap<ProjectName, EnvironmentHash | undefined>;
-  /** Files to walk. */
-  readonly walk: readonly TestFileRef[];
-}
+  | { readonly notDetermined: NotDetermined };
 
 /** What the checkout step answered. */
 export interface Checked {
+  /** Each file's key, by `testFileId`. */
   readonly files: Map<string, KeyAt>;
-  /** Why each kept file was walked after all: its environment differs. */
-  readonly changed: Map<string, string>;
+  /** Why the checkout gave no keys: it could not be made or installed; `null` when it did. */
+  readonly failure: NotDetermined | null;
   /** The checkout's whole time: make, install, open the keyer, key, remove. */
   readonly ms: number;
 }
 
 /**
- * In a checkout of `input.commit`: each kept file with its current key when
- * its project's environment hash there equals the one here, else walked;
- * and each file of `walk` keyed fresh. When the checkout or its install
- * fails, every file is not determined.
+ * In a checkout of `input.commit`, each of `files` keyed fresh by the
+ * gate's keyer; with `files` `null`, every file the adapters there list.
+ * When the checkout or its install fails, every named file is not
+ * determined, and `failure` says why.
  */
 export async function inCheckout(
   main: Store | null,
   input: Parameters<typeof withCheckout>[0],
-  asked: InCheckout,
+  files: readonly TestFileRef[] | null,
   options: KeyingOptions & CheckoutOptions,
 ): Promise<Checked> {
-  const files = new Map<string, KeyAt>();
-  const changed = new Map<string, string>();
+  const out = new Map<string, KeyAt>();
   const started = performance.now();
+  const ms = () => Math.round(performance.now() - started);
   try {
     await withCheckout(input, options, async (checkout) =>
-      withKeyer(checkout.tree, input.commonDir, main ?? undefined, options, async ({ keyer }) => {
-        const walk = [...asked.walk];
-        for (const [id, { ref, key }] of asked.kept) {
-          const there = keyer.keys.index.environment(ref.project);
-          if (there !== undefined && there === asked.environments.get(ref.project)) {
-            files.set(id, found(main, ref, key, "unchanged"));
-          } else {
-            changed.set(id, `the environment of project "${ref.project}" differs at the commit`);
-            walk.push(ref);
-          }
-        }
-        const keyed = await keyer.keyed(walk);
-        for (const ref of walk) {
+      withKeyer(checkout.tree, input.commonDir, main ?? undefined, options, async (open) => {
+        const refs = files ?? [...open.listed.values()];
+        const keyed = await open.keyer.keyed(refs);
+        for (const ref of refs) {
           const at = keyed.get(ref);
           const id = testFileId(ref);
           if (at === undefined) {
             const detail = `no runner in the checkout keyed ${ref.path}`;
-            files.set(id, { notDetermined: { reason: "unlisted", detail } });
-          } else files.set(id, found(main, ref, at.key, "walk"));
+            out.set(id, { notDetermined: { reason: "unlisted", detail } });
+          } else out.set(id, found(main, ref, at.key));
         }
       }),
     );
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
-    const refs = [...asked.walk, ...[...asked.kept.values()].map((k) => k.ref)];
-    for (const ref of refs) {
-      files.set(testFileId(ref), {
-        notDetermined: { reason: error.reason, detail: error.message },
-      });
-    }
+    const failure = { reason: error.reason, detail: error.message };
+    for (const ref of files ?? []) out.set(testFileId(ref), { notDetermined: failure });
+    return { files: out, failure, ms: ms() };
   }
-  return { files, changed, ms: Math.round(performance.now() - started) };
+  return { files: out, failure: null, ms: ms() };
 }
 
 export function absent(path: RelativePath, where: string | null): KeyAt {
@@ -126,19 +102,14 @@ export function absent(path: RelativePath, where: string | null): KeyAt {
 }
 
 /** The key and the results `main` holds at it for `ref`. */
-function found(
-  main: Store | null,
-  ref: TestFileRef,
-  key: CheckKey,
-  via: "unchanged" | "walk",
-): KeyAt {
+function found(main: Store | null, ref: TestFileRef, key: CheckKey): KeyAt {
   const stored =
     main === null
       ? []
       : main.results
           .byKey(key, 0)
           .filter((r) => r.check.project === ref.project && r.check.testPath === ref.path);
-  return { key, via, stored };
+  return { key, stored };
 }
 
 /** Runs `body` with the repository's main store open read-only, `null` when it cannot be read. */

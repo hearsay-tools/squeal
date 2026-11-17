@@ -67,7 +67,7 @@ describe("a killed run's checkout (row 023-16, D6)", SLOW, () => {
       commit: a,
       files: [TEST],
     });
-    expect(keys.files.get(testFileId(TEST))).toMatchObject({ via: "walk" });
+    expect(keys.files.get(testFileId(TEST))).toMatchObject({ key: expect.any(String) });
     expect(f.checkouts()).toEqual([]);
     expect(existsSync(tree)).toBe(false);
     expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
@@ -124,7 +124,7 @@ describe("a killed run's checkout (row 023-16, D6)", SLOW, () => {
         commit: a,
         files: [TEST],
       });
-      expect(keys.files.get(testFileId(TEST))).toMatchObject({ via: "walk" });
+      expect(keys.files.get(testFileId(TEST))).toMatchObject({ key: expect.any(String) });
       expect(await gone(pid, 10_000)).toBe(true);
       expect(f.checkouts()).toEqual([]);
       expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);

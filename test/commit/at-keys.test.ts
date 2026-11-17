@@ -26,9 +26,8 @@ import {
  * commit is the key a fresh walk there gives, for every case on which the
  * git-only keys of row 023-03 failed review (`reviews/wave-1.md` B1,
  * `wave-1-rereview.md` B1, `wave-3.md` B1 and B2), through `keysAtCommit`
- * and `sideKeys`. Each case's file differs between the commits, so it is
- * walked in a checkout; an unchanged file takes the fast path with no
- * checkout.
+ * and `sideKeys`. Every file is keyed in a checkout at the commit: the
+ * human dropped the fast path on 2026-11-17.
  */
 
 const TEST = ref("test/a.test.ts");
@@ -53,9 +52,8 @@ const testOf = (module: string, value: number) =>
     "",
   ].join("\n");
 
-/** The key `at` gives, which must be the walk's. */
-function walkedKey(at: KeyAt | undefined): string {
-  expect(at).toMatchObject({ via: "walk" });
+/** The key `at` gives; `""` when it is not determined. */
+function keyOf(at: KeyAt | undefined): string {
   return at !== undefined && "key" in at ? at.key : "";
 }
 
@@ -68,21 +66,17 @@ async function exactAtA(
   f: Fixture,
   [a, b]: readonly [string, string],
   file: TestFileRef,
-  reason: RegExp,
 ): Promise<void> {
   const [atA, atB] = [await freshKey(f, a, file), await freshKey(f, b, file)];
   expect(atA).not.toBe(atB);
   const install = linkInstall();
   const options = { ...keying(f, install.install), root: f.root };
   const keys = await keysAtCommit({ ...options, commit: a, files: [file] });
-  expect(keys.current.get(testFileId(file))).toBe(atB);
-  expect(walkedKey(keys.files.get(testFileId(file)))).toBe(atA);
-  // The fast-path condition that sends the file to the walk.
-  expect(keys.changed.get(testFileId(file))).toMatch(reason);
+  expect(keyOf(keys.files.get(testFileId(file)))).toBe(atA);
   const side = await sideKeys({ ...options, code: a, tests: b, files: [file] });
-  expect(walkedKey(side.get(testFileId(file)))).toBe(atA);
+  expect(keyOf(side.get(testFileId(file)))).toBe(atA);
   const own = await sideKeys({ ...options, code: b, tests: null, files: [file] });
-  expect(walkedKey(own.get(testFileId(file)))).toBe(atB);
+  expect(keyOf(own.get(testFileId(file)))).toBe(atB);
   expect(install.calls()).toBe(3);
   expect(f.checkouts()).toEqual([]);
   const worktrees = git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm);
@@ -98,7 +92,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     const b = f.commit({ "src/a.ts": "export const value = 2;\n" });
-    await exactAtA(f, [a, b], TEST, /^src\/a\.ts differs at the commit$/);
+    await exactAtA(f, [a, b], TEST);
   });
 
   it("a glob's removed match: B only removes src/plugins/old.ts (wave-1 re-review B1)", async () => {
@@ -111,7 +105,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     const b = f.commit({ "src/plugins/old.ts": null });
-    await exactAtA(f, [a, b], TEST, /^src\/plugins\/ lists other names at the commit$/);
+    await exactAtA(f, [a, b], TEST);
   });
 
   it("a larger current closure: B's registry imports src/old.ts, present at both (wave-3 B1)", async () => {
@@ -124,7 +118,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     const b = f.commit({
       "src/registry.ts": 'import { n } from "./old";\nexport const value = n;\n',
     });
-    await exactAtA(f, [a, b], TEST, /^src\/registry\.ts differs at the commit$/);
+    await exactAtA(f, [a, b], TEST);
   });
 
   it("a package.json imports retarget: only the manifest changes (wave-3 B2)", async () => {
@@ -139,10 +133,10 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     const b = f.commit({ "package.json": manifest("./src/new.ts") });
-    await exactAtA(f, [a, b], TEST, /^package\.json changed on the resolution path/);
+    await exactAtA(f, [a, b], TEST);
   });
 
-  it("an unchanged file keeps its key with no walk; the checkout only loads the configs; a changed one is walked", async () => {
+  it("keys an unchanged file and a changed one in one checkout, each to its fresh key", async () => {
     const f = fixture({
       ...PLAIN_FILES,
       "src/a.ts": "export const value = 1;\n",
@@ -150,26 +144,17 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "src/a.ts": "export const value = 3;\n", [TEST.path]: testOf("a", 3) });
-    const plainAtA = await freshKey(f, a, PLAIN);
     const install = linkInstall();
-    const options = { ...keying(f, install.install), root: f.root, commit: a };
-
-    const fast = await keysAtCommit({ ...options, files: [PLAIN] });
-    expect(fast.files.get(testFileId(PLAIN))).toMatchObject({ key: plainAtA, via: "unchanged" });
-    expect(fast.changed.size).toBe(0);
-    // Review wave-5 B2: the environment at the commit is read in a checkout every call.
-    expect(fast.checkoutMs).toBeGreaterThan(0);
+    const keys = await keysAtCommit({ ...keying(f, install.install), root: f.root, commit: a });
+    expect(keyOf(keys.files.get(testFileId(PLAIN)))).toBe(await freshKey(f, a, PLAIN));
+    expect(keyOf(keys.files.get(testFileId(TEST)))).toBe(await freshKey(f, a, TEST));
+    expect(keys.files.size).toBe(2);
+    expect(keys.checkoutMs).toBeGreaterThan(0);
     expect(install.calls()).toBe(1);
-
-    const both = await keysAtCommit({ ...options, files: [PLAIN, TEST] });
-    expect(both.files.get(testFileId(PLAIN))).toMatchObject({ key: plainAtA, via: "unchanged" });
-    expect(walkedKey(both.files.get(testFileId(TEST)))).toBe(await freshKey(f, a, TEST));
-    expect(both.changed.get(testFileId(TEST))).toMatch(/differs at the commit/);
-    expect(install.calls()).toBe(2);
     expect(f.checkouts()).toEqual([]);
   });
 
-  it("compares a dirty tree by its files now, not by HEAD", async () => {
+  it("gives the commit's keys whatever the worktree holds now, uncommitted edits included", async () => {
     const f = fixture({
       ...PLAIN_FILES,
       "src/a.ts": "export const value = 1;\n",
@@ -177,19 +162,15 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "src/a.ts": "export const value = 3;\n" });
-    // Back to A's bytes, uncommitted: A's key holds with no walk.
-    writeFileSync(join(f.root, "src/a.ts"), "export const value = 1;\n");
-    // PLAIN's source edited, uncommitted: it differs from A now.
     writeFileSync(join(f.root, "src/plain.ts"), "export const plain = 2;\n");
-    const install = linkInstall();
-    const options = { ...keying(f, install.install), root: f.root, commit: a };
-    const keys = await keysAtCommit({ ...options, files: [TEST, PLAIN] });
-    expect(keys.files.get(testFileId(TEST))).toMatchObject({
-      key: await freshKey(f, a, TEST),
-      via: "unchanged",
+    const keys = await keysAtCommit({
+      ...keying(f),
+      root: f.root,
+      commit: a,
+      files: [TEST, PLAIN],
     });
-    expect(walkedKey(keys.files.get(testFileId(PLAIN)))).toBe(await freshKey(f, a, PLAIN));
-    expect(install.calls()).toBe(1);
+    expect(keyOf(keys.files.get(testFileId(TEST)))).toBe(await freshKey(f, a, TEST));
+    expect(keyOf(keys.files.get(testFileId(PLAIN)))).toBe(await freshKey(f, a, PLAIN));
   });
 
   it("names a test file the commit lacks absent, with no checkout for it alone", async () => {
@@ -204,13 +185,10 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     expect(alone.checkoutMs).toBeNull();
     expect(install.calls()).toBe(0);
+    // Every file the adapters list at the commit: TEST is not among them.
     const keys = await keysAtCommit(options);
-    expect(keys.files.get(testFileId(TEST))).toMatchObject({ notDetermined: { reason: "absent" } });
-    // B added files in `src` and `test`, where PLAIN's imports resolve: walked, to A's key.
-    expect(keys.files.get(testFileId(PLAIN))).toMatchObject({
-      key: await freshKey(f, a, PLAIN),
-      via: "walk",
-    });
+    expect([...keys.files.keys()]).toEqual([testFileId(PLAIN)]);
+    expect(keyOf(keys.files.get(testFileId(PLAIN)))).toBe(await freshKey(f, a, PLAIN));
     expect(install.calls()).toBe(1);
   });
 
@@ -245,17 +223,17 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     const keys = await keysAtCommit(options);
     expect(keys.store).toBe(true);
     const atA = keys.files.get(testFileId(TEST));
-    expect(atA).toMatchObject({ key: failAtA, via: "walk" });
+    expect(atA).toMatchObject({ key: failAtA });
     expect(atA !== undefined && "stored" in atA ? atA.stored.map((r) => r.outcome) : []).toEqual([
       "fail",
     ]);
     const plain = keys.files.get(testFileId(PLAIN));
-    expect(plain).toMatchObject({ key: plainKey, via: "unchanged" });
+    expect(plain).toMatchObject({ key: plainKey });
     expect(plain !== undefined && "stored" in plain ? plain.stored : []).toHaveLength(1);
     expect(bytes()).toBe(before);
   });
 
-  it("names every file not determined when the checkout's install fails, kept ones too", async () => {
+  it("names every file not determined when the checkout's install fails", async () => {
     const f = fixture({
       ...PLAIN_FILES,
       "src/a.ts": "export const value = 1;\n",
@@ -274,6 +252,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     const failed = { notDetermined: { reason: "install", detail: "npm ci: exit 1" } };
     expect(keys.files.get(testFileId(PLAIN))).toEqual(failed);
     expect(keys.files.get(testFileId(TEST))).toEqual(failed);
+    expect(keys.failure).toEqual(failed.notDetermined);
     expect(f.checkouts()).toEqual([]);
   });
 });

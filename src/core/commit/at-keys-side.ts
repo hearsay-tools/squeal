@@ -53,8 +53,7 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
           source.from,
           copied.map((ref) => ref.path),
         );
-      const asked = { kept: new Map(), environments: new Map(), walk: copied };
-      const at = await inCheckout(main, { root, commonDir, commit, prepare }, asked, options);
+      const at = await inCheckout(main, { root, commonDir, commit, prepare }, copied, options);
       for (const [id, key] of at.files) out.set(id, key);
       return out;
     });
