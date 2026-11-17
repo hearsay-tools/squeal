@@ -1,12 +1,15 @@
 // Row 009-30: records what Pi and its delivery worker thread do, so an idle-wake timeout can
 // name the step that lost the wake. `wakeTrace()` (`pi-wake-trace.ts`) loads it into Pi with
 // `NODE_OPTIONS=--import=...` and names the file in `SQUEAL_PI_TRACE`. It only records: it
-// adds an `exit` listener, wraps `write` on stdout and stderr and the worker's `postMessage`
-// and message listeners, and each wrapper calls the original unchanged. Node loads it into
-// worker threads too (Node 22, 24 and 26). Only the first process that loads it records, and
+// adds an `exit` listener, wraps `write` on stdout and stderr, the worker's `postMessage` and
+// message listeners, and the `emit` of each `Worker` the main thread makes, and each wrapper
+// calls the original unchanged. Node loads it into worker threads too (Node 22, 24 and 26).
+// Each process the test starts with it records, with its own pid (`pi install`, then Pi), and
 // its threads: a Node child (the daemon, the CLI) inherits `SQUEAL_PI_TRACE_PID` and stays out.
+
 import { appendFileSync } from "node:fs";
-import { isMainThread, parentPort, threadId } from "node:worker_threads";
+import { syncBuiltinESMExports } from "node:module";
+import workerThreads, { isMainThread, parentPort, threadId } from "node:worker_threads";
 
 const file = process.env.SQUEAL_PI_TRACE;
 const owner = process.env.SQUEAL_PI_TRACE_PID;
@@ -39,8 +42,26 @@ if (active) {
 
   if (isMainThread) {
     process.env.SQUEAL_PI_TRACE_PID = String(process.pid);
-    note("start", { argv: process.argv.slice(1, 3) });
+    // Only the first argument, Pi's subcommand (`install`) or a flag: the script path names
+    // a home directory.
+    note("start", { arg: process.argv[2] ?? null });
     process.on("exit", (code) => note("exit", { code }));
+    // The host sees a worker end even when `terminate()` stops it before its own `exit`
+    // listener runs. Wrapping `emit` adds no listener, so delivery and `ref` stay unchanged.
+    const Original = workerThreads.Worker;
+    workerThreads.Worker = class Worker extends Original {
+      constructor(...args) {
+        super(...args);
+        const worker = this.threadId;
+        const emit = this.emit;
+        this.emit = function (event, ...rest) {
+          if (event === "exit") note("worker-ended", { worker, code: rest[0] });
+          if (event === "error") note("worker-error", { worker, error: String(rest[0]?.name) });
+          return emit.call(this, event, ...rest);
+        };
+      }
+    };
+    syncBuiltinESMExports();
     let partial = "";
     tap(process.stdout, (chunk) => {
       const lines = (partial + chunk).split("\n");
