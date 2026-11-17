@@ -99,6 +99,19 @@ describe("a hook on a damaged store (row 011-391)", () => {
     expect(storeFiles(r)).toEqual([]);
   });
 
+  it("marks on a corruption error a callback throws synchronously (review of cand/0.1.545, N2)", async () => {
+    const r = squealRepo();
+    const corrupt = Object.assign(new Error("database disk image is malformed"), { errcode: 11 });
+    const throwsAtOnce = (() => {
+      throw corrupt;
+    }) as unknown as () => Promise<null>;
+
+    await expect(withContext({ session_id: "s1" }, location(r), deps, throwsAtOnce)).rejects.toBe(
+      corrupt,
+    );
+    expect(readStoreMark(r.repo.commonDir)).toMatchObject({ found: "hook" });
+  });
+
   it("keeps a mark already there", async () => {
     const r = squealRepo();
     seedOverflow(r.repo.commonDir, "big");

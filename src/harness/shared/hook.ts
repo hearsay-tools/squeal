@@ -110,7 +110,8 @@ export async function withContext<T>(
   try {
     // Row 011-391: only `fn`'s own reads and writes of the main store mark it; a held code-store
     // write's commit below fails apart (review of cand/0.1.545, S1).
-    const result = await fn(context).catch((error: unknown) => {
+    // An async wrapper, so a synchronous throw of `fn` is classified as its rejection is.
+    const result = await (async () => fn(context))().catch((error: unknown) => {
       context.faulted?.(error);
       throw error;
     });

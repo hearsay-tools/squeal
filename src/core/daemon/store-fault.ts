@@ -34,8 +34,9 @@ export const OPEN_CORRUPT = "the store did not open: SQLite reports it corrupt o
 /**
  * Row 011-391: a hook whose open, read or write of the main store met
  * corruption marks `file`, the file it opened (`markFault`, found by
- * `hook`). It never throws and never waits: a store it cannot mark
- * (read-only, gone) stays as it is, and the hook silent.
+ * `hook`). It never throws, and it waits only here, on the corruption
+ * path, at most `HOOK_MARK_WAIT_MS` for the recovery lock: a store it cannot
+ * mark (read-only, gone, the lock held) stays as it is, and the hook silent.
  */
 export function markHookFault(
   commonDir: AbsolutePath,
