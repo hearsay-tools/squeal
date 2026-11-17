@@ -35,6 +35,11 @@ const FILES: Readonly<Record<string, string>> = {
   "node_modules/dep/package.json": '{ "name": "dep", "type": "module", "main": "index.js" }\n',
   "node_modules/dep/index.js": "export const dep = 1;\n",
   "src/installed.ts": 'export { dep } from "dep";\n',
+  // Its own package by name, no `exports`: the subpath's folder and the targets' folders key (B2).
+  "inner/package.json": '{ "name": "inner", "type": "module" }\n',
+  "inner/lib/v.ts": 'export const inner = "a";\n',
+  "inner/m.ts":
+    'export { inner } from "./lib/v.ts";\nexport const lazy = () => import("inner/sub");\n',
   [TEST]: [
     'import { existsSync, writeFileSync } from "node:fs";',
     'import { setTimeout as delay } from "node:timers/promises";',
@@ -44,10 +49,11 @@ const FILES: Readonly<Record<string, string>> = {
     'import { value as viaPattern } from "#p/reg-a";',
     'import { own } from "../src/self.ts";',
     'import { dep } from "../src/installed.ts";',
+    'import { inner } from "../inner/m.ts";',
     'it("holds", async () => {',
     '  writeFileSync($STARTED, "");',
     "  while (existsSync($HOLD)) await delay(20);",
-    '  expect([value, own, dep, viaOwn, viaPattern]).toEqual(["a", "a", 1, "a", "a"]);',
+    '  expect([value, own, dep, viaOwn, viaPattern, inner]).toEqual(["a", "a", 1, "a", "a", "a"]);',
     "}, 120_000);",
     "",
   ].join("\n"),
