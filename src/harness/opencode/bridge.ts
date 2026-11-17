@@ -165,7 +165,8 @@ export const ping: OcHandler<"ping"> = async () => ({ pong: true });
  * code 1, which the plugin reads as silence. Never calls `process.exit`, so
  * piped output is flushed. Row 011-288: for a request with `ack`, an answer
  * whose report was prepared is one line marked `held`, and the report
- * commits only at the plugin's verdict (`bridge-verdict.ts`).
+ * commits only at the plugin's verdict (`bridge-verdict.ts`); the process
+ * ends once its writes are written (row 005-109).
  */
 export async function runBridge<K extends OcKind>(
   stdin: string,
@@ -190,6 +191,9 @@ export async function runBridge<K extends OcKind>(
       return;
     }
     await handOver(handOff, ack, `${JSON.stringify({ answer, held: true })}\n`);
+    // Row 005-109: the bridge exits, and so the plugin's call ends, once the daemon wrote what
+    // the verdict sent it (spec 021 D15), or failed to within its bound, as `writeThenCommit`.
+    await handOff.sent();
   } catch {
     handOff?.abandon();
     process.exitCode = 1;

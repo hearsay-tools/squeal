@@ -129,7 +129,11 @@ export function callBridge<A>(
     /**
      * Row 011-288: a held answer, read in time, gets its commit verdict; the
      * bridge then has `COMMIT_GRACE_MS` to commit and exit, its group killed
-     * at its exit as for any other bridge, or at the grace's end.
+     * at its exit as for any other bridge, or at the grace's end. Row 005-109:
+     * the call resolves the answer then, not at the verdict: the bridge exits
+     * once the daemon wrote what its commit sent, or failed to, so the next
+     * call's bridge reads the store with the commit in it (a cleared header
+     * is not said again), unless the write was never confirmed.
      */
     const heldAnswer = (line: string) => {
       const held = parseHeld<A>(line);
@@ -137,16 +141,25 @@ export function callBridge<A>(
       settled = true;
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", cancel);
+      const done = () => {
+        clearTimeout(grace);
+        resolve(held.answer);
+      };
+      const grace = setTimeout(() => {
+        killGroup();
+        done();
+      }, COMMIT_GRACE_MS);
+      if (options.background) grace.unref?.();
+      child.unref();
+      // Exited already: its bound passed, so its report rolled back and stays owed.
+      if (code !== null) return done();
+      child.on("exit", done);
       try {
         process.kill(child.pid, VERDICT_SIGNAL);
       } catch {
         // Gone: its report rolled back with it and stays owed.
+        done();
       }
-      const grace = setTimeout(killGroup, COMMIT_GRACE_MS);
-      grace.unref?.();
-      child.on("exit", () => clearTimeout(grace));
-      child.unref();
-      resolve(held.answer);
     };
     const answered = () =>
       settle(code === 0 ? parseAnswer<A>(Buffer.concat(out).toString("utf8")) : null);
