@@ -16,7 +16,7 @@ Worker 1519b409, 2026-11-17. Wave 21, W1 part 1 (`../wave-21.md`). Coordinator 4
 | `birthMarkOf(store, worktreeId, checkId)` | A state's mark, by the check's row id; `null` when none |
 | `checksBornBy(store, worktreeId, mark)` | The row ids of the worktree's checks whose mark is `<= mark` |
 
-Made by the daemon at registration (`src/core/daemon/daemon.ts`, `#register`, right after `ensureWriteMarkers`), in the registration's transaction. No `user_version` raise; `schema.ts`, `open.ts`, `prune.ts` and every repository are unchanged.
+Made by the daemon at registration (`src/core/daemon/daemon.ts`, `#register`, right after `ensureWriteMarkers`), in the registration's transaction. The daemon lines touched: `daemon.ts` line 27 (the import) and lines 527 and 528 (a comment and the call); `src/core/daemon/open.ts` is not touched. No `user_version` raise; `schema.ts`, `open.ts`, `prune.ts` and every repository are unchanged.
 
 ## Decisions and departures
 
