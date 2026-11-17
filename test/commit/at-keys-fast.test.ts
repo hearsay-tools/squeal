@@ -46,7 +46,7 @@ function diffOf(changed: string[], options: Partial<Difference> = {}): Differenc
     changed: new Set(changed),
     addedOrDeleted: new Set(),
     manifests: new Set(),
-    declared: () => [],
+    declared: () => null,
     ...options,
   };
 }
@@ -84,18 +84,14 @@ describe("the fast path (row 023-16)", () => {
     );
   });
 
-  it("4: refuses a changed path a pattern input names, and a declared input at the commit that is no input here", () => {
+  it("4: refuses a changed path a pattern input names, and a declared input on one side only", () => {
     const inputs = { ...INPUTS, paths: [...INPUTS.paths, "fixtures/**/*.json"] };
     const diff = diffOf(["fixtures/deep/x.json"]);
     expect(check(FILES, FILES, diff, [], inputs)).toBe(
       "fixtures/deep/x.json matches the input pattern fixtures/**/*.json",
     );
-    // The test's declared inputs at the commit: one added since is an input here, checked by its blob.
-    const declared = (paths: string[]) => diffOf([], { declared: () => paths });
-    expect(check(FILES, FILES, declared(["data/x"]))).toBe(
-      "data/x is a declared input at the commit, not here",
-    );
-    expect(check(FILES, FILES, declared(["src/a.ts"]))).toBeNull();
+    const declared = diffOf([], { declared: () => "data/x" });
+    expect(check(FILES, FILES, declared)).toBe("data/x is a declared input on one side only");
   });
 
   it("5: reads an installed lockfile as its committed lockfile", () => {
