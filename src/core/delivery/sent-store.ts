@@ -83,10 +83,16 @@ export function openSentStore(
   if (isStoreOpenFailure(store)) return store;
   opened = store;
   const connection = made as SendingConnection | null;
-  if (connection === null) throw new Error("squeal: the store opened without its connection");
-  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
-  const now = (options.now ?? Date.now)();
-  if (daemonLiveness(record, now).state !== "alive") connection.writeDirectly();
+  try {
+    if (connection === null) throw new Error("squeal: the store opened without its connection");
+    const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+    const now = (options.now ?? Date.now)();
+    if (daemonLiveness(record, now).state !== "alive") connection.writeDirectly();
+  } catch (error) {
+    // Row 011-391 (review of cand/0.1.545, B2): a read that throws closes what the open made.
+    store.close();
+    throw error;
+  }
   const acquire = () => (sender as SenderWithLease | null)?.acquire() ?? Promise.resolve(false);
   return { store, connection, write: (work) => connection.unit(work, acquire) };
 }
