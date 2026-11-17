@@ -121,8 +121,13 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
 
   it("--all-missing prints the estimate first, runs every file with no result, and refuses one that needs an untracked path", async () => {
     const GEN = ref("test/gen.test.ts");
+    const BAD = ref("test/bad.test.ts");
     const { f, a } = changed();
-    f.commit({ ".gitignore": "node_modules/\nsrc/gen.ts\n", [GEN.path]: testOf("gen", 1) });
+    f.commit({
+      ".gitignore": "node_modules/\nsrc/gen.ts\n",
+      [GEN.path]: testOf("gen", 1),
+      [BAD.path]: testOf("plain", 2),
+    });
     const b = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "src/plain.ts": "export const value = 1; // c\n" });
     // The install writes a source git does not hold, which `gen.test.ts` loads (D4.9).
@@ -141,17 +146,21 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
     const at = b.slice(0, 9);
     expect(all.err).toMatch(
       new RegExp(
-        `squeal: --all-missing: 2 test files with no result at ${at} to run, up to \\d+ at once; no stored duration, so the time is unknown; the budget is 600 s, the checkout and install included\n`,
+        `squeal: --all-missing: 3 test files with no result at ${at} to run, up to \\d+ at once; no stored duration, so the time is unknown; the budget is 600 s, the checkout and install included\n`,
       ),
     );
     // The estimate comes before the gate's own lines.
     expect(all.err.indexOf("--all-missing")).toBeLessThan(all.err.lastIndexOf("squeal: "));
     expect(all.out).toContain(`${GEN.path}: not comparable (needs src/gen.ts) -> `);
     expect(all.out).toContain(
-      `--run: 2 of 2 test files with no result at ${at} ran in its checkout and are stored at its keys`,
+      `--run: 3 of 3 test files with no result at ${at} ran in its checkout and are stored at its keys`,
     );
     expect(all.out).toContain(`1 not run: their closure needs a path git does not hold at ${at}`);
+    expect(all.out).toContain(
+      `${BAD.path}: fail -> no result (at ${at}: value; run by this command)`,
+    );
     const json = await run(f, { commit: b, json: true }, options);
+    expect(fileOf(json.out, BAD.path)?.at).toMatchObject({ state: "fail", failed: ["value"] });
     expect(fileOf(json.out, TEST.path)?.at.state).toBe("pass");
     expect(fileOf(json.out, PLAIN.path)?.at.state).toBe("pass");
     expect(fileOf(json.out, GEN.path)?.at.state).toBe("no result");
