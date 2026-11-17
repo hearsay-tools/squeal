@@ -3463,7 +3463,9 @@ var CODE_SCHEMA_VERSION = CODE_MIGRATIONS.length;
 var CODE_INDEXES = {
   coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
   coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
-  counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)"
+  counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
+  states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
+  states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL"
 };
 var CODE_TABLES = {
   coverage_parts: `
@@ -4031,10 +4033,20 @@ function checkFrom2(row) {
     occurrence: num(row, "occurrence")
   };
 }
-function statesOf(worktreeId, paths) {
+var STATES_FAILING = "states_failing";
+var STATES_EDITED = "states_edited";
+function indexesIn(conn, names3) {
+  const rows = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(names3)
+  );
+  return new Set(rows.map((row) => str(row, "name")));
+}
+function statesOf(worktreeId, paths, index) {
   if (paths === void 0) {
+    const states = index === null ? "states s" : `states s INDEXED BY ${index}`;
     return {
-      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      from: `${states} JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?`,
       params: [worktreeId]
     };
   }
@@ -4046,17 +4058,33 @@ function statesOf(worktreeId, paths) {
     params: [JSON.stringify(paths), worktreeId]
   };
 }
+function filterTerms(filter) {
+  const terms = [];
+  const params = [];
+  if (filter.measure !== void 0) {
+    terms.push("AND s.measure = ?");
+    params.push(filter.measure);
+  }
+  if (filter.outcome === "fail") terms.push("AND s.outcome = 'fail'");
+  else if (filter.outcome !== void 0) {
+    terms.push("AND s.outcome = ?");
+    params.push(filter.outcome);
+  }
+  return { sql: terms.join(" "), params };
+}
 function createStateRepo(conn) {
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const named3 = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
-      const { from, params } = statesOf(worktreeId, filter.paths);
+      const index = named3(STATES_FAILING, filter.outcome === "fail");
+      const { from, params } = statesOf(worktreeId, filter.paths, index);
+      const terms = filterTerms(filter);
       return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from}
-             AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from} ${terms.sql}
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
         ...params,
-        ...Array(2).fill(filter.measure ?? null),
-        ...Array(2).fill(filter.outcome ?? null)
+        ...terms.params
       ).map((row) => toState(worktreeId, row));
     },
     upsertMany(states) {
@@ -4083,7 +4111,7 @@ function createStateRepo(conn) {
       });
     },
     edits(worktreeId, measure2, paths) {
-      const { from, params } = statesOf(worktreeId, paths);
+      const { from, params } = statesOf(worktreeId, paths, named3(STATES_EDITED, true));
       return conn.all(
         `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
              AND s.measure = ? AND s.edited_at IS NOT NULL
@@ -8421,7 +8449,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.548";
+  if (true) return "0.1.550";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10297,9 +10325,6 @@ var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and
 function coverageMeasures(store, worktreeId) {
   return readSummary(store.meta, worktreeId) === null ? [] : COVERAGE_MEASURES;
 }
-function failingOf(store, worktreeId, measures) {
-  return measures.flatMap((measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }));
-}
 function evidenceOf(store, worktreeId, entry3) {
   if (entry3.measure === "complexity" || entry3.kind === "removed") return {};
   const [file] = store.files.list(worktreeId, [entry3.check.path]);
@@ -10419,8 +10444,28 @@ function coverageEntryLine(entry3, at, command, block4) {
 }
 var isCoverage = (entry3) => entry3.measure !== "complexity";
 
+// src/core/delivery/code-reads.ts
+function codeReads(store, worktreeId) {
+  const failing = /* @__PURE__ */ new Map();
+  const edits = /* @__PURE__ */ new Map();
+  const once3 = (cache, read5) => (measures) => measures.flatMap((measure2) => {
+    const known = cache.get(measure2);
+    if (known !== void 0) return known;
+    const states = read5(measure2);
+    cache.set(measure2, states);
+    return states;
+  });
+  return {
+    failing: once3(
+      failing,
+      (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" })
+    ),
+    edits: once3(edits, (measure2) => store.states.edits(worktreeId, measure2))
+  };
+}
+
 // src/core/delivery/code-told.ts
-function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
+function toldOver(store, worktreeId, consumers, measures = ["complexity"], failing) {
   const told = new Set(
     consumers.flatMap(
       (c) => store.views.list(c).filter((v) => measures.includes(v.measure) && v.told !== "count").map(codeKey)
@@ -10428,7 +10473,7 @@ function toldOver(store, worktreeId, consumers, measures = ["complexity"]) {
   );
   if (told.size === 0) return [];
   return measures.flatMap(
-    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told.has(codeKey(s)))
+    (measure2) => (failing === void 0 ? store.states.list(worktreeId, { measure: measure2, outcome: "fail" }) : failing.filter((s) => s.measure === measure2)).filter((s) => told.has(codeKey(s)))
   );
 }
 function changedNotJudged(store, worktreeId, bounds) {
@@ -10480,10 +10525,10 @@ function writeSent(meta, consumer, signature) {
   if (signature === null) meta.delete(sentSummaryKey(consumer));
   else meta.set(sentSummaryKey(consumer), signature);
 }
-function standing2(store, consumer, { threshold, maxFileBytes }, since) {
+function standing2(store, consumer, { threshold, maxFileBytes }, since, failing) {
   const { worktreeId } = consumer;
   const measures = ["complexity", ...coverageMeasures(store, worktreeId)];
-  const over = toldOver(store, worktreeId, [consumer], measures);
+  const over = toldOver(store, worktreeId, [consumer], measures, failing);
   const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
   if (over.length === 0 && changed.length === 0) return null;
   const told = over.length === 0 ? null : toldOf2(over, threshold);
@@ -10499,11 +10544,12 @@ function standing2(store, consumer, { threshold, maxFileBytes }, since) {
     signature: JSON.stringify({ told, files: files2 })
   };
 }
-function summaryChanged(store, consumer, policy, since) {
-  return readSent(store.meta, consumer) !== (standing2(store, consumer, policy, since)?.signature ?? null);
+function summaryChanged(store, consumer, policy, since, failing) {
+  const now = standing2(store, consumer, policy, since, failing);
+  return readSent(store.meta, consumer) !== (now?.signature ?? null);
 }
-function withToldOver(store, consumer, news, policy, since) {
-  const now = standing2(store, consumer, policy, since);
+function withToldOver(store, consumer, news, policy, since, failing) {
+  const now = standing2(store, consumer, policy, since, failing);
   const sent = readSent(store.meta, consumer);
   if (sent === (now?.signature ?? null)) return news;
   writeSent(store.meta, consumer, now?.signature ?? null);
@@ -10609,17 +10655,12 @@ function countingOf(store, worktreeId) {
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
   return store.transitions.history(worktreeId, check).findLast((t) => t.measure === measure2) ?? null;
 }
-var failingIn = (store, worktreeId) => store.states.list(worktreeId, { measure: MEASURE, outcome: "fail" });
-function seed(store, consumer, failing, at) {
+function seed(store, consumer, reads, at) {
   store.views.clear(consumer);
-  const covered = failingOf(
-    store,
-    consumer.worktreeId,
-    coverageMeasures(store, consumer.worktreeId)
-  );
+  const covered = coverageMeasures(store, consumer.worktreeId);
   store.views.writeMany(
     consumer,
-    [...failing, ...covered].map((s) => seedEntry(s, at))
+    reads.failing([MEASURE, ...covered]).map((s) => seedEntry(s, at))
   );
   writeJson(store, seededKey(consumer), at);
 }
@@ -10630,17 +10671,17 @@ function registerCode(source, consumer, at) {
   const read5 = withCode(
     source,
     ({ store, complexity }) => store.transaction(() => {
-      const failing = failingIn(store, worktreeId);
+      const reads = codeReads(store, worktreeId);
       const recounted = Math.max(
         readRecount(store, worktreeId)?.at ?? 0,
         readCrapRecount(store.meta, worktreeId)?.at ?? 0
       );
-      seed(store, consumer, failing, Math.max(at, recounted));
+      seed(store, consumer, reads, Math.max(at, recounted));
       const { done, total } = countingOf(store, worktreeId);
       const counted = readCursor2(store.meta, worktreeId) !== null;
       if (!counted) awaitFirstCount(store.meta, worktreeId);
       const counting = counted && done === total ? {} : { counting: { done, total } };
-      const over = failing.length;
+      const over = reads.failing([MEASURE]).length;
       return { v: 1, threshold: complexity.threshold, over, ...counting, ...notMeasured };
     })
   );
@@ -10688,7 +10729,7 @@ function statesFor(store, worktreeId, failing, view, measures = [MEASURE]) {
   const others = store.states.list(worktreeId, { paths }).filter((s) => measures.includes(s.measure) && s.outcome !== "fail");
   return [...failing, ...others];
 }
-function summaryNews(store, worktreeId, over, seededAt) {
+function summaryNews(store, worktreeId, reads, seededAt) {
   const recount = readRecount(store, worktreeId);
   const crap = readCrapRecount(store.meta, worktreeId);
   const change2 = readCoverageChange(store.meta, worktreeId);
@@ -10696,13 +10737,13 @@ function summaryNews(store, worktreeId, over, seededAt) {
   const crapRecounted = crap !== null && crap.at > seededAt;
   const changed = change2 !== null && change2.at > seededAt;
   if (!recounted && !crapRecounted && !changed) return null;
-  const crapOver = () => failingOf(store, worktreeId, ["crap"]).length;
+  const crapOver = () => reads.failing(["crap"]).length;
   return {
     news: {
       v: 1,
       entries: [],
       more: 0,
-      ...recounted ? { recount: { ...recount, over } } : {},
+      ...recounted ? { recount: { ...recount, over: reads.failing([MEASURE]).length } } : {},
       // Row 015-40: a `crap.threshold` change, as D6's summary for complexity.
       ...crapRecounted ? { crapRecount: { ...crap, over: crapOver() } } : {},
       // Row 015-64: a coverage check switched off or files newly excluded (D1).
@@ -10711,25 +10752,22 @@ function summaryNews(store, worktreeId, over, seededAt) {
     newest: Math.max(recount?.at ?? 0, crap?.at ?? 0, change2?.at ?? 0)
   };
 }
-function codeStep(store, consumer, { at, since, limit }, write2) {
+function codeStep(store, consumer, { at, since, limit }, write2, reads) {
   const { worktreeId } = consumer;
   const seeded = readJson(store, seededKey(consumer));
   const seededAt = typeof seeded === "number" ? seeded : 0;
-  const failing = failingIn(store, worktreeId);
   const tooBig = newTooBig(store, consumer, since, limit, write2);
   const big = tooBig.length === 0 ? {} : { tooBig };
-  const summary = summaryNews(store, worktreeId, failing.length, seededAt);
+  const summary = summaryNews(store, worktreeId, reads, seededAt);
   if (summary !== null) {
-    if (write2) seed(store, consumer, failing, Math.max(at, summary.newest));
+    if (write2) seed(store, consumer, reads, Math.max(at, summary.newest));
     return { news: { ...summary.news, ...big }, writes: true };
   }
   const covered = coverageMeasures(store, worktreeId);
   const measures = [MEASURE, ...covered];
-  const edits = new Map(
-    measures.flatMap((m) => store.states.edits(worktreeId, m)).map((e) => [codeKey(e), e])
-  );
+  const edits = new Map(reads.edits(measures).map((e) => [codeKey(e), e]));
   const view = store.views.list(consumer).filter((v) => measures.includes(v.measure));
-  const judged2 = [...failing, ...failingOf(store, worktreeId, covered)];
+  const judged2 = reads.failing(measures);
   const plan = planCodeDelta({
     view,
     states: statesFor(store, worktreeId, judged2, view, measures),
@@ -10764,22 +10802,32 @@ function tellCode(source, consumer, at, since, { changes = true, toldOver: toldO
   if (!changes && !toldOver2) return null;
   const told = withCode(source, (access) => {
     const { store, complexity } = access;
+    const { worktreeId } = consumer;
     const seen = since();
-    const over = (news) => toldOver2 ? withToldOver(store, consumer, news, complexity, seen) : news;
+    const judged2 = (reads) => reads.failing([MEASURE, ...coverageMeasures(store, worktreeId)]);
+    const over = (news, reads) => toldOver2 ? withToldOver(store, consumer, news, complexity, seen, reads && judged2(reads)) : news;
+    const changed = (reads) => summaryChanged(store, consumer, complexity, seen, reads && judged2(reads));
     if (changes) {
       const input = { at, since: seen, limit: complexity.maxFileBytes };
-      if (store.read(() => codeStep(store, consumer, input, false)).writes) {
+      const first = store.read(() => {
+        const reads = codeReads(store, worktreeId);
+        if (codeStep(store, consumer, input, false, reads).writes) return "write";
+        return toldOver2 && changed(reads) ? "summary" : "none";
+      });
+      if (first === "write") {
         return heldWrite(
           access,
-          () => over(
-            withUntested(store, consumer, codeStep(store, consumer, input, true).news, loaders)
-          ),
+          () => {
+            const reads = codeReads(store, worktreeId);
+            const step = codeStep(store, consumer, input, true, reads);
+            return over(withUntested(store, consumer, step.news, loaders), reads);
+          },
           holds2
         );
       }
+      return first === "summary" ? heldWrite(access, () => over(null), holds2) : null;
     }
-    if (!toldOver2) return null;
-    return store.read(() => summaryChanged(store, consumer, complexity, seen)) ? heldWrite(access, () => over(null), holds2) : null;
+    return store.read(() => changed()) ? heldWrite(access, () => over(null), holds2) : null;
   });
   return told === "missing" ? null : told;
 }

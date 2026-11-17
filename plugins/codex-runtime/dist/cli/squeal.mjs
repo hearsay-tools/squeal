@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.548";
+  if (true) return "0.1.550";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -18435,7 +18435,9 @@ CREATE TABLE coverage (
     CODE_INDEXES = {
       coverage_stored: "CREATE INDEX coverage_stored ON coverage (result_key, provider_version, recorded_at)",
       coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
-      counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)"
+      counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
+      states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
+      states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL"
     };
     CODE_TABLES = {
       coverage_parts: `
@@ -19483,10 +19485,18 @@ function checkFrom2(row2) {
     occurrence: num(row2, "occurrence")
   };
 }
-function statesOf(worktreeId, paths) {
+function indexesIn(conn, names8) {
+  const rows = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(names8)
+  );
+  return new Set(rows.map((row2) => str(row2, "name")));
+}
+function statesOf(worktreeId, paths, index) {
   if (paths === void 0) {
+    const states = index === null ? "states s" : `states s INDEXED BY ${index}`;
     return {
-      from: "states s JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?",
+      from: `${states} JOIN checks c ON c.id = s.check_id WHERE s.worktree_id = ?`,
       params: [worktreeId]
     };
   }
@@ -19498,17 +19508,33 @@ function statesOf(worktreeId, paths) {
     params: [JSON.stringify(paths), worktreeId]
   };
 }
+function filterTerms(filter) {
+  const terms = [];
+  const params = [];
+  if (filter.measure !== void 0) {
+    terms.push("AND s.measure = ?");
+    params.push(filter.measure);
+  }
+  if (filter.outcome === "fail") terms.push("AND s.outcome = 'fail'");
+  else if (filter.outcome !== void 0) {
+    terms.push("AND s.outcome = ?");
+    params.push(filter.outcome);
+  }
+  return { sql: terms.join(" "), params };
+}
 function createStateRepo(conn) {
+  const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
+  const named4 = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
-      const { from, params } = statesOf(worktreeId, filter.paths);
+      const index = named4(STATES_FAILING, filter.outcome === "fail");
+      const { from, params } = statesOf(worktreeId, filter.paths, index);
+      const terms = filterTerms(filter);
       return conn.all(
-        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from}
-             AND (? IS NULL OR s.measure = ?) AND (? IS NULL OR s.outcome = ?)
+        `SELECT s.*, ${CHECK_COLUMNS2} FROM ${from} ${terms.sql}
            ORDER BY c.path, c.qualified_name, c.occurrence, s.measure`,
         ...params,
-        ...Array(2).fill(filter.measure ?? null),
-        ...Array(2).fill(filter.outcome ?? null)
+        ...terms.params
       ).map((row2) => toState(worktreeId, row2));
     },
     upsertMany(states) {
@@ -19535,7 +19561,7 @@ function createStateRepo(conn) {
       });
     },
     edits(worktreeId, measure2, paths) {
-      const { from, params } = statesOf(worktreeId, paths);
+      const { from, params } = statesOf(worktreeId, paths, named4(STATES_EDITED, true));
       return conn.all(
         `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
              AND s.measure = ? AND s.edited_at IS NOT NULL
@@ -19662,7 +19688,7 @@ function toEdit(row2) {
     at: num(row2, "edited_at")
   };
 }
-var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_COLUMNS2;
+var MEASURES, OUTCOMES5, CHECK_WHERE2, CHECK_COLUMNS2, STATES_FAILING, STATES_EDITED;
 var init_states2 = __esm({
   "src/core/code/store/states.ts"() {
     "use strict";
@@ -19680,6 +19706,8 @@ var init_states2 = __esm({
     ];
     CHECK_WHERE2 = "path = ? AND qualified_name = ? AND occurrence = ?";
     CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
+    STATES_FAILING = "states_failing";
+    STATES_EDITED = "states_edited";
   }
 });
 
@@ -78514,7 +78542,7 @@ function withCode2(source2, fn) {
 init_failed();
 init_too_big();
 init_compare();
-function toldOver(store, worktreeId, consumers, measures2 = ["complexity"]) {
+function toldOver(store, worktreeId, consumers, measures2 = ["complexity"], failing) {
   const told3 = new Set(
     consumers.flatMap(
       (c) => store.views.list(c).filter((v) => measures2.includes(v.measure) && v.told !== "count").map(codeKey)
@@ -78522,7 +78550,7 @@ function toldOver(store, worktreeId, consumers, measures2 = ["complexity"]) {
   );
   if (told3.size === 0) return [];
   return measures2.flatMap(
-    (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).filter((s) => told3.has(codeKey(s)))
+    (measure2) => (failing === void 0 ? store.states.list(worktreeId, { measure: measure2, outcome: "fail" }) : failing.filter((s) => s.measure === measure2)).filter((s) => told3.has(codeKey(s)))
   );
 }
 function changedNotJudged(store, worktreeId, bounds) {
@@ -98216,14 +98244,23 @@ var WriteDesk = class {
     return writeAnswer(request.requestId, state);
   }
   /**
-   * The lease in force. One past its time with no write waiting is kept
-   * while its process lives, for another `LEASE_TTL_MS`, and else has ended.
+   * The lease in force. One with no write waiting ends as soon as its
+   * process is surely gone, also within its time: a hook its harness killed
+   * leaves no lease for the next hook to wait out (row 011-393). Past its
+   * time it is kept while its process lives, for another `LEASE_TTL_MS`,
+   * and else has ended.
    */
   #current() {
     const lease = this.#lease;
-    if (lease === null || lease.pending > 0 || this.#now() < lease.until) return lease;
+    if (lease === null || lease.pending > 0) return lease;
     const alive2 = this.#context.alive ?? leaseProcessAlive;
-    if (lease.process !== void 0 && alive2(lease.process) === true) {
+    const lives = lease.process === void 0 ? null : alive2(lease.process);
+    if (lives === false) {
+      this.#lease = null;
+      return null;
+    }
+    if (this.#now() < lease.until) return lease;
+    if (lives === true) {
       lease.until = this.#now() + LEASE_TTL_MS;
       return lease;
     }
