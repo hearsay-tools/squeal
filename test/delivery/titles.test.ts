@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import type { Delta } from "../../src/core/types/delivery.js";
@@ -52,6 +53,41 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     );
   });
 
+  // Row 005-97: the late and caught-up notices.
+  it("names late results and catching up", () => {
+    const late = {
+      kind: "owed" as const,
+      revision: 5,
+      owed: 1,
+      files: 2,
+      editRevision: 4,
+      ageMs: 9_000,
+    };
+    expect(titleOf({ editsLate: late })).toBe(
+      "SQUEAL · results for your edits are late at revision 5",
+    );
+    expect(titleOf({ caughtUp: { revision: 5, files: 2, unknown: 0 } })).toBe(
+      "SQUEAL · caught up at revision 5",
+    );
+    expect(titleOf({ sawEdit: { queued: 2 }, editsLate: late })).toBe(
+      "SQUEAL · results for your edits are late; your edit queued 2 test files at revision 5",
+    );
+  });
+
+  it("are the titles the skill's reports.md copies quote", () => {
+    const at = (revision: number) => ({ ...header, revision });
+    const late = { kind: "unread" as const, revision: 42, since: 0 };
+    const titles = [
+      titleOf({ editsLate: late }, at(42)),
+      titleOf({ caughtUp: { revision: 45, files: 9, unknown: 0 } }, at(45)),
+    ];
+    for (const plugin of ["claude-code", "codex-runtime", "pi"]) {
+      const path = `../../plugins/${plugin}/skills/squeal/references/reports.md`;
+      const reports = readFileSync(new URL(path, import.meta.url), "utf8");
+      for (const title of titles) expect(reports, plugin).toContain(`\`${title}\``);
+    }
+  });
+
   it("names the first results in a worktree, a group's kind and a commit", () => {
     // Row 005-94: the owed counts (row 011-205) are titled without the word "listing".
     expect(titleOf({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } })).toBe(
@@ -71,6 +107,7 @@ describe("a delivery with no changed check is titled by its content (row 005-91 
     const groups = { ...header, groupTiers: [browser(0, 1)] };
     for (const parts of [
       { sawEdit: { queued: 2 } },
+      { caughtUp: { revision: 5, files: 1, unknown: 0 } },
       { sawEdit: { queued: 2 }, groupTiersChanged: ["browser"] },
     ]) {
       expect(titleOf(parts, groups)).not.toBe("SQUEAL · revision 5");

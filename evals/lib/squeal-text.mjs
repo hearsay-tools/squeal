@@ -318,12 +318,20 @@ const NEWS =
  * edits affect in place of the worktree's queue: `Revision 12 (changed src/a.ts): 3 of the 9 test
  * files your edits affect have not run.`, `…: the 1 test file your edits affect has not run.`, or
  * once none is owed `…: the 9 test files your edits affect have all run.` The files not run are
- * read as pending; the files that ran with no result (`; 1 with no result (unknown).`) as
- * unknown. A news header with no count (no edit since its
+ * read as pending; the files that ran with no result (`; 1 with no result (unknown).`, or the
+ * caught-up line's count, row 005-97) as unknown. A news header with no count (no edit since its
  * count began) ends after the changed paths and counts nothing, so it gives no counts.
  */
 const OWN =
   /^Revision \d+(?: · [^:]*)?(?: \(changed (?:[^)\n]|\)(?!: ))*\))?: (?:(\d+) of )?the (\d+) test files? your edits affect (?:has run|have all run|(?:has|have) (not) run)(?:; (\d+) with no result \(unknown\))?\./m;
+
+/**
+ * Row 005-97's caught-up line with files that gave no result: `All 9 test files your edits
+ * affect have run at revision 45: 8 with results, 1 with no result (unknown); no new failure.`
+ * Review 0.1.530 B4: those files are unknown, never a pass.
+ */
+const CAUGHT_UNKNOWN =
+  /affects? (?:has|have) run at revision \d+: \d+ with results, (\d+) with no result \(unknown\)/;
 
 /**
  * The clause after a `Known failures:` count, or after a wait verdict line's `known failures`,
@@ -372,7 +380,7 @@ function headerCounts(t) {
   const own = OWN.exec(t);
   if (own === null) return null;
   const owed = own[3] === undefined ? 0 : Number(own[1] ?? own[2]);
-  const unknown = Number(own[4] ?? 0);
+  const unknown = Math.max(Number(own[4] ?? 0), Number(CAUGHT_UNKNOWN.exec(t)?.[1] ?? 0));
   return { counts: [owed, 0, unknown], news: true };
 }
 

@@ -23,6 +23,11 @@ const delta = (parts: Partial<Delta>): string =>
 
 const NEW = [
   delta({ sawEdit: { queued: 2 } }),
+  // Row 005-97: the late and caught-up notices.
+  delta({ caughtUp: { revision: 4, files: 2, unknown: 0 } }),
+  delta({
+    editsLate: { kind: "owed", revision: 4, owed: 1, files: 2, editRevision: 3, ageMs: 9_000 },
+  }),
   delta({ sawEdit: { queued: 2 }, countsOwed: { lookupOnly: false } }),
   // Row 005-94: the owed counts alone, titled "first results in this worktree".
   delta({ countsOwed: { lookupOnly: false } }),

@@ -266,10 +266,11 @@ function relPath(p) {
  * A change delivery's title: `SQUEAL · revision N` before row 005-91 (c), `N checks changed`, or
  * since that row the words of its other lines (`contentWords`): the edit lines, the owed counts
  * ("the counts after the listing", from row 005-94 "first results in this worktree"), a group or
- * the slow tier, a lint line and a commit, each before `at revision N`.
+ * the slow tier, a lint line and a commit, each before `at revision N`. Since row 005-97, the late
+ * and caught-up notices: `results for your edits are late`, `caught up`.
  */
 const RESULT_TITLE =
-  /SQUEAL · (?:revision|\d+ checks? changed|(?:your edits?\b|the counts after|first results in |\S+ group |slow tier |lint |commit |complexity |CRAP threshold |coverage checks |\d+ files? too big )[^\n\\]* at revision \d)/;
+  /SQUEAL · (?:revision|\d+ checks? changed|(?:your edits?\b|results for your edits |caught up|the counts after|first results in |\S+ group |slow tier |lint |commit |complexity |CRAP threshold |coverage checks |\d+ files? too big )[^\n\\]* at revision \d)/;
 
 function delivery(k) {
   const text = k.text;
