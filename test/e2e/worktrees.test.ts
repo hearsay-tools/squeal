@@ -70,14 +70,23 @@ describe.each(PLUGINS)("a second worktree, $name", (plugin) => {
     expectAgrees(later.text, await e.status(wt2));
   }, 240_000);
 
-  // Goal 4: inherited results are reported as inherited, and D9's skill reads
-  // "the header's pending and inherited counts" (StatusHeader.inheritedCount).
-  it("names inherited results in the registration it delivers", async (ctx) => {
+  // Goal 4: inherited results are reported as inherited. Row 005-94 (the human, 2026-11-17, R1):
+  // the registration leaves the inherited count to `squeal status --full`, which names it and
+  // where it came from; the registration says how many test files are current.
+  it("names inherited results in status --full, and registers with the current test files", async (ctx) => {
     const e = fixture(ctx, plugin);
-    const { wt2 } = await twoWorktrees(e);
+    const { main, wt2 } = await twoWorktrees(e);
     const later = await e.hook("session-start", wt2, { session_id: "late-session" });
     expect(later.text).toContain("registered at revision");
-    expect(later.text).toMatch(/inherited/i);
+    expect(later.text).toMatch(
+      /test files? (?:is|are) current \(run on the files as they are now\)/,
+    );
+    expect(later.text).not.toMatch(/inherited/i);
+    const full = await e.cli(wt2, ["status", "--full"]);
+    expect(full.stdout).toContain(
+      `Inherited from other worktrees: ${main.counts.current} current results`,
+    );
+    expect(full.stdout).toContain(` from ${e.main} at `);
   }, 240_000);
 
   // A consumer registered before the lookup was never told the inherited

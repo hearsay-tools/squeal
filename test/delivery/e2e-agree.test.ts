@@ -44,13 +44,21 @@ describe("e2e agreement: the header forms (rows 011-205, 005-93, 005-94)", () =>
     expect(() => expectAgrees(full(completed), completed)).not.toThrow();
   });
 
-  it("rejects a registration whose test file counts disagree with status", () => {
+  // Results landing between the hook and the status read add current files at one revision:
+  // the hook may count fewer than status, never more, and the same files listed.
+  it("rejects a registration that counts more current test files than status, or other files", () => {
     const fewer = {
       ...settled,
       testFileCounts: { current: 5, pending: 0, stale: 0, unknown: 1 },
     } as StatusSnapshot;
-    expect(() => expectAgrees(full(fewer), settled)).toThrow();
+    expect(() => expectAgrees(full(settled), fewer)).toThrow();
     expect(() => expectAgrees(full(fewer), fewer)).not.toThrow();
+    expect(() => expectAgrees(full(fewer), settled)).not.toThrow();
+    const more = {
+      ...settled,
+      testFileCounts: { current: 6, pending: 0, stale: 0, unknown: 1 },
+    } as StatusSnapshot;
+    expect(() => expectAgrees(full(fewer), more)).toThrow();
   });
 
   it("rejects a header that names its commit or the checkpoint", () => {

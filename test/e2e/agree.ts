@@ -59,15 +59,16 @@ export function expectAgrees(text: string | null, status: StatusSnapshot): void 
   expect(text, text).not.toMatch(/^Revision \d+ · /m);
   expect(text, text).not.toMatch(/^Revision \d+[^\n]*: \d+ current\b/m);
   expect(text, text).not.toContain("Full-suite checkpoint");
+  // Row 005-94 (R1): the current test files the hook counted. Results that land between the
+  // hook and this status read, at the same revision, only add current files, so the hook may
+  // count fewer than status, never more; the files listed at that revision do not move.
   const files = FILES.exec(text);
   const counted = status.testFileCounts;
   if (files !== null && counted !== undefined) {
     const total = counted.current + counted.pending + counted.stale + counted.unknown;
     const [current, of] = files[1] === undefined ? [files[3], files[3]] : [files[1], files[2]];
-    expect({ current: Number(current), total: Number(of) }, text).toEqual({
-      current: counted.current,
-      total,
-    });
+    expect(Number(of), text).toBe(total);
+    expect(Number(current), text).toBeLessThanOrEqual(counted.current);
   }
   const news = NEWS.exec(text);
   if (news?.[2] !== undefined) {
