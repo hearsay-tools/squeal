@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type KeyAt, keysAtCommit, sideKeys } from "../../src/core/commit/at-keys.js";
+import { keysAtCommit } from "../../src/core/commit/at-keys.js";
+import type { KeyAt } from "../../src/core/commit/at-keys-checkout.js";
+import { sideKeys } from "../../src/core/commit/at-keys-side.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
@@ -140,7 +142,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     await exactAtA(f, [a, b], TEST, /^package\.json changed on the resolution path/);
   });
 
-  it("an unchanged file takes the fast path with no checkout; a changed one is walked", async () => {
+  it("an unchanged file keeps its key with no walk; the checkout only loads the configs; a changed one is walked", async () => {
     const f = fixture({
       ...PLAIN_FILES,
       "src/a.ts": "export const value = 1;\n",
@@ -154,14 +156,16 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
 
     const fast = await keysAtCommit({ ...options, files: [PLAIN] });
     expect(fast.files.get(testFileId(PLAIN))).toMatchObject({ key: plainAtA, via: "unchanged" });
-    expect(fast.checkout).toBe(false);
-    expect(install.calls()).toBe(0);
+    expect(fast.changed.size).toBe(0);
+    // Review wave-5 B2: the environment at the commit is read in a checkout every call.
+    expect(fast.checkoutMs).toBeGreaterThan(0);
+    expect(install.calls()).toBe(1);
 
     const both = await keysAtCommit({ ...options, files: [PLAIN, TEST] });
     expect(both.files.get(testFileId(PLAIN))).toMatchObject({ key: plainAtA, via: "unchanged" });
     expect(walkedKey(both.files.get(testFileId(TEST)))).toBe(await freshKey(f, a, TEST));
     expect(both.changed.get(testFileId(TEST))).toMatch(/differs at the commit/);
-    expect(install.calls()).toBe(1);
+    expect(install.calls()).toBe(2);
     expect(f.checkouts()).toEqual([]);
   });
 
@@ -173,7 +177,7 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "src/a.ts": "export const value = 3;\n" });
-    // Back to A's bytes, uncommitted: A's key holds with no checkout.
+    // Back to A's bytes, uncommitted: A's key holds with no walk.
     writeFileSync(join(f.root, "src/a.ts"), "export const value = 1;\n");
     // PLAIN's source edited, uncommitted: it differs from A now.
     writeFileSync(join(f.root, "src/plain.ts"), "export const plain = 2;\n");
@@ -188,15 +192,22 @@ describe("keys at a commit by walk in a checkout (row 023-16)", SLOW, () => {
     expect(install.calls()).toBe(1);
   });
 
-  it("names a test file the commit lacks absent, with no checkout", async () => {
+  it("names a test file the commit lacks absent, with no checkout for it alone", async () => {
     const f = fixture(PLAIN_FILES);
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ [TEST.path]: testOf("plain", 1), "src/a.ts": "export const value = 1;\n" });
     const install = linkInstall();
-    const keys = await keysAtCommit({ ...keying(f, install.install), root: f.root, commit: a });
+    const options = { ...keying(f, install.install), root: f.root, commit: a };
+    const alone = await keysAtCommit({ ...options, files: [TEST] });
+    expect(alone.files.get(testFileId(TEST))).toMatchObject({
+      notDetermined: { reason: "absent" },
+    });
+    expect(alone.checkoutMs).toBeNull();
+    expect(install.calls()).toBe(0);
+    const keys = await keysAtCommit(options);
     expect(keys.files.get(testFileId(TEST))).toMatchObject({ notDetermined: { reason: "absent" } });
     expect(keys.files.get(testFileId(PLAIN))).toMatchObject({ via: "unchanged" });
-    expect(install.calls()).toBe(0);
+    expect(install.calls()).toBe(1);
   });
 
   it("reads the store's results at the key at the commit, and writes nothing", async () => {

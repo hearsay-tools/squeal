@@ -25,6 +25,12 @@ export interface CheckoutMarker {
   /** The common dir of the repository the tree is a worktree of. */
   readonly commonDir: AbsolutePath;
   readonly createdAt: EpochMs;
+  /**
+   * Row 023-16 (review wave-5 B3): the install's process group, by its
+   * leader, once the install starts. Removal and the sweep stop it, so an
+   * install outlives no owner a SIGKILL ended.
+   */
+  readonly group?: LeaseProcess;
 }
 
 /** The marker of the checkout folder `folder`. */
@@ -59,20 +65,32 @@ export function readMarker(folder: AbsolutePath): CheckoutMarker | null {
     return null;
   }
   if (!isRecord(value) || value.v !== MARKER_VERSION || !isRecord(value.owner)) return null;
-  const { owner, commit, commonDir, createdAt } = value;
+  const { owner, commit, commonDir, createdAt, group } = value;
   if (typeof owner.pid !== "number") return null;
   if (typeof commit !== "string" || typeof commonDir !== "string") return null;
   if (typeof createdAt !== "number") return null;
   return {
     v: MARKER_VERSION,
-    owner: {
-      pid: owner.pid,
-      startTime: typeof owner.startTime === "number" ? owner.startTime : null,
-      pidNamespace: typeof owner.pidNamespace === "string" ? owner.pidNamespace : null,
-    },
+    owner: leaseOf(owner),
     commit,
     commonDir,
     createdAt,
+    ...(isRecord(group) && typeof group.pid === "number" ? { group: leaseOf(group) } : {}),
+  };
+}
+
+/** Records the install's group in the marker of `folder`, which must have one. */
+export function recordGroup(folder: AbsolutePath, group: LeaseProcess): void {
+  const marker = readMarker(folder);
+  if (marker === null) throw new Error(`squeal: ${folder} holds no checkout marker`);
+  writeMarker(folder, { ...marker, group });
+}
+
+function leaseOf(value: Record<string, unknown>): LeaseProcess {
+  return {
+    pid: value.pid as number,
+    startTime: typeof value.startTime === "number" ? value.startTime : null,
+    pidNamespace: typeof value.pidNamespace === "string" ? value.pidNamespace : null,
   };
 }
 

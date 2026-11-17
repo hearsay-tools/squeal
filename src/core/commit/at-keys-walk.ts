@@ -9,8 +9,10 @@ import {
   locateCheckouts,
   packageStore,
 } from "../checkout/location.js";
+import { recordGroup } from "../checkout/marker.js";
 import { sweepCheckouts } from "../checkout/sweep.js";
 import { type Keyer, openKeyer } from "../code/gate/stored.js";
+import { leaseProcess } from "../daemon/lease-process.js";
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { installCommand } from "../scheduler/install-command.js";
@@ -152,9 +154,18 @@ export async function withCheckout<T>(
   try {
     await input.prepare?.(checkout);
     const timeoutMs = options.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
-    const install = await (options.install ?? ((tree) => installCheckout(tree, { timeoutMs })))(
-      checkout.tree,
-    );
+    // Review wave-5 B3: the install's group is recorded, so a sweep after this process's
+    // SIGKILL stops an install that outlived it.
+    const started = (group: number) => {
+      try {
+        recordGroup(checkout.folder, leaseProcess(group));
+      } catch {
+        // No marker to record in: the sweep removes such a folder without its group.
+      }
+    };
+    const install = await (
+      options.install ?? ((tree) => installCheckout(tree, { timeoutMs, started }))
+    )(checkout.tree);
     if (!install.ok) throw new CheckoutFailed("install", `${install.command}: ${install.reason}`);
     return await body(checkout, install);
   } finally {

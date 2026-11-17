@@ -59,7 +59,9 @@ const INSTALLED: readonly { readonly installed: RegExp; readonly committed: stri
 
 /** A path that names files by pattern, not one file. */
 const PATTERN = /[*?{[]/;
-const MODULE = /\.[cm]?[jt]sx?$/;
+/** A file module resolution may reach: Vite's default extensions and Node's. */
+const MODULE = /\.([cm]?[jt]sx?|json|node)$/;
+const INDEX = /^index\.([cm]?[jt]sx?|json|node)$/;
 const TSCONFIG = /(^|\/)tsconfig[^/]*\.json$/;
 const MANIFEST = /(^|\/)package\.json$/;
 
@@ -90,7 +92,7 @@ export function changedInput(
     if (why !== null) return why;
     if (listedDirectory(path) === null && !PATTERN.test(path)) {
       folders.add(folderOf(path));
-      if (MODULE.test(path)) modules.add(`${folderOf(path)}\0${stem(path)}`);
+      if (MODULE.test(path)) for (const target of targets(path)) modules.add(target);
     }
   }
   const inputs = new Set(file.paths);
@@ -100,10 +102,12 @@ export function changedInput(
     if (path === POLICY_FILE) return `${path} changed`;
     // 4: a changed path a declared pattern of the policy names.
     if (diff.declared(path)) return `${path} is a declared input and changed`;
-    // 6: an added or deleted twin of an input module, which resolution may take instead.
-    const twin = `${folderOf(path)}\0${stem(path)}`;
-    if (diff.addedOrDeleted.has(path) && modules.has(twin) && !inputs.has(path))
-      return `${path} was added or deleted beside an input module of the same name`;
+    // 6: an added or deleted resolution candidate of an input module's import, which
+    // resolution may take instead: an extension twin (`a.ts`, `a.js`), a file beside a folder
+    // (`a.ts`, `a/index.ts`), or a folder's own manifest (`a/package.json`).
+    const candidate = diff.addedOrDeleted.has(path) && !inputs.has(path);
+    if (candidate && targets(path).some((target) => modules.has(target)))
+      return `${path} was added or deleted where an input module's import may resolve`;
     // 7, 8: a manifest's resolution fields, or a tsconfig, on the inputs' path.
     const onPath = (MANIFEST.test(path) && diff.manifests.has(path)) || TSCONFIG.test(path);
     if (onPath && above(folderOf(path), folders))
@@ -168,6 +172,21 @@ function above(folder: RelativePath, folders: ReadonlySet<RelativePath>): boolea
 function folderOf(path: RelativePath): RelativePath {
   const folder = posix.dirname(path);
   return folder === "." ? "" : folder;
+}
+
+/**
+ * The import targets, without extension, that may resolve to the module at
+ * `path`: `src/a` for `src/a.ts`, and for an index or a folder's manifest
+ * also the folder (`src/a` for `src/a/index.ts` and `src/a/package.json`).
+ * A path that resolution never reaches has none.
+ */
+function targets(path: RelativePath): string[] {
+  const name = posix.basename(path);
+  const folder = folderOf(path);
+  const out: string[] = [];
+  if (MODULE.test(name)) out.push(folder === "" ? stem(path) : `${folder}/${stem(path)}`);
+  if (folder !== "" && (INDEX.test(name) || name === "package.json")) out.push(folder);
+  return out;
 }
 
 function stem(path: RelativePath): string {

@@ -2,12 +2,13 @@ import { randomBytes } from "node:crypto";
 import { constants, copyFileSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
 import { isAbsolute, join, normalize, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { leaseProcess } from "../daemon/lease-process.js";
+import { leaseProcess, leaseProcessAlive } from "../daemon/lease-process.js";
 import { awaitDaemonLock, type DaemonLock } from "../daemon/lock.js";
 import { runGit } from "../fs/git.js";
 import { lstatOrNull } from "../fs/git-layout.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
-import { runPath, treePath, writeMarker } from "./marker.js";
+import type { LeaseProcess } from "../types/daemon-writes.js";
+import { readMarker, runPath, treePath, writeMarker } from "./marker.js";
 
 /*
  * Spec 023 D4.1, D4.2, D4.8 (row 023-05): create and remove a temporary
@@ -174,16 +175,43 @@ export async function removeCheckout(
   await withCheckoutLock(checkout.commonDir, () => removeTree(checkout), options.lockWaitMs);
 }
 
-/** The removal steps, for a caller that holds the lock. Each step goes on when the one before failed. */
+/**
+ * The removal steps, for a caller that holds the lock. Each step goes on when
+ * the one before failed. First the install group the marker records is
+ * stopped (review wave-5 B3), so no install outlives its checkout.
+ */
 export async function removeTree(
   checkout: Pick<Checkout, "folder" | "tree" | "commonDir">,
 ): Promise<void> {
   const { commonDir, tree } = checkout;
+  const group = readMarker(checkout.folder)?.group;
+  if (group !== undefined) await stopRecordedGroup(group).catch(() => {});
   const lenient = { okCodes: [0, 1, 128], timeoutMs: GIT_TIMEOUT_MS };
   await runGit(commonDir, ["worktree", "unlock", tree], lenient).catch(() => "");
   await runGit(commonDir, ["worktree", "remove", "--force", tree], lenient).catch(() => "");
   rmSync(checkout.folder, { recursive: true, force: true, maxRetries: 3 });
   await runGit(commonDir, ["worktree", "prune"], lenient).catch(() => "");
+}
+
+/**
+ * Stops the process group `leader` led, when it is still that group: its
+ * leader lives, or the leader's pid is free while the group has members,
+ * since no process takes the pid of a group that still exists. A pid that
+ * another process holds now leads no group of the install's.
+ */
+export async function stopRecordedGroup(leader: LeaseProcess): Promise<void> {
+  const alive = leaseProcessAlive(leader);
+  if (alive === true || (alive === false && !pidInUse(leader.pid) && signalGroup(leader.pid, 0)))
+    await stopGroup(leader.pid);
+}
+
+function pidInUse(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
 }
 
 /** SIGTERM to the group, then SIGKILL when it still lives after the grace. */
