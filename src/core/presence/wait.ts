@@ -1,7 +1,7 @@
 import type { EpochMs } from "../types/common.js";
 import type { DaemonStopping } from "../types/status.js";
 import type { DaemonRecord } from "../types/store-records.js";
-import { heartbeatFresh, heartbeatGraceEnd } from "./heartbeat.js";
+import { heartbeatAge, heartbeatFresh, heartbeatGraceEnd } from "./heartbeat.js";
 import { type LockMarks, startOf } from "./marks.js";
 import { HANDOFF_BOUND_MS } from "./stored.js";
 
@@ -94,7 +94,7 @@ export function waitView(i: WaitInputs): WaitReading {
   }
   if (alive) return { liveness: { state: "alive" }, forget: "all" };
   if ((i.marks()?.start() ?? null) !== null) return { ...lockedReading, forget: "dead" };
-  const ask = at - record.heartbeatAt;
+  const ask = heartbeatAge(record, at);
   const boundAt = record.heartbeatAt + record.heartbeatIntervalMs + HANDOFF_BOUND_MS;
   if (i.socket === "stopping" && at >= boundAt) {
     return { liveness: { state: "down", reason: "handoff" }, ask };

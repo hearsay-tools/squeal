@@ -21,7 +21,7 @@ import {
   startOfMarks,
   stoppingOf,
 } from "./findings.js";
-import { lastHeartbeat } from "./heartbeat.js";
+import { heartbeatAge, lastHeartbeat } from "./heartbeat.js";
 import { type DaemonStart, startOf } from "./marks.js";
 import { once } from "./once.js";
 import type { StopMark } from "./stored.js";
@@ -126,7 +126,7 @@ export function decidePresence(facts: PresenceFacts, at: EpochMs): Presence {
   const heartbeatLate = once((): HeartbeatLate | null => {
     const daemon = record();
     if (!down() || daemon === null || shutDown() || start() !== null || stopped()) return null;
-    return died() === null ? { ageMs: at - daemon.heartbeatAt } : null;
+    return died() === null ? { ageMs: heartbeatAge(daemon, at) } : null;
   });
   return {
     facts,

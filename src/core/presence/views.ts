@@ -5,6 +5,7 @@ import type { PresenceFacts } from "./facts.js";
 import {
   DAEMON_START_GRACE_MS,
   DAEMON_START_SLOW_MS,
+  heartbeatAge,
   LATE_HEARTBEAT_NEWS_MS,
 } from "./heartbeat.js";
 import type { PresenceNote } from "./state.js";
@@ -123,7 +124,7 @@ export function editLineView(facts: PresenceFacts, at: EpochMs): DaemonLiveness 
   if (record === null || p.shutDown) return live;
   const died = p.died();
   return died === null
-    ? { ...live, heartbeatLate: { ageMs: at - record.heartbeatAt } }
+    ? { ...live, heartbeatLate: { ageMs: heartbeatAge(record, at) } }
     : { ...live, died };
 }
 

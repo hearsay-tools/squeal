@@ -5,7 +5,8 @@ import { daemonIncarnation } from "../types/daemon.js";
 import type { InFlightRun } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { WorktreeRecord } from "../types/store-records.js";
-import { type LockMarks, lockFree, readLockMarks } from "./marks.js";
+import { lastHeartbeat } from "./heartbeat.js";
+import { type LockMarks, lockFileOf, lockFree, readLockMarks } from "./marks.js";
 import { once } from "./once.js";
 import {
   daemonExitMetaKey,
@@ -82,11 +83,12 @@ export function readPresenceFacts(
     if (incarnation === null) return undefined;
     return readDaemonNotes(store, worktreeId).find((n) => n.exitOf === incarnation);
   });
-  const lockFile = once(() => {
-    const w = worktree();
-    if (w !== null) return lockFileFor(w.commonDir, w.id);
-    return commonDir === undefined ? null : lockFileFor(commonDir, worktreeId);
-  });
+  const lockFile = once(() =>
+    lockFileOf(
+      worktree(),
+      commonDir === undefined ? undefined : lockFileFor(commonDir, worktreeId),
+    ),
+  );
   return {
     worktreeId,
     row: worktree,
@@ -104,11 +106,11 @@ export function readPresenceFacts(
     feedDelivered: once(() => readFeedDelivered(store, worktreeId)),
     marks: once(() => {
       const file = lockFile();
-      return file === null ? null : readLockMarks(file, now);
+      return file === undefined ? null : readLockMarks(file, now);
     }),
     lockFree: once(() => {
       const file = lockFile();
-      return file !== null && lockFree(file);
+      return file !== undefined && lockFree(file);
     }),
     inFlight: once(() => {
       const w = worktree();
@@ -132,6 +134,6 @@ export function resumesRest(store: Store, row: WorktreeRecord | null): boolean {
 
 /** `rest` when no heartbeat `row` records came after it, else `null`. */
 export function restAfterHeartbeats(rest: RestMark | null, row: WorktreeRecord): RestMark | null {
-  const heartbeat = row.daemon?.heartbeatAt ?? row.lastHeartbeatAt ?? Number.POSITIVE_INFINITY;
+  const heartbeat = lastHeartbeat(row) ?? Number.POSITIVE_INFINITY;
   return rest === null || rest.at < heartbeat ? null : rest;
 }

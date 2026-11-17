@@ -2,7 +2,9 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { acquireDaemonLock } from "../daemon/lock.js";
 import { type Life, lifeOf } from "../daemon/terminate.js";
 import { isRecord } from "../fs/json.js";
+import { lockFileFor } from "../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
+import type { WorktreeRecord } from "../types/store-records.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
 import { once } from "./once.js";
 
@@ -14,6 +16,17 @@ import { once } from "./once.js";
  * with its time. A reader reads the marks, never the lock, except where a
  * rule says it probes the lock (`lockFree`).
  */
+
+/**
+ * The daemon lock file of a worktree: by its row, else `orElse`, the caller's (row 005-108: a
+ * new worktree has no row until its daemon registers); `undefined` with neither.
+ */
+export function lockFileOf(
+  row: WorktreeRecord | null | undefined,
+  orElse: AbsolutePath | undefined,
+): AbsolutePath | undefined {
+  return row === null || row === undefined ? orElse : lockFileFor(row.commonDir, row.id);
+}
 
 /** The start mark beside the daemon lock file `lockFile`. */
 export function startMarkFor(lockFile: AbsolutePath): AbsolutePath {

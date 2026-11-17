@@ -1,5 +1,4 @@
 import { FEED_LATE_MS } from "../status/feed-late.js";
-import { lockFileFor } from "../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { daemonIncarnation } from "../types/daemon.js";
 import type { DaemonLiveness, DaemonShort, DaemonStopping, FeedLate } from "../types/status.js";
@@ -7,7 +6,7 @@ import type { DaemonRecord, WorktreeRecord } from "../types/store-records.js";
 import type { MarkedStart, RestReading } from "./decide.js";
 import { type PresenceFacts, restAfterHeartbeats } from "./facts.js";
 import { DAEMON_START_GRACE_MS, daemonLiveness, lastHeartbeat } from "./heartbeat.js";
-import { type DaemonStart, readLockMarks, startOf } from "./marks.js";
+import { type DaemonStart, lockFileOf, readLockMarks, startOf } from "./marks.js";
 import { HANDOFF_BOUND_MS, handoffFrom, type StopMark } from "./stored.js";
 
 /*
@@ -33,7 +32,7 @@ export function spawnStartCurrent(
   now: EpochMs,
   lockFile?: AbsolutePath,
 ): boolean {
-  const file = row === null || row === undefined ? lockFile : lockFileFor(row.commonDir, row.id);
+  const file = lockFileOf(row, lockFile);
   if (file === undefined) return false;
   const marks = readLockMarks(file, now);
   return startCurrentOf(startOf(marks, now, lastHeartbeat(row)), row?.daemon ?? null);
