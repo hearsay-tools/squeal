@@ -5,13 +5,13 @@ This fixture tests the surface of a blocked Vitest run, scoped stop/start, and r
 From the Squeal checkout, with its dependencies already installed:
 
 ```sh
-python3 research/probes/issue-233/probe.py
+python3 docs/specifications/011-core/research/probes/issue-233/probe.py
 ```
 
 For the original wait lengths, run this command through the task's long-job tool:
 
 ```sh
-python3 research/probes/issue-233/probe.py --wait-ms 60000
+python3 docs/specifications/011-core/research/probes/issue-233/probe.py --wait-ms 60000
 ```
 
 The script uses `node --disable-warning=ExperimentalWarning ~/.codex/plugins/data/squeal-hearsay/versions/0.1.531/dist/cli/squeal.mjs`. It reports the CLI version in its output. It creates a separate temporary Git repository and links the checkout's `node_modules`; dependencies are never committed. It refuses to start when one-minute load exceeds CPU count. The default Squeal run timeout stays 600 s; the deliberately unresolved test also has a 600 s Vitest timeout. `--wait-ms` changes only the two blocked CLI waits, not either execution timeout.

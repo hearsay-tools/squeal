@@ -26,11 +26,11 @@ Initial one-minute load: **13.06**. The retained short probe began at **8.89** a
 **[verified by experiment; 0.1.531]** Run from the Squeal checkout:
 
 ```sh
-python3 research/probes/issue-233/probe.py
-python3 research/probes/issue-233/probe.py --wait-ms 60000
+python3 docs/specifications/011-core/research/probes/issue-233/probe.py
+python3 docs/specifications/011-core/research/probes/issue-233/probe.py --wait-ms 60000
 ```
 
-The second command was launched through Squawk job `issue-233-60s`; it exited 1 at the load guard. The first exited 0. [Probe, commands and limitations](../../../../research/probes/issue-233/README.md), [sanitized command output](../../../../research/probes/issue-233/output.jsonl), [skipped attempt](../../../../research/probes/issue-233/attempt-60s.txt).
+The second command was launched through Squawk job `issue-233-60s`; it exited 1 at the load guard. The first exited 0. [Probe, commands and limitations](probes/issue-233/README.md), [sanitized command output](probes/issue-233/output.jsonl), [skipped attempt](probes/issue-233/attempt-60s.txt).
 
 The fixture uses one fork worker, default Squeal run timeout, and a 600 s Vitest test timeout. The fast test asserts `1 === 1`. Its next revision writes an ignored entry marker, then awaits a promise that never resolves. The marker confirmed test entry before either wait. The default `tests` group supplies `run tests`.
 
