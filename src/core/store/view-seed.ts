@@ -1,8 +1,9 @@
+import { checkIdentity } from "../state/derive.js";
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { Consumer, ViewEntry } from "../types/delivery.js";
 import type { KnownState } from "../types/state.js";
 import type { Store } from "../types/store.js";
-import { num } from "./codec.js";
+import { CHECK_COLUMNS, checkFrom, num } from "./codec.js";
 import { SELECT_STATES, toKnownState } from "./repos/states.js";
 import { connectionOf } from "./store.js";
 
@@ -69,4 +70,46 @@ export function seedView(
     toldAt,
     JSON.stringify(rows.map((r) => [r.checkId, r.outcome, r.fingerprint])),
   );
+}
+
+/*
+ * Row 005-106: the reads of a view seeded with the states that are not `pass` (design N). A
+ * consumer's registration keeps the store's high birth mark (`state-born.ts`); a state born
+ * after it was never told to the consumer unless its view holds it.
+ */
+
+/** The identities (`checkIdentity`) of `worktreeId`'s checks whose state was born after `mark`. */
+export function checksBornAfter(
+  store: Store,
+  worktreeId: WorktreeId,
+  mark: number,
+): ReadonlySet<string> {
+  const rows = connectionOf(store).all(
+    `SELECT ${CHECK_COLUMNS} FROM state_born b JOIN checks c ON c.id = b.check_id
+     WHERE b.worktree_id = ? AND b.id > ?`,
+    worktreeId,
+    mark,
+  );
+  return new Set(rows.map((row) => checkIdentity(checkFrom(row))));
+}
+
+/**
+ * `KnownStateRepo.untold` for a consumer whose registration kept `mark`: the states with no
+ * view entry that were born after it. One born at or before it was a pass told at the
+ * registration.
+ */
+export function untoldBornAfter(store: Store, consumer: Consumer, mark: number): KnownState[] {
+  return connectionOf(store)
+    .all(
+      `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
+       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
+         SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
+           AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
+       ORDER BY c.project, c.test_path, c.kind, c.full_name`,
+      consumer.worktreeId,
+      mark,
+      consumer.sessionId,
+      consumer.agentId,
+    )
+    .map(toKnownState);
 }

@@ -98,6 +98,7 @@ import {
   writeTurn,
 } from "./turn.js";
 import { recordUncoveredTold } from "./uncovered.js";
+import { markedView, recordViewMark, registrationSeed } from "./view-mark.js";
 
 export interface DeliveryOptions {
   /** Builds `status()`; task 001-22 owns the implementation. */
@@ -220,7 +221,8 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
   ): DeltaPlan {
     const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
     const full = planDelta({
-      view,
+      // Row 005-106: a state with no entry born before the registration's mark was a told pass.
+      view: markedView(store, consumer, view, states),
       states,
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
@@ -577,7 +579,10 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // reports a failure its view did not hold ends its late state, as any delivered new failure
       // does: no caught-up follows it. Read before the view is replaced.
       if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      seedView(store, consumer, seed, at);
+      // Row 005-106: the states that are not `pass`, and the birth mark the rest read through.
+      const { rows, mark } = registrationSeed(store, seed);
+      seedView(store, consumer, rows, at);
+      recordViewMark(store, consumer, mark === null ? null : { mark, at });
       // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
       const told = startingSince === undefined ? null : { startingSince };
       const read = readLiveHeader(

@@ -110,6 +110,28 @@ export function restrictPlan(plan: DeltaPlan, keep: (entry: DeltaEntry) => boole
   };
 }
 
+/**
+ * Row 005-106 (005 `research/consumer-view-design.md`, design N): a view as
+ * `planDelta` reads it when the registration seeded only the states that
+ * were not `pass`. A state with no entry that `bornBefore` says existed at
+ * the registration was a pass then: every pass has no fingerprint, and
+ * every write `planDelta` makes adds an entry, so nothing was told of it
+ * since. It reads as the told pass the full copy would hold. A state born
+ * after reads as never told, as before.
+ */
+export function viewThroughMark(
+  view: readonly ViewEntry[],
+  states: readonly KnownState[],
+  bornBefore: (state: KnownState) => boolean,
+  toldAt: EpochMs,
+): readonly ViewEntry[] {
+  const told = new Set(view.map((v) => checkIdentity(v.check)));
+  const passes = states
+    .filter((s) => !told.has(checkIdentity(s.check)) && bornBefore(s))
+    .map((s): ViewEntry => ({ check: s.check, outcome: "pass", fingerprint: null, toldAt }));
+  return passes.length === 0 ? view : [...view, ...passes];
+}
+
 export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
 }

@@ -10,6 +10,7 @@ import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { isLeaving, markLeaving } from "./leaving.js";
 import { readSlot, writeSlot } from "./slots.js";
+import { untoldStates } from "./view-mark.js";
 
 /*
  * Each consumer's turn state (task 001-85; lessons, defect 14), the part of
@@ -208,7 +209,8 @@ export function owedScope(store: Store, consumer: Consumer): OwedScope | "nothin
   }
   const files = state.testFiles.map(fromTestFileId);
   const owed = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
-  const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
+  // Row 005-106: with a registration's birth mark, a state with no entry born before it was told.
+  const untold = state.newTestFiles ? untoldStates(store, consumer) : [];
   const seen = new Set(owed.map((s) => checkIdentity(s.check)));
   return {
     states: [...owed, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],

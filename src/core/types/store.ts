@@ -391,6 +391,7 @@ export const WORKTREE_META_ROWS = {
   holdTold: { prefix: "hold-told:", owner: "delivery/hold-told" },
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   registrationOwed: { prefix: "registration-owed:", owner: "delivery/registration-owed" },
+  viewMark: { prefix: "view-mark:", owner: "delivery/view-mark" },
   notes: { prefix: "notes.", owner: "notes" },
   refined: { prefix: "refined.", owner: "scheduler/refined" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "scheduler/install-wait" },

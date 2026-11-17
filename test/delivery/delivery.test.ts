@@ -254,7 +254,8 @@ describe("onToolBoundary", () => {
     await delivery.register(C1);
     sink.retire(WT, [A]);
     expect(await delivery.onToolBoundary(C1)).toBeNull();
-    expect(store.views.list(C1).map((v) => v.check)).toEqual([B]);
+    // Row 005-106: B, a pass at the registration, reads through the birth mark, with no entry.
+    expect(store.views.list(C1).map((v) => v.check)).toEqual([]);
   });
 
   it("delivers a retired check told as failing once, as no longer reported", async () => {
@@ -285,7 +286,7 @@ describe("onToolBoundary", () => {
     ]);
     expect(delta?.label).toBe("transitions");
     expect(await delivery.onToolBoundary(C1)).toBeNull();
-    expect(store.views.list(C1).map((v) => v.check)).toEqual([B]);
+    expect(store.views.list(C1).map((v) => v.check)).toEqual([]);
     expect((await delivery.onToolBoundary(C2))?.entries.map((e) => e.kind)).toEqual([
       "fail-retired",
     ]);

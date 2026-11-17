@@ -1,4 +1,5 @@
 import { describeFailure } from "../../src/core/state/fingerprint.js";
+import { ensureBirthMarks } from "../../src/core/store/state-born.js";
 import type { CheckError, CheckId, RunOutcome, TestCheckId } from "../../src/core/types/check.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -9,7 +10,18 @@ export const WT = "wt-a";
 export const OTHER = "wt-b";
 export const FILE: TestFileRef = { project: "", path: "src/a.test.ts" };
 
+/**
+ * A store as a daemon of this release leaves it: with the birth marks (row 005-105), so a
+ * registration seeds the views of row 005-106. `releasedStore` is one no such daemon served.
+ */
 export function freshStore(): Store {
+  const store = open(fakeCommonDir());
+  ensureBirthMarks(store);
+  return store;
+}
+
+/** A store no daemon of 0.1.545 or later served: no birth marks, so views are full copies. */
+export function releasedStore(): Store {
   return open(fakeCommonDir());
 }
 
