@@ -5,7 +5,7 @@ import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { Store, StoreOpenFailure } from "../types/store.js";
 import { Connection, isBusy, rollback } from "./connection.js";
 import { type StorePaths, storePaths } from "./paths.js";
-import { migrate, SCHEMA_VERSION, userVersion } from "./schema.js";
+import { migrate, SCHEMA_VERSION, STORE_INDEXES, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
 
 export interface OpenStoreOptions {
@@ -115,8 +115,9 @@ export function isStoreOpenFailure(value: Store | StoreOpenFailure): value is St
 /**
  * Opens `<commonDir>/squeal/store.sqlite` (spec 001 D1, D8): WAL,
  * `synchronous=NORMAL`, a busy timeout, a WAL size limit (spec 021 D4),
- * and migrations up to `SCHEMA_VERSION`. A newer `user_version` is refused
- * without touching the file.
+ * migrations up to `SCHEMA_VERSION`, then, for an opener that may create
+ * the file, the indexes added with no version raise (`STORE_INDEXES`, row
+ * 005-103). A newer `user_version` is refused without touching the file.
  */
 export function openStore(
   commonDir: AbsolutePath,
@@ -165,10 +166,27 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     db.exec("PRAGMA synchronous = NORMAL");
     db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
     const version = migrate(db);
+    if (options.create !== false) makeIndexes(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
     db?.close();
     if (isCorruption(error)) return { corrupt: String(error) };
+    throw error;
+  }
+}
+
+/** Each of `STORE_INDEXES` the file lacks, looked for again under the write lock (row 005-103). */
+function makeIndexes(db: DatabaseSync): void {
+  const found = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?");
+  const absent = () =>
+    Object.entries(STORE_INDEXES).filter(([name]) => found.get(name) === undefined);
+  if (absent().length === 0) return;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const [, sql] of absent()) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (error) {
+    rollback(db);
     throw error;
   }
 }

@@ -210,6 +210,22 @@ export const MIGRATIONS: readonly Migration[] = [(db) => db.exec(V1)];
 /** The `user_version` this Squeal writes and understands. */
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
+/**
+ * Additive indexes, by name, made at open when absent with no `user_version`
+ * raise (011 C7: a raise makes every older daemon of the repository exit), as
+ * the code store's `CODE_INDEXES` (row 015-44). An older Squeal keeps the
+ * store, and SQLite keeps each index current on its writes too; a reader
+ * works without them. Only an opener that may create the store makes them
+ * (the daemon's, not a hook's), since it takes the write lock once.
+ *
+ * - `runs_open`: the runs still in flight (`runs.inFlight`), which scanned
+ *   every run of every worktree (row 005-103: 10.6 ms warm and 459 ms cold
+ *   on a copy of 35,718 runs, 0.02 ms with the index).
+ */
+export const STORE_INDEXES: Readonly<Record<string, string>> = {
+  runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
+};
+
 export function userVersion(db: DatabaseSync): number {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
 }
