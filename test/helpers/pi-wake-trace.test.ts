@@ -8,6 +8,11 @@ import { tempDir } from "../store/helpers.js";
 import {
   type ArmWait,
   awaitArmed,
+  COMMANDS,
+  ERROR_CODES,
+  ERROR_NAMES,
+  EVENT_TYPES,
+  REQUESTS,
   type TraceLine,
   type WakeTrace,
   wakeTrace,
@@ -18,41 +23,60 @@ import {
  * preload as Pi does: it prints an `agent_settled` RPC line and a stderr line, starts a worker
  * thread that dies on its `wait` as the research's single-shot arm case does, and spawns a
  * Node child, which must stay out of the trace. Its first argument `install` makes it a stand-in
- * for `pi install`, which exits; `terminate` ends its worker from Pi's side; `leak` writes a home
- * path and synthetic secrets to stderr.
+ * for `pi install`, which exits; `terminate` ends its worker from Pi's side; `leak` writes home
+ * paths, synthetic secrets and arbitrary text to stderr, as an RPC event's type and command, as
+ * a worker request, answer and id, and as the name of the worker's error.
  */
+
+/** Synthetic markers only: no real credential or private path is read or written. */
+const MARKER = "SYNTHETIC0MARKER0009x30";
+/** Every form of secret and path the two reviews used, and arbitrary text. */
+const LEAK = [
+  `Error: boom\\n    at withContext (${homedir()}/synthetic-repo/dist/extension.mjs:12:3)\n`,
+  "/home/someone/x /Users/someone/y /root/z ~/w\n",
+  "api_tok",
+  `en=${MARKER}a and Authorization: Bearer ${MARKER}b and Bearer ${MARKER}d\n`,
+  `password="${MARKER}e first ${MARKER}f tail" {"api_key":"${MARKER}g,${MARKER}h"}\n`,
+  `sk-${MARKER}i ghp_${MARKER}j https://user:${MARKER}k@example.test eyJ${MARKER}.l.m\n`,
+  "arbitrary words: the quick brown fox; DEBUG withContext held\n",
+];
+const TEXT = LEAK.join("");
 
 const WORKER = `
 import { parentPort } from "node:worker_threads";
 parentPort.on("message", (message) => {
-  if (message.request?.kind === "wait") process.exit(3);
-  parentPort.postMessage({ id: message.id, ok: true, answer: null });
+  if (message.request?.kind === "wait") {
+    if (!message.leak) process.exit(3);
+    const error = new Error(message.leak);
+    error.name = message.leak;
+    throw error;
+  }
+  parentPort.postMessage({ id: message.id, ok: true, answer: message.leak ?? null });
 });
 `;
-
-/** Synthetic markers only: no real credential or private path is read or written. */
-const MARKER = "SYNTHETIC0MARKER0009x30";
-const LEAK = [
-  `Error: boom\\n    at withContext (${homedir()}/synthetic-repo/dist/extension.mjs:12:3)\n`,
-  "api_tok",
-  `en=${MARKER}a and Authorization: Bearer ${MARKER}b and Bearer ${MARKER}d\n`,
-];
 
 const pi = (stay: boolean) => `
 import { execFileSync } from "node:child_process";
 import { Worker } from "node:worker_threads";
 const mode = process.argv[2];
+const leak = mode === "leak" ? ${JSON.stringify(TEXT)} : undefined;
 execFileSync(process.execPath, ["-e", ""]);
 process.stdout.write(JSON.stringify({ type: "agent_settled" }) + "\\n");
 if (mode === "install") process.exit(0);
 process.stderr.write("DEBUG withContext boom\\n");
-if (mode === "leak") for (const part of ${JSON.stringify(LEAK)}) process.stderr.write(part);
+if (leak !== undefined) {
+  for (const part of ${JSON.stringify(LEAK)}) process.stderr.write(part);
+  process.stdout.write(JSON.stringify({ type: leak, command: leak, id: leak }) + "\\n");
+  process.stdout.write(JSON.stringify({ type: "response", command: leak, id: 1 }) + "\\n");
+}
 const worker = new Worker(new URL("./worker.mjs", import.meta.url), {
   execArgv: ["--disable-warning=ExperimentalWarning"],
 });
+worker.on("error", () => {});
 worker.postMessage({ id: 6, request: { kind: "endTurn" } });
+if (leak !== undefined) worker.postMessage({ id: leak, request: { kind: leak }, leak });
 if (mode === "terminate") worker.once("message", () => void worker.terminate());
-else worker.postMessage({ id: 7, request: { kind: "wait" } });
+else worker.postMessage({ id: 7, request: { kind: "wait" }, leak });
 ${stay ? "setInterval(() => {}, 1000);" : ""}
 `;
 
@@ -135,7 +159,7 @@ describe("awaitArmed at its deadline", () => {
     expect(message).toMatch(/^the idle wake was never armed: .* within 200 ms\n/);
     expect(message).toMatch(/Times are from the wait's start, \d{4}-/);
     // The first observation's offset is whatever the clock read: a tick may pass before it.
-    expect(message).toMatch(/\+\d+ ms {2}consumers \[s-1\/main\], lock absent/);
+    expect(message).toMatch(/\+\d+ ms {2}1 consumer\(s\), lock absent\n/);
     expect(message).toContain(`Pi process (it runs the waiter thread): pid ${pid}, alive`);
     expect(message).toContain("no exit recorded (still running).");
     expect(message).toMatch(
@@ -146,11 +170,13 @@ describe("awaitArmed at its deadline", () => {
     );
     expect(message).toMatch(/Arm: 1 agent_settled event\(s\), at -\d+ ms; 1 wait request\(s\)/);
     expect(message).toMatch(/wait 7 on thread 1 at -\d+ ms: no answer/);
-    expect(message).toMatch(/-\d+ ms {2}thread 1 worker-in id=6 request="endTurn"/);
-    expect(message).toMatch(/-\d+ ms {2}thread 1 worker-out id=6 ok=true answer=null/);
-    expect(message).toMatch(/-\d+ ms {2}pi event type="agent_settled"/);
-    expect(message).toContain(
-      "Pi stderr (last 2000 characters, home as ~, secrets redacted):\n  DEBUG withContext boom",
+    expect(message).toMatch(/-\d+ ms {2}thread 1 worker-in id 6 request endTurn\n/);
+    expect(message).toMatch(
+      /-\d+ ms {2}thread 1 worker-out id 6 ok true held unknown answer null\n/,
+    );
+    expect(message).toMatch(/-\d+ ms {2}pi event agent_settled\n/);
+    expect(message).toMatch(
+      /\nPi stderr: wrote 23 bytes in \d+ writes, first at -\d+ ms, last at -\d+ ms\.$/,
     );
     // The Node child inherited the preload and recorded nothing.
     expect(new Set(trace.read().map((l) => l.pid))).toEqual(new Set([pid]));
@@ -177,7 +203,7 @@ describe("awaitArmed at its deadline", () => {
     expect(message).not.toContain(`pid ${install}, not running`);
     expect(message).toMatch(
       new RegExp(
-        `Not Pi's run, left out: pid ${install} \\(first argument "install"\\), .*exited with code 0`,
+        `Not Pi's run, left out: pid ${install} \\(first argument install\\), .*exited with code 0`,
       ),
     );
     // The installer's own agent_settled line is not counted as Pi's.
@@ -193,20 +219,34 @@ describe("awaitArmed at its deadline", () => {
     expect(message).toMatch(/thread 1: Pi saw it exit with code 1 at -\d+ ms/);
   });
 
-  it("writes home as ~ and redacts secret-shaped text in stderr and probe errors", {
+  it("prints only fixed facts, whatever text Pi, its worker, an error or a probe wrote", {
     timeout: 30_000,
   }, async () => {
     const { trace, dir } = await standIn(true, ["leak"]);
+    let polls = 0;
     const message = await timeout(trace, dir, () => {
-      throw new Error(`EACCES ${homedir()}/synthetic-store password=${MARKER}c`);
+      if (polls++ % 2 === 0) return { consumers: [TEXT, TEXT], lock: TEXT };
+      const error = new Error(`EACCES ${TEXT}`);
+      Object.assign(error, { code: TEXT, name: TEXT });
+      throw error;
     });
-    expect(message).not.toContain(homedir());
-    expect(message).not.toContain(MARKER);
-    expect(message).toContain("at withContext (~/synthetic-repo/dist/extension.mjs:12:3)");
-    // The key was split across two writes.
-    expect(message).toContain("api_token=[redacted]");
-    expect(message).toContain("Authorization: [redacted] and Bearer [redacted]");
-    expect(message).toContain("probe threw: Error: EACCES ~/synthetic-store password=[redacted]");
+    // The arbitrary text reached the trace's step records, so the report had it to print.
+    expect(JSON.stringify(trace.read())).toContain(MARKER);
+    expect(message).toContain(`2 consumer(s), lock not read`);
+    expect(message).toContain(`probe threw, code other`);
+    expect(message).toMatch(/pi event other command other\n/);
+    expect(message).toMatch(/pi event response command other\n/);
+    expect(message).toMatch(/worker-in id unknown request other\n/);
+    expect(message).toMatch(/worker-out id unknown ok true held unknown answer text\n/);
+    expect(message).toMatch(/Pi saw an error event, \w+, at/);
+    expect(message).toMatch(/Pi stderr: wrote \d+ bytes in \d+ writes, first at -\d+ ms/);
+    expect(unexpectedTokens(message)).toEqual([]);
+  });
+
+  it("the token check rejects each leak form, so passing it means something", () => {
+    for (const line of [...LEAK, TEXT, "~", homedir(), "lock not-a-state"]) {
+      expect(unexpectedTokens(`thread 1 ${line}`), line).not.toEqual([]);
+    }
   });
 
   it("says when the run loaded no trace", async () => {
@@ -215,3 +255,37 @@ describe("awaitArmed at its deadline", () => {
     expect(message).toContain("No Pi trace: this run did not load pi-trace-preload.mjs.");
   });
 });
+
+/**
+ * The report's allowed tokens: its own template words, the closed sets it maps names into,
+ * integers, and the wait's ISO start time. Words are split on spaces and the punctuation the
+ * templates use, so `/`, `"`, `@`, `~` and any word not listed stay in a token and fail.
+ */
+const WORDS = new Set(
+  (
+    "the idle wake was never armed session's waiter lock not held within ms Times are from " +
+    "wait's start Lock and consumers at each change consumer s held free absent read probe " +
+    "threw code other none Pi process it runs thread pid alive proc state not running no " +
+    "exit recorded still exited with so its or signal is unknown found trace in Not run left " +
+    "out first argument install started Waiter delivery worker time its listener ran saw an " +
+    "error event Arm agent_settled request reached wait answered ok answer cancelled Steps " +
+    "of and without message streaming all last pi worker-start worker-exit worker-ended " +
+    "worker-error worker-in worker-out id command true false stderr wrote bytes writes " +
+    "nothing written empty so preload never ran this did load pi-trace-preload mjs " +
+    "text object null number boolean undefined R S D Z T on /proc"
+  ).split(" "),
+);
+const VALUES = [EVENT_TYPES, COMMANDS, REQUESTS, ERROR_CODES, ERROR_NAMES];
+
+function unexpectedTokens(message: string): string[] {
+  return message
+    .replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/g, " ")
+    .split(/[\s,.;:()=[\]]+/)
+    .filter(
+      (token) =>
+        token !== "" &&
+        !/^[+-]?\d+$/.test(token) &&
+        !WORDS.has(token) &&
+        !VALUES.some((set) => set.has(token)),
+    );
+}

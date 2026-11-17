@@ -1,7 +1,8 @@
 // Row 009-30: records what Pi and its delivery worker thread do, so an idle-wake timeout can
 // name the step that lost the wake. `wakeTrace()` (`pi-wake-trace.ts`) loads it into Pi with
 // `NODE_OPTIONS=--import=...` and names the file in `SQUEAL_PI_TRACE`. It only records: it
-// adds an `exit` listener, wraps `write` on stdout and stderr, the worker's `postMessage` and
+// adds an `exit` listener, wraps `write` on stdout and stderr (of stderr, only each write's
+// size: its text is not recorded, so it is not on disk either), the worker's `postMessage` and
 // message listeners, and the `emit` of each `Worker` the main thread makes, and each wrapper
 // calls the original unchanged. Node loads it into worker threads too (Node 22, 24 and 26).
 // Each process the test starts with it records, with its own pid (`pi install`, then Pi), and
@@ -75,7 +76,8 @@ if (active) {
         }
       }
     });
-    tap(process.stderr, (chunk) => note("stderr", { text: chunk }));
+    // Sizes and times only: stderr text could hold a path or a secret (row 009-30).
+    tap(process.stderr, (chunk) => note("stderr", { bytes: Buffer.byteLength(chunk) }));
   } else if (parentPort !== null) {
     const port = parentPort;
     note("worker-start");

@@ -1,5 +1,5 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
@@ -9,21 +9,54 @@ import { pathToFileURL } from "node:url";
  * "never armed". `awaitArmed` waits for the wake as the tests did and, at its deadline, throws
  * what it saw: the lock and consumer history, the Pi process (which owns the waiter, its
  * delivery worker thread), the worker's starts, requests, answers and exit, Pi's RPC events
- * and stderr tail, each at its time. Pi's side comes from `pi-trace-preload.mjs`, which only
- * records; without it the message says so and gives what /proc shows. The message goes to CI
- * logs, so `safeText` writes each home directory as `~` and redacts secret-shaped text.
+ * and stderr writes, each at its time. Pi's side comes from `pi-trace-preload.mjs`, which only
+ * records; without it the message says so and gives what /proc shows.
+ *
+ * The message goes to CI logs, so it prints fixed facts only (human, 2026-11-17): pids, counts,
+ * exit codes, booleans, times, byte counts, and names from the closed sets below. A string
+ * that Pi, a worker, an error or the environment wrote is never printed: a name outside its
+ * set prints as "other", and stderr prints as its sizes and times.
  */
 
 const PRELOAD = resolve(import.meta.dirname, "pi-trace-preload.mjs");
-const STDERR_TAIL = 2_000;
 const STEPS_SHOWN = 60;
+/** A closed set from a space-separated list. */
+const names = (...lists: string[]): ReadonlySet<string> => new Set(lists.join(" ").split(" "));
 /** RPC events of a model response's stream: many per run, and no step of the arm. */
-const STREAM_EVENTS = new Set([
-  "message_start",
-  "message_update",
-  "message_end",
-  "tool_execution_update",
-]);
+const STREAM_EVENTS = names("message_start message_update message_end tool_execution_update");
+/** Pi's RPC event types (`pi-coding-agent`, `modes/rpc/rpc-types.d.ts`, agent events). */
+export const EVENT_TYPES = names(
+  [...STREAM_EVENTS].join(" "),
+  "agent_start agent_end agent_settled turn_start turn_end response queue_update",
+  "tool_execution_start tool_execution_end extension_ui_request extension_error",
+  "compaction_start compaction_end auto_retry_start auto_retry_end entry_appended",
+  "session_info_changed thinking_level_changed",
+);
+/** The RPC commands a `response` event can name, of those the Squeal tests send. */
+export const COMMANDS = names(
+  "prompt steer follow_up abort get_state get_messages new_session set_model compact bash",
+  "get_session_stats extension_ui_response",
+);
+/** The waiter's request kinds (`src/harness/pi/protocol.ts`), and the preload's "cancel". */
+export const REQUESTS = names(
+  "start shutdown boundary run toolCall settle endTurn wait ping cancel",
+);
+/** Error codes a probe of the store or the lock can throw. */
+export const ERROR_CODES = names(
+  "ENOENT EACCES EPERM EBUSY EAGAIN EEXIST EISDIR ENOTDIR ELOOP EMFILE ENFILE EIO ENOSPC",
+  "EROFS ETIMEDOUT ERR_SQLITE_ERROR",
+);
+/** JavaScript's own error names, for a worker's error event. */
+export const ERROR_NAMES = names(
+  "Error TypeError RangeError ReferenceError SyntaxError EvalError URIError AggregateError",
+  "AbortError DOMException",
+);
+/** The shapes the preload records for a worker's answer. */
+const ANSWER_SHAPES = names("null text object boolean number undefined");
+/** The lock states (`waiterLockState`); any other text from a probe prints as "not read". */
+const LOCK_STATES = names("held free absent");
+/** Pi's package commands, which run no agent: `runPi` runs `pi install` before Pi. */
+const PI_COMMANDS = names("install remove uninstall update list config");
 
 /** One record of the preload (`pi-trace-preload.mjs`). */
 export interface TraceLine {
@@ -100,9 +133,10 @@ export async function awaitArmed(wait: ArmWait): Promise<void> {
     let said: string;
     try {
       sight = wait.probe();
-      said = `consumers [${sight.consumers.join(", ")}], lock ${sight.lock}`;
+      const lock = oneOf(LOCK_STATES, sight.lock, "not read");
+      said = `${count(sight.consumers.length)} consumer(s), lock ${lock}`;
     } catch (error) {
-      said = `probe threw: ${safeText(String(error))}`;
+      said = `probe threw, code ${errorCode(error)}`;
     }
     if (said !== last) seen.push({ t: Date.now(), sight: said });
     last = said;
@@ -118,9 +152,10 @@ export function describeTimeout(
   start: number,
   seen: readonly { t: number; sight: string }[],
 ): string {
-  const at = (t: number) => `${t >= start ? "+" : ""}${t - start} ms`;
+  const at = (t: unknown) =>
+    typeof t === "number" ? `${t >= start ? "+" : ""}${t - start} ms` : "at an unknown time";
   const lines = [
-    `${wait.headline}: the session's waiter lock was not held within ${wait.boundMs} ms`,
+    `${wait.headline}: the session's waiter lock was not held within ${count(wait.boundMs)} ms`,
     `Times are from the wait's start, ${new Date(start).toISOString()}.`,
     "Lock and consumers, at each change:",
     ...seen.map((s) => `  ${at(s.t)}  ${s.sight}`),
@@ -131,13 +166,13 @@ export function describeTimeout(
   lines.push(`Pi process (it runs the waiter thread): ${processState(pid, all)}`);
   if (all === undefined) {
     lines.push("No Pi trace: this run did not load pi-trace-preload.mjs.");
-    return safeText(lines.join("\n"));
+    return lines.join("\n");
   }
   if (all.length === 0) lines.push("Pi trace: empty, so the preload never ran in Pi.");
   for (const other of all.filter((l) => l.kind === "start" && l.thread === 0 && l.pid !== run)) {
     const exit = all.find((l) => l.kind === "exit" && l.pid === other.pid);
     lines.push(
-      `Not Pi's run, left out: pid ${other.pid} (first argument ${JSON.stringify(other.arg)}), started at ${at(other.t)}, ${exit === undefined ? "no exit recorded" : `exited with code ${String(exit.code)} at ${at(exit.t)}`}.`,
+      `Not Pi's run, left out: pid ${count(other.pid)} (first argument ${oneOf(PI_COMMANDS, other.arg)}), started at ${at(other.t)}, ${exit === undefined ? "no exit recorded" : `exited with code ${count(exit.code)} at ${at(exit.t)}`}.`,
     );
   }
   const trace = all.filter((l) => l.pid === run);
@@ -152,23 +187,18 @@ export function describeTimeout(
   const shown = steps.length > STEPS_SHOWN ? `last ${STEPS_SHOWN} of ${steps.length}` : "all";
   lines.push(`Steps of Pi and its waiter, without message streaming (${shown}):`);
   for (const step of steps.slice(-STEPS_SHOWN)) lines.push(`  ${at(step.t)}  ${stepText(step)}`);
-  // Joined before redaction, so a secret split across two writes is still one match.
-  const stderr = safeText(
-    trace
-      .filter((l) => l.kind === "stderr")
-      .map((l) => String(l.text))
-      .join(""),
+  const writes = trace.filter((l) => l.kind === "stderr");
+  const bytes = writes.reduce(
+    (sum, l) => sum + (Number.isInteger(l.bytes) ? Number(l.bytes) : 0),
+    0,
   );
   lines.push(
-    stderr === ""
-      ? "Pi stderr: empty."
-      : `Pi stderr (last ${STDERR_TAIL} characters, home as ~, secrets redacted):\n${indent(stderr.slice(-STDERR_TAIL))}`,
+    writes.length === 0
+      ? "Pi stderr: nothing written."
+      : `Pi stderr: wrote ${bytes} bytes in ${writes.length} writes, first at ${at(writes[0]?.t)}, last at ${at(writes.at(-1)?.t)}.`,
   );
-  return safeText(lines.join("\n"));
+  return lines.join("\n");
 }
-
-/** Pi's package commands, which run no agent: `runPi` runs `pi install` before Pi. */
-const PI_COMMANDS = new Set(["install", "remove", "uninstall", "update", "list", "config"]);
 
 /**
  * The pid of Pi's run in a trace. `runPi` starts `pi install <package>` with the same
@@ -181,13 +211,13 @@ export function piRun(trace: readonly TraceLine[]): number | undefined {
 }
 
 /** Each worker thread's start and end, as the worker and as Pi's main thread saw them. */
-function waiterLife(trace: TraceLine[], at: (t: number) => string): string[] {
+function waiterLife(trace: TraceLine[], at: (t: unknown) => string): string[] {
   const workers = trace.filter((l) => l.kind === "worker-start");
   const lines = [
     workers.length === 0
       ? "Waiter (delivery worker thread): never started."
       : `Waiter (delivery worker thread): started ${workers.length} time(s), ${workers
-          .map((w) => `thread ${w.thread} at ${at(w.t)}`)
+          .map((w) => `thread ${count(w.thread)} at ${at(w.t)}`)
           .join("; ")}.`,
   ];
   for (const worker of workers) {
@@ -197,50 +227,23 @@ function waiterLife(trace: TraceLine[], at: (t: number) => string): string[] {
     const ends = [
       ...(own === undefined
         ? []
-        : [`its exit listener ran, code ${String(own.code)}, at ${at(own.t)}`]),
+        : [`its exit listener ran, code ${count(own.code)}, at ${at(own.t)}`]),
       ...(error === undefined
         ? []
-        : [`Pi saw an error event, ${String(error.error)}, at ${at(error.t)}`]),
+        : [`Pi saw an error event, ${oneOf(ERROR_NAMES, error.error)}, at ${at(error.t)}`]),
       ...(host === undefined
         ? []
-        : [`Pi saw it exit with code ${String(host.code)} at ${at(host.t)}`]),
+        : [`Pi saw it exit with code ${count(host.code)} at ${at(host.t)}`]),
     ];
     lines.push(
-      `  thread ${worker.thread}: ${ends.length === 0 ? "no exit recorded (still running, or its process ended)" : ends.join("; ")}`,
+      `  thread ${count(worker.thread)}: ${ends.length === 0 ? "no exit recorded (still running, or its process ended)" : ends.join("; ")}`,
     );
   }
   return lines;
 }
 
-/** Secret-shaped text: a key that names a secret and its value, a bearer token, known prefixes. */
-const SECRETS: readonly [RegExp, string][] = [
-  [
-    /\b([\w.-]*(?:token|secret|passw(?:or)?d|api[_-]?key|auth(?:orization)?|credential|cookie|private[_-]?key)[\w.-]*)(["']?\s*[:=]\s*["']?)(?:(?:bearer|basic|token)\s+)?[^\s"',;&]+/gi,
-    "$1$2[redacted]",
-  ],
-  [/\b(bearer|basic)\s+[\w.~+/=-]+/gi, "$1 [redacted]"],
-  [/\b(?:sk|pk|rk)-[\w-]{8,}/g, "[redacted]"],
-  [/\b(?:gh[pousr]_|github_pat_|glpat-|xox[abposr]-|AKIA|ASIA)[\w-]{8,}/g, "[redacted]"],
-  [/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, "[redacted]"],
-  // A long run of letters and digits, as a key is; a path's slashes break it.
-  [/(?=[\w+=-]*\d)(?=[\w+=-]*[A-Za-z])[\w+=-]{40,}/g, "[redacted]"],
-  [/:\/\/[^\s/:@]+:[^\s/@]+@/g, "://[redacted]@"],
-];
-
-/** `text` with each home directory as `~` and secret-shaped text redacted, for a CI log. */
-export function safeText(text: string): string {
-  let safe = text;
-  const home = safely(() => homedir(), "");
-  for (const dir of new Set([home, process.env.HOME ?? ""])) {
-    if (dir.length > 1) safe = safe.split(dir).join("~");
-  }
-  safe = safe.replace(/(?:\/home|\/Users|\/var\/home)\/[^/\s"'`:]+|\/root(?=\/|\s|$)/g, "~");
-  for (const [pattern, replacement] of SECRETS) safe = safe.replace(pattern, replacement);
-  return safe;
-}
-
 /** The arm's own steps: each run's settle, and each wait the waiter received and its answer. */
-function armSummary(trace: TraceLine[], at: (t: number) => string): string[] {
+function armSummary(trace: TraceLine[], at: (t: unknown) => string): string[] {
   const settles = trace.filter((l) => l.kind === "event" && l.type === "agent_settled");
   const waits = trace.filter((l) => l.kind === "worker-in" && l.request === "wait");
   const lines = [
@@ -258,24 +261,38 @@ function armSummary(trace: TraceLine[], at: (t: number) => string): string[] {
         l.request === "cancel",
     );
     lines.push(
-      `  wait ${String(wait.id)} on thread ${wait.thread} at ${at(wait.t)}: ${
+      `  wait ${count(wait.id)} on thread ${count(wait.thread)} at ${at(wait.t)}: ${
         answer === undefined
           ? "no answer"
-          : `answered ok=${String(answer.ok)} answer=${String(answer.answer)} at ${at(answer.t)}`
+          : `answered ok=${flag(answer.ok)} answer=${oneOf(ANSWER_SHAPES, String(answer.answer))} at ${at(answer.t)}`
       }${cancel === undefined ? "" : `; cancelled at ${at(cancel.t)}`}`,
     );
   }
   return lines;
 }
 
+/** One step, as its kind's fixed facts. */
 function stepText(step: TraceLine): string {
-  const { t: _t, pid: _pid, thread, kind, ...rest } = step;
-  const who = thread === 0 ? "pi" : `thread ${thread}`;
-  const details = Object.entries(rest)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-    .join(" ");
-  return `${who} ${kind}${details === "" ? "" : ` ${details}`}`;
+  const who = step.thread === 0 ? "pi" : `thread ${count(step.thread)}`;
+  switch (step.kind) {
+    case "event":
+      return `${who} event ${oneOf(EVENT_TYPES, step.type)}${step.command === undefined ? "" : ` command ${oneOf(COMMANDS, step.command)}`}`;
+    case "exit":
+    case "worker-exit":
+      return `${who} ${step.kind} code ${count(step.code)}`;
+    case "worker-start":
+      return `${who} worker-start`;
+    case "worker-ended":
+      return `${who} worker-ended thread ${count(step.worker)} code ${count(step.code)}`;
+    case "worker-error":
+      return `${who} worker-error thread ${count(step.worker)} ${oneOf(ERROR_NAMES, step.error)}`;
+    case "worker-in":
+      return `${who} worker-in id ${count(step.id)} request ${oneOf(REQUESTS, step.request)}`;
+    case "worker-out":
+      return `${who} worker-out id ${count(step.id)} ok ${flag(step.ok)} held ${flag(step.held)} answer ${oneOf(ANSWER_SHAPES, String(step.answer))}`;
+    default:
+      return `${who} other`;
+  }
 }
 
 /** Whether `pid` lives, its /proc state, and the exit code its trace recorded. */
@@ -283,17 +300,18 @@ function processState(pid: number | undefined, trace: TraceLine[] | undefined): 
   if (pid === undefined) return "not found (no trace start and no Pi process in /proc).";
   const exit = trace?.find((l) => l.kind === "exit" && l.pid === pid);
   const state = safely(() => readFileSync(`/proc/${pid}/stat`, "utf8"), null);
+  const code = state?.slice(state.lastIndexOf(")") + 2).split(" ")[0];
   const live =
     state === null
       ? "not running"
-      : `alive, /proc state ${state.slice(state.lastIndexOf(")") + 2).split(" ")[0]}`;
+      : `alive, /proc state ${/^[A-Za-z]$/.test(code ?? "") ? code : "other"}`;
   const ended =
     exit !== undefined
-      ? `exited with code ${String(exit.code)}`
+      ? `exited with code ${count(exit.code)}`
       : state === null
         ? "no exit recorded, so its exit code or signal is unknown"
         : "no exit recorded (still running)";
-  return `pid ${pid}, ${live}; ${ended}.`;
+  return `pid ${count(pid)}, ${live}; ${ended}.`;
 }
 
 /** A Pi process whose working directory is `cwd`, from /proc; Linux only. */
@@ -308,6 +326,21 @@ export function findPi(cwd: string): number | undefined {
     );
 }
 
+/** `value` when it is in `set`, else `other`: no free text reaches the message. */
+function oneOf(set: ReadonlySet<string>, value: unknown, other = "other"): string {
+  return typeof value === "string" && set.has(value) ? value : other;
+}
+
+/** An integer as digits; anything else, which the preload did not write, as "unknown". */
+const count = (value: unknown) => (Number.isInteger(value) ? String(value) : "unknown");
+const flag = (value: unknown) => (typeof value === "boolean" ? String(value) : "unknown");
+
+/** A thrown value's error code when it is a known one, "none" when it has none. */
+function errorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === undefined ? "none" : oneOf(ERROR_CODES, code);
+}
+
 function safely<T>(read: () => T, fallback: T): T {
   try {
     return read();
@@ -315,9 +348,3 @@ function safely<T>(read: () => T, fallback: T): T {
     return fallback;
   }
 }
-
-const indent = (text: string) =>
-  text
-    .split("\n")
-    .map((line) => `  ${line}`)
-    .join("\n");
