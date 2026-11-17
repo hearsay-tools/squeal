@@ -82,6 +82,7 @@ export function verdictsOf(data: unknown): SharedArrayBuffer | undefined {
 export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayBuffer): void {
   const waits = new Map<number, AbortController>();
   const slot = verdicts === undefined ? null : new Int32Array(verdicts);
+  const writes = new HandedWrites();
   port.on("message", (message: ToWorker) => {
     if ("cancel" in message) {
       waits.get(message.cancel)?.abort();
@@ -92,7 +93,8 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
     if (cancel !== null) waits.set(id, cancel);
     const answer = (message: FromWorker) => port.postMessage(message);
     const handOff = slot === null ? null : new HandOff();
-    handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal)
+    writes
+      .after(() => handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal))
       .then(
         (result) => {
           if (slot === null || handOff === null || !handOff.pending) {
@@ -100,6 +102,7 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
           }
           const post = () => answer({ id, ok: true, answer: result, held: true });
           handOff.settle(awaitVerdict(slot, id, HAND_OFF_BOUND_MS, post) === "commit");
+          writes.add(handOff.sent());
         },
         () => {
           handOff?.abandon();
@@ -108,4 +111,32 @@ export function serve(port: MessagePort, deps: HookDeps, verdicts?: SharedArrayB
       )
       .finally(() => waits.delete(id));
   });
+}
+
+/**
+ * Row 005-107: the writes a verdict sent to the daemon serving the store
+ * (spec 021 D15), which the host does not wait for: it has its answer
+ * before them. A request that comes next starts once they are written, so
+ * it reads what the request before it committed; a Pi session start's
+ * cleared header, for one, is not said again by the run Pi starts next.
+ * The Claude Code and Codex wrappers wait for the same writes before their
+ * process ends (`writeThenCommit`). With none pending, a request starts at
+ * once, as before.
+ */
+class HandedWrites {
+  #pending: Promise<void> | null = null;
+
+  /** Adds `written`, which never rejects (`HandOff.sent`). */
+  add(written: Promise<void>): void {
+    const all = this.#pending === null ? written : Promise.all([this.#pending, written]);
+    const pending = all.then(() => {
+      if (this.#pending === pending) this.#pending = null;
+    });
+    this.#pending = pending;
+  }
+
+  /** Runs `start` once every write added so far is written; at once when none is pending. */
+  after<T>(start: () => Promise<T>): Promise<T> {
+    return this.#pending === null ? start() : this.#pending.then(start);
+  }
 }
