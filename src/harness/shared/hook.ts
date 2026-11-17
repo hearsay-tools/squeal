@@ -120,6 +120,8 @@ export async function withContext<T>(
     return result;
   } catch (error) {
     if (process.env.SQUEAL_DEBUG_CONTEXT) console.error("DEBUG withContext", error);
+    // Row 011-391: a read or write that hit the store's damage marks it; the hook stays silent.
+    context.faulted?.(error);
     context.prepared?.abandon();
     await context.sent().catch(() => {});
     throw error;

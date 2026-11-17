@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { readStoreMark } from "../store/open.js";
+import { readStoreMark, type StoreMark } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/common.js";
 
@@ -21,15 +21,16 @@ export function storeFileOf(commonDir: AbsolutePath): StoreFile | null {
 }
 
 /**
- * Why a daemon on this store stops at its heartbeat, or `null`: a failed
- * full check marked it, or a start moved the file it opened (`opened`)
- * aside, which takes the mark with it (row 011-226).
+ * Why a daemon on this store stops at its heartbeat, or `null`: a found
+ * fault marked it (row 011-391: the full check, or a read or write), or a
+ * start moved the file it opened (`opened`) aside, which takes the mark with
+ * it (row 011-226).
  */
 export function storeCondemned(commonDir: AbsolutePath, opened?: StoreFile | null): string | null {
   const mark = readStoreMark(commonDir);
   if (mark !== null) {
     return (
-      `daemon stopped: the full integrity check of the store found a fault (${mark.problem}); ` +
+      `daemon stopped: ${faultFound(mark)}; ` +
       "the next start moves the store aside and starts a fresh one"
     );
   }
@@ -37,4 +38,13 @@ export function storeCondemned(commonDir: AbsolutePath, opened?: StoreFile | nul
   const now = storeFileOf(commonDir);
   if (now !== null && sameFile(now, opened)) return null;
   return "daemon stopped: the store file it opened was moved aside or removed; the next start opens the store at its path";
+}
+
+/** What found the mark's fault, as a clause: `the full integrity check of the store found a fault (…)`. */
+export function faultFound(mark: StoreMark): string {
+  const finder =
+    (mark.found ?? "full-check") === "full-check"
+      ? "the full integrity check of the store"
+      : `a ${mark.found === "hook" ? "hook's open, read or write" : "daemon's read or write"} of the store`;
+  return `${finder} found a fault (${mark.problem})`;
 }

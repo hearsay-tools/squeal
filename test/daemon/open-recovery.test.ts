@@ -79,7 +79,7 @@ function oldStore() {
 /** Another worktree's start: a failed full check's mark, then its quick-checked open moves the store aside. */
 function recoverElsewhere(commonDir: string): void {
   markStore(commonDir, { at: 1, problem: "row 1 missing from index fault_a" });
-  const fresh = openStore(commonDir, { checkIntegrity: "quick" });
+  const fresh = openStore(commonDir, { checkIntegrity: "mark" });
   if ("reason" in fresh) throw new Error(JSON.stringify(fresh));
   fresh.close();
 }

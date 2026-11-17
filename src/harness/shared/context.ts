@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { type StoreFile, sameFile, storeFileOf } from "../../core/daemon/store-file.js";
 import { type CodeSource, codeLockFree, codeSource } from "../../core/delivery/code-source.js";
 import { createDelivery } from "../../core/delivery/delivery.js";
 import { PreparedReports } from "../../core/delivery/prepared.js";
@@ -8,7 +9,13 @@ import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../../core/fs
 import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/open.js";
 import { createStatusBuilder } from "../../core/status/snapshot.js";
-import { isStoreOpenFailure, openStore } from "../../core/store/open.js";
+import {
+  isCorruption,
+  isStoreOpenFailure,
+  markStore,
+  openStore,
+  readStoreMark,
+} from "../../core/store/open.js";
 import { storePaths } from "../../core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
 import { type Consumer, type HarnessDelivery, MAIN_AGENT } from "../../core/types/delivery.js";
@@ -70,6 +77,8 @@ export interface HookContext extends HookLocation {
   write<T>(work: () => T | Promise<T>): Promise<T>;
   /** Waits until every batch this context sent, its reports' included, is written. */
   sent(): Promise<void>;
+  /** Row 011-391: marks the store when `error` is its corruption (`markCorrupt`); never throws. */
+  faulted?(error: unknown): void;
   close(): void;
 }
 
@@ -108,8 +117,10 @@ export function openContext(
   const worktreeId = worktreeIdFor(location.root);
   const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
   const now = options.now ?? Date.now;
+  const file = fileOf(location.commonDir);
   const opened = open(location, worktreeId, options, busyTimeoutMs, now);
-  if (opened === null) return null;
+  if (opened === "corrupt") markCorrupt(location.commonDir, file, OPEN_CORRUPT, now);
+  if (opened === null || opened === "corrupt") return null;
   const { store, connection, write } = opened;
   try {
     const consumer: Consumer = {
@@ -149,7 +160,11 @@ export function openContext(
     });
     const close = () => store.close();
     const prepared = prepare === undefined ? {} : { prepared: prepare.reports };
-    return { ...location, store, delivery, consumer, code, lint, ...prepared, write, sent, close };
+    const faulted = (error: unknown) => {
+      if (isCorruption(error)) markCorrupt(location.commonDir, file, String(error), now);
+    };
+    const parts = { write, sent, faulted, close };
+    return { ...location, store, delivery, consumer, code, lint, ...prepared, ...parts };
   } catch (error) {
     store.close();
     throw error;
@@ -171,7 +186,7 @@ function open(
 ) {
   if (options.prepare !== true) {
     const store = openStore(location.commonDir, { create: false, busyTimeoutMs });
-    if (isStoreOpenFailure(store)) return null;
+    if (isStoreOpenFailure(store)) return store.reason === "corrupt" ? "corrupt" : null;
     const write = <T>(work: () => T | Promise<T>) => Promise.resolve().then(work);
     return { store, connection: null, write };
   }
@@ -183,5 +198,42 @@ function open(
     now,
     ...(options.writer === undefined ? {} : { writer: options.writer }),
   });
-  return "reason" in sent ? null : sent;
+  if (!("reason" in sent)) return sent;
+  return sent.reason === "corrupt" ? "corrupt" : null;
+}
+
+/** The problem a hook's mark names when the store did not open. */
+const OPEN_CORRUPT = "the store did not open: SQLite reports it corrupt or not a database";
+
+/** The store file at the path, or `null` when there is none or it cannot be read. */
+function fileOf(commonDir: AbsolutePath): StoreFile | null {
+  try {
+    return storeFileOf(commonDir);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Row 011-391: a hook that meets a corrupt store (its open, or a read or
+ * write that threw corruption) marks it as a failed full check does
+ * (`markStore`, found by `hook`), so every daemon on it stops and the next
+ * start moves it aside; the hook never moves it. Only beside the file it
+ * opened (`file`), and never over a mark there. It never throws: a store it
+ * cannot mark (read-only, gone) is left as it is, and the hook stays silent.
+ */
+export function markCorrupt(
+  commonDir: AbsolutePath,
+  file: StoreFile | null,
+  problem: string,
+  now: () => EpochMs,
+): void {
+  try {
+    const at = fileOf(commonDir);
+    if (file === null || at === null || !sameFile(file, at)) return;
+    if (readStoreMark(commonDir) !== null) return;
+    markStore(commonDir, { at: now(), problem, found: "hook" });
+  } catch {
+    // Best effort: the store stays unmarked, and the hook silent.
+  }
 }

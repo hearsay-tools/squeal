@@ -386,20 +386,32 @@ function breakdown(
   };
 }
 
+/** What found the fault, by the recovery note's `found` (row 011-391); `{at}` is when it was marked. */
+const FINDERS: Readonly<Record<string, string>> = {
+  start: "a daemon start's open of the store",
+  "full-check": "the full integrity check{at}",
+  daemon: "a daemon's read or write of the store{at}",
+  hook: "a hook's open, read or write of the store{at}",
+};
+
 /** Spec 001 D12: "status says the baseline was lost." */
 function recoveryNote(raw: string | null): string | null {
   if (raw === null) return null;
   try {
-    const { at, movedTo, check, checkedAt } = JSON.parse(raw) as Record<string, unknown>;
+    const { at, movedTo, check, checkedAt, found, markedAt } = JSON.parse(raw) as Record<
+      string,
+      unknown
+    >;
     const when = typeof at === "number" ? ` at ${new Date(at).toISOString()}` : "";
-    // Row 011-226: the mark of a failed full check moved it aside, not the start's quick check.
-    const checked =
-      typeof checkedAt === "number" && checkedAt > 0
-        ? ` at ${new Date(checkedAt).toISOString()}`
-        : "";
-    const found = check === "full" ? `: the full integrity check${checked} found a fault` : "";
+    // Row 011-226: the mark of a failed full check; row 011-391: or what else found the fault.
+    const finder = found ?? (check === "full" ? "full-check" : undefined);
+    const by = typeof finder === "string" ? FINDERS[finder] : undefined;
+    const markAt = finder === "full-check" ? checkedAt : markedAt;
+    const marked =
+      typeof markAt === "number" && markAt > 0 ? ` at ${new Date(markAt).toISOString()}` : "";
+    const foundBy = by === undefined ? "" : `: ${by.replace("{at}", marked)} found a fault`;
     const where = typeof movedTo === "string" ? ` (corrupt file moved to ${movedTo})` : "";
-    return `store was recovered from corruption${when}${found}; the baseline was lost${where}`;
+    return `store was recovered from corruption${when}${foundBy}; the baseline was lost${where}`;
   } catch {
     return `store was recovered from corruption; the baseline was lost (${raw})`;
   }

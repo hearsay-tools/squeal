@@ -183,7 +183,7 @@ class FullCheckOwner {
         log("full integrity check: ok");
       } else if ("problem" in outcome) {
         answered = true;
-        failed(this.#context, { at: now(), problem: outcome.problem });
+        failed(this.#context, { at: now(), problem: outcome.problem, found: "full-check" });
       } else {
         log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
       }

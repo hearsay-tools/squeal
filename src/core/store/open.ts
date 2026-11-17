@@ -16,10 +16,10 @@ export interface OpenStoreOptions {
    */
   readonly create?: boolean;
   /**
-   * Run `PRAGMA quick_check` and, on failure or on the mark a failed full
-   * check left (`markStore`), move the file aside and start a fresh store
-   * (spec 001 D12). A daemon's start runs it (row 011-226); too slow for
-   * hooks. Default none: a corrupt file is reported, never moved.
+   * On the mark a found fault left (`markStore`), or on a corruption error
+   * the open itself throws, move the file aside and start a fresh store
+   * (spec 001 D12). A daemon's start passes it. Default none: a corrupt file
+   * is reported, never moved.
    */
   readonly checkIntegrity?: IntegrityCheck;
   /** Busy timeout for this connection. Default `DEFAULT_BUSY_TIMEOUT_MS`. */
@@ -35,12 +35,14 @@ export interface OpenStoreOptions {
 }
 
 /**
- * `quick`: SQLite's `quick_check`, which skips UNIQUE constraints and whether
- * index content matches table content, 1.6 s on an 850 MB store, where
- * `integrity_check` takes 24 s (row 011-223). The full `integrity_check`
- * runs in its own process (`src/core/daemon/full-check.ts`, row 011-226).
+ * `mark`: the mark and the open's own reads only. Row 011-391: no check
+ * reads the whole store at a start (its `quick_check` took 82.7 s cold on a
+ * 4.9 GB store); damage elsewhere is found by the full `integrity_check`,
+ * which runs in its own process (`src/core/daemon/full-check.ts`, row
+ * 011-226), or by the first read or write that hits it, and either marks
+ * the store.
  */
-export type IntegrityCheck = "quick";
+export type IntegrityCheck = "mark";
 
 /** Fits inside the 2 s hook budget (spec 001 D9); the daemon may pass more. */
 export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
@@ -68,15 +70,26 @@ export const META_STORE_RECOVERED = "store.recovered";
  */
 export const META_FULL_CHECK = "store.full-check";
 
-/** What a failed full check left beside the store: when it ended and what it found. */
+/**
+ * What found a fault (row 011-391): a start's open, the full check, a
+ * daemon's read or write while it ran, or a hook's.
+ */
+export type FaultFinder = "start" | "full-check" | "daemon" | "hook";
+
+/** What a found fault left beside the store: when, what, and what found it. */
 export interface StoreMark {
   readonly at: EpochMs;
   readonly problem: string;
+  /** Absent in a mark written before row 011-391: the full check wrote it. */
+  readonly found?: FaultFinder;
 }
 
+const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook"];
+
 /**
- * Row 011-226: marks the store as failing its full check. Every daemon on it
- * exits at its next heartbeat, and the next checked open moves it aside.
+ * Row 011-226: marks the store as damaged (a failed full check; row 011-391,
+ * a read or write that hit damage). Every daemon on it exits at its next
+ * heartbeat, and the next checked open moves it aside.
  */
 export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
   writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
@@ -100,8 +113,11 @@ function readMark(path: string): StoreMark | null {
     throw error;
   }
   try {
-    const { at, problem } = JSON.parse(text) as Partial<StoreMark>;
-    if (typeof at === "number" && typeof problem === "string") return { at, problem };
+    const { at, problem, found } = JSON.parse(text) as Partial<StoreMark>;
+    if (typeof at === "number" && typeof problem === "string") {
+      const finder = MARK_FINDERS.find((known) => known === found);
+      return finder === undefined ? { at, problem } : { at, problem, found: finder };
+    }
   } catch {
     // A mark cut short still marks the store.
   }
@@ -147,16 +163,11 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
       return { reason: "newer-schema", found, supported: SCHEMA_VERSION };
     }
     if (options.checkIntegrity !== undefined) {
-      // Row 011-226: a failed full check's mark moves the store aside as a fault found now does.
+      // Row 011-226: a found fault's mark moves the store aside as a fault found now does.
       const mark = readMark(markPath(paths.database));
       if (mark !== null) {
         db.close();
         return { corrupt: mark.problem, mark };
-      }
-      const problem = integrityProblem(db);
-      if (problem !== null) {
-        db.close();
-        return { corrupt: problem };
       }
     }
     // Takes effect only before the first table exists, so only on a new file;
@@ -222,12 +233,6 @@ function pragmaNumber(db: DatabaseSync, name: string): number {
   return Number(db.prepare(`PRAGMA ${name}`).get()?.[name]);
 }
 
-function integrityProblem(db: DatabaseSync): string | null {
-  const rows = db.prepare("PRAGMA quick_check").all();
-  const messages = rows.map((row) => String(row.quick_check));
-  return messages.length === 1 && messages[0] === "ok" ? null : messages.join("; ");
-}
-
 /** SQLITE_CORRUPT (11) and SQLITE_NOTADB (26), including extended codes. */
 export function isCorruption(error: unknown): boolean {
   const code = (error as { errcode?: unknown }).errcode;
@@ -241,8 +246,9 @@ export function isCorruption(error: unknown): boolean {
  *
  * Holds an exclusive lock on `locks/store-recovery.sqlite` and re-checks
  * under it, so two daemons starting together never move a store the other
- * one just created. A failed full check's mark moves with the file, and the
- * note says the full check found the fault (row 011-226).
+ * one just created. A mark moves with the file, and the note says what
+ * found the fault (`found`, row 011-391): the mark's finder, else this start.
+ * A full check's note keeps `check` and `checkedAt` (row 011-226).
  */
 function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpenFailure {
   mkdirSync(paths.locksDir, { recursive: true });
@@ -250,7 +256,7 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 10_000)}`);
     lock.exec("BEGIN EXCLUSIVE");
-    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "quick" });
+    const again = connect(paths, { ...options, checkIntegrity: options.checkIntegrity ?? "mark" });
     if (!("corrupt" in again)) return again;
 
     const now = options.now ?? Date.now;
@@ -260,8 +266,7 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
     const fresh = connect(paths, unchecked);
     if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
     if (!isStoreOpenFailure(fresh)) {
-      const full = again.mark === undefined ? {} : { check: "full", checkedAt: again.mark.at };
-      const note = JSON.stringify({ at, movedTo, reason: again.corrupt, ...full });
+      const note = JSON.stringify({ at, movedTo, reason: again.corrupt, ...foundBy(again.mark) });
       fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
     }
     return fresh;
@@ -269,6 +274,14 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
     rollback(lock);
     lock.close();
   }
+}
+
+/** The recovery note's account of what found the fault. */
+function foundBy(mark: StoreMark | undefined): Record<string, unknown> {
+  if (mark === undefined) return { found: "start" };
+  const found = mark.found ?? "full-check";
+  if (found === "full-check") return { found, check: "full", checkedAt: mark.at };
+  return { found, markedAt: mark.at };
 }
 
 function moveAside(database: string, at: EpochMs): string {

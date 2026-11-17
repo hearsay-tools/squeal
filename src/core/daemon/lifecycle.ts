@@ -179,6 +179,12 @@ export interface TimerContext {
    * here. Absent: they wait the store's busy timeout, a failure only logged.
    */
   readonly busyWaits?: BusyWaits;
+  /**
+   * Row 011-391: a failure of the timers' store work is shown here first
+   * (`storeFaults`); true when it was corruption, marked, and the daemon
+   * stops. Absent: only logged.
+   */
+  readonly storeFault?: (error: unknown) => boolean;
   readonly shutdown: (reason: DaemonExitReason, text: string) => void;
 }
 
@@ -242,7 +248,9 @@ export interface TimerContext {
  *
  * Row 011-226: a heartbeat that finds the store marked by a failed full
  * check, or the file the daemon opened moved aside, stops the daemon
- * (`storeCondemned`), reason `store-unusable`.
+ * (`storeCondemned`), reason `store-unusable`. Row 011-391: so does a
+ * corruption error of the timers' own store work (`storeFault`), which marks
+ * the store for the other daemons on it.
  */
 export function startTimers(context: TimerContext): () => void {
   const { store, worktreeId, now, timings } = context;
@@ -260,7 +268,7 @@ export function startTimers(context: TimerContext): () => void {
     try {
       fn();
     } catch (error) {
-      context.log(`${what} failed: ${String(error)}`);
+      if (context.storeFault?.(error) !== true) context.log(`${what} failed: ${String(error)}`);
     }
   };
   const retries = new SlicedWrites(context);
@@ -450,6 +458,9 @@ export function startTimers(context: TimerContext): () => void {
           undefined,
           "code prune",
         ),
+      "prune",
+      // Row 011-391: the main store's prune only; the code store is another file.
+      context.storeFault,
     );
 
   const timers = [

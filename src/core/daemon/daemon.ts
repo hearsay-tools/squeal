@@ -76,6 +76,7 @@ import { type GroupRequested, type Held, keyingStep, requestGroup } from "./run-
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
+import { storeFaults, watched } from "./store-fault.js";
 import { pauseAt } from "./test-pause.js";
 import { capacityReader, loadUserConfig, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
@@ -270,6 +271,8 @@ class Daemon {
   readonly #writes: DaemonWrites;
   /** Spec 011 C9 (row 011-69): one last-resort GC once no tier ran for 60 s. */
   readonly #idleGc: IdleGc;
+  /** Row 011-391: the one classifier of a store error; corruption marks the store and stops. */
+  readonly #storeFault: (error: unknown) => boolean;
   #exit: Promise<DaemonExit> | null = null;
   /** `#register` committed: only then has its shutdown a mark to write (task 001-276). */
   #registered = false;
@@ -302,6 +305,13 @@ class Daemon {
       stopping: () => this.#phase === "stopping",
       ...(options.gc === undefined ? {} : { lookup: options.gc }),
       ...(options.heapInUse === undefined ? {} : { heapInUse: options.heapInUse }),
+    });
+    this.#storeFault = storeFaults({
+      commonDir: opened.commonDir,
+      storeFile: opened.storeFile,
+      now: this.#now,
+      log: this.#log,
+      stop: (text) => void this.#shutdown("store-unusable", 1, text),
     });
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
@@ -358,7 +368,7 @@ class Daemon {
         within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null),
       );
     } catch (error) {
-      return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
+      return this.#startFailed(error, `could not start serving: ${message(error)}`);
     }
     try {
       const { policy, problems } = loadPolicy(root);
@@ -369,7 +379,7 @@ class Daemon {
       this.#capacity();
       this.#startTimers();
     } catch (error) {
-      return this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
+      return this.#startFailed(error, `daemon exited: could not start: ${message(error)}`);
     }
     this.#starting = this.#run();
     const ready = this.#starting.catch(() => {});
@@ -381,6 +391,12 @@ class Daemon {
       exited: this.#exited,
       stop: (reason, note) => this.#shutdown(reason, 0, note ?? `daemon stopped: ${reason}`),
     };
+  }
+
+  /** A start's failure; row 011-391: the store's corruption stops it as `store-unusable` instead. */
+  #startFailed(error: unknown, text: string): Promise<DaemonExit> {
+    this.#storeFault(error);
+    return this.#shutdown("start-failed", 1, text);
   }
 
   /** (Re)starts heartbeat, lifecycle checks and pruning with the current policy. */
@@ -443,6 +459,7 @@ class Daemon {
       note: (text) => this.#note(text),
       log: this.#log,
       busyWaits: this.#busyWaits,
+      storeFault: this.#storeFault,
       shutdown: (reason, text) => void this.#shutdown(reason, 0, text),
     });
   }
@@ -914,10 +931,12 @@ class Daemon {
         // Row 011-369: the scheduler's one clock, over the daemon's reading.
         clock: hostClock(this.#now),
         // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
-        onError: (error) =>
-          isBusy(error)
-            ? this.#log(`daemon error: ${error.message}`)
-            : this.#note(`daemon error: ${error.message}`),
+        // Row 011-391: the store's corruption marks it and stops the daemon.
+        onError: (error) => {
+          if (this.#storeFault(error)) return;
+          if (isBusy(error)) this.#log(`daemon error: ${error.message}`);
+          else this.#note(`daemon error: ${error.message}`);
+        },
         // Row 011-309: a lane's wait for the pool, at its start and its grant.
         log: this.#log,
         busySliceMs: BUSY_SLICE_MS,
@@ -997,12 +1016,15 @@ class Daemon {
       }
       this.#log(`serving ${root} on ${this.#socketPath}`);
     } catch (error) {
-      void this.#shutdown("start-failed", 1, `daemon exited: could not start: ${message(error)}`);
+      void this.#startFailed(error, `daemon exited: could not start: ${message(error)}`);
       throw error;
     }
   }
 
   #openDesk(desk: PreparedDesk): Promise<FrontDesk> {
+    // Row 011-391: a main-store request's corruption marks the store; it is still the answer.
+    const watch = <A extends unknown[], T>(call: (...args: A) => T) =>
+      watched(this.#storeFault, call);
     return desk.open(
       {
         socketPath: this.#socketPath,
@@ -1014,10 +1036,10 @@ class Daemon {
         storeSchema: this.opened.store.schemaVersion,
       },
       {
-        requestFullSuite: (request) => this.#requestFullSuite(request),
-        requestSlowSuite: () => this.#requestSlowSuite(),
-        requestGroup: (group, held, paths) => this.#requestGroup(group, held, paths),
-        requestSync: (paths) => this.#requestSync(paths),
+        requestFullSuite: watch((request) => this.#requestFullSuite(request)),
+        requestSlowSuite: watch(() => this.#requestSlowSuite()),
+        requestGroup: watch((group, held, paths) => this.#requestGroup(group, held, paths)),
+        requestSync: watch((paths) => this.#requestSync(paths)),
         onActivity: () => {
           this.#lastActive = this.#now();
           this.#lastUsed = this.#lastActive;
@@ -1027,15 +1049,16 @@ class Daemon {
         requestPromotion: (testFiles, withinMs) => this.#requestPromotion(testFiles, withinMs),
         requestFocus: (testFiles, texts, withinMs) =>
           this.#requestFocus(testFiles, texts, withinMs),
-        requestHold: () => this.#requestHold(),
-        requestResume: async () => void (await this.#requestHold()),
+        requestHold: watch(() => this.#requestHold()),
+        requestResume: watch(async () => void (await this.#requestHold())),
         // Spec 021 D15 (row 021-16): a hook's or a command's writes, in the retried path of D2.
-        requestWrite: (batch) =>
+        requestWrite: watch((batch) =>
           this.#writes.write(
             "a hook's or command's writes",
             () => writeBatch(this.opened.store, decodeBatch(batch)),
             within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping"),
           ),
+        ),
         // Row 021-20, part two: one try of a write of a file the code gate keeps.
         requestKeep: (request) =>
           keepInDaemon(
@@ -1050,7 +1073,7 @@ class Daemon {
             request,
           ),
         // Spec 021 D15 (row 021-20): `squeal import`'s export, imported here in slices.
-        requestImport: (request) =>
+        requestImport: watch((request) =>
           importInDaemon(
             {
               root: this.opened.root,
@@ -1063,6 +1086,7 @@ class Daemon {
             },
             request,
           ),
+        ),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {
           this.#cancelTiers("stop");

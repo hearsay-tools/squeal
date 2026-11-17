@@ -37,10 +37,16 @@ export class SlicedPrune {
 
   /**
    * Runs the slices `slices` makes, then `then`, unless a prune runs or the
-   * driver stopped. A failure is logged as `what`'s and ends the prune;
-   * `then` runs.
+   * driver stopped. A failure is logged as `what`'s, unless `fault` takes it
+   * (row 011-391: corruption of the main store), and ends the prune; `then`
+   * runs.
    */
-  async run(slices: () => Iterable<PruneSlice>, then?: () => void, what = "prune"): Promise<void> {
+  async run(
+    slices: () => Iterable<PruneSlice>,
+    then?: () => void,
+    what = "prune",
+    fault?: (error: unknown) => boolean,
+  ): Promise<void> {
     if (this.#running || this.#stopped) return;
     this.#running = true;
     let waited = false;
@@ -69,13 +75,17 @@ export class SlicedPrune {
         await (this.#context.pause ?? unrefDelay)(turnGapMs(took));
       }
     } catch (error) {
-      this.#context.log(`${what} failed: ${String(error)}`);
+      this.#failed(what, error, fault);
     } finally {
       iterator?.return?.();
       this.#running = false;
       if (waited) this.#context.busyWaits?.ran(PRUNING);
     }
     if (!this.#stopped) then?.();
+  }
+
+  #failed(what: string, error: unknown, fault?: (error: unknown) => boolean): void {
+    if (fault?.(error) !== true) this.#context.log(`${what} failed: ${String(error)}`);
   }
 
   /** No slice runs after this one; a prune in its pause ends there. */

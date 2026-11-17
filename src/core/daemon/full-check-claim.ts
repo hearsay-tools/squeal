@@ -5,9 +5,9 @@ import type { Store } from "../types/store.js";
 import { leaseProcess, leaseProcessAlive } from "./lease-process.js";
 
 /**
- * Spec 011, store failures as amended 2026-10-25 (row 011-226): a daemon
- * start runs `quick_check`; the full `integrity_check` runs after a daemon
- * serves, at most once per store in this period.
+ * Spec 011, store failures as amended 2026-10-25 (row 011-226): the full
+ * `integrity_check` runs after a daemon serves, at most once per store in
+ * this period; a start runs no whole-store check (row 011-391).
  */
 export const FULL_CHECK_EVERY_MS = 24 * 60 * 60_000;
 

@@ -63,8 +63,9 @@ export const DAEMON_START_BUSY_TIMEOUT_MS = 120_000;
  * too (review 001-347, B2), and one that cannot read it within
  * `decideWithinMs` lets go of the lock and exits as a timed-out wait
  * (review 001-351, B1);
- * the store with `quick_check` (D12; the full check runs after serving, row
- * 011-226) and the start's busy timeout
+ * the store, moved aside on a found fault's mark or on its open's own
+ * corruption error (D12; no whole-store check, row 011-391; the full check
+ * runs after serving, row 011-226) and the start's busy timeout
  * (`DAEMON_START_BUSY_TIMEOUT_MS`), exiting with a note on a newer
  * schema (D8); then the temp directory, emptied (D10, lessons defect 13).
  * Spec 001 D10 as amended after the wave 3 review: the daemon takes the
@@ -210,7 +211,8 @@ async function takeLock(
 const OPEN_ATTEMPTS = 3;
 
 /**
- * The store, quick-checked (D12), with the file its connection holds
+ * The store, moved aside on a mark or on its open's corruption (D12; no
+ * whole-store check, row 011-391), with the file its connection holds
  * (review 0.1.329, B3). The path is read before and after the open: another
  * worktree's start can move the store aside and put a fresh one at the path
  * between them, and a later read would name the fresh file while the
@@ -225,7 +227,7 @@ function openStoreFile(
   for (let attempt = 1; ; attempt++) {
     const before = storeFileOf(commonDir);
     const store = openStore(commonDir, {
-      checkIntegrity: "quick",
+      checkIntegrity: "mark",
       busyTimeoutMs: DAEMON_START_BUSY_TIMEOUT_MS,
       now,
     });

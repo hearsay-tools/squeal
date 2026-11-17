@@ -5,6 +5,8 @@ import { isBusy, withBusySliceSync } from "../store/connection.js";
 interface SlicedContext {
   readonly log: (line: string) => void;
   readonly busyWaits?: BusyWaits | undefined;
+  /** Row 011-391: shown a failure first; true when it was the store's corruption, which stops the daemon. */
+  readonly storeFault?: ((error: unknown) => boolean) | undefined;
 }
 
 /** One step of a timer's writes: the name its failure is logged under, and the write. */
@@ -66,6 +68,7 @@ export class SlicedWrites {
         else withBusySliceSync(BUSY_SLICE_MS, fn);
       } catch (error) {
         if (waits === undefined || !isBusy(error)) {
+          if (this.#context.storeFault?.(error) === true) return true;
           this.#context.log(`${step} failed: ${String(error)}`);
           continue;
         }

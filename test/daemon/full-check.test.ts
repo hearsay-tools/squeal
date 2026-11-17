@@ -223,6 +223,7 @@ describe("a failed full check marks the store (row 011-226)", () => {
     expect(readStoreMark(commonDir)).toEqual({
       at: T + 5,
       problem: "row 1 missing from index fault_a",
+      found: "full-check",
     });
     expect(notes).toEqual([
       expect.stringContaining("the full integrity check of the store found a fault"),
