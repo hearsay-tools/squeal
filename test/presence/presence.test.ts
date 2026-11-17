@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { readPresence } from "../../src/core/presence/decide.js";
 import { spawnStartCurrent, stopHeld } from "../../src/core/presence/findings.js";
 import { heartbeatFresh, heartbeatLateBy } from "../../src/core/presence/heartbeat.js";
-import { presenceState } from "../../src/core/presence/state.js";
 import {
   editLineView,
   headerView,
@@ -47,7 +46,10 @@ describe("daemon presence: stored facts in, each view out (row 011-293)", () => 
     const was = typeof told === "object" ? "alive" : told;
     const news = row.news !== undefined ? row.news : row.status.state === was ? null : row.status;
 
-    expect(presenceState(presence)).toEqual({ state: row.state, notes: row.notes ?? [] });
+    expect(toldOf(headerView(presence))).toMatchObject({
+      state: row.state,
+      notes: row.notes ?? [],
+    });
     expect(JSON.stringify(statusView(presence))).toBe(JSON.stringify(row.status));
     expect(headerView(presence)).toEqual(header);
     expect(headerView(presence, told)).toEqual(row.toldHeader ?? header);

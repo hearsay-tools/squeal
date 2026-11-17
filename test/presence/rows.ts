@@ -9,12 +9,17 @@ import { at, OPEN_RUN, SELF, START_MARKED, type Stored, VERSION } from "./fixtur
  * Row 011-293: the presence table. Each row is stored facts and a clock, the
  * presence state with its notes, and each view's output. A row names the
  * header, news and edit-line views only where they differ from status.
+ * Row 005-118: the state and notes are what the header tells (`toldOf`), the
+ * one product decision of the state: a late change feed is no note, a daemon
+ * whose heartbeat is current validates while its shutdown begins, and a death
+ * is named only beside a start or no daemon.
  */
 
 export interface Row {
   readonly name: string;
   readonly stored: Stored;
   readonly now?: number;
+  /** What the header tells (`toldOf(headerView(...))`), row 005-118. */
   readonly state: PresenceState;
   readonly notes?: readonly PresenceNote[];
   readonly status: DaemonLiveness;
@@ -84,14 +89,13 @@ export const rows: readonly Row[] = [
     name: "a late change feed, which is no news",
     stored: { heartbeat: -2_000, feed: -120_000 },
     state: "validating",
-    notes: ["change feed late"],
     status: { ...alive, late: { since: at(-120_000) } },
     news: null,
   },
   {
     name: "a fresh heartbeat whose shutdown began",
     stored: { heartbeat: -2_000, exit: { note: -1_000 } },
-    state: "stopping",
+    state: "validating",
     status: { ...alive, stopping: { from: VERSION, since: at(-1_000), overdue: false } },
   },
   {

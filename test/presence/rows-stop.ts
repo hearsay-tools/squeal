@@ -116,7 +116,6 @@ export const stopRows: readonly Row[] = [
     stored: { heartbeat: -12_000, lock: "free", stop: { at: -11_000 } },
     heldStop: mark(-11_000),
     state: "stopped by request",
-    notes: ["last one died"],
     status: { ...stale, stopped: true, died: { runs: [] } },
     news: { ...stale, stopped: true },
     editLine: { ...stale, died: { runs: [] } },

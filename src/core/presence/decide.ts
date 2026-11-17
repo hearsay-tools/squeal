@@ -30,7 +30,7 @@ import type { StopMark } from "./stored.js";
  * Row 011-293 (`research/daemon-presence.md`, decisions 1 and 3): what is
  * known about a worktree's daemon, decided once from its facts. Each finding
  * below is one rule; the views (`views.ts`) say them to their audiences, and
- * `presenceState` (`state.ts`) names the one state they add up to.
+ * `toldOf` names the one state they add up to (row 005-118).
  */
 
 /** A rest (`Presence.rest`): quiet, with the spawn after it if one came, or overdue. */
