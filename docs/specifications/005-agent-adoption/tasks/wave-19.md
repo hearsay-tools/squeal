@@ -23,3 +23,17 @@ Owns: `src/harness/shared/{session,ensure}.ts`, their tests and the harness late
 Done when: a test where the daemon start takes longer than the hook's timeout and the session is registered when the hook is killed; a test for the boundary after such a kill (no second primer); a resumed session's registration has no primer; the hook's latency tests hold; `registerNow` at or under 20; the rules above.
 
 Final message: the order as built; what each harness does; the boundary case; check results.
+
+## W1, second part: 005-100, a registration in a running session keeps the own count
+
+Added 2026-11-17 (the human: option A on the eval flag). Same worker as 005-98, after its first part, since both change `registerNow`. Separate commits.
+
+Outcome: when a session that is already registered, or parked for a resume, registers again, the consumer's own count of affected test files goes on from its `since`; it does not start again at the registration's revision. The next failure delivery's header then carries the count ("all N test files your edits affect…", or the not-finished form).
+
+Read: `status.md`, the 2026-11-17 eval flag line; `src/core/delivery/edits.ts` (`since`, `writeState`, `tell(shown)`); `registerNow` in `delivery.ts`; `tasks/005-93/part1-notes.md` and `tasks/005-97/notes.md` (the path tables). Evidence: in `evals` scenario a4-pending under Codex, each turn registers again; the failure delivery after it reads "Revision 1 (changed src/invoice.ts)." with no count.
+
+Starting seam: where a registration writes the edits state. Lead: keep an existing `since` when the consumer was registered or parked; a first registration and a new session start at the registration's revision as now. Say in the notes what a compaction does and why.
+
+Owns, in addition: `src/core/delivery/edits.ts` and its tests, the rows of the two path tables for "registration". Leave alone as before, and `evals/**` (the measure is the check; it does not change).
+
+Done when: tests for register, edit, register again, failure delivery (count present); the same through park and resume; a first registration and a new session (count starts at the registration); the late state rules of 005-97 hold (`late-paths.test.ts`); the path-table rows updated in your notes. The coordinator re-runs the eval scenario on the candidate.
