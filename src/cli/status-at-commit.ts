@@ -26,28 +26,27 @@ export interface CommitSide {
   readonly failure: string | null;
 }
 
-export type CommitSideOptions = KeysAtOptions & {
+export type CommitSideOptions = Omit<KeysAtOptions, "files"> & {
   /** Relative to the root; `null` for every test file. */
   readonly paths: readonly RelativePath[] | null;
   readonly worktreeId: WorktreeId;
 };
 
 /**
- * Each selected test file at `options.commit`: the named `files` when
- * given, else every file the commit lists that `paths` select.
+ * Every test file the commit lists that `paths` select, under each
+ * project that lists it there: a named file and its folder give the same
+ * files (review wave-6 re-review B5; the human, 2026-11-17, dropped the
+ * named-file shortcut). CI's export still applies inside `keysAtCommit`.
  */
 export async function commitSide(options: CommitSideOptions): Promise<CommitSide> {
   const { paths, worktreeId, root, commit } = options;
   const tree = await committedBlobs(root, commit);
   const asked = paths === null || [...tree.keys()].some((path) => selects(paths, path));
-  // Named files go as they are (CI's export can settle them); a folder is listed in the
-  // checkout, narrowed to what the paths select.
-  const asIs = paths === null || options.files !== undefined;
   // No committed path is selected: every named file is absent there, with no checkout.
   const at: KeysAt = asked
     ? await keysAtCommit({
         ...options,
-        ...(asIs ? {} : { adapters: narrowed(options.adapters, paths) }),
+        ...(paths === null ? {} : { adapters: narrowed(options.adapters, paths) }),
       })
     : { commit, files: new Map(), failure: null, checkoutMs: null, store: true };
   const failure = at.failure === null ? null : `${at.failure.reason}: ${at.failure.detail}`;

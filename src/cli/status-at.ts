@@ -116,8 +116,6 @@ export async function statusAtCommand(
   const now = await withStores(commonDir, (main) => nowSide({ ...input, main }));
   if (!args.json)
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
-  // Named test files listed now go as they are; a folder or another path is listed at the commit.
-  const named = paths?.every((p) => now.refs.some((ref) => ref.path === p)) === true;
   const at = await commitSide({
     ...keying,
     ...options,
@@ -125,7 +123,6 @@ export async function statusAtCommand(
     commit,
     paths,
     worktreeId,
-    ...(named ? { files: now.refs } : {}),
     note: (text) => io.stderr(`squeal: ${text}\n`),
   });
   const files = compareSides(unionRefs(now.refs, at.refs, paths), at.state, now.state);

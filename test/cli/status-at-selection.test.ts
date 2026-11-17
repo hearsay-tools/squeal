@@ -145,6 +145,39 @@ describe("status --at selects a folder at both versions (review wave-6 B5)", SLO
     clean(f);
   });
 
+  it("gives a named file and its folder the same files when its project changed (re-review B5)", async () => {
+    const unit =
+      'export default { test: { projects: [{ test: { name: "unit", include: ["test/*.test.ts"] } }] } };\n';
+    const f = fixture({ ...SOURCES, "vitest.config.mjs": unit, [TEST.path]: testOf("a", 1) });
+    const before = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({
+      "vitest.config.mjs": 'export default { test: { include: ["test/*.test.ts"] } };\n',
+    });
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    const refsOf = async (paths: string[]) => {
+      const { code, out } = await run(f, { commit: before, paths, json: true }, options);
+      expect(code).toBe(3);
+      return JSON.parse(out).files as { project: string; path: string; at: { state: string } }[];
+    };
+    const named = await refsOf([TEST.path]);
+    const folder = await refsOf(["test"]);
+    const pairs = (files: typeof named) => files.map((x) => [x.project, x.path]);
+    expect(pairs(named)).toEqual([
+      ["", TEST.path],
+      ["unit", TEST.path],
+    ]);
+    expect(pairs(folder)).toEqual(pairs(named));
+    // The commit's own project is asked and keyed there; the default project lists nothing at the commit.
+    const unitAt = named.find((x) => x.project === "unit")?.at;
+    expect(unitAt).toMatchObject({
+      state: "no result",
+      key: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+    expect(named.find((x) => x.project === "")?.at).toMatchObject({ state: "not determined" });
+    expect(folder.find((x) => x.project === "unit")?.at).toEqual(unitAt);
+    clean(f);
+  });
+
   it("keeps a named file that exists on neither side, with no checkout", async () => {
     const f = fixture({ ...SOURCES, [PLAIN.path]: testOf("plain", 1) });
     const before = git(f.root, "rev-parse", "HEAD").trim();
