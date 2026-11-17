@@ -1,9 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { Store, StoreOpenFailure } from "../types/store.js";
 import { Connection, isBusy, rollback } from "./connection.js";
+import { currentMark, dropStaleMark, markPath, type StoreMark } from "./mark.js";
 import { type StorePaths, storePaths } from "./paths.js";
 import { migrate, SCHEMA_VERSION, STORE_INDEXES, userVersion } from "./schema.js";
 import { connectionOf, createStore } from "./store.js";
@@ -70,60 +71,6 @@ export const META_STORE_RECOVERED = "store.recovered";
  */
 export const META_FULL_CHECK = "store.full-check";
 
-/**
- * What found a fault (row 011-391): a start's open, the full check, a
- * daemon's read or write while it ran, or a hook's.
- */
-export type FaultFinder = "start" | "full-check" | "daemon" | "hook";
-
-/** What a found fault left beside the store: when, what, and what found it. */
-export interface StoreMark {
-  readonly at: EpochMs;
-  readonly problem: string;
-  /** Absent in a mark written before row 011-391: the full check wrote it. */
-  readonly found?: FaultFinder;
-}
-
-const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook"];
-
-/**
- * Row 011-226: marks the store as damaged (a failed full check; row 011-391,
- * a read or write that hit damage). Every daemon on it exits at its next
- * heartbeat, and the next checked open moves it aside.
- */
-export function markStore(commonDir: AbsolutePath, mark: StoreMark): void {
-  writeFileSync(markPath(storePaths(commonDir).database), JSON.stringify(mark));
-}
-
-/** The mark a failed full check left beside the store; `null` with none. */
-export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
-  return readMark(markPath(storePaths(commonDir).database));
-}
-
-function markPath(database: string): string {
-  return `${database}.check-failed`;
-}
-
-function readMark(path: string): StoreMark | null {
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-  try {
-    const { at, problem, found } = JSON.parse(text) as Partial<StoreMark>;
-    if (typeof at === "number" && typeof problem === "string") {
-      const finder = MARK_FINDERS.find((known) => known === found);
-      return finder === undefined ? { at, problem } : { at, problem, found: finder };
-    }
-  } catch {
-    // A mark cut short still marks the store.
-  }
-  return { at: 0, problem: "the full integrity check failed" };
-}
-
 export function isStoreOpenFailure(value: Store | StoreOpenFailure): value is StoreOpenFailure {
   return "reason" in value;
 }
@@ -164,7 +111,9 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     }
     if (options.checkIntegrity !== undefined) {
       // Row 011-226: a found fault's mark moves the store aside as a fault found now does.
-      const mark = readMark(markPath(paths.database));
+      // Row 011-391: only a mark that names this file; one that names another goes.
+      dropStaleMark(paths.database);
+      const mark = currentMark(paths.database);
       if (mark !== null) {
         db.close();
         return { corrupt: mark.problem, mark };

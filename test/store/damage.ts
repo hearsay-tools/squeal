@@ -31,16 +31,17 @@ export function seedOverflow(commonDir: string, key: string): void {
 }
 
 /**
- * Overwrites every overflow page of the `meta` table: the content of the
- * values `seedOverflow` wrote. Reading such a value throws SQLITE_CORRUPT; no
- * other read touches those pages. Returns how many pages it damaged.
+ * Overwrites every overflow page of `table` (default `meta`): the content of
+ * values too long for their page, such as `seedOverflow` writes. Reading such
+ * a value throws SQLITE_CORRUPT; no other read touches those pages. Returns
+ * how many pages it damaged.
  */
-export function damageOverflow(commonDir: string): number {
+export function damageOverflow(commonDir: string, table = "meta"): number {
   const pages = pagesOf(
     commonDir,
-    "SELECT pgoffset, pgsize FROM dbstat WHERE name = 'meta' AND pagetype = 'overflow'",
+    `SELECT pgoffset, pgsize FROM dbstat WHERE name = '${table}' AND pagetype = 'overflow'`,
   );
-  if (pages.length === 0) throw new Error("the meta table has no overflow pages");
+  if (pages.length === 0) throw new Error(`the ${table} table has no overflow pages`);
   overwrite(commonDir, pages);
   return pages.length;
 }
@@ -51,7 +52,8 @@ export function damageHeader(commonDir: string): void {
   overwrite(commonDir, [{ offset: 0, size: 4096 }]);
 }
 
-function checkpoint(commonDir: string): void {
+/** Checkpoints the WAL into the store file, so the file holds every page. */
+export function checkpoint(commonDir: string): void {
   const db = new DatabaseSync(storePaths(commonDir).database);
   try {
     db.exec("PRAGMA busy_timeout = 10000");

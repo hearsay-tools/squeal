@@ -1,16 +1,15 @@
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { isBusy } from "../../src/core/store/connection.js";
+import { markStore, readStoreMark } from "../../src/core/store/mark.js";
 import {
   inspectConnection,
   isCorruption,
   isStoreOpenFailure,
   META_STORE_RECOVERED,
-  markStore,
   openStore,
-  readStoreMark,
   setBusyTimeout,
 } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
@@ -367,6 +366,53 @@ describe("a mark that a read or write left (row 011-391)", () => {
         movedTo: join(dir, "store.sqlite.corrupt-8"),
         reason: "database disk image is malformed",
         found: "daemon",
+        markedAt: 4,
+      });
+    } finally {
+      store.close();
+    }
+  });
+
+  it("ignores and removes a mark that names another file (review of cand/0.1.545, B1)", () => {
+    const commonDir = fakeCommonDir();
+    const { database } = storePaths(commonDir);
+    open(commonDir).meta.set("kept", "yes");
+    markStore(commonDir, { at: 4, problem: "p", found: "daemon", file: { dev: 1, ino: 2 } });
+
+    expect(readStoreMark(commonDir)).toBeNull();
+    expect(existsSync(`${database}.check-failed`)).toBe(true);
+    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 8 });
+    if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+    try {
+      expect(store.meta.get("kept")).toBe("yes");
+      expect(store.meta.get(META_STORE_RECOVERED)).toBeNull();
+    } finally {
+      store.close();
+    }
+    expect(existsSync(`${database}.check-failed`)).toBe(false);
+    expect(
+      readdirSync(storePaths(commonDir).dir).filter((name) => name.includes("check-failed")),
+    ).toEqual([]);
+  });
+
+  it("moves the store aside on a mark that names its own file", () => {
+    const commonDir = fakeCommonDir();
+    const { database } = storePaths(commonDir);
+    open(commonDir).meta.set("kept", "yes");
+    const own = statSync(database);
+    markStore(commonDir, {
+      at: 4,
+      problem: "p",
+      found: "hook",
+      file: { dev: own.dev, ino: own.ino },
+    });
+
+    const store = openStore(commonDir, { checkIntegrity: "mark", now: () => 8 });
+    if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+    try {
+      expect(store.meta.get("kept")).toBeNull();
+      expect(JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null")).toMatchObject({
+        found: "hook",
         markedAt: 4,
       });
     } finally {

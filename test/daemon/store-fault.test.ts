@@ -2,7 +2,7 @@ import { renameSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { storeFaults, watched } from "../../src/core/daemon/store-fault.js";
 import { type StoreFile, storeFileOf } from "../../src/core/daemon/store-file.js";
-import { markStore, readStoreMark } from "../../src/core/store/open.js";
+import { markStore, readStoreMark } from "../../src/core/store/mark.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
@@ -52,6 +52,7 @@ describe("storeFaults (row 011-391)", () => {
       at: 7,
       problem: "Error: database disk image is malformed",
       found: "daemon",
+      file: { dev: file.dev, ino: file.ino },
     });
     expect(stops).toEqual([
       expect.stringMatching(

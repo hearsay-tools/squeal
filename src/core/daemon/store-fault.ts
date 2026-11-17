@@ -1,10 +1,63 @@
-import { isCorruption, markStore, readStoreMark, type StoreMark } from "../store/open.js";
+import { markStore, readStoreMark, type StoreMark } from "../store/mark.js";
+import { isCorruption } from "../store/open.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { faultFound, type StoreFile, sameFile, storeFileOf } from "./store-file.js";
 
+/**
+ * Row 011-391: the one place a found fault is marked. The mark names `file`,
+ * the store file its finder opened (`StoreMark.file`), so a start that moved
+ * that file aside and put a fresh store at the path leaves the fresh one
+ * unmarked: an open ignores and removes a mark that names another file
+ * (review of cand/0.1.545, B1). It writes nothing without a file, nor while
+ * another file is at the path, nor over a mark that names the file at the
+ * path. Throws when the mark cannot be written.
+ */
+export function markFault(
+  commonDir: AbsolutePath,
+  file: StoreFile | null,
+  mark: Omit<StoreMark, "file">,
+): void {
+  if (file === null) return;
+  const at = storeFileOf(commonDir);
+  if (at === null || !sameFile(at, file)) return;
+  if (readStoreMark(commonDir) !== null) return;
+  markStore(commonDir, { ...mark, file: { dev: file.dev, ino: file.ino } });
+}
+
+/** The problem a hook's mark names when the store did not open. */
+export const OPEN_CORRUPT = "the store did not open: SQLite reports it corrupt or not a database";
+
+/**
+ * Row 011-391: a hook whose open, read or write of the main store met
+ * corruption marks `file`, the file it opened (`markFault`, found by
+ * `hook`). It never throws and never waits: a store it cannot mark
+ * (read-only, gone) stays as it is, and the hook silent.
+ */
+export function markHookFault(
+  commonDir: AbsolutePath,
+  file: StoreFile | null,
+  problem: string,
+  now: () => EpochMs,
+): void {
+  try {
+    markFault(commonDir, file, { at: now(), problem, found: "hook" });
+  } catch {
+    // Best effort: the store stays unmarked, and the hook silent.
+  }
+}
+
+/** The store file at the path, or `null` when there is none or it cannot be read. */
+export function storeFileOrNull(commonDir: AbsolutePath): StoreFile | null {
+  try {
+    return storeFileOf(commonDir);
+  } catch {
+    return null;
+  }
+}
+
 export interface StoreFaultContext {
   readonly commonDir: AbsolutePath;
-  /** The file the daemon's connection holds; a mark goes beside it only while it is the one at the path. */
+  /** The file the daemon's connection holds: the file its mark names. */
   readonly storeFile: StoreFile | null;
   readonly now: () => EpochMs;
   readonly log: (line: string) => void;
@@ -14,17 +67,12 @@ export interface StoreFaultContext {
 
 /**
  * Row 011-391: the one place that classifies an error a daemon's store
- * read or write threw. On corruption (`isCorruption`) it marks the store
- * (`markStore`, found by `daemon`) and stops the daemon as `store-unusable`
- * with a note that says so, once; it returns true, and the caller logs
- * nothing more.
- * Every other daemon on the store stops at its next heartbeat
- * (`storeCondemned`), and the next start moves the store aside, as after a
- * failed full check (row 011-226).
- *
- * No mark is written over one already there, nor beside a file that is not
- * the one this daemon opened: a start moved that one aside, and this
- * daemon's heartbeat stops it.
+ * read or write threw. On corruption (`isCorruption`) it marks the file the
+ * daemon opened (`markFault`, found by `daemon`) and stops the daemon as
+ * `store-unusable` with a note that says so, once; it returns true, and the
+ * caller logs nothing more. Every other daemon on that file stops at its
+ * next heartbeat (`storeCondemned`), and the next start moves it aside, as
+ * after a failed full check (row 011-226).
  */
 export function storeFaults(context: StoreFaultContext): (error: unknown) => boolean {
   let seen = false;
@@ -34,9 +82,7 @@ export function storeFaults(context: StoreFaultContext): (error: unknown) => boo
     seen = true;
     const mark: StoreMark = { at: context.now(), problem: String(error), found: "daemon" };
     try {
-      if (readStoreMark(context.commonDir) === null && ownFile(context)) {
-        markStore(context.commonDir, mark);
-      }
+      markFault(context.commonDir, context.storeFile, mark);
     } catch (markError) {
       context.log(`could not mark the store: ${String(markError)}`);
     }
@@ -47,12 +93,6 @@ export function storeFaults(context: StoreFaultContext): (error: unknown) => boo
     );
     return true;
   };
-}
-
-function ownFile(context: StoreFaultContext): boolean {
-  if (context.storeFile === null) return false;
-  const now = storeFileOf(context.commonDir);
-  return now !== null && sameFile(now, context.storeFile);
 }
 
 /**

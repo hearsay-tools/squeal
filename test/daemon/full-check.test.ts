@@ -7,7 +7,8 @@ import { type FullCheck, runFullCheck, startFullCheck } from "../../src/core/dae
 import { claimFullCheck, FULL_CHECK_EVERY_MS } from "../../src/core/daemon/full-check-claim.js";
 import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { storeCondemned, storeFileOf } from "../../src/core/daemon/store-file.js";
-import { META_FULL_CHECK, readStoreMark } from "../../src/core/store/open.js";
+import { readStoreMark } from "../../src/core/store/mark.js";
+import { META_FULL_CHECK } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fakeCommonDir, open, seedIndexFault } from "../store/helpers.js";
@@ -224,6 +225,7 @@ describe("a failed full check marks the store (row 011-226)", () => {
       at: T + 5,
       problem: "row 1 missing from index fault_a",
       found: "full-check",
+      file: storeFileOf(commonDir),
     });
     expect(notes).toEqual([
       expect.stringContaining("the full integrity check of the store found a fault"),

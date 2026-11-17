@@ -1,6 +1,6 @@
 import { chmodSync, existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { readStoreMark } from "../../src/core/store/open.js";
+import { readStoreMark } from "../../src/core/store/mark.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
@@ -75,6 +75,23 @@ describe("a hook on a damaged store (row 011-391)", () => {
     const thrown = await readDamaged(r);
 
     expect(thrown).toMatchObject({ errcode: 11 });
+    expect(readStoreMark(r.repo.commonDir)).toMatchObject({
+      found: "hook",
+      problem: expect.stringMatching(/malformed|corrupt/),
+    });
+    expect(storeFiles(r)).toEqual([]);
+  });
+
+  it("marks a store whose worktree row, read while the context opens, is damaged, and prints nothing (review of cand/0.1.545, B2)", async () => {
+    const r = squealRepo();
+    const row = r.store.worktrees.get(r.worktreeId);
+    if (row === null) throw new Error("no worktree row");
+    r.store.worktrees.upsert({ ...row, commonDir: `${row.commonDir}${"/x".repeat(100_000)}` });
+    expect(damageOverflow(r.repo.commonDir, "worktrees")).toBeGreaterThan(40);
+
+    const out = await runHook("pre-tool-use", recorded("pre-tool-use", r.root), deps);
+
+    expect(out).toEqual(SILENT);
     expect(readStoreMark(r.repo.commonDir)).toMatchObject({
       found: "hook",
       problem: expect.stringMatching(/malformed|corrupt/),

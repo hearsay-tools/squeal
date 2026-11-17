@@ -6,12 +6,8 @@ import { META_FULL_CHECK_HOLDER } from "../../src/core/daemon/full-check-claim.j
 import type { DaemonTimings } from "../../src/core/daemon/lifecycle.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
-import {
-  META_FULL_CHECK,
-  META_STORE_RECOVERED,
-  openStore,
-  readStoreMark,
-} from "../../src/core/store/open.js";
+import { readStoreMark } from "../../src/core/store/mark.js";
+import { META_FULL_CHECK, META_STORE_RECOVERED, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
 import { damageHeader, damageOverflow, seedOverflow } from "../store/damage.js";

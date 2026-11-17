@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { readStoreMark, type StoreMark } from "../store/open.js";
+import { readStoreMark, type StoreMark } from "../store/mark.js";
 import { storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/common.js";
 

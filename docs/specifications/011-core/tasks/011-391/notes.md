@@ -21,7 +21,15 @@ Not marked, on purpose: corruption from the code store or the lint store (other 
 
 Two narrow cases can still pass another store's corruption to the classifier, accepted here and open to the review: (1) a hook's `withContext` catch also sees a failure of `prepared.commit()`, which can commit a held code-store write (row 011-288); the code and lint reads themselves swallow their errors (`withCode`, `withLint`). (2) A daemon's start failure (`#startFailed`, including `#run`) classifies any error; today the code, lint and coverage stores open lazily after the start and report through their own `onError`, so none reaches it.
 
-A mark is never written over a mark already there, and never beside a file other than the one the daemon (or hook) opened: when another start moved that file aside, the mark would condemn the fresh store. The daemon compares `storeFileOf` with the file it recorded at the open; the hook stats the path before its open and compares again at the mark. The hook's window is between that stat and its open (microseconds).
+A mark is never written over a mark that names the file at the path, and it names the file its writer opened (repair round, below).
+
+## Repair round (review of cand/0.1.545, B1 and B2)
+
+B1, a mark on a replacement store. The stat-then-compare before a mark left a window: another start could move the damaged file aside and put a fresh store at the path between the compare and the write, and the next open discarded the fresh store. Now every mark names the file its writer opened (`StoreMark.file`, device and inode): the daemon's the file its connection holds (`OpenedDaemon.storeFile`), the hook's the file at the path just before its open, the full check's the file at the path just before its check opens it. A checked open, the heartbeat (`storeCondemned`) and every marker read only a mark that names the file now at the path (`currentMark`); a checked open removes one that names another file (`dropStaleMark`, which renames it away before it reads it again and puts back a mark that names the file at the path). A mark written before this round has no `file` and names the file at the path, as before. The binding was chosen over the recovery lock: no hook waits on a lock, and a stale mark is harmless. The mark code moved to `src/core/store/mark.ts`; every writer goes through `markFault` (`src/core/daemon/store-fault.ts`).
+
+B2, a hook read before the catch. `openContext` now classifies an error thrown by its own open (`openSentStore` reads the worktree's row) and by the context's construction, through the same `markHookFault`, and rethrows it as before; the hook runner stays silent. Every other hook read of the main store is inside `withContext` (the `readTransaction` users in `src/harness/shared` take the `HookContext`). Two hook paths stay outside, by reasoning, not by a test: `recordedDaemon` (`src/core/daemon/ensure.ts`), which the ensure step calls before the context and which swallows every error, reads the same worktree row the context's open reads next, so that open marks; a hand-off's commit (`src/harness/shared/hand-off.ts`) writes pages the hook already read inside `withContext`.
+
+Busy-tier (`test/daemon/busy-tier.test.ts`, row 011-126): this row cannot change what its note lists. The classifier acts only on SQLite codes 11 and 26; a busy store's error is code 5, and every busy path (`SlicedWrites`, `SlicedPrune`, the scheduler's `onError`) handles it before or instead of the classifier. The start no longer runs `quick_check`, but the test holds the store only after the daemon is ready. A note without "revision 1" is the race in which the revision's write did not have to wait.
 
 ## How long a new store goes unchecked
 
@@ -46,13 +54,14 @@ Row 005-105 also changes this function. Mine, at commit `ef348f4f9`:
 ## Type changes
 
 - `IntegrityCheck` (`src/core/store/open.ts`): `"quick"` became `"mark"`. Not additive; the only product caller is the daemon's open. Tests moved with it.
-- `StoreMark.found?: FaultFinder`, with `FaultFinder = "start" | "full-check" | "daemon" | "hook"` (new, additive).
+- `StoreMark.found?: FaultFinder`, with `FaultFinder = "start" | "full-check" | "daemon" | "hook"` (new, additive), and `StoreMark.file?: MarkedFile` (repair round, additive). `StoreMark`, `FaultFinder`, `MarkedFile`, `markStore` and `readStoreMark` now live in `src/core/store/mark.ts`; importers moved (the lint forbids re-exports).
+- New in `store-fault.ts` (repair round): `markFault`, `markHookFault`, `OPEN_CORRUPT`, `storeFileOrNull`; `markCorrupt` left `context.ts`.
 - The recovery note (`META_STORE_RECOVERED`) gains `found` and, for a mark that is not the full check's, `markedAt` (additive JSON fields).
 - `TimerContext.storeFault?` and `FullCheckContext.storeFault?` (additive, optional).
 - `HookContext.faulted?(error)` (additive, optional).
 - `SlicedPrune.run` gains a fourth optional parameter `fault`.
 - New module `src/core/daemon/store-fault.ts`: `storeFaults`, `watched`.
-- New exports: `faultFound` (`store-file.ts`), `markCorrupt` (`harness/shared/context.ts`).
+- New export: `faultFound` (`store-file.ts`).
 - `integrityProblem` (the `quick_check` call) is gone.
 
 ## Tests
@@ -60,6 +69,7 @@ Row 005-105 also changes this function. Mine, at commit `ef348f4f9`:
 - `test/daemon/store-fault-daemon.test.ts`: real daemons on really damaged store files (`test/store/damage.ts` finds pages with `dbstat` and overwrites them in the file). Damage under a serving daemon in pages it never read; a second start serves, its full check's claim reads the damaged row, it marks and stops; the first daemon stops at its heartbeat; the next start moves the store aside with `found: "daemon"`. A damaged header moves the store aside at the start (`found: "start"`). A start on a 20 MB store issues no `quick_check` or `integrity_check` statement (spies on `DatabaseSync.prototype.prepare` and `exec`).
 - `test/daemon/store-fault.test.ts`: the classifier: once only, other errors not its, no mark over a mark, none beside a moved file, stops when the mark cannot be written.
 - `test/harness/store-fault-hook.test.ts`: a hook on a damaged header and on a damaged read marks, prints nothing, moves nothing; keeps a mark already there; with a read-only store directory it neither throws (beyond the read's own error, which the hook runner silences) nor prints nor marks.
+- Repair round: `test/daemon/mark-binding.test.ts` replaces the store at the marking boundary (after every check, before the write) for the daemon's marker and the hook's, and the fresh store survives a checked open with the stale mark removed; it fails with the binding disabled (checked once by hand). `test/harness/store-fault-hook.test.ts` damages the worktree row the context's open reads: the hook marks and prints nothing. `test/store/open.test.ts`: a mark that names another file is ignored and removed; one that names the file moves it aside.
 - `test/store/open.test.ts`: the page-damage case now opens and the read throws corruption, with no whole-store statement issued; the header case moves aside with `found: "start"`; a daemon-found mark moves aside with `found` and `markedAt`; an unknown finder reads as the full check's.
 - `test/status/recovered.test.ts`: the status line for each finder.
 - `test/daemon/full-check-daemon.test.ts` (failed full check) is unchanged in behaviour and passes.

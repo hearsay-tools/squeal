@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { setPriority } from "node:os";
 import { argv0For, storeCheckLabel } from "../process-label.js";
-import { isCorruption, markStore, type StoreMark } from "../store/open.js";
+import type { StoreMark } from "../store/mark.js";
+import { isCorruption } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
 import { slicedWrite } from "../store/sliced-write.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
@@ -9,6 +10,8 @@ import type { Store } from "../types/store.js";
 import { type Claim, claimFullCheck, keepClaim, releaseClaim } from "./full-check-claim.js";
 import { TEST_NICE } from "./low-priority.js";
 import { DAEMON_START_BUSY_TIMEOUT_MS } from "./open.js";
+import { markFault, storeFileOrNull } from "./store-fault.js";
+import type { StoreFile } from "./store-file.js";
 
 /** The check stops at this many problems: a store that has them is moved aside anyway. */
 const MAX_PROBLEMS = 10;
@@ -180,6 +183,8 @@ class FullCheckOwner {
       // Stopped while the claim was taken: no check runs.
       if (this.#stopped) return;
       const run = this.#context.run ?? runFullCheck;
+      // Row 011-391: the mark names the file checked, read before the check opens it.
+      const file = storeFileOrNull(commonDir);
       this.#check = run(storePaths(commonDir).database, storeCheckLabel(commonDir));
       const outcome = await this.#check.done;
       if ("ok" in outcome) {
@@ -187,7 +192,7 @@ class FullCheckOwner {
         log("full integrity check: ok");
       } else if ("problem" in outcome) {
         answered = true;
-        failed(this.#context, { at: now(), problem: outcome.problem, found: "full-check" });
+        failed(this.#context, file, { at: now(), problem: outcome.problem, found: "full-check" });
       } else {
         log(`full integrity check ${this.#stopped ? "stopped" : `did not run: ${outcome.unrun}`}`);
       }
@@ -228,9 +233,9 @@ class FullCheckOwner {
   }
 }
 
-function failed(context: FullCheckContext, mark: StoreMark): void {
+function failed(context: FullCheckContext, file: StoreFile | null, mark: StoreMark): void {
   try {
-    markStore(context.commonDir, mark);
+    markFault(context.commonDir, file, mark);
   } catch (error) {
     context.log(`could not mark the store: ${String(error)}`);
   }
