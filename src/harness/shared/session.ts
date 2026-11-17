@@ -1,7 +1,8 @@
 import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
-import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
+import type { EpochMs } from "../../core/types/common.js";
+import { type ConsumerInput, type HookContext, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
-import { ensure, ensureToRegister } from "./ensure.js";
+import { ensure, registerFirst } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { primer, withPrimer } from "./primer.js";
 import { unregisterSession } from "./sweep.js";
@@ -14,10 +15,11 @@ const SWEEP_SOURCES: ReadonlySet<string> = new Set(["startup", "resume"]);
  * and return the registration to inject. A repository with neither a store
  * nor a `squeal.config.json` does not use Squeal and gets nothing, not even a
  * daemon. Without a usable store the daemon is still ensured, and the first
- * tool boundary registers. After spawning a daemon, registration waits
- * briefly for its heartbeat, so its header reports a daemon that is about to
- * validate as validating, and as starting when the heartbeat is later
- * (task 001-156).
+ * tool boundary registers. Row 005-98 (option A): the consumer registers
+ * first and the daemon is ensured after, with no wait for a new daemon's
+ * heartbeat, so a hook killed at its 2 s timeout while a daemon starts has
+ * registered (`registerFirst`); the registration says a daemon is starting
+ * when the store holds no fresh heartbeat (task 001-156).
  *
  * Lessons, defect 5: a session start (not a subagent's) with source `startup`
  * or `resume` means any earlier run of that session id is gone, so every
@@ -47,33 +49,46 @@ export async function startSession(
   const text = await withContext(input, location, deps, async (context) => {
     // The store is open already: its daemon record spares the probe a second open (S8).
     ensured = true;
-    const startingSince = await ensureToRegister(location, deps, context);
-    // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
-    // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
-    // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
-    const main = input.agent_id === undefined;
-    if (main && input.source === "compact" && isRegistered(context))
-      return primer(deps.command, coverageOf(context));
-    if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
-      await unregisterSession(context, input.session_id, {
-        removeLocks: false,
-        except: context.consumer,
-      });
-    }
-    // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
-    const atStart = input.source !== "compact";
-    const registration = await context.delivery.register(context.consumer, {
-      atStart,
-      ...(startingSince === undefined ? {} : { startingSince }),
-    });
-    // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
-    if (main && input.source === "resume") {
-      return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
-    }
-    return withPrimer(registration, deps.command, coverageOf(context));
+    // Row 005-98: the registration first, then the daemon's start, inside the hook's timeout.
+    const first = await registerFirst(location, deps, context);
+    const text = await registerAtStart(input, context, deps, first.startingSince);
+    await first.ensure();
+    return text;
   });
   if (!ensured) await ensure(location, deps);
   return text;
+}
+
+/** `startSession`'s registration of `context`'s consumer, and the text it says. */
+async function registerAtStart(
+  input: ConsumerInput & { readonly source?: string },
+  context: HookContext,
+  deps: HookDeps,
+  startingSince: EpochMs | undefined,
+): Promise<string | null> {
+  // Its own consumer is re-registered by `register` in one transaction, so a waiter of the
+  // earlier run never sees it missing. Lock files stay: the waiter this SessionStart arms in
+  // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
+  const main = input.agent_id === undefined;
+  if (main && input.source === "compact" && isRegistered(context))
+    return primer(deps.command, coverageOf(context));
+  if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
+    await unregisterSession(context, input.session_id, {
+      removeLocks: false,
+      except: context.consumer,
+    });
+  }
+  // After `compact` the run goes on: its earlier tool calls may be in the registration revision.
+  const atStart = input.source !== "compact";
+  const registration = await context.delivery.register(context.consumer, {
+    atStart,
+    ...(startingSince === undefined ? {} : { startingSince }),
+  });
+  // Row 005-91 (d): a resumed session's context still holds the primer its first run heard.
+  if (main && input.source === "resume") {
+    return formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
+  }
+  return withPrimer(registration, deps.command, coverageOf(context));
 }
 
 /**

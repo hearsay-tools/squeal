@@ -56,14 +56,12 @@ export async function ensure(
   location: HookLocation,
   deps: HookDeps,
   context?: HookContext,
+  { stopRead = false }: { readonly stopRead?: boolean } = {},
 ): Promise<HookEnsureResult> {
   const worktree = context?.store.worktrees.get(context.consumer.worktreeId);
   const record = context === undefined ? undefined : (worktree?.daemon ?? null);
-  if (context !== undefined) {
-    const at = { id: context.consumer.worktreeId, root: location.root };
-    const now = (deps.now ?? Date.now)();
-    const stop = readHookStop(context.store, at.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at, stop, context.write)) return "stopped";
+  if (context !== undefined && !stopRead && (await stopHeld(location, deps, context))) {
+    return "stopped";
   }
   const handoff = context === undefined ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location, deps);
@@ -84,6 +82,18 @@ export async function ensure(
     await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
+}
+
+/** Whether a `squeal stop` holds for the worktree of `context` (`stopHolds`, task 011-08). */
+async function stopHeld(
+  location: HookLocation,
+  deps: HookDeps,
+  context: HookContext,
+): Promise<boolean> {
+  const id = context.consumer.worktreeId;
+  const worktree = context.store.worktrees.get(id);
+  const stop = readHookStop(context.store, id, worktree ?? null, (deps.now ?? Date.now)());
+  return stopHolds(context.store, { id, root: location.root }, stop, context.write);
 }
 
 /**
@@ -334,6 +344,41 @@ export async function ensureToRegister(
   const at = (deps.now ?? Date.now)();
   if ((await ensure(location, deps, context)) !== "spawned") return undefined;
   return (await settle(context, deps)) ? undefined : at;
+}
+
+/** What a session start registers with before it ensures the daemon (`registerFirst`). */
+export interface StartFirst {
+  /** `RegisterOptions.startingSince` of the registration that comes first. */
+  readonly startingSince: EpochMs | undefined;
+  /** The ensure after the registration: `ensure` with the stop already read. */
+  readonly ensure: () => Promise<HookEnsureResult>;
+}
+
+/**
+ * Row 005-98 (option A, the human 2026-11-17): a session start registers
+ * first and ensures the daemon after, so the hook's 2 s timeout cannot kill
+ * it between a spawn and its registration (`tasks/005-95/notes.md`). There is
+ * no wait for the new daemon's heartbeat (`settle`): unless a stop holds,
+ * a daemon with no fresh heartbeat in the store is told as starting from
+ * now, as after a settle that timed out (task 001-156). A daemon that then
+ * answers without a heartbeat, or cannot be started, is told so once the
+ * start's grace passed (`DAEMON_START_GRACE_MS`). A fresh heartbeat
+ * registers as before: a handoff to a newer daemon happens in the ensure.
+ */
+export async function registerFirst(
+  location: HookLocation,
+  deps: HookDeps,
+  context: HookContext,
+): Promise<StartFirst> {
+  const at = (deps.now ?? Date.now)();
+  if (await stopHeld(location, deps, context)) {
+    return { startingSince: undefined, ensure: async () => "stopped" };
+  }
+  const record = context.store.worktrees.get(context.consumer.worktreeId)?.daemon ?? null;
+  return {
+    startingSince: record !== null && heartbeatFresh(record, at) ? undefined : at,
+    ensure: () => ensure(location, deps, context, { stopRead: true }),
+  };
 }
 
 /** `RegisterOptions.startingSince` of a registration after a hook's `ensure` at `at` returned `ensured`. */

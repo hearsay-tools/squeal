@@ -25,8 +25,10 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  *
  * Task 001-96 (review wave 10c S1): SessionStart that spawns the daemon waits
  * for its heartbeat only, as in 0.1.11 (131 to 184 ms on the review's
- * machine), held to `SPAWN_BUDGET_MS`. The daemon is a stand-in CLI that
- * writes the heartbeat, a real daemon's first store write.
+ * machine), held to `SPAWN_BUDGET_MS`. Row 005-98: it registers before the
+ * spawn and waits for no heartbeat, so the budget stays an upper bound. The
+ * daemon is a stand-in CLI that writes the heartbeat, a real daemon's first
+ * store write.
  */
 
 const RUNS = 20;
