@@ -52,7 +52,7 @@ describe("late, once (row 005-97 a)", () => {
     expect(said).toContain(
       "The 1 test file your edits affect has not run, 2 s after your edit at revision 1. " +
         "Passes stay silent unless they follow a failure; Squeal says once when it has caught up. To have it now, " +
-        "`squeal status --wait 60000 src/a.test.ts` runs it first; or run it yourself.",
+        "`squeal status --wait 60000 src/a.test.ts` runs it first.",
     );
     tick(60_000);
     expect(await boundary()).toBeNull();
@@ -78,7 +78,7 @@ describe("late, once (row 005-97 a)", () => {
       "4 of the 5 test files your edits affect have not run, 2 min 10 s after your edit at revision 1.",
     );
     expect(said).toContain(
-      "To have them now, `squeal status --wait 60000 <path>...` runs the files your paths select first; or run those files yourself.",
+      "To have them now, `squeal status --wait 60000 <path>...` runs the files your paths select first.",
     );
   });
 
@@ -132,8 +132,12 @@ describe("late, once (row 005-97 a)", () => {
     const said = await boundary();
     expect(said).toMatch(LATE);
     expect(said).toContain(
-      "not yet listed the test files of revision 1, so Squeal has not queued them. To have results now, run the tests yourself; `squeal status` says when they are listed.",
+      "not yet listed the test files of revision 1, so Squeal has not queued them. " +
+        "`squeal status --wait 60000 <path>...` waits until they are listed, then for the files your paths select.",
     );
+    // Row 005-114: the late line says the delay; the header does not say it again.
+    expect(said).not.toContain("so new test files are not counted");
+    expect(said).not.toContain("yourself");
     expect(await boundary()).toBeNull();
   });
   it("says once that Squeal has not read edits after the feed's late time, after an edit", async () => {
@@ -143,11 +147,25 @@ describe("late, once (row 005-97 a)", () => {
     const said = await boundary();
     expect(said).toMatch(LATE);
     expect(said).toContain(
-      `Squeal has not read edits made after ${new Date(since).toISOString().slice(11, 19)} UTC, so it has not queued their test files. To have results now, run the tests yourself; \`squeal status\` says when Squeal reads them again.`,
+      `Squeal has not read edits made after ${new Date(since).toISOString().slice(11, 19)} UTC, so it has not queued their test files. \`squeal status --wait 60000 <path>...\` asks it to read them and waits for the files your paths select.`,
     );
+    expect(said).not.toContain("yourself");
     // The late message says the late-feed sentence: the header does not, while files are owed.
     expect(said).not.toContain("Squeal has not yet read edits");
     expect(await boundary()).toBeNull();
+  });
+
+  it("says the unread delay once with no owed file: the header leaves it to the late line (row 005-114)", async () => {
+    await edited();
+    finishA();
+    const since = clock - FEED_LATE_MS - 1_000;
+    store.meta.set(feedDeliveredMetaKey(WT), String(since));
+    const said = await boundary();
+    expect(said).toMatch(LATE);
+    expect(said).toContain("so it has not queued their test files.");
+    expect(said).not.toContain("Squeal has not yet read edits");
+    expect(said?.match(/status --wait 60000 <path>\.\.\./g)).toHaveLength(1);
+    expect(said).not.toContain("yourself");
   });
 });
 

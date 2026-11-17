@@ -15,7 +15,7 @@ import { shortText, stoppingText } from "../status/stopping.js";
 import { plural, utcTimeText } from "../text.js";
 import type { Delta, OwnEdits } from "../types/delivery.js";
 import type { DaemonLiveness, StatusHeader } from "../types/status.js";
-import { lateMaySay } from "./late.js";
+import { lateCarriesDelay } from "./late.js";
 import { installSentences } from "./provenance.js";
 
 /*
@@ -188,15 +188,15 @@ function holdsText(header: StatusHeader, command: string): string {
  * (`Revision 12 (changed src/a.ts): 3 of the 9 test files your edits affect
  * have not run.`); a consumer with no edit since its count began gets no
  * count, so the line ends after the changed paths. The sentences on a late
- * change feed and an unlisted revision stay after it, except while files are
- * owed and a late message may say them (row 005-97, `lateMaySay`). `squeal status` keeps
+ * change feed and an unlisted revision stay after it, except while the late line carries
+ * them (rows 005-97 and 005-114, `lateCarriesDelay`). `squeal status` keeps
  * the worktree's counts. Row 011-262 (gh-105): it names the changed paths as
  * the full form does, so an agent sees why checks re-ran.
  */
 function newsLine(
   header: StatusHeader,
   command: string,
-  told: Pick<Delta, "countsOwed" | "ownEdits">,
+  told: Pick<Delta, "countsOwed" | "ownEdits" | "editsLate">,
 ): string {
   const unlisted = unlistedLine(header, command);
   if (unlisted !== null) return unlisted;
@@ -210,7 +210,7 @@ function newsLine(
   }
   const own = told.ownEdits;
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  const latePart = own !== undefined && own.owed > 0 && lateMaySay(header);
+  const latePart = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate);
   return `${line}${latePart ? "" : incompleteText(header, command)}${daemonText(header, command)}`;
 }
 

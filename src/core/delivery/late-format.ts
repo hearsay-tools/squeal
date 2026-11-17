@@ -1,4 +1,4 @@
-import { runnersHave } from "../status/feed-late.js";
+import { listWaitText, readWaitText, runnersHave } from "../status/feed-late.js";
 import { durationText, shellWord, utcTimeText } from "../text.js";
 import type { CaughtUp, EditsLate } from "../types/delivery.js";
 import { notRunText } from "./header.js";
@@ -10,16 +10,20 @@ import { notRunText } from "./header.js";
  * count is `ownCountText` (`header.ts`).
  */
 
-/** The late line's last sentence: the wait that runs the owed files first, or a hand run. */
+/**
+ * The late line's last sentence: the wait that runs the owed files first. Row 005-114 (the human,
+ * 2026-11-17): one next step, the path wait; never a hand run, since the late line speaks only
+ * while a daemon validates (`lateNotes`).
+ */
 function nowText(late: Extract<EditsLate, { kind: "owed" }>, command: string): string {
   if (late.named !== undefined) {
     const paths = late.named.map(shellWord).join(" ");
     const them = late.named.length === 1 ? "it" : "them";
-    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first; or run ${them} yourself.`;
+    return `To have ${them} now, \`${command} status --wait 60000 ${paths}\` runs ${them} first.`;
   }
   return (
     `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths ` +
-    "select first; or run those files yourself."
+    "select first."
   );
 }
 
@@ -35,14 +39,12 @@ export function lateLine(late: EditsLate, command: string): string {
     case "unread":
       return (
         `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued ` +
-        `their test files. To have results now, run the tests yourself; \`${command} status\` ` +
-        "says when Squeal reads them again."
+        `their test files. ${readWaitText(command)}`
       );
     case "unlisted":
       return (
         `${runnersHave(late.runners, true)} not yet listed the test files of revision ` +
-        `${late.revision}, so Squeal has not queued them. To have results now, run the tests ` +
-        `yourself; \`${command} status\` says when they are listed.`
+        `${late.revision}, so Squeal has not queued them. ${listWaitText(command)}`
       );
   }
 }

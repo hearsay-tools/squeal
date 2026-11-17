@@ -59,8 +59,16 @@ export function unlistedClause(what: Unlisted): string {
  * Row 005-94 (finding 13): the next step after a late feed. A path wait asks the daemon to read
  * the edits first (`statusWaitCommand`'s reconciliation pass), then waits for those files.
  */
-function readWaitText(command: string): string {
+export function readWaitText(command: string): string {
   return `\`${command} status --wait 60000 <path>...\` asks it to read them and waits for the files your paths select.`;
+}
+
+/**
+ * Row 005-114: the next step while the revision's test files are not listed. A path wait waits
+ * for the listing (`windowRefined`), then for the files the paths select.
+ */
+export function listWaitText(command: string): string {
+  return `\`${command} status --wait 60000 <path>...\` waits until they are listed, then for the files your paths select.`;
 }
 
 /**

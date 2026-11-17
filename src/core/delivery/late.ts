@@ -212,6 +212,19 @@ export function lateMaySay(header: StatusHeader): boolean {
   return daemon?.state === "alive" && daemon.stopping === undefined && !quietFor(header);
 }
 
+/**
+ * Row 005-114: whether the late line carries the delay sentence the news header would say, so
+ * the header leaves it out. While files are owed, or in the message that says late, and a late
+ * message may say it at `header`; one message never states the delay twice.
+ */
+export function lateCarriesDelay(
+  header: StatusHeader,
+  owed: number,
+  late: EditsLate | undefined,
+): boolean {
+  return (owed > 0 || late !== undefined) && lateMaySay(header);
+}
+
 /** The unlisted notice with the runners that list a revision's files, as the header names them. */
 function withRunners(
   late: Extract<EditsLate, { kind: "unlisted" }>,
