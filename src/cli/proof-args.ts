@@ -42,21 +42,44 @@ export function parseProof(args: readonly string[]): ProofArgs | ProofUsage {
   let json = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] ?? "";
-    const name = VALUED.find((v) => arg === v || arg.startsWith(`${v}=`));
-    if (name !== undefined) {
-      const later = LATER[name];
-      if (later !== undefined) return notBuilt(later);
-      const inline = arg.length > name.length;
-      const value = inline ? arg.slice(name.length + 1) : args[i + 1];
-      if (value === undefined || (!inline && value.startsWith("--")))
-        return { usage: `${name} needs a value` };
-      if (values.has(name)) return { usage: `${name} is given twice` };
-      values.set(name, value);
-      if (!inline) i++;
-    } else if (arg === "--json") json = true;
+    const taken = valued(args, i, values);
+    if (typeof taken === "object") return taken;
+    if (taken > 0) i += taken - 1;
+    else if (arg === "--json") json = true;
     else if (arg.startsWith("--")) return { usage: `unknown option "${arg}"` };
     else files.push(arg);
   }
+  return checked(values, files, json);
+}
+
+/**
+ * The valued option at `args[i]` into `values`: how many words it took
+ * (0 when it is none), or the usage problem it has.
+ */
+function valued(
+  args: readonly string[],
+  i: number,
+  values: Map<Valued, string>,
+): number | ProofUsage {
+  const arg = args[i] ?? "";
+  const name = VALUED.find((v) => arg === v || arg.startsWith(`${v}=`));
+  if (name === undefined) return 0;
+  const later = LATER[name];
+  if (later !== undefined) return notBuilt(later);
+  const inline = arg.length > name.length;
+  const value = inline ? arg.slice(name.length + 1) : args[i + 1];
+  if (value === undefined || (!inline && value.startsWith("--")))
+    return { usage: `${name} needs a value` };
+  if (values.has(name)) return { usage: `${name} is given twice` };
+  values.set(name, value);
+  return inline ? 1 : 2;
+}
+
+function checked(
+  values: ReadonlyMap<Valued, string>,
+  files: readonly string[],
+  json: boolean,
+): ProofArgs | ProofUsage {
   const base = values.get("--base");
   if (base === undefined || base === "") return { usage: "--base needs a commit" };
   if (files.length === 0) return { usage: "name at least one test file" };

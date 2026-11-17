@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
-import { SLOW } from "../scheduler/cleanup.js";
 import { prove } from "./proof-kit.js";
 import { clean, testOf } from "./status-at-kit.js";
 
@@ -22,121 +21,116 @@ function sourceFix() {
   return { f, a };
 }
 
-describe(
-  "squeal proof (row 023-08, D5)",
-  { timeout: 240_000 },
-  () => {
-    it("proves a source fix with the red side's assertion, and a second call runs nothing", async () => {
-      const { f, a } = sourceFix();
-      const install = linkInstall();
-      const options = { cacheRoot: f.cacheRoot, install: install.install };
+describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
+  it("proves a source fix with the red side's assertion, and a second call runs nothing", async () => {
+    const { f, a } = sourceFix();
+    const install = linkInstall();
+    const options = { cacheRoot: f.cacheRoot, install: install.install };
 
-      const first = await prove(f, { files: [TEST.path], base: a }, options);
-      expect(first.code, first.err).toBe(0);
-      expect(first.report).toMatchObject({ version: "squeal-proof/1", case: "source", base: a });
-      expect(first.report.red).toEqual({ tests: first.report.head, code: a });
-      const [file] = first.files;
-      expect(file).toMatchObject({
-        verdict: "proven",
-        red: { end: "fail", from: "run", stored: true },
-      });
-      expect(file?.red.failures).toEqual([
-        expect.objectContaining({
-          test: "value",
-          kind: "assertion",
-          text: expect.stringContaining("expected 1 to be 2"),
-        }),
-      ]);
-      expect(file?.green).toMatchObject({ end: "pass", from: "run" });
-      expect(first.report.runs).toBe(2);
-      clean(f);
-
-      const second = await prove(f, { files: [TEST.path], base: a }, options);
-      expect(second.code, second.err).toBe(0);
-      expect(second.files[0]).toMatchObject({
-        verdict: "proven",
-        red: { end: "fail", from: "store" },
-        green: { end: "pass", from: "store" },
-      });
-      expect(second.files[0]?.red.failures[0]?.text).toContain("expected 1 to be 2");
-      expect(second.report.runs).toBe(0);
-      clean(f);
-
-      const text = await prove(f, { files: [TEST.path], base: a, json: false }, options);
-      expect(text.out).toContain(`squeal proof (case source): base ${a.slice(0, 9)}`);
-      expect(text.out).toContain("test/a.test.ts: proven");
-      expect(text.out).toContain("AssertionError: expected 1 to be 2");
+    const first = await prove(f, { files: [TEST.path], base: a }, options);
+    expect(first.code, first.err).toBe(0);
+    expect(first.report).toMatchObject({ version: "squeal-proof/1", case: "source", base: a });
+    expect(first.report.red).toEqual({ tests: first.report.head, code: a });
+    const [file] = first.files;
+    expect(file).toMatchObject({
+      verdict: "proven",
+      red: { end: "fail", from: "run", stored: true },
     });
+    expect(file?.red.failures).toEqual([
+      expect.objectContaining({
+        test: "value",
+        kind: "assertion",
+        text: expect.stringContaining("expected 1 to be 2"),
+      }),
+    ]);
+    expect(file?.green).toMatchObject({ end: "pass", from: "run" });
+    expect(first.report.runs).toBe(2);
+    clean(f);
 
-    it("proves a test-only fix: the old test over the current code fails", async () => {
-      const f = fixture({
-        ...ON,
-        "src/a.ts": "export const value = 2;\n",
-        [TEST.path]: testOf("a", 3),
-      });
-      const a = git(f.root, "rev-parse", "HEAD").trim();
-      f.commit({ [TEST.path]: testOf("a", 2) });
-      const result = await prove(f, { files: [TEST.path], base: a });
-      expect(result.code, result.err).toBe(0);
-      expect(result.report.case).toBe("test");
-      expect(result.report.red).toEqual({ tests: a, code: result.report.head });
-      expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail" } });
-      expect(result.files[0]?.red.failures[0]?.text).toContain("expected 2 to be 3");
-      clean(f);
+    const second = await prove(f, { files: [TEST.path], base: a }, options);
+    expect(second.code, second.err).toBe(0);
+    expect(second.files[0]).toMatchObject({
+      verdict: "proven",
+      red: { end: "fail", from: "store" },
+      green: { end: "pass", from: "store" },
     });
+    expect(second.files[0]?.red.failures[0]?.text).toContain("expected 1 to be 2");
+    expect(second.report.runs).toBe(0);
+    clean(f);
 
-    it("reads not red when the test passes on the old code (exit 1)", async () => {
-      const f = fixture({ ...ON, "src/a.ts": "export const value = 2;\n" });
-      const a = git(f.root, "rev-parse", "HEAD").trim();
-      f.commit({ "src/a.ts": "export const value = 2; // tidied\n", [TEST.path]: testOf("a", 2) });
-      const result = await prove(f, { files: [TEST.path], base: a });
-      expect(result.code, result.err).toBe(1);
-      expect(result.files[0]).toMatchObject({
-        verdict: "not red",
-        red: { end: "pass" },
-        green: null,
-      });
-      clean(f);
-    });
+    const text = await prove(f, { files: [TEST.path], base: a, json: false }, options);
+    expect(text.out).toContain(`squeal proof (case source): base ${a.slice(0, 9)}`);
+    expect(text.out).toContain("test/a.test.ts: proven");
+    expect(text.out).toContain("AssertionError: expected 1 to be 2");
+  });
 
-    it("reads red for another reason when the red side fails on a missing export (exit 3)", async () => {
-      const f = fixture({ ...ON, "src/a.ts": "export const value = 1;\n" });
-      const a = git(f.root, "rev-parse", "HEAD").trim();
-      const test = [
-        'import { expect, it } from "vitest";',
-        'import { fixed } from "../src/a";',
-        'it("fixed", () => expect(fixed()).toBe(2));',
-        "",
-      ].join("\n");
-      f.commit({
-        "src/a.ts": "export const value = 1;\nexport const fixed = () => 2;\n",
-        [TEST.path]: test,
-      });
-      const result = await prove(f, { files: [TEST.path], base: a });
-      expect(result.code, result.err).toBe(3);
-      expect(result.files[0]).toMatchObject({ verdict: "red for another reason", green: null });
-      expect(result.files[0]?.red.failures[0]).toMatchObject({ test: "fixed", kind: "error" });
-      expect(result.files[0]?.red.failures[0]?.text).toContain("TypeError");
-      clean(f);
+  it("proves a test-only fix: the old test over the current code fails", async () => {
+    const f = fixture({
+      ...ON,
+      "src/a.ts": "export const value = 2;\n",
+      [TEST.path]: testOf("a", 3),
     });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ [TEST.path]: testOf("a", 2) });
+    const result = await prove(f, { files: [TEST.path], base: a });
+    expect(result.code, result.err).toBe(0);
+    expect(result.report.case).toBe("test");
+    expect(result.report.red).toEqual({ tests: a, code: result.report.head });
+    expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail" } });
+    expect(result.files[0]?.red.failures[0]?.text).toContain("expected 2 to be 3");
+    clean(f);
+  });
 
-    it("reads not comparable, with no run, when the test imports a source file the base lacks", async () => {
-      const f = fixture({ ...ON, "src/a.ts": "export const value = 1;\n" });
-      const a = git(f.root, "rev-parse", "HEAD").trim();
-      f.commit({
-        "src/a.ts": "export const value = 2;\n",
-        "src/b.ts": "export const value = 2;\n",
-        [TEST.path]: `${testOf("a", 2)}import "../src/b";\n`,
-      });
-      const result = await prove(f, { files: [TEST.path], base: a });
-      expect(result.code, result.err).toBe(3);
-      expect(result.files[0]).toMatchObject({
-        verdict: "not comparable",
-        reason: `imports src/b.ts, absent at ${a.slice(0, 9)}`,
-      });
-      expect(result.report.runs).toBe(0);
-      clean(f);
+  it("reads not red when the test passes on the old code (exit 1)", async () => {
+    const f = fixture({ ...ON, "src/a.ts": "export const value = 2;\n" });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ "src/a.ts": "export const value = 2; // tidied\n", [TEST.path]: testOf("a", 2) });
+    const result = await prove(f, { files: [TEST.path], base: a });
+    expect(result.code, result.err).toBe(1);
+    expect(result.files[0]).toMatchObject({
+      verdict: "not red",
+      red: { end: "pass" },
+      green: null,
     });
-  },
-  SLOW,
-);
+    clean(f);
+  });
+
+  it("reads red for another reason when the red side fails on a missing export (exit 3)", async () => {
+    const f = fixture({ ...ON, "src/a.ts": "export const value = 1;\n" });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    const test = [
+      'import { expect, it } from "vitest";',
+      'import { fixed } from "../src/a";',
+      'it("fixed", () => expect(fixed()).toBe(2));',
+      "",
+    ].join("\n");
+    f.commit({
+      "src/a.ts": "export const value = 1;\nexport const fixed = () => 2;\n",
+      [TEST.path]: test,
+    });
+    const result = await prove(f, { files: [TEST.path], base: a });
+    expect(result.code, result.err).toBe(3);
+    expect(result.files[0]).toMatchObject({ verdict: "red for another reason", green: null });
+    expect(result.files[0]?.red.failures[0]).toMatchObject({ test: "fixed", kind: "error" });
+    expect(result.files[0]?.red.failures[0]?.text).toContain("TypeError");
+    clean(f);
+  });
+
+  it("reads not comparable, with no run, when the test imports a source file the base lacks", async () => {
+    const f = fixture({ ...ON, "src/a.ts": "export const value = 1;\n" });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({
+      "src/a.ts": "export const value = 2;\n",
+      "src/b.ts": "export const value = 2;\n",
+      [TEST.path]: `${testOf("a", 2)}import "../src/b";\n`,
+    });
+    const result = await prove(f, { files: [TEST.path], base: a });
+    expect(result.code, result.err).toBe(3);
+    expect(result.files[0]).toMatchObject({
+      verdict: "not comparable",
+      reason: `imports src/b.ts, absent at ${a.slice(0, 9)}`,
+    });
+    expect(result.report.runs).toBe(0);
+    clean(f);
+  });
+});

@@ -1,13 +1,13 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { fixture, git } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { clean, run } from "./status-at-kit.js";
+import { alive, gone, stateOf, waitFor } from "./status-at-processes.js";
 
 /*
  * Row 023-07, done-when; spec 023 D6; review wave-7 B3: a `status --at
@@ -73,47 +73,3 @@ describe("a killed status --at --run (row 023-07, D6)", SLOW, () => {
     }
   });
 });
-
-async function waitFor(path: string, ms: number): Promise<void> {
-  const deadline = Date.now() + ms;
-  while (!existsSync(path)) {
-    if (Date.now() > deadline) throw new Error(`${path} was not written in ${ms} ms`);
-    await delay(50);
-  }
-}
-
-/** Whether `pid` runs: it exists and is not a zombie waiting for its reaper. */
-function alive(pid: number): boolean {
-  if (existsSync("/proc/self/stat")) {
-    try {
-      const text = readFileSync(`/proc/${pid}/stat`, "utf8");
-      return text.slice(text.lastIndexOf(")") + 2)[0] !== "Z";
-    } catch {
-      return false;
-    }
-  }
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** `pid`'s `/proc` state line, for a failure's message. */
-function stateOf(pid: number): string {
-  try {
-    return `${pid}: ${readFileSync(`/proc/${pid}/stat`, "utf8").trim()}`;
-  } catch {
-    return `${pid}: no /proc entry`;
-  }
-}
-
-async function gone(pid: number, ms: number): Promise<boolean> {
-  const deadline = Date.now() + ms;
-  while (alive(pid)) {
-    if (Date.now() > deadline) return false;
-    await delay(50);
-  }
-  return true;
-}
