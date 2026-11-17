@@ -715,6 +715,59 @@ function findHarnessProcess(lookup = {}) {
   return null;
 }
 
+// src/core/delivery/registration-owed.ts
+function registrationOwedMetaKey(worktreeId) {
+  return worktreeMetaKey("registrationOwed", worktreeId);
+}
+function oweRegistration(store, consumer, owed2) {
+  const key = registrationOwedMetaKey(consumer.worktreeId);
+  if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
+  writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
+}
+function owedRegistration(store, consumer) {
+  if (store.consumers.get(consumer) === null) return null;
+  const value = readSlot(store, registrationOwedMetaKey(consumer.worktreeId), consumer);
+  return isRecord(value) && typeof value.primer === "boolean" ? { primer: value.primer } : null;
+}
+
+// src/harness/pi/handed.ts
+function entered(context, deps) {
+  return deps.handing?.enter(context) ?? Promise.resolve(context);
+}
+var keyOf = (consumer) => JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId]);
+var HandedRegistrations = class {
+  #handed = /* @__PURE__ */ new Map();
+  /** A new request's `Handing`. */
+  request() {
+    const handed = this.#handed;
+    const sent = /* @__PURE__ */ new Map();
+    return {
+      enter: async (context) => {
+        const { consumer, delivery, store } = context;
+        const key = keyOf(consumer);
+        const kept2 = handed.get(key);
+        if (kept2 !== void 0) {
+          const same3 = store.consumers.get(consumer)?.registeredAt === kept2;
+          if (same3 && owedRegistration(store, consumer) !== null) {
+            await delivery.registrationSent(consumer);
+          } else {
+            handed.delete(key);
+          }
+        }
+        const registrationSent = async (to) => {
+          const at = store.consumers.get(to)?.registeredAt;
+          await delivery.registrationSent(to);
+          if (at !== void 0) sent.set(keyOf(to), at);
+        };
+        return { ...context, delivery: { ...delivery, registrationSent } };
+      },
+      keep: () => {
+        for (const [key, at] of sent) handed.set(key, at);
+      }
+    };
+  }
+};
+
 // src/harness/pi/host.ts
 var COMMIT = 1;
 var waiting = (id) => ((id - 1) % 536870911 + 1) * 4;
@@ -7851,7 +7904,7 @@ function caughtUpLine({ revision, files: files2, unknown }) {
 var capitalized2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 
 // src/core/delivery/shared-closure.ts
-var keyOf = (paths) => JSON.stringify(paths);
+var keyOf2 = (paths) => JSON.stringify(paths);
 function sharedClosure(blocks) {
   const counts = /* @__PURE__ */ new Map();
   for (const block3 of blocks) {
@@ -7864,14 +7917,14 @@ function sharedClosure(blocks) {
   );
   if (shared2 === null) return { own: closureLine, line: null };
   const all = blocks.flat();
-  const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
+  const n = all.filter((p) => p !== void 0 && keyOf2(p) === shared2).length;
   const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
   const paths = JSON.parse(shared2);
   const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
-  return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
+  return { own: (p) => p !== void 0 && keyOf2(p) === shared2 ? null : closureLine(p), line };
 }
 function blockKey(block3) {
-  const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
+  const keys = block3.map((p) => p === void 0 ? null : keyOf2(p));
   return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
 }
 var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
@@ -12731,7 +12784,7 @@ function beforeEditsFor(store, worktreeId, slot2, since) {
 // src/core/delivery/closure.ts
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf2 = (id, ref2) => {
+  const keyOf3 = (id, ref2) => {
     let byFile2 = keys.get(id);
     if (byFile2 === void 0) {
       byFile2 = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
@@ -12741,8 +12794,8 @@ function closureTrust(store, worktreeId) {
   };
   return (record) => {
     if (record.updatedBy === worktreeId) return true;
-    const key = keyOf2(worktreeId, record.testFile);
-    return key !== null && key === keyOf2(record.updatedBy, record.testFile);
+    const key = keyOf3(worktreeId, record.testFile);
+    return key !== null && key === keyOf3(record.updatedBy, record.testFile);
   };
 }
 function closureFor(store, worktreeId) {
@@ -13588,10 +13641,10 @@ function beforeFailing(history, state) {
     return null;
   }
   const at = history.findLastIndex((t) => t.kind !== "fail-changed");
-  const entered = history[at];
-  if (entered?.from == null) return null;
-  const passed = entered.from === "unknown" ? passBeforeUnknown(history, at) : null;
-  return passed ?? { outcome: entered.from, fingerprint: entered.fromFingerprint };
+  const entered2 = history[at];
+  if (entered2?.from == null) return null;
+  const passed = entered2.from === "unknown" ? passBeforeUnknown(history, at) : null;
+  return passed ?? { outcome: entered2.from, fingerprint: entered2.fromFingerprint };
 }
 function passBeforeUnknown(history, end) {
   for (let i = end - 1; i >= 0 && history[i]?.to === "unknown"; i--) {
@@ -14258,21 +14311,6 @@ function ownEditUnknown(store, consumer, revision) {
     const paths = movedPaths(state.summary);
     return paths?.every((p) => changes().has(p)) === true;
   };
-}
-
-// src/core/delivery/registration-owed.ts
-function registrationOwedMetaKey(worktreeId) {
-  return worktreeMetaKey("registrationOwed", worktreeId);
-}
-function oweRegistration(store, consumer, owed2) {
-  const key = registrationOwedMetaKey(consumer.worktreeId);
-  if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
-  writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
-}
-function owedRegistration(store, consumer) {
-  if (store.consumers.get(consumer) === null) return null;
-  const value = readSlot(store, registrationOwedMetaKey(consumer.worktreeId), consumer);
-  return isRecord(value) && typeof value.primer === "boolean" ? { primer: value.primer } : null;
 }
 
 // src/core/delivery/stop-news.ts
@@ -18990,8 +19028,9 @@ async function startSession(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null || !usesSqueal(location2)) return null;
   let ensured = false;
-  const text2 = await withContext(consumerInput(session), location2, deps, async (context) => {
+  const text2 = await withContext(consumerInput(session), location2, deps, async (opened) => {
     ensured = true;
+    const context = await entered(opened, deps);
     const first = await registerFirst(location2, deps, context);
     const text3 = await registerThenEnsure(
       first,
@@ -19029,7 +19068,7 @@ async function toolBoundary(session, deps, edited = true) {
     consumerInput(session),
     location2,
     deps,
-    (context) => deliver(context, deps, edited)
+    async (context) => deliver(await entered(context, deps), deps, edited)
   );
 }
 
@@ -19040,7 +19079,8 @@ var SILENT_RUN = { primer: null, news: null };
 async function startRun(session, deps) {
   const location2 = locate(session.cwd);
   if (location2 === null || !usesSqueal(location2)) return SILENT_RUN;
-  const answer = await withContext(consumerInput2(session), location2, deps, async (context) => {
+  const answer = await withContext(consumerInput2(session), location2, deps, async (opened) => {
+    const context = await entered(opened, deps);
     const section = primer(deps.command, coverageOf(context));
     if (context.store.consumers.get(context.consumer) !== null) {
       const owed2 = await sayOwed(context, deps, { inTurn: true });
@@ -19165,6 +19205,7 @@ function serve(port, deps, verdicts) {
   const waits = /* @__PURE__ */ new Map();
   const slot2 = verdicts === void 0 ? null : new Int32Array(verdicts);
   const writes = new HandedWrites();
+  const handed = new HandedRegistrations();
   port.on("message", (message) => {
     if ("cancel" in message) {
       waits.get(message.cancel)?.abort();
@@ -19175,13 +19216,18 @@ function serve(port, deps, verdicts) {
     if (cancel !== null) waits.set(id, cancel);
     const answer = (message2) => port.postMessage(message2);
     const handOff = slot2 === null ? null : new HandOff();
-    writes.after(() => handle(request, handOff === null ? deps : { ...deps, handOff }, cancel?.signal)).then(
+    const handing = handed.request();
+    const requestDeps = { ...deps, handing, ...handOff === null ? {} : { handOff } };
+    writes.after(() => handle(request, requestDeps, cancel?.signal)).then(
       (result) => {
         if (slot2 === null || handOff === null || !handOff.pending) {
-          return answer({ id, ok: true, answer: result });
+          answer({ id, ok: true, answer: result });
+          return handing.keep();
         }
         const post = () => answer({ id, ok: true, answer: result, held: true });
-        handOff.settle(awaitVerdict(slot2, id, HAND_OFF_BOUND_MS, post) === "commit");
+        const commit = awaitVerdict(slot2, id, HAND_OFF_BOUND_MS, post) === "commit";
+        if (commit) handing.keep();
+        handOff.settle(commit);
         writes.add(handOff.sent());
       },
       () => {

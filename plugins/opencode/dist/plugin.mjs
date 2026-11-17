@@ -83,15 +83,23 @@ function callBridge(command, event, cwd, deadlineMs, options = {}) {
       settled = true;
       clearTimeout(timer);
       options.signal?.removeEventListener("abort", cancel);
+      const done = () => {
+        clearTimeout(grace);
+        resolve2(held.answer);
+      };
+      const grace = setTimeout(() => {
+        killGroup();
+        done();
+      }, COMMIT_GRACE_MS);
+      if (options.background) grace.unref?.();
+      child.unref();
+      if (code !== null) return done();
+      child.on("exit", done);
       try {
         process.kill(child.pid, VERDICT_SIGNAL);
       } catch {
+        done();
       }
-      const grace = setTimeout(killGroup, COMMIT_GRACE_MS);
-      grace.unref?.();
-      child.on("exit", () => clearTimeout(grace));
-      child.unref();
-      resolve2(held.answer);
     };
     const answered = () => settle(code === 0 ? parseAnswer(Buffer.concat(out).toString("utf8")) : null);
     const timer = setTimeout(() => settle(null), deadlineMs);

@@ -15571,6 +15571,7 @@ async function runBridge(stdin, module, kind, handler) {
     }
     await handOver(handOff, ack, `${JSON.stringify({ answer, held: true })}
 `);
+    await handOff.sent();
   } catch {
     handOff?.abandon();
     process.exitCode = 1;
