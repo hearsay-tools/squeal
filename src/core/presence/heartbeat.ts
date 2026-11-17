@@ -24,6 +24,15 @@ export const HEARTBEAT_GRACE_INTERVALS = 2;
  */
 export const DAEMON_START_GRACE_MS = 10_000;
 
+/**
+ * Row 005-108: how long a daemon may hold the worktree's lock in its start,
+ * not registered yet, before one message says it is still starting and since
+ * when: six of the start's grace. A start that opens a large store may take
+ * longer (13 to 83 s measured, `research/session-start-cost.md` section 7);
+ * it is starting for as long as its process lives, and is said so once.
+ */
+export const DAEMON_START_SLOW_MS = 6 * DAEMON_START_GRACE_MS;
+
 /** How late a heartbeat of interval `intervalMs` may be and still count (`HEARTBEAT_GRACE_INTERVALS`). */
 export function heartbeatGraceMs(intervalMs: number): number {
   return HEARTBEAT_GRACE_INTERVALS * intervalMs;

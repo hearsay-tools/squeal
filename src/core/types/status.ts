@@ -505,6 +505,11 @@ export type DaemonLiveness =
        */
       readonly startMark?: "start" | "spawn";
       /**
+       * Row 005-108: with `startMark` `start`, the daemon has held the lock in its start for
+       * longer than `DAEMON_START_SLOW_MS`; one delivery says it is still starting, and since when.
+       */
+      readonly startSlow?: true;
+      /**
        * Task 001-415, review 001-417 B2: the daemon stopped unused and no
        * hook has started its successor yet; delivered headers only, status
        * leaves it out.

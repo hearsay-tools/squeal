@@ -2,7 +2,7 @@ import type { EpochMs } from "../types/common.js";
 import type { DaemonLiveness } from "../types/status.js";
 import { decidePresence, type MarkedStart, type Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
-import { DAEMON_START_GRACE_MS } from "./heartbeat.js";
+import { DAEMON_START_GRACE_MS, DAEMON_START_SLOW_MS } from "./heartbeat.js";
 import type { PresenceNote } from "./state.js";
 import { alreadyTold, type ToldLiveness, type ToldPresence } from "./told.js";
 
@@ -34,7 +34,7 @@ type Alive = Extract<DaemonLiveness, { readonly state: "alive" }>;
  */
 export function statusView(p: Presence): DaemonLiveness {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
-  return withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat)));
+  return withSlowStart(withLateHeartbeat(p, withRecordFacts(p, withStop(p, p.heartbeat))), p.at);
 }
 
 /**
@@ -47,14 +47,15 @@ export function headerView(p: Presence, told?: ToldLiveness): DaemonLiveness {
   if (p.heartbeat.state === "alive") return aliveView(p, p.heartbeat);
   const rested = withRest(p, withStop(p, p.heartbeat));
   const live = withLateHeartbeat(p, withRecordFacts(p, rested));
-  return told === undefined ? live : withToldStart(live, told, p.at);
+  return withSlowStart(told === undefined ? live : withToldStart(live, told, p.at), p.at);
 }
 
 /**
  * The hooks' news (C5): the daemon's liveness when its presence state, or a
  * note the header says with it, is not what the consumer was told
  * (`alreadyTold`), else `null`. Row 011-295: a late heartbeat and a death
- * are news as the header words them. A daemon still starting is no news,
+ * are news as the header words them. A daemon still starting is no news
+ * until its start outlasts `DAEMON_START_SLOW_MS`, then once (row 005-108),
  * nor its first heartbeat, nor one that rests (`Presence.rest`); a rest
  * whose restart is overdue is forgotten (`forgetRest`), so this and every
  * later boundary report the daemon down. Row 011-140: a daemon that ended
@@ -64,10 +65,13 @@ export function newsChange(
   p: Presence,
   told: ToldLiveness,
 ): { readonly change: DaemonLiveness | null; readonly forgetRest: boolean } {
-  const live = newsView(p, told);
+  const live = withSlowStart(newsView(p, told), p.at);
   let forgetRest = false;
   if (live.state === "down" && live.stopped !== true) {
-    if (live.startingSince !== undefined) return { change: null, forgetRest };
+    // Row 005-108: a start is news once, when it outlasts `DAEMON_START_SLOW_MS`.
+    if (live.startingSince !== undefined && live.startSlow !== true) {
+      return { change: null, forgetRest };
+    }
     if (p.rest?.kind === "quiet") return { change: null, forgetRest };
     forgetRest = p.rest?.kind === "overdue";
   }
@@ -116,6 +120,18 @@ export function withToldStart(
   return { ...starting, startingSince };
 }
 
+/**
+ * Row 005-108: a daemon that has held the worktree's lock in its start, not
+ * registered, for longer than `DAEMON_START_SLOW_MS` at `at` starts slowly:
+ * it is starting while its process lives, and a delivery says so once.
+ */
+function withSlowStart(live: DaemonLiveness, at: EpochMs): DaemonLiveness {
+  if (live.state !== "down" || live.startMark !== "start" || live.startingSince === undefined) {
+    return live;
+  }
+  return at - live.startingSince > DAEMON_START_SLOW_MS ? { ...live, startSlow: true } : live;
+}
+
 /** A down `live` without a stop: a start a consumer was told of wins over it. */
 export function withoutStop(live: Down): Down {
   const { stopped: _stopped, untilStart: _untilStart, ...rest } = live;
@@ -140,7 +156,9 @@ export function toldOf(live: DaemonLiveness): ToldPresence {
   const died: readonly PresenceNote[] = live.died === undefined ? [] : ["last one died"];
   if (live.stopping !== undefined) return { state: "stopping", notes: [] };
   if (stopOf(live) !== null) return { state: "stopped by request", notes: [] };
-  if (live.startingSince !== undefined) return { state: "starting", notes: died };
+  if (live.startingSince !== undefined) {
+    return { state: "starting", notes: live.startSlow === true ? [...died, "start slow"] : died };
+  }
   if (live.resting === true) return { state: "resting", notes: [] };
   if (live.heartbeatLate !== undefined) return { state: "heartbeat late", notes: [] };
   return { state: "gone", notes: died };

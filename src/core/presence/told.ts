@@ -46,6 +46,7 @@ const NOTES: ReadonlySet<string> = new Set<PresenceNote>([
   "last one died",
   "handoff ended short",
   "change feed late",
+  "start slow",
 ]);
 
 /**

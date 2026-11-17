@@ -48,11 +48,16 @@ export function noResultsText(command: string): string {
  * Row 005-90: the line of either form while the test files are not listed: the sentence, then
  * the daemon's. No counts, no delay sentence and no checkpoint sentence, which name counts. Row
  * 005-94 (texts.md 3): no sentence that results are as of a revision, since none exists; with
- * no daemon running, one sentence says both and what starts one.
+ * no daemon running, one sentence says both and what starts one. Row 005-108: with a start
+ * past `DAEMON_START_SLOW_MS`, one sentence says since when, and never what starts one.
  */
 function unlistedLine(header: StatusHeader, command: string): string | null {
   if (header.testFilesListed !== false) return null;
   const { daemon } = header;
+  // Row 005-108: the start the registration said, said once more when slow, and since when.
+  if (daemon?.state === "down" && daemon.startSlow === true) {
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+  }
   if (noneRunning(daemon)) {
     return (
       `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is ` +
@@ -329,6 +334,10 @@ function livenessSentence(
     return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
   // Task 001-263: the daemon that died without its stop note, and what it was running.
   const died = diedText(daemon);
+  // Row 005-108: a daemon that holds the lock in a start past `DAEMON_START_SLOW_MS`.
+  if (daemon.startSlow === true) {
+    return ` ${slowStartText(daemon)}; results are as of revision ${revision}.${died}`;
+  }
   // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
   if (daemon.startingSince !== undefined) {
     return ` A daemon is starting; results are as of revision ${revision}.${died}`;
@@ -349,6 +358,19 @@ function livenessSentence(
 }
 
 type Down = DaemonLiveness & { readonly state: "down" };
+
+/**
+ * Row 005-108: `A daemon has been starting since <time>`, of a start that holds the lock past
+ * `DAEMON_START_SLOW_MS`. Never `squeal start`: the daemon is starting, and a second one would
+ * wait for its lock.
+ */
+function slowStartText(daemon: Down): string {
+  const since =
+    daemon.startingSince === undefined
+      ? ""
+      : ` since ${new Date(daemon.startingSince).toISOString()}`;
+  return `A daemon has been starting${since}`;
+}
 
 /** Task 001-263: ` The last daemon died …`, when the daemon died without its stop note. */
 function diedText(daemon: Down): string {

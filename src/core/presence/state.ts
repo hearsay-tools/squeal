@@ -18,7 +18,11 @@ export type PresenceState =
   | "gone";
 
 /** The notes that may come with a presence state. */
-export type PresenceNote = "last one died" | "handoff ended short" | "change feed late";
+export type PresenceNote =
+  | "last one died"
+  | "handoff ended short"
+  | "change feed late"
+  | "start slow";
 
 /** The state `presence` is in, and its notes, highest priority first (decision 3). */
 export function presenceState(presence: Presence): {
