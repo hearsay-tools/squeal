@@ -254,7 +254,7 @@ function allowGlobs(cwd: string): RegExp[] {
     .map(globRegExp);
 }
 
-/** `/./` and `//` name the same folder as `/`, so `/home/./alice/` is read as `/home/alice/`. */
+/** `/./` and `//` name the same folder as `/`, so `/home/./user/` is read as `/home/user/`. */
 const collapseDots = (form: string) => form.replace(/\/(?:\.?\/)+/g, "/");
 
 const homeName = (text: string) =>
