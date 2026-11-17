@@ -35,13 +35,13 @@ export type GlobResolver = (pattern: string, importer: AbsolutePath) => Promise<
  */
 export type ParseAst = (source: string, options: { lang: Lang }, file: string) => unknown;
 
-type Lang = "js" | "jsx" | "ts" | "tsx";
+export type Lang = "js" | "jsx" | "ts" | "tsx";
 
 /** A syntax node as the parser gives it: ESTree, read field by field. */
-type Node = { readonly type?: unknown } & Readonly<Record<string, unknown>>;
+export type Node = { readonly type?: unknown } & Readonly<Record<string, unknown>>;
 
 /** The languages Vite parses a script in, by extension; any other file is not read. */
-const LANGS: Readonly<Record<string, Lang>> = {
+export const LANGS: Readonly<Record<string, Lang>> = {
   ".js": "js",
   ".mjs": "js",
   ".cjs": "js",
@@ -254,7 +254,7 @@ function templateGlob(node: Node): string | null {
   return kept && !glob.startsWith("*") && posix.extname(glob) !== "" ? glob : null;
 }
 
-function walk(node: unknown, visit: (node: Node) => void): void {
+export function walk(node: unknown, visit: (node: Node) => void): void {
   if (Array.isArray(node)) for (const item of node) walk(item, visit);
   if (node === null || typeof node !== "object" || Array.isArray(node)) return;
   const record = node as Node;
