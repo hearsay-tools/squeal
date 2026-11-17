@@ -1,0 +1,6 @@
+squeal daemon: long write: store.sqlite write lock held 1127 ms by #write < Ledger.commit < commitFirst; 41863 rows written
+squeal daemon: long write: store.sqlite write lock held 1057 ms by storeClosures < resolveClosures < process.processTicksAndRejections; 1032 rows written
+squeal daemon: long write: store.sqlite write lock held 830 ms by #write < Ledger.commit < retryWhileBusy; 8098 rows written
+squeal daemon: daemon stopped: squeal stop
+squeal daemon: serving ~/projects/squeal/.ai/squawk/t/f92102eb/kbw/wt/sq-a on /run/user/1001/squeal-7308c42d8aac306f.sock
+squeal daemon: daemon stopped: squeal stop

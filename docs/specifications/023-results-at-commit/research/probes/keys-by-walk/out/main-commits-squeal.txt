@@ -1,0 +1,51 @@
+1dcc79aa9 2026-11-17T07:52:24+01:00 docs(023): D2 amended (keys by walk in the checkout); 023-03 superseded; 023-14 running; rows 023-15, 023-16
+18d475a5f 2026-11-17T07:50:12+01:00 docs: rows 005-100 (own count across a registration), 005-99 research brief, 009-30 diagnostics brief
+f7b85b4e0 2026-11-17T07:44:17+01:00 docs(011): row 011-390 approved, wave 120 brief
+74ca28efd 2026-11-17T07:42:32+01:00 docs(005): 005-98 option A, wave 19 brief; proposed row 005-99; eval flag recorded
+0f8b16228 2026-11-17T06:54:34+01:00 docs(005): 0.1.538 landed (005-97, late and caught-up messages)
+31475ff98 2026-11-17T06:38:32+01:00 docs: re-review candidate 0.1.538
+46764e3b2 2026-11-17T06:34:06+01:00 fix(005-97): a resumed session's registration that reports a new failure ends the late state (review 0.1.538 B1)
+d47548829 2026-11-17T06:31:14+01:00 docs: review candidate 0.1.538
+e19af0047 2026-11-17T06:22:51+01:00 release: 0.1.538 (005-97) with bundles; review brief
+078a06572 2026-11-17T06:22:26+01:00 test(005-97): every path-table cell, the parsers and titles for late and caught up; skill paragraph and notes
+74aab4211 2026-11-17T06:22:26+01:00 feat(005-97): late and caught-up messages for the consumer's own edits, carried from wip/005-93 onto main
+7f97e27a3 2026-11-17T05:50:05+01:00 docs(005): 005-95 held, its cause is a defect of its own; proposed row 005-98
+2755122e9 2026-11-17T05:50:05+01:00 docs(005-95): cause of the boundary re-registrations: SessionStart killed at its 2 s timeout
+dfbc9241c 2026-11-17T05:41:22+01:00 docs(005): wave 18 brief; 005-95 and 005-97 running
+00bc23feb 2026-11-17T05:40:10+01:00 docs(005): 0.1.537 landed (005-94, the wording pass)
+972f564c0 2026-11-17T05:23:37+01:00 docs(005): pass narrow re-review of 0.1.537 repairs
+4d03ac96a 2026-11-17T05:18:35+01:00 release: 0.1.537 (005-94) with bundles; review and re-review briefs
+83b40c0bb 2026-11-17T05:18:31+01:00 docs(005): review 0.1.537; missed text-test consumers block
+b73e7488d 2026-11-17T05:18:31+01:00 fix(005-94): e2e quiet point waits for open test file runs; strict agreement; narrow 001 D6 (review 0.1.537 S1, N1)
+7141ee8d9 2026-11-17T05:18:31+01:00 fix(005-94): ignored-paths reads the commit as status names it; hook headers name the path only
+4cf933b58 2026-11-17T05:18:31+01:00 fix(005-94): worktrees e2e reads inherited results in status --full; agreement allows a hook that lags status
+8f6dd47a6 2026-11-17T05:18:31+01:00 docs(005-94): worker notes: primer lengths, decisions, seam map
+cc988c32f 2026-11-17T05:18:31+01:00 docs(005-94): amend 005 D1, D6 and 001 D6, D7 for the wording pass (part 6)
+7d9850a00 2026-11-17T05:18:31+01:00 feat(005-94): "affect" in status --wait, the recovery clause, the skill's sentences, the control's accepted texts (part 5)
+3d97b869c 2026-11-17T05:18:30+01:00 feat(005-94): the late-feed sentence names UTC and the wait that reads the edits (part 4)
+f70eadb56 2026-11-17T05:18:30+01:00 feat(005-94): the primer's wait, recovery and hand-run clauses; the path wait first (part 3)
+3097185e2 2026-11-17T05:18:30+01:00 feat(005-94): the registration and Stop say known failures and how many test files are current (parts 1, 2)
+9b2608e2e 2026-11-17T03:03:08+01:00 docs(009): the Pi idle wake research; row ci-43987606521 joins 009-30
+3fd746b8d 2026-11-17T03:03:08+01:00 docs(009): research, the Pi idle wake not armed in time (row ci-43987606521)
+d288ece5e 2026-11-17T02:43:17+01:00 docs(005): 005-96 landed as 0.1.535; 005-97 waits for 005-94
+9a36d7de9 2026-11-17T02:42:33+01:00 docs(011): row 005-96 landed as 0.1.535; review r2
+6fb873679 2026-11-17T02:42:33+01:00 chore: 0.1.535 with bundles for 005-96 (repair after review 0.1.535)
+093a86678 2026-11-17T02:42:33+01:00 docs(005-96): repair checks: Squeal at revision 40, 398 pending
+cd95f3740 2026-11-17T02:42:33+01:00 docs(005-96): repair after review 0.1.535: notes, lock turn measured again, probe outputs
+8fd101010 2026-11-17T02:42:33+01:00 test(005-96): busy-record's tier-record fault targets recordTier (pending coordinator agreement)
+b930c7bd8 2026-11-17T02:42:33+01:00 fix(005-96): the edit timings are written after the flight owns the launch (review 0.1.535 B1)
+8e2bd6f71 2026-11-17T02:42:32+01:00 docs(005-96): notes: checks run and pending Squeal verdicts
+84e184ccf 2026-11-17T02:42:32+01:00 docs(005-96): notes and lock-turn probe: the record adds about 0.1 ms inside the start's transaction
+37b1d04b2 2026-11-17T02:42:32+01:00 feat(005-96): the edit timings commit with the tier's start, failure-safe
+8a0314c6d 2026-11-17T02:42:32+01:00 docs(005-96): design: the record is written in the tier start's transaction
+a9061f90d 2026-11-17T02:28:40+01:00 docs(009): research brief, the Pi idle wake not armed in time (row ci-43987606521)
+88d3659aa 2026-11-17T02:27:53+01:00 docs(board): ci-43987606521 related sightings (e2e pi idle wake, two runs)
+533a8b7e0 2026-11-17T02:07:56+01:00 docs(011): wave 119 R2 brief for cand/0.1.535
+a5aa5584d 2026-11-17T02:01:57+01:00 docs(005): 0.1.534 landed (005-93 part 1); 005-94 texts decided, wave 17 brief; CI sighting pi-wake
+35630aa4d 2026-11-17T02:01:30+01:00 release: 0.1.534 (005-93 part 1) with bundles, rebuilt on 0.1.532; review brief
+8aa797c6d 2026-11-17T02:01:30+01:00 docs(005): re-review 0.1.534 own-count repairs
+2fa7ad67e 2026-11-17T02:01:30+01:00 docs(005): review 0.1.534 own-count delivery paths
+5c2f42f76 2026-11-17T02:01:29+01:00 fix(005-93): the own count is acknowledged only where it is shown, and a peek's header counts it (review 0.1.534 B1, B2)
+8381ae4d6 2026-11-17T02:01:29+01:00 docs(005-93): part 1 notes: hunks carried and left, how since moves, texts before and after
+2481d5f09 2026-11-17T02:01:29+01:00 docs(005-93): the skill's news example counts the test files your edits affect
+737db5966 2026-11-17T02:01:29+01:00 feat(005-93): a change delivery's news header counts the agent's own test files; the settled line removed (part 1 of the split)

@@ -1,0 +1,3 @@
+{"src":"~/projects/squeal/.git/squeal/store.sqlite","dst":"~/projects/squeal/.ai/squawk/t/f92102eb/kbw/stores/sq.sqlite","ms":30515}
+{"src":"~/projects/cezar/.git/squeal/store.sqlite","dst":"~/projects/squeal/.ai/squawk/t/f92102eb/kbw/stores/cz.sqlite","ms":75915}
+ 07:58:17 up 2 days, 11:01,  2 users,  load average: 17.75, 15.57, 10.79

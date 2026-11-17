@@ -1,0 +1,3 @@
+PRAGMA quick_check on the read-only store copies (node:sqlite, readOnly), 2026-11-17 ~08:20Z
+sq (Squeal store copy, 3.95 GB): 53,440 ms, ok; test_files 2,194 rows, closure lists 25 MB, read in 25 ms; load 15.19
+cz (squawk store copy, 4.88 GB): 97,553 ms, ok; test_files 2,596 rows, closure lists 45 MB, read in 31 ms; load 19.97
