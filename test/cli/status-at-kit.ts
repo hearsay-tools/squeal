@@ -1,4 +1,6 @@
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
@@ -10,6 +12,16 @@ import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
  * text, check ids, a store write, one command run with its output, and the
  * check that no checkout or worktree is left.
  */
+
+const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
+
+/** Row 023-07: this repository's CLI from source through tsx, so `--run`'s child is a real one. */
+export const RELAUNCH: readonly string[] = [
+  process.execPath,
+  "--import",
+  TSX,
+  resolve(import.meta.dirname, "../../src/cli/index.ts"),
+];
 
 /** A test that imports `../src/<module>` and checks its `value`. */
 export const testOf = (module: string, value: number) =>
@@ -46,6 +58,7 @@ export async function run(
     stdout: (t: string) => out.push(t),
     stderr: (t: string) => err.push(t),
     cwd: f.root,
+    relaunch: RELAUNCH,
     ...(now === undefined ? {} : { now: () => now }),
   };
   const code = await statusAtCommand({ paths: [], json: false, ...args }, io, options);

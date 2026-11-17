@@ -14,6 +14,7 @@ import { sweepCheckouts } from "../checkout/sweep.js";
 import { type Keyer, openKeyer } from "../code/gate/stored.js";
 import { leaseProcess } from "../daemon/lease-process.js";
 import { readPolicy } from "../daemon/policy.js";
+import { runGit } from "../fs/git.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { installCommand } from "../scheduler/install-command.js";
 import type { AbsolutePath } from "../types/common.js";
@@ -77,6 +78,9 @@ export class CheckoutFailed extends Error {
 export interface OpenKeyer {
   readonly keyer: Keyer;
   readonly listed: ReadonlyMap<string, TestFileRef>;
+  /** Row 023-07: the keyer's adapters, open until `body` ends, and the tree's policy. */
+  readonly adapters: readonly RunnerAdapter[];
+  readonly policy: Policy;
 }
 
 /**
@@ -115,7 +119,7 @@ export async function withKeyer<T>(
     for (const adapter of opened) {
       for (const ref of await adapter.testFiles()) listed.set(testFileId(ref), ref);
     }
-    return await body({ keyer, listed });
+    return await body({ keyer, listed, adapters: opened, policy });
   } finally {
     await keyer?.close();
   }
@@ -167,10 +171,31 @@ export async function withCheckout<T>(
       options.install ?? ((tree) => installCheckout(tree, { timeoutMs, started }))
     )(checkout.tree);
     if (!install.ok) throw new CheckoutFailed("install", `${install.command}: ${install.reason}`);
+    // Row 023-07 (review wave-7 B5): an install that rewrote a tracked file leaves a tree
+    // that is not the commit's, so nothing keyed or run in it is the commit's.
+    const changed = await trackedChanges(checkout.tree);
+    if (changed.length > 0) {
+      const named = changed.slice(0, 3).join(", ");
+      const more = changed.length > 3 ? ` and ${changed.length - 3} more` : "";
+      throw new CheckoutFailed(
+        "install",
+        `${install.command} changed files git holds at ${commit.slice(0, 9)}: ${named}${more}`,
+      );
+    }
     return await body(checkout, install);
   } finally {
     await removeCheckout(checkout);
   }
+}
+
+/** The tracked paths of `tree` that differ from its commit, sorted as git lists them. */
+export async function trackedChanges(tree: AbsolutePath): Promise<string[]> {
+  const args = ["status", "--porcelain=v1", "-z", "--untracked-files=no", "--no-renames"];
+  const out = await runGit(tree, args);
+  return out
+    .split("\0")
+    .filter((entry) => entry.length > 3)
+    .map((entry) => entry.slice(3));
 }
 
 async function manifestOf(root: AbsolutePath): Promise<unknown> {

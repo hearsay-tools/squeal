@@ -5,6 +5,8 @@ import { resolveCommonDir } from "../fs/git-layout.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
+import type { RunnerAdapter } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import {
@@ -63,6 +65,27 @@ export interface KeyedFile {
  */
 export type BeforeRemove = (checkout: Checkout, files: readonly KeyedFile[]) => Promise<void>;
 
+/**
+ * Row 023-07 (review wave-7 B4): runs in the checkout after its files are
+ * keyed, while the keyer's adapters are open, so a caller can ask them
+ * which files a change affects (`RunnerAdapter.affected`).
+ */
+export type WhileOpen = (
+  open: {
+    readonly adapters: readonly RunnerAdapter[];
+    readonly policy: Policy;
+    /** The checkout's tree. */
+    readonly tree: AbsolutePath;
+  },
+  files: readonly KeyedFile[],
+) => Promise<void>;
+
+/** Row 023-07: what a caller runs in the checkout before it is removed. */
+export interface CheckoutHooks {
+  readonly whileOpen?: WhileOpen;
+  readonly beforeRemove?: BeforeRemove;
+}
+
 /** What the checkout step answered. */
 export interface Checked {
   /** Each file's key, by `testFileId`. */
@@ -83,7 +106,7 @@ export async function inCheckout(
   main: Store | null,
   input: Parameters<typeof withCheckout>[0],
   files: readonly TestFileRef[] | null,
-  options: KeyingOptions & CheckoutOptions & { readonly beforeRemove?: BeforeRemove },
+  options: KeyingOptions & CheckoutOptions & CheckoutHooks,
 ): Promise<Checked> {
   const out = new Map<string, KeyAt>();
   const started = performance.now();
@@ -106,12 +129,13 @@ export async function inCheckout(
               out.set(id, { notDetermined: { reason: "unlisted", detail } });
             } else out.set(id, { ...found(main, ref, at.key), loads: at.loads });
           }
+          const { adapters, policy } = open;
+          await options.whileOpen?.({ adapters, policy, tree: checkout.tree }, keyedOf(refs, out));
           return refs;
         },
       );
       // Row 023-07: the keyer's adapters are closed; the files run in this same checkout.
-      const keyed = refs.map((ref) => ({ ref, at: out.get(testFileId(ref)) as KeyAt }));
-      await options.beforeRemove?.(checkout, keyed);
+      await options.beforeRemove?.(checkout, keyedOf(refs, out));
     });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
@@ -120,6 +144,10 @@ export async function inCheckout(
     return { files: out, failure, ms: ms() };
   }
   return { files: out, failure: null, ms: ms() };
+}
+
+function keyedOf(refs: readonly TestFileRef[], out: ReadonlyMap<string, KeyAt>): KeyedFile[] {
+  return refs.map((ref) => ({ ref, at: out.get(testFileId(ref)) as KeyAt }));
 }
 
 export function absent(path: RelativePath, where: string | null): KeyAt {

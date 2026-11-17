@@ -56,6 +56,7 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
       timeoutSeconds: 600,
       selected: 1,
       ran: 1,
+      stored: 1,
       notRun: 0,
       rerun: null,
     });
@@ -153,11 +154,11 @@ describe("squeal status --at --run (row 023-07, D4)", SLOW, () => {
     expect(all.err.indexOf("--all-missing")).toBeLessThan(all.err.lastIndexOf("squeal: "));
     expect(all.out).toContain(`${GEN.path}: not comparable (needs src/gen.ts) -> `);
     expect(all.out).toContain(
-      `--run: 3 of 3 test files with no result at ${at} ran in its checkout and are stored at its keys`,
+      `--run: 3 of 3 test files with no result at ${at} ran in its checkout, 3 stored at its keys`,
     );
     expect(all.out).toContain(`1 not run: their closure needs a path git does not hold at ${at}`);
     expect(all.out).toContain(
-      `${BAD.path}: fail -> no result (at ${at}: value; run by this command)`,
+      `${BAD.path}: fail -> no result (at ${at}: value; run by this command, stored)`,
     );
     const json = await run(f, { commit: b, json: true }, options);
     expect(fileOf(json.out, BAD.path)?.at).toMatchObject({ state: "fail", failed: ["value"] });

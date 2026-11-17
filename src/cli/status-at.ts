@@ -15,6 +15,7 @@ import { commitSide } from "./status-at-commit.js";
 import { nowSide, selects } from "./status-at-now.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
+import { runChild, takeRunRequest } from "./status-at-run-child.js";
 
 /*
  * Spec 023 D1 and D3 (row 023-06): `squeal status --at <commit> [<path>...]
@@ -137,6 +138,9 @@ export async function statusAtCommand(
   io: CliIo,
   options: AtOptions = {},
 ): Promise<number> {
+  // Row 023-07 (B3): this process is `--run`'s child, which runs the gate and nothing else.
+  const request = takeRunRequest(io.env ?? process.env);
+  if (request !== undefined) return runChild(request);
   const located = await locate(args, io);
   if (typeof located === "string") {
     io.stderr(`squeal status --at: ${located}\n`);
@@ -159,13 +163,17 @@ export async function statusAtCommand(
       : atRun({
           args: runArgs,
           root,
+          commonDir,
+          own: worktreeId,
           commit,
           given: args.commit,
           paths: args.paths,
           env,
+          relaunch: io.relaunch,
           started: performance.now(),
-          // The gate's notes go to stderr in text mode; the estimate in both (D4.5).
-          note: (text) => (args.json && !text.startsWith("--all-missing") ? undefined : note(text)),
+          // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
+          note,
+          forward: (text) => (args.json ? undefined : io.stderr(text)),
         });
   const at = await commitSide({
     ...keying,
@@ -178,6 +186,7 @@ export async function statusAtCommand(
     ...(ran === null
       ? {}
       : {
+          whileOpen: ran.whileOpen,
           beforeRemove: ran.beforeRemove,
           // D4.6: the install is inside the one budget.
           installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
