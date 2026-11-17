@@ -2,7 +2,8 @@
  * Throwaway probe for row 005-96: the cost the record adds to the transaction
  * that starts an edit tier, apart from the scheduler's other work. A private
  * store; each iteration runs one `BEGIN IMMEDIATE` with a stand-in start write
- * (one `meta` row), alternately without and with `recordEditTier` in it, with
+ * (one `meta` row), alternately without and with `recordEditTier` after it in
+ * its own transaction (the repair after review 0.1.535), with
  * 1, 12 and 100 projects in the record's width map (one tier of 4 files).
  * Each case prints one JSON line.
  */
@@ -61,10 +62,9 @@ for (const projects of [1, 12, 100]) {
       const ps = [0, 1, 2, 3].map((f) => (i * 4 + f) % projects);
       for (const record of [false, true]) {
         const t0 = performance.now();
-        store.transaction(() => {
-          store.meta.set("probe:start", String(i));
-          if (record) recordEditTier(context, tierOf(i, revision, ps), 4);
-        });
+        store.transaction(() => store.meta.set("probe:start", String(i)));
+        // Row 005-96 after review 0.1.535: the record's own write, after the start.
+        if (record) recordEditTier(context, tierOf(i, revision, ps), 4);
         (record ? withRecord : without).push(performance.now() - t0);
       }
     }
