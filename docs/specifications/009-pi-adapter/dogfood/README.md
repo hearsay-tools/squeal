@@ -26,7 +26,7 @@ What `../lessons.md` was observed with. Everything ran as `squeal-e2e` under `/h
 
 ## Logs
 
-`logs/<session>.timeline.md` per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` for the RPC sessions (Cezar's events with time in ms and load), `logs/stats.txt`, the install, setup and update transcripts, `s5-tui.screens.txt` (TUI screen captures with time and load), `s5-tui.ps-before-quit.txt` (the zombie of defect 2), and `tree-*.txt` (goal 8). `s0-claude-refused.*` is the refused Claude request.
+`logs/<session>.timeline.md` (raw logs removed) per session (from the proxy, so it is what reached the model), `logs/<session>.cezar-events.txt` (raw logs removed) for the RPC sessions (Cezar's events with time in ms and load), `logs/stats.txt`, the install, setup and update transcripts, `s5-tui.screens.txt` (raw logs removed) (TUI screen captures with time and load), `s5-tui.ps-before-quit.txt` (raw logs removed) (the zombie of defect 2), and `tree-*.txt` (goal 8). `s0-claude-refused.*` (raw logs removed) is the refused Claude request.
 
 ## Repeat
 

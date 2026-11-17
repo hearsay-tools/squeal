@@ -14,8 +14,8 @@ Nothing here runs anything under `evals/bin/`.
 - `call.ts` **spends money**: it judges one reference `n` times (1 to 8) through `judgeCell` and
   `claudeRunner`, which builds the judge's own scratch `HOME` under the eval root
   (`/tmp/squeal-evals-<uid>/judge`, removed after each call). Haiku or Sonnet only. It keeps each
-  call's raw stdout in `out/` and prints the key order of each verdict object.
+  call's raw stdout in `out/` (raw logs removed) and prints the key order of each verdict object.
   `node_modules/.bin/tsx call.ts claude-sonnet-5-5 "<exact reference name>" 2`
 - `log-*.txt` are the printed outputs of the five `call.ts` invocations of 2026-11-01 (20 model
-  calls, $0.1246). `out/*.json` are those calls' raw `claude -p --output-format json` stdout
+  calls, $0.1246). `out/*.json` (raw logs removed) are those calls' raw `claude -p --output-format json` stdout
   (no credential; scanned for `http`, `bearer`, `sk-ant` and token values).

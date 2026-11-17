@@ -111,4 +111,4 @@ Take this file's table as the trend's first point: 0.1.101, effort `medium`, Hai
 
 - This repository at `8c11e5b3`: `src/harness/shared/primer.ts` (lines 25 to 35), `src/harness/claude-code/hooks/session-end.ts`, `src/harness/shared/session.ts`, `git diff --stat 458287d 8c11e5b3 -- src`; `research/model-evals.md` (the pilot); `research/README.md` (the topic).
 - `claude --help` (2.1.296: `--effort <level>`), `codex exec --help` (0.160.1: `-c key=value`).
-- Probes: `probes/model-evals/plan-baseline.txt`, `plan-baseline-t3.txt`, `bin/`, `logs/baseline-2026-10-10/` (`sessions.tsv`, `summary.md`, `cells/<id>.grade.json`, `cells/<id>.calls.txt`), and the pilot's `logs/cells/`.
+- Probes: `probes/model-evals/plan-baseline.txt`, `plan-baseline-t3.txt`, `bin/`, `logs/baseline-2026-10-10/` (`sessions.tsv`, `summary.md`, `cells/<id>.grade.json`, `cells/<id>.calls.txt` (raw logs removed)), and the pilot's `logs/cells/` (raw logs removed).

@@ -17,7 +17,7 @@ Throwaway evidence for `../../opencode-sessions-and-wake.md` (board row 008-02).
 - `.opencode/plugin/probe.js`, a copy of `plugin/probe.js`;
 - a linked worktree at `/home/squeal-e2e/008-sessions/wt`.
 
-`plugin/probe.js` logs every hook and bus event (except text deltas) to `events.jsonl`. Its `shell.env` hook adds `PROBE_SESSION_ID` and `PROBE_CALL_ID`. Two switches:
+`plugin/probe.js` logs every hook and bus event (except text deltas) to `events.jsonl` (raw logs removed). Its `shell.env` hook adds `PROBE_SESSION_ID` and `PROBE_CALL_ID`. Two switches:
 - `PROBE_WAKE`: calls `client.session.promptAsync` on the first idle of a root session, either at once or after a delay.
 - `PROBE_SPAWN=1`: spawns one `detached: true` child and one attached child at init.
 
@@ -31,9 +31,9 @@ Throwaway evidence for `../../opencode-sessions-and-wake.md` (board row 008-02).
 | r1 | `run.sh r1 repo immediate 1` | `opencode run`, a bash call and a `task` subagent's bash call. The plugin calls `promptAsync` at the first root idle. The shell env files are `r1-main.env` and `r1-child.env`. Both children outlived the run's normal exit. |
 | r2 | `run.sh r2 repo none 0 … --continue` | Resume the last session: same id? Is r1's stranded wake message in the history? |
 | r3 | `run.sh r3 repo none 0 … --session <r1> --fork` | Fork: new id? |
-| s1 | `serve.sh s1` | `opencode serve` on 4298 driven like Cezar, in this order: `POST /session`, `prompt_async`, a plugin wake 3 s after idle, an outside `curl` wake, `/tui/append-prompt` and `/tui/submit-prompt` with no TUI attached, `DELETE` on a second session, then SIGTERM. Transcript in `s1.messages.json`. |
+| s1 | `serve.sh s1` | `opencode serve` on 4298 driven like Cezar, in this order: `POST /session`, `prompt_async`, a plugin wake 3 s after idle, an outside `curl` wake, `/tui/append-prompt` and `/tui/submit-prompt` with no TUI attached, `DELETE` on a second session, then SIGTERM. Transcript in `s1.messages.json` (raw logs removed). |
 | r4 | `run-wt-cfg.sh r4 wt …` | Run from `wt/sub` (linked worktree), with `OPENCODE_CONFIG_DIR=cfgdir`: plugin `directory`/`worktree`, skill and instruction from the `config` hook, a command on `PATH` from `shell.env`. |
-| t1 | `tui.sh t1` | Interactive TUI in tmux: one typed prompt, then the plugin's `promptAsync` 3 s after idle. Pane in `t1.pane.txt`. |
+| t1 | `tui.sh t1` | Interactive TUI in tmux: one typed prompt, then the plugin's `promptAsync` 3 s after idle. Pane in `t1.pane.txt` (raw logs removed). |
 | r5 | `run.sh r5 …` then `bg-check.sh` | The agent's shell starts `nohup sleep 301 &` and `setsid sleep 302 &`: alive after the run exits? |
 | p1 | `plug.sh` | `opencode plugin file:<cfgdir/pkg> -g`: what it writes, and whether the package loads on the next run. |
 

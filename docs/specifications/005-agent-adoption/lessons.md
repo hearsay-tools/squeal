@@ -193,7 +193,7 @@ The effect on files reached is large: from 45% never run to none (a) or 10% (b),
 
 ### Sessions
 
-Four sessions, 2026-10-14, effort `medium`, no retry. Transcripts, as one line per command, edit, SQUEAL delivery or reply: `research/probes/dogfood/part2/<id>.timeline.txt`, from `session-timeline.py`, which also flags any command that reads Squeal's store, sockets, logs or plugin files, and each test command the agent ran itself.
+Four sessions, 2026-10-14, effort `medium`, no retry. Transcripts, as one line per command, edit, SQUEAL delivery or reply: `research/probes/dogfood/part2/<id>.timeline.txt` (raw logs removed), from `session-timeline.py`, which also flags any command that reads Squeal's store, sockets, logs or plugin files, and each test command the agent ran itself.
 
 | Session | Copy | Harness, model | Load at start | Wall, s | Commands | Squeal internals read | Own test runs | Final claim | Truth | Claims false |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
