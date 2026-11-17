@@ -16,6 +16,7 @@ import { splitByValidity } from "../status/checks.js";
 import { ignoredConfigAt } from "../status/ignored-config.js";
 import { importSourceOf } from "../store/imports.js";
 import { type ChangeMarker, changeMarker } from "../store/store.js";
+import { seedView, statesToSeed } from "../store/view-seed.js";
 import type { CodeNews } from "../types/code-delivery.js";
 import {
   type AbsolutePath,
@@ -557,20 +558,12 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
       markLeaving(store, consumer, null);
       // Row 005-103: the view is seeded from this read, so it holds what the text is made from.
-      const { states, checkIds } = store.knownStates.listWithIds(consumer.worktreeId);
+      const { states, seed } = statesToSeed(store, consumer.worktreeId);
       // Review 0.1.538 B1: a still-registered consumer's registration (a resumed session's) that
       // reports a failure its view did not hold ends its late state, as any delivered new failure
       // does: no caught-up follows it. Read before the view is replaced.
       if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      store.views.seed(
-        consumer,
-        states.map((s, i) => ({
-          checkId: checkIds[i] as number,
-          outcome: s.outcome,
-          fingerprint: s.fingerprint,
-        })),
-        at,
-      );
+      seedView(store, consumer, seed, at);
       // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
       const told = startingSince === undefined ? null : { startingSince };
       const read = readLiveHeader(store, consumer.worktreeId, at, states);

@@ -315,14 +315,6 @@ export interface CheckpointRepo {
 export interface KnownStateRepo {
   /** With `files`, only their checks' states (task 001-414). */
   list(worktreeId: WorktreeId, files?: readonly TestFileRef[]): readonly KnownState[];
-  /**
-   * `list(worktreeId)` with each state's check row id at its index, from the same read (row
-   * 005-103): a registration's text and the view it seeds (`ViewRepo.seed`) come from one read.
-   */
-  listWithIds(worktreeId: WorktreeId): {
-    readonly states: readonly KnownState[];
-    readonly checkIds: readonly number[];
-  };
   /** The worktree's states with no entry in `consumer`'s view: what it was never told. */
   untold(consumer: Consumer): readonly KnownState[];
   get(worktreeId: WorktreeId, check: CheckId): KnownState | null;
@@ -360,20 +352,6 @@ export interface ViewRepo {
   writeMany(consumer: Consumer, entries: readonly ViewEntry[]): void;
   /** Retires checks from this consumer's view; see `KnownStateRepo.removeMany`. */
   removeMany(consumer: Consumer, checks: readonly CheckId[]): void;
-  /**
-   * Row 005-103: writes `rows` at `toldAt` in one statement, the entries `writeMany` writes for
-   * them; a registration's seed of the states it read (`KnownStateRepo.listWithIds`). Unlike
-   * an `INSERT ... SELECT` from `known_states`, it writes the values read, also when a daemon
-   * writes the batch later (spec 021 D15).
-   */
-  seed(consumer: Consumer, rows: readonly ViewSeedRow[], toldAt: EpochMs): void;
-}
-
-/** One view entry `ViewRepo.seed` writes: a check by its row id, as a known state holds it. */
-export interface ViewSeedRow {
-  readonly checkId: number;
-  readonly outcome: ViewEntry["outcome"];
-  readonly fingerprint: string | null;
 }
 
 /** Spec 001 D8: "`meta`". Free-form key-value data such as notes for status. */

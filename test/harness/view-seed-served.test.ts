@@ -7,7 +7,7 @@ import { recorded, squealRepo } from "./helpers.js";
 /*
  * Row 005-103 under spec 021 D15: while a daemon serves the worktree, a registration's writes
  * reach the store as one batch the daemon writes later, and its own state commits do not wait
- * for that batch. The view seed (`views.seed`) writes the states the registration read, so a
+ * for that batch. The view seed (`seedView`) writes the states the registration read, so a
  * state the daemon commits between that read and the batch's write is not seeded as told: the
  * next boundary delivers it. An `INSERT ... SELECT FROM known_states` would read the store at
  * the batch's write and seed the new failure silently.

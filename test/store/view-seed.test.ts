@@ -3,17 +3,18 @@ import { MAX_WRITE_LINE_BYTES } from "../../src/core/daemon/protocol.js";
 import { encodeBatch } from "../../src/core/daemon/write-batch.js";
 import { toView } from "../../src/core/delivery/delta.js";
 import { connectionOf } from "../../src/core/store/store.js";
+import { seedView, statesToSeed, type ViewSeedRow } from "../../src/core/store/view-seed.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
 import type { KnownState } from "../../src/core/types/state.js";
-import type { Store, ViewSeedRow } from "../../src/core/types/store.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, knownState, open, testCheck } from "./helpers.js";
 
 /*
  * Row 005-103: a registration seeds its consumer's view with every known state of the worktree.
  * `writeMany` of `toView` took three statements per state (an insert and a select to find the
- * check's id again, and the view's row); `views.seed` writes the same rows in one statement from
- * the states the registration read, with the check ids of that same read (`listWithIds`).
+ * check's id again, and the view's row); `seedView` writes the same rows in one statement from
+ * the states the registration read, with the check ids of that same read (`statesToSeed`).
  */
 
 const WT = "wt-a";
@@ -62,14 +63,7 @@ function seededStore(): Store {
   return store;
 }
 
-const seedRows = (store: Store): ViewSeedRow[] => {
-  const { states, checkIds } = store.knownStates.listWithIds(WT);
-  return states.map((s, i) => ({
-    checkId: checkIds[i] as number,
-    outcome: s.outcome,
-    fingerprint: s.fingerprint,
-  }));
-};
+const seedRows = (store: Store) => statesToSeed(store, WT).seed;
 
 describe("a registration's view seed in one statement (row 005-103)", () => {
   it("writes the rows writeMany of toView writes", () => {
@@ -80,7 +74,7 @@ describe("a registration's view seed in one statement (row 005-103)", () => {
       before,
       store.knownStates.list(WT).map((s) => toView(s, 42)),
     );
-    store.views.seed(after, seedRows(store), 42);
+    seedView(store, after, seedRows(store), 42);
     expect(rows(store, after)).toEqual(rows(store, before));
     expect(rows(store, after)).toHaveLength(5);
     expect(store.views.list(after)).toEqual(store.views.list(before));
@@ -95,16 +89,22 @@ describe("a registration's view seed in one statement (row 005-103)", () => {
 
   it("reads the states list() reads, each with its own check's id", () => {
     const store = seededStore();
-    const { states, checkIds } = store.knownStates.listWithIds(WT);
+    const { states, seed } = statesToSeed(store, WT);
     expect(states).toEqual(store.knownStates.list(WT));
     const idOf = (name: string) =>
       connectionOf(store).get("SELECT id FROM checks WHERE full_name = ?", name)?.id;
-    expect(checkIds).toEqual(states.map((s) => idOf(nameOf(s.check))));
+    expect(seed).toEqual(
+      states.map((s) => ({
+        checkId: idOf(nameOf(s.check)),
+        outcome: s.outcome,
+        fingerprint: s.fingerprint,
+      })),
+    );
   });
 
   it("writes nothing for a worktree with no states", () => {
     const store = seededStore();
-    store.views.seed(consumer("empty"), [], 42);
+    seedView(store, consumer("empty"), [], 42);
     expect(rows(store, consumer("empty"))).toEqual([]);
   });
 
@@ -125,7 +125,7 @@ describe("a registration's view seed in one statement (row 005-103)", () => {
         statements.push({ sql, params });
         return run(sql, ...params);
       };
-      store.views.seed(consumer("big"), seed, 42);
+      seedView(store, consumer("big"), seed, 42);
       conn.run = run;
       expect(statements).toHaveLength(1);
       // Spec 021 D15: under a serving daemon the statement travels as one `write` line.
