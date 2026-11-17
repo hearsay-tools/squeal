@@ -215,9 +215,11 @@ function withRest(p: Presence, live: Down): Down {
 /**
  * With the record cleared or no row: a handoff under way, else a start the
  * marks say. With a record: a start marked in its place, else its death when its
- * shutdown never began, else its stopping.
+ * shutdown never began, else its stopping. A start already said (a told start,
+ * `newsView`) settles it before the marks are read. Without `deathUnderStop`
+ * (news), a stop by request names no death beside it.
  */
-function withRecordFacts(p: Presence, live: Down): Down {
+function withRecordFacts(p: Presence, live: Down, deathUnderStop = true): Down {
   // Row 005-108: with no row, as with the record cleared: a start the marks say.
   // Each finding is asked for in the order the old layers read it (review 0.1.403-r2 B2).
   if (p.record === null) {
@@ -227,8 +229,10 @@ function withRecordFacts(p: Presence, live: Down): Down {
     return withStart(live, p.start);
   }
   if (!p.shutDown) {
+    if (live.startingSince !== undefined) return live;
     const start = p.start;
     if (start !== null) return withStart(live, start);
+    if (!deathUnderStop && live.stopped === true) return live;
     const died = p.died();
     return died === null ? live : { ...live, died };
   }
@@ -254,30 +258,13 @@ function withLateHeartbeat(p: Presence, live: Down): Down {
  * what it settles before the marks or the stop are read (review 0.1.403-r2
  * B2), as the old layers did. Row 011-295: beside a record whose shutdown
  * never began and no stop, its death, else its late heartbeat, as the header
- * says them; they are read after the marks, so a start reads no lock.
+ * says them; they are read after the marks, so a start reads no lock. Row
+ * 005-118: the record's facts are the header's (`withRecordFacts`), with no
+ * death under a stop.
  */
 function newsView(p: Presence, told: ToldLiveness): DaemonLiveness {
   const live = withToldStart(p.heartbeat, told, p.at);
   if (live.state === "alive") return aliveView(p, live, false);
-  const stopped = live.startingSince === undefined ? withStop(p, live) : live;
-  // Row 005-108: with no row, as with the record cleared: a start the marks say.
-  if (p.record === null) {
-    const stopping = p.stopping;
-    if (stopping !== null) return { ...stopped, stopping };
-    if (stopped.stopped === true || stopped.startingSince !== undefined) return stopped;
-    return withStart(stopped, p.start);
-  }
-  if (!p.shutDown) {
-    if (stopped.startingSince !== undefined) return stopped;
-    const marks = p.marks;
-    if (marks?.kind === "locked")
-      return { ...stopped, startingSince: marks.since, startMark: "start" };
-    if (stopped.stopped === true) return stopped;
-    const died = p.died();
-    return died === null ? withLateHeartbeat(p, stopped) : { ...stopped, died };
-  }
-  const start = p.start;
-  if (start !== null) return withStart(stopped, start);
-  const stopping = p.stopping;
-  return stopping === null ? stopped : { ...stopped, stopping };
+  if (live.startingSince !== undefined) return withRecordFacts(p, live, false);
+  return withLateHeartbeat(p, withRecordFacts(p, withStop(p, live), false));
 }
