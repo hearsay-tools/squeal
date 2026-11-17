@@ -53,3 +53,9 @@ Judge:
 - No change under `src/core/scheduler` or `src/core/store`; the `edits-late:` key is in the registry; complexity not newly over the threshold.
 
 No full suite and no full-suite checkpoint; candidate CI is the full suite: name its run and result (a red `test/e2e/pi.test.ts:190` or `pi-wake.test.ts` "never armed" alone is the known defect of board row ci-43987606521). `test/e2e/**` is outside Squeal's coverage: say which e2e files you ran directly. Write `reviews/0.1.538.md` and commit it on your branch. Write `~`, never a `/home/<user>/` path.
+
+## Re-review of cand/0.1.538 (the one round)
+
+Use /reviewer. Pinned to the new `cand/0.1.538` SHA named in the message. On top of the SHA you reviewed: your review file (cherry-picked) and one coordinator repair commit for B1: `registerNow` in `src/core/delivery/delivery.ts` reads the consumer's view before the registration replaces it; when a still-registered consumer's registration reports a failing check its view did not hold as failing (`reportsNewFailure`), it ends the late state (`endLate`) in the same transaction. Tests in `test/delivery/late-paths.test.ts`: your regression (no caught-up after the registration reported B), and the two controls (no new failure; a failure told before the late notice): both keep the late state and say caught up. Bundles rebuilt.
+
+Judge only: B1 is closed for your own proof; the controls hold; first registration, leaving, expiry and the prepared-report handoff are unchanged; no new defect; the bundles match. Write `reviews/0.1.538-r2.md` with PASS or FAIL and commit it on your branch. No full suite, no build. Name the candidate CI run and its state (a red `test/e2e/pi.test.ts:190` or `pi-wake.test.ts` "never armed" alone is the known defect of board row ci-43987606521). Write `~`, never a `/home/<user>/` path.

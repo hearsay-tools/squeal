@@ -213,3 +213,39 @@ describe("no late form with no test group at edit (review 0.1.530 B5)", () => {
     expect((await boundary()) ?? "").not.toMatch(LATE);
   });
 });
+
+describe("a registration of a still-registered consumer, as a resumed session's (review 0.1.538 B1)", () => {
+  it("ends the late state when it reports a new failure: no caught-up follows", async () => {
+    await late();
+    failB();
+    const registration = await delivery.register(C1, { atStart: true });
+    expect(registration.knownFailures.map((f) => f.check.testPath)).toEqual(["src/b.test.ts"]);
+    expect(lateOpen()).toBe(false);
+    finishA();
+    expect((await boundary()) ?? "").not.toMatch(CAUGHT);
+  });
+
+  it("keeps the late state with no new failure: caught up is said", async () => {
+    await late();
+    await delivery.register(C1, { atStart: true });
+    expect(lateOpen()).toBe(true);
+    finishA();
+    passB();
+    expect(await boundary()).toMatch(CAUGHT);
+  });
+
+  it("keeps the late state for a failure the consumer was told before the late notice", async () => {
+    await delivery.register(C1);
+    failB();
+    expect(await boundary()).toContain("FAIL");
+    editA();
+    expect(await boundary()).toContain("Squeal saw your edit");
+    tick(61_000);
+    expect(await boundary()).toMatch(LATE);
+    await delivery.register(C1, { atStart: true });
+    expect(lateOpen()).toBe(true);
+    // B still fails, as the consumer knows: an unchanged known failure ends no late state.
+    finishA();
+    expect(await boundary()).toMatch(CAUGHT);
+  });
+});

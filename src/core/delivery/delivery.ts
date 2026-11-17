@@ -11,6 +11,7 @@ import { toldOf } from "../presence/views.js";
 import { withRecorded } from "../retry/recorded.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/baseline.js";
+import { checkIdentity } from "../state/derive.js";
 import { splitByValidity } from "../status/checks.js";
 import { ignoredConfigAt } from "../status/ignored-config.js";
 import { importSourceOf } from "../store/imports.js";
@@ -65,6 +66,7 @@ import { drop } from "./expiry.js";
 import { recordHarness } from "./harness-process.js";
 import { holdFree } from "./held-connection.js";
 import { heldNow, holdChanges, holdsChange, tellHolds } from "./hold-told.js";
+import { endLate } from "./late.js";
 import { markLeaving } from "./leaving.js";
 import {
   livenessChange,
@@ -537,12 +539,18 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       const at = now();
       // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
       const registered = store.consumers.get(consumer) !== null;
+      // Read before the registration replaces it (review 0.1.538 B1).
+      const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
       // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
       forgetStopWait(store, consumer);
       // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
+      // Review 0.1.538 B1: a still-registered consumer's registration (a resumed session's) that
+      // reports a failure its view did not hold ends its late state, as any delivered new failure
+      // does: no caught-up follows it. Read before the view is replaced.
+      if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
       store.views.writeMany(
         consumer,
         states.map((s) => toView(s, at)),
@@ -631,4 +639,16 @@ function ownShown(
   header: Delta["header"],
 ): boolean {
   return !stop && counts.countsOwed === undefined && header.testFilesListed !== false;
+}
+
+/**
+ * Whether `states` hold a failing check that `view`, what the consumer was told, does not hold
+ * as failing (review 0.1.538 B1). A failure the view already holds is not new, whatever its
+ * diagnostic: an unchanged known failure ends no late state.
+ */
+function reportsNewFailure(view: readonly ViewEntry[], states: readonly KnownState[]): boolean {
+  const failing = new Set(
+    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check)),
+  );
+  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
 }

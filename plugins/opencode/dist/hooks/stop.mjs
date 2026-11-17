@@ -14072,10 +14072,12 @@ function createDelivery(store, options) {
     return store.transaction(() => {
       const at = now();
       const registered = store.consumers.get(consumer) !== null;
+      const toldView = registered ? store.views.list(consumer) : null;
       store.consumers.register(consumer, at);
       forgetStopWait(store, consumer);
       markLeaving(store, consumer, null);
       const states = store.knownStates.list(consumer.worktreeId);
+      if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
       store.views.writeMany(
         consumer,
         states.map((s) => toView2(s, at))
@@ -14140,6 +14142,12 @@ function ownNotes(store, consumer, states, {
 }
 function ownShown(stop2, counts, header) {
   return !stop2 && counts.countsOwed === void 0 && header.testFilesListed !== false;
+}
+function reportsNewFailure(view, states) {
+  const failing = new Set(
+    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check))
+  );
+  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
 }
 
 // src/core/delivery/daemon-writer.ts
