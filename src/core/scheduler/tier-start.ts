@@ -1,6 +1,7 @@
 import type { EpochMs } from "../types/common.js";
 import { CAPACITY_RECHECK_MS, WAIT_FOR_CAPACITY, widthLease } from "./capacity.js";
 import type { SchedulerContext } from "./context.js";
+import { recordEditTier } from "./edit-timings.js";
 import { startFocusedTier } from "./focused.js";
 import type { Ledger } from "./ledger.js";
 import { type Candidate, type Idle, isIdle, type TierPlan } from "./tier-plan.js";
@@ -98,6 +99,9 @@ function act(
   const lease = taken ? widthLease(taken, ask?.want ?? 0) : taken;
   let files = candidate.files;
   let tier: Tier | null = null;
+  // An edit's tier of the batch runs as wide as its files, under the runner's own width.
+  const grantOf = (started: Tier) =>
+    lease?.grant ?? (ask === null ? started.files.length : ask.offer);
   try {
     if (lease && ask !== null) {
       const fits = ask.atGrant(lease.grant);
@@ -112,6 +116,8 @@ function act(
             promoted: candidate.promoted,
             beside: candidate.beside,
             at,
+            // Row 005-96: the late bound's facts commit with the start (review 0.1.530-r2 R2-B1).
+            started: (started) => recordEditTier(context, started, grantOf(started)),
           });
   } finally {
     // The tier owns the lease once it starts; until then it is returned here (review 001-384, B2).
@@ -120,8 +126,7 @@ function act(
   if (tier === null) return { unstarted: files };
   // A batch's tier does not count toward the backlog's turn; the rest gets the next (row 011-268).
   // A tier beside it counts toward neither (row 011-269).
-  // An edit's tier of the batch runs as wide as its files, under the runner's own width.
-  const grant = lease?.grant ?? (ask === null ? tier.files.length : ask.offer);
+  const grant = grantOf(tier);
   if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant, at);
   else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog, at);
   return { tier };
