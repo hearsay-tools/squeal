@@ -21,9 +21,10 @@ import { builtinOf, type ImportClosure, packageName } from "./graph.js";
  *   B1).
  * - A bare import that resolves to a project folder (a workspace link, or
  *   the importer's own package by name): that package's `package.json`
- *   (`exports`, `main`), the manifest of the folder its subpath names, and
- *   for each import target inside the package, the manifests from the
- *   target's folder up to the nearest that exists (a nested `main`, B2).
+ *   (`exports`, `main`). Without `exports`, also the manifest of the folder
+ *   its subpath names, and for each import target inside the package, the
+ *   manifests from the target's folder up to the nearest that exists (a
+ *   nested `main`, B2); with `exports`, no folder's manifest is read.
  *   An installed package adds none: the installed dependencies key it.
  *
  * Not modelled: tsconfig `paths` and aliases (closures are declared
@@ -202,12 +203,17 @@ export async function moduleResolutionInputs(
   for (const [specifier, from] of bare) {
     const root = packageRoot(specifier, from, own, paths);
     if (root === null) continue;
+    // The own package is the nearest manifest: one added on the way there takes its place.
+    if (own.data?.name === packageName(specifier)) for (const m of own.nearest) out.add(m);
+    const manifest = join(root, "package.json");
+    out.add(manifest);
+    // An `exports` field alone maps the package's subpaths: no folder's manifest is read.
+    if (manifestOf(manifest)?.exports !== undefined) continue;
     roots.add(root);
-    out.add(join(root, "package.json"));
     const subpath = specifier.slice(packageName(specifier)?.length ?? specifier.length);
     if (subpath.startsWith("/")) out.add(join(root, subpath, "package.json"));
   }
-  // B2: the manifests that pick a target inside the package (a nested `main`).
+  // B2: the manifests that pick a target inside a package without `exports` (a nested `main`).
   for (const target of targets) {
     const root = [...roots].find((r) => target.startsWith(`${r}/`));
     if (root !== undefined) for (const m of nearestManifests(dirname(target), root)) out.add(m);

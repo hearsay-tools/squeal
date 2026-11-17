@@ -124,8 +124,9 @@ describe("the manifests a module's imports read (row 023-14)", () => {
     expect(inputs.sort()).toEqual(
       [
         join(root, "packages/shared/package.json"),
+        // The own package is found as the nearest manifest: one added here would take its place.
+        join(root, "src/package.json"),
         join(root, "package.json"),
-        join(root, "sub/package.json"),
       ].sort(),
     );
   });
@@ -175,6 +176,24 @@ describe("the manifests a module's imports read (row 023-14)", () => {
         join(shared, "other/package.json"),
       ].sort(),
     );
+  });
+
+  it("a package with exports keys only its own manifest, not the folders below it", async () => {
+    const root = workspace({
+      "packages/shared/package.json": JSON.stringify({
+        name: "@w/shared",
+        exports: { "./*": "./src/*.ts" },
+      }),
+      "packages/shared/src/sub.ts": "",
+      "src/x.ts": 'import "@w/shared/sub";\n',
+    });
+    const inputs = await moduleResolutionInputs(
+      join(root, "src/x.ts"),
+      [join(root, "packages/shared/src/sub.ts")],
+      new WorktreePaths(root),
+      parseAst,
+    );
+    expect(inputs).toEqual([join(root, "packages/shared/package.json")]);
   });
 });
 
