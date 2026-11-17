@@ -93,8 +93,10 @@ function gitShim(root: string, planted: string): string {
   const cache = join(root, "node_modules/.vite");
   const script = [
     "#!/bin/sh",
-    `if [ -d '${cache}' ] && [ ! -e '${once}' ]; then`,
-    `  : > '${once}'`,
+    // `mkdir` claims the call atomically: the daemon starts several git
+    // calls within milliseconds, and a test-then-create let three of them
+    // through, each writing OLD and then appending its own newline.
+    `if [ -d '${cache}' ] && mkdir '${once}' 2>/dev/null; then`,
     "  i=0",
     `  while ! grep -rqs '"new"' '${cache}'; do`,
     "    i=$((i+1)); [ $i -gt 1200 ] && break; sleep 0.1",
