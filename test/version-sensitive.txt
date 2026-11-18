@@ -83,6 +83,7 @@
 #   test/harness/primer-listing.test.ts
 #   test/harness/primer-no-edit-cap.test.ts
 #   test/harness/primer-over-cap.test.ts
+#   test/harness/primer-wait-forms.test.ts
 #   test/harness/primer-wait.test.ts
 #   test/harness/shared/primer-pytest.test.ts
 #   test/harness/shared/skill-pytest.test.ts
