@@ -60,16 +60,21 @@ const COVERAGES: [string, Coverage][] = [
  */
 
 describe("the primer's wait forms (row 005-122, slice 1)", () => {
-  it.each(COVERAGES)("never says the short or the CLI-named plain wait: %s", (_, coverage) => {
-    const said = new Set<"paths" | "plain, unnamed">();
-    for (let length = 10; length <= 2_000; length++) {
-      const cli = `/${"c".repeat(length - 1)}`;
-      const text = primer(cli, coverage);
-      expect(text.length, `CLI of ${length}`).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
-      expect(text, `CLI of ${length}`).not.toContain(SHORT);
-      expect(text, `CLI of ${length}`).not.toContain(`${PLAIN}${cli}`);
-      said.add(text.includes(PLAIN) ? "plain, unnamed" : "paths");
-    }
-    expect(said.has("paths")).toBe(true);
-  });
+  it.each(COVERAGES)(
+    "never says the short or the CLI-named plain wait: %s",
+    (_, coverage) => {
+      const said = new Set<"paths" | "plain, unnamed">();
+      for (let length = 10; length <= 2_000; length++) {
+        const cli = `/${"c".repeat(length - 1)}`;
+        const text = primer(cli, coverage);
+        expect(text.length, `CLI of ${length}`).toBeLessThanOrEqual(PRIMER_CAP_CHARS);
+        expect(text, `CLI of ${length}`).not.toContain(SHORT);
+        expect(text, `CLI of ${length}`).not.toContain(`${PLAIN}${cli}`);
+        said.add(text.includes(PLAIN) ? "plain, unnamed" : "paths");
+      }
+      expect(said.has("paths")).toBe(true);
+      // 1,991 primers per coverage: 5.6 s on a CI runner (CI 44216517181, Node 22), past the default.
+    },
+    60_000,
+  );
 });
