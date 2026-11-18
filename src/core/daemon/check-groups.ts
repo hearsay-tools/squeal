@@ -112,6 +112,7 @@ function resolveEntry(group: CheckGroup, index: number): ResolvedGroup {
     name: group.name,
     index,
     at: group.at,
+    ...(group.description === undefined ? {} : { description: group.description }),
     stopRequires: group.at === "stop",
     after: group.after ?? [],
     quietMs: group.quietMs ?? 0,

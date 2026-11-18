@@ -6,6 +6,7 @@ import { CLI_READ_RETRY_MS } from "../core/status/open.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { readWhy } from "../core/status/why.js";
 import type { EpochMs } from "../core/types/common.js";
+import { checksCommand } from "./checks.js";
 import { ciCommand } from "./ci.js";
 import { codeCommand } from "./code.js";
 import { codexRuntimeCommand } from "./codex/runtime.js";
@@ -203,6 +204,10 @@ Usage:
                                 the request, then as status --wait does; exit 3 when
                                 they end with the request or a slow file pending.
                                 --fast --slow is --all
+  squeal checks                 The checks this repository defines in squeal.config.json
+                                and the default ones: for each, its description, what it
+                                selects, when it runs, the command that runs it now and
+                                its last result; needs no daemon
   squeal run <group> [--wait [<ms>]]
                                 Run one group of checks in squeal.config.json now,
                                 whatever its moment; with --wait, wait for its
@@ -353,6 +358,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   status: (args, io) => (asksAt(args) ? statusAt(args, io) : status(args, io)),
   proof,
   why,
+  checks: checksCommand,
   failures: failuresCommand,
   code: codeCommand,
   reach: reachCommand,
