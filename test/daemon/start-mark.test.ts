@@ -4,16 +4,16 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { abandon, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { markSpawn } from "../../src/core/presence/lock-events.js";
 import { readLockMarks, startMarkFor } from "../../src/core/presence/marks.js";
 import type { WaitLiveness } from "../../src/core/presence/wait.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { openStore } from "../../src/core/store/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { createFixtureRepo, type FixtureRepo } from "./helpers.js";
 
 /*
@@ -168,9 +168,7 @@ describe("an older daemon's start beside a wait (review 0.1.350, B1)", () => {
     const { repo, lockFile } = fixture();
     stoppedDaemonOf(repo, newer());
     // The newer daemon, starting again: it holds the lock and marks its start.
-    const taken = acquireDaemonLock(lockFile);
-    if (taken === null) throw new Error("the lock is taken");
-    const holder = markStart(lockFile, taken);
+    const holder = holdStart(lockFile);
     try {
       const result = await openDaemon(repo.root, now);
       if (!("reason" in result)) await abandon(result, now, undefined, "the test ends this start");

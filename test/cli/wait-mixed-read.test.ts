@@ -3,14 +3,15 @@ import { dirname } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { clearStartMark, markStart } from "../../src/core/presence/lock-events.js";
+import type { DaemonLock } from "../../src/core/daemon/lock.js";
+import { clearStartMark } from "../../src/core/presence/lock-events.js";
 import { readLockMarks } from "../../src/core/presence/marks.js";
 import { withStatusStore } from "../../src/core/status/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -74,9 +75,7 @@ function starting() {
   store.worktrees.setDaemon(id, null);
   const lockFile = lockFileFor(repo.commonDir as AbsolutePath, id);
   mkdirSync(dirname(lockFile), { recursive: true });
-  const lock = acquireDaemonLock(lockFile);
-  if (lock === null) throw new Error("the lock is taken");
-  locks.push(markStart(lockFile, lock));
+  locks.push(holdStart(lockFile));
   const registered: DaemonRecord = { ...record, heartbeatAt: NOW as EpochMs };
   const register = () => {
     store.worktrees.setDaemon(id, registered);

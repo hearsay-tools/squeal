@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
-import { clearStartMark, markStart } from "../../src/core/presence/lock-events.js";
+import { clearStartMark } from "../../src/core/presence/lock-events.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
@@ -51,11 +51,6 @@ async function squeal(r: SquealRepo, argv: string[], now: number): Promise<strin
   return stdout;
 }
 
-const locks: DaemonLock[] = [];
-afterEach(() => {
-  for (const lock of locks.splice(0)) lock.release();
-});
-
 /** A consumer told alive at its registration, then its daemon killed and a replacement marking its start. */
 async function replaced() {
   const r = squealRepo();
@@ -69,10 +64,7 @@ async function replaced() {
   await runHook("session-start", recorded("session-start", r.root), deps("alive"));
   r.daemon("stale", STALE);
   const lockFile = lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
-  const taken = acquireDaemonLock(lockFile);
-  if (taken === null) throw new Error("the lock is taken");
-  const lock = markStart(lockFile, taken);
-  locks.push(lock);
+  const lock = holdStart(lockFile);
   const batch = (ms = 0) => {
     clock += ms;
     return runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps("spawned"));

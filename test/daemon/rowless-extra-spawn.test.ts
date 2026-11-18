@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
+import type { DaemonLock } from "../../src/core/daemon/lock.js";
 import { openDaemon } from "../../src/core/daemon/open.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
 import { openStore } from "../../src/core/store/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
 /*
@@ -32,9 +32,7 @@ function startingNoRow() {
   const id = repo.worktreeId as WorktreeId;
   expect(store.worktrees.get(id)).toBeNull();
   const lockFile = lockFileFor(repo.commonDir as AbsolutePath, id);
-  const taken = acquireDaemonLock(lockFile);
-  if (taken === null) throw new Error("the lock is taken");
-  locks.push(markStart(lockFile, taken));
+  locks.push(holdStart(lockFile));
   return { repo, store, id };
 }
 

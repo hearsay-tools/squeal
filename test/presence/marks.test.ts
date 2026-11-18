@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
+import type { DaemonLock } from "../../src/core/daemon/lock.js";
 import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
-import { clearStartMark, markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { clearStartMark, markSpawn } from "../../src/core/presence/lock-events.js";
 import { daemonStart, spawnMarkFor, startMarkFor } from "../../src/core/presence/marks.js";
 import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { NOW } from "./fixture.js";
 
 /*
@@ -32,9 +33,7 @@ function lockFile(): AbsolutePath {
 
 /** Holds the lock at `path` as a starting daemon does, its start marked, until the test ends. */
 function holdMarked(path: AbsolutePath): void {
-  const lock = acquireDaemonLock(path);
-  if (lock === null) throw new Error("the lock is taken");
-  locks.push(markStart(path, lock));
+  locks.push(holdStart(path));
 }
 
 describe("a hook's spawn mark (row 011-251, F1)", () => {

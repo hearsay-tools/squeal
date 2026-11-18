@@ -9,10 +9,11 @@ import { lockFreed } from "../../src/cli/stop.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
-import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { markSpawn } from "../../src/core/presence/lock-events.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { squealRepo } from "../harness/helpers.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { stoppedLine } from "./stop-lines.js";
 
 /*
@@ -247,10 +248,8 @@ describe("squeal stop's lock wait beside the marks (row 011-251, F4)", () => {
   it("reads another process's start mark as the stopping daemon's lock gone, with no probe", async () => {
     const r = squealRepo();
     r.daemon("none");
-    const lock = acquireDaemonLock(lockFile(r));
-    if (lock === null) throw new Error("the lock is taken");
     // A daemon started since, which holds the lock and marks its start; the stopping one lives on.
-    const marked = markStart(lockFile(r), lock);
+    const marked = holdStart(lockFile(r));
     const probes = exclusive();
     try {
       expect(await lockFreed(r.root, { pid: process.ppid, startedAt: 7 }, 300)).toEqual({

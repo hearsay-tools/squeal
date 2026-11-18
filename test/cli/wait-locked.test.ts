@@ -7,11 +7,11 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { lifeOf } from "../../src/core/daemon/terminate.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
 import { readLockMarks, startMarkFor } from "../../src/core/presence/marks.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -59,9 +59,13 @@ function letGo(): void {
  * than the mark, or one stopping.
  */
 function hold(path: AbsolutePath, { marked = true } = {}): void {
+  if (marked) {
+    locks.push(holdStart(path));
+    return;
+  }
   const lock = acquireDaemonLock(path);
   if (lock === null) throw new Error("the lock is taken");
-  locks.push(marked ? markStart(path, lock) : lock);
+  locks.push(lock);
 }
 
 async function run(argv: string[], cwd: string) {

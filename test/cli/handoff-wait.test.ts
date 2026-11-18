@@ -9,7 +9,6 @@ import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { appendNote } from "../../src/core/notes.js";
 import { claimHandoff, clearHandoff } from "../../src/core/presence/events.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
 import {
   daemonExitMetaKey,
   HANDOFF_BOUND_MS,
@@ -20,6 +19,7 @@ import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 
@@ -252,9 +252,7 @@ describe("a wait after the old daemon cleared its record (review 0.1.259, B2)", 
     const { repo, id, lock } = await handingOver({ cleared: true });
     lock.release();
     const path = lockFileFor(repo.commonDir, id);
-    const successor = acquireDaemonLock(path);
-    if (successor === null) throw new Error("the lock is taken");
-    const marked = markStart(path, successor);
+    const marked = holdStart(path);
     releases.push(() => marked.release());
     const wait = await waitForStatus(repo.main, options(BOUND, 500));
     if (wait.outcome === "unavailable") throw new Error("unavailable");

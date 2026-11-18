@@ -1,16 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
+import { describe, expect, it } from "vitest";
 import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
 import { spawnMarkFor, startMarkFor } from "../../src/core/presence/marks.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, squealRepo } from "./helpers.js";
 
@@ -25,11 +24,6 @@ import { recorded, squealRepo } from "./helpers.js";
 
 const T = Date.UTC(2026, 0, 2, 14, 2);
 const BOUNDARIES = ["Codex PostToolUse", "Claude Code PostToolBatch", "Claude Code Stop"] as const;
-
-const locks: DaemonLock[] = [];
-afterEach(() => {
-  for (const lock of locks.splice(0)) lock.release();
-});
 
 /**
  * A worktree with one passing check, a Claude Code and a Codex session told
@@ -70,15 +64,6 @@ async function afterHeartbeat(record: "cleared" | "stale") {
   const lockFile = lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
   mkdirSync(dirname(lockFile), { recursive: true });
   return { r, at, spawns, lockFile };
-}
-
-/** The daemon a hook spawned takes the lock and marks its start, as `openDaemon` does. */
-function holdStart(lockFile: AbsolutePath): DaemonLock {
-  const taken = acquireDaemonLock(lockFile);
-  if (taken === null) throw new Error("the lock is taken");
-  const lock = markStart(lockFile, taken);
-  locks.push(lock);
-  return lock;
 }
 
 /** A hook's spawn mark, `ms` after `T`. */

@@ -1,4 +1,4 @@
-import { mkdirSync, utimesSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { appendNote } from "../../src/core/notes.js";
@@ -11,8 +11,7 @@ import {
   markStopped,
   spawnedAfterRest,
 } from "../../src/core/presence/events.js";
-import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
-import { startMarkFor } from "../../src/core/presence/marks.js";
+import { markSpawn } from "../../src/core/presence/lock-events.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type {
   AbsolutePath,
@@ -23,6 +22,7 @@ import type {
 import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { appendRevisions, fakeRepo, seedStore } from "../status/helpers.js";
 
 /*
@@ -125,16 +125,15 @@ export function scratch(stored: Stored): Scratch {
   const lockFile = lockFileFor(repo.commonDir, repo.mainId);
   mkdirSync(dirname(lockFile), { recursive: true });
   let held: DaemonLock | null = null;
-  if (stored.lock !== undefined) {
+  // Only the lock's holder marks its start.
+  if (stored.startMark === true && stored.lock !== "held") {
+    throw new Error("a start mark needs the held lock");
+  }
+  if (stored.startMark === true) held = holdStart(lockFile, START_MARKED);
+  else if (stored.lock !== undefined) {
     const lock = acquireDaemonLock(lockFile);
     if (stored.lock === "held") held = lock;
     else lock?.release();
-  }
-  if (stored.startMark === true) {
-    // Only the lock's holder marks its start.
-    if (held === null) throw new Error("a start mark needs the held lock");
-    held = markStart(lockFile, held);
-    utimesSync(startMarkFor(lockFile), START_MARKED / 1_000, START_MARKED / 1_000);
   }
   if (stored.spawnMark !== undefined) markSpawn(lockFile, at(stored.spawnMark), null);
   const root = repo.main as AbsolutePath;

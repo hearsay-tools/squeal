@@ -4,12 +4,13 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import type { DaemonLock } from "../../src/core/daemon/lock.js";
+import { markSpawn } from "../../src/core/presence/lock-events.js";
 import { LOCKED_TEXT, SPAWNED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -52,9 +53,7 @@ function stale() {
 
 /** Holds the daemon lock at `path` with its start marked, as the replacement does, until let go. */
 function holdMarked(path: AbsolutePath): void {
-  const lock = acquireDaemonLock(path);
-  if (lock === null) throw new Error("the lock is taken");
-  locks.push(markStart(path, lock));
+  locks.push(holdStart(path));
 }
 
 function letGo(): void {

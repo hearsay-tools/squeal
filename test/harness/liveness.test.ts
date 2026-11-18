@@ -2,16 +2,15 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { markRest } from "../../src/core/presence/events.js";
 import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
 import { daemonRestMetaKey } from "../../src/core/presence/stored.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { mayEdit } from "../../src/harness/shared/deliver.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { holdStart } from "../helpers/start-mark.js";
 import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
@@ -100,9 +99,7 @@ describe("liveness in delivered text", () => {
     const r = await registered();
     r.daemon("stale", Date.UTC(2026, 0, 2, 14, 2));
     const lockFile = lockFileFor(r.repo.commonDir as AbsolutePath, r.worktreeId as WorktreeId);
-    const taken = acquireDaemonLock(lockFile);
-    if (taken === null) throw new Error("the lock is taken");
-    const lock = markStart(lockFile, taken);
+    const lock = holdStart(lockFile);
     const { deps } = recording("spawned");
 
     const marked = await runHook("post-tool-batch", recorded("post-tool-batch", r.root), deps);

@@ -1,9 +1,7 @@
-import { mkdirSync, utimesSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach } from "vitest";
-import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { markStart } from "../../src/core/presence/lock-events.js";
-import { startMarkFor } from "../../src/core/presence/marks.js";
+import type { DaemonLock } from "../../src/core/daemon/lock.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { buildSnapshot } from "../../src/core/status/snapshot.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
@@ -11,6 +9,7 @@ import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
+import { holdStart as holdLockedStart } from "../helpers/start-mark.js";
 import { recorded, squealRepo } from "./helpers.js";
 
 /*
@@ -73,12 +72,5 @@ export async function newWorktree(row: "none" | "cleared" = "none") {
  * The spawned daemon takes the lock and marks its start, as `openDaemon` does before its store
  * check, `ms` after `T` by the mark's time, which readers take as the start's.
  */
-export function holdStart(lockFile: AbsolutePath, ms = 0): DaemonLock {
-  const taken = acquireDaemonLock(lockFile);
-  if (taken === null) throw new Error("the lock is taken");
-  const lock = markStart(lockFile, taken);
-  locks.push(lock);
-  const at = (T + ms) / 1000;
-  utimesSync(startMarkFor(lockFile), at, at);
-  return lock;
-}
+export const holdStart = (lockFile: AbsolutePath, ms = 0): DaemonLock =>
+  holdLockedStart(lockFile, T + ms);
