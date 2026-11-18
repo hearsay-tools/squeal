@@ -9,7 +9,7 @@ import { readTransaction } from "../core/store/store.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { KnownState } from "../core/types/state.js";
 import type { Store } from "../core/types/store.js";
-import { notCovered } from "../harness/shared/primer.js";
+import { notCovered } from "../harness/shared/not-covered.js";
 import { runnerCoverage } from "../runners/descriptions.js";
 import { type CheckResults, checksText, type StoreView } from "./checks-text.js";
 import { worktreeRoot } from "./daemon-access.js";
