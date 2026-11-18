@@ -171,4 +171,30 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       clean(f);
     },
   );
+
+  it("reads every file not comparable, with the reason, when the green checkout's install fails", async () => {
+    const { f, a } = sameKind(ON);
+    const broken = async () => ({
+      ok: false as const,
+      command: "install",
+      ms: 0,
+      reason: "exit 1",
+      log: "",
+    });
+    const result = await prove(
+      f,
+      { files: [TEST.path], base: a },
+      { cacheRoot: f.cacheRoot, install: broken },
+    );
+    expect(result.code, result.err).toBe(3);
+    expect(result.report).toMatchObject({ case: null, red: null, runs: 0 });
+    expect(result.files).toEqual([
+      expect.objectContaining({
+        path: TEST.path,
+        verdict: "not comparable",
+        reason: "install: exit 1",
+      }),
+    ]);
+    clean(f);
+  });
 });

@@ -13,7 +13,7 @@ import { alive, gone, stateOf, waitFor } from "./status-at-processes.js";
  * Row 023-08, done-when; spec 023 D6: a `squeal proof` killed with SIGKILL
  * while its red side runs a test leaves no process running, a process the
  * test started included, and its checkout is gone after the next
- * command's sweep. The test writes its worker's pid and its started
+ * command's sweep: the red side's, and the green side's at HEAD, open around it. The test writes its worker's pid and its started
  * process's pid where `HOLD_OUT` says, then holds.
  */
 
@@ -58,7 +58,8 @@ describe("a killed squeal proof (row 023-08, D6)", SLOW, () => {
       pids = [marks.worker, marks.held];
       expect(marks.worker).not.toBe(child.pid);
       for (const pid of pids) expect(await gone(pid, 15_000), stateOf(pid)).toBe(true);
-      expect(f.checkouts()).toHaveLength(1);
+      // The green side's checkout at HEAD stays open while the red side runs in its own.
+      expect(f.checkouts()).toHaveLength(2);
 
       // The next command that makes a checkout sweeps the dead one first.
       await run(f, { commit: a, json: true });

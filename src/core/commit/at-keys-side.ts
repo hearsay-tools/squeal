@@ -103,6 +103,9 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
             };
       for (const [id, key] of at.files)
         out.set(id, changed !== null && "key" in key ? changed : key);
+      // Listed by the checkout: a checkout that gave no listing leaves each named file its failure.
+      if (listing && at.failure !== null)
+        for (const ref of copied) out.set(testFileId(ref), { notDetermined: at.failure });
       return out;
     });
   } finally {

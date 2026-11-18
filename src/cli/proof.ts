@@ -159,7 +159,8 @@ async function prove(
     red: sides?.red ?? null,
     green: greenSide,
     runs: (red?.ran ?? 0) + green.ran,
-    checkoutMs: { red: red?.checkoutMs ?? null, green: green.checkoutMs },
+    // The red side's checkout lies within the green side's: green's own time is the rest.
+    checkoutMs: { red: red?.checkoutMs ?? null, green: green.checkoutMs - (red?.checkoutMs ?? 0) },
     files,
   };
 }
