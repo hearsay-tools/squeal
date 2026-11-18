@@ -64,3 +64,21 @@ messages name. The registration header is unchanged in every form (`withPrimer`)
   builds on the branch); CI's drift check fails until it is.
 - `docs/` (README, the skill's policy reference) do not yet mention `squeal checks`
   or `description`; that waits for the human's decision.
+
+## Round 2 (2026-11-18): the skill form and a whole `squeal checks`
+
+- `PRIMER_FORM` takes a fourth value, `"skill"`. Its words, and those of B and C, are in
+  `src/harness/shared/primer-forms.ts` (`SHORT_FORMS`): a wording change is a string edit there.
+- How the primer learns its harness: `primer(command, coverage, { form, skill })`. `skill`
+  comes from `HookDeps.skill` (default `true`: Claude Code, Codex, Pi, whose packages ship
+  `skills/squeal`); OpenCode's `bridgeDeps` sets `skill: false`, since `plugins/opencode`
+  ships no skill (no `skills` directory, none in its `package.json`). In the `"skill"` form
+  a harness with no skill gets the `"no-skill"` text.
+- Lengths as built: skill 372 characters (425 with a Codex cache path, 410 with a
+  2,000-character path, then unnamed); no-skill 542 (601; 566).
+- `squeal checks` now opens with what the list is, says who starts each check that does
+  not run after an edit, and ends with the primer's not-covered sentence. That sentence is
+  now `src/harness/shared/not-covered.ts`, which the primer imports, so the CLI bundles carry
+  no primer and the bundle count stays 25 (with the CLI importing `primer.ts` it was 29).
+- Bundle string unchanged: `var PRIMER_FORM = "full";`, 25 bundles, once each; the patch for
+  this form is `var PRIMER_FORM = "skill";`.
