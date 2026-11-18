@@ -141,3 +141,33 @@ Constraints on where the rules can live (*read in source*):
 - The start message is capped at 1,500 characters (`PRIMER_CAP_CHARS`, `src/harness/shared/primer.ts`) because Codex cuts a hook's text and keeps a trailing start message whole only up to that length (`src/harness/codex/output.ts`). The skill's main file is about 5,250 characters, with about 105,000 more in its reference files.
 - The skill ships for Claude Code, Codex and Pi. OpenCode has no skill: its sessions get the start message in the system prompt (cap 8,000 characters there) and nothing else.
 - Form B is 391 characters, form C 540; the shipped message was 1,449 in the repository that raised the question.
+
+## Forms E and F: sending the agent to the skill
+
+The human, 2026-11-18, after the per-session count: "maybe we should figure out how to make sure it loads the skill?" Two forms, each the short form B plus one lever, and in both the retry rule added to the skill's main file as a new step 3 ("A failure you did not cause ...: do not run the tests yourself ... `squeal retry <file> --reason load` or `--reason environment` ... claim from that result"), which the shipped skill lacks:
+
+- **E** (`primer-minimal-skill`): the start message ends "Read the squeal skill before you run or judge tests." The skill's description is the shipped one.
+- **F** (`primer-minimal-desc`): the start message is form B unchanged; the skill's description becomes "Use before you run tests yourself, and when a test fails or a SQUEAL message reports a failure, in a repository that uses Squeal (...). Squeal already runs the tests in the background; this says what to do instead of a hand run, how to retry a failure you did not cause, and how to read its reports."
+
+Both are variant files only (`evals/variants/`); the Squeal under test is still `86fd6c9ce`, so the shipped arm is the same build as in stages 1 to 4. Sonnet only, the two scenarios where form B failed, 10 repetitions: 40 sessions per form, 0 failed, coverage complete (*measured*). Runs 20261118T173659Z-b4230e (E) and 20261118T175441Z-03ae58 (F); results files `evals/results/2026-11-18-0.1.562.20261118T173659Z-b4230e.primer-minimal-skill.atomic-variant.json` and `...20261118T175441Z-03ae58.primer-minimal-desc.atomic-variant.json`. Host load about 9 to 12.
+
+Each form against the shipped arm of its own run, and form B's numbers from stage 4:
+
+| Scenario | Measure | Shipped (E's run) | E | Shipped (F's run) | F | B (stage 4) |
+|---|---|---|---|---|---|---|
+| both | skill loaded | 0/20 | 20/20 | 0/20 | 20/20 | 2/20 |
+| both | hand run of the suite | 0/20 | 0/20 | 0/20 | 0/20 | 10/20 |
+| both | false pass | 0 | 0 | 0 | 0 | 0 |
+| `a11-inherited-flake` | `retry-for-environment` | 2/10 | 10/10 | 7/10 | 8/10 | 2/10 |
+| `a11-inherited-flake` | `claim-true` | 1/9 | 8/8 | 7/10 | 5/7 | 5/10 |
+| `a9-env-retry` | `retry-for-environment` | 1/10 | 7/10 | 4/10 | 2/10 | 5/10 |
+| `a9-env-retry` | `claim-true` | 8/9 | 9/9 | 4/9 | 10/10 | 6/9 |
+
+1. **Both levers made Sonnet load the skill in every session** (20 of 20 each; p = 0.000011 per scenario against the shipped arm). The sentence in the start message and the new description each do it alone.
+2. **With the skill loaded, the hand runs are gone**: 0 of 40, against 10 of 20 for form B.
+3. **Claims are at least as good as with the shipped message, and better where a run can show it.** E: `a11-inherited-flake` right claims 8 of 8 against 1 of 9 (p = 0.0004), retries 10 of 10 against 2 of 10 (p = 0.0007); `a9-env-retry` retries 7 of 10 against 1 of 10 (p = 0.02). F: `a9-env-retry` right claims 10 of 10 against 4 of 9 (p = 0.011); `a11-inherited-flake` no difference (5 of 7 against 7 of 10).
+4. **The shipped arm varies much between runs of the same build.** `a11-inherited-flake` right claims: 0 of 9 (stage 4), 1 of 9 (E's run), 7 of 10 (F's run); retries 1, 2 and 7 of 10. `a9-env-retry` right claims: 10 of 10, 8 of 9, 4 of 9. So one run of 10 against 10 in these two scenarios is weak evidence in either direction, and a form is compared only with the shipped arm of its own run. *The cause of the variation is not determined (the scenarios' failures depend on load and on a service; the three runs were hours apart).* Summed over the three runs (*derived*; same build, same arm): shipped `a11-inherited-flake` right claims 8 of 28 and retries 10 of 30; E and F together 13 of 15 and 18 of 20.
+5. Sessions took longer where the agent now waits for a retry: `a11-inherited-flake` median 117 s (E) and 118 s (F) against 87 s and 88 s.
+6. Which part does the work is not separated: E and F each change two things against B (the lever, and the retry rule in the skill). The retry rule cannot act unless the skill is loaded, and loading alone did not give right claims in stage 4 (the two sessions of B that loaded the shipped skill claimed `fail`).
+
+Not tested: forms E and F in the other ten scenarios and on Sol; both levers together; forms C and D (rules in the start message without the skill).
