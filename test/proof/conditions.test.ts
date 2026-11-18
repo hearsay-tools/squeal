@@ -1,40 +1,17 @@
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readlinkSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   conditionedEnv,
   conditionWords,
   linkOnPath,
-  ownHome,
   placeWithout,
 } from "../../src/core/proof/conditions.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 
 /*
  * Row 023-11, spec 023 D5.3: where a `--without` path is hidden, the run's
- * environment under the conditions, and the run's own `HOME`.
+ * environment under the conditions (the run's own `HOME`: `own-home.test.ts`).
  */
-
-const dirs: string[] = [];
-afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
-
-function temp(): string {
-  const dir = mkdtempSync(join(tmpdir(), "sq-conditions-"));
-  dirs.push(dir);
-  return dir;
-}
 
 describe("proof conditions (row 023-11, D5.3)", () => {
   const root = "/srv/repo" as AbsolutePath;
@@ -81,6 +58,7 @@ describe("proof conditions (row 023-11, D5.3)", () => {
         { name: "TZ", value: "UTC" },
       ],
       without: [],
+      keep: [],
     };
     expect(conditionedEnv({ CI: "1", HOME: "/srv/user", A: "a" }, conditions, "/tmp/h")).toEqual({
       TZ: "UTC",
@@ -91,41 +69,13 @@ describe("proof conditions (row 023-11, D5.3)", () => {
       conditionWords({
         ...conditions,
         without: [{ given: "~/.npmrc", where: "home", path: ".npmrc" }],
+        keep: [{ given: "~/.gitconfig", path: ".gitconfig" }],
       }),
-    ).toEqual(["--env CI= (unset)", "--env TZ=UTC", "--without ~/.npmrc (own HOME)"]);
-  });
-
-  it("makes a HOME with everything but the hidden paths, as links its removal leaves alone", () => {
-    const home = join(temp(), "home");
-    mkdirSync(join(home, ".config", "tool"), { recursive: true });
-    writeFileSync(join(home, ".npmrc"), "secret\n");
-    writeFileSync(join(home, ".gitconfig"), "kept\n");
-    writeFileSync(join(home, ".config", "tool", "rc"), "hidden\n");
-    writeFileSync(join(home, ".config", "tool", "other"), "kept\n");
-    writeFileSync(join(home, ".config", "beside"), "kept\n");
-    const own = join(temp(), "own");
-    ownHome(home, [".npmrc", ".config/tool/rc"], own);
-
-    expect(existsSync(join(own, ".npmrc"))).toBe(false);
-    expect(existsSync(join(own, ".config", "tool", "rc"))).toBe(false);
-    expect(readFileSync(join(own, ".gitconfig"), "utf8")).toBe("kept\n");
-    expect(readFileSync(join(own, ".config", "beside"), "utf8")).toBe("kept\n");
-    expect(readFileSync(join(own, ".config", "tool", "other"), "utf8")).toBe("kept\n");
-    // The folders on the way to a hidden path are its own; the rest are links.
-    expect(lstatSync(join(own, ".config")).isDirectory()).toBe(true);
-    expect(readlinkSync(join(own, ".gitconfig"))).toBe(join(home, ".gitconfig"));
-
-    rmSync(own, { recursive: true, force: true });
-    expect(readFileSync(join(home, ".config", "tool", "other"), "utf8")).toBe("kept\n");
-    expect(readFileSync(join(home, ".npmrc"), "utf8")).toBe("secret\n");
-  });
-
-  it("hides all of HOME for the HOME folder itself", () => {
-    const home = temp();
-    writeFileSync(join(home, ".npmrc"), "secret\n");
-    const own = join(temp(), "own");
-    ownHome(home, [""], own);
-    expect(existsSync(join(own, ".npmrc"))).toBe(false);
-    expect(lstatSync(own).isDirectory()).toBe(true);
+    ).toEqual([
+      "--env CI= (unset)",
+      "--env TZ=UTC",
+      "--without ~/.npmrc (own HOME)",
+      "--home-keep ~/.gitconfig (copied into own HOME)",
+    ]);
   });
 });

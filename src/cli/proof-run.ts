@@ -5,7 +5,8 @@ import type { FailedTest } from "../core/code/gate/types.js";
 import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import { conditionedEnv, hasConditions, hiddenInHome, ownHome } from "../core/proof/conditions.js";
+import { conditionedEnv, hasConditions, hiddenInHome } from "../core/proof/conditions.js";
+import { ownHome } from "../core/proof/own-home.js";
 import { NOT_RUN_BUDGET, type SideEnd } from "../core/proof/verdict.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { ResultRecord } from "../core/types/store-records.js";
@@ -44,7 +45,15 @@ export async function runFiles(
   change: RelativePath | null,
   files: Map<string, SideFile>,
 ): Promise<number> {
-  const env = runEnv(input, checkout);
+  let env: NodeJS.ProcessEnv;
+  try {
+    env = runEnv(input, checkout);
+  } catch (error) {
+    // Review wave-9 B1: a kept path that changed into a link since the command checked it.
+    const why = `own HOME: ${error instanceof Error ? error.message : String(error)}`;
+    for (const file of toRun) files.set(testFileId(file.ref), unknown(why));
+    return 0;
+  }
   const runs = new Map<string, number>();
   let left = toRun;
   let made = 0;
@@ -81,7 +90,12 @@ function runEnv(input: SideInput, checkout: Checkout): NodeJS.ProcessEnv {
     return conditionedEnv(input.env, input.conditions, null);
   // In the checkout's folder: its removal, or the next sweep, removes it with the checkout.
   const home = join(checkout.folder, "home");
-  ownHome(real, hidden, home);
+  ownHome(
+    real,
+    hidden,
+    input.conditions.keep.map((k) => k.path),
+    home,
+  );
   return conditionedEnv(input.env, input.conditions, home);
 }
 

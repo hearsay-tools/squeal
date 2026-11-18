@@ -85,8 +85,8 @@ Usage:
                                 commit's keys, within one --timeout (600 s, the
                                 checkout and install included)
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
-               [--env NAME=[value]]... [--without <path>]... [--repeat <n>]
-               [--timeout <seconds>] [--json]
+               [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
+               [--repeat <n>] [--timeout <seconds>] [--json]
                                 A red proof per named test file over committed HEAD:
                                 red is the test at HEAD over the code at --base
                                 (source) or the test at --base over the code at HEAD
@@ -95,9 +95,11 @@ Usage:
                                 only without a result. --env sets (NAME=value) or
                                 unsets (NAME=) a variable and --without hides a path
                                 in the repository or under HOME, on both sides; a
-                                side under a condition always runs and is never
-                                stored; dependency needs one. --repeat runs red up
-                                to n times (to its first failure) and green n times
+                                path under HOME gives the run its own HOME, empty but
+                                for the files and folders --home-keep copies in (no
+                                links). A side under a condition always runs and is
+                                never stored; dependency needs one. --repeat runs red
+                                up to n times (to its first failure) and green n times
                                 (1 to 100). Verdicts: proven, not red, red for
                                 another reason, not green, not comparable, with the
                                 red side's failure text; exit 0 all proven, 1 not

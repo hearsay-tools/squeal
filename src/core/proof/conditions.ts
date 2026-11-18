@@ -1,13 +1,14 @@
-import { mkdirSync, readdirSync, statSync, symlinkSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { HomeKeep } from "./own-home.js";
 
 /*
  * Spec 023 D5.3 (row 023-11): a proof's named conditions. `--env NAME=`
  * unsets a variable and `--env NAME=value` sets it; `--without <path>`
  * hides a file or folder. A path in the repository is hidden in the
  * side's checkout; a path under `HOME` is hidden by giving the run its own
- * `HOME`, which holds everything else the real one does (`ownHome`). The
+ * `HOME`, empty but for the copies `--home-keep` names (`own-home.ts`;
+ * review wave-9 B1, the human's "B"). The
  * same conditions apply to both sides, and a side under any of them always
  * runs and is never stored: the key does not record them.
  */
@@ -26,9 +27,11 @@ export type Without =
 export interface Conditions {
   readonly env: readonly EnvCondition[];
   readonly without: readonly Without[];
+  /** Review wave-9 B1: the paths under `HOME` copied into the run's own `HOME`. */
+  readonly keep: readonly HomeKeep[];
 }
 
-export const NO_CONDITIONS: Conditions = { env: [], without: [] };
+export const NO_CONDITIONS: Conditions = { env: [], without: [], keep: [] };
 
 export function hasConditions(conditions: Conditions): boolean {
   return conditions.env.length > 0 || conditions.without.length > 0;
@@ -111,46 +114,6 @@ export function conditionedEnv(
   return out;
 }
 
-/**
- * D5.3: a `HOME` at `into` that holds everything `home` does except the
- * `hidden` paths. Each folder on the way to a hidden path is a real folder
- * here; every other entry is a link to the real one, so the run reads all
- * else as before. Removing `into` removes the links, never what they point to.
- */
-export function ownHome(home: string, hidden: readonly string[], into: string): void {
-  mkdirSync(into, { recursive: true });
-  if (hidden.includes("")) return;
-  mirror(home, hidden, into);
-}
-
-function mirror(real: string, hidden: readonly string[], into: string): void {
-  let names: string[];
-  try {
-    names = readdirSync(real);
-  } catch {
-    return;
-  }
-  for (const name of names) {
-    if (hidden.includes(name)) continue;
-    const inner = hidden.flatMap((path) =>
-      path.startsWith(`${name}/`) ? [path.slice(name.length + 1)] : [],
-    );
-    const source = join(real, name);
-    if (inner.length > 0 && isFolder(source)) {
-      mkdirSync(join(into, name));
-      mirror(source, inner, join(into, name));
-    } else symlinkSync(source, join(into, name));
-  }
-}
-
-function isFolder(path: string): boolean {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 /** The conditions in words, for the report: `--env CI= (unset)`, `--without ~/.npmrc (own HOME)`. */
 export function conditionWords(conditions: Conditions): string[] {
   return [
@@ -162,5 +125,6 @@ export function conditionWords(conditions: Conditions): string[] {
         ? `--without ${w.given} (own HOME)`
         : `--without ${w.given} (hidden in the checkout)`,
     ),
+    ...conditions.keep.map((k) => `--home-keep ${k.given} (copied into own HOME)`),
   ];
 }

@@ -27,6 +27,8 @@ export interface ProofArgs {
   readonly env?: readonly EnvCondition[];
   /** D5.3: each `--without` path as given. */
   readonly without?: readonly string[];
+  /** Review wave-9 B1: each `--home-keep` path as given, copied into the run's own `HOME`. */
+  readonly homeKeep?: readonly string[];
   /** D5.4: the red side's most runs and the green side's runs; default 1. */
   readonly repeat?: number;
 }
@@ -34,9 +36,17 @@ export interface ProofArgs {
 /** A usage problem, told in one line. */
 export type ProofUsage = { readonly usage: string };
 
-const VALUED = ["--base", "--case", "--timeout", "--env", "--without", "--repeat"] as const;
+const VALUED = [
+  "--base",
+  "--case",
+  "--timeout",
+  "--env",
+  "--without",
+  "--home-keep",
+  "--repeat",
+] as const;
 type Valued = (typeof VALUED)[number];
-const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without"]);
+const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without", "--home-keep"]);
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -101,6 +111,7 @@ function checked(
     json,
     env: env.list,
     without,
+    homeKeep: values.get("--home-keep") ?? [],
     ...counts,
   };
 }

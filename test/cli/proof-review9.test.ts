@@ -1,4 +1,11 @@
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AbsolutePath } from "../../src/core/types/common.js";
@@ -7,8 +14,12 @@ import { prove } from "./proof-kit.js";
 import { clean, testOf } from "./status-at-kit.js";
 
 /*
- * Review wave-9 B2 and B3 (row 023-11), on `$TMPDIR` git fixtures with the
- * real Vitest adapter; every command's `HOME` is a throwaway folder.
+ * Review wave-9 B1, B2 and B3 (row 023-11), on `$TMPDIR` git fixtures with
+ * the real Vitest adapter; every command's `HOME` is a throwaway folder.
+ * B1 (the human's "B"): the run's own `HOME` is empty but for the
+ * `--home-keep` copies, so no path in it, `..` and aliases included,
+ * reaches a real `HOME` file, and the hidden path stays absent even in a
+ * kept folder that holds it.
  * B2: a `--without` path under a committed link, or a link itself, is a
  * usage error, and nothing outside the checkout changes. B3: an install
  * that puts a hidden path back means the condition did not hold: the file
@@ -114,4 +125,107 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
       clean(f);
     },
   );
+
+  /** The reviewer's B1 fixture: what the old test sees in its HOME, then its writes and deletes. */
+  const PROBE = [
+    'import { existsSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";',
+    'import { expect, it } from "vitest";',
+    'it("reads its HOME", () => {',
+    '  const home = process.env.HOME ?? "";',
+    '  const read = (p: string) => (existsSync(p) ? readFileSync(p, "utf8") : null);',
+    "  const seen = {",
+    "    direct: read(home + '/.proofrc'),",
+    "    via: read(home + '/kept/../.proofrc'),",
+    "    alias: read(home + '/.alias'),",
+    "    kept: read(home + '/kept/untouched'),",
+    "    secret: read(home + '/cfg/secret'),",
+    "    other: read(home + '/cfg/other'),",
+    "  };",
+    "  writeFileSync(home + '/kept/../.proofrc', 'changed');",
+    "  writeFileSync(home + '/kept/untouched', 'changed');",
+    "  try { unlinkSync(home + '/.alias'); } catch {}",
+    "  rmSync(home + '/kept', { recursive: true, force: true });",
+    "  rmSync(home + '/cfg', { recursive: true, force: true });",
+    '  writeFileSync(process.env.PROOF_OUT ?? "", JSON.stringify(seen));',
+    '  expect((seen.direct ?? "").trim()).toBe("ada");',
+    "});",
+    "",
+  ].join("\n");
+
+  /** A throwaway HOME: `.proofrc`, `.alias` to it, `kept/untouched`, `cfg/{secret,other}`. */
+  function realHome(dir: string): string {
+    const home = join(dir, "home");
+    mkdirSync(join(home, "kept"), { recursive: true });
+    mkdirSync(join(home, "cfg"));
+    writeFileSync(join(home, ".proofrc"), "ada\n");
+    symlinkSync(".proofrc", join(home, ".alias"));
+    writeFileSync(join(home, "kept", "untouched"), "kept\n");
+    writeFileSync(join(home, "cfg", "secret"), "s\n");
+    writeFileSync(join(home, "cfg", "other"), "other\n");
+    return home;
+  }
+
+  function homeFixture() {
+    const f = fixture({ ...ON, "src/a.ts": "export const value = 2;\n", [TEST.path]: PROBE });
+    const a = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({ [TEST.path]: testOf("a", 2) });
+    const home = realHome(f.dir);
+    const out = join(f.dir, "seen.json");
+    return { f, a, home, out, env: { ...process.env, HOME: home, PROOF_OUT: out } };
+  }
+
+  it("B1: the own HOME reaches no real HOME file, by `..` or alias, and keeps the hidden path out of a kept folder", async () => {
+    const { f, a, home, out, env } = homeFixture();
+    const args = {
+      files: [TEST.path],
+      base: a,
+      case: "dependency" as const,
+      without: [join(home, ".proofrc"), join(home, "cfg", "secret")],
+      homeKeep: [join(home, "kept"), join(home, "cfg")],
+    };
+    const result = await prove(f, args, undefined, env);
+    expect(result.code, result.err).toBe(0);
+    expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail", runs: 1 } });
+    expect(result.report.conditions.homeKeep).toEqual([join(home, "kept"), join(home, "cfg")]);
+    // What the old test saw: no hidden file by any path, the kept copies, nothing else.
+    expect(JSON.parse(readFileSync(out, "utf8"))).toEqual({
+      direct: null,
+      via: null,
+      alias: null,
+      kept: "kept\n",
+      secret: null,
+      other: "other\n",
+    });
+    // Its writes and deletes changed nothing in the real HOME.
+    expect(readFileSync(join(home, ".proofrc"), "utf8")).toBe("ada\n");
+    expect(readFileSync(join(home, "kept", "untouched"), "utf8")).toBe("kept\n");
+    expect(readFileSync(join(home, "cfg", "secret"), "utf8")).toBe("s\n");
+    expect(readFileSync(join(home, "cfg", "other"), "utf8")).toBe("other\n");
+    expect(lstatSync(join(home, ".alias")).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(join(home, ".alias"))).toBe(".proofrc");
+    clean(f);
+  });
+
+  it("B1: refuses a kept folder that holds a link, and --home-keep with nothing hidden under HOME (exit 2)", async () => {
+    const { f, a, home, env } = homeFixture();
+    symlinkSync("../.proofrc", join(home, "kept", "link"));
+    const base = { files: [TEST.path], base: a, case: "dependency" as const };
+    const cases = [
+      [
+        { without: [join(home, ".proofrc")], homeKeep: [join(home, "kept")] },
+        `--home-keep ${join(home, "kept")}: ~/kept/link is a link; a kept path must hold none`,
+      ],
+      [
+        { env: [{ name: "X", value: null }], homeKeep: [join(home, "cfg")] },
+        `--home-keep ${join(home, "cfg")} needs a --without path under HOME`,
+      ],
+    ] as const;
+    for (const [extra, line] of cases) {
+      const result = await prove(f, { ...base, ...extra }, undefined, env);
+      expect(result.code).toBe(2);
+      expect(result.err.trim().split("\n")).toEqual([`squeal proof: ${line}`]);
+      clean(f);
+    }
+    expect(readFileSync(join(home, ".proofrc"), "utf8")).toBe("ada\n");
+  });
 });

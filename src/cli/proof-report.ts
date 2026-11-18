@@ -198,6 +198,7 @@ export function jsonProof(report: ProofReport): string {
     conditions: {
       env: report.conditions.env,
       without: report.conditions.without.map((w) => ({ path: w.given, where: w.where })),
+      homeKeep: report.conditions.keep.map((k) => k.given),
     },
     repeat: report.repeat,
     notRun: report.notRun,
@@ -230,6 +231,7 @@ export function rerunCommand(args: ProofArgs, conditions: Conditions): string {
     ...(args.case === null ? [] : ["--case", args.case]),
     ...conditions.env.map((e) => `--env ${shellWord(`${e.name}=${e.value ?? ""}`)}`),
     ...conditions.without.map((w) => `--without ${shellWord(w.given)}`),
+    ...conditions.keep.map((k) => `--home-keep ${shellWord(k.given)}`),
     ...((args.repeat ?? 1) > 1 ? ["--repeat", String(args.repeat)] : []),
     "--timeout",
     String(seconds),

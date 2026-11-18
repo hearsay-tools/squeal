@@ -37,6 +37,7 @@ describe("squeal proof arguments (row 023-08)", () => {
       json: true,
       env: [],
       without: [],
+      homeKeep: [],
       repeat: 1,
     });
     expect(parseProof(["a.test.ts", "--base=main"])).toMatchObject({
@@ -99,6 +100,9 @@ describe("squeal proof arguments (row 023-08)", () => {
         "--without",
         "~/.npmrc",
         "--without=fixtures/local",
+        "--home-keep",
+        "~/.gitconfig",
+        "--home-keep=~/.config/tool",
         "--repeat",
         "5",
       ]),
@@ -110,6 +114,7 @@ describe("squeal proof arguments (row 023-08)", () => {
         { name: "EQ", value: "a=b" },
       ],
       without: ["~/.npmrc", "fixtures/local"],
+      homeKeep: ["~/.gitconfig", "~/.config/tool"],
       repeat: 5,
     });
   });

@@ -7,6 +7,7 @@ import {
   placeWithout,
   type Without,
 } from "../core/proof/conditions.js";
+import { type HomeKeep, placeKeep } from "../core/proof/own-home.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 import type { ProofArgs } from "./proof-args.js";
@@ -83,9 +84,10 @@ async function linkedWithout(
 }
 
 /**
- * D5.3: `args`' conditions, each `--without` placed (`placeWithout`); a
- * usage problem for a path it cannot hide, or for `--env HOME` beside a
- * path hidden under `HOME`, whose run has its own `HOME`.
+ * D5.3: `args`' conditions, each `--without` placed (`placeWithout`) and
+ * each `--home-keep` checked (`placeKeep`); a usage problem for a path it
+ * cannot hide or keep, for `--home-keep` with no path hidden under `HOME`,
+ * or for `--env HOME` beside one, whose run has its own `HOME`.
  */
 export function conditionsOf(
   args: ProofArgs,
@@ -102,7 +104,16 @@ export function conditionsOf(
   const env = args.env ?? [];
   if (env.some((e) => e.name === "HOME") && without.some((w) => w.where === "home"))
     return "--env HOME cannot be given with a --without path under HOME: that run has its own HOME";
-  return { env, without };
+  // Review wave-9 B1 (the human's "B"): the own HOME starts empty; each kept path is copied in.
+  const hidden = without.flatMap((w) => (w.where === "home" ? [w.path] : []));
+  const keep: HomeKeep[] = [];
+  for (const given of args.homeKeep ?? []) {
+    if (hidden.length === 0) return `--home-keep ${given} needs a --without path under HOME`;
+    const placed = placeKeep(given, cwd, home, hidden);
+    if ("usage" in placed) return placed.usage;
+    keep.push(placed);
+  }
+  return { env, without, keep };
 }
 
 /**
