@@ -23,6 +23,27 @@ export function atomicCoverage(data, arms) {
   return runCoverage(data, arms);
 }
 
+/**
+ * Pooled runs' plans and coverage, one markdown line each, before the pooled tables (review
+ * exp-minimal-primer-design-r3 B2): its file, run, repetitions, scenarios and models, its planned
+ * and reached cells, and each of its gaps. None for one results file.
+ */
+export function partLines(data, arms) {
+  if (!Array.isArray(data.parts)) return [];
+  return data.parts.map((p) => {
+    const cov = runCoverage({ ...p, cells: data.cells.filter((c) => c.run === p.run) }, arms);
+    const models = p.models.map((m) => modelKey({ ...m, model: m.standIn ?? m.model }));
+    const plan = `\`${p.name}\` (run ${p.run}): ${p.repetitions ?? "?"} repetition${p.repetitions === 1 ? "" : "s"} of ${Object.keys(p.scenarios).join(", ")} for ${models.join(", ")}, both arms`;
+    if (cov === null)
+      return `- ${plan}; it records no repetitions, so its coverage is not checked.`;
+    const reached = cov.rows.reduce((n, r) => n + r.reached, 0);
+    const gaps = cov.gaps.map(
+      (g) => `${g.model} ${g.scenario} ${g.arm} ${g.reached} of ${g.planned}`,
+    );
+    return `- ${plan}: ${reached} of ${cov.planned} planned cells reached their model${gaps.length ? `; short: ${gaps.join("; ")}` : ", complete"}.`;
+  });
+}
+
 /** The rows of `parts`' coverages added up by model, scenario and arm. */
 function summed(parts) {
   const rows = new Map();

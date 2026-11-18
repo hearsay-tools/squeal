@@ -414,3 +414,91 @@ describe("the sessions without a claim, per arm (review exp-minimal-primer-desig
     expect(atomicCompareMarkdown(data, "x")).toContain("| a2-slow | `no-claim` (context) | 0/3");
   });
 });
+
+describe("pooling checks every pair of files and prints each plan (review exp-minimal-primer-design-r3 B2)", () => {
+  const sol = { harness: "codex", model: "gpt-6.1-sol", status: "served" };
+  const tasks = (t: Record<string, string>) =>
+    Object.fromEntries(Object.entries(t).map(([k, prompt]) => [k, { prompt, knobs: {} }]));
+  const file = (run: string, scenarios: Record<string, string>, reps = 1) => {
+    const c = twoArms as unknown as { conditions: object; variantConditions: object };
+    const cells = Object.keys(scenarios).flatMap((task) =>
+      ["p0", "stop-slow"].flatMap((arm) =>
+        Array.from({ length: reps }, (_, i) => ({
+          ...armCells(arm, "codex", "gpt-6.1-sol", [true])[0],
+          id: `${task}.${arm}.codex-gpt-6.1-sol.e-medium.r${i + 1}`,
+          task,
+          rep: i + 1,
+        })),
+      ),
+    );
+    return {
+      ...(twoArms as object),
+      run,
+      repetitions: reps,
+      models: [sol],
+      scenarios: Object.fromEntries(Object.keys(scenarios).map((t) => [t, {}])),
+      conditions: { ...c.conditions, tasks: tasks(scenarios) },
+      variantConditions: { ...c.variantConditions, tasks: tasks(scenarios) },
+      failed: [],
+      cells,
+    } as Json;
+  };
+  const A = { name: "a.json", data: file("rA", { "a12-manual-check": "one" }) };
+  const B = { name: "b.json", data: file("rB", { "a3-harmless": "old" }) };
+  const C = { name: "c.json", data: file("rC", { "a3-harmless": "changed" }) };
+
+  it("refuses a scenario changed between two later files, in every order", () => {
+    for (const order of [
+      [A, B, C],
+      [A, C, B],
+      [B, A, C],
+      [C, B, A],
+    ])
+      expect(() => poolAtomicRuns(order), order.map((p) => p.name).join(",")).toThrow(
+        /cannot be pooled with .*: scenario a3-harmless's prompt or knobs in arm p0/,
+      );
+  });
+
+  it("refuses one file given twice, a copy under another name, and a cell held twice", () => {
+    expect(() => poolAtomicRuns([A, B, A])).toThrow(
+      /a\.json and a\.json are the same run rA: its sessions would count twice/,
+    );
+    expect(() => poolAtomicRuns([A, { name: "copy.json", data: A.data }])).toThrow(
+      /copy\.json and a\.json are the same run rA/,
+    );
+    const cells = (A.data as { cells: unknown[] }).cells;
+    const twice = { ...(A.data as object), cells: [...cells, cells[0]] } as Json;
+    expect(() => poolAtomicRuns([{ name: "d.json", data: twice }])).toThrow(
+      /d\.json holds cell a12-manual-check\.p0\.codex-gpt-6\.1-sol\.e-medium\.r1 twice/,
+    );
+  });
+
+  it("pools two runs of one scenario, whose cell ids repeat as different sessions", () => {
+    const later = { name: "e.json", data: file("rE", { "a12-manual-check": "one" }, 3) };
+    const { coverage } = atomicCompare(poolAtomicRuns([A, later]));
+    expect([coverage?.planned, coverage?.gaps]).toEqual([8, []]);
+  });
+
+  it("prints each file's plan and coverage before the pooled tables", () => {
+    const short = { name: "s.json", data: file("rS", { "a3-harmless": "old" }, 2) };
+    const kept = (short.data as { cells: { variant: string; rep: number }[] }).cells;
+    const cut = {
+      ...short,
+      data: {
+        ...(short.data as object),
+        cells: kept.filter((c) => !(c.variant === "stop-slow" && c.rep === 2)),
+      } as Json,
+    };
+    const md = atomicCompareMarkdown(poolAtomicRuns([A, cut]), "a.json, s.json");
+    expect(md).toContain(
+      "- `a.json` (run rA): 1 repetition of a12-manual-check for codex gpt-6.1-sol, both arms: 2 of 2 planned cells reached their model, complete.",
+    );
+    expect(md).toContain(
+      "- `s.json` (run rS): 2 repetitions of a3-harmless for codex gpt-6.1-sol, both arms: 3 of 4 planned cells reached their model; short: codex gpt-6.1-sol a3-harmless stop-slow 1 of 2.",
+    );
+    expect(md.indexOf("- `s.json`")).toBeLessThan(md.indexOf("**Coverage: incomplete.** 5 of 6"));
+    expect(md.indexOf("**Coverage: incomplete.**")).toBeLessThan(
+      md.indexOf("## codex gpt-6.1-sol"),
+    );
+  });
+});

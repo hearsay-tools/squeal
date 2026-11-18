@@ -8,15 +8,22 @@ import { modelKey } from "./behaviours.mjs";
  * Results files `parts` (`[{ name, data }]`, each `kind: "atomic-variant"`) as one: the cells
  * of all, each tagged with its `run`, the failed cells of all, the union of their scenarios and
  * models, and `parts` (`{ run, name, repetitions, models, scenarios, failed, harnesses }`), from
- * which the coverage counts each run's plan apart. One file is returned as it is. Throws unless
- * every file names the same commit, the same two arms, the same effort and fixture per arm, and,
- * for a scenario two files share, the same prompt and knobs in both arms.
+ * which the coverage counts each run's plan apart. One file is returned as it is, once its cell
+ * ids are checked. Throws unless every file names the same commit, the same two arms and the
+ * same effort and fixture per arm; unless every scenario that more than one file holds has the
+ * same prompt and knobs in each arm in all of them, whatever their order (review
+ * exp-minimal-primer-design-r3 B2); and when two files are one run (the same run id: one file
+ * given twice, or a copy) or a run holds one cell id twice. A cell id names its repetition, not
+ * its run, so two runs of one scenario hold the same ids, as different sessions.
  */
 export function poolAtomicRuns(parts) {
   if (parts.length === 0) throw new Error("no results file to compare");
+  for (const { name, data } of parts) uniqueCells(name, data);
   if (parts.length === 1) return parts[0].data;
   const [{ data: first, name: firstName }] = parts;
-  for (const { name, data } of parts.slice(1)) sameSituation(first, firstName, data, name);
+  for (const { name, data } of parts.slice(1)) sameRunKind(first, firstName, data, name);
+  sameScenarios(parts);
+  distinctRuns(parts);
   const merged = (field) => Object.assign({}, ...parts.map(({ data }) => data[field]?.tasks ?? {}));
   const models = new Map();
   for (const { data } of parts)
@@ -43,8 +50,8 @@ export function poolAtomicRuns(parts) {
   };
 }
 
-/** Throws unless run `b` (file `bn`) ran the situation run `a` (file `an`) ran. */
-function sameSituation(a, an, b, bn) {
+/** Throws unless run `b` (file `bn`) is an atomic variant run of run `a`'s (file `an`) commit, arms, effort and fixtures. */
+function sameRunKind(a, an, b, bn) {
   const differ = (what) => {
     throw new Error(`${bn} cannot be pooled with ${an}: ${what}`);
   };
@@ -56,11 +63,45 @@ function sameSituation(a, an, b, bn) {
     if (x.variant !== y.variant) differ(`arm ${y.variant} against ${x.variant}`);
     if (x.effort !== y.effort) differ(`effort ${y.effort} against ${x.effort}`);
     if (x.fixture !== y.fixture) differ(`fixture of arm ${x.variant}`);
-    for (const [t, c] of Object.entries(y.tasks ?? {})) {
-      const o = x.tasks?.[t];
-      if (o && JSON.stringify(o) !== JSON.stringify(c))
-        differ(`scenario ${t}'s prompt or knobs in arm ${x.variant}`);
-    }
+  }
+}
+
+/** Throws when two files hold one scenario with another prompt or knobs in one arm, in any order. */
+function sameScenarios(parts) {
+  for (const arm of ["conditions", "variantConditions"]) {
+    const seen = new Map(); // scenario -> { text, name }
+    for (const { name, data } of parts)
+      for (const [t, c] of Object.entries(data[arm]?.tasks ?? {})) {
+        const text = JSON.stringify(c);
+        const o = seen.get(t);
+        if (!o) seen.set(t, { text, name });
+        else if (o.text !== text)
+          throw new Error(
+            `${name} cannot be pooled with ${o.name}: scenario ${t}'s prompt or knobs in arm ${data[arm].variant}`,
+          );
+      }
+  }
+}
+
+/** Throws when two files are one run. */
+function distinctRuns(parts) {
+  const seen = new Map();
+  for (const { name, data } of parts) {
+    const o = seen.get(data.run);
+    if (o !== undefined)
+      throw new Error(
+        `${name} and ${o} are the same run ${data.run}: its sessions would count twice`,
+      );
+    seen.set(data.run, name);
+  }
+}
+
+/** Throws when file `name` holds one cell id twice. */
+function uniqueCells(name, data) {
+  const ids = new Set();
+  for (const c of data.cells ?? []) {
+    if (ids.has(c.id)) throw new Error(`${name} holds cell ${c.id} twice`);
+    ids.add(c.id);
   }
 }
 

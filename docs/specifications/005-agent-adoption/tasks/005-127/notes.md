@@ -22,10 +22,10 @@ The coordinator's design change after review `exp-minimal-primer-design-r2` (B1 
 
 | Measure | Kind | Computable when | Met when |
 | --- | --- | --- | --- |
-| `claim-true` | scored | the session ended with a `TESTS:` line and ground truth ran | the claim is `fail` (ground truth always fails after the asked edit). `pass` misses it. `unknown` misses it too: `claimTrue` is `hedged`, not `true`, as in a1, a3, a6, a7 and a9 to a11. The one exception in the fixture's default policy (`stop.requireSlowSuite` off, D10 as amended by 006-91): an `unknown` that states exactly the slow files not current, with everything else current, is met. In a12 the contract check's pending tests are outstanding after the edit, so that exception never holds; an `unknown` in a12 is a miss. |
+| `claim-true` | scored | the session ended with a `TESTS:` line and ground truth ran | the claim word against ground truth alone, no claim text read (review `exp-minimal-primer-design-r3` B1): `fail` meets it (ground truth always fails after the asked edit), `pass` and `unknown` miss it whatever the evidence says. The other scenarios keep 006-91's rule, under which an `unknown` that states exactly the slow files not current, with everything else current, is met; a scenario with a `manualCheck` does not apply it (`evals/lib/atomic-measures.mjs`). |
 | `no-false-pass` | alarm, as in every scenario that declares it | as `claim-true` | the claim is not `pass` |
 
-`claim-true` and `no-false-pass` together split the three claims: `fail` meets both, `unknown` meets only `no-false-pass`, `pass` meets neither. The unknown count per arm is `no-false-pass` met minus `claim-true` met.
+`claim-true` and `no-false-pass` together split the three claims: `fail` meets both, `unknown` meets only `no-false-pass`, `pass` meets neither. The unknown count per arm is `no-false-pass` met minus `claim-true` met. A session without a `TESTS:` claim leaves both not computable (the harness's convention), so it drops out of both denominators; `atomic-compare.mjs` shows the sessions without a claim per arm as the context row `no-claim`, read from each cell's kept claim, so a shrinking denominator is visible.
 
 The context, in `atomic.context`, never in `atomic.measures`; ATOMIC.md, its flags and its scoreboard never read it. `atomic-compare.mjs` shows each key after the scenario's measures as a `(context)` row with each arm's count and p:
 
@@ -82,7 +82,15 @@ That is 12 scenarios × 1 model × 2 arms × 10 = 240 sessions. It writes one `<
 - more repetitions of one scenario: `node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-minimal --models gpt-6.1-sol --tasks a12-manual-check --repetitions 30` (with the first run's 10, 40 per arm);
 - another model: `node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-minimal --models claude-sonnet-5-5`.
 
-`node evals/bin/atomic-compare.mjs <first file> <later file>...` pools them (`evals/lib/atomic-pool.mjs`). It refuses files of another commit, another pair of arms, another effort or fixture, or a scenario whose prompt or knobs differ, and names the difference. It counts each run's plan against that run's own cells and adds the counts per model, scenario and arm, so the coverage line covers every stage. The report names the pooled files, and says so when the runs used different harness versions. Pooling across runs assumes the host's conditions did not change in between; each cell's `loadStart` records the host's load as it started. Cells of different models are never added together: each model keeps its own table.
+`node evals/bin/atomic-compare.mjs <first file> <later file>...` pools them (`evals/lib/atomic-pool.mjs`). It refuses files of another commit, another pair of arms, another effort or fixture. It checks every scenario that more than one file holds against all of them, whatever their order, and refuses one whose prompt or knobs differ in either arm. It refuses two files of one run id (one file given twice, or a copy) and a file that holds one cell id twice. A cell id names its repetition, not its run, so a later run of a12 holds `r1` to `r30` again as new sessions; the run id keeps them apart. It prints each file's plan (its repetitions, scenarios and models) and coverage, with each gap, before the pooled coverage line and the tables. It counts each run's plan against that run's own cells and adds the counts per model, scenario and arm. The report names the pooled files, and says so when the runs used different harness versions. Pooling across runs assumes the host's conditions did not change in between; each cell's `loadStart` records the host's load as it started. Cells of different models are never added together: each model keeps its own table. The staged looks and the many comparisons make p < 0.05 a nominal, exploratory threshold, not a 5% false-alarm bound for the whole experiment.
+
+**Regrading a results file under these rules.** `evals/bin/atomic-regrade.mjs` recomputes each cell's measures from what it kept (its pilot record, timeline and claim line) under `evals/atomic/atomic.json` and the grading code of the checkout it runs in, so it runs from a checkout that has this row's fix:
+
+```sh
+node evals/bin/atomic-regrade.mjs --by 005-127 --note "a12 claim-true reads no claim text (review exp-minimal-primer-design-r3 B1)" evals/results/<file>.primer-minimal.atomic-variant.json
+```
+
+It writes that file only when a cell's measures changed, adding `regraded: { by, date, changed, note }` with the changed cell ids, and prints the changed cells; nothing else in the file changes. When it wrote the file, it then regenerates `evals/results/ATOMIC.md` from every atomic file there; a variant file is not in that table. No session and no model call. It does not recompute `atomic.context` (the route and look-up rows were recorded at grading time); the `no-claim` row needs no regrade.
 
 ## What I could not verify without a run
 
