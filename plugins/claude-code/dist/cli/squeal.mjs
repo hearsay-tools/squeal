@@ -106527,7 +106527,9 @@ init_reverse_index();
 init_install_command();
 var INSTALL_TIMEOUT_MS = 3e5;
 function changedText(changed2) {
-  return changed2.by === "git" ? `git's checkout rules changed ${changed2.path}` : `install changed the checkout: ${changed2.path}`;
+  if (changed2.by === "git") return `git's checkout rules changed ${changed2.path}`;
+  if (changed2.by === "run") return `a test of an earlier batch changed ${changed2.path}`;
+  return `install changed the checkout: ${changed2.path}`;
 }
 var CheckoutFailed = class extends Error {
   constructor(reason2, detail2) {
@@ -107318,8 +107320,21 @@ async function commitSide(options) {
   const hear = (found4) => {
     named4 = found4;
   };
+  const chosen = (file) => {
+    if (paths === null || selects3(paths, file.ref.path)) return true;
+    const { at: at3 } = file;
+    return "key" in at3 && named4.some((path) => at3.loads?.includes(path) === true);
+  };
+  const { whileOpen, beforeRemove } = options;
+  const hooks = {
+    ...whileOpen === void 0 ? {} : { whileOpen: ((open7, files5) => whileOpen(open7, files5.filter(chosen))) },
+    ...beforeRemove === void 0 ? {} : {
+      beforeRemove: ((checkout, files5, change3) => beforeRemove(checkout, files5.filter(chosen), change3))
+    }
+  };
   const at2 = asked ? await keysAtCommit({
     ...options,
+    ...hooks,
     ...paths === null ? {} : { adapters: narrowedOrAll(options.adapters, paths, (path) => tree.has(path), hear) }
   }) : { commit, files: /* @__PURE__ */ new Map(), failure: null, checkoutMs: null, store: true };
   const sources = new Map(named4.map((path) => [path, []]));
@@ -107387,8 +107402,11 @@ function daemonSide(input, main2, rows) {
   }
   const refs2 = union2(select2(listed11, input.paths), sources);
   const revision = rows.reduce((n, r) => Math.max(n ?? 0, r.revision), null);
+  const bySource = (input.paths ?? []).some(
+    (path) => !listed11.some((ref3) => selects3([path], ref3.path))
+  );
   const states = /* @__PURE__ */ new Map();
-  for (const ref3 of refs2) {
+  for (const ref3 of bySource ? listed11 : refs2) {
     const row2 = byId.get(testFileId(ref3));
     if (row2 === void 0) continue;
     if (row2.key === null) {
@@ -107408,7 +107426,7 @@ function daemonSide(input, main2, rows) {
     refs: refs2,
     state,
     sources,
-    unlisted: (ref3) => !byId.has(testFileId(ref3))
+    unlisted: (ref3) => !states.has(testFileId(ref3))
   };
 }
 async function keyedSide(input, how2 = {}) {
@@ -107429,7 +107447,7 @@ async function keyedSide(input, how2 = {}) {
     }
     const refs2 = union2(select2(all2, input.paths), sources);
     const states = /* @__PURE__ */ new Map();
-    for (const ref3 of refs2) {
+    for (const ref3 of asked) {
       const at2 = keyed.get(ref3);
       const id = testFileId(ref3);
       if (at2 === void 0)
@@ -107442,11 +107460,11 @@ async function keyedSide(input, how2 = {}) {
     }
     const state = (ref3) => states.get(testFileId(ref3)) ?? unlisted3(root, ref3, "no runner lists it");
     const source2 = why2 === void 0 ? { kind: "stored" } : { kind: "stored", why: why2 };
-    return { source: source2, refs: refs2, state, sources, unlisted: () => false };
+    const unkeyed = (ref3) => listed11.has(testFileId(ref3)) && !states.has(testFileId(ref3));
+    return { source: source2, refs: refs2, state, sources, unlisted: unkeyed };
   });
 }
 async function listLate(input, now, refs2) {
-  if (now.source.kind !== "daemon") return now;
   const late = refs2.filter((ref3) => now.unlisted(ref3) && existsSync65(join175(input.root, ref3.path)));
   if (late.length === 0) return now;
   const paths = [...new Set(late.map((ref3) => ref3.path))];
@@ -107457,7 +107475,7 @@ async function listLate(input, now, refs2) {
   const ids = new Set(late.map(testFileId));
   return {
     ...now,
-    source: { ...now.source, late: late.length },
+    source: now.source.kind === "daemon" ? { ...now.source, late: late.length } : now.source,
     state: (ref3) => ids.has(testFileId(ref3)) ? keyed.state(ref3) : now.state(ref3)
   };
 }
@@ -107482,6 +107500,7 @@ function union2(selected2, sources) {
 // src/cli/status-at-run.ts
 init_runtime2();
 init_policy2();
+init_git_layout();
 init_reverse_index();
 init_text();
 
@@ -107802,6 +107821,8 @@ async function runInChild(run7) {
   );
   const how2 = await exited2;
   clearTimeout(limit);
+  if (pid !== void 0) await stopGroup(pid).catch(() => {
+  });
   if (!existsSync66(answer4)) {
     const error = `the run's process ended ${how2} with no answer`;
     return stopped ? { error, stopped: true } : { error };
@@ -107864,14 +107885,15 @@ async function outcomesOf2(input) {
 async function stoppedOutcomes(input) {
   const states = /* @__PURE__ */ new Map();
   const budget2 = { state: "not run", reason: "budget" };
-  const reads2 = input.changed === null && input.stored !== false;
+  const { writer } = input;
+  const reads2 = input.changed === null && input.stored !== false && writer !== void 0;
   await withStores(input.commonDir, async (main2) => {
     for (const file of input.run) {
       const id = testFileId(file.ref);
-      const { at: at2 } = file;
-      const records = reads2 && main2 !== null && "key" in at2 ? resultsAt(main2, file.ref, at2.key) : [];
-      if (records.length > 0 && "key" in at2)
-        states.set(id, asRun2(stateOf3(at2.key, records, input.own), input.commit, true));
+      const records = reads2 && main2 !== null ? main2.results.newestForTestFile(file.ref) : [];
+      const [first2] = records;
+      if (first2 !== void 0 && records.some((r) => r.provenance.worktreeId === writer))
+        states.set(id, asRun2(stateOf3(first2.key, records, input.own), input.commit, true));
       else states.set(id, budget2);
     }
   });
@@ -108055,6 +108077,10 @@ function atRun(input) {
       const left = Math.floor((budgetMs - elapsed()) / 1e3);
       const gateSeconds = left - stopMargin(left);
       if (gateSeconds < 1) break;
+      if (changed2 === null && batchTimes.length > 0) {
+        const path = await checkoutChange(input.root, checkout.tree, checkout.commit);
+        if (path !== null) changed2 = { path, by: "run" };
+      }
       const take = paths.slice(0, batches2.next(paths, seconds5));
       paths = paths.slice(take.length);
       const files5 = take.flatMap((path) => byPath3.get(path) ?? []);
@@ -108065,7 +108091,7 @@ function atRun(input) {
         files: take,
         budgetSeconds: gateSeconds,
         stopAfterSeconds: left,
-        // "Whole-checkout check": a checkout the install changed stores nothing.
+        // "Whole-checkout check": a checkout the install or an earlier batch changed stores nothing.
         store: changed2 === null,
         env: input.env,
         forward: input.forward
@@ -108103,7 +108129,9 @@ function atRun(input) {
       siblings,
       answer: answer4,
       changed: changed2,
-      coverage: coverageOn(readPolicy(checkout.tree))
+      coverage: coverageOn(readPolicy(checkout.tree)),
+      // Review wave-13 B2: a stopped batch is read where its gate wrote, by this provenance.
+      writer: worktreeIdFor(checkout.tree)
     });
     for (const [id, state] of outcomes2) states.set(id, state);
   }
