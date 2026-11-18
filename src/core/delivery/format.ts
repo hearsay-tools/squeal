@@ -1,5 +1,5 @@
 import { lintLines, lintRegistrationLine, lintTitleWords } from "../lint/surface/format.js";
-import { stopOf } from "../presence/views.js";
+import { stopOf, toldOf } from "../presence/views.js";
 import { recordedShortText, retryAdviceText } from "../retry/advice.js";
 import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/text.js";
 import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
@@ -496,33 +496,36 @@ function livenessTitle(
   command: string,
 ): string {
   const { revision } = header;
-  // Row 011-34: the header after it says since when, and what follows.
+  // Row 011-34: the header after it says since when, and what follows. `toldOf` reads a stopping
+  // daemon whose heartbeat is still current as validating; the title says its stop.
   if (liveness?.stopping !== undefined) {
     const what = liveness.stopping.to === undefined ? "stopping" : "handing over";
     return `SQUEAL · the daemon is ${what} at revision ${revision}`;
   }
-  // Task 011-08: the header after it says what restarts it.
-  // Row 011-254: `squeal stop --until-start` names what ends it.
-  const stop = stopOf(liveness);
-  if (stop !== null) {
-    return stop === "until-start"
-      ? `SQUEAL · the daemon is stopped until \`${command} start\` at revision ${revision}`
-      : `SQUEAL · the daemon is stopped by request at revision ${revision}`;
-  }
-  // Row 011-140: the header after it names the claim's version and `squeal start`.
-  if (liveness?.state === "alive" && liveness.short !== undefined) {
-    return `SQUEAL · a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
-  }
-  if (liveness?.state === "alive") {
-    return `SQUEAL · a daemon is validating again at revision ${revision}: its heartbeat is current`;
-  }
-  // Row 005-111: a starting daemon whose process is stopped; the header after it says since when.
-  if (liveness?.state === "down" && liveness.startStopped === true) {
-    return `SQUEAL · a starting daemon may be stopped at revision ${revision}`;
-  }
-  // Row 005-108: the header after it says since when; never `squeal start`.
-  if (liveness?.state === "down" && liveness.startSlow === true) {
-    return `SQUEAL · a daemon is still starting at revision ${revision}`;
+  const told = liveness === undefined ? undefined : toldOf(liveness);
+  switch (told?.state) {
+    case "stopped by request":
+      // Task 011-08: the header after it says what restarts it.
+      // Row 011-254: `squeal stop --until-start` names what ends it.
+      return stopOf(liveness) === "until-start"
+        ? `SQUEAL · the daemon is stopped until \`${command} start\` at revision ${revision}`
+        : `SQUEAL · the daemon is stopped by request at revision ${revision}`;
+    case "validating":
+      // Row 011-140: the header after it names the claim's version and `squeal start`.
+      if (liveness?.state === "alive" && liveness.short !== undefined) {
+        return `SQUEAL · a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
+      }
+      return `SQUEAL · a daemon is validating again at revision ${revision}: its heartbeat is current`;
+    case "starting":
+      // Row 005-111: a starting daemon whose process is stopped; the header after it says since when.
+      if (told.notes.includes("start stopped")) {
+        return `SQUEAL · a starting daemon may be stopped at revision ${revision}`;
+      }
+      // Row 005-108: the header after it says since when; never `squeal start`.
+      if (told.notes.includes("start slow")) {
+        return `SQUEAL · a daemon is still starting at revision ${revision}`;
+      }
+      break;
   }
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== undefined
     ? `SQUEAL · the daemon's heartbeat is late at revision ${revision}`

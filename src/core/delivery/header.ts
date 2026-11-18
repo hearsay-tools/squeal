@@ -1,22 +1,18 @@
-import { stopOf } from "../presence/views.js";
-import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { groupTierLines } from "../state/group-text.js";
 import { slowTierText } from "../state/slow-text.js";
-import { DEATH_CAUSE, deathHookText } from "../status/died.js";
 import { delaysText, lateOf } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
-import {
-  holdAcrossEditsText,
-  lateHeartbeatDetail,
-  startStoppedText,
-  untilStartText,
-} from "../status/status-detail.js";
-import { shortText, stoppingText } from "../status/stopping.js";
-import { plural, utcTimeText } from "../text.js";
+import { plural } from "../text.js";
 import type { Delta, OwnEdits } from "../types/delivery.js";
 import type { DaemonLiveness, StatusHeader } from "../types/status.js";
+import {
+  daemonText,
+  diedText,
+  noneRunning,
+  slowStartText,
+  stoppedStartText,
+} from "./header-daemon.js";
 import { lateCarriesDelay } from "./late.js";
-import { installSentences } from "./provenance.js";
 
 /*
  * The header a SQUEAL message and a Stop start with (spec 001 D6). Two forms, decided by the
@@ -83,16 +79,6 @@ function revisionPrefix(header: StatusHeader): string {
 const CHANGED_PATHS_SHOWN = 3;
 
 /**
- * The install wait's sentence (`awaitingInstallSentence`). `null` when not
- * waiting, and when no daemon is live: a daemon killed while waiting left
- * the flag (review wave 11, N5).
- */
-function awaitingInstallText(header: StatusHeader): string | null {
-  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
-}
-
-/**
  * `(changed a, b, c and N more)` after the revision number; nothing without
  * a change set. Row 011-262 (gh-105): a path git ignores reads
  * `git-ignored a`, since no `git status` shows the change that moved checks.
@@ -118,20 +104,6 @@ function incompleteText(header: StatusHeader, command: string): string {
   const late = header.daemon?.stopping === undefined ? lateOf(header.daemon) : undefined;
   const delays = delaysText(header, late, command);
   return delays === null ? "" : ` ${delays}`;
-}
-
-/**
- * What both forms end with: daemon liveness, then the install wait or the install sentences.
- * `unlisted`: no result exists, so a starting daemon's sentence is left out (row 005-94).
- */
-function daemonText(header: StatusHeader, command: string, unlisted = false): string {
-  const awaiting = awaitingInstallText(header);
-  const { daemon } = header;
-  const liveness =
-    unlisted && daemon?.state === "down" && daemon.startingSince !== undefined
-      ? diedText(daemon)
-      : livenessSentence(daemon, header.revision, command);
-  return liveness + (awaiting === null ? installSentences(header) : ` ${awaiting}`);
 }
 
 /**
@@ -308,77 +280,6 @@ export function headerParts(
   };
 }
 
-/** Task 011-08: why no daemon validates after `squeal stop`, and what starts one. */
-function stoppedText(command: string): string {
-  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-}
-
-/**
- * Spec 001 D12, review wave 3 S2: "Dead daemon: hooks still serve status and
- * deltas from the store; status says the daemon is down and since when." A
- * validating daemon adds nothing.
- */
-function livenessSentence(
-  daemon: DaemonLiveness | undefined,
-  revision: number,
-  command: string,
-): string {
-  if (daemon === undefined) return "";
-  // Row 011-34: a stopping daemon is neither alive nor down.
-  if (daemon.stopping !== undefined) {
-    return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
-  }
-  // Row 011-140: a daemon that ended its handoff short validates, at its own version. Row
-  // 011-311: a late change feed is said after the counts, with the revision's listing.
-  if (daemon.state === "alive") {
-    return daemon.short === undefined
-      ? ""
-      : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-  }
-  // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone; review 0.1.357
-  // B1: a current start wins over either stop (`stopOf`).
-  const stop = stopOf(daemon);
-  if (stop === "until-start") {
-    return ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; results are as of revision ${revision}.`;
-  }
-  // Task 011-08: `squeal stop` holds until the next edit or `squeal start`.
-  if (stop === "until-edit")
-    return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
-  // Task 001-263: the daemon that died without its stop note, and what it was running.
-  const died = diedText(daemon);
-  // Row 005-108: a daemon that holds the lock in a start past `DAEMON_START_SLOW_MS`.
-  // Row 005-111: a starting daemon whose process is stopped, said in place of a slow start.
-  if (daemon.startStopped === true) {
-    return ` ${stoppedStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.startSlow === true) {
-    return ` ${slowStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  // Task 001-156: a daemon a hook just spawned, before its first heartbeat.
-  if (daemon.startingSince !== undefined) {
-    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
-  }
-  // Task 001-415, review 001-417 B2: a daemon that stopped unused rests; it is no warning.
-  if (daemon.resting === true) {
-    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
-  }
-  // Row 011-276: a late heartbeat with no stop or exit recorded is no stopped daemon.
-  if (daemon.heartbeatLate !== undefined) {
-    return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
-  }
-  const since =
-    daemon.since === null
-      ? "No daemon is running"
-      : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  // Row 005-116 (review 0.1.554 B2): with no daemon or successor running, the death says what
-  // starts one; `notValidatedLine` leaves it out of the same message (`headerRestarts`).
-  const restart = died === "" ? "" : ` ${restartText(command)}`;
-  return ` ${since}; results are as of revision ${revision}.${died}${restart}`;
-}
-
-/** Row 005-116: what starts a daemon after a death, said once per message. */
-const restartText = (command: string) => `\`${command} start\` starts one.`;
-
 /**
  * Row 005-116 (review 0.1.554 B2): whether a header of `daemon` names a death and what starts a
  * daemon: a death with no daemon or successor running. A message whose header does leaves both
@@ -386,45 +287,4 @@ const restartText = (command: string) => `\`${command} start\` starts one.`;
  */
 export function headerRestarts(daemon: DaemonLiveness | undefined): boolean {
   return noneRunning(daemon) && daemon.died !== undefined;
-}
-
-type Down = DaemonLiveness & { readonly state: "down" };
-
-/**
- * Row 005-108: `A daemon has been starting since <HH:MM:SS UTC>`, of a start that holds the lock
- * past `DAEMON_START_SLOW_MS`; the hooks' time format (`utcTimeText`, 005-94 C4). Never `squeal
- * start`: the daemon is starting, and a second one would wait for its lock.
- */
-function slowStartText(daemon: Down): string {
-  const since =
-    daemon.startingSince === undefined ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
-  return `A daemon has been starting${since}`;
-}
-
-/** Row 005-111: the header's sentence of a start whose process is stopped (`startStoppedText`). */
-function stoppedStartText(daemon: Down): string {
-  const text = startStoppedText(daemon.startingSince ?? null, utcTimeText);
-  return `${text[0]?.toUpperCase()}${text.slice(1)}`;
-}
-
-/**
- * Task 001-263: ` The last daemon died …`, when the daemon died without its stop note. Row
- * 005-116: the hook form, with its test files and the cause, never a run id or revision.
- */
-function diedText(daemon: Down): string {
-  return daemon.died === undefined
-    ? ""
-    : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
-}
-
-/** A down daemon with no stop, start, rest or late heartbeat recorded: none is running. */
-function noneRunning(daemon: DaemonLiveness | undefined): daemon is Down {
-  return (
-    daemon?.state === "down" &&
-    daemon.stopping === undefined &&
-    stopOf(daemon) === null &&
-    daemon.startingSince === undefined &&
-    daemon.resting !== true &&
-    daemon.heartbeatLate === undefined
-  );
 }
