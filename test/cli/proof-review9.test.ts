@@ -141,6 +141,8 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
     "    secret: read(home + '/cfg/secret'),",
     "    other: read(home + '/cfg/other'),",
     "  };",
+    // Row 023-20 (P9): the control run without the conditions sees the real HOME; it only reads.
+    '  if (home === process.env.PROOF_REAL_HOME) { expect((seen.direct ?? "").trim()).toBe("ada"); return; }',
     "  writeFileSync(home + '/kept/../.proofrc', 'changed');",
     "  writeFileSync(home + '/kept/untouched', 'changed');",
     "  try { unlinkSync(home + '/.alias'); } catch {}",
@@ -171,7 +173,8 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
     f.commit({ [TEST.path]: testOf("a", 2) });
     const home = realHome(f.dir);
     const out = join(f.dir, "seen.json");
-    return { f, a, home, out, env: { ...process.env, HOME: home, PROOF_OUT: out } };
+    const env = { ...process.env, HOME: home, PROOF_OUT: out, PROOF_REAL_HOME: home };
+    return { f, a, home, out, env };
   }
 
   it("B1: the own HOME reaches no real HOME file, by `..` or alias, and keeps the hidden path out of a kept folder", async () => {
@@ -186,6 +189,8 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
     const result = await prove(f, args, undefined, env);
     expect(result.code, result.why).toBe(0);
     expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail", runs: 1 } });
+    // Row 023-20 (P9): with the real HOME the old test reads the hidden file and passes.
+    expect(result.files[0]).toMatchObject({ controlReading: "red only under the conditions" });
     expect(result.report.conditions.homeKeep).toEqual([join(home, "kept"), join(home, "cfg")]);
     // What the old test saw: no hidden file by any path, the kept copies, nothing else.
     expect(JSON.parse(readFileSync(out, "utf8"))).toEqual({

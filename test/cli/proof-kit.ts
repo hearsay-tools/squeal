@@ -34,6 +34,17 @@ export interface ProofFileJson {
     readonly notStored: string | null;
     readonly runs: number;
   } | null;
+  /** Row 023-20 (P7): why the green side did not run. */
+  readonly greenNotRun: string | null;
+  /** Row 023-20 (P9): the red side once without the conditions. */
+  readonly control: {
+    readonly end: string;
+    readonly from: string | null;
+    readonly stored: boolean;
+    readonly runs: number;
+  } | null;
+  readonly controlReading: string | null;
+  readonly controlNotRun: string | null;
 }
 
 export async function prove(

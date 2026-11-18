@@ -91,7 +91,13 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
       verdict: "not red",
       red: { end: "pass" },
       green: null,
+      greenNotRun: "red passed: nothing to prove",
     });
+    clean(f);
+    // Row 023-20 (lessons P7): the text says why green did not run, never "not read".
+    const text = await prove(f, { files: [TEST.path], base: a, json: false });
+    expect(text.out).toContain("  green: not run (red passed: nothing to prove)\n");
+    expect(text.out).not.toContain("not read");
     clean(f);
   });
 

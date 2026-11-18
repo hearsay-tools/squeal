@@ -87,10 +87,18 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
     });
     expect(file?.red.notStored).toBe("a side under a condition is never stored");
     expect(file?.red.failures[0]?.text).toContain("expected 'hello world' to be 'hello ada'");
+    // Row 023-20 (P9): without the condition the old test reads the file and passes; the
+    // first call above stored that run at the red side's key, so it is read, not run.
+    expect(file).toMatchObject({
+      reason: null,
+      controlReading: "red only under the conditions",
+      control: { end: "pass", from: "store", runs: 0 },
+    });
+    expect(result.report.runs).toBe(2);
     clean(f);
   });
 
-  it("proves a hidden variable with --env NAME=, runs both sides on every call and stores nothing", async () => {
+  it("proves a hidden variable with --env NAME=, runs both sides on every call and stores only the control run", async () => {
     const { f, a } = dependencyFix('process.env.PROOF_NAME ?? ""');
     const env = { ...process.env, PROOF_NAME: "ada" };
     const args = {
@@ -108,9 +116,16 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
       red: { end: "fail", from: "run", stored: false },
       green: { end: "pass", from: "run", stored: false },
     });
-    expect(first.report.runs).toBe(2);
+    // Row 023-20 (P9): red under the condition, red once without it (stored), green.
+    expect(first.files[0]).toMatchObject({
+      controlReading: "red only under the conditions",
+      control: { end: "pass", from: "run", stored: true },
+    });
+    expect(first.report.runs).toBe(3);
     expect(first.report.conditions.env).toEqual([{ name: "PROOF_NAME", value: null }]);
     clean(f);
+    const after = resultRows(f);
+    expect(after).toBeGreaterThan(before);
 
     const second = await prove(f, { ...args, json: false }, undefined, env);
     expect(second.code, second.why).toBe(0);
@@ -118,9 +133,14 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
     expect(second.out).toContain(
       "red: fail, run by this command, not stored (a side under a condition is never stored)",
     );
+    // P9: the unconditioned control run is read from the store on the second call.
+    expect(second.out).toContain(
+      "  red only under the conditions (without them: pass, stored result)\n",
+    );
     expect(second.out).toContain("1 proven, ");
     expect(second.out).toContain("; 2 runs (");
-    expect(resultRows(f)).toBe(before);
+    // Only the control run is stored; the conditioned sides are not.
+    expect(resultRows(f)).toBe(after);
     clean(f);
   });
 
