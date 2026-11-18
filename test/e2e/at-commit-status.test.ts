@@ -55,8 +55,6 @@ interface Pair {
   readonly affected: string;
   /** An unchanged test file outside that closure: the same key on both sides. */
   readonly unaffected: string;
-  /** Review note D1 in the notes: `--run`'s first report names a key the run did not store at. */
-  readonly runReportsItsStores: boolean;
 }
 
 const PAIRS: readonly Pair[] = [
@@ -68,7 +66,6 @@ const PAIRS: readonly Pair[] = [
     newTest: false,
     affected: "test/store/state-born.test.ts",
     unaffected: "test/store/paths.test.ts",
-    runReportsItsStores: true,
   },
   {
     name: "squawk",
@@ -78,7 +75,6 @@ const PAIRS: readonly Pair[] = [
     newTest: true,
     affected: "packages/cezar/src/lint/ast-rules-active-run.test.ts",
     unaffected: "packages/contract/src/waits.test.ts",
-    runReportsItsStores: false,
   },
 ];
 
@@ -127,7 +123,7 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
 
         // 2. The current side: HEAD's keys are the clean working tree's, so a run at HEAD fills them.
         const head = at(dir, ["HEAD", ...paths, "--run", "--all-missing"]);
-        expect(head.report.run, head.text).toMatchObject({ selected: 3, ran: 3 });
+        expect(head.report.run, head.text).toMatchObject({ selected: 3, ran: 3, stored: 3 });
         for (const path of paths) {
           expect(head.row(path).at.key, path).toBe(head.row(path).now.key);
           expect(head.row(path).at.state, path).toBe("pass");
@@ -137,7 +133,7 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         const run = at(dir, ["HEAD~1", ...paths, "--run"]);
         const ran = pair.newTest ? 1 : 2;
         expect(run.report.run, run.text).toMatchObject({ selected: ran, ran });
-        if (pair.runReportsItsStores) expect(run.report.run?.stored).toBe(ran);
+        expect(run.report.run?.stored).toBe(ran);
         for (const path of existing) expect(run.row(path).at.state, path).toBe("pass");
         expect(run.row(pair.unaffected).at.origin?.kind).not.toBe("run");
 
