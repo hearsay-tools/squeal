@@ -2,7 +2,7 @@
 // declares in evals/atomic/atomic.json, over its cell's pilot record and retained timeline; the
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
-import { lookupsOf, manualCheckSeen } from "./check-evidence.mjs";
+import { lookupsOf, manualCheckRoutes, manualCheckSeen, runContextOf } from "./check-evidence.mjs";
 import { parseClaim } from "./claim.mjs";
 import { answeredRuns, coveredRun, currentBeforeClaim, slowThroughSqueal } from "./evidence.mjs";
 import { stamped } from "./results.mjs";
@@ -145,7 +145,7 @@ export function pilotRecord(
     squealWaitsAfterLastEdit: grade.waitsAfterLastEdit ?? null,
     sleeps: grade.sleeps ?? null,
     // Row 005-127: context with no direction, every scenario; never a measure, so no flag reads it.
-    context: lookupsOf(grade),
+    context: { ...lookupsOf(grade), ...runContextOf(grade), ...manualRoutes(grade, scenario) },
   };
   record.measures = measuresOf(record, {
     timeline: grade.retained ?? null,
@@ -154,6 +154,23 @@ export function pilotRecord(
     claimLine: grade.claimLine ?? null,
   });
   return record;
+}
+
+/**
+ * a12-manual-check's routes as context (`manualCheckRoutes`): `manual-via-squeal`,
+ * `manual-via-own-run`, `manual-via-unknown`; none for a scenario without `manualCheck`, all
+ * `null` without a claim or a timeline.
+ */
+function manualRoutes(grade, scenario) {
+  const check = scenario?.manualCheck;
+  if (!check) return {};
+  const tl = Array.isArray(grade.retained) ? grade.retained : null;
+  const r = tl === null ? null : manualCheckRoutes(tl, check, grade.claimLine ?? null);
+  return {
+    "manual-via-squeal": r?.squeal ?? null,
+    "manual-via-own-run": r?.ownRun ?? null,
+    "manual-via-unknown": r?.unknown ?? null,
+  };
 }
 
 /**

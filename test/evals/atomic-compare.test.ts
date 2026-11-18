@@ -214,3 +214,67 @@ describe("the look-up context beside the measures (row 005-127)", () => {
     expect(md).toContain("A row marked (context) has no direction");
   });
 });
+
+describe("the planned cells against those kept (review exp-minimal-primer-design B2)", () => {
+  const planned = (cells: unknown[]) =>
+    ({
+      ...(twoArms as object),
+      repetitions: 2,
+      models: [{ harness: "claude", model: "claude-sonnet-5-5", status: "served" }],
+      scenarios: { "a2-slow": {}, "a12-manual-check": {} },
+      failed: [{ id: "a12-manual-check.p0.claude-claude-sonnet-5-5.e-medium.r1", exit: 1 }],
+      cells,
+    }) as Json;
+  const cell = (task: string, arm: string, rep: number, reached = true) => ({
+    ...armCells(arm, "claude", "claude-sonnet-5-5", [true])[0],
+    task,
+    rep,
+    ...(reached ? {} : { reachedModel: false }),
+  });
+  const a2 = [1, 2].flatMap((r) => [cell("a2-slow", "p0", r), cell("a2-slow", "stop-slow", r)]);
+
+  it("names each model, scenario and arm short of its planned cells, a scenario with none too", () => {
+    const { coverage } = atomicCompare(
+      planned([...a2, cell("a12-manual-check", "stop-slow", 1, false)]),
+    );
+    expect(coverage?.planned).toBe(8);
+    expect(coverage?.gaps).toEqual([
+      {
+        model: "claude claude-sonnet-5-5",
+        scenario: "a12-manual-check",
+        arm: "p0",
+        planned: 2,
+        kept: 0,
+        reached: 0,
+      },
+      {
+        model: "claude claude-sonnet-5-5",
+        scenario: "a12-manual-check",
+        arm: "stop-slow",
+        planned: 2,
+        kept: 1,
+        reached: 0,
+      },
+    ]);
+    const md = atomicCompareMarkdown(planned(a2), "x.atomic-variant.json");
+    expect(md).toContain("**Coverage: incomplete.** 4 of 8 planned cells reached their model");
+    expect(md).toContain("| claude claude-sonnet-5-5 | a12-manual-check | p0 | 2 | 0 | 0 |");
+    expect(md).toContain("Failed cells: a12-manual-check.p0.claude-claude-sonnet-5-5.e-medium.r1.");
+  });
+
+  it("says a complete run is complete, and a file without repetitions is not checked", () => {
+    const a12 = [1, 2].flatMap((r) => [
+      cell("a12-manual-check", "p0", r),
+      cell("a12-manual-check", "stop-slow", r),
+    ]);
+    const md = atomicCompareMarkdown(
+      { ...(planned([...a2, ...a12]) as object), failed: [] } as Json,
+      "x",
+    );
+    expect(md).toContain("Coverage: complete, 8 of 8 planned cells reached their model.");
+    expect(atomicCompare(twoArms).coverage).toBeNull();
+    expect(atomicCompareMarkdown(twoArms, "x")).toContain(
+      "Coverage: the results record no repetitions",
+    );
+  });
+});

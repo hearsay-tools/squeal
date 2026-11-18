@@ -1,4 +1,5 @@
 // The mechanical grade of one cell (spec 006 D4), from its timeline and the ground truth.
+import { skillReadsOf } from "./check-evidence.mjs";
 import { gradeClaim, parseClaim } from "./claim.mjs";
 import { classifyShell, scopeLabel } from "./commands.mjs";
 import { completedRuns, failedChecks, NO_DAEMON, retainedOf } from "./evidence.mjs";
@@ -210,6 +211,7 @@ export function gradeCell({
     // Row 005-127, what the session looked up: Squeal's help, any form, and `squeal checks`.
     squealHelp: pulls.filter((p) => p.help).length,
     squealChecks: pulls.filter((p) => p.sub === "checks" && !p.help).length,
+    skillReads: skillReadsOf(items),
     deliveries: Object.fromEntries(
       ["registration", "fail", "deny", "resolved", "noDaemon", "other"].map((k) => [
         k,

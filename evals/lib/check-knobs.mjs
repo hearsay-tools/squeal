@@ -19,10 +19,21 @@ export function addChecks(knobs, { work, git, log }) {
 
 /**
  * Whether `squeal status` output `text` names a config problem (its `Config problem:` line). The
- * fixture's own config has none, so with the knob one is the knob's: a pinned CLI that does not
- * know a key of a group (`description` before 005-126) leaves the group out, and the scenario
- * would measure another situation. The runner then skips the cell, as for an unknown policy key.
+ * fixture's own config has none, so with the knob one is the knob's.
  */
 export function checksProblem(text) {
   return /^Config problems?:/m.test(String(text));
+}
+
+/**
+ * Throws when `squeal status` output `text` names a config problem: the pinned CLI left a check
+ * group of the knob out (a CLI without 005-126's `description`, or a regression in the
+ * candidate's validation), and the cell would measure another situation. The cell's setup fails,
+ * so the run lists it as failed and the comparison counts it missing (review
+ * exp-minimal-primer-design B2).
+ */
+export function assertChecksAccepted(text) {
+  if (!checksProblem(text)) return;
+  const line = /^Config problems?:.*$/m.exec(String(text))?.[0];
+  throw new Error(`the pinned CLI does not accept the checks knob's config: ${line}`);
 }

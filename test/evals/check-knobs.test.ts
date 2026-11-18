@@ -2,7 +2,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { addChecks, checksProblem, situationOf } from "../../evals/lib/index.mjs";
+import {
+  addChecks,
+  assertChecksAccepted,
+  checksProblem,
+  situationOf,
+} from "../../evals/lib/index.mjs";
 
 // Row 005-127: the `checks` knob of a12-manual-check, a check group committed into the fixture's
 // config before the warm-up, and the guard that skips a cell whose CLI does not accept it.
@@ -48,6 +53,15 @@ describe("the checks knob", () => {
       ),
     ).toBe(true);
     expect(checksProblem("Revision: 0\nKnown failures: 0\nDaemon: alive")).toBe(false);
+  });
+
+  it("fails the cell's setup on a config problem line, naming it (review B2)", () => {
+    const text =
+      'Revision: 0\nConfig problem: squeal.config.json: "checks[0]" has unknown key "description"';
+    expect(() => assertChecksAccepted(text)).toThrow(
+      /does not accept the checks knob's config: Config problem: squeal\.config\.json: "checks\[0\]"/,
+    );
+    expect(() => assertChecksAccepted("Revision: 0\nKnown failures: 0")).not.toThrow();
   });
 
   it("tells the judge the check runs only on request", () => {

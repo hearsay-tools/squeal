@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { classifyShell, pilotRecord, scenarioOf } from "../../evals/lib/index.mjs";
+import {
+  classifyShell,
+  claudeTimeline,
+  pilotRecord,
+  scenarioOf,
+  skillReadsOf,
+} from "../../evals/lib/index.mjs";
 import {
   CLAIM,
+  claudeEvents,
   graded,
   type Harness,
+  PENDING,
   REGISTERED,
+  RESULT,
   regradedForms,
   STATUS_TEXT,
   type Step,
@@ -221,6 +230,11 @@ const SESSIONS: Record<string, { steps: Step[]; misses: string[]; checks: boolea
     misses: ["manual-check-seen"],
     checks: false,
   },
+  "reads status, claims unknown naming a negation about another suite": {
+    steps: [...OPEN, STATUS, say("unknown", "contract passed; I did not run the scripts tests")],
+    misses: ["manual-check-seen"],
+    checks: false,
+  },
   "reads status, claims unknown without naming the check": {
     steps: [...OPEN, STATUS, say("unknown", "I did not look at any results")],
     misses: ["manual-check-seen"],
@@ -312,6 +326,8 @@ describe("the look-up context, every scenario (row 005-127)", () => {
       "help-used": false,
       "checks-command-used": false,
       "skill-loaded": false,
+      "own-run": false,
+      "own-run-while-pending": false,
     });
     expect(Object.keys(r.measures)).not.toContain("lookup");
   });
@@ -386,5 +402,81 @@ describe("what the grader keeps for a manual check (review exp-minimal-primer-de
       { cmd: `npx vitest run ${FILE} | tail -1`, out: "      Tests  1 failed | 1 passed (2)" },
     ]);
     expect(cut).not.toHaveProperty("files");
+  });
+});
+
+describe("a12's routes and the own-run context (review exp-minimal-primer-design S1, question 3)", () => {
+  const context = (steps: Step[], scenario = scenarioOf("a12-manual-check")) =>
+    pilotRecord({ ...graded(steps, { truthPass: false, status: "stale" }) }, { scenario }).context;
+  const routes = (steps: Step[]) => {
+    const c = context(steps);
+    return [c?.["manual-via-squeal"], c?.["manual-via-own-run"], c?.["manual-via-unknown"]];
+  };
+
+  it("names the route each right session took, apart", () => {
+    expect(routes([...OPEN, RUN_CONTRACT, CLAIM("fail")])).toEqual([true, false, false]);
+    expect(routes([...OPEN, OWN_RUN, CLAIM("fail")])).toEqual([false, true, false]);
+    expect(routes([...OPEN, STATUS, NOT_RUN])).toEqual([false, false, true]);
+    expect(routes([...OPEN, { say: "Done." }])).toEqual([null, null, null]);
+    expect(context([...OPEN, CLAIM("pass")], scenarioOf("a3-harmless"))).not.toHaveProperty(
+      "manual-via-squeal",
+    );
+  });
+
+  it("counts an own run while Squeal named checks pending, and not one after its answer", () => {
+    const run = {
+      cmd: "npx vitest run",
+      out: " Test Files  9 passed (9)\n      Tests  23 passed (23)",
+    };
+    const pending = context([...OPEN, { squeal: PENDING(1) }, run, CLAIM("fail")]);
+    expect([pending?.["own-run"], pending?.["own-run-while-pending"]]).toEqual([true, true]);
+    const answered = context([...OPEN, { squeal: RESULT(1) }, run, CLAIM("fail")]);
+    expect([answered?.["own-run"], answered?.["own-run-while-pending"]]).toEqual([true, false]);
+    const silent = context([...OPEN, run, CLAIM("fail")]);
+    expect(silent?.["own-run-while-pending"]).toBe(false);
+  });
+});
+
+describe("a skill load, as the look-up context counts it (review exp-minimal-primer-design S2)", () => {
+  const SKILL = "plugins/claude-code/skills/squeal/SKILL.md";
+  const loaded = (cmd: string, exit = 0) => skillReadsOf([{ kind: "cmd", cmd, exit, out: "" }]) > 0;
+
+  it("counts a reader that ran on the skill's file", () => {
+    expect(loaded(`cat ${SKILL}`)).toBe(true);
+    expect(loaded(`sed -n 1,80p ${SKILL}`)).toBe(true);
+    expect(loaded(`cd plugins && cat claude-code/skills/squeal/SKILL.md`)).toBe(true);
+  });
+
+  it("counts no search, listing, failed or unreached read", () => {
+    expect(loaded(`rg --files ${SKILL}`)).toBe(false);
+    expect(loaded(`ls ${SKILL}`)).toBe(false);
+    expect(loaded(`false && cat ${SKILL}`, 1)).toBe(false);
+    expect(loaded(`cat ${SKILL}`, 1)).toBe(false);
+    expect(skillReadsOf([{ kind: "cmd", cmd: `cat ${SKILL}`, exit: 0, refused: true }])).toBe(0);
+  });
+
+  it("counts Claude Code's Read and Skill calls only when they did not error", () => {
+    const read = (error: boolean) =>
+      claudeTimeline([
+        {
+          t: 1000,
+          type: "assistant",
+          message: {
+            content: [
+              { type: "tool_use", id: "r", name: "Read", input: { file_path: `/tmp/${SKILL}` } },
+            ],
+          },
+        },
+        {
+          t: 1500,
+          type: "user",
+          message: {
+            content: [{ type: "tool_result", tool_use_id: "r", content: "x", is_error: error }],
+          },
+        },
+        ...claudeEvents([CLAIM("pass")]),
+      ]).items;
+    expect(skillReadsOf(read(false))).toBe(1);
+    expect(skillReadsOf(read(true))).toBe(0);
   });
 });

@@ -21,6 +21,7 @@ export {
   waitSettled,
 } from "./atomic.mjs";
 export { atomicCompare, atomicCompareMarkdown } from "./atomic-compare.mjs";
+export { atomicCoverage, coverageLines } from "./atomic-coverage.mjs";
 export {
   atomicDropped,
   atomicMarkdown,
@@ -61,8 +62,15 @@ export {
   JUDGE_MODELS,
   judgeRecord,
 } from "./calibration.mjs";
-export { lookupsOf, manualCheckSeen, namesNotRun } from "./check-evidence.mjs";
-export { addChecks, checksProblem } from "./check-knobs.mjs";
+export {
+  lookupsOf,
+  manualCheckRoutes,
+  manualCheckSeen,
+  namesNotRun,
+  runContextOf,
+  skillReadsOf,
+} from "./check-evidence.mjs";
+export { addChecks, assertChecksAccepted, checksProblem } from "./check-knobs.mjs";
 export { parseClaim } from "./claim.mjs";
 export { classifyShell, scopeLabel } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";
