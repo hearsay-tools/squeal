@@ -106,3 +106,35 @@ It writes that file only when a cell's measures changed, adding `regraded: { by,
 - Grader: `evals/lib/grade.mjs` adds `squealHelp` and `squealChecks` to the grade, and `group` to the retained `squeal-run` step. `cellRecord` does not copy the two counts. They reach the results only through the pilot record's `context`, which `regrade-cells.mjs` recomputes from a kept cell's `out/` as it recomputes the measures.
 - Context: `evals/lib/check-evidence.mjs` (`manualCheckRoutes`, `lookupsOf`, `runContextOf`, `skillReadsOf`), put into `atomic.context` by `atomic-measures.mjs` `pilotRecord`. Comparison: `atomic-compare.mjs`, `atomic-coverage.mjs`, `atomic-pool.mjs`.
 - `evals/README.md` does not yet name the two variants or a12. It is outside this row's files.
+
+## Forms E and F: sending the agent to the skill
+
+The human, 2026-11-18: test forms E and F. In stage 4, form B brought hand runs back on Sonnet in a9-env-retry and a11-inherited-flake, in sessions that had not loaded the skill. Both forms are variant files only. The Squeal under test stays 86fd6c9ce9cce15ed9a983753bb1762ff5eb2cb7, so the pins and the shipped arm are those of stages 1 to 4.
+
+- `evals/variants/primer-minimal-skill.json` (E): the form switch to `minimal`; the retry step in the skill; and the start message's last sentence followed by "Read the squeal skill before you run or judge tests." The skill's description is as shipped.
+- `evals/variants/primer-minimal-desc.json` (F): the form switch to `minimal`; the retry step in the skill; and the skill's `description:` line replaced in every copy. The start message is the plain minimal form.
+
+**The retry step and its numbering.** The skill's steps had no `squeal retry`. The new text is step 3, before "Wait only when you need a result before your next step". The later steps become 4, 5 and 6, and every reference to their numbers moves with them:
+
+- in `SKILL.md`: `(step 4)` becomes `(step 5)`; `use step 3's path wait instead` becomes `use step 4's path wait instead` (the seed has no such line); `not what step 3 or 4 expects` becomes `not what step 4 or 5 expects`;
+- in `references/commands.md`: "The skill's step 4 says what to claim from it." and "(the skill's step 4)" become step 5.
+
+**Which copies.** The copies that hold the steps are `plugins/claude-code`, `plugins/codex-runtime`, `plugins/pi` (`plugins/*/skills/squeal/`, min 3) and the Codex seed, `plugins/codex/seed/skills/squeal/` (min 1). `plugins/codex/skills/squeal/SKILL.md` is a short file without steps: it tells the agent to read the runtime's skill. Every patch matched exactly its minimum on a copy of 86fd6c9ce's plugin tree, as the variant loader applies it. The counts are, in patch order: E `[25,3,1,3,1,3,1,3,1,3,3,1,3,1,3,1,25]`, F `[25,3,1,3,1,3,1,3,1,3,3,1,3,1,3,1,4,1]`.
+
+**E's anchor.** In 86fd6c9ce's bundles the minimal form's last sentence is the template line `` `${capital(cli("--help"))} has the rest.`, ``: once in each of 25 bundles (checked on that commit's tree, `git archive`), the same 25 that hold the switch. With the patch, the start message ends "… `squeal --help` has the rest. Read the squeal skill before you run or judge tests." One exception: when the start message names no CLI (`naming === "none"`), the sentence "These are commands of the CLI SQUEAL messages name." still follows.
+
+**F's description.** The description line is identical in all five `SKILL.md` copies, and no other file of the pin holds it.
+- Claude Code reads a plugin skill's `name` and `description` from the front matter of `skills/<name>/SKILL.md` in the plugin directory the cell passes, `<pin>/plugins/claude-code`. `.claude-plugin/plugin.json` and the marketplace files hold only the plugin's own description.
+- Codex installs `plugins/codex` from the pinned marketplace (`codex plugin add squeal@hearsay`, after the pin was patched). It takes the skill's description from that copy's `skills/squeal/SKILL.md` front matter, which F patches too. The steps the Codex agent then reads are the runtime's `skills/squeal/SKILL.md`, which the cell retains from the patched `plugins/codex-runtime`, or the seed.
+- Earlier variants relied on the same places: `noskill` removed both skill copies, and `skill-file` patched bundles. I did not run Codex to observe this.
+
+**The Codex runtime's hashes.** `plugins/codex-runtime/runtime.json` lists a sha256 per file, and the patched files no longer match it. Stages 1 to 4 ran Sol on `primer-minimal`, whose patch changes 11 codex-runtime bundles in the same way, so the retained runtime is not verified against those hashes at use. The E and F runs are Sonnet only.
+
+**Run commands**, from a checkout that holds these two variant files (the runner reads `evals/variants/` there; the pin comes from `--commit`):
+
+```sh
+node evals/bin/run-baseline.mjs --atomic --commit 86fd6c9ce9cce15ed9a983753bb1762ff5eb2cb7 --variant primer-minimal-skill --models claude-sonnet-5-5 --tasks a9-env-retry,a11-inherited-flake --repetitions 10
+node evals/bin/run-baseline.mjs --atomic --commit 86fd6c9ce9cce15ed9a983753bb1762ff5eb2cb7 --variant primer-minimal-desc --models claude-sonnet-5-5 --tasks a9-env-retry,a11-inherited-flake --repetitions 10
+```
+
+Each run is 2 scenarios × 1 model × 2 arms × 10 = 40 sessions: the shipped arm beside its variant arm. Each writes its own `.atomic-variant.json`. `atomic-compare.mjs` compares each file on its own. It refuses to pool an E or F file with a `primer-minimal` file, because their variant arms differ.
