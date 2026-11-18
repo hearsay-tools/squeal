@@ -2594,7 +2594,7 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-11 `squeal proof` conditions and repeat | done (0.1.562, main `587fcd4e9`, 2026-11-18, not yet released; reviews `wave-9.md` FAIL, the human chose an empty own HOME with `--home-keep`, `wave-9-rereview.md` PASS, candidate CI found the gate's load retry rerunning proof sides (also in 023-08's 0.1.561), fixed, `wave-9-third.md` PASS on `ca00d0238`; `--env`, `--without`, `--home-keep`, `--repeat`, `--case dependency`) | D5.3, D5.4 | after 023-08 |
 | 023-09 end-to-end suite, one proof per case on real squawk fixes | done (2026-11-18, tests only, by hand: `SQUEAL_E2E_AT=1`, command in `tasks/023-09-notes.md`; 7 cases pass in 348 s; squawk has no real `--without` fix, so that case is synthetic; found defects D1 to D3, row 023-18) | Testing | after 023-11 |
 | 023-10 dogfood: red proof and before/after in agent sessions | approved; wave 6 | Proof | after 023-09 |
-| 023-18 repairs from the end-to-end suite: `--run` report reads the stored key the run used (D1), the not-stored reason names the real cause (D2), a git `eol`/filter difference is not called an install change (D3), `--home-keep` copy checks the deadline (wave-9 N1) | approved; wave 11 | D3, D4, D5.3 | after 023-09 |
+| 023-18 repairs from the end-to-end suite: `--run` report reads the stored key the run used (D1), the not-stored reason names the real cause (D2), a git `eol`/filter difference is not called an install change (D3), `--home-keep` copy checks the deadline (wave-9 N1) | running (wave 11, brief `specifications/023-results-at-commit/tasks/wave-11.md`) | D3, D4, D5.3 | after 023-09 |
 
 ## Later
 
