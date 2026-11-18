@@ -1,0 +1,43 @@
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file, or a file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                text, and asks for nothing
+  squeal status --wait <ms> [--full] [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
+                                Wait up to <ms> for the test files the paths select,
+                                then give their verdict as status <path>... does,
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
+  squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--json]
+                                Each test file's stored result at the commit's key
+                                (keyed in a temporary checkout there; nothing runs)
+                                beside its state now: pass, fail, no result, absent
+                                or not determined, with where the result came from;
+                                lists the files that changed or are unknown, then
+                                counts; exit 0 when every file is known on both
+                                sides, 3 when one is not, 2 on a usage or setup error.
+                                --run runs, in that checkout, the files with no result
+                                that the diff <commit>..HEAD selects (--all-missing:
+                                every one, after an estimate) and stores them at the
+                                commit's keys, within one --timeout (600 s, the
+                                checkout and install included)
