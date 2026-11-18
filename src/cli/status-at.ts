@@ -1,5 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
@@ -13,7 +14,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { commitSide } from "./status-at-commit.js";
-import { nowSide } from "./status-at-now.js";
+import { listLate, nowSide } from "./status-at-now.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
 import { runChild, takeRunRequest } from "./status-at-run-child.js";
@@ -207,42 +208,69 @@ export async function statusAtCommand(
         }),
   });
   const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref) ?? at.state(ref);
-  const files = compareSides(unionRefs(now.refs, at.refs, paths), state, now.state);
+  const sides = { now: now.sources, at: at.sources, failed: at.failure !== null };
+  const { refs, unmatched } = unionRefs(now.refs, at.refs, paths, sides, root, commit);
+  // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
+  const current = await listLate(input, now, refs);
+  const files = compareSides(refs, state, current.state);
   const head = await readHead(root);
   const report: AtReport = {
     commit,
     commitTimeMs: await commitTime(root, commit),
     head: head.head,
     dirty: head.dirty,
-    now: now.source,
+    now: current.source,
     checkoutMs: at.checkoutMs,
     inputCheckMs: at.inputCheckMs,
     changed: at.changed,
     failure: at.failure,
     files,
+    ...(unmatched.length === 0 ? {} : { unmatched }),
     ...(ran === null ? {} : { run: ran.use() }),
   };
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
-  return at.failure === null ? exitCode(files) : 3;
+  return at.failure === null && unmatched.length === 0 ? exitCode(files) : 3;
 }
 
 /**
- * Both sides' files, by `testFileId`; a path that selects a file on
- * neither side is a file of its own in the default project, so it is
- * answered (absent, or not a test file) and not dropped.
+ * Both sides' files, by `testFileId`. Row 023-19 (P4): a path that selects
+ * no test file by path on a side selects there the files whose closure
+ * holds it; one that selects nothing either way, and that the commit or
+ * the working tree holds, is `unmatched`, as `squeal status <path>` says
+ * it. A path that exists on neither side, or that a failed checkout could
+ * not answer, is a file of its own in the default project, so it is
+ * answered (absent, or not determined) and not dropped.
  */
 function unionRefs(
   now: readonly TestFileRef[],
   at: readonly TestFileRef[],
   paths: readonly RelativePath[] | null,
-): TestFileRef[] {
+  sides: {
+    readonly now: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
+    readonly at: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
+    readonly failed: boolean;
+  },
+  root: AbsolutePath,
+  commit: string,
+): { refs: TestFileRef[]; unmatched: RelativePath[] } {
   const all = new Map([...now, ...at].map((ref) => [testFileId(ref), ref]));
+  const unmatched: RelativePath[] = [];
   for (const path of paths ?? []) {
-    if (![...all.values()].some((ref) => selects([path], ref.path)))
-      all.set(testFileId({ project: "", path }), { project: "", path });
+    if ([...all.values()].some((ref) => selects([path], ref.path))) continue;
+    const readers = [...(sides.now.get(path) ?? []), ...(sides.at.get(path) ?? [])];
+    if (readers.length > 0) continue;
+    if (!sides.failed && (existsSync(join(root, path)) || inCommit(root, commit, path)))
+      unmatched.push(path);
+    else all.set(testFileId({ project: "", path }), { project: "", path });
   }
-  return [...all.values()];
+  return { refs: [...all.values()], unmatched };
+}
+
+/** Whether `commit` holds `path`, a file or a folder. */
+function inCommit(root: AbsolutePath, commit: string, path: RelativePath): boolean {
+  const found = spawnSync("git", ["cat-file", "-e", `${commit}:${path}`], { cwd: root });
+  return found.status === 0;
 }
 
 /** `path`, given from `cwd`, relative to `root` in git's form; `null` outside it. */

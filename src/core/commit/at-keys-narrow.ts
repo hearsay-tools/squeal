@@ -35,3 +35,28 @@ function listingOnly(adapter: RunnerAdapter, paths: readonly RelativePath[]): Ru
     },
   });
 }
+
+/**
+ * Row 023-19 (P4): `adapters` narrowed to `paths`'s test files when each
+ * path selects a test file one of them lists; else unnarrowed, so every
+ * listed file is keyed and a caller selects by closure. `sources` hears
+ * the paths that select no listed test file and that `holds` (source
+ * paths), once the adapters are made: a path the tree lacks is in no
+ * closure, and keys nothing more.
+ */
+export function narrowedOrAll(
+  adapters: KeyingOptions["adapters"],
+  paths: readonly RelativePath[],
+  holds: (path: RelativePath) => boolean,
+  sources: (paths: readonly RelativePath[]) => void,
+): KeyingOptions["adapters"] {
+  return async (root, policy, tempDir) => {
+    const made = await adapters(root, policy, tempDir);
+    const listed = (await Promise.all(made.map((adapter) => adapter.testFiles()))).flat();
+    const named = paths.filter(
+      (path) => holds(path) && !listed.some((ref) => selects([path], ref.path)),
+    );
+    sources(named);
+    return named.length > 0 ? made : made.map((adapter) => listingOnly(adapter, paths));
+  };
+}

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { resultsAt } from "../core/commit/at-keys-checkout.js";
+import { resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import { withKeyer } from "../core/commit/at-keys-walk.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -10,7 +10,9 @@ import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import { type NowSource, type SideState, stateOf } from "./status-at-report.js";
+import { StoredClosures, storedReaders } from "./stored-closures.js";
 
 /*
  * Spec 023 D3 (row 023-06): the current side. With a live daemon in this
@@ -18,6 +20,12 @@ import { type NowSource, type SideState, stateOf } from "./status-at-report.js";
  * keying here; with none, the gate's keyer in the working tree (row
  * 020-51's `openKeyer`, through `withKeyer`, policy as a daemon reads it)
  * and the store's results at its keys, read-only, as 020 D11.7 reads them.
+ * Row 023-19 (P5): a live daemon that has listed no test file yet is read
+ * as no daemon is; the files a listing daemon does not list yet that the
+ * working tree holds are keyed here (`listLate`). P4: a path that selects
+ * no listed test file is a source path, and selects the test files whose
+ * closure holds it, as `squeal status <path>` does: the daemon's stored
+ * closures, or the closures the keying here gives.
  */
 
 export interface NowInput {
@@ -40,28 +48,44 @@ export interface NowInput {
 
 export interface NowSide {
   readonly source: NowSource;
-  /** The test files listed now that the paths select. */
+  /** The test files listed now that the paths select, by path or (P4) by closure. */
   readonly refs: readonly TestFileRef[];
   readonly state: (ref: TestFileRef) => SideState;
+  /** P4: the paths that select no listed test file, each with the files whose closure holds it. */
+  readonly sources: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
+  /** P5: whether the daemon does not list `ref`; always `false` with no daemon. */
+  readonly unlisted: (ref: TestFileRef) => boolean;
 }
 
 /** The current side of `input.paths`'s test files. */
 export async function nowSide(input: NowInput): Promise<NowSide> {
   const row = input.main?.worktrees.get(input.worktreeId) ?? null;
   if (input.main !== null && worktreeLiveness(row, input.now).state === "alive") {
-    return daemonSide(input, input.main);
+    const rows = input.main.testFileKeys.list(input.worktreeId);
+    // P5: a starting daemon has listed nothing yet; "lists no such test file" would be wrong.
+    if (rows.length > 0) return daemonSide(input, input.main, rows);
+    return keyedSide(input, { why: "listing" });
   }
   return keyedSide(input);
 }
 
 /** D3: the daemon's keys and the results at them; no re-keying. */
-function daemonSide(input: NowInput, main: Store): NowSide {
-  const rows = main.testFileKeys.list(input.worktreeId);
+function daemonSide(input: NowInput, main: Store, rows: readonly TestFileKeyRecord[]): NowSide {
   const byId = new Map(rows.map((r) => [testFileId(r.testFile), r]));
-  const refs = select(
-    rows.map((r) => r.testFile),
-    input.paths,
-  );
+  const listed = rows.map((r) => r.testFile);
+  const sources = new Map<RelativePath, readonly TestFileRef[]>();
+  const named = sourcePaths(input.root, listed, input.paths);
+  if (named.length > 0) {
+    const closures = new StoredClosures().read(main);
+    for (const path of named) {
+      const readers = storedReaders(main, input.worktreeId, rows, closures, path);
+      sources.set(
+        path,
+        readers.map((r) => r.testFile),
+      );
+    }
+  }
+  const refs = union(select(listed, input.paths), sources);
   const revision = rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
   // Read now: the store closes when this side is returned.
   const states = new Map<string, SideState>();
@@ -81,16 +105,41 @@ function daemonSide(input: NowInput, main: Store): NowSide {
   }
   const state = (ref: TestFileRef) =>
     states.get(testFileId(ref)) ?? unlisted(input.root, ref, "the daemon lists no such test file");
-  return { source: { kind: "daemon", revision }, refs, state };
+  return {
+    source: { kind: "daemon", revision },
+    refs,
+    state,
+    sources,
+    unlisted: (ref) => !byId.has(testFileId(ref)),
+  };
 }
 
-/** D3 with no daemon: the gate's keyer in the working tree, and the results at its keys. */
-async function keyedSide(input: NowInput): Promise<NowSide> {
+/**
+ * D3 with no daemon: the gate's keyer in the working tree, and the results
+ * at its keys. `why` `listing`: a daemon runs and has listed nothing yet.
+ * `sources` `false`: the paths are test files only, never source paths.
+ */
+async function keyedSide(
+  input: NowInput,
+  how: { readonly why?: "listing"; readonly sources?: false } = {},
+): Promise<NowSide> {
+  const { why } = how;
   const { root, commonDir, main } = input;
   const options = { adapters: input.adapters, squealVersion: input.squealVersion, env: input.env };
-  return withKeyer(root, commonDir, main ?? undefined, options, async ({ keyer, listed: all }) => {
-    const refs = select([...all.values()], input.paths);
-    const keyed = await keyer.keyed(refs);
+  return withKeyer(root, commonDir, main ?? undefined, options, async ({ keyer, listed }) => {
+    const all = [...listed.values()];
+    const named = how.sources === false ? [] : sourcePaths(root, all, input.paths);
+    // P4: a source path's readers are known only from closures: every listed file is keyed.
+    const asked = named.length > 0 ? all : select(all, input.paths);
+    const keyed = await keyer.keyed(asked);
+    const sources = new Map<RelativePath, readonly TestFileRef[]>();
+    for (const path of named) {
+      sources.set(
+        path,
+        asked.filter((ref) => keyed.get(ref)?.loads.includes(path) === true),
+      );
+    }
+    const refs = union(select(all, input.paths), sources);
     const states = new Map<string, SideState>();
     for (const ref of refs) {
       const at = keyed.get(ref);
@@ -105,8 +154,34 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
     }
     const state = (ref: TestFileRef) =>
       states.get(testFileId(ref)) ?? unlisted(root, ref, "no runner lists it");
-    return { source: { kind: "stored" }, refs, state };
+    const source: NowSource = why === undefined ? { kind: "stored" } : { kind: "stored", why };
+    return { source, refs, state, sources, unlisted: () => false };
   });
+}
+
+/**
+ * P5: the files of `refs` the daemon does not list that the working tree
+ * holds, keyed here and read at those keys (D3's rule with no daemon);
+ * the others as the daemon gives them. `now` itself when there is none.
+ */
+export async function listLate(
+  input: Omit<NowInput, "main" | "paths">,
+  now: NowSide,
+  refs: readonly TestFileRef[],
+): Promise<NowSide> {
+  if (now.source.kind !== "daemon") return now;
+  const late = refs.filter((ref) => now.unlisted(ref) && existsSync(join(input.root, ref.path)));
+  if (late.length === 0) return now;
+  const paths = [...new Set(late.map((ref) => ref.path))];
+  const keyed = await withStores(input.commonDir, (main) =>
+    keyedSide({ ...input, main, paths }, { sources: false }),
+  );
+  const ids = new Set(late.map(testFileId));
+  return {
+    ...now,
+    source: { ...now.source, late: late.length },
+    state: (ref) => (ids.has(testFileId(ref)) ? keyed.state(ref) : now.state(ref)),
+  };
 }
 
 /** A named file not listed now: absent when the working tree lacks it. */
@@ -124,4 +199,29 @@ export function select(
   paths: readonly RelativePath[] | null,
 ): TestFileRef[] {
   return paths === null ? [...all] : all.filter((ref) => selects(paths, ref.path));
+}
+
+/**
+ * P4: the paths the working tree holds that select no listed test file:
+ * source paths, or paths that select nothing. A path it lacks is in no
+ * closure now, and keys nothing more.
+ */
+export function sourcePaths(
+  root: AbsolutePath,
+  listed: readonly TestFileRef[],
+  paths: readonly RelativePath[] | null,
+): RelativePath[] {
+  return (paths ?? []).filter(
+    (path) => existsSync(join(root, path)) && !listed.some((ref) => selects([path], ref.path)),
+  );
+}
+
+/** The files the paths select, and those the source paths select, once each. */
+function union(
+  selected: readonly TestFileRef[],
+  sources: ReadonlyMap<RelativePath, readonly TestFileRef[]>,
+): TestFileRef[] {
+  const all = new Map(selected.map((ref) => [testFileId(ref), ref]));
+  for (const refs of sources.values()) for (const ref of refs) all.set(testFileId(ref), ref);
+  return [...all.values()];
 }

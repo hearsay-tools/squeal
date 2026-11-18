@@ -1,5 +1,5 @@
 import { type KeysAt, type KeysAtOptions, keysAtCommit } from "../core/commit/at-keys.js";
-import { narrowed, selects } from "../core/commit/at-keys-narrow.js";
+import { narrowedOrAll, selects } from "../core/commit/at-keys-narrow.js";
 import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { committedBlobs } from "../core/commit/tree.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -26,6 +26,11 @@ export interface CommitSide {
   readonly changed: Changed | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
+  /**
+   * Row 023-19 (P4): the paths that select no test file the commit lists,
+   * each with the files whose closure at the commit holds it.
+   */
+  readonly sources: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
 }
 
 export type CommitSideOptions = Omit<KeysAtOptions, "files"> & {
@@ -44,21 +49,32 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
   const { paths, worktreeId, root, commit } = options;
   const tree = await committedBlobs(root, commit);
   const asked = paths === null || [...tree.keys()].some((path) => selects(paths, path));
+  // P4: a path no listed test file matches is a source path; then every file is keyed.
+  let named: readonly RelativePath[] = [];
+  const hear = (found: readonly RelativePath[]) => {
+    named = found;
+  };
   // No committed path is selected: every named file is absent there, with no checkout.
   const at: KeysAt = asked
     ? await keysAtCommit({
         ...options,
-        ...(paths === null ? {} : { adapters: narrowed(options.adapters, paths) }),
+        ...(paths === null
+          ? {}
+          : { adapters: narrowedOrAll(options.adapters, paths, (path) => tree.has(path), hear) }),
       })
     : { commit, files: new Map(), failure: null, checkoutMs: null, store: true };
+  const sources = new Map<RelativePath, TestFileRef[]>(named.map((path) => [path, []]));
+  for (const [id, found] of at.files) {
+    if (!("key" in found)) continue;
+    for (const path of named)
+      if (found.loads?.includes(path) === true) sources.get(path)?.push(refOf(id));
+  }
+  const bySource = new Set([...sources.values()].flat().map(testFileId));
   const failure = at.failure === null ? null : `${at.failure.reason}: ${at.failure.detail}`;
   const refs = [...at.files.keys()]
-    .map((id) => {
-      const [project = "", path = ""] = id.split("\0");
-      return { project, path };
-    })
-    // CI's export may settle files beyond the paths.
-    .filter((ref) => paths === null || selects(paths, ref.path));
+    .map(refOf)
+    // CI's export may settle files beyond the paths; P4: a source path selects by closure.
+    .filter((ref) => paths === null || selects(paths, ref.path) || bySource.has(testFileId(ref)));
   const changed = at.changed ?? null;
   const state = (ref: TestFileRef): SideState => {
     const found = at.files.get(testFileId(ref));
@@ -78,5 +94,12 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
     inputCheckMs: at.inputCheckMs ?? null,
     changed,
     failure,
+    sources,
   };
+}
+
+/** A file's reference from its `testFileId`. */
+function refOf(id: string): TestFileRef {
+  const [project = "", path = ""] = id.split("\0");
+  return { project, path };
 }

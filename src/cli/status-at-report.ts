@@ -167,8 +167,17 @@ export function pastRetention(
 
 /** What the current side was read from. */
 export type NowSource =
-  | { readonly kind: "daemon"; readonly revision: number | null }
-  | { readonly kind: "stored" };
+  | {
+      readonly kind: "daemon";
+      readonly revision: number | null;
+      /** Row 023-19 (P5): files the daemon did not list yet, read at the working tree's keys. */
+      readonly late?: number;
+    }
+  | {
+      readonly kind: "stored";
+      /** Row 023-19 (P5): `listing`, a daemon runs and has listed no test file yet. */
+      readonly why?: "listing";
+    };
 
 export interface AtReport {
   readonly commit: string;
@@ -184,11 +193,30 @@ export interface AtReport {
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
   readonly files: readonly FileReport[];
+  /**
+   * Row 023-19 (P4): the named paths that select no test file, by path or by
+   * closure, at the commit or now; absent when none.
+   */
+  readonly unmatched?: readonly string[];
   /** Row 023-07: `--run`'s budget use; absent without `--run`. */
   readonly run?: RunUse;
 }
 
 const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
+
+/** D3: what the current side was read from (row 023-19, P5: a daemon still listing). */
+function nowText(now: NowSource): string {
+  const stored = "now is the stored results at the working tree's keys";
+  if (now.kind === "stored" && now.why === "listing")
+    return `This worktree's daemon has not listed its test files yet: ${stored}.`;
+  if (now.kind === "stored") return `No daemon runs in this worktree: ${stored}.`;
+  const revision = now.revision === null ? "" : ` at revision ${now.revision}`;
+  const late = now.late ?? 0;
+  if (late === 0) return `Now is this worktree's daemon${revision}.`;
+  const files =
+    late === 1 ? "1 test file it has not listed is" : `${late} test files it has not listed are`;
+  return `Now is this worktree's daemon${revision}; ${files} read at the working tree's keys.`;
+}
 
 /** The input check's share of the checkout's time, when one ran. */
 const checkText = (ms: number | null | undefined) =>
@@ -205,14 +233,7 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   const lines = [
     `squeal status --at ${at}: ${report.files.length} test files, against the working tree (${head})`,
   ];
-  if (report.now.kind === "stored") {
-    lines.push(
-      "No daemon runs in this worktree: now is the stored results at the working tree's keys.",
-    );
-  } else {
-    const revision = report.now.revision === null ? "" : ` at revision ${report.now.revision}`;
-    lines.push(`Now is this worktree's daemon${revision}.`);
-  }
+  lines.push(nowText(report.now));
   if (report.checkoutMs !== null) {
     lines.push(
       `Keys at ${at} from a temporary checkout, ${(report.checkoutMs / 1000).toFixed(1)} s${checkText(report.inputCheckMs)}.`,
@@ -231,6 +252,9 @@ export function formatAt(report: AtReport, nowMs: number, full = false): string 
   // Row 023-19 (P6, P8): unknown files by group; a pointer to `squeal proof` for each new file.
   const files = fileLines(report.files, at, full);
   lines.push(...files.lines);
+  // Row 023-19 (P4): as `squeal status <path>` says it.
+  for (const path of report.unmatched ?? [])
+    lines.push(`no test file's closure holds ${path}, at ${at} or now`);
   if (files.folded) lines.push("`--full` lists every file; `--json` gives each file's states.");
   lines.push(...newFileLines(report.files, report.commit, full));
   const c = countsOf(report.files);
@@ -265,6 +289,7 @@ export function jsonAt(report: AtReport): string {
     changedBy: report.changed?.by ?? null,
     failure: report.failure,
     counts: countsOf(report.files),
+    unmatched: report.unmatched ?? [],
     run: report.run ?? null,
     files: report.files.map((f) => ({
       project: f.ref.project,
