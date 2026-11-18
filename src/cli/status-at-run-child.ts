@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
@@ -53,8 +53,13 @@ export function noLoadRetry(): HostLoad {
   return { oneMinute: null, cpus: availableParallelism() };
 }
 
-/** The child's answer: the gate's per-file outcomes, or why it gave none. */
-export type RunAnswer = { readonly result: GateFilesResult } | { readonly error: string };
+/**
+ * The child's answer: the gate's per-file outcomes, or why it gave none;
+ * `stopped` (row 023-19, P3): the parent stopped it at its hard stop.
+ */
+export type RunAnswer =
+  | { readonly result: GateFilesResult }
+  | { readonly error: string; readonly stopped?: true };
 
 /** The request file this process was given, taken out of `env` at once; `undefined` when none. */
 export function takeRunRequest(env: NodeJS.ProcessEnv = process.env): string | undefined {
@@ -99,6 +104,11 @@ export interface ChildRun {
   readonly store: boolean;
   /** Row 023-11: `false` for a proof's run: no failed file runs again under load (`noLoadRetry`). */
   readonly retry?: boolean;
+  /**
+   * Row 023-19 (P3): seconds from the child's start to the parent's hard
+   * stop of its group; default the budget plus 60 s.
+   */
+  readonly stopAfterSeconds?: number;
   /** The child's whole environment: the command's, as it started. */
   readonly env: NodeJS.ProcessEnv;
   /** The child's stdout and stderr, as they come. */
@@ -122,6 +132,8 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
     ...(run.retry === undefined ? {} : { retry: run.retry }),
   };
   writeFileSync(request, JSON.stringify(asked));
+  // Row 023-19: a later run in this checkout never reads an earlier run's answer.
+  rmSync(answer, { force: true });
   const child = spawn(command, [...flags, "status", "--at", checkout.commit], {
     cwd: checkout.tree,
     env: {
@@ -147,15 +159,20 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
     pipe?.on("data", (chunk: Buffer) => run.forward(chunk.toString("utf8")));
   }
   const pid = child.pid;
+  let stopped = false;
   const limit = setTimeout(
     () => {
+      stopped = true;
       if (pid !== undefined) void stopGroup(pid).catch(() => {});
     },
-    (run.budgetSeconds + GRACE_SECONDS) * 1000,
+    (run.stopAfterSeconds ?? run.budgetSeconds + GRACE_SECONDS) * 1000,
   );
   const how = await exited;
   clearTimeout(limit);
-  if (!existsSync(answer)) return { error: `the run's process ended ${how} with no answer` };
+  if (!existsSync(answer)) {
+    const error = `the run's process ended ${how} with no answer`;
+    return stopped ? { error, stopped: true } : { error };
+  }
   try {
     return JSON.parse(readFileSync(answer, "utf8")) as RunAnswer;
   } catch {

@@ -51,9 +51,10 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     expect(parseAt(["--at=", "--json"])).toBe("--at needs a commit");
   });
 
-  it("takes --run with --all-missing and one --timeout, 600 s by default (row 023-07, D4.6)", () => {
+  it("takes --run with --all-missing and one --timeout, 300 s by default (rows 023-07, 023-19)", () => {
+    // Row 023-19 (P3): well inside a 600 s tool call, the keying and the removal included.
     expect(parseAt(["--at", "a", "--run"])).toMatchObject({
-      run: { allMissing: false, timeoutSeconds: 600 },
+      run: { allMissing: false, timeoutSeconds: 300 },
     });
     expect(parseAt(["--run", "--all-missing", "--timeout", "90", "--at", "a", "x"])).toEqual({
       commit: "a",

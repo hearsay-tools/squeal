@@ -32,8 +32,13 @@ import { runChild, takeRunRequest } from "./status-at-run-child.js";
 /** The checkout's own install budget (row 023-16), when `--run`'s is longer. */
 const INSTALL_TIMEOUT_MS = 300_000;
 
-/** What tests set beside the CLI's own: the checkout's place and install. */
-export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install">;
+/**
+ * What tests set beside the CLI's own: the checkout's place and install;
+ * row 023-19, `--run`'s paths per batch (else sized from this machine).
+ */
+export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
+  readonly batchFiles?: number;
+};
 
 export interface AtArgs {
   readonly commit: string;
@@ -172,6 +177,7 @@ export async function statusAtCommand(
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const runArgs = args.run ?? null;
+  const { batchFiles, ...checkoutOptions } = options;
   const ran: AtRun | null =
     runArgs === null
       ? null
@@ -189,10 +195,11 @@ export async function statusAtCommand(
           // The estimate goes to stderr in both modes (D4.5); the run's own notes in text mode.
           note,
           forward: (text) => (args.json ? undefined : io.stderr(text)),
+          ...(batchFiles === undefined ? {} : { batchFiles }),
         });
   const at = await commitSide({
     ...keying,
-    ...options,
+    ...checkoutOptions,
     root,
     commit,
     paths,

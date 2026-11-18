@@ -1,17 +1,23 @@
-import { availableParallelism } from "node:os";
 import type { Checkout } from "../core/checkout/checkout.js";
 import { coverageOn } from "../core/code/coverage/runtime.js";
-import { estimateRun, type RunEstimate } from "../core/code/gate/estimate.js";
+import type { RunEstimate } from "../core/code/gate/estimate.js";
 import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
-import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { storedDurations } from "./code-gate-durations.js";
 import type { RunUse, SideState } from "./status-at-report.js";
-import { runInChild } from "./status-at-run-child.js";
+import {
+  Batches,
+  estimateOf,
+  estimateText,
+  stopMargin,
+  tellsEstimate,
+} from "./status-at-run-batches.js";
+import { type RunAnswer, runInChild } from "./status-at-run-child.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
 
@@ -37,8 +43,14 @@ export interface RunArgs {
   readonly timeoutSeconds: number;
 }
 
-/** D4.6's default budget. */
-export const RUN_TIMEOUT_SECONDS = 600;
+/**
+ * D4.6's default budget, as row 023-19 (P3) set it: 300 s, half of the
+ * longest tool call an agent's shell gives (Claude Code's Bash, 600 s), so
+ * the current side's keying, the hard stop's margin, the checkout's
+ * removal and the report end inside one call on a loaded host. At 600 s
+ * the call moved to the background and the agent lost the answer.
+ */
+export const RUN_TIMEOUT_SECONDS = 300;
 
 /** A rerun's `--timeout` gives the files left this many times their estimate (020 row 020-45). */
 const RERUN_FACTOR = 2;
@@ -63,6 +75,8 @@ export interface AtRunInput {
   readonly note: (text: string) => void;
   /** The run's own output (the gate's notes), as it comes. */
   readonly forward: (text: string) => void;
+  /** Row 023-19, for tests: each batch's paths; else sized from this machine (`Batches`). */
+  readonly batchFiles?: number;
 }
 
 export interface AtRun {
@@ -104,47 +118,95 @@ export function atRun(input: AtRunInput): AtRun {
     durationsOf = durations?.of ?? (() => null);
     try {
       estimate = estimateOf(run, durationsOf);
-      if (args.allMissing) input.note(estimateText(estimate, commit, args.timeoutSeconds));
+      // P3: a large selection tells its estimate, and how to narrow it, before it runs.
+      const left = args.timeoutSeconds - elapsed() / 1000;
+      if (tellsEstimate(estimate, args.allMissing, left)) {
+        const call = { given: input.given, paths: input.paths, allMissing: args.allMissing };
+        input.note(estimateText(estimate, commit, args.timeoutSeconds, call));
+      }
       if (run.length > 0) await runFiles(checkout, run, keyed);
     } finally {
       durations?.close();
     }
   };
 
+  /**
+   * Row 023-19 (P3): the selection in batches of whole paths, one gate
+   * child each, until the budget ends. Each batch's gate gets the time
+   * left but a margin; its group is stopped at the budget's end. A batch
+   * that answered is read back and kept whatever a later one does; the
+   * files no batch started read `not run (budget)`.
+   */
   async function runFiles(
     checkout: Checkout,
     run: readonly KeyedFile[],
     keyed: readonly KeyedFile[],
   ): Promise<void> {
     overheadMs = elapsed();
-    const left = Math.floor((budgetMs - overheadMs) / 1000);
-    if (left < 1) {
-      timedOut = true;
-      for (const file of run)
-        states.set(testFileId(file.ref), { state: "not run", reason: "budget" });
-      leftOut = run;
-      return;
-    }
-    const files = [...new Set(run.map((f) => f.ref.path))].sort();
-    const gateStarted = performance.now();
-    const answer = await runInChild({
-      relaunch: input.relaunch,
-      checkout,
-      files,
-      budgetSeconds: left,
-      // "Whole-checkout check": a checkout the install changed stores nothing.
-      store: changed === null,
-      env: input.env,
-      forward: input.forward,
+    const byPath = new Map<RelativePath, KeyedFile[]>();
+    for (const file of run) byPath.set(file.ref.path, [...(byPath.get(file.ref.path) ?? []), file]);
+    let paths = [...byPath.keys()].sort();
+    const batches = new Batches(args.timeoutSeconds, {
+      ...(input.batchFiles === undefined ? {} : { fixed: input.batchFiles }),
     });
-    gateMs = Math.round(performance.now() - gateStarted);
-    if ("result" in answer) timedOut = answer.result.timedOut;
-    const chosen = new Set(run.map((f) => testFileId(f.ref)));
+    const seconds = (path: RelativePath) => {
+      const known = (byPath.get(path) ?? []).map((f) => durationsOf(f.ref));
+      return known.some((s) => s !== null) ? Math.max(...known.map((s) => s ?? 0)) : null;
+    };
+    let ended: { readonly error: string; readonly stopped?: true } | null = null;
+    while (paths.length > 0 && ended === null) {
+      const left = Math.floor((budgetMs - elapsed()) / 1000);
+      const gateSeconds = left - stopMargin(left);
+      if (gateSeconds < 1) break;
+      const take = paths.slice(0, batches.next(paths, seconds));
+      paths = paths.slice(take.length);
+      const files = take.flatMap((path) => byPath.get(path) ?? []);
+      const started = performance.now();
+      const answer = await runInChild({
+        relaunch: input.relaunch,
+        checkout,
+        files: take,
+        budgetSeconds: gateSeconds,
+        stopAfterSeconds: left,
+        // "Whole-checkout check": a checkout the install changed stores nothing.
+        store: changed === null,
+        env: input.env,
+        forward: input.forward,
+      });
+      const took = performance.now() - started;
+      gateMs = (gateMs ?? 0) + Math.round(took);
+      batches.took(take.length, took / 1000);
+      if ("result" in answer && answer.result.timedOut) timedOut = true;
+      // A child that could not run or answer stops the batches: the next would end alike.
+      if ("error" in answer) {
+        ended = answer;
+        if (answer.stopped === true) timedOut = true;
+      }
+      await readBack(checkout, files, keyed, answer);
+    }
+    const unstarted = paths.flatMap((path) => byPath.get(path) ?? []);
+    if (unstarted.length > 0) {
+      // Not started for want of budget, unless a child failed for a reason of its own.
+      const answer: RunAnswer =
+        ended !== null && ended.stopped !== true ? ended : { error: "budget", stopped: true };
+      if (answer.stopped === true) timedOut = true;
+      await readBack(checkout, unstarted, keyed, answer);
+    }
+    leftOut = run.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
+  }
+
+  /** One batch's files read back (row 023-18, D1: at the key the gate kept each at). */
+  async function readBack(
+    checkout: Checkout,
+    run: readonly KeyedFile[],
+    keyed: readonly KeyedFile[],
+    answer: RunAnswer,
+  ): Promise<void> {
+    const chosen = new Set(selection.run.map((f) => testFileId(f.ref)));
     const paths = new Set(run.map((f) => f.ref.path));
     const siblings = keyed.filter(
       (f) => noResult(f) && paths.has(f.ref.path) && !chosen.has(testFileId(f.ref)),
     );
-    // Row 023-18 (D1), review wave-11 B1: a stored run is read at the key the gate kept it at.
     const outcomes = await outcomesOf({
       commonDir: input.commonDir,
       commit,
@@ -156,7 +218,6 @@ export function atRun(input: AtRunInput): AtRun {
       coverage: coverageOn(readPolicy(checkout.tree)),
     });
     for (const [id, state] of outcomes) states.set(id, state);
-    leftOut = run.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
   }
 
   const use = (): RunUse => {
@@ -196,32 +257,6 @@ export function atRun(input: AtRunInput): AtRun {
   };
 
   return { whileOpen, beforeRemove, state: (ref) => states.get(testFileId(ref)), use };
-}
-
-/** D17.1: the files' estimate from their stored durations, as one Vitest-wide run. */
-function estimateOf(
-  files: readonly KeyedFile[],
-  durationOf: (ref: TestFileRef) => number | null,
-): RunEstimate {
-  const width = Math.max(1, availableParallelism() - 1);
-  return estimateRun("vitest", [{ width, seconds: files.map((f) => durationOf(f.ref)) }]);
-}
-
-/** D4.5: `--all-missing`'s estimate line, told before the run. */
-export function estimateText(estimate: RunEstimate, commit: string, budget: number): string {
-  const { files, seconds, known, width } = estimate;
-  const what = `${files} test file${files === 1 ? "" : "s"} with no result at ${commit.slice(0, 9)} to run, up to ${width} at once`;
-  const budgetText = `the budget is ${budget} s, the checkout and install included`;
-  if (files === 0) return `--all-missing: no test file with no result at ${commit.slice(0, 9)}`;
-  if (seconds === null)
-    return `--all-missing: ${what}; no stored duration, so the time is unknown; ${budgetText}`;
-  const from =
-    known < files
-      ? `the stored durations of ${known} (the others at their median)`
-      : files === 1
-        ? "its stored duration"
-        : "their stored durations";
-  return `--all-missing: ${what}: about ${seconds} s from ${from}; ${budgetText}`;
 }
 
 /** 020's rerun line: this call's own arguments with `seconds` as its `--timeout`. */

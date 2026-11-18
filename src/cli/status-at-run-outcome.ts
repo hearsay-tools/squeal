@@ -54,6 +54,8 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
   const { answer, commit } = input;
   const states = new Map<string, SideState>();
   if ("error" in answer) {
+    // Row 023-19 (P3): a child the parent stopped at its hard stop ran out of budget.
+    if (answer.stopped === true) return stoppedOutcomes(input);
     const reason = `run: ${answer.error}`;
     for (const file of input.run)
       states.set(testFileId(file.ref), { state: "not determined", reason });
@@ -95,6 +97,32 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
             : "its kept result could not be read back";
         states.set(id, fromGate(file.at.key, runs, commit, why));
       }
+    }
+  });
+  return states;
+}
+
+/**
+ * Row 023-19 (P3): the files of a run the parent stopped at the budget,
+ * with no answer. The gate keeps each run's files as the run ends, so what
+ * completed may be in the store: a file is read at the key keyed before
+ * the run, which held no result when it was chosen, so a result there now
+ * is this run's. Else it reads `not run (budget)`. A run that stores
+ * nothing (a changed checkout, a forced proof side) reads nothing.
+ */
+async function stoppedOutcomes(input: OutcomeInput): Promise<Map<string, SideState>> {
+  const states = new Map<string, SideState>();
+  const budget: SideState = { state: "not run", reason: "budget" };
+  const reads = input.changed === null && input.stored !== false;
+  await withStores(input.commonDir, async (main) => {
+    for (const file of input.run) {
+      const id = testFileId(file.ref);
+      const { at } = file;
+      const records =
+        reads && main !== null && "key" in at ? resultsAt(main, file.ref, at.key) : [];
+      if (records.length > 0 && "key" in at)
+        states.set(id, asRun(stateOf(at.key, records, input.own), input.commit, true));
+      else states.set(id, budget);
     }
   });
   return states;
