@@ -15,6 +15,7 @@ import {
   type RunnerDescription,
 } from "../../runners/descriptions.js";
 import { type Coverage, DEFAULT_COVERAGE, type GroupsCoverage } from "./coverage.js";
+import { notCovered } from "./not-covered.js";
 import { SHORT_FORMS, SHORT_OPENING, type ShortForm, UNNAMED_CLI } from "./primer-forms.js";
 
 /**
@@ -401,20 +402,6 @@ function excluded(entries: readonly string[]): string {
   if (entries.length === 0) return "";
   const { text, plural } = excludedProjectsText(entries);
   return `; its ${text} ${plural ? "are" : "is"} not run, excluded by squeal.config.json`;
-}
-
-/**
- * Task 001-234: what Squeal does not cover, always whole; spec 004 D8 as
- * amended 2026-10-18 (task 004-81): with the test files each runner's
- * excludes drop named, as its description names them.
- */
-export function notCovered(coverage: Coverage): string {
-  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
-  const what =
-    files.length === 0
-      ? "typecheck, build"
-      : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
-  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 
 /** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */
