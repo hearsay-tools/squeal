@@ -41,7 +41,7 @@ import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { currentFilesText, type HeaderForm, headerLines, headerParts } from "./header.js";
-import { caughtUpLine, lateLine } from "./late-format.js";
+import { caughtUpLine, lateLine, PASSES_SILENT_TEXT } from "./late-format.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
 import { type SharedClosure, sharedClosure } from "./shared-closure.js";
 
@@ -430,7 +430,7 @@ function titleOf(delta: Delta, holdTitle: string | undefined, command: string): 
 
 /**
  * Row 019-49 (spec 019 D6): with no test group at `edit`, what the edit
- * lines say in place of "passes stay silent unless they follow a failure", as the primer does.
+ * lines say in place of `PASSES_SILENT_TEXT`, as the primer does.
  */
 export function quietEditsText(command: string): string {
   return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
@@ -445,14 +445,13 @@ export function quietEditsText(command: string): string {
  * silent. Row 005-94: unless it follows a failure, as the primer says.
  */
 export function sawEditLine(queued: number, quiet: string | null = null, done = false): string {
-  if (done)
-    return `Squeal saw your edit; ${quiet ?? "passes stay silent unless they follow a failure"}.`;
+  if (done) return `Squeal saw your edit; ${quiet ?? PASSES_SILENT_TEXT}.`;
   if (quiet !== null) {
     return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
   return (
     `Squeal saw your edit and queued ${plural(queued, "test file")}; ` +
-    "results arrive with later tool calls, and passes stay silent unless they follow a failure."
+    `results arrive with later tool calls, and ${PASSES_SILENT_TEXT}.`
   );
 }
 

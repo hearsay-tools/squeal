@@ -3,6 +3,7 @@ import {
   MESSAGE_CAP_CHARS,
   SQUEAL_COMMAND,
 } from "../../core/delivery/format.js";
+import { PASSES_SILENT_TEXT } from "../../core/delivery/late-format.js";
 import { holdsText } from "../../core/state/slow-text.js";
 import { excludedProjectsText } from "../../core/text.js";
 import type { CheckMoment } from "../../core/types/check-groups.js";
@@ -89,7 +90,7 @@ export function primer(
         ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;",
       ]
     : [
-        `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`,
+        `${when}; a SQUEAL message with your next tool call means a check changed; ${PASSES_SILENT_TEXT}, so keep working;`,
       ];
   const most = Math.max(
     0,

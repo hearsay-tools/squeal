@@ -27,14 +27,21 @@ function nowText(late: Extract<EditsLate, { kind: "owed" }>, command: string): s
   );
 }
 
+/**
+ * What a pass does between edits, in the edit lines, the late line and the primer (row 005-94):
+ * one text, so the three say it alike. With no test group at `edit`, `quietEditsText` says
+ * the opposite in its place.
+ */
+export const PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
+
 /** Row 005-97 (a): the line after the header that says why the results are late. */
 export function lateLine(late: EditsLate, command: string): string {
   switch (late.kind) {
     case "owed":
       return (
         `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} ` +
-        `after your edit at revision ${late.editRevision}. Passes stay silent unless they follow ` +
-        `a failure; Squeal says once when it has caught up. ${nowText(late, command)}`
+        `after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; ` +
+        `Squeal says once when it has caught up. ${nowText(late, command)}`
       );
     case "unread":
       return (
