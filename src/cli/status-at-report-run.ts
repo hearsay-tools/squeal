@@ -1,4 +1,5 @@
 import type { RunEstimate } from "../core/code/gate/estimate.js";
+import { changedText } from "../core/commit/at-keys-walk.js";
 
 /*
  * Spec 023 D1 (row 023-07): `--run`'s part of the `status --at` report:
@@ -23,6 +24,8 @@ export interface RunUse {
   readonly notStored: readonly string[];
   /** "Whole-checkout check": the first path the install changed; with one, nothing was stored. */
   readonly changed: string | null;
+  /** Row 023-18 (D3): with `changed`, what changed it: git's checkout rules or the install. */
+  readonly changedBy: "git" | "install" | null;
   /** Of those, the ones the budget left not run. */
   readonly notRun: number;
   /**
@@ -61,7 +64,7 @@ export function runLines(run: RunUse, at: string): string[] {
   const unstored = run.ran - run.stored;
   if (unstored > 0 && run.changed !== null)
     lines.push(
-      `${unstored} not stored (install changed the checkout: ${run.changed}): ${unstored === 1 ? "its result is" : "their results are"} shown, not ${at}'s`,
+      `${unstored} not stored (${changedText({ path: run.changed, by: run.changedBy ?? "install" })}): ${unstored === 1 ? "its result is" : "their results are"} shown, not ${at}'s`,
     );
   else if (unstored > 0) lines.push(...notStoredLines(run.notStored, unstored));
   const needs = run.notComparable - (run.changed === null ? 0 : unstored);

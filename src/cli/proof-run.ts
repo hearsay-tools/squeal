@@ -10,6 +10,7 @@ import {
   resultsAt,
   withStores,
 } from "../core/commit/at-keys-checkout.js";
+import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -50,7 +51,7 @@ export async function runFiles(
   input: SideInput,
   checkout: Checkout,
   toRun: readonly KeyedFile[],
-  change: RelativePath | null,
+  change: Changed | null,
   files: Map<string, SideFile>,
   rekey: Rekey,
 ): Promise<number> {
@@ -124,7 +125,7 @@ async function runOnce(
   checkout: Checkout,
   given: readonly KeyedFile[],
   round: {
-    readonly change: RelativePath | null;
+    readonly change: Changed | null;
     readonly env: NodeJS.ProcessEnv;
     readonly seconds: number;
     readonly rekey: Rekey;
@@ -161,7 +162,7 @@ async function runOnce(
   });
   const out = new Map<string, SideFile>();
   // Review wave-9 B3: a change the install made is named, never masked by the forced reason.
-  const notStored = change === null ? forced : `install changed the checkout: ${change}`;
+  const notStored = change === null ? forced : changedText(change);
   // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
   await withStores(checkout.commonDir, async (main) => {
     for (const file of toRun) {

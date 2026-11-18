@@ -1,5 +1,6 @@
 import { type KeysAt, type KeysAtOptions, keysAtCommit } from "../core/commit/at-keys.js";
 import { narrowed, selects } from "../core/commit/at-keys-narrow.js";
+import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { committedBlobs } from "../core/commit/tree.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { RelativePath, WorktreeId } from "../core/types/common.js";
@@ -22,7 +23,7 @@ export interface CommitSide {
   readonly checkoutMs: number | null;
   readonly inputCheckMs: number | null;
   /** Row 023-07: the first path the install changed in the checkout; `null` when none. */
-  readonly changed: string | null;
+  readonly changed: Changed | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
 }
@@ -63,7 +64,7 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
     const found = at.files.get(testFileId(ref));
     // Row 023-07 ("Whole-checkout check"): a key from a changed checkout is not the commit's.
     if (found !== undefined && "key" in found && changed !== null)
-      return { state: "not comparable", reason: `install changed the checkout: ${changed}` };
+      return { state: "not comparable", reason: changedText(changed) };
     if (found !== undefined) return commitState(found, worktreeId);
     // The commit's tree proves absence; B4: a failed checkout's empty listing proves nothing.
     if (!tree.has(ref.path)) return { state: "absent" };

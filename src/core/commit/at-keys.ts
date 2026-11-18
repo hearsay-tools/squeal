@@ -1,6 +1,6 @@
 import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/reverse-index.js";
-import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { AbsolutePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
   absent,
@@ -14,7 +14,7 @@ import {
   withStores,
 } from "./at-keys-checkout.js";
 import { type CiCall, ciSettled } from "./at-keys-ci.js";
-import type { CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
+import type { Changed, CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
 import { committedBlobs } from "./tree.js";
 
 /*
@@ -52,7 +52,7 @@ export interface KeysAt {
    * one, every key from the checkout, and the results at it, are the
    * changed checkout's, not the commit's. Absent or `null`: none.
    */
-  readonly changed?: RelativePath | null;
+  readonly changed?: Changed | null;
   /** The whole-checkout check's time, within `checkoutMs`; `null` when none ran. */
   readonly inputCheckMs?: number | null;
   /** Whether the shared store could be read; without it every `stored` is empty. */

@@ -1,4 +1,5 @@
 import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
+import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
@@ -34,7 +35,7 @@ export interface OutcomeInput {
    * changed; with one, the run stored nothing, and each outcome is shown
    * as not the commit's.
    */
-  readonly changed: string | null;
+  readonly changed: Changed | null;
   /**
    * Row 023-11 (D5.3, D5.4): `false` for a forced run that stores nothing
    * (a proof side under a condition, or repeated): a result the store
@@ -89,9 +90,9 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
 }
 
 /** A run's outcome in a checkout the install changed: shown, not the commit's, not stored. */
-function notTheCommits(state: SideState, changed: string): SideState {
+function notTheCommits(state: SideState, changed: Changed): SideState {
   if (state.state !== "pass" && state.state !== "fail") return state;
-  const reason = `install changed the checkout: ${changed}`;
+  const reason = changedText(changed);
   const failed = state.state === "fail" ? { failed: state.failed } : {};
   return { state: "not comparable", reason, ran: state.state, ...failed };
 }

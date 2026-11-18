@@ -10,6 +10,7 @@ import type { RunnerAdapter } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import {
+  type Changed,
   CheckoutFailed,
   type CheckoutOptions,
   type KeyingOptions,
@@ -83,7 +84,7 @@ export type Rekey = (refs: readonly TestFileRef[]) => Promise<ReadonlyMap<string
 export type BeforeRemove = (
   checkout: Checkout,
   files: readonly KeyedFile[],
-  changed: RelativePath | null,
+  changed: Changed | null,
   rekey: Rekey,
 ) => Promise<void>;
 
@@ -134,7 +135,7 @@ export interface Checked {
    * when it holds every one, or no checkout was installed. With one, the
    * keys and the results at them are the changed checkout's, not the commit's.
    */
-  readonly changed: RelativePath | null;
+  readonly changed: Changed | null;
   /** The whole-checkout check's time; `null` when none ran. */
   readonly inputCheckMs: number | null;
 }
@@ -155,10 +156,10 @@ export async function inCheckout(
   const started = performance.now();
   const ms = () => Math.round(performance.now() - started);
   let inputCheckMs: number | null = null;
-  let changed: RelativePath | null = null;
+  let changed: Changed | null = null;
   try {
     await withCheckout(input, options, async (checkout, _install, change) => {
-      ({ path: changed, ms: inputCheckMs } = change);
+      ({ changed, ms: inputCheckMs } = change);
       const refs = await withKeyer(
         checkout.tree,
         input.commonDir,

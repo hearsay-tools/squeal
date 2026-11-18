@@ -27,7 +27,12 @@ import {
 } from "./at-keys-checkout.js";
 import { narrowed } from "./at-keys-narrow.js";
 import { type CommitEntry, commitEntries } from "./at-keys-verify.js";
-import { CheckoutFailed, type CheckoutOptions, type KeyingOptions } from "./at-keys-walk.js";
+import {
+  CheckoutFailed,
+  type CheckoutOptions,
+  changedText,
+  type KeyingOptions,
+} from "./at-keys-walk.js";
 import { LS_TREE_TIMEOUT_MS } from "./tree.js";
 
 /*
@@ -108,7 +113,7 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
           : {
               notDetermined: {
                 reason: "changed",
-                detail: `install changed the checkout: ${at.changed}`,
+                detail: changedText(at.changed),
               },
             };
       for (const [id, key] of at.files)

@@ -1,6 +1,7 @@
 import type { BeforeRemove, KeyedFile } from "../core/commit/at-keys-checkout.js";
 import { sideKeys } from "../core/commit/at-keys-side.js";
 import type { CheckoutOptions, KeyingOptions } from "../core/commit/at-keys-walk.js";
+import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, hiddenInRepository } from "../core/proof/conditions.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
@@ -50,7 +51,7 @@ export interface SideAnswer {
   /** How many files ran. */
   readonly ran: number;
   /** The first path the install changed in the checkout; `null` when none. */
-  readonly changed: RelativePath | null;
+  readonly changed: Changed | null;
 }
 
 export interface SideInput {
@@ -104,7 +105,7 @@ export async function withSide<T>(
   const { side } = input;
   const files = new Map<string, SideFile>();
   let ran = 0;
-  let changed: RelativePath | null = null;
+  let changed: Changed | null = null;
   let value: T | undefined;
   let keyedRefs: TestFileRef[] = [];
   const started = performance.now();
@@ -124,7 +125,7 @@ export async function withSide<T>(
     // install (a hidden path put back, or any other) means the condition is not known to hold.
     const broken =
       change !== null && hasConditions(input.conditions)
-        ? `install changed the checkout: ${change}; the condition is not known to hold`
+        ? `${changedText(change)}; the condition is not known to hold`
         : null;
     for (const file of keyed) {
       const id = testFileId(file.ref);

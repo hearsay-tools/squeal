@@ -9,6 +9,7 @@ import {
   rekeyed,
   type WhileOpen,
 } from "../core/commit/at-keys-checkout.js";
+import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
@@ -92,7 +93,7 @@ export function atRun(input: AtRunInput): AtRun {
   let leftOut: readonly KeyedFile[] = [];
   let overheadMs = 0;
   let durationsOf: (ref: TestFileRef) => number | null = () => null;
-  let changed: string | null = null;
+  let changed: Changed | null = null;
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing },
@@ -183,7 +184,8 @@ export function atRun(input: AtRunInput): AtRun {
       notStored: ran.flatMap((s) =>
         "origin" in s && s.origin.notStored !== undefined ? [s.origin.notStored] : [],
       ),
-      changed,
+      changed: changed?.path ?? null,
+      changedBy: changed?.by ?? null,
       notRun,
       notComparable: all.filter((s) => s.state === "not comparable").length,
       timedOut,

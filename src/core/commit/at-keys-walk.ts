@@ -65,12 +65,30 @@ export interface CheckoutOptions {
 const INSTALL_TIMEOUT_MS = 300_000;
 
 /**
- * Row 023-07: the whole-checkout check after the install: the first path
- * the commit tracks that the checkout does not hold as the commit does,
- * `null` when none; and the check's time.
+ * Row 023-18 (D3): the first path the commit tracks that the checkout does
+ * not hold as the commit does, and what made it differ: `git`, git's own
+ * checkout rules (a `.gitattributes` `eol`, `text` or filter rule), found
+ * before the install ran; or `install`, found only after it.
+ */
+export interface Changed {
+  readonly path: RelativePath;
+  readonly by: "git" | "install";
+}
+
+/** Row 023-18 (D3): a changed checkout in words, its path and its cause. */
+export function changedText(changed: Changed): string {
+  return changed.by === "git"
+    ? `git's checkout rules changed ${changed.path}`
+    : `install changed the checkout: ${changed.path}`;
+}
+
+/**
+ * Row 023-07: the whole-checkout check, before (row 023-18) and after the
+ * install: the first difference from the commit, `null` when none; and the
+ * checks' time.
  */
 export interface CheckoutChange {
-  readonly path: RelativePath | null;
+  readonly changed: Changed | null;
   readonly ms: number;
 }
 
@@ -179,6 +197,13 @@ export async function withCheckout<T>(
   }
   try {
     await input.prepare?.(checkout);
+    // Row 023-18 (D3): what git's own checkout wrote otherwise than the commit, before the install.
+    const checkStarted = performance.now();
+    const skip = new Set(input.copied ?? []);
+    const check = () =>
+      checkoutChange(root, checkout.tree, checkout.commit, skip, input.expected, input.hidden);
+    const before = await check();
+    let checkMs = performance.now() - checkStarted;
     const timeoutMs = options.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
     // Review wave-5 B3: the install's group is recorded, so a sweep after this process's
     // SIGKILL stops an install that outlived it.
@@ -195,18 +220,14 @@ export async function withCheckout<T>(
     if (!install.ok) throw new CheckoutFailed("install", `${install.command}: ${install.reason}`);
     // Row 023-07 (the human, 2026-11-17, "Whole-checkout check"): every path the commit tracks,
     // compared with the commit's tree after the install; a difference anywhere is told to `body`.
-    const checkStarted = performance.now();
-    const skip = new Set(input.copied ?? []);
-    const path = await checkoutChange(
-      root,
-      checkout.tree,
-      checkout.commit,
-      skip,
-      input.expected,
-      input.hidden,
-    );
-    const change = { path, ms: Math.round(performance.now() - checkStarted) };
-    return await body(checkout, install, change);
+    let changed: Changed | null = before === null ? null : { path: before, by: "git" };
+    if (changed === null) {
+      const afterStarted = performance.now();
+      const after = await check();
+      checkMs += performance.now() - afterStarted;
+      if (after !== null) changed = { path: after, by: "install" };
+    }
+    return await body(checkout, install, { changed, ms: Math.round(checkMs) });
   } finally {
     await removeCheckout(checkout);
   }

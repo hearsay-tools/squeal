@@ -1,5 +1,6 @@
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { KeyAt } from "../core/commit/at-keys-checkout.js";
+import type { Changed } from "../core/commit/at-keys-walk.js";
 import { compare } from "../core/fs/compare.js";
 import type { CommitSha, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -178,7 +179,7 @@ export interface AtReport {
   /** Row 023-07: the whole-checkout check's time, within `checkoutMs`. */
   readonly inputCheckMs?: number | null;
   /** Row 023-07: the first path the install changed in the checkout; `null` or absent when none. */
-  readonly changed?: string | null;
+  readonly changed?: Changed | null;
   /** Why the checkout gave no keys; `null` when it did, or none was needed. */
   readonly failure: string | null;
   readonly files: readonly FileReport[];
@@ -247,10 +248,15 @@ export function formatAt(report: AtReport, nowMs: number): string {
     );
   }
   if (report.failure !== null) lines.push(`The checkout gave no keys: ${report.failure}`);
-  if (report.changed !== undefined && report.changed !== null)
-    lines.push(
-      `The install changed the checkout (${report.changed} differs from ${at}), so its keys and results are not ${at}'s and nothing from it is stored.`,
-    );
+  if (report.changed !== undefined && report.changed !== null) {
+    const { path, by } = report.changed;
+    // Row 023-18 (D3): git's own checkout rules, found before the install, or the install.
+    const what =
+      by === "git"
+        ? `Git's checkout rules (.gitattributes) wrote ${path} otherwise than ${at} holds it`
+        : `The install changed the checkout (${path} differs from ${at})`;
+    lines.push(`${what}, so its keys and results are not ${at}'s and nothing from it is stored.`);
+  }
   const order: Change[] = ["pass -> fail", "fail -> pass", "unknown"];
   for (const kind of order) {
     for (const f of report.files.filter((file) => file.change === kind)) {
@@ -287,7 +293,8 @@ export function jsonAt(report: AtReport): string {
     now: report.now,
     checkoutMs: report.checkoutMs,
     inputCheckMs: report.inputCheckMs ?? null,
-    changed: report.changed ?? null,
+    changed: report.changed?.path ?? null,
+    changedBy: report.changed?.by ?? null,
     failure: report.failure,
     counts: countsOf(report.files),
     run: report.run ?? null,
