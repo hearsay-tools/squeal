@@ -8,7 +8,7 @@ import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { lifeOf } from "../../src/core/daemon/terminate.js";
 import { markStart } from "../../src/core/presence/lock-events.js";
-import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
+import { readLockMarks, startMarkFor } from "../../src/core/presence/marks.js";
 import { LOCKED_TEXT } from "../../src/core/status/outstanding-text.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
@@ -81,6 +81,10 @@ async function run(argv: string[], cwd: string) {
   const code = await main(argv, io);
   return { code, stdout, stderr };
 }
+
+/** Whether the start mark beside `lockFile` names a live process. */
+const startMarked = (lockFile: AbsolutePath) =>
+  readLockMarks(lockFile, Date.now()).start() !== null;
 
 const last = (text: string) => text.trimEnd().split("\n").at(-1) ?? "";
 

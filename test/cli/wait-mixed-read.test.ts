@@ -5,7 +5,7 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { clearStartMark, markStart } from "../../src/core/presence/lock-events.js";
-import { startMarked } from "../../src/core/presence/marks.js";
+import { readLockMarks } from "../../src/core/presence/marks.js";
 import { withStatusStore } from "../../src/core/status/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
@@ -124,7 +124,7 @@ describe("a poll whose read began before the registration it then missed (review
         // The poll's read: it pins the cleared record.
         const pinned = store.worktrees.get(id)?.daemon ?? null;
         register();
-        expect(startMarked(lockFile)).toBe(false);
+        expect(readLockMarks(lockFile, Date.now()).start() !== null).toBe(false);
         expect(store.worktrees.get(id)?.daemon ?? null).toBeNull();
         return {
           pinned,

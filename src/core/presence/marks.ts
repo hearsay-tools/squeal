@@ -114,16 +114,6 @@ export function daemonStart(
 }
 
 /**
- * Whether the start mark beside `lockFile` names a live process: on Linux
- * one with the mark's pid and start time that is not exiting, elsewhere one
- * the pid reaches. No mark, one that cannot be read or parsed, or one whose
- * process is gone: `false`. Takes no lock and never throws.
- */
-export function startMarked(lockFile: AbsolutePath): boolean {
-  return markedPid(lockFile) !== null;
-}
-
-/**
  * Row 005-111: whether the process `pid` is stopped (`/proc/<pid>/stat` state `T` or `t`), as
  * `life` reads it. Linux only: elsewhere no state is read, and a process reads as running.
  */
@@ -164,7 +154,12 @@ export function lockFree(lockFile: AbsolutePath): boolean {
   }
 }
 
-/** The live process the start mark beside `lockFile` names (`startMarked`), else `null`. */
+/**
+ * The live process the start mark beside `lockFile` names: on Linux one with
+ * the mark's pid and start time that is not exiting, elsewhere one the pid
+ * reaches. No mark, one that cannot be read or parsed, or one whose process
+ * is gone: `null`. Takes no lock and never throws.
+ */
 function markedPid(lockFile: AbsolutePath): number | null {
   let mark: unknown;
   try {

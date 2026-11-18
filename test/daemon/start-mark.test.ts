@@ -8,7 +8,7 @@ import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { abandon, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
-import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
+import { readLockMarks, startMarkFor } from "../../src/core/presence/marks.js";
 import type { WaitLiveness } from "../../src/core/presence/wait.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { openStore } from "../../src/core/store/open.js";
@@ -175,7 +175,7 @@ describe("an older daemon's start beside a wait (review 0.1.350, B1)", () => {
       const result = await openDaemon(repo.root, now);
       if (!("reason" in result)) await abandon(result, now, undefined, "the test ends this start");
       expect(result).toMatchObject({ reason: "lost-lock", code: 0 });
-      expect(startMarked(lockFile)).toBe(true);
+      expect(readLockMarks(lockFile, Date.now()).start() !== null).toBe(true);
     } finally {
       holder.release();
     }

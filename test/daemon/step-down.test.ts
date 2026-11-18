@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
-import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
+import { readLockMarks, startMarkFor } from "../../src/core/presence/marks.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
@@ -274,7 +274,10 @@ describe("a daemon older than its hooks steps down (defect 26)", SLOW, () => {
         const starting = await bothHooks(repo);
         expect(starting.ensured, starting.printed).toEqual([]);
         const lock = lockFileFor(repo.commonDir, repo.worktreeId);
-        expect(startMarked(lock), "the hooks ran in the start window").toBe(true);
+        expect(
+          readLockMarks(lock, Date.now()).start() !== null,
+          "the hooks ran in the start window",
+        ).toBe(true);
         expect(daemonsAt(repo), "no successor while it starts").toEqual([first.pid]);
         hold.release();
         await waitFor(() => settled(repo, version), 60_000, "the record alive, its mark gone");
