@@ -1,0 +1,11 @@
+{"time":"2026-11-18T09:41:25.288Z","node":"v26.13.0","cpus":24,"load":[4.42,6.94,6.96],"commit":"56aac56355ab8f6c2a5641f985a960d790f164ca"}
+{"case":"one changed source; four shorter transitive dependents","catchUpRevision":false,"kept":["unit\u0000src/fast-0.test.ts","unit\u0000src/fast-1.test.ts","unit\u0000src/fast-2.test.ts","unit\u0000src/fast-3.test.ts"],"targetCatchUp":true,"order":["src/fast-0.test.ts","src/fast-1.test.ts","src/fast-2.test.ts","src/fast-3.test.ts","test/declared-only.test.ts","src/provider-auth.test.ts"]}
+{"case":"direct importer fallback control","targetKept":true}
+{"case":"ten keyed paths control","catchUpRevision":true}
+{"case":"named test promotion control","targetRank":1}
+{"case":"virtual quiet clock","queuedAt":[60000,120000,180000],"catchUpWaitEnds":300000}
+{"case":"pending file with no result","askedByCommit":false,"counts":{"files":1,"failures":0,"notDetermined":0,"running":0,"unknown":0},"text":"Commit 1234567: 0 known failures"}
+{"case":"pending file with no result","askedByCommit":true,"counts":{"files":1,"failures":0,"notDetermined":0,"running":1,"unknown":0},"text":"Commit 1234567: 0 known failures; 1 test file still running"}
+{"case":"reported summary counts","text":"Commit 301fc63: 0 known failures; lint 0 findings, 2 files still running; 6 test files not determined (untracked files); 124 test files unknown"}
+{"case":"wait verdict with unknown","exitCode":3,"reason":"124 test files without a current result at revision 2 (124 unknown)"}
+{"assertions":"PASS","elapsedMs":10}
