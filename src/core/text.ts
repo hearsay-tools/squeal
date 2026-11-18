@@ -15,6 +15,11 @@ export function cap(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 3)}...`;
 }
 
+/** `text` with its first character in upper case. */
+export function capitalize(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 /** Local `HH:MM:SS`, as a human reads a clock. */

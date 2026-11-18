@@ -1,3 +1,4 @@
+import { capitalize } from "../text.js";
 import { CHANGED_HERE, closureLine, closurePaths } from "./provenance.js";
 
 /*
@@ -46,7 +47,7 @@ export function sharedClosure(blocks: readonly (readonly Closure[])[]): SharedCl
   const line =
     paths.length === 0
       ? `None of the ${CHANGED_HERE} are imported by ${tests}`
-      : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+      : `${n === all.length ? `All ${n} failing tests` : capitalize(tests)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
   return { own: (p) => (p !== undefined && keyOf(p) === shared ? null : closureLine(p)), line };
 }
 
@@ -55,5 +56,3 @@ function blockKey(block: readonly Closure[]): string | null {
   const keys = block.map((p) => (p === undefined ? null : keyOf(p)));
   return keys.every((k) => k === keys[0]) ? (keys[0] ?? null) : null;
 }
-
-const capitalizeFirst = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;

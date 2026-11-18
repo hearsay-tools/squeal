@@ -18,7 +18,7 @@ import { ignoredConfigLines } from "../status/ignored-config.js";
 import { lateHeartbeatDetail } from "../status/status-detail.js";
 import { stoppingText } from "../status/stopping.js";
 import { atText } from "../status/test-frame.js";
-import { cap, plural, shellWord } from "../text.js";
+import { cap, capitalize, plural, shellWord } from "../text.js";
 import type { CheckId } from "../types/check.js";
 import type {
   Delta,
@@ -88,7 +88,6 @@ const partsText = (checks: readonly CheckId[], fileLevel?: string) =>
 const fileLevelWord = (shown: Shown) => (shown === "fail" ? "that did not load" : "loaded");
 
 const upper = (outcome: Shown) => outcome.toUpperCase();
-const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 /**
  * Task 001-88: a FAIL report ends with one line naming the command that prints

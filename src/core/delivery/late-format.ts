@@ -1,5 +1,5 @@
 import { listWaitText, readWaitText, runnersHave } from "../status/feed-late.js";
-import { durationText, shellWord, utcTimeText } from "../text.js";
+import { capitalize, durationText, shellWord, utcTimeText } from "../text.js";
 import type { CaughtUp, EditsLate } from "../types/delivery.js";
 import { notRunText } from "./header.js";
 
@@ -32,7 +32,7 @@ export function lateLine(late: EditsLate, command: string): string {
   switch (late.kind) {
     case "owed":
       return (
-        `${capitalized(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} ` +
+        `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} ` +
         `after your edit at revision ${late.editRevision}. Passes stay silent unless they follow ` +
         `a failure; Squeal says once when it has caught up. ${nowText(late, command)}`
       );
@@ -61,5 +61,3 @@ export function caughtUpLine({ revision, files, unknown }: CaughtUp): string {
   if (unknown === 0) return `${which}, with no new failure.`;
   return `${which}: ${files - unknown} with results, ${unknown} with no result (unknown); no new failure.`;
 }
-
-const capitalized = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;

@@ -3,7 +3,7 @@ import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import { FLAKY_INPUTS_TEXT, flakyText } from "../state/flaky.js";
 import { checkPartsText, countChecks } from "../status/checks.js";
 import { atText } from "../status/test-frame.js";
-import { cap, plural, shellWord } from "../text.js";
+import { cap, capitalize, plural, shellWord } from "../text.js";
 import type { TransitionEntry } from "../types/delivery.js";
 import type { FlakyNote } from "../types/state.js";
 import { type Collapsed, nameLines } from "./collapse.js";
@@ -25,8 +25,6 @@ const FILES_NAMED = 3;
 
 /** Characters of the error's first line the command selects by; a part selects as the whole. */
 const ERROR_CHARS = 120;
-
-const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 /** A report's flaky note lines (`flakyLines`), called in the order its blocks print. */
 export type FlakyLines = (note: FlakyNote | undefined) => string[];
