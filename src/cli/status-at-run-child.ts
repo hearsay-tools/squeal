@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
@@ -8,7 +8,7 @@ import { recordGroup } from "../core/checkout/marker.js";
 import { leaseProcess } from "../core/daemon/lease-process.js";
 import type { HostLoad } from "../core/retry/load.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
-import { type GateFilesResult, runGateFiles } from "./code-gate-files.js";
+import { type GateFilesProgress, type GateFilesResult, runGateFiles } from "./code-gate-files.js";
 import { PARENT_PID_VARIABLE, takeParentPid, watchParent } from "./code-gate-parent.js";
 
 /*
@@ -39,6 +39,11 @@ interface RunRequest {
   readonly store: boolean;
   /** Row 023-11: `false` when a failed file must never run again under load (`NO_LOAD_RETRY`). */
   readonly retry?: boolean;
+  /**
+   * Row 023-19 (review wave-13 B2): where the child keeps its completion
+   * record as the run goes (`GateFilesProgress`), in the run's own folder.
+   */
+  readonly progress?: string;
 }
 
 /**
@@ -55,11 +60,13 @@ export function noLoadRetry(): HostLoad {
 
 /**
  * The child's answer: the gate's per-file outcomes, or why it gave none;
- * `stopped` (row 023-19, P3): the parent stopped it at its hard stop.
+ * `stopped` (row 023-19, P3): the parent stopped it at its hard stop;
+ * `record` (review wave-13 B2): with no answer, the completion record the
+ * child kept as it went: what completed, and what was kept at which key.
  */
 export type RunAnswer =
   | { readonly result: GateFilesResult }
-  | { readonly error: string; readonly stopped?: true };
+  | { readonly error: string; readonly stopped?: true; readonly record?: GateFilesProgress };
 
 /** The request file this process was given, taken out of `env` at once; `undefined` when none. */
 export function takeRunRequest(env: NodeJS.ProcessEnv = process.env): string | undefined {
@@ -83,6 +90,7 @@ export async function runChild(request: string): Promise<number> {
       tempDir: asked.tempDir,
       store: asked.store,
       ...(asked.retry === false ? { hostLoad: noLoadRetry } : {}),
+      ...(asked.progress === undefined ? {} : { progress: keeper(asked.progress) }),
       note: (text) => process.stderr.write(`squeal: ${text}\n`),
       output: () => {},
     });
@@ -92,6 +100,31 @@ export async function runChild(request: string): Promise<number> {
   }
   writeFileSync(asked.answer, JSON.stringify(answer));
   return 0;
+}
+
+/**
+ * Review wave-13 B2: writes the completion record whole each time it grows
+ * (a new file, then a rename), so a stop leaves the last whole record.
+ */
+function keeper(path: string): (record: GateFilesProgress) => void {
+  const next = `${path}.next`;
+  return (record) => {
+    try {
+      writeFileSync(next, JSON.stringify(record));
+      renameSync(next, path);
+    } catch {
+      // A record that cannot be written leaves the last one; the answer still says it all.
+    }
+  };
+}
+
+/** The completion record at `path`; `undefined` when there is none, or it cannot be read. */
+function recordAt(path: string): GateFilesProgress | undefined {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as GateFilesProgress;
+  } catch {
+    return undefined;
+  }
 }
 
 export interface ChildRun {
@@ -126,6 +159,7 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   const { checkout } = run;
   const request = join(checkout.folder, "at-run-request.json");
   const answer = join(checkout.folder, "at-run-answer.json");
+  const progress = join(checkout.folder, "at-run-record.json");
   const asked: RunRequest = {
     tree: checkout.tree,
     files: run.files,
@@ -134,10 +168,12 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
     answer,
     store: run.store,
     ...(run.retry === undefined ? {} : { retry: run.retry }),
+    progress,
   };
   writeFileSync(request, JSON.stringify(asked));
   // Row 023-19: a later run in this checkout never reads an earlier run's answer.
   rmSync(answer, { force: true });
+  rmSync(progress, { force: true });
   const child = spawn(command, [...flags, "status", "--at", checkout.commit], {
     cwd: checkout.tree,
     env: {
@@ -178,7 +214,13 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   if (pid !== undefined) await stopGroup(pid).catch(() => {});
   if (!existsSync(answer)) {
     const error = `the run's process ended ${how} with no answer`;
-    return stopped ? { error, stopped: true } : { error };
+    // Review wave-13 B2: what it completed, from its own record, never from the store's history.
+    const record = recordAt(progress);
+    return {
+      error,
+      ...(stopped ? { stopped: true } : {}),
+      ...(record === undefined ? {} : { record }),
+    };
   }
   try {
     return JSON.parse(readFileSync(answer, "utf8")) as RunAnswer;

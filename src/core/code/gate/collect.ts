@@ -16,6 +16,7 @@ import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { RunEstimate } from "./estimate.js";
 import { keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
+import type { KeepOptions } from "./keep-pass.js";
 import { runLanes, SlotPool } from "./lanes.js";
 import { type BudgetTold, fitRuns, orderRuns } from "./plan.js";
 import type { BasePrepares } from "./prepare.js";
@@ -106,6 +107,18 @@ export interface CollectOptions {
    * reads as the worktree's daemon does.
    */
   readonly ran?: (run: GateRun) => Promise<void>;
+  /**
+   * Row 023-19 (review wave-13 B2): told each run's files as the run
+   * ended, with their evidence, before the other runs end; a rerun's files
+   * are told again. Absent, none is told.
+   */
+  readonly ended?: (files: readonly TestFileEvidence[]) => void;
+  /**
+   * Row 023-19 (review wave-13 B2): with the stores, the keeper's
+   * decisions as they are made (`KeepOptions.decided`); read by
+   * `collectWithStores`, not here.
+   */
+  readonly decided?: KeepOptions["decided"];
   /**
    * #197 (row 020-40): keeps the log folders of a runner kind's runs with a failed or unfinished
    * file as one, after the runs and before the temporary folder goes; gives where, `null` when it

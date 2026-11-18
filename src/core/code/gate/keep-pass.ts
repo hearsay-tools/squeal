@@ -4,6 +4,7 @@ import { type MergeHoldSource, stillAsRead, unheldNow } from "../../run-evidence
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
 import { lockFileFor } from "../../store/paths.js";
 import type { AbsolutePath, CommitSha, EpochMs } from "../../types/common.js";
+import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
@@ -70,6 +71,19 @@ export interface KeepOptions {
   readonly daemonWaits?: DaemonWaits;
   /** Times the pauses between the passes while the runs go on; default an unref'd timer (row 020-64). */
   readonly pause?: Pause;
+  /**
+   * Row 023-19 (review wave-13 B2): told each time the keeper decided more
+   * files, as they are decided: every file kept so far with the key it was
+   * written at, and every completed file not kept so far with its reason,
+   * by path. A caller that can be stopped before the end records it.
+   */
+  readonly decided?: (so: KeeperDecisions) => void;
+}
+
+/** Row 023-19: what the keeper decided so far (`KeepOptions.decided`). */
+export interface KeeperDecisions {
+  readonly kept: readonly { readonly ref: TestFileRef; readonly key: CheckKey }[];
+  readonly notKept: ReadonlyMap<string, string>;
 }
 
 /** One run's files that may be kept, and its reads to merge (row 020-39), until a pass writes them. */

@@ -43,11 +43,11 @@ export interface OutcomeInput {
    */
   readonly stored?: boolean;
   /**
-   * Review wave-13 B2: the checkout's worktree id, which the provenance of
-   * every result its gate wrote carries; a stopped run's files are read
-   * from those records. Absent: a stopped run's files read `not run (budget)`.
+   * Review wave-13 B2: for a child that gave no answer, why a completed file
+   * the keeper had not decided on is not stored; absent for an answer, whose
+   * keeper decided every file.
    */
-  readonly writer?: WorktreeId;
+  readonly undecided?: string;
   /**
    * Row 023-18 (D2): coverage is on in the checkout's policy (default
    * `true`); with it off the gate keeps nothing, and that is the reason given.
@@ -59,14 +59,7 @@ export interface OutcomeInput {
 export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideState>> {
   const { answer, commit } = input;
   const states = new Map<string, SideState>();
-  if ("error" in answer) {
-    // Row 023-19 (P3): a child the parent stopped at its hard stop ran out of budget.
-    if (answer.stopped === true) return stoppedOutcomes(input);
-    const reason = `run: ${answer.error}`;
-    for (const file of input.run)
-      states.set(testFileId(file.ref), { state: "not determined", reason });
-    return states;
-  }
+  if ("error" in answer) return unanswered(input, answer);
   const { changed } = input;
   if (changed !== null || input.stored === false) {
     for (const file of input.run) {
@@ -99,7 +92,7 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
         const runs = answer.result.runs.filter((r) => r.path === path);
         const why =
           at === undefined
-            ? notKeptWhy(answer.result.notKept, path, input.coverage !== false)
+            ? notKeptWhy(answer.result.notKept, path, input.coverage !== false, input.undecided)
             : "its kept result could not be read back";
         states.set(id, fromGate(file.at.key, runs, commit, why));
       }
@@ -109,31 +102,44 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
 }
 
 /**
- * Row 023-19 (P3), review wave-13 B2: the files of a run the parent
- * stopped at the budget, with no answer. The gate keeps a run's files as
- * that run ends, at the key the run's reads give (row 023-18 D1), which
- * may have grown past the key keyed before the run. So a file is read
- * where the gate wrote it: the newest records of its project and path,
- * when the checkout's own run wrote them (their provenance names the
- * checkout's worktree, `writer`), at their own key. Else it reads `not
- * run (budget)`. A run that stores nothing (a changed checkout, a forced
- * proof side) reads nothing.
+ * Row 023-19 (P3), review wave-13 B2 (the human, 2026-11-19, "A: repair
+ * once more"): the files of a child that gave no answer, stopped at the
+ * budget or ended otherwise. What it completed is read from its own
+ * completion record, as it kept it while it ran: each run's outcome per
+ * path, and per project and path the key the keeper wrote it at, or why
+ * it did not (coverage off included). The record is read as an answer
+ * is, so a kept file is read at its own kept key and nothing else: never
+ * the store's newest key, which a concurrent run in a linked worktree may
+ * have written. A completed file the keeper had not decided yet reads its
+ * outcome, not stored. A file with no outcome in the record reads `not run
+ * (budget)` after a stop, else not determined with the child's error.
  */
-async function stoppedOutcomes(input: OutcomeInput): Promise<Map<string, SideState>> {
-  const states = new Map<string, SideState>();
-  const budget: SideState = { state: "not run", reason: "budget" };
-  const { writer } = input;
-  const reads = input.changed === null && input.stored !== false && writer !== undefined;
-  await withStores(input.commonDir, async (main) => {
-    for (const file of input.run) {
-      const id = testFileId(file.ref);
-      const records = reads && main !== null ? main.results.newestForTestFile(file.ref) : [];
-      const [first] = records;
-      if (first !== undefined && records.some((r) => r.provenance.worktreeId === writer))
-        states.set(id, asRun(stateOf(first.key, records, input.own), input.commit, true));
-      else states.set(id, budget);
-    }
-  });
+async function unanswered(
+  input: OutcomeInput,
+  answer: Extract<RunAnswer, { readonly error: string }>,
+): Promise<Map<string, SideState>> {
+  const missing: SideState =
+    answer.stopped === true
+      ? { state: "not run", reason: "budget" }
+      : { state: "not determined", reason: `run: ${answer.error}` };
+  const { record } = answer;
+  const states =
+    record === undefined
+      ? new Map<string, SideState>()
+      : await outcomesOf({
+          ...input,
+          answer: { result: { ...record, timedOut: true, budgetSeconds: 0 } },
+          undecided:
+            answer.stopped === true
+              ? "the run was stopped at the budget before the gate decided whether to keep it"
+              : "the run ended before the gate decided whether to keep it",
+        });
+  for (const file of input.run) {
+    const id = testFileId(file.ref);
+    const state = states.get(id);
+    const ran = record?.runs.some((r) => r.path === file.ref.path) === true;
+    if (state === undefined || !ran) states.set(id, missing);
+  }
   return states;
 }
 
@@ -159,9 +165,11 @@ export function notKeptWhy(
   notKept: readonly { readonly path: string; readonly reason: string }[] | undefined,
   path: string,
   coverage: boolean,
+  undecided?: string,
 ): string {
   const reason = notKept?.find((n) => n.path === path)?.reason;
   if (reason !== undefined) return `the gate did not keep it: ${reason}`;
+  if (coverage && undecided !== undefined) return undecided;
   return coverage
     ? "the gate did not keep it and gave no reason"
     : "the gate keeps a result only with coverage on";

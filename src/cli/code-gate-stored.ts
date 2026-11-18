@@ -97,7 +97,15 @@ export async function collectWithStores(
         });
   // Row 020-51: the stores are keyed with the adapters the run opens.
   const opened: RunnerAdapter[] = [];
-  const stored = storedFiles(root, env, note, children, () => opened, rerunFailures);
+  const stored = storedFiles(
+    root,
+    env,
+    note,
+    children,
+    () => opened,
+    rerunFailures,
+    options.decided,
+  );
   let evidence: Evidence;
   try {
     const known = inOrder([fromParts, stored?.stored]);
@@ -186,6 +194,7 @@ export function storedFiles(
   children = false,
   runners?: () => readonly RunnerAdapter[],
   rerunFailures = false,
+  decided?: CollectOptions["decided"],
 ): StoredFiles | null {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
@@ -202,6 +211,7 @@ export function storedFiles(
     ...(runners === undefined ? {} : { runners }),
     note,
     ...(rerunFailures ? { rerunFailures } : {}),
+    ...(decided === undefined ? {} : { decided }),
   });
 }
 

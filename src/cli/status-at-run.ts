@@ -5,7 +5,6 @@ import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-
 import { checkoutChange } from "../core/commit/at-keys-verify.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
-import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
@@ -227,8 +226,6 @@ export function atRun(input: AtRunInput): AtRun {
       answer,
       changed,
       coverage: coverageOn(readPolicy(checkout.tree)),
-      // Review wave-13 B2: a stopped batch is read where its gate wrote, by this provenance.
-      writer: worktreeIdFor(checkout.tree),
     });
     for (const [id, state] of outcomes) states.set(id, state);
   }

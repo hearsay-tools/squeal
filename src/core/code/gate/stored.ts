@@ -27,7 +27,7 @@ import { createCodeStore } from "../store/store.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun, StoredEvidence } from "./collect.js";
 import { FILE_ERROR } from "./evidence.js";
-import { Keeper, type KeptAt } from "./keep.js";
+import { Keeper, type KeepOptions, type KeptAt } from "./keep.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -74,6 +74,8 @@ export interface StoredOptions {
    * its rerun may be kept at its key. Absent, no stored file runs.
    */
   readonly rerunFailures?: boolean;
+  /** Row 023-19 (review wave-13 B2): the keeper's decisions as they are made (`KeepOptions.decided`). */
+  readonly decided?: KeepOptions["decided"];
 }
 
 /** A file's key as a daemon here gives it, and the sources its runner's closure loads. */
@@ -114,6 +116,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
     policy: options.policy,
     head: () => readHead(options.root),
     ...(options.note === undefined ? {} : { note: options.note }),
+    ...(options.decided === undefined ? {} : { decided: options.decided }),
   });
   let keyer: Promise<Keyer> | null = null;
   const keyerOf = () => {

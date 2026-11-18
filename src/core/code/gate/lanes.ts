@@ -276,6 +276,12 @@ async function runOne(
     const started = evidence.completed || progress.wasStarted(runner.kind, ref);
     ran.push(started ? evidence : { ...evidence, notStarted: true });
   }
+  // Row 023-19 (review wave-13 B2): a caller that may be stopped records each run as it ends.
+  try {
+    options.ended?.(ran);
+  } catch {
+    // A listener's failure only costs its own record.
+  }
   return {
     runner: runner.kind,
     files,

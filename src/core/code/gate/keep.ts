@@ -91,6 +91,7 @@ export class Keeper {
    */
   async ran(run: GateRun): Promise<void> {
     for (const taken of this.#expected.take(run)) await this.#queue(taken, run);
+    this.#decided();
     this.#early.kick();
   }
 
@@ -109,6 +110,7 @@ export class Keeper {
     for (const text of this.#deferred.splice(0)) this.#tell(text);
     const queued = this.#queued.splice(0);
     if (queued.length > 0) this.#tally.heard(await writePass(queued, this.#pass(false)));
+    this.#decided();
     this.#tellNotKept(this.#passNotKept);
     // Row 020-68 (#220): how many completed files are kept, so an agent knows what a rerun runs.
     if (this.#completed === 0) return;
@@ -149,6 +151,7 @@ export class Keeper {
     const { written, left } = pass;
     this.#keptEarly += written;
     this.#tally.heard(pass);
+    this.#decided();
     if (left.length === 0) return "done";
     this.#queued.unshift(...left);
     return "left";
@@ -241,6 +244,15 @@ export class Keeper {
       else this.#notKept.add(c.ref.path, at);
     }
     return { files: kept, seen: seenOf(keys, report, candidates, decided) };
+  }
+
+  /** Row 023-19 (review wave-13 B2): what is decided so far, to `KeepOptions.decided`. */
+  #decided(): void {
+    try {
+      this.#options.decided?.({ kept: this.keptFiles(), notKept: this.notKeptFiles() });
+    } catch {
+      // A listener's failure only costs its own record.
+    }
   }
 
   #tellNotKept(notKept: NotKept): void {

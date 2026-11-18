@@ -1,5 +1,5 @@
 import { mergeBase } from "../core/code/gate/changed.js";
-import { collectEvidence } from "../core/code/gate/collect.js";
+import { type CollectOptions, collectEvidence } from "../core/code/gate/collect.js";
 import { loadBasePolicy } from "../core/code/gate/policy.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
@@ -65,6 +65,13 @@ export interface GateFilesOptions {
   readonly note?: (text: string) => void;
   /** A node:test `prepare` command's output (020 D15.3); dropped when absent. */
   readonly output?: (text: string) => void;
+  /**
+   * Row 023-19 (review wave-13 B2): told the call's completion record each
+   * time it grows: each run's files as the run ended, and the keeper's
+   * decisions as made. A caller that can be stopped before the answer
+   * keeps it, and reports from it what completed.
+   */
+  readonly progress?: (record: GateFilesProgress) => void;
   /** For tests: the runners' adapters, the host's load and the chunk size (`CollectOptions`). */
   readonly adapters?: GateAdapters;
   readonly hostLoad?: () => HostLoad;
@@ -118,6 +125,21 @@ export interface GateFilesResult {
 }
 
 /**
+ * Row 023-19 (review wave-13 B2): what the call completed so far, per run
+ * as it ended (a rerun's outcome replaces its first run's), and per project
+ * and path what the keeper kept at which key, or why it did not.
+ */
+export interface GateFilesProgress {
+  readonly runs: readonly GateFileRun[];
+  readonly kept: readonly {
+    readonly project: string;
+    readonly path: string;
+    readonly key: string;
+  }[];
+  readonly notKept: readonly { readonly path: string; readonly reason: string }[];
+}
+
+/**
  * Runs `options.files` in `options.root` under one budget, each file
  * known at its key read from the stores instead, and keeps each file it
  * completes in the stores before it returns. Rejects with
@@ -166,6 +188,7 @@ async function gateFiles(
     ...(durations === null ? {} : { durations: durations.of }),
     ...(options.hostLoad === undefined ? {} : { hostLoad: options.hostLoad }),
     ...(options.chunkFiles === undefined ? {} : { chunkFiles: options.chunkFiles }),
+    ...progressHooks(options.progress),
   };
   const changed = namedOnly(head);
   try {
@@ -221,4 +244,29 @@ export function fileRun(file: TestFileEvidence): GateFileRun {
     return { ...base, outcome: "not-run", failed: [], reason: "budget" };
   }
   return { ...base, outcome: "not-finished", failed: [] };
+}
+
+/**
+ * Row 023-19 (review wave-13 B2): `CollectOptions.ended` and `decided`
+ * that build the call's completion record and tell it as it grows.
+ */
+function progressHooks(
+  tell: GateFilesOptions["progress"],
+): Pick<CollectOptions, "ended" | "decided"> {
+  if (tell === undefined) return {};
+  const runs = new Map<string, GateFileRun>();
+  let kept: GateFilesProgress["kept"] = [];
+  let notKept: GateFilesProgress["notKept"] = [];
+  const told = () => tell({ runs: [...runs.values()], kept, notKept });
+  return {
+    ended: (files) => {
+      for (const file of files) runs.set(`${file.runner}\0${file.path}`, fileRun(file));
+      told();
+    },
+    decided: (so) => {
+      kept = so.kept.map(({ ref, key }) => ({ project: ref.project, path: ref.path, key }));
+      notKept = [...so.notKept].map(([path, reason]) => ({ path, reason }));
+      told();
+    },
+  };
 }
