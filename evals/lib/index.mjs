@@ -21,7 +21,7 @@ export {
   waitSettled,
 } from "./atomic.mjs";
 export { atomicCompare, atomicCompareMarkdown } from "./atomic-compare.mjs";
-export { atomicCoverage, coverageLines } from "./atomic-coverage.mjs";
+export { atomicCoverage, coverageLines, partLines } from "./atomic-coverage.mjs";
 export { poolAtomicRuns, pooledLines } from "./atomic-pool.mjs";
 export {
   atomicDropped,

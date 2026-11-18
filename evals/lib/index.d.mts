@@ -1226,6 +1226,8 @@ export interface Coverage {
 /** `null` for a results file that records no repetitions. */
 export function atomicCoverage(data: Json, arms: readonly string[]): Coverage | null;
 export function coverageLines(coverage: Coverage | null): string[];
+/** Each pooled run's plan and coverage, one markdown line each; none for one file. */
+export function partLines(data: Json, arms: readonly string[]): string[];
 /** Atomic variant runs of one commit and arms as one results file; throws on a mismatch. */
 export function poolAtomicRuns(parts: readonly { name: string; data: Json }[]): Json;
 export function pooledLines(data: Json): string[];
