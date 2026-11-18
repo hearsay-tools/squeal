@@ -61,6 +61,8 @@ export {
   JUDGE_MODELS,
   judgeRecord,
 } from "./calibration.mjs";
+export { lookupsOf, manualCheckSeen, namesNotRun } from "./check-evidence.mjs";
+export { addChecks, checksProblem } from "./check-knobs.mjs";
 export { parseClaim } from "./claim.mjs";
 export { classifyShell, scopeLabel } from "./commands.mjs";
 export { daemonPids, leftoverProcesses, waitForExit } from "./daemon.mjs";

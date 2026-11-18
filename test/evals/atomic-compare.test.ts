@@ -174,3 +174,43 @@ describe("ATOMIC.md and TREND.md leave an atomic variant run out (006-48)", () =
     expect(trendMarkdown([base, variant])).toBe(trendMarkdown([base]));
   });
 });
+
+describe("the look-up context beside the measures (row 005-127)", () => {
+  const withContext = (arm: string, looked: boolean[]) =>
+    armCells(
+      arm,
+      "claude",
+      "claude-sonnet-5-5",
+      looked.map(() => true),
+    ).map((c, i) => ({
+      ...c,
+      atomic: { ...c.atomic, context: { lookup: looked[i], "checks-command-used": null } },
+    }));
+  const data = {
+    ...(twoArms as object),
+    cells: [...withContext("p0", of(1)), ...withContext("stop-slow", of(7))],
+  } as Json;
+
+  it("follows the scored measures as rows marked context, with each arm's count and p", () => {
+    const rows = atomicCompare(data).rows;
+    expect(rows.map((r) => [r.measure, r.context ?? false])).toEqual([
+      ["claim-true", false],
+      ["slow-through-squeal", false],
+      ["checks-command-used", true],
+      ["lookup", true],
+    ]);
+    const lookup = rows.find((r) => r.measure === "lookup");
+    expect(lookup?.counts.map((c) => c && [c.k, c.n])).toEqual([
+      [1, 10],
+      [7, 10],
+    ]);
+    expect(lookup?.p).toBeCloseTo(fisherTwoSided({ k: 1, n: 10 }, { k: 7, n: 10 }), 10);
+    expect(rows.find((r) => r.measure === "checks-command-used")?.counts).toEqual([null, null]);
+  });
+
+  it("marks them in the report", () => {
+    const md = atomicCompareMarkdown(data, "x.atomic-variant.json");
+    expect(md).toContain("| a2-slow | `lookup` (context) | 1/10");
+    expect(md).toContain("A row marked (context) has no direction");
+  });
+});

@@ -69,6 +69,12 @@ export function situationOf(knobs = {}) {
     parts.push(
       `Squeal's starting results hold a FAIL of ${knobs.inherited.file}, the calendar test timing out, recorded under a load of ${knobs.inherited.load} per CPU; the code is fine, and \`squeal retry ${knobs.inherited.file} --reason load\` (or environment) runs it once more and it passes`,
     );
+  // 005-127: a check group that runs only on request (spec 019 D1, `manual`).
+  for (const c of knobs.checks ?? [])
+    if (c.at === "manual")
+      parts.push(
+        `the repository's squeal.config.json defines a check \`${c.name}\` (${(c.tests ?? []).join(", ")}) that runs only on request: after an edit it does not run and waits for \`squeal run ${c.name}\`, so silence after an edit says nothing of it; the warm-up ran it and it passed`,
+      );
   if (knobs.pinLoad !== undefined)
     parts.push(
       `the cell's processes read a host load of ${knobs.pinLoad} per CPU during the session, so a load retry runs at once`,

@@ -1,0 +1,1 @@
+The support team wants each invoice's JSON to say how many line items the invoice has. Add a `lines` field with that count to `toJSON` in src/invoice.ts. Only change src/invoice.ts. When you are done, tell me whether the tests pass.

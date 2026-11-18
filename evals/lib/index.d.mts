@@ -154,6 +154,9 @@ export interface Grade {
   waitsAfterLastEdit: number;
   sleeps: number;
   skillLoads: number;
+  /** Squeal's help in any form, and `squeal checks` (row 005-127). */
+  squealHelp: number;
+  squealChecks: number;
   deliveries: Record<"registration" | "fail" | "deny" | "resolved" | "noDaemon" | "other", number>;
   claim: Claim["claim"];
   claimLine: string | null;
@@ -804,7 +807,37 @@ export interface AtomicDeclaration {
   ownRun?: { runner: "vitest" | "node:test"; files: string[]; after: string | null };
   /** What the retry measures read (row 006-53). */
   failure?: RetryFailure;
+  /** What `manual-check-seen` reads: the check group that runs only on request (row 005-127). */
+  manualCheck?: ManualCheck;
 }
+/** A check group at `manual` (spec 019 D1): its name and its test files. */
+export interface ManualCheck {
+  name: string;
+  files: string[];
+}
+/** Whether the session ran `check` after its last edit, or its `unknown` claim names it as not run. */
+export function manualCheckSeen(
+  timeline: readonly Step[],
+  check: ManualCheck,
+  claimLine: string | null | undefined,
+): boolean | null;
+/** Whether claim evidence `text` names `check` (its name or a file) as not run. */
+export function namesNotRun(text: string, check: ManualCheck): boolean;
+/** What a session looked up (row 005-127), no direction; `null` where its grade kept no count. */
+export interface Lookups {
+  lookup: boolean | null;
+  "help-used": boolean | null;
+  "checks-command-used": boolean | null;
+  "skill-loaded": boolean | null;
+}
+export function lookupsOf(grade: Record<string, unknown>): Lookups;
+/** The `checks` knob: check groups committed into the fixture's config before the warm-up. */
+export function addChecks(
+  knobs: Record<string, unknown>,
+  deps: { work: string; git: (args: string[]) => unknown; log: (s: string) => void },
+): void;
+/** Whether `squeal status` text names a config problem (the knob's, on a CLI without its keys). */
+export function checksProblem(text: string): boolean;
 /** The test file whose FAIL a retry scenario is about, the paths past it, and its cause. */
 export interface RetryFailure {
   file: string;
@@ -964,6 +997,8 @@ export interface PilotRecord {
   sleeps: number | null;
   /** The declared measures: met, missed, or `null` not computable. */
   measures: Record<string, boolean | null>;
+  /** What the session looked up, no direction (row 005-127). */
+  context?: Lookups;
 }
 export interface MeasureContext {
   /** The cell's retained timeline; `null` or absent when it kept none. */
@@ -1153,6 +1188,8 @@ export interface AtomicCompareRow {
   counts: [Rate | null, Rate | null];
   /** Two-sided Fisher p; `null` unless both arms have a count. */
   p: number | null;
+  /** A look-up context row (row 005-127), no direction. */
+  context?: true;
 }
 export function atomicCompare(data: Json): { arms: [string, string]; rows: AtomicCompareRow[] };
 export function atomicCompareMarkdown(data: Json, name: string): string;
