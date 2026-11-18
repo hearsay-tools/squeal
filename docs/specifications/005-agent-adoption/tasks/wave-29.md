@@ -21,3 +21,14 @@ Use /worker. Shape: slice, tests only. Scope: the board row 005-121 and the row 
 Owns: `test/harness/helpers.ts`, a new helper under `test/helpers/`, and the copies in the test files the row names. Leave alone: `src/**`.
 
 Final message, each worker: the commits, one line per slice or per replaced helper, any text change with before and after, check results with their commands.
+
+## Review brief: candidate 0.1.560
+
+Use /reviewer. Candidate branch `cand/0.1.560-005` (another coordinator's old branch holds the plain name): the last two rows of the quality scan. Review the range `origin/main..` the SHA your task names; the last commit is the version raise with the built bundles (CI checks the bundles against the build: do not review bundle text). Contracts: sections W1 and W2 above, `quality/2026-11.md` section "Slices", and `tasks/005-122/notes.md` (one line per slice, each text before and after).
+
+- **005-122**, 20 commits, one per slice. Most slices claim no text change: find one. Slices 5 and 6 change text on purpose: "No daemon has validated since <HH:MM:SS UTC>" (was ISO) in hooks, and durations as "1 min 30 s" (was "90 s") below two hours. Check that `squeal status` keeps its ISO times where the notes say so, that every changed sentence is followed in `test/`, `test/e2e/**`, `evals/lib/squeal-text.mjs` and the skill copies, and that the evals parser gate runs the real formatters (slice 9 added one). Slice 1 removes two primer wait forms on the strength of its proof test: judge the proof (CLI lengths 10 to 2,000). Slice 12 was reverted to comments only: confirm nothing of the merged query is left. Slice 13 dropped two old step-down cases with the wrapper: say whether "a stale older daemon is asked nothing" still has a test, and file a should-fix if not. Review 0.1.559 S1 (a mark that says `found: "unknown"`) and review 0.1.553 N1 (comments) are in this range.
+- **005-121**, 3 commits, tests only: `hookText`, `hangingEnsure`, `piDeps` in `test/harness/helpers.ts`, `holdStart` in `test/helpers/start-mark.ts`. No assertion may have changed. The coordinator resolved three import conflicts between this row and slice 14 (`test/cli/wait-locked.test.ts`, `test/cli/wait-mixed-read.test.ts`, `test/daemon/start-mark.test.ts`): check those three files.
+
+Test policy: no full suite. Read CI for the candidate for the full-suite result. Run single test files directly where you need them, one at a time, with `timeout 900`; `test/e2e/lifecycle.test.ts` pins two changed sentences. Never run a script under `evals/bin`. No artificial load.
+
+Write `docs/specifications/005-agent-adoption/reviews/0.1.560.md`: PASS or FAIL first, then blocking findings (B), should-fix (S) and notes (N), each with file and line and a failing scenario.

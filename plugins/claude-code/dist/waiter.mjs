@@ -11,6 +11,9 @@ function plural(count2, word) {
 function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
+function capitalize(text2) {
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+}
 var pad2 = (n) => String(n).padStart(2, "0");
 function timeText(at) {
   const date = new Date(at);
@@ -2739,7 +2742,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.559";
+  if (true) return "0.1.560";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3119,12 +3122,9 @@ function lateHeartbeatDetail(late, since) {
   return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
 }
 function ageText(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
+  return ms < AGE_HOURS_FROM_MS ? durationText(ms) : `${Math.round(ms / 36e5)} h`;
 }
+var AGE_HOURS_FROM_MS = 2 * 36e5;
 function startStoppedText(since, time = (at) => new Date(at).toISOString()) {
   const at = since === null ? "" : ` since ${time(since)}`;
   return `a daemon has been starting${at}, and it may be stopped: no results come until it runs again`;
@@ -4317,7 +4317,6 @@ function installSentences(header) {
 // src/core/delivery/failure-groups.ts
 var FILES_NAMED = 3;
 var ERROR_CHARS = 120;
-var capitalize = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function flakyLines() {
   let pointed = false;
   return (note) => {
@@ -4454,9 +4453,12 @@ function livenessSentence(daemon, revision, command) {
       }
       break;
   }
-  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = capitalize(notValidatedSinceText(daemon.since));
   const restart = died === "" ? "" : ` ${restartText(command)}`;
   return ` ${since}; ${asOf}.${died}${restart}`;
+}
+function notValidatedSinceText(since) {
+  return since === null ? "no daemon is running" : `no daemon has validated since ${utcTimeText(since)}`;
 }
 var restartText = (command) => `\`${command} start\` starts one.`;
 function slowStartText(daemon) {
@@ -5261,8 +5263,9 @@ function createConsumerRepo(conn) {
     ).map(toConsumer),
     /**
      * A registration starts from an empty view: spec 001 D6 seeds the view
-     * with the current known state on registration, so entries left by an
-     * earlier registration of the same consumer are dropped.
+     * on registration (row 005-106: the states that are not `pass` while the
+     * store keeps birth marks, else every known state), so entries left by
+     * an earlier registration of the same consumer are dropped.
      */
     register: (consumer, at) => conn.transaction(() => {
       unregister(consumer);
@@ -7091,17 +7094,18 @@ var CURRENT_DEFINED = "(run on the files as they are now)";
 function noResultsText(command) {
   return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
 }
+var NO_RESULTS_HERE = "Squeal has no results in this worktree yet";
 function unlistedLine(header, command) {
   if (header.testFilesListed !== false) return null;
   const { daemon } = header;
   if (daemon?.state === "down" && daemon.startStopped === true) {
-    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
   }
   if (daemon?.state === "down" && daemon.startSlow === true) {
-    return `${revisionPrefix(header)}${slowStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
   }
   if (noneRunning(daemon)) {
-    return `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
+    return `${revisionPrefix(header)}${NO_RESULTS_HERE}, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
   }
   return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
 }
@@ -7152,13 +7156,16 @@ function newsLine(header, command, told) {
   const revision = revisionPrefix(header);
   const own = told.ownEdits;
   const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
-  if (told.countsOwed !== void 0) {
+  if (!showsOwnCount(header, "news", told)) {
     const files2 = currentFilesText(header, command);
     const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
     return `${line2}${delays}${daemonText(header, command)}`;
   }
   const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
   return `${line}${delays}${daemonText(header, command)}`;
+}
+function showsOwnCount(header, form, told) {
+  return form === "news" && header.testFilesListed !== false && told.countsOwed === void 0;
 }
 function affected(files2) {
   return `the ${plural(files2, "test file")} your edits affect`;
@@ -7198,10 +7205,11 @@ function nowText(late, command) {
   }
   return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
 }
+var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
 function lateLine(late, command) {
   switch (late.kind) {
     case "owed":
-      return `${capitalized2(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. Passes stay silent unless they follow a failure; Squeal says once when it has caught up. ${nowText(late, command)}`;
+      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${nowText(late, command)}`;
     case "unread":
       return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
     case "unlisted":
@@ -7213,7 +7221,6 @@ function caughtUpLine({ revision, files: files2, unknown }) {
   if (unknown === 0) return `${which}, with no new failure.`;
   return `${which}: ${files2 - unknown} with results, ${unknown} with no result (unknown); no new failure.`;
 }
-var capitalized2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 
 // src/core/delivery/shared-closure.ts
 var keyOf = (paths) => JSON.stringify(paths);
@@ -7232,14 +7239,13 @@ function sharedClosure(blocks2) {
   const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
   const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
   const paths = JSON.parse(shared2);
-  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalize(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
   return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
 }
 function blockKey(block3) {
   const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
   return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
 }
-var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
@@ -7251,7 +7257,6 @@ var statusPointer = (command) => `\`${command} status\` lists every known failur
 var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
-var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
@@ -7269,7 +7274,7 @@ function entryBlock(entry3, revision, flaky, closure = () => null) {
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
-      entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
+      entry3.retry === void 0 ? null : capitalize(retryText(entry3.retry))
     ],
     [{ check: entry3.check, shown: entry3.to }]
   );
@@ -7440,12 +7445,11 @@ function quietEditsText(command) {
   return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
 }
 function sawEditLine(queued, quiet = null, done = false) {
-  if (done)
-    return `Squeal saw your edit; ${quiet ?? "passes stay silent unless they follow a failure"}.`;
+  if (done) return `Squeal saw your edit; ${quiet ?? PASSES_SILENT_TEXT}.`;
   if (quiet !== null) {
     return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
-  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passes stay silent unless they follow a failure.`;
+  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and ${PASSES_SILENT_TEXT}.`;
 }
 function editLines({ sawEdit, ownEdits, editsLate, caughtUp, header }, command) {
   const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
@@ -7550,7 +7554,7 @@ import {
 } from "node:fs";
 import { join as join17 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
-var MARK_FINDERS = ["full-check", "daemon", "hook"];
+var MARK_FINDERS = ["full-check", "daemon", "hook", "unknown"];
 var RECOVERY_LOCK = "store-recovery.sqlite";
 function markUnder(commonDir, file, mark, waitMs) {
   const paths = storePaths(commonDir);
@@ -9116,7 +9120,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);
   } catch (error) {
     db?.close();
-    if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
     throw error;
   }
 }
@@ -9134,10 +9138,6 @@ function makeIndexes2(db) {
     rollback(db);
     throw error;
   }
-}
-function isCorruption2(error) {
-  const code = error.errcode;
-  return typeof code === "number" && [11, 26].includes(code & 255);
 }
 
 // src/core/delivery/held-connection.ts
@@ -14089,7 +14089,7 @@ function createDelivery(store, options) {
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
       tellEdits(store, consumer, notes, {
-        shown: ownShown(stop, countsOwed, header),
+        shown: showsOwnCount(header, stop ? "full" : "news", countsOwed),
         failed: told.failed
       });
       const sawEdit = notes === null || carriesEditResult(
@@ -14213,9 +14213,6 @@ function ownNotes(store, consumer, states, {
 }) {
   if (!liveness && !news) return null;
   return editNotes(store, consumer, states, news, { countOnly: !liveness && !idle, boundary });
-}
-function ownShown(stop, counts, header) {
-  return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
 }
 
 // src/core/delivery/daemon-writer.ts

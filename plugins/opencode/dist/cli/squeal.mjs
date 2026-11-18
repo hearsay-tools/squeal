@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.559";
+  if (true) return "0.1.560";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -5313,8 +5313,9 @@ function createConsumerRepo(conn) {
     ).map(toConsumer),
     /**
      * A registration starts from an empty view: spec 001 D6 seeds the view
-     * with the current known state on registration, so entries left by an
-     * earlier registration of the same consumer are dropped.
+     * on registration (row 005-106: the states that are not `pass` while the
+     * store keeps birth marks, else every known state), so entries left by
+     * an earlier registration of the same consumer are dropped.
      */
     register: (consumer, at2) => conn.transaction(() => {
       unregister(consumer);
@@ -17951,7 +17952,7 @@ var init_mark = __esm({
     "use strict";
     init_connection();
     init_paths();
-    MARK_FINDERS = ["full-check", "daemon", "hook"];
+    MARK_FINDERS = ["full-check", "daemon", "hook", "unknown"];
     RECOVERY_LOCK = "store-recovery.sqlite";
   }
 });
@@ -19984,7 +19985,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version2, path);
   } catch (error) {
     db?.close();
-    if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
     throw error;
   }
 }
@@ -20002,10 +20003,6 @@ function makeIndexes2(db) {
     rollback(db);
     throw error;
   }
-}
-function isCorruption2(error) {
-  const code = error.errcode;
-  return typeof code === "number" && [11, 26].includes(code & 255);
 }
 var init_open2 = __esm({
   "src/core/code/store/open.ts"() {
@@ -77878,12 +77875,9 @@ function lateHeartbeatDetail(late, since) {
   return `the last one was ${ageText2(late.ageMs)} ago${at2}; the daemon may be busy or stopped`;
 }
 function ageText2(ms2) {
-  const seconds5 = Math.max(0, Math.round(ms2 / 1e3));
-  if (seconds5 < 120) return `${seconds5} s`;
-  const minutes = Math.round(seconds5 / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
+  return ms2 < AGE_HOURS_FROM_MS ? durationText(ms2) : `${Math.round(ms2 / 36e5)} h`;
 }
+var AGE_HOURS_FROM_MS = 2 * 36e5;
 function notesLines(s, command, all2) {
   const exits = /* @__PURE__ */ new Map();
   for (const note of all2 ? [] : s.daemonNotes) {
@@ -77947,6 +77941,11 @@ function closureLine(paths) {
 function closurePaths(paths) {
   const more2 = paths.length - TOUCHED_SHOWN;
   return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more2 > 0 ? ` and ${more2} more` : ""}`;
+}
+
+// src/core/delivery/header-daemon.ts
+function notValidatedSinceText(since) {
+  return since === null ? "no daemon is running" : `no daemon has validated since ${utcTimeText(since)}`;
 }
 
 // src/core/delivery/late.ts
@@ -80666,7 +80665,7 @@ function flakyLine(why2) {
   const note = why2.flaky;
   if (note === void 0) return [];
   return [
-    `  ${capitalize(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
+    `  ${capitalize2(flakyText(note))} (key ${note.key.slice(0, 12)}, ${new Date(note.at).toISOString()})`,
     // Row 011-77: a replaced failure kept at the note's key says more, with its run.
     ...note.failure === void 0 || replacedAt(why2, note.key) ? [] : [`    the FAIL it replaced: ${note.failure}`],
     `    ${FLAKY_INPUTS_TEXT}`
@@ -80830,7 +80829,7 @@ function producer(why2, log) {
 function importSource(why2, importId) {
   return why2.importSources?.[importId] ?? `import ${importId}`;
 }
-function capitalize(text3) {
+function capitalize2(text3) {
   return `${text3.charAt(0).toUpperCase()}${text3.slice(1)}`;
 }
 function upper(outcome2) {
@@ -85327,6 +85326,9 @@ init_text();
 // src/core/delivery/late-format.ts
 init_text();
 
+// src/core/delivery/shared-closure.ts
+init_text();
+
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
 
@@ -89391,7 +89393,7 @@ function noDaemonText(daemon, down, command) {
   if (down === void 0 && daemon.heartbeatLate !== void 0) {
     return `the daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}`;
   }
-  const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = notValidatedSinceText(daemon.since);
   if (down === "silent") {
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }

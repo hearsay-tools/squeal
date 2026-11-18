@@ -1732,6 +1732,12 @@ var CAPACITY_RECHECK_MS = 2e3;
 // src/core/waiter-lock/waiter-lock.ts
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 
+// src/core/status/stopping.ts
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+
+// src/core/status/status-detail.ts
+var AGE_HOURS_FROM_MS = 2 * 36e5;
+
 // src/core/delivery/prepared.ts
 function endInOrder(items, end, undo) {
   for (const [i, item] of items.entries()) {
@@ -1889,8 +1895,8 @@ function findHarnessProcess(lookup = {}) {
   return null;
 }
 
-// src/core/status/stopping.ts
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+// src/core/delivery/late-format.ts
+var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
 
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
@@ -1908,7 +1914,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
     ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
   ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`
+    `${when}; a SQUEAL message with your next tool call means a check changed; ${PASSES_SILENT_TEXT}, so keep working;`
   ];
   const most = Math.max(
     0,
@@ -1960,28 +1966,17 @@ function withPathWait(sentences, coverage, most) {
 }
 function folded(sentences, coverage, most) {
   let text = "";
-  for (const naming of ["every", "first", "none"]) {
-    for (let node2 = most; node2 >= 0; node2--) {
-      text = sentences(coversSentence(coverage, node2), naming, "plain");
-      if (text.length > PRIMER_CAP_CHARS) continue;
-      const paths = sentences(coversSentence(coverage, node2), naming, "paths");
-      return paths.length <= PRIMER_CAP_CHARS ? paths : text;
-    }
-    if (naming !== "first") continue;
-    for (let node2 = most; node2 >= 0; node2--) {
-      text = sentences(coversSentence(coverage, node2), naming, "short");
-      if (text.length <= PRIMER_CAP_CHARS) return text;
-    }
+  for (let node2 = most; node2 >= 0; node2--) {
+    text = sentences(coversSentence(coverage, node2), "none", "plain");
+    if (text.length > PRIMER_CAP_CHARS) continue;
+    const paths = sentences(coversSentence(coverage, node2), "none", "paths");
+    return paths.length <= PRIMER_CAP_CHARS ? paths : text;
   }
   return text;
 }
 function waitSentence(command, naming, form, quiet = false) {
-  if (form === "short") {
-    return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
-  }
   if (form === "plain") {
-    const wait = naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``;
-    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+    return "Wait only when you need a result before your next step, for example before saying the task is done: `status --wait 60000` on the CLI SQUEAL messages name.";
   }
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;

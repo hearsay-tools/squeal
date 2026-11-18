@@ -368,6 +368,9 @@ function plural(count2, word) {
 function cap(text2, max) {
   return text2.length <= max ? text2 : `${text2.slice(0, max - 3)}...`;
 }
+function capitalize(text2) {
+  return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+}
 var pad2 = (n) => String(n).padStart(2, "0");
 function timeText(at) {
   const date = new Date(at);
@@ -1249,7 +1252,7 @@ function daemonLogFor(commonDir, worktreeId) {
 }
 
 // src/core/store/mark.ts
-var MARK_FINDERS = ["full-check", "daemon", "hook"];
+var MARK_FINDERS = ["full-check", "daemon", "hook", "unknown"];
 var RECOVERY_LOCK = "store-recovery.sqlite";
 function markUnder(commonDir, file, mark, waitMs) {
   const paths = storePaths(commonDir);
@@ -2232,8 +2235,9 @@ function createConsumerRepo(conn) {
     ).map(toConsumer),
     /**
      * A registration starts from an empty view: spec 001 D6 seeds the view
-     * with the current known state on registration, so entries left by an
-     * earlier registration of the same consumer are dropped.
+     * on registration (row 005-106: the states that are not `pass` while the
+     * store keeps birth marks, else every known state), so entries left by
+     * an earlier registration of the same consumer are dropped.
      */
     register: (consumer, at) => conn.transaction(() => {
       unregister(consumer);
@@ -4477,7 +4481,7 @@ function openCodeStore(commonDir, policy, options = {}) {
     return createCodeStore(options.connection?.(db) ?? new Connection(db), version, path);
   } catch (error) {
     db?.close();
-    if (isCorruption2(error)) return { reason: "corrupt", error: String(error) };
+    if (isCorruption(error)) return { reason: "corrupt", error: String(error) };
     throw error;
   }
 }
@@ -4495,10 +4499,6 @@ function makeIndexes2(db) {
     rollback(db);
     throw error;
   }
-}
-function isCorruption2(error) {
-  const code = error.errcode;
-  return typeof code === "number" && [11, 26].includes(code & 255);
 }
 
 // src/runners/descriptions.ts
@@ -12217,7 +12217,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.559";
+  if (true) return "0.1.560";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12698,6 +12698,461 @@ function forget(store, consumer) {
   markLeaving(store, consumer, null);
 }
 
+// src/core/scheduler/awaiting-install.ts
+var MISSING_INSTALLS_SHOWN = 3;
+function awaitingInstallSentence(missing, command) {
+  const more = missing.length - MISSING_INSTALLS_SHOWN;
+  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
+  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
+}
+
+// src/core/run-log.ts
+function testFileLabel(project, path) {
+  return project ? `[${project}] ${path}` : path;
+}
+
+// src/core/status/died.ts
+var DIED_FILES_SHOWN = 5;
+function deathHookText(died) {
+  if (died.runs.length === 0) return "died without shutting down, between runs";
+  return `died without shutting down while running ${files(died.runs.flatMap((run2) => run2.testFiles))}`;
+}
+var DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
+function files(refs) {
+  const shown = refs.slice(0, DIED_FILES_SHOWN).map((ref2) => testFileLabel(ref2.project, ref2.path));
+  const more = refs.length - shown.length;
+  return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
+
+// src/core/status/identity.ts
+function statusIdentity(root, latest, commit, daemon) {
+  const live = readGitHead(root);
+  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
+  const recorded = commit?.head ?? latest.head;
+  if (live !== null && live !== recorded) {
+    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
+  }
+  if (daemon.state !== "alive") return { head: recorded, dirty: null, dirtyObservedAt: null };
+  return { head: recorded, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
+}
+
+// src/core/keys/runtime-applied.ts
+function runtimeFilesMetaKey(worktreeId) {
+  return worktreeMetaKey("runtimeFiles", worktreeId);
+}
+function runtimePolicySignature(policy) {
+  const rules = policy.runtimeFiles.map(
+    (rule) => JSON.stringify([
+      rule.project,
+      [...new Set(rule.tests)].sort(),
+      [...new Set(rule.paths)].sort()
+    ])
+  );
+  return JSON.stringify([[...new Set(rules)].sort(), policy.inputs]);
+}
+
+// src/core/status/runtime-files.ts
+function runtimeFilesStatus(store, worktreeId, root) {
+  const policy = loadPolicy(root).policy;
+  let applied;
+  try {
+    const raw = store.meta.get(runtimeFilesMetaKey(worktreeId));
+    if (raw !== null) {
+      const parsed2 = JSON.parse(raw);
+      if (isRecord(parsed2) && typeof parsed2.signature === "string" && Array.isArray(parsed2.readers) && Array.isArray(parsed2.notes))
+        applied = parsed2;
+    }
+  } catch {
+  }
+  if (policy.runtimeFiles.length === 0 && !applied?.readers.length) return void 0;
+  const rows = new Map(
+    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.key])
+  );
+  const readers = applied?.readers ?? [];
+  return {
+    pending: applied?.signature !== runtimePolicySignature(policy) || readers.some(
+      (reader) => !reader.verified || rows.get(testFileId(reader.testFile)) !== reader.key
+    ),
+    readers,
+    notes: applied?.notes ?? []
+  };
+}
+
+// src/core/status/stopping.ts
+function shortText(short, command) {
+  const at = new Date(short.since).toISOString();
+  return `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
+}
+var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
+function stoppingState(stopping, age) {
+  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
+  const at = new Date(stopping.since).toISOString();
+  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
+  return `${what} since ${at}${age === void 0 ? "" : ` (${age})`}${past}`;
+}
+function stoppingNext(stopping, command) {
+  if (stopping.overdue) return `\`${command} start\` finishes it`;
+  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
+}
+function stoppingText(stopping, command, age) {
+  return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
+}
+
+// src/core/status/unknown-files.ts
+var UNKNOWN_FILES_LISTED = 20;
+function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
+  const checks = checksByFile(states);
+  const unknown = keys.filter((row) => {
+    const own = checks.get(testFileId(row.testFile)) ?? [];
+    if (row.key !== null && row.pending !== null || own.some((s) => s.validity === "pending")) {
+      return false;
+    }
+    return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
+  });
+  if (unknown.length === 0) return {};
+  const reasons = unknownReasons(store, worktreeId, states, root, now);
+  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
+  return { unknownTestFiles: { total: unknown.length, files: files2 } };
+}
+function checksByFile(states) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const id = testFileKeyOf(state.check);
+    checks.set(id, [...checks.get(id) ?? [], state]);
+  }
+  return checks;
+}
+function unknownReasons(store, worktreeId, states, root, now) {
+  const recorded = readUnknownFiles(store, worktreeId);
+  const setups = new Set(
+    states.filter((s) => s.check.kind === "setup" && s.outcome === "fail").map((s) => s.check.project)
+  );
+  let lookupOnly;
+  const isLookupOnly = () => {
+    lookupOnly ??= root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
+    return lookupOnly;
+  };
+  const reason = (row, own) => {
+    const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
+    if (summary !== null) return { reason: summary };
+    if (row.key === null) {
+      return {
+        reason: "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
+        cause: "runner"
+      };
+    }
+    if (setups.has(row.testFile.project)) {
+      return { reason: "its project's global setup failed", cause: "setup" };
+    }
+    const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
+    if (claimant !== null)
+      return { reason: `${claimant.worktree.root}'s daemon is running its key` };
+    if (own.length > 0) return { reason: null };
+    return {
+      reason: isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it",
+      cause: "never-run"
+    };
+  };
+  return {
+    of(row, own) {
+      const entry3 = recorded.get(testFileId(row.testFile));
+      if (entry3 !== void 0 && entry3.key === row.key) {
+        const { ran, reason: reason2, samples, cause } = entry3;
+        return {
+          testFile: row.testFile,
+          ran,
+          reason: reason2,
+          samples,
+          ...cause === void 0 ? {} : { cause }
+        };
+      }
+      return { testFile: row.testFile, ran: false, samples: [], ...reason(row, own) };
+    }
+  };
+}
+
+// src/core/status/status-detail.ts
+function holdAcrossEditsText(command) {
+  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
+}
+function untilStartText(command) {
+  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
+}
+function lateHeartbeatDetail(late, since) {
+  const at = since === null ? "" : `, at ${new Date(since).toISOString()}`;
+  return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
+}
+function ageText(ms) {
+  return ms < AGE_HOURS_FROM_MS ? durationText(ms) : `${Math.round(ms / 36e5)} h`;
+}
+var AGE_HOURS_FROM_MS = 2 * 36e5;
+function startStoppedText(since, time = (at) => new Date(at).toISOString()) {
+  const at = since === null ? "" : ` since ${time(since)}`;
+  return `a daemon has been starting${at}, and it may be stopped: no results come until it runs again`;
+}
+
+// src/core/delivery/provenance.ts
+var upper = (outcome) => outcome.toUpperCase();
+var TOUCHED_SHOWN = 3;
+function change(entry3) {
+  switch (entry3.kind) {
+    case "first-seen-fail":
+      if (entry3.from !== null) return `${upper(entry3.from)} -> FAIL`;
+      return entry3.beforeEdits?.outcome === "pass" ? "PASS -> FAIL" : "first observed: FAIL";
+    case "fail-changed":
+      return "FAIL -> FAIL, failure changed";
+    default:
+      return `${entry3.from === null ? "NONE" : upper(entry3.from)} -> ${upper(entry3.to)}`;
+  }
+}
+var commitText2 = (commit) => commit === null ? "no commit" : `commit ${commit.slice(0, 12)}`;
+function inheritedFrom(entry3) {
+  if (entry3.origin.kind !== "inherited") return null;
+  return `${entry3.originRoot ?? `worktree ${entry3.origin.worktreeId}`} at ${commitText2(entry3.origin.commit)}`;
+}
+function importedFrom(entry3) {
+  if (entry3.origin.kind !== "imported") return null;
+  return entry3.originSource ?? `import ${entry3.origin.importId} at ${commitText2(entry3.origin.commit)}`;
+}
+var NO_EARLIER_RESULT_TEXT = "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it";
+function beforeEditsText(before) {
+  switch (before?.outcome) {
+    case "none": {
+      const settle = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
+      return `${NO_EARLIER_RESULT_TEXT}${settle}`;
+    }
+    case "fail": {
+      const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
+      return `it also failed before your edits (${where3} at ${commitText2(before.commit)})`;
+    }
+    default:
+      return null;
+  }
+}
+function changeBefore(entry3) {
+  const before = entry3.kind === "first-seen-fail" ? beforeEditsText(entry3.beforeEdits) : null;
+  return before === null ? { text: change(entry3), joined: ", " } : { text: `${change(entry3)}; ${before}`, joined: "; " };
+}
+function validityText(entry3, revision) {
+  if (entry3.validity === "pending") return `revision ${revision} pending`;
+  return entry3.validity === "stale" ? "stale" : null;
+}
+function seenLine(entry3, revision) {
+  const from = inheritedFrom(entry3);
+  const imported = importedFrom(entry3);
+  const baseline = entry3.baseline === true;
+  const { text: text2, joined: joined2 } = changeBefore(entry3);
+  const by = baseline ? "by the baseline " : "";
+  const parts = [
+    imported !== null ? `imported from ${imported} ${by}at revision ${entry3.observedAt}` : from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${by}at revision ${entry3.observedAt}`,
+    validityText(entry3, revision)
+  ];
+  return `${text2}${joined2}${parts.filter((p) => p !== null).join(", ")}`;
+}
+function recoveryProvenance(entry3, revision) {
+  const parts = [];
+  if (entry3.validity === "stale") parts.push(`stale, observed at revision ${entry3.observedAt}`);
+  if (entry3.validity === "pending") {
+    parts.push(`observed at revision ${entry3.observedAt}, revision ${revision} pending`);
+  }
+  const from = inheritedFrom(entry3);
+  if (from !== null) parts.push(`inherited from ${from}`);
+  const imported = importedFrom(entry3);
+  if (imported !== null) parts.push(`imported from ${imported}`);
+  return parts.length === 0 ? null : parts.join("; ");
+}
+var CHANGED_HERE = "files changed here since this session started";
+function closureLine(paths) {
+  if (paths === void 0) return null;
+  if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
+  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
+}
+function closurePaths(paths) {
+  const more = paths.length - TOUCHED_SHOWN;
+  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
+}
+function loadLine(entry3) {
+  return entry3.loadAverage === void 0 ? null : `load average ${entry3.loadAverage.toFixed(2)} when it ran`;
+}
+function installSentences(header) {
+  if (header.dependenciesInstalled === false) {
+    return " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.";
+  }
+  const lockfile = header.installedLockfile;
+  return lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
+}
+
+// src/core/delivery/header-daemon.ts
+function awaitingInstallText(header) {
+  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
+  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
+}
+function daemonText(header, command, unlisted3 = false) {
+  const awaiting2 = awaitingInstallText(header);
+  const { daemon } = header;
+  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
+  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
+}
+function stoppedText(command) {
+  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+}
+function livenessSentence(daemon, revision, command) {
+  if (daemon === void 0) return "";
+  const asOf = `results are as of revision ${revision}`;
+  if (daemon.stopping !== void 0) {
+    return ` The daemon is ${stoppingText(daemon.stopping, command)}; ${asOf}.`;
+  }
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
+  const died = diedText(daemon);
+  const { state, notes } = toldOf(daemon);
+  switch (state) {
+    case "stopped by request":
+      return stopOf(daemon) === "until-start" ? ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; ${asOf}.` : ` ${stoppedText(command)}; ${asOf}. ${holdAcrossEditsText(command)}`;
+    case "starting":
+      if (notes.includes("start stopped")) return ` ${stoppedStartText(daemon)}; ${asOf}.${died}`;
+      if (notes.includes("start slow")) return ` ${slowStartText(daemon)}; ${asOf}.${died}`;
+      return ` A daemon is starting; ${asOf}.${died}`;
+    case "resting":
+      return ` The daemon stopped while unused; ${asOf}.`;
+    case "heartbeat late":
+      if (daemon.heartbeatLate !== void 0) {
+        return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; ${asOf}.`;
+      }
+      break;
+  }
+  const since = capitalize(notValidatedSinceText(daemon.since));
+  const restart = died === "" ? "" : ` ${restartText(command)}`;
+  return ` ${since}; ${asOf}.${died}${restart}`;
+}
+function notValidatedSinceText(since) {
+  return since === null ? "no daemon is running" : `no daemon has validated since ${utcTimeText(since)}`;
+}
+var restartText = (command) => `\`${command} start\` starts one.`;
+function slowStartText(daemon) {
+  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
+  return `A daemon has been starting${since}`;
+}
+function stoppedStartText(daemon) {
+  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
+  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
+}
+function diedText(daemon) {
+  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
+}
+function noneRunning(daemon) {
+  return daemon?.state === "down" && toldOf(daemon).state === "gone";
+}
+
+// src/core/delivery/header.ts
+var CURRENT_DEFINED = "(run on the files as they are now)";
+function noResultsText(command) {
+  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
+}
+var NO_RESULTS_HERE = "Squeal has no results in this worktree yet";
+function unlistedLine(header, command) {
+  if (header.testFilesListed !== false) return null;
+  const { daemon } = header;
+  if (daemon?.state === "down" && daemon.startStopped === true) {
+    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
+  }
+  if (daemon?.state === "down" && daemon.startSlow === true) {
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
+  }
+  if (noneRunning(daemon)) {
+    return `${revisionPrefix(header)}${NO_RESULTS_HERE}, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
+  }
+  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
+}
+function revisionPrefix(header) {
+  return `Revision ${header.revision}${changedText(header)}: `;
+}
+var CHANGED_PATHS_SHOWN = 3;
+function changedText(header) {
+  const paths = header.changedPaths;
+  if (paths === void 0 || paths.length === 0) return "";
+  const ignored = new Set(header.ignoredPaths);
+  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).map((path) => ignored.has(path) ? `git-ignored ${path}` : path).join(", ");
+  const more = paths.length - CHANGED_PATHS_SHOWN;
+  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
+}
+function incompleteText(header, command) {
+  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
+  const delays = delaysText(header, late, command);
+  return delays === null ? "" : ` ${delays}`;
+}
+function fullLine(header, command) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
+  const rest = `${incompleteText(header, command)}${daemonText(header, command)}${holdsText2(header, command)}`;
+  const revision = revisionPrefix(header).slice(0, -2);
+  if (rest !== "") return `${revision}:${rest}`;
+  return changedText(header) === "" ? null : `${revision}.`;
+}
+function currentFilesText(header, command) {
+  const files2 = header.testFileCounts;
+  if (files2 === void 0 || header.testFilesListed === false) return null;
+  const total = files2.current + files2.pending + files2.stale + files2.unknown;
+  if (total === 0) return "the daemon listed no test files.";
+  const are = (...ns) => ns.includes(1) ? "is" : "are";
+  if (files2.current < total) {
+    return `${files2.current} of ${plural(total, "test file")} ${are(files2.current, total)} current ${CURRENT_DEFINED}, and \`${command} status\` counts the rest.`;
+  }
+  const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
+  const all = live && header.runnerPartPending !== true && header.awaitingInstall !== true;
+  return `${all ? "all " : ""}${plural(total, "test file")} ${are(total)} current ${CURRENT_DEFINED}.`;
+}
+function holdsText2(header, command) {
+  return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
+}
+function newsLine(header, command, told) {
+  const unlisted3 = unlistedLine(header, command);
+  if (unlisted3 !== null) return unlisted3;
+  const revision = revisionPrefix(header);
+  const own = told.ownEdits;
+  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
+  if (!showsOwnCount(header, "news", told)) {
+    const files2 = currentFilesText(header, command);
+    const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
+    return `${line2}${delays}${daemonText(header, command)}`;
+  }
+  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
+  return `${line}${delays}${daemonText(header, command)}`;
+}
+function showsOwnCount(header, form, told) {
+  return form === "news" && header.testFilesListed !== false && told.countsOwed === void 0;
+}
+function affected(files2) {
+  return `the ${plural(files2, "test file")} your edits affect`;
+}
+function notRunText(owed2, files2) {
+  const verb = owed2 === 1 ? "has" : "have";
+  return owed2 === files2 ? `${affected(files2)} ${verb} not run` : `${owed2} of ${affected(files2)} ${verb} not run`;
+}
+function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
+  const count2 = owed2 > 0 ? notRunText(owed2, files2) : `${affected(files2)} ${files2 === 1 ? "has run" : "have all run"}`;
+  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
+}
+function headerLines(...args) {
+  const { line, tiers } = headerParts(...args);
+  return line === null ? [...tiers] : [line, ...tiers];
+}
+function slowLine(header, command) {
+  return header.slowTier?.testFiles === 0 ? null : slowTierText(header, command);
+}
+function headerParts(header, command, form = "full", told = {}) {
+  const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
+  const slow = form === "full" || told.slowTierChanged ? slowLine(header, command) : null;
+  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
+  const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
+  return {
+    line,
+    tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
+  };
+}
+
 // src/core/delivery/own-edit.ts
 var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: the run may have executed bytes no check key names, since (?:(.+) changed on disk after this run loaded (?:it|them) \(task 001-146\)|\d+ files changed on disk after this run loaded them \(task 001-146\): .+; every path: (.+))$/;
 function movedPaths(reason) {
@@ -13146,7 +13601,7 @@ function createDelivery(store, options) {
       if (commit !== void 0) tellCommit(store, consumer, commit);
       const countsOwed = payCounts(store, consumer, header);
       tellEdits(store, consumer, notes, {
-        shown: ownShown(stop, countsOwed, header),
+        shown: showsOwnCount(header, stop ? "full" : "news", countsOwed),
         failed: told.failed
       });
       const sawEdit = notes === null || carriesEditResult(
@@ -13270,9 +13725,6 @@ function ownNotes(store, consumer, states, {
 }) {
   if (!liveness && !news) return null;
   return editNotes(store, consumer, states, news, { countOnly: !liveness && !idle, boundary });
-}
-function ownShown(stop, counts, header) {
-  return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
 }
 
 // src/core/delivery/daemon-writer.ts
@@ -14155,18 +14607,6 @@ function countsOf3(outcomes) {
   const { pass: pass2, fail, skip } = outcomes;
   const whole = (n) => Number.isInteger(n) && n >= 0;
   return whole(pass2) && whole(fail) && whole(skip) ? { outcomes: { pass: pass2, fail, skip } } : null;
-}
-
-// src/core/status/identity.ts
-function statusIdentity(root, latest, commit, daemon) {
-  const live = readGitHead(root);
-  if (latest === null) return { head: live, dirty: null, dirtyObservedAt: null };
-  const recorded = commit?.head ?? latest.head;
-  if (live !== null && live !== recorded) {
-    return { head: live, dirty: null, dirtyObservedAt: null, headMovedSince: latest.number };
-  }
-  if (daemon.state !== "alive") return { head: recorded, dirty: null, dirtyObservedAt: null };
-  return { head: recorded, dirty: commit?.dirty ?? latest.dirty, dirtyObservedAt: latest.number };
 }
 
 // src/core/keys/modules.ts
@@ -15098,79 +15538,6 @@ function firstTier(row, lane, run2, laneOf2) {
   return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
 }
 
-// src/core/status/unknown-files.ts
-var UNKNOWN_FILES_LISTED = 20;
-function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.now()) {
-  const checks = checksByFile(states);
-  const unknown = keys.filter((row) => {
-    const own = checks.get(testFileId(row.testFile)) ?? [];
-    if (row.key !== null && row.pending !== null || own.some((s) => s.validity === "pending")) {
-      return false;
-    }
-    return row.key === null || own.length === 0 || own.some((s) => s.validity === "unknown");
-  });
-  if (unknown.length === 0) return {};
-  const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
-  return { unknownTestFiles: { total: unknown.length, files: files2 } };
-}
-function checksByFile(states) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    const id = testFileKeyOf(state.check);
-    checks.set(id, [...checks.get(id) ?? [], state]);
-  }
-  return checks;
-}
-function unknownReasons(store, worktreeId, states, root, now) {
-  const recorded = readUnknownFiles(store, worktreeId);
-  const setups = new Set(
-    states.filter((s) => s.check.kind === "setup" && s.outcome === "fail").map((s) => s.check.project)
-  );
-  let lookupOnly;
-  const isLookupOnly = () => {
-    lookupOnly ??= root !== void 0 && readPolicy(root).baseline.onStart === "lookup-only";
-    return lookupOnly;
-  };
-  const reason = (row, own) => {
-    const summary = own.find((s) => s.validity === "unknown")?.summary ?? null;
-    if (summary !== null) return { reason: summary };
-    if (row.key === null) {
-      return {
-        reason: "no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
-        cause: "runner"
-      };
-    }
-    if (setups.has(row.testFile.project)) {
-      return { reason: "its project's global setup failed", cause: "setup" };
-    }
-    const claimant = claimantOf(store, worktreeId, row.testFile, row.key, now);
-    if (claimant !== null)
-      return { reason: `${claimant.worktree.root}'s daemon is running its key` };
-    if (own.length > 0) return { reason: null };
-    return {
-      reason: isLookupOnly() ? "never run at this key: the baseline is lookup-only, so nothing queued it" : "never run at this key, and nothing queued it",
-      cause: "never-run"
-    };
-  };
-  return {
-    of(row, own) {
-      const entry3 = recorded.get(testFileId(row.testFile));
-      if (entry3 !== void 0 && entry3.key === row.key) {
-        const { ran, reason: reason2, samples, cause } = entry3;
-        return {
-          testFile: row.testFile,
-          ran,
-          reason: reason2,
-          samples,
-          ...cause === void 0 ? {} : { cause }
-        };
-      }
-      return { testFile: row.testFile, ran: false, samples: [], ...reason(row, own) };
-    }
-  };
-}
-
 // src/core/status/standing.ts
 function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
   const states = reads?.states ?? store.knownStates.list(worktreeId);
@@ -15568,48 +15935,6 @@ function listed2(files2) {
   return {
     files: sorted.slice(0, PHASE_FILES_LISTED),
     omitted: Math.max(0, sorted.length - PHASE_FILES_LISTED)
-  };
-}
-
-// src/core/keys/runtime-applied.ts
-function runtimeFilesMetaKey(worktreeId) {
-  return worktreeMetaKey("runtimeFiles", worktreeId);
-}
-function runtimePolicySignature(policy) {
-  const rules = policy.runtimeFiles.map(
-    (rule) => JSON.stringify([
-      rule.project,
-      [...new Set(rule.tests)].sort(),
-      [...new Set(rule.paths)].sort()
-    ])
-  );
-  return JSON.stringify([[...new Set(rules)].sort(), policy.inputs]);
-}
-
-// src/core/status/runtime-files.ts
-function runtimeFilesStatus(store, worktreeId, root) {
-  const policy = loadPolicy(root).policy;
-  let applied;
-  try {
-    const raw = store.meta.get(runtimeFilesMetaKey(worktreeId));
-    if (raw !== null) {
-      const parsed2 = JSON.parse(raw);
-      if (isRecord(parsed2) && typeof parsed2.signature === "string" && Array.isArray(parsed2.readers) && Array.isArray(parsed2.notes))
-        applied = parsed2;
-    }
-  } catch {
-  }
-  if (policy.runtimeFiles.length === 0 && !applied?.readers.length) return void 0;
-  const rows = new Map(
-    store.testFileKeys.list(worktreeId).map((row) => [testFileId(row.testFile), row.key])
-  );
-  const readers = applied?.readers ?? [];
-  return {
-    pending: applied?.signature !== runtimePolicySignature(policy) || readers.some(
-      (reader) => !reader.verified || rows.get(testFileId(reader.testFile)) !== reader.key
-    ),
-    readers,
-    notes: applied?.notes ?? []
   };
 }
 
@@ -16598,67 +16923,6 @@ function retryAdviceText(failures, command) {
   return `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 }
 
-// src/core/run-log.ts
-function testFileLabel(project, path) {
-  return project ? `[${project}] ${path}` : path;
-}
-
-// src/core/status/died.ts
-var DIED_FILES_SHOWN = 5;
-function deathHookText(died) {
-  if (died.runs.length === 0) return "died without shutting down, between runs";
-  return `died without shutting down while running ${files(died.runs.flatMap((run2) => run2.testFiles))}`;
-}
-var DEATH_CAUSE = "A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way.";
-function files(refs) {
-  const shown = refs.slice(0, DIED_FILES_SHOWN).map((ref2) => testFileLabel(ref2.project, ref2.path));
-  const more = refs.length - shown.length;
-  return `${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-}
-
-// src/core/status/stopping.ts
-function shortText(short, command) {
-  const at = new Date(short.since).toISOString();
-  return `the handoff to ${short.claimed} ended at ${at} with a ${short.version} daemon, which validates; no hook asks it to step down again, and \`${command} start\` of ${short.claimed} replaces it`;
-}
-var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
-function stoppingState(stopping, age) {
-  const what = stopping.to === void 0 ? "stopping" : `handing over from ${stopping.from} to ${stopping.to}`;
-  const at = new Date(stopping.since).toISOString();
-  const past = stopping.overdue ? `, past its ${BOUND_S} s bound` : "";
-  return `${what} since ${at}${age === void 0 ? "" : ` (${age})`}${past}`;
-}
-function stoppingNext(stopping, command) {
-  if (stopping.overdue) return `\`${command} start\` finishes it`;
-  return stopping.to === void 0 ? "nothing validates until its lock frees" : `${stopping.to} serves once the old daemon's lock frees`;
-}
-function stoppingText(stopping, command, age) {
-  return `${stoppingState(stopping, age)}; ${stoppingNext(stopping, command)}`;
-}
-
-// src/core/status/status-detail.ts
-function holdAcrossEditsText(command) {
-  return `For a manual run across edits, \`${command} hold -- <command>\` holds validation until the command exits.`;
-}
-function untilStartText(command) {
-  return `stopped until \`${command} start\` (\`${command} stop --until-start\`)`;
-}
-function lateHeartbeatDetail(late, since) {
-  const at = since === null ? "" : `, at ${new Date(since).toISOString()}`;
-  return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
-}
-function ageText(ms) {
-  const seconds = Math.max(0, Math.round(ms / 1e3));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
-}
-function startStoppedText(since, time = (at) => new Date(at).toISOString()) {
-  const at = since === null ? "" : ` since ${time(since)}`;
-  return `a daemon has been starting${at}, and it may be stopped: no results come until it runs again`;
-}
-
 // src/core/delivery/code-format.ts
 function functionName(check) {
   return check.occurrence === 0 ? check.qualifiedName : `${check.qualifiedName} (occurrence ${check.occurrence + 1})`;
@@ -16906,101 +17170,9 @@ function codeWords(code) {
   ];
 }
 
-// src/core/delivery/provenance.ts
-var upper = (outcome) => outcome.toUpperCase();
-var TOUCHED_SHOWN = 3;
-function change(entry3) {
-  switch (entry3.kind) {
-    case "first-seen-fail":
-      if (entry3.from !== null) return `${upper(entry3.from)} -> FAIL`;
-      return entry3.beforeEdits?.outcome === "pass" ? "PASS -> FAIL" : "first observed: FAIL";
-    case "fail-changed":
-      return "FAIL -> FAIL, failure changed";
-    default:
-      return `${entry3.from === null ? "NONE" : upper(entry3.from)} -> ${upper(entry3.to)}`;
-  }
-}
-var commitText2 = (commit) => commit === null ? "no commit" : `commit ${commit.slice(0, 12)}`;
-function inheritedFrom(entry3) {
-  if (entry3.origin.kind !== "inherited") return null;
-  return `${entry3.originRoot ?? `worktree ${entry3.origin.worktreeId}`} at ${commitText2(entry3.origin.commit)}`;
-}
-function importedFrom(entry3) {
-  if (entry3.origin.kind !== "imported") return null;
-  return entry3.originSource ?? `import ${entry3.origin.importId} at ${commitText2(entry3.origin.commit)}`;
-}
-var NO_EARLIER_RESULT_TEXT = "Squeal has no earlier result for this test, so it cannot tell whether your edits caused it";
-function beforeEditsText(before) {
-  switch (before?.outcome) {
-    case "none": {
-      const settle = before.commit === null ? "" : `; to settle it, run it in a checkout of ${before.commit.slice(0, 12)}: its result is shared with this worktree`;
-      return `${NO_EARLIER_RESULT_TEXT}${settle}`;
-    }
-    case "fail": {
-      const where3 = before.worktreeRoot ?? `worktree ${before.worktreeId}`;
-      return `it also failed before your edits (${where3} at ${commitText2(before.commit)})`;
-    }
-    default:
-      return null;
-  }
-}
-function changeBefore(entry3) {
-  const before = entry3.kind === "first-seen-fail" ? beforeEditsText(entry3.beforeEdits) : null;
-  return before === null ? { text: change(entry3), joined: ", " } : { text: `${change(entry3)}; ${before}`, joined: "; " };
-}
-function validityText(entry3, revision) {
-  if (entry3.validity === "pending") return `revision ${revision} pending`;
-  return entry3.validity === "stale" ? "stale" : null;
-}
-function seenLine(entry3, revision) {
-  const from = inheritedFrom(entry3);
-  const imported = importedFrom(entry3);
-  const baseline = entry3.baseline === true;
-  const { text: text2, joined: joined2 } = changeBefore(entry3);
-  const by = baseline ? "by the baseline " : "";
-  const parts = [
-    imported !== null ? `imported from ${imported} ${by}at revision ${entry3.observedAt}` : from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${by}at revision ${entry3.observedAt}`,
-    validityText(entry3, revision)
-  ];
-  return `${text2}${joined2}${parts.filter((p) => p !== null).join(", ")}`;
-}
-function recoveryProvenance(entry3, revision) {
-  const parts = [];
-  if (entry3.validity === "stale") parts.push(`stale, observed at revision ${entry3.observedAt}`);
-  if (entry3.validity === "pending") {
-    parts.push(`observed at revision ${entry3.observedAt}, revision ${revision} pending`);
-  }
-  const from = inheritedFrom(entry3);
-  if (from !== null) parts.push(`inherited from ${from}`);
-  const imported = importedFrom(entry3);
-  if (imported !== null) parts.push(`imported from ${imported}`);
-  return parts.length === 0 ? null : parts.join("; ");
-}
-var CHANGED_HERE = "files changed here since this session started";
-function closureLine(paths) {
-  if (paths === void 0) return null;
-  if (paths.length === 0) return `none of the ${CHANGED_HERE} are in its imports`;
-  return `its imports include ${CHANGED_HERE}: ${closurePaths(paths)}`;
-}
-function closurePaths(paths) {
-  const more = paths.length - TOUCHED_SHOWN;
-  return `${paths.slice(0, TOUCHED_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-}
-function loadLine(entry3) {
-  return entry3.loadAverage === void 0 ? null : `load average ${entry3.loadAverage.toFixed(2)} when it ran`;
-}
-function installSentences(header) {
-  if (header.dependenciesInstalled === false) {
-    return " No dependencies are installed in this worktree; failures that cannot find a package are expected until an install.";
-  }
-  const lockfile = header.installedLockfile;
-  return lockfile === void 0 ? "" : ` These results follow a dependency install (${lockfile} changed).`;
-}
-
 // src/core/delivery/failure-groups.ts
 var FILES_NAMED2 = 3;
 var ERROR_CHARS = 120;
-var capitalize = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function flakyLines() {
   let pointed = false;
   return (note) => {
@@ -17088,178 +17260,6 @@ function groupLines(group, revision, command, flaky, closure) {
   };
 }
 
-// src/core/scheduler/awaiting-install.ts
-var MISSING_INSTALLS_SHOWN = 3;
-function awaitingInstallSentence(missing, command) {
-  const more = missing.length - MISSING_INSTALLS_SHOWN;
-  const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
-  const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
-  return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
-}
-
-// src/core/delivery/header-daemon.ts
-function awaitingInstallText(header) {
-  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
-}
-function daemonText(header, command, unlisted3 = false) {
-  const awaiting2 = awaitingInstallText(header);
-  const { daemon } = header;
-  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
-  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
-}
-function stoppedText(command) {
-  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-}
-function livenessSentence(daemon, revision, command) {
-  if (daemon === void 0) return "";
-  const asOf = `results are as of revision ${revision}`;
-  if (daemon.stopping !== void 0) {
-    return ` The daemon is ${stoppingText(daemon.stopping, command)}; ${asOf}.`;
-  }
-  if (daemon.state === "alive") {
-    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-  }
-  const died = diedText(daemon);
-  const { state, notes } = toldOf(daemon);
-  switch (state) {
-    case "stopped by request":
-      return stopOf(daemon) === "until-start" ? ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; ${asOf}.` : ` ${stoppedText(command)}; ${asOf}. ${holdAcrossEditsText(command)}`;
-    case "starting":
-      if (notes.includes("start stopped")) return ` ${stoppedStartText(daemon)}; ${asOf}.${died}`;
-      if (notes.includes("start slow")) return ` ${slowStartText(daemon)}; ${asOf}.${died}`;
-      return ` A daemon is starting; ${asOf}.${died}`;
-    case "resting":
-      return ` The daemon stopped while unused; ${asOf}.`;
-    case "heartbeat late":
-      if (daemon.heartbeatLate !== void 0) {
-        return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; ${asOf}.`;
-      }
-      break;
-  }
-  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  const restart = died === "" ? "" : ` ${restartText(command)}`;
-  return ` ${since}; ${asOf}.${died}${restart}`;
-}
-var restartText = (command) => `\`${command} start\` starts one.`;
-function slowStartText(daemon) {
-  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
-  return `A daemon has been starting${since}`;
-}
-function stoppedStartText(daemon) {
-  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
-  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
-}
-function diedText(daemon) {
-  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
-}
-function noneRunning(daemon) {
-  return daemon?.state === "down" && toldOf(daemon).state === "gone";
-}
-
-// src/core/delivery/header.ts
-var CURRENT_DEFINED = "(run on the files as they are now)";
-function noResultsText(command) {
-  return `Squeal is still starting in this worktree and has no results yet. \`${command} status --wait 60000 <path>...\` waits for the files you change.`;
-}
-function unlistedLine(header, command) {
-  if (header.testFilesListed !== false) return null;
-  const { daemon } = header;
-  if (daemon?.state === "down" && daemon.startStopped === true) {
-    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
-  }
-  if (daemon?.state === "down" && daemon.startSlow === true) {
-    return `${revisionPrefix(header)}${slowStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
-  }
-  if (noneRunning(daemon)) {
-    return `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is running; \`${command} start\` starts one.${diedText(daemon)}`;
-  }
-  return `${revisionPrefix(header)}${noResultsText(command)}${daemonText(header, command, true)}`;
-}
-function revisionPrefix(header) {
-  return `Revision ${header.revision}${changedText(header)}: `;
-}
-var CHANGED_PATHS_SHOWN = 3;
-function changedText(header) {
-  const paths = header.changedPaths;
-  if (paths === void 0 || paths.length === 0) return "";
-  const ignored = new Set(header.ignoredPaths);
-  const shown = paths.slice(0, CHANGED_PATHS_SHOWN).map((path) => ignored.has(path) ? `git-ignored ${path}` : path).join(", ");
-  const more = paths.length - CHANGED_PATHS_SHOWN;
-  return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
-}
-function incompleteText(header, command) {
-  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
-  const delays = delaysText(header, late, command);
-  return delays === null ? "" : ` ${delays}`;
-}
-function fullLine(header, command) {
-  const unlisted3 = unlistedLine(header, command);
-  if (unlisted3 !== null) return `${unlisted3}${holdsText2(header, command)}`;
-  const rest = `${incompleteText(header, command)}${daemonText(header, command)}${holdsText2(header, command)}`;
-  const revision = revisionPrefix(header).slice(0, -2);
-  if (rest !== "") return `${revision}:${rest}`;
-  return changedText(header) === "" ? null : `${revision}.`;
-}
-function currentFilesText(header, command) {
-  const files2 = header.testFileCounts;
-  if (files2 === void 0 || header.testFilesListed === false) return null;
-  const total = files2.current + files2.pending + files2.stale + files2.unknown;
-  if (total === 0) return "the daemon listed no test files.";
-  const are = (...ns) => ns.includes(1) ? "is" : "are";
-  if (files2.current < total) {
-    return `${files2.current} of ${plural(total, "test file")} ${are(files2.current, total)} current ${CURRENT_DEFINED}, and \`${command} status\` counts the rest.`;
-  }
-  const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
-  const all = live && header.runnerPartPending !== true && header.awaitingInstall !== true;
-  return `${all ? "all " : ""}${plural(total, "test file")} ${are(total)} current ${CURRENT_DEFINED}.`;
-}
-function holdsText2(header, command) {
-  return (header.holds ?? []).map((hold) => ` ${holdLine(hold, command)}`).join("");
-}
-function newsLine(header, command, told) {
-  const unlisted3 = unlistedLine(header, command);
-  if (unlisted3 !== null) return unlisted3;
-  const revision = revisionPrefix(header);
-  const own = told.ownEdits;
-  const delays = lateCarriesDelay(header, own?.owed ?? 0, told.editsLate) ? "" : incompleteText(header, command);
-  if (told.countsOwed !== void 0) {
-    const files2 = currentFilesText(header, command);
-    const line2 = files2 === null ? `${revision.slice(0, -2)}.` : `${revision}${files2}`;
-    return `${line2}${delays}${daemonText(header, command)}`;
-  }
-  const line = own === void 0 ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
-  return `${line}${delays}${daemonText(header, command)}`;
-}
-function affected(files2) {
-  return `the ${plural(files2, "test file")} your edits affect`;
-}
-function notRunText(owed2, files2) {
-  const verb = owed2 === 1 ? "has" : "have";
-  return owed2 === files2 ? `${affected(files2)} ${verb} not run` : `${owed2} of ${affected(files2)} ${verb} not run`;
-}
-function ownCountText({ files: files2, owed: owed2, unknown = 0 }) {
-  const count2 = owed2 > 0 ? notRunText(owed2, files2) : `${affected(files2)} ${files2 === 1 ? "has run" : "have all run"}`;
-  return unknown === 0 ? `${count2}.` : `${count2}; ${unknown} with no result (unknown).`;
-}
-function headerLines(...args) {
-  const { line, tiers } = headerParts(...args);
-  return line === null ? [...tiers] : [line, ...tiers];
-}
-function slowLine(header, command) {
-  return header.slowTier?.testFiles === 0 ? null : slowTierText(header, command);
-}
-function headerParts(header, command, form = "full", told = {}) {
-  const line = form === "full" ? fullLine(header, command) : newsLine(header, command, told);
-  const slow = form === "full" || told.slowTierChanged ? slowLine(header, command) : null;
-  const groups2 = form === "full" ? groupTierLines(header, command) : told.groupTiersChanged === void 0 ? [] : groupTierLines(header, command, told.groupTiersChanged);
-  const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
-  return {
-    line,
-    tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
-  };
-}
-
 // src/core/delivery/late-format.ts
 function nowText(late, command) {
   if (late.named !== void 0) {
@@ -17269,10 +17269,11 @@ function nowText(late, command) {
   }
   return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
 }
+var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
 function lateLine(late, command) {
   switch (late.kind) {
     case "owed":
-      return `${capitalized2(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. Passes stay silent unless they follow a failure; Squeal says once when it has caught up. ${nowText(late, command)}`;
+      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${nowText(late, command)}`;
     case "unread":
       return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
     case "unlisted":
@@ -17284,7 +17285,6 @@ function caughtUpLine({ revision, files: files2, unknown }) {
   if (unknown === 0) return `${which}, with no new failure.`;
   return `${which}: ${files2 - unknown} with results, ${unknown} with no result (unknown); no new failure.`;
 }
-var capitalized2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 
 // src/core/delivery/shared-closure.ts
 var keyOf = (paths) => JSON.stringify(paths);
@@ -17303,14 +17303,13 @@ function sharedClosure(blocks) {
   const n = all.filter((p) => p !== void 0 && keyOf(p) === shared2).length;
   const tests2 = n === all.length ? `the ${n} failing tests` : `${n} of the ${all.length} failing tests`;
   const paths = JSON.parse(shared2);
-  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalizeFirst(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
+  const line = paths.length === 0 ? `None of the ${CHANGED_HERE} are imported by ${tests2}` : `${n === all.length ? `All ${n} failing tests` : capitalize(tests2)} import ${CHANGED_HERE}: ${closurePaths(paths)}`;
   return { own: (p) => p !== void 0 && keyOf(p) === shared2 ? null : closureLine(p), line };
 }
 function blockKey(block3) {
   const keys = block3.map((p) => p === void 0 ? null : keyOf(p));
   return keys.every((k) => k === keys[0]) ? keys[0] ?? null : null;
 }
-var capitalizeFirst = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 
 // src/core/delivery/format.ts
 var MESSAGE_CAP_CHARS = 1e4;
@@ -17322,7 +17321,6 @@ var statusPointer = (command) => `\`${command} status\` lists every known failur
 var partsText = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
-var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
@@ -17340,7 +17338,7 @@ function entryBlock(entry3, revision, flaky, closure = () => null) {
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [closure(entry3.changesInClosure), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
-      entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
+      entry3.retry === void 0 ? null : capitalize(retryText(entry3.retry))
     ],
     [{ check: entry3.check, shown: entry3.to }]
   );
@@ -17511,12 +17509,11 @@ function quietEditsText(command) {
   return `no test group runs after each edit, so silence between edits is not a pass; \`${command} run <group> <path>... --wait 60000\` runs the test files your paths select`;
 }
 function sawEditLine(queued, quiet = null, done = false) {
-  if (done)
-    return `Squeal saw your edit; ${quiet ?? "passes stay silent unless they follow a failure"}.`;
+  if (done) return `Squeal saw your edit; ${quiet ?? PASSES_SILENT_TEXT}.`;
   if (quiet !== null) {
     return `Squeal saw your edit, which affects ${plural(queued, "test file")}; ${quiet}.`;
   }
-  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and passes stay silent unless they follow a failure.`;
+  return `Squeal saw your edit and queued ${plural(queued, "test file")}; results arrive with later tool calls, and ${PASSES_SILENT_TEXT}.`;
 }
 function editLines({ sawEdit, ownEdits, editsLate, caughtUp, header }, command) {
   const quiet = header.noTestsAtEdit === true ? quietEditsText(command) : null;
@@ -17563,11 +17560,16 @@ function livenessTitle(liveness, header, command) {
   }
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
+function knownFailuresCountLine(counted, failures, header, command) {
+  if (header?.testFilesListed === false && failures === 0) return null;
+  const files2 = header === void 0 ? null : currentFilesText(header, command);
+  return `${counted}${files2 === null ? "" : `; ${files2}`}`;
+}
 function knownFailuresLines(header, failures, command) {
   const current2 = splitByValidity(failures).current.map((f) => f.check);
-  if (header.testFilesListed === false && failures.length === 0) return [];
-  const files2 = currentFilesText(header, command);
-  return [`Known failures: ${failureCountText(current2)}${files2 === null ? "" : `; ${files2}`}`];
+  const counted = `Known failures: ${failureCountText(current2)}`;
+  const line = knownFailuresCountLine(counted, failures.length, header, command);
+  return line === null ? [] : [line];
 }
 function codeAndLintLines(registration2, command) {
   const { code, lint: lint2 } = registration2;
@@ -17617,7 +17619,7 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : capitalize2(recorded(f, f.recorded)),
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize(RECORDED_UNKNOWN_TEXT) : null : capitalize(recorded(f, f.recorded)),
         closure.own(f.changesInClosure)
       ],
       [{ check: f.check, shown: "fail" }]
@@ -17655,7 +17657,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
     ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
     ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
   ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working;`
+    `${when}; a SQUEAL message with your next tool call means a check changed; ${PASSES_SILENT_TEXT}, so keep working;`
   ];
   const most = Math.max(
     0,
@@ -17707,28 +17709,17 @@ function withPathWait(sentences, coverage, most) {
 }
 function folded(sentences, coverage, most) {
   let text2 = "";
-  for (const naming of ["every", "first", "none"]) {
-    for (let node2 = most; node2 >= 0; node2--) {
-      text2 = sentences(coversSentence(coverage, node2), naming, "plain");
-      if (text2.length > PRIMER_CAP_CHARS) continue;
-      const paths = sentences(coversSentence(coverage, node2), naming, "paths");
-      return paths.length <= PRIMER_CAP_CHARS ? paths : text2;
-    }
-    if (naming !== "first") continue;
-    for (let node2 = most; node2 >= 0; node2--) {
-      text2 = sentences(coversSentence(coverage, node2), naming, "short");
-      if (text2.length <= PRIMER_CAP_CHARS) return text2;
-    }
+  for (let node2 = most; node2 >= 0; node2--) {
+    text2 = sentences(coversSentence(coverage, node2), "none", "plain");
+    if (text2.length > PRIMER_CAP_CHARS) continue;
+    const paths = sentences(coversSentence(coverage, node2), "none", "paths");
+    return paths.length <= PRIMER_CAP_CHARS ? paths : text2;
   }
   return text2;
 }
 function waitSentence(command, naming, form, quiet = false) {
-  if (form === "short") {
-    return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
-  }
   if (form === "plain") {
-    const wait = naming === "none" ? "`status --wait 60000` on the CLI SQUEAL messages name" : `\`${command} status --wait 60000\``;
-    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+    return "Wait only when you need a result before your next step, for example before saying the task is done: `status --wait 60000` on the CLI SQUEAL messages name.";
   }
   const full = naming === "every" && command === SQUEAL_COMMAND;
   const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
