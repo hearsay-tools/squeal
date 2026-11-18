@@ -1,0 +1,13 @@
+{
+  "s1": "Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.",
+  "s2": "Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.",
+  "s3": "The last commit (6414b6c20) fixes how main reuses a queue run and adds regression tests to .github/scripts/queue-ci-proof.test.cjs. For the PR description, show me that the new tests fail without the fix and pass with it.",
+  "s4": "The last commit (e71888f91) only changed the test packages/cezar/src/automations/unhandled-polls.test.ts. Show me that the old version of that test was the problem: the old test fails against today's code, and the new one passes.",
+  "s5": "The last commit fixed scripts/release-identity.test.mjs: on CI re-runs the old version picked up GITHUB_RUN_ATTEMPT from the workflow and computed the wrong version. Show me that the old test depended on that environment variable, and that the fixed one doesn't.",
+  "s6": "packages/contract/src/report-title.test.ts fails since my last change to report-title.ts. Please fix it.",
+  "r1": "Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently. Squeal is installed here; `squeal --help` lists its commands.",
+  "r2": "Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any. Squeal is installed here; `squeal --help` lists its commands.",
+  "r3": "The last commit (6414b6c20) fixes how main reuses a queue run and adds regression tests to .github/scripts/queue-ci-proof.test.cjs. For the PR description, show me that the new tests fail without the fix and pass with it. Squeal is installed here; `squeal --help` lists its commands.",
+  "r4": "The last commit (e71888f91) only changed the test packages/cezar/src/automations/unhandled-polls.test.ts. Show me that the old version of that test was the problem: the old test fails against today's code, and the new one passes. Squeal is installed here; `squeal --help` lists its commands.",
+  "r5": "The last commit fixed scripts/release-identity.test.mjs: on CI re-runs the old version picked up GITHUB_RUN_ATTEMPT from the workflow and computed the wrong version. Show me that the old test depended on that environment variable, and that the fixed one doesn't. Squeal is installed here; `squeal --help` lists its commands."
+}
