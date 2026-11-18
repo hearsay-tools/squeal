@@ -74,6 +74,8 @@ describe("squeal checks (row 005-126)", () => {
     expect({ code, stderr }).toEqual({ code: 0, stderr: "" });
     expect(stdout).toBe(
       [
+        "The checks Squeal runs in this repository (squeal.config.json):",
+        "",
         "unit",
         "  Selects: Vitest test files matching test/unit/**",
         "  Runs: after each edit",
@@ -81,24 +83,26 @@ describe("squeal checks (row 005-126)", () => {
         "",
         "api",
         "  Selects: Vitest test files matching test/api/**",
-        "  Runs: between your turns",
+        "  Runs: between your turns: Squeal starts it when your turn ends, not after an edit",
         "  Run it now: `squeal run api --wait 60000`",
         "",
         "browser",
         "  Description: Browser tests; slow, they need Chrome.",
         "  Selects: Vitest test files matching test/browser/**",
-        "  Runs: only on request",
+        "  Runs: only on request: Squeal does not start it; `squeal run browser --wait 60000` does",
         "  Run it now: `squeal run browser --wait 60000`",
         "",
         "e2e",
         "  Selects: Vitest test files matching test/e2e/**",
-        "  Runs: only on request",
+        "  Runs: only on request: Squeal does not start it; `squeal run e2e --wait 60000` does",
         "  Run it now: `squeal run e2e --wait 60000`",
         "",
         "tests",
         "  Selects: the test files no other check selects",
         "  Runs: after each edit",
         "  Run it now: `squeal run tests --wait 60000`",
+        "",
+        "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
         "",
       ].join("\n"),
     );
@@ -124,7 +128,7 @@ describe("squeal checks (row 005-126)", () => {
         "api",
         "  Selects: Vitest test files matching test/api/**",
         "  Test files now: 1",
-        "  Runs: between your turns",
+        "  Runs: between your turns: Squeal starts it when your turn ends, not after an edit",
         "  Run it now: `squeal run api --wait 60000`",
         "  Last result at revision 4: 1 not current",
         "",
@@ -160,6 +164,8 @@ describe("squeal checks (row 005-126)", () => {
         "  Runs: after each edit, on the edited file",
         "  Findings: `squeal lint`",
         "",
+        "Squeal does not cover typecheck, build or any other test suite: run those yourself.",
+        "",
       ].join("\n"),
     );
   });
@@ -171,7 +177,7 @@ describe("squeal checks (row 005-126)", () => {
       [
         "slow",
         "  Selects: test files marked slow: slow.include test/slow/**",
-        "  Runs: after each edit; Stop waits for them",
+        "  Runs: after each edit; Stop waits for it",
         "  Starts after: tests",
         "  Run it now: `squeal run slow --wait 60000`",
       ].join("\n"),
@@ -185,5 +191,35 @@ describe("squeal checks (row 005-126)", () => {
     const { code, stderr } = run(repo({}), ["--json"]);
     expect(code).toBe(2);
     expect(stderr).toBe('squeal checks: unknown argument "--json"\nUsage: squeal checks\n');
+  });
+
+  it("says who starts a check at Stop and one at commit", () => {
+    const checks = [
+      { name: "e2e", runner: "vitest", tests: ["test/e2e/**"], at: "stop" },
+      { name: "style", lint: true, at: "commit", description: "ESLint." },
+    ];
+    const { stdout } = run(repo({ checks }));
+    expect(stdout).toContain(
+      "  Runs: at Stop: Squeal starts it when you stop, and Stop waits for it, not after an edit\n",
+    );
+    expect(stdout).toContain(
+      [
+        "style",
+        "  Description: ESLint.",
+        "  Selects: lint, every tool in lint.tools",
+        "  Runs: when you commit: Squeal starts it when it sees a new commit, not after an edit",
+        "  Run it now: `squeal run style --wait 60000`",
+      ].join("\n"),
+    );
+  });
+
+  it("ends with what Squeal does not run, as the primer says it", () => {
+    const root = repo({ vitest: { exclude: ["test/e2e/**"] } });
+    writeFileSync(join(root, "package.json"), '{"type":"module"}\n');
+    writeFileSync(join(root, "vitest.config.ts"), "export default {};\n");
+    const { stdout } = run(root);
+    expect(stdout).toMatch(
+      /\n\nSqueal does not cover typecheck, build, the Vitest test files matching "test\/e2e\/\*\*", which squeal.config.json excludes, or any other test suite: run those yourself.\n$/,
+    );
   });
 });
