@@ -17,17 +17,23 @@ import { readSlot, writeSlot } from "./slots.js";
  * that mark reads as the pass it was at the registration (`markedView`); the
  * view no longer copies every state.
  *
+ * Row 005-113 adds the second writer of the mark: an unrestricted delivery
+ * that leaves out a pass never told keeps the store's high mark too
+ * (`markedWrites`).
+ *
  * A registration on a store whose marks are not kept (no daemon of 0.1.545
  * or later served it) seeds the full copy and keeps no mark. A consumer with
  * no mark reads its view as it is, as before this row: one registered before
- * the upgrade keeps its full copy until it registers again or expires. A
+ * the upgrade keeps its full copy until it registers again, expires, or an
+ * unrestricted delivery leaves out a pass never told and keeps a mark. A
  * store that loses a trigger reads every consumer as unmarked until a
  * daemon's registration makes it again. The slot ends with the consumer: it
- * is read only while registered, every registration writes or clears it,
- * and `writeSlot` drops the slots of consumers gone at its next write.
+ * is read only while registered, every registration writes or clears it, an
+ * unrestricted delivery may write it, and `writeSlot` drops the slots of
+ * consumers gone at its next write.
  */
 
-/** The mark a registration keeps: the store's high birth mark, and when it was read. */
+/** The mark a registration or an unrestricted delivery keeps: the store's high birth mark, and when it was read. */
 export interface ViewMark {
   readonly mark: number;
   readonly at: EpochMs;
@@ -109,7 +115,11 @@ export function markedWrites(
   return writes.filter((w) => held.has(checkIdentity(w.check)) || seeded.has(w));
 }
 
-/** Records `consumer`'s mark (`null` clears it). Call inside the registration's transaction. */
+/**
+ * Records `consumer`'s mark (`null` clears it). Call inside the transaction
+ * of the registration or the unrestricted delivery (`markedWrites`) that
+ * writes it.
+ */
 export function recordViewMark(store: Store, consumer: Consumer, mark: ViewMark | null): void {
   const key = viewMarkMetaKey(consumer.worktreeId);
   if (mark === null && readSlot(store, key, consumer) === undefined) return;
