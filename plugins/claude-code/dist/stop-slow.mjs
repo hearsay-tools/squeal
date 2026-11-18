@@ -1088,7 +1088,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.557";
+  if (true) return "0.1.559";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6573,7 +6573,7 @@ function readMark(path) {
     }
   } catch {
   }
-  return { at: 0, problem: "the full integrity check failed" };
+  return { at: 0, problem: "the mark beside the store could not be read", found: "unknown" };
 }
 function fileOf(value) {
   const { dev, ino } = value ?? {};
@@ -6909,6 +6909,7 @@ function recover(paths, options) {
 function foundBy(mark) {
   if (mark === void 0) return { found: "start" };
   const found2 = mark.found ?? "full-check";
+  if (found2 === "unknown") return { found: found2 };
   if (found2 === "full-check") return { found: found2, check: "full", checkedAt: mark.at };
   return { found: found2, markedAt: mark.at };
 }
@@ -9775,6 +9776,168 @@ function acknowledgeLint(source, consumer, ack) {
   withLint(source, ({ store }) => apply(store, consumer, ack));
 }
 
+// src/core/state/baseline.ts
+function baselineMetaKey(worktreeId) {
+  return worktreeMetaKey("baselineFindings", worktreeId);
+}
+function entry(check, fingerprint) {
+  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
+}
+function current(e) {
+  const at = e.lastIndexOf("\0");
+  return `${e.slice(0, at + 1)}${renormalizeFingerprint(e.slice(at + 1))}`;
+}
+function read(store, worktreeId) {
+  const raw = store.meta.get(baselineMetaKey(worktreeId));
+  return raw === null ? null : JSON.parse(raw);
+}
+function baselineFindings(store, worktreeId) {
+  const entries = new Set(read(store, worktreeId)?.entries.map(current));
+  return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
+}
+
+// src/core/status/checks.ts
+function countChecks(checks) {
+  const testFiles2 = checks.filter((check) => check.kind === "file").length;
+  const setups = checks.filter((check) => check.kind === "setup").length;
+  return {
+    tests: checks.length - testFiles2 - setups,
+    testFiles: testFiles2,
+    ...setups > 0 ? { setups } : {}
+  };
+}
+function checkPartsText({ tests: tests2, testFiles: testFiles2, setups = 0 }, fileLevel = "loaded") {
+  return [
+    ...tests2 > 0 ? [plural(tests2, "test")] : [],
+    ...testFiles2 > 0 ? [`${plural(testFiles2, "test file")} ${fileLevel}`] : [],
+    ...setups > 0 ? [plural(setups, "global setup")] : []
+  ].join(", ");
+}
+function checksText(checks, noun = "check", fileLevel) {
+  const parts = checks.length === 0 ? "" : ` (${checkPartsText(countChecks(checks), fileLevel)})`;
+  return `${plural(checks.length, noun)}${parts}`;
+}
+function failureCountText(checks) {
+  if (checks.length === 0) return "0";
+  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
+}
+function splitByValidity(failures) {
+  return {
+    current: failures.filter((f) => f.validity === "current"),
+    pending: failures.filter((f) => f.validity === "pending"),
+    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending")
+  };
+}
+function knownFailureCounts(failures) {
+  const { current: current2, pending, stale } = splitByValidity(failures);
+  return { current: current2.length, pending: pending.length, stale: stale.length };
+}
+function earlierFailuresLines({ pending, stale }) {
+  if (pending + stale === 0) return [];
+  return [
+    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
+  ];
+}
+
+// src/core/store/imports.ts
+var IMPORT_TABLES = {
+  imports: `
+CREATE TABLE imports (
+  id TEXT PRIMARY KEY,
+  header TEXT NOT NULL,
+  file_hash TEXT NOT NULL,
+  imported_at INTEGER NOT NULL
+) STRICT, WITHOUT ROWID;
+`,
+  import_files: `
+CREATE TABLE import_files (
+  import_id TEXT NOT NULL,
+  project TEXT NOT NULL,
+  path TEXT NOT NULL,
+  key TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  closure TEXT NOT NULL,
+  observed TEXT NOT NULL,
+  PRIMARY KEY (import_id, project, path)
+) STRICT, WITHOUT ROWID;
+`
+};
+function sourceLabel(header) {
+  const at = header.commit === null ? "an unborn commit" : header.commit.slice(0, 8);
+  if (header.source.kind === "local") return `local export at ${at}`;
+  const { runId, repository } = header.source;
+  return `CI run ${runId ?? "?"} on ${repository ?? "an unnamed repository"} at ${at}`;
+}
+function hasTables(conn) {
+  const found2 = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(Object.keys(IMPORT_TABLES))
+  );
+  return found2.length === Object.keys(IMPORT_TABLES).length;
+}
+function readable(store) {
+  let conn;
+  try {
+    conn = connectionOf(store);
+  } catch {
+    return null;
+  }
+  return hasTables(conn) ? conn : null;
+}
+function listImports(store) {
+  const conn = readable(store);
+  if (conn === null) return [];
+  return conn.all("SELECT * FROM imports ORDER BY imported_at DESC, id").flatMap((row) => {
+    const header = parseHeader(row.header);
+    return header === null ? [] : [
+      {
+        id: String(row.id),
+        header,
+        fileHash: String(row.file_hash),
+        importedAt: Number(row.imported_at)
+      }
+    ];
+  });
+}
+function importSourceOf(store) {
+  let labels;
+  return (importId) => {
+    labels ??= new Map(listImports(store).map((i) => [i.id, sourceLabel(i.header)]));
+    return labels.get(importId) ?? null;
+  };
+}
+function importFiles(store, importId) {
+  const conn = readable(store);
+  if (conn === null) return [];
+  return conn.all("SELECT * FROM import_files WHERE import_id = ? ORDER BY project, path", importId).map(toImportFile);
+}
+function toImportFile(row) {
+  return {
+    importId: String(row.import_id),
+    project: String(row.project),
+    path: String(row.path),
+    key: String(row.key),
+    environment: String(row.environment),
+    closure: String(row.closure),
+    observed: String(row.observed)
+  };
+}
+function parseHeader(text2) {
+  if (typeof text2 !== "string") return null;
+  try {
+    const value = JSON.parse(text2);
+    return isHeader(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+function isHeader(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const h = value;
+  const source = h.source;
+  return typeof h.squealVersion === "string" && typeof h.keyFormat === "number" && (typeof h.commit === "string" || h.commit === null) && typeof h.dirty === "boolean" && typeof h.createdAt === "number" && typeof source === "object" && source !== null && (source.kind === "local" || source.kind === "github");
+}
+
 // src/core/state/flaky.ts
 var FLAKY_META_KEY = "flaky-checks";
 function readFlakyNotes(store) {
@@ -9940,228 +10103,6 @@ function withRecorded(store, worktreeId, states, revision) {
     };
     return { ...failure2, recorded };
   });
-}
-
-// src/core/state/baseline.ts
-function baselineMetaKey(worktreeId) {
-  return worktreeMetaKey("baselineFindings", worktreeId);
-}
-function entry(check, fingerprint) {
-  return `${checkIdentity(check)}\0${fingerprint ?? ""}`;
-}
-function current(e) {
-  const at = e.lastIndexOf("\0");
-  return `${e.slice(0, at + 1)}${renormalizeFingerprint(e.slice(at + 1))}`;
-}
-function read(store, worktreeId) {
-  const raw = store.meta.get(baselineMetaKey(worktreeId));
-  return raw === null ? null : JSON.parse(raw);
-}
-function baselineFindings(store, worktreeId) {
-  const entries = new Set(read(store, worktreeId)?.entries.map(current));
-  return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
-}
-
-// src/core/status/checks.ts
-function countChecks(checks) {
-  const testFiles2 = checks.filter((check) => check.kind === "file").length;
-  const setups = checks.filter((check) => check.kind === "setup").length;
-  return {
-    tests: checks.length - testFiles2 - setups,
-    testFiles: testFiles2,
-    ...setups > 0 ? { setups } : {}
-  };
-}
-function checkPartsText({ tests: tests2, testFiles: testFiles2, setups = 0 }, fileLevel = "loaded") {
-  return [
-    ...tests2 > 0 ? [plural(tests2, "test")] : [],
-    ...testFiles2 > 0 ? [`${plural(testFiles2, "test file")} ${fileLevel}`] : [],
-    ...setups > 0 ? [plural(setups, "global setup")] : []
-  ].join(", ");
-}
-function checksText(checks, noun = "check", fileLevel) {
-  const parts = checks.length === 0 ? "" : ` (${checkPartsText(countChecks(checks), fileLevel)})`;
-  return `${plural(checks.length, noun)}${parts}`;
-}
-function failureCountText(checks) {
-  if (checks.length === 0) return "0";
-  return `${checks.length} (${checkPartsText(countChecks(checks), "that did not load")})`;
-}
-function splitByValidity(failures) {
-  return {
-    current: failures.filter((f) => f.validity === "current"),
-    pending: failures.filter((f) => f.validity === "pending"),
-    stale: failures.filter((f) => f.validity !== "current" && f.validity !== "pending")
-  };
-}
-function knownFailureCounts(failures) {
-  const { current: current2, pending, stale } = splitByValidity(failures);
-  return { current: current2.length, pending: pending.length, stale: stale.length };
-}
-function earlierFailuresLines({ pending, stale }) {
-  if (pending + stale === 0) return [];
-  return [
-    `Earlier failures: ${pending} pending rerun, ${stale} stale (not counted until a rerun fails)`
-  ];
-}
-
-// src/core/status/ignored-config.ts
-import { isDeepStrictEqual } from "node:util";
-var ADDED = {
-  // `research/issue-120.md`: 0.1.369 added it; without it, the observed files stay in the keys.
-  runtimeFiles: {
-    in: "0.1.369",
-    cost: "extra re-runs: a change to a runtime file it names re-runs the tests that read it"
-  }
-};
-function ignoredConfigOf(root, daemon, own = squealVersion()) {
-  const { policy, unknownKeys = [] } = loadPolicy(root);
-  const differs = daemon !== null && daemon !== own ? { daemonVersion: daemon } : {};
-  const rules = unknownKeys.map((key) => ({
-    key,
-    by: "command",
-    version: own,
-    ...differs
-  }));
-  for (const [key, added] of Object.entries(ADDED)) {
-    const name2 = key;
-    if (daemon === null || !isNewerVersion(added.in, daemon)) continue;
-    if (isDeepStrictEqual(policy[name2], DEFAULT_POLICY[name2])) continue;
-    rules.push({ key, by: "daemon", version: daemon, addedIn: added.in, cost: added.cost });
-  }
-  return rules.length === 0 ? {} : { ignoredConfig: rules };
-}
-function liveDaemonVersion(worktree, liveness) {
-  const serving = liveness?.state === "alive" && liveness.stopping === void 0;
-  return serving ? worktree?.daemon?.squealVersion ?? null : null;
-}
-function ignoredConfigAt(worktree, liveness) {
-  return worktree === null ? {} : ignoredConfigOf(worktree.root, liveDaemonVersion(worktree, liveness));
-}
-function ignoredConfigLines(result, command, own = squealVersion()) {
-  const rules = result.ignoredConfig ?? [];
-  const unknown = /* @__PURE__ */ new Map();
-  for (const rule of rules.filter((r) => r.by === "command")) {
-    const group = `${rule.version} ${rule.daemonVersion ?? ""}`;
-    unknown.set(group, [...unknown.get(group) ?? [], rule]);
-  }
-  return [
-    ...[...unknown.values()].map((group) => unknownLine(group, command)),
-    ...rules.filter((r) => r.by === "daemon").map(
-      (r) => `Not applied: ${POLICY_FILE} key "${r.key}": the daemon runs squeal ${r.version}${r.addedIn === void 0 ? ", which does not apply it" : `, older than ${r.addedIn}, which added it`}.${r.cost === void 0 ? "" : ` Cost: ${r.cost}.`} \`${command} stop\`, then \`${command} start\`, starts squeal ${own} in its place.`
-    )
-  ];
-}
-function unknownLine(rules, command) {
-  const [first] = rules;
-  const one = rules.length === 1;
-  const it = one ? "it" : "them";
-  const keys = listPaths(rules.map((r) => `"${r.key}"`));
-  const daemon = first?.daemonVersion === void 0 ? "" : `; the daemon runs squeal ${first.daemonVersion}, and whether it applies ${it} is not known`;
-  return [
-    `Not applied: ${POLICY_FILE} ${one ? "key" : "keys"} ${keys} ${one ? "is" : "are"} unknown to squeal ${first?.version}, the version that read ${it} here:`,
-    `${one ? "a typo, or a key" : "typos, or keys"} a newer Squeal added. Validation goes on without ${it}${daemon}.`,
-    `\`${command} setup --check\` names each problem; \`${command} update\` installs the newest Squeal, and a session keeps the version it started on until it restarts.`
-  ].join(" ");
-}
-
-// src/core/store/imports.ts
-var IMPORT_TABLES = {
-  imports: `
-CREATE TABLE imports (
-  id TEXT PRIMARY KEY,
-  header TEXT NOT NULL,
-  file_hash TEXT NOT NULL,
-  imported_at INTEGER NOT NULL
-) STRICT, WITHOUT ROWID;
-`,
-  import_files: `
-CREATE TABLE import_files (
-  import_id TEXT NOT NULL,
-  project TEXT NOT NULL,
-  path TEXT NOT NULL,
-  key TEXT NOT NULL,
-  environment TEXT NOT NULL,
-  closure TEXT NOT NULL,
-  observed TEXT NOT NULL,
-  PRIMARY KEY (import_id, project, path)
-) STRICT, WITHOUT ROWID;
-`
-};
-function sourceLabel(header) {
-  const at = header.commit === null ? "an unborn commit" : header.commit.slice(0, 8);
-  if (header.source.kind === "local") return `local export at ${at}`;
-  const { runId, repository } = header.source;
-  return `CI run ${runId ?? "?"} on ${repository ?? "an unnamed repository"} at ${at}`;
-}
-function hasTables(conn) {
-  const found2 = conn.all(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(?))",
-    JSON.stringify(Object.keys(IMPORT_TABLES))
-  );
-  return found2.length === Object.keys(IMPORT_TABLES).length;
-}
-function readable(store) {
-  let conn;
-  try {
-    conn = connectionOf(store);
-  } catch {
-    return null;
-  }
-  return hasTables(conn) ? conn : null;
-}
-function listImports(store) {
-  const conn = readable(store);
-  if (conn === null) return [];
-  return conn.all("SELECT * FROM imports ORDER BY imported_at DESC, id").flatMap((row) => {
-    const header = parseHeader(row.header);
-    return header === null ? [] : [
-      {
-        id: String(row.id),
-        header,
-        fileHash: String(row.file_hash),
-        importedAt: Number(row.imported_at)
-      }
-    ];
-  });
-}
-function importSourceOf(store) {
-  let labels;
-  return (importId) => {
-    labels ??= new Map(listImports(store).map((i) => [i.id, sourceLabel(i.header)]));
-    return labels.get(importId) ?? null;
-  };
-}
-function importFiles(store, importId) {
-  const conn = readable(store);
-  if (conn === null) return [];
-  return conn.all("SELECT * FROM import_files WHERE import_id = ? ORDER BY project, path", importId).map(toImportFile);
-}
-function toImportFile(row) {
-  return {
-    importId: String(row.import_id),
-    project: String(row.project),
-    path: String(row.path),
-    key: String(row.key),
-    environment: String(row.environment),
-    closure: String(row.closure),
-    observed: String(row.observed)
-  };
-}
-function parseHeader(text2) {
-  if (typeof text2 !== "string") return null;
-  try {
-    const value = JSON.parse(text2);
-    return isHeader(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-function isHeader(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const h = value;
-  const source = h.source;
-  return typeof h.squealVersion === "string" && typeof h.keyFormat === "number" && (typeof h.commit === "string" || h.commit === null) && typeof h.dirty === "boolean" && typeof h.createdAt === "number" && typeof source === "object" && source !== null && (source.kind === "local" || source.kind === "github");
 }
 
 // src/core/state/before-edits.ts
@@ -11439,14 +11380,6 @@ function commitNews(store, consumer) {
   return void 0;
 }
 
-// src/core/delivery/consumer-version.ts
-function versionMetaKey(worktreeId) {
-  return worktreeMetaKey("consumerVersion", worktreeId);
-}
-function recordVersion(store, consumer, version) {
-  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
-}
-
 // src/core/delivery/counts-owed.ts
 function countsOwedMetaKey(worktreeId) {
   return worktreeMetaKey("countsOwed", worktreeId);
@@ -12455,6 +12388,51 @@ function oldestOwed(store, worktreeId, owed2) {
   return createdAt === void 0 ? null : { from, createdAt };
 }
 
+// src/core/delivery/own-count.ts
+function ownCount(own) {
+  const count2 = { files: own.files, owed: own.owed.length };
+  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
+}
+function readOwn(store, consumer, since, states) {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const none2 = { since, revision, files: 0, owed: [], unknown: 0, rekeyed: /* @__PURE__ */ new Set() };
+  if (!isRefined(store, worktreeId, revision)) return { ...none2, refined: false };
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed = [];
+  const owed2 = [];
+  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null || entry3.last <= since) continue;
+    rekeyed.push(row);
+    if (entry3.open !== null)
+      owed2.push({ file: row.testFile, from: Math.max(entry3.open, since + 1) });
+  }
+  return {
+    since,
+    revision,
+    refined: true,
+    files: rekeyed.length,
+    owed: owed2,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
+  };
+}
+function carriesEditResult(notes, checks, header) {
+  if (notes.sawEdit === void 0) return false;
+  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
+}
+function unknownFiles(rekeyed, states) {
+  const unknown = new Set(
+    states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
+  );
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
+}
+
 // src/core/delivery/edits.ts
 function editsMetaKey(worktreeId) {
   return worktreeMetaKey("edits", worktreeId);
@@ -12555,52 +12533,17 @@ function lateParts(lateness) {
     ...lateness.caughtUp === void 0 ? {} : { caughtUp: lateness.caughtUp }
   };
 }
-function ownCount(own) {
-  const count2 = { files: own.files, owed: own.owed.length };
-  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
-}
-function readOwn(store, consumer, since, states) {
-  const { worktreeId } = consumer;
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  if (revision <= since) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
-  const none2 = { since, revision, files: 0, owed: [], unknown: 0, rekeyed: /* @__PURE__ */ new Set() };
-  if (!isRefined(store, worktreeId, revision)) return { ...none2, refined: false };
-  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
-  const rekeyed = [];
-  const owed2 = [];
-  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
-    const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry3.last <= since) continue;
-    rekeyed.push(row);
-    if (entry3.open !== null)
-      owed2.push({ file: row.testFile, from: Math.max(entry3.open, since + 1) });
-  }
-  return {
-    since,
-    revision,
-    refined: true,
-    files: rekeyed.length,
-    owed: owed2,
-    unknown: unknownFiles(rekeyed, states),
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
-  };
-}
-function carriesEditResult(notes, checks, header) {
-  if (notes.sawEdit === void 0) return false;
-  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
-  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
-}
-function unknownFiles(rekeyed, states) {
-  const unknown = new Set(
-    states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
-  );
-  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
-}
 
 // src/core/waiter-lock/waiter-lock.ts
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
+// src/core/delivery/consumer-version.ts
+function versionMetaKey(worktreeId) {
+  return worktreeMetaKey("consumerVersion", worktreeId);
+}
+function recordVersion(store, consumer, version) {
+  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
+}
 
 // src/core/delivery/hold-told.ts
 function holdToldMetaKey(worktreeId) {
@@ -12882,6 +12825,66 @@ function startHold(prepare2) {
   };
 }
 
+// src/core/status/ignored-config.ts
+import { isDeepStrictEqual } from "node:util";
+var ADDED = {
+  // `research/issue-120.md`: 0.1.369 added it; without it, the observed files stay in the keys.
+  runtimeFiles: {
+    in: "0.1.369",
+    cost: "extra re-runs: a change to a runtime file it names re-runs the tests that read it"
+  }
+};
+function ignoredConfigOf(root, daemon, own = squealVersion()) {
+  const { policy, unknownKeys = [] } = loadPolicy(root);
+  const differs = daemon !== null && daemon !== own ? { daemonVersion: daemon } : {};
+  const rules = unknownKeys.map((key) => ({
+    key,
+    by: "command",
+    version: own,
+    ...differs
+  }));
+  for (const [key, added] of Object.entries(ADDED)) {
+    const name2 = key;
+    if (daemon === null || !isNewerVersion(added.in, daemon)) continue;
+    if (isDeepStrictEqual(policy[name2], DEFAULT_POLICY[name2])) continue;
+    rules.push({ key, by: "daemon", version: daemon, addedIn: added.in, cost: added.cost });
+  }
+  return rules.length === 0 ? {} : { ignoredConfig: rules };
+}
+function liveDaemonVersion(worktree, liveness) {
+  const serving = liveness?.state === "alive" && liveness.stopping === void 0;
+  return serving ? worktree?.daemon?.squealVersion ?? null : null;
+}
+function ignoredConfigAt(worktree, liveness) {
+  return worktree === null ? {} : ignoredConfigOf(worktree.root, liveDaemonVersion(worktree, liveness));
+}
+function ignoredConfigLines(result, command, own = squealVersion()) {
+  const rules = result.ignoredConfig ?? [];
+  const unknown = /* @__PURE__ */ new Map();
+  for (const rule of rules.filter((r) => r.by === "command")) {
+    const group = `${rule.version} ${rule.daemonVersion ?? ""}`;
+    unknown.set(group, [...unknown.get(group) ?? [], rule]);
+  }
+  return [
+    ...[...unknown.values()].map((group) => unknownLine(group, command)),
+    ...rules.filter((r) => r.by === "daemon").map(
+      (r) => `Not applied: ${POLICY_FILE} key "${r.key}": the daemon runs squeal ${r.version}${r.addedIn === void 0 ? ", which does not apply it" : `, older than ${r.addedIn}, which added it`}.${r.cost === void 0 ? "" : ` Cost: ${r.cost}.`} \`${command} stop\`, then \`${command} start\`, starts squeal ${own} in its place.`
+    )
+  ];
+}
+function unknownLine(rules, command) {
+  const [first] = rules;
+  const one = rules.length === 1;
+  const it = one ? "it" : "them";
+  const keys = listPaths(rules.map((r) => `"${r.key}"`));
+  const daemon = first?.daemonVersion === void 0 ? "" : `; the daemon runs squeal ${first.daemonVersion}, and whether it applies ${it} is not known`;
+  return [
+    `Not applied: ${POLICY_FILE} ${one ? "key" : "keys"} ${keys} ${one ? "is" : "are"} unknown to squeal ${first?.version}, the version that read ${it} here:`,
+    `${one ? "a typo, or a key" : "typos, or keys"} a newer Squeal added. Validation goes on without ${it}${daemon}.`,
+    `\`${command} setup --check\` names each problem; \`${command} update\` installs the newest Squeal, and a session keeps the version it started on until it restarts.`
+  ].join(" ");
+}
+
 // src/core/delivery/registration-owed.ts
 function registrationOwedMetaKey(worktreeId) {
   return worktreeMetaKey("registrationOwed", worktreeId);
@@ -12890,6 +12893,88 @@ function oweRegistration(store, consumer, owed2) {
   const key = registrationOwedMetaKey(consumer.worktreeId);
   if (owed2 === null && readSlot(store, key, consumer) === void 0) return;
   writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
+}
+
+// src/core/delivery/register.ts
+function registerNow(store, options, now, consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
+  return store.transaction(() => {
+    const at = now();
+    const registered = store.consumers.get(consumer) !== null;
+    const toldView = registered ? store.views.list(consumer) : null;
+    store.consumers.register(consumer, at);
+    oweRegistration(store, consumer, owesText ?? null);
+    forgetStopWait(store, consumer);
+    markLeaving(store, consumer, null);
+    const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
+    if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
+    const { rows, mark } = registrationSeed(store, seed2);
+    seedView(store, consumer, rows, at);
+    recordViewMark(store, consumer, mark === null ? null : { mark, at });
+    const told = startingSince === void 0 ? null : { startingSince };
+    const read5 = readLiveHeader(store, consumer.worktreeId, at, {
+      commonDir: options.commonDir,
+      states
+    });
+    const live = told === null ? read5 : withTold(read5, told, at);
+    const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
+    const header = withDependencies(
+      store,
+      consumer.worktreeId,
+      live,
+      knownFailures.map((f) => f.check)
+    );
+    tellAtRegistration(store, consumer, header, told, at);
+    if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
+    if (inTurn) startTurn(store, consumer);
+    else writeTurn(store, consumer, null);
+    recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+    recordVersion(store, consumer, options.squealVersion ?? null);
+    const code = registerCode(options.code, consumer, at);
+    const lint2 = registerLint(options.lint, consumer, at);
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      consumer,
+      header,
+      // 011-18: a resumed session's failures name the closure paths changed since it started.
+      knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+      ...code === void 0 ? {} : { code },
+      ...lint2 === void 0 ? {} : { lint: lint2 },
+      // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+      ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
+    };
+  });
+}
+function tellAtRegistration(store, consumer, header, told, at) {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
+  const slow = header.daemon?.state === "down" && (header.daemon.startSlow === true || header.daemon.startStopped === true);
+  tellLiveness(store, consumer, starting && !slow ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+function seedRegistered(store, consumer, header, {
+  at,
+  atStart,
+  root
+}) {
+  const alive = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive),
+    head: root === void 0 ? null : registrationHead(root)
+  });
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
+}
+function reportsNewFailure(view, states) {
+  const failing = new Set(
+    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check))
+  );
+  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
 }
 
 // src/core/delivery/stop-news.ts
@@ -13110,7 +13195,7 @@ function createDelivery(store, options) {
     return options.prepare?.unit?.(freed) ?? freed();
   };
   return {
-    register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    register: (consumer, registerOptions = {}) => unit(() => registerNow(store, options, now, consumer, registerOptions)),
     registrationSent: (consumer) => unit(() => {
       const hold = startHold(options.prepare);
       store.transaction(() => oweRegistration(store, consumer, null));
@@ -13169,80 +13254,6 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-  function registerNow(consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
-    return store.transaction(() => {
-      const at = now();
-      const registered = store.consumers.get(consumer) !== null;
-      const toldView = registered ? store.views.list(consumer) : null;
-      store.consumers.register(consumer, at);
-      oweRegistration(store, consumer, owesText ?? null);
-      forgetStopWait(store, consumer);
-      markLeaving(store, consumer, null);
-      const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
-      if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      const { rows, mark } = registrationSeed(store, seed2);
-      seedView(store, consumer, rows, at);
-      recordViewMark(store, consumer, mark === null ? null : { mark, at });
-      const told = startingSince === void 0 ? null : { startingSince };
-      const read5 = readLiveHeader(store, consumer.worktreeId, at, {
-        commonDir: options.commonDir,
-        states
-      });
-      const live = told === null ? read5 : withTold(read5, told, at);
-      const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
-      const header = withDependencies(
-        store,
-        consumer.worktreeId,
-        live,
-        knownFailures.map((f) => f.check)
-      );
-      tellAtRegistration(store, consumer, header, told, at);
-      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
-      if (inTurn) startTurn(store, consumer);
-      else writeTurn(store, consumer, null);
-      recordHarness(store, consumer, options.harnessProcess?.() ?? null);
-      recordVersion(store, consumer, options.squealVersion ?? null);
-      const code = registerCode(options.code, consumer, at);
-      const lint2 = registerLint(options.lint, consumer, at);
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header,
-        // 011-18: a resumed session's failures name the closure paths changed since it started.
-        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
-        ...code === void 0 ? {} : { code },
-        ...lint2 === void 0 ? {} : { lint: lint2 },
-        // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
-        ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
-      };
-    });
-  }
-}
-function tellAtRegistration(store, consumer, header, told, at) {
-  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-  const slow = header.daemon?.state === "down" && (header.daemon.startSlow === true || header.daemon.startStopped === true);
-  tellLiveness(store, consumer, starting && !slow ? told : daemon);
-  tellRevision(store, consumer, header.revision);
-  tellSlowTier(store, consumer, header.slowTier);
-  tellGroupTiers(store, consumer, header.groupTiers);
-  tellCommit(store, consumer, header.commitLine);
-  oweCounts(store, consumer, header);
-  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-}
-function seedRegistered(store, consumer, header, {
-  at,
-  atStart,
-  root
-}) {
-  const alive = atStart && header.daemon?.state === "alive";
-  const resumed = tellRegistered(store, consumer, header.revision, {
-    at,
-    scanned: scannedDaemon(store, consumer.worktreeId, alive),
-    head: root === void 0 ? null : registrationHead(root)
-  });
-  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
-  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 function ownNotes(store, consumer, states, {
   liveness,
@@ -13255,12 +13266,6 @@ function ownNotes(store, consumer, states, {
 }
 function ownShown(stop, counts, header) {
   return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
-}
-function reportsNewFailure(view, states) {
-  const failing = new Set(
-    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check))
-  );
-  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
 }
 
 // src/core/delivery/daemon-writer.ts
@@ -16615,6 +16620,66 @@ function awaitingInstallSentence(missing, command) {
   return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
 }
 
+// src/core/delivery/header-daemon.ts
+function awaitingInstallText(header) {
+  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
+  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
+}
+function daemonText(header, command, unlisted3 = false) {
+  const awaiting2 = awaitingInstallText(header);
+  const { daemon } = header;
+  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
+  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
+}
+function stoppedText(command) {
+  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+}
+function livenessSentence(daemon, revision, command) {
+  if (daemon === void 0) return "";
+  const asOf = `results are as of revision ${revision}`;
+  if (daemon.stopping !== void 0) {
+    return ` The daemon is ${stoppingText(daemon.stopping, command)}; ${asOf}.`;
+  }
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
+  const died = diedText(daemon);
+  const { state, notes } = toldOf(daemon);
+  switch (state) {
+    case "stopped by request":
+      return stopOf(daemon) === "until-start" ? ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; ${asOf}.` : ` ${stoppedText(command)}; ${asOf}. ${holdAcrossEditsText(command)}`;
+    case "starting":
+      if (notes.includes("start stopped")) return ` ${stoppedStartText(daemon)}; ${asOf}.${died}`;
+      if (notes.includes("start slow")) return ` ${slowStartText(daemon)}; ${asOf}.${died}`;
+      return ` A daemon is starting; ${asOf}.${died}`;
+    case "resting":
+      return ` The daemon stopped while unused; ${asOf}.`;
+    case "heartbeat late":
+      if (daemon.heartbeatLate !== void 0) {
+        return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; ${asOf}.`;
+      }
+      break;
+  }
+  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const restart = died === "" ? "" : ` ${restartText(command)}`;
+  return ` ${since}; ${asOf}.${died}${restart}`;
+}
+var restartText = (command) => `\`${command} start\` starts one.`;
+function slowStartText(daemon) {
+  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
+  return `A daemon has been starting${since}`;
+}
+function stoppedStartText(daemon) {
+  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
+  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
+}
+function diedText(daemon) {
+  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
+}
+function noneRunning(daemon) {
+  return daemon?.state === "down" && toldOf(daemon).state === "gone";
+}
+
 // src/core/delivery/header.ts
 var CURRENT_DEFINED = "(run on the files as they are now)";
 function noResultsText(command) {
@@ -16638,10 +16703,6 @@ function revisionPrefix(header) {
   return `Revision ${header.revision}${changedText(header)}: `;
 }
 var CHANGED_PATHS_SHOWN = 3;
-function awaitingInstallText(header) {
-  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
-}
 function changedText(header) {
   const paths = header.changedPaths;
   if (paths === void 0 || paths.length === 0) return "";
@@ -16654,12 +16715,6 @@ function incompleteText(header, command) {
   const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
   const delays = delaysText(header, late, command);
   return delays === null ? "" : ` ${delays}`;
-}
-function daemonText(header, command, unlisted3 = false) {
-  const awaiting2 = awaitingInstallText(header);
-  const { daemon } = header;
-  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
-  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
 }
 function fullLine(header, command) {
   const unlisted3 = unlistedLine(header, command);
@@ -16726,58 +16781,6 @@ function headerParts(header, command, form = "full", told = {}) {
     line,
     tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
   };
-}
-function stoppedText(command) {
-  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-}
-function livenessSentence(daemon, revision, command) {
-  if (daemon === void 0) return "";
-  if (daemon.stopping !== void 0) {
-    return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
-  }
-  if (daemon.state === "alive") {
-    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-  }
-  const stop = stopOf(daemon);
-  if (stop === "until-start") {
-    return ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; results are as of revision ${revision}.`;
-  }
-  if (stop === "until-edit")
-    return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
-  const died = diedText(daemon);
-  if (daemon.startStopped === true) {
-    return ` ${stoppedStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.startSlow === true) {
-    return ` ${slowStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.startingSince !== void 0) {
-    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.resting === true) {
-    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
-  }
-  if (daemon.heartbeatLate !== void 0) {
-    return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
-  }
-  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  const restart = died === "" ? "" : ` ${restartText(command)}`;
-  return ` ${since}; results are as of revision ${revision}.${died}${restart}`;
-}
-var restartText = (command) => `\`${command} start\` starts one.`;
-function slowStartText(daemon) {
-  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
-  return `A daemon has been starting${since}`;
-}
-function stoppedStartText(daemon) {
-  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
-  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
-}
-function diedText(daemon) {
-  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
-}
-function noneRunning(daemon) {
-  return daemon?.state === "down" && daemon.stopping === void 0 && stopOf(daemon) === null && daemon.startingSince === void 0 && daemon.resting !== true && daemon.heartbeatLate === void 0;
 }
 
 // src/core/delivery/late-format.ts
@@ -17063,21 +17066,23 @@ function livenessTitle(liveness, header, command) {
     const what = liveness.stopping.to === void 0 ? "stopping" : "handing over";
     return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
   }
-  const stop = stopOf(liveness);
-  if (stop !== null) {
-    return stop === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
-  }
-  if (liveness?.state === "alive" && liveness.short !== void 0) {
-    return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
-  }
-  if (liveness?.state === "alive") {
-    return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
-  }
-  if (liveness?.state === "down" && liveness.startStopped === true) {
-    return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
-  }
-  if (liveness?.state === "down" && liveness.startSlow === true) {
-    return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
+  const told = liveness === void 0 ? void 0 : toldOf(liveness);
+  switch (told?.state) {
+    case "stopped by request":
+      return stopOf(liveness) === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
+    case "validating":
+      if (liveness?.state === "alive" && liveness.short !== void 0) {
+        return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
+      }
+      return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
+    case "starting":
+      if (told.notes.includes("start stopped")) {
+        return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
+      }
+      if (told.notes.includes("start slow")) {
+        return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
+      }
+      break;
   }
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }

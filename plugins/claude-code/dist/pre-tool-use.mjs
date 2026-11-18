@@ -2740,7 +2740,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.557";
+  if (true) return "0.1.559";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4432,6 +4432,66 @@ function awaitingInstallSentence(missing, command) {
   const where3 = missing.length === 0 ? "in this worktree" : `at this worktree's root or in ${missing.slice(0, MISSING_INSTALLS_SHOWN).join(", ")}${more > 0 ? ` and ${more} more` : ""}`;
   const install = command === void 0 ? "Install them" : `Run \`${command}\` to install them`;
   return `No dependencies are installed ${where3}, so Squeal runs none of its tests and inherits none of their results. ${install}: Squeal then inherits the results other worktrees recorded for the same code and dependencies, and runs the rest.`;
+}
+
+// src/core/delivery/header-daemon.ts
+function awaitingInstallText(header) {
+  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
+  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
+}
+function daemonText(header, command, unlisted3 = false) {
+  const awaiting2 = awaitingInstallText(header);
+  const { daemon } = header;
+  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
+  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
+}
+function stoppedText(command) {
+  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
+}
+function livenessSentence(daemon, revision, command) {
+  if (daemon === void 0) return "";
+  const asOf = `results are as of revision ${revision}`;
+  if (daemon.stopping !== void 0) {
+    return ` The daemon is ${stoppingText(daemon.stopping, command)}; ${asOf}.`;
+  }
+  if (daemon.state === "alive") {
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
+  }
+  const died = diedText(daemon);
+  const { state, notes } = toldOf(daemon);
+  switch (state) {
+    case "stopped by request":
+      return stopOf(daemon) === "until-start" ? ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; ${asOf}.` : ` ${stoppedText(command)}; ${asOf}. ${holdAcrossEditsText(command)}`;
+    case "starting":
+      if (notes.includes("start stopped")) return ` ${stoppedStartText(daemon)}; ${asOf}.${died}`;
+      if (notes.includes("start slow")) return ` ${slowStartText(daemon)}; ${asOf}.${died}`;
+      return ` A daemon is starting; ${asOf}.${died}`;
+    case "resting":
+      return ` The daemon stopped while unused; ${asOf}.`;
+    case "heartbeat late":
+      if (daemon.heartbeatLate !== void 0) {
+        return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; ${asOf}.`;
+      }
+      break;
+  }
+  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const restart = died === "" ? "" : ` ${restartText(command)}`;
+  return ` ${since}; ${asOf}.${died}${restart}`;
+}
+var restartText = (command) => `\`${command} start\` starts one.`;
+function slowStartText(daemon) {
+  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
+  return `A daemon has been starting${since}`;
+}
+function stoppedStartText(daemon) {
+  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
+  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
+}
+function diedText(daemon) {
+  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
+}
+function noneRunning(daemon) {
+  return daemon?.state === "down" && toldOf(daemon).state === "gone";
 }
 
 // src/core/slow/rank.ts
@@ -7079,10 +7139,6 @@ function revisionPrefix(header) {
   return `Revision ${header.revision}${changedText(header)}: `;
 }
 var CHANGED_PATHS_SHOWN = 3;
-function awaitingInstallText(header) {
-  if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
-  return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
-}
 function changedText(header) {
   const paths = header.changedPaths;
   if (paths === void 0 || paths.length === 0) return "";
@@ -7095,12 +7151,6 @@ function incompleteText(header, command) {
   const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
   const delays = delaysText(header, late, command);
   return delays === null ? "" : ` ${delays}`;
-}
-function daemonText(header, command, unlisted3 = false) {
-  const awaiting2 = awaitingInstallText(header);
-  const { daemon } = header;
-  const liveness = unlisted3 && daemon?.state === "down" && daemon.startingSince !== void 0 ? diedText(daemon) : livenessSentence(daemon, header.revision, command);
-  return liveness + (awaiting2 === null ? installSentences(header) : ` ${awaiting2}`);
 }
 function fullLine(header, command) {
   const unlisted3 = unlistedLine(header, command);
@@ -7167,58 +7217,6 @@ function headerParts(header, command, form = "full", told = {}) {
     line,
     tiers: [...slow === null ? [] : [slow], ...groups2, ...commit === void 0 ? [] : [commit]]
   };
-}
-function stoppedText(command) {
-  return `The daemon is stopped by request (\`${command} stop\`); a hook starts one at the next edit, or run \`${command} start\``;
-}
-function livenessSentence(daemon, revision, command) {
-  if (daemon === void 0) return "";
-  if (daemon.stopping !== void 0) {
-    return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
-  }
-  if (daemon.state === "alive") {
-    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-  }
-  const stop = stopOf(daemon);
-  if (stop === "until-start") {
-    return ` The daemon is ${untilStartText(command)}; no edit or Git operation starts one; results are as of revision ${revision}.`;
-  }
-  if (stop === "until-edit")
-    return ` ${stoppedText(command)}; results are as of revision ${revision}. ${holdAcrossEditsText(command)}`;
-  const died = diedText(daemon);
-  if (daemon.startStopped === true) {
-    return ` ${stoppedStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.startSlow === true) {
-    return ` ${slowStartText(daemon)}; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.startingSince !== void 0) {
-    return ` A daemon is starting; results are as of revision ${revision}.${died}`;
-  }
-  if (daemon.resting === true) {
-    return ` The daemon stopped while unused; results are as of revision ${revision}.`;
-  }
-  if (daemon.heartbeatLate !== void 0) {
-    return ` The daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}; results are as of revision ${revision}.`;
-  }
-  const since = daemon.since === null ? "No daemon is running" : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
-  const restart = died === "" ? "" : ` ${restartText(command)}`;
-  return ` ${since}; results are as of revision ${revision}.${died}${restart}`;
-}
-var restartText = (command) => `\`${command} start\` starts one.`;
-function slowStartText(daemon) {
-  const since = daemon.startingSince === void 0 ? "" : ` since ${utcTimeText(daemon.startingSince)}`;
-  return `A daemon has been starting${since}`;
-}
-function stoppedStartText(daemon) {
-  const text2 = startStoppedText(daemon.startingSince ?? null, utcTimeText);
-  return `${text2[0]?.toUpperCase()}${text2.slice(1)}`;
-}
-function diedText(daemon) {
-  return daemon.died === void 0 ? "" : ` The last daemon ${deathHookText(daemon.died)}. ${DEATH_CAUSE}`;
-}
-function noneRunning(daemon) {
-  return daemon?.state === "down" && daemon.stopping === void 0 && stopOf(daemon) === null && daemon.startingSince === void 0 && daemon.resting !== true && daemon.heartbeatLate === void 0;
 }
 
 // src/core/delivery/late-format.ts
@@ -7504,21 +7502,23 @@ function livenessTitle(liveness, header, command) {
     const what = liveness.stopping.to === void 0 ? "stopping" : "handing over";
     return `SQUEAL \xB7 the daemon is ${what} at revision ${revision}`;
   }
-  const stop = stopOf(liveness);
-  if (stop !== null) {
-    return stop === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
-  }
-  if (liveness?.state === "alive" && liveness.short !== void 0) {
-    return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
-  }
-  if (liveness?.state === "alive") {
-    return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
-  }
-  if (liveness?.state === "down" && liveness.startStopped === true) {
-    return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
-  }
-  if (liveness?.state === "down" && liveness.startSlow === true) {
-    return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
+  const told = liveness === void 0 ? void 0 : toldOf(liveness);
+  switch (told?.state) {
+    case "stopped by request":
+      return stopOf(liveness) === "until-start" ? `SQUEAL \xB7 the daemon is stopped until \`${command} start\` at revision ${revision}` : `SQUEAL \xB7 the daemon is stopped by request at revision ${revision}`;
+    case "validating":
+      if (liveness?.state === "alive" && liveness.short !== void 0) {
+        return `SQUEAL \xB7 a ${liveness.short.version} daemon is validating at revision ${revision}, not ${liveness.short.claimed}`;
+      }
+      return `SQUEAL \xB7 a daemon is validating again at revision ${revision}: its heartbeat is current`;
+    case "starting":
+      if (told.notes.includes("start stopped")) {
+        return `SQUEAL \xB7 a starting daemon may be stopped at revision ${revision}`;
+      }
+      if (told.notes.includes("start slow")) {
+        return `SQUEAL \xB7 a daemon is still starting at revision ${revision}`;
+      }
+      break;
   }
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
@@ -9812,7 +9812,7 @@ function readMark(path) {
     }
   } catch {
   }
-  return { at: 0, problem: "the full integrity check failed" };
+  return { at: 0, problem: "the mark beside the store could not be read", found: "unknown" };
 }
 function fileOf(value) {
   const { dev, ino } = value ?? {};
@@ -10153,6 +10153,7 @@ function recover(paths, options) {
 function foundBy(mark) {
   if (mark === void 0) return { found: "start" };
   const found2 = mark.found ?? "full-check";
+  if (found2 === "unknown") return { found: found2 };
   if (found2 === "full-check") return { found: found2, check: "full", checkedAt: mark.at };
   return { found: found2, markedAt: mark.at };
 }
@@ -12563,52 +12564,6 @@ function acknowledgeLint(source, consumer, ack) {
   withLint(source, ({ store }) => apply(store, consumer, ack));
 }
 
-// src/core/retry/recorded.ts
-function retryFactOf(records) {
-  const newest = records.filter((r) => r.noResult !== true).at(-1);
-  if (newest === void 0) return void 0;
-  return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
-}
-function passedRetry(store, testFile, key, runId) {
-  return retryFactOf(
-    retriesAt(readRetries(store), testFile, key).filter(
-      (r) => r.end?.outcome === "passed" && r.end.runId === runId
-    )
-  );
-}
-function withRecorded(store, worktreeId, states, revision) {
-  const failing = states.flatMap((state) => {
-    const failure2 = toKnownFailure(state, revision);
-    return failure2 === null ? [] : [{ state, failure: failure2 }];
-  });
-  if (failing.length === 0) return [];
-  const producers = readFailureProducers(store, worktreeId);
-  const failureKeys = readFailureKeys(store, worktreeId);
-  const retries = readRetries(store);
-  const loads = readRunLoads(store);
-  const notes = readFlakyNotes(store);
-  return failing.map(({ state, failure: failure2 }) => {
-    if (failure2.check.kind === "setup") return failure2;
-    const testFile = testFileOf(failure2.check);
-    const results = store.results.listForCheck(failure2.check, Number.MAX_SAFE_INTEGER);
-    const id = checkIdentity(state.check);
-    const row = producingResult(worktreeId, state, producers.get(id), failureKeys.get(id), results);
-    if (row === null) return { ...failure2, recordedUnknown: true };
-    const { provenance } = row;
-    const retry = retryFactOf(retriesAt(retries, testFile, row.key));
-    const recorded = {
-      worktreeId: provenance.worktreeId,
-      worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
-      revision: provenance.revision,
-      recordedAt: provenance.recordedAt,
-      loadPerCpu: loads.get(provenance.runId) ?? null,
-      ...retry === void 0 ? {} : { retry },
-      ...notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }
-    };
-    return { ...failure2, recorded };
-  });
-}
-
 // src/core/store/imports.ts
 var IMPORT_TABLES = {
   imports: `
@@ -12713,6 +12668,52 @@ var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var HOOK_TIMEOUT_MS = 2e3;
 var LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
 var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
+
+// src/core/retry/recorded.ts
+function retryFactOf(records) {
+  const newest = records.filter((r) => r.noResult !== true).at(-1);
+  if (newest === void 0) return void 0;
+  return { reason: newest.reason, outcome: newest.end?.outcome ?? "pending" };
+}
+function passedRetry(store, testFile, key, runId) {
+  return retryFactOf(
+    retriesAt(readRetries(store), testFile, key).filter(
+      (r) => r.end?.outcome === "passed" && r.end.runId === runId
+    )
+  );
+}
+function withRecorded(store, worktreeId, states, revision) {
+  const failing = states.flatMap((state) => {
+    const failure2 = toKnownFailure(state, revision);
+    return failure2 === null ? [] : [{ state, failure: failure2 }];
+  });
+  if (failing.length === 0) return [];
+  const producers = readFailureProducers(store, worktreeId);
+  const failureKeys = readFailureKeys(store, worktreeId);
+  const retries = readRetries(store);
+  const loads = readRunLoads(store);
+  const notes = readFlakyNotes(store);
+  return failing.map(({ state, failure: failure2 }) => {
+    if (failure2.check.kind === "setup") return failure2;
+    const testFile = testFileOf(failure2.check);
+    const results = store.results.listForCheck(failure2.check, Number.MAX_SAFE_INTEGER);
+    const id = checkIdentity(state.check);
+    const row = producingResult(worktreeId, state, producers.get(id), failureKeys.get(id), results);
+    if (row === null) return { ...failure2, recordedUnknown: true };
+    const { provenance } = row;
+    const retry = retryFactOf(retriesAt(retries, testFile, row.key));
+    const recorded = {
+      worktreeId: provenance.worktreeId,
+      worktreeRoot: store.worktrees.get(provenance.worktreeId)?.root ?? null,
+      revision: provenance.revision,
+      recordedAt: provenance.recordedAt,
+      loadPerCpu: loads.get(provenance.runId) ?? null,
+      ...retry === void 0 ? {} : { retry },
+      ...notes.get(id)?.key === row.key ? {} : { noEarlierPass: true }
+    };
+    return { ...failure2, recorded };
+  });
+}
 
 // src/core/state/before-edits.ts
 function registeredKeysMetaKey(worktreeId) {
@@ -13632,14 +13633,6 @@ function commitNews(store, consumer) {
   return void 0;
 }
 
-// src/core/delivery/consumer-version.ts
-function versionMetaKey(worktreeId) {
-  return worktreeMetaKey("consumerVersion", worktreeId);
-}
-function recordVersion(store, consumer, version) {
-  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
-}
-
 // src/core/delivery/counts-owed.ts
 function countsOwedMetaKey(worktreeId) {
   return worktreeMetaKey("countsOwed", worktreeId);
@@ -13661,6 +13654,51 @@ function payCounts(store, consumer, header) {
   return { countsOwed: { lookupOnly } };
 }
 var owed = (header) => header.testFilesListed === false;
+
+// src/core/delivery/own-count.ts
+function ownCount(own) {
+  const count2 = { files: own.files, owed: own.owed.length };
+  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
+}
+function readOwn(store, consumer, since, states) {
+  const { worktreeId } = consumer;
+  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+  if (revision <= since) return null;
+  const gaps = registration(store, consumer)?.gaps ?? [];
+  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
+  const none2 = { since, revision, files: 0, owed: [], unknown: 0, rekeyed: /* @__PURE__ */ new Set() };
+  if (!isRefined(store, worktreeId, revision)) return { ...none2, refined: false };
+  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
+  const rekeyed = [];
+  const owed2 = [];
+  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
+    const row = rows.get(id);
+    if (row === void 0 || row.key === null || entry3.last <= since) continue;
+    rekeyed.push(row);
+    if (entry3.open !== null)
+      owed2.push({ file: row.testFile, from: Math.max(entry3.open, since + 1) });
+  }
+  return {
+    since,
+    revision,
+    refined: true,
+    files: rekeyed.length,
+    owed: owed2,
+    unknown: unknownFiles(rekeyed, states),
+    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
+  };
+}
+function carriesEditResult(notes, checks, header) {
+  if (notes.sawEdit === void 0) return false;
+  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
+  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
+}
+function unknownFiles(rekeyed, states) {
+  const unknown = new Set(
+    states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
+  );
+  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
+}
 
 // src/core/delivery/edits.ts
 function editsMetaKey(worktreeId) {
@@ -13762,52 +13800,17 @@ function lateParts(lateness) {
     ...lateness.caughtUp === void 0 ? {} : { caughtUp: lateness.caughtUp }
   };
 }
-function ownCount(own) {
-  const count2 = { files: own.files, owed: own.owed.length };
-  return own.unknown === 0 ? count2 : { ...count2, unknown: own.unknown };
-}
-function readOwn(store, consumer, since, states) {
-  const { worktreeId } = consumer;
-  const revision = store.revisions.latest(worktreeId)?.number ?? 0;
-  if (revision <= since) return null;
-  const gaps = registration(store, consumer)?.gaps ?? [];
-  if (changedAfter(store, worktreeId, { since, gaps }, revision).changed.size === 0) return null;
-  const none2 = { since, revision, files: 0, owed: [], unknown: 0, rekeyed: /* @__PURE__ */ new Set() };
-  if (!isRefined(store, worktreeId, revision)) return { ...none2, refined: false };
-  const rows = new Map(store.testFileKeys.list(worktreeId).map((k) => [testFileId(k.testFile), k]));
-  const rekeyed = [];
-  const owed2 = [];
-  for (const [id, entry3] of readRekeyed(store, worktreeId)) {
-    const row = rows.get(id);
-    if (row === void 0 || row.key === null || entry3.last <= since) continue;
-    rekeyed.push(row);
-    if (entry3.open !== null)
-      owed2.push({ file: row.testFile, from: Math.max(entry3.open, since + 1) });
-  }
-  return {
-    since,
-    revision,
-    refined: true,
-    files: rekeyed.length,
-    owed: owed2,
-    unknown: unknownFiles(rekeyed, states),
-    rekeyed: new Set(rekeyed.map((k) => testFileId(k.testFile)))
-  };
-}
-function carriesEditResult(notes, checks, header) {
-  if (notes.sawEdit === void 0) return false;
-  const pending = header.counts.pending > 0 || header.testFilesWithoutChecks.pending > 0 || header.runnerPartPending === true;
-  return !pending && checks.some((check) => notes.rekeyed.has(testFileKeyOf(check)));
-}
-function unknownFiles(rekeyed, states) {
-  const unknown = new Set(
-    states.filter((s) => s.outcome === "unknown").map((s) => testFileKeyOf(s.check))
-  );
-  return rekeyed.filter((k) => unknown.has(testFileId(k.testFile))).length;
-}
 
 // src/core/waiter-lock/waiter-lock.ts
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
+
+// src/core/delivery/consumer-version.ts
+function versionMetaKey(worktreeId) {
+  return worktreeMetaKey("consumerVersion", worktreeId);
+}
+function recordVersion(store, consumer, version) {
+  writeSlot(store, versionMetaKey(consumer.worktreeId), consumer, version);
+}
 
 // src/core/delivery/hold-told.ts
 function holdToldMetaKey(worktreeId) {
@@ -14043,6 +14046,88 @@ function oweRegistration(store, consumer, owed2) {
   writeSlot(store, key, consumer, owed2 === null ? null : { primer: owed2.primer });
 }
 
+// src/core/delivery/register.ts
+function registerNow(store, options, now, consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
+  return store.transaction(() => {
+    const at = now();
+    const registered = store.consumers.get(consumer) !== null;
+    const toldView = registered ? store.views.list(consumer) : null;
+    store.consumers.register(consumer, at);
+    oweRegistration(store, consumer, owesText ?? null);
+    forgetStopWait(store, consumer);
+    markLeaving(store, consumer, null);
+    const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
+    if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
+    const { rows, mark } = registrationSeed(store, seed2);
+    seedView(store, consumer, rows, at);
+    recordViewMark(store, consumer, mark === null ? null : { mark, at });
+    const told = startingSince === void 0 ? null : { startingSince };
+    const read4 = readLiveHeader(store, consumer.worktreeId, at, {
+      commonDir: options.commonDir,
+      states
+    });
+    const live = told === null ? read4 : withTold(read4, told, at);
+    const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
+    const header = withDependencies(
+      store,
+      consumer.worktreeId,
+      live,
+      knownFailures.map((f) => f.check)
+    );
+    tellAtRegistration(store, consumer, header, told, at);
+    if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
+    if (inTurn) startTurn(store, consumer);
+    else writeTurn(store, consumer, null);
+    recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+    recordVersion(store, consumer, options.squealVersion ?? null);
+    const code = registerCode(options.code, consumer, at);
+    const lint2 = registerLint(options.lint, consumer, at);
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      consumer,
+      header,
+      // 011-18: a resumed session's failures name the closure paths changed since it started.
+      knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+      ...code === void 0 ? {} : { code },
+      ...lint2 === void 0 ? {} : { lint: lint2 },
+      // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+      ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
+    };
+  });
+}
+function tellAtRegistration(store, consumer, header, told, at) {
+  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
+  const slow = header.daemon?.state === "down" && (header.daemon.startSlow === true || header.daemon.startStopped === true);
+  tellLiveness(store, consumer, starting && !slow ? told : daemon);
+  tellRevision(store, consumer, header.revision);
+  tellSlowTier(store, consumer, header.slowTier);
+  tellGroupTiers(store, consumer, header.groupTiers);
+  tellCommit(store, consumer, header.commitLine);
+  oweCounts(store, consumer, header);
+  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+}
+function seedRegistered(store, consumer, header, {
+  at,
+  atStart,
+  root
+}) {
+  const alive = atStart && header.daemon?.state === "alive";
+  const resumed = tellRegistered(store, consumer, header.revision, {
+    at,
+    scanned: scannedDaemon(store, consumer.worktreeId, alive),
+    head: root === void 0 ? null : registrationHead(root)
+  });
+  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
+  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
+}
+function reportsNewFailure(view, states) {
+  const failing = new Set(
+    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check))
+  );
+  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
+}
+
 // src/core/delivery/stop-news.ts
 function actsAtStop(live) {
   if (live.stopping !== void 0) return live.stopping.overdue || live.stopping.to === void 0;
@@ -14261,7 +14346,7 @@ function createDelivery(store, options) {
     return options.prepare?.unit?.(freed) ?? freed();
   };
   return {
-    register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    register: (consumer, registerOptions = {}) => unit(() => registerNow(store, options, now, consumer, registerOptions)),
     registrationSent: (consumer) => unit(() => {
       const hold = startHold(options.prepare);
       store.transaction(() => oweRegistration(store, consumer, null));
@@ -14320,80 +14405,6 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
-  function registerNow(consumer, { inTurn = false, atStart = false, startingSince, owesText }) {
-    return store.transaction(() => {
-      const at = now();
-      const registered = store.consumers.get(consumer) !== null;
-      const toldView = registered ? store.views.list(consumer) : null;
-      store.consumers.register(consumer, at);
-      oweRegistration(store, consumer, owesText ?? null);
-      forgetStopWait(store, consumer);
-      markLeaving(store, consumer, null);
-      const { states, seed: seed2 } = statesToSeed(store, consumer.worktreeId);
-      if (toldView !== null && reportsNewFailure(toldView, states)) endLate(store, consumer);
-      const { rows, mark } = registrationSeed(store, seed2);
-      seedView(store, consumer, rows, at);
-      recordViewMark(store, consumer, mark === null ? null : { mark, at });
-      const told = startingSince === void 0 ? null : { startingSince };
-      const read4 = readLiveHeader(store, consumer.worktreeId, at, {
-        commonDir: options.commonDir,
-        states
-      });
-      const live = told === null ? read4 : withTold(read4, told, at);
-      const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
-      const header = withDependencies(
-        store,
-        consumer.worktreeId,
-        live,
-        knownFailures.map((f) => f.check)
-      );
-      tellAtRegistration(store, consumer, header, told, at);
-      if (!registered) seedRegistered(store, consumer, header, { at, atStart, root: options.root });
-      if (inTurn) startTurn(store, consumer);
-      else writeTurn(store, consumer, null);
-      recordHarness(store, consumer, options.harnessProcess?.() ?? null);
-      recordVersion(store, consumer, options.squealVersion ?? null);
-      const code = registerCode(options.code, consumer, at);
-      const lint2 = registerLint(options.lint, consumer, at);
-      return {
-        schemaVersion: PAYLOAD_SCHEMA_VERSION,
-        consumer,
-        header,
-        // 011-18: a resumed session's failures name the closure paths changed since it started.
-        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
-        ...code === void 0 ? {} : { code },
-        ...lint2 === void 0 ? {} : { lint: lint2 },
-        // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
-        ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
-      };
-    });
-  }
-}
-function tellAtRegistration(store, consumer, header, told, at) {
-  const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-  const daemon = header.daemon === void 0 ? null : toldAtRegistration(header.daemon);
-  const slow = header.daemon?.state === "down" && (header.daemon.startSlow === true || header.daemon.startStopped === true);
-  tellLiveness(store, consumer, starting && !slow ? told : daemon);
-  tellRevision(store, consumer, header.revision);
-  tellSlowTier(store, consumer, header.slowTier);
-  tellGroupTiers(store, consumer, header.groupTiers);
-  tellCommit(store, consumer, header.commitLine);
-  oweCounts(store, consumer, header);
-  tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-}
-function seedRegistered(store, consumer, header, {
-  at,
-  atStart,
-  root
-}) {
-  const alive = atStart && header.daemon?.state === "alive";
-  const resumed = tellRegistered(store, consumer, header.revision, {
-    at,
-    scanned: scannedDaemon(store, consumer.worktreeId, alive),
-    head: root === void 0 ? null : registrationHead(root)
-  });
-  startEdits(store, consumer, resumed?.editsSince ?? header.revision, resumed?.said === true);
-  if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
 }
 function ownNotes(store, consumer, states, {
   liveness,
@@ -14406,12 +14417,6 @@ function ownNotes(store, consumer, states, {
 }
 function ownShown(stop, counts, header) {
   return !stop && counts.countsOwed === void 0 && header.testFilesListed !== false;
-}
-function reportsNewFailure(view, states) {
-  const failing = new Set(
-    view.filter((v) => v.outcome === "fail").map((v) => checkIdentity(v.check))
-  );
-  return states.some((s) => s.outcome === "fail" && !failing.has(checkIdentity(s.check)));
 }
 
 // src/core/delivery/daemon-writer.ts

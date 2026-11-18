@@ -25,3 +25,14 @@ Use /worker. Shape: repair, failing test first. The scope is the section "(d) A 
 Owns: `src/core/store/{mark,open}.ts`, `src/core/daemon/store-file.ts`, `src/core/status/snapshot.ts`, the `StoreMark` type where it lives, their tests. Leave alone: everything else.
 
 Final message, each worker: the commit, what moved or changed with file names, any behaviour or text change, check results with their commands.
+
+## Review brief: candidate 0.1.559
+
+Use /reviewer. Candidate `cand/0.1.559`: two moves from the quality scan and one small repair. Review the range `origin/main..cand/0.1.559` at the SHA your task names; the last commit is the version raise with the built bundles (CI checks the bundles against the build: do not review bundle text). Contracts: sections W1 to W3 above, the board rows 005-119, 005-120 and 011-392, and `quality/2026-11.md`.
+
+- **005-119** and **005-120** claim no behaviour change and no text change. Your main task is to find one. 005-119: `livenessSentence`, `noneRunning` and `livenessTitle` now switch on `toldOf(...).state`; compare each against its code on the base for every state, also the stopped start (005-111), a death with and without a start (005-116's one `squeal start`), a daemon that is alive with `stopping` set (the worker checks `stopping` before the switch: judge it), a rest, a late heartbeat. 005-120: the moved functions are the same code with `store`, `options` and `now` passed in; no import cycle at run time; `test/keys/key-format.test.ts`.
+- **011-392 part (d)**: a mark beside the store that cannot be parsed is told with the finder `unknown`: the daemon-stop note says "a fault was marked on the store (the mark beside the store could not be read)" and the status recovery line has no "found by" clause (the coordinator chose both texts). A mark that parses and has no `found` stays the full check's. A mark file that says `found: "unknown"` itself: what is read?
+
+Test policy: no full suite. Read CI for `cand/0.1.559` for the full-suite result. Run single test files directly where you need them, one at a time, with `timeout 900`. Never run a script under `evals/bin`. No artificial load.
+
+Write `docs/specifications/005-agent-adoption/reviews/0.1.559.md`: PASS or FAIL first, then blocking findings (B), should-fix (S) and notes (N), each with file and line and a failing scenario.

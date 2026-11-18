@@ -1489,9 +1489,6 @@ var WATCHER_TIMINGS = {
 // src/core/status/feed-late.ts
 var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
 
-// src/core/retry/kept.ts
-var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
-
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var HOOK_TIMEOUT_MS = 2e3;
@@ -1501,6 +1498,9 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 // src/core/keys/pnpm-lockfile.ts
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
+
+// src/core/retry/kept.ts
+var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
 // src/core/code/gate/rule.ts
 var UNRUN_GAPS = ["not-prepared", "not-finished"];
