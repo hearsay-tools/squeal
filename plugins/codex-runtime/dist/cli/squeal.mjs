@@ -8037,19 +8037,19 @@ function answerMoves(store, worktreeId, upTo, sinceSeq, incarnation) {
   if (!isRefined(store, worktreeId, upTo)) return { state: "refining" };
   const rows = store.testFileKeys.list(worktreeId);
   const refs2 = new Map(rows.map((row2) => [testFileId(row2.testFile), row2.testFile]));
-  const rekeyed2 = [];
+  const rekeyed = [];
   for (const [id, file] of Object.entries(moves.files)) {
     const testFile = refs2.get(id);
     if (testFile === void 0) continue;
     for (const revision of new Set(file.open ?? [])) {
-      if (revision <= upTo) rekeyed2.push({ testFile, revision });
+      if (revision <= upTo) rekeyed.push({ testFile, revision });
     }
     for (const [raw, [seq]] of Object.entries(file.resolved)) {
       const revision = Number(raw);
-      if (seq > sinceSeq && revision <= upTo) rekeyed2.push({ testFile, revision, resolved: true });
+      if (seq > sinceSeq && revision <= upTo) rekeyed.push({ testFile, revision, resolved: true });
     }
   }
-  return { state: "answered", rekeyed: rekeyed2 };
+  return { state: "answered", rekeyed };
 }
 var MOVES_RETENTION_MS, MOVES_GRACE_MS, isInt, asPair;
 var init_rekeyed_moves = __esm({
@@ -9710,7 +9710,7 @@ var init_ledger = __esm({
         const revision = this.revision.number;
         const rows = [];
         const { removed, applied, unknown: unknown3, retired, setups } = drained;
-        const rekeyed2 = drained.rekeyed.flatMap(([id, moved4]) => {
+        const rekeyed = drained.rekeyed.flatMap(([id, moved4]) => {
           const file = this.files.get(id);
           return file ? [{ id, open: file.keyedAt, moved: moved4 }] : [];
         });
@@ -9725,7 +9725,7 @@ var init_ledger = __esm({
           revision,
           at: this.context.now()
         }));
-        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed2, applied, unknown3, unknownFiles, retired, setups].every(
+        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed, applied, unknown3, unknownFiles, retired, setups].every(
           (list2) => list2.length === 0
         );
         const writer = { writer: this.context.incarnation ?? null };
@@ -9737,8 +9737,8 @@ var init_ledger = __esm({
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
           this.context.keys.writeRuntimeApplications([...this.files.values()].map((file) => file.ref));
           const removedIds = removed.map(testFileId);
-          recordRekeyed(store, worktreeId, rekeyed2, removedIds);
-          recordMoves(store, worktreeId, rekeyed2, removedIds, revision, this.context.now(), {
+          recordRekeyed(store, worktreeId, rekeyed, removedIds);
+          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
             ...writer,
             ...before4 === void 0 ? {} : { before: before4 }
           });
@@ -9831,7 +9831,7 @@ var init_ledger = __esm({
           unknownFiles: [...this.#unknownFiles],
           retired: [...this.#retired]
         };
-        const rekeyed2 = [...this.#rekeyed];
+        const rekeyed = [...this.#rekeyed];
         const adopted = this.#adopted;
         const checkpoints = this.checkpoints.hold();
         return () => {
@@ -9845,7 +9845,7 @@ var init_ledger = __esm({
           this.#unknownFiles = owed.unknownFiles;
           this.#retired = owed.retired;
           this.#rekeyed.clear();
-          for (const [id, moved4] of rekeyed2) this.#rekeyed.set(id, moved4);
+          for (const [id, moved4] of rekeyed) this.#rekeyed.set(id, moved4);
           this.#adopted = adopted;
           checkpoints();
         };
@@ -14800,8 +14800,8 @@ function rekeyContent(context, ledger, revision) {
   const policy = reloadPolicy(context, ledger, changes);
   touched2.push(...policy.changes.map((c) => c.testFile));
   const moved4 = keys.index.rekey(changes.map((c) => c.path));
-  const rekeyed2 = moved4.map((c) => c.testFile);
-  touched2.push(...rekeyed2);
+  const rekeyed = moved4.map((c) => c.testFile);
+  touched2.push(...rekeyed);
   const declared = keys.updateDeclaredInputs(changes);
   if (declared !== null) touched2.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
@@ -14810,7 +14810,7 @@ function rekeyContent(context, ledger, revision) {
   quietQueued(context, ledger, misses, changes);
   const recent = touched2.filter((ref3) => ledger.queue.isRecent(ref3));
   return {
-    rekeyed: rekeyed2,
+    rekeyed,
     previous: new Map(moved4.map((c) => [testFileId(c.testFile), c.previous])),
     environment: inputs2 || policy.environment,
     catchUp,
@@ -27391,11 +27391,11 @@ function addStartup(store, bundle) {
   }
   return startup;
 }
-function recordFiles(store, bundle, files5, importId, rekeyed2) {
+function recordFiles(store, bundle, files5, importId, rekeyed) {
   const conn = connectionOf(store);
   const hashes = new Map(bundle.environments.map((e) => [e.project, e.hash]));
   for (const f of files5) {
-    const here = rekeyed2.get(testFileId(f));
+    const here = rekeyed.get(testFileId(f));
     const [key3, environment, closure, observed2] = here === void 0 ? [
       f.key,
       hashes.get(f.project) ?? "",
@@ -54327,15 +54327,15 @@ function* importSlices(store, bundle, options, tally2) {
     tally2.startup += added;
   }
   const { rekeying } = options;
-  const rekeyed2 = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
-  tally2.rekeyed = rekeyed2.size;
+  const rekeyed = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
+  tally2.rekeyed = rekeyed.size;
   for (const files5 of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
     yield write4("an import's files", () => {
       ensureImportTables(conn);
-      recordFiles(store, bundle, files5, options.importId, rekeyed2);
+      recordFiles(store, bundle, files5, options.importId, rekeyed);
     });
   }
-  for (const group of resultSlices(bundle, rekeyed2)) {
+  for (const group of resultSlices(bundle, rekeyed)) {
     let counts = { results: 0, alreadyStored: 0 };
     yield write4("an import's results", () => {
       counts = addResults(store, bundle, group, options);
@@ -54362,9 +54362,9 @@ function* importSlices(store, bundle, options, tally2) {
     );
   });
 }
-function* resultSlices(bundle, rekeyed2) {
+function* resultSlices(bundle, rekeyed) {
   const keyed = bundle.results.map(
-    (r) => [r, rekeyed2.get(testFileId({ project: r.project, path: r.testPath }))?.key ?? r.key]
+    (r) => [r, rekeyed.get(testFileId({ project: r.project, path: r.testPath }))?.key ?? r.key]
   );
   let slice = [];
   for (const group of groupBy(keyed, ([, key3]) => key3).values()) {
@@ -88720,12 +88720,12 @@ function lastHeard(store, worktreeId, revision, session, agent = null) {
   ).flatMap((record2) => toldRevision(store, record2.consumer) ?? []);
   return Math.min(revision, ...told3);
 }
-function editWindow(store, worktreeId, heard, revision, rekeyed2) {
+function editWindow(store, worktreeId, heard, revision, rekeyed) {
   const isSlow = worktreeLaneFiles(store, worktreeId);
   const unseen = new Set(
-    rekeyed2.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true).map((file) => file.revision)
+    rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true).map((file) => file.revision)
   );
-  const kept6 = rekeyed2.filter((file) => file.revision > heard || unseen.has(file.revision));
+  const kept6 = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
   const first2 = kept6.reduce((least, file) => Math.min(least, file.revision), heard + 1);
   const refs2 = kept6.map((file) => file.testFile);
   const owed = new Set(
@@ -94752,6 +94752,15 @@ var Keeper = class {
   notKeptFiles() {
     return new Map([...this.#notKept.files(), ...this.#passNotKept.files()]);
   }
+  /**
+   * Review wave-11 B1: each file a pass wrote, with the key it was written
+   * at, for a caller that reads its outcome back (`squeal status --at
+   * --run`, proof sides); a file a daemon took without saying how it went
+   * is not in it.
+   */
+  keptFiles() {
+    return this.#tally.files();
+  }
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close() {
     void this.#early.stop();
@@ -94862,6 +94871,7 @@ var Keeper = class {
 };
 var KeptTally = class {
   #kept = /* @__PURE__ */ new Set();
+  #files = /* @__PURE__ */ new Map();
   #unknown = /* @__PURE__ */ new Set();
   get kept() {
     return this.#kept.size;
@@ -94872,11 +94882,16 @@ var KeptTally = class {
   heard(pass2) {
     for (const file of pass2.kept ?? []) {
       this.#kept.add(fileOf3(file));
+      this.#files.set(fileOf3(file), { ref: file.ref, key: file.key });
       this.#unknown.delete(fileOf3(file));
     }
     for (const file of pass2.unknown ?? []) {
       if (!this.#kept.has(fileOf3(file))) this.#unknown.add(fileOf3(file));
     }
+  }
+  /** The files kept, each at the key written. */
+  files() {
+    return [...this.#files.values()];
   }
 };
 function fileOf3(file) {
@@ -94954,6 +94969,7 @@ function openStored(options) {
     ran: (run7) => keeper.ran(run7),
     flush: () => keeper.flush(),
     notKept: () => keeper.notKeptFiles(),
+    kept: () => keeper.keptFiles(),
     keys,
     close
   };
@@ -95116,7 +95132,12 @@ async function collectWithStores(root, env, changed2, options, parts3 = [], reru
       await stored3?.close();
     }
   };
-  return { evidence, keep, notKept: () => stored3?.notKept() ?? /* @__PURE__ */ new Map() };
+  return {
+    evidence,
+    keep,
+    notKept: () => stored3?.notKept() ?? /* @__PURE__ */ new Map(),
+    kept: () => stored3?.kept() ?? []
+  };
 }
 function told(adapters, opened3) {
   const tell = (adapter) => {
@@ -106471,13 +106492,6 @@ async function manifestOf4(root) {
 }
 
 // src/core/commit/at-keys-checkout.ts
-async function rekeyed(files5, rekey2) {
-  const keys = await rekey2(files5.map((f) => f.ref));
-  return files5.map((file) => {
-    const at2 = keys.get(testFileId(file.ref));
-    return at2 !== void 0 && "key" in at2 ? { ref: file.ref, at: at2 } : file;
-  });
-}
 async function inCheckout(main2, input, files5, options) {
   const out2 = /* @__PURE__ */ new Map();
   const started2 = performance.now();
@@ -106508,8 +106522,7 @@ async function inCheckout(main2, input, files5, options) {
           return refs3;
         }
       );
-      const rekey2 = (again2) => keyAgain(checkout.tree, input.commonDir, again2, options);
-      await options.beforeRemove?.(checkout, keyedOf(refs2, out2), changed2, rekey2);
+      await options.beforeRemove?.(checkout, keyedOf(refs2, out2), changed2);
     });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
@@ -106518,25 +106531,6 @@ async function inCheckout(main2, input, files5, options) {
     return { files: out2, failure: failure2, ms: ms2(), changed: null, inputCheckMs };
   }
   return { files: out2, failure: null, ms: ms2(), changed: changed2, inputCheckMs };
-}
-async function keyAgain(tree, commonDir, refs2, options) {
-  const out2 = /* @__PURE__ */ new Map();
-  if (refs2.length === 0) return out2;
-  const stores = readStores(commonDir);
-  try {
-    const main2 = stores?.main ?? null;
-    await withKeyer(tree, commonDir, main2 ?? void 0, options, async (open7) => {
-      const keyed = await open7.keyer.keyed(refs2);
-      for (const ref3 of refs2) {
-        const at2 = keyed.get(ref3);
-        if (at2 !== void 0)
-          out2.set(testFileId(ref3), { ...found2(main2, ref3, at2.key), loads: at2.loads });
-      }
-    });
-  } finally {
-    stores?.close();
-  }
-  return out2;
 }
 function keyedOf(refs2, out2) {
   return refs2.map((ref3) => ({ ref: ref3, at: out2.get(testFileId(ref3)) }));
@@ -106975,7 +106969,7 @@ async function keysAtCommit(options) {
     const { beforeRemove, whileOpen } = options;
     const hooks = {
       ...beforeRemove === void 0 ? {} : {
-        beforeRemove: ((checkout, keyed, changed2, rekey2) => beforeRemove(checkout, own(keyed), changed2, rekey2))
+        beforeRemove: ((checkout, keyed, changed2) => beforeRemove(checkout, own(keyed), changed2))
       },
       ...whileOpen === void 0 ? {} : { whileOpen: ((open7, keyed) => whileOpen(open7, own(keyed))) }
     };
@@ -107391,7 +107385,8 @@ async function gateFiles(options, env) {
     const { evidence } = collected;
     const notKept2 = [...collected.notKept()].map(([path, reason2]) => ({ path, reason: reason2 }));
     const runs = evidence.testFiles.map(fileRun);
-    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept: notKept2 };
+    const kept6 = collected.kept().map(({ ref: ref3, key: key3 }) => ({ project: ref3.project, path: ref3.path, key: key3 }));
+    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept: notKept2, kept: kept6 };
   } finally {
     durations2?.close();
   }
@@ -107546,19 +107541,25 @@ async function outcomesOf2(input) {
     return states;
   }
   const chosen = new Set(input.run.map((f) => testFileId(f.ref)));
+  const kept6 = new Map(
+    (answer4.result.kept ?? []).map((k) => [
+      testFileId({ project: k.project, path: k.path }),
+      k.key
+    ])
+  );
   await withStores(input.commonDir, async (main2) => {
     for (const file of [...input.run, ...input.siblings]) {
       if (!("key" in file.at)) continue;
-      const { key: key3 } = file.at;
       const { path } = file.ref;
-      const records = main2 === null ? [] : resultsAt(main2, file.ref, key3);
       const id = testFileId(file.ref);
-      if (records.length > 0) {
-        states.set(id, asRun2(stateOf3(key3, records, input.own), commit, true));
+      const at2 = kept6.get(id);
+      const records = main2 === null || at2 === void 0 ? [] : resultsAt(main2, file.ref, at2);
+      if (at2 !== void 0 && records.length > 0) {
+        states.set(id, asRun2(stateOf3(at2, records, input.own), commit, true));
       } else if (chosen.has(id)) {
         const runs = answer4.result.runs.filter((r) => r.path === path);
-        const why2 = notKeptWhy(answer4.result.notKept, path, input.coverage !== false);
-        states.set(id, fromGate(key3, runs, commit, why2));
+        const why2 = at2 === void 0 ? notKeptWhy(answer4.result.notKept, path, input.coverage !== false) : "its kept result could not be read back";
+        states.set(id, fromGate(file.at.key, runs, commit, why2));
       }
     }
   });
@@ -107706,7 +107707,7 @@ function atRun(input) {
       selection = chosen;
     }
   );
-  const beforeRemove = async (checkout, keyed, change3, rekey2) => {
+  const beforeRemove = async (checkout, keyed, change3) => {
     changed2 = change3;
     for (const [id, state] of selection.states) states.set(id, state);
     const { run: run7 } = selection;
@@ -107715,12 +107716,12 @@ function atRun(input) {
     try {
       estimate = estimateOf(run7, durationsOf2);
       if (args2.allMissing) input.note(estimateText2(estimate, commit, args2.timeoutSeconds));
-      if (run7.length > 0) await runFiles2(checkout, run7, keyed, rekey2);
+      if (run7.length > 0) await runFiles2(checkout, run7, keyed);
     } finally {
       durations2?.close();
     }
   };
-  async function runFiles2(checkout, run7, keyed, rekey2) {
+  async function runFiles2(checkout, run7, keyed) {
     overheadMs = elapsed();
     const left = Math.floor((budgetMs - overheadMs) / 1e3);
     if (left < 1) {
@@ -107749,14 +107750,12 @@ function atRun(input) {
     const siblings = keyed.filter(
       (f) => noResult(f) && paths.has(f.ref.path) && !chosen.has(testFileId(f.ref))
     );
-    const both = [...run7, ...siblings];
-    const read6 = changed2 === null && "result" in answer4 ? await rekeyed(both, rekey2) : both;
     const outcomes2 = await outcomesOf2({
       commonDir: input.commonDir,
       commit,
       own: input.own,
-      run: read6.slice(0, run7.length),
-      siblings: read6.slice(run7.length),
+      run: run7,
+      siblings,
       answer: answer4,
       changed: changed2,
       coverage: coverageOn(readPolicy(checkout.tree))
@@ -108340,7 +108339,7 @@ function forcedReason(input) {
   if (input.repeat > 1) return "a repeated side is not stored";
   return null;
 }
-async function runFiles(input, checkout, toRun2, change3, files5, rekey2) {
+async function runFiles(input, checkout, toRun2, change3, files5) {
   const budgetCut = () => {
     for (const file of toRun2) files5.set(testFileId(file.ref), budgetSide());
     return 0;
@@ -108367,7 +108366,7 @@ async function runFiles(input, checkout, toRun2, change3, files5, rekey2) {
       }
       break;
     }
-    const sides = await runOnce(input, checkout, left, { change: change3, env, seconds: seconds5, rekey: rekey2 });
+    const sides = await runOnce(input, checkout, left, { change: change3, env, seconds: seconds5 });
     const next = [];
     for (const file of left) {
       const id = testFileId(file.ref);
@@ -108406,13 +108405,13 @@ function budgetSide() {
     runs: 0
   };
 }
-async function runOnce(input, checkout, given2, round2) {
+async function runOnce(input, checkout, toRun2, round2) {
   const { change: change3, env, seconds: seconds5 } = round2;
   const forced = forcedReason(input);
   const answer4 = await runInChild({
     relaunch: input.relaunch,
     checkout,
-    files: [...new Set(given2.map((f) => f.ref.path))].sort(),
+    files: [...new Set(toRun2.map((f) => f.ref.path))].sort(),
     budgetSeconds: seconds5,
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
@@ -108422,8 +108421,6 @@ async function runOnce(input, checkout, given2, round2) {
     env,
     forward: input.forward
   });
-  const stored3 = forced === null && change3 === null && "result" in answer4;
-  const toRun2 = stored3 ? await rekeyed(given2, round2.rekey) : given2;
   const states = await outcomesOf2({
     commonDir: checkout.commonDir,
     commit: input.side.code,
@@ -108440,7 +108437,8 @@ async function runOnce(input, checkout, given2, round2) {
   await withStores(checkout.commonDir, async (main2) => {
     for (const file of toRun2) {
       const state = states.get(testFileId(file.ref));
-      const records = main2 !== null && forced === null && "key" in file.at ? resultsAt(main2, file.ref, file.at.key) : [];
+      const keptAt = state !== void 0 && "origin" in state && state.origin.stored === true;
+      const records = main2 !== null && forced === null && keptAt && "key" in state ? resultsAt(main2, file.ref, state.key) : [];
       out2.set(testFileId(file.ref), ranSide(state, answer4, file.ref.path, notStored, records));
     }
   });
@@ -108525,7 +108523,7 @@ async function withSide(input, body2) {
   let keyedRefs = [];
   const started2 = performance.now();
   const forced = forcedReason(input);
-  const beforeRemove = async (checkout, keyed, change3, rekey2) => {
+  const beforeRemove = async (checkout, keyed, change3) => {
     changed2 = change3;
     keyedRefs = keyed.map((f) => f.ref);
     const needs = await needsOf({
@@ -108562,7 +108560,7 @@ async function withSide(input, body2) {
     const run7 = async (refs3) => {
       const toRun2 = refs3.map((ref3) => pending.get(testFileId(ref3))).filter((f) => f !== void 0 && !files5.has(testFileId(f.ref)));
       if (toRun2.length === 0) return;
-      ran += await runFiles(input, checkout, toRun2, change3, files5, rekey2);
+      ran += await runFiles(input, checkout, toRun2, change3, files5);
     };
     const open7 = {
       keyed,
