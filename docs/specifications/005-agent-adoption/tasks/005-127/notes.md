@@ -138,3 +138,42 @@ node evals/bin/run-baseline.mjs --atomic --commit 86fd6c9ce9cce15ed9a983753bb176
 ```
 
 Each run is 2 scenarios × 1 model × 2 arms × 10 = 40 sessions: the shipped arm beside its variant arm. Each writes its own `.atomic-variant.json`. `atomic-compare.mjs` compares each file on its own. It refuses to pool an E or F file with a `primer-minimal` file, because their variant arms differ.
+
+## The full check: the skill form and the rewritten skill
+
+The human, 2026-11-18: "Final texts and a full check", with `squeal checks` in the skill. The commit under test is new: main, W1's `skill` start-message form (`cez/c35f19fd`) and this row's commits. Its shipped arm keeps the shipped skill, so the skill's new text reaches the eval only through these variants. The wording is a draft under the human's review.
+
+- `evals/variants/primer-skill.json`: the form switch to `skill` (`var PRIMER_FORM = "full";` to `var PRIMER_FORM = "skill";`, min 25), and the skill patches below.
+- `evals/variants/primer-skill-noproof.json`: the same without the proof parts: the description without "to show that a test catches a bug … or to compare test results with an earlier commit", and no step 8.
+
+**One text, one string.** A patch's `files` may now be a list (`evals/lib/variant.mjs`), so each text is written once for the skill's copies and the Codex seed. A wording change is an edit of one string in each of the two files. `test/evals/skill-form-variants.test.ts` fails when the two files differ in anything but the proof parts. I generated the files once from a list of the strings; that generator is not in the repository, so edit the JSON strings directly.
+
+**The steps.** The skill's steps after the patch:
+1. **Learn this repository's checks first** (new, (b))
+2. Keep working, and read the reports (was 1)
+3. On a FAIL (was 2)
+4. **A failure you did not cause** (new, (c), the text of forms E and F)
+5. Wait only when you need a result (was 3)
+6. Before you say the task is done (was 4)
+7. Run tests yourself only (was 5)
+8. **Results at another commit, and red proofs** (new, (d); `primer-skill` only). It is the last step, so the version without proof has the same steps 1 to 7 and no gap.
+
+References to step numbers moved with their steps: `(step 4)` became `(step 6)`; `use step 3's path wait instead` became step 5 (not in the seed); `not what step 3 or 4 expects` became `5 or 6`; in `references/commands.md`, `the skill's step 4` became step 6, twice.
+
+**'The primer' replaced** ((e), every copy that holds it):
+- intro: "It covers what the SQUEAL primer lists from `squeal.config.json`:" becomes "It covers the checks `squeal checks` lists from `squeal.config.json`:";
+- step 2 (was 1): "where the primer says no test group runs after each edit, nothing ran: use `squeal run <group> <path>... --wait 60000`" becomes "where `squeal checks` shows no check that runs after each edit, nothing ran: use `squeal run <check> <path>... --wait 60000`" (the seed has no such clause);
+- step 7 (was 5): "Done when the suites the primer does not list have run as the repository says" becomes "Done when what `squeal checks` says Squeal does not run has run as the repository says";
+- the Codex and Pi CLI line, and the short `plugins/codex` copy: "run the command the SQUEAL primer names" becomes "run the command the SQUEAL messages name". The `skill` form names the CLI in its sentences, or with "These are commands of the CLI SQUEAL messages name.", and every FAIL report's last line names it;
+- beyond the brief, the references: in `commands.md`, "Use it where the primer says no test group runs after each edit:" becomes "Use it where `squeal checks` shows no check that runs after each edit:". In `reports.md`, the glossary's "**revision**: as the SQUEAL primer defines it; not a git commit." points to a definition the `skill` form no longer gives, so it becomes "Squeal's number for each saved change to this worktree's files; every result names the revision it ran at. Not a git commit." No copy of the skill or its references names "primer" after the patch.
+
+**Copies.** As for E and F: the steps are in `plugins/claude-code`, `plugins/codex-runtime`, `plugins/pi` and the Codex seed (min 4, 3 where the seed lacks the text). The description is in all five copies (min 5), the short `plugins/codex/skills/squeal/SKILL.md` included. On a copy of 86fd6c9ce's plugin tree, whose skill files equal main's and are not changed by W1, every patch matched exactly its minimum: `primer-skill` `[25,5,4,4,3,4,4,4,4,4,4,4,3,4,4,4,3,4,4]`, `primer-skill-noproof` the same without the last 4. The commit under test is not built yet: the test checks the switch on a text that holds `var PRIMER_FORM = "full";`, the line W1's build writes in 25 bundles.
+
+**Commands** for the staged full check, from a checkout holding these variant files, with `C` the new commit under test. First Sonnet, then Sol:
+
+```sh
+node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-skill --models claude-sonnet-5-5 --repetitions 10
+node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-skill --models gpt-6.1-sol --repetitions 10
+```
+
+Each run is 12 scenarios × 2 arms × 10 = 240 sessions. With `primer-skill-noproof`, replace the variant's name. The two runs of one variant pool through `atomic-compare.mjs <sonnet file> <sol file>`, which keeps each model in its own table.

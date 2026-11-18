@@ -15,27 +15,21 @@ export function applyPatch(text, patch) {
 /**
  * Applies `variant.patch` to the files of every plugin under `pluginsDir` that the patch's
  * `files` names (`plugins/*` or `plugins/<name>`): `.../dist/**\/*.mjs` is the plugin's `.mjs`
- * bundles, any other path one file in the plugin (`plugins/*\/skills/squeal/SKILL.md`). Throws
- * when a patch matches fewer than its `min` (default 1) times: a rebuild that moved the string
+ * bundles, any other path one file in the plugin (`plugins/*\/skills/squeal/SKILL.md`). `files`
+ * may be a list of such patterns (row 005-127: one text for the skill's copies and the Codex
+ * seed), and `min` counts the matches of all. Throws when a patch matches fewer than its `min`
+ * (default 1) times: a rebuild that moved the string
  * fails loudly instead of running the shipped text under the variant's name. Returns
  * `[{ find, count }]`.
  */
 export function patchPlugins(pluginsDir, variant) {
   const applied = [];
   for (const p of variant.patch ?? []) {
-    const [, glob, rest] = /^(plugins\/[^/]+)\/(.*)$/.exec(p.files) ?? [];
-    if (!glob) throw new Error(`patch files must start plugins/<name>/: ${p.files}`);
     let count = 0;
-    for (const plugin of readdirSync(pluginsDir)) {
-      if (!glob.endsWith("*") && !glob.endsWith(`/${plugin}`)) continue;
-      const files = rest.startsWith("dist/")
-        ? walk(join(pluginsDir, plugin, "dist")).filter((f) => f.endsWith(".mjs"))
-        : [join(pluginsDir, plugin, rest)].filter((f) => existsSync(f));
-      for (const f of files) {
-        const r = applyPatch(readFileSync(f, "utf8"), p);
-        if (r.count) writeFileSync(f, r.text);
-        count += r.count;
-      }
+    for (const f of [p.files].flat().flatMap((files) => filesOf(pluginsDir, files))) {
+      const r = applyPatch(readFileSync(f, "utf8"), p);
+      if (r.count) writeFileSync(f, r.text);
+      count += r.count;
     }
     const min = p.min ?? 1;
     if (count < min)
@@ -45,6 +39,19 @@ export function patchPlugins(pluginsDir, variant) {
     applied.push({ find: p.find.slice(0, 60), count });
   }
   return applied;
+}
+
+/** The existing files of `pluginsDir` that one `files` pattern (`plugins/<name or *>/...`) names. */
+function filesOf(pluginsDir, files) {
+  const [, glob, rest] = /^(plugins\/[^/]+)\/(.*)$/.exec(files) ?? [];
+  if (!glob) throw new Error(`patch files must start plugins/<name>/: ${files}`);
+  return readdirSync(pluginsDir)
+    .filter((plugin) => glob.endsWith("*") || glob.endsWith(`/${plugin}`))
+    .flatMap((plugin) =>
+      rest.startsWith("dist/")
+        ? walk(join(pluginsDir, plugin, "dist")).filter((f) => f.endsWith(".mjs"))
+        : [join(pluginsDir, plugin, rest)].filter((f) => existsSync(f)),
+    );
 }
 
 /**
