@@ -224,6 +224,8 @@ function recover(paths: StorePaths, options: OpenStoreOptions): Store | StoreOpe
 function foundBy(mark: StoreMark | undefined): Record<string, unknown> {
   if (mark === undefined) return { found: "start" };
   const found = mark.found ?? "full-check";
+  // Row 011-392 (d): a mark cut short has no time and no finder to name.
+  if (found === "unknown") return { found };
   if (found === "full-check") return { found, check: "full", checkedAt: mark.at };
   return { found, markedAt: mark.at };
 }

@@ -42,6 +42,8 @@ export function storeCondemned(commonDir: AbsolutePath, opened?: StoreFile | nul
 
 /** What found the mark's fault, as a clause: `the full integrity check of the store found a fault (…)`. */
 export function faultFound(mark: StoreMark): string {
+  // Row 011-392 (d): a mark cut short names no finder.
+  if (mark.found === "unknown") return `a fault was marked on the store (${mark.problem})`;
   const finder =
     (mark.found ?? "full-check") === "full-check"
       ? "the full integrity check of the store"

@@ -16,9 +16,10 @@ import { storePaths } from "./paths.js";
 
 /**
  * What found a fault (row 011-391): a start's open, the full check, a
- * daemon's read or write while it ran, or a hook's.
+ * daemon's read or write while it ran, or a hook's. `unknown` (row 011-392
+ * d): a mark cut short, whose finder could not be read.
  */
-export type FaultFinder = "start" | "full-check" | "daemon" | "hook";
+export type FaultFinder = "start" | "full-check" | "daemon" | "hook" | "unknown";
 
 /** A store file, by device and inode. */
 export interface MarkedFile {
@@ -156,9 +157,9 @@ function readMark(path: string): StoreMark | null {
       };
     }
   } catch {
-    // A mark cut short still marks the store.
+    // A mark cut short still marks the store; what found its fault is unknown (row 011-392 d).
   }
-  return { at: 0, problem: "the full integrity check failed" };
+  return { at: 0, problem: "the mark beside the store could not be read", found: "unknown" };
 }
 
 function fileOf(value: unknown): MarkedFile | null {

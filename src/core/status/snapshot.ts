@@ -388,7 +388,11 @@ function breakdown(
   };
 }
 
-/** What found the fault, by the recovery note's `found` (row 011-391); `{at}` is when it was marked. */
+/**
+ * What found the fault, by the recovery note's `found` (row 011-391); `{at}`
+ * is when it was marked. `unknown` (a mark cut short, row 011-392 d) has no
+ * entry: its note names no finder.
+ */
 const FINDERS: Readonly<Record<string, string>> = {
   start: "a daemon start's open of the store",
   "full-check": "the full integrity check{at}",

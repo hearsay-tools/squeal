@@ -76,5 +76,9 @@ describe("the recovery line in status (row 011-226)", () => {
     expect(lineOf({ found: "full-check", check: "full", checkedAt: markedAt })).toBe(
       `${head}the full integrity check at 2026-10-26T08:30:00.000Z found a fault${tail}`,
     );
+    // Row 011-392 (d): a mark cut short names no finder.
+    expect(lineOf({ found: "unknown" })).toBe(
+      `store was recovered from corruption at 2026-10-26T09:00:00.000Z${tail}`,
+    );
   });
 });

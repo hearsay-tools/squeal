@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { storeCondemned } from "../../src/core/daemon/store-file.js";
 import { isBusy } from "../../src/core/store/connection.js";
 import { readStoreMark } from "../../src/core/store/mark.js";
 import {
@@ -431,6 +432,34 @@ describe("a mark that a read or write left (row 011-391)", () => {
       JSON.stringify({ at: 3, problem: "p", found: "elsewhere" }),
     );
     expect(readStoreMark(commonDir)).toEqual({ at: 3, problem: "p" });
+  });
+
+  it("reads a mark cut short as one whose finder is unknown, never the full check's (row 011-392 d)", () => {
+    const commonDir = fakeCommonDir();
+    open(commonDir).meta.set("kept", "yes");
+    writeFileSync(`${storePaths(commonDir).database}.check-failed`, '{"at":1,');
+
+    expect(readStoreMark(commonDir)).toEqual({
+      at: 0,
+      problem: "the mark beside the store could not be read",
+      found: "unknown",
+    });
+    expect(storeCondemned(commonDir)).toBe(
+      "daemon stopped: a fault was marked on the store (the mark beside the store could not be read); " +
+        "the next start moves the store aside and starts a fresh one",
+    );
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 8 });
+    if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+    try {
+      expect(store.meta.get("kept")).toBeNull();
+      const note = JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null");
+      expect(note).toMatchObject({ found: "unknown" });
+      expect(note).not.toHaveProperty("check");
+      expect(note).not.toHaveProperty("checkedAt");
+      expect(note).not.toHaveProperty("markedAt");
+    } finally {
+      store.close();
+    }
   });
 });
 
