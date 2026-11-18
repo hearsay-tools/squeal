@@ -231,57 +231,19 @@ async function successor(location: HookLocation, deps: HookDeps): Promise<Ensure
 }
 
 /**
- * Lessons, defect 26: hooks at 0.1.31 talked to a 0.1.24 daemon for hours.
- * A daemon whose recorded version (`worktrees.daemon_version`) is strictly
- * older than this hook's, while its heartbeat is fresh, is asked over its
- * socket to step down: it cancels its tiers in flight, persists one note,
- * clears its record and exits (row 011-31, C9 as amended 2026-10-20). A
- * daemon that accepts is sent `stop` too, whatever it answers, so one from
- * 0.1.200 on that steps down without the cancel cancels on the stop. The
- * hook then spawns its successor (`successor`), which waits for the lock; a
- * daemon spawned meanwhile loses it and exits (D10). A daemon from before
- * the request answers "unknown request type" and is sent `stop`, which
- * shuts down in the same order. An
- * equal or newer daemon is left alone, so a downgrade replaces nothing; a
- * version that is not plain `major.minor.patch` on either side compares as
- * not newer.
- *
- * Review wave 12b, B1: a released older hook taking the boundary after a
- * step-down would start a daemon older than the one that left. So nothing is
- * asked while another session's consumer registered with an older version,
- * or with none (`others`, every hook from before task 001-130): the daemon
- * serves until those sessions leave. At most three round trips of the socket
- * budget (the ping of row 011-151, the request and its stop), only for an
- * older daemon; with its timers stopped a stepping
- * daemon's heartbeat goes stale, so the request is not repeated past two
- * intervals. True when the daemon took a request to exit.
- */
-export async function stepDownIfOlder(
-  record: DaemonRecord | null,
-  now: EpochMs,
-  version: string = squealVersion(),
-  others: readonly (string | null)[] = [],
-): Promise<boolean> {
-  if (record === null || !asksStepDown(record, now, version, others)) return false;
-  return requestStepDown(record, version);
-}
-
-/** Whether `stepDownIfOlder` asks `record`'s daemon to step down. */
-function asksStepDown(
-  record: DaemonRecord,
-  now: EpochMs,
-  version: string,
-  others: readonly (string | null)[],
-): boolean {
-  return succeeds(record, version, others) && heartbeatFresh(record, now);
-}
-
-/**
  * Whether a hook at `version` may succeed `record`'s daemon: it is newer,
  * and no other session's consumer runs an older version or none (review
- * wave 12b, B1).
+ * wave 12b, B1). Lessons, defect 26: hooks at 0.1.31 talked to a 0.1.24
+ * daemon for hours. An equal or newer daemon is left alone, so a downgrade
+ * replaces nothing; a version that is not plain `major.minor.patch` on
+ * either side compares as not newer. Review wave 12b, B1: a released older
+ * hook taking the boundary after a step-down would start a daemon older
+ * than the one that left. So nothing is asked while another session's
+ * consumer registered with an older version, or with none (`others`, every
+ * hook from before task 001-130): the daemon serves until those sessions
+ * leave.
  */
-function succeeds(
+export function succeeds(
   record: DaemonRecord,
   version: string,
   others: readonly (string | null)[],
@@ -291,14 +253,27 @@ function succeeds(
 }
 
 /**
- * `stepDownIfOlder`'s requests, once it asks. Row 011-151 (review
+ * `handOver`'s requests, once it asks a daemon this hook `succeeds` with a
+ * fresh heartbeat. The daemon is asked over its socket to step down: it
+ * cancels its tiers in flight, persists one note, clears its record and
+ * exits (row 011-31, C9 as amended 2026-10-20). A daemon that accepts is
+ * sent `stop` too, whatever it answers, so one from 0.1.200 on that steps
+ * down without the cancel cancels on the stop. The hook then spawns its
+ * successor (`successor`), which waits for the lock; a daemon spawned
+ * meanwhile loses it and exits (D10). A daemon from before the request
+ * answers "unknown request type" and is sent `stop`, which shuts down in
+ * the same order. At most three round trips of the socket budget (the ping
+ * of row 011-151, the request and its stop), only for an older daemon;
+ * with its timers stopped a stepping daemon's heartbeat goes stale, so the
+ * request is not repeated past two intervals. Row 011-151 (review
  * 0.1.277-r2, B1): every incarnation reuses the socket path, so a successor
  * that bound it after the decision would take a request sent by path, and
  * an older one knows no mark to refuse it by. The ping first proves the
  * file at the path is `record`'s daemon's (`pinDaemon`), and each request
- * after it is written only while that file is still there.
+ * after it is written only while that file is still there. True when the
+ * daemon took a request to exit.
  */
-async function requestStepDown(record: DaemonRecord, version: string): Promise<boolean> {
+export async function requestStepDown(record: DaemonRecord, version: string): Promise<boolean> {
   try {
     const pinned = await pinDaemon(record, SOCKET_TIMEOUT_MS);
     if (pinned === null) return false;

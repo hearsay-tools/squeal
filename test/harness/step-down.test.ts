@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHandlers } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import { isNewerVersion, squealVersion } from "../../src/core/daemon/version.js";
+import { isNewerVersion } from "../../src/core/daemon/version.js";
 import type { DaemonRequest } from "../../src/core/types/daemon.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
-import { SOCKET_TIMEOUT_MS, stepDownIfOlder } from "../../src/harness/shared/ensure.js";
+import { requestStepDown, SOCKET_TIMEOUT_MS, succeeds } from "../../src/harness/shared/ensure.js";
 
 /*
  * Lessons, defect 26: a hook newer than the daemon asks it to step down;
@@ -97,10 +97,27 @@ describe("isNewerVersion", () => {
   });
 });
 
-describe("stepDownIfOlder (hook side)", () => {
+describe("succeeds (hook side)", () => {
+  const older = record("unused.sock", "0.1.24");
+
+  it("succeeds an older daemon, never an equal or newer one (a downgrade stays a no-op)", () => {
+    expect(succeeds(older, "0.1.31", [])).toBe(true);
+    expect(succeeds(record("unused.sock", "0.1.31"), "0.1.31", [])).toBe(false);
+    expect(succeeds(record("unused.sock", "0.2.0"), "0.1.31", [])).toBe(false);
+  });
+
+  it("does not succeed while another session registered with an older version, or with none", () => {
+    for (const others of [["0.1.30"], [null], ["0.1.31", null], ["0.0.0-unknown"]]) {
+      expect(succeeds(older, "0.1.31", others)).toBe(false);
+    }
+    expect(succeeds(older, "0.1.31", ["0.1.31", "0.2.0"])).toBe(true);
+  });
+});
+
+describe("requestStepDown (hook side)", () => {
   it("asks an older daemon with a fresh heartbeat to step down, with the hook's version, then sends it stop", async () => {
     const d = await daemonAt("0.1.24", current);
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(true);
+    expect(await requestStepDown(record(d.socketPath, "0.1.24"), "0.1.31")).toBe(true);
     expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }, { type: "stop" }]);
   });
 
@@ -111,7 +128,7 @@ describe("stepDownIfOlder (hook side)", () => {
   ])("asks nothing when the daemon at the socket answers the ping with %s", async (_, ping) => {
     // Row 011-151: a successor that bound the socket path after the hook read the record.
     const d = await daemonAt("0.1.24", current, ping);
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(false);
+    expect(await requestStepDown(record(d.socketPath, "0.1.24"), "0.1.31")).toBe(false);
     expect(d.asked).toEqual([PING]);
   });
 
@@ -119,39 +136,7 @@ describe("stepDownIfOlder (hook side)", () => {
     const d = await daemonAt("0.1.24", (request) =>
       request.type === "stop" ? { ok: false, error: "daemon error: boom" } : current(request),
     );
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(true);
-    expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }, { type: "stop" }]);
-  });
-
-  it("uses the hook's own version by default", async () => {
-    const d = await daemonAt("0.0.1", current);
-    await stepDownIfOlder(record(d.socketPath, "0.0.1"), Date.now());
-    expect(d.asked[1]).toEqual({ type: "step-down", version: squealVersion() });
-  });
-
-  it("asks nothing of an equal or newer daemon (a downgrade stays a no-op)", async () => {
-    const d = await daemonAt("0.1.31", current);
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.31"), Date.now(), "0.1.31")).toBe(false);
-    expect(await stepDownIfOlder(record(d.socketPath, "0.2.0"), Date.now(), "0.1.31")).toBe(false);
-    expect(d.asked).toEqual([]);
-  });
-
-  it("asks nothing of a daemon whose heartbeat is past grace, or of no daemon", async () => {
-    const d = await daemonAt("0.1.0", current);
-    const stale = record(d.socketPath, "0.1.0", Date.now() - 60_000);
-    expect(await stepDownIfOlder(stale, Date.now(), "0.1.31")).toBe(false);
-    expect(await stepDownIfOlder(null, Date.now(), "0.1.31")).toBe(false);
-    expect(d.asked).toEqual([]);
-  });
-
-  it("asks nothing while another session registered with an older version, or with none", async () => {
-    const d = await daemonAt("0.1.24", current);
-    const older = record(d.socketPath, "0.1.24");
-    for (const others of [["0.1.30"], [null], ["0.1.31", null], ["0.0.0-unknown"]]) {
-      expect(await stepDownIfOlder(older, Date.now(), "0.1.31", others)).toBe(false);
-    }
-    expect(d.asked).toEqual([]);
-    expect(await stepDownIfOlder(older, Date.now(), "0.1.31", ["0.1.31", "0.2.0"])).toBe(true);
+    expect(await requestStepDown(record(d.socketPath, "0.1.24"), "0.1.31")).toBe(true);
     expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }, { type: "stop" }]);
   });
 
@@ -162,7 +147,7 @@ describe("stepDownIfOlder (hook side)", () => {
       squealVersion: "0.1.40",
       steppingDown: false,
     }));
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(false);
+    expect(await requestStepDown(record(d.socketPath, "0.1.24"), "0.1.31")).toBe(false);
     expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }]);
   });
 
@@ -173,16 +158,16 @@ describe("stepDownIfOlder (hook side)", () => {
         ? { ok: true, type: "stop" }
         : { ok: false, error: `unknown request type ${JSON.stringify(request.type)}` },
     );
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.24"), Date.now(), "0.1.31")).toBe(true);
+    expect(await requestStepDown(record(d.socketPath, "0.1.24"), "0.1.31")).toBe(true);
     expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }, { type: "stop" }]);
   });
 
   it("sends no stop for any other error, and never throws on a socket that is gone", async () => {
     const d = await daemonAt("0.1.0", () => ({ ok: false, error: "daemon error: boom" }));
-    expect(await stepDownIfOlder(record(d.socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(false);
+    expect(await requestStepDown(record(d.socketPath, "0.1.0"), "0.1.31")).toBe(false);
     expect(d.asked).toEqual([PING, { type: "step-down", version: "0.1.31" }]);
     const gone = record(join(dir, "gone.sock"), "0.1.0");
-    expect(await stepDownIfOlder(gone, Date.now(), "0.1.31")).toBe(false);
+    expect(await requestStepDown(gone, "0.1.31")).toBe(false);
   });
 });
 
@@ -193,7 +178,7 @@ describe("the hook's budget", () => {
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
     const at = performance.now();
-    expect(await stepDownIfOlder(record(socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(false);
+    expect(await requestStepDown(record(socketPath, "0.1.0"), "0.1.31")).toBe(false);
     expect(performance.now() - at).toBeLessThan(SOCKET_TIMEOUT_MS + 400);
   });
 
@@ -212,7 +197,7 @@ describe("the hook's budget", () => {
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
     const at = performance.now();
-    expect(await stepDownIfOlder(record(socketPath, "0.1.0"), Date.now(), "0.1.31")).toBe(true);
+    expect(await requestStepDown(record(socketPath, "0.1.0"), "0.1.31")).toBe(true);
     expect(performance.now() - at).toBeLessThan(3 * SOCKET_TIMEOUT_MS + 400);
   });
 });

@@ -204,7 +204,7 @@ function bundleOf(script: string): string {
  * D7 `older`: a version older than the one its harness installs now, read
  * from the install its own script lies in. The information state instead,
  * while a consumer of an older version, or of none, has a live harness: C9
- * asks no step-down then (`stepDownIfOlder`). `null` when it is not older,
+ * asks no step-down then (`succeeds`). `null` when it is not older,
  * or cannot be told.
  */
 function olderOf(
