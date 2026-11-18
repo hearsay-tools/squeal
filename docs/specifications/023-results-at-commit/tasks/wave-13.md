@@ -19,4 +19,4 @@ The human approved (2026-11-18) groups B, C and D of `lessons.md` ("What went wr
 
 ## Both
 
-- Regression test per item, failing on today's code. Lint, typecheck, check:private, key-format, boundaries; `squeal status --wait 60000` on changed paths; the by-hand end-to-end suite once at the end (`SQUEAL_E2E_AT=1`, command in `tasks/023-09-notes.md`), on the apptension-lab VM if this host is loaded (read `~/projects/notes/topics/apptension-lab-vm.md` first). Notes in `tasks/023-19-notes.md` / `023-20-notes.md`. No version raise, no build, no full suite; `timeout 600` on direct runs; nothing left running.
+- Regression test per item, failing on today's code. Lint, typecheck, check:private, key-format, boundaries; `squeal status --wait 60000` on changed paths; the by-hand end-to-end suite once at the end (`SQUEAL_E2E_AT=1`, command in `tasks/023-09-notes.md`), on the shared lab VM if this host is loaded (see the machine notes). Notes in `tasks/023-19-notes.md` / `023-20-notes.md`. No version raise, no build, no full suite; `timeout 600` on direct runs; nothing left running.
