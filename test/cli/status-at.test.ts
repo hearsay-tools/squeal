@@ -84,7 +84,7 @@ describe("status --at arguments (rows 023-06, 023-07)", () => {
     const out: string[] = [];
     expect(main(["status", "--help"], { stdout: (t) => out.push(t), stderr: () => {} })).toBe(0);
     expect(out.join("")).toContain(
-      "squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--json]",
+      "squeal status --at <commit> [<path>...] [--run [--all-missing] [--timeout <seconds>]] [--full] [--json]",
     );
   });
 });
