@@ -15,7 +15,7 @@ import { readPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { conditionedEnv, hasConditions, hiddenInHome } from "../core/proof/conditions.js";
-import { ownHome } from "../core/proof/own-home.js";
+import { OutOfBudget, ownHome } from "../core/proof/own-home.js";
 import { NOT_RUN_BUDGET, type SideEnd } from "../core/proof/verdict.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { ResultRecord } from "../core/types/store-records.js";
@@ -55,10 +55,17 @@ export async function runFiles(
   files: Map<string, SideFile>,
   rekey: Rekey,
 ): Promise<number> {
+  // Row 023-18 (N1): no budget left, no own HOME made; the files read `not run (budget)`.
+  const budgetCut = () => {
+    for (const file of toRun) files.set(testFileId(file.ref), budgetSide());
+    return 0;
+  };
+  if (input.deadline - performance.now() < 1000) return budgetCut();
   let env: NodeJS.ProcessEnv;
   try {
     env = runEnv(input, checkout);
   } catch (error) {
+    if (error instanceof OutOfBudget) return budgetCut();
     // Review wave-9 B1: a kept path that changed into a link since the command checked it.
     const why = `own HOME: ${error instanceof Error ? error.message : String(error)}`;
     for (const file of toRun) files.set(testFileId(file.ref), unknown(why));
@@ -105,6 +112,7 @@ function runEnv(input: SideInput, checkout: Checkout): NodeJS.ProcessEnv {
     hidden,
     input.conditions.keep.map((k) => k.path),
     home,
+    input.deadline,
   );
   return conditionedEnv(input.env, input.conditions, home);
 }

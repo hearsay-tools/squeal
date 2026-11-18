@@ -32,7 +32,11 @@ export interface Located {
 }
 
 /** The worktree, both commits and the named files; a setup problem as a string. */
-export async function locate(args: ProofArgs, io: CliIo): Promise<Located | string> {
+export async function locate(
+  args: ProofArgs,
+  io: CliIo,
+  deadline?: number,
+): Promise<Located | string> {
   const where = worktreeOf(io);
   if (typeof where === "string") return where;
   const { cwd, root, commonDir } = where;
@@ -53,7 +57,7 @@ export async function locate(args: ProofArgs, io: CliIo): Promise<Located | stri
     if (rel === null) return `${file} lies outside ${root}`;
     paths.push(rel);
   }
-  const conditions = conditionsOf(args, cwd, root, (io.env ?? process.env).HOME);
+  const conditions = conditionsOf(args, cwd, root, (io.env ?? process.env).HOME, deadline);
   if (typeof conditions === "string") return conditions;
   const linked = await linkedWithout(root, [base, head], conditions);
   if (linked !== null) return linked;
@@ -94,6 +98,8 @@ export function conditionsOf(
   cwd: AbsolutePath,
   root: AbsolutePath,
   home: string | undefined,
+  /** Row 023-18 (N1): the command's deadline, which the `--home-keep` checks count toward. */
+  deadline?: number,
 ): Conditions | string {
   const without: Without[] = [];
   for (const given of args.without ?? []) {
@@ -109,7 +115,7 @@ export function conditionsOf(
   const keep: HomeKeep[] = [];
   for (const given of args.homeKeep ?? []) {
     if (hidden.length === 0) return `--home-keep ${given} needs a --without path under HOME`;
-    const placed = placeKeep(given, cwd, home, hidden);
+    const placed = placeKeep(given, cwd, home, hidden, deadline);
     if ("usage" in placed) return placed.usage;
     keep.push(placed);
   }

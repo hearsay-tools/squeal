@@ -13,6 +13,22 @@ import type { AbsolutePath } from "../types/common.js";
  * change a real `HOME` file through it, and its removal touches only it.
  */
 
+/**
+ * Row 023-18 (N1, `reviews/wave-9-rereview.md`): checking and copying the
+ * kept paths count toward the command's one `--timeout`. Past `deadline`
+ * (a `performance.now()` time) the walk and the copy stop at the next file
+ * or folder; a byte copy under way finishes.
+ */
+export class OutOfBudget extends Error {
+  constructor() {
+    super("the budget ended while the kept paths were copied into the own HOME");
+  }
+}
+
+/** Whether `deadline` has passed; never without one. */
+const over = (deadline: number | undefined) =>
+  deadline !== undefined && performance.now() > deadline;
+
 /** One `--home-keep`: as given, and its path relative to `HOME`. */
 export interface HomeKeep {
   readonly given: string;
@@ -34,6 +50,7 @@ export function placeKeep(
   cwd: AbsolutePath,
   home: string | undefined,
   hidden: readonly string[],
+  deadline?: number,
 ): HomeKeep | { readonly usage: string } {
   const problem = (why: string) => ({ usage: `--home-keep ${given}: ${why}` });
   if (home === undefined || home === "") return problem("HOME is not set");
@@ -44,7 +61,8 @@ export function placeKeep(
   const hiding = hidden.find((h) => within(path, h));
   if (hiding !== undefined)
     return problem(`it lies in the hidden path ${hiding === "" ? "HOME" : `~/${hiding}`}`);
-  const link = linkIn(home, path, hidden);
+  // N1: past the deadline the walk stops. No side runs then, and `ownHome` refuses a link itself.
+  const link = linkIn(home, path, hidden, deadline);
   if (link === undefined) return problem("no such file or folder");
   if (link !== null) return problem(`~/${link} is a link; a kept path must hold none`);
   return { given, path };
@@ -55,7 +73,12 @@ export function placeKeep(
  * (the hidden paths left out); `null` when none; `undefined` when `path`
  * is missing.
  */
-function linkIn(home: string, path: string, hidden: readonly string[]): string | null | undefined {
+function linkIn(
+  home: string,
+  path: string,
+  hidden: readonly string[],
+  deadline: number | undefined,
+): string | null | undefined {
   const parts = path === "" ? [] : path.split("/");
   for (let at = 1; at < parts.length; at++) {
     const above = parts.slice(0, at).join("/");
@@ -63,21 +86,23 @@ function linkIn(home: string, path: string, hidden: readonly string[]): string |
     if (stats === undefined) return undefined;
     if (stats.isSymbolicLink() || !stats.isDirectory()) return above;
   }
-  return linkBelow(home, path, hidden);
+  if (over(deadline)) return null;
+  return linkBelow(home, path, hidden, deadline);
 }
 
 function linkBelow(
   home: string,
   path: string,
   hidden: readonly string[],
+  deadline: number | undefined,
 ): string | null | undefined {
-  if (hidden.some((h) => within(path, h))) return null;
+  if (hidden.some((h) => within(path, h)) || over(deadline)) return null;
   const stats = lstatSync(join(home, path), { throwIfNoEntry: false });
   if (stats === undefined) return undefined;
   if (stats.isSymbolicLink()) return path;
   if (!stats.isDirectory()) return null;
   for (const name of readdirSync(join(home, path))) {
-    const found = linkBelow(home, path === "" ? name : `${path}/${name}`, hidden);
+    const found = linkBelow(home, path === "" ? name : `${path}/${name}`, hidden, deadline);
     if (found !== null && found !== undefined) return found;
   }
   return null;
@@ -94,6 +119,7 @@ export function ownHome(
   hidden: readonly string[],
   keep: readonly string[],
   into: string,
+  deadline?: number,
 ): void {
   mkdirSync(into, { recursive: true });
   const sorted = [...new Set(keep)].sort();
@@ -107,19 +133,26 @@ export function ownHome(
         throw new Error(`~/${above} is not a folder; the kept ~/${path} is not copied`);
       mkdirSync(join(into, above), { recursive: true });
     }
-    copyTree(home, into, path, hidden);
+    copyTree(home, into, path, hidden, deadline);
   }
 }
 
-function copyTree(home: string, into: string, path: string, hidden: readonly string[]): void {
+function copyTree(
+  home: string,
+  into: string,
+  path: string,
+  hidden: readonly string[],
+  deadline: number | undefined,
+): void {
   if (hidden.some((h) => within(path, h))) return;
+  if (over(deadline)) throw new OutOfBudget();
   const from = join(home, path);
   const stats = lstatSync(from);
   if (stats.isSymbolicLink()) throw new Error(`~/${path} is a link; a kept path must hold none`);
   if (stats.isDirectory()) {
     if (path !== "") mkdirSync(join(into, path), { recursive: true });
     for (const name of readdirSync(from))
-      copyTree(home, into, path === "" ? name : `${path}/${name}`, hidden);
+      copyTree(home, into, path === "" ? name : `${path}/${name}`, hidden, deadline);
   } else if (stats.isFile()) {
     // Exclusive: a link made at the destination since fails the copy, never takes it.
     copyFileSync(from, join(into, path), constants.COPYFILE_EXCL);

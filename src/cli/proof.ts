@@ -55,7 +55,8 @@ export async function proofCommand(
     io.stderr(`squeal proof: ${text}\n`);
     return 2;
   };
-  const at = await locate(args, io);
+  const deadline = started + args.timeoutSeconds * 1000;
+  const at = await locate(args, io, deadline);
   if (typeof at === "string") return fail(at);
   const { root, base, head, paths, conditions } = at;
   const env = { ...(io.env ?? process.env) } as NodeJS.ProcessEnv;
@@ -66,7 +67,7 @@ export async function proofCommand(
     keying: { adapters: daemonAdapters, squealVersion: squealVersion(), env, ...options, note },
     relaunch: io.relaunch,
     env,
-    deadline: started + args.timeoutSeconds * 1000,
+    deadline,
     forward: (text) => (args.json ? undefined : io.stderr(text)),
     conditions,
     repeat: args.repeat ?? 1,
