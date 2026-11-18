@@ -122,15 +122,18 @@ describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (p
         for (const path of paths) expect(first.row(path).now.state, path).toBe("no result");
 
         // 2. The current side: HEAD's keys are the clean working tree's, so a run at HEAD fills them.
+        // Each result is shown at the key it was stored under, which the run's own reads can move
+        // past the key keyed before it (row 023-18 D1); the next call keys the working tree there.
         const head = at(dir, ["HEAD", ...paths, "--run", "--all-missing"]);
         expect(head.report.run, head.text).toMatchObject({ selected: 3, ran: 3, stored: 3 });
-        for (const path of paths) {
-          expect(head.row(path).at.key, path).toBe(head.row(path).now.key);
-          expect(head.row(path).at.state, path).toBe("pass");
-        }
+        for (const path of paths) expect(head.row(path).at.state, path).toBe("pass");
 
         // 3. --run at the parent runs what the diff selects and has no result; the rest is read.
         const run = at(dir, ["HEAD~1", ...paths, "--run"]);
+        for (const path of paths) {
+          expect(run.row(path).now.key, path).toBe(head.row(path).at.key);
+          expect(run.row(path).now.state, path).toBe("pass");
+        }
         const ran = pair.newTest ? 1 : 2;
         expect(run.report.run, run.text).toMatchObject({ selected: ran, ran });
         expect(run.report.run?.stored).toBe(ran);
