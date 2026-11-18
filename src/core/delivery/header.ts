@@ -41,6 +41,9 @@ export function noResultsText(command: string): string {
   );
 }
 
+/** What the unlisted line says beside a start that is slow or stopped, or no daemon running. */
+const NO_RESULTS_HERE = "Squeal has no results in this worktree yet";
+
 /**
  * Row 005-90: the line of either form while the test files are not listed: the sentence, then
  * the daemon's. No counts, no delay sentence and no checkpoint sentence, which name counts. Row
@@ -53,14 +56,14 @@ function unlistedLine(header: StatusHeader, command: string): string | null {
   const { daemon } = header;
   // Row 005-108: the start the registration said, said once more when slow, and since when.
   if (daemon?.state === "down" && daemon.startStopped === true) {
-    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+    return `${revisionPrefix(header)}${stoppedStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
   }
   if (daemon?.state === "down" && daemon.startSlow === true) {
-    return `${revisionPrefix(header)}${slowStartText(daemon)}, and Squeal has no results in this worktree yet.${diedText(daemon)}`;
+    return `${revisionPrefix(header)}${slowStartText(daemon)}, and ${NO_RESULTS_HERE}.${diedText(daemon)}`;
   }
   if (noneRunning(daemon)) {
     return (
-      `${revisionPrefix(header)}Squeal has no results in this worktree yet, and no daemon is ` +
+      `${revisionPrefix(header)}${NO_RESULTS_HERE}, and no daemon is ` +
       `running; \`${command} start\` starts one.${diedText(daemon)}`
     );
   }
