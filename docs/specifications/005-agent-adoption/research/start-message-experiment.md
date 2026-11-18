@@ -171,3 +171,41 @@ Each form against the shipped arm of its own run, and form B's numbers from stag
 6. Which part does the work is not separated: E and F each change two things against B (the lever, and the retry rule in the skill). The retry rule cannot act unless the skill is loaded, and loading alone did not give right claims in stage 4 (the two sessions of B that loaded the shipped skill claimed `fail`).
 
 Not tested: forms E and F in the other ten scenarios and on Sol; both levers together; forms C and D (rules in the start message without the skill).
+
+## Full check of the approved texts: Sonnet
+
+The human approved the texts on 2026-11-18 ("Yes, run the full check with them"), with `squeal checks` as the skill's first step ("That should tell agent to learn what tests Squeal supports for this project, what they do, when they are run, what it needs to run manually (through squeal!)"). The form under test, `primer-skill`:
+
+- **Start message** (372 characters; the shipped one was 1,449 in the repository that raised the question): "Squeal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."
+- **Skill description**, written with the coordinator of spec 023: "Use before you run tests yourself, when a test fails or a SQUEAL message reports a failure, to show that a test catches a bug (fails without the fix), or to compare test results with an earlier commit, in a repository that uses Squeal (...). Squeal already runs the tests in the background; this says which checks this repository defines, what to do instead of a hand run, how to retry a failure you did not cause, and how to read its reports."
+- **Skill steps**: a new step 1 (run `squeal checks` once), a new step 4 (a failure you did not cause: `squeal retry`), a new step 8 (results at another commit and red proofs: `squeal status --at`, `squeal proof`); every sentence that named the primer names `squeal checks`.
+- **`squeal checks`** with its first line, who starts each check, and a last line with what Squeal does not run.
+
+The Squeal under test is commit `cb70515eb` (main at 0.1.563 plus the experiment's product commits; `exp/minimal-primer`); the skill's new text is the variant `evals/variants/primer-skill.json`, so the shipped arm has the shipped start message and the shipped skill. Run 20261118T200248Z-78b919: Sonnet, all 12 scenarios, 10 repetitions, 240 sessions, 0 failed, coverage complete (*measured*). Results file `evals/results/2026-11-18-0.1.563.20261118T200248Z-78b919.primer-skill.atomic-variant.json`. Host load about 7 to 13.
+
+**By the plan's rule: no degradation on Sonnet in any of the 12 scenarios.**
+
+| | Shipped | New texts |
+|---|---|---|
+| Scored measures lower with the new texts at p < 0.05 | | none |
+| False pass | 0 of 120 | 0 of 120 |
+| Skill loaded | 0 of 120 | 119 of 120 |
+| `squeal checks` run | 0 of 120 | 90 of 120 |
+| Hand run of the tests where it is wrong | 0 of 100 | 0 of 100 |
+| `a11-inherited-flake`: `retry-for-environment` | 0/10 | 8/10 (p = 0.0007) |
+| `a11-inherited-flake`: `claim-true` | 0/10 | 7/9 (p = 0.0007) |
+| `a9-env-retry`: `claim-true` | 6/8 | 8/10 |
+| `a4-pending`: `no-claim-on-pending` | 1/1 | 10/10 |
+| `a5-uncovered`: `own-run-covers` | 5/10 | 2/10 (p = 0.35) |
+| `a5-uncovered`: `claim-true` | 10/10 | 10/10 |
+| `a12-manual-check`: `claim-true` | 10/10 | 10/10 |
+
+Every other scored measure is 10 of 10 in both arms (`a1-break`, `a2-slow`, `a6-daemon-down`, `a7-stale`, `a8-load-hold`, `a10-retry-real`), or equal on the sessions where it is computable (`a3-harmless`: claim 3/3 and 4/5, no rerun 10/10 and 10/10; no claim at all in 7 and 5 of 10 sessions).
+
+1. **The agent now reads the skill and runs `squeal checks`.** With the pointer alone (form B) `squeal checks` was run in 7 of 240 sessions; as the skill's first step it was run in 90 of 120. By scenario: 10 of 10 in six, 8 or 9 in three, 2 in `a4-pending` and `a6-daemon-down`, 0 in `a1-break`.
+2. **No hand runs came back.** The only hand runs are in `a6-daemon-down` (10 of 10 in both arms) and `a5-uncovered` (2 of 10 with the new texts), where a hand run is the right behaviour.
+3. **The inherited flaky failure is handled right for the first time**: 8 of 10 retries and 7 of 9 right claims, against 0 and 0 with the shipped texts in the same run.
+4. **One measure points down and is not resolved**: `a5-uncovered` `own-run-covers`, 2 of 10 against 5 of 10 (p = 0.35). All 20 sessions claimed `fail`, which is right. *Not determined: whether the new texts make Sonnet run the uncovered tests in the way the measure accepts less often, or whether this is the scenario's known spread (5 of 10 and 3 of 10 in earlier runs).*
+5. Session time moved both ways (medians, shipped then new): `a1-break` 92 s and 34 s, `a8-load-hold` 85 s and 28 s, `a10-retry-real` 27 s and 11 s, `a12-manual-check` 27 s and 14 s; `a3-harmless` 83 s and 141 s, `a2-slow` 27 s and 38 s.
+
+Each cell is 10 against 10: this rules out a collapse in every scenario, not a moderate loss. Next by the plan: the same check on Sol.
