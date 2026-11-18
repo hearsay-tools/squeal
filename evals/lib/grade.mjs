@@ -113,6 +113,9 @@ export function gradeCell({
           at(k.t + (k.ms ?? 0), { from: "pull", sub: a.sub, text: k.out ?? "" }, 1);
         if (reply === null && (a.sub === "status" || a.sub === "run"))
           unsure = unsure === "run" ? "run" : a.sub;
+        // Row 005-127: what `squeal checks` showed, the checks that run only on request.
+        if (reply === true && a.sub === "checks" && !a.help)
+          at(k.t + (k.ms ?? 0), { k: "checks", manual: manualChecks(k.out) }, 1);
         // In the call's order with its other actions, as a run or an edit (review 006-57 B2).
         if (a.sub === "retry") at(k.t, retryStep(a, replies.retry));
         // An executed run is an action whatever it printed: redirected, empty, or a request not
@@ -142,6 +145,7 @@ export function gradeCell({
           completed: !a.informational && summaries[runner]-- > 0,
           exit: k.exit ?? null,
           failed: runner === "vitest" ? failedChecks(k.out) : [],
+          ...ranFiles(runner, k.out),
         });
       }
       if (a.kind === "sleep") {
@@ -222,6 +226,35 @@ export function gradeCell({
     // D9: the numbered, trimmed transcript the judge reads; the run redacts it before keeping it.
     transcript: transcriptOf(timeline),
   };
+}
+
+/**
+ * Row 005-127: the checks a `squeal checks` reply lists as running only on request (005-126's
+ * form: a block per check, its name alone on the first line, `  Runs: only on request`).
+ */
+export function manualChecks(out) {
+  return String(out ?? "")
+    .split(/\n\s*\n/)
+    .filter((b) => /^ {2}Runs: only on request$/m.test(b))
+    .map((b) => b.trim().split("\n")[0].trim());
+}
+
+/**
+ * Row 005-127: the test files a Vitest run's output names as run, each file's result line (`✓`,
+ * `❯`, `×`, `FAIL`) or the JSON report's `name`, as `{ files }`; none for another runner or an
+ * output that names none, so an earlier timeline keeps its shape.
+ */
+function ranFiles(runner, out) {
+  if (runner !== "vitest") return {};
+  const text = String(out ?? "");
+  const lines = /^\s*(?:✓|√|❯|×|✗|FAIL|PASS)\s+(\S+?\.(?:test|spec)\.[cm]?[jt]sx?)\b/gm;
+  const json = /"name":\s*"[^"]*?\/work\/([^"]+?\.(?:test|spec)\.[cm]?[jt]sx?)"/g;
+  const files = [
+    ...new Set(
+      [...text.matchAll(lines), ...text.matchAll(json)].map((m) => m[1].replace(/^\.\//, "")),
+    ),
+  ];
+  return files.length > 0 ? { files } : {};
 }
 
 /**
