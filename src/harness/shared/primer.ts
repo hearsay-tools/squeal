@@ -15,6 +15,7 @@ import {
   type RunnerDescription,
 } from "../../runners/descriptions.js";
 import { type Coverage, DEFAULT_COVERAGE, type GroupsCoverage } from "./coverage.js";
+import { SHORT_FORMS, SHORT_OPENING, type ShortForm, UNNAMED_CLI } from "./primer-forms.js";
 
 /**
  * The longest primer: the coverage list folds its projects into "and N more",
@@ -41,20 +42,33 @@ export const REVISION =
  * Row 005-126 (wave 30, an experiment that does not ship): which start
  * message `primer` says. `"full"` is the shipped primer; `"minimal"` is form
  * B, what Squeal does and where to look; `"minimal-rules"` is form C, B with
- * the two rules on hand runs and the final wait. The eval turns this line
+ * the two rules on hand runs and the final wait; `"skill"` sends the agent to
+ * the squeal skill, or, in a harness with none (`PrimerOptions.skill`), says
+ * the rules itself. The words are `primer-forms.ts`'. The eval turns this line
  * into another form by a string patch in the built bundles, so it stays one
  * line, exactly as written.
  */
-export type PrimerForm = "full" | "minimal" | "minimal-rules";
+export type PrimerForm = "full" | "minimal" | "minimal-rules" | "skill";
 export const PRIMER_FORM: PrimerForm = "full";
 
+/** `primer`'s choices beyond the CLI's name and the coverage. */
+export interface PrimerOptions {
+  /** Default `PRIMER_FORM`. */
+  readonly form?: PrimerForm | undefined;
+  /**
+   * Whether the harness ships the squeal skill, which the `"skill"` form
+   * points to (`HookDeps.skill`). Default `true`; OpenCode ships none.
+   */
+  readonly skill?: boolean | undefined;
+}
+
 /**
- * Forms B and C of row 005-126, the brief's words. The CLI is named as the
- * full primer names it: `squeal` in every command; a Codex path in full in
- * the first command and as "the CLI's" after it; unnamed where that does
- * not fit within the cap.
+ * A short form's text (`SHORT_FORMS`). The CLI is named as the full primer
+ * names it: `squeal` in every command; a Codex path in full in the first
+ * command and as "the CLI's" after it; unnamed where that does not fit
+ * within the cap, with one sentence that says whose commands they are.
  */
-function minimalPrimer(command: string, rules: boolean): string {
+function shortPrimer(command: string, form: ShortForm): string {
   const render = (naming: Naming): string => {
     let named = false;
     const cli = (sub: string): string => {
@@ -63,20 +77,15 @@ function minimalPrimer(command: string, rules: boolean): string {
       named = true;
       return full ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
     };
-    const first = `${PRIMER_OPENING}checks in the background and tells you with your next tool call when one changes; a pass is silent.`;
-    const ruleText = rules
-      ? [
-          "Do not run the tests yourself to learn whether an edit broke something.",
-          `Before you say you are done, ${cli("status --wait 60000")} gives the verdict.`,
-        ]
-      : [];
-    const rest = [
-      `${capital(cli("checks"))} lists the checks this repository defines and when each runs.`,
-      `${capital(cli("status"))} gives the current results, ${cli("run <check>")} runs one now, ${cli("retry <file>")} repeats a failure caused by load or a stopped service.`,
-      `${capital(cli("--help"))} has the rest.`,
-      ...(naming === "none" ? ["These are commands of the CLI SQUEAL messages name."] : []),
-    ];
-    return [first, ...ruleText, ...rest].join(" ");
+    const Cli = (sub: string): string => {
+      const text = cli(sub);
+      return text.startsWith("the ") ? `T${text.slice(1)}` : text;
+    };
+    return [
+      `${PRIMER_OPENING}${SHORT_OPENING}`,
+      ...SHORT_FORMS[form]({ cli, Cli }),
+      ...(naming === "none" ? [UNNAMED_CLI] : []),
+    ].join(" ");
   };
   const namings: Naming[] = command === SQUEAL_COMMAND ? ["every"] : ["first", "none"];
   let text = "";
@@ -87,9 +96,9 @@ function minimalPrimer(command: string, rules: boolean): string {
   return text;
 }
 
-/** `text` with its first letter capital: "the CLI's" opens a sentence. */
-function capital(text: string): string {
-  return text.startsWith("the ") ? `T${text.slice(1)}` : text;
+/** The short form `form` says in a harness with or without the skill. */
+function shortForm(form: Exclude<PrimerForm, "full">, skill: boolean): ShortForm {
+  return form === "skill" && !skill ? "no-skill" : form;
 }
 
 /** Where the primer names the CLI: in every command, in the first only, or nowhere. */
@@ -129,9 +138,10 @@ type WaitForm = "paths" | "plain";
 export function primer(
   command: string = SQUEAL_COMMAND,
   coverage: Coverage = DEFAULT_COVERAGE,
-  form: PrimerForm = PRIMER_FORM,
+  options: PrimerOptions = {},
 ): string {
-  if (form !== "full") return minimalPrimer(command, form === "minimal-rules");
+  const form = options.form ?? PRIMER_FORM;
+  if (form !== "full") return shortPrimer(command, shortForm(form, options.skill ?? true));
   const names = runnersOf(coverage).map((runner) => runner.name);
   const groups = coverage.groups;
   // Spec 019 D6 (row 019-16): with check groups, the moments sentence says when each runs.
@@ -398,7 +408,7 @@ function excluded(entries: readonly string[]): string {
  * amended 2026-10-18 (task 004-81): with the test files each runner's
  * excludes drop named, as its description names them.
  */
-function notCovered(coverage: Coverage): string {
+export function notCovered(coverage: Coverage): string {
   const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
   const what =
     files.length === 0
@@ -482,8 +492,9 @@ export function withPrimer(
   registration: Registration,
   command: string = SQUEAL_COMMAND,
   coverage: Coverage = DEFAULT_COVERAGE,
+  options: PrimerOptions = {},
 ): string {
-  const tail = primer(command, coverage);
+  const tail = primer(command, coverage, options);
   // Room the registration leaves for the primer within the message cap.
   const max = MESSAGE_CAP_CHARS - tail.length - 2;
   return `${formatRegistration(registration, max, command)}\n\n${tail}`;

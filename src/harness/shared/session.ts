@@ -74,7 +74,7 @@ async function registerAtStart(
   // parallel reuses the main agent's (review wave 3, N3), and subagents have none.
   const main = input.agent_id === undefined;
   if (main && input.source === "compact" && isRegistered(context))
-    return { text: primer(deps.command, coverageOf(context)), owes: false };
+    return { text: primer(deps.command, coverageOf(context), { skill: deps.skill }), owes: false };
   if (main && input.source !== undefined && SWEEP_SOURCES.has(input.source)) {
     await unregisterSession(context, input.session_id, {
       removeLocks: false,
