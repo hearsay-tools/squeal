@@ -56,7 +56,6 @@ import { oweCounts, payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan } from "./delta.js";
 import {
   type Boundary,
-  carriesEditResult,
   type EditNotes,
   editNotes,
   editTold,
@@ -79,6 +78,7 @@ import {
   toldRevision,
   withTold,
 } from "./liveness.js";
+import { carriesEditResult } from "./own-count.js";
 import { ownEditUnknown } from "./own-edit.js";
 import { type Prepare, startHold } from "./prepared.js";
 import { registrationHead, scannedDaemon, tellRegistered } from "./registered.js";
