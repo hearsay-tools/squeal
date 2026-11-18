@@ -1,6 +1,6 @@
 import { checkName } from "../../core/delivery/collapse.js";
-import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
-import { currentFilesText, headerParts } from "../../core/delivery/header.js";
+import { knownFailuresCountLine, SQUEAL_COMMAND } from "../../core/delivery/format.js";
+import { headerParts } from "../../core/delivery/header.js";
 import { formatCheck } from "../../core/state/check-name.js";
 import {
   earlierFailuresLines,
@@ -59,10 +59,13 @@ export function knownFailuresLine(
 ): string {
   const current = splitByValidity(failures).current.map((f) => f.check);
   const earlier = earlierFailuresLines(knownFailureCounts(failures));
-  if (header?.testFilesListed === false && failures.length === 0) return earlier.join("\n");
-  const files = header === undefined ? null : currentFilesText(header, command);
-  const count = `${countLine(current, command)}${files === null ? "" : `; ${files}`}`;
-  return [count, ...earlier].join("\n");
+  const count = knownFailuresCountLine(
+    countLine(current, command),
+    failures.length,
+    header,
+    command,
+  );
+  return (count === null ? earlier : [count, ...earlier]).join("\n");
 }
 
 function countLine(failures: readonly CheckId[], command: string): string {

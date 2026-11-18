@@ -531,19 +531,32 @@ function livenessTitle(
 }
 
 /**
- * The registration's `Known failures:` line. Row 005-90: while the test files are not listed,
- * none for zero failures, since the header says Squeal has no results yet. Row 005-94 (R1): then
- * how many test files are current (`currentFilesText`).
+ * The `Known failures:` count line of the registration and of Stop, from its count text
+ * (`counted`) and how many failures are known. Row 005-90: while the test files are not listed,
+ * `null` for zero failures, since the header says Squeal has no results yet. Row 005-94 (R1):
+ * with `header`, the count ends with how many test files are current (`currentFilesText`).
  */
+export function knownFailuresCountLine(
+  counted: string,
+  failures: number,
+  header: StatusHeader | undefined,
+  command: string,
+): string | null {
+  if (header?.testFilesListed === false && failures === 0) return null;
+  const files = header === undefined ? null : currentFilesText(header, command);
+  return `${counted}${files === null ? "" : `; ${files}`}`;
+}
+
+/** The registration's `Known failures:` line (`knownFailuresCountLine`). */
 function knownFailuresLines(
   header: StatusHeader,
   failures: readonly KnownFailure[],
   command: string,
 ): string[] {
   const current = splitByValidity(failures).current.map((f) => f.check);
-  if (header.testFilesListed === false && failures.length === 0) return [];
-  const files = currentFilesText(header, command);
-  return [`Known failures: ${failureCountText(current)}${files === null ? "" : `; ${files}`}`];
+  const counted = `Known failures: ${failureCountText(current)}`;
+  const line = knownFailuresCountLine(counted, failures.length, header, command);
+  return line === null ? [] : [line];
 }
 
 /**
