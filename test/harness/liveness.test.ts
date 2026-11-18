@@ -10,10 +10,9 @@ import { daemonRestMetaKey } from "../../src/core/presence/stored.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import { mayEdit } from "../../src/harness/shared/deliver.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Review wave 3, S2 and spec 001 D9: "PostToolBatch and Stop also ensure the
@@ -22,10 +21,6 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
  */
 
 const CLI = "/plugin/dist/cli/squeal.mjs";
-const context = (out: HookResult): string =>
-  (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
-
 /**
  * Row 011-276: a stale record no shutdown cleared, its lock not free, is a
  * late heartbeat; its age is read against the real clock, so it is a pattern.

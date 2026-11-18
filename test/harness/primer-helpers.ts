@@ -8,7 +8,7 @@ import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { setKey } from "../state/helpers.js";
 import { codexRecorded } from "./codex/helpers.js";
-import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { FILE, hookText, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /** The primer's closing sentence: what Squeal leaves the agent to run (task 001-234). */
 export const NOT_COVERED =
@@ -47,8 +47,7 @@ export function repoFor(c: RepoCase): SquealRepo {
 
 /** The hook's additionalContext, and the primer: its last paragraph. */
 export function primerOf(stdout: string): { context: string; primer: string } {
-  const parsed = JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } };
-  const context = parsed.hookSpecificOutput.additionalContext;
+  const context = hookText(stdout);
   return { context, primer: context.slice(context.lastIndexOf("\n\n") + 2) };
 }
 

@@ -5,12 +5,11 @@ import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
 import { uncoveredMetaKey } from "../../src/core/delivery/uncovered.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { check } from "../state/helpers.js";
 import { codexRecorded, sessionOf } from "./codex/helpers.js";
-import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-292 (spec 001 D9, D11 as amended): after an edit, one line names
@@ -19,12 +18,6 @@ import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
  */
 
 const alive: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
-
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
 
 const told = (paths: string, it = "it") =>
   `No result for ${paths}: no test Squeal runs reads ${it}. Run whatever tests ${it} yourself.`;

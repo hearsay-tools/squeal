@@ -5,7 +5,7 @@ import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { check, result, setKey } from "../state/helpers.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-85 (lessons, defect 14): a waiter message written mid-turn lands
@@ -41,12 +41,6 @@ async function waiterAround(r: SquealRepo, change: () => void, timeoutMs = QUIET
   change();
   return waiting;
 }
-
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
 
 const OTHER_FILE: TestFileRef = { project: "", path: "src/other.test.ts" };
 const OTHER = check("other > holds", OTHER_FILE);

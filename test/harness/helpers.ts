@@ -4,12 +4,15 @@ import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/sink.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { PolicyFile } from "../../src/core/types/policy.js";
 import type { StateSink } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { ResultRecord } from "../../src/core/types/store-records.js";
+import { workerDeps } from "../../src/harness/pi/worker.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
@@ -26,6 +29,42 @@ export function recorded(name: string, cwd: string, overrides: object = {}): str
   const input = JSON.parse(readFileSync(path, "utf8")) as object;
   return JSON.stringify({ ...input, cwd, ...overrides });
 }
+
+/** What a Claude Code or Codex hook delivered as context; `""` for no output. */
+export function hookText(out: string | { readonly stdout: string }): string {
+  const stdout = typeof out === "string" ? out : out.stdout;
+  if (stdout === "") return "";
+  return (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } })
+    .hookSpecificOutput.additionalContext;
+}
+
+/**
+ * A daemon start that does not end before the hook's deadline: `ensureDaemon` resolves
+ * `"spawned"` only on `release`; `asked` is whether a hook called it.
+ */
+export function hangingEnsure(): {
+  readonly ensureDaemon: NonNullable<HookDeps["ensureDaemon"]>;
+  readonly release: () => void;
+  readonly asked: () => boolean;
+} {
+  let release = () => {};
+  let asked = false;
+  const ensureDaemon = () => {
+    asked = true;
+    return new Promise<EnsureDaemonResult>((resolve) => {
+      release = () => resolve("spawned");
+    });
+  };
+  return { ensureDaemon, release: () => release(), asked: () => asked };
+}
+
+/** Pi's worker deps, with a daemon found alive unless `overrides` say otherwise. */
+export const piDeps = (overrides: Partial<HookDeps> = {}): HookDeps => ({
+  ...workerDeps(new URL("file:///pkg/dist/worker.mjs")),
+  env: {},
+  ensureDaemon: async () => "alive",
+  ...overrides,
+});
 
 /** A fixture repository with a Squeal store, a registered worktree and one keyed test file. */
 export interface SquealRepo {

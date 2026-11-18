@@ -10,9 +10,8 @@ import { clearStartMark } from "../../src/core/presence/lock-events.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Review 0.1.357 B1 (row 011-254, 011 C9): `squeal stop --until-start` whose
@@ -27,12 +26,6 @@ const T = Date.UTC(2026, 0, 2, 14, 2);
 const STARTING = "A daemon is starting; results are as of revision 1.";
 const MODE =
   "The daemon is stopped until `squeal start` (`squeal stop --until-start`); no edit or Git operation starts one; results are as of revision 1.";
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
-
 const saved = { ...process.env };
 let runtimeDir: string;
 beforeEach(() => {

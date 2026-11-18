@@ -18,6 +18,7 @@ import type { StatusResult } from "../../src/core/types/status.js";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import { publishRuntime } from "../../src/harness/codex/adapter/publish.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
+import { hookText } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { ROLLDOWN_VERSION, VITE_VERSION } from "./install.js";
 import { codexEnvironment, copyPlugin, type HookName, PLUGINS } from "./plugins.js";
@@ -223,9 +224,7 @@ describe.each(SHIPPED)(
 
       const batch = await hook("post-tool-batch");
       expect(batch).toMatchObject({ stderr: "", code: 0 });
-      const context = (
-        JSON.parse(batch.stdout) as { hookSpecificOutput: { additionalContext: string } }
-      ).hookSpecificOutput.additionalContext;
+      const context = hookText(batch);
       expect(context).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision \d+\n/);
       expect(context).toContain("FAIL  test/math.test.ts > math > adds");
       expect(context).toContain("PASS -> FAIL");

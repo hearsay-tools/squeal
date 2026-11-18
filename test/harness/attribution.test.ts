@@ -2,10 +2,16 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { result } from "../state/helpers.js";
-import { ADDS, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import {
+  ADDS,
+  hookText as context,
+  FILE,
+  recorded,
+  type SquealRepo,
+  squealRepo,
+} from "./helpers.js";
 
 /*
  * Task 001-94, review wave 10b B1: "its imports include files changed here" counts from the
@@ -17,11 +23,6 @@ const INTERACTIVE = { CLAUDE_CODE_SESSION_ATTENDED: "1", CLAUDE_CODE_ENTRYPOINT:
 
 function deps(overrides: Partial<HookDeps> = {}): HookDeps {
   return { env: INTERACTIVE, ensureDaemon: async () => "alive", ...overrides };
-}
-
-function context(out: HookResult): string {
-  const parsed = JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } };
-  return parsed.hookSpecificOutput.additionalContext;
 }
 
 /** A repository whose test file imports `src/math.ts`, passing at revision 1. */

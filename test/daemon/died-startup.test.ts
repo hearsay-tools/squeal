@@ -6,8 +6,7 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import { daemonExitMetaKey } from "../../src/core/presence/stored.js";
 import { buildSnapshot } from "../../src/core/status/snapshot.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
-import { recorded } from "../harness/helpers.js";
+import { hookText as context, recorded } from "../harness/helpers.js";
 import { daemonSuite, SLOW, spawnCli, waitFor, withStore } from "./helpers.js";
 
 /*
@@ -44,10 +43,6 @@ renameSync(staged, out);
 store.close();
 await stopping;
 `;
-
-const context = (out: HookResult): string =>
-  (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
 
 describe.runIf(process.platform === "linux")(
   "a stop during startup killed after its diagnostics (review wave-13ag B1)",

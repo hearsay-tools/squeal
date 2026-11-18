@@ -6,9 +6,8 @@ import { clearStartMark, markStart } from "../../src/core/presence/lock-events.j
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Review 0.1.355 B1 (011 C9 as amended 2026-10-26, row 011-251): a daemon
@@ -51,10 +50,6 @@ async function squeal(r: SquealRepo, argv: string[], now: number): Promise<strin
   await main(argv, io);
   return stdout;
 }
-
-const context = (out: HookResult): string =>
-  (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
 
 const locks: DaemonLock[] = [];
 afterEach(() => {

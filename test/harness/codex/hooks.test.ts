@@ -6,7 +6,7 @@ import type { CodexHookResult } from "../../../src/harness/codex/run.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { check } from "../../state/helpers.js";
-import { FILE, type SquealRepo, squealRepo } from "../helpers.js";
+import { FILE, hookText, type SquealRepo, squealRepo } from "../helpers.js";
 import {
   allFixtures,
   codexInput,
@@ -202,8 +202,7 @@ describe("SessionStart (D2, D3)", () => {
     );
     r.apply(...failures);
     const out = await run(r, "exec", "session-start");
-    const text = (json(out) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    const text = hookText(out);
     expect(text.length).toBeLessThanOrEqual(8_000);
     expect(text.endsWith(PRIMER)).toBe(true);
     expect(text).toMatch(/^SQUEAL · registered at revision 1\n/);

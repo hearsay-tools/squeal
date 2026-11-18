@@ -6,7 +6,7 @@ import { CODEX_SKILL_NOTE } from "../../../src/harness/codex/build.js";
 import type { CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { primer } from "../../../src/harness/shared/primer.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
-import { type SquealRepo, squealRepo } from "../helpers.js";
+import { hookText, type SquealRepo, squealRepo } from "../helpers.js";
 import {
   A,
   B,
@@ -58,8 +58,7 @@ async function session(at: string, env: Readonly<Record<string, string>> = {}) {
     const input = codexRecorded("exec", fixture, r.root, SESSION);
     const out = await runBundle(name, input, hookEnv, join(root, "dist"));
     expect(out, name).toMatchObject({ stderr: "", code: 0 });
-    return (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    return hookText(out);
   };
   const shell = (command: string) =>
     m.shell(command, r.root, { XDG_RUNTIME_DIR: runtime, CODEX_SESSION_ID: "019a0000-0000" });

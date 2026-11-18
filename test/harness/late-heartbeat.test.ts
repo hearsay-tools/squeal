@@ -10,9 +10,8 @@ import { utcTimeText } from "../../src/core/text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 011-276 (gh-109, gh-128; the human, 2026-10-30: wording only): a
@@ -32,12 +31,6 @@ const DETAIL = `the last one was 1 min 30 s ago, at ${ISO}; the daemon may be bu
 const SHORT = (T - 20_000) as EpochMs;
 const EDIT = { tool_calls: [{ tool_name: "Edit", tool_input: {}, tool_use_id: "toolu_01A" }] };
 const READ = { tool_calls: [{ tool_name: "Read", tool_input: {}, tool_use_id: "toolu_01B" }] };
-
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
 
 /** A hook whose ensure finds the daemon holding the lock and not answering (lessons, defect 22). */
 const hung: HookDeps = {

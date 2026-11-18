@@ -5,7 +5,6 @@ import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
 import { worktreeLiveness } from "../../src/core/presence/heartbeat.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
   daemonSuite,
@@ -17,7 +16,7 @@ import {
   withStore,
 } from "../daemon/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
-import { recorded } from "./helpers.js";
+import { hookText as context, recorded } from "./helpers.js";
 
 /*
  * Lessons, defect 22 (task 001-112): a SIGSTOPped daemon holds its lock and
@@ -35,12 +34,6 @@ const later = () => Date.now() + 3 * HEARTBEAT_MS;
 
 const EDIT = { tool_calls: [{ tool_name: "Edit", tool_input: {}, tool_use_id: "toolu_01A" }] };
 const READ = { tool_calls: [{ tool_name: "Read", tool_input: {}, tool_use_id: "toolu_01B" }] };
-
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
 
 afterEach(() => {
   vi.unstubAllEnvs();

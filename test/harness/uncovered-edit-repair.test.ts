@@ -8,11 +8,10 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { CONSUMER_EXPIRY_MS } from "../../src/core/types/store-records.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { fitUncovered, UNCOVERED_LINE_CAP_CHARS } from "../../src/harness/shared/uncovered-edit.js";
 import { check } from "../state/helpers.js";
-import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-314, the repair of review wave 13as (001-313): its three probes,
@@ -22,12 +21,6 @@ import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 const alive: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 const OTHER_SESSION = "0b6c1f7e-3f43-4d2a-9a51-2c1b0e5a7d90";
-
-const context = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
 
 const told = (paths: string, it = "it") =>
   `No result for ${paths}: no test Squeal runs reads ${it}. Run whatever tests ${it} yourself.`;

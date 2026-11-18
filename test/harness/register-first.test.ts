@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 005-98 (option A, the human 2026-11-17): under Squawk a session ends at each turn end
@@ -16,10 +16,6 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 /** `plugins/claude-code/hooks/hooks.json`: the SessionStart hook's timeout. */
 const HOOK_TIMEOUT_MS = 2_000;
 const POLL_MS = 10;
-
-const context = (stdout: string): string =>
-  (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
-    .additionalContext;
 
 /**
  * A SessionStart with source `source` whose daemon start does not end before the hook's

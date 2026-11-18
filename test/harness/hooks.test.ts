@@ -7,7 +7,15 @@ import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { codeOff } from "../helpers/policy.js";
-import { ADDS, recorded, type SquealRepo, SUBAGENT, SUBTRACTS, squealRepo } from "./helpers.js";
+import {
+  ADDS,
+  hookText,
+  recorded,
+  type SquealRepo,
+  SUBAGENT,
+  SUBTRACTS,
+  squealRepo,
+} from "./helpers.js";
 
 const SILENT: HookResult = { stdout: "", stderr: "", exitCode: 0 };
 
@@ -100,8 +108,7 @@ describe("PostToolBatch", () => {
         additionalContext: expect.stringContaining("PASS -> FAIL"),
       },
     });
-    const text = (json(first) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    const text = hookText(first);
     expect(text).toMatch(/^SQUEAL · 1 check changed \(1 test\) at revision 2\n/);
     expect(text).toContain("FAIL  src/math.test.ts > math > adds");
     expect(second).toEqual(SILENT);
@@ -233,8 +240,7 @@ describe("Stop and SubagentStop", () => {
     r.apply(r.fail());
 
     const out = await runHook("stop", recorded("stop", r.root), deps());
-    const text = (json(out) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    const text = hookText(out);
     expect(text).toMatch(
       /^SQUEAL · 1 check changed \(1 test\) at revision 2\nRevision 2 \(changed src\/math\.ts\)\.\n/,
     );

@@ -5,7 +5,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-156: on a loaded host a daemon SessionStart spawns can take more
@@ -22,10 +22,6 @@ const T = Date.UTC(2026, 0, 2, 14, 2);
 /** Row 005-98: how long the registration waited for a spawned daemon's heartbeat before. */
 const SETTLE_BEFORE_MS = 750;
 const STARTING = "A daemon is starting; results are as of revision 1.";
-const context = (out: HookResult): string =>
-  (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
-
 function deps(
   result: "alive" | "spawned" | "unavailable",
   now?: number,

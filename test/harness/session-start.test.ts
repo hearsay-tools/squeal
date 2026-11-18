@@ -3,11 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { check } from "../state/helpers.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Task 001-88: where Squeal validates, SessionStart tells the agent that
@@ -19,11 +18,6 @@ const INTERACTIVE = { CLAUDE_CODE_SESSION_ATTENDED: "1", CLAUDE_CODE_ENTRYPOINT:
 
 function deps(overrides: Partial<HookDeps> = {}): HookDeps {
   return { env: {}, ensureDaemon: async () => "alive", ...overrides };
-}
-
-function context(out: HookResult): string {
-  const parsed = JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } };
-  return parsed.hookSpecificOutput.additionalContext;
 }
 
 describe("the SessionStart primer", () => {

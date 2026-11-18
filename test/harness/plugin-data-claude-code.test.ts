@@ -7,7 +7,7 @@ import { CLAUDE_CODE_PLUGIN, PLUGIN_DIR } from "../../src/harness/claude-code/bu
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { observeMetafile } from "../helpers/build-inputs.js";
 import { liveSocket, runBundle, runtimeDir } from "./bundle-helpers.js";
-import { recorded, squealRepo } from "./helpers.js";
+import { hookText, recorded, squealRepo } from "./helpers.js";
 
 /*
  * Spec 005 D3 as amended 2026-10-21 (row 005-73, `research/plugin-cache-cleanup.md`
@@ -60,8 +60,7 @@ describe("Claude Code's layout is unchanged by the plugin data copies (005-73)",
       join(root, "dist"),
     );
     expect(start).toMatchObject({ code: 0, stderr: "" });
-    const text = (JSON.parse(start.stdout) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    const text = hookText(start);
     expect(text.endsWith(`\n\n${PRIMER}`)).toBe(true);
     expect(text).not.toContain(data);
     expect(existsSync(data)).toBe(false);

@@ -4,10 +4,10 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { git, tempDir } from "../hash/git-repo.js";
 import type { FakeRepo } from "../status/helpers.js";
+import { hookText } from "./helpers.js";
 
 /*
  * Tasks 011-08 and 011-254: the fixtures of the stopped mark's hook tests.
@@ -63,11 +63,7 @@ export function recording(answer: "spawned" | "alive" = "spawned") {
 }
 
 /** What a Claude Code hook delivered as context; `""` for nothing. */
-export const text = (out: HookResult): string =>
-  out.stdout === ""
-    ? ""
-    : (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
+export const text = hookText;
 
 /** `squeal <argv>` in `cwd`, as an agent's shell runs it outside a harness session. */
 export async function cli(argv: string[], cwd: string) {

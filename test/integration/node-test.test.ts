@@ -12,7 +12,7 @@ import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { readRuns, until } from "../e2e/support.js";
-import { recorded } from "../harness/helpers.js";
+import { hookText as contextOf, recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
@@ -185,9 +185,7 @@ const GONE_NOTE = /^node-test project "gone": .*packages\/gone.* is not a direct
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
 const hookText = async (name: "session-start" | "post-tool-batch", root: string) => {
   const out = await runHook(name, recorded(name, root), deps);
-  if (out.stdout === "") return "";
-  return (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
+  return contextOf(out);
 };
 
 const runs = (main: string, root: string) =>

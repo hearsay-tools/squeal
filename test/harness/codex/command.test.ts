@@ -8,7 +8,7 @@ import { type CodexHookName, runCodexHook } from "../../../src/harness/codex/hoo
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { primer } from "../../../src/harness/shared/primer.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";
-import { type SquealRepo, SUBTRACTS, squealRepo } from "../helpers.js";
+import { hookText, type SquealRepo, SUBTRACTS, squealRepo } from "../helpers.js";
 import { buildCodexBundles, codexRecorded, sessionOf } from "./helpers.js";
 
 /*
@@ -158,8 +158,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
       const input = codexRecorded("exec", fixture, r.root, sessionOf("exec", "session-start"));
       const out = await runBundle(name, input, { ...env, PATH }, dist);
       expect(out, name).toMatchObject({ stderr: "", code: 0 });
-      return (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-        .hookSpecificOutput.additionalContext;
+      return hookText(out);
     };
     const shell = (command: string) =>
       spawnSync("bash", ["-c", command], {
@@ -198,8 +197,7 @@ describe("bundled Codex hooks name a CLI the agent's shell runs", () => {
     await liveSocket(join(env.XDG_RUNTIME_DIR, `squeal-${r.worktreeId}.sock`));
     const input = codexRecorded("exec", "session-start", r.root);
     const out = await runBundle("session-start", input, env, dist);
-    const text = (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-      .hookSpecificOutput.additionalContext;
+    const text = hookText(out);
     expect(
       text.endsWith(
         `\n\n${primer(`node --disable-warning=ExperimentalWarning ${join(dist, "cli/squeal.mjs")}`)}`,

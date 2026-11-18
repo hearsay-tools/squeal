@@ -11,8 +11,7 @@ import { buildSnapshot } from "../../src/core/status/snapshot.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { type DaemonRequest, daemonIncarnation } from "../../src/core/types/daemon.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
-import type { HookResult } from "../../src/harness/claude-code/run.js";
-import { recorded } from "../harness/helpers.js";
+import { hookText as context, recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
   awaitRunnerHosts,
@@ -57,10 +56,6 @@ it("holds until the flag", async () => {
 }, 170_000);
 `;
 }
-
-const context = (out: HookResult): string =>
-  (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
 
 /** A daemon serving `repo`, its baseline holding `test/held.test.ts` in a tier. */
 async function heldDaemon(dir: string): Promise<{ repo: FixtureRepo; spawned: SpawnedProcess }> {

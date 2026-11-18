@@ -4,7 +4,7 @@ import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { HandOff } from "../../src/harness/shared/hand-off.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 005-98, the coordinator's decision C (2026-11-17): a session reads its registration
@@ -19,10 +19,6 @@ const deps = (handOff?: HandOff): HookDeps => ({
   ensureDaemon: async () => "alive",
   ...(handOff === undefined ? {} : { handOff }),
 });
-
-const context = (stdout: string): string =>
-  (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
-    .additionalContext;
 
 /** A SessionStart with `source` whose output is written (`written`) or lost to a kill. */
 async function started(source: string, written: boolean): Promise<SquealRepo> {

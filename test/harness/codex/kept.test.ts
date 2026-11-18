@@ -10,7 +10,7 @@ import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { primer } from "../../../src/harness/shared/primer.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, runtimeDir } from "../bundle-helpers.js";
-import { squealRepo } from "../helpers.js";
+import { hookText as contextOf, squealRepo } from "../helpers.js";
 import { codexRecorded, sessionOf } from "./helpers.js";
 
 /*
@@ -142,10 +142,6 @@ describe("registeredSkillLine (005-83)", () => {
     // A daemon that answers: the hook spawns nothing, so `keepOnSpawn` would copy nothing.
     return { ...f, deps: { ...f.deps, ensureDaemon: async () => "alive" as const } };
   }
-
-  const contextOf = (stdout: string) =>
-    (JSON.parse(stdout) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
-      .additionalContext;
 
   it.each(["user-prompt-submit", "post-tool-use"] as const)(
     "%s: the first text keeps the copy and names its skill, which reads after the cache version goes",

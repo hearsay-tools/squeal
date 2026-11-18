@@ -12,7 +12,7 @@ import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
-import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import { hookText, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 011-295: the "Not validated" line a hook adds after an edit, when it
@@ -82,9 +82,7 @@ async function edit(r: SquealRepo, now: EpochMs = T): Promise<string[]> {
     recorded("post-tool-batch", r.root, EDIT),
     unavailable(now),
   );
-  const context = (JSON.parse(out.stdout) as { hookSpecificOutput: { additionalContext: string } })
-    .hookSpecificOutput.additionalContext;
-  return context.split("\n");
+  return hookText(out).split("\n");
 }
 
 function status(r: SquealRepo, now: EpochMs = T) {
