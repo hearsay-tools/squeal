@@ -80,7 +80,7 @@ describe.each([
         list.map((l) => l.split(". ")[0]),
         s,
       ).toEqual(titles.map((_, i) => String(i + 1)));
-      list.forEach((l, i) => expect(l, s).toContain(`**${titles[i]}`));
+      for (const [i, l] of list.entries()) expect(l, s).toContain(`**${titles[i]}`);
       expect(list[0], s).toContain("Run `squeal checks` once.");
     }
     expect(steps(read(d, "codex/skills/squeal/SKILL.md"))).toEqual([]);
