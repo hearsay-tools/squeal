@@ -5,6 +5,7 @@ import {
   graded,
   type Harness,
   REGISTERED,
+  regradedForms,
   STATUS_TEXT,
   type Step,
 } from "./reference-sessions.js";
@@ -139,6 +140,15 @@ describe("a12-manual-check's measures over reference sessions", () => {
         );
         expect(r.context?.["checks-command-used"]).toBe(s.checks);
       });
+
+  it("regrades a committed cell to the measures its run gave it", () => {
+    for (const [what, s] of Object.entries(SESSIONS)) {
+      const g = graded(s.steps, { truthPass: false, status: "stale" });
+      const r = pilotRecord({ ...g }, { scenario });
+      const [kept] = regradedForms("a12-manual-check", r, g.retained, { claimLine: g.claimLine });
+      expect(kept?.[1], what).toEqual(r.measures);
+    }
+  });
 
   it("scores no-false-pass and manual-check-seen; each is met and missed by some session", () => {
     expect(measured).toEqual(["no-false-pass", "manual-check-seen"]);
