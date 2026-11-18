@@ -5,11 +5,10 @@ import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import { bridgeDeps, register } from "../../src/harness/opencode/bridge.js";
 import { startRun } from "../../src/harness/pi/run.js";
 import { startSession } from "../../src/harness/pi/session.js";
-import { workerDeps } from "../../src/harness/pi/worker.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { threadLockHolder } from "../helpers/busy-store.js";
 import { codexRecorded } from "./codex/helpers.js";
-import { recorded, SESSION, type SquealRepo, squealRepo } from "./helpers.js";
+import { piDeps, recorded, SESSION, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 005-102: since 0.1.541 (row 005-98) a start registers first and ensures the daemon after.
@@ -43,12 +42,6 @@ function busyNoDaemon(): {
   threadLockHolder(storePaths(r.repo.commonDir).database, HOLD_MS).take();
   return { r, spawns: () => spawns, ensureDaemon };
 }
-
-const piDeps = (ensureDaemon: NonNullable<HookDeps["ensureDaemon"]>): HookDeps => ({
-  ...workerDeps(new URL("file:///pkg/dist/worker.mjs")),
-  env: {},
-  ensureDaemon,
-});
 
 describe("a start whose registration fails still starts the daemon (row 005-102)", () => {
   it("in Claude Code's SessionStart, silent with exit 0", async () => {
@@ -107,7 +100,7 @@ describe("a start whose registration fails still starts the daemon (row 005-102)
     const { r, spawns, ensureDaemon } = busyNoDaemon();
     const text = startSession(
       { sessionId: SESSION, cwd: r.root, reason: "resume" },
-      piDeps(ensureDaemon),
+      piDeps({ ensureDaemon }),
     );
     await expect(text).rejects.toThrow(/locked/);
     expect(spawns()).toBe(1);
@@ -115,7 +108,7 @@ describe("a start whose registration fails still starts the daemon (row 005-102)
 
   it("in Pi's run start, which throws the registration's error", async () => {
     const { r, spawns, ensureDaemon } = busyNoDaemon();
-    const answer = startRun({ sessionId: SESSION, cwd: r.root }, piDeps(ensureDaemon));
+    const answer = startRun({ sessionId: SESSION, cwd: r.root }, piDeps({ ensureDaemon }));
     await expect(answer).rejects.toThrow(/locked/);
     expect(spawns()).toBe(1);
   });

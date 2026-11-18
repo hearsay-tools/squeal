@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { owedRegistration } from "../../src/core/delivery/registration-owed.js";
-import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { bridgeDeps, register } from "../../src/harness/opencode/bridge.js";
 import { after as toolResult } from "../../src/harness/opencode/bridge-turn.js";
 import { startRun } from "../../src/harness/pi/run.js";
 import { startSession, toolBoundary } from "../../src/harness/pi/session.js";
-import { workerDeps } from "../../src/harness/pi/worker.js";
 import { HandOff } from "../../src/harness/shared/hand-off.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER_OPENING } from "../../src/harness/shared/primer.js";
-import { SESSION, type SquealRepo, squealRepo } from "./helpers.js";
+import { hangingEnsure, piDeps, SESSION, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 005-98, decision C in Pi and OpenCode (review 0.1.541): their starts register before the
@@ -20,16 +18,6 @@ import { SESSION, type SquealRepo, squealRepo } from "./helpers.js";
  */
 
 const FIRST_FAIL = /^SQUEAL · registered at revision \d+\n/;
-
-/** A start whose daemon start does not end: the harness kills it at its deadline. */
-function hanging(): { release: () => void; ensureDaemon: NonNullable<HookDeps["ensureDaemon"]> } {
-  let release = () => {};
-  const ensureDaemon = () =>
-    new Promise<EnsureDaemonResult>((resolve) => {
-      release = () => resolve("spawned");
-    });
-  return { release: () => release(), ensureDaemon };
-}
 
 /** A worktree with one known failure and no daemon. */
 function failing(): SquealRepo {
@@ -43,13 +31,6 @@ async function registered(r: SquealRepo): Promise<void> {
   await expect.poll(() => r.store.consumers.get(r.consumer()) !== null).toBe(true);
 }
 
-const piDeps = (overrides: Partial<HookDeps> = {}): HookDeps => ({
-  ...workerDeps(new URL("file:///pkg/dist/worker.mjs")),
-  env: {},
-  ensureDaemon: async () => "alive",
-  ...overrides,
-});
-
 const ocDeps = (overrides: Partial<HookDeps> = {}): HookDeps => ({
   ...bridgeDeps(new URL("file:///pkg/dist/hooks/register.mjs"), { worktree: "/", pid: 1 }),
   env: {},
@@ -59,7 +40,7 @@ const ocDeps = (overrides: Partial<HookDeps> = {}): HookDeps => ({
 
 describe("Pi: a session start killed during the daemon's start (row 005-98 C)", () => {
   async function killedStart(r: SquealRepo) {
-    const h = hanging();
+    const h = hangingEnsure();
     const start = startSession(
       { sessionId: SESSION, cwd: r.root, reason: "startup" },
       piDeps({ ensureDaemon: h.ensureDaemon }),
@@ -121,7 +102,7 @@ describe("Pi: a session start killed during the daemon's start (row 005-98 C)", 
 
   it("a first registration at a run start, killed during the daemon's start, is the next run's news", async () => {
     const r = failing();
-    const h = hanging();
+    const h = hangingEnsure();
     const run = startRun(
       { sessionId: SESSION, cwd: r.root },
       piDeps({ ensureDaemon: h.ensureDaemon }),
@@ -146,7 +127,7 @@ describe("OpenCode: a register killed during the daemon's start (row 005-98 C)",
 
   it("the next tool result carries the registration with its failure once", async () => {
     const r = failing();
-    const h = hanging();
+    const h = hangingEnsure();
     const start = register(
       { kind: "register", ...about(r) },
       ocDeps({ ensureDaemon: h.ensureDaemon }),

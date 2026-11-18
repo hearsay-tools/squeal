@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
-import { hookText as context, recorded, type SquealRepo, squealRepo } from "./helpers.js";
+import {
+  hookText as context,
+  hangingEnsure,
+  recorded,
+  type SquealRepo,
+  squealRepo,
+} from "./helpers.js";
 
 /*
  * Row 005-98 (option A, the human 2026-11-17): under Squawk a session ends at each turn end
@@ -23,20 +29,14 @@ const POLL_MS = 10;
  * the harness would have killed; the test lets it end after its checks.
  */
 function hangingStart(r: SquealRepo, source: string) {
-  let release = () => {};
-  let spawnAsked = false;
+  const start = hangingEnsure();
   const deps: HookDeps = {
     env: {},
     cli: "/plugin/dist/cli/squeal.mjs",
-    ensureDaemon: () => {
-      spawnAsked = true;
-      return new Promise((resolve) => {
-        release = () => resolve("spawned");
-      });
-    },
+    ensureDaemon: start.ensureDaemon,
   };
   const hook = runHook("session-start", recorded("session-start", r.root, { source }), deps);
-  return { hook, release: () => release(), spawnAsked: () => spawnAsked };
+  return { hook, release: start.release, spawnAsked: start.asked };
 }
 
 /** Polls until `r`'s main consumer is registered or `ms` passed; whether it is. */

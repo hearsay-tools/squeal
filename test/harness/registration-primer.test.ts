@@ -6,11 +6,10 @@ import { bridgeDeps, prompt, register } from "../../src/harness/opencode/bridge.
 import { after as toolResult } from "../../src/harness/opencode/bridge-turn.js";
 import { startRun } from "../../src/harness/pi/run.js";
 import { startSession, toolBoundary } from "../../src/harness/pi/session.js";
-import { workerDeps } from "../../src/harness/pi/worker.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER_OPENING } from "../../src/harness/shared/primer.js";
 import { type FakeRepo, fakeRepo } from "../status/helpers.js";
-import { recorded, SESSION, type SquealRepo, squealRepo } from "./helpers.js";
+import { piDeps, recorded, SESSION, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*
  * Row 005-117: a consumer that is not registered (its store came after its start, or it expired)
@@ -35,12 +34,6 @@ function unregistered(): SquealRepo {
   r.daemon("alive");
   return r;
 }
-
-const piDeps = (): HookDeps => ({
-  ...workerDeps(new URL("file:///pkg/dist/worker.mjs")),
-  env: {},
-  ensureDaemon: async () => "alive",
-});
 
 const ocDeps = (): HookDeps => ({
   ...bridgeDeps(new URL("file:///pkg/dist/hooks/after.mjs"), { worktree: "/", pid: 1 }),
