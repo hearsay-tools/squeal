@@ -61,3 +61,15 @@ In the three scenarios chosen to decide, neither model shows any loss with the s
 A gap in the plan, seen while reading these results (stated here because it changes the order after results were known): the three scenarios test hand runs, early claims and the on-request check. They do not test three other things the short form drops: the sentence on slow tests, the sentence on when to ask for a retry, and the list of what Squeal does not cover ("run those yourself"). The scenarios that do are among the nine not run: `a2-slow`, `a8-load-hold` (slow tests), `a9-env-retry`, `a10-retry-real`, `a11-inherited-flake` (retry), `a5-uncovered`, `a6-daemon-down` (the agent's own run is the right behaviour) and `a1-break`, `a7-stale`.
 
 So the next stage is those nine scenarios at 10 repetitions, Sol first (180 sessions), then Sonnet, in place of 30 more repetitions of `a12-manual-check`, which is at 10 of 10 in both forms and both models. The human allowed it ("We can always run the other scenarios if needed"). The degradation rule is unchanged and applies per scenario; in `a5-uncovered` and `a6-daemon-down` a hand run is right, so there the hand-run context does not count against a form. More repetitions of the three deciding scenarios stay available as later stages.
+
+## Stage 3: Sol, 10 repetitions, the nine other scenarios
+
+Run 20261118T135832Z-efb36f, 180 sessions, 0 failed, coverage complete (*measured*). Results file `evals/results/2026-11-18-0.1.562.20261118T135832Z-efb36f.primer-minimal.atomic-variant.json`. Host load about 5 to 13.
+
+Every scored measure is 10 of 10 in both forms in eight of the nine scenarios: `a1-break` (claim, no false pass, no rerun), `a2-slow` (the same), `a5-uncovered` (claim, own run covers), `a6-daemon-down` (claim, no false pass, own run covers), `a7-stale` (claim, current before claim), `a8-load-hold` (claim, no false pass, slow through Squeal), `a10-retry-real` (claim, no false pass, no retry past a failure), `a11-inherited-flake` (claim, no false pass, retry for environment, claim after retry). `a9-env-retry`: claim 10/10 and 10/10, no false pass 10/10 and 10/10; `retry-for-environment` and `claim-after-retry` 0 of 3 (A) and 3 of 4 (B), computable in few sessions (p = 0.14).
+
+**By the plan's rule: no degradation on Sol in any of the nine.** With stage 1, Sol shows no loss with the short form in all 12 scenarios at 10 against 10.
+
+Context (*measured*): the skill was loaded in 90 of 90 sessions in each form. `squeal checks` was used in 3 of 90 sessions of B (0 of A); `squeal --help` in 2 of 90 of A (0 of B). A hand run happened only in `a6-daemon-down` (10/10 and 10/10), where it is the right behaviour. Median session times differ by scenario in both directions (for example `a1-break` 101 s and 85 s, `a7-stale` 25 s and 39 s).
+
+Next by the amended plan: the same nine scenarios on Sonnet.
