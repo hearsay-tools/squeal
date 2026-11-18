@@ -111,7 +111,7 @@ export async function withSide<T>(
   const started = performance.now();
   // D5.1, D5.3, D5.4: a side under a condition, or repeated, is never read from the store.
   const forced = forcedReason(input);
-  const beforeRemove: BeforeRemove = async (checkout, keyed, change, rekey) => {
+  const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
     changed = change;
     keyedRefs = keyed.map((f) => f.ref);
     const needs = await needsOf({
@@ -155,7 +155,7 @@ export async function withSide<T>(
         .map((ref) => pending.get(testFileId(ref)))
         .filter((f): f is KeyedFile => f !== undefined && !files.has(testFileId(f.ref)));
       if (toRun.length === 0) return;
-      ran += await runFiles(input, checkout, toRun, change, files, rekey);
+      ran += await runFiles(input, checkout, toRun, change, files);
     };
     const open: OpenSide = {
       keyed,

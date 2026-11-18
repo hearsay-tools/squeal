@@ -70,19 +70,30 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     return states;
   }
   const chosen = new Set(input.run.map((f) => testFileId(f.ref)));
+  // Review wave-11 B1: a file's outcome is read only at the key the gate kept this run's result
+  // at, never at a key computed after the run, which a test that wrote its inputs can move.
+  const kept = new Map(
+    (answer.result.kept ?? []).map((k) => [
+      testFileId({ project: k.project, path: k.path }),
+      k.key,
+    ]),
+  );
   await withStores(input.commonDir, async (main) => {
     for (const file of [...input.run, ...input.siblings]) {
       if (!("key" in file.at)) continue;
-      const { key } = file.at;
       const { path } = file.ref;
-      const records = main === null ? [] : resultsAt(main, file.ref, key);
       const id = testFileId(file.ref);
-      if (records.length > 0) {
-        states.set(id, asRun(stateOf(key, records, input.own), commit, true));
+      const at = kept.get(id);
+      const records = main === null || at === undefined ? [] : resultsAt(main, file.ref, at);
+      if (at !== undefined && records.length > 0) {
+        states.set(id, asRun(stateOf(at, records, input.own), commit, true));
       } else if (chosen.has(id)) {
         const runs = answer.result.runs.filter((r) => r.path === path);
-        const why = notKeptWhy(answer.result.notKept, path, input.coverage !== false);
-        states.set(id, fromGate(key, runs, commit, why));
+        const why =
+          at === undefined
+            ? notKeptWhy(answer.result.notKept, path, input.coverage !== false)
+            : "its kept result could not be read back";
+        states.set(id, fromGate(file.at.key, runs, commit, why));
       }
     }
   });

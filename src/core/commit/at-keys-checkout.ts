@@ -65,40 +65,17 @@ export interface KeyedFile {
 }
 
 /**
- * Row 023-18 (D1 of `tasks/023-09-notes.md`): keys `refs` again in the
- * open checkout, with the observed rows the shared store holds now. A run
- * that read a path its static closure lacks is kept at the key with that
- * read (020 row 020-39), so after a run a file's stored result is found at
- * this key, the one the next `--at` gives, not at the key from before it.
- */
-export type Rekey = (refs: readonly TestFileRef[]) => Promise<ReadonlyMap<string, KeyAt>>;
-
-/**
  * Row 023-07 (D4): runs in the checkout after its files are keyed and the
  * keyer is closed, before the checkout is removed; given the keyed files
  * and the first path the install changed (`null` when the checkout is the
  * commit's): with one, nothing run there may be stored as the commit's.
- * `rekey` keys files again there after a run (row 023-18).
  * What it throws rejects the whole call, the checkout removed first.
  */
 export type BeforeRemove = (
   checkout: Checkout,
   files: readonly KeyedFile[],
   changed: Changed | null,
-  rekey: Rekey,
 ) => Promise<void>;
-
-/**
- * Row 023-18 (D1): `files` with each key `rekey` gives after a run; a file
- * it does not key keeps the key it had.
- */
-export async function rekeyed(files: readonly KeyedFile[], rekey: Rekey): Promise<KeyedFile[]> {
-  const keys = await rekey(files.map((f) => f.ref));
-  return files.map((file) => {
-    const at = keys.get(testFileId(file.ref));
-    return at !== undefined && "key" in at ? { ref: file.ref, at } : file;
-  });
-}
 
 /**
  * Row 023-07 (review wave-7 B4): runs in the checkout after its files are
@@ -182,8 +159,7 @@ export async function inCheckout(
         },
       );
       // Row 023-07: the keyer's adapters are closed; the files run in this same checkout.
-      const rekey: Rekey = (again) => keyAgain(checkout.tree, input.commonDir, again, options);
-      await options.beforeRemove?.(checkout, keyedOf(refs, out), changed, rekey);
+      await options.beforeRemove?.(checkout, keyedOf(refs, out), changed);
     });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
@@ -192,32 +168,6 @@ export async function inCheckout(
     return { files: out, failure, ms: ms(), changed: null, inputCheckMs };
   }
   return { files: out, failure: null, ms: ms(), changed, inputCheckMs };
-}
-
-/** Row 023-18: `refs` keyed in `tree` by a new keyer over the shared store as it is now. */
-async function keyAgain(
-  tree: AbsolutePath,
-  commonDir: AbsolutePath,
-  refs: readonly TestFileRef[],
-  options: KeyingOptions,
-): Promise<Map<string, KeyAt>> {
-  const out = new Map<string, KeyAt>();
-  if (refs.length === 0) return out;
-  const stores = readStores(commonDir);
-  try {
-    const main = stores?.main ?? null;
-    await withKeyer(tree, commonDir, main ?? undefined, options, async (open) => {
-      const keyed = await open.keyer.keyed(refs);
-      for (const ref of refs) {
-        const at = keyed.get(ref);
-        if (at !== undefined)
-          out.set(testFileId(ref), { ...found(main, ref, at.key), loads: at.loads });
-      }
-    });
-  } finally {
-    stores?.close();
-  }
-  return out;
 }
 
 function keyedOf(refs: readonly TestFileRef[], out: ReadonlyMap<string, KeyAt>): KeyedFile[] {

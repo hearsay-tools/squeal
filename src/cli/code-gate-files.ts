@@ -105,6 +105,16 @@ export interface GateFilesResult {
    * the keeper's reason; absent when the call stores nothing (`store: false`).
    */
   readonly notKept?: readonly { readonly path: string; readonly reason: string }[];
+  /**
+   * Review wave-11 B1: each file the stores kept, by project and path, with
+   * the key its results were written at: the one key a caller reads this
+   * run's outcome back at. Absent when the call stores nothing.
+   */
+  readonly kept?: readonly {
+    readonly project: string;
+    readonly path: string;
+    readonly key: string;
+  }[];
 }
 
 /**
@@ -168,7 +178,10 @@ async function gateFiles(
     const { evidence } = collected;
     const notKept = [...collected.notKept()].map(([path, reason]) => ({ path, reason }));
     const runs = evidence.testFiles.map(fileRun);
-    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept };
+    const kept = collected
+      .kept()
+      .map(({ ref, key }) => ({ project: ref.project, path: ref.path, key }));
+    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept, kept };
   } finally {
     durations?.close();
   }

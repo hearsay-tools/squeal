@@ -124,6 +124,16 @@ export class Keeper {
     return new Map([...this.#notKept.files(), ...this.#passNotKept.files()]);
   }
 
+  /**
+   * Review wave-11 B1: each file a pass wrote, with the key it was written
+   * at, for a caller that reads its outcome back (`squeal status --at
+   * --run`, proof sides); a file a daemon took without saying how it went
+   * is not in it.
+   */
+  keptFiles(): readonly KeptAt[] {
+    return this.#tally.files();
+  }
+
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close(): void {
     void this.#early.stop();
@@ -250,8 +260,15 @@ export class Keeper {
  * A file a later pass wrote is kept, though an earlier try's outcome was
  * not known; one kept stays kept.
  */
+/** Review wave-11 B1: one file a pass wrote: its test file and the key it holds its results at. */
+export interface KeptAt {
+  readonly ref: TestFileRef;
+  readonly key: CheckKey;
+}
+
 export class KeptTally {
   readonly #kept = new Set<string>();
+  readonly #files = new Map<string, KeptAt>();
   readonly #unknown = new Set<string>();
 
   get kept(): number {
@@ -265,11 +282,17 @@ export class KeptTally {
   heard(pass: Pick<Pass, "kept" | "unknown">): void {
     for (const file of pass.kept ?? []) {
       this.#kept.add(fileOf(file));
+      this.#files.set(fileOf(file), { ref: file.ref, key: file.key });
       this.#unknown.delete(fileOf(file));
     }
     for (const file of pass.unknown ?? []) {
       if (!this.#kept.has(fileOf(file))) this.#unknown.add(fileOf(file));
     }
+  }
+
+  /** The files kept, each at the key written. */
+  files(): KeptAt[] {
+    return [...this.#files.values()];
   }
 }
 

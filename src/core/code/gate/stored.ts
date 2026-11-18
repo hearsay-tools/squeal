@@ -27,7 +27,7 @@ import { createCodeStore } from "../store/store.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun, StoredEvidence } from "./collect.js";
 import { FILE_ERROR } from "./evidence.js";
-import { Keeper } from "./keep.js";
+import { Keeper, type KeptAt } from "./keep.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -91,6 +91,8 @@ export interface StoredFiles {
   flush(): Promise<void>;
   /** Row 023-18 (D2): after `flush`, why each completed file was not kept, by path. */
   notKept(): ReadonlyMap<string, string>;
+  /** Review wave-11 B1: after `flush`, each file written, at the key it was written at. */
+  kept(): readonly KeptAt[];
   /** Each file's key as a daemon here gives it; `null` when it has none. */
   keys(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, CheckKey | null>>;
   /** Closes the stores and the adapters, and removes the scratch store. */
@@ -178,6 +180,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
     ran: (run) => keeper.ran(run),
     flush: () => keeper.flush(),
     notKept: () => keeper.notKeptFiles(),
+    kept: () => keeper.keptFiles(),
     keys,
     close,
   };

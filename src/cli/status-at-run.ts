@@ -2,13 +2,7 @@ import { availableParallelism } from "node:os";
 import type { Checkout } from "../core/checkout/checkout.js";
 import { coverageOn } from "../core/code/coverage/runtime.js";
 import { estimateRun, type RunEstimate } from "../core/code/gate/estimate.js";
-import {
-  type BeforeRemove,
-  type KeyedFile,
-  type Rekey,
-  rekeyed,
-  type WhileOpen,
-} from "../core/commit/at-keys-checkout.js";
+import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -102,7 +96,7 @@ export function atRun(input: AtRunInput): AtRun {
     },
   );
 
-  const beforeRemove: BeforeRemove = async (checkout, keyed, change, rekey) => {
+  const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
     changed = change;
     for (const [id, state] of selection.states) states.set(id, state);
     const { run } = selection;
@@ -111,7 +105,7 @@ export function atRun(input: AtRunInput): AtRun {
     try {
       estimate = estimateOf(run, durationsOf);
       if (args.allMissing) input.note(estimateText(estimate, commit, args.timeoutSeconds));
-      if (run.length > 0) await runFiles(checkout, run, keyed, rekey);
+      if (run.length > 0) await runFiles(checkout, run, keyed);
     } finally {
       durations?.close();
     }
@@ -121,7 +115,6 @@ export function atRun(input: AtRunInput): AtRun {
     checkout: Checkout,
     run: readonly KeyedFile[],
     keyed: readonly KeyedFile[],
-    rekey: Rekey,
   ): Promise<void> {
     overheadMs = elapsed();
     const left = Math.floor((budgetMs - overheadMs) / 1000);
@@ -151,15 +144,13 @@ export function atRun(input: AtRunInput): AtRun {
     const siblings = keyed.filter(
       (f) => noResult(f) && paths.has(f.ref.path) && !chosen.has(testFileId(f.ref)),
     );
-    // Row 023-18 (D1): a stored run is read at the key it was kept at, which its reads can move.
-    const both = [...run, ...siblings];
-    const read = changed === null && "result" in answer ? await rekeyed(both, rekey) : both;
+    // Row 023-18 (D1), review wave-11 B1: a stored run is read at the key the gate kept it at.
     const outcomes = await outcomesOf({
       commonDir: input.commonDir,
       commit,
       own: input.own,
-      run: read.slice(0, run.length),
-      siblings: read.slice(run.length),
+      run,
+      siblings,
       answer,
       changed,
       coverage: coverageOn(readPolicy(checkout.tree)),

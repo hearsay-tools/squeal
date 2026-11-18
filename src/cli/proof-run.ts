@@ -3,13 +3,7 @@ import type { Checkout } from "../core/checkout/checkout.js";
 import { coverageOn } from "../core/code/coverage/runtime.js";
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { FailedTest } from "../core/code/gate/types.js";
-import {
-  type KeyedFile,
-  type Rekey,
-  rekeyed,
-  resultsAt,
-  withStores,
-} from "../core/commit/at-keys-checkout.js";
+import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
 import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
@@ -53,7 +47,6 @@ export async function runFiles(
   toRun: readonly KeyedFile[],
   change: Changed | null,
   files: Map<string, SideFile>,
-  rekey: Rekey,
 ): Promise<number> {
   // Row 023-18 (N1): no budget left, no own HOME made; the files read `not run (budget)`.
   const budgetCut = () => {
@@ -83,7 +76,7 @@ export async function runFiles(
       }
       break;
     }
-    const sides = await runOnce(input, checkout, left, { change, env, seconds, rekey });
+    const sides = await runOnce(input, checkout, left, { change, env, seconds });
     const next: KeyedFile[] = [];
     for (const file of left) {
       const id = testFileId(file.ref);
@@ -131,12 +124,11 @@ function budgetSide(): SideFile {
 async function runOnce(
   input: SideInput,
   checkout: Checkout,
-  given: readonly KeyedFile[],
+  toRun: readonly KeyedFile[],
   round: {
     readonly change: Changed | null;
     readonly env: NodeJS.ProcessEnv;
     readonly seconds: number;
-    readonly rekey: Rekey;
   },
 ): Promise<Map<string, SideFile>> {
   const { change, env, seconds } = round;
@@ -144,7 +136,7 @@ async function runOnce(
   const answer = await runInChild({
     relaunch: input.relaunch,
     checkout,
-    files: [...new Set(given.map((f) => f.ref.path))].sort(),
+    files: [...new Set(toRun.map((f) => f.ref.path))].sort(),
     budgetSeconds: seconds,
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
@@ -154,9 +146,6 @@ async function runOnce(
     env,
     forward: input.forward,
   });
-  // Row 023-18 (D1): a stored run is read at the key it was kept at, which its reads can move.
-  const stored = forced === null && change === null && "result" in answer;
-  const toRun = stored ? await rekeyed(given, round.rekey) : given;
   const states = await outcomesOf({
     commonDir: checkout.commonDir,
     commit: input.side.code,
@@ -171,13 +160,15 @@ async function runOnce(
   const out = new Map<string, SideFile>();
   // Review wave-9 B3: a change the install made is named, never masked by the forced reason.
   const notStored = change === null ? forced : changedText(change);
-  // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
+  // Review wave-8 B1: a stored run's failures are its own project's, read at its own key;
+  // review wave-11 B1: the key the gate kept this run at, which `outcomesOf` gave the state.
   await withStores(checkout.commonDir, async (main) => {
     for (const file of toRun) {
       const state = states.get(testFileId(file.ref));
+      const keptAt = state !== undefined && "origin" in state && state.origin.stored === true;
       const records =
-        main !== null && forced === null && "key" in file.at
-          ? resultsAt(main, file.ref, file.at.key)
+        main !== null && forced === null && keptAt && "key" in state
+          ? resultsAt(main, file.ref, state.key)
           : [];
       out.set(testFileId(file.ref), ranSide(state, answer, file.ref.path, notStored, records));
     }

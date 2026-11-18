@@ -5,6 +5,7 @@ import {
   collectEvidence,
   type StoredEvidence,
 } from "../core/code/gate/collect.js";
+import type { KeptAt } from "../core/code/gate/keep.js";
 import { partsEvidence } from "../core/code/gate/parts.js";
 import type { PartRefusal } from "../core/code/gate/parts-refused.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
@@ -50,6 +51,8 @@ export interface Collected {
    * path; empty when the stores keep nothing at all (coverage off, no store).
    */
   notKept(): ReadonlyMap<string, string>;
+  /** Review wave-11 B1: after `keep`, each file written, at the key it was written at. */
+  kept(): readonly KeptAt[];
 }
 
 /**
@@ -125,7 +128,12 @@ export async function collectWithStores(
       await stored?.close();
     }
   };
-  return { evidence, keep, notKept: () => stored?.notKept() ?? new Map() };
+  return {
+    evidence,
+    keep,
+    notKept: () => stored?.notKept() ?? new Map(),
+    kept: () => stored?.kept() ?? [],
+  };
 }
 
 /** `adapters`, each adapter they open pushed to `opened` too (row 020-51). */
