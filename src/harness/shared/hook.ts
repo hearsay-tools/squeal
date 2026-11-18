@@ -42,6 +42,11 @@ export interface HookDeps {
    */
   readonly registrationPrimer?: boolean;
   /**
+   * Row 005-126 (experiment): whether this harness ships the squeal skill, which the primer's
+   * `"skill"` form points to. Default `true` (Claude Code, Codex, Pi); `false` for OpenCode.
+   */
+  readonly skill?: boolean;
+  /**
    * The epoch clock. Default `Date.now`. It must advance with real elapsed
    * time, at most a constant offset from `Date.now`: the waiting Stop entry
    * reads its process start in this frame, once, as `now() - performance.now()`

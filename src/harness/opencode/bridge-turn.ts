@@ -94,7 +94,7 @@ export const after: OcHandler<"after"> = async (request, deps) => {
       if (request.primer !== true) return { text };
       return {
         text,
-        primer: primer(deps.command, coverageOf(context)),
+        primer: primer(deps.command, coverageOf(context), { skill: deps.skill }),
         stopWaitMs: readPolicy(location.root).stop.waitMs,
       };
     },

@@ -53,7 +53,7 @@ export async function registerOwing(
     owesText: owed,
   });
   return owed.primer
-    ? withPrimer(registration, deps.command, coverageOf(context))
+    ? withPrimer(registration, deps.command, coverageOf(context), { skill: deps.skill })
     : formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
 }
 

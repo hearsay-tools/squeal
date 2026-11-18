@@ -52,6 +52,8 @@ export function bridgeDeps(module: URL, host: OcHost): HookDeps {
     // Row 005-117: the primer is the system prompt's (D3): every answer that registers carries it
     // in its own `primer` field when the plugin has none (`hooks.ts`), for the next request.
     registrationPrimer: false,
+    // Row 005-126 (experiment): the OpenCode package ships no squeal skill.
+    skill: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid }),
   };
 }
@@ -92,7 +94,7 @@ export async function register(
       return {
         header,
         registered: true,
-        primer: primer(deps.command, coverageOf(context)),
+        primer: primer(deps.command, coverageOf(context), { skill: deps.skill }),
         stopWaitMs: readPolicy(location.root).stop.waitMs,
       };
     },
@@ -118,7 +120,7 @@ export async function prompt(
   const input = consumerInput(request.consumer);
   const text = await submitPrompt(input, location, deps, { register: true });
   const current = await withContext(input, location, deps, async (context) =>
-    isRegistered(context) ? primer(deps.command, coverageOf(context)) : null,
+    isRegistered(context) ? primer(deps.command, coverageOf(context), { skill: deps.skill }) : null,
   );
   return { text, stopWaitMs: readPolicy(location.root).stop.waitMs, primer: current };
 }
