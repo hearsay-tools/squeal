@@ -1,93 +1,61 @@
 // Row 005-127 (wave 30): a check that does not run after an edit (spec 019 D1, `at: "manual"`),
 // and what a session looked up about Squeal. The scenario a12-manual-check declares the check as
 // `manualCheck: { name, files }`; the knob `checks` puts it into the fixture's config.
-import { parseClaim } from "./claim.mjs";
 import { simpleCommands } from "./shell.mjs";
 import { SKILL_PATH } from "./transcript.mjs";
 
 /**
- * Whether the session read manual check `check`'s (`{ name, files }`) result after its last
- * edit, or knew it had not run, over replayed timeline `tl` (review exp-minimal-primer-design B1).
- * Met by, before the claim:
- * (a) Squeal's reply or message, after the last edit and at a revision above every one seen
- *     before it, with a daemon validating, that reports the check: a `squeal run <name> --wait`
- *     that completed with at least one of its test files (`completed`), or a current result of
- *     one of its files (`files`, a `run --all --wait`'s status included);
- * (b) an own, completed Vitest run after the last edit whose output names one of its files as run;
- * (c) an `unknown` claim naming the check or a file as not run, after a Squeal text that showed
- *     the check waiting for its run (the start message, a status line, or `squeal checks`).
- * Not by a help text, a request only queued, a run that selected none of its files, a reply
- * from no daemon, or a `fail` claim without (a) or (b). `null` without a claim.
+ * How a session met manual check `check` (`{ name, files }`) before its claim, over replayed
+ * timeline `tl`: context with no direction, never a score (the coordinator, after review
+ * exp-minimal-primer-design-r2). `null` without a timeline. Each route is true when, before the
+ * claim:
+ * - `route-squeal-run`: Squeal's reply or message after the last edit, at a revision above every
+ *   one seen before it, with a daemon validating, reported the check: a `squeal run <name>
+ *   --wait` that completed with at least one of its test files (`completed`), or a current result
+ *   of one of its files (`files`, the status after `run --all --wait` included). A help text, a
+ *   request only queued, a run that selected none of its files and a no-daemon reply do not.
+ * - `route-own-run`: a completed own Vitest run after the last edit whose output names one of its
+ *   files as run.
+ * - `route-looked-up`: `squeal checks` listed it as running only on request, or a status the
+ *   session asked for showed it waiting for its run. The start message is not a look-up.
+ * - `route-none`: none of the three.
  */
-export function manualCheckSeen(tl, check, claimLine) {
-  const routes = manualCheckRoutes(tl, check, claimLine);
-  return routes === null ? null : routes.squeal || routes.ownRun || routes.unknown;
-}
-
-/**
- * Which of `manualCheckSeen`'s routes the session took, `{ squeal, ownRun, unknown }` for (a),
- * (b) and (c), or `null` without a claim: the analysis reads them apart (review
- * exp-minimal-primer-design, question 3), since an own run and an honest `unknown` need no look-up.
- */
-export function manualCheckRoutes(tl, check, claimLine) {
-  const { claim, evidence } = parseClaim(claimLine);
-  if (claim === null || claim === undefined) return null;
+export function manualCheckRoutes(tl, check) {
+  if (!Array.isArray(tl)) return null;
   const c = tl.findLastIndex((s) => s.k === "claim");
   const before = c < 0 ? tl : tl.slice(0, c);
   const last = before.findLastIndex((s) => s.k === "edit");
   const floor = Math.max(-1, ...before.slice(0, Math.max(last, 0)).map(revisionOf));
   const after = before.slice(last + 1);
-  return {
-    squeal: after.some((s) => resultRead(s, check, floor)),
-    ownRun: after.some((s) => ownRunShows(s, check)),
-    unknown:
-      claim === "unknown" &&
-      before.some((s) => shownWaiting(s, check)) &&
-      namesNotRun(evidence ?? "", check),
+  const routes = {
+    "route-squeal-run": after.some((s) => resultRead(s, check, floor)),
+    "route-own-run": after.some((s) => ownRunShows(s, check)),
+    "route-looked-up": before.some((s) => lookedUp(s, check)),
   };
+  return { ...routes, "route-none": !Object.values(routes).includes(true) };
 }
 
 const revisionOf = (s) => (s.k === "squeal" && s.revision !== null ? s.revision : -1);
 const mine = (check) => (f) => check.files.includes(f);
 
-/** (a): squeal step `s` reports `check`'s result at a revision above `floor`. */
+/** Squeal step `s` reports `check`'s result at a revision above `floor`. */
 function resultRead(s, check, floor) {
   if (s.k !== "squeal" || s.daemon === false || revisionOf(s) <= floor) return false;
   const ran = s.sub === "run" && s.completed?.group === check.name && s.completed.testFiles > 0;
   return ran || (s.files ?? []).some(mine(check));
 }
 
-/** (b): run step `s` is a completed own Vitest run whose output names one of `check`'s files. */
+/** Run step `s` is a completed own Vitest run whose output names one of `check`'s files. */
 function ownRunShows(s, check) {
   if (s.k !== "run" || s.runner !== "vitest" || s.informational || !s.completed) return false;
   const failed = (s.failed ?? []).map((f) => f.split(" > ")[0]);
   return [...(s.files ?? []), ...failed].some(mine(check));
 }
 
-/** (c): step `s` showed `check` as waiting for its own run. */
-const shownWaiting = (s, check) =>
-  (s.k === "squeal" && (s.waiting ?? []).includes(check.name)) ||
+/** Step `s`, a reply to the session's own command, showed `check` as waiting for its run. */
+const lookedUp = (s, check) =>
+  (s.k === "squeal" && s.from === "pull" && (s.waiting ?? []).includes(check.name)) ||
   (s.k === "checks" && s.manual.includes(check.name));
-
-/**
- * Whether claim evidence `text` names check `check` (its name or a file) as not run: one clause
- * (split at `;`, `.`, `,`, `but`, `and`, `while`) holds both the name and a not-run word, so a
- * negation about another suite does not count ("contract passed; I did not run the scripts
- * tests"; review exp-minimal-primer-design B1).
- */
-export function namesNotRun(text, check) {
-  const names = [check.name, ...check.files].map(
-    (w) => new RegExp(`(?:^|[^\\w/.-])${escaped(w)}(?:$|[^\\w/-])`, "i"),
-  );
-  return String(text)
-    .split(/[;.,]\s|\s(?:but|and|while)\s/i)
-    .some((clause) => names.some((re) => re.test(clause)) && NOT_RUN.test(clause));
-}
-
-/** Words that say a check has not run, or waits to. */
-const NOT_RUN = /\bnot\b|\bnever\b|n't\b|\bwithout\b|\bpending\b|\bwait(?:s|ing)?\b|\bskipped\b/i;
-
-const escaped = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Programs that print a file a shell command names: a skill load when the file is the skill's. */
 const READERS = new Set(["cat", "head", "tail", "sed", "less", "more", "bat", "nl", "awk"]);

@@ -8,6 +8,7 @@ import {
   atomicTrend,
   fisherTwoSided,
   type Json,
+  poolAtomicRuns,
   type ResultsFile,
   resultsName,
   trendLines,
@@ -276,5 +277,111 @@ describe("the planned cells against those kept (review exp-minimal-primer-design
     expect(atomicCompareMarkdown(twoArms, "x")).toContain(
       "Coverage: the results record no repetitions",
     );
+  });
+});
+
+describe("a staged run's files pooled into one comparison (row 005-127)", () => {
+  const sol = { harness: "codex", model: "gpt-6.1-sol", status: "served" };
+  const sonnet = { harness: "claude", model: "claude-sonnet-5-5", status: "served" };
+  const runOf = (run: string, models: object[], cells: unknown[], reps = 2) =>
+    ({
+      ...(twoArms as object),
+      run,
+      repetitions: reps,
+      models,
+      scenarios: { "a2-slow": {} },
+      failed: [],
+      harnesses: { codex: "0.200.0" },
+      cells,
+    }) as Json;
+  const cells = (harness: string, model: string, arm: string, met: boolean[], from = 1) =>
+    armCells(arm, harness, model, met).map((c, i) => ({ ...c, rep: from + i }));
+  const first = runOf(
+    "r1",
+    [sol],
+    [
+      ...cells("codex", "gpt-6.1-sol", "p0", of(1, 2)),
+      ...cells("codex", "gpt-6.1-sol", "stop-slow", of(2, 2)),
+    ],
+  );
+
+  it("adds a later run's repetitions to the same model, scenario and arm", () => {
+    const more = runOf(
+      "r2",
+      [sol],
+      [
+        ...cells("codex", "gpt-6.1-sol", "p0", of(0, 3)),
+        ...cells("codex", "gpt-6.1-sol", "stop-slow", of(3, 3)),
+      ],
+      3,
+    );
+    const pooled = poolAtomicRuns([
+      { name: "r1.json", data: first },
+      { name: "r2.json", data: more },
+    ]);
+    const { rows, coverage } = atomicCompare(pooled);
+    const slow = rows.find((r) => r.measure === "slow-through-squeal");
+    expect(slow?.counts.map((c) => c && [c.k, c.n])).toEqual([
+      [1, 5],
+      [5, 5],
+    ]);
+    expect([coverage?.planned, coverage?.gaps]).toEqual([10, []]);
+    expect(atomicCompareMarkdown(pooled, "r1.json, r2.json")).toContain(
+      "Pooled from 2 runs of one commit and one pair of arms: `r1.json`, `r2.json`.",
+    );
+  });
+
+  it("adds a later run's model beside the first, each counted against its own run's plan", () => {
+    const sonnetRun = runOf(
+      "r2",
+      [sonnet],
+      [...cells("claude", "claude-sonnet-5-5", "p0", of(2, 2))],
+    );
+    const pooled = poolAtomicRuns([
+      { name: "r1.json", data: first },
+      {
+        name: "r2.json",
+        data: { ...(sonnetRun as object), harnesses: { claude: "2.1.400" } } as Json,
+      },
+    ]);
+    const { rows, coverage } = atomicCompare(pooled);
+    expect([...new Set(rows.map((r) => r.model))]).toEqual([
+      "claude claude-sonnet-5-5",
+      "codex gpt-6.1-sol",
+    ]);
+    expect(coverage?.gaps).toEqual([
+      {
+        model: "claude claude-sonnet-5-5",
+        scenario: "a2-slow",
+        arm: "stop-slow",
+        planned: 2,
+        kept: 0,
+        reached: 0,
+      },
+    ]);
+    expect(atomicCompareMarkdown(pooled, "x")).toContain(
+      "The runs used different harness versions",
+    );
+  });
+
+  it("refuses files of another commit, arm, or a scenario's prompt or knobs", () => {
+    const pool = (d: object) =>
+      poolAtomicRuns([
+        { name: "r1.json", data: first },
+        { name: "r2.json", data: { ...(first as object), run: "r2", ...d } as Json },
+      ]);
+    expect(() => pool({ commit: "other" })).toThrow(
+      /r2\.json cannot be pooled with r1\.json: commit/,
+    );
+    const c = (first as { variantConditions: object }).variantConditions;
+    expect(() => pool({ variantConditions: { ...c, variant: "p1" } })).toThrow(
+      /arm p1 against stop-slow/,
+    );
+    expect(() =>
+      pool({
+        variantConditions: { ...c, tasks: { "a2-slow": { prompt: "000000000000", knobs: {} } } },
+      }),
+    ).toThrow(/scenario a2-slow's prompt or knobs in arm stop-slow/);
+    expect(poolAtomicRuns([{ name: "r1.json", data: first }])).toBe(first);
   });
 });

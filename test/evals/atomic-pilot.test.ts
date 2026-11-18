@@ -155,7 +155,6 @@ describe("the pilot record", () => {
       // No failure declared (006-53).
       "retry-for-environment": null,
       "no-retry-past-failure": null,
-      "manual-check-seen": null, // no manualCheck declared (005-127)
       "claim-after-retry": null,
     });
   });
