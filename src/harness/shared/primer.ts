@@ -37,6 +37,61 @@ export const PRIMER_OPENING = "Squeal runs this repository's ";
 export const REVISION =
   "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 
+/**
+ * Row 005-126 (wave 30, an experiment that does not ship): which start
+ * message `primer` says. `"full"` is the shipped primer; `"minimal"` is form
+ * B, what Squeal does and where to look; `"minimal-rules"` is form C, B with
+ * the two rules on hand runs and the final wait. The eval turns this line
+ * into another form by a string patch in the built bundles, so it stays one
+ * line, exactly as written.
+ */
+export type PrimerForm = "full" | "minimal" | "minimal-rules";
+export const PRIMER_FORM: PrimerForm = "full";
+
+/**
+ * Forms B and C of row 005-126, the brief's words. The CLI is named as the
+ * full primer names it: `squeal` in every command; a Codex path in full in
+ * the first command and as "the CLI's" after it; unnamed where that does
+ * not fit within the cap.
+ */
+function minimalPrimer(command: string, rules: boolean): string {
+  const render = (naming: Naming): string => {
+    let named = false;
+    const cli = (sub: string): string => {
+      if (naming === "none") return `\`${sub}\``;
+      const full = naming === "every" || !named;
+      named = true;
+      return full ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
+    };
+    const first = `${PRIMER_OPENING}checks in the background and tells you with your next tool call when one changes; a pass is silent.`;
+    const ruleText = rules
+      ? [
+          "Do not run the tests yourself to learn whether an edit broke something.",
+          `Before you say you are done, ${cli("status --wait 60000")} gives the verdict.`,
+        ]
+      : [];
+    const rest = [
+      `${capital(cli("checks"))} lists the checks this repository defines and when each runs.`,
+      `${capital(cli("status"))} gives the current results, ${cli("run <check>")} runs one now, ${cli("retry <file>")} repeats a failure caused by load or a stopped service.`,
+      `${capital(cli("--help"))} has the rest.`,
+      ...(naming === "none" ? ["These are commands of the CLI SQUEAL messages name."] : []),
+    ];
+    return [first, ...ruleText, ...rest].join(" ");
+  };
+  const namings: Naming[] = command === SQUEAL_COMMAND ? ["every"] : ["first", "none"];
+  let text = "";
+  for (const naming of namings) {
+    text = render(naming);
+    if (text.length <= PRIMER_CAP_CHARS) return text;
+  }
+  return text;
+}
+
+/** `text` with its first letter capital: "the CLI's" opens a sentence. */
+function capital(text: string): string {
+  return text.startsWith("the ") ? `T${text.slice(1)}` : text;
+}
+
 /** Where the primer names the CLI: in every command, in the first only, or nowhere. */
 type Naming = "every" | "first" | "none";
 
@@ -74,7 +129,9 @@ type WaitForm = "paths" | "plain";
 export function primer(
   command: string = SQUEAL_COMMAND,
   coverage: Coverage = DEFAULT_COVERAGE,
+  form: PrimerForm = PRIMER_FORM,
 ): string {
+  if (form !== "full") return minimalPrimer(command, form === "minimal-rules");
   const names = runnersOf(coverage).map((runner) => runner.name);
   const groups = coverage.groups;
   // Spec 019 D6 (row 019-16): with check groups, the moments sentence says when each runs.
