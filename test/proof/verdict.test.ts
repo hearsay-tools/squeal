@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   errorKind,
   failureKind,
+  NOT_RUN_BUDGET,
   proofExit,
   type SideEnd,
   verdictOf,
@@ -66,6 +67,13 @@ describe("proof verdicts (row 023-08, D5.5, D5.6)", () => {
     expect(verdictOf(fail(assertion), { end: "unknown", reason: "no checkout" })).toMatchObject({
       verdict: "not comparable",
     });
+  });
+
+  it("reads not comparable (budget) when the budget left a run of either side not started (row 023-11)", () => {
+    const budget: SideEnd = { end: "unknown", reason: NOT_RUN_BUDGET };
+    const expected = { verdict: "not comparable", reason: "budget" };
+    expect(verdictOf(budget, null)).toEqual(expected);
+    expect(verdictOf(fail(assertion), budget)).toEqual(expected);
   });
 
   it("exits 0 all proven, 1 not red or not green, 3 when one is unknown", () => {
