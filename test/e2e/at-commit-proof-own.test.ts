@@ -131,10 +131,13 @@ describe.skipIf(!AT_E2E)("squeal proof on a copy of this repository", () => {
           "expected 1 to be 3",
         );
 
-        // With the HOME file present the old test passes: no condition, no proof.
-        const bare = proof(b, dir, [SYNTHETIC, "--base", "HEAD~1", "--case", "test"]);
-        expect(bare.code, bare.text).toBe(1);
-        expect(bare.file.verdict).toBe("not red");
+        // Row 023-20 (P9): with the HOME file present the old test passes: the command's
+        // control run, the red side once without the conditions, says so.
+        expect(proven.file).toMatchObject({
+          reason: null,
+          controlReading: "red only under the conditions",
+          control: { end: "pass" },
+        });
 
         // Without --home-keep the run's own HOME is empty: the profile read throws on both sides.
         const unkept = proof(b, dir, [SYNTHETIC, "--base", "HEAD~1", ...condition]);
