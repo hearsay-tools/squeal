@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { Connection, rollback } from "../../store/connection.js";
-import { DEFAULT_BUSY_TIMEOUT_MS, switchToWal } from "../../store/open.js";
+import { DEFAULT_BUSY_TIMEOUT_MS, isCorruption, switchToWal } from "../../store/open.js";
 import { storePaths } from "../../store/paths.js";
 import { migrate, userVersion } from "../../store/schema.js";
 import type { AbsolutePath } from "../../types/common.js";
@@ -106,10 +106,4 @@ function makeIndexes(db: DatabaseSync): void {
     rollback(db);
     throw error;
   }
-}
-
-/** SQLITE_CORRUPT (11) and SQLITE_NOTADB (26), including extended codes. */
-function isCorruption(error: unknown): boolean {
-  const code = (error as { errcode?: unknown }).errcode;
-  return typeof code === "number" && [11, 26].includes(code & 0xff);
 }
