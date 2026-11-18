@@ -91,8 +91,6 @@ const INSTALL_TIMEOUT_MS = 300_000;
 export interface OpenSide {
   /** The files keyed in the checkout. */
   readonly keyed: readonly KeyedFile[];
-  /** A keyed file's side when it was read or refused; `undefined` when only a run can tell. */
-  decided(ref: TestFileRef): SideFile | undefined;
   /** Runs those of `refs` that need a run, in this checkout, within the budget left. */
   run(refs: readonly TestFileRef[]): Promise<void>;
 }
@@ -151,7 +149,6 @@ export async function withSide<T>(
     };
     const open: OpenSide = {
       keyed,
-      decided: (ref) => files.get(testFileId(ref)),
       run,
     };
     value = await body(open);
