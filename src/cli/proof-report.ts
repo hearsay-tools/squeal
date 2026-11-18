@@ -24,11 +24,15 @@ export interface ProofFile {
 }
 
 export interface ProofReport {
-  readonly case: ProofCase;
+  /** `null` when no named file was keyed at `HEAD`, so no case was decided. */
+  readonly case: ProofCase | null;
   readonly base: string;
   readonly head: string;
-  readonly red: Side;
+  /** `null` with no case. */
+  readonly red: Side | null;
   readonly green: Side;
+  /** Each side's checkout time; red `null` when it made none. */
+  readonly checkoutMs: { readonly red: number | null; readonly green: number };
   /** Paths the working tree holds otherwise than `HEAD` (review wave-8 B2: any path, not only loads). */
   readonly dirty: readonly RelativePath[];
   readonly timeoutSeconds: number;
@@ -49,7 +53,6 @@ export function sideText(side: Side): string {
 
 const FROM_TEXT = {
   store: "stored result",
-  daemon: "this worktree's daemon",
   run: "run by this command",
 } as const;
 
@@ -73,6 +76,13 @@ function failuresOf(end: SideEnd): readonly FailedTest[] {
 
 const INDENT = "    ";
 
+/** Each side's checkout time, in seconds. */
+function checkoutText(ms: ProofReport["checkoutMs"]): string {
+  const s = (n: number) => `${(n / 1000).toFixed(1)} s`;
+  const red = ms.red === null ? "" : `red ${s(ms.red)}, `;
+  return `checkouts: ${red}green ${s(ms.green)}`;
+}
+
 /** How many dirty paths the text names before it counts the rest. */
 const NAMED_DIRTY = 5;
 
@@ -85,12 +95,12 @@ function listed(paths: readonly RelativePath[]): string {
 /** D5.5's text: a header, each file's verdict with both sides and the red side's failures, counts. */
 export function formatProof(report: ProofReport): string {
   const lines = [
-    `squeal proof (case ${report.case}): base ${short(report.base)}, HEAD ${short(report.head)}`,
-    `Red: ${sideText(report.red)}. Green: ${sideText(report.green)}.`,
+    `squeal proof (case ${report.case ?? "not decided"}): base ${short(report.base)}, HEAD ${short(report.head)}`,
+    `Red: ${report.red === null ? "none" : sideText(report.red)}. Green: ${sideText(report.green)}; ${checkoutText(report.checkoutMs)}.`,
   ];
   if (report.dirty.length > 0)
     lines.push(
-      `This proves the committed HEAD ${short(report.head)}, not the uncommitted change to ${listed(report.dirty)}; the green side is HEAD's, from a checkout.`,
+      `This proves the committed HEAD ${short(report.head)}, not the uncommitted change to ${listed(report.dirty)}.`,
     );
   for (const file of report.files) {
     const why = file.reason === null ? "" : ` (${file.reason})`;
@@ -156,6 +166,7 @@ export function jsonProof(report: ProofReport): string {
     timeoutSeconds: report.timeoutSeconds,
     usedMs: report.usedMs,
     runs: report.runs,
+    checkoutMs: report.checkoutMs,
     counts: countsOf(report.files),
     files: report.files.map((file) => ({
       project: file.ref.project,

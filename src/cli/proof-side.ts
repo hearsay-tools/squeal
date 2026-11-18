@@ -1,3 +1,4 @@
+import type { Checkout } from "../core/checkout/checkout.js";
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { FailedTest } from "../core/code/gate/types.js";
 import {
@@ -11,7 +12,7 @@ import type { CheckoutOptions, KeyingOptions } from "../core/commit/at-keys-walk
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
-import { errorKind, type SideEnd } from "../core/proof/verdict.js";
+import type { SideEnd } from "../core/proof/verdict.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { ResultRecord } from "../core/types/store-records.js";
@@ -35,7 +36,7 @@ import { needsOf } from "./status-at-run-select.js";
  */
 
 /** Where one file's side came from. */
-export type SideFrom = "store" | "daemon" | "run" | null;
+export type SideFrom = "store" | "run" | null;
 
 /** One file's side. */
 export interface SideFile {
@@ -50,6 +51,10 @@ export interface SideFile {
 export interface SideAnswer {
   /** Each file's side, by `testFileId`. */
   readonly files: ReadonlyMap<string, SideFile>;
+  /** The side's files: the named ones, or with `listed` as the checkout's runners list them. */
+  readonly refs: readonly TestFileRef[];
+  /** The checkout's whole time: make, install, key, what ran in it, remove. */
+  readonly checkoutMs: number;
   /** How many files ran. */
   readonly ran: number;
   /** The first path the install changed in the checkout; `null` when none. */
@@ -75,26 +80,50 @@ export interface SideInput {
   /** `performance.now()` when the command's budget ends. */
   readonly deadline: number;
   readonly forward: (text: string) => void;
+  /** The named files' projects are those the checkout's runners list (`sideKeys`' `listed`). */
+  readonly listed?: boolean;
 }
 
 /** The install's own ceiling (row 023-16), when the budget left is longer. */
 const INSTALL_TIMEOUT_MS = 300_000;
 
-/** D5.1, D5.2: `input.files` on one side, read from the store or run. */
-export async function runSide(input: SideInput): Promise<SideAnswer> {
+/** A side's checkout while it is open: its keyed files, and runs on request. */
+export interface OpenSide {
+  /** The files keyed in the checkout. */
+  readonly keyed: readonly KeyedFile[];
+  /** A keyed file's side when it was read or refused; `undefined` when only a run can tell. */
+  decided(ref: TestFileRef): SideFile | undefined;
+  /** Runs those of `refs` that need a run, in this checkout, within the budget left. */
+  run(refs: readonly TestFileRef[]): Promise<void>;
+}
+
+/**
+ * D5.1, D5.2: the side's checkout, with `body` called while it is open
+ * (after keying, before removal), then each file's side. Without `body`,
+ * every file that needs a run runs (`runSide`). A file `body` leaves
+ * undecided reads `not read`.
+ */
+export async function withSide<T>(
+  input: SideInput,
+  body: (open: OpenSide) => Promise<T>,
+): Promise<SideAnswer & { readonly value: T | undefined }> {
   const { side } = input;
   const files = new Map<string, SideFile>();
   let ran = 0;
   let changed: RelativePath | null = null;
+  let value: T | undefined;
+  let keyedRefs: TestFileRef[] = [];
+  const started = performance.now();
   const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
     changed = change;
+    keyedRefs = keyed.map((f) => f.ref);
     const needs = await needsOf({
       root: input.root,
       commit: side.code,
       tree: checkout.tree,
       copied: new Set([...input.named, ...input.also]),
     });
-    const toRun: KeyedFile[] = [];
+    const pending = new Map<string, KeyedFile>();
     for (const file of keyed) {
       const id = testFileId(file.ref);
       if (!("key" in file.at)) continue;
@@ -111,46 +140,24 @@ export async function runSide(input: SideInput): Promise<SideAnswer> {
           stored: true,
           notStored: null,
         });
-      else toRun.push(file);
+      else pending.set(id, file);
     }
-    if (toRun.length === 0) return;
-    const left = Math.floor((input.deadline - performance.now()) / 1000);
-    if (left < 1) {
-      for (const file of toRun) files.set(testFileId(file.ref), unknown("not run (budget)"));
-      return;
-    }
-    const answer = await runInChild({
-      relaunch: input.relaunch,
-      checkout,
-      files: [...new Set(toRun.map((f) => f.ref.path))].sort(),
-      budgetSeconds: left,
-      // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing.
-      store: change === null,
-      env: input.env,
-      forward: input.forward,
-    });
-    const states = await outcomesOf({
-      commonDir: checkout.commonDir,
-      commit: side.code,
-      own: input.own,
-      run: toRun,
-      siblings: [],
-      answer,
-      changed: change,
-    });
-    // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
-    await withStores(checkout.commonDir, async (main) => {
-      for (const file of toRun) {
-        const state = states.get(testFileId(file.ref));
-        const records =
-          main !== null && "key" in file.at ? resultsAt(main, file.ref, file.at.key) : [];
-        const side = ranSide(state, answer, file.ref.path, change, records);
-        if (side.from === "run") ran++;
-        files.set(testFileId(file.ref), side);
-      }
-    });
+    const run = async (refs: readonly TestFileRef[]) => {
+      const toRun = refs
+        .map((ref) => pending.get(testFileId(ref)))
+        .filter((f): f is KeyedFile => f !== undefined && !files.has(testFileId(f.ref)));
+      if (toRun.length === 0) return;
+      ran += await runFiles(input, checkout, toRun, change, files);
+    };
+    const open: OpenSide = {
+      keyed,
+      decided: (ref) => files.get(testFileId(ref)),
+      run,
+    };
+    value = await body(open);
   };
   const left = Math.max(1, input.deadline - performance.now());
+  const listed = input.listed === true;
   const keys = await sideKeys({
     ...input.keying,
     root: input.root,
@@ -158,20 +165,83 @@ export async function runSide(input: SideInput): Promise<SideAnswer> {
     tests: side.tests,
     files: input.files,
     also: input.also,
+    listed,
     beforeRemove,
     installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, left),
   });
-  // Not keyed: absent at the test version, not listed there, or no checkout.
-  for (const ref of input.files) {
+  // Listed by the checkout: the keyed files, and a named path no runner there lists.
+  const refs = listed ? [...keyedRefs, ...unlistedOf(input.files, keyedRefs)] : input.files;
+  for (const ref of refs) {
     const id = testFileId(ref);
-    const at = keys.get(id);
     if (files.has(id)) continue;
-    files.set(
-      id,
-      unknown(at !== undefined && "notDetermined" in at ? at.notDetermined.detail : "not keyed"),
-    );
+    const at = keys.get(id);
+    const why =
+      at !== undefined && "notDetermined" in at
+        ? at.notDetermined.detail
+        : keyedRefs.some((r) => testFileId(r) === id)
+          ? "not read"
+          : `no runner lists it at ${side.code.slice(0, 9)}`;
+    files.set(id, unknown(why));
   }
-  return { files, ran, changed };
+  const checkoutMs = Math.round(performance.now() - started);
+  return { files, refs, ran, changed, checkoutMs, value };
+}
+
+/** D5.1, D5.2: `input.files` on one side, read from the store or run. */
+export async function runSide(input: SideInput): Promise<SideAnswer> {
+  return withSide(input, (open) => open.run(open.keyed.map((f) => f.ref)));
+}
+
+/** The named files whose path no runner in the checkout listed, each as it was named. */
+function unlistedOf(named: readonly TestFileRef[], keyed: readonly TestFileRef[]): TestFileRef[] {
+  return named.filter((ref) => !keyed.some((k) => k.path === ref.path));
+}
+
+/** Runs `toRun` in the open checkout through 023-07's child; each file's side into `files`; how many ran. */
+async function runFiles(
+  input: SideInput,
+  checkout: Checkout,
+  toRun: readonly KeyedFile[],
+  change: RelativePath | null,
+  files: Map<string, SideFile>,
+): Promise<number> {
+  const left = Math.floor((input.deadline - performance.now()) / 1000);
+  if (left < 1) {
+    for (const file of toRun) files.set(testFileId(file.ref), unknown("not run (budget)"));
+    return 0;
+  }
+  const answer = await runInChild({
+    relaunch: input.relaunch,
+    checkout,
+    files: [...new Set(toRun.map((f) => f.ref.path))].sort(),
+    budgetSeconds: left,
+    // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing.
+    store: change === null,
+    env: input.env,
+    forward: input.forward,
+  });
+  const states = await outcomesOf({
+    commonDir: checkout.commonDir,
+    commit: input.side.code,
+    own: input.own,
+    run: toRun,
+    siblings: [],
+    answer,
+    changed: change,
+  });
+  let ran = 0;
+  // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
+  await withStores(checkout.commonDir, async (main) => {
+    for (const file of toRun) {
+      const state = states.get(testFileId(file.ref));
+      const records =
+        main !== null && "key" in file.at ? resultsAt(main, file.ref, file.at.key) : [];
+      const side = ranSide(state, answer, file.ref.path, change, records);
+      if (side.from === "run") ran++;
+      files.set(testFileId(file.ref), side);
+    }
+  });
+  return ran;
 }
 
 function unknown(reason: string): SideFile {
@@ -195,8 +265,11 @@ export function endOfRecords(records: readonly ResultRecord[]): SideEnd {
  * A run file's side from 023-07's state. A stored outcome takes its
  * failures from `records`, the results at the file's own key for its own
  * project. An outcome the store does not hold takes them from the gate's
- * answer, which is by path: a path two projects ran is classified only
- * when every project's failures are of the same kinds (review wave-8 B1).
+ * answer, which is by path: a path two projects ran takes them only when
+ * every project's failure evidence is the same, test by test and error by
+ * error, as the report shows it (review wave-8 B1, and its re-review: equal
+ * kinds are not equal evidence). Otherwise the file reads unknown, and
+ * still counts as run.
  */
 function ranSide(
   state: SideState | undefined,
@@ -217,9 +290,13 @@ function ranSide(
     if (outcome === "pass") return { ...unstored(notStored), end: { end: "pass" } };
     const failures = sharedFailures(runs);
     if (failures === null)
-      return unknown(
-        `its ${runs.length} projects failed for different reasons, and no stored result tells which is this project's`,
-      );
+      return {
+        ...unstored(notStored),
+        end: {
+          end: "unknown",
+          reason: `its ${runs.length} projects failed with different failures, and no stored result tells which is this project's`,
+        },
+      };
     return { ...unstored(notStored), end: { end: "fail", failures } };
   };
   if (state.state === "pass" || state.state === "fail") return ranAs(state.state);
@@ -245,15 +322,18 @@ function unstored(notStored: string | null): Omit<SideFile, "end"> {
 }
 
 /**
- * The failures of a path's failed runs when they are of one shape: the
- * same tests, each with the same kinds of error (`failureKind`), so any
- * one project's classify as this project's would; `null` otherwise.
+ * The failures of a path's runs when every run failed with the same
+ * evidence: the same tests, each with the same errors (name, message,
+ * stack, diff, code, causes, phase), so any one project's failures are
+ * this project's word for word; `null` otherwise. A timeout's recorded
+ * load is the host's, not the test's, and is left out of the comparison.
  */
 function sharedFailures(runs: readonly GateFileRun[]): readonly FailedTest[] | null {
-  const failed = runs.filter((r) => r.outcome === "failed");
-  const [first] = failed;
-  if (first === undefined) return null;
-  const shape = (r: GateFileRun) =>
-    JSON.stringify(r.failed.map((f) => [f.test, f.errors.map(errorKind)]));
-  return failed.every((r) => shape(r) === shape(first)) ? first.failed : null;
+  const [first] = runs;
+  if (first === undefined || runs.some((r) => r.outcome !== "failed")) return null;
+  const evidence = (r: GateFileRun) =>
+    JSON.stringify(
+      r.failed.map((f) => [f.test, f.errors.map(({ loadAverage: _load, ...error }) => error)]),
+    );
+  return runs.every((r) => evidence(r) === evidence(first)) ? first.failed : null;
 }

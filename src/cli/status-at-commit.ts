@@ -1,11 +1,9 @@
 import { type KeysAt, type KeysAtOptions, keysAtCommit } from "../core/commit/at-keys.js";
-import type { KeyingOptions } from "../core/commit/at-keys-walk.js";
+import { narrowed, selects } from "../core/commit/at-keys-narrow.js";
 import { committedBlobs } from "../core/commit/tree.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import type { RunnerAdapter } from "../core/types/runner.js";
-import { selects } from "./status-at-now.js";
 import { commitState, type SideState } from "./status-at-report.js";
 
 /*
@@ -80,25 +78,4 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
     changed,
     failure,
   };
-}
-
-/** `adapters`, each listing only the test files `paths` select; keying is theirs unchanged. */
-function narrowed(
-  adapters: KeyingOptions["adapters"],
-  paths: readonly RelativePath[],
-): KeyingOptions["adapters"] {
-  return async (root, policy, tempDir) =>
-    (await adapters(root, policy, tempDir)).map((adapter) => listingOnly(adapter, paths));
-}
-
-function listingOnly(adapter: RunnerAdapter, paths: readonly RelativePath[]): RunnerAdapter {
-  return new Proxy(adapter, {
-    get(target, name) {
-      if (name === "testFiles") {
-        return async () => (await target.testFiles()).filter((ref) => selects(paths, ref.path));
-      }
-      const value: unknown = Reflect.get(target, name, target);
-      return typeof value === "function" ? value.bind(target) : value;
-    },
-  });
 }

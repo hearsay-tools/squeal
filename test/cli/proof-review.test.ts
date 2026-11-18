@@ -84,7 +84,8 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
         ["assert", "not comparable"],
         ["import", "not comparable"],
       ]);
-      expect(call.files[0]?.reason).toContain("projects failed for different reasons");
+      expect(call.files[0]?.reason).toContain("projects failed with different failures");
+      expect(call.report.runs).toBe(2);
     }
     clean(f);
   });

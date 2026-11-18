@@ -1,6 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
+import { selects } from "../core/commit/at-keys-narrow.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { readHead } from "../core/daemon-loop/head.js";
@@ -12,7 +13,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { commitSide } from "./status-at-commit.js";
-import { nowSide, selects } from "./status-at-now.js";
+import { nowSide } from "./status-at-now.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
 import { runChild, takeRunRequest } from "./status-at-run-child.js";

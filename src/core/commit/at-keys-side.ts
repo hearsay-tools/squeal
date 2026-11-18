@@ -24,6 +24,7 @@ import {
   resolveCommit,
   withStores,
 } from "./at-keys-checkout.js";
+import { narrowed } from "./at-keys-narrow.js";
 import { type CommitEntry, commitEntries } from "./at-keys-verify.js";
 import type { CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
 import { LS_TREE_TIMEOUT_MS } from "./tree.js";
@@ -48,6 +49,12 @@ export interface SideKeysOptions extends KeyingOptions, CheckoutOptions, Checkou
    * otherwise than the code version; those `tests` lacks are left out.
    */
   readonly also?: readonly RelativePath[];
+  /**
+   * Row 023-08 (review wave-8 re-review): the named files' projects are
+   * the checkout's: each adapter there lists the named paths, and every
+   * project that lists one is keyed. `files`' projects are then not read.
+   */
+  readonly listed?: boolean;
 }
 
 /** D5.1: the key of each named test file on a side, test version over code version. */
@@ -79,7 +86,11 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
       // blob; every copied path is checked (review wave-8 B3), none skipped.
       const skip = paths.filter((path) => !source.expected.has(path));
       const input = { root, commonDir, commit, prepare, copied: skip, expected: source.expected };
-      const at = await inCheckout(main, input, copied, options);
+      const listing = options.listed === true;
+      const keying = listing
+        ? { ...options, adapters: narrowed(options.adapters, named) }
+        : options;
+      const at = await inCheckout(main, input, listing ? null : copied, keying);
       // Row 023-07: a checkout the install changed gives no key that is the commit's.
       const changed: KeyAt | null =
         at.changed === null
