@@ -100,6 +100,11 @@ export interface GateFilesResult {
   /** The budget ended before every file ended. */
   readonly timedOut: boolean;
   readonly budgetSeconds: number;
+  /**
+   * Row 023-18 (D2): the completed files the stores did not keep, each with
+   * the keeper's reason; absent when the call stores nothing (`store: false`).
+   */
+  readonly notKept?: readonly { readonly path: string; readonly reason: string }[];
 }
 
 /**
@@ -161,7 +166,9 @@ async function gateFiles(
     const collected = await collectWithStores(root, env, changed, collect);
     await collected.keep();
     const { evidence } = collected;
-    return { runs: evidence.testFiles.map(fileRun), timedOut: evidence.timedOut, budgetSeconds };
+    const notKept = [...collected.notKept()].map(([path, reason]) => ({ path, reason }));
+    const runs = evidence.testFiles.map(fileRun);
+    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept };
   } finally {
     durations?.close();
   }

@@ -33,6 +33,8 @@ interface Gathered {
 /** The completed files not kept, by kind of evidence, until `take`. */
 export class NotKept {
   readonly #kinds = new Map<Kind, Gathered>();
+  /** Row 023-18 (D2): each file's own reason, kept after `take`. */
+  readonly #byFile = new Map<string, string>();
 
   /** `path`, a completed test file with a record, was not kept for `decided`. */
   add(path: string, decided: Pick<FileDecision, "cause" | "reason">): void {
@@ -41,6 +43,13 @@ export class NotKept {
     at.files.push(path);
     for (const one of paths) at.paths.add(one);
     this.#kinds.set(kind, at);
+    const behind = paths.length === 0 ? "" : ` (${listPaths([...paths].sort(compare), NAMED)})`;
+    this.#byFile.set(path, `${phrase(kind, true, decided.reason)}${behind}`);
+  }
+
+  /** Row 023-18 (D2): why each file added so far was not kept, in the note's words for one file. */
+  files(): ReadonlyMap<string, string> {
+    return new Map(this.#byFile);
   }
 
   /** One line per kind, in the order each kind came first; then it holds none. */

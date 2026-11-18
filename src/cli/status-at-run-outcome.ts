@@ -41,6 +41,11 @@ export interface OutcomeInput {
    * holds at the key is an earlier run's, so only the gate's answer is read.
    */
   readonly stored?: boolean;
+  /**
+   * Row 023-18 (D2): coverage is on in the checkout's policy (default
+   * `true`); with it off the gate keeps nothing, and that is the reason given.
+   */
+  readonly coverage?: boolean;
 }
 
 /** Each run file's state, by `testFileId`. */
@@ -75,7 +80,8 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
         states.set(id, asRun(stateOf(key, records, input.own), commit, true));
       } else if (chosen.has(id)) {
         const runs = answer.result.runs.filter((r) => r.path === path);
-        states.set(id, fromGate(key, runs, commit));
+        const why = notKeptWhy(answer.result.notKept, path, input.coverage !== false);
+        states.set(id, fromGate(key, runs, commit, why));
       }
     }
   });
@@ -97,11 +103,32 @@ function asRun(state: SideState, commit: string, stored: boolean): SideState {
 }
 
 /**
+ * Row 023-18 (D2): why a run file of a storing run is not in the store: the
+ * keeper's own reason for its path, else coverage off, else no reason told.
+ */
+export function notKeptWhy(
+  notKept: readonly { readonly path: string; readonly reason: string }[] | undefined,
+  path: string,
+  coverage: boolean,
+): string {
+  const reason = notKept?.find((n) => n.path === path)?.reason;
+  if (reason !== undefined) return `the gate did not keep it: ${reason}`;
+  return coverage
+    ? "the gate did not keep it and gave no reason"
+    : "the gate keeps a result only with coverage on";
+}
+
+/**
  * The gate's outcome for a path no result was stored for. Its runs under
  * the path's projects must agree, or nothing tells which one is this
- * project's.
+ * project's. `why` says why it is not stored, when the run stored.
  */
-function fromGate(key: string, runs: readonly GateFileRun[], commit: string): SideState {
+function fromGate(
+  key: string,
+  runs: readonly GateFileRun[],
+  commit: string,
+  why?: string,
+): SideState {
   const [first] = runs;
   if (first === undefined) return { state: "not determined", reason: "the run gave it no outcome" };
   const shape = (r: GateFileRun) =>
@@ -114,7 +141,13 @@ function fromGate(key: string, runs: readonly GateFileRun[], commit: string): Si
     const reason = `its ${runs.length} projects ended differently, and no result was stored to tell them apart`;
     return { state: "not determined", reason };
   }
-  const origin: Origin = { kind: "run", worktreeId: null, commit, stored: false };
+  const origin: Origin = {
+    kind: "run",
+    worktreeId: null,
+    commit,
+    stored: false,
+    ...(why === undefined ? {} : { notStored: why }),
+  };
   if (first.outcome === "passed") return { state: "pass", key, origin };
   if (first.outcome === "failed") {
     const failed = [...new Set(first.failed.map((f) => f.test))].sort(compare);

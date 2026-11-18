@@ -89,6 +89,8 @@ export interface StoredFiles {
   readonly ran: (run: GateRun) => Promise<void>;
   /** D17.5: writes the queued files, once the report is out and before `close`. */
   flush(): Promise<void>;
+  /** Row 023-18 (D2): after `flush`, why each completed file was not kept, by path. */
+  notKept(): ReadonlyMap<string, string>;
   /** Each file's key as a daemon here gives it; `null` when it has none. */
   keys(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, CheckKey | null>>;
   /** Closes the stores and the adapters, and removes the scratch store. */
@@ -171,7 +173,14 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       stores.close();
     }
   };
-  return { stored, ran: (run) => keeper.ran(run), flush: () => keeper.flush(), keys, close };
+  return {
+    stored,
+    ran: (run) => keeper.ran(run),
+    flush: () => keeper.flush(),
+    notKept: () => keeper.notKeptFiles(),
+    keys,
+    close,
+  };
 }
 
 /** The name a stored failure reads under in `failed`: its test's, or `FILE_ERROR` for the file's own. */

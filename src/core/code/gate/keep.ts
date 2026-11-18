@@ -116,6 +116,14 @@ export class Keeper {
     this.#tell(keptCount({ ...counts, kept: this.#tally.kept, unknown: this.#tally.unknown }));
   }
 
+  /**
+   * Row 023-18 (D2): why each completed file was not kept, by path, for a
+   * caller that reports files one by one (`squeal status --at --run`).
+   */
+  notKeptFiles(): ReadonlyMap<string, string> {
+    return new Map([...this.#notKept.files(), ...this.#passNotKept.files()]);
+  }
+
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close(): void {
     void this.#early.stop();

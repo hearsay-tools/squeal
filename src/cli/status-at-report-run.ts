@@ -19,6 +19,8 @@ export interface RunUse {
   readonly ran: number;
   /** Of those, the ones the shared store holds at their key after the run (B7). */
   readonly stored: number;
+  /** Row 023-18 (D2): why each ran file of a storing run is not stored, one entry per file. */
+  readonly notStored: readonly string[];
   /** "Whole-checkout check": the first path the install changed; with one, nothing was stored. */
   readonly changed: string | null;
   /** Of those, the ones the budget left not run. */
@@ -36,6 +38,18 @@ export interface RunUse {
   readonly rerun: string | null;
 }
 
+/** Row 023-18 (D2): one line per reason a ran file was not stored, with how many. */
+function notStoredLines(reasons: readonly string[], unstored: number): string[] {
+  const counts = new Map<string, number>();
+  for (const reason of reasons) counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  const told = reasons.length;
+  if (told < unstored) counts.set("no reason told", unstored - told);
+  return [...counts].map(
+    ([reason, n]) =>
+      `${n} not stored (${reason}); the next --at has no result for ${n === 1 ? "it" : "them"}`,
+  );
+}
+
 /** Row 023-07: what `--run` ran, of how much budget, and the rerun that fits. */
 export function runLines(run: RunUse, at: string): string[] {
   const used = `${(run.usedMs / 1000).toFixed(1)} s of the ${run.timeoutSeconds} s budget`;
@@ -49,10 +63,7 @@ export function runLines(run: RunUse, at: string): string[] {
     lines.push(
       `${unstored} not stored (install changed the checkout: ${run.changed}): ${unstored === 1 ? "its result is" : "their results are"} shown, not ${at}'s`,
     );
-  else if (unstored > 0)
-    lines.push(
-      `${unstored} not stored: the gate keeps a result only with coverage on at ${at}; the next --at has no result for ${unstored === 1 ? "it" : "them"}`,
-    );
+  else if (unstored > 0) lines.push(...notStoredLines(run.notStored, unstored));
   const needs = run.notComparable - (run.changed === null ? 0 : unstored);
   if (needs > 0)
     lines.push(`${needs} not run: their closure needs a path git does not hold at ${at}`);

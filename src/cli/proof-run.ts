@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { Checkout } from "../core/checkout/checkout.js";
+import { coverageOn } from "../core/code/coverage/runtime.js";
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { FailedTest } from "../core/code/gate/types.js";
 import {
@@ -9,6 +10,7 @@ import {
   resultsAt,
   withStores,
 } from "../core/commit/at-keys-checkout.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { conditionedEnv, hasConditions, hiddenInHome } from "../core/proof/conditions.js";
@@ -155,6 +157,7 @@ async function runOnce(
     answer,
     changed: change,
     stored: forced === null,
+    coverage: coverageOn(readPolicy(checkout.tree)),
   });
   const out = new Map<string, SideFile>();
   // Review wave-9 B3: a change the install made is named, never masked by the forced reason.
@@ -215,17 +218,18 @@ function ranSide(
     return { end: endOfRecords(records), from: "run", stored: true, notStored: null, runs: 1 };
   }
   const ranAs = (outcome: "pass" | "fail"): SideFile => {
-    if (outcome === "pass") return { ...unstored(notStored), end: { end: "pass" } };
+    const why = notStored ?? reasonOf(state);
+    if (outcome === "pass") return { ...unstored(why), end: { end: "pass" } };
     const failures = sharedFailures(runs);
     if (failures === null)
       return {
-        ...unstored(notStored),
+        ...unstored(why),
         end: {
           end: "unknown",
           reason: `its ${runs.length} projects failed with different failures, and no stored result tells which is this project's`,
         },
       };
-    return { ...unstored(notStored), end: { end: "fail", failures } };
+    return { ...unstored(why), end: { end: "fail", failures } };
   };
   if (state.state === "pass" || state.state === "fail") return ranAs(state.state);
   if (state.state === "not comparable" && state.ran !== undefined) return ranAs(state.ran);
@@ -240,6 +244,11 @@ function ranSide(
   if (state.state === "not determined" || state.state === "not comparable")
     return unknown(state.reason);
   return unknown(state.state);
+}
+
+/** Row 023-18 (D2): the not-stored reason `outcomesOf` gave a run state, if any. */
+function reasonOf(state: SideState): string | null {
+  return "origin" in state ? (state.origin.notStored ?? null) : null;
 }
 
 function unstored(notStored: string | null): Omit<SideFile, "end"> {

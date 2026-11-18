@@ -28,6 +28,11 @@ export interface Origin {
   readonly commit: CommitSha;
   /** With `run`: the shared store holds the result at the file's key (review wave-7 B7). */
   readonly stored?: boolean;
+  /**
+   * Row 023-18 (D2): with `run` and `stored: false`, why: the gate's own
+   * reason for not keeping it, or coverage off at the commit.
+   */
+  readonly notStored?: string;
 }
 
 /** One side of one test file (D3). */

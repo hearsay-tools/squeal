@@ -45,6 +45,11 @@ export interface Collected {
    * them. Called once, after the report is out (D17.5); it never throws.
    */
   keep(): Promise<void>;
+  /**
+   * Row 023-18 (D2): after `keep`, why each completed file was not kept, by
+   * path; empty when the stores keep nothing at all (coverage off, no store).
+   */
+  notKept(): ReadonlyMap<string, string>;
 }
 
 /**
@@ -120,7 +125,7 @@ export async function collectWithStores(
       await stored?.close();
     }
   };
-  return { evidence, keep };
+  return { evidence, keep, notKept: () => stored?.notKept() ?? new Map() };
 }
 
 /** `adapters`, each adapter they open pushed to `opened` too (row 020-51). */

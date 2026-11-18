@@ -168,7 +168,7 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
       `--run: 1 of 1 test files with no result at ${at} ran in its checkout, 0 stored at its keys`,
     );
     expect(text.out).toContain(
-      `1 not stored: the gate keeps a result only with coverage on at ${at}`,
+      "1 not stored (the gate keeps a result only with coverage on); the next --at has no result for it",
     );
     expect(text.out).not.toContain("1 stored");
     const json = await run(f, { commit: a, json: true }, options(f));

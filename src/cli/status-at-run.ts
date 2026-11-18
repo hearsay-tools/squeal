@@ -1,5 +1,6 @@
 import { availableParallelism } from "node:os";
 import type { Checkout } from "../core/checkout/checkout.js";
+import { coverageOn } from "../core/code/coverage/runtime.js";
 import { estimateRun, type RunEstimate } from "../core/code/gate/estimate.js";
 import {
   type BeforeRemove,
@@ -8,6 +9,7 @@ import {
   rekeyed,
   type WhileOpen,
 } from "../core/commit/at-keys-checkout.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
@@ -159,6 +161,7 @@ export function atRun(input: AtRunInput): AtRun {
       siblings: read.slice(run.length),
       answer,
       changed,
+      coverage: coverageOn(readPolicy(checkout.tree)),
     });
     for (const [id, state] of outcomes) states.set(id, state);
     leftOut = run.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
@@ -177,6 +180,9 @@ export function atRun(input: AtRunInput): AtRun {
       selected: selection.run.length,
       ran: ran.length,
       stored: ran.filter((s) => "origin" in s && s.origin.stored === true).length,
+      notStored: ran.flatMap((s) =>
+        "origin" in s && s.origin.notStored !== undefined ? [s.origin.notStored] : [],
+      ),
       changed,
       notRun,
       notComparable: all.filter((s) => s.state === "not comparable").length,
