@@ -184,13 +184,18 @@ function found(
   ref: TestFileRef,
   key: CheckKey,
 ): { key: CheckKey; stored: readonly ResultRecord[] } {
-  const stored =
-    main === null
-      ? []
-      : main.results
-          .byKey(key, 0)
-          .filter((r) => r.check.project === ref.project && r.check.testPath === ref.path);
-  return { key, stored };
+  return { key, stored: main === null ? [] : resultsAt(main, ref, key) };
+}
+
+/**
+ * The results `main` holds at `key` for `ref` itself: its project and its
+ * path. One key can hold several projects' results for one path; a reader
+ * by path alone mixes them (review wave-8 B1).
+ */
+export function resultsAt(main: Store, ref: TestFileRef, key: CheckKey): ResultRecord[] {
+  return main.results
+    .byKey(key, 0)
+    .filter((r) => r.check.project === ref.project && r.check.testPath === ref.path);
 }
 
 /** Runs `body` with the repository's main store open read-only, `null` when it cannot be read. */

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { resultsAt } from "../core/commit/at-keys-checkout.js";
 import { withKeyer } from "../core/commit/at-keys-walk.js";
 import { closureFor } from "../core/delivery/closure.js";
 import { testFileId } from "../core/keys/reverse-index.js";
@@ -125,12 +126,6 @@ async function keyedSide(input: NowInput): Promise<NowSide> {
     const loads = (ref: TestFileRef) => closures.get(testFileId(ref));
     return { source: { kind: "stored" }, refs, state, loads };
   });
-}
-
-function resultsAt(main: Store, ref: TestFileRef, key: string) {
-  return main.results
-    .byKey(key, 0)
-    .filter((r) => r.check.project === ref.project && r.check.testPath === ref.path);
 }
 
 /** A named file not listed now: absent when the working tree lacks it. */

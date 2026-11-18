@@ -1,4 +1,4 @@
-import { type KeyedFile, withStores } from "../core/commit/at-keys-checkout.js";
+import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
@@ -61,10 +61,8 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     for (const file of [...input.run, ...input.siblings]) {
       if (!("key" in file.at)) continue;
       const { key } = file.at;
-      const { project, path } = file.ref;
-      const records = (main?.results.byKey(key, 0) ?? []).filter(
-        (r) => r.check.project === project && r.check.testPath === path,
-      );
+      const { path } = file.ref;
+      const records = main === null ? [] : resultsAt(main, file.ref, key);
       const id = testFileId(file.ref);
       if (records.length > 0) {
         states.set(id, asRun(stateOf(key, records, input.own), commit, true));

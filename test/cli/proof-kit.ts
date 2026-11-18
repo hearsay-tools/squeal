@@ -10,6 +10,7 @@ import { RELAUNCH } from "./status-at-kit.js";
  */
 
 export interface ProofFileJson {
+  readonly project: string;
   readonly path: string;
   readonly verdict: string;
   readonly reason: string | null;
@@ -17,6 +18,7 @@ export interface ProofFileJson {
     readonly end: string;
     readonly from: string | null;
     readonly stored: boolean;
+    readonly notStored: string | null;
     readonly failures: readonly { test: string; kind: string; text: string }[];
   };
   readonly green: { readonly end: string; readonly from: string | null } | null;

@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { copyIntoCheckout } from "../checkout/checkout.js";
@@ -57,9 +66,17 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
       }
       if (copied.length === 0) return out;
       const paths = [...source.written];
-      const prepare = async (checkout: { tree: AbsolutePath }) =>
+      const prepare = async (checkout: { tree: AbsolutePath }) => {
         copyIntoCheckout(checkout, source.from, paths);
-      // Row 023-08: the side's expected tree, its copies at the test version's mode and blob.
+        // Review wave-8 B3: a committed link is copied as a link with its own target. The
+        // copy above made a plain file at its path through folders the checkout owns.
+        for (const [path, target] of source.links) {
+          unlinkSync(join(checkout.tree, path));
+          symlinkSync(target, join(checkout.tree, path));
+        }
+      };
+      // Row 023-08: the side's expected tree, its copies at the test version's kind, mode and
+      // blob; every copied path is checked (review wave-8 B3), none skipped.
       const skip = paths.filter((path) => !source.expected.has(path));
       const input = { root, commonDir, commit, prepare, copied: skip, expected: source.expected };
       const at = await inCheckout(main, input, copied, options);
@@ -90,6 +107,8 @@ interface TestSource {
   readonly written: readonly RelativePath[];
   /** Row 023-08: each written path's entry at `tests`; empty for the worktree's files. */
   readonly expected: ReadonlyMap<RelativePath, CommitEntry>;
+  /** Review wave-8 B3: the written paths that are links at `tests`, with their targets. */
+  readonly links: ReadonlyMap<RelativePath, Buffer>;
   remove(): void;
 }
 
@@ -106,7 +125,8 @@ async function testSource(
   if (tests === null) {
     const missing = new Set(unique.filter((path) => !existsSync(join(root, path))));
     const written = unique.filter((path) => !missing.has(path));
-    return { from: root, absent: missing, written, expected: new Map(), remove: () => {} };
+    const none = { expected: new Map(), links: new Map() };
+    return { from: root, absent: missing, written, ...none, remove: () => {} };
   }
   const commit = await resolveCommit(root, tests);
   const entries = await commitEntries(root, commit);
@@ -114,6 +134,7 @@ async function testSource(
   const absentAt = new Set<RelativePath>();
   const written: RelativePath[] = [];
   const expected = new Map<RelativePath, CommitEntry>();
+  const links = new Map<RelativePath, Buffer>();
   for (const path of unique) {
     const entry = entries.get(path);
     if (entry === undefined) {
@@ -129,10 +150,11 @@ async function testSource(
     mkdirSync(dirname(join(from, path)), { recursive: true });
     writeFileSync(join(from, path), bytes);
     written.push(path);
-    // A link is copied as its target's text; only a regular file can match its entry.
     if (entry.mode === "100755") chmodSync(join(from, path), 0o755);
-    if (entry.mode !== "120000") expected.set(path, entry);
+    // A link's blob is its target: `prepare` makes the link in the checkout.
+    if (entry.mode === "120000") links.set(path, bytes);
+    expected.set(path, entry);
   }
   const remove = () => rmSync(from, { recursive: true, force: true });
-  return { from, absent: absentAt, written, expected, remove };
+  return { from, absent: absentAt, written, expected, links, remove };
 }

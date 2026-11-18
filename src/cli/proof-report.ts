@@ -29,7 +29,7 @@ export interface ProofReport {
   readonly head: string;
   readonly red: Side;
   readonly green: Side;
-  /** Paths a named test loads that the working tree holds otherwise than `HEAD`. */
+  /** Paths the working tree holds otherwise than `HEAD` (review wave-8 B2: any path, not only loads). */
   readonly dirty: readonly RelativePath[];
   readonly timeoutSeconds: number;
   readonly usedMs: number;
@@ -73,6 +73,15 @@ function failuresOf(end: SideEnd): readonly FailedTest[] {
 
 const INDENT = "    ";
 
+/** How many dirty paths the text names before it counts the rest. */
+const NAMED_DIRTY = 5;
+
+function listed(paths: readonly RelativePath[]): string {
+  const named = paths.slice(0, NAMED_DIRTY).join(", ");
+  const more = paths.length - NAMED_DIRTY;
+  return more > 0 ? `${named} and ${more} more` : named;
+}
+
 /** D5.5's text: a header, each file's verdict with both sides and the red side's failures, counts. */
 export function formatProof(report: ProofReport): string {
   const lines = [
@@ -81,7 +90,7 @@ export function formatProof(report: ProofReport): string {
   ];
   if (report.dirty.length > 0)
     lines.push(
-      `This proves the committed HEAD ${short(report.head)}, not the uncommitted change to ${report.dirty.join(", ")}.`,
+      `This proves the committed HEAD ${short(report.head)}, not the uncommitted change to ${listed(report.dirty)}; the green side is HEAD's, from a checkout.`,
     );
   for (const file of report.files) {
     const why = file.reason === null ? "" : ` (${file.reason})`;

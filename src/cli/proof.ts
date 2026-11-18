@@ -59,7 +59,7 @@ export async function proofCommand(
   const refs = namedRefs(now, paths);
   const named = new Set(paths);
   const loads = (ref: TestFileRef) => now.loads(ref) ?? [];
-  const dirty = await dirtyLoads(root, refs, loads);
+  const dirty = await dirtyPaths(root);
   const kind = args.case ?? (await caseOf(root, base, head, refs, loads, named));
   if (typeof kind === "object") return fail(kind.usage);
   const sides = sidesOf(kind, base, head);
@@ -227,19 +227,18 @@ async function caseOf(
 }
 
 /**
- * The paths a named test loads (and the test itself) that the working
- * tree holds otherwise than `HEAD`: changed, staged, deleted or untracked.
+ * Every path the working tree holds otherwise than `HEAD`: changed,
+ * staged, deleted or untracked (not ignored). Review wave-8 B2: a current
+ * key covers more than the test's closure (runner config, setup files,
+ * policy, manifests and lockfiles, declared inputs), so any difference
+ * keeps the current side from standing for `HEAD`.
  */
-async function dirtyLoads(
-  root: AbsolutePath,
-  refs: readonly TestFileRef[],
-  loads: (ref: TestFileRef) => readonly RelativePath[],
-): Promise<RelativePath[]> {
+async function dirtyPaths(root: AbsolutePath): Promise<RelativePath[]> {
   const changed = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", "HEAD", "--"]);
   const untracked = await runGit(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
-  const differs = new Set([...splitNul(changed), ...splitNul(untracked)]);
-  const loaded = new Set(refs.flatMap((ref) => [ref.path, ...loads(ref)]));
-  return [...loaded].filter((path) => differs.has(path)).sort();
+  return [...new Set([...splitNul(changed), ...splitNul(untracked)])]
+    .filter((path) => path !== "")
+    .sort();
 }
 
 interface Common {

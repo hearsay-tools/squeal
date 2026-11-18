@@ -1,12 +1,17 @@
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { FailedTest } from "../core/code/gate/types.js";
-import type { BeforeRemove, KeyedFile } from "../core/commit/at-keys-checkout.js";
+import {
+  type BeforeRemove,
+  type KeyedFile,
+  resultsAt,
+  withStores,
+} from "../core/commit/at-keys-checkout.js";
 import { sideKeys } from "../core/commit/at-keys-side.js";
 import type { CheckoutOptions, KeyingOptions } from "../core/commit/at-keys-walk.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
-import type { SideEnd } from "../core/proof/verdict.js";
+import { errorKind, type SideEnd } from "../core/proof/verdict.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { ResultRecord } from "../core/types/store-records.js";
@@ -133,12 +138,17 @@ export async function runSide(input: SideInput): Promise<SideAnswer> {
       answer,
       changed: change,
     });
-    for (const file of toRun) {
-      const state = states.get(testFileId(file.ref));
-      const side = ranSide(state, answer, file.ref.path, change);
-      if (side.from === "run") ran++;
-      files.set(testFileId(file.ref), side);
-    }
+    // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
+    await withStores(checkout.commonDir, async (main) => {
+      for (const file of toRun) {
+        const state = states.get(testFileId(file.ref));
+        const records =
+          main !== null && "key" in file.at ? resultsAt(main, file.ref, file.at.key) : [];
+        const side = ranSide(state, answer, file.ref.path, change, records);
+        if (side.from === "run") ran++;
+        files.set(testFileId(file.ref), side);
+      }
+    });
   };
   const left = Math.max(1, input.deadline - performance.now());
   const keys = await sideKeys({
@@ -181,34 +191,69 @@ export function endOfRecords(records: readonly ResultRecord[]): SideEnd {
   return { end: "fail", failures: [...byTest.values()].sort((a, b) => compare(a.test, b.test)) };
 }
 
-/** A run file's side from 023-07's state and the gate's own failure records for its path. */
+/**
+ * A run file's side from 023-07's state. A stored outcome takes its
+ * failures from `records`, the results at the file's own key for its own
+ * project. An outcome the store does not hold takes them from the gate's
+ * answer, which is by path: a path two projects ran is classified only
+ * when every project's failures are of the same kinds (review wave-8 B1).
+ */
 function ranSide(
   state: SideState | undefined,
   answer: RunAnswer,
   path: RelativePath,
   changed: RelativePath | null,
+  records: readonly ResultRecord[],
 ): SideFile {
   const runs: readonly GateFileRun[] =
     "result" in answer ? answer.result.runs.filter((r) => r.path === path) : [];
-  const failures = runs.find((r) => r.outcome === "failed")?.failed ?? [];
   const notStored = changed === null ? null : `install changed the checkout: ${changed}`;
-  const ranAs = (outcome: "pass" | "fail", stored: boolean): SideFile => ({
-    end: outcome === "pass" ? { end: "pass" } : { end: "fail", failures },
-    from: "run",
-    stored,
-    notStored: stored ? null : (notStored ?? "the gate keeps a result only with coverage on"),
-  });
   if (state === undefined) return unknown("the run gave it no outcome");
-  if (state.state === "pass" || state.state === "fail")
-    return ranAs(state.state, "origin" in state && state.origin.stored === true);
-  if (state.state === "not comparable" && state.ran !== undefined) return ranAs(state.ran, false);
+  if ((state.state === "pass" || state.state === "fail") && state.origin.stored === true) {
+    if (records.length === 0) return unknown("its stored result could not be read back");
+    return { end: endOfRecords(records), from: "run", stored: true, notStored: null };
+  }
+  const ranAs = (outcome: "pass" | "fail"): SideFile => {
+    if (outcome === "pass") return { ...unstored(notStored), end: { end: "pass" } };
+    const failures = sharedFailures(runs);
+    if (failures === null)
+      return unknown(
+        `its ${runs.length} projects failed for different reasons, and no stored result tells which is this project's`,
+      );
+    return { ...unstored(notStored), end: { end: "fail", failures } };
+  };
+  if (state.state === "pass" || state.state === "fail") return ranAs(state.state);
+  if (state.state === "not comparable" && state.ran !== undefined) return ranAs(state.ran);
   if (state.state === "not run") {
+    // 023-07's `fromGate` gives `not run` only when every project's run of the path agrees.
     if (state.reason === "prepare") return { ...unknown(""), end: { end: "prepare" }, from: "run" };
-    if (runs.some((r) => r.outcome === "not-finished"))
+    if (runs.length > 0 && runs.every((r) => r.outcome === "not-finished"))
       return { ...unknown(""), end: { end: "timeout" }, from: "run" };
     return unknown("not run (budget)");
   }
   if (state.state === "not determined" || state.state === "not comparable")
     return unknown(state.reason);
   return unknown(state.state);
+}
+
+function unstored(notStored: string | null): Omit<SideFile, "end"> {
+  return {
+    from: "run",
+    stored: false,
+    notStored: notStored ?? "the gate keeps a result only with coverage on",
+  };
+}
+
+/**
+ * The failures of a path's failed runs when they are of one shape: the
+ * same tests, each with the same kinds of error (`failureKind`), so any
+ * one project's classify as this project's would; `null` otherwise.
+ */
+function sharedFailures(runs: readonly GateFileRun[]): readonly FailedTest[] | null {
+  const failed = runs.filter((r) => r.outcome === "failed");
+  const [first] = failed;
+  if (first === undefined) return null;
+  const shape = (r: GateFileRun) =>
+    JSON.stringify(r.failed.map((f) => [f.test, f.errors.map(errorKind)]));
+  return failed.every((r) => shape(r) === shape(first)) ? first.failed : null;
 }
