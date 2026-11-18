@@ -180,13 +180,26 @@ function newsLine(
     : incompleteText(header, command);
   // Row 011-205: the first delivery after the listing to a consumer registered before it. Row
   // 005-94: how far the results reach, as the registration's `Known failures` line says it.
-  if (told.countsOwed !== undefined) {
+  if (!showsOwnCount(header, "news", told)) {
     const files = currentFilesText(header, command);
     const line = files === null ? `${revision.slice(0, -2)}.` : `${revision}${files}`;
     return `${line}${delays}${daemonText(header, command)}`;
   }
   const line = own === undefined ? `${revision.slice(0, -2)}.` : `${revision}${ownCountText(own)}`;
   return `${line}${delays}${daemonText(header, command)}`;
+}
+
+/**
+ * Whether a header of `form` shows the own count, in `newsLine`'s order: not the full form, not
+ * the unlisted form, not the owed full counts. Review 0.1.534 B1: only such a header
+ * acknowledges the own count.
+ */
+export function showsOwnCount(
+  header: StatusHeader,
+  form: HeaderForm,
+  told: Pick<Delta, "countsOwed">,
+): boolean {
+  return form === "news" && header.testFilesListed !== false && told.countsOwed === undefined;
 }
 
 /** `the 9 test files your edits affect`, `the 1 test file your edits affect`. */

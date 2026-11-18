@@ -258,7 +258,7 @@ export function editTold(
 }
 
 /**
- * Records what a delivery told of `notes`: `shown`, its header showed the own count (`ownShown`);
+ * Records what a delivery told of `notes`: `shown`, its header showed the own count (`showsOwnCount`);
  * `failed`, it carries a new failure. Review 0.1.530 B1: a delivered new failure ends the late
  * state on every path, with or without notes. Call inside the delivery's transaction.
  */

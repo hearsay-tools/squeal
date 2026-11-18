@@ -44,6 +44,7 @@ import { payCounts } from "./counts-owed.js";
 import { type DeltaPlan, isBaselineEntry, planDelta, restrictPlan } from "./delta.js";
 import { type Boundary, type EditNotes, editNotes, editTold, tellEdits } from "./edits.js";
 import { drop } from "./expiry.js";
+import { showsOwnCount } from "./header.js";
 import { holdFree } from "./held-connection.js";
 import { holdChanges, holdsChange, tellHolds } from "./hold-told.js";
 import { markLeaving } from "./leaving.js";
@@ -371,7 +372,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       // Row 011-205: once, the counts a consumer that registered before the listing is owed.
       const countsOwed = payCounts(store, consumer, header);
       tellEdits(store, consumer, notes, {
-        shown: ownShown(stop, countsOwed, header),
+        shown: showsOwnCount(header, stop ? "full" : "news", countsOwed),
         failed: told.failed,
       });
       const sawEdit =
@@ -553,16 +554,4 @@ function ownNotes(
 ): EditNotes | null {
   if (!liveness && !news) return null;
   return editNotes(store, consumer, states, news, { countOnly: !liveness && !idle, boundary });
-}
-
-/**
- * Review 0.1.534 B1: the own count is acknowledged only by a header that shows it: not Stop's
- * full form, not the owed full counts, not the unlisted form.
- */
-function ownShown(
-  stop: boolean,
-  counts: Pick<Delta, "countsOwed">,
-  header: Delta["header"],
-): boolean {
-  return !stop && counts.countsOwed === undefined && header.testFilesListed !== false;
 }
