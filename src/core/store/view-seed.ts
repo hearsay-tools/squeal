@@ -95,28 +95,20 @@ export function checksBornAfter(
 }
 
 /**
- * The states with no entry in `consumer`'s view, each one it was never told. With the `mark`
- * its registration or an unrestricted delivery kept, only those born after it: one born at or
- * before it was a pass told then. With no mark (`null`), every state with no entry.
+ * `KnownStateRepo.untold` for a consumer whose registration kept `mark`: the states with no
+ * view entry that were born after it. One born at or before it was a pass told at the
+ * registration.
  */
-export function untoldBornAfter(
-  store: Store,
-  consumer: Consumer,
-  mark: number | null,
-): KnownState[] {
-  const born =
-    mark === null
-      ? ""
-      : "JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id";
+export function untoldBornAfter(store: Store, consumer: Consumer, mark: number): KnownState[] {
   return connectionOf(store)
     .all(
-      `${SELECT_STATES} ${born}
-       WHERE s.worktree_id = ? ${mark === null ? "" : "AND b.id > ?"} AND NOT EXISTS (
+      `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
+       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
          SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
            AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       consumer.worktreeId,
-      ...(mark === null ? [] : [mark]),
+      mark,
       consumer.sessionId,
       consumer.agentId,
     )

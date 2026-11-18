@@ -152,5 +152,7 @@ export function markedView(
 
 /** The states never told to `consumer` (task 001-414): with a mark, those born after it. */
 export function untoldStates(store: Store, consumer: Consumer): readonly KnownState[] {
-  return untoldBornAfter(store, consumer, trustedMark(store, consumer)?.mark ?? null);
+  const mark = trustedMark(store, consumer);
+  if (mark === null) return store.knownStates.untold(consumer);
+  return untoldBornAfter(store, consumer, mark.mark);
 }

@@ -315,6 +315,12 @@ export interface CheckpointRepo {
 export interface KnownStateRepo {
   /** With `files`, only their checks' states (task 001-414). */
   list(worktreeId: WorktreeId, files?: readonly TestFileRef[]): readonly KnownState[];
+  /**
+   * The worktree's states with no entry in `consumer`'s view: what a consumer with no birth
+   * mark was never told. A marked consumer was told every pass born at or before its mark:
+   * `untoldBornAfter` (`view-seed.ts`) reads its untold states.
+   */
+  untold(consumer: Consumer): readonly KnownState[];
   get(worktreeId: WorktreeId, check: CheckId): KnownState | null;
   upsertMany(states: readonly KnownState[]): void;
   /**
