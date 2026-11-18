@@ -416,6 +416,13 @@ describe("a12's routes and the own-run context (review exp-minimal-primer-design
   it("names the route each right session took, apart", () => {
     expect(routes([...OPEN, RUN_CONTRACT, CLAIM("fail")])).toEqual([true, false, false]);
     expect(routes([...OPEN, OWN_RUN, CLAIM("fail")])).toEqual([false, true, false]);
+    // A full run cut to its failure section names the file only in its failed check.
+    const failedOnly = {
+      cmd: "npx vitest run 2>&1 | tail -8",
+      out: `⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯\n FAIL  ${CHECK}\nAssertionError: expected [ …(10) ]\n Test Files  1 failed | 8 passed (9)\n      Tests  1 failed | 22 passed (23)`,
+      exit: 1,
+    };
+    expect(routes([...OPEN, failedOnly, CLAIM("fail")])).toEqual([false, true, false]);
     expect(routes([...OPEN, STATUS, NOT_RUN])).toEqual([false, false, true]);
     expect(routes([...OPEN, { say: "Done." }])).toEqual([null, null, null]);
     expect(context([...OPEN, CLAIM("pass")], scenarioOf("a3-harmless"))).not.toHaveProperty(
