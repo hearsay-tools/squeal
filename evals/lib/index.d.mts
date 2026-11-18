@@ -324,7 +324,8 @@ export function sessionCommand(input: {
 }): [string, string[]];
 
 export interface Patch {
-  files: string;
+  /** One `plugins/<name or *>/...` pattern, or several whose matches `min` counts together. */
+  files: string | readonly string[];
   find: string;
   replace: string;
   min?: number;
