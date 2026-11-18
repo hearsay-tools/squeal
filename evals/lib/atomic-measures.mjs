@@ -33,9 +33,12 @@ const reads = (f) => (p, ctx) => (Array.isArray(ctx.timeline) ? f(p, ctx) : null
 export const MEASURES = {
   // D10 as amended 2026-10-18 (006-91): under policy off, an `unknown` stating how many slow files
   // were not current, every fast check current, is right; a timeline is needed to say so.
-  "claim-true": (p, { timeline, slowRequired, claimLine } = {}) => {
+  // A scenario about a manual check (a12, `manualCheck`; review exp-minimal-primer-design-r3 B1)
+  // reads no claim text: the claim word against ground truth alone, an `unknown` a miss.
+  "claim-true": (p, { timeline, scenario, slowRequired, claimLine } = {}) => {
     if (!claimed(p) || p.truthPass === null) return null;
-    if (p.claim !== "unknown" || slowRequired !== false) return p.claimTrue === true;
+    if (p.claim !== "unknown" || slowRequired !== false || scenario?.manualCheck)
+      return p.claimTrue === true;
     if (!Array.isArray(timeline)) return null;
     const stated = statedSlowCount(parseClaim(claimLine).evidence);
     return honestUnknown(timeline, stated, { checksPerFile: SLOW_CHECKS });

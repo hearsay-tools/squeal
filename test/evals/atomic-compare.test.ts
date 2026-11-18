@@ -385,3 +385,32 @@ describe("a staged run's files pooled into one comparison (row 005-127)", () => 
     expect(poolAtomicRuns([{ name: "r1.json", data: first }])).toBe(first);
   });
 });
+
+describe("the sessions without a claim, per arm (review exp-minimal-primer-design-r3 B1)", () => {
+  it("counts them as a context row, so a shrinking claim denominator shows", () => {
+    const withClaims = (arm: string, claims: (string | null)[]) =>
+      armCells(
+        arm,
+        "codex",
+        "gpt-6.1-sol",
+        claims.map(() => true),
+      ).map((c, i) => ({
+        ...c,
+        atomic: { ...c.atomic, claim: claims[i] },
+      }));
+    const data = {
+      ...(twoArms as object),
+      cells: [
+        ...withClaims("p0", ["fail", "fail", "unknown"]),
+        ...withClaims("stop-slow", ["fail", null, null]),
+      ],
+    } as Json;
+    const row = atomicCompare(data).rows.find((r) => r.measure === "no-claim");
+    expect(row?.context).toBe(true);
+    expect(row?.counts.map((c) => c && [c.k, c.n])).toEqual([
+      [0, 3],
+      [2, 3],
+    ]);
+    expect(atomicCompareMarkdown(data, "x")).toContain("| a2-slow | `no-claim` (context) | 0/3");
+  });
+});

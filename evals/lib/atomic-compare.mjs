@@ -13,7 +13,9 @@ import { fisherTwoSided } from "./stats.mjs";
  * shipped first, each row one model, scenario and measure with each arm's `{ k, n }` (or `null`)
  * and the two-sided p (`null` unless both arms have a count), sorted by model, scenario, measure;
  * each cell's look-up context (`atomic.context`, no direction, row 005-127) follows its scenario's
- * measures as rows marked `context: true`. `coverage` is the run's planned cells against those it
+ * measures as rows marked `context: true`, with `no-claim`, the sessions that ended without a
+ * `TESTS:` claim (every claim measure is not computable for them, so a denominator that shrinks
+ * shows here). `coverage` is the run's planned cells against those it
  * kept (`atomicCoverage`), so a missing cell is named, never silently out of a count.
  */
 export function atomicCompare(data) {
@@ -28,12 +30,19 @@ export function atomicCompare(data) {
   for (const key of keys) {
     const [model, scenario] = key.split("\n");
     const mine = cells.filter((c) => modelKey(c) === model && c.task === scenario);
-    // Row 005-127: each cell's look-up context too, marked, after the scored measures.
+    // Row 005-127: each cell's look-up context too, marked, after the scored measures; and the
+    // sessions that ended with no claim, which every claim measure leaves out (review r3 B1).
+    const noClaim = (c) =>
+      c.atomic && "claim" in c.atomic ? { "no-claim": c.atomic.claim === null } : {};
+    const of = {
+      measures: (c) => c.atomic?.measures,
+      context: (c) => ({ ...c.atomic?.context, ...noClaim(c) }),
+    };
     for (const field of ["measures", "context"]) {
-      const ids = [...new Set(mine.flatMap((c) => Object.keys(c.atomic?.[field] ?? {})))];
+      const ids = [...new Set(mine.flatMap((c) => Object.keys(of[field](c) ?? {})))];
       for (const measure of ids) {
         const counts = arms.map((arm) =>
-          rate(mine.filter((c) => c.variant === arm).map((c) => c.atomic?.[field]?.[measure])),
+          rate(mine.filter((c) => c.variant === arm).map((c) => of[field](c)?.[measure])),
         );
         const [a, b] = counts;
         const p = a && b ? fisherTwoSided(a, b) : null;
