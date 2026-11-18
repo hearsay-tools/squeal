@@ -6,6 +6,7 @@ import type { CommitSha, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { importIdOf } from "../core/types/state.js";
 import type { ResultRecord } from "../core/types/store-records.js";
+import { fileLines, isNew, newFileLines, proofCommand } from "./status-at-report-files.js";
 import { type RunUse, runLines } from "./status-at-report-run.js";
 
 export type { RunUse };
@@ -189,46 +190,16 @@ export interface AtReport {
 
 const short = (sha: string | null) => (sha === null ? "none" : sha.slice(0, 9));
 
-export function originText(origin: Origin): string {
-  if (origin.kind === "ci") return "from CI's export";
-  if (origin.kind === "import") return `imported from CI at ${short(origin.commit)}`;
-  if (origin.kind === "own") return "run in this worktree";
-  if (origin.kind === "run")
-    return origin.stored === true
-      ? "run by this command, stored"
-      : "run by this command, not stored";
-  return `run in worktree ${(origin.worktreeId ?? "").slice(0, 8)}`;
-}
-
-function word(side: SideState): string {
-  if (side.state === "not comparable" && side.ran !== undefined)
-    return `${side.ran} when run, not stored (${side.reason})`;
-  if (
-    side.state === "not determined" ||
-    side.state === "not run" ||
-    side.state === "not comparable"
-  )
-    return `${side.state} (${side.reason})`;
-  if (side.state === "no result" && side.pending !== undefined)
-    return `no result (${side.pending})`;
-  return side.state;
-}
-
-function detail(name: string, side: SideState): string | null {
-  if (side.state === "fail")
-    return `${name}: ${side.failed.join(", ")}; ${originText(side.origin)}`;
-  if (side.state === "pass") return `${name}: ${originText(side.origin)}`;
-  if (side.state === "not comparable" && side.failed !== undefined)
-    return `${name}: ${side.failed.join(", ")}`;
-  return null;
-}
-
 /** The input check's share of the checkout's time, when one ran. */
 const checkText = (ms: number | null | undefined) =>
   ms === null || ms === undefined ? "" : ` (checked against the commit in ${ms} ms)`;
 
-/** D3's text: a header, each changed or unknown file on one line, the counts, the 7-day line. */
-export function formatAt(report: AtReport, nowMs: number): string {
+/**
+ * D3's text: a header, each changed file on one line, the unknown files
+ * by group (row 023-19, P6; every file with `full`), new files' pointer to
+ * `squeal proof` (P8), the counts, the run, the 7-day line.
+ */
+export function formatAt(report: AtReport, nowMs: number, full = false): string {
   const at = short(report.commit);
   const head = `HEAD ${short(report.head)}${report.dirty ? ", dirty" : ""}`;
   const lines = [
@@ -257,14 +228,11 @@ export function formatAt(report: AtReport, nowMs: number): string {
         : `The install changed the checkout (${path} differs from ${at})`;
     lines.push(`${what}, so its keys and results are not ${at}'s and nothing from it is stored.`);
   }
-  const order: Change[] = ["pass -> fail", "fail -> pass", "unknown"];
-  for (const kind of order) {
-    for (const f of report.files.filter((file) => file.change === kind)) {
-      const parts = [detail(`at ${at}`, f.at), detail("now", f.now)].filter((p) => p !== null);
-      const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
-      lines.push(`${f.ref.path}: ${word(f.at)} -> ${word(f.now)}${more}`);
-    }
-  }
+  // Row 023-19 (P6, P8): unknown files by group; a pointer to `squeal proof` for each new file.
+  const files = fileLines(report.files, at, full);
+  lines.push(...files.lines);
+  if (files.folded) lines.push("`--full` lists every file; `--json` gives each file's states.");
+  lines.push(...newFileLines(report.files, report.commit, full));
   const c = countsOf(report.files);
   lines.push(
     `${c["pass -> fail"]} pass -> fail, ${c["fail -> pass"]} fail -> pass, ${c.unchanged} unchanged, ${c.unknown} unknown`,
@@ -304,6 +272,8 @@ export function jsonAt(report: AtReport): string {
       change: f.change,
       at: f.at,
       now: f.now,
+      // Row 023-19 (P8): a test new since the commit, and the command that proves it red there.
+      ...(isNew(f) ? { proof: proofCommand(f.ref.path, report.commit) } : {}),
     })),
   };
   return `${JSON.stringify(value, null, 2)}\n`;

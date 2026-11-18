@@ -38,6 +38,8 @@ export interface AtArgs {
   readonly commit: string;
   readonly paths: readonly string[];
   readonly json: boolean;
+  /** Row 023-19 (P6): list every unknown file in the text, not by group; absent when not given. */
+  readonly full?: boolean;
   /** Row 023-07: `--run [--all-missing] [--timeout <seconds>]`; absent or `null` without `--run`. */
   readonly run?: RunArgs | null;
 }
@@ -45,7 +47,7 @@ export interface AtArgs {
 /** The options that take a value, and what their value is. */
 const VALUED = { "--at": "a commit", "--timeout": "whole seconds" } as const;
 type Valued = keyof typeof VALUED;
-const FLAGS = new Set(["--json", "--run", "--all-missing"]);
+const FLAGS = new Set(["--json", "--full", "--run", "--all-missing"]);
 
 /** `--at <commit>` and what may follow it; a usage problem as a string. */
 export function parseAt(args: readonly string[]): AtArgs | string {
@@ -75,7 +77,8 @@ export function parseAt(args: readonly string[]): AtArgs | string {
     return "--timeout takes whole seconds above 0";
   const timeoutSeconds = timeout === undefined ? RUN_TIMEOUT_SECONDS : Number(timeout);
   const json = flags.has("--json");
-  return { commit, paths, json, run: run ? { allMissing, timeoutSeconds } : null };
+  const full = flags.has("--full") ? { full: true } : {};
+  return { commit, paths, json, ...full, run: run ? { allMissing, timeoutSeconds } : null };
 }
 
 /** The valued option at `args[i]`, with how many more words it took; `null` when it is none. */
@@ -219,7 +222,7 @@ export async function statusAtCommand(
     files,
     ...(ran === null ? {} : { run: ran.use() }),
   };
-  io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs));
+  io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return at.failure === null ? exitCode(files) : 3;
 }
