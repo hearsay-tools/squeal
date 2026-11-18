@@ -2,7 +2,13 @@ import { join } from "node:path";
 import type { Checkout } from "../core/checkout/checkout.js";
 import { FILE_ERROR } from "../core/code/gate/evidence.js";
 import type { FailedTest } from "../core/code/gate/types.js";
-import { type KeyedFile, resultsAt, withStores } from "../core/commit/at-keys-checkout.js";
+import {
+  type KeyedFile,
+  type Rekey,
+  rekeyed,
+  resultsAt,
+  withStores,
+} from "../core/commit/at-keys-checkout.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { conditionedEnv, hasConditions, hiddenInHome } from "../core/proof/conditions.js";
@@ -44,6 +50,7 @@ export async function runFiles(
   toRun: readonly KeyedFile[],
   change: RelativePath | null,
   files: Map<string, SideFile>,
+  rekey: Rekey,
 ): Promise<number> {
   let env: NodeJS.ProcessEnv;
   try {
@@ -66,7 +73,7 @@ export async function runFiles(
       }
       break;
     }
-    const sides = await runOnce(input, checkout, left, change, env, seconds);
+    const sides = await runOnce(input, checkout, left, { change, env, seconds, rekey });
     const next: KeyedFile[] = [];
     for (const file of left) {
       const id = testFileId(file.ref);
@@ -113,16 +120,20 @@ function budgetSide(): SideFile {
 async function runOnce(
   input: SideInput,
   checkout: Checkout,
-  toRun: readonly KeyedFile[],
-  change: RelativePath | null,
-  env: NodeJS.ProcessEnv,
-  seconds: number,
+  given: readonly KeyedFile[],
+  round: {
+    readonly change: RelativePath | null;
+    readonly env: NodeJS.ProcessEnv;
+    readonly seconds: number;
+    readonly rekey: Rekey;
+  },
 ): Promise<Map<string, SideFile>> {
+  const { change, env, seconds } = round;
   const forced = forcedReason(input);
   const answer = await runInChild({
     relaunch: input.relaunch,
     checkout,
-    files: [...new Set(toRun.map((f) => f.ref.path))].sort(),
+    files: [...new Set(given.map((f) => f.ref.path))].sort(),
     budgetSeconds: seconds,
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
@@ -132,6 +143,9 @@ async function runOnce(
     env,
     forward: input.forward,
   });
+  // Row 023-18 (D1): a stored run is read at the key it was kept at, which its reads can move.
+  const stored = forced === null && change === null && "result" in answer;
+  const toRun = stored ? await rekeyed(given, round.rekey) : given;
   const states = await outcomesOf({
     commonDir: checkout.commonDir,
     commit: input.side.code,

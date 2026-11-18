@@ -1,7 +1,13 @@
 import { availableParallelism } from "node:os";
 import type { Checkout } from "../core/checkout/checkout.js";
 import { estimateRun, type RunEstimate } from "../core/code/gate/estimate.js";
-import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
+import {
+  type BeforeRemove,
+  type KeyedFile,
+  type Rekey,
+  rekeyed,
+  type WhileOpen,
+} from "../core/commit/at-keys-checkout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
@@ -93,7 +99,7 @@ export function atRun(input: AtRunInput): AtRun {
     },
   );
 
-  const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
+  const beforeRemove: BeforeRemove = async (checkout, keyed, change, rekey) => {
     changed = change;
     for (const [id, state] of selection.states) states.set(id, state);
     const { run } = selection;
@@ -102,7 +108,7 @@ export function atRun(input: AtRunInput): AtRun {
     try {
       estimate = estimateOf(run, durationsOf);
       if (args.allMissing) input.note(estimateText(estimate, commit, args.timeoutSeconds));
-      if (run.length > 0) await runFiles(checkout, run, keyed);
+      if (run.length > 0) await runFiles(checkout, run, keyed, rekey);
     } finally {
       durations?.close();
     }
@@ -112,6 +118,7 @@ export function atRun(input: AtRunInput): AtRun {
     checkout: Checkout,
     run: readonly KeyedFile[],
     keyed: readonly KeyedFile[],
+    rekey: Rekey,
   ): Promise<void> {
     overheadMs = elapsed();
     const left = Math.floor((budgetMs - overheadMs) / 1000);
@@ -141,12 +148,15 @@ export function atRun(input: AtRunInput): AtRun {
     const siblings = keyed.filter(
       (f) => noResult(f) && paths.has(f.ref.path) && !chosen.has(testFileId(f.ref)),
     );
+    // Row 023-18 (D1): a stored run is read at the key it was kept at, which its reads can move.
+    const both = [...run, ...siblings];
+    const read = changed === null && "result" in answer ? await rekeyed(both, rekey) : both;
     const outcomes = await outcomesOf({
       commonDir: input.commonDir,
       commit,
       own: input.own,
-      run,
-      siblings,
+      run: read.slice(0, run.length),
+      siblings: read.slice(run.length),
       answer,
       changed,
     });

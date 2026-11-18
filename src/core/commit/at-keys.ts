@@ -116,8 +116,8 @@ export async function keysAtCommit(options: KeysAtOptions): Promise<KeysAt> {
       ...(beforeRemove === undefined
         ? {}
         : {
-            beforeRemove: ((checkout, keyed, changed) =>
-              beforeRemove(checkout, own(keyed), changed)) as BeforeRemove,
+            beforeRemove: ((checkout, keyed, changed, rekey) =>
+              beforeRemove(checkout, own(keyed), changed, rekey)) as BeforeRemove,
           }),
       ...(whileOpen === undefined
         ? {}
