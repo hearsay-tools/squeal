@@ -90,7 +90,7 @@ describe("policy checks problems (spec 019 D1)", () => {
       ([key, value]): Row => [
         `${key} on a lint group`,
         { name: "l", lint: true, at: "stop", [key]: value },
-        `${at0}.${key}" applies to test groups only; a lint group has "name", "lint" and "at"; group "l" is left out`,
+        `${at0}.${key}" applies to test groups only; a lint group has "name", "lint", "at" and "description"; group "l" is left out`,
       ],
     ),
     ...[false, [], ["prettier"], "eslint"].map(
