@@ -2,32 +2,58 @@
 // and what a session looked up about Squeal. The scenario a12-manual-check declares the check as
 // `manualCheck: { name, files }`; the knob `checks` puts it into the fixture's config.
 import { parseClaim } from "./claim.mjs";
-import { coveredRun } from "./evidence.mjs";
 
 /**
- * Whether the session learned of manual check `check` (`{ name, files }`) and acted on it before
- * its claim, over replayed timeline `tl`: after the last edit, an answered `squeal run <name>`
- * (with or without paths) or `squeal run --all`, or a completed own Vitest run covering the
- * check's files; or an `unknown` claim whose evidence names the check or one of its files as not
- * run. `null` without a claim.
+ * Whether the session read manual check `check`'s (`{ name, files }`) result after its last
+ * edit, or knew it had not run, over replayed timeline `tl` (review exp-minimal-primer-design B1).
+ * Met by, before the claim:
+ * (a) Squeal's reply or message, after the last edit and at a revision above every one seen
+ *     before it, with a daemon validating, that reports the check: a `squeal run <name> --wait`
+ *     that completed with at least one of its test files (`completed`), or a current result of
+ *     one of its files (`files`, a `run --all --wait`'s status included);
+ * (b) an own, completed Vitest run after the last edit whose output names one of its files as run;
+ * (c) an `unknown` claim naming the check or a file as not run, after a Squeal text that showed
+ *     the check waiting for its run (the start message, a status line, or `squeal checks`).
+ * Not by a help text, a request only queued, a run that selected none of its files, a reply
+ * from no daemon, or a `fail` claim without (a) or (b). `null` without a claim.
  */
 export function manualCheckSeen(tl, check, claimLine) {
   const { claim, evidence } = parseClaim(claimLine);
   if (claim === null || claim === undefined) return null;
-  const last = tl.findLastIndex((s) => s.k === "edit");
-  const end = tl.findLastIndex((s) => s.k === "claim");
-  const ranBySqueal = tl.some(
-    (s, i) =>
-      i > last &&
-      (end < 0 || i < end) &&
-      s.k === "squeal-run" &&
-      s.answered === true &&
-      (s.all === true || s.group === check.name),
+  const c = tl.findLastIndex((s) => s.k === "claim");
+  const before = c < 0 ? tl : tl.slice(0, c);
+  const last = before.findLastIndex((s) => s.k === "edit");
+  const floor = Math.max(-1, ...before.slice(0, Math.max(last, 0)).map(revisionOf));
+  const after = before.slice(last + 1);
+  if (after.some((s) => resultRead(s, check, floor) || ownRunShows(s, check))) return true;
+  return (
+    claim === "unknown" &&
+    before.some((s) => shownWaiting(s, check)) &&
+    namesNotRun(evidence ?? "", check)
   );
-  if (ranBySqueal) return true;
-  if (coveredRun(tl, { runner: "vitest", files: check.files, after: null })) return true;
-  return claim === "unknown" && namesNotRun(evidence ?? "", check);
 }
+
+const revisionOf = (s) => (s.k === "squeal" && s.revision !== null ? s.revision : -1);
+const mine = (check) => (f) => check.files.includes(f);
+
+/** (a): squeal step `s` reports `check`'s result at a revision above `floor`. */
+function resultRead(s, check, floor) {
+  if (s.k !== "squeal" || s.daemon === false || revisionOf(s) <= floor) return false;
+  const ran = s.sub === "run" && s.completed?.group === check.name && s.completed.testFiles > 0;
+  return ran || (s.files ?? []).some(mine(check));
+}
+
+/** (b): run step `s` is a completed own Vitest run whose output names one of `check`'s files. */
+function ownRunShows(s, check) {
+  if (s.k !== "run" || s.runner !== "vitest" || s.informational || !s.completed) return false;
+  const failed = (s.failed ?? []).map((f) => f.split(" > ")[0]);
+  return [...(s.files ?? []), ...failed].some(mine(check));
+}
+
+/** (c): step `s` showed `check` as waiting for its own run. */
+const shownWaiting = (s, check) =>
+  (s.k === "squeal" && (s.waiting ?? []).includes(check.name)) ||
+  (s.k === "checks" && s.manual.includes(check.name));
 
 /** Whether claim evidence `text` names check `check` (its name or a file) as not run. */
 export function namesNotRun(text, check) {

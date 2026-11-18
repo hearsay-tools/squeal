@@ -152,6 +152,8 @@ export function squealEvidence(text, from, failures = 0) {
   // with the worktree's.
   const listed = /^Known failures: (\d+)/m.exec(t) ?? /\bWorktree: known failures (\d+)/.exec(t);
   const selected = selectedOf(t);
+  const waiting = waitingOf(t);
+  const completed = completedOf(t);
   const step = {
     k: "squeal",
     from,
@@ -169,6 +171,8 @@ export function squealEvidence(text, from, failures = 0) {
     ...(/^Pending retries: \d+|^ {2}\d+ test files? with a pending retry /m.test(t)
       ? { pendingRetries: pendingRetriesOf(t) }
       : {}),
+    ...(waiting.length > 0 ? { waiting } : {}),
+    ...(completed === null ? {} : { completed }),
   };
   const before = typeof failures === "number" ? { named: [], unnamed: failures } : failures;
   return settled(step, failingAfter(before, step));
@@ -269,6 +273,31 @@ export function currentCheck(s, c) {
  */
 const NAMED =
   /^Named test files at revision \d+: .*, each with a current result(?:, after |[.;] |$)/m;
+
+/**
+ * Row 005-127: the check groups text `t` names as waiting for their own run (spec 019 D1,
+ * `manual`): the primer's "contract waits for `squeal run contract`" (or "the CLI's `run
+ * contract`" for a long CLI path) and status's "contract: 1 test file; 1 pending, waiting for
+ * `squeal run contract`".
+ */
+function waitingOf(t) {
+  const re = /\b(?:waits?|waiting) for (?:the CLI's )?`[^`\n]*?\brun ([\w.-]+)`/g;
+  return [...new Set([...t.matchAll(re)].map((m) => m[1]))];
+}
+
+/**
+ * Row 005-127: the group a `squeal run <group> --wait` reply says completed, and how many of its
+ * test files have results (`run-group-wait.ts`'s verdict line; a narrow run's names its selected
+ * files), or `null`. A run with no verdict, a request only queued, a help text and a run that
+ * selected no file say no such line.
+ */
+function completedOf(t) {
+  const m =
+    /^(?:Group|Selected test files of group) ([\w.-]+) completed at revision \d+: [^\n]*?; (\d+) test files?\b/m.exec(
+      t,
+    );
+  return m ? { group: m[1], testFiles: Number(m[2]) } : null;
+}
 
 /**
  * The test files a `status --wait <ms> <path>...` answered (spec 005 D2, row 006-55): those its
