@@ -157,6 +157,8 @@ export interface Grade {
   /** Squeal's help in any form, and `squeal checks` (row 005-127). */
   squealHelp: number;
   squealChecks: number;
+  /** Successful loads of Squeal's skill (`skillReadsOf`); `skillLoads` counts any mention. */
+  skillReads: number;
   deliveries: Record<"registration" | "fail" | "deny" | "resolved" | "noDaemon" | "other", number>;
   claim: Claim["claim"];
   claimLine: string | null;
@@ -838,6 +840,23 @@ export function addChecks(
 ): void;
 /** Whether `squeal status` text names a config problem (the knob's, on a CLI without its keys). */
 export function checksProblem(text: string): boolean;
+/** Throws on a config problem line: the cell's setup fails, never a silent skip (B2). */
+export function assertChecksAccepted(text: string): void;
+/** The routes by which a session met `manual-check-seen`; `null` without a claim. */
+export function manualCheckRoutes(
+  timeline: readonly Step[],
+  check: ManualCheck,
+  claimLine: string | null | undefined,
+): { squeal: boolean; ownRun: boolean; unknown: boolean } | null;
+/** Own-run context, no direction: any own Vitest run, and one while Squeal had checks pending. */
+export function runContextOf(grade: Record<string, unknown>): {
+  "own-run": boolean | null;
+  "own-run-while-pending": boolean | null;
+};
+/** Successful loads of Squeal's skill in a timeline's items (review S2). */
+export function skillReadsOf(
+  items: readonly TimelineItem[] | readonly Record<string, unknown>[],
+): number;
 /** The test file whose FAIL a retry scenario is about, the paths past it, and its cause. */
 export interface RetryFailure {
   file: string;
@@ -997,8 +1016,8 @@ export interface PilotRecord {
   sleeps: number | null;
   /** The declared measures: met, missed, or `null` not computable. */
   measures: Record<string, boolean | null>;
-  /** What the session looked up, no direction (row 005-127). */
-  context?: Lookups;
+  /** What the session looked up and ran itself, and a12's routes; no direction (row 005-127). */
+  context?: Record<string, boolean | null>;
 }
 export interface MeasureContext {
   /** The cell's retained timeline; `null` or absent when it kept none. */
@@ -1191,5 +1210,29 @@ export interface AtomicCompareRow {
   /** A look-up context row (row 005-127), no direction. */
   context?: true;
 }
-export function atomicCompare(data: Json): { arms: [string, string]; rows: AtomicCompareRow[] };
+/** One model, scenario and arm of an atomic variant run: its planned, kept and reached cells. */
+export interface CoverageRow {
+  model: string;
+  scenario: string;
+  arm: string;
+  planned: number;
+  kept: number;
+  reached: number;
+}
+export interface Coverage {
+  planned: number;
+  rows: CoverageRow[];
+  /** The rows with fewer cells reaching the model than planned. */
+  gaps: CoverageRow[];
+  /** The run's failed cell ids. */
+  failed: string[];
+}
+/** `null` for a results file that records no repetitions. */
+export function atomicCoverage(data: Json, arms: readonly string[]): Coverage | null;
+export function coverageLines(coverage: Coverage | null): string[];
+export function atomicCompare(data: Json): {
+  arms: [string, string];
+  rows: AtomicCompareRow[];
+  coverage: Coverage | null;
+};
 export function atomicCompareMarkdown(data: Json, name: string): string;

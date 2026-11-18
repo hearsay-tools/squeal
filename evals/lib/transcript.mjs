@@ -45,6 +45,8 @@ export function claudeTimeline(events) {
           k.exit = c.is_error ? Number(/^Exit code (\d+)/.exec(out)?.[1] ?? Number.NaN) : 0;
         if (Number.isNaN(k.exit)) k.exit = null;
         if (k.kind === "edit" && c.is_error && !k.refused) k.failed = true;
+        // Row 005-127: a skill read or Skill call that errored loaded nothing.
+        if (k.kind === "skill" && c.is_error && !k.refused) k.failed = true;
       }
     }
     if (e.type === "result") {

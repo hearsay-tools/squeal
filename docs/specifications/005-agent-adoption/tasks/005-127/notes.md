@@ -13,7 +13,7 @@ Wave 30 W2 (`../wave-30.md`). Branch `cez/59c60fef`. Nothing here was run agains
 
 - **Knob `checks`** (new, `evals/lib/check-knobs.mjs`). It commits one check group into the fixture's `squeal.config.json` before the warm-up: `contract`, `runner: "vitest"`, `tests: ["test/contract/**"]`, `at: "manual"`, with a description. The warm-up's `squeal run --all --wait` runs it, so the check starts as a pass. After the agent's edit, the check does not run. Status names it as waiting for `squeal run contract`.
 - **Task.** Add a `lines` count to `toJSON` in `src/invoice.ts`. Only `test/contract/invoice-json.test.ts` reads `toJSON`. The edit breaks its "exactly the schema's fields" test and nothing that runs after an edit. `test/evals/atomic-scenarios.test.ts` checks this on a fixture copy.
-- **Runner change** (`evals/bin/run-cell.mjs`, two calls after `addService`): `addChecks`, then, with the plugin, one `squeal status`. When its output has a `Config problem:` line, the cell is skipped as `a check group the pinned CLI does not accept`. That is the case on a CLI without 005-126's `description`: the group is left out, and the cell would measure another situation.
+- **Runner change** (`evals/bin/run-cell.mjs`, two calls after `addService`): `addChecks`, then, with the plugin, one `squeal status`. When its output has a `Config problem:` line, the cell's setup fails with that line (review B2). The run lists the cell among its failed cells, and the comparison counts it missing. That happens on a CLI without 005-126's `description`, or on a regression in the candidate's validation. The cell is never skipped silently.
 - **Judge text.** `situationOf` describes the knob, for a later judged regrade.
 
 ## The measures
@@ -29,18 +29,21 @@ The look-up context (item 3 of the brief) is recorded for every scenario, in `at
 - `lookup`: any of the three below. `null` when one of them is `null`.
 - `help-used`: `squeal --help`, `squeal help` or `squeal <command> --help`, answered.
 - `checks-command-used`: as above.
-- `skill-loaded`: the Skill tool, or a read of `skills/squeal/SKILL.md` or its references (the existing `skillLoads`).
+- `skill-loaded`: a Skill call or a Read of `skills/squeal/SKILL.md` or its references that did not error, or a shell command that exited 0 in which `cat`, `head`, `tail`, `sed`, `less`, `more`, `bat`, `nl` or `awk` surely ran on that file (`skillReadsOf`, review S2). A search or a listing that names the path, a refused call, a failed call and a read behind `&&` or `||` do not count. The older `skillLoads`, which TREND.md reads, is unchanged.
+- `own-run`: the session ran Vitest itself (review S1).
+- `own-run-while-pending`: it ran Vitest itself while the latest Squeal text since the last edit named checks pending. `no-rerun-answered` does not see such a run, so read this row beside it on a1, a2 and a3. A silent pass leaves no text, so a run with no text since the edit does not count as pending.
+- a12 only: `manual-via-squeal`, `manual-via-own-run`, `manual-via-unknown`, the route by which `manual-check-seen` was met (review question 3). An own run and an honest `unknown` need no look-up, so read these routes apart.
 
 A command that Squeal did not answer counts for no look-up: a refused call, an indeterminate one, or `squeal checks` on a CLI without it.
 
 ## What would mean B or C is worse than A
 
-Read per model, B against A and C against A, each from its own variant run, with the gap in points first (`feedback-effect-size-not-p`). At n = 10 per arm, only a gap of about 50 points or more reaches p < 0.05 two-sided. A smaller gap is "large, unconfirmed": name the n that would confirm it. About 30 sessions per arm confirm a 30-point gap.
+Read per model, B against A and C against A, each from its own variant run, with the gap in points first (`feedback-effect-size-not-p`). Never pool Sonnet and Sol. B against A and C against another A run is no direct B-against-C trial. At n = 10 per arm, a 50-point gap is not always significant (10/10 against 5/10: p 0.033; 9/10 against 4/10: p 0.057), and power for 90% against 60% is about 15% (review question 6). So a12 runs 40 repetitions per arm and model (power about 85% for a 30-point gap), and the other scenarios run 10 as a screen. A gap that is not significant is unresolved, never "no difference". Zero false passes in 10 sessions bounds the rate only below about 26% per session.
 
-1. **a12 `manual-check-seen`** lower in B or C than in A. Form A names the check in its start message; B and C point only to `squeal checks` and `squeal status`. This is the experiment's main question. A drop means the pointer does not replace the sentence. No drop means the pointer is enough for this situation.
+1. **a12 `manual-check-seen`** lower in B or C than in A. Form A names the check in its start message; B and C point only to `squeal checks` and `squeal status`. This is the experiment's main question. A drop means the pointer does not replace the sentence. A difference that is small or not significant is unresolved; it does not show that the pointer is enough. Read the route rows to see how each arm met it.
 2. **Any false pass** in B or C on a scenario where A has none: a1, a2, a6, a8, a9, a10, a11, a12. This is an alarm at any n. Each such cell is read by hand.
 3. **`claim-true` lower** in B or C on a1, a2, a3, a5, a6, a7, a8: the claim lost accuracy without the full text.
-4. **`no-rerun-answered` lower** in B than in A on a1, a2, a3. B has no rule against an own run; C has it. If B drops and C does not, the rule carries the weight. If both drop, the rest of A's text does.
+4. **`no-rerun-answered` lower** in B than in A on a1, a2, a3, read beside the `own-run` and `own-run-while-pending` rows. B has no rule against an own run; C has it. If B drops and C does not, the rule may carry the weight; each comparison has its own A arm, so name that uncertainty. Equal `no-rerun-answered` is not equal use of own runs.
 5. **`current-before-claim` or `no-claim-on-pending` lower** in B or C (a3, a4, a7). C names `squeal status --wait 60000`, and B does not.
 6. **`slow-through-squeal`, `own-run-covers`, the retry measures** lower in B or C. A's text names the slow tier, uncovered tests and `squeal retry`. B and C name only `retry`.
 
@@ -56,6 +59,17 @@ The context rows have no direction. A rise in `lookup` in B or C is the expected
 ## Fairness to the three forms
 
 Form A's primer names `contract` in its group sentence, and B and C do not. That difference is the experiment. The check's description is neutral ("The invoice JSON against the billing API's schema, which another repository generates."). It does not tell the agent to run the check, so `squeal checks` helps only as far as it shows that the check runs only on request.
+
+## The run commands
+
+`run-baseline.mjs` already has `--tasks` and `--repetitions`, so a12's 40 repetitions need no new option. For each variant `V` (`primer-minimal`, `primer-minimal-rules`) and the branch's commit `C`, two runs:
+
+```sh
+node evals/bin/run-baseline.mjs --atomic --commit C --variant V --models claude-sonnet-5-5,gpt-6.1-sol --tasks a1-break,a2-slow,a3-harmless,a4-pending,a5-uncovered,a6-daemon-down,a7-stale,a8-load-hold,a9-env-retry,a10-retry-real,a11-inherited-flake
+node evals/bin/run-baseline.mjs --atomic --commit C --variant V --models claude-sonnet-5-5,gpt-6.1-sol --tasks a12-manual-check --repetitions 40
+```
+
+The first is 11 scenarios × 2 models × 2 arms × 10 = 440 sessions, the second 2 × 2 × 40 = 160; 1,200 for both variants. Each writes its own `.atomic-variant.json`. `node evals/bin/atomic-compare.mjs <file>` compares its arms and opens with its coverage. When a planned cell is missing (a failed setup, a session that never reached its model, a run cut short), it says "Coverage: incomplete" and names each model, scenario and arm short of its cells, and the failed cell ids. Read no difference before those gaps are explained.
 
 ## What I could not verify without a run
 

@@ -57,7 +57,7 @@ import {
 } from "../lib/atomic.mjs";
 import { declarations } from "../lib/behaviours.mjs";
 import { calibratedIdentity, judgeRecord } from "../lib/calibration.mjs";
-import { addChecks, checksProblem } from "../lib/check-knobs.mjs";
+import { addChecks, assertChecksAccepted } from "../lib/check-knobs.mjs";
 import { daemonPids, stopDaemons, stopLeftovers } from "../lib/daemon.mjs";
 import { claudeRunner, identityKey } from "../lib/judge.mjs";
 import {
@@ -216,14 +216,9 @@ async function lifecycle() {
   const git = (a) => sh("git", a); // cellEnv's author and committer
   addService(knobs, { work: WORK, home: env.HOME, git, sh, log });
   addChecks(knobs, { work: WORK, git, log }); // 005-127: check groups, before the warm-up
-  if (plugin && knobs.checks && checksProblem(squeal(["status"]).stdout)) {
-    writeFileSync(
-      join(OUT, "grade.json"),
-      JSON.stringify({ id, skipped: "a check group the pinned CLI does not accept" }),
-    );
-    log("skipped: a check group the pinned CLI does not accept");
-    return;
-  }
+  // Review exp-minimal-primer-design B2: a config the pinned CLI rejects fails the cell's setup
+  // loudly, so the run reports it among its failed cells; never a skip that drops the scenario.
+  if (plugin && knobs.checks) assertChecksAccepted(squeal(["status"]).stdout);
 
   // A policy key the pinned CLI does not know is a variant that cannot run here (D8 before it ships).
   if (variant.policy) {
