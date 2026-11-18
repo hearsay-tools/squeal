@@ -107213,13 +107213,14 @@ function select2(all2, paths) {
 }
 
 // src/cli/status-at-run.ts
-import { availableParallelism as availableParallelism8 } from "node:os";
+import { availableParallelism as availableParallelism9 } from "node:os";
 init_reverse_index();
 init_text();
 
 // src/cli/status-at-run-child.ts
 import { spawn as spawn16 } from "node:child_process";
 import { existsSync as existsSync66, readFileSync as readFileSync79, writeFileSync as writeFileSync27 } from "node:fs";
+import { availableParallelism as availableParallelism8 } from "node:os";
 import { join as join176 } from "node:path";
 
 // src/cli/code-gate-files.ts
@@ -107358,6 +107359,9 @@ function fileRun(file) {
 // src/cli/status-at-run-child.ts
 var RUN_REQUEST_VARIABLE = "SQUEAL_STATUS_AT_RUN_REQUEST";
 var GRACE_SECONDS = 60;
+function noLoadRetry() {
+  return { oneMinute: null, cpus: availableParallelism8() };
+}
 function takeRunRequest(env = process.env) {
   const value = env[RUN_REQUEST_VARIABLE];
   if (value === void 0) return void 0;
@@ -107376,6 +107380,7 @@ async function runChild(request) {
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
       store: asked.store,
+      ...asked.retry === false ? { hostLoad: noLoadRetry } : {},
       note: (text3) => process.stderr.write(`squeal: ${text3}
 `),
       output: () => {
@@ -107400,7 +107405,8 @@ async function runInChild(run7) {
     budgetSeconds: run7.budgetSeconds,
     tempDir: checkout.run,
     answer: answer4,
-    store: run7.store
+    store: run7.store,
+    ...run7.retry === void 0 ? {} : { retry: run7.retry }
   };
   writeFileSync27(request, JSON.stringify(asked));
   const child = spawn16(command, [...flags2, "status", "--at", checkout.commit], {
@@ -107699,7 +107705,7 @@ function atRun(input) {
   return { whileOpen, beforeRemove, state: (ref3) => states.get(testFileId(ref3)), use };
 }
 function estimateOf(files5, durationOf2) {
-  const width = Math.max(1, availableParallelism8() - 1);
+  const width = Math.max(1, availableParallelism9() - 1);
   return estimateRun("vitest", [{ width, seconds: files5.map((f) => durationOf2(f.ref)) }]);
 }
 function estimateText2(estimate, commit, budget2) {
@@ -108309,6 +108315,8 @@ async function runOnce(input, checkout, toRun2, change3, env, seconds5) {
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
     store: forced === null && change3 === null,
+    // CI of 0.1.562: each run is one observation; the gate's load retry would replace a failure.
+    retry: false,
     env,
     forward: input.forward
   });
@@ -108638,7 +108646,7 @@ import { setTimeout as sleep21 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source();
-import { availableParallelism as availableParallelism9, cpus, loadavg as loadavg4, totalmem as totalmem2, uptime } from "node:os";
+import { availableParallelism as availableParallelism10, cpus, loadavg as loadavg4, totalmem as totalmem2, uptime } from "node:os";
 import { basename as basename37 } from "node:path";
 var CLOCK_TICKS = 100;
 var PS2 = [
@@ -108667,7 +108675,7 @@ var DarwinSource = class {
   #last = /* @__PURE__ */ new Map();
   constructor(options) {
     this.#run = options.run ?? runCommand;
-    this.#os = options.os ?? { loadavg: loadavg4, totalmem: totalmem2, cpus, availableParallelism: availableParallelism9, uptime };
+    this.#os = options.os ?? { loadavg: loadavg4, totalmem: totalmem2, cpus, availableParallelism: availableParallelism10, uptime };
     const boot = (options.now ?? Date.now)() - this.#os.uptime() * 1e3;
     this.#boot = Number.isFinite(boot) ? Math.floor(boot / 1e3) * 1e3 : null;
   }
