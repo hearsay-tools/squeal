@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.562";
+  if (true) return "0.1.563";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -8037,19 +8037,19 @@ function answerMoves(store, worktreeId, upTo, sinceSeq, incarnation) {
   if (!isRefined(store, worktreeId, upTo)) return { state: "refining" };
   const rows = store.testFileKeys.list(worktreeId);
   const refs2 = new Map(rows.map((row2) => [testFileId(row2.testFile), row2.testFile]));
-  const rekeyed = [];
+  const rekeyed2 = [];
   for (const [id, file] of Object.entries(moves.files)) {
     const testFile = refs2.get(id);
     if (testFile === void 0) continue;
     for (const revision of new Set(file.open ?? [])) {
-      if (revision <= upTo) rekeyed.push({ testFile, revision });
+      if (revision <= upTo) rekeyed2.push({ testFile, revision });
     }
     for (const [raw, [seq]] of Object.entries(file.resolved)) {
       const revision = Number(raw);
-      if (seq > sinceSeq && revision <= upTo) rekeyed.push({ testFile, revision, resolved: true });
+      if (seq > sinceSeq && revision <= upTo) rekeyed2.push({ testFile, revision, resolved: true });
     }
   }
-  return { state: "answered", rekeyed };
+  return { state: "answered", rekeyed: rekeyed2 };
 }
 var MOVES_RETENTION_MS, MOVES_GRACE_MS, isInt, asPair;
 var init_rekeyed_moves = __esm({
@@ -8368,15 +8368,15 @@ function factId(testFile, key3) {
   return `${testFileId(testFile)}\0${key3}`;
 }
 function droppedPast(items, cap2, order) {
-  let over = items.length - cap2;
-  if (over <= 0) return [...items];
+  let over2 = items.length - cap2;
+  if (over2 <= 0) return [...items];
   const dropped = /* @__PURE__ */ new Set();
   for (const goes of order) {
     for (const item of items) {
-      if (over === 0) break;
+      if (over2 === 0) break;
       if (dropped.has(item) || !goes(item)) continue;
       dropped.add(item);
-      over--;
+      over2--;
     }
   }
   return items.filter((item) => !dropped.has(item));
@@ -9710,7 +9710,7 @@ var init_ledger = __esm({
         const revision = this.revision.number;
         const rows = [];
         const { removed, applied, unknown: unknown3, retired, setups } = drained;
-        const rekeyed = drained.rekeyed.flatMap(([id, moved4]) => {
+        const rekeyed2 = drained.rekeyed.flatMap(([id, moved4]) => {
           const file = this.files.get(id);
           return file ? [{ id, open: file.keyedAt, moved: moved4 }] : [];
         });
@@ -9725,7 +9725,7 @@ var init_ledger = __esm({
           revision,
           at: this.context.now()
         }));
-        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed, applied, unknown3, unknownFiles, retired, setups].every(
+        const quiet = this.#adopted && options.refined === void 0 && [rows, removed, rekeyed2, applied, unknown3, unknownFiles, retired, setups].every(
           (list2) => list2.length === 0
         );
         const writer = { writer: this.context.incarnation ?? null };
@@ -9737,8 +9737,8 @@ var init_ledger = __esm({
           if (removed.length > 0) store.testFileKeys.remove(worktreeId, removed);
           this.context.keys.writeRuntimeApplications([...this.files.values()].map((file) => file.ref));
           const removedIds = removed.map(testFileId);
-          recordRekeyed(store, worktreeId, rekeyed, removedIds);
-          recordMoves(store, worktreeId, rekeyed, removedIds, revision, this.context.now(), {
+          recordRekeyed(store, worktreeId, rekeyed2, removedIds);
+          recordMoves(store, worktreeId, rekeyed2, removedIds, revision, this.context.now(), {
             ...writer,
             ...before4 === void 0 ? {} : { before: before4 }
           });
@@ -9831,7 +9831,7 @@ var init_ledger = __esm({
           unknownFiles: [...this.#unknownFiles],
           retired: [...this.#retired]
         };
-        const rekeyed = [...this.#rekeyed];
+        const rekeyed2 = [...this.#rekeyed];
         const adopted = this.#adopted;
         const checkpoints = this.checkpoints.hold();
         return () => {
@@ -9845,7 +9845,7 @@ var init_ledger = __esm({
           this.#unknownFiles = owed.unknownFiles;
           this.#retired = owed.retired;
           this.#rekeyed.clear();
-          for (const [id, moved4] of rekeyed) this.#rekeyed.set(id, moved4);
+          for (const [id, moved4] of rekeyed2) this.#rekeyed.set(id, moved4);
           this.#adopted = adopted;
           checkpoints();
         };
@@ -14800,8 +14800,8 @@ function rekeyContent(context, ledger, revision) {
   const policy = reloadPolicy(context, ledger, changes);
   touched2.push(...policy.changes.map((c) => c.testFile));
   const moved4 = keys.index.rekey(changes.map((c) => c.path));
-  const rekeyed = moved4.map((c) => c.testFile);
-  touched2.push(...rekeyed);
+  const rekeyed2 = moved4.map((c) => c.testFile);
+  touched2.push(...rekeyed2);
   const declared = keys.updateDeclaredInputs(changes);
   if (declared !== null) touched2.push(...declared.map((c) => c.testFile));
   const inputs2 = changes.some((c) => keys.isEnvironmentInput(c.path));
@@ -14810,7 +14810,7 @@ function rekeyContent(context, ledger, revision) {
   quietQueued(context, ledger, misses, changes);
   const recent = touched2.filter((ref3) => ledger.queue.isRecent(ref3));
   return {
-    rekeyed,
+    rekeyed: rekeyed2,
     previous: new Map(moved4.map((c) => [testFileId(c.testFile), c.previous])),
     environment: inputs2 || policy.environment,
     catchUp,
@@ -17181,9 +17181,9 @@ function leftOutOf(input, ev) {
   return ev.state === "violation" && (input.leftOut ?? 0) > 0 ? incomplete("left-out") : ev;
 }
 function judgeFunction(input, policy) {
-  const over = input.complexity > policy.complexityThreshold;
+  const over2 = input.complexity > policy.complexityThreshold;
   if (input.excluded) {
-    const state2 = over ? VIOLATION : SKIPPED;
+    const state2 = over2 ? VIOLATION : SKIPPED;
     return {
       ...state2,
       evidence: SKIPPED,
@@ -17199,7 +17199,7 @@ function judgeFunction(input, policy) {
     crap: evidence.state === "pass" ? "pass" : evidence.state === "violation" ? "fail" : unproven(evidence.gap),
     uncovered: uncoveredOf(input, evidence)
   };
-  const state = over ? VIOLATION : leftOutOf(input, evidence);
+  const state = over2 ? VIOLATION : leftOutOf(input, evidence);
   return { ...state, evidence, completeness, crap, measures: measures2 };
 }
 var UNRUN_GAPS, UNRUN, PASS, VIOLATION, SKIPPED, incomplete, unproven;
@@ -27391,11 +27391,11 @@ function addStartup(store, bundle) {
   }
   return startup;
 }
-function recordFiles(store, bundle, files5, importId, rekeyed) {
+function recordFiles(store, bundle, files5, importId, rekeyed2) {
   const conn = connectionOf(store);
   const hashes = new Map(bundle.environments.map((e) => [e.project, e.hash]));
   for (const f of files5) {
-    const here = rekeyed.get(testFileId(f));
+    const here = rekeyed2.get(testFileId(f));
     const [key3, environment, closure, observed2] = here === void 0 ? [
       f.key,
       hashes.get(f.project) ?? "",
@@ -54327,15 +54327,15 @@ function* importSlices(store, bundle, options, tally2) {
     tally2.startup += added;
   }
   const { rekeying } = options;
-  const rekeyed = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
-  tally2.rekeyed = rekeyed.size;
+  const rekeyed2 = rekeying === void 0 ? /* @__PURE__ */ new Map() : conn.read(() => rekeyFiles(store, bundle, rekeying));
+  tally2.rekeyed = rekeyed2.size;
   for (const files5 of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
     yield write4("an import's files", () => {
       ensureImportTables(conn);
-      recordFiles(store, bundle, files5, options.importId, rekeyed);
+      recordFiles(store, bundle, files5, options.importId, rekeyed2);
     });
   }
-  for (const group of resultSlices(bundle, rekeyed)) {
+  for (const group of resultSlices(bundle, rekeyed2)) {
     let counts = { results: 0, alreadyStored: 0 };
     yield write4("an import's results", () => {
       counts = addResults(store, bundle, group, options);
@@ -54362,9 +54362,9 @@ function* importSlices(store, bundle, options, tally2) {
     );
   });
 }
-function* resultSlices(bundle, rekeyed) {
+function* resultSlices(bundle, rekeyed2) {
   const keyed = bundle.results.map(
-    (r) => [r, rekeyed.get(testFileId({ project: r.project, path: r.testPath }))?.key ?? r.key]
+    (r) => [r, rekeyed2.get(testFileId({ project: r.project, path: r.testPath }))?.key ?? r.key]
   );
   let slice = [];
   for (const group of groupBy(keyed, ([, key3]) => key3).values()) {
@@ -71150,8 +71150,8 @@ var init_cache = __esm({
        */
       keep(files5) {
         const made = [this.#conditions, this.#signatures, this.#early, this.#failing];
-        const over = (size) => size > files5.length;
-        if (!over(this.#map.setsKept) && !made.some((by) => over(by.size))) return;
+        const over2 = (size) => size > files5.length;
+        if (!over2(this.#map.setsKept) && !made.some((by) => over2(by.size))) return;
         const judged2 = new Set(files5.map((f) => f.path));
         for (const by of made) for (const path of by.keys()) if (!judged2.has(path)) by.delete(path);
         this.#map.keep(judged2);
@@ -78851,9 +78851,9 @@ function codeStatusLines(s, command) {
   const since = code.since === null ? "" : `, ${code.sinceRegistration} ${SINCE[code.since]}`;
   const counting = code.pending === 0 ? "" : `; ${progress2}`;
   const unknown3 = code.unknown === 0 ? "" : `; ${plural(code.unknown, "function")} in parse errors not judged`;
-  const over = `${plural(code.over, "function")} over ${code.threshold}`;
+  const over2 = `${plural(code.over, "function")} over ${code.threshold}`;
   return [
-    `Complexity: ${over}${since}${counting}${unknown3}${uncountable}; ${command} code lists them.`
+    `Complexity: ${over2}${since}${counting}${unknown3}${uncountable}; ${command} code lists them.`
   ];
 }
 var waits = (n) => n === 1 ? "waits" : "wait";
@@ -88720,12 +88720,12 @@ function lastHeard(store, worktreeId, revision, session, agent = null) {
   ).flatMap((record2) => toldRevision(store, record2.consumer) ?? []);
   return Math.min(revision, ...told3);
 }
-function editWindow(store, worktreeId, heard, revision, rekeyed) {
+function editWindow(store, worktreeId, heard, revision, rekeyed2) {
   const isSlow = worktreeLaneFiles(store, worktreeId);
   const unseen = new Set(
-    rekeyed.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true).map((file) => file.revision)
+    rekeyed2.filter((file) => file.revision <= heard && isSlow?.(file.testFile) !== true).map((file) => file.revision)
   );
-  const kept6 = rekeyed.filter((file) => file.revision > heard || unseen.has(file.revision));
+  const kept6 = rekeyed2.filter((file) => file.revision > heard || unseen.has(file.revision));
   const first2 = kept6.reduce((least, file) => Math.min(least, file.revision), heard + 1);
   const refs2 = kept6.map((file) => file.testFile);
   const owed = new Set(
@@ -93311,8 +93311,8 @@ function estimateText(estimates, leftSeconds, budget2) {
     const run7 = `${plural(files5, "test file")} to run here, up to ${width} at once`;
     if (seconds5 === null) return `${name3}: ${run7}; no stored duration, so the time is unknown`;
     const from = known4 < files5 ? `the stored durations of ${known4} (the others at their median)` : files5 === 1 ? "its stored duration" : "their stored durations";
-    const over = seconds5 > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name3}: ${run7}: about ${seconds5} s from ${from}${scaledText(load)}${over}`;
+    const over2 = seconds5 > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
+    return `${name3}: ${run7}: about ${seconds5} s from ${from}${scaledText(load)}${over2}`;
   });
   const fit = budget2 === void 0 ? null : budgetLine(budget2);
   return [...lines, ...fit === null ? [] : [fit]].map((line) => `squeal code: ${line}
@@ -94624,6 +94624,8 @@ init_text();
 var NAMED4 = 3;
 var NotKept = class {
   #kinds = /* @__PURE__ */ new Map();
+  /** Row 023-18 (D2): each file's own reason, kept after `take`. */
+  #byFile = /* @__PURE__ */ new Map();
   /** `path`, a completed test file with a record, was not kept for `decided`. */
   add(path, decided) {
     const { kind, paths } = decided.cause;
@@ -94631,6 +94633,12 @@ var NotKept = class {
     at2.files.push(path);
     for (const one of paths) at2.paths.add(one);
     this.#kinds.set(kind, at2);
+    const behind = paths.length === 0 ? "" : ` (${listPaths([...paths].sort(compare), NAMED4)})`;
+    this.#byFile.set(path, `${phrase(kind, true, decided.reason)}${behind}`);
+  }
+  /** Row 023-18 (D2): why each file added so far was not kept, in the note's words for one file. */
+  files() {
+    return new Map(this.#byFile);
   }
   /** One line per kind, in the order each kind came first; then it holds none. */
   take() {
@@ -94736,6 +94744,13 @@ var Keeper = class {
     if (this.#completed === 0) return;
     const counts = { completed: this.#completed, early: this.#keptEarly };
     this.#tell(keptCount({ ...counts, kept: this.#tally.kept, unknown: this.#tally.unknown }));
+  }
+  /**
+   * Row 023-18 (D2): why each completed file was not kept, by path, for a
+   * caller that reports files one by one (`squeal status --at --run`).
+   */
+  notKeptFiles() {
+    return new Map([...this.#notKept.files(), ...this.#passNotKept.files()]);
   }
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close() {
@@ -94934,7 +94949,14 @@ function openStored(options) {
       stores.close();
     }
   };
-  return { stored: stored3, ran: (run7) => keeper.ran(run7), flush: () => keeper.flush(), keys, close };
+  return {
+    stored: stored3,
+    ran: (run7) => keeper.ran(run7),
+    flush: () => keeper.flush(),
+    notKept: () => keeper.notKeptFiles(),
+    keys,
+    close
+  };
 }
 var failedName = (r) => r.check.kind === "test" ? r.check.fullName : FILE_ERROR;
 function evidenceAt(stores, runner, ref3, { key: key3, loads: loads2 }) {
@@ -95094,7 +95116,7 @@ async function collectWithStores(root, env, changed2, options, parts3 = [], reru
       await stored3?.close();
     }
   };
-  return { evidence, keep };
+  return { evidence, keep, notKept: () => stored3?.notKept() ?? /* @__PURE__ */ new Map() };
 }
 function told(adapters, opened3) {
   const tell = (adapter) => {
@@ -95293,8 +95315,8 @@ function measureText(f, report4) {
   const { complexityThreshold: ccLimit, crapThreshold: crapLimit } = report4.base.policy;
   const cc = `CC ${f.complexity}${f.complexity > ccLimit ? ` over ${ccLimit}` : ""}`;
   if (f.crap === null || f.coverage === null) return cc;
-  const over = f.crap > crapLimit ? ` over ${crapLimit}` : "";
-  return `${cc}, coverage ${percent(f.coverage.share)}, CRAP ${crapText(f.crap, crapLimit)}${over}`;
+  const over2 = f.crap > crapLimit ? ` over ${crapLimit}` : "";
+  return `${cc}, coverage ${percent(f.coverage.share)}, CRAP ${crapText(f.crap, crapLimit)}${over2}`;
 }
 var entryText2 = (e) => `${e.kind} ${e.measure} exception`;
 function missText(u, ccLimit) {
@@ -106357,6 +106379,9 @@ init_policy2();
 init_reverse_index();
 init_install_command();
 var INSTALL_TIMEOUT_MS = 3e5;
+function changedText(changed2) {
+  return changed2.by === "git" ? `git's checkout rules changed ${changed2.path}` : `install changed the checkout: ${changed2.path}`;
+}
 var CheckoutFailed = class extends Error {
   constructor(reason2, detail2) {
     super(detail2);
@@ -106411,6 +106436,11 @@ async function withCheckout(input, options, body2) {
   }
   try {
     await input.prepare?.(checkout);
+    const checkStarted = performance.now();
+    const skip = new Set(input.copied ?? []);
+    const check3 = () => checkoutChange(root, checkout.tree, checkout.commit, skip, input.expected, input.hidden);
+    const before4 = await check3();
+    let checkMs = performance.now() - checkStarted;
     const timeoutMs = options.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
     const started2 = (group) => {
       try {
@@ -106420,18 +106450,14 @@ async function withCheckout(input, options, body2) {
     };
     const install = await (options.install ?? ((tree) => installCheckout(tree, { timeoutMs, started: started2 })))(checkout.tree);
     if (!install.ok) throw new CheckoutFailed("install", `${install.command}: ${install.reason}`);
-    const checkStarted = performance.now();
-    const skip = new Set(input.copied ?? []);
-    const path = await checkoutChange(
-      root,
-      checkout.tree,
-      checkout.commit,
-      skip,
-      input.expected,
-      input.hidden
-    );
-    const change3 = { path, ms: Math.round(performance.now() - checkStarted) };
-    return await body2(checkout, install, change3);
+    let changed2 = before4 === null ? null : { path: before4, by: "git" };
+    if (changed2 === null) {
+      const afterStarted = performance.now();
+      const after3 = await check3();
+      checkMs += performance.now() - afterStarted;
+      if (after3 !== null) changed2 = { path: after3, by: "install" };
+    }
+    return await body2(checkout, install, { changed: changed2, ms: Math.round(checkMs) });
   } finally {
     await removeCheckout(checkout);
   }
@@ -106445,6 +106471,13 @@ async function manifestOf4(root) {
 }
 
 // src/core/commit/at-keys-checkout.ts
+async function rekeyed(files5, rekey2) {
+  const keys = await rekey2(files5.map((f) => f.ref));
+  return files5.map((file) => {
+    const at2 = keys.get(testFileId(file.ref));
+    return at2 !== void 0 && "key" in at2 ? { ref: file.ref, at: at2 } : file;
+  });
+}
 async function inCheckout(main2, input, files5, options) {
   const out2 = /* @__PURE__ */ new Map();
   const started2 = performance.now();
@@ -106453,7 +106486,7 @@ async function inCheckout(main2, input, files5, options) {
   let changed2 = null;
   try {
     await withCheckout(input, options, async (checkout, _install, change3) => {
-      ({ path: changed2, ms: inputCheckMs } = change3);
+      ({ changed: changed2, ms: inputCheckMs } = change3);
       const refs2 = await withKeyer(
         checkout.tree,
         input.commonDir,
@@ -106475,7 +106508,8 @@ async function inCheckout(main2, input, files5, options) {
           return refs3;
         }
       );
-      await options.beforeRemove?.(checkout, keyedOf(refs2, out2), changed2);
+      const rekey2 = (again2) => keyAgain(checkout.tree, input.commonDir, again2, options);
+      await options.beforeRemove?.(checkout, keyedOf(refs2, out2), changed2, rekey2);
     });
   } catch (error) {
     if (!(error instanceof CheckoutFailed)) throw error;
@@ -106484,6 +106518,25 @@ async function inCheckout(main2, input, files5, options) {
     return { files: out2, failure: failure2, ms: ms2(), changed: null, inputCheckMs };
   }
   return { files: out2, failure: null, ms: ms2(), changed: changed2, inputCheckMs };
+}
+async function keyAgain(tree, commonDir, refs2, options) {
+  const out2 = /* @__PURE__ */ new Map();
+  if (refs2.length === 0) return out2;
+  const stores = readStores(commonDir);
+  try {
+    const main2 = stores?.main ?? null;
+    await withKeyer(tree, commonDir, main2 ?? void 0, options, async (open7) => {
+      const keyed = await open7.keyer.keyed(refs2);
+      for (const ref3 of refs2) {
+        const at2 = keyed.get(ref3);
+        if (at2 !== void 0)
+          out2.set(testFileId(ref3), { ...found2(main2, ref3, at2.key), loads: at2.loads });
+      }
+    });
+  } finally {
+    stores?.close();
+  }
+  return out2;
 }
 function keyedOf(refs2, out2) {
   return refs2.map((ref3) => ({ ref: ref3, at: out2.get(testFileId(ref3)) }));
@@ -106581,10 +106634,16 @@ function conditionWords(conditions) {
 // src/core/proof/own-home.ts
 import { constants as constants13, copyFileSync as copyFileSync5, lstatSync as lstatSync9, mkdirSync as mkdirSync29, readdirSync as readdirSync42 } from "node:fs";
 import { isAbsolute as isAbsolute27, join as join173, relative as relative32, resolve as resolve40, sep as sep33 } from "node:path";
+var OutOfBudget = class extends Error {
+  constructor() {
+    super("the budget ended while the kept paths were copied into the own HOME");
+  }
+};
+var over = (deadline) => deadline !== void 0 && performance.now() > deadline;
 function within2(path, folder) {
   return folder === "" || path === folder || path.startsWith(`${folder}/`);
 }
-function placeKeep(given2, cwd, home, hidden) {
+function placeKeep(given2, cwd, home, hidden, deadline) {
   const problem = (why2) => ({ usage: `--home-keep ${given2}: ${why2}` });
   if (home === void 0 || home === "") return problem("HOME is not set");
   const rel2 = relative32(resolve40(home), resolve40(cwd, given2));
@@ -106594,12 +106653,12 @@ function placeKeep(given2, cwd, home, hidden) {
   const hiding = hidden.find((h) => within2(path, h));
   if (hiding !== void 0)
     return problem(`it lies in the hidden path ${hiding === "" ? "HOME" : `~/${hiding}`}`);
-  const link = linkIn(home, path, hidden);
+  const link = linkIn(home, path, hidden, deadline);
   if (link === void 0) return problem("no such file or folder");
   if (link !== null) return problem(`~/${link} is a link; a kept path must hold none`);
   return { given: given2, path };
 }
-function linkIn(home, path, hidden) {
+function linkIn(home, path, hidden, deadline) {
   const parts3 = path === "" ? [] : path.split("/");
   for (let at2 = 1; at2 < parts3.length; at2++) {
     const above = parts3.slice(0, at2).join("/");
@@ -106607,21 +106666,22 @@ function linkIn(home, path, hidden) {
     if (stats === void 0) return void 0;
     if (stats.isSymbolicLink() || !stats.isDirectory()) return above;
   }
-  return linkBelow(home, path, hidden);
+  if (over(deadline)) return null;
+  return linkBelow(home, path, hidden, deadline);
 }
-function linkBelow(home, path, hidden) {
-  if (hidden.some((h) => within2(path, h))) return null;
+function linkBelow(home, path, hidden, deadline) {
+  if (hidden.some((h) => within2(path, h)) || over(deadline)) return null;
   const stats = lstatSync9(join173(home, path), { throwIfNoEntry: false });
   if (stats === void 0) return void 0;
   if (stats.isSymbolicLink()) return path;
   if (!stats.isDirectory()) return null;
   for (const name3 of readdirSync42(join173(home, path))) {
-    const found4 = linkBelow(home, path === "" ? name3 : `${path}/${name3}`, hidden);
+    const found4 = linkBelow(home, path === "" ? name3 : `${path}/${name3}`, hidden, deadline);
     if (found4 !== null && found4 !== void 0) return found4;
   }
   return null;
 }
-function ownHome(home, hidden, keep, into) {
+function ownHome(home, hidden, keep, into, deadline) {
   mkdirSync29(into, { recursive: true });
   const sorted3 = [...new Set(keep)].sort();
   const roots = sorted3.filter((path, at2) => !sorted3.slice(0, at2).some((k) => within2(path, k)));
@@ -106634,18 +106694,19 @@ function ownHome(home, hidden, keep, into) {
         throw new Error(`~/${above} is not a folder; the kept ~/${path} is not copied`);
       mkdirSync29(join173(into, above), { recursive: true });
     }
-    copyTree(home, into, path, hidden);
+    copyTree(home, into, path, hidden, deadline);
   }
 }
-function copyTree(home, into, path, hidden) {
+function copyTree(home, into, path, hidden, deadline) {
   if (hidden.some((h) => within2(path, h))) return;
+  if (over(deadline)) throw new OutOfBudget();
   const from = join173(home, path);
   const stats = lstatSync9(from);
   if (stats.isSymbolicLink()) throw new Error(`~/${path} is a link; a kept path must hold none`);
   if (stats.isDirectory()) {
     if (path !== "") mkdirSync29(join173(into, path), { recursive: true });
     for (const name3 of readdirSync42(from))
-      copyTree(home, into, path === "" ? name3 : `${path}/${name3}`, hidden);
+      copyTree(home, into, path === "" ? name3 : `${path}/${name3}`, hidden, deadline);
   } else if (stats.isFile()) {
     copyFileSync5(from, join173(into, path), constants13.COPYFILE_EXCL);
   }
@@ -106914,7 +106975,7 @@ async function keysAtCommit(options) {
     const { beforeRemove, whileOpen } = options;
     const hooks = {
       ...beforeRemove === void 0 ? {} : {
-        beforeRemove: ((checkout, keyed, changed2) => beforeRemove(checkout, own(keyed), changed2))
+        beforeRemove: ((checkout, keyed, changed2, rekey2) => beforeRemove(checkout, own(keyed), changed2, rekey2))
       },
       ...whileOpen === void 0 ? {} : { whileOpen: ((open7, keyed) => whileOpen(open7, own(keyed))) }
     };
@@ -106934,6 +106995,15 @@ init_compare();
 init_state();
 
 // src/cli/status-at-report-run.ts
+function notStoredLines(reasons, unstored2) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const reason2 of reasons) counts.set(reason2, (counts.get(reason2) ?? 0) + 1);
+  const told3 = reasons.length;
+  if (told3 < unstored2) counts.set("no reason told", unstored2 - told3);
+  return [...counts].map(
+    ([reason2, n]) => `${n} not stored (${reason2}); the next --at has no result for ${n === 1 ? "it" : "them"}`
+  );
+}
 function runLines2(run7, at2) {
   const used = `${(run7.usedMs / 1e3).toFixed(1)} s of the ${run7.timeoutSeconds} s budget`;
   const lines = [
@@ -106942,12 +107012,9 @@ function runLines2(run7, at2) {
   const unstored2 = run7.ran - run7.stored;
   if (unstored2 > 0 && run7.changed !== null)
     lines.push(
-      `${unstored2} not stored (install changed the checkout: ${run7.changed}): ${unstored2 === 1 ? "its result is" : "their results are"} shown, not ${at2}'s`
+      `${unstored2} not stored (${changedText({ path: run7.changed, by: run7.changedBy ?? "install" })}): ${unstored2 === 1 ? "its result is" : "their results are"} shown, not ${at2}'s`
     );
-  else if (unstored2 > 0)
-    lines.push(
-      `${unstored2} not stored: the gate keeps a result only with coverage on at ${at2}; the next --at has no result for ${unstored2 === 1 ? "it" : "them"}`
-    );
+  else if (unstored2 > 0) lines.push(...notStoredLines(run7.notStored, unstored2));
   const needs = run7.notComparable - (run7.changed === null ? 0 : unstored2);
   if (needs > 0)
     lines.push(`${needs} not run: their closure needs a path git does not hold at ${at2}`);
@@ -107057,10 +107124,11 @@ function formatAt(report4, nowMs) {
     );
   }
   if (report4.failure !== null) lines.push(`The checkout gave no keys: ${report4.failure}`);
-  if (report4.changed !== void 0 && report4.changed !== null)
-    lines.push(
-      `The install changed the checkout (${report4.changed} differs from ${at2}), so its keys and results are not ${at2}'s and nothing from it is stored.`
-    );
+  if (report4.changed !== void 0 && report4.changed !== null) {
+    const { path, by } = report4.changed;
+    const what = by === "git" ? `Git's checkout rules (.gitattributes) wrote ${path} otherwise than ${at2} holds it` : `The install changed the checkout (${path} differs from ${at2})`;
+    lines.push(`${what}, so its keys and results are not ${at2}'s and nothing from it is stored.`);
+  }
   const order = ["pass -> fail", "fail -> pass", "unknown"];
   for (const kind of order) {
     for (const f of report4.files.filter((file) => file.change === kind)) {
@@ -107094,7 +107162,8 @@ function jsonAt(report4) {
     now: report4.now,
     checkoutMs: report4.checkoutMs,
     inputCheckMs: report4.inputCheckMs ?? null,
-    changed: report4.changed ?? null,
+    changed: report4.changed?.path ?? null,
+    changedBy: report4.changed?.by ?? null,
     failure: report4.failure,
     counts: countsOf6(report4.files),
     run: report4.run ?? null,
@@ -107128,7 +107197,7 @@ async function commitSide(options) {
   const state = (ref3) => {
     const found4 = at2.files.get(testFileId(ref3));
     if (found4 !== void 0 && "key" in found4 && changed2 !== null)
-      return { state: "not comparable", reason: `install changed the checkout: ${changed2}` };
+      return { state: "not comparable", reason: changedText(changed2) };
     if (found4 !== void 0) return commitState(found4, worktreeId);
     if (!tree.has(ref3.path)) return { state: "absent" };
     if (failure2 !== null) return { state: "not determined", reason: failure2 };
@@ -107213,7 +107282,9 @@ function select2(all2, paths) {
 }
 
 // src/cli/status-at-run.ts
+init_runtime2();
 import { availableParallelism as availableParallelism9 } from "node:os";
+init_policy2();
 init_reverse_index();
 init_text();
 
@@ -107318,7 +107389,9 @@ async function gateFiles(options, env) {
     const collected = await collectWithStores(root, env, changed2, collect2);
     await collected.keep();
     const { evidence } = collected;
-    return { runs: evidence.testFiles.map(fileRun), timedOut: evidence.timedOut, budgetSeconds };
+    const notKept2 = [...collected.notKept()].map(([path, reason2]) => ({ path, reason: reason2 }));
+    const runs = evidence.testFiles.map(fileRun);
+    return { runs, timedOut: evidence.timedOut, budgetSeconds, notKept: notKept2 };
   } finally {
     durations2?.close();
   }
@@ -107484,7 +107557,8 @@ async function outcomesOf2(input) {
         states.set(id, asRun2(stateOf3(key3, records, input.own), commit, true));
       } else if (chosen.has(id)) {
         const runs = answer4.result.runs.filter((r) => r.path === path);
-        states.set(id, fromGate(key3, runs, commit));
+        const why2 = notKeptWhy(answer4.result.notKept, path, input.coverage !== false);
+        states.set(id, fromGate(key3, runs, commit, why2));
       }
     }
   });
@@ -107492,7 +107566,7 @@ async function outcomesOf2(input) {
 }
 function notTheCommits(state, changed2) {
   if (state.state !== "pass" && state.state !== "fail") return state;
-  const reason2 = `install changed the checkout: ${changed2}`;
+  const reason2 = changedText(changed2);
   const failed7 = state.state === "fail" ? { failed: state.failed } : {};
   return { state: "not comparable", reason: reason2, ran: state.state, ...failed7 };
 }
@@ -107500,7 +107574,12 @@ function asRun2(state, commit, stored3) {
   const origin = { kind: "run", worktreeId: null, commit, stored: stored3 };
   return state.state === "pass" || state.state === "fail" ? { ...state, origin } : state;
 }
-function fromGate(key3, runs, commit) {
+function notKeptWhy(notKept2, path, coverage) {
+  const reason2 = notKept2?.find((n) => n.path === path)?.reason;
+  if (reason2 !== void 0) return `the gate did not keep it: ${reason2}`;
+  return coverage ? "the gate did not keep it and gave no reason" : "the gate keeps a result only with coverage on";
+}
+function fromGate(key3, runs, commit, why2) {
   const [first2] = runs;
   if (first2 === void 0) return { state: "not determined", reason: "the run gave it no outcome" };
   const shape = (r) => JSON.stringify([
@@ -107512,7 +107591,13 @@ function fromGate(key3, runs, commit) {
     const reason2 = `its ${runs.length} projects ended differently, and no result was stored to tell them apart`;
     return { state: "not determined", reason: reason2 };
   }
-  const origin = { kind: "run", worktreeId: null, commit, stored: false };
+  const origin = {
+    kind: "run",
+    worktreeId: null,
+    commit,
+    stored: false,
+    ...why2 === void 0 ? {} : { notStored: why2 }
+  };
   if (first2.outcome === "passed") return { state: "pass", key: key3, origin };
   if (first2.outcome === "failed") {
     const failed7 = [...new Set(first2.failed.map((f) => f.test))].sort(compare);
@@ -107621,7 +107706,7 @@ function atRun(input) {
       selection = chosen;
     }
   );
-  const beforeRemove = async (checkout, keyed, change3) => {
+  const beforeRemove = async (checkout, keyed, change3, rekey2) => {
     changed2 = change3;
     for (const [id, state] of selection.states) states.set(id, state);
     const { run: run7 } = selection;
@@ -107630,12 +107715,12 @@ function atRun(input) {
     try {
       estimate = estimateOf(run7, durationsOf2);
       if (args2.allMissing) input.note(estimateText2(estimate, commit, args2.timeoutSeconds));
-      if (run7.length > 0) await runFiles2(checkout, run7, keyed);
+      if (run7.length > 0) await runFiles2(checkout, run7, keyed, rekey2);
     } finally {
       durations2?.close();
     }
   };
-  async function runFiles2(checkout, run7, keyed) {
+  async function runFiles2(checkout, run7, keyed, rekey2) {
     overheadMs = elapsed();
     const left = Math.floor((budgetMs - overheadMs) / 1e3);
     if (left < 1) {
@@ -107664,14 +107749,17 @@ function atRun(input) {
     const siblings = keyed.filter(
       (f) => noResult(f) && paths.has(f.ref.path) && !chosen.has(testFileId(f.ref))
     );
+    const both = [...run7, ...siblings];
+    const read6 = changed2 === null && "result" in answer4 ? await rekeyed(both, rekey2) : both;
     const outcomes2 = await outcomesOf2({
       commonDir: input.commonDir,
       commit,
       own: input.own,
-      run: run7,
-      siblings,
+      run: read6.slice(0, run7.length),
+      siblings: read6.slice(run7.length),
       answer: answer4,
-      changed: changed2
+      changed: changed2,
+      coverage: coverageOn(readPolicy(checkout.tree))
     });
     for (const [id, state] of outcomes2) states.set(id, state);
     leftOut3 = run7.filter((f) => states.get(testFileId(f.ref))?.state === "not run");
@@ -107689,7 +107777,11 @@ function atRun(input) {
       selected: selection.run.length,
       ran: ran.length,
       stored: ran.filter((s) => "origin" in s && s.origin.stored === true).length,
-      changed: changed2,
+      notStored: ran.flatMap(
+        (s) => "origin" in s && s.origin.notStored !== void 0 ? [s.origin.notStored] : []
+      ),
+      changed: changed2?.path ?? null,
+      changedBy: changed2?.by ?? null,
       notRun,
       notComparable: all2.filter((s) => s.state === "not comparable").length,
       timedOut,
@@ -107896,7 +107988,7 @@ async function commitTime(root, commit) {
 }
 
 // src/cli/proof-locate.ts
-async function locate3(args2, io) {
+async function locate3(args2, io, deadline) {
   const where3 = worktreeOf(io);
   if (typeof where3 === "string") return where3;
   const { cwd, root, commonDir } = where3;
@@ -107917,7 +108009,7 @@ async function locate3(args2, io) {
     if (rel2 === null) return `${file} lies outside ${root}`;
     paths.push(rel2);
   }
-  const conditions = conditionsOf(args2, cwd, root, (io.env ?? process.env).HOME);
+  const conditions = conditionsOf(args2, cwd, root, (io.env ?? process.env).HOME, deadline);
   if (typeof conditions === "string") return conditions;
   const linked = await linkedWithout(root, [base, head2], conditions);
   if (linked !== null) return linked;
@@ -107936,7 +108028,7 @@ async function linkedWithout(root, commits, conditions) {
   }
   return null;
 }
-function conditionsOf(args2, cwd, root, home) {
+function conditionsOf(args2, cwd, root, home, deadline) {
   const without2 = [];
   for (const given2 of args2.without ?? []) {
     const placed = placeWithout(given2, cwd, root, home);
@@ -107950,7 +108042,7 @@ function conditionsOf(args2, cwd, root, home) {
   const keep = [];
   for (const given2 of args2.homeKeep ?? []) {
     if (hidden.length === 0) return `--home-keep ${given2} needs a --without path under HOME`;
-    const placed = placeKeep(given2, cwd, home, hidden);
+    const placed = placeKeep(given2, cwd, home, hidden, deadline);
     if ("usage" in placed) return placed.usage;
     keep.push(placed);
   }
@@ -108164,7 +108256,7 @@ async function sideKeys(options) {
       const changed2 = at2.changed === null ? null : {
         notDetermined: {
           reason: "changed",
-          detail: `install changed the checkout: ${at2.changed}`
+          detail: changedText(at2.changed)
         }
       };
       for (const [id, key3] of at2.files)
@@ -108238,7 +108330,9 @@ async function testSource(root, tests2, paths) {
 init_reverse_index();
 
 // src/cli/proof-run.ts
+init_runtime2();
 import { join as join179 } from "node:path";
+init_policy2();
 init_compare();
 init_reverse_index();
 function forcedReason(input) {
@@ -108246,11 +108340,17 @@ function forcedReason(input) {
   if (input.repeat > 1) return "a repeated side is not stored";
   return null;
 }
-async function runFiles(input, checkout, toRun2, change3, files5) {
+async function runFiles(input, checkout, toRun2, change3, files5, rekey2) {
+  const budgetCut = () => {
+    for (const file of toRun2) files5.set(testFileId(file.ref), budgetSide());
+    return 0;
+  };
+  if (input.deadline - performance.now() < 1e3) return budgetCut();
   let env;
   try {
     env = runEnv(input, checkout);
   } catch (error) {
+    if (error instanceof OutOfBudget) return budgetCut();
     const why2 = `own HOME: ${error instanceof Error ? error.message : String(error)}`;
     for (const file of toRun2) files5.set(testFileId(file.ref), unknown(why2));
     return 0;
@@ -108267,7 +108367,7 @@ async function runFiles(input, checkout, toRun2, change3, files5) {
       }
       break;
     }
-    const sides = await runOnce(input, checkout, left, change3, env, seconds5);
+    const sides = await runOnce(input, checkout, left, { change: change3, env, seconds: seconds5, rekey: rekey2 });
     const next = [];
     for (const file of left) {
       const id = testFileId(file.ref);
@@ -108292,7 +108392,8 @@ function runEnv(input, checkout) {
     real3,
     hidden,
     input.conditions.keep.map((k) => k.path),
-    home
+    home,
+    input.deadline
   );
   return conditionedEnv(input.env, input.conditions, home);
 }
@@ -108305,12 +108406,13 @@ function budgetSide() {
     runs: 0
   };
 }
-async function runOnce(input, checkout, toRun2, change3, env, seconds5) {
+async function runOnce(input, checkout, given2, round2) {
+  const { change: change3, env, seconds: seconds5 } = round2;
   const forced = forcedReason(input);
   const answer4 = await runInChild({
     relaunch: input.relaunch,
     checkout,
-    files: [...new Set(toRun2.map((f) => f.ref.path))].sort(),
+    files: [...new Set(given2.map((f) => f.ref.path))].sort(),
     budgetSeconds: seconds5,
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
@@ -108320,6 +108422,8 @@ async function runOnce(input, checkout, toRun2, change3, env, seconds5) {
     env,
     forward: input.forward
   });
+  const stored3 = forced === null && change3 === null && "result" in answer4;
+  const toRun2 = stored3 ? await rekeyed(given2, round2.rekey) : given2;
   const states = await outcomesOf2({
     commonDir: checkout.commonDir,
     commit: input.side.code,
@@ -108328,10 +108432,11 @@ async function runOnce(input, checkout, toRun2, change3, env, seconds5) {
     siblings: [],
     answer: answer4,
     changed: change3,
-    stored: forced === null
+    stored: forced === null,
+    coverage: coverageOn(readPolicy(checkout.tree))
   });
   const out2 = /* @__PURE__ */ new Map();
-  const notStored = change3 === null ? forced : `install changed the checkout: ${change3}`;
+  const notStored = change3 === null ? forced : changedText(change3);
   await withStores(checkout.commonDir, async (main2) => {
     for (const file of toRun2) {
       const state = states.get(testFileId(file.ref));
@@ -108363,17 +108468,18 @@ function ranSide(state, answer4, path, notStored, records) {
     return { end: endOfRecords(records), from: "run", stored: true, notStored: null, runs: 1 };
   }
   const ranAs = (outcome2) => {
-    if (outcome2 === "pass") return { ...unstored(notStored), end: { end: "pass" } };
+    const why2 = notStored ?? reasonOf4(state);
+    if (outcome2 === "pass") return { ...unstored(why2), end: { end: "pass" } };
     const failures = sharedFailures(runs);
     if (failures === null)
       return {
-        ...unstored(notStored),
+        ...unstored(why2),
         end: {
           end: "unknown",
           reason: `its ${runs.length} projects failed with different failures, and no stored result tells which is this project's`
         }
       };
-    return { ...unstored(notStored), end: { end: "fail", failures } };
+    return { ...unstored(why2), end: { end: "fail", failures } };
   };
   if (state.state === "pass" || state.state === "fail") return ranAs(state.state);
   if (state.state === "not comparable" && state.ran !== void 0) return ranAs(state.ran);
@@ -108387,6 +108493,9 @@ function ranSide(state, answer4, path, notStored, records) {
   if (state.state === "not determined" || state.state === "not comparable")
     return unknown(state.reason);
   return unknown(state.state);
+}
+function reasonOf4(state) {
+  return "origin" in state ? state.origin.notStored ?? null : null;
 }
 function unstored(notStored) {
   return {
@@ -108416,7 +108525,7 @@ async function withSide(input, body2) {
   let keyedRefs = [];
   const started2 = performance.now();
   const forced = forcedReason(input);
-  const beforeRemove = async (checkout, keyed, change3) => {
+  const beforeRemove = async (checkout, keyed, change3, rekey2) => {
     changed2 = change3;
     keyedRefs = keyed.map((f) => f.ref);
     const needs = await needsOf({
@@ -108426,7 +108535,7 @@ async function withSide(input, body2) {
       copied: /* @__PURE__ */ new Set([...input.named, ...input.also])
     });
     const pending = /* @__PURE__ */ new Map();
-    const broken = change3 !== null && hasConditions(input.conditions) ? `install changed the checkout: ${change3}; the condition is not known to hold` : null;
+    const broken = change3 !== null && hasConditions(input.conditions) ? `${changedText(change3)}; the condition is not known to hold` : null;
     for (const file of keyed) {
       const id = testFileId(file.ref);
       if (!("key" in file.at)) continue;
@@ -108453,7 +108562,7 @@ async function withSide(input, body2) {
     const run7 = async (refs3) => {
       const toRun2 = refs3.map((ref3) => pending.get(testFileId(ref3))).filter((f) => f !== void 0 && !files5.has(testFileId(f.ref)));
       if (toRun2.length === 0) return;
-      ran += await runFiles(input, checkout, toRun2, change3, files5);
+      ran += await runFiles(input, checkout, toRun2, change3, files5, rekey2);
     };
     const open7 = {
       keyed,
@@ -108504,7 +108613,8 @@ async function proofCommand(args2, io, options = {}) {
 `);
     return 2;
   };
-  const at2 = await locate3(args2, io);
+  const deadline = started2 + args2.timeoutSeconds * 1e3;
+  const at2 = await locate3(args2, io, deadline);
   if (typeof at2 === "string") return fail3(at2);
   const { root, base, head: head2, paths, conditions } = at2;
   const env = { ...io.env ?? process.env };
@@ -108516,7 +108626,7 @@ async function proofCommand(args2, io, options = {}) {
     keying: { adapters: daemonAdapters, squealVersion: squealVersion(), env, ...options, note },
     relaunch: io.relaunch,
     env,
-    deadline: started2 + args2.timeoutSeconds * 1e3,
+    deadline,
     forward: (text3) => args2.json ? void 0 : io.stderr(text3),
     conditions,
     repeat: args2.repeat ?? 1
@@ -112036,7 +112146,7 @@ function addPair2(sums, { reach: reach2, facts: inputs2 }, edit, facts) {
   sums.rerun += seconds5;
   const list2 = listAt(test.loaded.lists, edit.at);
   if (list2 === null) {
-    const { reason: reason2, detail: detail2 } = reasonOf4(reach2, facts);
+    const { reason: reason2, detail: detail2 } = reasonOf5(reach2, facts);
     count3(
       sums.noList,
       `${reason2}\0${detail2 ?? ""}`,
@@ -112084,7 +112194,7 @@ function projectFacts(tests2, coverage) {
     unisolated: ran && !recorded2
   };
 }
-function reasonOf4(reach2, facts) {
+function reasonOf5(reach2, facts) {
   const { loaded } = reach2.test;
   if (!facts.coverageOn) return { reason: "coverage off", detail: null };
   if (loaded.lists.length > 0) {
