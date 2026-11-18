@@ -13,6 +13,45 @@ import { modelKey } from "./behaviours.mjs";
  * ids, which the file keeps apart.
  */
 export function atomicCoverage(data, arms) {
+  // Pooled runs (atomic-pool.mjs): each run's plan against its own cells, the rows added up.
+  if (Array.isArray(data.parts)) {
+    const each = data.parts.map((p) =>
+      runCoverage({ ...p, cells: data.cells.filter((c) => c.run === p.run) }, arms),
+    );
+    return each.includes(null) ? null : summed(each);
+  }
+  return runCoverage(data, arms);
+}
+
+/** The rows of `parts`' coverages added up by model, scenario and arm. */
+function summed(parts) {
+  const rows = new Map();
+  for (const r of parts.flatMap((p) => p.rows)) {
+    const key = `${r.model}\n${r.scenario}\n${r.arm}`;
+    const o = rows.get(key);
+    rows.set(
+      key,
+      o
+        ? {
+            ...o,
+            planned: o.planned + r.planned,
+            kept: o.kept + r.kept,
+            reached: o.reached + r.reached,
+          }
+        : r,
+    );
+  }
+  const all = [...rows.values()];
+  return {
+    planned: all.reduce((n, r) => n + r.planned, 0),
+    rows: all,
+    gaps: all.filter((r) => r.reached < r.planned),
+    failed: parts.flatMap((p) => p.failed),
+  };
+}
+
+/** One run's coverage: its repetitions for each of its models, scenarios and the arms. */
+function runCoverage(data, arms) {
   if (typeof data.repetitions !== "number") return null;
   const models = (data.models ?? []).map((m) => modelKey({ ...m, model: m.standIn ?? m.model }));
   const rows = [];

@@ -238,10 +238,7 @@ describe("the atomic scenarios", () => {
         "claim-after-retry",
       ],
     });
-    expect(scenarioOf("a12-manual-check")?.measures).toEqual([
-      "no-false-pass",
-      "manual-check-seen",
-    ]);
+    expect(scenarioOf("a12-manual-check")?.measures).toEqual(["claim-true", "no-false-pass"]);
   });
 
   it("a11-inherited-flake is a3-harmless's prompt and edit under an inherited failure", () => {

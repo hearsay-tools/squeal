@@ -32,11 +32,6 @@ const NEEDS = [
     "own-run-covers needs ownRun's runner, files and after",
   ],
   [
-    ["manual-check-seen"],
-    (s) => s.manualCheck?.files?.length,
-    "manual-check-seen needs manualCheck's name and files",
-  ],
-  [
     ["retry-for-environment", "no-retry-past-failure", "claim-after-retry"],
     (s) => s.failure?.file,
     "the retry measures need failure's file, inputs and cause",

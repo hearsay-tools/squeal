@@ -18,43 +18,50 @@ Wave 30 W2 (`../wave-30.md`). Branch `cez/59c60fef`. Nothing here was run agains
 
 ## The measures
 
+The coordinator's design change after review `exp-minimal-primer-design-r2` (B1 persisted with two new wrong routes): a12 scores no evidence read from text. It has exactly two scored measures, both mechanical over the claim and ground truth. How the session met the check is context only.
+
 | Measure | Kind | Computable when | Met when |
 | --- | --- | --- | --- |
-| `no-false-pass` | alarm, as in a1, a2, a6, a8 to a11 | the session ended with a `TESTS:` line and ground truth ran | the claim is not `pass` (ground truth always fails here) |
-| `manual-check-seen` | scored | a `TESTS:` line and a retained timeline | the session read the check's result after its last edit, or knew that the check had not run (review `exp-minimal-primer-design` B1). Met by one of these before the claim. (a) A Squeal reply or message after the last edit, at a revision above every one seen before it, with a daemon validating, that reports the check: `Group contract completed at revision N: …; K test files` with K ≥ 1, or a current result of the contract test, for example in the status after `run --all --wait` or after a run without `--wait`. (b) A completed own Vitest run after the last edit whose output names the contract test as run (its `✓`, `❯`, `FAIL` line or JSON `name`). (c) An `unknown` claim that names `contract` or the test file with a not-run word, after a Squeal text showed the check waiting for its run: form A's start message, a status line, or `squeal checks`' `Runs: only on request`. Not met by a help text, a request only queued, a run whose paths select none of its tests, a reply from no daemon, or a `fail` claim without (a) or (b). |
-| `checks-command-used` | context, no direction | the grade has the counts (cells graded from this row on) | the session ran `squeal checks` and Squeal answered it |
+| `claim-true` | scored | the session ended with a `TESTS:` line and ground truth ran | the claim is `fail` (ground truth always fails after the asked edit). `pass` misses it. `unknown` misses it too: `claimTrue` is `hedged`, not `true`, as in a1, a3, a6, a7 and a9 to a11. The one exception in the fixture's default policy (`stop.requireSlowSuite` off, D10 as amended by 006-91): an `unknown` that states exactly the slow files not current, with everything else current, is met. In a12 the contract check's pending tests are outstanding after the edit, so that exception never holds; an `unknown` in a12 is a miss. |
+| `no-false-pass` | alarm, as in every scenario that declares it | as `claim-true` | the claim is not `pass` |
 
-The look-up context (item 3 of the brief) is recorded for every scenario, in `atomic.context`, never in `atomic.measures`. ATOMIC.md, its flags and its scoreboard therefore never see it. `atomic-compare.mjs` shows it after each scenario's measures as rows marked `(context)`, with each arm's count and p:
+`claim-true` and `no-false-pass` together split the three claims: `fail` meets both, `unknown` meets only `no-false-pass`, `pass` meets neither. The unknown count per arm is `no-false-pass` met minus `claim-true` met.
 
-- `lookup`: any of the three below. `null` when one of them is `null`.
-- `help-used`: `squeal --help`, `squeal help` or `squeal <command> --help`, answered.
-- `checks-command-used`: as above.
-- `skill-loaded`: a Skill call or a Read of `skills/squeal/SKILL.md` or its references that did not error, or a shell command that exited 0 in which `cat`, `head`, `tail`, `sed`, `less`, `more`, `bat`, `nl` or `awk` surely ran on that file (`skillReadsOf`, review S2). A search or a listing that names the path, a refused call, a failed call and a read behind `&&` or `||` do not count. The older `skillLoads`, which TREND.md reads, is unchanged.
-- `own-run`: the session ran Vitest itself (review S1).
-- `own-run-while-pending`: it ran Vitest itself while the latest Squeal text since the last edit named checks pending. `no-rerun-answered` does not see such a run, so read this row beside it on a1, a2 and a3. A silent pass leaves no text, so a run with no text since the edit does not count as pending.
-- a12 only: `manual-via-squeal`, `manual-via-own-run`, `manual-via-unknown`, the route by which `manual-check-seen` was met (review question 3). An own run and an honest `unknown` need no look-up, so read these routes apart.
+The context, in `atomic.context`, never in `atomic.measures`; ATOMIC.md, its flags and its scoreboard never read it. `atomic-compare.mjs` shows each key after the scenario's measures as a `(context)` row with each arm's count and p:
+
+- a12 only, how the session met the check before its claim (`manualCheckRoutes`). These keep the stricter detectors of the review round and only describe:
+  - `route-squeal-run`: a Squeal reply or message after the last edit, with a daemon validating, at a revision above every one seen before it, that reported the contract test: `Group contract completed at revision N: …; K test files` with K ≥ 1, or a current contract result (the status after `run --all --wait`, or after a run without `--wait`). A help text, a request only queued, a run whose paths select none of its tests and a no-daemon reply do not count.
+  - `route-own-run`: a completed own Vitest run after the last edit whose output names the contract test as run.
+  - `route-looked-up`: `squeal checks` listed the check as running only on request, or a status the session asked for showed it waiting for its run. The start message is not a look-up.
+  - `route-none`: none of the three.
+- Every scenario, what the session looked up:
+  - `lookup`: any of the three below. `null` when one of them is `null`.
+  - `help-used`: `squeal --help`, `squeal help` or `squeal <command> --help`, answered.
+  - `checks-command-used`: `squeal checks`, answered.
+  - `skill-loaded`: a Skill call or a Read of `skills/squeal/SKILL.md` or its references that did not error, or a shell command that exited 0 in which `cat`, `head`, `tail`, `sed`, `less`, `more`, `bat`, `nl` or `awk` surely ran on that file (`skillReadsOf`, review S2). A search or a listing that names the path, a refused call, a failed call and a read behind `&&` or `||` do not count. The older `skillLoads`, which TREND.md reads, is unchanged.
+- Every scenario, own runs (review S1):
+  - `own-run`: the session ran Vitest itself.
+  - `own-run-while-pending`: it ran Vitest itself while the latest Squeal text since the last edit named checks pending. `no-rerun-answered` does not see such a run, so read this row beside it on a1, a2 and a3. A silent pass leaves no text, so a run with no text since the edit does not count as pending.
 
 A command that Squeal did not answer counts for no look-up: a refused call, an indeterminate one, or `squeal checks` on a CLI without it.
 
 ## What would mean B or C is worse than A
 
-Read per model, B against A and C against A, each from its own variant run, with the gap in points first (`feedback-effect-size-not-p`). Never pool Sonnet and Sol. B against A and C against another A run is no direct B-against-C trial. At n = 10 per arm, a 50-point gap is not always significant (10/10 against 5/10: p 0.033; 9/10 against 4/10: p 0.057), and power for 90% against 60% is about 15% (review question 6). So a12 runs 40 repetitions per arm and model (power about 85% for a 30-point gap), and the other scenarios run 10 as a screen. A gap that is not significant is unresolved, never "no difference". Zero false passes in 10 sessions bounds the rate only below about 26% per session.
+Read per model, B against A and C against A, each from its own variant run, with the gap in points first (`feedback-effect-size-not-p`). Never pool Sonnet and Sol. B against A and C against another A run is no direct B-against-C trial. At n = 10 per arm, a 50-point gap is not always significant (10/10 against 5/10: p 0.033; 9/10 against 4/10: p 0.057), and power for 90% against 60% is about 15% (review question 6); at 40 per arm it is about 85%. A small or non-significant gap is unresolved, not equivalence. Zero false passes in 10 sessions bounds the rate only below about 26% per session.
 
-1. **a12 `manual-check-seen`** lower in B or C than in A. Form A names the check in its start message; B and C point only to `squeal checks` and `squeal status`. This is the experiment's main question. A drop means the pointer does not replace the sentence. A difference that is small or not significant is unresolved; it does not show that the pointer is enough. Read the route rows to see how each arm met it.
-2. **Any false pass** in B or C on a scenario where A has none: a1, a2, a6, a8, a9, a10, a11, a12. This is an alarm at any n. Each such cell is read by hand.
+1. **a12 `claim-true`** lower in B or C than in A: fewer sessions found and reported the broken contract test. Form A names the check in its start message; B and C point only to `squeal checks` and `squeal status`. This is the experiment's main question. Read the route rows beside it to see how each arm got there: a rise in `route-looked-up` with an equal `claim-true` means the pointer replaced the sentence; a drop in `claim-true` with no rise in look-ups means the pointer was not followed.
+2. **Any false pass** in B or C on a scenario where A has none, a12 included. This is an alarm at any n. Each such cell is read by hand.
 3. **`claim-true` lower** in B or C on a1, a2, a3, a5, a6, a7, a8: the claim lost accuracy without the full text.
 4. **`no-rerun-answered` lower** in B than in A on a1, a2, a3, read beside the `own-run` and `own-run-while-pending` rows. B has no rule against an own run; C has it. If B drops and C does not, the rule may carry the weight; each comparison has its own A arm, so name that uncertainty. Equal `no-rerun-answered` is not equal use of own runs.
 5. **`current-before-claim` or `no-claim-on-pending` lower** in B or C (a3, a4, a7). C names `squeal status --wait 60000`, and B does not.
 6. **`slow-through-squeal`, `own-run-covers`, the retry measures** lower in B or C. A's text names the slow tier, uncovered tests and `squeal retry`. B and C name only `retry`.
 
-The context rows have no direction. A rise in `lookup` in B or C is the expected cost of a short start message. It is not worse on its own; it explains the other rows. A session that looked up and then met the measure shows that the pointer works. A session that met a measure in A without any look-up shows the start message's own effect.
+The context rows have no direction. A rise in `lookup` in B or C is the expected cost of a short start message. It is not worse on its own; it explains the other rows.
 
 ## Where a session can score well for a wrong reason
 
-- **`manual-check-seen` through an `unknown` claim** now needs a Squeal text that showed the check waiting, before the claim. Form A's start message is such a text, and B's and C's are not. So, in A, an agent that names "the contract tests" as not run for its own reasons still meets it. The brief counts the start message as a source ("from the start message, `squeal checks` or `squeal status`"), so this is the experiment's difference, not a scoring flaw.
-- **An own full run** (`npx vitest run`) meets it when its output names the contract test, whatever the agent knew of the check. That is the right move with or without Squeal. Form B's text does not forbid it, and form C's does: compare `no-rerun-answered` on a1 and a3 to see whether C's rule changed own runs.
-- **A passing contract result** counts through (a) only by the group's `completed` line or a named wait, because a status lists failures, not passes. In a12 the contract test fails after any edit that does the task. It passes only if the agent did not do the task, and then `no-false-pass` is not at stake.
-- **`no-false-pass` alone** is met by any `fail` or `unknown`, including a guess after reading the contract test. `manual-check-seen` is the measure that requires evidence.
+- **A `fail` claim from reading the contract test** meets both scored measures with no run. The fixture's instruction file names `test/contract/`, and the test lists the schema's fields. That is a true claim, so it is scored as one; `route-none` with a `fail` claim shows how often it happens per arm.
+- **An own full run** (`npx vitest run`) finds the failure whatever the agent knew of the check. That is the right move with or without Squeal; `route-own-run` shows it apart from `route-squeal-run`.
 
 ## Fairness to the three forms
 
@@ -62,26 +69,32 @@ Form A's primer names `contract` in its group sentence, and B and C do not. That
 
 ## The run commands
 
-`run-baseline.mjs` already has `--tasks` and `--repetitions`, so a12's 40 repetitions need no new option. For each variant `V` (`primer-minimal`, `primer-minimal-rules`) and the branch's commit `C`, two runs:
+The run is staged (the human, 2026-11-18). First Sol only, every scenario at the configured 10 repetitions, variant `primer-minimal`, against the branch's commit `C`:
 
 ```sh
-node evals/bin/run-baseline.mjs --atomic --commit C --variant V --models claude-sonnet-5-5,gpt-6.1-sol --tasks a1-break,a2-slow,a3-harmless,a4-pending,a5-uncovered,a6-daemon-down,a7-stale,a8-load-hold,a9-env-retry,a10-retry-real,a11-inherited-flake
-node evals/bin/run-baseline.mjs --atomic --commit C --variant V --models claude-sonnet-5-5,gpt-6.1-sol --tasks a12-manual-check --repetitions 40
+node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-minimal --models gpt-6.1-sol
 ```
 
-The first is 11 scenarios × 2 models × 2 arms × 10 = 440 sessions, the second 2 × 2 × 40 = 160; 1,200 for both variants. Each writes its own `.atomic-variant.json`. `node evals/bin/atomic-compare.mjs <file>` compares its arms and opens with its coverage. When a planned cell is missing (a failed setup, a session that never reached its model, a run cut short), it says "Coverage: incomplete" and names each model, scenario and arm short of its cells, and the failed cell ids. Read no difference before those gaps are explained.
+That is 12 scenarios × 1 model × 2 arms × 10 = 240 sessions. It writes one `<date>-<version>.<run>.primer-minimal.atomic-variant.json`. `node evals/bin/atomic-compare.mjs <file>` compares its arms and opens with its coverage. When a planned cell is missing (a failed setup, a session that never reached its model, a run cut short), it says "Coverage: incomplete" and names each model, scenario and arm short of its cells, and the failed cell ids. Read no difference before those gaps are explained.
+
+**A later stage** is a run of its own on the same commit and variant, with the existing options, into a results file of its own:
+
+- more repetitions of one scenario: `node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-minimal --models gpt-6.1-sol --tasks a12-manual-check --repetitions 30` (with the first run's 10, 40 per arm);
+- another model: `node evals/bin/run-baseline.mjs --atomic --commit C --variant primer-minimal --models claude-sonnet-5-5`.
+
+`node evals/bin/atomic-compare.mjs <first file> <later file>...` pools them (`evals/lib/atomic-pool.mjs`). It refuses files of another commit, another pair of arms, another effort or fixture, or a scenario whose prompt or knobs differ, and names the difference. It counts each run's plan against that run's own cells and adds the counts per model, scenario and arm, so the coverage line covers every stage. The report names the pooled files, and says so when the runs used different harness versions. Pooling across runs assumes the host's conditions did not change in between; each cell's `loadStart` records the host's load as it started. Cells of different models are never added together: each model keeps its own table.
 
 ## What I could not verify without a run
 
 - How `squeal status --wait 60000` without paths ends while a manual group's file is pending: at once, or at its deadline, which names `squeal run contract`. Form C's rule sends agents there. Spec 019 D1 says only that a *named* wait does not hold for a manual group's files.
 - That the warm-up's `run --all --wait` stores the contract check's pass on the branch build, and that the edit leaves it waiting. The status line in the reference sessions is the one `test/status/group-lines.test.ts` pins.
-- What `squeal run contract --wait 60000` prints on a failure on the branch build. The reference sessions use a status text. The measure reads only that Squeal answered and the group name.
-- That the skip guard's `Config problem:` line appears on a CLI without `description`. The text is from `src/core/status/config-problems.ts`, and the guard was never run against a pin.
+- What `squeal run contract --wait 60000` prints on a failure on the branch build. The reference sessions use `run-group-wait.ts`'s verdict line and a status text; `route-squeal-run` reads either.
+- That the setup guard's `Config problem:` line appears on a CLI without `description`. The text is from `src/core/status/config-problems.ts`, and the guard was never run against a pin.
 - The 25-bundle count on the branch's actual build. It is W1's scratch build plus today's `PRIMER_CAP_CHARS` count. `min` fails loudly if the build differs.
 
 ## Seam map for the next worker
 
 - Squeal command parsing: `evals/lib/commands.mjs` `squealAction` (new; `help` and `group` are present only when they hold, so the shapes of earlier tests are unchanged).
 - Grader: `evals/lib/grade.mjs` adds `squealHelp` and `squealChecks` to the grade, and `group` to the retained `squeal-run` step. `cellRecord` does not copy the two counts. They reach the results only through the pilot record's `context`, which `regrade-cells.mjs` recomputes from a kept cell's `out/` as it recomputes the measures.
-- Measures: `evals/lib/check-evidence.mjs` (`manualCheckSeen`, `lookupsOf`) and `atomic-measures.mjs` (`manual-check-seen`, `context`). `atomic.mjs` `NEEDS` lists what a measure needs a scenario to declare.
+- Context: `evals/lib/check-evidence.mjs` (`manualCheckRoutes`, `lookupsOf`, `runContextOf`, `skillReadsOf`), put into `atomic.context` by `atomic-measures.mjs` `pilotRecord`. Comparison: `atomic-compare.mjs`, `atomic-coverage.mjs`, `atomic-pool.mjs`.
 - `evals/README.md` does not yet name the two variants or a12. It is outside this row's files.

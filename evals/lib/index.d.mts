@@ -809,7 +809,7 @@ export interface AtomicDeclaration {
   ownRun?: { runner: "vitest" | "node:test"; files: string[]; after: string | null };
   /** What the retry measures read (row 006-53). */
   failure?: RetryFailure;
-  /** What `manual-check-seen` reads: the check group that runs only on request (row 005-127). */
+  /** The check group that runs only on request (row 005-127), for the `route-*` context. */
   manualCheck?: ManualCheck;
 }
 /** A check group at `manual` (spec 019 D1): its name and its test files. */
@@ -817,14 +817,6 @@ export interface ManualCheck {
   name: string;
   files: string[];
 }
-/** Whether the session ran `check` after its last edit, or its `unknown` claim names it as not run. */
-export function manualCheckSeen(
-  timeline: readonly Step[],
-  check: ManualCheck,
-  claimLine: string | null | undefined,
-): boolean | null;
-/** Whether claim evidence `text` names `check` (its name or a file) as not run. */
-export function namesNotRun(text: string, check: ManualCheck): boolean;
 /** What a session looked up (row 005-127), no direction; `null` where its grade kept no count. */
 export interface Lookups {
   lookup: boolean | null;
@@ -842,12 +834,16 @@ export function addChecks(
 export function checksProblem(text: string): boolean;
 /** Throws on a config problem line: the cell's setup fails, never a silent skip (B2). */
 export function assertChecksAccepted(text: string): void;
-/** The routes by which a session met `manual-check-seen`; `null` without a claim. */
+/** How a session met `check` before its claim, as context; `null` without a timeline. */
 export function manualCheckRoutes(
-  timeline: readonly Step[],
+  timeline: readonly Step[] | null | undefined,
   check: ManualCheck,
-  claimLine: string | null | undefined,
-): { squeal: boolean; ownRun: boolean; unknown: boolean } | null;
+): {
+  "route-squeal-run": boolean;
+  "route-own-run": boolean;
+  "route-looked-up": boolean;
+  "route-none": boolean;
+} | null;
 /** Own-run context, no direction: any own Vitest run, and one while Squeal had checks pending. */
 export function runContextOf(grade: Record<string, unknown>): {
   "own-run": boolean | null;
@@ -1230,6 +1226,9 @@ export interface Coverage {
 /** `null` for a results file that records no repetitions. */
 export function atomicCoverage(data: Json, arms: readonly string[]): Coverage | null;
 export function coverageLines(coverage: Coverage | null): string[];
+/** Atomic variant runs of one commit and arms as one results file; throws on a mismatch. */
+export function poolAtomicRuns(parts: readonly { name: string; data: Json }[]): Json;
+export function pooledLines(data: Json): string[];
 export function atomicCompare(data: Json): {
   arms: [string, string];
   rows: AtomicCompareRow[];

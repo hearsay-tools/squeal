@@ -22,6 +22,7 @@ export {
 } from "./atomic.mjs";
 export { atomicCompare, atomicCompareMarkdown } from "./atomic-compare.mjs";
 export { atomicCoverage, coverageLines } from "./atomic-coverage.mjs";
+export { poolAtomicRuns, pooledLines } from "./atomic-pool.mjs";
 export {
   atomicDropped,
   atomicMarkdown,
@@ -65,8 +66,6 @@ export {
 export {
   lookupsOf,
   manualCheckRoutes,
-  manualCheckSeen,
-  namesNotRun,
   runContextOf,
   skillReadsOf,
 } from "./check-evidence.mjs";
