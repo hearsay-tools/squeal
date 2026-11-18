@@ -15,7 +15,7 @@ import type { TestFileRef } from "../core/types/keys.js";
  * path under every project that lists it). Its size comes from this
  * machine: the first batch is one round of files at once (Vitest's width,
  * one per CPU but one) or the stored durations' share of the budget; each
- * later batch from the time the batches so far took per path here.
+ * later batch from the times the batches so far took here (`costOf`).
  */
 
 /** Of the budget, the share one batch aims at: a killed batch loses at most about this much. */
@@ -36,18 +36,27 @@ export function estimateOf(
   return estimateRun("vitest", [{ width, seconds: files.map((f) => durationOf(f.ref)) }]);
 }
 
+/** One batch as it ran: its paths and its seconds, its child's start included. */
+export interface BatchTime {
+  readonly paths: number;
+  readonly seconds: number;
+}
+
 /**
  * The batches' sizes, in paths. `fixed`: that many paths each (tests).
  * Else the first is the paths whose estimate reaches the batch's aim, or
- * `width` paths with no stored duration; after a batch, the time per path
- * it measured sizes the next.
+ * `width` paths with no stored duration. After batches of two sizes, their
+ * times give a fixed cost per batch (the child's start, the gate's keying
+ * and the runner's start) and a cost per path, by a least-squares line;
+ * the next batch aims at the aim, or at four times the fixed cost when
+ * that is longer, so the start never costs more than a quarter of a batch.
+ * After one size only, the time per path, the start included.
  */
 export class Batches {
   readonly #aim: number;
   readonly #width: number;
   readonly #fixed: number | undefined;
-  #seconds = 0;
-  #paths = 0;
+  readonly #ran: BatchTime[] = [];
 
   constructor(budgetSeconds: number, options: { width?: number; fixed?: number } = {}) {
     this.#aim = Math.max(MIN_BATCH_SECONDS, budgetSeconds * BATCH_SHARE);
@@ -59,9 +68,11 @@ export class Batches {
   next(left: readonly RelativePath[], secondsOf: (path: RelativePath) => number | null): number {
     if (left.length === 0) return 0;
     if (this.#fixed !== undefined) return Math.min(left.length, Math.max(1, this.#fixed));
-    if (this.#paths > 0) {
-      const each = this.#seconds / this.#paths;
-      return Math.min(left.length, Math.max(1, Math.floor(this.#aim / Math.max(each, 0.001))));
+    const cost = costOf(this.#ran);
+    if (cost !== null) {
+      const aim = Math.max(this.#aim, 4 * cost.start);
+      const n = Math.floor((aim - cost.start) / Math.max(cost.perPath, 0.001));
+      return Math.min(left.length, Math.max(1, n));
     }
     const known = left.map(secondsOf);
     if (known.every((s) => s === null)) return Math.min(left.length, this.#width);
@@ -78,9 +89,36 @@ export class Batches {
 
   /** A batch of `paths` paths took `seconds` here, its child's start included. */
   took(paths: number, seconds: number): void {
-    this.#paths += paths;
-    this.#seconds += seconds;
+    this.#ran.push({ paths, seconds });
   }
+
+  /** The batches so far, in order. */
+  ran(): readonly BatchTime[] {
+    return [...this.#ran];
+  }
+}
+
+/**
+ * A batch's fixed cost and its cost per path from the batches so far:
+ * the least-squares line through (paths, seconds) when they hold two
+ * sizes and its slope is above 0; else no fixed cost and the mean time
+ * per path; `null` before any batch.
+ */
+export function costOf(
+  ran: readonly BatchTime[],
+): { readonly start: number; readonly perPath: number } | null {
+  if (ran.length === 0) return null;
+  const paths = ran.reduce((sum, b) => sum + b.paths, 0);
+  const seconds = ran.reduce((sum, b) => sum + b.seconds, 0);
+  const mean = { start: 0, perPath: seconds / Math.max(1, paths) };
+  const mx = paths / ran.length;
+  const my = seconds / ran.length;
+  const sxx = ran.reduce((sum, b) => sum + (b.paths - mx) ** 2, 0);
+  if (sxx === 0) return mean;
+  const slope = ran.reduce((sum, b) => sum + (b.paths - mx) * (b.seconds - my), 0) / sxx;
+  if (slope <= 0) return mean;
+  const start = Math.min(Math.max(0, my - slope * mx), Math.min(...ran.map((b) => b.seconds)));
+  return { start, perPath: slope };
 }
 
 /**

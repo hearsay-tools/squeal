@@ -12,6 +12,7 @@ import { storedDurations } from "./code-gate-durations.js";
 import type { RunUse, SideState } from "./status-at-report.js";
 import {
   Batches,
+  type BatchTime,
   estimateOf,
   estimateText,
   stopMargin,
@@ -102,6 +103,7 @@ export function atRun(input: AtRunInput): AtRun {
   let overheadMs = 0;
   let durationsOf: (ref: TestFileRef) => number | null = () => null;
   let changed: Changed | null = null;
+  let batchTimes: readonly BatchTime[] = [];
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing },
@@ -176,6 +178,7 @@ export function atRun(input: AtRunInput): AtRun {
       const took = performance.now() - started;
       gateMs = (gateMs ?? 0) + Math.round(took);
       batches.took(take.length, took / 1000);
+      batchTimes = batches.ran();
       if ("result" in answer && answer.result.timedOut) timedOut = true;
       // A child that could not run or answer stops the batches: the next would end alike.
       if ("error" in answer) {
@@ -243,6 +246,10 @@ export function atRun(input: AtRunInput): AtRun {
       timedOut,
       estimate,
       rerun: notRun === 0 ? null : rerunCommand(input, rerunSeconds()),
+      batches: batchTimes.map((b) => ({
+        paths: b.paths,
+        seconds: Math.round(b.seconds * 10) / 10,
+      })),
     };
   };
 

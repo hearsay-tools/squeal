@@ -39,6 +39,8 @@ export interface RunUse {
   readonly estimate: RunEstimate | null;
   /** 020's rerun line, with a `--timeout` that fits; `null` when every file ran. */
   readonly rerun: string | null;
+  /** Row 023-19 (P3): each batch's paths and seconds, its child's start included. */
+  readonly batches?: readonly { readonly paths: number; readonly seconds: number }[];
 }
 
 /** Row 023-18 (D2): one line per reason a ran file was not stored, with how many. */
