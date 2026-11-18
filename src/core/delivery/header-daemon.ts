@@ -8,7 +8,8 @@ import {
   untilStartText,
 } from "../status/status-detail.js";
 import { shortText, stoppingText } from "../status/stopping.js";
-import { utcTimeText } from "../text.js";
+import { capitalize, utcTimeText } from "../text.js";
+import type { EpochMs } from "../types/common.js";
 import type { DaemonLiveness, StatusHeader } from "../types/status.js";
 import { installSentences } from "./provenance.js";
 
@@ -100,14 +101,22 @@ function livenessSentence(
       }
       break;
   }
-  const since =
-    daemon.since === null
-      ? "No daemon is running"
-      : `No daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = capitalize(notValidatedSinceText(daemon.since));
   // Row 005-116 (review 0.1.554 B2): with no daemon or successor running, the death says what
   // starts one; `notValidatedLine` leaves it out of the same message (`headerRestarts`).
   const restart = died === "" ? "" : ` ${restartText(command)}`;
   return ` ${since}; ${asOf}.${died}${restart}`;
+}
+
+/**
+ * `no daemon has validated since 01:16:30 UTC`, in the hooks' time format (`utcTimeText`, 005-94
+ * C4; row 005-122); `no daemon is running` with no time. The header, the not-validated line and
+ * the wait's no-daemon verdict say it alike.
+ */
+export function notValidatedSinceText(since: EpochMs | null): string {
+  return since === null
+    ? "no daemon is running"
+    : `no daemon has validated since ${utcTimeText(since)}`;
 }
 
 /** Row 005-116: what starts a daemon after a death, said once per message. */

@@ -269,7 +269,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     expect(code).toBe(0);
     expect(stderr).toBe("");
     expect(last(stdout)).toBe(
-      "Returned without a daemon: no daemon has validated since 2026-10-06T11:59:00.000Z: " +
+      "Returned without a daemon: no daemon has validated since 11:59:00 UTC: " +
         "its heartbeat stopped and nothing listens on its socket; results are as of revision 3. " +
         "Worktree: known failures 0; 1 test file current",
     );

@@ -1,3 +1,4 @@
+import { notValidatedSinceText } from "../core/delivery/header-daemon.js";
 import { HANDOFF_BOUND_MS } from "../core/presence/stored.js";
 import type { DownReason } from "../core/presence/wait.js";
 import { slowWaitText } from "../core/state/slow-text.js";
@@ -449,7 +450,7 @@ export function noDaemonText(
   if (down === undefined && daemon.heartbeatLate !== undefined) {
     return `the daemon's heartbeat is late: ${lateHeartbeatDetail(daemon.heartbeatLate, daemon.since)}`;
   }
-  const since = `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = notValidatedSinceText(daemon.since);
   if (down === "silent") {
     return `${since}: its heartbeat stopped and nothing listens on its socket`;
   }

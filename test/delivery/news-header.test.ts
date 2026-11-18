@@ -198,7 +198,7 @@ describe("a change delivery's header sends the news (task 001-407)", () => {
     const daemon = { state: "down" as const, since: Date.UTC(2026, 9, 4, 14, 2, 0) };
     expect(headerLine({ ...header, daemon })).toBe(
       `${REVISION} ${COUNT} ` +
-        "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+        "No daemon has validated since 14:02:00 UTC; results are as of revision 184.",
     );
   });
 

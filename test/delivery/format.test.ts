@@ -356,7 +356,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
       knownFailures: [],
     });
     expect(text.split("\n")[1]).toBe(
-      "Revision 184: No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+      "Revision 184: No daemon has validated since 14:02:00 UTC; results are as of revision 184.",
     );
   });
 
@@ -371,7 +371,7 @@ describe("daemon liveness in the header (review wave 3, S2)", () => {
     expect(formatDelta({ ...delta([]), header: down, liveness: down.daemon })).toBe(
       "SQUEAL · no daemon is validating at revision 184\n" +
         "Revision 184. " +
-        "No daemon has validated since 2026-10-04T14:02:00.000Z; results are as of revision 184.",
+        "No daemon has validated since 14:02:00 UTC; results are as of revision 184.",
     );
     const alive = { state: "alive" as const, lastHeartbeatAt: since };
     expect(

@@ -41,6 +41,7 @@ import { type Collapsed, checkName, collapse } from "./collapse.js";
 import { contentWords } from "./content-title.js";
 import { type FlakyLines, failureGroups, flakyLines, groupLines } from "./failure-groups.js";
 import { currentFilesText, type HeaderForm, headerLines, headerParts } from "./header.js";
+import { notValidatedSinceText } from "./header-daemon.js";
 import { caughtUpLine, lateLine, PASSES_SILENT_TEXT } from "./late-format.js";
 import { change, loadLine, recoveryProvenance, seenLine } from "./provenance.js";
 import { type SharedClosure, sharedClosure } from "./shared-closure.js";
@@ -118,10 +119,7 @@ export function notValidatedLine(
     const late = lateHeartbeatDetail(daemon.heartbeatLate, daemon.since);
     return `Not validated: the daemon's heartbeat is late: ${late}; any change this call made has no result until it validates again.`;
   }
-  const since =
-    daemon.since === null
-      ? "no daemon is running"
-      : `no daemon has validated since ${new Date(daemon.since).toISOString()}`;
+  const since = notValidatedSinceText(daemon.since);
   // Row 005-116 (review 0.1.554 B2): a header in the same message that said the death and what
   // starts a daemon (`headerRestarts`) is not repeated; while a start runs, no `squeal start`.
   const start = daemon.startingSince === undefined ? `; \`${command} start\` starts one` : "";

@@ -42,7 +42,7 @@ const STOPPED: DaemonDown = {
   reason: "stopped",
   liveness: { state: "down", since: Date.UTC(2026, 10, 13, 21) },
 };
-const SINCE = "no daemon has validated since 2026-11-13T21:00:00.000Z";
+const SINCE = "no daemon has validated since 21:00:00 UTC";
 const SILENT: DaemonDown = { ...STOPPED, reason: "silent" };
 const HANDOFF: DaemonDown = {
   ...STOPPED,

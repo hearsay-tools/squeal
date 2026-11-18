@@ -6,6 +6,7 @@ import { daemonExitMetaKey } from "../../src/core/presence/stored.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
@@ -25,6 +26,7 @@ const T = Date.now() as EpochMs;
 // Row 005-91 (a): 60 s late or more, so a late heartbeat is news by itself.
 const LAST = (T - 90_000) as EpochMs;
 const ISO = new Date(LAST).toISOString();
+const UTC = utcTimeText(LAST);
 const DETAIL = `the last one was 90 s ago, at ${ISO}; the daemon may be busy or stopped`;
 /** Under `LATE_HEARTBEAT_NEWS_MS`: no news by itself, nor its recovery. */
 const SHORT = (T - 20_000) as EpochMs;
@@ -238,8 +240,8 @@ describe("a recorded stop or exit is not a late heartbeat (row 011-276)", () => 
     expect(hook).toBe(
       "SQUEAL · no daemon is validating at revision 1\n" +
         "Revision 1 (changed src/math.ts). " +
-        `No daemon has validated since ${ISO}; results are as of revision 1.\n` +
-        `Not validated: no daemon has validated since ${ISO}; any change this call made has no result.`,
+        `No daemon has validated since ${UTC}; results are as of revision 1.\n` +
+        `Not validated: no daemon has validated since ${UTC}; any change this call made has no result.`,
     );
     expect(json).toEqual({ state: "down", since: LAST });
     expect(text).toContain(`Daemon: no daemon running since ${ISO}`);

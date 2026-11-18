@@ -8,6 +8,7 @@ import { waitForStatus } from "../../src/cli/status-wait.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
@@ -233,7 +234,7 @@ describe("a requested slow wait whose daemon stopped (004-66)", { timeout: 30_00
 
     expect(result.code).toBe(3);
     expect(last(result.stdout)).toMatch(
-      `Returned without a daemon: no daemon has validated since ${new Date(NOW - 1_000).toISOString()}: the daemon stopped; results are as of revision 4. Worktree: `,
+      `Returned without a daemon: no daemon has validated since ${utcTimeText(NOW - 1_000)}: the daemon stopped; results are as of revision 4. Worktree: `,
     );
   });
 

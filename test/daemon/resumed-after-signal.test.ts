@@ -199,7 +199,7 @@ describe.runIf(process.platform === "linux")(
       const wait = statusWait(repo, "60000");
       expect((await wait.exited).code, wait.stderr()).toBe(0);
       expect(last(wait.stdout())).toMatch(
-        /^Returned without a daemon: no daemon has validated since \S+: the daemon stopped; /,
+        /^Returned without a daemon: no daemon has validated since \d{2}:\d{2}:\d{2} UTC: the daemon stopped; /,
       );
     });
   },

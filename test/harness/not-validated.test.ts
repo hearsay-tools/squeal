@@ -5,6 +5,7 @@ import { daemonExitMetaKey, HANDOFF_BOUND_MS } from "../../src/core/presence/sto
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { daemonIncarnation } from "../../src/core/types/daemon.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
@@ -25,6 +26,7 @@ import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 const T = Date.now() as EpochMs;
 const LAST = (T - 20_000) as EpochMs;
 const ISO = new Date(LAST).toISOString();
+const UTC = utcTimeText(LAST);
 const NO_RESULT = "any change this call made has no result.";
 const EDIT = { tool_calls: [{ tool_name: "Edit", tool_input: {}, tool_use_id: "toolu_01A" }] };
 
@@ -108,7 +110,7 @@ describe("the hook's Not validated line says what status says (row 011-295)", ()
     expect(lines.join("\n")).toContain(
       "The last daemon died without shutting down, between runs. A SIGKILL, or a test that signals its own process group (`kill(0, ...)`), ends a daemon this way. `squeal start` starts one.",
     );
-    expect(lines.at(-1)).toBe(`Not validated: no daemon has validated since ${ISO}; ${NO_RESULT}`);
+    expect(lines.at(-1)).toBe(`Not validated: no daemon has validated since ${UTC}; ${NO_RESULT}`);
     expect(lines.join("\n")).not.toContain("late");
   });
 
@@ -216,7 +218,7 @@ describe("a death's restart command, once per message (row 005-116)", () => {
     lock(r).release();
     const said = (await edit(r)).join("\n");
     expect(said).toContain(CAUSE);
-    expect(said).toContain(`Not validated: no daemon has validated since ${ISO}`);
+    expect(said).toContain(`Not validated: no daemon has validated since ${UTC}`);
     expect(starts(said)).toBe(1);
   });
 

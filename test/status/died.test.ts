@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatDelta, notValidatedLine } from "../../src/core/delivery/format.js";
 import { headerParts } from "../../src/core/delivery/header.js";
 import { DIED_FILES_SHOWN, deathHookText, deathText } from "../../src/core/status/died.js";
+import { utcTimeText } from "../../src/core/text.js";
 import type { Delta } from "../../src/core/types/delivery.js";
 import type { DaemonLiveness } from "../../src/core/types/status.js";
 
@@ -11,7 +12,7 @@ import type { DaemonLiveness } from "../../src/core/types/status.js";
  */
 
 const AT = Date.UTC(2026, 9, 11, 13, 0);
-const ISO = new Date(AT).toISOString();
+const UTC = utcTimeText(AT);
 
 function files(n: number) {
   return Array.from({ length: n }, (_, i) => ({ project: "", path: `test/${i}.test.ts` }));
@@ -75,7 +76,7 @@ describe("a hook header naming a dead daemon (task 001-263, row 005-116)", () =>
   it("says it died after since when none validated", () => {
     const text = formatDelta(delta({ state: "down", since: AT, died }));
     expect(text).toContain(
-      ` No daemon has validated since ${ISO}; results are as of revision 4. ${said} \`squeal start\` starts one.`,
+      ` No daemon has validated since ${UTC}; results are as of revision 4. ${said} \`squeal start\` starts one.`,
     );
     expect(text).not.toContain("r1");
     expect(text).not.toContain("revision 3");
@@ -94,13 +95,13 @@ describe("the Not validated line beside a death (row 005-116, review 0.1.554 B2)
 
   it("names the death and `squeal start` when the header did not", () => {
     expect(notValidatedLine(down)).toBe(
-      `Not validated: no daemon has validated since ${ISO}; the last daemon died without shutting down while running test/0.test.ts; \`squeal start\` starts one; any change this call made has no result.`,
+      `Not validated: no daemon has validated since ${UTC}; the last daemon died without shutting down while running test/0.test.ts; \`squeal start\` starts one; any change this call made has no result.`,
     );
   });
 
   it("leaves both to a header that said them", () => {
     expect(notValidatedLine(down, "squeal", { deathTold: true })).toBe(
-      `Not validated: no daemon has validated since ${ISO}; any change this call made has no result.`,
+      `Not validated: no daemon has validated since ${UTC}; any change this call made has no result.`,
     );
   });
 

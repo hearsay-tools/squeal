@@ -83,7 +83,7 @@ describe("a named wait with no verdict names what its passes cover and the next 
 
     expect(namedResult(wait)).toEqual({ result: "none", reason: "no-daemon" });
     expect(line).toMatch(
-      /^Named test files have no verdict: no daemon has validated since \S+: the daemon stopped; results are as of revision 4; `squeal start` starts one\. Worktree: .*\. For the verdict, wait again once a daemon runs: `squeal status --wait 60000 src\/a\.test\.ts`$/,
+      /^Named test files have no verdict: no daemon has validated since \d{2}:\d{2}:\d{2} UTC: the daemon stopped; results are as of revision 4; `squeal start` starts one\. Worktree: .*\. For the verdict, wait again once a daemon runs: `squeal status --wait 60000 src\/a\.test\.ts`$/,
     );
     expect(line).not.toContain("later tool call");
   });

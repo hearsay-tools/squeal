@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { utcTimeText } from "../../src/core/text.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees } from "./agree.js";
 import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION } from "./harness.js";
@@ -122,7 +123,7 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     } else {
       expect(told.text).toMatch(/^SQUEAL · no daemon is validating at revision \d+\n/);
       expect(told.text).toContain(
-        `No daemon has validated since ${since}; results are as of revision ${down.revision}.`,
+        `No daemon has validated since ${utcTimeText(down.daemon.since)}; results are as of revision ${down.revision}.`,
       );
     }
     if (!quietLate) expectAgrees(told.text, down);

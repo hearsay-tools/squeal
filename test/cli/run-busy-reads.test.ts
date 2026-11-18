@@ -181,7 +181,7 @@ describe("the reads beside the run waits on a locked store (row 011-334)", () =>
     expect(performance.now() - started).toBeLessThan(1_000);
     expect(text).toMatch(
       line(
-        `has no verdict: the daemon stopped before it ended (no daemon has validated since 2026-11-13T21:00:00.000Z: the daemon stopped); whether the next daemon resumes it was not read (${BUSY})`,
+        `has no verdict: the daemon stopped before it ended (no daemon has validated since 21:00:00 UTC: the daemon stopped); whether the next daemon resumes it was not read (${BUSY})`,
       ),
     );
     expect(code).toBe(3);

@@ -130,7 +130,7 @@ describe("SessionStart after spawning a daemon", () => {
     // That start's grace passes with no heartbeat, and the next spawn keeps its time.
     const out = await batch(r, T + 2_000 + DAEMON_START_GRACE_MS + 1);
     expect(context(out)).toMatch(/^SQUEAL · no daemon is validating at revision 1\n/);
-    expect(context(out)).toContain("No daemon has validated since 2026-01-02T14:02:00.100Z");
+    expect(context(out)).toContain("No daemon has validated since 14:02:00 UTC");
   });
 });
 
