@@ -24,6 +24,25 @@ const ENDING = join(import.meta.dirname, "../tasks/_ending.txt");
 /** Squeal's default `slow.maxDeferMs` (src/core/types/policy.ts): the load guard's longest deferral. */
 export const MAX_DEFER_MS = 600_000;
 
+/** What a scenario must declare for its measures: `[measures, declared(s), problem]`. */
+const NEEDS = [
+  [
+    ["own-run-covers"],
+    (s) => s.ownRun?.files?.length,
+    "own-run-covers needs ownRun's runner, files and after",
+  ],
+  [
+    ["manual-check-seen"],
+    (s) => s.manualCheck?.files?.length,
+    "manual-check-seen needs manualCheck's name and files",
+  ],
+  [
+    ["retry-for-environment", "no-retry-past-failure", "claim-after-retry"],
+    (s) => s.failure?.file,
+    "the retry measures need failure's file, inputs and cause",
+  ],
+];
+
 /** evals/atomic/atomic.json, or `file`. */
 export function atomicConfig(file = join(ATOMIC, "atomic.json")) {
   const config = JSON.parse(readFileSync(file, "utf8"));
@@ -31,11 +50,9 @@ export function atomicConfig(file = join(ATOMIC, "atomic.json")) {
     if (!s.turns?.length) throw new Error(`${name}: no turns`);
     for (const m of s.measures ?? [])
       if (!(m in MEASURES)) throw new Error(`${name}: unknown measure ${m}`);
-    if (s.measures?.includes("own-run-covers") && !s.ownRun?.files?.length)
-      throw new Error(`${name}: own-run-covers needs ownRun's runner, files and after`);
-    const retry = ["retry-for-environment", "no-retry-past-failure", "claim-after-retry"];
-    if (s.measures?.some((m) => retry.includes(m)) && !s.failure?.file)
-      throw new Error(`${name}: the retry measures need failure's file, inputs and cause`);
+    for (const [ms, declared, problem] of NEEDS)
+      if (s.measures?.some((m) => ms.includes(m)) && !declared(s))
+        throw new Error(`${name}: ${problem}`);
   }
   return config;
 }

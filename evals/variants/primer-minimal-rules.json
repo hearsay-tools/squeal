@@ -1,0 +1,12 @@
+{
+  "description": "005-127 (wave 30, form C): form B (primer-minimal) and, after its first sentence, two rules: do not run the tests yourself to learn whether an edit broke something; before you say you are done, `squeal status --wait 60000` gives the verdict. The same switch as primer-minimal, set to `minimal-rules`. Runs only against a build with the switch (the experiment branch exp/minimal-primer).",
+  "plugin": true,
+  "patch": [
+    {
+      "files": "plugins/*/dist/**/*.mjs",
+      "find": "var PRIMER_FORM = \"full\";",
+      "replace": "var PRIMER_FORM = \"minimal-rules\";",
+      "min": 25
+    }
+  ]
+}

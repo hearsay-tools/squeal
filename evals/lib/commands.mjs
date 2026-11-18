@@ -55,9 +55,10 @@ const HELP = new Set(["--help", "-h", "--version", "-v"]);
 
 /**
  * Every action in shell text `text`, in the order it runs, one entry per simple command that
- * matters: `{ kind: "squeal", bin, sub, wait, all, slow }` (and `paths`, `reason`, `cancel` for
- * `retry`), a test action, `{ kind: "sleep", seconds }`, `{ kind: "service" }` for a start of the
- * retry scenarios' rates service and `{ kind: "write", path }`. A chain yields one action per command in it.
+ * matters: `{ kind: "squeal", bin, sub, wait, all, slow }` (and `help` for a help call, `group`
+ * for `run <group>`, and `paths`, `reason`, `cancel` for `retry`), a test action, `{ kind:
+ * "sleep", seconds }`, `{ kind: "service" }` for a start of the retry scenarios' rates service and
+ * `{ kind: "write", path }`. A chain yields one action per command in it.
  *
  * A test action (wave 2.6's contract, review wave 2.5 B3) is `{ kind, runner, informational,
  * scope }`, `kind` and `runner` both `vitest` or `node:test`. `informational` is true for help,
@@ -116,23 +117,7 @@ function classify(words, depth = 0) {
   if (prog === "squeal" || prog === "squeal.mjs") sq = 0;
   else if (prog === "node" || prog === "npx")
     sq = words.findIndex((w, i) => i > 0 && /^(?:.*\/)?squeal(?:\.mjs)?$/.test(w));
-  if (sq >= 0) {
-    const rest = words.slice(sq + 1);
-    const sub = rest.find((w) => !w.startsWith("-")) ?? "";
-    return [
-      {
-        kind: "squeal",
-        // The CLI as the command names it (review 006-63 B2): `squeal`, a launcher's or a
-        // `squeal.mjs` path, or `npx squeal`.
-        bin: prog === "npx" ? "npx squeal" : words[sq],
-        sub,
-        wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
-        all: rest.includes("--all"),
-        slow: rest.includes("--slow"),
-        ...(sub === "retry" ? retryArgs(rest.slice(rest.indexOf(sub) + 1)) : {}),
-      },
-    ];
-  }
+  if (sq >= 0) return [squealAction(words, sq, prog)];
   if (serviceStart(words)) return [{ kind: "service" }];
   const script = scriptCall(prog, words);
   if (script) {
@@ -150,6 +135,39 @@ function classify(words, depth = 0) {
   if (prog === "sleep" && /^\d/.test(words[1] ?? ""))
     return [{ kind: "sleep", seconds: Number.parseFloat(words[1]) }];
   return [];
+}
+
+/** The Squeal command at `words[sq]` (`prog` the program that runs it), as an action. */
+function squealAction(words, sq, prog) {
+  const rest = words.slice(sq + 1);
+  const sub = rest.find((w) => !w.startsWith("-")) ?? "";
+  const args = rest.slice(rest.indexOf(sub) + 1);
+  // Row 005-127, what the agent looked up: `squeal --help`, `squeal help`, `squeal <sub> --help`;
+  // and the group `squeal run <group>` names. Each key only where it holds.
+  const help = sub === "help" || rest.includes("--help") || rest.includes("-h");
+  const group = sub === "run" ? groupOf(args) : null;
+  return {
+    kind: "squeal",
+    // The CLI as the command names it (review 006-63 B2): `squeal`, a launcher's or a
+    // `squeal.mjs` path, or `npx squeal`.
+    bin: prog === "npx" ? "npx squeal" : words[sq],
+    sub,
+    wait: rest.includes("--wait") || rest.some((w) => w.startsWith("--wait=")),
+    all: rest.includes("--all"),
+    slow: rest.includes("--slow"),
+    ...(help ? { help } : {}),
+    ...(group ? { group } : {}),
+    ...(sub === "retry" ? retryArgs(args) : {}),
+  };
+}
+
+/**
+ * The group `squeal run <group> [<path>...]` names (spec 019 D6), or `null`: its first word that
+ * is no flag and no `--wait` value (row 005-127).
+ */
+function groupOf(args) {
+  const value = (w, i) => /^\d+$/.test(w) && args[i - 1] === "--wait";
+  return args.find((w, i) => !w.startsWith("-") && !value(w, i)) ?? null;
 }
 
 /**

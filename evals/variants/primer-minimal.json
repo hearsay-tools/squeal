@@ -1,0 +1,12 @@
+{
+  "description": "005-127 (wave 30, form B): the start message reduced to what Squeal does and pointers to `squeal checks`, `status`, `run`, `retry` and `--help` (the human, 2026-11-18: \"Yes, A against B and C\"). One switch in src/harness/shared/primer.ts (005-126) chooses the form; esbuild keeps it as a top-level `var` in every bundle that inlines the primer. The status header lines and every later hook message are as shipped. Runs only against a build with the switch (the experiment branch exp/minimal-primer).",
+  "plugin": true,
+  "patch": [
+    {
+      "files": "plugins/*/dist/**/*.mjs",
+      "find": "var PRIMER_FORM = \"full\";",
+      "replace": "var PRIMER_FORM = \"minimal\";",
+      "min": 25
+    }
+  ]
+}

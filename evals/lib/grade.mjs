@@ -99,7 +99,15 @@ export function gradeCell({
         const noDaemon = NO_DAEMON.test(k.out ?? "");
         // A command the output cannot say Squeal answered is no pull, wait or slow run.
         if (reply === true)
-          pulls.push({ ...here, sub: a.sub, wait: a.wait, all: a.all, slow: a.slow, noDaemon });
+          pulls.push({
+            ...here,
+            sub: a.sub,
+            wait: a.wait,
+            all: a.all,
+            slow: a.slow,
+            help: a.help === true,
+            noDaemon,
+          });
         // `squeal why` explains a result; it is not evidence of the current one (B2).
         if (reply === true && (a.sub === "status" || a.sub === "run"))
           at(k.t + (k.ms ?? 0), { from: "pull", sub: a.sub, text: k.out ?? "" }, 1);
@@ -110,8 +118,15 @@ export function gradeCell({
         // An executed run is an action whatever it printed: redirected, empty, or a request not
         // yet recorded leaves no evidence, yet a run was asked for (re-review 006-59 R1). It keeps
         // whether Squeal answered it, which the slow tier's measure needs (001-428).
+        // Row 005-127: the group a `run <group>` names, for a check that runs only on request.
         if (a.sub === "run")
-          at(k.t, { k: "squeal-run", all: a.all, slow: a.slow, answered: reply === true });
+          at(k.t, {
+            k: "squeal-run",
+            all: a.all,
+            slow: a.slow,
+            answered: reply === true,
+            ...(a.group ? { group: a.group } : {}),
+          });
       }
       // A start that found the service running changes nothing (row 006-53).
       if (a.kind === "service" && serviceStarts === null)
@@ -188,6 +203,9 @@ export function gradeCell({
     waitsAfterLastEdit: pulls.filter((p) => p.wait && lastEdit !== null && p.n > lastEdit.n).length,
     sleeps: sleeps.length,
     skillLoads,
+    // Row 005-127, what the session looked up: Squeal's help, any form, and `squeal checks`.
+    squealHelp: pulls.filter((p) => p.help).length,
+    squealChecks: pulls.filter((p) => p.sub === "checks" && !p.help).length,
     deliveries: Object.fromEntries(
       ["registration", "fail", "deny", "resolved", "noDaemon", "other"].map((k) => [
         k,

@@ -2,6 +2,7 @@
 // declares in evals/atomic/atomic.json, over its cell's pilot record and retained timeline; the
 // rest of the record is context. The same rules grade a new cell (pilotRecord) and regrade a
 // committed `.atomic.json` from what it kept (regradeAtomic).
+import { lookupsOf, manualCheckSeen } from "./check-evidence.mjs";
 import { parseClaim } from "./claim.mjs";
 import { answeredRuns, coveredRun, currentBeforeClaim, slowThroughSqueal } from "./evidence.mjs";
 import { stamped } from "./results.mjs";
@@ -81,6 +82,11 @@ export const MEASURES = {
   "no-retry-past-failure": reads((_p, { timeline, scenario }) =>
     scenario?.failure ? noRetryPastFailure(timeline, scenario.failure) : null,
   ),
+  // a12-manual-check (row 005-127): the session ran the scenario's `manualCheck` after its last
+  // edit, through Squeal or its own run, or its `unknown` claim names it as not run.
+  "manual-check-seen": reads((_p, { timeline, scenario, claimLine }) =>
+    scenario?.manualCheck ? manualCheckSeen(timeline, scenario.manualCheck, claimLine) : null,
+  ),
   "claim-after-retry": reads((p, { timeline, scenario }) =>
     scenario?.failure && retryArose(timeline, scenario.failure)
       ? claimAfterRetry(timeline, p.claim, scenario.failure)
@@ -138,6 +144,8 @@ export function pilotRecord(
     slowBeforeClaim,
     squealWaitsAfterLastEdit: grade.waitsAfterLastEdit ?? null,
     sleeps: grade.sleeps ?? null,
+    // Row 005-127: context with no direction, every scenario; never a measure, so no flag reads it.
+    context: lookupsOf(grade),
   };
   record.measures = measuresOf(record, {
     timeline: grade.retained ?? null,
