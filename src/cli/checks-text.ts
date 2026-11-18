@@ -26,13 +26,15 @@ export interface StoreView {
   readonly results: ReadonlyMap<string, CheckResults>;
 }
 
-/** Spec 019 D6's words for a moment, as the primer says them; `manual`, the brief's. */
-const WHEN: Readonly<Record<CheckMoment, string>> = {
+/**
+ * When a check runs, and who starts it, for each moment but `manual`
+ * (`runs`): spec 019 D6's words for the moment, as the primer says them.
+ */
+const WHEN: Readonly<Record<Exclude<CheckMoment, "manual">, string>> = {
   edit: "after each edit",
-  pause: "between your turns",
-  stop: "at Stop, and Stop waits for them",
-  commit: "when you commit",
-  manual: "only on request",
+  pause: "between your turns: Squeal starts it when your turn ends, not after an edit",
+  stop: "at Stop: Squeal starts it when you stop, and Stop waits for it, not after an edit",
+  commit: "when you commit: Squeal starts it when it sees a new commit, not after an edit",
 };
 
 const RUNNER: Readonly<Record<CheckRunner, string>> = {
@@ -50,6 +52,7 @@ export function checksText(
   groups: readonly ResolvedGroup[],
   store: StoreView | null,
   command: string,
+  notCovered: string,
 ): string {
   const blocks = groups.flatMap((group) => {
     const shown = group.index !== null || defaultShown(group, policy, store);
@@ -59,9 +62,9 @@ export function checksText(
   if (lint !== null) blocks.push(lint);
   const intro =
     policy.checks.length === 0
-      ? "squeal.config.json has no checks key; these are the default checks.\n\n"
-      : "";
-  return `${intro}${blocks.join("\n")}`;
+      ? "squeal.config.json has no checks key; these are the default checks."
+      : "The checks Squeal runs in this repository (squeal.config.json):";
+  return `${intro}\n\n${blocks.join("\n")}\n${notCovered}\n`;
 }
 
 /**
@@ -87,7 +90,7 @@ function groupBlock(group: ResolvedGroup, store: StoreView | null, command: stri
     ...(group.description === undefined ? [] : [`  Description: ${group.description}`]),
     `  Selects: ${selects(group)}`,
     ...(results === undefined ? [] : [`  Test files now: ${results.files}`]),
-    `  Runs: ${runs(group)}`,
+    `  Runs: ${runs(group, command)}`,
     ...(group.after.length === 0 ? [] : [`  Starts after: ${group.after.join(", ")}`]),
     `  Run it now: \`${command} run ${group.name} --wait 60000\``,
     ...(results === undefined || results.files === 0
@@ -120,10 +123,13 @@ function selects(group: ResolvedGroup): string {
   }
 }
 
-/** The moment in the primer's words; Stop's wait when it waits for a check of another moment. */
-function runs(group: ResolvedGroup): string {
+/** When the check runs and who starts it; Stop's wait when it waits for a check of another moment. */
+function runs(group: ResolvedGroup, command: string): string {
+  if (group.at === "manual") {
+    return `only on request: Squeal does not start it; \`${command} run ${group.name} --wait 60000\` does`;
+  }
   const when = WHEN[group.at];
-  return group.stopRequires && group.at !== "stop" ? `${when}; Stop waits for them` : when;
+  return group.stopRequires && group.at !== "stop" ? `${when}; Stop waits for it` : when;
 }
 
 function revisionText(store: StoreView | null): string {

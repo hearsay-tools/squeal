@@ -9,6 +9,8 @@ import { readTransaction } from "../core/store/store.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { KnownState } from "../core/types/state.js";
 import type { Store } from "../core/types/store.js";
+import { notCovered } from "../harness/shared/primer.js";
+import { runnerCoverage } from "../runners/descriptions.js";
 import { type CheckResults, checksText, type StoreView } from "./checks-text.js";
 import { worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
@@ -34,7 +36,9 @@ export function checksCommand(args: readonly string[], io: CliIo): number {
     readTransaction(store, () => storeView(store, root, view)),
   );
   const store = read === null || "available" in read ? null : read;
-  io.stdout(checksText(policy, view.groups, store, statusCommand(io.env ?? process.env)));
+  // The primer's sentence on what Squeal does not run, for this repository's runners.
+  const left = notCovered({ ...runnerCoverage(policy, root), slow: null });
+  io.stdout(checksText(policy, view.groups, store, statusCommand(io.env ?? process.env), left));
   return 0;
 }
 
