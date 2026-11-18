@@ -65,19 +65,23 @@ Form B (`primer-minimal`) is compared first. Form C (`primer-minimal-rules`) run
 
 | Stage | Model | Repetitions | Sessions (both arms) |
 |---|---|---|---|
-| 1 | Sol | 10 in all 12 scenarios | 240 |
-| 2 | Sonnet | 10 in all 12 scenarios | 240 |
+| 1 | Sol | 10 in the three deciding scenarios | 60 |
+| 2 | Sonnet | 10 in the three deciding scenarios | 60 |
 | 3 | both | 30 more in `a12-manual-check` (40 in total) | 240 |
 | 4 | both | 30 more in `a3-harmless` and `a4-pending` (40 in total) | 480 |
+
+The three deciding scenarios are `a3-harmless` (hand runs of tests Squeal already answered), `a4-pending` (claims while checks are pending) and `a12-manual-check`. Amended 2026-11-18, before any result was read (the human: "We can start with 10 sol in those three as well instead of all ... We can always run the other scenarios if needed"): the first plan ran all 12 scenarios at stages 1 and 2; a first run on all 12 was stopped after about five minutes with no cell graded. The other nine scenarios are not run; they can be added as a screen at 10 repetitions if the human asks.
 
 Stage 4 is the ceiling. Each stage is one run, never two at once; each session starts only below the host's CPU count in load.
 
 **Degradation, read after each stage, per model and scenario, never pooled across models or scenarios.** A stage shows a degradation when, in the repetitions run so far for that model and scenario, one of these holds:
 - a scored measure is lower in B than in A with two-sided Fisher p < 0.05 (at 10 against 10 that is at least 10/10 against 5/10: a collapse);
 - B has two or more false passes in a scenario where A has none (every false pass is read by hand at any count);
-- the unscored hand-run context (`own-run`, `own-run-while-pending`) rises in B by the same Fisher rule in `a1-break`, `a2-slow` or `a3-harmless`, where a hand run is the wrong behaviour.
+- the unscored hand-run context (`own-run`, `own-run-while-pending`) rises in B by the same Fisher rule in `a3-harmless`, where a hand run is the wrong behaviour.
 
 On a degradation: stop expanding B, report it to the human with the sessions, and ask whether form C runs from stage 1.
 On none: go to the next stage. After stage 4 with none: report "no degradation found at this size", with the gap each scenario could have hidden, not "equivalent".
 
 Repetitions of one arm, model and scenario from different stages are pooled (same commit, same variant, same fixture); each stage's results file is committed and the host's load range of each is stated.
+
+Grading and pooling are recomputed from what each cell keeps (`evals/bin/atomic-regrade.mjs`), so the sessions of a stage do not depend on them. The third design check (`reviews/exp-minimal-primer-design-r3.md`, FAIL) found two faults there, in repair while stage 1 runs: `claim-true` in `a12-manual-check` can still read an `unknown` claim's evidence text, and the pooling of several results files compares each file only with the first and accepts one run twice. No stage's result is read for a decision before both are fixed and the stage's file is regraded.
