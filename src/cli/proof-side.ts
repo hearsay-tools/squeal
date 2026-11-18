@@ -96,7 +96,7 @@ export interface OpenSide {
  * D5.1, D5.2: the side's checkout, with `body` called while it is open
  * (after keying, before removal), then each file's side. Without `body`,
  * every file that needs a run runs (`runSide`). A file `body` leaves
- * undecided reads `not read`.
+ * undecided reads `not run (not needed)` (row 023-20, P7: never `not read` alone).
  */
 export async function withSide<T>(
   input: SideInput,
@@ -187,7 +187,7 @@ export async function withSide<T>(
       at !== undefined && "notDetermined" in at
         ? at.notDetermined.detail
         : keyedRefs.some((r) => testFileId(r) === id)
-          ? "not read"
+          ? "not run (not needed)"
           : `no runner lists it at ${side.code.slice(0, 9)}`;
     files.set(id, unknown(why));
   }

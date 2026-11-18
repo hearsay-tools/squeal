@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  controlReading,
   errorKind,
   failureKind,
   NOT_RUN_BUDGET,
+  NOT_SHOWN_TO_MATTER,
+  notRunWhy,
   proofExit,
   type SideEnd,
   verdictOf,
+  withControl,
 } from "../../src/core/proof/verdict.js";
 import type { CheckError } from "../../src/core/types/check.js";
 
@@ -82,5 +86,41 @@ describe("proof verdicts (row 023-08, D5.5, D5.6)", () => {
     expect(proofExit(["not green"])).toBe(1);
     expect(proofExit(["not red", "red for another reason"])).toBe(3);
     expect(proofExit(["proven", "not comparable"])).toBe(3);
+  });
+
+  it("says why a side did not run, never 'not read' (row 023-20, lessons P7)", () => {
+    expect(notRunWhy(pass)).toBe("red passed: nothing to prove");
+    expect(notRunWhy(fail(error({ name: "TypeError" })))).toBe(
+      "red did not fail on an assertion: nothing to prove",
+    );
+    expect(notRunWhy({ end: "timeout" })).toBe(
+      "red did not fail on an assertion: nothing to prove",
+    );
+    expect(notRunWhy({ end: "unknown", reason: NOT_RUN_BUDGET })).toBe(
+      "red not run (budget): nothing to compare",
+    );
+    expect(notRunWhy({ end: "unknown", reason: "imports src/b.ts, absent at abc" })).toBe(
+      "red has no result: nothing to compare",
+    );
+    expect(verdictOf(fail(assertion), null)).toEqual({
+      verdict: "not comparable",
+      reason: "green side: not run",
+    });
+  });
+
+  it("reads the control run without the conditions (row 023-20, lessons P9)", () => {
+    expect(controlReading(pass)).toBe("red only under the conditions");
+    expect(controlReading(fail(assertion))).toBe("red without them too");
+    expect(controlReading(fail(error({ name: "TypeError" })))).toBe("not known");
+    expect(controlReading({ end: "unknown", reason: NOT_RUN_BUDGET })).toBe("not known");
+    const proven = { verdict: "proven", reason: null } as const;
+    expect(withControl(proven, fail(assertion))).toEqual({
+      verdict: "proven",
+      reason: NOT_SHOWN_TO_MATTER,
+    });
+    expect(withControl(proven, pass)).toEqual(proven);
+    expect(withControl(proven, null)).toEqual(proven);
+    const notGreen = { verdict: "not green", reason: "the green side failed" } as const;
+    expect(withControl(notGreen, fail(assertion))).toEqual(notGreen);
   });
 });

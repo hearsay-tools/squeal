@@ -1,7 +1,7 @@
 import type { FailedTest } from "../core/code/gate/types.js";
-import { type Conditions, conditionWords } from "../core/proof/conditions.js";
+import { type Conditions, conditionWords, hasConditions } from "../core/proof/conditions.js";
 import type { ProofCase, Side } from "../core/proof/sides.js";
-import { failureKind, type SideEnd, type Verdict } from "../core/proof/verdict.js";
+import { controlReading, failureKind, type SideEnd, type Verdict } from "../core/proof/verdict.js";
 import { errorLines } from "../core/status/format-why-replaced.js";
 import { shellWord } from "../core/text.js";
 import type { RelativePath } from "../core/types/common.js";
@@ -24,8 +24,14 @@ export interface ProofFile {
   readonly verdict: Verdict;
   readonly reason: string | null;
   readonly red: SideFile;
-  /** `null` when the green side was not read: the red side already decided. */
+  /** `null` when the green side was not run: the red side already decided. */
   readonly green: SideFile | null;
+  /** Row 023-20 (P7): why the green side did not run; `null` when it is shown. */
+  readonly greenNotRun: string | null;
+  /** Row 023-20 (P9): the red side once without the conditions; `null` when it did not run. */
+  readonly control: SideFile | null;
+  /** P9: why the control run did not run, under a condition; `null` otherwise. */
+  readonly controlNotRun: string | null;
 }
 
 export interface ProofReport {
@@ -36,8 +42,12 @@ export interface ProofReport {
   /** `null` with no case. */
   readonly red: Side | null;
   readonly green: Side;
-  /** Each side's checkout time; red `null` when it made none. */
-  readonly checkoutMs: { readonly red: number | null; readonly green: number };
+  /** Each side's checkout time; red and the control run (row 023-20) `null` when they made none. */
+  readonly checkoutMs: {
+    readonly red: number | null;
+    readonly control: number | null;
+    readonly green: number;
+  };
   /** Paths the working tree holds otherwise than `HEAD` (review wave-8 B2: any path, not only loads). */
   readonly dirty: readonly RelativePath[];
   readonly timeoutSeconds: number;
@@ -73,7 +83,9 @@ function endText(side: SideFile): string {
   const { end } = side;
   const what =
     end.end === "unknown"
-      ? `unknown (${end.reason})`
+      ? end.reason.startsWith("not run")
+        ? end.reason
+        : `unknown (${end.reason})`
       : end.end === "prepare"
         ? "prepare failed"
         : end.end;
@@ -94,7 +106,8 @@ const INDENT = "    ";
 function checkoutText(ms: ProofReport["checkoutMs"]): string {
   const s = (n: number) => `${(n / 1000).toFixed(1)} s`;
   const red = ms.red === null ? "" : `red ${s(ms.red)}, `;
-  return `checkouts: ${red}green ${s(ms.green)}`;
+  const control = ms.control === null ? "" : `red without the conditions ${s(ms.control)}, `;
+  return `checkouts: ${red}${control}green ${s(ms.green)}`;
 }
 
 /** How many dirty paths the text names before it counts the rest. */
@@ -136,7 +149,10 @@ export function formatProof(report: ProofReport): string {
       lines.push(`  ${failure.test} [${failureKind(failure)}]`);
       lines.push(...errorLines(failure.errors).map((line) => `  ${line.replace(/^ {2}/, INDENT)}`));
     }
-    lines.push(`  green: ${file.green === null ? "not read" : endText(file.green)}`);
+    const notRun = `not run (${file.greenNotRun ?? "not needed"})`;
+    lines.push(`  green: ${file.green === null ? notRun : endText(file.green)}`);
+    const control = controlLine(file, report.conditions);
+    if (control !== null) lines.push(`  ${control}`);
   }
   const counts = countsOf(report.files);
   const parts = Object.entries(counts).map(([verdict, n]) => `${n} ${verdict}`);
@@ -145,6 +161,22 @@ export function formatProof(report: ProofReport): string {
   if (report.rerun !== null)
     lines.push(`${report.notRun} not run (budget). A rerun that fits: ${report.rerun}`);
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Row 023-20 (P9): the control run's one line under a condition: `red
+ * only under the conditions` or `red without them too`, with how the run
+ * without them ended; why it did not run; `null` with no condition.
+ */
+function controlLine(file: ProofFile, conditions: Conditions): string | null {
+  if (!hasConditions(conditions)) return null;
+  if (file.control === null)
+    return `without the conditions: not run (${file.controlNotRun ?? "not needed"})`;
+  const reading = controlReading(file.control.end);
+  const how = `without them: ${endText(file.control)}`;
+  return reading === "not known"
+    ? `without the conditions: ${endText(file.control)}; not known whether red needs the conditions`
+    : `${reading} (${how})`;
 }
 
 function countsOf(files: readonly ProofFile[]): Record<Verdict, number> {
@@ -212,6 +244,10 @@ export function jsonProof(report: ProofReport): string {
       reason: file.reason,
       red: sideJson(file.red),
       green: sideJson(file.green),
+      greenNotRun: file.greenNotRun,
+      control: sideJson(file.control),
+      controlReading: file.control === null ? null : controlReading(file.control.end),
+      controlNotRun: file.controlNotRun,
     })),
   };
   return `${JSON.stringify(value, null, 2)}\n`;

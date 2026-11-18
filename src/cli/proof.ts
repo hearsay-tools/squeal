@@ -3,7 +3,7 @@ import { changedPaths } from "../core/commit/tree.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import type { Conditions } from "../core/proof/conditions.js";
+import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
 import {
   defaultCase,
   type ProofCase,
@@ -11,22 +11,17 @@ import {
   sidesOf,
   testSideCopies,
 } from "../core/proof/sides.js";
-import { proofExit, redOnAssertion, verdictOf } from "../core/proof/verdict.js";
+import { NOT_RUN_BUDGET, proofExit, redOnAssertion } from "../core/proof/verdict.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
+import { endOf, provedFiles } from "./proof-files.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
-import {
-  formatProof,
-  jsonProof,
-  type ProofFile,
-  type ProofReport,
-  rerunCommand,
-} from "./proof-report.js";
-import { runSide, type SideFile, withSide } from "./proof-side.js";
+import { formatProof, jsonProof, type ProofReport, rerunCommand } from "./proof-report.js";
+import { runSide, withSide } from "./proof-side.js";
 import type { AtOptions } from "./status-at.js";
 
 /*
@@ -79,7 +74,12 @@ export async function proofCommand(
     );
   const proved = await prove(common, args, base, head, named);
   if ("usage" in proved) return fail(proved.usage);
-  const notRun = proved.files.filter((f) => f.reason === "budget").length;
+  // Row 023-20 (P9): a control run the budget left not started counts as not run too.
+  const notRun = proved.files.filter(
+    (f) =>
+      f.reason === "budget" ||
+      (f.control?.end.end === "unknown" && f.control.end.reason === NOT_RUN_BUDGET),
+  ).length;
   const report: ProofReport = {
     ...proved,
     base,
@@ -118,7 +118,10 @@ type Proved = Omit<
  * keyed, read or run in a checkout of its own (the sides' expected trees
  * differ in every case, so they never share one). The green side runs, in
  * its checkout, only for files whose red side failed on assertions alone
- * and that it holds no result for.
+ * and that it holds no result for. Row 023-20 (lessons P9): under a
+ * condition, those files' red side then runs once more without the
+ * conditions, in a checkout of its own, read from and written to the
+ * store like any unconditioned side.
  */
 async function prove(
   common: Common,
@@ -143,7 +146,7 @@ async function prove(
     },
     async (open) => {
       const refs = open.keyed.filter((f) => "key" in f.at).map((f) => f.ref);
-      if (refs.length === 0) return { kind: args.case, red: null };
+      if (refs.length === 0) return { kind: args.case, red: null, control: null };
       const loads = new Map(
         open.keyed.map((f) => [testFileId(f.ref), "key" in f.at ? (f.at.loads ?? []) : []]),
       );
@@ -160,33 +163,29 @@ async function prove(
       if (typeof kind === "object") return kind;
       const red = await sideOf(common, sidesOf(kind, base, head).red, refs, named);
       // The green side decides only after a red side that failed on an assertion.
-      await open.run(refs.filter((ref) => redOnAssertion(endOf(red.files, ref).end)));
-      return { kind, red };
+      const decided = refs.filter((ref) => redOnAssertion(endOf(red.files, ref).end));
+      await open.run(decided);
+      // P9: after the green side, so a short budget cuts the control run, not the verdict.
+      const control =
+        hasConditions(common.conditions) && decided.length > 0
+          ? await sideOf(
+              { ...common, conditions: NO_CONDITIONS },
+              sidesOf(kind, base, head).red,
+              decided,
+              named,
+            )
+          : null;
+      return { kind, red, control };
     },
   );
   const value = green.value;
   if (value !== undefined && "usage" in value) return value;
   const kind = value?.kind ?? null;
-  const red = value?.red ?? null;
-  const files: ProofFile[] = green.refs.map((ref) => {
-    const greenFile = endOf(green.files, ref);
-    // A file the green side could not key has no red side: its reason stands for both.
-    const redFile =
-      red === null || !red.files.has(testFileId(ref)) ? greenFile : endOf(red.files, ref);
-    const decides = redOnAssertion(redFile.end);
-    const { verdict, reason } = verdictOf(redFile.end, decides ? greenFile.end : null);
-    const shown = decides || greenFile.from !== null ? greenFile : null;
-    return { ref, verdict, reason, red: redFile, green: shown };
-  });
   const sides = kind === null ? null : sidesOf(kind, base, head);
+  const at = { case: kind, red: sides?.red ?? null, green: greenSide };
   return {
-    case: kind,
-    red: sides?.red ?? null,
-    green: greenSide,
-    runs: (red?.ran ?? 0) + green.ran,
-    // The red side's checkout lies within the green side's: green's own time is the rest.
-    checkoutMs: { red: red?.checkoutMs ?? null, green: green.checkoutMs - (red?.checkoutMs ?? 0) },
-    files,
+    ...at,
+    ...provedFiles(green, value?.red ?? null, value?.control ?? null, common.conditions),
   };
 }
 
@@ -244,16 +243,4 @@ async function sideOf(
   const code = await commitEntries(common.root, side.code);
   const also = side.tests === side.code ? [] : testSideCopies(tests, code, named);
   return runSide({ ...common, side, files: refs, also, tests, code, named });
-}
-
-function endOf(files: ReadonlyMap<string, SideFile>, ref: TestFileRef): SideFile {
-  return (
-    files.get(testFileId(ref)) ?? {
-      end: { end: "unknown", reason: "not keyed" },
-      from: null,
-      stored: false,
-      notStored: null,
-      runs: 0,
-    }
-  );
 }
