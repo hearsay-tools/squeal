@@ -54,7 +54,7 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
     for (const without of ["linked/victim", "linked"]) {
       const args = { files: [TEST.path], base: a, case: "dependency" as const, without: [without] };
       const result = await prove(f, args, undefined, env);
-      expect(result.code).toBe(2);
+      expect(result.code, result.why).toBe(2);
       expect(result.err.trim().split("\n")).toEqual([
         `squeal proof: --without ${without}: linked is a link at ${a.slice(0, 9)}; a hidden path must not be a link or lie under one`,
       ]);
@@ -90,7 +90,7 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
   it("B3: an honest install keeps the folder hidden: not red", async () => {
     const { f, args } = hiddenFolder();
     const result = await prove(f, args, undefined, throwaway(f.dir));
-    expect(result.code, result.err).toBe(1);
+    expect(result.code, result.why).toBe(1);
     expect(result.files[0]).toMatchObject({ verdict: "not red", red: { end: "pass", runs: 1 } });
     clean(f);
   });
@@ -115,7 +115,7 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
       };
       const options = { cacheRoot: f.cacheRoot, install };
       const result = await prove(f, args, options, throwaway(f.dir));
-      expect(result.code, result.err).toBe(3);
+      expect(result.code, result.why).toBe(3);
       expect(result.files[0]).toMatchObject({
         verdict: "not comparable",
         reason: "install changed the checkout: config; the condition is not known to hold",
@@ -184,7 +184,7 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
       homeKeep: [join(home, "kept"), join(home, "cfg")],
     };
     const result = await prove(f, args, undefined, env);
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail", runs: 1 } });
     expect(result.report.conditions.homeKeep).toEqual([join(home, "kept"), join(home, "cfg")]);
     // What the old test saw: no hidden file by any path, the kept copies, nothing else.
@@ -222,7 +222,7 @@ describe("squeal proof, review wave-9 (row 023-11)", { timeout: 240_000 }, () =>
     ] as const;
     for (const [extra, line] of cases) {
       const result = await prove(f, { ...base, ...extra }, undefined, env);
-      expect(result.code).toBe(2);
+      expect(result.code, result.why).toBe(2);
       expect(result.err.trim().split("\n")).toEqual([`squeal proof: ${line}`]);
       clean(f);
     }

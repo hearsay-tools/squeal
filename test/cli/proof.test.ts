@@ -28,7 +28,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     const options = { cacheRoot: f.cacheRoot, install: install.install };
 
     const first = await prove(f, { files: [TEST.path], base: a }, options);
-    expect(first.code, first.err).toBe(0);
+    expect(first.code, first.why).toBe(0);
     expect(first.report).toMatchObject({ version: "squeal-proof/1", case: "source", base: a });
     expect(first.report.red).toEqual({ tests: first.report.head, code: a });
     const [file] = first.files;
@@ -48,7 +48,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     clean(f);
 
     const second = await prove(f, { files: [TEST.path], base: a }, options);
-    expect(second.code, second.err).toBe(0);
+    expect(second.code, second.why).toBe(0);
     expect(second.files[0]).toMatchObject({
       verdict: "proven",
       red: { end: "fail", from: "store" },
@@ -73,7 +73,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ [TEST.path]: testOf("a", 2) });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.report.case).toBe("test");
     expect(result.report.red).toEqual({ tests: a, code: result.report.head });
     expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail" } });
@@ -86,7 +86,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "src/a.ts": "export const value = 2; // tidied\n", [TEST.path]: testOf("a", 2) });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code, result.err).toBe(1);
+    expect(result.code, result.why).toBe(1);
     expect(result.files[0]).toMatchObject({
       verdict: "not red",
       red: { end: "pass" },
@@ -109,7 +109,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
       [TEST.path]: test,
     });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code, result.err).toBe(3);
+    expect(result.code, result.why).toBe(3);
     expect(result.files[0]).toMatchObject({ verdict: "red for another reason", green: null });
     expect(result.files[0]?.red.failures[0]).toMatchObject({ test: "fixed", kind: "error" });
     expect(result.files[0]?.red.failures[0]?.text).toContain("TypeError");
@@ -125,7 +125,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
       [TEST.path]: `${testOf("a", 2)}import "../src/b";\n`,
     });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code, result.err).toBe(3);
+    expect(result.code, result.why).toBe(3);
     expect(result.files[0]).toMatchObject({
       verdict: "not comparable",
       reason: `imports src/b.ts, absent at ${a.slice(0, 9)}`,

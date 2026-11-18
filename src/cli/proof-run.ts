@@ -127,6 +127,8 @@ async function runOnce(
     // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing;
     // D5.3: nor does a side under a condition, whose key does not record it.
     store: forced === null && change === null,
+    // CI of 0.1.562: each run is one observation; the gate's load retry would replace a failure.
+    retry: false,
     env,
     forward: input.forward,
   });

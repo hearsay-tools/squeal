@@ -39,7 +39,7 @@ describe("squeal proof --repeat (row 023-11, D5.4)", { timeout: 300_000 }, () =>
     const env = { ...process.env, PROOF_COUNTER: join(f.dir, "counter") };
     const args = { files: [TEST.path], base: a, case: "test" as const, repeat: 3 };
     const result = await prove(f, args, undefined, env);
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.report.repeat).toBe(3);
     expect(result.files[0]).toMatchObject({
       verdict: "proven",
@@ -60,7 +60,7 @@ describe("squeal proof --repeat (row 023-11, D5.4)", { timeout: 300_000 }, () =>
     const env = { ...process.env, PROOF_COUNTER: join(f.dir, "counter") };
     const args = { files: [TEST.path], base: a, repeat: 3, json: false };
     const text = await prove(f, args, undefined, env);
-    expect(text.code, text.err).toBe(1);
+    expect(text.code, text.why).toBe(1);
     expect(text.out).toContain("test/a.test.ts: not green (the green side failed)");
     expect(text.out).toContain("Repeat 3: red up to 3 runs to its first failure, green 3 runs.");
     expect(text.out).toContain(
@@ -80,7 +80,7 @@ describe("squeal proof --repeat (row 023-11, D5.4)", { timeout: 300_000 }, () =>
     f.commit({ [TEST.path]: testOf("a", 2) });
     const args = { files: [TEST.path], base: a, case: "test" as const, timeoutSeconds: 1 };
     const result = await prove(f, args);
-    expect(result.code, result.err).toBe(3);
+    expect(result.code, result.why).toBe(3);
     expect(result.files[0]).toMatchObject({
       verdict: "not comparable",
       reason: "budget",

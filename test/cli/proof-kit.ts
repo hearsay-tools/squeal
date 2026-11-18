@@ -55,10 +55,13 @@ export async function prove(
   const code = await proofCommand(full, io, options);
   const text = out.join("");
   const report = full.json && text !== "" ? JSON.parse(text) : null;
+  const stderr = err.join("");
   return {
     code,
     out: text,
-    err: err.join(""),
+    err: stderr,
+    /** For a failed assertion: the command's stderr and its report, so CI shows the reason. */
+    why: `stderr:\n${stderr}\nreport:\n${text}`,
     report,
     files: (report?.files ?? []) as ProofFileJson[],
   };

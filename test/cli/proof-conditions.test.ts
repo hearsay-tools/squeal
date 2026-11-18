@@ -66,14 +66,14 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
 
     // With the file in HOME, the old test passes: the run reads the command's HOME.
     const plain = await prove(f, { files: [TEST.path], base: a, case: "test" }, options, env);
-    expect(plain.code, plain.err).toBe(1);
+    expect(plain.code, plain.why).toBe(1);
     expect(plain.files[0]).toMatchObject({ verdict: "not red", red: { end: "pass" } });
     clean(f);
 
     const without = [join(home, ".proofrc")];
     const args = { files: [TEST.path], base: a, case: "dependency" as const, without };
     const result = await prove(f, args, options, env);
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.report).toMatchObject({
       case: "dependency",
       red: { tests: a, code: result.report.head },
@@ -102,7 +102,7 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
     const before = resultRows(f);
 
     const first = await prove(f, args, undefined, env);
-    expect(first.code, first.err).toBe(0);
+    expect(first.code, first.why).toBe(0);
     expect(first.files[0]).toMatchObject({
       verdict: "proven",
       red: { end: "fail", from: "run", stored: false },
@@ -113,7 +113,7 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
     clean(f);
 
     const second = await prove(f, { ...args, json: false }, undefined, env);
-    expect(second.code, second.err).toBe(0);
+    expect(second.code, second.why).toBe(0);
     expect(second.out).toContain("Conditions on both sides: --env PROOF_NAME= (unset).");
     expect(second.out).toContain(
       "red: fail, run by this command, not stored (a side under a condition is never stored)",
@@ -135,7 +135,7 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
       without: ["config/local.txt"],
     };
     const result = await prove(f, args);
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.files[0]).toMatchObject({
       verdict: "proven",
       red: { end: "fail", notStored: "a side under a condition is never stored" },
@@ -152,7 +152,7 @@ describe("squeal proof conditions (row 023-11, D5.3)", { timeout: 240_000 }, () 
     const env = { ...process.env, HOME: homeOf(f.dir) };
     const args = { files: [TEST.path], base: a, case: "dependency" as const, without: ["/etc/x"] };
     const result = await prove(f, args, undefined, env);
-    expect(result.code).toBe(2);
+    expect(result.code, result.why).toBe(2);
     expect(result.err.trim().split("\n")).toEqual([
       "squeal proof: --without /etc/x: only a path in the repository or under HOME can be hidden",
     ]);

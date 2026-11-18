@@ -59,7 +59,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
   it("B1: each project's red side is its own: first call and reuse agree", async () => {
     const { f, a } = twoProjects(ON);
     const first = await prove(f, { files: [TEST.path], base: a });
-    expect(first.code, first.err).toBe(3);
+    expect(first.code, first.why).toBe(3);
     const verdicts = {
       assert: ["proven", ["assertion"]],
       import: ["red for another reason", ["error"]],
@@ -68,7 +68,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
     const imported = first.files.find((x) => x.project === "import");
     expect(imported?.red.failures[0]?.text).not.toContain("AssertionError");
     const second = await prove(f, { files: [TEST.path], base: a });
-    expect(second.code, second.err).toBe(3);
+    expect(second.code, second.why).toBe(3);
     expect(second.report.runs).toBe(0);
     expect(byProject(second.files)).toEqual(verdicts);
     clean(f);
@@ -79,7 +79,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
     const first = await prove(f, { files: [TEST.path], base: a });
     const second = await prove(f, { files: [TEST.path], base: a });
     for (const call of [first, second]) {
-      expect(call.code, call.err).toBe(3);
+      expect(call.code, call.why).toBe(3);
       expect(call.files.map((x) => [x.project, x.verdict])).toEqual([
         ["assert", "not comparable"],
         ["import", "not comparable"],
@@ -120,7 +120,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
     expect(seeded.runs.map((r) => r.outcome)).toEqual(["passed"]);
 
     const result = await prove(f, { files: [TEST.path], base: a, case: "source" });
-    expect(result.code, result.err).toBe(1);
+    expect(result.code, result.why).toBe(1);
     expect(result.report.dirty).toEqual(["vitest.config.mjs"]);
     expect(result.files[0]).toMatchObject({
       verdict: "not green",
@@ -155,7 +155,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
     const altered = { cacheRoot: f.cacheRoot, install: rewrites };
     for (const call of [1, 2]) {
       const result = await prove(f, { files: [TEST.path], base: a }, altered);
-      expect(result.code, `${call}: ${result.err}`).toBe(0);
+      expect(result.code, `${call}: ${result.why}`).toBe(0);
       expect(result.files[0]?.red).toMatchObject({
         end: "fail",
         from: "run",
@@ -167,7 +167,7 @@ describe("squeal proof review wave-8 (row 023-08)", { timeout: 300_000 }, () => 
     // An honest install runs the side as committed, a link to 2, and stores it.
     const honest = { cacheRoot: f.cacheRoot, install: linkInstall().install };
     const result = await prove(f, { files: [TEST.path], base: a }, honest);
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.files[0]?.red).toMatchObject({ end: "fail", from: "run", stored: true });
     expect(result.files[0]?.red.failures[0]?.text).toContain("expected 1 to be 2");
     clean(f);

@@ -64,7 +64,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
     const { f, a } = sameKind(OFF);
     for (const call of [1, 2]) {
       const result = await prove(f, { files: [TEST.path], base: a });
-      expect(result.code, `${call}: ${result.err}`).toBe(3);
+      expect(result.code, `${call}: ${result.why}`).toBe(3);
       expect(result.files.map((x) => [x.project, x.verdict])).toEqual(NOT_COMPARABLE);
       expect(result.files[0]?.reason).toContain("projects failed with different failures");
       expect(result.files[0]?.red).toMatchObject({ from: "run", stored: false, failures: [] });
@@ -86,7 +86,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       { files: [TEST.path], base: a },
       { cacheRoot: f.cacheRoot, install: rewrites },
     );
-    expect(result.code, result.err).toBe(3);
+    expect(result.code, result.why).toBe(3);
     expect(result.files.map((x) => [x.project, x.verdict])).toEqual(NOT_COMPARABLE);
     expect(result.files[0]?.red).toMatchObject({
       from: "run",
@@ -153,7 +153,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
 
       const options = { cacheRoot: f.cacheRoot, install: frozen };
       const drifted = await prove(f, { files: [TEST.path], base: a }, options);
-      expect(drifted.code, drifted.err).toBe(1);
+      expect(drifted.code, drifted.why).toBe(1);
       expect(drifted.report.dirty).toEqual([]);
       expect(drifted.files[0]).toMatchObject({
         verdict: "not green",
@@ -163,7 +163,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       // The committed install in the working tree too: the same answer, read from HEAD's key.
       await frozen(f.root);
       const installed = await prove(f, { files: [TEST.path], base: a }, options);
-      expect(installed.code, installed.err).toBe(1);
+      expect(installed.code, installed.why).toBe(1);
       expect(installed.files[0]).toMatchObject({
         verdict: "not green",
         green: { end: "fail", from: "store" },
@@ -186,7 +186,7 @@ describe("squeal proof review wave-8 re-review (row 023-08)", { timeout: 300_000
       { files: [TEST.path], base: a },
       { cacheRoot: f.cacheRoot, install: broken },
     );
-    expect(result.code, result.err).toBe(3);
+    expect(result.code, result.why).toBe(3);
     expect(result.report).toMatchObject({ case: null, red: null, runs: 0 });
     expect(result.files).toEqual([
       expect.objectContaining({

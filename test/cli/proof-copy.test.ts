@@ -35,7 +35,7 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "test/helpers/wanted.ts": "export const wanted = 2;\n" });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.report.case).toBe("test");
     expect(result.files[0]).toMatchObject({
       verdict: "proven",
@@ -51,7 +51,7 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     f.commit({ "src/a.ts": "export const value = 2;\n", [TEST.path]: testOf("a", 2) });
     writeFileSync(join(f.root, "src/a.ts"), "export const value = 5;\n");
     const result = await prove(f, { files: [TEST.path], base: a, json: false });
-    expect(result.code, result.err).toBe(0);
+    expect(result.code, result.why).toBe(0);
     expect(result.out).toContain("not the uncommitted change to src/a.ts");
     expect(result.out).toMatch(/green: pass, run by this command, stored/);
     clean(f);
@@ -68,7 +68,7 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     };
     const options = { cacheRoot: f.cacheRoot, install };
     const first = await prove(f, { files: [TEST.path], base: a }, options);
-    expect(first.code, first.err).toBe(0);
+    expect(first.code, first.why).toBe(0);
     expect(first.files[0]).toMatchObject({
       verdict: "proven",
       red: {
@@ -92,7 +92,7 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "README.md": "notes\n" });
     const result = await prove(f, { files: [TEST.path], base: a });
-    expect(result.code).toBe(2);
+    expect(result.code, result.why).toBe(2);
     expect(result.err).toContain("give --case source or --case test");
     clean(f);
   });
