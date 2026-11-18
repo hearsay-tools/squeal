@@ -58,7 +58,7 @@ describe("news tells a late heartbeat and a death once per consumer (row 011-295
     to(58_000);
     const late = text(await boundary(c1));
     expect(late).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 2\n/);
-    expect(late).toContain("The daemon's heartbeat is late: the last one was 60 s ago");
+    expect(late).toContain("The daemon's heartbeat is late: the last one was 1 min ago");
     expect(await boundary(c1)).toBeNull();
 
     free();

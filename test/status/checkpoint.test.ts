@@ -101,7 +101,7 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
     // Row 011-29: an outstanding group, before the groups of the files it runs.
     expect(lines.slice(lines.indexOf("Outstanding:"), lines.indexOf("Outstanding:") + 2)).toEqual([
       "Outstanding:",
-      "  a checkpoint in progress: the baseline from revision 3, started 90 s ago: 40 of 200 test files done; `squeal run --all --wait` waits for it",
+      "  a checkpoint in progress: the baseline from revision 3, started 1 min 30 s ago: 40 of 200 test files done; `squeal run --all --wait` waits for it",
     ]);
   });
 
@@ -111,7 +111,7 @@ describe("status names the checkpoint in progress (task 001-217)", () => {
     worktree(repo, store, true);
     seedBaseline(repo, store, { kind: "run-all" });
     expect(formatStatus(status(repo), NOW)).toContain(
-      "  a checkpoint in progress: `run --all` requested at revision 3, started 90 s ago",
+      "  a checkpoint in progress: `run --all` requested at revision 3, started 1 min 30 s ago",
     );
 
     store.checkpoints.finish("cp-1", "completed", NOW);

@@ -1,5 +1,5 @@
 import { stopOf } from "../presence/views.js";
-import { plural } from "../text.js";
+import { durationText, plural } from "../text.js";
 import type { EpochMs } from "../types/common.js";
 import type { DaemonNote } from "../types/scheduler.js";
 import type { HeartbeatLate, StatusSnapshot } from "../types/status.js";
@@ -152,14 +152,16 @@ export function lateHeartbeatDetail(late: HeartbeatLate, since: EpochMs | null):
   return `the last one was ${ageText(late.ageMs)} ago${at}; the daemon may be busy or stopped`;
 }
 
-/** `5 s`, `3 min`, `2 h`. */
+/**
+ * `5 s`, `1 min 30 s`, `3 min`: the hooks' one duration format (`durationText`, row 005-122)
+ * below two hours; `2 h` from then.
+ */
 export function ageText(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1000));
-  if (seconds < 120) return `${seconds} s`;
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 120) return `${minutes} min`;
-  return `${Math.round(minutes / 60)} h`;
+  return ms < AGE_HOURS_FROM_MS ? durationText(ms) : `${Math.round(ms / 3_600_000)} h`;
 }
+
+/** From two hours an age is said in hours. */
+const AGE_HOURS_FROM_MS = 2 * 3_600_000;
 
 /**
  * Status's own notes, then the daemon's with time and revision. Unless

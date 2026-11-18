@@ -88,7 +88,7 @@ describe("each outstanding group names what advances it (011-29, design section 
 
     // Row 011-276: the record no shutdown cleared, its lock not free: a late heartbeat, not a stop.
     expect(outstanding(repo.main)).toEqual([
-      `  the daemon's heartbeat is late: the last one was 60 s ago, at ${new Date(NOW - 60_000).toISOString()}; the daemon may be busy or stopped; results are as of revision 4; \`squeal start\` starts one once it has exited`,
+      `  the daemon's heartbeat is late: the last one was 1 min ago, at ${new Date(NOW - 60_000).toISOString()}; the daemon may be busy or stopped; results are as of revision 4; \`squeal start\` starts one once it has exited`,
     ]);
 
     store.worktrees.setDaemon(repo.mainId, null);

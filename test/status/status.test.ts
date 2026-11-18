@@ -699,7 +699,7 @@ describe("readStatus", () => {
       heartbeatLate: { ageMs: 60_000 },
     });
     expect(formatStatus(status, NOW, "squeal", { full: true })).toContain(
-      "\nDaemon: heartbeat late: the last one was 60 s ago, at 2026-10-04T11:59:00.000Z; " +
+      "\nDaemon: heartbeat late: the last one was 1 min ago, at 2026-10-04T11:59:00.000Z; " +
         "the daemon may be busy or stopped\n",
     );
 

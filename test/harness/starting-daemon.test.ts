@@ -224,7 +224,7 @@ describe("a running daemon's late heartbeat", () => {
     const text = context(await batch(r, T + 60_001));
     expect(text).toMatch(/^SQUEAL · the daemon's heartbeat is late at revision 1\n/);
     expect(text).toContain(
-      ` The daemon's heartbeat is late: the last one was 60 s ago, at ${new Date(T).toISOString()}; ` +
+      ` The daemon's heartbeat is late: the last one was 1 min ago, at ${new Date(T).toISOString()}; ` +
         "the daemon may be busy or stopped; results are as of revision 1.",
     );
   });

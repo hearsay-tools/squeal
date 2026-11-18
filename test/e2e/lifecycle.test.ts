@@ -116,7 +116,7 @@ describe.each(PLUGINS)("a dead daemon, $name", (plugin) => {
     } else if (late) {
       expect(told.text).toMatch(
         new RegExp(
-          `The daemon's heartbeat is late: the last one was \\d+ (?:s|min) ago, at ${String(since).replace(/\./g, "\\.")}; ` +
+          `The daemon's heartbeat is late: the last one was \\d+ (?:s|min)(?: \\d+ s)? ago, at ${String(since).replace(/\./g, "\\.")}; ` +
             `the daemon may be busy or stopped; results are as of revision ${down.revision}\\.`,
         ),
       );

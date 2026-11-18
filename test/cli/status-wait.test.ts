@@ -277,7 +277,7 @@ describe("squeal status --wait without a daemon (review wave 4.5, S2)", WAITS, (
     // the snapshot reads the record no shutdown cleared as a late heartbeat; the wait's own socket
     // evidence is its verdict line's.
     expect(stdout).toContain(
-      "\n  the daemon's heartbeat is late: the last one was 60 s ago, at 2026-10-06T11:59:00.000Z; " +
+      "\n  the daemon's heartbeat is late: the last one was 1 min ago, at 2026-10-06T11:59:00.000Z; " +
         "the daemon may be busy or stopped; results are as of revision 3; `squeal start` starts one once it has exited\n",
     );
     // A daemon a hook just spawned gets the settle time to record its heartbeat.

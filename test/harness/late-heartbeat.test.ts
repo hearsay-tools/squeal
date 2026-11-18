@@ -27,7 +27,7 @@ const T = Date.now() as EpochMs;
 const LAST = (T - 90_000) as EpochMs;
 const ISO = new Date(LAST).toISOString();
 const UTC = utcTimeText(LAST);
-const DETAIL = `the last one was 90 s ago, at ${ISO}; the daemon may be busy or stopped`;
+const DETAIL = `the last one was 1 min 30 s ago, at ${ISO}; the daemon may be busy or stopped`;
 /** Under `LATE_HEARTBEAT_NEWS_MS`: no news by itself, nor its recovery. */
 const SHORT = (T - 20_000) as EpochMs;
 const EDIT = { tool_calls: [{ tool_name: "Edit", tool_input: {}, tool_use_id: "toolu_01A" }] };

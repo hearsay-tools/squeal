@@ -128,7 +128,7 @@ describe("a daemon whose shutdown began and that holds its lock (row 011-34)", (
     const at = (SINCE + 100 + 130_000) as EpochMs;
     const text = formatStatus(status(at), at, "squeal", { full: true });
     expect(text).toContain(
-      `Daemon: handing over from 0.1.0 to 0.1.31 since ${SINCE_TEXT} (2 min), past its 130 s bound; \`squeal start\` finishes it`,
+      `Daemon: handing over from 0.1.0 to 0.1.31 since ${SINCE_TEXT} (2 min 10 s), past its 130 s bound; \`squeal start\` finishes it`,
     );
     expect(text).toContain(
       `  the daemon is handing over from 0.1.0 to 0.1.31 since ${SINCE_TEXT}, past its 130 s bound; results are as of revision 3; \`squeal start\` finishes it`,
@@ -141,7 +141,7 @@ describe("a daemon whose shutdown began and that holds its lock (row 011-34)", (
     expect(status(before).daemon.stopping?.overdue).toBe(false);
     const at = (SINCE + 130_000) as EpochMs;
     expect(formatStatus(status(at), at, "squeal", { full: true })).toContain(
-      `Daemon: stopping since ${SINCE_TEXT} (2 min), past its 130 s bound; \`squeal start\` finishes it`,
+      `Daemon: stopping since ${SINCE_TEXT} (2 min 10 s), past its 130 s bound; \`squeal start\` finishes it`,
     );
   });
 
