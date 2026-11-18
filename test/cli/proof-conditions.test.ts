@@ -16,11 +16,9 @@ import { clean } from "./status-at-kit.js";
  */
 
 const TEST = ref("test/a.test.ts");
-const CODE = { "squeal.config.json": "{}\n", "src/a.ts": GREETING() };
-
-function GREETING(): string {
-  return 'export const greeting = (name: string) => `hello ${name || "world"}`;\n';
-}
+/** `greeting(name)`: "hello <name>", or "hello world" with no name. */
+const GREETING = 'export const greeting = (name: string) => "hello " + (name || "world");\n';
+const CODE = { "squeal.config.json": "{}\n", "src/a.ts": GREETING };
 
 /** A test that greets the name `read` gives: an expression over `node:fs`, `homedir` and `join`. */
 function greets(read: string): string {
