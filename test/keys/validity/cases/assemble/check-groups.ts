@@ -65,4 +65,20 @@ export const CHECK_GROUPS: readonly Case[] = [
     why: "019-07: a group's moment is not in a key, so the keys equal the last release's, which ignores both keys",
     input: { files: files({ checks: CHECKS, stop: { maxHolds: 2 } }), closures },
   },
+  {
+    kind: "assemble",
+    name: "a repository with check descriptions",
+    why: "005-126: a check's description is text only `squeal checks` reads, so the keys equal the last release's, which leaves the described groups out as unknown keys",
+    input: {
+      files: files({
+        checks: [
+          { name: "unit", runner: "vitest", tests: ["test/**"], at: "edit", description: "Unit." },
+          { name: "style", lint: true, at: "commit", description: "Lint." },
+          // Left out: two lines.
+          { name: "two", runner: "vitest", at: "manual", description: "a\nb" },
+        ],
+      }),
+      closures,
+    },
+  },
 ];
