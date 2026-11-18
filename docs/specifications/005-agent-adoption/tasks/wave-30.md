@@ -54,3 +54,30 @@ Final message: the commits, the measures, what you could not verify without a ru
 ## After the workers (the coordinator)
 
 One branch `exp/minimal-primer` from main with both workers' commits and built bundles. An eval-design review (/reviewer, read-only, no run): do the measures answer the question; can a session score well for a wrong reason; is the new scenario fair to all three forms (form A's primer names the manual check in its group sentence, forms B and C do not: that difference is the experiment, not a flaw). Then two atomic runs on the branch commit, Sonnet and Sol: `--variant primer-minimal` and `--variant primer-minimal-rules`; each runs the shipped arm beside its variant. Results go to main as variant result files; `ATOMIC.md` and `TREND.md` leave them out.
+
+## Run plan, staged (the human, 2026-11-18)
+
+The human: "Start with the smallest and if it didn't collapse right away, expand to the next one. Stop at the first one that shows the degradation. Also, consider starting with one model (SOL) first and add the other ones right after if that one does not show a difference. The ceiling is your recommendation but we don't need to commit to the whole thing right away." This section is written before any run, so the rules below are not chosen after seeing results.
+
+Design change before the run (the coordinator, after the second design-review FAIL, `reviews/exp-minimal-primer-design-r2.md`): `a12-manual-check` scores only `no-false-pass` and `claim-true` against ground truth; how the session got there (a run through Squeal, its own run, a look-up, none) is unscored context. `manual-check-seen` is not a measure.
+
+Form B (`primer-minimal`) is compared first. Form C (`primer-minimal-rules`) runs only if B shows a degradation.
+
+| Stage | Model | Repetitions | Sessions (both arms) |
+|---|---|---|---|
+| 1 | Sol | 10 in all 12 scenarios | 240 |
+| 2 | Sonnet | 10 in all 12 scenarios | 240 |
+| 3 | both | 30 more in `a12-manual-check` (40 in total) | 240 |
+| 4 | both | 30 more in `a3-harmless` and `a4-pending` (40 in total) | 480 |
+
+Stage 4 is the ceiling. Each stage is one run, never two at once; each session starts only below the host's CPU count in load.
+
+**Degradation, read after each stage, per model and scenario, never pooled across models or scenarios.** A stage shows a degradation when, in the repetitions run so far for that model and scenario, one of these holds:
+- a scored measure is lower in B than in A with two-sided Fisher p < 0.05 (at 10 against 10 that is at least 10/10 against 5/10: a collapse);
+- B has two or more false passes in a scenario where A has none (every false pass is read by hand at any count);
+- the unscored hand-run context (`own-run`, `own-run-while-pending`) rises in B by the same Fisher rule in `a1-break`, `a2-slow` or `a3-harmless`, where a hand run is the wrong behaviour.
+
+On a degradation: stop expanding B, report it to the human with the sessions, and ask whether form C runs from stage 1.
+On none: go to the next stage. After stage 4 with none: report "no degradation found at this size", with the gap each scenario could have hidden, not "equivalent".
+
+Repetitions of one arm, model and scenario from different stages are pooled (same commit, same variant, same fixture); each stage's results file is committed and the host's load range of each is stated.
