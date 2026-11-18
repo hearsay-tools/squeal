@@ -475,6 +475,7 @@ function resolveEntry(group, index) {
     name: group.name,
     index,
     at: group.at,
+    ...group.description === void 0 ? {} : { description: group.description },
     stopRequires: group.at === "stop",
     after: group.after ?? [],
     quietMs: group.quietMs ?? 0,
@@ -637,6 +638,11 @@ var names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
 );
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
+);
 var tests = (value, path) => {
   const wrong = must(
     "a non-empty array of strings",
@@ -672,6 +678,7 @@ var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits
@@ -682,7 +689,7 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ name, at: moment, lint });
+var LINT_RULES = object({ name, at: moment, description, lint });
 var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
@@ -721,7 +728,7 @@ function shapeProblem(entry3, at) {
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry3[key] !== void 0);
     if (unbuilt !== void 0) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {
@@ -16866,11 +16873,82 @@ function livenessTitle(liveness, header, command) {
   return header.daemon?.state === "down" && header.daemon.heartbeatLate !== void 0 ? `SQUEAL \xB7 the daemon's heartbeat is late at revision ${revision}` : `SQUEAL \xB7 no daemon is validating at revision ${revision}`;
 }
 
+// src/harness/shared/not-covered.ts
+function notCovered(coverage) {
+  const files2 = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
+  const what = files2.length === 0 ? "typecheck, build" : `typecheck, build, the ${files2.join(", the ")}, which squeal.config.json excludes,`;
+  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
+}
+
+// src/harness/shared/primer-forms.ts
+var SHORT_OPENING = "checks in the background and tells you with your next tool call when one changes; a pass is silent.";
+var SHORT_FORMS = {
+  // Form B.
+  minimal: ({ cli, Cli }) => [
+    `${Cli("checks")} lists the checks this repository defines and when each runs.`,
+    `${Cli("status")} gives the current results, ${cli("run <check>")} runs one now, ${cli("retry <file>")} repeats a failure caused by load or a stopped service.`,
+    `${Cli("--help")} has the rest.`
+  ],
+  // Form C: B with two rules after its first sentence.
+  "minimal-rules": (names3) => [
+    "Do not run the tests yourself to learn whether an edit broke something.",
+    `Before you say you are done, ${names3.cli("status --wait 60000")} gives the verdict.`,
+    ...SHORT_FORMS.minimal(names3)
+  ],
+  // For a harness that ships the squeal skill (Claude Code, Codex, Pi).
+  skill: ({ cli, Cli }) => [
+    "Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause.",
+    `${Cli("checks")} lists this repository's checks and when each runs; ${cli("status")} gives the current results.`
+  ],
+  // The `"skill"` form for a harness with no squeal skill (OpenCode).
+  "no-skill": ({ cli, Cli }) => [
+    "Do not run the tests yourself to learn whether an edit broke something.",
+    `A check that does not run after an edit: ${cli("run <check> --wait 60000")}.`,
+    `A failure you did not cause, from load or a stopped service: ${cli("retry <file> --reason load|environment")}, then claim from that result.`,
+    `Before you say you are done: ${cli("status --wait 60000")}.`,
+    `${Cli("checks")} lists this repository's checks and when each runs.`
+  ]
+};
+var UNNAMED_CLI = "These are commands of the CLI SQUEAL messages name.";
+
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
-function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
+var PRIMER_FORM = "full";
+function shortPrimer(command, form) {
+  const render = (naming) => {
+    let named3 = false;
+    const cli = (sub) => {
+      if (naming === "none") return `\`${sub}\``;
+      const full = naming === "every" || !named3;
+      named3 = true;
+      return full ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
+    };
+    const Cli = (sub) => {
+      const text3 = cli(sub);
+      return text3.startsWith("the ") ? `T${text3.slice(1)}` : text3;
+    };
+    return [
+      `${PRIMER_OPENING}${SHORT_OPENING}`,
+      ...SHORT_FORMS[form]({ cli, Cli }),
+      ...naming === "none" ? [UNNAMED_CLI] : []
+    ].join(" ");
+  };
+  const namings = command === SQUEAL_COMMAND ? ["every"] : ["first", "none"];
+  let text2 = "";
+  for (const naming of namings) {
+    text2 = render(naming);
+    if (text2.length <= PRIMER_CAP_CHARS) return text2;
+  }
+  return text2;
+}
+function shortForm(form, skill) {
+  return form === "skill" && !skill ? "no-skill" : form;
+}
+function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE, options = {}) {
+  const form = options.form ?? PRIMER_FORM;
+  if (form !== "full") return shortPrimer(command, shortForm(form, options.skill ?? true));
   const names3 = runnersOf(coverage).map((runner) => runner.name);
   const groups2 = coverage.groups;
   const when = groups2 === void 0 ? " after each edit" : "";
@@ -17010,11 +17088,6 @@ function excluded(entries) {
   const { text: text2, plural: plural2 } = excludedProjectsText(entries);
   return `; its ${text2} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
-function notCovered(coverage) {
-  const files2 = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
-  const what = files2.length === 0 ? "typecheck, build" : `typecheck, build, the ${files2.join(", the ")}, which squeal.config.json excludes,`;
-  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
-}
 function named2(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
   if (shown === 0) return `${entries.length} ${nouns}`;
@@ -17075,6 +17148,8 @@ function bridgeDeps(module, host) {
     // Row 005-117: the primer is the system prompt's (D3): every answer that registers carries it
     // in its own `primer` field when the plugin has none (`hooks.ts`), for the next request.
     registrationPrimer: false,
+    // Row 005-126 (experiment): the OpenCode package ships no squeal skill.
+    skill: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid })
   };
 }

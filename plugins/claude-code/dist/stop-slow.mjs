@@ -465,6 +465,7 @@ function resolveEntry(group, index) {
     name: group.name,
     index,
     at: group.at,
+    ...group.description === void 0 ? {} : { description: group.description },
     stopRequires: group.at === "stop",
     after: group.after ?? [],
     quietMs: group.quietMs ?? 0,
@@ -627,6 +628,11 @@ var names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
 );
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
+);
 var tests = (value, path) => {
   const wrong = must(
     "a non-empty array of strings",
@@ -662,6 +668,7 @@ var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits
@@ -672,7 +679,7 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ name, at: moment, lint });
+var LINT_RULES = object({ name, at: moment, description, lint });
 var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
@@ -711,7 +718,7 @@ function shapeProblem(entry3, at) {
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry3[key] !== void 0);
     if (unbuilt !== void 0) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {
