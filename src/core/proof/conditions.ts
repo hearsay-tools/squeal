@@ -66,6 +66,23 @@ export function placeWithout(
   };
 }
 
+/**
+ * Review wave-9 B2: the first of `path` and its parent folders that
+ * `entries` (a commit's tree) holds as a link; `null` when none is. A
+ * removal through a link parent would delete outside the checkout.
+ */
+export function linkOnPath(
+  path: RelativePath,
+  entries: ReadonlyMap<RelativePath, { readonly mode: string }>,
+): RelativePath | null {
+  const parts = path.split("/");
+  for (let at = 1; at <= parts.length; at++) {
+    const prefix = parts.slice(0, at).join("/");
+    if (entries.get(prefix)?.mode === "120000") return prefix;
+  }
+  return null;
+}
+
 /** The paths hidden in the side's checkout. */
 export function hiddenInRepository(conditions: Conditions): RelativePath[] {
   return conditions.without.flatMap((w) => (w.where === "repository" ? [w.path] : []));

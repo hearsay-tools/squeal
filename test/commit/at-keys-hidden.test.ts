@@ -1,7 +1,18 @@
-import { mkdirSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { removeHidden } from "../../src/core/commit/at-keys-side.js";
 import { checkoutChange, isUnder } from "../../src/core/commit/at-keys-verify.js";
+import { CheckoutFailed } from "../../src/core/commit/at-keys-walk.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { fixture, git } from "./at-keys-fixture.js";
 
 /*
@@ -33,5 +44,32 @@ describe("checkoutChange with hidden paths (row 023-11)", () => {
     expect(isUnder("data/x/one.txt", ["data/x"])).toBe(true);
     expect(isUnder("data/x", ["data/x"])).toBe(true);
     expect(isUnder("data/xy", ["data/x"])).toBe(false);
+  });
+
+  it("removes a hidden path without following a link (review wave-9 B2)", () => {
+    const f = fixture({ "src/a.ts": "a\n" });
+    const tree = join(f.dir, "tree") as AbsolutePath;
+    const outside = join(f.dir, "outside");
+    mkdirSync(join(outside, "victim"), { recursive: true });
+    writeFileSync(join(outside, "victim", "file"), "must survive\n");
+    mkdirSync(join(tree, "real", "gone"), { recursive: true });
+    writeFileSync(join(tree, "real", "gone", "x"), "x\n");
+    symlinkSync(outside, join(tree, "linked"));
+    symlinkSync(join(outside, "victim"), join(tree, "real", "terminal"));
+    writeFileSync(join(tree, "file"), "f\n");
+
+    expect(() => removeHidden(tree, "linked/victim")).toThrow(CheckoutFailed);
+    expect(() => removeHidden(tree, "linked/victim")).toThrow(
+      "--without linked/victim lies under a link in the checkout: linked",
+    );
+    expect(() => removeHidden(tree, "file/x")).toThrow("lies under a file in the checkout: file");
+    // A link at the path itself is removed as a link; its target stays.
+    removeHidden(tree, "real/terminal");
+    expect(existsSync(join(tree, "real", "terminal"))).toBe(false);
+    removeHidden(tree, "real/gone");
+    expect(existsSync(join(tree, "real", "gone"))).toBe(false);
+    removeHidden(tree, "missing/x");
+    expect(readFileSync(join(outside, "victim", "file"), "utf8")).toBe("must survive\n");
+    expect(lstatSync(join(tree, "linked")).isSymbolicLink()).toBe(true);
   });
 });

@@ -127,7 +127,8 @@ async function runOnce(
     stored: forced === null,
   });
   const out = new Map<string, SideFile>();
-  const notStored = forced ?? (change === null ? null : `install changed the checkout: ${change}`);
+  // Review wave-9 B3: a change the install made is named, never masked by the forced reason.
+  const notStored = change === null ? forced : `install changed the checkout: ${change}`;
   // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
   await withStores(checkout.commonDir, async (main) => {
     for (const file of toRun) {

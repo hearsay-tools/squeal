@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   conditionedEnv,
   conditionWords,
+  linkOnPath,
   ownHome,
   placeWithout,
 } from "../../src/core/proof/conditions.js";
@@ -58,6 +59,19 @@ describe("proof conditions (row 023-11, D5.3)", () => {
       expect(placeWithout(whole, cwd, root, "/srv/user")).toEqual({
         usage: `--without ${whole}: the repository and its .git cannot be hidden`,
       });
+  });
+
+  it("finds a link at a hidden path or above it in a commit's tree (review wave-9 B2)", () => {
+    const entries = new Map([
+      ["linked", { mode: "120000" }],
+      ["config/local", { mode: "100644" }],
+      ["config/alias", { mode: "120000" }],
+    ]);
+    expect(linkOnPath("linked/victim/inner", entries)).toBe("linked");
+    expect(linkOnPath("linked", entries)).toBe("linked");
+    expect(linkOnPath("config/alias", entries)).toBe("config/alias");
+    expect(linkOnPath("config/local", entries)).toBeNull();
+    expect(linkOnPath("config", entries)).toBeNull();
   });
 
   it("sets and unsets variables, and gives the run its own HOME", () => {

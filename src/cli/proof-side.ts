@@ -2,7 +2,7 @@ import type { BeforeRemove, KeyedFile } from "../core/commit/at-keys-checkout.js
 import { sideKeys } from "../core/commit/at-keys-side.js";
 import type { CheckoutOptions, KeyingOptions } from "../core/commit/at-keys-walk.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import { type Conditions, hiddenInRepository } from "../core/proof/conditions.js";
+import { type Conditions, hasConditions, hiddenInRepository } from "../core/proof/conditions.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
 import type { SideEnd } from "../core/proof/verdict.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
@@ -120,9 +120,19 @@ export async function withSide<T>(
       copied: new Set([...input.named, ...input.also]),
     });
     const pending = new Map<string, KeyedFile>();
+    // Review wave-9 B3: a conditioned side runs only on its expected tree. A change after the
+    // install (a hidden path put back, or any other) means the condition is not known to hold.
+    const broken =
+      change !== null && hasConditions(input.conditions)
+        ? `install changed the checkout: ${change}; the condition is not known to hold`
+        : null;
     for (const file of keyed) {
       const id = testFileId(file.ref);
       if (!("key" in file.at)) continue;
+      if (broken !== null) {
+        files.set(id, unknown(broken));
+        continue;
+      }
       const loads = file.at.loads ?? [];
       const missing = missingImport(loads, input.tests, input.code, input.named);
       const needed = missing === null ? needs(file) : null;

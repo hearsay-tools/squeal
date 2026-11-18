@@ -1,6 +1,12 @@
 import { resolveCommit } from "../core/commit/at-keys-checkout.js";
+import { commitEntries } from "../core/commit/at-keys-verify.js";
 import { runGit, splitNul } from "../core/fs/git.js";
-import { type Conditions, placeWithout, type Without } from "../core/proof/conditions.js";
+import {
+  type Conditions,
+  linkOnPath,
+  placeWithout,
+  type Without,
+} from "../core/proof/conditions.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 import type { ProofArgs } from "./proof-args.js";
@@ -48,7 +54,32 @@ export async function locate(args: ProofArgs, io: CliIo): Promise<Located | stri
   }
   const conditions = conditionsOf(args, cwd, root, (io.env ?? process.env).HOME);
   if (typeof conditions === "string") return conditions;
+  const linked = await linkedWithout(root, [base, head], conditions);
+  if (linked !== null) return linked;
   return { root, commonDir, base, head, paths, conditions };
+}
+
+/**
+ * Review wave-9 B2: a usage problem when a repository `--without` path, or
+ * a folder above it, is a link at either commit; both sides' checkouts
+ * hold those commits' trees before their install.
+ */
+async function linkedWithout(
+  root: AbsolutePath,
+  commits: readonly string[],
+  conditions: Conditions,
+): Promise<string | null> {
+  const repository = conditions.without.filter((w) => w.where === "repository");
+  if (repository.length === 0) return null;
+  for (const commit of commits) {
+    const entries = await commitEntries(root, commit);
+    for (const w of repository) {
+      const link = linkOnPath(w.path, entries);
+      if (link !== null)
+        return `--without ${w.given}: ${link} is a link at ${commit.slice(0, 9)}; a hidden path must not be a link or lie under one`;
+    }
+  }
+  return null;
 }
 
 /**

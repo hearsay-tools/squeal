@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -10,7 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { copyIntoCheckout } from "../checkout/checkout.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
@@ -26,7 +27,7 @@ import {
 } from "./at-keys-checkout.js";
 import { narrowed } from "./at-keys-narrow.js";
 import { type CommitEntry, commitEntries } from "./at-keys-verify.js";
-import type { CheckoutOptions, KeyingOptions } from "./at-keys-walk.js";
+import { CheckoutFailed, type CheckoutOptions, type KeyingOptions } from "./at-keys-walk.js";
 import { LS_TREE_TIMEOUT_MS } from "./tree.js";
 
 /*
@@ -88,8 +89,7 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
           unlinkSync(join(checkout.tree, path));
           symlinkSync(target, join(checkout.tree, path));
         }
-        for (const path of hidden)
-          rmSync(join(checkout.tree, path), { recursive: true, force: true });
+        for (const path of hidden) removeHidden(checkout.tree, path);
       };
       // Row 023-08: the side's expected tree, its copies at the test version's kind, mode and
       // blob; every copied path is checked (review wave-8 B3), none skipped.
@@ -121,6 +121,33 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
   } finally {
     source.remove();
   }
+}
+
+/**
+ * Row 023-11 (D5.3, review wave-9 B2): removes the hidden `path` from the
+ * checkout's `tree` without following a link. Each parent folder is
+ * checked with `lstat` first: a link or a file among them refuses the
+ * side (`CheckoutFailed`), since a removal through it would delete outside
+ * the checkout. The path itself, a link included, is removed as it is:
+ * `rmSync` removes a link, never its target.
+ */
+export function removeHidden(tree: AbsolutePath, path: RelativePath): void {
+  const parts = path.split("/");
+  const name = parts.pop() ?? "";
+  if (name === "" || name === "." || name === ".." || parts.includes(".."))
+    throw new CheckoutFailed("checkout", `--without ${path} is not a path inside the checkout`);
+  let folder: string = tree;
+  for (const part of parts) {
+    folder = join(folder, part);
+    const stats = lstatSync(folder, { throwIfNoEntry: false });
+    if (stats === undefined) return;
+    if (stats.isSymbolicLink() || !stats.isDirectory())
+      throw new CheckoutFailed(
+        "checkout",
+        `--without ${path} lies under ${stats.isSymbolicLink() ? "a link" : "a file"} in the checkout: ${relative(tree, folder)}`,
+      );
+  }
+  rmSync(join(folder, name), { recursive: true, force: true });
 }
 
 /** The test files of `tests` to copy in; their folder, those the version lacks, and those written. */
