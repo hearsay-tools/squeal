@@ -41,11 +41,10 @@ export const REVISION =
 type Naming = "every" | "first" | "none";
 
 /**
- * Which wait sentence the primer says: the path wait (005-68), the sentence
- * it replaced, or that sentence without its example, which names the CLI at
- * the wait where the others no longer fit (task 004-78).
+ * Which wait sentence the primer says: the path wait (005-68), or the sentence it replaced,
+ * where no drop lets the CLI be named (row 005-122: only with the CLI unnamed).
  */
-type WaitForm = "paths" | "plain" | "short";
+type WaitForm = "paths" | "plain";
 
 /**
  * How to work with Squeal, decided by the human (task 001-88). The one
@@ -177,12 +176,12 @@ function withPathWait(
 }
 
 /**
- * Fold the runners' projects first, then name the CLI less, until the primer fits;
- * the path wait joins only where it fits without folding more (task 005-68). Before the
- * CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
- * the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
- * Over the cap at every fold, the last one tried. Row 005-94: `primer` reaches these folds only
- * where no drop of row 005-89's order lets the path wait fit.
+ * With the CLI unnamed, fold the runners' projects until the primer fits; the path wait joins
+ * only where it fits without folding more (task 005-68). Over the cap at every fold, the last
+ * one tried. Row 005-94: `primer` reaches these folds only where no drop of row 005-89's order
+ * lets the path wait fit. Row 005-122 (`test/harness/primer-wait-forms.test.ts`): a primer that
+ * fits with the CLI named, in the plain sentence or a shorter one (task 004-78), also fits the
+ * path wait after drops, so the folds that named it were never chosen and are gone.
  */
 function folded(
   sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
@@ -190,18 +189,11 @@ function folded(
   most: number,
 ): string {
   let text = "";
-  for (const naming of ["every", "first", "none"] as const) {
-    for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming, "plain");
-      if (text.length > PRIMER_CAP_CHARS) continue;
-      const paths = sentences(coversSentence(coverage, node), naming, "paths");
-      return paths.length <= PRIMER_CAP_CHARS ? paths : text;
-    }
-    if (naming !== "first") continue;
-    for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming, "short");
-      if (text.length <= PRIMER_CAP_CHARS) return text;
-    }
+  for (let node = most; node >= 0; node--) {
+    text = sentences(coversSentence(coverage, node), "none", "plain");
+    if (text.length > PRIMER_CAP_CHARS) continue;
+    const paths = sentences(coversSentence(coverage, node), "none", "paths");
+    return paths.length <= PRIMER_CAP_CHARS ? paths : text;
   }
   return text;
 }
@@ -214,22 +206,14 @@ function folded(
  * on most of a suite other work had re-keyed. What a path selects (005-67) is the
  * skill's: the primer is at its cap. Where it does not fit, `paths` off
  * gives the sentence it replaced, so no primer says less than before it,
- * projects and the CLI's naming included (the 005 coordinator, 2026-10-17).
- * `short` is that sentence in fewer words, for a CLI too long for it, so the
- * CLI stays named at the wait (task 004-78). Row 019-49 (019 D6): with no
+ * projects and the CLI's naming included (the 005 coordinator, 2026-10-17);
+ * only with the CLI unnamed since row 005-122 (`folded`). Row 019-49 (019 D6): with no
  * test group at `edit` (`quiet`), the path wait becomes the narrow run, since
  * a path wait does not start a file its group's moment holds.
  */
 function waitSentence(command: string, naming: Naming, form: WaitForm, quiet = false): string {
-  if (form === "short") {
-    return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
-  }
   if (form === "plain") {
-    const wait =
-      naming === "none"
-        ? "`status --wait 60000` on the CLI SQUEAL messages name"
-        : `\`${command} status --wait 60000\``;
-    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+    return "Wait only when you need a result before your next step, for example before saying the task is done: `status --wait 60000` on the CLI SQUEAL messages name.";
   }
   // A Codex CLI is a long path: named in full once, as the path wait; unnamed, said once, up front.
   const full = naming === "every" && command === SQUEAL_COMMAND;
