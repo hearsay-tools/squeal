@@ -36,26 +36,26 @@ function temp(): string {
 }
 
 describe("proof conditions (row 023-11, D5.3)", () => {
-  const root = "/home/u/repo" as AbsolutePath;
+  const root = "/srv/repo" as AbsolutePath;
 
   it("places a path in the repository first, then under HOME; refuses any other", () => {
     const cwd = join(root, "test") as AbsolutePath;
-    expect(placeWithout("fixtures/a.json", cwd, root, "/home/u")).toEqual({
+    expect(placeWithout("fixtures/a.json", cwd, root, "/srv/user")).toEqual({
       given: "fixtures/a.json",
       where: "repository",
       path: "test/fixtures/a.json",
     });
-    expect(placeWithout("/home/u/.npmrc", cwd, root, "/home/u")).toEqual({
-      given: "/home/u/.npmrc",
+    expect(placeWithout("/srv/user/.npmrc", cwd, root, "/srv/user")).toEqual({
+      given: "/srv/user/.npmrc",
       where: "home",
       path: ".npmrc",
     });
-    expect(placeWithout("/etc/x", cwd, root, "/home/u")).toEqual({
+    expect(placeWithout("/etc/x", cwd, root, "/srv/user")).toEqual({
       usage: "--without /etc/x: only a path in the repository or under HOME can be hidden",
     });
-    expect(placeWithout("/home/u/.npmrc", cwd, root, undefined)).toHaveProperty("usage");
+    expect(placeWithout("/srv/user/.npmrc", cwd, root, undefined)).toHaveProperty("usage");
     for (const whole of [root, join(root, ".git"), join(root, ".git/config")])
-      expect(placeWithout(whole, cwd, root, "/home/u")).toEqual({
+      expect(placeWithout(whole, cwd, root, "/srv/user")).toEqual({
         usage: `--without ${whole}: the repository and its .git cannot be hidden`,
       });
   });
@@ -68,7 +68,7 @@ describe("proof conditions (row 023-11, D5.3)", () => {
       ],
       without: [],
     };
-    expect(conditionedEnv({ CI: "1", HOME: "/home/u", A: "a" }, conditions, "/tmp/h")).toEqual({
+    expect(conditionedEnv({ CI: "1", HOME: "/srv/user", A: "a" }, conditions, "/tmp/h")).toEqual({
       TZ: "UTC",
       HOME: "/tmp/h",
       A: "a",
