@@ -1,4 +1,3 @@
-import type { WorktreeId } from "../types/common.js";
 import type { Store } from "../types/store.js";
 import { num } from "./codec.js";
 import type { Connection } from "./connection.js";
@@ -124,28 +123,4 @@ export function currentBirthMark(store: Store): number | null {
   if (conn === null || !armed(conn)) return null;
   const row = conn.get("SELECT seq FROM sqlite_sequence WHERE name = 'state_born'");
   return row === null ? 0 : num(row, "seq");
-}
-
-/** The birth mark of `worktreeId`'s state of the check with row id `checkId`; `null` when none. */
-export function birthMarkOf(store: Store, worktreeId: WorktreeId, checkId: number): number | null {
-  const row = connectionOf(store).get(
-    "SELECT id FROM state_born WHERE worktree_id = ? AND check_id = ?",
-    worktreeId,
-    checkId,
-  );
-  return row === null ? null : num(row, "id");
-}
-
-/** The row ids of `worktreeId`'s checks whose state was born at or before `mark`. */
-export function checksBornBy(
-  store: Store,
-  worktreeId: WorktreeId,
-  mark: number,
-): ReadonlySet<number> {
-  const rows = connectionOf(store).all(
-    "SELECT check_id FROM state_born WHERE worktree_id = ? AND id <= ?",
-    worktreeId,
-    mark,
-  );
-  return new Set(rows.map((row) => num(row, "check_id")));
 }

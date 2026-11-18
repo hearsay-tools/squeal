@@ -3,12 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
-import {
-  birthMarkOf,
-  checksBornBy,
-  currentBirthMark,
-  ensureBirthMarks,
-} from "../../src/core/store/state-born.js";
+import { currentBirthMark, ensureBirthMarks } from "../../src/core/store/state-born.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, knownState, open, tempDir, testCheck, worktree } from "./helpers.js";
@@ -39,8 +34,23 @@ const write = (store: Store, worktreeId: string, ...names: string[]) =>
 const checkId = (store: Store, name: string) =>
   Number(connectionOf(store).get("SELECT id FROM checks WHERE full_name = ?", name)?.id);
 
-const markOf = (store: Store, name: string, worktreeId = WT) =>
-  birthMarkOf(store, worktreeId, checkId(store, name));
+/** The birth mark of `worktreeId`'s state of the check `name`; `null` when none. */
+const markOf = (store: Store, name: string, worktreeId = WT): number | null => {
+  const row = connectionOf(store).get(
+    "SELECT id FROM state_born WHERE worktree_id = ? AND check_id = ?",
+    worktreeId,
+    checkId(store, name),
+  );
+  return row === null ? null : Number(row.id);
+};
+
+/** The row ids of `worktreeId`'s checks whose state was born at or before `mark`. */
+const checksBornBy = (store: Store, worktreeId: string, mark: number): ReadonlySet<number> =>
+  new Set(
+    connectionOf(store)
+      .all("SELECT check_id FROM state_born WHERE worktree_id = ? AND id <= ?", worktreeId, mark)
+      .map((row) => Number(row.check_id)),
+  );
 
 const objects = (store: Store) =>
   connectionOf(store)
