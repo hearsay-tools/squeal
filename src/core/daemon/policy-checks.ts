@@ -41,6 +41,16 @@ const names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string"),
 );
+/** Row 005-126: the most characters a check's description has. */
+export const DESCRIPTION_MAX_CHARS = 200;
+const description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) =>
+    typeof v === "string" &&
+    v.trim().length > 0 &&
+    v.length <= DESCRIPTION_MAX_CHARS &&
+    !/[\r\n]/.test(v),
+);
 const tests: Rule = (value, path) => {
   const wrong = must(
     "a non-empty array of strings",
@@ -85,6 +95,7 @@ const moment = oneOf(CHECK_MOMENTS);
 const COMMON: Readonly<Record<string, Rule>> = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits,
@@ -95,7 +106,7 @@ const TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests,
 });
-const LINT_RULES = object({ name, at: moment, lint });
+const LINT_RULES = object({ name, at: moment, description, lint });
 /** Keys only a test group has, named when a lint group carries one. */
 const TEST_ONLY = ["project", "tests"] as const;
 /**
@@ -150,7 +161,7 @@ function shapeProblem(entry: Readonly<Record<string, unknown>>, at: string): str
     if (testKey !== undefined) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry[key] !== undefined);
     if (unbuilt !== undefined) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {

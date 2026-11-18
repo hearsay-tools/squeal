@@ -41,6 +41,11 @@ interface CheckGroupCommon {
   /** Unique among `checks`; never `tests` or `slow`, the default groups (D2). */
   readonly name: string;
   readonly at: CheckMoment;
+  /**
+   * Row 005-126: what the check is for, in one line of at most 200
+   * characters. Only `squeal checks` reads it.
+   */
+  readonly description?: string;
   /** Groups this group follows at its moment (D1). Absent means none. */
   readonly after?: readonly string[];
   /** At `edit`, how old the latest revision must be before the group starts. Absent means 0. */
@@ -104,6 +109,8 @@ export interface ResolvedGroup {
   /** Its index in `checks`, or `null` for a default group (D2). */
   readonly index: number | null;
   readonly at: CheckMoment;
+  /** Row 005-126: the `checks` entry's description; absent with none and on a default group. */
+  readonly description?: string;
   /**
    * D4: Stop waits for the group's checks. `at === "stop"` for every group
    * but the default `slow` group under `stop.requireSlowSuite` with
