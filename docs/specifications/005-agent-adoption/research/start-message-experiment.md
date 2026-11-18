@@ -120,3 +120,24 @@ What the degradation is and is not (*measured unless marked*):
 Each cell is 10 against 10; a true 30-point loss is detected in about 15% of such comparisons, so "no difference" in a scenario is unresolved, not equivalence.
 
 Not run: form C (the short form with two behaviour rules); more repetitions of any scenario.
+
+## Per session: which sessions ran the tests by hand
+
+The human asked (2026-11-18) whether a session that loaded the skill did everything right. Counted per session over the 480 sessions of the four stages (*measured*; "wrong hand run" is a hand run outside `a5-uncovered` and `a6-daemon-down`, where it is right):
+
+| Model, form | Read the skill | Sessions | Wrong hand runs | Right claims |
+|---|---|---|---|---|
+| Sol, shipped | yes | 120 | 0 | 120 of 120 |
+| Sol, short | yes | 120 | 0 | 120 of 120 |
+| Sonnet, shipped | no | 120 | 0 | 104 of 113 |
+| Sonnet, short | yes | 40 | 0 | 36 of 38 |
+| Sonnet, short | no | 80 | 10 | 70 of 76 |
+
+- No session that had read the rules ran the tests by hand: 0 of 400. The rules reached it through the skill (280 sessions) or through the shipped start message (120). All 10 wrong hand runs are in the 80 sessions that had read neither.
+- Loading the skill did not make every claim right. In `a11-inherited-flake` the two Sonnet sessions that loaded it both reported the flaky failure as `fail`, as the shipped message's sessions did (0 of 9 right). The skill's main file does not mention `squeal retry` at all (0 occurrences in `plugins/claude-code/skills/squeal/SKILL.md`; 4 in `references/commands.md`): the retry rule is only in the shipped start message and in the failure message's last line.
+- The split is not an experiment: Sonnet chose whether to load the skill, and it chose by scenario (short form: `a12-manual-check` and `a10-retry-real` 10 of 10, `a7-stale` 8, `a2-slow` 5, `a8-load-hold` 3, `a3-harmless` and `a11-inherited-flake` 2, the other five 0). So "the skill prevents hand runs" is an association here, not a tested cause. *What makes Sonnet load it in one scenario and not in another is not determined.*
+
+Constraints on where the rules can live (*read in source*):
+- The start message is capped at 1,500 characters (`PRIMER_CAP_CHARS`, `src/harness/shared/primer.ts`) because Codex cuts a hook's text and keeps a trailing start message whole only up to that length (`src/harness/codex/output.ts`). The skill's main file is about 5,250 characters, with about 105,000 more in its reference files.
+- The skill ships for Claude Code, Codex and Pi. OpenCode has no skill: its sessions get the start message in the system prompt (cap 8,000 characters there) and nothing else.
+- Form B is 391 characters, form C 540; the shipped message was 1,449 in the repository that raised the question.
