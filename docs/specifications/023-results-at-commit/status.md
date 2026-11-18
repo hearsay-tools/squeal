@@ -23,3 +23,4 @@ Started: 2026-11-16
 - 2026-11-18, 023-07 fourth review PASS on `c6c93d458` (`reviews/wave-7-fourth.md`); landed as 0.1.555 on main `c29a082d6` before peer 4d2ecbfc's renumbered 0.1.556.
 - 2026-11-18, the human on the second 023-08 failure (a clean tree with installed packages that differ from the lockfile made the green side read today's pass as HEAD's): "A: clean checkout" (D5.1 amended: the green side is keyed in a temporary checkout at `HEAD` with a frozen install, like the red side; then read from the store or run there). Third round on 023-08.
 - 2026-11-18, 023-08 third review PASS on `672ca7f25` (`reviews/wave-8-third.md`); landed as 0.1.561 on main `49e2cdc92`.
+- 2026-11-18, the human on 023-11's first review (own `HOME` built from links let a test reach the hidden file; Squeal records no reads under `HOME`): "B: empty + --home-keep" (D5.3 amended: the run's `HOME` starts empty; `--home-keep` copies named paths, links refused).
