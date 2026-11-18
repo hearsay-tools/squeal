@@ -61,7 +61,6 @@ export function keepStates(store: Store): void {
       kept = mark === null ? null : { worktreeId, mark, states };
       return states;
     },
-    untold: (consumer) => repo.untold(consumer),
     get: (worktreeId, check) => repo.get(worktreeId, check),
     upsertMany: (states) => {
       kept = null;

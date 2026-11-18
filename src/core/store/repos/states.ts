@@ -49,18 +49,6 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
         )
         .map(toKnownState);
     },
-    untold: (consumer) =>
-      conn
-        .all(
-          `${SELECT_STATES} WHERE s.worktree_id = ? AND NOT EXISTS (
-             SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
-               AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
-           ORDER BY c.project, c.test_path, c.kind, c.full_name`,
-          consumer.worktreeId,
-          consumer.sessionId,
-          consumer.agentId,
-        )
-        .map(toKnownState),
     get: (worktreeId, check) => {
       const id = findCheckId(conn, check);
       if (id === null) return null;

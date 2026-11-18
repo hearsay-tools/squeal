@@ -4,6 +4,7 @@ import { untoldStates, viewMarkOf } from "../../src/core/delivery/view-mark.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import { currentBirthMark, ensureBirthMarks } from "../../src/core/store/state-born.js";
 import { connectionOf } from "../../src/core/store/store.js";
+import { untoldBornAfter } from "../../src/core/store/view-seed.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -110,7 +111,7 @@ describe("a registration on a store that keeps birth marks (row 005-106)", () =>
     await delivery.register(C1);
     land(N, "pass");
     expect(names(untoldStates(store, C1))).toEqual(["n"]);
-    expect(names(store.knownStates.untold(C1))).toEqual(["a", "n"]);
+    expect(names(untoldBornAfter(store, C1, null))).toEqual(["a", "n"]);
   });
 
   it("reads a retired and re-added check as new", async () => {

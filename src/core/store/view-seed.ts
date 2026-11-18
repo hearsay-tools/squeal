@@ -8,8 +8,9 @@ import { SELECT_STATES, toKnownState } from "./repos/states.js";
 import { connectionOf } from "./store.js";
 
 /*
- * Row 005-103: a registration seeds its consumer's view with every known state it read, in one
- * statement. `views.writeMany` of `toView` took three statements per state: an insert and a
+ * Row 005-103: a registration seeds its consumer's view with the rows it is given, in one
+ * statement (row 005-106: the states that are not `pass` while the store keeps birth marks,
+ * else every known state it read). `views.writeMany` of `toView` took three statements per state: an insert and a
  * select to find the check's row id again, then the view's row. A module of its own, not a
  * repository method: delivery alone uses it, and it decides nothing a check stores, so it stays
  * out of the key-format validity path's bundle (011 C3), which every repository is in.
@@ -94,20 +95,28 @@ export function checksBornAfter(
 }
 
 /**
- * `KnownStateRepo.untold` for a consumer whose registration kept `mark`: the states with no
- * view entry that were born after it. One born at or before it was a pass told at the
- * registration.
+ * The states with no entry in `consumer`'s view, each one it was never told. With the `mark`
+ * its registration or an unrestricted delivery kept, only those born after it: one born at or
+ * before it was a pass told then. With no mark (`null`), every state with no entry.
  */
-export function untoldBornAfter(store: Store, consumer: Consumer, mark: number): KnownState[] {
+export function untoldBornAfter(
+  store: Store,
+  consumer: Consumer,
+  mark: number | null,
+): KnownState[] {
+  const born =
+    mark === null
+      ? ""
+      : "JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id";
   return connectionOf(store)
     .all(
-      `${SELECT_STATES} JOIN state_born b ON b.worktree_id = s.worktree_id AND b.check_id = s.check_id
-       WHERE s.worktree_id = ? AND b.id > ? AND NOT EXISTS (
+      `${SELECT_STATES} ${born}
+       WHERE s.worktree_id = ? ${mark === null ? "" : "AND b.id > ?"} AND NOT EXISTS (
          SELECT 1 FROM consumer_views v WHERE v.worktree_id = s.worktree_id
            AND v.session_id = ? AND v.agent_id = ? AND v.check_id = s.check_id)
        ORDER BY c.project, c.test_path, c.kind, c.full_name`,
       consumer.worktreeId,
-      mark,
+      ...(mark === null ? [] : [mark]),
       consumer.sessionId,
       consumer.agentId,
     )

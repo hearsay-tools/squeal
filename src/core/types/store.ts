@@ -315,8 +315,6 @@ export interface CheckpointRepo {
 export interface KnownStateRepo {
   /** With `files`, only their checks' states (task 001-414). */
   list(worktreeId: WorktreeId, files?: readonly TestFileRef[]): readonly KnownState[];
-  /** The worktree's states with no entry in `consumer`'s view: what it was never told. */
-  untold(consumer: Consumer): readonly KnownState[];
   get(worktreeId: WorktreeId, check: CheckId): KnownState | null;
   upsertMany(states: readonly KnownState[]): void;
   /**

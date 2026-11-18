@@ -58,8 +58,9 @@ export function createConsumerRepo(conn: Connection): ConsumerRepo {
         .map(toConsumer),
     /**
      * A registration starts from an empty view: spec 001 D6 seeds the view
-     * with the current known state on registration, so entries left by an
-     * earlier registration of the same consumer are dropped.
+     * on registration (row 005-106: the states that are not `pass` while the
+     * store keeps birth marks, else every known state), so entries left by
+     * an earlier registration of the same consumer are dropped.
      */
     register: (consumer, at) =>
       conn.transaction(() => {
