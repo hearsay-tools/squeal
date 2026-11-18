@@ -30,6 +30,8 @@ const REAL_HOME = homedir();
 export const SQUAWK = process.env.SQUEAL_E2E_SQUAWK ?? join(REAL_HOME, "projects", "cezar");
 export const SQUAWK_PRESENT = existsSync(join(SQUAWK, ".git"));
 export const SQUAWK_SKIP = `squawk cases skipped: ${SQUAWK} is absent`;
+/** The suite runs only by hand (`SQUEAL_E2E_AT=1`, see tasks/023-09-notes.md): CI's full run and Squeal skip it. */
+export const AT_E2E = process.env.SQUEAL_E2E_AT === "1";
 const STORE =
   process.env.pnpm_config_store_dir ?? join(REAL_HOME, ".local", "share", "pnpm", "store");
 /** Copied from the real HOME so neither Corepack nor pnpm's supply-chain check goes to the network again. */

@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+  AT_E2E,
   assertionOf,
   type Bench,
   bench,
@@ -24,8 +25,11 @@ import {
 
 const CASE_MS = 600_000;
 const skip = !SQUAWK_PRESENT;
-const b: Bench = bench();
-afterAll(() => sweep(b));
+// Made only when the suite runs (SQUEAL_E2E_AT=1): a skipped file makes no folder.
+const b: Bench = AT_E2E ? bench() : ({} as Bench);
+afterAll(() => {
+  if (AT_E2E) sweep(b);
+});
 
 let copy: string | undefined;
 /** One copy of squawk for the three cases; each moves it to its own commit. */
@@ -35,7 +39,7 @@ const squawkAt = (commit: string): string => {
   return copy;
 };
 
-describe("squeal proof on squawk fixes", () => {
+describe.skipIf(!AT_E2E)("squeal proof on squawk fixes", () => {
   it.skipIf(skip)(
     skip
       ? SQUAWK_SKIP

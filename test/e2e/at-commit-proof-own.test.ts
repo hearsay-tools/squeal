@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import {
+  AT_E2E,
   assertionOf,
   type Bench,
   bench,
@@ -22,8 +23,11 @@ import {
  */
 
 const CASE_MS = 600_000;
-const b: Bench = bench();
-afterAll(() => sweep(b));
+// Made only when the suite runs (SQUEAL_E2E_AT=1): a skipped file makes no folder.
+const b: Bench = AT_E2E ? bench() : ({} as Bench);
+afterAll(() => {
+  if (AT_E2E) sweep(b);
+});
 let copy: string | undefined;
 const own = (): string => (copy ??= clone(b, REPO_ROOT, "squeal"));
 
@@ -56,7 +60,7 @@ const FIXED_TEST = OLD_TEST.replace(
 );
 const SYNTHETIC = "test/proof-e2e/home-defaults.test.ts";
 
-describe("squeal proof on a copy of this repository", () => {
+describe.skipIf(!AT_E2E)("squeal proof on a copy of this repository", () => {
   it(
     "source: 20f03a431 is proven with the red side's assertion; base HEAD is not red",
     async () => {

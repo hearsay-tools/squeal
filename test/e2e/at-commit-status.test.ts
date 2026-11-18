@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { REPO_ROOT } from "../../src/harness/build.js";
 import {
+  AT_E2E,
   type Bench,
   bench,
   checkoutAt,
@@ -82,8 +83,11 @@ const PAIRS: readonly Pair[] = [
 ];
 
 const CASE_MS = 600_000;
-const b: Bench = bench();
-afterAll(() => sweep(b));
+// Made only when the suite runs (SQUEAL_E2E_AT=1): a skipped file makes no folder.
+const b: Bench = AT_E2E ? bench() : ({} as Bench);
+afterAll(() => {
+  if (AT_E2E) sweep(b);
+});
 
 const at = (dir: string, args: readonly string[]) => {
   const r = squeal(b, dir, ["status", "--at", ...args, "--json"]);
@@ -96,7 +100,7 @@ const at = (dir: string, args: readonly string[]) => {
   return { code: r.code, report: parsed, row, text: `${r.stderr}\n${r.stdout}` };
 };
 
-describe.each(PAIRS)("status --at HEAD~1 on a copy of $name", (pair) => {
+describe.skipIf(!AT_E2E).each(PAIRS)("status --at HEAD~1 on a copy of $name", (pair) => {
   const skip = pair.source === SQUAWK && !SQUAWK_PRESENT;
   it.skipIf(skip)(
     skip
