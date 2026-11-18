@@ -3,9 +3,8 @@ import { main } from "../../src/cli/main.js";
 import { parseProof } from "../../src/cli/proof-args.js";
 
 /*
- * Row 023-08: `squeal proof`'s arguments. Row 023-11's options (`--env`,
- * `--without`, `--repeat`, `--case dependency`) exit 2 with one line that
- * names them as not built yet.
+ * Rows 023-08, 023-11: `squeal proof`'s arguments, the conditions
+ * (`--env`, `--without`), `--repeat` and `--case dependency` among them.
  */
 
 async function cli(args: readonly string[]) {
@@ -36,6 +35,9 @@ describe("squeal proof arguments (row 023-08)", () => {
       case: "test",
       timeoutSeconds: 90,
       json: true,
+      env: [],
+      without: [],
+      repeat: 1,
     });
     expect(parseProof(["a.test.ts", "--base=main"])).toMatchObject({
       case: null,
@@ -52,22 +54,73 @@ describe("squeal proof arguments (row 023-08)", () => {
     [["a.test.ts", "--base", "main", "--base", "x"], "--base is given twice"],
     [["a.test.ts", "--base"], "--base needs a value"],
     [["a.test.ts", "--base", "main", "--all"], 'unknown option "--all"'],
+    [
+      ["a.test.ts", "--base", "main", "--repeat", "0"],
+      "--repeat takes a whole number from 1 to 100",
+    ],
+    [
+      ["a.test.ts", "--base", "main", "--repeat", "101"],
+      "--repeat takes a whole number from 1 to 100",
+    ],
+    [
+      ["a.test.ts", "--base", "main", "--repeat", "2.5"],
+      "--repeat takes a whole number from 1 to 100",
+    ],
+    [["a.test.ts", "--base", "main", "--repeat", "2", "--repeat", "3"], "--repeat is given twice"],
+    [
+      ["a.test.ts", "--base", "main", "--env", "TZ"],
+      '--env takes NAME=value, or NAME= to unset it; not "TZ"',
+    ],
+    [
+      ["a.test.ts", "--base", "main", "--env", "1X=a"],
+      '--env takes NAME=value, or NAME= to unset it; not "1X=a"',
+    ],
+    [["a.test.ts", "--base", "main", "--env", "A=", "--env", "A=b"], "--env A is given twice"],
+    [
+      ["a.test.ts", "--base", "main", "--case", "dependency"],
+      "--case dependency needs a condition: --env NAME=[value] or --without <path>",
+    ],
   ])("refuses %j: %s", (args, usage) => {
     expect(parseProof(args)).toEqual({ usage });
   });
 
+  it("reads the conditions, each repeatable, and --repeat (row 023-11)", () => {
+    expect(
+      parseProof([
+        "a.test.ts",
+        "--base=main",
+        "--case",
+        "dependency",
+        "--env",
+        "CI=",
+        "--env=TZ=Europe/Warsaw",
+        "--env",
+        "EQ=a=b",
+        "--without",
+        "~/.npmrc",
+        "--without=fixtures/local",
+        "--repeat",
+        "5",
+      ]),
+    ).toMatchObject({
+      case: "dependency",
+      env: [
+        { name: "CI", value: null },
+        { name: "TZ", value: "Europe/Warsaw" },
+        { name: "EQ", value: "a=b" },
+      ],
+      without: ["~/.npmrc", "fixtures/local"],
+      repeat: 5,
+    });
+  });
+
   it.each([
-    [["--env", "HOME="], "--env"],
-    [["--env=TZ=UTC"], "--env"],
-    [["--without", "fixtures"], "--without"],
-    [["--repeat", "5"], "--repeat"],
-    [["--case", "dependency"], "--case dependency"],
-  ])("exits 2 on row 023-11's %j with one line", async (extra, what) => {
+    [["--case", "dependency"], "--case dependency needs a condition"],
+    [["--repeat", "0"], "--repeat takes a whole number from 1 to 100"],
+  ])("exits 2 on %j", async (extra, what) => {
     const { code, err } = await cli(["test/a.test.ts", "--base", "HEAD", ...extra]);
     expect(code).toBe(2);
-    expect(err.trim().split("\n")).toHaveLength(1);
     expect(err).toContain(`squeal proof: ${what}`);
-    expect(err).toContain("row 023-11's behaviour and is not built yet");
   });
 
   it("prints usage with the help on any other usage error", async () => {

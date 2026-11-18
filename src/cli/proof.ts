@@ -1,10 +1,9 @@
-import { resolveCommit } from "../core/commit/at-keys-checkout.js";
 import { commitEntries } from "../core/commit/at-keys-verify.js";
 import { changedPaths } from "../core/commit/tree.js";
 import { squealVersion } from "../core/daemon/version.js";
-import { runGit, splitNul } from "../core/fs/git.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
+import type { Conditions } from "../core/proof/conditions.js";
 import {
   defaultCase,
   type ProofCase,
@@ -19,9 +18,16 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
-import { formatProof, jsonProof, type ProofFile, type ProofReport } from "./proof-report.js";
+import { dirtyPaths, locate } from "./proof-locate.js";
+import {
+  formatProof,
+  jsonProof,
+  type ProofFile,
+  type ProofReport,
+  rerunCommand,
+} from "./proof-report.js";
 import { runSide, type SideFile, withSide } from "./proof-side.js";
-import { type AtOptions, inRoot, worktreeOf } from "./status-at.js";
+import type { AtOptions } from "./status-at.js";
 
 /*
  * Spec 023 D5 (row 023-08): `squeal proof <test file>... --base <commit>
@@ -51,7 +57,7 @@ export async function proofCommand(
   };
   const at = await locate(args, io);
   if (typeof at === "string") return fail(at);
-  const { root, base, head, paths } = at;
+  const { root, base, head, paths, conditions } = at;
   const env = { ...(io.env ?? process.env) } as NodeJS.ProcessEnv;
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const common: Common = {
@@ -62,6 +68,8 @@ export async function proofCommand(
     env,
     deadline: started + args.timeoutSeconds * 1000,
     forward: (text) => (args.json ? undefined : io.stderr(text)),
+    conditions,
+    repeat: args.repeat ?? 1,
   };
   const named = new Set(paths);
   if (!args.json)
@@ -70,6 +78,7 @@ export async function proofCommand(
     );
   const proved = await prove(common, args, base, head, named);
   if ("usage" in proved) return fail(proved.usage);
+  const notRun = proved.files.filter((f) => f.reason === "budget").length;
   const report: ProofReport = {
     ...proved,
     base,
@@ -77,12 +86,27 @@ export async function proofCommand(
     dirty: await dirtyPaths(root),
     timeoutSeconds: args.timeoutSeconds,
     usedMs: Math.round(performance.now() - started),
+    conditions,
+    repeat: common.repeat,
+    notRun,
+    rerun: notRun === 0 ? null : rerunCommand(args, conditions),
   };
   io.stdout(args.json ? jsonProof(report) : formatProof(report));
   return proofExit(report.files.map((f) => f.verdict));
 }
 
-type Proved = Omit<ProofReport, "base" | "head" | "dirty" | "timeoutSeconds" | "usedMs">;
+type Proved = Omit<
+  ProofReport,
+  | "base"
+  | "head"
+  | "dirty"
+  | "timeoutSeconds"
+  | "usedMs"
+  | "conditions"
+  | "repeat"
+  | "notRun"
+  | "rerun"
+>;
 
 /**
  * D5 (the human, 2026-11-18, "A: clean checkout"): the green side is
@@ -165,40 +189,6 @@ async function prove(
   };
 }
 
-interface Located {
-  readonly root: AbsolutePath;
-  readonly commonDir: AbsolutePath;
-  readonly base: string;
-  readonly head: string;
-  /** The named files, relative to the root. */
-  readonly paths: readonly RelativePath[];
-}
-
-/** The worktree, both commits and the named files; a setup problem as a string. */
-async function locate(args: ProofArgs, io: CliIo): Promise<Located | string> {
-  const where = worktreeOf(io);
-  if (typeof where === "string") return where;
-  const { cwd, root, commonDir } = where;
-  const commit = async (name: string, problem: string) => {
-    try {
-      return await resolveCommit(root, name);
-    } catch {
-      return { problem };
-    }
-  };
-  const base = await commit(args.base, `"${args.base}" names no commit here`);
-  if (typeof base !== "string") return base.problem;
-  const head = await commit("HEAD", "HEAD names no commit: commit the test first");
-  if (typeof head !== "string") return head.problem;
-  const paths: RelativePath[] = [];
-  for (const file of args.files) {
-    const rel = inRoot(root, cwd, file);
-    if (rel === null) return `${file} lies outside ${root}`;
-    paths.push(rel);
-  }
-  return { root, commonDir, base, head, paths };
-}
-
 /**
  * D5's default case: one for every named file, from the diff `base..HEAD`
  * and each file's closure now; a usage problem when the files need
@@ -230,20 +220,6 @@ async function caseOf(
   return [...kinds][0] as ProofCase;
 }
 
-/**
- * Every path the working tree holds otherwise than `HEAD`: changed,
- * staged, deleted or untracked (not ignored). Both sides are committed
- * versions in checkouts; this only tells the user the proof is not of
- * their uncommitted change.
- */
-async function dirtyPaths(root: AbsolutePath): Promise<RelativePath[]> {
-  const changed = await runGit(root, ["diff", "--name-only", "--no-renames", "-z", "HEAD", "--"]);
-  const untracked = await runGit(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
-  return [...new Set([...splitNul(changed), ...splitNul(untracked)])]
-    .filter((path) => path !== "")
-    .sort();
-}
-
 interface Common {
   readonly root: AbsolutePath;
   readonly own: ReturnType<typeof worktreeIdFor>;
@@ -252,6 +228,8 @@ interface Common {
   readonly env: NodeJS.ProcessEnv;
   readonly deadline: number;
   readonly forward: (text: string) => void;
+  readonly conditions: Conditions;
+  readonly repeat: number;
 }
 
 /** One side of `refs` in its checkout: D5.2's copies are the test-side files the versions hold otherwise. */
@@ -274,6 +252,7 @@ function endOf(files: ReadonlyMap<string, SideFile>, ref: TestFileRef): SideFile
       from: null,
       stored: false,
       notStored: null,
+      runs: 0,
     }
   );
 }

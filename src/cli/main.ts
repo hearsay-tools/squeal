@@ -84,13 +84,21 @@ Usage:
                                 every one, after an estimate) and stores them at the
                                 commit's keys, within one --timeout (600 s, the
                                 checkout and install included)
-  squeal proof <test file>... --base <commit> [--case source|test] [--timeout <seconds>] [--json]
+  squeal proof <test file>... --base <commit> [--case source|test|dependency]
+               [--env NAME=[value]]... [--without <path>]... [--repeat <n>]
+               [--timeout <seconds>] [--json]
                                 A red proof per named test file over committed HEAD:
                                 red is the test at HEAD over the code at --base
                                 (source) or the test at --base over the code at HEAD
-                                (test), green is HEAD; each side is read from the
-                                store first and runs in a temporary checkout only
-                                without a result. Verdicts: proven, not red, red for
+                                (test, dependency), green is HEAD; each side is read
+                                from the store first and runs in a temporary checkout
+                                only without a result. --env sets (NAME=value) or
+                                unsets (NAME=) a variable and --without hides a path
+                                in the repository or under HOME, on both sides; a
+                                side under a condition always runs and is never
+                                stored; dependency needs one. --repeat runs red up
+                                to n times (to its first failure) and green n times
+                                (1 to 100). Verdicts: proven, not red, red for
                                 another reason, not green, not comparable, with the
                                 red side's failure text; exit 0 all proven, 1 not
                                 red or not green, 3 unknown, 2 on a usage error
@@ -469,14 +477,10 @@ function statusAt(args: readonly string[], io: CliIo): number | Promise<number> 
   return typeof at === "string" ? usage("status", at, io) : statusAtCommand(at, io);
 }
 
-/** Spec 023 D5 (row 023-08): `proof`; row 023-11's options are refused in one line. */
+/** Spec 023 D5 (rows 023-08, 023-11): `proof`. */
 function proof(args: readonly string[], io: CliIo): number | Promise<number> {
   const parsed = parseProof(args);
   if ("usage" in parsed) return usage("proof", parsed.usage, io);
-  if ("notBuilt" in parsed) {
-    io.stderr(`squeal proof: ${parsed.notBuilt}\n`);
-    return 2;
-  }
   return proofCommand(parsed, io);
 }
 

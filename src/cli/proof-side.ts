@@ -1,25 +1,13 @@
-import type { Checkout } from "../core/checkout/checkout.js";
-import { FILE_ERROR } from "../core/code/gate/evidence.js";
-import type { FailedTest } from "../core/code/gate/types.js";
-import {
-  type BeforeRemove,
-  type KeyedFile,
-  resultsAt,
-  withStores,
-} from "../core/commit/at-keys-checkout.js";
+import type { BeforeRemove, KeyedFile } from "../core/commit/at-keys-checkout.js";
 import { sideKeys } from "../core/commit/at-keys-side.js";
 import type { CheckoutOptions, KeyingOptions } from "../core/commit/at-keys-walk.js";
-import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
+import { type Conditions, hiddenInRepository } from "../core/proof/conditions.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
 import type { SideEnd } from "../core/proof/verdict.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import type { ResultRecord } from "../core/types/store-records.js";
-import type { GateFileRun } from "./code-gate-files.js";
-import type { SideState } from "./status-at-report.js";
-import { type RunAnswer, runInChild } from "./status-at-run-child.js";
-import { outcomesOf } from "./status-at-run-outcome.js";
+import { endOfRecords, forcedReason, runFiles } from "./proof-run.js";
 import { needsOf } from "./status-at-run-select.js";
 
 /*
@@ -30,9 +18,11 @@ import { needsOf } from "./status-at-run-select.js";
  * test imports a source file the code version lacks is refused (D5.2), as
  * is one whose closure needs a path git does not hold (D4.9). The rest run
  * in that checkout through 023-07's child (`runInChild`) and are read back
- * as 023-07 reads them (`outcomesOf`). A run is stored only when the
- * checkout equals the side's expected tree after the install; its outcome
- * counts either way.
+ * as 023-07 reads them (`outcomesOf`, in `proof-run.ts`). A run is
+ * stored only when the checkout equals the side's expected tree after the
+ * install; its outcome counts either way. Row 023-11 (D5.3, D5.4): a side
+ * under a condition, or repeated, is never read from the store and never
+ * stored; a repository path `--without` names is removed from its checkout.
  */
 
 /** Where one file's side came from. */
@@ -46,6 +36,8 @@ export interface SideFile {
   readonly stored: boolean;
   /** Why a run's result was not stored; `null` when it was, or nothing ran. */
   readonly notStored: string | null;
+  /** Row 023-11 (D5.4): how many times this command ran it on this side. */
+  readonly runs: number;
 }
 
 export interface SideAnswer {
@@ -82,6 +74,10 @@ export interface SideInput {
   readonly forward: (text: string) => void;
   /** The named files' projects are those the checkout's runners list (`sideKeys`' `listed`). */
   readonly listed?: boolean;
+  /** Row 023-11 (D5.3): the side's conditions; with any, it always runs and stores nothing. */
+  readonly conditions: Conditions;
+  /** Row 023-11 (D5.4): each file runs up to this many times, to its first run that does not pass. */
+  readonly repeat: number;
 }
 
 /** The install's own ceiling (row 023-16), when the budget left is longer. */
@@ -112,6 +108,8 @@ export async function withSide<T>(
   let value: T | undefined;
   let keyedRefs: TestFileRef[] = [];
   const started = performance.now();
+  // D5.1, D5.3, D5.4: a side under a condition, or repeated, is never read from the store.
+  const forced = forcedReason(input);
   const beforeRemove: BeforeRemove = async (checkout, keyed, change) => {
     changed = change;
     keyedRefs = keyed.map((f) => f.ref);
@@ -131,12 +129,13 @@ export async function withSide<T>(
       if (missing !== null)
         files.set(id, unknown(`imports ${missing}, absent at ${side.code.slice(0, 9)}`));
       else if (needed !== null) files.set(id, unknown(`needs ${needed}`));
-      else if (change === null && file.at.stored.length > 0)
+      else if (change === null && forced === null && file.at.stored.length > 0)
         files.set(id, {
           end: endOfRecords(file.at.stored),
           from: "store",
           stored: true,
           notStored: null,
+          runs: 0,
         });
       else pending.set(id, file);
     }
@@ -163,6 +162,7 @@ export async function withSide<T>(
     files: input.files,
     also: input.also,
     listed,
+    hidden: hiddenInRepository(input.conditions),
     beforeRemove,
     installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, left),
   });
@@ -194,143 +194,6 @@ function unlistedOf(named: readonly TestFileRef[], keyed: readonly TestFileRef[]
   return named.filter((ref) => !keyed.some((k) => k.path === ref.path));
 }
 
-/** Runs `toRun` in the open checkout through 023-07's child; each file's side into `files`; how many ran. */
-async function runFiles(
-  input: SideInput,
-  checkout: Checkout,
-  toRun: readonly KeyedFile[],
-  change: RelativePath | null,
-  files: Map<string, SideFile>,
-): Promise<number> {
-  const left = Math.floor((input.deadline - performance.now()) / 1000);
-  if (left < 1) {
-    for (const file of toRun) files.set(testFileId(file.ref), unknown("not run (budget)"));
-    return 0;
-  }
-  const answer = await runInChild({
-    relaunch: input.relaunch,
-    checkout,
-    files: [...new Set(toRun.map((f) => f.ref.path))].sort(),
-    budgetSeconds: left,
-    // "Whole-checkout check": a checkout that is not the side's expected tree stores nothing.
-    store: change === null,
-    env: input.env,
-    forward: input.forward,
-  });
-  const states = await outcomesOf({
-    commonDir: checkout.commonDir,
-    commit: input.side.code,
-    own: input.own,
-    run: toRun,
-    siblings: [],
-    answer,
-    changed: change,
-  });
-  let ran = 0;
-  // Review wave-8 B1: a stored run's failures are its own project's, read at its own key.
-  await withStores(checkout.commonDir, async (main) => {
-    for (const file of toRun) {
-      const state = states.get(testFileId(file.ref));
-      const records =
-        main !== null && "key" in file.at ? resultsAt(main, file.ref, file.at.key) : [];
-      const side = ranSide(state, answer, file.ref.path, change, records);
-      if (side.from === "run") ran++;
-      files.set(testFileId(file.ref), side);
-    }
-  });
-  return ran;
-}
-
 function unknown(reason: string): SideFile {
-  return { end: { end: "unknown", reason }, from: null, stored: false, notStored: null };
-}
-
-/** A file's side from the results stored at its key: fail when one failed, with their errors. */
-export function endOfRecords(records: readonly ResultRecord[]): SideEnd {
-  const failed = records.filter((r) => r.outcome === "fail");
-  if (failed.length === 0) return { end: "pass" };
-  const byTest = new Map<string, FailedTest>();
-  for (const r of failed) {
-    const test = r.check.kind === "test" ? r.check.fullName : FILE_ERROR;
-    const errors = [...(byTest.get(test)?.errors ?? []), ...r.errors];
-    byTest.set(test, { test, errors });
-  }
-  return { end: "fail", failures: [...byTest.values()].sort((a, b) => compare(a.test, b.test)) };
-}
-
-/**
- * A run file's side from 023-07's state. A stored outcome takes its
- * failures from `records`, the results at the file's own key for its own
- * project. An outcome the store does not hold takes them from the gate's
- * answer, which is by path: a path two projects ran takes them only when
- * every project's failure evidence is the same, test by test and error by
- * error, as the report shows it (review wave-8 B1, and its re-review: equal
- * kinds are not equal evidence). Otherwise the file reads unknown, and
- * still counts as run.
- */
-function ranSide(
-  state: SideState | undefined,
-  answer: RunAnswer,
-  path: RelativePath,
-  changed: RelativePath | null,
-  records: readonly ResultRecord[],
-): SideFile {
-  const runs: readonly GateFileRun[] =
-    "result" in answer ? answer.result.runs.filter((r) => r.path === path) : [];
-  const notStored = changed === null ? null : `install changed the checkout: ${changed}`;
-  if (state === undefined) return unknown("the run gave it no outcome");
-  if ((state.state === "pass" || state.state === "fail") && state.origin.stored === true) {
-    if (records.length === 0) return unknown("its stored result could not be read back");
-    return { end: endOfRecords(records), from: "run", stored: true, notStored: null };
-  }
-  const ranAs = (outcome: "pass" | "fail"): SideFile => {
-    if (outcome === "pass") return { ...unstored(notStored), end: { end: "pass" } };
-    const failures = sharedFailures(runs);
-    if (failures === null)
-      return {
-        ...unstored(notStored),
-        end: {
-          end: "unknown",
-          reason: `its ${runs.length} projects failed with different failures, and no stored result tells which is this project's`,
-        },
-      };
-    return { ...unstored(notStored), end: { end: "fail", failures } };
-  };
-  if (state.state === "pass" || state.state === "fail") return ranAs(state.state);
-  if (state.state === "not comparable" && state.ran !== undefined) return ranAs(state.ran);
-  if (state.state === "not run") {
-    // 023-07's `fromGate` gives `not run` only when every project's run of the path agrees.
-    if (state.reason === "prepare") return { ...unknown(""), end: { end: "prepare" }, from: "run" };
-    if (runs.length > 0 && runs.every((r) => r.outcome === "not-finished"))
-      return { ...unknown(""), end: { end: "timeout" }, from: "run" };
-    return unknown("not run (budget)");
-  }
-  if (state.state === "not determined" || state.state === "not comparable")
-    return unknown(state.reason);
-  return unknown(state.state);
-}
-
-function unstored(notStored: string | null): Omit<SideFile, "end"> {
-  return {
-    from: "run",
-    stored: false,
-    notStored: notStored ?? "the gate keeps a result only with coverage on",
-  };
-}
-
-/**
- * The failures of a path's runs when every run failed with the same
- * evidence: the same tests, each with the same errors (name, message,
- * stack, diff, code, causes, phase), so any one project's failures are
- * this project's word for word; `null` otherwise. A timeout's recorded
- * load is the host's, not the test's, and is left out of the comparison.
- */
-function sharedFailures(runs: readonly GateFileRun[]): readonly FailedTest[] | null {
-  const [first] = runs;
-  if (first === undefined || runs.some((r) => r.outcome !== "failed")) return null;
-  const evidence = (r: GateFileRun) =>
-    JSON.stringify(
-      r.failed.map((f) => [f.test, f.errors.map(({ loadAverage: _load, ...error }) => error)]),
-    );
-  return runs.every((r) => evidence(r) === evidence(first)) ? first.failed : null;
+  return { end: { end: "unknown", reason }, from: null, stored: false, notStored: null, runs: 0 };
 }

@@ -54,6 +54,9 @@ const PARALLEL = 32;
  * Row 023-08: `expected` holds paths the checkout must hold otherwise than
  * the commit (a proof side's copies at their test version's mode and
  * blob), over the commit's own and beside them: the side's expected tree.
+ * Row 023-11 (D5.3): `hidden` paths (a file, or a folder and all under it)
+ * are out of the expected tree: the check holds only while each is absent,
+ * and the first one present is the change.
  */
 export async function checkoutChange(
   root: AbsolutePath,
@@ -61,10 +64,12 @@ export async function checkoutChange(
   commit: string,
   skip: ReadonlySet<RelativePath> = new Set(),
   expected: ReadonlyMap<RelativePath, CommitEntry> = new Map(),
+  hidden: readonly RelativePath[] = [],
 ): Promise<RelativePath | null> {
+  for (const path of hidden) if (await present(join(tree, path))) return path;
   const all = await commitEntries(root, commit);
   for (const [path, entry] of expected) all.set(path, entry);
-  const entries = [...all].filter(([path]) => !skip.has(path));
+  const entries = [...all].filter(([path]) => !skip.has(path) && !isUnder(path, hidden));
   const format = await readObjectFormat(root);
   for (let at = 0; at < entries.length; at += PARALLEL) {
     const batch = entries.slice(at, at + PARALLEL);
@@ -75,6 +80,22 @@ export async function checkoutChange(
     if (first >= 0) return (batch[first] as [RelativePath, CommitEntry])[0];
   }
   return null;
+}
+
+/** Whether `path` is one of `folders` or lies under one. */
+export function isUnder(path: RelativePath, folders: readonly RelativePath[]): boolean {
+  return folders.some((folder) => path === folder || path.startsWith(`${folder}/`));
+}
+
+/** Whether anything, a dangling link included, is at `path`. */
+async function present(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
 }
 
 /** Whether the file at `path` is `entry`: its kind and mode, then its blob. */

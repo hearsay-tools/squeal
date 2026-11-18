@@ -1,13 +1,19 @@
+import type { EnvCondition } from "../core/proof/conditions.js";
 import type { ProofCase } from "../core/proof/sides.js";
 
 /*
- * Spec 023 D1, D5 (row 023-08): `squeal proof`'s arguments. Row 023-11's
- * conditions and repeat (`--env`, `--without`, `--repeat`, `--case
- * dependency`) are parsed and refused as not built yet.
+ * Spec 023 D1, D5 (rows 023-08, 023-11): `squeal proof`'s arguments. Row
+ * 023-11 adds the conditions (`--env NAME=[value]` and `--without <path>`,
+ * each repeatable), `--repeat <n>` and `--case dependency`, which needs a
+ * condition. A `--without` path is placed (repository or `HOME`) once the
+ * worktree is known (`placeWithout`).
  */
 
 /** The default budget, the checkouts and installs included, as D4.6's. */
 export const PROOF_TIMEOUT_SECONDS = 600;
+
+/** D5.4's bound on `--repeat`. */
+export const MAX_REPEAT = 100;
 
 export interface ProofArgs {
   /** The named test files as given, from the cwd. */
@@ -17,27 +23,25 @@ export interface ProofArgs {
   readonly case: ProofCase | null;
   readonly timeoutSeconds: number;
   readonly json: boolean;
+  /** D5.3: each `--env`, in order; `value` `null` unsets. */
+  readonly env?: readonly EnvCondition[];
+  /** D5.3: each `--without` path as given. */
+  readonly without?: readonly string[];
+  /** D5.4: the red side's most runs and the green side's runs; default 1. */
+  readonly repeat?: number;
 }
 
-/** A usage problem: `notBuilt` for row 023-11's options, told in one line. */
-export type ProofUsage = { readonly usage: string } | { readonly notBuilt: string };
+/** A usage problem, told in one line. */
+export type ProofUsage = { readonly usage: string };
 
 const VALUED = ["--base", "--case", "--timeout", "--env", "--without", "--repeat"] as const;
 type Valued = (typeof VALUED)[number];
+const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without"]);
 
-/** Row 023-11's options: what each does once built. */
-const LATER: Partial<Record<Valued, string>> = {
-  "--env": "--env (a variable set or unset on both sides)",
-  "--without": "--without (a file or folder hidden on both sides)",
-  "--repeat": "--repeat (the red side run up to n times)",
-};
-
-const notBuilt = (what: string): ProofUsage => ({
-  notBuilt: `${what} is row 023-11's behaviour and is not built yet`,
-});
+const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function parseProof(args: readonly string[]): ProofArgs | ProofUsage {
-  const values = new Map<Valued, string>();
+  const values = new Map<Valued, string[]>();
   const files: string[] = [];
   let json = false;
   for (let i = 0; i < args.length; i++) {
@@ -59,43 +63,86 @@ export function parseProof(args: readonly string[]): ProofArgs | ProofUsage {
 function valued(
   args: readonly string[],
   i: number,
-  values: Map<Valued, string>,
+  values: Map<Valued, string[]>,
 ): number | ProofUsage {
   const arg = args[i] ?? "";
   const name = VALUED.find((v) => arg === v || arg.startsWith(`${v}=`));
   if (name === undefined) return 0;
-  const later = LATER[name];
-  if (later !== undefined) return notBuilt(later);
   const inline = arg.length > name.length;
   const value = inline ? arg.slice(name.length + 1) : args[i + 1];
   if (value === undefined || (!inline && value.startsWith("--")))
     return { usage: `${name} needs a value` };
-  if (values.has(name)) return { usage: `${name} is given twice` };
-  values.set(name, value);
+  const given = values.get(name) ?? [];
+  if (given.length > 0 && !REPEATABLE.has(name)) return { usage: `${name} is given twice` };
+  values.set(name, [...given, value]);
   return inline ? 1 : 2;
 }
 
 function checked(
-  values: ReadonlyMap<Valued, string>,
+  values: ReadonlyMap<Valued, readonly string[]>,
   files: readonly string[],
   json: boolean,
 ): ProofArgs | ProofUsage {
-  const base = values.get("--base");
+  const one = (name: Valued) => values.get(name)?.[0];
+  const base = one("--base");
   if (base === undefined || base === "") return { usage: "--base needs a commit" };
   if (files.length === 0) return { usage: "name at least one test file" };
-  const kind = values.get("--case");
-  if (kind === "dependency")
-    return notBuilt("--case dependency (old and new test under a condition)");
-  if (kind !== undefined && kind !== "source" && kind !== "test")
-    return { usage: "--case takes source, dependency or test" };
-  const timeout = values.get("--timeout");
-  if (timeout !== undefined && !/^[1-9][0-9]*$/.test(timeout))
-    return { usage: "--timeout takes whole seconds above 0" };
+  const env = envOf(values.get("--env") ?? []);
+  if ("usage" in env) return env;
+  const without = values.get("--without") ?? [];
+  const kind = caseOf(one("--case"), env.list.length + without.length > 0);
+  if (typeof kind === "object" && kind !== null) return kind;
+  const counts = countsOf(one("--timeout"), one("--repeat"));
+  if ("usage" in counts) return counts;
   return {
     files,
     base,
-    case: kind ?? null,
-    timeoutSeconds: timeout === undefined ? PROOF_TIMEOUT_SECONDS : Number(timeout),
+    case: kind,
     json,
+    env: env.list,
+    without,
+    ...counts,
   };
+}
+
+/** `--case`: one of D5's three; `dependency` only with a condition. */
+function caseOf(kind: string | undefined, conditioned: boolean): ProofCase | null | ProofUsage {
+  if (kind === undefined) return null;
+  if (kind !== "source" && kind !== "test" && kind !== "dependency")
+    return { usage: "--case takes source, dependency or test" };
+  if (kind === "dependency" && !conditioned)
+    return { usage: "--case dependency needs a condition: --env NAME=[value] or --without <path>" };
+  return kind;
+}
+
+const WHOLE = /^[1-9][0-9]*$/;
+
+/** `--timeout` (whole seconds) and `--repeat` (1 to `MAX_REPEAT`), each with its default. */
+function countsOf(
+  timeout: string | undefined,
+  repeat: string | undefined,
+): { timeoutSeconds: number; repeat: number } | ProofUsage {
+  if (timeout !== undefined && !WHOLE.test(timeout))
+    return { usage: "--timeout takes whole seconds above 0" };
+  if (repeat !== undefined && !(WHOLE.test(repeat) && Number(repeat) <= MAX_REPEAT))
+    return { usage: `--repeat takes a whole number from 1 to ${MAX_REPEAT}` };
+  return {
+    timeoutSeconds: timeout === undefined ? PROOF_TIMEOUT_SECONDS : Number(timeout),
+    repeat: repeat === undefined ? 1 : Number(repeat),
+  };
+}
+
+/** Each `--env NAME=[value]`: an empty value unsets `NAME`. */
+function envOf(given: readonly string[]): { list: EnvCondition[] } | ProofUsage {
+  const list: EnvCondition[] = [];
+  for (const word of given) {
+    const at = word.indexOf("=");
+    const name = at < 0 ? word : word.slice(0, at);
+    if (at < 0 || !NAME.test(name))
+      return { usage: `--env takes NAME=value, or NAME= to unset it; not "${word}"` };
+    if (list.some((e) => e.name === name)) return { usage: `--env ${name} is given twice` };
+    const value = word.slice(at + 1);
+    list.push({ name, value: value === "" ? null : value });
+  }
+  return { list };
 }

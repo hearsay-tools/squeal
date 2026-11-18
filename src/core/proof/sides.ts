@@ -3,12 +3,12 @@ import type { RelativePath } from "../types/common.js";
 /*
  * Spec 023 D5 (row 023-08): a red proof's two sides, and the case the
  * diff and the named test's closure give by default. A side is a pair of
- * versions: the test files' and the code's. 023-08 builds the `source`
- * and `test` cases; `dependency` is row 023-11's.
+ * versions: the test files' and the code's. Row 023-11 adds `dependency`,
+ * which `--case` alone chooses: the default stays `source` or `test`.
  */
 
-/** The cases this row builds. */
-export type ProofCase = "source" | "test";
+/** D5's three cases. */
+export type ProofCase = "source" | "test" | "dependency";
 
 /** A side: the commit its test files come from, and the commit of the code they run over. */
 export interface Side {
@@ -16,7 +16,11 @@ export interface Side {
   readonly code: string;
 }
 
-/** D5's table: the red and green sides of `kind` between `base` and `head`. */
+/**
+ * D5's table: the red and green sides of `kind` between `base` and `head`.
+ * `dependency` has the sides of `test` (the test at `base`, then at
+ * `head`, both over the code at `head`); its conditions tell it apart.
+ */
 export function sidesOf(kind: ProofCase, base: string, head: string): { red: Side; green: Side } {
   const green = { tests: head, code: head };
   return kind === "source"

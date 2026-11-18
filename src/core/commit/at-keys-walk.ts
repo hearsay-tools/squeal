@@ -157,6 +157,8 @@ export async function withCheckout<T>(
      * these entries instead of the commit's (a proof side's expected tree).
      */
     readonly expected?: ReadonlyMap<RelativePath, CommitEntry>;
+    /** Row 023-11 (D5.3): paths `prepare` removes, which the checked checkout must not hold. */
+    readonly hidden?: readonly RelativePath[];
   },
   options: CheckoutOptions,
   body: (checkout: Checkout, install: InstallResult, change: CheckoutChange) => Promise<T>,
@@ -195,7 +197,14 @@ export async function withCheckout<T>(
     // compared with the commit's tree after the install; a difference anywhere is told to `body`.
     const checkStarted = performance.now();
     const skip = new Set(input.copied ?? []);
-    const path = await checkoutChange(root, checkout.tree, checkout.commit, skip, input.expected);
+    const path = await checkoutChange(
+      root,
+      checkout.tree,
+      checkout.commit,
+      skip,
+      input.expected,
+      input.hidden,
+    );
     const change = { path, ms: Math.round(performance.now() - checkStarted) };
     return await body(checkout, install, change);
   } finally {

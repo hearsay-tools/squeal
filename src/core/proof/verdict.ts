@@ -9,6 +9,9 @@ import type { CheckError } from "../types/check.js";
  * recorded. No message text is read.
  */
 
+/** A side's reason when the budget left a run of it not started (row 023-11). */
+export const NOT_RUN_BUDGET = "not run (budget)";
+
 /** How one side of one file ended. */
 export type SideEnd =
   | { readonly end: "pass" }
@@ -70,7 +73,12 @@ const KIND_TEXT: Readonly<Record<Exclude<FailureKind, "assertion">, string>> = {
 
 /** D5.5: the verdict of one file from its red and green ends; green `null` when it was not read. */
 export function verdictOf(red: SideEnd, green: SideEnd | null): FileVerdict {
-  if (red.end === "unknown") return { verdict: "not comparable", reason: red.reason };
+  // Row 023-11: a run the budget left not started, on either side, reads `not comparable (budget)`.
+  if (red.end === "unknown")
+    return {
+      verdict: "not comparable",
+      reason: red.reason === NOT_RUN_BUDGET ? "budget" : red.reason,
+    };
   if (red.end === "pass") return { verdict: "not red", reason: null };
   if (red.end === "timeout")
     return { verdict: "red for another reason", reason: "the budget stopped the red side" };
@@ -79,6 +87,8 @@ export function verdictOf(red: SideEnd, green: SideEnd | null): FileVerdict {
   const other = red.failures.map(failureKind).find((kind) => kind !== "assertion");
   if (red.failures.length === 0 || other !== undefined)
     return { verdict: "red for another reason", reason: KIND_TEXT[other ?? "error"] };
+  if (green?.end === "unknown" && green.reason === NOT_RUN_BUDGET)
+    return { verdict: "not comparable", reason: "budget" };
   if (green === null || green.end === "unknown") {
     const why = green === null ? "not read" : green.reason;
     return { verdict: "not comparable", reason: `green side: ${why}` };

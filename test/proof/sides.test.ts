@@ -19,6 +19,7 @@ describe("proof sides (row 023-08, D5)", () => {
       green: { tests: "H", code: "H" },
     });
     expect(sidesOf("test", "B", "H").red).toEqual({ tests: "B", code: "H" });
+    expect(sidesOf("dependency", "B", "H")).toEqual(sidesOf("test", "B", "H"));
   });
 
   it.each([

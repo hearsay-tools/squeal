@@ -35,6 +35,12 @@ export interface OutcomeInput {
    * as not the commit's.
    */
   readonly changed: string | null;
+  /**
+   * Row 023-11 (D5.3, D5.4): `false` for a forced run that stores nothing
+   * (a proof side under a condition, or repeated): a result the store
+   * holds at the key is an earlier run's, so only the gate's answer is read.
+   */
+  readonly stored?: boolean;
 }
 
 /** Each run file's state, by `testFileId`. */
@@ -48,11 +54,12 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
     return states;
   }
   const { changed } = input;
-  if (changed !== null) {
+  if (changed !== null || input.stored === false) {
     for (const file of input.run) {
       if (!("key" in file.at)) continue;
       const runs = answer.result.runs.filter((r) => r.path === file.ref.path);
-      states.set(testFileId(file.ref), notTheCommits(fromGate(file.at.key, runs, commit), changed));
+      const state = fromGate(file.at.key, runs, commit);
+      states.set(testFileId(file.ref), changed === null ? state : notTheCommits(state, changed));
     }
     return states;
   }

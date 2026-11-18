@@ -55,6 +55,12 @@ export interface SideKeysOptions extends KeyingOptions, CheckoutOptions, Checkou
    * project that lists one is keyed. `files`' projects are then not read.
    */
   readonly listed?: boolean;
+  /**
+   * Row 023-11 (D5.3, `--without`): paths in the repository removed from
+   * the checkout after the copies, before the install; out of the side's
+   * expected tree, which holds only while they are absent.
+   */
+  readonly hidden?: readonly RelativePath[];
 }
 
 /** D5.1: the key of each named test file on a side, test version over code version. */
@@ -63,6 +69,7 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
   const commonDir = commonDirOf(root);
   const commit = await resolveCommit(root, options.code);
   const named = files.map((ref) => ref.path);
+  const hidden = options.hidden ?? [];
   const source = await testSource(root, options.tests, [...named, ...(options.also ?? [])]);
   try {
     return await withStores(commonDir, async (main) => {
@@ -81,11 +88,14 @@ export async function sideKeys(options: SideKeysOptions): Promise<ReadonlyMap<st
           unlinkSync(join(checkout.tree, path));
           symlinkSync(target, join(checkout.tree, path));
         }
+        for (const path of hidden)
+          rmSync(join(checkout.tree, path), { recursive: true, force: true });
       };
       // Row 023-08: the side's expected tree, its copies at the test version's kind, mode and
       // blob; every copied path is checked (review wave-8 B3), none skipped.
       const skip = paths.filter((path) => !source.expected.has(path));
-      const input = { root, commonDir, commit, prepare, copied: skip, expected: source.expected };
+      const { expected } = source;
+      const input = { root, commonDir, commit, prepare, copied: skip, expected, hidden };
       const listing = options.listed === true;
       const keying = listing
         ? { ...options, adapters: narrowed(options.adapters, named) }

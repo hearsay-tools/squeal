@@ -1,9 +1,12 @@
 import type { FailedTest } from "../core/code/gate/types.js";
+import { type Conditions, conditionWords } from "../core/proof/conditions.js";
 import type { ProofCase, Side } from "../core/proof/sides.js";
 import { failureKind, type SideEnd, type Verdict } from "../core/proof/verdict.js";
 import { errorLines } from "../core/status/format-why-replaced.js";
+import { shellWord } from "../core/text.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { ProofArgs } from "./proof-args.js";
 import type { SideFile } from "./proof-side.js";
 
 /*
@@ -11,7 +14,9 @@ import type { SideFile } from "./proof-side.js";
  * verdict, both sides with where each came from, and the red side's failed
  * tests with their failure text as `squeal why` prints it; the commits,
  * the case and the run count, so an agent can paste it into a pull
- * request. The JSON is versioned as `status --at`'s is.
+ * request. Row 023-11: the conditions, `--repeat`, each side's run count
+ * and the rerun line for runs the budget left not started. The JSON is
+ * versioned as `status --at`'s is.
  */
 
 export interface ProofFile {
@@ -40,6 +45,14 @@ export interface ProofReport {
   /** How many side runs of a file this call made. */
   readonly runs: number;
   readonly files: readonly ProofFile[];
+  /** Row 023-11 (D5.3): the conditions both sides ran under. */
+  readonly conditions: Conditions;
+  /** Row 023-11 (D5.4): `--repeat`. */
+  readonly repeat: number;
+  /** Row 023-11: the files the budget left a run of not started. */
+  readonly notRun: number;
+  /** 020's rerun line, with a longer `--timeout`; `null` when every run started. */
+  readonly rerun: string | null;
 }
 
 const short = (sha: string) => sha.slice(0, 9);
@@ -67,7 +80,8 @@ function endText(side: SideFile): string {
   const from = side.from === null ? "" : `, ${FROM_TEXT[side.from]}`;
   const stored =
     side.from !== "run" ? "" : side.stored ? ", stored" : `, not stored (${side.notStored ?? ""})`;
-  return `${what}${from}${stored}`;
+  const runs = side.runs > 1 ? `, ${side.runs} runs` : "";
+  return `${what}${from}${stored}${runs}`;
 }
 
 function failuresOf(end: SideEnd): readonly FailedTest[] {
@@ -98,6 +112,18 @@ export function formatProof(report: ProofReport): string {
     `squeal proof (case ${report.case ?? "not decided"}): base ${short(report.base)}, HEAD ${short(report.head)}`,
     `Red: ${report.red === null ? "none" : sideText(report.red)}. Green: ${sideText(report.green)}; ${checkoutText(report.checkoutMs)}.`,
   ];
+  const words = conditionWords(report.conditions);
+  if (words.length > 0 || report.repeat > 1)
+    lines.push(
+      [
+        words.length > 0 ? `Conditions on both sides: ${words.join(", ")}.` : "",
+        report.repeat > 1
+          ? `Repeat ${report.repeat}: red up to ${report.repeat} runs to its first failure, green ${report.repeat} runs.`
+          : "",
+      ]
+        .filter((part) => part !== "")
+        .join(" "),
+    );
   if (report.dirty.length > 0)
     lines.push(
       `This proves the committed HEAD ${short(report.head)}, not the uncommitted change to ${listed(report.dirty)}.`,
@@ -116,6 +142,8 @@ export function formatProof(report: ProofReport): string {
   const parts = Object.entries(counts).map(([verdict, n]) => `${n} ${verdict}`);
   const used = `${(report.usedMs / 1000).toFixed(1)} s of the ${report.timeoutSeconds} s budget`;
   lines.push(`${parts.join(", ")}; ${report.runs} run${report.runs === 1 ? "" : "s"} (${used})`);
+  if (report.rerun !== null)
+    lines.push(`${report.notRun} not run (budget). A rerun that fits: ${report.rerun}`);
   return `${lines.join("\n")}\n`;
 }
 
@@ -143,6 +171,7 @@ function sideJson(side: SideFile | null) {
     from: side.from,
     stored: side.stored,
     notStored: side.notStored,
+    runs: side.runs,
     failures: failuresOf(end).map((failure) => ({
       test: failure.test,
       kind: failureKind(failure),
@@ -166,6 +195,13 @@ export function jsonProof(report: ProofReport): string {
     timeoutSeconds: report.timeoutSeconds,
     usedMs: report.usedMs,
     runs: report.runs,
+    conditions: {
+      env: report.conditions.env,
+      without: report.conditions.without.map((w) => ({ path: w.given, where: w.where })),
+    },
+    repeat: report.repeat,
+    notRun: report.notRun,
+    rerun: report.rerun,
     checkoutMs: report.checkoutMs,
     counts: countsOf(report.files),
     files: report.files.map((file) => ({
@@ -178,4 +214,25 @@ export function jsonProof(report: ProofReport): string {
     })),
   };
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+/** How much longer than this call's budget a rerun's `--timeout` is. */
+const RERUN_FACTOR = 2;
+
+/** 020's rerun line for a proof: this call's own arguments with a longer `--timeout`. */
+export function rerunCommand(args: ProofArgs, conditions: Conditions): string {
+  const seconds = Math.max(60, Math.ceil((RERUN_FACTOR * args.timeoutSeconds) / 60) * 60);
+  const words = [
+    "squeal proof",
+    ...args.files.map(shellWord),
+    "--base",
+    shellWord(args.base),
+    ...(args.case === null ? [] : ["--case", args.case]),
+    ...conditions.env.map((e) => `--env ${shellWord(`${e.name}=${e.value ?? ""}`)}`),
+    ...conditions.without.map((w) => `--without ${shellWord(w.given)}`),
+    ...((args.repeat ?? 1) > 1 ? ["--repeat", String(args.repeat)] : []),
+    "--timeout",
+    String(seconds),
+  ];
+  return words.join(" ");
 }
