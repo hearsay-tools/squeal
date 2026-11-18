@@ -43,6 +43,12 @@ export interface OutcomeInput {
    */
   readonly stored?: boolean;
   /**
+   * Review wave-13 B2: the checkout's worktree id, which the provenance of
+   * every result its gate wrote carries; a stopped run's files are read
+   * from those records. Absent: a stopped run's files read `not run (budget)`.
+   */
+  readonly writer?: WorktreeId;
+  /**
    * Row 023-18 (D2): coverage is on in the checkout's policy (default
    * `true`); with it off the gate keeps nothing, and that is the reason given.
    */
@@ -103,25 +109,28 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
 }
 
 /**
- * Row 023-19 (P3): the files of a run the parent stopped at the budget,
- * with no answer. The gate keeps each run's files as the run ends, so what
- * completed may be in the store: a file is read at the key keyed before
- * the run, which held no result when it was chosen, so a result there now
- * is this run's. Else it reads `not run (budget)`. A run that stores
- * nothing (a changed checkout, a forced proof side) reads nothing.
+ * Row 023-19 (P3), review wave-13 B2: the files of a run the parent
+ * stopped at the budget, with no answer. The gate keeps a run's files as
+ * that run ends, at the key the run's reads give (row 023-18 D1), which
+ * may have grown past the key keyed before the run. So a file is read
+ * where the gate wrote it: the newest records of its project and path,
+ * when the checkout's own run wrote them (their provenance names the
+ * checkout's worktree, `writer`), at their own key. Else it reads `not
+ * run (budget)`. A run that stores nothing (a changed checkout, a forced
+ * proof side) reads nothing.
  */
 async function stoppedOutcomes(input: OutcomeInput): Promise<Map<string, SideState>> {
   const states = new Map<string, SideState>();
   const budget: SideState = { state: "not run", reason: "budget" };
-  const reads = input.changed === null && input.stored !== false;
+  const { writer } = input;
+  const reads = input.changed === null && input.stored !== false && writer !== undefined;
   await withStores(input.commonDir, async (main) => {
     for (const file of input.run) {
       const id = testFileId(file.ref);
-      const { at } = file;
-      const records =
-        reads && main !== null && "key" in at ? resultsAt(main, file.ref, at.key) : [];
-      if (records.length > 0 && "key" in at)
-        states.set(id, asRun(stateOf(at.key, records, input.own), input.commit, true));
+      const records = reads && main !== null ? main.results.newestForTestFile(file.ref) : [];
+      const [first] = records;
+      if (first !== undefined && records.some((r) => r.provenance.worktreeId === writer))
+        states.set(id, asRun(stateOf(first.key, records, input.own), input.commit, true));
       else states.set(id, budget);
     }
   });

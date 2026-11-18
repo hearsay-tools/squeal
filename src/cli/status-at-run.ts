@@ -2,8 +2,10 @@ import type { Checkout } from "../core/checkout/checkout.js";
 import { coverageOn } from "../core/code/coverage/runtime.js";
 import type { RunEstimate } from "../core/code/gate/estimate.js";
 import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
+import { checkoutChange } from "../core/commit/at-keys-verify.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
@@ -160,6 +162,12 @@ export function atRun(input: AtRunInput): AtRun {
       const left = Math.floor((budgetMs - elapsed()) / 1000);
       const gateSeconds = left - stopMargin(left);
       if (gateSeconds < 1) break;
+      // Review wave-13 B1: 023-07's whole-checkout check before every later batch. A test of an
+      // earlier batch may have changed a tracked path; from then on nothing is the commit's.
+      if (changed === null && batchTimes.length > 0) {
+        const path = await checkoutChange(input.root, checkout.tree, checkout.commit);
+        if (path !== null) changed = { path, by: "run" };
+      }
       const take = paths.slice(0, batches.next(paths, seconds));
       paths = paths.slice(take.length);
       const files = take.flatMap((path) => byPath.get(path) ?? []);
@@ -170,7 +178,7 @@ export function atRun(input: AtRunInput): AtRun {
         files: take,
         budgetSeconds: gateSeconds,
         stopAfterSeconds: left,
-        // "Whole-checkout check": a checkout the install changed stores nothing.
+        // "Whole-checkout check": a checkout the install or an earlier batch changed stores nothing.
         store: changed === null,
         env: input.env,
         forward: input.forward,
@@ -219,6 +227,8 @@ export function atRun(input: AtRunInput): AtRun {
       answer,
       changed,
       coverage: coverageOn(readPolicy(checkout.tree)),
+      // Review wave-13 B2: a stopped batch is read where its gate wrote, by this provenance.
+      writer: worktreeIdFor(checkout.tree),
     });
     for (const [id, state] of outcomes) states.set(id, state);
   }

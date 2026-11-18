@@ -1,4 +1,5 @@
 import { type KeysAt, type KeysAtOptions, keysAtCommit } from "../core/commit/at-keys.js";
+import type { BeforeRemove, KeyedFile, WhileOpen } from "../core/commit/at-keys-checkout.js";
 import { narrowedOrAll, selects } from "../core/commit/at-keys-narrow.js";
 import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { committedBlobs } from "../core/commit/tree.js";
@@ -54,10 +55,30 @@ export async function commitSide(options: CommitSideOptions): Promise<CommitSide
   const hear = (found: readonly RelativePath[]) => {
     named = found;
   };
+  // Review wave-13 B5: the keying lists every file for a source path, but only the files the
+  // paths select, by path or by closure, reach `--run`'s hooks: keyed is not asked.
+  const chosen = (file: KeyedFile): boolean => {
+    if (paths === null || selects(paths, file.ref.path)) return true;
+    const { at } = file;
+    return "key" in at && named.some((path) => at.loads?.includes(path) === true);
+  };
+  const { whileOpen, beforeRemove } = options;
+  const hooks = {
+    ...(whileOpen === undefined
+      ? {}
+      : { whileOpen: ((open, files) => whileOpen(open, files.filter(chosen))) as WhileOpen }),
+    ...(beforeRemove === undefined
+      ? {}
+      : {
+          beforeRemove: ((checkout, files, change) =>
+            beforeRemove(checkout, files.filter(chosen), change)) as BeforeRemove,
+        }),
+  };
   // No committed path is selected: every named file is absent there, with no checkout.
   const at: KeysAt = asked
     ? await keysAtCommit({
         ...options,
+        ...hooks,
         ...(paths === null
           ? {}
           : { adapters: narrowedOrAll(options.adapters, paths, (path) => tree.has(path), hear) }),

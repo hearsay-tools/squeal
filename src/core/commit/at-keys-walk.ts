@@ -68,18 +68,19 @@ const INSTALL_TIMEOUT_MS = 300_000;
  * Row 023-18 (D3): the first path the commit tracks that the checkout does
  * not hold as the commit does, and what made it differ: `git`, git's own
  * checkout rules (a `.gitattributes` `eol`, `text` or filter rule), found
- * before the install ran; or `install`, found only after it.
+ * before the install ran; or `install`, found only after it. Review
+ * wave-13 B1: `run`, a test of an earlier `--run` batch changed it.
  */
 export interface Changed {
   readonly path: RelativePath;
-  readonly by: "git" | "install";
+  readonly by: "git" | "install" | "run";
 }
 
 /** Row 023-18 (D3): a changed checkout in words, its path and its cause. */
 export function changedText(changed: Changed): string {
-  return changed.by === "git"
-    ? `git's checkout rules changed ${changed.path}`
-    : `install changed the checkout: ${changed.path}`;
+  if (changed.by === "git") return `git's checkout rules changed ${changed.path}`;
+  if (changed.by === "run") return `a test of an earlier batch changed ${changed.path}`;
+  return `install changed the checkout: ${changed.path}`;
 }
 
 /**

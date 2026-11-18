@@ -53,7 +53,11 @@ export interface NowSide {
   readonly state: (ref: TestFileRef) => SideState;
   /** P4: the paths that select no listed test file, each with the files whose closure holds it. */
   readonly sources: ReadonlyMap<RelativePath, readonly TestFileRef[]>;
-  /** P5: whether the daemon does not list `ref`; always `false` with no daemon. */
+  /**
+   * P5: whether this side has no state for `ref` that a keying here could
+   * give: the daemon does not list it, or (no daemon) it is listed and was
+   * not keyed (review wave-13 B4). `listLate` keys those.
+   */
   readonly unlisted: (ref: TestFileRef) => boolean;
 }
 
@@ -87,9 +91,14 @@ function daemonSide(input: NowInput, main: Store, rows: readonly TestFileKeyReco
   }
   const refs = union(select(listed, input.paths), sources);
   const revision = rows.reduce<number | null>((n, r) => Math.max(n ?? 0, r.revision), null);
+  // Review wave-13 B4: a path that selects no listed file by path may select, at the commit, a
+  // file the daemon lists outside this side's selection; each listed file's state is read then.
+  const bySource = (input.paths ?? []).some(
+    (path) => !listed.some((ref) => selects([path], ref.path)),
+  );
   // Read now: the store closes when this side is returned.
   const states = new Map<string, SideState>();
-  for (const ref of refs) {
+  for (const ref of bySource ? listed : refs) {
     const row = byId.get(testFileId(ref));
     if (row === undefined) continue;
     if (row.key === null) {
@@ -110,7 +119,7 @@ function daemonSide(input: NowInput, main: Store, rows: readonly TestFileKeyReco
     refs,
     state,
     sources,
-    unlisted: (ref) => !byId.has(testFileId(ref)),
+    unlisted: (ref) => !states.has(testFileId(ref)),
   };
 }
 
@@ -141,7 +150,9 @@ async function keyedSide(
     }
     const refs = union(select(all, input.paths), sources);
     const states = new Map<string, SideState>();
-    for (const ref of refs) {
+    // Review wave-13 B4: every keyed file's state, not only this side's selection: the commit's
+    // closure may select a file whose closure here no longer holds the path.
+    for (const ref of asked) {
       const at = keyed.get(ref);
       const id = testFileId(ref);
       if (at === undefined)
@@ -155,21 +166,25 @@ async function keyedSide(
     const state = (ref: TestFileRef) =>
       states.get(testFileId(ref)) ?? unlisted(root, ref, "no runner lists it");
     const source: NowSource = why === undefined ? { kind: "stored" } : { kind: "stored", why };
-    return { source, refs, state, sources, unlisted: () => false };
+    // A file listed here and not keyed is keyed by `listLate` when the other side asks for it.
+    const unkeyed = (ref: TestFileRef) =>
+      listed.has(testFileId(ref)) && !states.has(testFileId(ref));
+    return { source, refs, state, sources, unlisted: unkeyed };
   });
 }
 
 /**
  * P5: the files of `refs` the daemon does not list that the working tree
  * holds, keyed here and read at those keys (D3's rule with no daemon);
- * the others as the daemon gives them. `now` itself when there is none.
+ * the others as the daemon gives them. Review wave-13 B4: with no daemon,
+ * the files listed here that this side did not key (the commit's closure
+ * selected them), keyed the same way. `now` itself when there is none.
  */
 export async function listLate(
   input: Omit<NowInput, "main" | "paths">,
   now: NowSide,
   refs: readonly TestFileRef[],
 ): Promise<NowSide> {
-  if (now.source.kind !== "daemon") return now;
   const late = refs.filter((ref) => now.unlisted(ref) && existsSync(join(input.root, ref.path)));
   if (late.length === 0) return now;
   const paths = [...new Set(late.map((ref) => ref.path))];
@@ -179,7 +194,7 @@ export async function listLate(
   const ids = new Set(late.map(testFileId));
   return {
     ...now,
-    source: { ...now.source, late: late.length },
+    source: now.source.kind === "daemon" ? { ...now.source, late: late.length } : now.source,
     state: (ref) => (ids.has(testFileId(ref)) ? keyed.state(ref) : now.state(ref)),
   };
 }

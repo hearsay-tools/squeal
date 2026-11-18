@@ -24,8 +24,11 @@ export interface RunUse {
   readonly notStored: readonly string[];
   /** "Whole-checkout check": the first path the install changed; with one, nothing was stored. */
   readonly changed: string | null;
-  /** Row 023-18 (D3): with `changed`, what changed it: git's checkout rules or the install. */
-  readonly changedBy: "git" | "install" | null;
+  /**
+   * Row 023-18 (D3): with `changed`, what changed it: git's checkout rules,
+   * the install, or (review wave-13 B1) a test of an earlier batch.
+   */
+  readonly changedBy: "git" | "install" | "run" | null;
   /** Of those, the ones the budget left not run. */
   readonly notRun: number;
   /**

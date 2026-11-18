@@ -115,7 +115,11 @@ export interface ChildRun {
   readonly forward: (text: string) => void;
 }
 
-/** In the CLI process: the files run in the child, in a group of its own; its answer. */
+/**
+ * In the CLI process: the files run in the child, in a group of its own;
+ * its answer. The group is stopped once the child ended, so no process a
+ * test started outlives its run (review wave-13 B3).
+ */
 export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   const [command, ...flags] = run.relaunch ?? [];
   if (command === undefined) return { error: "no command to start the run's process with" };
@@ -169,6 +173,9 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
   );
   const how = await exited;
   clearTimeout(limit);
+  // Review wave-13 B3: what the run started in its group dies with it, before the next child's
+  // group replaces this one in the marker; the removal and the sweep stop only the recorded one.
+  if (pid !== undefined) await stopGroup(pid).catch(() => {});
   if (!existsSync(answer)) {
     const error = `the run's process ended ${how} with no answer`;
     return stopped ? { error, stopped: true } : { error };
