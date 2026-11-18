@@ -434,6 +434,33 @@ describe("a mark that a read or write left (row 011-391)", () => {
     expect(readStoreMark(commonDir)).toEqual({ at: 3, problem: "p" });
   });
 
+  it("keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)", () => {
+    const commonDir = fakeCommonDir();
+    open(commonDir).meta.set("kept", "yes");
+    writeFileSync(
+      `${storePaths(commonDir).database}.check-failed`,
+      JSON.stringify({ at: 1, problem: "p", found: "unknown" }),
+    );
+
+    expect(readStoreMark(commonDir)).toEqual({ at: 1, problem: "p", found: "unknown" });
+    expect(storeCondemned(commonDir)).toBe(
+      "daemon stopped: a fault was marked on the store (p); " +
+        "the next start moves the store aside and starts a fresh one",
+    );
+    const store = openStore(commonDir, { recoverFaults: true, now: () => 8 });
+    if (isStoreOpenFailure(store)) throw new Error(`open failed: ${JSON.stringify(store)}`);
+    try {
+      expect(store.meta.get("kept")).toBeNull();
+      const note = JSON.parse(store.meta.get(META_STORE_RECOVERED) ?? "null");
+      expect(note).toMatchObject({ found: "unknown" });
+      expect(note).not.toHaveProperty("check");
+      expect(note).not.toHaveProperty("checkedAt");
+      expect(note).not.toHaveProperty("markedAt");
+    } finally {
+      store.close();
+    }
+  });
+
   it("reads a mark cut short as one whose finder is unknown, never the full check's (row 011-392 d)", () => {
     const commonDir = fakeCommonDir();
     open(commonDir).meta.set("kept", "yes");

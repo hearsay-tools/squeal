@@ -42,7 +42,12 @@ export interface StoreMark {
   readonly file?: MarkedFile;
 }
 
-const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook"];
+/**
+ * The finders a parsed mark keeps. Review 0.1.559 S1: a mark that says `unknown` reads as a mark
+ * cut short does, never as the full check's; a mark with no finder, or another, stays the full
+ * check's (written before row 011-391).
+ */
+const MARK_FINDERS: readonly FaultFinder[] = ["full-check", "daemon", "hook", "unknown"];
 
 /** The mark beside the store that names the file at its path now; `null` with none. */
 export function readStoreMark(commonDir: AbsolutePath): StoreMark | null {
