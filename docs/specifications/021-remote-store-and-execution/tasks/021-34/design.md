@@ -4,7 +4,7 @@ Worker 5458ecdb, 2026-11-19. Brief: `../wave-9.md`, section 021-34. Shape: surve
 
 ## Summary for the human
 
-One daemon per project would fix one problem that we can now measure: the background processes of one repository wait for each other to write the shared results file. On the two busiest repositories each daemon sleeps in that wait for about a tenth of its time (cezar 10.1% with 8 worktrees at work; this repository 8.8% to 10.0% with 6 to 14), and cezar's logged waits add up to 25.5 hours of daemon time a day. The wait grows with the number of worktrees (cezar 2% with 4, 10% with 8), and shorter writes did not remove it, because each daemon now also does the writes the hooks used to do. One writer per repository removes these waits. A project daemon would also stop the restarts: 67% of this repository's 351 daemon starts a day restart a worktree whose daemon ended less than 10 minutes before, and in its first five minutes each start holds the shared write lock for 4 s here and 16 s on cezar on average. The memory saving is small: about 0.3 to 0.9 GiB for 6 worktrees, 3 to 8% of what Squeal uses. In October we rejected the idea for two reasons. The question then was memory, and the saving was 5 to 7%. Also, test runs ran inside the daemon, so one process could not serve two worktrees. Since then test runs have moved to their own processes and hooks have stopped writing, but the lock waits stayed. Three October objections still hold. One crash or hang stops every worktree of the repository (cezar: 13 daemons ended with no logged reason in 4.7 days). Every worktree must run one Squeal version (19 releases installed in 4.7 days). And one thread cannot do all the work: this repository's 6 daemons used 1.47 cores of main-thread time in one sample, more than one thread gives. So I propose steps. First, one writer per repository inside today's daemons. It gets the lock gain alone, and when the writer is gone, Squeal works as it does today. Build the project daemon itself, with each worktree's work in its own thread, only if that step's measurement and a profile show that it pays.
+One daemon per project would fix one problem that we can now measure: the background processes of one repository wait for each other to write the shared results file. On the two busiest repositories each daemon sleeps in that wait for about a tenth of its time (cezar 10.1% with 8 worktrees at work; this repository 8.8% to 10.0% with 6 to 14), and cezar's logged waits add up to 25.5 hours of daemon time a day. The wait grows with the number of worktrees (cezar 2% with 4, 10% with 8), and shorter writes did not remove it, because each daemon now also does the writes the hooks used to do. One writer per repository removes these waits. A project daemon would also stop the restarts: 67% of this repository's 351 daemon starts a day restart a worktree whose daemon ended less than 10 minutes before, and in its first five minutes each start holds the shared write lock for 4 s here and 16 s on cezar on average. The memory saving is small: about 0.3 to 0.9 GiB for 6 worktrees, 3 to 8% of what Squeal uses. In October we rejected the idea for two reasons. The question then was memory, and the saving was 5 to 7%. Also, test runs ran inside the daemon, so one process could not serve two worktrees. Since then test runs have moved to their own processes and hooks have stopped writing, but the lock waits stayed. Three October objections still hold. One crash or hang stops every worktree of the repository (cezar: 13 daemons ended with no logged reason in 4.7 days). Every worktree must run one Squeal version (19 releases installed in 4.7 days). And one thread cannot do all the work: this repository's 6 daemons used 1.47 cores of main-thread time in one sample, more than one thread gives. So I propose steps. First, one writer per repository inside today's daemons. It gets the lock gain alone, and when the writer is gone, Squeal works as it does today. Build the project daemon itself, with each worktree's work in its own thread, only if that step's measurement and a profile show that it pays. With one writer, SQLite's lock stays as a safety net. It costs nothing when nobody else writes. A second writer that should not exist only waits, or fails within its time limit, and never damages the file. The writer serves a queue of writes on its own thread, so a long write (up to 29 s today) delays the writes behind it but not the answers to hooks.
 
 ## 1. What one daemon per clone improves
 
@@ -88,6 +88,43 @@ One daemon per project would fix one problem that we can now measure: the backgr
 | (4) Project daemon, a thread per worktree (target) | 0 | as (1) | absorbed | −0.3 to −0.9 GiB | per worktree, as today | hangs and heap overflows: one worktree; a crash: the clone | one per clone, with guests | (1) plus engines and migration |
 
 (1) is the cheapest step that removes the measured waits, and it is also step 1 of (4). (2) adds a process that (1) does not need. (3) fails on the event loop. (4) adds the restart gain and a small memory gain, at the cost of the blast radius and the version rules.
+
+## 6. One writer: the lock and the write queue
+
+**The lock stays [docs, inf].** SQLite always takes its file locks. No setting turns them off and still lets other processes read. `locking_mode=EXCLUSIVE` would keep hooks and `squeal status` out of the file. With one writer, the lock does three things:
+
+- **Readers.** In WAL mode, readers (hooks, `squeal status`, the CLI) take a read mark in the `-shm` file. They never wait for the writer, and the writer never waits for them.
+- **Checkpoints.** D4's `TRUNCATE` checkpoint needs all readers off old snapshots. It runs in the writer, so it no longer competes with other writers.
+- **Recovery.** After a crash, the first connection rebuilds the WAL index under the lock (the #8 case). This happens once, then stops.
+
+An uncontended `BEGIN IMMEDIATE` takes the lock in microseconds, so the safety net costs nothing.
+
+**A second writer is safe [src, inf].** A second writer can still appear in three ways:
+
+- an older-version daemon during the migration;
+- D15's direct-write fallback, when a client finds no live writer;
+- `squeal import` or a CLI write with no daemon serving.
+
+Each one waits in SQLite's busy handler, and then gets `SQLITE_BUSY`. D1 and D2 retry within their bound, and D1 reports a failure honestly. SQLite's atomic commit does not let two writers interleave inside one file, so a second writer delays work but never corrupts it. The lock watch (D5) names such a writer. A queue does not replace the lock. It means that the lock is almost never contended.
+
+**Step 1 as a write queue [inf].**
+
+- **One write connection and one queue per store file.** There is one each for `store.sqlite`, `code.sqlite` and `lint.sqlite`. They are separate locks today, so a code-store write never waits behind a store write.
+- **Batches.** Each daemon's transaction becomes one batch: D15's `SendingConnection` keeps its statements and sends them when the transaction ends. A batch is atomic: the writer runs it whole in one transaction, or fails it. The writer may merge small batches that are in the queue at the same moment into one transaction of at most 250 ms (D3's line), which means fewer commits.
+- **Order.** Batches of one worktree keep their order, because a later batch may depend on an earlier one. Between worktrees and kinds, the writer takes edit-tier results and hook or CLI writes first, then tier records, ledger commits and revision apply, then reconciliation and code-store records, and the prune last, only when the queue is empty.
+- **Off the main thread.** `node:sqlite` is synchronous: a 1.3 s write blocks the thread that runs it. The writer runs in a worker thread of the writer daemon, beside the front desk, which already answers hooks from memory (`front-desk.ts`). The writer daemon's own transactions go through the same queue as everyone else's. A long write then delays only the writes queued behind it. It does not delay that daemon's keying, its socket or its heartbeat. The client daemons do not block either: a send returns at once, and the answer comes later.
+
+**What a long write costs [exp from gate Q3, inf].** Today on cezar's `store.sqlite`, writes over 250 ms have these lengths:
+
+| | p50 | p90 | max | Count | Held a day |
+|---|---|---|---|---|---|
+| All long writes | 0.5 s | 1.3 s | 29 s | 10,356 over 1 s, 786 over 5 s | 9,192 to 13,883 s (11 to 16% of one thread) |
+| Revision apply's closures | 1.3 s | | 29 s | | 10,539 s in 4.7 days |
+
+In the queue model, such a write delays the writes behind it by its own length. That is the same delay they get today. The difference is that nobody sleeps in a busy wait, and the next write starts at once rather than at the waiter's next poll. Two things make a long write worse in one queue:
+
+- One atomic batch of 29 s holds back edit-tier results of every worktree for 29 s. The fix is the one D3 already uses for import and prune: senders mark batches that may be split (tier records, coverage rows, prune), and the writer runs them in slices of at most 250 ms, taking edit-tier results between slices. A batch that must stay atomic, such as revision apply, runs whole.
+- If holds grow with host load (gate open question 2), the queue grows with them. At cezar's peak the store and code-store writers were busy 28% and 42% of a 25-minute window. Each fits one thread, but with little room, so step 1's measurement must read the queue's wait time as well as its busy time.
 
 ## Open questions
 
