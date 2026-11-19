@@ -32,7 +32,7 @@ import { validateRuntimeTree } from "./runtime-release/tree.js";
  */
 
 /** The adapter's version, independent of the runtime's (D7). */
-export const CODEX_ADAPTER_VERSION = "1.0.3";
+export const CODEX_ADAPTER_VERSION = "1.0.4";
 /** The frozen runtime the fixed plugin carries (D7). */
 export const SEED = "seed";
 /** The fixed plugin's committed files: copied from `from` when the build writes elsewhere. */

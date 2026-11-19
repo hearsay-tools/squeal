@@ -72,6 +72,7 @@ Started: 2026-10-07
 - 2026-10-25, 011-215 (wave 42 W2, gh-93): D3's Stop amended with 011 C8: a liveness or hold change alone is news at Stop only when it names an action; otherwise it goes out at the next PostToolUse or prompt.
 - 2026-11-03, 019-05 (0.1.394, review `../019-run-triggers/reviews/0.1.394.md` PASS, S1): D3's SubagentStop amended. It runs the subagent Stop check of 004 D7 and blocks once; on a block the subagent keeps its registration and root; otherwise it unregisters and stays silent, ordinary news included (a Codex choice: no context field for Stop).
 - 2026-11-03, 019-09 (0.1.395): Codex adapter 1.0.3. The `stop-slow` hook `timeout` rose from 630 to 3600 s, which changes the fixed plugin's `hooks.json` and so its trust hash; users trust `stop-slow` again (D7). Until they do, the 2 s Stop entry holds once without waiting, as before.
+- 2026-11-19, 005-129 (wave 32 of spec 005, the human: "Yes, keep it consistent. One off hooks approval is a small price to pay for consistency."): Codex adapter 1.0.4. The fixed plugin's `squeal` skill takes the runtime copy's description word for word, and both skill bridges say "the command the SQUEAL messages name" instead of "the SQUEAL primer names" (005-128 removed the primer from agent-read texts). `hooks/hooks.json` and the seed (runtime 0.1.368) are unchanged; a test now fails when a fixed skill's description differs from the runtime copy's (D7).
 
 ## Research
 
