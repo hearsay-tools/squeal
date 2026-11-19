@@ -101,3 +101,29 @@ The human rejected a fixed ceiling on 2026-11-07 as "too coupled to this machine
 6. Recommendation: the budget's signal, its scope (per user, across all daemons) and defaults, and the expected effect on edit-tier latency, background completion and total CPU, with the evidence; or that no budget is worth it.
 
 Rules as above. No load made; read live processes only through `/proc` and `squeal ps`.
+
+## Week-after measurements (the human, 2026-11-12: "Measure in a week")
+
+Two topics, run in parallel on 2026-11-19 (task brief `../tasks/measure-2026-11-19.md`). Each repeats an earlier measurement after Parts 1 to 4 and D18 shipped; extend the earlier file's numbers, do not repeat its analysis. Every daemon you sample: name its version (`squeal ps`); only 0.1.442 or later counts. Daemon logs (row 021-32, 0.1.488 and later): `<commonDir>/squeal/logs/daemon-<worktree id>.log` and `.log.1`, lines `<ISO UTC> [<pid>] squeal daemon: ...`; D3's long-write line (a write transaction over 250 ms) and D18's ceiling refusals are there. Workload changes week to week: report the number of daemons, their states (busy, idle) and the host load beside every number, and normalize per busy daemon where the earlier file allows. Rules as above.
+
+## Topic: one-daemon-gate (row 021-17, spec D16)
+
+Findings file: `research/one-daemon-gate.md`.
+
+1. Lock watch. Repeat `store-contention.md` Q3: `probes/store-contention/lock-watch.mjs`, 25 minutes, 20 ms poll, on cezar's `store.sqlite` and `code.sqlite` and this repository's `store.sqlite` (paths under each clone's `.git/squeal/`), read-only through `/proc/locks`. Report per store: share of the window held, by daemons and by hooks/CLI, holds of 1 s and 2 s or more, maximum, by 5-minute window. Compare with 2026-11-11: cezar store 24% (daemons 19.4%, hooks 4.5%), squeal store 17.4%, cezar `code.sqlite` 43%.
+2. Main-thread sampling. Repeat `daemon-model.md` Q1 (`probes/daemon-model/main-thread.sh`, `wchan-sample.sh`) on the live cezar and squeal daemons: share of main-thread samples in SQLite's busy wait, on CPU, and elsewhere. Compare with 21% busy wait and 72% on CPU across 8 cezar daemons.
+3. The daemon logs over the last week: count of long-write lines per store, their durations (p50, p90, max), and lock-busy notes; which code paths they name.
+4. D16's rule, applied: above 5% of main-thread samples in busy wait, or the lock busy more than half of a 25-minute window? State the verdict per store with the numbers. If the result is near a threshold, a second 25-minute window at another time of day settles it.
+5. Recommendation: propose one daemon per clone to the human, or end that line in spec 021. If the lock is still the limit somewhere, name the holders, and say whether a targeted fix would remove them.
+
+Read live daemons only through `/proc`, `/proc/locks`, their log files and `squeal ps`; open no socket, signal nothing.
+
+## Topic: cpu-ceiling-measured (row 021-19, spec D18)
+
+Findings file: `research/cpu-ceiling-measured.md`.
+
+1. This host, last week. From the stores (copies under `$TMPDIR`), sar history and the daemon logs, for the period with daemons on 0.1.442 or later (D18's ceiling 18 of 24 CPUs): CPU per test file against its fast reference (`load-slowdown.md`'s measure), background tier finish p50 and p90, edit-tier wall, backlog p90, host time above the ceiling and above 20 busy vCPUs, and the ceiling refusals logged (count, busy CPUs read, how long each held work back). Compare with `cpu-budget.md` Q1's replay for ceiling 18 (Squeal CPU −9.4%, edit-tier wall −7.2%, agents' test runs −9.3%, background p50 17 s, backlog p90 40 min) and with its no-budget week (2026-11-04 to 11-11). Say what is the ceiling's effect and what is a different workload.
+2. A second machine. The 021-15 team host does not exist yet. Use the 12-vCPU lab VM (host name in your spawn prompt; never write the host name in the repository). Row 011-395 (`../../011-core/research/broad-change-throughput.md`) measured there on 2026-11-19: on a quiet machine the default ceiling (9 of 12) left backlog tiers 6.4 of 12 cores busy, 57% of Squeal's extra time. Reuse its probes and setup. Run the same broad edit with `capacity.backgroundShare` 0.75 (default) and 1.0, at least two runs each, alternating: total wall, background finish, CPU-seconds, peak and mean busy CPUs, refusals logged. This answers D18's claim that a ceiling delays results on a quiet machine. Check the VM's load first (`uptime`, top processes), state it per run, work in `~/work/<your task id>/`, use a private `HOME` there, stop every daemon and delete the directory when done. Bound: about two hours of VM time.
+3. Recommendation: keep 75%, change the default, or change the rule (for example, the floor or how the ceiling counts Squeal's own lanes), with the evidence for each machine.
+
+This host: no load made; read live processes only through `/proc` and `squeal ps`. The lab VM is dedicated to such runs; the rule there is one experiment at a time, never two Squeal runs at once.
