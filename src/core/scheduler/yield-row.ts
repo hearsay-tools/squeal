@@ -155,18 +155,20 @@ function isRef(value: unknown): value is TestFileRef {
 
 function isOverrun(value: unknown): value is TierOverrun {
   if (typeof value !== "object" || value === null) return false;
-  const { startedAt, at, deadline, files } = value as {
+  const { startedAt, at, deadline, files, beside } = value as {
     startedAt?: unknown;
     at?: unknown;
     deadline?: unknown;
     files?: unknown;
+    beside?: unknown;
   };
   return (
     typeof startedAt === "number" &&
     typeof at === "number" &&
     (deadline === null || typeof deadline === "number") &&
     Array.isArray(files) &&
-    files.every(isOverrunFile)
+    files.every(isOverrunFile) &&
+    (beside === undefined || beside === true)
   );
 }
 

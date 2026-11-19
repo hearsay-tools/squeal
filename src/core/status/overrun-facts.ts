@@ -39,6 +39,7 @@ export function overrunOf(
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline,
+    ...(tier.beside === true ? { beside: true } : {}),
   };
   return { overrun };
 }
