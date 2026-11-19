@@ -6,7 +6,9 @@ import type { ProofCase } from "../core/proof/sides.js";
  * 023-11 adds the conditions (`--env NAME=[value]` and `--without <path>`,
  * each repeatable), `--repeat <n>` and `--case dependency`, which needs a
  * condition. A `--without` path is placed (repository or `HOME`) once the
- * worktree is known (`placeWithout`).
+ * worktree is known (`placeWithout`). Row 023-21 (D5.2, issue #247):
+ * `--with <path>`, repeatable, copies a helper from the test version as
+ * test code, with no verdict of its own.
  */
 
 /** The default budget, the checkouts and installs included, as D4.6's. */
@@ -31,6 +33,8 @@ export interface ProofArgs {
   readonly homeKeep?: readonly string[];
   /** D5.4: the red side's most runs and the green side's runs; default 1. */
   readonly repeat?: number;
+  /** Row 023-21 (D5.2): each `--with` path as given, copied from the test version as test code. */
+  readonly with?: readonly string[];
 }
 
 /** A usage problem, told in one line. */
@@ -44,9 +48,10 @@ const VALUED = [
   "--without",
   "--home-keep",
   "--repeat",
+  "--with",
 ] as const;
 type Valued = (typeof VALUED)[number];
-const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without", "--home-keep"]);
+const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without", "--home-keep", "--with"]);
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -112,6 +117,7 @@ function checked(
     env: env.list,
     without,
     homeKeep: values.get("--home-keep") ?? [],
+    with: values.get("--with") ?? [],
     ...counts,
   };
 }

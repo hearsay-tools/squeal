@@ -38,12 +38,22 @@ describe("squeal proof arguments (row 023-08)", () => {
       env: [],
       without: [],
       homeKeep: [],
+      with: [],
       repeat: 1,
     });
     expect(parseProof(["a.test.ts", "--base=main"])).toMatchObject({
       case: null,
       timeoutSeconds: 600,
       json: false,
+    });
+  });
+
+  it("reads --with, repeatable (row 023-21)", () => {
+    expect(
+      parseProof(["a.test.ts", "--base", "main", "--with", "src/a.testkit.ts", "--with=b.ts"]),
+    ).toMatchObject({ files: ["a.test.ts"], with: ["src/a.testkit.ts", "b.ts"] });
+    expect(parseProof(["a.test.ts", "--base", "main", "--with"])).toEqual({
+      usage: "--with needs a value",
     });
   });
 

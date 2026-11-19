@@ -92,7 +92,7 @@ Usage:
                                 tells its estimate first
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
-               [--repeat <n>] [--timeout <seconds>] [--json]
+               [--with <path>]... [--repeat <n>] [--timeout <seconds>] [--json]
                                 A red proof per named test file over committed HEAD:
                                 red is the test at HEAD over the code at --base
                                 (source) or the test at --base over the code at HEAD
@@ -106,7 +106,11 @@ Usage:
                                 links). A side under a condition always runs and is
                                 never stored; dependency needs one. --repeat runs red
                                 up to n times (to its first failure) and green n times
-                                (1 to 100). Verdicts: proven, not red, red for
+                                (1 to 100). --with copies a helper the test imports
+                                from the test version as test code, with no verdict
+                                of its own; a named test unchanged since --base whose
+                                imported helpers changed runs nothing and names them
+                                with that rerun. Verdicts: proven, not red, red for
                                 another reason, not green, not comparable, with the
                                 red side's failure text; exit 0 all proven, 1 not
                                 red or not green, 3 unknown, 2 on a usage error

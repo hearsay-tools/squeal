@@ -55,6 +55,7 @@ function file(more: Partial<ProofFile>): ProofFile {
     greenNotRun: "red passed: nothing to prove",
     control: null,
     controlNotRun: null,
+    imports: null,
     ...more,
   };
 }
@@ -76,6 +77,9 @@ function report(files: readonly ProofFile[], conditions: Conditions = NO_CONDITI
     repeat: 1,
     notRun: 0,
     rerun: null,
+    with: [],
+    withUnused: [],
+    withRerun: null,
   };
 }
 

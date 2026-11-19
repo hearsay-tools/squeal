@@ -30,7 +30,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     const first = await prove(f, { files: [TEST.path], base: a }, options);
     expect(first.code, first.why).toBe(0);
     expect(first.report).toMatchObject({ version: "squeal-proof/1", case: "source", base: a });
-    expect(first.report.red).toEqual({ tests: first.report.head, code: a });
+    expect(first.report.red).toEqual({ tests: first.report.head, code: a, with: [] });
     const [file] = first.files;
     expect(file).toMatchObject({
       verdict: "proven",
@@ -75,7 +75,7 @@ describe("squeal proof (row 023-08, D5)", { timeout: 240_000 }, () => {
     const result = await prove(f, { files: [TEST.path], base: a });
     expect(result.code, result.why).toBe(0);
     expect(result.report.case).toBe("test");
-    expect(result.report.red).toEqual({ tests: a, code: result.report.head });
+    expect(result.report.red).toEqual({ tests: a, code: result.report.head, with: [] });
     expect(result.files[0]).toMatchObject({ verdict: "proven", red: { end: "fail" } });
     expect(result.files[0]?.red.failures[0]?.text).toContain("expected 2 to be 3");
     clean(f);

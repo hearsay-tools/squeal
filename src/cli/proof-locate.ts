@@ -22,6 +22,8 @@ import { inRoot, worktreeOf } from "./status-at.js";
 
 export interface Located {
   readonly root: AbsolutePath;
+  /** The command's directory, which the paths it was given are relative to. */
+  readonly cwd: AbsolutePath;
   readonly commonDir: AbsolutePath;
   readonly base: string;
   readonly head: string;
@@ -29,6 +31,8 @@ export interface Located {
   readonly paths: readonly RelativePath[];
   /** D5.3: the conditions, each `--without` placed in the repository or under `HOME`. */
   readonly conditions: Conditions;
+  /** Row 023-21 (D5.2): the `--with` paths, relative to the root, each once. */
+  readonly with: readonly RelativePath[];
 }
 
 /** The worktree, both commits and the named files; a setup problem as a string. */
@@ -57,11 +61,17 @@ export async function locate(
     if (rel === null) return `${file} lies outside ${root}`;
     paths.push(rel);
   }
+  const withPaths: RelativePath[] = [];
+  for (const given of args.with ?? []) {
+    const rel = inRoot(root, cwd, given);
+    if (rel === null || rel === "") return `--with ${given} names no file inside ${root}`;
+    if (!withPaths.includes(rel) && !paths.includes(rel)) withPaths.push(rel);
+  }
   const conditions = conditionsOf(args, cwd, root, (io.env ?? process.env).HOME, deadline);
   if (typeof conditions === "string") return conditions;
   const linked = await linkedWithout(root, [base, head], conditions);
   if (linked !== null) return linked;
-  return { root, commonDir, base, head, paths, conditions };
+  return { root, cwd, commonDir, base, head, paths, conditions, with: withPaths };
 }
 
 /**
