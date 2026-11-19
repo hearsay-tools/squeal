@@ -59,6 +59,15 @@ The remaining warm CPU after this row is in `moduleGlobs`, `resolutionInputs` an
 
 - Final Squeal state, recorded on the coordinator's instruction without a later recheck: revision 10 (`3bf7a89f` + notes), 180 of 788 selected test files current and passing, 608 pending, no failure except the expected bundle drift above. The 608 pending files have no verdict here; candidate CI runs the full suite.
 
+## Repair for candidate 0.1.572: the validity case (coordinator request, 2026-11-19)
+
+On the integrated candidate `test/keys/key-format.test.ts` failed: "VITEST_ADAPTER_VERSION (src/runners/vitest/version.ts): changed lines no case runs, each needing a case under test/keys/validity/cases/: src/runners/vitest/graph.ts:275". Line 275 is `sameImports`. After this row it runs only when a held file is walked again at other bytes or targets. No case did that: the Vitest harness read closures only once, before any edit.
+
+- New case `test/keys/validity/cases/adapter/vitest-reclosure.ts` (`VITEST_RECLOSURE`, in `cases/index.ts`). One adapter walks `test/a.test.ts` twice, then `b` (same `src/lib.ts`) and `c`. It then changes `src/lib.ts` (bytes and imports) and adds `src/later.ts`, which resolves `src/lazy.ts`'s missing `./later.js` while its bytes stay the same. Then it walks `a`, `b` and `c` again. No runs.
+- Harness: a new optional `VitestInput.closuresAfter` (`case.ts`) with `edits` and `closures`. `harness/vitest.ts` `caseClosures` writes each edit, invalidates it (`add` where no file was) and reads the closures again; they join the case's keys after the first closures. The same harness runs at both trees (`bundle.ts`), so the last release reads the same input. The helper keeps `vitestCase` at complexity 20.
+- No version raised: the case's keys and outputs equal the last release's.
+- Checks: `timeout 1500 pnpm exec vitest run test/keys/key-format.test.ts --maxWorkers=1` passed, 12 of 12 (132 s, host load about 56/24). With the case taken out of `CASES`, the same run failed 1 of 12 with the message above (`graph.ts:275 (candidate bundle line 16673)`). `tsc` and `biome check test/keys/validity/` are clean. No `cand/0.1.572` existed on origin, so the commit is on `cez/9abded0e` for a cherry-pick.
+
 ## Proposed spec amendment (for the coordinator)
 
 Spec 015 D11, or 011 C6 under the runner part: "The runner host keeps each path's project-file and relative-path answer (`WorktreePaths`, bounded), and reuses a walked file's `fileImports` entry while its sha1 and absolute targets are those it was made from (row 011-414). Closures, keys and selections are unchanged."

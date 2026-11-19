@@ -338,6 +338,16 @@ export interface VitestInput {
    */
   readonly closures?: readonly TestFileRef[];
   /**
+   * Row 011-414: after `closures`, these files written in turn, each with
+   * its `invalidate` (an add where none was), then these closures read
+   * again on the same adapter, as the case's keys after the first ones: a
+   * walk meets files an earlier walk read at other bytes or targets.
+   */
+  readonly closuresAfter?: {
+    readonly edits: readonly { readonly path: string; readonly text: string }[];
+    readonly closures: readonly TestFileRef[];
+  };
+  /**
    * Row 015-11: coverage on, through Squeal's provider (spec 015 D8). The
    * adapter takes it as its tenth argument, which a release before it
    * ignores, so there the runs are coverage off and must store alike.
