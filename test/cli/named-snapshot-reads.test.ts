@@ -113,7 +113,7 @@ describe("a named snapshot reads the worktree's states once (row 011-411)", () =
     if (got.outcome === "unavailable") throw new Error("unavailable");
     expect(got.result.imports?.length).toBe(3);
     // Before row 011-411: the verdict and the named files read every state again.
-    const left = new Set(got.leftForPause.map(testFileId));
+    const left = new Set((got.leftForPause ?? []).map(testFileId));
     const held = got.selection.files.filter((f) => !left.has(testFileId(f)));
     const result = buildSnapshot(store, repo.main, NOW);
     const before = {
