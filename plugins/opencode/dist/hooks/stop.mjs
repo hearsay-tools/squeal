@@ -10803,7 +10803,9 @@ function overrunOf(ref2, pending, run2, row, now) {
   if (file === void 0) return {};
   const overrun = {
     path: ref2.path,
-    ranMs: Math.max(0, now - run2.startedAt),
+    // Review 0.1.567 B2: the age counts from the start the daemon moved by calendar steps, the
+    // threshold's and the deadline's; the run row's `startedAt` stays the stored provenance.
+    ranMs: Math.max(0, now - tier.startedAt),
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline
@@ -10881,8 +10883,8 @@ function isRef2(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { at, deadline, files: files2 } = value;
-  return typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile);
+  const { startedAt, at, deadline, files: files2 } = value;
+  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile);
 }
 function isOverrunFile(value) {
   if (!isRef2(value)) return false;
