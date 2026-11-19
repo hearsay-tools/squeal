@@ -193,6 +193,17 @@ From row 021-27 (`research/daemon-heap.md`). The human, 2026-11-12, approved all
 3. **The first `affected` after a reopen from the stored import graph.** A cold host's first `affected` walks every test file's imports: 23 to 25 s on cezar. The daemon already stores the import edges (`import-edges.ts`). Answering that call from them, and keeping the walk for what they cannot answer, would remove most of D20's cold start; it may also cut cezar's 5.5 to 7.4 s warm `affected`. Untested: the row starts with a measured experiment, and keeps results correct (an edit whose affected tests the graph cannot vouch for still goes to the host).
 4. **An incremental code-quality pass.** The CRAP loaders rebuild a map over every test file's closure paths on each pass (`src/core/code/crap/loaders.ts`), 41% of a busy daemon's allocation. They update only what a stored record changed.
 
+### D22. A store process per clone, `code.sqlite` first
+
+From row 021-17 (`research/one-daemon-gate.md`: D16's gate met) and row 021-34 (`tasks/021-34/design.md`). The human, 2026-11-19, proposed a dedicated process in place of a writer role inside one daemon: "maybe instead of one daemon taking the role of the writer - we introduce one process (daemon) dedicated to handle the store? But I guess something needs to start it". This is the design's option (2) and step 1 of its migration; the project daemon (its option (4)) waits for step 2's measurement and profile.
+
+1. **One store process per clone and store file.** It holds the only regular write connection of the file. The first slice serves `code.sqlite` alone; `store.sqlite` and `lint.sqlite` follow only after the measurement of 6.
+2. **Start and end.** A daemon that needs to write and finds no store process starts one, under a lock file in `<commonDir>/squeal/locks/`, the way hooks start daemons; two daemons that try at once start one. It exits a few minutes after its last client, and at once when the file's schema is newer than its own. It runs the daemon's bundle and version, and `squeal ps` lists it.
+3. **Writes.** Daemons send each code-store transaction as one batch (D15's `SendingConnection` and batch format) with its worktree, the store's schema and its kind. The process writes off the thread that serves its socket, so a long write never delays an answer. One queue: batches of one worktree keep their order; edit-tier results first, then other records, the prune last and only when nothing else waits. A batch marked splittable runs in slices of at most 250 ms (D3).
+4. **Fallback.** A daemon writes the file directly, with D1's bound and D2's retried path, only when no store process serves: none starts, it exits mid-batch, it refuses the schema, or it does not answer within the bound. A batch is written once: the client learns whether a lost batch was written before it writes again. The SQLite lock stays as the safety net (`design.md` section 6); a second writer waits or gets BUSY and never corrupts the file. An older-version daemon during an upgrade writes directly and may wait longer.
+5. **Reads stay local.** Hooks, `squeal status`, `squeal code` and the daemons read the file through their own connections, as today. A transaction that reads inside itself before it writes keeps its decision valid by a condition in its own statements, or by the worktree's lease when the rows are the worktree's own.
+6. **Measure.** After it has run a week: the daemons' busy wait on `code.sqlite` (target 0), the queue's wait and busy time, and the store process's exits; then decide on `store.sqlite` and on the project daemon.
+
 ## Slices
 
 Each row ships and works alone.
@@ -218,6 +229,7 @@ Each row ships and works alone.
 | 021-29 | memory | D21.2, a last-resort GC when busy |
 | 021-30 | memory | D21.3, the first `affected` after a reopen from the stored import graph (experiment, then build) |
 | 021-31 | memory | D21.4, an incremental code-quality pass |
+| 021-36 | store process | D22.1 to D22.5 for `code.sqlite` |
 
 021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. The holder lookup of D5 has a contract file, `src/core/store/lock-holders.ts`, committed before wave 1 so 021-07 and 021-10 can build against it. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
 
