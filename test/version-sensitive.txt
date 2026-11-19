@@ -78,7 +78,6 @@
 #   test/evals/regrade-cells.test.ts
 #   test/evals/regrade.test.ts
 #   test/evals/truth.test.ts
-#   test/harness/opencode/turn.test.ts
 #   test/harness/shared/skill-pytest.test.ts
 #   test/harness/shared/test-command-pytest.test.ts
 #   test/harness/skill.test.ts
