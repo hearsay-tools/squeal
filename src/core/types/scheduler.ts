@@ -385,6 +385,12 @@ export interface Scheduler {
    */
   watchLock?(listener: (holder: LockHolder | null) => void): () => void;
   /**
+   * Row 011-397: the worktree's newest revision while a runner part runs
+   * with the lock free (the listing), so a request waiting for runner work
+   * can name it; `null` while none runs. Absent: a scheduler before it.
+   */
+  listing?(): RevisionNumber | null;
+  /**
    * Row 011-356: tells `listener` each scheduler step as it ends, until the
    * returned function is called (the model test's per-step checks).
    * Absent: the scheduler tells no step.

@@ -89,6 +89,9 @@ function heldText(holder: GroupHolder): string | null {
       return holder.operation === null
         ? `it waits for the scheduler, which has been busy for ${age(holder.heldMs)} with work it does not name`
         : `it waits for the scheduler, which has been ${holder.operation} for ${age(holder.heldMs)}`;
+    // Row 011-397: the lock is free while the revisions are listed, as after an edit.
+    case "listing":
+      return `it waits while Squeal lists revision ${holder.revision}`;
     case "unanswered":
     case "unknown":
       return null;
