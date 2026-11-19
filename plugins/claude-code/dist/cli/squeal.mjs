@@ -94331,14 +94331,29 @@ function writeThroughDaemon(target) {
       return "kept";
     },
     coverage: (file) => tryOnce({ kind: "coverage", key: file.key, record: file.record }),
-    results: (file, records, keys) => tryOnce({
-      kind: "results",
-      key: file.key,
-      records,
-      paths: file.paths,
-      environmentFiles: keys.environmentFiles(file.ref.project)
-    })
+    results: async (file, records, keys) => {
+      const write4 = (sent) => ({
+        kind: "results",
+        key: file.key,
+        records: sent,
+        paths: file.paths,
+        environmentFiles: keys.environmentFiles(file.ref.project)
+      });
+      try {
+        return await tryOnce(write4(records));
+      } catch (error) {
+        if (!(error instanceof KeepRefused && OLDER_ERROR_FIELD.test(error.message))) throw error;
+        return tryOnce(write4(withoutNewFields(records)));
+      }
+    }
   };
+}
+var OLDER_ERROR_FIELD = /has the unknown field "(?:stage|assertionEvidence)"$/;
+function withoutNewFields(records) {
+  return records.map((record2) => ({
+    ...record2,
+    errors: record2.errors.map(({ stage: _stage, assertionEvidence: _evidence, ...error }) => error)
+  }));
 }
 function sentWriter(store, worktreeId, now, waits2) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
@@ -106161,6 +106176,9 @@ function conditionWords(conditions) {
   ];
 }
 
+// src/core/proof/imports.ts
+import { extname as extname14, posix as posix25 } from "node:path";
+
 // src/core/reach/names.ts
 import { posix as posix24 } from "node:path";
 var HELPER_FOLDERS = /* @__PURE__ */ new Set([
@@ -106254,19 +106272,66 @@ function missingImport(loads2, tests2, code, named4) {
 }
 
 // src/core/proof/imports.ts
-function changedImports(file, loads2, changed2, testSide) {
-  if (changed2.has(file)) return null;
+function codeSideChanges(file, loads2, changed2, testSide) {
+  if (changed2.has(file)) return { code: [], testSide: false };
   const touched2 = [...new Set(loads2)].filter((path) => path !== file && changed2.has(path)).sort();
   const code = touched2.filter((path) => !isTestSide(path, testSide));
-  if (code.length === 0) return null;
-  return {
-    helpers: code.filter(isHelperPath),
-    sources: code.filter((path) => !isHelperPath(path)),
-    testSide: code.length < touched2.length
-  };
+  return { code, testSide: code.length < touched2.length };
+}
+function changedImports(file, loads2, changed2, testSide, whyTestCode) {
+  const side = codeSideChanges(file, loads2, changed2, testSide);
+  if (side.code.length === 0) return null;
+  const testCode = [];
+  const sources = [];
+  for (const path of side.code) {
+    const why2 = whyTestCode(path);
+    if (why2 === null) sources.push(path);
+    else testCode.push({ path, why: why2 });
+  }
+  return { testCode, sources, testSide: side.testSide };
+}
+function testCodeWhy(path, versions2) {
+  if (isConfigPath(path)) return null;
+  for (const { commit, text: text3 } of versions2) {
+    const api = text3 === null ? null : testApiOf(path, text3);
+    if (api !== null) return `imports ${api} at ${commit.slice(0, 9)}`;
+  }
+  if (posix25.basename(path) === "conftest.py") return "pytest's conftest.py";
+  return isHelperPath(path) ? "a test helper's name" : null;
+}
+var JS_TEST_APIS = [
+  "vitest",
+  "@vitest/",
+  "node:test",
+  "@playwright/test",
+  "@jest/globals",
+  "chai",
+  "sinon",
+  "@testing-library/"
+];
+var PY_TEST_APIS = ["pytest", "_pytest", "unittest"];
+var JS_EXTENSIONS = /* @__PURE__ */ new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
+var JS_SPECIFIER = /\b(?:from|import|require)\s*\(?\s*["']([^"'\n]+)["']/g;
+var PY_IMPORT = /^[ \t]*(?:import|from)[ \t]+([A-Za-z_][A-Za-z0-9_]*)/gm;
+function testApiOf(path, text3) {
+  const ext = extname14(path);
+  if (JS_EXTENSIONS.has(ext)) {
+    for (const [, specifier] of text3.matchAll(JS_SPECIFIER))
+      if (specifier !== void 0 && JS_TEST_APIS.some((api) => isModule(specifier, api)))
+        return specifier;
+    return null;
+  }
+  if (ext === ".py") {
+    for (const [, module2] of text3.matchAll(PY_IMPORT))
+      if (module2 !== void 0 && PY_TEST_APIS.includes(module2)) return module2;
+  }
+  return null;
+}
+function isModule(specifier, api) {
+  return api.endsWith("/") ? specifier.startsWith(api) : specifier === api || specifier.startsWith(`${api}/`);
 }
 function stops2(imports2) {
-  return imports2 !== null && imports2.helpers.length > 0;
+  return imports2 !== null && imports2.testCode.length > 0;
 }
 function unusedWith(withPaths, loads2) {
   const loaded = new Set(loads2.flat());
@@ -106275,7 +106340,8 @@ function unusedWith(withPaths, loads2) {
 
 // src/core/proof/verdict.ts
 init_text();
-var NOT_RUN_BUDGET = "not run (budget)";
+
+// src/core/proof/evidence.ts
 var RED_KINDS = /* @__PURE__ */ new Set(["assertion", "thrown"]);
 var ASSERTION_NAMES = /* @__PURE__ */ new Set(["AssertionError"]);
 var ENGINE_ERRORS = /* @__PURE__ */ new Set([
@@ -106306,13 +106372,15 @@ function recordedKind(error) {
   if (error.phase === "setup") return "setup";
   if (error.phase === "after-tests") return "hook";
   if (error.loadAverage !== void 0 || error.stage === "timeout") return "timeout";
+  if (error.stage === void 0) return "unstaged";
   if (error.stage === "hook") return "hook";
   if (isAssertion(error)) return "assertion";
   return error.stage === "body" && isDeliberate(error) ? "thrown" : "error";
 }
 function errorKind(error, redErrors = []) {
   const kind = recordedKind(error);
-  if (RED_KINDS.has(kind) || kind === "import" || kind === "setup") return kind;
+  if (RED_KINDS.has(kind) || kind === "import" || kind === "setup" || kind === "unstaged")
+    return kind;
   return redErrors.some((text3) => error.message.includes(text3)) ? "thrown" : kind;
 }
 function failureKind(failure2, redErrors = []) {
@@ -106322,11 +106390,19 @@ function failureKind(failure2, redErrors = []) {
   if (kinds.includes("thrown")) return "thrown";
   return kinds.length > 0 ? "assertion" : "error";
 }
+
+// src/core/proof/verdict.ts
+var NOT_RUN_BUDGET = "not run (budget)";
+var UNSTAGED = "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it";
+function lacksStage(end) {
+  return end.end === "fail" && end.failures.some((f) => f.errors.some((error) => recordedKind(error) === "unstaged"));
+}
 var KIND_TEXT = {
   import: "the file failed to load (an import, a syntax error or a top-level throw)",
   setup: "the project's setup failed",
   hook: "a hook or the file's teardown failed",
   timeout: "a test or hook timed out",
+  unstaged: UNSTAGED,
   error: "a test threw an engine error, or an error outside its body"
 };
 var THROWN_REASON = "red on a thrown error, not an assertion";
@@ -106352,6 +106428,7 @@ function verdictOf3(red, green, redErrors = []) {
   if (red.end === "prepare")
     return { verdict: "red for another reason", reason: "the red side's prepare failed" };
   const other = red.failures.map((failure2) => failureKind(failure2, redErrors)).find((kind) => !RED_KINDS.has(kind));
+  if (other === "unstaged") return { verdict: "not comparable", reason: UNSTAGED };
   if (red.failures.length === 0 || other !== void 0)
     return {
       verdict: "red for another reason",
@@ -106562,7 +106639,7 @@ function fileOf5(ref3, green, red, control, conditioned, stopped, redErrors) {
   };
 }
 function stoppedSide(imports2, base) {
-  const helpers = imports2?.helpers.join(", ") ?? "";
+  const helpers = imports2?.testCode.map((t) => t.path).join(", ") ?? "";
   return {
     end: {
       end: "unknown",
@@ -106582,6 +106659,36 @@ function endOf4(files5, ref3) {
     notStored: null,
     runs: 0
   };
+}
+
+// src/cli/proof-imports.ts
+init_git();
+init_reverse_index();
+var READ_BYTES = 1048576;
+async function importsOf2(root, commits, refs2, loadsOf3, changed2, testSide) {
+  const paths = new Set(
+    refs2.flatMap((ref3) => codeSideChanges(ref3.path, loadsOf3(ref3), changed2, testSide).code)
+  );
+  const why2 = /* @__PURE__ */ new Map();
+  for (const path of [...paths].sort()) {
+    const versions2 = [];
+    for (const commit of [commits.head, commits.base])
+      versions2.push({ commit, text: await textAt(root, commit, path) });
+    why2.set(path, testCodeWhy(path, versions2));
+  }
+  return new Map(
+    refs2.map((ref3) => [
+      testFileId(ref3),
+      changedImports(ref3.path, loadsOf3(ref3), changed2, testSide, (p) => why2.get(p) ?? null)
+    ])
+  );
+}
+async function textAt(root, commit, path) {
+  const out2 = await runGit(root, ["cat-file", "--batch"], { input: `${commit}:${path}
+` });
+  const header2 = out2.slice(0, out2.indexOf("\n"));
+  if (!/^[0-9a-f]+ blob \d+$/.test(header2)) return null;
+  return out2.slice(header2.length + 1, header2.length + 1 + READ_BYTES);
 }
 
 // src/core/commit/at-keys-checkout.ts
@@ -108130,7 +108237,14 @@ async function gateFiles(options, env) {
       const evidence2 = await collectEvidence(root, changed2, collect2);
       return { runs: evidence2.testFiles.map(fileRun), timedOut: evidence2.timedOut, budgetSeconds };
     }
-    const collected = await collectWithStores(root, env, changed2, collect2);
+    const collected = await collectWithStores(
+      root,
+      env,
+      changed2,
+      collect2,
+      [],
+      options.rerunFailures === true
+    );
     await collected.keep();
     const { evidence } = collected;
     const notKept2 = [...collected.notKept()].map(([path, reason2]) => ({ path, reason: reason2 }));
@@ -108219,6 +108333,7 @@ async function runChild(request) {
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
       store: asked.store,
+      ...asked.rerunFailures === true ? { rerunFailures: true } : {},
       ...asked.retry === false ? { hostLoad: noLoadRetry } : {},
       ...asked.progress === void 0 ? {} : { progress: keeper(asked.progress) },
       note: (text3) => process.stderr.write(`squeal: ${text3}
@@ -108265,6 +108380,7 @@ async function runInChild(run7) {
     answer: answer4,
     store: run7.store,
     ...run7.retry === void 0 ? {} : { retry: run7.retry },
+    ...run7.rerunFailures === true ? { rerunFailures: true } : {},
     progress: progress2
   };
   writeFileSync27(request, JSON.stringify(asked));
@@ -108998,16 +109114,21 @@ function formatProof(report4) {
   if (report4.rerun !== null)
     lines.push(`${report4.notRun} not run (budget). A rerun that fits: ${report4.rerun}`);
   if (report4.withRerun !== null)
-    lines.push(`Rerun with the changed helpers as test code: ${report4.withRerun}`);
+    lines.push(
+      `Rerun with the changed test code copied from the test version: ${report4.withRerun}`
+    );
   return `${lines.join("\n")}
 `;
 }
 function importLines2(file, report4) {
   const imports2 = file.imports;
-  if (imports2 === null || imports2.sources.length === 0) return [];
+  if (imports2 === null) return [];
+  const testCode = imports2.testCode.map((t) => `${t.path} (${t.why})`).join(", ");
+  const lines = testCode === "" ? [] : [`  test code it imports: ${testCode}`];
+  if (imports2.sources.length === 0) return lines;
   const sources = imports2.sources.join(", ");
   const how2 = report4.case === "source" ? "source changes the proof compares" : `source changes, at ${short3(report4.head)} on both sides`;
-  if (stops2(imports2)) return [`  ${how2}: ${sources}`];
+  if (stops2(imports2)) return [...lines, `  ${how2}: ${sources}`];
   if (imports2.testSide) return [];
   return [
     `  the test is unchanged since ${short3(report4.base)}; ${how2}: ${sources} (if one is test code, rerun with --with <path>)`
@@ -109089,7 +109210,7 @@ function jsonProof(report4) {
       controlReading: file.control === null ? null : controlReading(file.control.end, report4.redErrors),
       controlNotRun: file.controlNotRun,
       changedImports: file.imports === null ? null : {
-        helpers: file.imports.helpers,
+        testCode: file.imports.testCode,
         sources: file.imports.sources,
         stopped: stops2(file.imports)
       }
@@ -109343,6 +109464,9 @@ async function runOnce(input, checkout, toRun2, round2) {
     store: forced === null && change3 === null,
     // CI of 0.1.562: each run is one observation; the gate's load retry would replace a failure.
     retry: false,
+    // Review wave-14 B2: a stored failure reaches a run only when the side may not read it
+    // (`reusable` in `proof-side.ts`): the gate runs it again and keeps the rerun.
+    rerunFailures: forced === null && change3 === null,
     env,
     forward: input.forward
   });
@@ -109472,7 +109596,7 @@ async function withSide(input, body2) {
       if (missing2 !== null)
         files5.set(id, unknown2(`imports ${missing2}, absent at ${side.code.slice(0, 9)}`));
       else if (needed !== null) files5.set(id, unknown2(`needs ${needed}`));
-      else if (change3 === null && forced === null && file.at.stored.length > 0)
+      else if (change3 === null && forced === null && reusable(file.at.stored))
         files5.set(id, {
           end: endOfRecords(file.at.stored),
           from: "store",
@@ -109524,6 +109648,9 @@ async function runSide(input) {
 function unlistedOf(named4, keyed) {
   return named4.filter((ref3) => !keyed.some((k) => k.path === ref3.path));
 }
+function reusable(stored3) {
+  return stored3.length > 0 && !lacksStage(endOfRecords(stored3));
+}
 function unknown2(reason2) {
   return { end: { end: "unknown", reason: reason2 }, from: null, stored: false, notStored: null, runs: 0 };
 }
@@ -109562,7 +109689,11 @@ async function proofCommand2(args2, io, options = {}) {
   const proved = await prove(common, args2, base, head2, named4, at2.with);
   if ("usage" in proved) return fail3(proved.usage);
   const helpers = [
-    ...new Set(proved.files.flatMap((f) => stops2(f.imports) ? f.imports?.helpers ?? [] : []))
+    ...new Set(
+      proved.files.flatMap(
+        (f) => stops2(f.imports) ? (f.imports?.testCode ?? []).map((t) => t.path) : []
+      )
+    )
   ].sort();
   const fromCwd = (path) => relative35(cwd, join181(root, path)).split(sep35).join("/");
   const notRun = proved.files.filter(
@@ -109610,11 +109741,13 @@ async function prove(common, args2, base, head2, named4, withPaths) {
       );
       const loadsOf3 = (ref3) => loads2.get(testFileId(ref3)) ?? [];
       const changed2 = await changedPaths2(common.root, base, head2);
-      const imports2 = new Map(
-        refs2.map((ref3) => [
-          testFileId(ref3),
-          changedImports(ref3.path, loadsOf3(ref3), changed2, testSide)
-        ])
+      const imports2 = await importsOf2(
+        common.root,
+        { base, head: head2 },
+        refs2,
+        loadsOf3,
+        changed2,
+        testSide
       );
       const unused = unusedWith(withPaths, refs2.map(loadsOf3));
       const proving = refs2.filter((ref3) => !stops2(imports2.get(testFileId(ref3)) ?? null));
@@ -112035,7 +112168,7 @@ import { relative as relative36, resolve as resolve43 } from "node:path";
 // src/core/reach/modules.ts
 init_lexer();
 import { existsSync as existsSync73, readFileSync as readFileSync80 } from "node:fs";
-import { join as join189, posix as posix25 } from "node:path";
+import { join as join189, posix as posix26 } from "node:path";
 
 // src/core/reach/chains.ts
 init_compare();
@@ -112134,7 +112267,7 @@ function moduleFacts(root, graph) {
       const walked = graph?.walk(test);
       const targets = walked === void 0 ? [] : targetsIn(walked.imports, path) ?? [];
       const wanted = new Set(
-        stars.filter((s) => s.startsWith(".")).map((s) => bare2(posix25.normalize(posix25.join(posix25.dirname(path), s))))
+        stars.filter((s) => s.startsWith(".")).map((s) => bare2(posix26.normalize(posix26.join(posix26.dirname(path), s))))
       );
       return new Set(targets.filter((t) => wanted.has(bare2(t))));
     }
@@ -112638,7 +112771,7 @@ function testReach(test, pairs, edits) {
 // src/core/reach/entries.ts
 init_compare();
 import { createHash as createHash46 } from "node:crypto";
-import { posix as posix26 } from "node:path";
+import { posix as posix27 } from "node:path";
 
 // src/core/reach/suggest.ts
 init_text();
@@ -112832,9 +112965,9 @@ function sum(parts3) {
   return out2;
 }
 function commonFolder(paths) {
-  let folder = posix26.dirname(paths[0] ?? "");
+  let folder = posix27.dirname(paths[0] ?? "");
   while (folder !== "." && !paths.every((p) => p.startsWith(`${folder}/`))) {
-    folder = posix26.dirname(folder);
+    folder = posix27.dirname(folder);
   }
   return folder;
 }
