@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import { daemonLogLine } from "../core/daemon/log-file.js";
+import { daemonLogLine, logSinkAt } from "../core/daemon/log-file.js";
+import { storeProcessLogPath } from "../core/store-process/paths.js";
 import { startStoreProcess } from "../core/store-process/server.js";
 import { writerScript } from "../core/store-process/writer.js";
 import type { AbsolutePath } from "../core/types/common.js";
@@ -34,7 +35,9 @@ export async function storeProcessCommand(args: readonly string[], io: CliIo): P
     io.stderr(`squeal store-process: cannot read ${dir}: ${String(error)}\n`);
     return 2;
   }
-  const log = (line: string) => io.stderr(`${daemonLogLine(line)}\n`);
+  // Spec 021 D22.6: its own bounded log, `logs/store-code.log`, when a daemon started it.
+  const sink = logSinkAt(storeProcessLogPath(commonDir, "code"));
+  const log = sink ?? ((line: string) => io.stderr(`${daemonLogLine(line)}\n`));
   const started = await startStoreProcess({
     commonDir,
     log,

@@ -94,7 +94,20 @@ export function daemonLogSink(
   fd = 2,
 ): DaemonLogSink | null {
   const path = stderrLog(root, fd);
-  if (path === null) return null;
+  return path === null ? null : logSinkAt(path, maxBytes, fd);
+}
+
+/**
+ * `daemonLogSink` for the log at `path`, when descriptor `fd` is that file,
+ * as a spawner opened it (`openDaemonLog`); `null` otherwise. Spec 021 D22.6
+ * (row 021-36): the store process's own log, `logs/store-code.log`.
+ */
+export function logSinkAt(
+  path: AbsolutePath,
+  maxBytes = DAEMON_LOG_MAX_BYTES,
+  fd = 2,
+): DaemonLogSink | null {
+  if (!sameFile(path, fd)) return null;
   const check = () => {
     try {
       if (fstatSync(fd).size >= maxBytes) rotateDaemonLog(path, maxBytes);
@@ -119,10 +132,19 @@ function stderrLog(root: AbsolutePath, fd: number): AbsolutePath | null {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return null;
     const path = daemonLogFor(commonDir, worktreeIdFor(root));
-    const open = fstatSync(fd);
-    const file = statSync(path);
-    return open.isFile() && open.ino === file.ino && open.dev === file.dev ? path : null;
+    return sameFile(path, fd) ? path : null;
   } catch {
     return null;
+  }
+}
+
+/** Whether descriptor `fd` is the file at `path`. */
+function sameFile(path: AbsolutePath, fd: number): boolean {
+  try {
+    const open = fstatSync(fd);
+    const file = statSync(path);
+    return open.isFile() && open.ino === file.ino && open.dev === file.dev;
+  } catch {
+    return false;
   }
 }

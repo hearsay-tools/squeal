@@ -11,6 +11,7 @@ import type { DaemonPhase, DaemonRequest, DaemonResponse } from "../types/daemon
 import type { SentBatch, WriteRequest } from "../types/daemon-writes.js";
 import { storeProcessLockPath, storeProcessSocketPath } from "./paths.js";
 import { WriteQueue } from "./queue.js";
+import { WriteStats } from "./stats.js";
 import { type StoreWriter, startWriter, type WriterScript } from "./writer.js";
 
 /*
@@ -26,6 +27,9 @@ import { type StoreWriter, startWriter, type WriterScript } from "./writer.js";
 /** D22.2: how long the store process outlives its last client (coordinator 8f88fe1f, 2026-11-19). */
 export const STORE_PROCESS_GRACE_MS = 5 * 60_000;
 
+/** D22.6: how often the process logs what it wrote. */
+const REPORT_MS = 60_000;
+
 /** How often the process counts its clients and reads the file's schema. */
 const CHECK_MS = 10_000;
 
@@ -39,6 +43,8 @@ export interface StoreProcessOptions {
   readonly writer: WriterScript | null;
   readonly graceMs?: number;
   readonly checkMs?: number;
+  /** D22.6: how often it logs what it wrote, when it wrote anything. Default a minute. */
+  readonly reportMs?: number;
   readonly env?: NodeJS.ProcessEnv;
   /** Milliseconds that never go back. Default `performance.now`. */
   readonly now?: () => number;
@@ -59,6 +65,11 @@ export interface RunningStoreProcess {
 interface Item {
   readonly request: WriteRequest;
   from: number;
+  /** When it was queued, and when its first slice began; for D22.6's queue wait. */
+  readonly queuedAt: number;
+  startedAt: number | null;
+  /** The writer's time on it so far. */
+  busyMs: number;
   resolve(): void;
   reject(error: Error): void;
 }
@@ -80,6 +91,7 @@ export async function startStoreProcess(
   }
   const now = options.now ?? (() => performance.now());
   const queue = new WriteQueue<Item>();
+  const stats = new WriteStats();
   const desks = new Map<WorktreeId, WriteDesk>();
   let phase: DaemonPhase = "ready";
   let pumping = false;
@@ -97,6 +109,9 @@ export async function startStoreProcess(
         queue.push(request.worktreeId, request.kind ?? "record", {
           request,
           from: 0,
+          queuedAt: now(),
+          startedAt: null,
+          busyMs: 0,
           resolve,
           reject,
         });
@@ -116,7 +131,15 @@ export async function startStoreProcess(
     pumping = true;
     try {
       for (let next = queue.peek(); next !== null; next = queue.peek()) {
-        await runOne(writer, next.item, () => queue.remove(next), log);
+        await runOne(writer, next.item, () => queue.remove(next), {
+          log,
+          now,
+          ended: (written) => {
+            const { item } = next;
+            const waited = (item.startedAt ?? now()) - item.queuedAt;
+            stats.record(next.kind, written, waited, item.busyMs);
+          },
+        });
       }
     } finally {
       pumping = false;
@@ -165,14 +188,24 @@ export async function startStoreProcess(
     if (fileSchema(commonDir) > ready.schema) void stop("newer-schema");
   };
   const timer = setInterval(check, Math.min(options.checkMs ?? CHECK_MS, graceMs));
+  // D22.6: a line a minute while it wrote anything.
+  const report = setInterval(() => {
+    const line = stats.take();
+    if (line !== null) log(`store process: last minute: ${line}`);
+  }, options.reportMs ?? REPORT_MS);
+  report.unref();
   let stopping: Promise<StoreProcessEnd> | null = null;
   const stop = (why: StoreProcessEnd): Promise<StoreProcessEnd> => {
     stopping ??= (async () => {
       phase = "stopping";
       clearInterval(timer);
-      log(`store process: stopping (${why})`);
+      clearInterval(report);
       while (pumping) await new Promise((resolve) => setTimeout(resolve, 5));
-      for (const item of queue.drain()) item.reject(new Error("the store process is stopping"));
+      for (const { kind, item } of queue.drainQueued()) {
+        stats.record(kind, false, now() - item.queuedAt, item.busyMs);
+        item.reject(new Error("the store process is stopping"));
+      }
+      log(`store process: stopping (${why}): ${stats.take() ?? "no batches since the last line"}`);
       await server.close();
       await writer.close();
       lock.release();
@@ -185,13 +218,22 @@ export async function startStoreProcess(
 }
 
 /** Writes one slice of `item`; settles it when it ended, and leaves a cut batch at its head. */
+interface RunContext {
+  readonly log: (line: string) => void;
+  readonly now: () => number;
+  /** The batch ended, written or not: for D22.6's counts. */
+  readonly ended: (written: boolean) => void;
+}
+
 async function runOne(
   writer: StoreWriter,
   item: Item,
   remove: () => void,
-  log: (line: string) => void,
+  { log, now, ended }: RunContext,
 ): Promise<void> {
   const { request } = item;
+  const began = now();
+  item.startedAt ??= began;
   try {
     const end = await writer.run({
       worktreeId: request.worktreeId,
@@ -200,14 +242,18 @@ async function runOne(
       from: item.from,
       ...(request.splittable === true ? { sliceMs: SLICE_MS } : {}),
     });
+    item.busyMs += now() - began;
     if (end.end === "partial") {
       item.from = end.next;
       return;
     }
     remove();
+    ended(true);
     item.resolve();
   } catch (error) {
+    item.busyMs += now() - began;
     remove();
+    ended(false);
     log(`store process: a batch of ${request.worktreeId} failed: ${String(error)}`);
     item.reject(error instanceof Error ? error : new Error(String(error)));
   }

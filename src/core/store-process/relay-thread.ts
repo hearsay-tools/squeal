@@ -40,10 +40,12 @@ export interface RelayJob {
 
 /**
  * How it went: `written` by the store process (or found written by the
- * mark), `not-taken` surely not written there, `unknown` sent and then
- * lost, so only the mark can tell.
+ * mark); surely not written there, as no store process serves (`none`), it
+ * refused the batch (`refused`: another schema, a stopping process) or
+ * rolled it back (`failed`); `unknown` sent and then lost, so only the mark
+ * can tell.
  */
-export type RelayOutcome = "written" | "not-taken" | "unknown";
+export type RelayOutcome = "written" | "none" | "refused" | "failed" | "unknown";
 
 /** After a start that did not serve, or a refusal, this long before the next try. */
 const PAUSE_MS = 30_000;
@@ -57,11 +59,14 @@ function serve(data: RelayData): void {
   const signal = new Int32Array(data.signal);
   let writer: DaemonWriter | null = null;
   let pauseUntil = 0;
+  /** Why the relay pauses: what each batch until `pauseUntil` is told. */
+  let paused: "none" | "refused" = "none";
   let spawnedAt = Number.NEGATIVE_INFINITY;
   let closing = false;
 
-  const offFor = () => {
+  const offFor = (why: "none" | "refused") => {
     writer = null;
+    paused = why;
     pauseUntil = Date.now() + PAUSE_MS;
   };
   const start = () => {
@@ -96,12 +101,15 @@ function serve(data: RelayData): void {
   };
   const send = async (job: RelayJob): Promise<RelayOutcome> => {
     const connected = await connect();
-    if (connected === null) return "not-taken";
+    if (connected === null) return Date.now() < pauseUntil ? paused : "none";
     try {
       const queued = { kind: job.kind, splittable: job.splittable, seq: job.seq };
       if ((await connected.send(job.statements, false, queued)) === "written") return "written";
-      offFor();
-      return "not-taken";
+      const why = connected.notTakenBy ?? "none";
+      // A rolled-back batch fails here too; a refusal or a store process gone is waited out.
+      if (why === "failed") writer = null;
+      else offFor(why);
+      return why;
     } catch {
       writer = null;
       return "unknown";

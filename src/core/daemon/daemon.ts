@@ -362,6 +362,8 @@ class Daemon {
       storeSchema: CODE_SCHEMA_VERSION,
       launch: this.options.runnerHost ?? null,
       ...(this.options.env === undefined ? {} : { env: this.options.env }),
+      // Spec 021 D22.6: a line a minute in the daemon's log, how its batches went.
+      log: this.#log,
     });
     return this.#relay.codeStoreOptions();
   }

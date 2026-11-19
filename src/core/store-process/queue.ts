@@ -76,7 +76,12 @@ export class WriteQueue<T> {
 
   /** Every batch, in no order; the queue is left empty. */
   drain(): T[] {
-    const all = [...this.#byWorktree.values()].flat().map((q) => q.item);
+    return this.drainQueued().map((q) => q.item);
+  }
+
+  /** `drain`, each batch with its worktree and kind. */
+  drainQueued(): Queued<T>[] {
+    const all = [...this.#byWorktree.values()].flat();
     this.#byWorktree.clear();
     this.#size = 0;
     return all;

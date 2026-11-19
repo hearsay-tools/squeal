@@ -58,6 +58,12 @@ export class DaemonWriter implements WriteSender {
   #process: LeaseProcess | undefined;
   /** No daemon takes writes: every later call says so at once. */
   #off = false;
+  /**
+   * Spec 021 D22.6 (row 021-36): why the last `send` answered `not-taken`:
+   * nothing answered, the daemon refused the write (another schema, a
+   * stopping one), or it wrote and rolled it back.
+   */
+  notTakenBy: "none" | "refused" | "failed" | null = null;
 
   constructor(options: DaemonWriterOptions) {
     this.#options = options;
@@ -104,7 +110,10 @@ export class DaemonWriter implements WriteSender {
     queued: Pick<WriteRequest, "kind" | "splittable" | "seq"> = {},
   ): Promise<SendOutcome> {
     const socket = this.#socketPath();
-    if (socket === null) return "not-taken";
+    if (socket === null) {
+      this.notTakenBy = "none";
+      return "not-taken";
+    }
     const token = this.#token;
     if (release) this.#token = null;
     const request = {
@@ -117,7 +126,10 @@ export class DaemonWriter implements WriteSender {
       ...queued,
     } as const;
     const answer = await this.#ask(socket, request);
-    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);
+    if (!isWrite(answer)) {
+      this.notTakenBy = answer === null ? "none" : "refused";
+      return this.#notTaken("not-taken", socket, token);
+    }
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer;
     for (let attempt = 0; state.written === null; attempt++) {
@@ -134,6 +146,7 @@ export class DaemonWriter implements WriteSender {
     }
     if (state.written) return "written";
     // The daemon rolled it back: written here instead, where a failure surfaces as it would have.
+    this.notTakenBy = "failed";
     return this.#notTaken("not-taken", socket, release ? null : token);
   }
 

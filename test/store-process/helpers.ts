@@ -75,10 +75,13 @@ export interface ChildStore {
  */
 export async function storeProcess(
   at: Clone,
-  timing: { readonly graceMs?: number; readonly checkMs?: number } = {},
+  timing: { readonly graceMs?: number; readonly checkMs?: number; readonly reportMs?: number } = {},
 ): Promise<ChildStore> {
-  const args =
-    timing.graceMs === undefined ? [] : [String(timing.graceMs), String(timing.checkMs ?? 50)];
+  const args = [
+    String(timing.graceMs ?? 300_000),
+    String(timing.checkMs ?? 10_000),
+    String(timing.reportMs ?? 60_000),
+  ];
   const child = spawn(process.execPath, [...LOADER, CHILD, at.commonDir, ...args], {
     env: at.env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -146,6 +149,7 @@ export async function warm(through: CodeRelay, store: CodeStore): Promise<void> 
     return through.counts.sent > 0;
   }, 30_000);
   Object.assign(through.counts, { sent: 0, direct: 0, superseded: 0, late: 0 });
+  Object.assign(through.counts.fallback, { none: 0, timeout: 0, refused: 0, failed: 0, lost: 0 });
 }
 
 /** A plain connection to the clone's code store, for a test's own reads and locks. */

@@ -43,7 +43,22 @@ export interface CodeRelayOptions {
   /** The relay thread's script and its Node options; default `relayScript()`. `null`: no relay. */
   readonly thread?: { readonly script: string; readonly execArgv?: readonly string[] } | null;
   readonly env?: NodeJS.ProcessEnv;
+  /** D22.6: the daemon's log, where a line a minute says how its batches went. */
+  readonly log?: (line: string) => void;
+  /** How often that line is written, when a batch was written since the last. Default a minute. */
+  readonly reportMs?: number;
 }
+
+/** Why a batch was written here (D22.6). */
+export type FallbackReason = "none" | "timeout" | "refused" | "failed" | "lost";
+
+const REASONS: Readonly<Record<FallbackReason, string>> = {
+  none: "none running",
+  timeout: "timeout",
+  refused: "refused schema",
+  failed: "failed",
+  lost: "lost",
+};
 
 /** How the daemon's batches went, for tests and the D22.6 measurement. */
 export interface RelayCounts {
@@ -55,7 +70,17 @@ export interface RelayCounts {
   superseded: number;
   /** Not answered within the bound. */
   late: number;
+  /** The batches written here, by why. */
+  readonly fallback: Record<FallbackReason, number>;
 }
+
+const noFallback = (): Record<FallbackReason, number> => ({
+  none: 0,
+  timeout: 0,
+  refused: 0,
+  failed: 0,
+  lost: 0,
+});
 
 interface KindNow {
   readonly kind: WriteKind;
@@ -85,8 +110,20 @@ export function relayScript(
   return null;
 }
 
+/** D22.6: how often the daemon logs its code-store batches. */
+const REPORT_MS = 60_000;
+
 export class CodeRelay {
-  readonly counts: RelayCounts = { sent: 0, direct: 0, superseded: 0, late: 0 };
+  readonly counts: RelayCounts = {
+    sent: 0,
+    direct: 0,
+    superseded: 0,
+    late: 0,
+    fallback: noFallback(),
+  };
+  /** The counts at the last line logged. */
+  #reported = { sent: 0, fallback: noFallback() };
+  #reporter: NodeJS.Timeout | null = null;
   readonly #options: CodeRelayOptions;
   readonly #signal = new Int32Array(new SharedArrayBuffer(4));
   readonly #port: MessagePort | null = null;
@@ -100,6 +137,10 @@ export class CodeRelay {
 
   constructor(options: CodeRelayOptions) {
     this.#options = options;
+    if (options.log !== undefined) {
+      this.#reporter = setInterval(() => this.#report(), options.reportMs ?? REPORT_MS);
+      this.#reporter.unref();
+    }
     const thread = options.thread === undefined ? relayScript() : options.thread;
     if (thread === null) return;
     const { port1, port2 } = new MessageChannel();
@@ -147,6 +188,8 @@ export class CodeRelay {
   async close(): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
+    if (this.#reporter !== null) clearInterval(this.#reporter);
+    this.#report();
     const worker = this.#worker;
     if (worker === null) return;
     this.#port?.postMessage({ close: true });
@@ -154,6 +197,27 @@ export class CodeRelay {
     const timer = setTimeout(() => void worker.terminate(), 1_000);
     await exited;
     clearTimeout(timer);
+  }
+
+  /**
+   * D22.6: one line of the batches since the last, when there were any:
+   * `code store: last minute: 12 batches through the store process, 3
+   * written here (none running 2, timeout 1, refused schema 0, failed 0, lost 0)`.
+   */
+  #report(): void {
+    const { sent, fallback } = this.counts;
+    const was = this.#reported;
+    const here = (Object.keys(REASONS) as FallbackReason[]).map(
+      (why) => [why, fallback[why] - was.fallback[why]] as const,
+    );
+    const direct = here.reduce((n, [, count]) => n + count, 0);
+    if (sent === was.sent && direct === 0) return;
+    this.#reported = { sent, fallback: { ...fallback } };
+    const reasons = here.map(([why, count]) => `${REASONS[why]} ${count}`).join(", ");
+    this.#options.log?.(
+      `code store: last minute: ${sent - was.sent} batches through the store process, ` +
+        `${direct} written here (${reasons})`,
+    );
   }
 
   /** Writes `batch`: through the store process when it answers within the bound, else here. */
@@ -167,15 +231,18 @@ export class CodeRelay {
       return;
     }
     if (outcome === "late") this.counts.late++;
+    this.counts.fallback[reasonOf(outcome)]++;
     // A late batch may still be written there: the mark settles it under the lock, waiting no more.
     const left = outcome === "late" ? 0 : Math.max(0, bound - (performance.now() - started));
     this.#direct(db, seq, batch, Math.round(left));
   }
 
-  /** The thread's answer for a new batch; `late` past `bound`, `not-taken` with no thread free. */
-  #send(seq: string, batch: readonly Statement[], bound: number): RelayOutcome | "late" {
+  /** The thread's answer for a new batch; `late` past `bound`, `busy` while it still sends a late one. */
+  #send(seq: string, batch: readonly Statement[], bound: number): RelayOutcome | "late" | "busy" {
     this.#drain();
-    if (this.#port === null || this.#closed || this.#inFlight !== null) return "not-taken";
+    if (this.#port === null || this.#closed) return "none";
+    // The thread still sends a late batch: this one is written here without a second wait.
+    if (this.#inFlight !== null) return "busy";
     const n = this.#counter;
     const { kind, splittable } = kinds.getStore() ?? { kind: "record", splittable: false };
     const job: RelayJob = { n, seq, kind, splittable, statements: batch };
@@ -224,6 +291,19 @@ export class CodeRelay {
       db.exec("PRAGMA query_only = 1");
       db.exec(`PRAGMA busy_timeout = ${own}`);
     }
+  }
+}
+
+/** Why a batch the thread did not get written there is written here. */
+function reasonOf(outcome: Exclude<RelayOutcome, "written"> | "late" | "busy"): FallbackReason {
+  switch (outcome) {
+    case "late":
+    case "busy":
+      return "timeout";
+    case "unknown":
+      return "lost";
+    default:
+      return outcome;
   }
 }
 
