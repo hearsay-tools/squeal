@@ -118,12 +118,14 @@ function ownedTools(group: ResolvedGroup, policy: Policy): readonly string[] {
 
 /**
  * Why the lint pass never runs lint check `group`, or `null` when it does:
- * lint is off (the pass lints nothing, `lint/pass/index.ts`), or a check
- * above it owns each of its tools. A test check always runs.
+ * lint is off (the pass lints nothing, `lint/pass/index.ts`), `lint.tools` is
+ * empty (review 0.1.565-r2 N1, row 005-130), or a check above it owns each of
+ * its tools. A test check always runs.
  */
 function never(group: ResolvedGroup, policy: Policy): string | null {
   if (group.select.kind !== "lint") return null;
   if (!policy.lint.enabled) return "lint is off (lint.enabled in squeal.config.json)";
+  if (policy.lint.tools.length === 0) return "lint.tools is empty (squeal.config.json)";
   return ownedTools(group, policy).length === 0 ? "a check above it owns each of its tools" : null;
 }
 
