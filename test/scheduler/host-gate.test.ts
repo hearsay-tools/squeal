@@ -50,7 +50,8 @@ describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, (
     const h = await openHarness(repo.main, store, repo.commonDir, {
       tierSize: 4,
       backlogTierSize: 50,
-      capacity: { dir, hostSlots: 4, host },
+      // 24 CPUs on any machine: 23.9 busy is above the ceiling, 18 (row 011-404).
+      capacity: { dir, hostSlots: 4, host, cpus: 24 },
       policy: RUN_MISSING,
     });
     const runs: { files: readonly TestFileRef[]; options: RunOptions }[] = [];
@@ -67,7 +68,7 @@ describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, (
     await h.batch("vitest.config.ts");
     await h.quiet();
     expect(runs.length).toBeGreaterThan(0);
-    // 23.9 busy cores against 4 slots: no permit on cores, and the floor's one while none runs.
+    // 23.9 busy cores against the ceiling of 18: no permit on cores, and the floor's one while none runs.
     expect(Math.max(...runs.map((r) => r.options.workers ?? 0))).toBe(1);
 
     runs.length = 0;
