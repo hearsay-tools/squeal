@@ -211,6 +211,10 @@ const NO_TARGETS: ImportTargets = {
  * left out: its bytes are not known. `shared` keeps one entry per file, so
  * closures that walked a file at the same bytes to the same targets hold
  * one copy; a closure here averages some 300 files.
+ *
+ * Row 011-414: an entry is a function of the file, its sha1, its absolute
+ * targets and `paths`. A file walked again with all four as `shared`'s entry
+ * was made from takes that entry without converting its targets again.
  */
 export function fileImports(
   closure: ImportClosure,
@@ -223,27 +227,52 @@ export function fileImports(
   ];
   const out: FileImports[] = [];
   for (const [file, edges] of closure.edges ?? []) {
-    const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
     const sha1 = readHash(file);
-    if (path === null || sha1 === undefined) continue;
+    if (sha1 === undefined) continue;
+    const held = shared.get(file);
+    if (held !== undefined && held.sha1 === sha1 && sameWalk(MADE_FROM.get(held), paths, edges)) {
+      out.push(held);
+      continue;
+    }
+    const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+    if (path === null) continue;
     const entry = {
       path,
       sha1,
       static: relative(edges.static).sort(compare),
       dynamic: relative(edges.dynamic).sort(compare),
     };
-    const held = shared.get(file);
     const same = held !== undefined && sameImports(held, entry);
-    out.push(same ? held : entry);
+    const kept = same ? held : entry;
+    out.push(kept);
     if (!same) shared.set(file, entry);
+    MADE_FROM.set(kept, { paths, edges });
   }
   return out;
 }
 
+/** Row 011-414: the walk each `fileImports` entry was last converted from. */
+const MADE_FROM = new WeakMap<FileImports, { paths: WorktreePaths; edges: ImportEdges }>();
+
+function sameWalk(
+  made: { paths: WorktreePaths; edges: ImportEdges } | undefined,
+  paths: WorktreePaths,
+  edges: ImportEdges,
+): boolean {
+  return (
+    made !== undefined &&
+    made.paths === paths &&
+    sameList(made.edges.static, edges.static) &&
+    sameList(made.edges.dynamic, edges.dynamic)
+  );
+}
+
+function sameList(x: readonly string[], y: readonly string[]): boolean {
+  return x.length === y.length && x.every((value, i) => value === y[i]);
+}
+
 function sameImports(a: FileImports, b: FileImports): boolean {
-  const same = (x: readonly string[], y: readonly string[]) =>
-    x.length === y.length && x.every((value, i) => value === y[i]);
-  return a.sha1 === b.sha1 && same(a.static, b.static) && same(a.dynamic, b.dynamic);
+  return a.sha1 === b.sha1 && sameList(a.static, b.static) && sameList(a.dynamic, b.dynamic);
 }
 
 /** Whether `specifier` reads the manifest of package `name`, and so loads none of its code. */
