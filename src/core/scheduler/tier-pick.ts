@@ -34,7 +34,9 @@ export function shapeOf(
   const { runner } = view;
   const batch = p.wide && p.beside === null ? batchFiles(view, free) : null;
   const asEdit = p.asEdit && batch !== null;
-  const backlog = !p.rest && (batch !== null || !view.hasFirstGroup(free));
+  // A tier beside another is an edit's (row 011-269), also when it takes backlog files beside a
+  // tier that overruns (row 011-399): `runner.tierSize` files, no grant, in the second instance.
+  const backlog = !p.rest && p.beside === null && (batch !== null || !view.hasFirstGroup(free));
   const turn = !backlog && (p.turnDue || p.rest);
   const size =
     batch !== null

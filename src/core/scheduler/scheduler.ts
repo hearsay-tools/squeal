@@ -14,6 +14,7 @@ import { plural } from "../text.js";
 import type { EpochMs, ProjectName, RelativePath, RevisionNumber } from "../types/common.js";
 import { daemonIncarnation, type SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
+import { BESIDE_LANE_PREFIX, isBesideLane } from "../types/runner.js";
 import {
   type ClosureIndex,
   type FullSuiteCheckpoint,
@@ -156,6 +157,12 @@ class TierScheduler implements Scheduler {
    * task 011-21); one whose runner cancels carries its `cancel`.
    */
   readonly #inFlight = new Map<string, InFlight>();
+  /**
+   * The lanes whose second instance a tier beside ran in and that has not
+   * closed: any tier of such a lane that ends decides its close, the one
+   * beside a tier that overruns included (row 011-399).
+   */
+  readonly #besideOpen = new Set<string>();
   /**
    * Which tiers in flight a revision, a runner part or a promotion cancels (C4 step 5, row 011-51);
    * a tier past its estimate is checked again at its bound (row 011-107).
@@ -1238,6 +1245,7 @@ class TierScheduler implements Scheduler {
     const held = cancellable ? new AbortController() : null;
     const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
+    if (tier.beside === true) this.#besideOpen.add(tier.lane);
     if (slow !== null) this.#slowRelease.opened(tier.lane);
     // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
     const stop =
@@ -1276,7 +1284,8 @@ class TierScheduler implements Scheduler {
         tier.lease?.release();
         this.#inFlight.delete(tier.runId);
         // Row 011-269: the lane's second instance closes once no batch is left there (row 011-366: the step's).
-        if (tier.promoted === true || tier.beside === true) this.#besideEnded(tier.lane);
+        if (tier.promoted === true || tier.beside === true || this.#besideOpen.has(tier.lane))
+          this.#besideEnded(tier.lane);
         // A fast tier's lane is free: the slow tier's load guard gives way to its next tier.
         if (slow === null) this.#groups.preempt();
         // Row 011-211: a slow lane left open counts toward its close from its own run's end.
@@ -1322,6 +1331,7 @@ class TierScheduler implements Scheduler {
   async #releaseLane(lane: string): Promise<void> {
     const { context } = this.#started();
     const release = context.runner.releaseLane?.bind(context.runner);
+    if (isBesideLane(lane)) this.#besideOpen.delete(lane.slice(BESIDE_LANE_PREFIX.length));
     if (release === undefined || this.#closed) return;
     await release(lane).catch((error: unknown) =>
       this.#backgroundError(`could not close the runner of lane ${lane}`, error),

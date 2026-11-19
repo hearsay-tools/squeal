@@ -10,6 +10,7 @@ import { runtimeGoneNote } from "./install.js";
 import { type InstallStamps, refreshInstall } from "./install-stamp.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
+import { nextOverrun } from "./overrun.js";
 import type { RunnerWork } from "./runner-work.js";
 import type { SlowRelease } from "./slow-release.js";
 import type { SlowRun } from "./slow-tier.js";
@@ -206,6 +207,10 @@ export class StepLive {
     besideDone: (lane, at) => {
       const { context, ledger } = this.host.started();
       return besideDone(context, ledger, this.host.running(), lane, at);
+    },
+    overrunWake: (at) => {
+      const { context, ledger } = this.host.started();
+      return nextOverrun(context, ledger, this.host.running(), at);
     },
     claimsWaiting: () => this.host.started().ledger.claims.waiting,
     refused: () => this.host.refused(),
