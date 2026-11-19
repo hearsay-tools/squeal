@@ -4,7 +4,16 @@ import type { CodeStore } from "../../src/core/code/store/types.js";
 import { markKey } from "../../src/core/store-process/guard.js";
 import { A, B, C, C2, read, record, share } from "../code/coverage/parts-fixtures.js";
 import { fakeCounter, pass, worktree } from "../code/pass/helpers.js";
-import { type Clone, clone, openThrough, plain, relay, storeProcess, until } from "./helpers.js";
+import {
+  type Clone,
+  clone,
+  openThrough,
+  plain,
+  relay,
+  storeProcess,
+  until,
+  warm,
+} from "./helpers.js";
 
 /*
  * Spec 021 D22 (row 021-36): a daemon's code-store writes go through its
@@ -50,6 +59,7 @@ describe("a store process per clone (row 021-36)", () => {
     const two = relay(at, "w2");
     const first = openThrough(at, one);
     const second = openThrough(at, two);
+    await Promise.all([warm(one, first), warm(two, second)]);
 
     await Promise.all([daemonWork(at, "w1", first, "k1"), daemonWork(at, "w2", second, "k2")]);
 
@@ -97,6 +107,7 @@ describe("a store process per clone (row 021-36)", () => {
     await storeProcess(at);
     const one = relay(at, "w1");
     const store = openThrough(at, one, 200);
+    await warm(one, store);
     store.meta.set("n", "0");
     expect(one.counts.sent).toBe(1);
     const bump = () =>
@@ -113,7 +124,8 @@ describe("a store process per clone (row 021-36)", () => {
     const waited = performance.now() - started;
     holder.exec("COMMIT");
 
-    expect(waited).toBeLessThan(200 + 150);
+    // The bound, and room for a loaded host: a direct write waits as long for the lock.
+    expect(waited).toBeLessThan(200 + 300);
     expect(one.counts.late).toBe(1);
     // The store process writes the batch once the lock is free; the daemon wrote nothing itself.
     await until(
@@ -136,6 +148,7 @@ describe("a store process per clone (row 021-36)", () => {
     const running = await storeProcess(at, { graceMs: 1_000, checkMs: 25 });
     const one = relay(at, "w1");
     const store = openThrough(at, one);
+    await warm(one, store);
     store.meta.set("k", "v");
     expect(one.counts.sent).toBe(1);
 

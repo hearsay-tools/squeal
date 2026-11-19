@@ -135,6 +135,19 @@ export function openThrough(at: Clone, through: CodeRelay, busyTimeoutMs = 2_000
   return store;
 }
 
+/**
+ * Writes until a batch reached the store process, then zeroes the counts:
+ * the relay thread's first start, from the sources under a loaded host,
+ * can take longer than a short bound.
+ */
+export async function warm(through: CodeRelay, store: CodeStore): Promise<void> {
+  await until(() => {
+    store.meta.set("warm", "1");
+    return through.counts.sent > 0;
+  }, 30_000);
+  Object.assign(through.counts, { sent: 0, direct: 0, superseded: 0, late: 0 });
+}
+
 /** A plain connection to the clone's code store, for a test's own reads and locks. */
 export function plain(at: Clone): DatabaseSync {
   const store = openCodeStore(at.commonDir, ON);

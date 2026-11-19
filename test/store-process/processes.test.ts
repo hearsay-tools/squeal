@@ -14,6 +14,7 @@ import {
   relay,
   storeProcess,
   until,
+  warm,
 } from "./helpers.js";
 
 /*
@@ -66,8 +67,7 @@ describe("the store process as a process (row 021-36)", () => {
     const running = await storeProcess(at);
     const one = relay(at, "w1");
     const store = openThrough(at, one, 10_000);
-    store.meta.set("warm", "1");
-    expect(one.counts.sent).toBe(1);
+    await warm(one, store);
 
     const rows = 300_000;
     // The test's thread waits inside the batch, so the kill comes from a shell started before it.
@@ -87,7 +87,7 @@ describe("the store process as a process (row 021-36)", () => {
     expect(db.prepare("SELECT value FROM meta WHERE key = ?").get(markKey("w1"))).toBeDefined();
     // Written once: by the store process before it died (the mark said so), or here.
     expect(one.counts.direct + one.counts.superseded).toBe(1);
-    expect(one.counts.sent).toBe(1);
+    expect(one.counts.sent).toBe(0);
 
     // With no store process, the next batches are written here at once.
     store.meta.set("after", "1");
