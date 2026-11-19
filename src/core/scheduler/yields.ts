@@ -44,7 +44,7 @@ export class TierYields implements CutFiles {
    */
   readonly #bounds = new Map<string, EpochMs>();
   /** Row 011-399 (gh-233): the tiers in flight that overrun, and when the others will. */
-  readonly #overruns = new Overruns();
+  readonly #overruns: Overruns;
   /** The wake that checks the tiers again at the earliest of `#bounds` (row 011-352). */
   #wake: WakeSlot | null = null;
   /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
@@ -60,7 +60,9 @@ export class TierYields implements CutFiles {
     private readonly recheck: () => void,
     /** The scheduler's wake loop (row 011-352). */
     private readonly wakes: Wakes,
-  ) {}
+  ) {
+    this.#overruns = new Overruns(wakes, () => this.recheck());
+  }
 
   /**
    * Cancels each of `tiers` that C4 step 5 cancels after `revision`, the
@@ -149,12 +151,12 @@ export class TierYields implements CutFiles {
   }
 
   /**
-   * Row 011-399 (gh-233): `tier` started. It is checked again, with no other
-   * event, when it would start to overrun (`overrunAt`), so the row says so
-   * then; nothing is written now.
+   * Row 011-399 (gh-233): `tier` started. The tiers are checked again, with
+   * no other event, when it would start to overrun (`overrunAt`), so the row
+   * says so then; nothing is written now.
    */
   started(context: SchedulerContext, tier: Tier): void {
-    if (this.#overruns.started(context, tier)) this.#arm(context);
+    this.#overruns.started(context, tier);
   }
 
   /**
@@ -195,11 +197,10 @@ export class TierYields implements CutFiles {
    */
   ended(context: SchedulerContext, tier: Tier): void {
     let changed = this.#standing.delete(tier.runId);
-    const { published, bounded } = this.#overruns.ended(tier);
-    changed = published || changed;
+    changed = this.#overruns.ended(tier) || changed;
     changed = this.#history.ended(context.now(), tier) || changed;
     if (changed) this.#publish(context);
-    if (this.#bounds.delete(tier.runId) || bounded) this.#arm(context);
+    if (this.#bounds.delete(tier.runId)) this.#arm(context);
   }
 
   /**
@@ -216,7 +217,7 @@ export class TierYields implements CutFiles {
   /** The scheduler closed: no check comes again. */
   close(): void {
     this.#bounds.clear();
-    this.#overruns.clear();
+    this.#overruns.close();
     this.#disarm();
   }
 
@@ -227,14 +228,13 @@ export class TierYields implements CutFiles {
    */
   #arm(context: SchedulerContext): void {
     this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
-    const bounds = [...this.#bounds.values(), ...this.#overruns.bounds()];
-    if (bounds.length === 0) {
+    if (this.#bounds.size === 0) {
       this.#wake.clear();
       return;
     }
     // Review 0.1.524 B2: the reading first: a calendar step it sees moves the bounds before they are read.
     const now = context.now();
-    this.#wake.after(Math.min(...bounds) - now);
+    this.#wake.after(Math.min(...this.#bounds.values()) - now);
   }
 
   #disarm(): void {
