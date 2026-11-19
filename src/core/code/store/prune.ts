@@ -8,9 +8,10 @@ import {
   worktreeIdList,
   worktreeIdsOf,
 } from "../../store/prune-keyed.js";
-import type { EpochMs } from "../../types/common.js";
+import type { EpochMs, WorktreeId } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
+import { stagedId } from "./staged.js";
 import type { CodePruneCounts, CodePruneOptions, CodePruneReport } from "./types.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -190,7 +191,9 @@ type Removed = (n: number) => void;
 
 /** The worktree ids the per-worktree tables hold that are not in `live`. */
 function deadWorktrees(conn: Connection, live: readonly string[]): string[] {
-  const kept = new Set(live);
+  // Row 021-36 (D22.5): a live worktree's staged rows stay, so a pass that counted them before
+  // its batch reached the store process adopts as many as it counted.
+  const kept = new Set([...live, ...live.map((id) => stagedId(id as WorktreeId))]);
   const found = new Set(
     PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row) => str(row, "id"))),
   );

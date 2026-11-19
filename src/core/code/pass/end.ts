@@ -1,5 +1,5 @@
 import type { RevisionNumber } from "../../types/common.js";
-import { type cursorOf, takeAwaited, writeCursor, writeRecount } from "./cursor.js";
+import { type cursorOf, writeAwaitedRecount, writeCursor, writeRecount } from "./cursor.js";
 import { type FailedCounts, writeUncountable } from "./failed.js";
 import type { Judged } from "./judge.js";
 import type { PassContext } from "./pass.js";
@@ -27,15 +27,12 @@ export function writeEnd(ctx: PassContext, end: End): void {
   const { latest, reason, counted } = end;
   writeCursor(store.meta, worktreeId, end.current);
   writeUncountable(store.meta, worktreeId, end.failed);
-  const awaited = reason === "first" && takeAwaited(store.meta, worktreeId);
-  if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn || awaited)) {
-    writeRecount(store.meta, worktreeId, {
-      revision: latest,
-      at: ctx.now(),
-      reason,
-      threshold: ctx.complexity.threshold,
-    });
-  }
+  if (reason === null) return;
+  const record = { revision: latest, at: ctx.now(), reason, threshold: ctx.complexity.threshold };
+  const always = reason !== "first" || counted > 0 || ctx.switchedOn;
+  if (always) writeRecount(store.meta, worktreeId, record);
+  // A first count over inherited counts writes its record only for a consumer that awaits it.
+  if (reason === "first") writeAwaitedRecount(store.meta, worktreeId, always ? null : record);
 }
 
 /** What one pass did. */

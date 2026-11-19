@@ -187,6 +187,12 @@ export interface CodeCoverageRepo {
 export interface CodeMetaRepo {
   get(key: string): string | null;
   set(key: string, value: string): void;
+  /**
+   * Sets `key` only while `present` is set, tested where the write runs:
+   * spec 021 D22.5 (row 021-36), a batch sent to the store process keeps
+   * its decision on a key another process writes valid.
+   */
+  setWhilePresent(key: string, value: string, present: string): void;
   delete(key: string): void;
 }
 

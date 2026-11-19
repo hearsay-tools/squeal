@@ -145,6 +145,7 @@ function readsOf(store: CodeStore): { store: CodeStore; reads: string[] } {
       return store.meta.get(key);
     },
     set: (key, value) => store.meta.set(key, value),
+    setWhilePresent: (key, value, present) => store.meta.setWhilePresent(key, value, present),
     delete: (key) => store.meta.delete(key),
   };
   const wrapped = new Proxy(store, {

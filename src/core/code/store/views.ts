@@ -4,8 +4,9 @@ import type { CodeTold, CodeViewEntry } from "../../types/code.js";
 import type { Consumer } from "../../types/delivery.js";
 import {
   CHECK_COLUMNS,
+  CHECK_ID,
   checkFrom,
-  ensureCodeCheckId,
+  ensureCodeCheck,
   findCodeCheckId,
   MEASURES,
   OUTCOMES,
@@ -36,12 +37,12 @@ export function createViewRepo(conn: Connection): CodeViewRepo {
         for (const entry of entries) {
           conn.run(
             `INSERT INTO views (worktree_id, session_id, agent_id, check_id, measure, outcome,
-               threshold, told, told_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               threshold, told, told_at) VALUES (?, ?, ?, ${CHECK_ID}, ?, ?, ?, ?, ?)
              ON CONFLICT (worktree_id, session_id, agent_id, check_id, measure) DO UPDATE SET
                outcome = excluded.outcome, threshold = excluded.threshold,
                told = excluded.told, told_at = excluded.told_at`,
             ...consumerParams(consumer),
-            ensureCodeCheckId(conn, entry.check),
+            ...ensureCodeCheck(conn, entry.check),
             entry.measure,
             entry.outcome,
             entry.threshold,

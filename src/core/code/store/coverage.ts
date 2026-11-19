@@ -1,4 +1,4 @@
-import { num } from "../../store/codec.js";
+import { num, str } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
 import {
   assemble,
@@ -92,43 +92,63 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
     putParts(key, record, at) {
-      conn.transaction(() => {
+      // Row 021-36 (D22.5): two transactions, since a batch sent to the store process cannot
+      // read back the ids its inserts made. The first writes the parts by hash, the second the
+      // manifest that names them by id. A part the first wrote or refreshed is used at `stored`,
+      // so no prune between the two takes it.
+      const hashes = JSON.stringify(record.parts.map((p) => p.hash));
+      const stored = conn.transaction(() => {
         const before = storedAt(key);
         const stored = before === null ? at : Math.max(at, before + 1);
-        const known = new Map<string, { readonly id: number; readonly usedAt: number }>();
+        const known = new Map<string, number>();
         for (const row of conn.all(
-          `SELECT j.key AS i, p.id, p.used_at FROM json_each(?) j
-             JOIN coverage_parts p ON p.hash = j.value`,
-          JSON.stringify(record.parts.map((p) => p.hash)),
+          `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+          hashes,
         )) {
-          const hash = record.parts[num(row, "i")]?.hash ?? "";
-          known.set(hash, { id: num(row, "id"), usedAt: num(row, "used_at") });
+          known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
         }
-        const stale = [...known.values()]
-          .filter((p) => p.usedAt < stored - PART_REFRESH_MS)
-          .map((p) => p.id);
-        const ids = record.parts.map((part) => {
-          const found = known.get(part.hash);
-          if (found !== undefined) return found.id;
-          const made = conn.get(
-            "INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?) RETURNING id",
+        for (const part of record.parts) {
+          if (known.has(part.hash)) continue;
+          known.set(part.hash, stored);
+          conn.run(
+            `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
+             ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
             part.hash,
             part.bytes,
             stored,
           );
-          const id = made === null ? 0 : num(made, "id");
-          known.set(part.hash, { id, usedAt: stored });
-          return id;
-        });
+        }
+        const stale = [...known].filter(([, usedAt]) => usedAt < stored - PART_REFRESH_MS);
         if (stale.length > 0) {
           conn.run(
-            "UPDATE coverage_parts SET used_at = ? WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+            `UPDATE coverage_parts SET used_at = ?
+             WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
             stored,
-            JSON.stringify(stale),
+            JSON.stringify(stale.map(([hash]) => hash)),
             stored - PART_REFRESH_MS,
           );
         }
-        conn.run(UPSERT, key.resultKey, key.providerVersion, manifestBytes(record, ids), stored);
+        return stored;
+      });
+      conn.transaction(() => {
+        const ids = new Map<string, number>();
+        for (const row of conn.all(
+          `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+          hashes,
+        )) {
+          ids.set(str(row, "hash"), num(row, "id"));
+        }
+        const listed = record.parts.map((part) => ids.get(part.hash));
+        if (listed.some((id) => id === undefined)) {
+          throw new Error("squeal code store: a coverage part is missing after its insert");
+        }
+        conn.run(
+          UPSERT,
+          key.resultKey,
+          key.providerVersion,
+          manifestBytes(record, listed as number[]),
+          stored,
+        );
       });
     },
   };

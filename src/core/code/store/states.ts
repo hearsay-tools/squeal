@@ -28,15 +28,28 @@ export function findCodeCheckId(conn: Connection, check: CodeCheckId): number | 
   return row === null ? null : num(row, "id");
 }
 
-/** The row id of a code check, inserting its `checks` row first if needed. For write paths. */
-export function ensureCodeCheckId(conn: Connection, check: CodeCheckId): number {
+/**
+ * A statement's `check_id` of the check whose row `ensureCodeCheck` made,
+ * looked up when the statement runs: spec 021 D22.5 (row 021-36), a batch
+ * sent to the store process cannot read back the row it inserts, so the
+ * insert and the lookup run together where the batch is written.
+ */
+export const CHECK_ID = `(SELECT id FROM checks WHERE ${CHECK_WHERE})`;
+
+/**
+ * Inserts `check`'s `checks` row when missing, and returns the parameters
+ * of `CHECK_ID` for it. For write paths.
+ */
+export function ensureCodeCheck(
+  conn: Connection,
+  check: CodeCheckId,
+): readonly [string, string, number] {
+  const params = checkParams(check);
   conn.run(
     "INSERT INTO checks (path, qualified_name, occurrence) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-    ...checkParams(check),
+    ...params,
   );
-  const id = findCodeCheckId(conn, check);
-  if (id === null) throw new Error("squeal code store: check row missing after insert");
-  return id;
+  return params;
 }
 
 /** Columns of the check a row's `check_id` names, for a `JOIN checks c`. */
@@ -140,13 +153,13 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         for (const state of states) {
           conn.run(
             `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
-               counted_at, blob, changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               counted_at, blob, changed_at) VALUES (?, ${CHECK_ID}, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
                outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
                counted_at = excluded.counted_at, blob = excluded.blob,
                changed_at = excluded.changed_at`,
             state.worktreeId,
-            ensureCodeCheckId(conn, state.check),
+            ...ensureCodeCheck(conn, state.check),
             state.measure,
             state.outcome,
             state.value,
@@ -213,12 +226,13 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
       conn.transaction(() => {
         const fromId = findCodeCheckId(conn, from);
         if (fromId === null) return;
-        const toId = ensureCodeCheckId(conn, to);
+        const toId = ensureCodeCheck(conn, to);
         for (const table of ["states", "views"]) {
           // `OR REPLACE`: a row `to` already holds is the stale one; the moved state wins.
           conn.run(
-            `UPDATE OR REPLACE ${table} SET check_id = ? WHERE worktree_id = ? AND check_id = ?`,
-            toId,
+            `UPDATE OR REPLACE ${table} SET check_id = ${CHECK_ID}
+             WHERE worktree_id = ? AND check_id = ?`,
+            ...toId,
             worktreeId,
             fromId,
           );
@@ -226,13 +240,13 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
         // The history explains the moved state: news not yet told and Stop's count (D6, D7).
         // `to`'s own is an earlier function's, as its stale state above.
         conn.run(
-          "DELETE FROM transitions WHERE worktree_id = ? AND check_id = ?",
+          `DELETE FROM transitions WHERE worktree_id = ? AND check_id = ${CHECK_ID}`,
           worktreeId,
-          toId,
+          ...toId,
         );
         conn.run(
-          "UPDATE transitions SET check_id = ? WHERE worktree_id = ? AND check_id = ?",
-          toId,
+          `UPDATE transitions SET check_id = ${CHECK_ID} WHERE worktree_id = ? AND check_id = ?`,
+          ...toId,
           worktreeId,
           fromId,
         );
@@ -240,9 +254,17 @@ export function createStateRepo(conn: Connection): CodeStateRepo {
     },
     adopt(worktreeId, staged, measure, removed) {
       return conn.transaction(() => {
+        // Row 021-36 (D22.5): counted by a read, since a batch sent to the store process
+        // answers no changed rows; the staged rows are this worktree's own.
+        const staging = conn.get(
+          "SELECT count(*) AS n FROM states WHERE worktree_id = ? AND measure = ?",
+          staged,
+          measure,
+        );
+        const written = staging === null ? 0 : num(staging, "n");
         // Set-based, so the switch costs a statement per kind of write, not one per state.
         // A staged edit mark is the newer (row 015-55); with none, the state keeps its own.
-        const written = conn.run(
+        conn.run(
           `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
              counted_at, blob, changed_at, edited_revision, edited_at)
            SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at,

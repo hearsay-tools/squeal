@@ -1,5 +1,5 @@
 import { createInputMatcher } from "../../keys/glob.js";
-import type { CodeCheckId, CodeFile } from "../../types/code.js";
+import type { CodeCheckId, CodeFile, CodeMeasure } from "../../types/code.js";
 import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
 import type { Policy } from "../../types/policy.js";
 import type { CodeStore } from "../store/types.js";
@@ -132,12 +132,10 @@ export function leaveOutSeeded(
   const left = checks.exclude.length === 0 ? [] : files.filter((f) => checks.excluded(f.path));
   if (off.length === 0 && left.length === 0) return;
   store.transaction(() => {
+    // Read before any write (row 021-36, D22.5): a batch sent to the store process reads no own write.
+    const paths = left.map((f) => f.path);
+    const had = withStates(store, worktreeId, paths, checks.measures);
     for (const measure of off) store.states.removeMeasure(worktreeId, measure);
-    const had = withStates(
-      store,
-      worktreeId,
-      left.map((f) => f.path),
-    );
     for (const measure of checks.measures) store.states.removeMeasure(worktreeId, measure, had);
   });
 }
@@ -174,10 +172,11 @@ function withStates(
   store: CodeStore,
   worktreeId: WorktreeId,
   paths: readonly RelativePath[],
+  measures: readonly CodeMeasure[] = COVERAGE_MEASURES,
 ): RelativePath[] {
-  if (paths.length === 0) return [];
+  if (paths.length === 0 || measures.length === 0) return [];
   const states = store.states.list(worktreeId, { paths });
-  return [...new Set(states.filter((s) => s.measure !== "complexity").map((s) => s.check.path))];
+  return [...new Set(states.filter((s) => measures.includes(s.measure)).map((s) => s.check.path))];
 }
 
 /**
@@ -196,8 +195,9 @@ function removeChecks(
   const judged = (summary.checks ?? COVERAGE_MEASURES).filter((m) => !off.includes(m));
   const paths = left.map((f) => f.path);
   return store.transaction(() => {
+    // Read before any write (row 021-36, D22.5): a batch sent to the store process reads no own write.
+    const had = withStates(store, worktreeId, paths, judged);
     for (const measure of off) store.states.removeMeasure(worktreeId, measure);
-    const had = judged.length === 0 ? [] : withStates(store, worktreeId, paths);
     for (const measure of judged) store.states.removeMeasure(worktreeId, measure, had);
     const gone = new Set(judged.length === 0 ? Object.keys(summary.files) : paths);
     for (const path of gone) writeEvidence(store.meta, worktreeId, path, null);

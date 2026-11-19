@@ -256,14 +256,15 @@ describe("an edit pass in parts (row 015-55)", () => {
     expect(timeless(store)).toEqual(want);
   });
 
-  it("writes the whole set when a prune took staged rows between two parts", async () => {
+  it("writes the whole set when staged rows went between two parts", async () => {
     const { old, now, dump: want } = await expected();
     const { tree, store } = await scenario();
     let pruned = false;
     const { seen } = await watched(tree, store, (hook) => {
       if (pruned || hook.states.list(stagedId("w1")).length === 0) return;
-      // The staged id is no live worktree's: a prune takes its rows.
-      hook.prune({ now: Date.now(), retentionDays: 30, worktrees: ["w1"], consumers: [SESSION] });
+      // A prune before row 021-36 took a live worktree's staged rows; another writer still may.
+      hook.states.removeMeasure(stagedId("w1"), "complexity");
+      hook.transitions.dropStaged(stagedId("w1"));
       pruned = true;
     });
 

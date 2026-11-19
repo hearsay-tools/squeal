@@ -71,11 +71,21 @@ export function awaitFirstCount(meta: CodeMetaRepo, worktreeId: WorktreeId): voi
   meta.set(awaitedKey(worktreeId), "1");
 }
 
-/** Whether a consumer awaits the first count (`awaitFirstCount`); the mark goes. */
-export function takeAwaited(meta: CodeMetaRepo, worktreeId: WorktreeId): boolean {
-  if (meta.get(awaitedKey(worktreeId)) === null) return false;
+/**
+ * A first count's recount record when it counted nothing new: written only
+ * while a consumer awaits the count (`awaitFirstCount`), tested where the
+ * write runs, since that consumer's hook sets the mark from another process
+ * (row 021-36, D22.5). The mark goes either way.
+ */
+export function writeAwaitedRecount(
+  meta: CodeMetaRepo,
+  worktreeId: WorktreeId,
+  record: RecountRecord | null,
+): void {
+  if (record !== null) {
+    meta.setWhilePresent(recountKey(worktreeId), JSON.stringify(record), awaitedKey(worktreeId));
+  }
   meta.delete(awaitedKey(worktreeId));
-  return true;
 }
 
 export function readRecount(meta: CodeMetaRepo, worktreeId: WorktreeId): RecountRecord | null {

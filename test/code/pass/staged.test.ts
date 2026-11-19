@@ -122,19 +122,34 @@ describe("a recount stages its states in parts (row 015-48)", () => {
     expect(store.states.list(stagedId("w1"))).toEqual([]);
   });
 
-  it("writes the whole set when a prune took staged rows between two parts", async () => {
+  it("writes the whole set when staged rows went between two parts", async () => {
     const { tree, store, hook } = await counted();
     let pruned: string[] | null = null;
     const seen = await watched(tree, store, hook, () => {
       if (pruned !== null || hook.states.list(stagedId("w1")).length === 0) return;
-      // The staged id is no live worktree's: a prune takes its rows.
+      // A prune before row 021-36 took a live worktree's staged rows; another writer still may.
       pruned = states(hook);
-      hook.prune({ now: Date.now(), retentionDays: 30, worktrees: ["w1"], consumers: [] });
+      hook.states.removeMeasure(stagedId("w1"), "complexity");
       expect(hook.states.list(stagedId("w1"))).toEqual([]);
     });
 
     expect(pruned).toEqual(OLD);
     for (const read of seen) expect([OLD, NEW]).toContainEqual(read.states);
+    expect(states(store)).toEqual(NEW);
+  });
+
+  it("keeps a live worktree's staged rows through a prune (row 021-36)", async () => {
+    const { tree, store, hook } = await counted();
+    let kept: number | null = null;
+    await watched(tree, store, hook, () => {
+      const staged = hook.states.list(stagedId("w1")).length;
+      if (kept !== null || staged === 0) return;
+      hook.prune({ now: Date.now(), retentionDays: 30, worktrees: ["w1"], consumers: [] });
+      kept = hook.states.list(stagedId("w1")).length;
+      expect(kept).toBe(staged);
+    });
+
+    expect(kept).not.toBeNull();
     expect(states(store)).toEqual(NEW);
   });
 });

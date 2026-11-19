@@ -4,8 +4,9 @@ import type { CodeTransition, CodeTransitionKind } from "../../types/code.js";
 import { isStagedId } from "./staged.js";
 import {
   CHECK_COLUMNS,
+  CHECK_ID,
   checkFrom,
-  ensureCodeCheckId,
+  ensureCodeCheck,
   findCodeCheckId,
   MEASURES,
   OUTCOMES,
@@ -28,9 +29,10 @@ export function createTransitionRepo(conn: Connection): CodeTransitionRepo {
       conn.transaction(() => {
         for (const t of transitions) {
           conn.run(
-            `INSERT INTO transitions (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO transitions (${COLUMNS})
+             VALUES (?, ${CHECK_ID}, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             t.worktreeId,
-            ensureCodeCheckId(conn, t.check),
+            ...ensureCodeCheck(conn, t.check),
             t.measure,
             t.kind,
             t.from,
@@ -49,7 +51,8 @@ export function createTransitionRepo(conn: Connection): CodeTransitionRepo {
         const row = conn.get("SELECT count(*) AS n FROM transitions WHERE worktree_id = ?", staged);
         if (row === null || num(row, "n") !== expected) return 0;
         // New ids: they sort after anything appended for the worktree while the pass staged.
-        return conn.run(
+        // Row 021-36 (D22.5): the count read above, since a sent batch answers no changed rows.
+        conn.run(
           `INSERT INTO transitions (${COLUMNS})
            SELECT ?, check_id, measure, kind, from_outcome, to_outcome, from_value, to_value,
              threshold, revision, at
@@ -57,6 +60,7 @@ export function createTransitionRepo(conn: Connection): CodeTransitionRepo {
           worktreeId,
           staged,
         );
+        return expected;
       });
     },
     dropStaged(staged) {

@@ -46,6 +46,15 @@ function createMetaRepo(conn: Connection): CodeMetaRepo {
         value,
       );
     },
+    setWhilePresent(key, value, present) {
+      conn.run(
+        `INSERT INTO meta (key, value) SELECT ?, ? WHERE EXISTS (SELECT 1 FROM meta WHERE key = ?)
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+        key,
+        value,
+        present,
+      );
+    },
     delete(key) {
       conn.run("DELETE FROM meta WHERE key = ?", key);
     },
