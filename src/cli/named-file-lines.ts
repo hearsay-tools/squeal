@@ -194,8 +194,12 @@ export function filesCounted(parts: readonly (readonly [number, string])[]): str
  * Row 023-26 (Q7): while the listing is not done, only that, for every path.
  */
 export function unmatchedText(selection: NamedSelection): string {
-  if (selection.unlisted !== undefined) return unlistedText(selection.unlisted);
-  return selection.unmatchedPaths
+  const { unlisted } = selection;
+  if (unlisted !== undefined && unlisted.paths === undefined) return unlistedText(unlisted);
+  // Review wave-16 B2: a path new to the listing says only that, after the others' text.
+  const fresh = new Set(unlisted?.paths ?? []);
+  const listed = selection.unmatchedPaths
+    .filter((p) => !fresh.has(p.resolved))
     .map((p) => {
       const base =
         p.base === undefined || (p.base === "" && p.given === p.resolved)
@@ -210,6 +214,8 @@ export function unmatchedText(selection: NamedSelection): string {
       return `no test file's closure holds ${p.resolved}${base}${root}${startsText(p.startsWith)}`;
     })
     .join("; ");
+  const late = unlisted === undefined ? "" : unlistedText(unlisted);
+  return [listed, late].filter((t) => t !== "").join("; ");
 }
 
 /** Row 011-406: `; it is not a file or folder; 2 listed test files start with it: a, b; name them`. */

@@ -13,7 +13,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
-import { listingOf, type SelectionUnlisted } from "./named-listing.js";
+import { listingOf, newPaths, type SelectionUnlisted } from "./named-listing.js";
 import { notRunTestFile } from "./retry-unlisted.js";
 import { StoredClosures, storedReaders } from "./stored-closures.js";
 
@@ -163,13 +163,14 @@ export function selectNamedFiles(
     named.push({ path: rel ?? path, kind, selects: hits.length });
   }
   const resolved = unmatched.map((p) => p.resolved);
+  const unlisted = listing ?? newPaths(store, worktreeId, root, unmatched);
   return {
     files: [...selected.values()],
     unmatched: resolved,
     unmatchedPaths: unmatched,
     base: baseOf(root, cwd),
     paths: named,
-    ...(unmatched.length === 0 || listing === null ? {} : { unlisted: listing }),
+    ...(unmatched.length === 0 || unlisted === null ? {} : { unlisted }),
   };
 }
 

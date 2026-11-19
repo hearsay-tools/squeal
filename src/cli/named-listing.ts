@@ -1,9 +1,12 @@
+import { statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+import { lastScannedBy } from "../core/daemon/bootstrapped.js";
 import { readInstallWait } from "../core/scheduler/install-wait.js";
 import { covers, readRefined } from "../core/scheduler/refined.js";
-import type { EpochMs, RevisionNumber, WorktreeId } from "../core/types/common.js";
+import type { AbsolutePath, EpochMs, RevisionNumber, WorktreeId } from "../core/types/common.js";
 import type { Store } from "../core/types/store.js";
 import type { DaemonRecord, TestFileKeyRecord } from "../core/types/store-records.js";
-import type { NamedSelection } from "./named-selection.js";
+import type { NamedSelection, UnmatchedPath } from "./named-selection.js";
 
 /*
  * Row 023-26 (spec 023 lessons, round 3, Q7): while the daemon is starting,
@@ -22,6 +25,13 @@ export interface SelectionUnlisted {
    * files it has not listed yet (`runnerPartPending`).
    */
   readonly revision: RevisionNumber | null;
+  /**
+   * Review wave-16 B2: with the listing done, the named paths that changed on
+   * disk after the newest listed revision (`newToListing`), which no listing
+   * holds yet; `revision` is then that listed revision. Absent: the whole
+   * listing is not done.
+   */
+  readonly paths?: readonly string[];
   /**
    * Set by a named wait that returned while a daemon held the worktree: the
    * time so far, since the daemon started (`revision` `null`) or since the
@@ -51,6 +61,46 @@ export function listingOf(
   return covers(readRefined(store, worktreeId), latest) ? null : { revision: latest };
 }
 
+/**
+ * Review wave-16 B2: of `rels`, paths that select nothing in a done listing,
+ * those whose file changed (its ctime) after the newest listed revision was
+ * recorded and after the daemon that listed it finished its start scan, as
+ * `retry`'s new-file check reads it (row 011-134): a new test file the
+ * watcher has not recorded yet. With neither time known, none.
+ */
+export function newToListing(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  rels: readonly string[],
+): string[] {
+  if (rels.length === 0) return [];
+  const latest = store.revisions.latest(worktreeId);
+  const times = [latest?.createdAt, lastScannedBy(store, worktreeId) ?? undefined].filter(
+    (t): t is number => t !== undefined && Number.isFinite(t),
+  );
+  if (times.length === 0) return [];
+  const listedAt = Math.max(...times);
+  return rels.filter((rel) => {
+    const stat = statSync(join(root, rel), { throwIfNoEntry: false });
+    return stat?.isFile() === true && stat.ctimeMs > listedAt;
+  });
+}
+
+/** Review wave-16 B2: the unmatched files new to a done listing, as `unlisted`; `null` with none. */
+export function newPaths(
+  store: Store,
+  worktreeId: WorktreeId,
+  root: AbsolutePath,
+  unmatched: readonly UnmatchedPath[],
+): SelectionUnlisted | null {
+  const inside = (p: UnmatchedPath) => !isAbsolute(p.resolved) && !p.resolved.startsWith("..");
+  const files = unmatched.filter((p) => p.folder !== true && inside(p)).map((p) => p.resolved);
+  const paths = newToListing(store, worktreeId, root, files);
+  if (paths.length === 0) return null;
+  return { revision: store.revisions.latest(worktreeId)?.number ?? 0, paths };
+}
+
 /** What a named wait that returned with a daemon reads its time so far from (`withUnlisted`). */
 export interface UnlistedClock {
   readonly store: Store;
@@ -68,14 +118,20 @@ export interface UnlistedClock {
  * least the wait's own. Without `clock`, no daemon held the worktree.
  */
 export function withUnlisted(selection: NamedSelection, clock?: UnlistedClock): NamedSelection {
-  const { unlisted, partial = { revision: unlisted?.revision ?? null } } = selection;
+  const { unlisted } = selection;
   if (unlisted === undefined) return selection;
+  // A new path waits for a revision not recorded yet.
+  const partial = selection.partial ?? {
+    revision: unlisted.paths === undefined ? unlisted.revision : null,
+  };
   if (clock === undefined) return { ...selection, partial };
   const { store, worktreeId, record, now } = clock;
   const since =
-    unlisted.revision === null
-      ? record?.startedAt
-      : store.revisions.get(worktreeId, unlisted.revision)?.createdAt;
+    unlisted.paths !== undefined
+      ? undefined
+      : unlisted.revision === null
+        ? record?.startedAt
+        : store.revisions.get(worktreeId, unlisted.revision)?.createdAt;
   const waited = clock.elapsed();
   const forMs = since === undefined ? waited : Math.max(waited, now - since);
   return { ...selection, partial, unlisted: { ...unlisted, forMs } };
@@ -87,16 +143,15 @@ export function withUnlisted(selection: NamedSelection, clock?: UnlistedClock): 
  * Without the time, a snapshot's or a wait's that found no daemon, only what
  * is not listed: no daemon may be starting.
  */
-export function unlistedText({ revision, forMs }: SelectionUnlisted): string {
-  if (forMs === undefined) {
-    return revision === null
-      ? "Squeal has not listed the test files here yet"
-      : `Squeal has not listed revision ${revision} here yet`;
-  }
-  const time = `(${Math.round(forMs / 1_000)} s)`;
+export function unlistedText({ revision, paths, forMs }: SelectionUnlisted): string {
   const what =
-    revision === null
-      ? `Squeal is still starting here ${time}`
-      : `Squeal has not listed revision ${revision} here yet ${time}`;
-  return `${what}; wait again with the same command`;
+    paths !== undefined
+      ? `Squeal has not listed ${paths.join(", ")} here yet`
+      : revision === null
+        ? forMs === undefined
+          ? "Squeal has not listed the test files here yet"
+          : "Squeal is still starting here"
+        : `Squeal has not listed revision ${revision} here yet`;
+  if (forMs === undefined) return what;
+  return `${what} (${Math.round(forMs / 1_000)} s); wait again with the same command`;
 }

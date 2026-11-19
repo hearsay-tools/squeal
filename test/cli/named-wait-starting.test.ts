@@ -174,6 +174,73 @@ describe("a named wait while the latest revision is not listed (row 023-26)", ()
   });
 });
 
+describe("a named file created after the last listed revision (review wave-16 B2)", () => {
+  /** A listed worktree at revision 4, refined, and a new test file on disk no revision records yet. */
+  function newFileRepo() {
+    const { repo, store } = repoWith([], [A]);
+    recordRefinedApplied(store, repo.mainId, 4);
+    mkdirSync(join(repo.main, "src"), { recursive: true });
+    writeFileSync(join(repo.main, NEW), "");
+    return { repo, store };
+  }
+  const NEW = "src/new.test.ts";
+  const NOT_LISTED = `Squeal has not listed ${NEW} here yet`;
+
+  it.each([{ state: "pending" }, { state: "unsupported" }] as SyncState[])(
+    "says it is not listed yet and waits to the deadline, sync $state",
+    async (sync) => {
+      const { repo } = newFileRepo();
+
+      const got = await wait(repo.main, [NEW], () => sync);
+
+      if (got.outcome === "unavailable") throw new Error("unavailable");
+      // Before the fix: pending said "no test file's closure holds src/new.test.ts" at the
+      // deadline; unsupported returned `unmatched` after the settle time.
+      expect(got.outcome).toBe("timeout");
+      const text = namedText(got, NOW);
+      expect(text).toContain(`${NOT_LISTED} (0 s); wait again with the same command`);
+      expect(text).not.toMatch(CLOSURE);
+      expect(got.selection.partial).toEqual({ revision: null });
+    },
+  );
+
+  it("keeps D2's text for another path that selects nothing beside it", async () => {
+    const { repo } = newFileRepo();
+
+    const got = await wait(repo.main, [NEW, "src/none.ts"], () => synced(4));
+
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+    const text = namedText(got, NOW);
+    expect(text).toContain("no test file's closure holds src/none.ts");
+    expect(text).toContain(NOT_LISTED);
+    expect(text).not.toContain(`closure holds ${NEW}`);
+  });
+
+  it("gives the verdict once the daemon records and lists the file", async () => {
+    const { repo, store } = newFileRepo();
+    let state: SyncState = synced(4);
+    later(150, () => {
+      store.revisions.append({
+        worktreeId: repo.mainId,
+        createdAt: Date.now() + 1_000,
+        head: null,
+        dirty: false,
+        trigger: "watch",
+        changes: [{ path: NEW, oldHash: null, newHash: "n" }] as never,
+      });
+      recordRefinedApplied(store, repo.mainId, 5);
+      finish(store, repo.mainId, NEW);
+      state = synced(5);
+    });
+
+    const got = await wait(repo.main, [NEW], () => state, 3_000);
+
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+    expect([got.outcome, namedCode(got)]).toEqual(["settled", 0]);
+    expect(got.selection.unlisted).toBeUndefined();
+  });
+});
+
 describe("a listed worktree reads as before (rows 011-27, 011-406)", () => {
   it("says D2's closure text and the prefix hint for a path that selects nothing", async () => {
     const { repo } = repoWith([], [A]);
