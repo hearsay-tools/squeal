@@ -12426,7 +12426,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.570";
+  if (true) return "0.1.572";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -15010,8 +15010,7 @@ function readImports(store, worktreeId, keys, states) {
       const reason = reasonOf2(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
-      const current2 = here.current.get(testFileId(file)) ?? [];
-      currentResults += current2.filter((s) => fromImport(s, record.id)).length;
+      currentResults += here.fromImport(testFileId(file)).get(record.id) ?? 0;
     }
     return [
       {
@@ -15068,27 +15067,52 @@ function hereOf(store, worktreeId, keys, states) {
     maps.set(key, read4);
     return read4;
   };
+  const current2 = currentByFile(states);
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
-    current: currentByFile(states),
+    current: current2,
     stored: (importId, key) => store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     waiting: new Set(importsWaiting(store, worktreeId)),
-    closure: (file) => {
-      const record = store.testFiles.get(file);
-      if (record === null) return null;
-      if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
-      return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
-    },
-    observed: (file) => {
+    fromImport: memoBy(String, (id) => countByImport(current2.get(id) ?? [])),
+    // Row 011-411 (gh-250): what this worktree holds for a file is the same for every
+    // import, so each file's closure and observed hash is made once per read.
+    closure: memoBy(
+      (file) => `${file.closure.startsWith(STATIC_LIST) ? "static" : "list"}:${testFileId(file)}`,
+      (file) => {
+        const record = store.testFiles.get(file);
+        if (record === null) return null;
+        if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
+        return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
+      }
+    ),
+    observed: memoBy(testFileId, (file) => {
       const observed = {};
       for (const map of OBSERVED_MAPS) {
         const paths = entries(map, file.project)[file.path];
         if (paths !== void 0) observed[map] = paths;
       }
       return observedHash(observed);
-    }
+    })
   };
+}
+function memoBy(idOf2, make) {
+  const made = /* @__PURE__ */ new Map();
+  return (arg) => {
+    const id = idOf2(arg);
+    if (made.has(id)) return made.get(id);
+    const value = make(arg);
+    made.set(id, value);
+    return value;
+  };
+}
+function countByImport(states) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.origin?.kind !== "imported") continue;
+    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
+  }
+  return counts;
 }
 function environmentOf(store, worktreeId, files2) {
   const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
@@ -15948,7 +15972,7 @@ function createStatusBuilder(store, options = {}) {
             `worktree ${worktreeId} is not registered in the store`
           );
         }
-        return snapshot(store, worktreeId, worktree.root, now());
+        return snapshot(store, worktreeId, worktree.root, now()).snapshot;
       });
     }
   };
@@ -16002,7 +16026,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     now,
     load
   );
-  return {
+  const snapshot2 = {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     worktreeId,
@@ -16047,6 +16071,8 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
       shell
     )
   };
+  const reads = { states, keys, header, runs, holds: holds2, slowSlot: slowSlot ?? null };
+  return { snapshot: snapshot2, reads };
 }
 function vitestExcluded(root) {
   const policy = readPolicy(root);
