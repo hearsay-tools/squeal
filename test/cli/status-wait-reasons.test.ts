@@ -251,7 +251,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     // Row 011-398 (gh-181): the run and the per-call bound are said only while a run is in flight.
     const reason =
-      "Vitest has not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends";
+      "Vitest has not listed revision 5's test files yet; no tier starts until the listing ends";
     expect(text).toContain(`Pending (1):\n  1 ${reason}: ${A}\n`);
     // Row 011-398 (gh-232): a named test file is held by its own class, the listing named in its line.
     expect(text).toContain(`1 test file still pending at revision 5: 1 ${reason}. Worktree:`);
