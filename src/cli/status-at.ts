@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
+import { type CheckoutHooks, resolveCommit, withStores } from "../core/commit/at-keys-checkout.js";
 import { selects } from "../core/commit/at-keys-narrow.js";
 import type { CheckoutOptions } from "../core/commit/at-keys-walk.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -14,6 +14,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { commitSide } from "./status-at-commit.js";
+import { headRefusal, nextOf, nextProbe } from "./status-at-next.js";
 import { listLate, nowSide } from "./status-at-now.js";
 import { type AtReport, compareSides, exitCode, formatAt, jsonAt } from "./status-at-report.js";
 import { type AtRun, atRun, RUN_TIMEOUT_SECONDS, type RunArgs } from "./status-at-run.js";
@@ -129,6 +130,9 @@ async function locate(args: AtArgs, io: CliIo): Promise<Located | string> {
   } catch {
     return `"${args.commit}" names no commit here`;
   }
+  // Row 023-24 (Q2): a clean tree at the commit compares HEAD with itself; nothing is keyed.
+  const refusal = args.run ? null : await headRefusal(root, commit, args);
+  if (refusal !== null) return refusal;
   if (args.paths.length === 0) return { root, commonDir, commit, paths: null };
   const paths: RelativePath[] = [];
   for (const path of args.paths) {
@@ -197,6 +201,9 @@ export async function statusAtCommand(
           forward: (text) => (args.json ? undefined : io.stderr(text)),
           ...(batchFiles === undefined ? {} : { batchFiles }),
         });
+  // Row 023-24 (Q1): without `--run`, what it would run, for the report's last line.
+  const probe =
+    ran === null ? nextProbe({ root, commit, given: args.commit, paths: args.paths }) : null;
   const at = await commitSide({
     ...keying,
     ...checkoutOptions,
@@ -205,14 +212,7 @@ export async function statusAtCommand(
     paths,
     worktreeId,
     note,
-    ...(ran === null
-      ? {}
-      : {
-          whileOpen: ran.whileOpen,
-          beforeRemove: ran.beforeRemove,
-          // D4.6: the install is inside the one budget.
-          installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
-        }),
+    ...hooksOf(ran, probe, runArgs),
   });
   const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref) ?? at.state(ref);
   const sides = { now: now.sources, at: at.sources, failed: at.failure !== null };
@@ -234,10 +234,25 @@ export async function statusAtCommand(
     files,
     ...(unmatched.length === 0 ? {} : { unmatched }),
     ...(ran === null ? {} : { run: ran.use() }),
+    ...nextOf(probe, at),
   };
   io.stdout(args.json ? jsonAt(report) : formatAt(report, nowMs, args.full === true));
   // Review wave-6 B4: a checkout that gave no keys never reads as every file known.
   return at.failure === null && unmatched.length === 0 ? exitCode(files) : 3;
+}
+
+/** The checkout's hooks: `--run`'s, with its install inside the one budget (D4.6), or Q1's probe. */
+function hooksOf(
+  ran: AtRun | null,
+  probe: ReturnType<typeof nextProbe> | null,
+  runArgs: RunArgs | null,
+): Pick<CheckoutOptions, "installTimeoutMs"> & CheckoutHooks {
+  if (ran === null) return probe === null ? {} : { whileOpen: probe.whileOpen };
+  return {
+    whileOpen: ran.whileOpen,
+    beforeRemove: ran.beforeRemove,
+    installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, (runArgs?.timeoutSeconds ?? 0) * 1000),
+  };
 }
 
 /**
