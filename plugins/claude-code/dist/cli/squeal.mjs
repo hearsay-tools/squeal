@@ -3676,8 +3676,8 @@ function isRef(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { at: at2, deadline, files: files5 } = value;
-  return typeof at2 === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files5) && files5.every(isOverrunFile);
+  const { startedAt, at: at2, deadline, files: files5 } = value;
+  return typeof startedAt === "number" && typeof at2 === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files5) && files5.every(isOverrunFile);
 }
 function isOverrunFile(value) {
   if (!isRef(value)) return false;
@@ -16409,8 +16409,8 @@ function overrunAfterMs(tier, durationMs2) {
   return Math.max(OVERRUN_FACTOR * durationMs2, OVERRUN_FLOOR_MS);
 }
 function overrunAt(context, tier) {
-  const { startedAt } = tier;
-  if (startedAt === void 0 || tier.kind === "slow" || tier.beside === true) return null;
+  const start2 = steppedStart(context, tier);
+  if (start2 === null || tier.kind === "slow" || tier.beside === true) return null;
   if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
   const first2 = tier.files[0]?.file.ref;
@@ -16418,8 +16418,12 @@ function overrunAt(context, tier) {
   const left = unfinished(tier);
   if (left.length === 0) return null;
   const after3 = Math.max(...left.map(({ file }) => overrunAfterMs(tier, file.durationMs)));
-  const start2 = context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
   return start2 + after3;
+}
+function steppedStart(context, tier) {
+  const { startedAt } = tier;
+  if (startedAt === void 0) return null;
+  return context.steps?.since(startedAt, tier.startedStep ?? 0) ?? startedAt;
 }
 function overruns2(context, tier, at2) {
   const when = overrunAt(context, tier);
@@ -16445,10 +16449,10 @@ function nextOverrun(context, ledger, inFlight, at2) {
 }
 function tierOverrun(context, tier, at2) {
   const { timeoutMs } = context.policy.runner;
-  const start2 = tier.startedAt;
-  const deadline = timeoutMs === null || start2 === void 0 ? null : start2 + timeoutMs;
+  const startedAt = steppedStart(context, tier) ?? at2;
+  const deadline = timeoutMs === null ? null : startedAt + timeoutMs;
   const files5 = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { at: at2, deadline, files: files5 };
+  return { startedAt, at: at2, deadline, files: files5 };
 }
 var OVERRUN_FACTOR, OVERRUN_FLOOR_MS, Overruns;
 var init_overrun = __esm({
@@ -16506,9 +16510,22 @@ var init_overrun = __esm({
         if (this.#bounds.delete(tier.runId) && this.#bounds.size === 0) this.#wake?.clear();
         return this.#published.delete(tier.runId);
       }
-      /** The calendar stepped `ms` (row 011-377): each bound moves; the wake counts elapsed time. */
+      /**
+       * The calendar stepped `ms` (row 011-377): each bound moves, and each
+       * published overrun's start, threshold and deadline with it (review 0.1.567
+       * B2); the wake counts elapsed time. Whether a published one moved, so the
+       * row is written again.
+       */
       shift(ms2) {
         for (const [runId, at2] of this.#bounds) this.#bounds.set(runId, at2 + ms2);
+        for (const [runId, o] of this.#published)
+          this.#published.set(runId, {
+            ...o,
+            startedAt: o.startedAt + ms2,
+            at: o.at + ms2,
+            deadline: o.deadline === null ? null : o.deadline + ms2
+          });
+        return ms2 !== 0 && this.#published.size > 0;
       }
       close() {
         this.#bounds.clear();
@@ -16844,12 +16861,21 @@ var init_yields = __esm({
       /**
        * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each bound
        * and the ended count's last write move with it. The wake already counts
-       * its delay on elapsed time.
+       * its delay on elapsed time. Review 0.1.567 B2: a published overrun moves
+       * too, and the row is written again at `at`, the reading that saw the
+       * step, so status reads its age and deadline on the new calendar; a busy
+       * store skips the write, as a file end's does.
        */
-      shift(ms2) {
-        for (const [runId, at2] of this.#bounds) this.#bounds.set(runId, at2 + ms2);
-        this.#overruns.shift(ms2);
+      shift(ms2, at2, context) {
+        for (const [runId, bound] of this.#bounds) this.#bounds.set(runId, bound + ms2);
+        const moved4 = this.#overruns.shift(ms2);
         this.#history.shift(ms2);
+        if (!moved4 || context === void 0) return;
+        try {
+          withBusySliceSync(0, () => this.#publish(context, at2));
+        } catch (error) {
+          if (!isBusy(error)) throw error;
+        }
       }
       /** The scheduler closed: no check comes again. */
       close() {
@@ -28460,7 +28486,7 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
           directories.push(`${dir2}/`);
         }
       }
-      const reresolves = (dep, file) => {
+      const reresolves2 = (dep, file) => {
         const path = depToPath(dep, file, project.config.root);
         if (path === null) return added.length > 0 && isUnresolvedBare(dep);
         return targets.has(path) || directories.some((dir2) => path.startsWith(dir2));
@@ -28472,7 +28498,7 @@ function staleTransforms(vitest, added, deleted, manifests = []) {
           const result = cachedTransform(module2);
           if (!result) continue;
           const deps = [...result.deps ?? [], ...result.dynamicDeps ?? []];
-          if (deps.length > 0 && scopes2.some((dir2) => file.startsWith(dir2)) || deps.some((dep) => reresolves(dep, file)) || added.length > 0 && expandsFromDisk(file, result)) {
+          if (deps.length > 0 && scopes2.some((dir2) => file.startsWith(dir2)) || deps.some((dep) => reresolves2(dep, file)) || added.length > 0 && expandsFromDisk(file, result)) {
             stale.add(file);
             break;
           }
@@ -55891,7 +55917,7 @@ var init_beside = __esm({
 });
 
 // src/core/keys/resolution.ts
-import { posix as posix13 } from "node:path";
+import { posix as posix14 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
   const picked = /* @__PURE__ */ new Map();
   const pick = (refs2) => {
@@ -55899,7 +55925,7 @@ function closuresToReresolve(changes, index, isDeclaredInput) {
   };
   for (const change3 of changes) {
     const dir2 = directoryOf(change3.path);
-    const base = posix13.basename(change3.path);
+    const base = posix14.basename(change3.path);
     const edited = change3.oldHash !== null && change3.newHash !== null;
     if (edited && base !== "package.json") continue;
     if (!edited && isDeclaredInput(change3.path)) return index.testFiles();
@@ -55925,44 +55951,44 @@ var init_resolution = __esm({
 });
 
 // src/core/scheduler/namesakes.ts
-import { posix as posix14 } from "node:path";
+import { posix as posix15 } from "node:path";
 function languageOf(path) {
   if (SCRIPT2.test(path)) return "script";
   return path.endsWith(".py") ? "python" : null;
 }
 function testedName(path, language) {
-  const base = posix14.basename(path);
+  const base = posix15.basename(path);
   if (language === "python") {
     const match3 = MARKED_PYTHON.exec(base);
     return match3 === null ? null : match3[1] ?? match3[2] ?? null;
   }
   const match2 = MARKED_SCRIPT.exec(base);
   if (match2 !== null) return match2[1] ?? null;
-  const inTests = posix14.basename(posix14.dirname(path)) === "__tests__";
+  const inTests = posix15.basename(posix15.dirname(path)) === "__tests__";
   return inTests && SCRIPT2.test(base) ? base.replace(SCRIPT2, "") : null;
 }
 function conventionalDirs(source2) {
-  const dir2 = posix14.dirname(source2);
-  const dirs = /* @__PURE__ */ new Set([dir2, posix14.join(dir2, "__tests__")]);
+  const dir2 = posix15.dirname(source2);
+  const dirs = /* @__PURE__ */ new Set([dir2, posix15.join(dir2, "__tests__")]);
   const segments2 = source2.split("/");
   const at2 = segments2.indexOf("src");
   if (at2 >= 0 && at2 < segments2.length - 1) {
     const prefix = segments2.slice(0, at2);
     const below3 = segments2.slice(at2 + 1, -1);
-    for (const tree of ["test", "tests"]) dirs.add(posix14.join(...prefix, tree, ...below3));
+    for (const tree of ["test", "tests"]) dirs.add(posix15.join(...prefix, tree, ...below3));
   }
   return dirs;
 }
 function namesakesOf(source2, testFiles3) {
   const language = languageOf(source2);
   if (language === null) return [];
-  const name3 = posix14.basename(source2).replace(/\.[^.]+$/, "");
+  const name3 = posix15.basename(source2).replace(/\.[^.]+$/, "");
   if (name3 === "index") return [];
   const named4 = [...new Set(testFiles3)].filter(
     (path) => path !== source2 && testedName(path, language) === name3
   );
   const dirs = conventionalDirs(source2);
-  const near = named4.filter((path) => dirs.has(posix14.dirname(path)));
+  const near = named4.filter((path) => dirs.has(posix15.dirname(path)));
   if (near.length > 0) return near;
   return named4.length === 1 ? named4 : [];
 }
@@ -62512,7 +62538,7 @@ var init_scheduler2 = __esm({
         this.#ledger?.claims.shift(ms2);
         this.#groups.shift(ms2);
         this.#slowRelease.shift(ms2);
-        this.#yields.shift(ms2);
+        this.#yields.shift(ms2, at2, this.#context ?? void 0);
       }
       /**
        * Review 0.1.524 B1: the start this scheduler's daemon stored on the
@@ -74139,14 +74165,14 @@ var init_install2 = __esm({
 
 // src/core/lint/provider/oxlint/configs.ts
 import { existsSync as existsSync53, readdirSync as readdirSync38, readFileSync as readFileSync61 } from "node:fs";
-import { basename as basename32, dirname as dirname57, join as join141, posix as posix15, relative as relative26, sep as sep29 } from "node:path";
+import { basename as basename32, dirname as dirname57, join as join141, posix as posix16, relative as relative26, sep as sep29 } from "node:path";
 function isOxlintConfigInput(path) {
   const name3 = basename32(path);
   return CONFIG_NAMES.includes(name3) || ROOT_INPUTS.includes(path);
 }
 function configIn(root, dir2) {
   for (const name3 of CONFIG_NAMES) {
-    if (existsSync53(join141(root, dir2, name3))) return toRelative2(posix15.join(dir2, name3));
+    if (existsSync53(join141(root, dir2, name3))) return toRelative2(posix16.join(dir2, name3));
   }
   return null;
 }
@@ -74200,10 +74226,10 @@ function configFacts(root, config) {
     importPlugin ||= usesImport(json3);
     javascript ||= [json3, ...overridesOf(json3)].some((c) => strings6(c.jsPlugins).length > 0);
     for (const entry4 of strings6(json3.jsPlugins)) {
-      if (entry4.startsWith(".")) jsPlugins.push(toRelative2(posix15.join(posix15.dirname(path), entry4)));
+      if (entry4.startsWith(".")) jsPlugins.push(toRelative2(posix16.join(posix16.dirname(path), entry4)));
     }
     for (const base of strings6(json3.extends))
-      visit2(toRelative2(posix15.join(posix15.dirname(path), base)));
+      visit2(toRelative2(posix16.join(posix16.dirname(path), base)));
   };
   visit2(config);
   return { files: files5, importPlugin, jsPlugins, javascript };
@@ -74284,7 +74310,7 @@ function stringEnd(text3, start2) {
 }
 function chainOf(root, file) {
   const chain = [];
-  for (let dir2 = posix15.dirname(file); ; dir2 = posix15.dirname(dir2)) {
+  for (let dir2 = posix16.dirname(file); ; dir2 = posix16.dirname(dir2)) {
     const here = dir2 === "." ? "" : dir2;
     const config = configIn(root, here);
     chain.push([here, config]);
@@ -78281,7 +78307,9 @@ function overrunOf(ref3, pending, run7, row2, now) {
   if (file === void 0) return {};
   const overrun = {
     path: ref3.path,
-    ranMs: Math.max(0, now - run7.startedAt),
+    // Review 0.1.567 B2: the age counts from the start the daemon moved by calendar steps, the
+    // threshold's and the deadline's; the run row's `startedAt` stays the stored provenance.
+    ranMs: Math.max(0, now - tier.startedAt),
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline
@@ -86995,6 +87023,18 @@ init_file_class();
 init_header();
 init_text();
 
+// src/cli/listing-hold.ts
+import { posix as posix12 } from "node:path";
+function listingMayChangeClosures(store, worktreeId, revision, refined, rows) {
+  if (refined === null || refined === void 0) return false;
+  if (rows.some((row2) => row2 === void 0 || row2.revision > refined)) return true;
+  return store.revisions.range(worktreeId, refined, revision).some((pending) => pending.changes.some(reresolves));
+}
+function reresolves(change3) {
+  if (change3.oldHash === null || change3.newHash === null) return true;
+  return posix12.basename(change3.path) === "package.json";
+}
+
 // src/cli/wait/synced.ts
 function passReached(sync, revision, fallback2) {
   if (sync.state === "synced") return holdsPass(revision, sync.revision);
@@ -87060,13 +87100,18 @@ function tally(store, worktreeId, files5, states, keys, fixed) {
   const ids = files5 === null ? [...rows.keys()] : [...new Set(files5.map(testFileId))];
   const byClass = { current: 0, pending: 0, stale: 0, unknown: 0 };
   for (const id of ids) byClass[fileClassOf(rows.get(id), checks.get(id) ?? [])]++;
+  const listingHolds = header2.runnerPartPending === true && (!fixed || files5 === null || listingMayChangeClosures(
+    store,
+    worktreeId,
+    header2.revision,
+    header2.refinedRevision,
+    ids.map((id) => rows.get(id))
+  ));
   const classes = {
     revision: header2.revision,
     testFiles: ids.length,
     byClass,
-    // Row 011-398 (gh-232): a pending listing holds no fixed named set, whose files the
-    // daemon's pass already classed; an awaited install holds every set.
-    unlisted: header2.runnerPartPending === true && !(fixed && files5 !== null) || header2.awaitingInstall === true
+    unlisted: listingHolds || header2.awaitingInstall === true
   };
   return { classes, ids, rows, checks };
 }
@@ -88277,7 +88322,7 @@ import { isAbsolute as isAbsolute17, relative as relative7, resolve as resolve15
 
 // src/cli/retry-unlisted.ts
 import { statSync as statSync21 } from "node:fs";
-import { join as join66, posix as posix12 } from "node:path";
+import { join as join66, posix as posix13 } from "node:path";
 init_policy2();
 init_runner2();
 init_glob();
@@ -88345,7 +88390,7 @@ function includes(project, rel2) {
   return createInputMatcher(project.include)(from);
 }
 function projectPath(project, rel2) {
-  return posix12.relative(project.cwd ?? "", rel2);
+  return posix13.relative(project.cwd ?? "", rel2);
 }
 
 // src/cli/stored-closures.ts
@@ -104555,12 +104600,12 @@ function readOrEmpty(path) {
 init_policy2();
 init_json();
 init_glob();
-import { posix as posix16 } from "node:path";
+import { posix as posix17 } from "node:path";
 function excludeInto(runners2, glob2, files5, isVitest) {
   const into = [];
   if (runners2.vitest && files5.some(isVitest)) into.push({ runner: "vitest", glob: glob2 });
   for (const p of runners2.nodeTest) {
-    const lists = matcher2(p.include.map((g2) => posix16.join(p.cwd, g2)));
+    const lists = matcher2(p.include.map((g2) => posix17.join(p.cwd, g2)));
     if (!files5.some(lists)) continue;
     const relative36 = p.cwd === "" ? glob2 : glob2.startsWith(`${p.cwd}/`) ? glob2.slice(p.cwd.length + 1) : null;
     if (relative36 !== null) into.push({ runner: "nodeTest", project: p.name, glob: relative36 });
@@ -104575,7 +104620,7 @@ function excludeKeys(proposal) {
 }
 function excludeTargets(plan2, testFiles3, globs4) {
   const cwd = new Map(plan2.runners.nodeTest.map((p) => [p.name, p.cwd]));
-  const of = (t) => t.runner === "vitest" ? t.glob : posix16.join(cwd.get(t.project) ?? "", t.glob);
+  const of = (t) => t.runner === "vitest" ? t.glob : posix17.join(cwd.get(t.project) ?? "", t.glob);
   return globs4.flatMap((glob2) => {
     const group = plan2.slow.groups.find((g2) => g2.exclude?.globs.includes(glob2) === true);
     if (group?.exclude != null) return group.exclude.into.filter((t) => of(t) === glob2);
@@ -104642,7 +104687,7 @@ function matcher2(globs4) {
 
 // src/cli/setup/gates.ts
 import { readFileSync as readFileSync74, writeFileSync as writeFileSync22 } from "node:fs";
-import { posix as posix17 } from "node:path";
+import { posix as posix18 } from "node:path";
 var GATE_WAIT_MS = 11e4;
 var BEGIN2 = /^<!-- squeal:begin v\d+/;
 var END4 = /^<!-- squeal:end -->/;
@@ -104670,7 +104715,7 @@ function commandPattern(nodeTest) {
   return new RegExp(`(?<![\\w-])(?:${commands2.join("|")})`);
 }
 function isInstructionFile(path) {
-  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix17.basename(path));
+  return ["AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"].includes(posix18.basename(path));
 }
 function isAgentFile(path) {
   return /^\.(claude|agents|codex)\//.test(path) && path.endsWith(".md");
@@ -104883,11 +104928,11 @@ import { join as join162 } from "node:path";
 
 // src/cli/setup/candidates.ts
 init_glob();
-import { posix as posix20 } from "node:path";
+import { posix as posix21 } from "node:path";
 
 // src/cli/setup/build-outputs.ts
 init_json();
-import { join as join159, posix as posix19 } from "node:path";
+import { join as join159, posix as posix20 } from "node:path";
 
 // src/cli/setup/repo.ts
 init_policy2();
@@ -104896,15 +104941,15 @@ init_git_layout();
 init_json();
 init_glob();
 import { existsSync as existsSync61, readFileSync as readFileSync75 } from "node:fs";
-import { join as join158, posix as posix18 } from "node:path";
+import { join as join158, posix as posix19 } from "node:path";
 async function readRepoFacts(root) {
   const tracked = splitNul(await runGit(root, ["ls-files", "-z"]));
   const manifests = [];
   for (const path of tracked) {
-    if (posix18.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
+    if (posix19.basename(path) !== "package.json" || path.split("/").includes("node_modules"))
       continue;
     const value = readJson3(join158(root, path));
-    if (isRecord(value)) manifests.push({ dir: posix18.dirname(path).replace(/^\.$/, ""), value });
+    if (isRecord(value)) manifests.push({ dir: posix19.dirname(path).replace(/^\.$/, ""), value });
   }
   return { root, tracked, manifests, testFiles: listTestFiles3(root, tracked) };
 }
@@ -104923,7 +104968,7 @@ function readText(path) {
   }
 }
 function nearestManifest(facts, dir2) {
-  for (let d = dir2; ; d = posix18.dirname(d)) {
+  for (let d = dir2; ; d = posix19.dirname(d)) {
     const key3 = d === "." ? "" : d;
     const found4 = facts.manifests.find((m) => m.dir === key3);
     if (found4 !== void 0) return found4;
@@ -105058,7 +105103,7 @@ function fieldCandidates(manifest) {
       const dir2 = rule3 === "files" ? /\.\w+$/.test(clean) || /[*?{[]/.test(clean) ? null : clean : parts3.length > 1 ? parts3[0] : null;
       if (dir2 === null || dir2 === "" || dir2 === "..") continue;
       found4.push({
-        path: posix19.join(manifest.dir, dir2),
+        path: posix20.join(manifest.dir, dir2),
         rule: rule3,
         detail: `${where3} ${rule3} "${value}"`,
         weak: rule3 === "files"
@@ -105081,11 +105126,11 @@ function buildCandidates(facts, manifest) {
     for (const part2 of text3.split(/&&|;|\|\|/)) {
       const words = part2.trim().split(/\s+/);
       const flag3 = words.findIndex((w2) => ["--outDir", "--outdir", "-o"].includes(w2));
-      let out2 = flag3 === -1 ? null : posix19.join(manifest.dir, words[flag3 + 1] ?? "");
+      let out2 = flag3 === -1 ? null : posix20.join(manifest.dir, words[flag3 + 1] ?? "");
       if (flag3 === -1 && TSCONFIG_COMPILERS.has(words[0] ?? "")) {
         const project = words.findIndex((w2) => w2 === "-p" || w2 === "--project");
         const tsconfig = project === -1 ? "tsconfig.json" : words[project + 1] ?? "tsconfig.json";
-        out2 = outDir(facts, posix19.join(manifest.dir, tsconfig), 0);
+        out2 = outDir(facts, posix20.join(manifest.dir, tsconfig), 0);
       }
       if (out2 === null || out2 === "." || out2 === "") continue;
       const path = out2.replace(/\/+$/, "");
@@ -105100,16 +105145,16 @@ function buildCandidates(facts, manifest) {
   return found4;
 }
 function outDir(facts, tsconfig, depth) {
-  const path = tsconfig.endsWith(".json") ? tsconfig : posix19.join(tsconfig, "tsconfig.json");
+  const path = tsconfig.endsWith(".json") ? tsconfig : posix20.join(tsconfig, "tsconfig.json");
   const text3 = readText(join159(facts.root, path));
   if (text3 === null || depth > 4) return null;
   const parsed3 = readJson3(join159(facts.root, path));
   const options = isRecord(parsed3) ? parsed3.compilerOptions : null;
   const dir2 = isRecord(options) && typeof options.outDir === "string" ? options.outDir : null;
   const value = dir2 ?? /"outDir"\s*:\s*"([^"]+)"/.exec(text3)?.[1] ?? null;
-  if (value !== null) return posix19.join(posix19.dirname(path), value);
+  if (value !== null) return posix20.join(posix20.dirname(path), value);
   const extended = /"extends"\s*:\s*"(\.[^"]+)"/.exec(text3)?.[1];
-  return extended === void 0 ? null : outDir(facts, posix19.join(posix19.dirname(path), extended), depth + 1);
+  return extended === void 0 ? null : outDir(facts, posix20.join(posix20.dirname(path), extended), depth + 1);
 }
 async function namedCandidates(facts, manifest, files5, found4) {
   const literals = files5.map((file) => ({ file, strings: stringLiterals(facts, file) }));
@@ -105124,7 +105169,7 @@ async function namedCandidates(facts, manifest, files5, found4) {
   const out2 = [];
   for (const dir2 of [.../* @__PURE__ */ new Set([...inPackage, ...found4.map((f) => f.path)])].sort()) {
     const hits = literals.flatMap(({ file, strings: strings8 }) => {
-      const hit = strings8.find((s) => names6(facts, posix19.dirname(file), manifest.dir, s, dir2));
+      const hit = strings8.find((s) => names6(facts, posix20.dirname(file), manifest.dir, s, dir2));
       return hit === void 0 ? [] : [{ file, hit }];
     });
     if (hits.length === 0) continue;
@@ -105144,10 +105189,10 @@ async function ignoredAncestors(facts, pkg, literals) {
   for (const { file, strings: strings8 } of literals) {
     for (const s of strings8) {
       if (!s.includes("/") || s.startsWith("/") || s.includes("${")) continue;
-      const bases4 = /^\.\.?\//.test(s) ? [posix19.dirname(file)] : [posix19.dirname(file), pkg, ""];
+      const bases4 = /^\.\.?\//.test(s) ? [posix20.dirname(file)] : [posix20.dirname(file), pkg, ""];
       for (const base of bases4) {
-        const path = posix19.join(base, s);
-        if (!path.startsWith("../")) chains.add(posix19.dirname(path));
+        const path = posix20.join(base, s);
+        if (!path.startsWith("../")) chains.add(posix20.dirname(path));
       }
     }
   }
@@ -105172,7 +105217,7 @@ function stringLiterals(facts, file) {
 }
 function names6(facts, from, pkg, s, dir2) {
   if (s === "" || s.startsWith("/") || s.includes("${")) return false;
-  const under5 = (base) => posix19.join(base, s).startsWith(`${dir2}/`);
+  const under5 = (base) => posix20.join(base, s).startsWith(`${dir2}/`);
   if (/^\.\.?\//.test(s) && under5(from)) return true;
   if (![from, pkg, ""].some(under5)) return false;
   const tail = s.replace(/^(\.\.?\/)+/, "");
@@ -105187,7 +105232,7 @@ var NODE_TEST3 = "node:test project";
 async function slowCandidates(facts, policy, runners2) {
   const projects2 = runners2.nodeTest.map((p) => ({
     name: p.name,
-    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix20.join(p.cwd, g2)))),
+    files: facts.tracked.filter(globMatcher(p.include.map((g2) => posix21.join(p.cwd, g2)))),
     slow: policy.nodeTest.some((q) => q.name === p.name && q.slow === true)
   }));
   const universe = [.../* @__PURE__ */ new Set([...facts.testFiles.paths, ...projects2.flatMap((p) => p.files)])];
@@ -105197,7 +105242,7 @@ async function slowCandidates(facts, policy, runners2) {
   };
   for (const file of universe) {
     if (file.split("/").slice(0, -1).includes("e2e")) add3(file, "under a directory named e2e");
-    if (posix20.basename(file).includes(".e2e.")) add3(file, "named *.e2e.*");
+    if (posix21.basename(file).includes(".e2e.")) add3(file, "named *.e2e.*");
   }
   const known4 = new Set(universe);
   const unresolvedScripts = [];
@@ -105217,7 +105262,7 @@ async function slowCandidates(facts, policy, runners2) {
   for (const file of universe) if (isDeclared(file)) add3(file, "declared slow");
   const byDir = /* @__PURE__ */ new Map();
   for (const file of [...reasons.keys()].sort()) {
-    const dir2 = posix20.dirname(file);
+    const dir2 = posix21.dirname(file);
     byDir.set(dir2, [...byDir.get(dir2) ?? [], file]);
   }
   const outputs = /* @__PURE__ */ new Map();
@@ -105263,7 +105308,7 @@ function scriptFiles(facts, manifest, name3, universe, depth) {
   const parsed3 = parseTestScript(text3);
   if (parsed3 !== null && typeof parsed3 !== "string") {
     return facts.tracked.filter(
-      globMatcher(parsed3.include.map((g2) => posix20.join(manifest.dir, g2)))
+      globMatcher(parsed3.include.map((g2) => posix21.join(manifest.dir, g2)))
     );
   }
   const npm = /^npm run (\S+)(?: (?:-w|--workspace)(?: |=)(\S+))?\s*$/.exec(text3);
@@ -105273,7 +105318,7 @@ function scriptFiles(facts, manifest, name3, universe, depth) {
   }
   const vitest = /^vitest run((?: [^-\s]\S*)+)\s*$/.exec(text3);
   if (vitest !== null) {
-    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix20.join(manifest.dir, p));
+    const prefixes = vitest[1].trim().split(/\s+/).map((p) => posix21.join(manifest.dir, p));
     return universe.filter(
       (file) => prefixes.some((p) => file === p || file.startsWith(`${p.replace(/\/$/, "")}/`))
     );
@@ -105366,7 +105411,7 @@ init_config();
 init_config_values();
 init_discover();
 init_command();
-import { posix as posix21 } from "node:path";
+import { posix as posix22 } from "node:path";
 var CONFIG_NAMES2 = /* @__PURE__ */ new Set([
   "pytest.toml",
   ".pytest.toml",
@@ -105391,7 +105436,7 @@ function seedPytest(root, tracked, env) {
     const nested = dirs.filter((d) => d !== dir2 && (dir2 === "" || d.startsWith(`${dir2}/`)));
     const entry4 = seededEntry(name3, dir2, config, nested);
     projects2.push(entry4);
-    const from = config === null ? `${posix21.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
+    const from = config === null ? `${posix22.join(dir2, "tests")}/ beside pyproject.toml` : rel(root, config);
     notes.push(`seeded pytest project "${name3}" from ${from}`);
     const project = { ...entry4, args: [], env: {} };
     const refused = refusedFlags(inheritedArgs(found4, env), project);
@@ -105419,13 +105464,13 @@ function seededEntry(name3, dir2, config, nested) {
   const pythonFiles = value("python_files") ?? PYTHON_FILES2;
   const bases4 = testpaths.length === 0 ? [""] : testpaths;
   const include = bases4.flatMap(
-    (base) => pythonFiles.map((pattern2) => posix21.join(base, "**", pattern2))
+    (base) => pythonFiles.map((pattern2) => posix22.join(base, "**", pattern2))
   );
   const exclude = [
     ...defaultDiscoveryExcludes(include),
     ...testpaths.length === 0 ? [
       ...(value("norecursedirs") ?? NORECURSEDIRS2).map((d) => `**/${d}/**`),
-      ...nested.map((d) => `${posix21.relative(dir2, d)}/**`)
+      ...nested.map((d) => `${posix22.relative(dir2, d)}/**`)
     ] : []
   ];
   return {
@@ -105438,14 +105483,14 @@ function seededEntry(name3, dir2, config, nested) {
 function projectDirs(root, tracked) {
   const dirs = /* @__PURE__ */ new Set();
   for (const path of tracked) {
-    const name3 = posix21.basename(path);
+    const name3 = posix22.basename(path);
     if (!CONFIG_NAMES2.has(name3)) continue;
-    const dir2 = posix21.dirname(path) === "." ? "" : posix21.dirname(path);
+    const dir2 = posix22.dirname(path) === "." ? "" : posix22.dirname(path);
     if (SKIPPED3.test(dir2) || isDependencyPath(dir2)) continue;
     const cwd = toAbsolute(root, dir2);
     const config = findPytestConfig(root, cwd);
     const holds4 = config?.rootdir === cwd && config.holds === "pytest";
-    const tests2 = `${posix21.join(dir2, "tests")}/`;
+    const tests2 = `${posix22.join(dir2, "tests")}/`;
     if (holds4 || name3 === "pyproject.toml" && tracked.some((p) => p.startsWith(tests2))) {
       dirs.add(dir2);
     }
@@ -105453,7 +105498,7 @@ function projectDirs(root, tracked) {
   return [...dirs].sort();
 }
 function rel(root, config) {
-  return posix21.relative(root, config.path);
+  return posix22.relative(root, config.path);
 }
 
 // src/cli/setup/pytest.ts
@@ -105520,13 +105565,13 @@ function writePytestSeed(root, plan2) {
 init_policy2();
 init_runner2();
 init_json();
-import { posix as posix23 } from "node:path";
+import { posix as posix24 } from "node:path";
 
 // src/cli/setup/test-globs.ts
 init_policy2();
 init_glob();
 import { statSync as statSync36 } from "node:fs";
-import { join as join161, posix as posix22 } from "node:path";
+import { join as join161, posix as posix23 } from "node:path";
 function testFileUniverse(facts, projects2) {
   const inProjects = projects2.map(selects3);
   const inProject = (path) => inProjects.some((test) => test(path));
@@ -105536,7 +105581,7 @@ function projectFiles(facts, project) {
   return facts.tracked.filter(selects3(project));
 }
 function selects3(project) {
-  const under5 = (globs4) => matcher4(globs4.map((g2) => posix22.join(project.cwd ?? "", g2)));
+  const under5 = (globs4) => matcher4(globs4.map((g2) => posix23.join(project.cwd ?? "", g2)));
   const include = under5(project.include);
   const exclude = under5(project.exclude ?? []);
   return (path) => include(path) && !exclude(path);
@@ -105661,7 +105706,7 @@ function overlapFix(a, b, aFiles, bFiles) {
   if (wide === null || !covered) {
     return `keep each test file in one project: narrow the include of pytest project "${(wide ?? b).name}" or add the shared files to its exclude`;
   }
-  return `add "${posix23.relative(wide.cwd, narrow2.cwd)}/**" to the exclude of pytest project "${wide.name}"`;
+  return `add "${posix24.relative(wide.cwd, narrow2.cwd)}/**" to the exclude of pytest project "${wide.name}"`;
 }
 function under3(dir2, parent2) {
   return parent2 === "" || dir2 === parent2 || dir2.startsWith(`${parent2}/`);
@@ -112217,13 +112262,13 @@ import { relative as relative35, resolve as resolve43 } from "node:path";
 // src/core/reach/modules.ts
 init_lexer();
 import { existsSync as existsSync73, readFileSync as readFileSync80 } from "node:fs";
-import { join as join188, posix as posix25 } from "node:path";
+import { join as join188, posix as posix26 } from "node:path";
 
 // src/core/reach/chains.ts
 init_compare();
 
 // src/core/reach/names.ts
-import { posix as posix24 } from "node:path";
+import { posix as posix25 } from "node:path";
 var HELPER_FOLDERS = /* @__PURE__ */ new Set([
   "test",
   "tests",
@@ -112254,11 +112299,11 @@ function suffixOf(name3) {
 var INDEX2 = /^index\.[^.]+$/;
 function areSiblings(a, b) {
   if (a === b) return false;
-  const [da, db] = [posix24.dirname(a), posix24.dirname(b)];
-  const [na, nb] = [posix24.basename(a), posix24.basename(b)];
+  const [da, db] = [posix25.dirname(a), posix25.dirname(b)];
+  const [na, nb] = [posix25.basename(a), posix25.basename(b)];
   if (da === db) return suffixOf(na) === suffixOf(nb) && na !== nb;
   if (INDEX2.test(na)) return false;
-  return na === nb && da !== "." && db !== "." && posix24.dirname(da) === posix24.dirname(db);
+  return na === nb && da !== "." && db !== "." && posix25.dirname(da) === posix25.dirname(db);
 }
 function siblingsAmong(file, targets) {
   return targets.filter((t) => t === file || areSiblings(t, file));
@@ -112363,7 +112408,7 @@ function moduleFacts(root, graph) {
       const walked = graph?.walk(test);
       const targets = walked === void 0 ? [] : targetsIn(walked.imports, path) ?? [];
       const wanted = new Set(
-        stars.filter((s) => s.startsWith(".")).map((s) => bare2(posix25.normalize(posix25.join(posix25.dirname(path), s))))
+        stars.filter((s) => s.startsWith(".")).map((s) => bare2(posix26.normalize(posix26.join(posix26.dirname(path), s))))
       );
       return new Set(targets.filter((t) => wanted.has(bare2(t))));
     }
@@ -112867,7 +112912,7 @@ function testReach(test, pairs, edits) {
 // src/core/reach/entries.ts
 init_compare();
 import { createHash as createHash46 } from "node:crypto";
-import { posix as posix26 } from "node:path";
+import { posix as posix27 } from "node:path";
 
 // src/core/reach/suggest.ts
 init_text();
@@ -113061,9 +113106,9 @@ function sum(parts3) {
   return out2;
 }
 function commonFolder(paths) {
-  let folder = posix26.dirname(paths[0] ?? "");
+  let folder = posix27.dirname(paths[0] ?? "");
   while (folder !== "." && !paths.every((p) => p.startsWith(`${folder}/`))) {
-    folder = posix26.dirname(folder);
+    folder = posix27.dirname(folder);
   }
   return folder;
 }
