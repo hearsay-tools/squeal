@@ -1,0 +1,227 @@
+{
+ "windows": [
+  {
+   "fromS": 0,
+   "toS": 300.1,
+   "runs": 60,
+   "picked": 533,
+   "finished": 495,
+   "finishedS": 1079,
+   "finishedEarlierAndRunAgain": 0,
+   "theirEarlierS": 0,
+   "cancelledWithUnfinished": [
+    {
+     "id": "56fcd369",
+     "startS": 201.9,
+     "endS": 303.8,
+     "files": 132,
+     "finished": 94,
+     "wallS": 101.9
+    }
+   ]
+  },
+  {
+   "fromS": 300.1,
+   "toS": 600.1,
+   "runs": 35,
+   "picked": 363,
+   "finished": 341,
+   "finishedS": 1335,
+   "finishedEarlierAndRunAgain": 10,
+   "theirEarlierS": 25,
+   "cancelledWithUnfinished": [
+    {
+     "id": "6841e77d",
+     "startS": 523.4,
+     "endS": 602.8,
+     "files": 53,
+     "finished": 35,
+     "wallS": 79.4
+    },
+    {
+     "id": "411bc313",
+     "startS": 591,
+     "endS": 601.7,
+     "files": 4,
+     "finished": 0,
+     "wallS": 10.7
+    }
+   ]
+  },
+  {
+   "fromS": 600.1,
+   "toS": 1656.2,
+   "runs": 101,
+   "picked": 1213,
+   "finished": 1213,
+   "finishedS": 5531,
+   "finishedEarlierAndRunAgain": 824,
+   "theirEarlierS": 2387,
+   "cancelledWithUnfinished": []
+  }
+ ],
+ "backlog": [
+  {
+   "id": "9f72d769",
+   "startS": 165.2,
+   "files": 200,
+   "wallS": 35.6,
+   "sumS": 92,
+   "effW": 2.58,
+   "meanPermits": 7.5
+  },
+  {
+   "id": "56fcd369",
+   "startS": 201.9,
+   "files": 132,
+   "wallS": 101.9,
+   "sumS": 80,
+   "effW": 0.78,
+   "meanPermits": 4.4
+  },
+  {
+   "id": "de3e9a1a",
+   "startS": 433.1,
+   "files": 200,
+   "wallS": 89.3,
+   "sumS": 299,
+   "effW": 3.35,
+   "meanPermits": 7.1
+  },
+  {
+   "id": "6841e77d",
+   "startS": 523.4,
+   "files": 53,
+   "wallS": 79.4,
+   "sumS": 70,
+   "effW": 0.89,
+   "meanPermits": 4.3
+  },
+  {
+   "id": "1873a9da",
+   "startS": 743.4,
+   "files": 200,
+   "wallS": 45.3,
+   "sumS": 88,
+   "effW": 1.94,
+   "meanPermits": 6.7
+  },
+  {
+   "id": "29510090",
+   "startS": 789.7,
+   "files": 200,
+   "wallS": 126.5,
+   "sumS": 205,
+   "effW": 1.62,
+   "meanPermits": 5.3
+  },
+  {
+   "id": "107147f1",
+   "startS": 917.2,
+   "files": 127,
+   "wallS": 125.2,
+   "sumS": 217,
+   "effW": 1.73,
+   "meanPermits": 5.5
+  },
+  {
+   "id": "43636fd6",
+   "startS": 1043.2,
+   "files": 89,
+   "wallS": 130.6,
+   "sumS": 237,
+   "effW": 1.82,
+   "meanPermits": 5.6
+  },
+  {
+   "id": "2a419dc0",
+   "startS": 1174.6,
+   "files": 90,
+   "wallS": 128.5,
+   "sumS": 354,
+   "effW": 2.75,
+   "meanPermits": 6.3
+  },
+  {
+   "id": "2f1efe56",
+   "startS": 1304,
+   "files": 39,
+   "wallS": 110.9,
+   "sumS": 209,
+   "effW": 1.89,
+   "meanPermits": 3.2
+  },
+  {
+   "id": "0f2bb0ee",
+   "startS": 1415.5,
+   "files": 97,
+   "wallS": 133.1,
+   "sumS": 1121,
+   "effW": 8.42,
+   "meanPermits": 8.7
+  },
+  {
+   "id": "09c33c68",
+   "startS": 1549.4,
+   "files": 31,
+   "wallS": 80,
+   "sumS": 589,
+   "effW": 7.37,
+   "meanPermits": 7.5
+  }
+ ],
+ "named": {
+  "server|packages/cezar/src/core/ci-tools-definitions-validation.test.ts": [
+   {
+    "id": "89a77ca2",
+    "startS": 309.7,
+    "endS": 330.9,
+    "files": 4,
+    "done": true
+   },
+   {
+    "id": "09c33c68",
+    "startS": 1549.4,
+    "endS": 1629.4,
+    "files": 31,
+    "done": true
+   }
+  ],
+  "server|packages/cezar/src/workflows/immediate-delivery.test.ts": [
+   {
+    "id": "052d15d8",
+    "startS": 331.4,
+    "endS": 357.8,
+    "files": 1,
+    "done": true
+   },
+   {
+    "id": "09c33c68",
+    "startS": 1549.4,
+    "endS": 1629.4,
+    "files": 31,
+    "done": true
+   }
+  ]
+ },
+ "smallTiers": [
+  {
+   "fromS": 0,
+   "tiers": 50,
+   "files": 193,
+   "runLoopFiles": 181
+  },
+  {
+   "fromS": 300.1,
+   "tiers": 29,
+   "files": 106,
+   "runLoopFiles": 96
+  },
+  {
+   "fromS": 600.1,
+   "tiers": 85,
+   "files": 332,
+   "runLoopFiles": 320
+  }
+ ]
+}

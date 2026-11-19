@@ -1,0 +1,4 @@
+Revision: 3 · c11e4edf + 3, dirty
+Selected: packages/cezar/src/workflows/immediate-delivery.test.ts
+Named test files at revision 3: no known failures; 1 test file, each with a current result, after 59.7 s. Worktree: known failures 0; not current: 793 of 1931 test files (4 running, 789 queued), 12506 tests (28 running, 12478 queued)
+named_start=1795071283382 named_end=1795071343272 rc=0

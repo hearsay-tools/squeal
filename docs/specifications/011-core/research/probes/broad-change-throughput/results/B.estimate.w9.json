@@ -1,0 +1,35 @@
+{
+ "W": 9,
+ "gateW": 11,
+ "drift": {
+  "files": 1193,
+  "storedS": 5089,
+  "afterS": 5289,
+  "unknownAfterS": 7
+ },
+ "vitest": {
+  "files": 1205,
+  "known": 1193,
+  "sumS": 5115,
+  "longestS": 27,
+  "e_gate": 465,
+  "e_serial": 568,
+  "e_tiers": 653,
+  "tiers": 9
+ },
+ "nodeTest": {
+  "files": 8,
+  "known": 8,
+  "sumS": 236,
+  "longestS": 157,
+  "e_gate": 157,
+  "e_serial": 59,
+  "e_tiers": 219,
+  "tiers": 2
+ },
+ "all": {
+  "e_gate": 465,
+  "e_tiers": 653,
+  "e_serial": 568
+ }
+}
