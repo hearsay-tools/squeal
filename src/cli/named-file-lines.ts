@@ -25,6 +25,7 @@ import type {
 } from "../core/types/standing.js";
 import type { StatusSnapshot } from "../core/types/status.js";
 import { fileEndId, withFileEnd } from "./named-file-end.js";
+import { unlistedText } from "./named-listing.js";
 import type { NamedSelection } from "./named-selection.js";
 import { namedStep, retriedId } from "./named-step.js";
 
@@ -190,8 +191,10 @@ export function filesCounted(parts: readonly (readonly [number, string])[]): str
  * Spec 005 D2's text for paths that select nothing; row 011-27 (gh-39): with
  * the directory each was resolved against and, when the same path from the
  * worktree root is a listed test file, that file, which it never selects.
+ * Row 023-26 (Q7): while the listing is not done, only that, for every path.
  */
 export function unmatchedText(selection: NamedSelection): string {
+  if (selection.unlisted !== undefined) return unlistedText(selection.unlisted);
   return selection.unmatchedPaths
     .map((p) => {
       const base =
