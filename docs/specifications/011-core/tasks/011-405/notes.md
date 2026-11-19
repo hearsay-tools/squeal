@@ -37,3 +37,10 @@ Worker 3a122b8e, wave 123 W2, 2026-11-19. Shape: repair.
 
 - New: `test/scheduler/overrun-beside-hung.test.ts`. `hungTier(5, 12)`, both tiers held. After one floor: one beside tier, one published overrun. After a second floor: two published overruns (H and mates; the beside tier's four files with `beside: true` and a deadline), still exactly the two runs since the edit, neither ended nor cancelled, no held file current; status line text, `standing.overrun.beside` and the JSON entry for a beside file; H keeps its own wording.
 - Red check: with `overrun.ts` at HEAD (b2620ba8b) the test fails ("expected [ … ] to have a length of 2 but got 1"); with the change it passes.
+
+## Checks run (2026-11-19)
+
+- `pnpm run lint`: pass (after `biome format` on the new test). `pnpm run typecheck`: pass.
+- No `test/e2e/**` file references the changed paths (grep of `test/e2e` for overrun, tier-text, yield-row, overrun-facts: none).
+- Direct, `timeout 900 pnpm exec vitest run` on `test/scheduler/overrun-*.test.ts`, `tier-yields-*.test.ts`, `decide-yields.test.ts`, `yield-remainder-text.test.ts`, `beside*.test.ts`, `test/status/yield-lines.test.ts`, `test/delivery/late-hung.test.ts`: 24 files, 121 tests passed. The 011-399 tests pass unchanged.
+- `squeal status --wait 540000 <changed paths>` (revision 6, three waits, host 17 to 22 of 24 cores busy): no verdict before the deadline. 13,779 affected checks passed (1,408 test files loaded); 586 test files still queued for CPU and 14 never run (lookup-only baseline); those are unknown, not passed. Known failures 2, both expected drift: `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them" (`cli/squeal.mjs differs from the build`). The brief forbids `pnpm run build` in a worker worktree; the coordinator's candidate build closes it.
