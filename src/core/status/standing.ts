@@ -29,6 +29,7 @@ import type { Store } from "../types/store.js";
 import type { RunRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { readHolds } from "./holds.js";
 import { claimantOf, liveStartedAt, openRuns, openRunsOf } from "./open-runs.js";
+import { overrunOf } from "./overrun-facts.js";
 import { retriedRuns } from "./retried.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { type Facts, once, setupsOf, unknownStanding } from "./standing-facts.js";
@@ -233,7 +234,7 @@ export function standingsOf(
       const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref)) && retried(ref, key);
       const pending: PendingReason =
         told.kind === "running"
-          ? { ...told, ...batchOf(ref) }
+          ? { ...told, ...batchOf(ref), ...overrunOf(ref, told, run, yieldReads.row, now) }
           : asRetry
             ? { ...told, retried: true }
             : told;

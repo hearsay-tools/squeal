@@ -15,7 +15,14 @@ import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
 import { plural, testFileText } from "../core/text.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import type { BatchPlace, FileEnd, LastYield, PoolWait, Standing } from "../core/types/standing.js";
+import type {
+  BatchPlace,
+  FileEnd,
+  FileOverrun,
+  LastYield,
+  PoolWait,
+  Standing,
+} from "../core/types/standing.js";
 import type { StatusSnapshot } from "../core/types/status.js";
 import { fileEndId, withFileEnd } from "./named-file-end.js";
 import type { NamedSelection } from "./named-selection.js";
@@ -243,6 +250,8 @@ export interface NamedFileEntry extends TestFileRef {
   readonly pool?: PoolWait;
   /** Row 011-274 (gh-111): its runner reported it ended while its tier runs, as its line names it. */
   readonly fileEnd?: FileEnd;
+  /** Row 011-399 (gh-233): its tier overruns and it may be hung, as its line names it. */
+  readonly overrun?: FileOverrun;
 }
 
 export function fileEntry(f: NamedFile, command: string, base?: string): NamedFileEntry {
@@ -274,11 +283,13 @@ export function fileEntry(f: NamedFile, command: string, base?: string): NamedFi
 /** The data behind a running or queued line's tier words (rows 011-209, 011-268), for `--json`. */
 function yieldFields(
   standing: Standing | undefined,
-): Pick<NamedFileEntry, "ended" | "lastYield" | "batch" | "pool"> {
+): Pick<NamedFileEntry, "ended" | "lastYield" | "batch" | "pool" | "overrun"> {
   if (standing?.kind !== "running" && standing?.kind !== "queued") return {};
   const ended = standing.kind === "running" ? standing.ended : undefined;
+  const overrun = standing.kind === "running" ? standing.overrun : undefined;
   return {
     ...(ended === undefined ? {} : { ended }),
+    ...(overrun === undefined ? {} : { overrun }),
     ...(standing.lastYield === undefined ? {} : { lastYield: standing.lastYield }),
     ...(standing.batch === undefined ? {} : { batch: standing.batch }),
     ...(standing.kind !== "queued" || standing.pool === undefined ? {} : { pool: standing.pool }),

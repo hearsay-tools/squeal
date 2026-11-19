@@ -1,9 +1,9 @@
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
-import { timeText } from "../text.js";
+import { durationText, timeText } from "../text.js";
 import type { EpochMs } from "../types/common.js";
 import { isSlowLane, SLOW_LANE_PREFIX } from "../types/runner.js";
 import { GROUP_LANE_PREFIX, laneGroup } from "../types/scheduler.js";
-import type { LastYield, WaitedRun } from "../types/standing.js";
+import type { FileOverrun, LastYield, WaitedRun } from "../types/standing.js";
 
 /*
  * Row 011-209 (`research/issue-91.md` F2 to F4, spec 011 C15): how a line
@@ -84,4 +84,34 @@ export function keptYieldText(last: LastYield): string {
 /** Rule C: `; no yield kept since the daemon started at 16:15:40`. */
 export function noKeptYieldText(since: EpochMs): string {
   return `; no yield kept since the daemon started at ${timeText(since)}`;
+}
+
+/** A last-known duration as the overrun words it: `5 ms`, `0.4 s`, `12 s`, `3 min 5 s`. */
+function usualText(ms: number): string {
+  if (ms < 100) return `${Math.max(1, Math.round(ms))} ms`;
+  if (ms < 10_000) return `${Math.round(ms / 100) / 10} s`;
+  return durationText(ms);
+}
+
+/** `600`, `12,000`: a ratio rounded to two significant digits. */
+function timesText(ratio: number): string {
+  const digits = Math.max(0, Math.floor(Math.log10(Math.max(1, ratio))) - 1);
+  const rounded = Math.round(ratio / 10 ** digits) * 10 ** digits;
+  return rounded.toLocaleString("en-US");
+}
+
+/**
+ * Row 011-399 (gh-233): `; it has run 4 min 2 s, about 600x its usual
+ * 0.4 s, so it may be hung; the lane runs its next tiers beside it, and
+ * its run's deadline is 16:30:12`. Nothing about its result changes; with
+ * no usual time known, the line says so.
+ */
+export function overrunText(o: FileOverrun): string {
+  const ran = `it has run ${durationText(o.ranMs, Math.floor)}`;
+  const usual =
+    o.usualMs === null || o.usualMs <= 0
+      ? "with no usual time known"
+      : `about ${timesText(o.ranMs / o.usualMs)}x its usual ${usualText(o.usualMs)}`;
+  const deadline = o.deadline === null ? "" : `, and its run's deadline is ${timeText(o.deadline)}`;
+  return `; ${ran}, ${usual}, so it may be hung; the lane runs its next tiers beside it${deadline}`;
 }
