@@ -12,6 +12,7 @@ import type {
 } from "../../types/common.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
+import { grantedCpu, refusedCpu } from "./cpu-wait.js";
 import type { Keyer } from "./keyer.js";
 import { type LintedPart, lintFiles, type PartFile, unknownPart } from "./lint-part.js";
 import { lintScope, readProgram, readQuiet, writeQuiet } from "./records.js";
@@ -119,7 +120,7 @@ async function partsOf(
       const wait = ctx.idleIn();
       if (wait > 0) return end(ctx.now() + wait);
     }
-    const slot = takeSlot(ctx.capacity(), part.kind);
+    const slot = takeSlot(ctx, part.kind);
     if (slot === WAIT_FOR_CAPACITY) return end(ctx.now() + CAPACITY_RECHECK_MS);
     try {
       const files = await readTexts(ctx, keyer, part.paths);
@@ -248,14 +249,18 @@ function firstOf(ctx: PartsContext, paths: readonly RelativePath[]): RelativePat
  * lane, or waits. With no pool, or one that failed, it runs ungranted. The
  * function returned gives the slot back.
  */
-function takeSlot(
-  capacity: LintCapacity | null,
-  kind: PartKind,
-): (() => void) | typeof WAIT_FOR_CAPACITY {
+function takeSlot(ctx: PartsContext, kind: PartKind): (() => void) | typeof WAIT_FOR_CAPACITY {
+  const capacity = ctx.capacity();
   if (capacity === null) return () => {};
   if (kind === "edit") return capacity.running(1);
   const lease = capacity.take(1, "slow", 1, "backlog");
-  if (lease === WAIT_FOR_CAPACITY) return WAIT_FOR_CAPACITY;
+  // Row 017-33: status tells a refusal with the numbers the pool read; a grant ends the wait.
+  const [meta, scope] = [ctx.store.meta, lintScope(ctx.worktreeId, ctx.tool)];
+  if (lease === WAIT_FOR_CAPACITY) {
+    refusedCpu(meta, scope, capacity.backgroundGate?.() ?? null, ctx.now());
+    return WAIT_FOR_CAPACITY;
+  }
+  grantedCpu(meta, scope);
   return () => lease?.release();
 }
 

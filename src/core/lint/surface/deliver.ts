@@ -261,7 +261,7 @@ export function registerLint(
         ...noticesOf(store, worktreeId),
       });
       const { failing, stale } = countsOf(states);
-      const linting = progressOf(store, worktreeId, states);
+      const linting = progressOf(store, worktreeId, states, at);
       return { v: 1, failing, stale, ...(linting === undefined ? {} : { linting }), ...reasons };
     }),
   );

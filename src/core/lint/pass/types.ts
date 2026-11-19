@@ -40,7 +40,13 @@ export interface LintSource {
  * The pool's side the pass uses (011 C10, agreed 2026-10-26): the
  * scheduler's own `TierCapacity`, shared, never closed by the pass.
  */
-export type LintCapacity = SharedCapacity;
+export type LintCapacity = SharedCapacity & {
+  /**
+   * Row 017-33: what the last look read against the background ceiling
+   * (`TierCapacity.backgroundGate`), so a refused part's wait is told.
+   */
+  backgroundGate?(): { readonly busy: number | null; readonly limit: number } | null;
+};
 
 export interface LintPassOptions {
   readonly worktreeId: WorktreeId;

@@ -1,8 +1,10 @@
 import { plural } from "../../text.js";
 import type { LintFinding } from "../../types/lint.js";
 import type {
+  LintCpuWait,
   LintNews,
   LintNewsEntry,
+  LintProgress,
   LintRegistration,
   LintStatus,
   LintSummary,
@@ -118,9 +120,19 @@ export function lintTitleWords(news: LintNews): string | null {
   return changes === 0 ? null : `${changes} lint ${changes === 1 ? "change" : "changes"}`;
 }
 
-/** `Lint: linting, 340 of 600 files.`, or that it has not started. */
-const lintingWords = ({ done, total }: { done: number; total: number }) =>
-  total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`;
+/**
+ * `Lint: linting, 340 of 600 files.`, or that it has not started; row
+ * 017-33: `; waiting for CPU (21 busy, limit 18)` while the pool refuses it.
+ */
+const lintingWords = ({ done, total, cpuWait }: LintProgress) =>
+  (total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`) +
+  (cpuWait === undefined ? "" : `; ${cpuWaitWords(cpuWait)}`);
+
+/** `waiting for CPU (21 busy, limit 18)`; without the busy CPUs when the pool read none. */
+function cpuWaitWords({ busy, limit }: LintCpuWait): string {
+  const busyWords = busy === null ? "" : `${Math.round(busy)} busy, `;
+  return `waiting for CPU (${busyWords}limit ${Math.round(limit * 100) / 100})`;
+}
 
 /** D8 Registration: one line, only while lint is on. */
 export function lintRegistrationLine(reg: LintRegistration, command: string): string {
