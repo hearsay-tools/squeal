@@ -14,9 +14,9 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
-import { caseOf, unrecordedWhy } from "./proof-case.js";
+import { caseOf } from "./proof-case.js";
 import { endOf, provedFiles } from "./proof-files.js";
-import { unnamedOf } from "./proof-inputs.js";
+import { seenReads } from "./proof-inputs.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
 import { rerunCommand, stopReruns } from "./proof-rerun.js";
@@ -174,10 +174,10 @@ async function prove(
       const changed = await changedPaths(common.root, base, head);
       const { imports, candidates } = importsOf({
         refs,
-        loadsOf,
         changed,
         testSide,
         source,
+        seen: await seenReads(common.root, refs, loadsOf),
       });
       const unused = unusedPaths(withPaths, refs.map(loadsOf));
       const sourceUnused = unusedPaths(given.source, [candidates]);
@@ -190,26 +190,11 @@ async function prove(
       const sides = sidesOf(kind, base, head);
       const red =
         proving.length === 0 ? null : await sideOf(common, sides.red, proving, testSide, source);
-      // Row 023-21 (fifth look 2): what an unchanged named test's runs read, checked after them.
-      const unnamed = () =>
-        unnamedOf({
-          root: common.root,
-          refs: proving.filter((ref) => !changed.has(ref.path)),
-          loadsOf,
-          changed,
-          settled: new Set([...testSide, ...source]),
-          unrecorded: unrecordedWhy(common),
-        });
-      const afterRed = await unnamed();
       // The green side decides only after a red side that failed on red evidence (row 023-22).
       const decided =
         red === null
           ? []
-          : proving.filter(
-              (ref) =>
-                !afterRed.has(testFileId(ref)) &&
-                redCounts(endOf(red.files, ref).end, args.redErrors),
-            );
+          : proving.filter((ref) => redCounts(endOf(red.files, ref).end, args.redErrors));
       await open.run(decided);
       // P9: after the green side, so a short budget cuts the control run, not the verdict.
       const control =
@@ -222,8 +207,7 @@ async function prove(
               source,
             )
           : null;
-      const late = await unnamed();
-      return { kind, red, control, imports, unused, sourceUnused, late };
+      return { kind, red, control, imports, unused, sourceUnused };
     },
   );
   const value = green.value;
@@ -243,7 +227,6 @@ async function prove(
       value?.imports ?? NO_IMPORTS.imports,
       base,
       args.redErrors,
-      value?.late ?? NO_IMPORTS.late,
     ),
   };
 }
@@ -251,7 +234,6 @@ async function prove(
 /** No changed imports read and no `--with` path unused: the green side keyed no named file. */
 const NO_IMPORTS = {
   imports: new Map(),
-  late: new Map(),
   unused: [] as RelativePath[],
   sourceUnused: [] as RelativePath[],
 } as const;

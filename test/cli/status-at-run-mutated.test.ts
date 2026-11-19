@@ -89,7 +89,12 @@ describe(
       expect(JSON.parse(atB.out).run, atB.err).toMatchObject({ stored: 1 });
       clean(f);
 
-      const proof = await prove(f, { files: [TEST.path], base: a, case: "source" }, options);
+      // Row 023-21 (D5.2, "A: every changed file"): the unchanged test names the changed data.
+      const proof = await prove(
+        f,
+        { files: [TEST.path], base: a, case: "source", source: ["data/a.txt"] },
+        options,
+      );
       expect(proof.code, proof.why).toBe(0);
       expect(proof.files[0]).toMatchObject({
         verdict: "proven",

@@ -26,10 +26,14 @@ export interface ImportsReport {
 /** One file's lines: the changed imports neither flag named, then those `--source` named. */
 export function importLines(imports: ChangedImports | null, report: ImportsReport): string[] {
   if (imports === null) return [];
+  const read = new Set(imports.read);
+  const each = imports.unsettled.map((path) =>
+    read.has(path) ? `${path} (the test read it)` : path,
+  );
   const lines =
-    imports.unsettled.length === 0
+    each.length === 0
       ? []
-      : [`  changed imports neither --with nor --source names: ${imports.unsettled.join(", ")}`];
+      : [`  changed files neither --with nor --source names: ${each.join(", ")}`];
   if (imports.sources.length === 0) return lines;
   const how =
     report.case === "source"
@@ -52,7 +56,7 @@ export function callLines(report: ImportsReport): string[] {
     ),
     ...report.sourceUnused.map(
       (path) =>
-        `Warning: --source ${path}: not a changed import of an unchanged named test; it settles nothing.`,
+        `Warning: --source ${path}: not a changed file between ${short(report.base)} and HEAD; it settles nothing.`,
     ),
   ];
 }

@@ -1,11 +1,9 @@
-import { type Conditions, hasConditions } from "../core/proof/conditions.js";
 import { defaultCase, type ProofCase } from "../core/proof/sides.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 
 /*
- * Spec 023 D5 (rows 023-08, 023-21): the proof's default case, and why an
- * unchanged named test's runs keep no record of their reads.
+ * Spec 023 D5 (rows 023-08, 023-21): the proof's default case.
  */
 
 /**
@@ -24,7 +22,10 @@ export function caseOf(
 ): ProofCase | { usage: string } {
   const cases = new Map<RelativePath, ProofCase | null>();
   for (const ref of refs)
-    cases.set(ref.path, defaultCase(ref.path, loads(ref), changed, named, source));
+    cases.set(
+      ref.path,
+      defaultCase(ref.path, loads(ref), changed, named, source) ?? flagCase(changed, source, named),
+    );
   const none = [...cases].filter(([, kind]) => kind === null).map(([path]) => path);
   if (none.length > 0)
     return {
@@ -41,17 +42,17 @@ export function caseOf(
 }
 
 /**
- * Row 023-21 (fifth look 2): why the sides' reads are not recorded: a
- * forced side (a condition, `--repeat`) keeps nothing, so it merges no
- * reads; `null` when they are.
+ * Row 023-21 (D5.2, "A: every changed file"): an unchanged named test whose
+ * keyed closure holds no changed file takes its case from the flags that
+ * named the changed files: `source` when one is a `--source` path, `test`
+ * when they are all `--with` paths; `null` when nothing changed.
  */
-export function unrecordedWhy(common: {
-  readonly conditions: Conditions;
-  readonly repeat: number;
-}): string | null {
-  if (hasConditions(common.conditions))
-    return "a side under a condition records no reads, so no changed file may be left unnamed";
-  if (common.repeat > 1)
-    return "a repeated side records no reads, so no changed file may be left unnamed";
-  return null;
+function flagCase(
+  changed: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath>,
+  named: ReadonlySet<RelativePath>,
+): ProofCase | null {
+  const paths = [...changed];
+  if (paths.some((path) => source.has(path))) return "source";
+  return paths.some((path) => named.has(path)) ? "test" : null;
 }

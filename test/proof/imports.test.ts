@@ -1,53 +1,62 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
-import { changedImports, importsOf, stops, unusedPaths } from "../../src/core/proof/imports.js";
-import { isRunnerConfig, unnamedInputs, unnamedReason } from "../../src/core/proof/inputs.js";
+import { importsOf, stops, unusedPaths } from "../../src/core/proof/imports.js";
 import { defaultCase, isTestSide, testSideCopies } from "../../src/core/proof/sides.js";
 
 /*
- * Row 023-21, spec 023 D5.2 as amended 2026-11-19 ("A: stop guessing";
- * `reviews/wave-14-fourth.md`, `wave-14-fifth.md`): every changed file an
- * unchanged named test loads stops the file unless `--with` or `--source`
- * names it, under `test/` too; `--source` beats the test-side name rule;
- * the inputs its runs read are checked after them.
+ * Row 023-21, spec 023 D5.2 as amended 2026-11-19 ("A: every changed
+ * file"; `reviews/wave-14-sixth.md`): when a named test is unchanged, every
+ * other changed file needs `--with` or `--source`; read marks are help only;
+ * `--source` beats the test-side name rule.
  */
 
 const TEST = "test/a.test.ts";
 const ref = { project: "", path: TEST };
-const LOADS = [TEST, "support/rows.ts", "src/value.ts", "test/helpers/make.ts", "support/rows.py"];
 const entry = (blob: string) => ({ mode: "100644", blob });
+const CHANGED = new Set([
+  "docs/notes.md",
+  "src/value.ts",
+  "support/old.ts",
+  "test/helpers/make.ts",
+]);
 
-describe("an unchanged test's changed imports (row 023-21)", () => {
-  it("keeps every changed import of an unchanged test, test folders and Python helpers included", () => {
-    const changed = new Set([
-      "support/rows.ts",
-      "src/value.ts",
-      "support/rows.py",
-      "test/helpers/make.ts",
-    ]);
-    expect(changedImports(TEST, LOADS, changed, new Set([TEST]))).toEqual([
-      "src/value.ts",
-      "support/rows.py",
-      "support/rows.ts",
-      "test/helpers/make.ts",
-    ]);
-    expect(changedImports(TEST, LOADS, new Set([TEST, "src/value.ts"]), new Set([TEST]))).toEqual(
-      [],
-    );
-  });
-
-  it("stops on each one neither flag names", () => {
+describe("an unchanged test's changed files (row 023-21)", () => {
+  it("lists every changed file but the named tests, whatever the test read; marks the read ones", () => {
     const answer = importsOf({
       refs: [ref],
-      loadsOf: () => LOADS,
-      changed: new Set(["support/rows.ts", "src/value.ts", "test/helpers/make.ts"]),
-      testSide: new Set([TEST, "support/rows.ts"]),
+      changed: CHANGED,
+      testSide: new Set([TEST, "test/helpers/make.ts"]),
       source: new Set(["src/value.ts"]),
+      seen: (_, path) => path === "support/old.ts",
     });
     const imports = answer.imports.get(testFileId(ref)) ?? null;
-    expect(imports).toEqual({ unsettled: ["test/helpers/make.ts"], sources: ["src/value.ts"] });
+    expect(imports).toEqual({
+      unsettled: ["docs/notes.md", "support/old.ts", "support/rows.py"],
+      sources: ["src/value.ts"],
+      read: ["support/old.ts"],
+    });
     expect(stops(imports)).toBe(true);
-    expect(answer.candidates).toEqual(["src/value.ts", "test/helpers/make.ts"]);
+    expect(answer.candidates).toEqual([...CHANGED].sort());
+  });
+
+  it("leaves a changed named test to the earlier rules, and runs once every file is named", () => {
+    const changedTest = importsOf({
+      refs: [ref],
+      changed: new Set([TEST, "src/value.ts"]),
+      testSide: new Set([TEST]),
+      source: new Set(),
+      seen: () => false,
+    });
+    expect(changedTest.imports.get(testFileId(ref))).toBeNull();
+    expect(changedTest.candidates).toEqual(["src/value.ts"]);
+    const named = importsOf({
+      refs: [ref],
+      changed: CHANGED,
+      testSide: new Set([TEST, "test/helpers/make.ts", "support/old.ts", "support/rows.py"]),
+      source: new Set(["src/value.ts", "docs/notes.md"]),
+      seen: () => true,
+    });
+    expect(stops(named.imports.get(testFileId(ref)) ?? null)).toBe(false);
     expect(stops(null)).toBe(false);
     expect(unusedPaths(["a.ts", "b.ts"], [["a.ts"]])).toEqual(["b.ts"]);
   });
@@ -64,40 +73,5 @@ describe("an unchanged test's changed imports (row 023-21)", () => {
     const changed = new Set(["test/value.ts"]);
     expect(defaultCase(TEST, [TEST, "test/value.ts"], changed, named)).toBe("test");
     expect(defaultCase(TEST, [TEST, "test/value.ts"], changed, named, source)).toBe("source");
-  });
-
-  it("counts the changed inputs a run read, and every changed runner config, unless named", () => {
-    const changed = new Set(["support/data.ts", "vitest.config.mjs", "src/value.ts", "README.md"]);
-    const settled = new Set([TEST, "src/value.ts"]);
-    expect(unnamedInputs(["support/data.ts", "src/value.ts"], changed, settled, null)).toEqual({
-      paths: ["support/data.ts", "vitest.config.mjs"],
-      unrecorded: null,
-    });
-    expect(
-      unnamedInputs(["src/value.ts"], new Set(["src/value.ts", "README.md"]), settled, null),
-    ).toBeNull();
-    // Unrecorded reads: every changed path the call did not name counts.
-    const none = unnamedInputs(null, changed, settled, "not recorded");
-    expect(none).toEqual({
-      paths: ["README.md", "support/data.ts", "vitest.config.mjs"],
-      unrecorded: "not recorded",
-    });
-    expect(unnamedReason({ paths: ["a.ts"], unrecorded: null })).toBe(
-      "changed input a.ts was not named",
-    );
-    expect(unnamedReason(none ?? { paths: [], unrecorded: null })).toBe(
-      "changed inputs README.md, support/data.ts, vitest.config.mjs were not named; not recorded",
-    );
-  });
-
-  it.each([
-    ["vitest.config.mjs", true],
-    ["pkg/vite.config.ts", true],
-    ["squeal.config.json", true],
-    ["pyproject.toml", true],
-    ["tests/conftest.py", true],
-    ["src/value.ts", false],
-  ])("takes %s for a runner config: %s", (path, config) => {
-    expect(isRunnerConfig(path)).toBe(config);
   });
 });

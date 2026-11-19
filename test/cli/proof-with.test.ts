@@ -156,7 +156,7 @@ const CASES: readonly Case[] = [
   },
 ];
 
-describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)", {
+describe("squeal proof: an unchanged test's changed files (row 023-21, D5.2)", {
   timeout: 300_000,
 }, () => {
   it.each(CASES)("stops on $name; the control with the right flags reads not red", async (c) => {
@@ -175,7 +175,7 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
     expect(result.report.runs).toBe(0);
     expect(result.files[0]).toMatchObject({
       verdict: "not comparable",
-      reason: `the test is unchanged since ${short(base)}; changed imports: ${c.unsettled.join(", ")}`,
+      reason: `the test is unchanged since ${short(base)}; changed files not named: ${c.unsettled.join(", ")}`,
       changedImports: { unsettled: c.unsettled, sources: [], stopped: true },
     });
     const control = await prove(f, { files: [test], base, ...c.control }, options);
@@ -192,7 +192,7 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
     const result = await prove(f, { files: [TEST], base, json: false });
     expect(result.code, result.why).toBe(3);
     expect(result.out).toContain(
-      `  changed imports neither --with nor --source names: ${VALUE}, ${ROWS}\n`,
+      `  changed files neither --with nor --source names: ${VALUE} (the test read it), ${ROWS} (the test read it)\n`,
     );
     expect(result.out).toContain(
       `Squeal does not tell test code from product code. If they are product code, rerun: squeal proof ${TEST} --base ${base} --source ${VALUE} --source ${ROWS}\n`,
@@ -323,7 +323,7 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
       `Warning: --with support/unused.ts: no named test imports it at ${short(head)}.\n`,
     );
     expect(result.out).toContain(
-      "Warning: --source src/main.ts: not a changed import of an unchanged named test; it settles nothing.\n",
+      `Warning: --source src/main.ts: not a changed file between ${short(base)} and HEAD; it settles nothing.\n`,
     );
     clean(f);
   });

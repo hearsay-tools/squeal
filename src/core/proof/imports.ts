@@ -4,82 +4,72 @@ import type { TestFileRef } from "../types/keys.js";
 
 /*
  * Spec 023 D5.2, amended 2026-11-19 (the human on issue #247, "A: explain
- * + --with"; last, after the fourth review of row 023-21, "A: stop
- * guessing", `reviews/wave-14-fourth.md`): Squeal does not guess whether a
- * changed import is test or product code. When a named test is unchanged
- * in `base..HEAD`, every changed file its closure loads (directly or
- * through other files, added ones too) stops the file unless `--with` or
- * `--source` names it: exit 3, the files listed, with the exact reruns.
- * No name rule exempts one (`reviews/wave-14-fifth.md` 1): a changed
- * `test/rows.ts` stops like any other. Earlier rules that read test code
- * from names or imports are withdrawn: each review found test code that
- * read as product code and gave a false `proven`. The closure here is the
- * keyed one; `inputs.ts` checks what the runs read after they ran.
+ * + --with"; "A: stop guessing"; last, after `reviews/wave-14-sixth.md`,
+ * "A: every changed file"): when a named test is unchanged between the
+ * sides, every file that changed between the two commits (renames as both
+ * paths, deletions too), other than the named test files, must be named
+ * with `--with` (test code, copied from the test version) or `--source`
+ * (product code, each side's code version). Otherwise the file stops
+ * before any run: exit 3, the unnamed files listed. No record of what a
+ * test used is complete (folder listings, files a config imports, declared
+ * inputs, coverage off, child processes); a file that did not change is
+ * the same on both sides, so this set is complete by construction. The
+ * files Squeal saw the test read are marked, as help only: a mark never
+ * settles a file.
  */
 
-/** A named test's changed code-side imports while the test itself is unchanged. */
+/** A named test's changed files while the test itself is unchanged. */
 export interface ChangedImports {
   /** Named by neither `--with` nor `--source`: with any, the file does not run. */
   readonly unsettled: readonly RelativePath[];
   /** Named by `--source`: product code, taken from each side's code version. */
   readonly sources: readonly RelativePath[];
+  /** Of `unsettled`, those Squeal saw the test read (its keyed closure or recorded reads); help only. */
+  readonly read: readonly RelativePath[];
 }
 
 export interface ImportsInput {
   readonly refs: readonly TestFileRef[];
-  /** Each named file's closure in the green checkout at `HEAD`. */
-  readonly loadsOf: (ref: TestFileRef) => readonly RelativePath[];
   /** The diff `base..HEAD`. */
   readonly changed: ReadonlySet<RelativePath>;
-  /** The named files and the `--with` paths: copied from the test version. */
+  /** The named files and the `--with` paths. */
   readonly testSide: ReadonlySet<RelativePath>;
   /** The `--source` paths. */
   readonly source: ReadonlySet<RelativePath>;
+  /** Whether Squeal saw `ref` read `path` (help only). */
+  readonly seen: (ref: TestFileRef, path: RelativePath) => boolean;
 }
 
 export interface ImportsAnswer {
-  /** Each named file's changed imports, by `testFileId`; `null` when it changed or none did. */
+  /** Each named file's changed files, by `testFileId`; `null` when it changed itself. */
   readonly imports: ReadonlyMap<string, ChangedImports | null>;
-  /** Every changed code-side import of an unchanged named file: what `--source` may name. */
+  /** The changed files other than the named ones: what `--source` may name. */
   readonly candidates: readonly RelativePath[];
 }
 
-/** Each named file's changed imports, split by `--source`. */
+/** Each named file's changed files, split by the flags. */
 export function importsOf(input: ImportsInput): ImportsAnswer {
+  const named = new Set(input.refs.map((ref) => ref.path));
+  const candidates = [...input.changed].filter((path) => !named.has(path)).sort();
   const imports = new Map<string, ChangedImports | null>();
-  const candidates = new Set<RelativePath>();
   for (const ref of input.refs) {
-    const code = changedImports(ref.path, input.loadsOf(ref), input.changed, input.testSide);
-    for (const path of code) candidates.add(path);
-    imports.set(
-      testFileId(ref),
-      code.length === 0
-        ? null
-        : {
-            unsettled: code.filter((path) => !input.source.has(path)),
-            sources: code.filter((path) => input.source.has(path)),
-          },
+    if (input.changed.has(ref.path)) {
+      imports.set(testFileId(ref), null);
+      continue;
+    }
+    const unsettled = candidates.filter(
+      (path) => !input.testSide.has(path) && !input.source.has(path),
     );
+    imports.set(testFileId(ref), {
+      unsettled,
+      sources: candidates.filter((path) => input.source.has(path)),
+      read: unsettled.filter((path) => input.seen(ref, path)),
+    });
   }
-  return { imports, candidates: [...candidates].sort() };
+  return { imports, candidates };
 }
 
-/**
- * The paths of `file`'s closure `loads` that `changed` holds, other than
- * the named files and `--with` paths (`testSide`), when `file` itself is
- * unchanged; empty otherwise. No name rule leaves one out.
- */
-export function changedImports(
-  file: RelativePath,
-  loads: readonly RelativePath[],
-  changed: ReadonlySet<RelativePath>,
-  testSide: ReadonlySet<RelativePath>,
-): RelativePath[] {
-  if (changed.has(file)) return [];
-  return [...new Set(loads)].filter((path) => changed.has(path) && !testSide.has(path)).sort();
-}
-
-/** Whether the file stops (exit 3, nothing run): a changed import neither flag names. */
+/** Whether the file stops (exit 3, nothing run): a changed file neither flag names. */
 export function stops(imports: ChangedImports | null): boolean {
   return imports !== null && imports.unsettled.length > 0;
 }

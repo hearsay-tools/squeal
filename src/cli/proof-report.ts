@@ -296,6 +296,7 @@ export function jsonProof(report: ProofReport): string {
           ? null
           : {
               unsettled: file.imports.unsettled,
+              read: file.imports.read,
               sources: file.imports.sources,
               stopped: stops(file.imports),
             },
