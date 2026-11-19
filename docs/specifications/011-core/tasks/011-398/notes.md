@@ -37,6 +37,7 @@ This text exists only in `src/cli/group-pending.ts:80` (`run <group> --wait`, th
 
 - New: `test/cli/named-unlisted-verdict.test.ts`. During an unlisted revision: named current passing test files exit 0 (wait); one with a known failure exits 1; a named source path exits 3 with the listing named; a snapshot gives 0 for test files and 3 for a source path; `fixedSelection` by path kind. Three of its five tests fail with the fix reverted (checked by hand).
 - Changed to the new no-run text: `test/status/next-step.test.ts`, `test/status/yield-lines.test.ts`, `test/status/outstanding.test.ts`, `test/cli/status-wait-reasons.test.ts`. The text with a run or a yield stays in `yield-lines.test.ts`, `tier-yields-text.test.ts`, `status-wait-unlisted-run.test.ts` and `group-yields.test.ts`.
+- `test/cli/wait-again.test.ts` (row 011-243's real unlisted wait): it named a current test file and expected exit 3 "unlisted". It now names a source path that selects that file, so the 011-243 text check stays. A new case shows that naming the test file itself passes. Squeal's affected run found this test, which the first grep missed.
 - No test or fixture expects the in-flight text without a run now. No eval fixture or parser quotes it (grep of `test/`, `evals/`, plugin skills).
 - e2e: no file under `test/e2e` imports or quotes a changed path or text. `control-wording.ts` and `run-triggers-control.test.ts` match the worktree-wide "not listed" texts, which did not change. No e2e file was run.
 
@@ -57,3 +58,7 @@ A named file that is current while the revision is unlisted gives its verdict no
 > Amended 2026-11-19 (row 011-398, gh-181): the run in flight and the bound on each call are said only while a run is open in the file's lane or the run yields. With neither, the line says "no tier starts until the listing ends".
 
 011 C4 and C6: no change.
+
+## Bundles
+
+Wave rule: no `pnpm run build` in the worker tree. `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` fail with "cli/squeal.mjs differs from the build" until the coordinator rebuilds the bundles. This is expected drift from the source change, not a defect.
