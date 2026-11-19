@@ -38,6 +38,13 @@ describe("the pool's kind of a granted tier (row 011-182)", () => {
     expect(poolKind({ explicit: true }, [other, run])).toBe("checkpoint");
     expect(poolKind({ explicit: true }, [other])).toBe("backlog");
   });
+
+  it("is the checkpoint's for a named wait's batch, checkpoint or none (row 011-412, 021 D18)", () => {
+    expect(poolKind(null, undefined, true)).toBe("checkpoint");
+    expect(poolKind(null, [other], true)).toBe("checkpoint");
+    expect(poolKind({ explicit: false }, [other], true)).toBe("checkpoint");
+    expect(poolKind({ explicit: true }, [other], true)).toBe("checkpoint");
+  });
 });
 
 describe("scheduler: a busy host and the backlog's grant (row 011-182)", SLOW, () => {

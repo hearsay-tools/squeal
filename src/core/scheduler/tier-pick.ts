@@ -46,7 +46,9 @@ export function shapeOf(
       : backlog
         ? asks.backlogSize(view.fastSize())
         : runner.tierSize;
-  const offer = backlog && !asEdit ? asks.offer(size, poolKind(view.checkpointActive())) : 0;
+  // Row 011-412: a named wait's batch is offered as it is granted, outside the ceiling (021 D18).
+  const kind = poolKind(view.checkpointActive(), undefined, batch !== null);
+  const offer = backlog && !asEdit ? asks.offer(size, kind) : 0;
   const budget = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
   return { free, batch, asEdit, backlog, turn, size, offer, budget };
 }

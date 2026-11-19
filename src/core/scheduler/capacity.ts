@@ -173,12 +173,16 @@ export class TierCapacity {
  * 011-182): while a `squeal run --all` checkpoint is open, a tier that holds
  * a file it requested is the checkpoint's, and so is the offer before the
  * pick; any other is the backlog's, whose gate also counts the host's busy
- * cores.
+ * cores against the background ceiling. A named wait's batch tier (`batch`,
+ * C15) takes the checkpoint's slot-based gate too: spec 021 D18 keeps named
+ * waits outside the ceiling (row 011-412).
  */
 export function poolKind(
   open: { readonly explicit: boolean } | null,
   picked?: readonly { readonly checkpointId: string | null }[],
+  batch = false,
 ): PoolTierKind {
+  if (batch) return "checkpoint";
   if (open?.explicit !== true) return "backlog";
   const runsIt = picked === undefined || picked.some((p) => p.checkpointId !== null);
   return runsIt ? "checkpoint" : "backlog";
