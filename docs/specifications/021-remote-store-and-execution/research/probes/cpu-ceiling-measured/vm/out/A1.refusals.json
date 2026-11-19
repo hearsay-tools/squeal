@@ -1,0 +1,22 @@
+{
+ "label": "A1",
+ "count": 4,
+ "busy": {
+  "min": 9.1,
+  "p50": 10.1,
+  "max": 10.1
+ },
+ "episodes": [
+  {
+   "atS": 45.9,
+   "heldS": 3.2,
+   "lines": 4
+  }
+ ],
+ "heldTotalS": 3.2,
+ "sample": [
+  "[1904073] squeal daemon: the background ceiling refused a backlog tier: 10.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "[1904073] squeal daemon: the background ceiling refused a backlog tier: 10.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "[1904073] squeal daemon: the background ceiling refused a backlog tier: 9.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)"
+ ]
+}

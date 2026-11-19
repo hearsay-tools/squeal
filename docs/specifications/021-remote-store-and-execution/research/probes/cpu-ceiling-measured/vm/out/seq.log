@@ -1,0 +1,32 @@
+idle at 2026-11-19T08:36:33Z
+warm run rc=0
+idle at 2026-11-19T08:39:29Z
+A1 share=0.75 daemon=1904073
+idle at 2026-11-19T08:39:58Z
+started A1-sampler pid 1905870
+started A1-queue pid 1905878
+idle at 2026-11-19T08:58:02Z
+done A1
+arm A1 done
+F1 share=1 daemon=2211837
+idle at 2026-11-19T08:58:31Z
+started F1-sampler pid 2213996
+started F1-queue pid 2214003
+idle at 2026-11-19T09:15:34Z
+done F1
+arm F1 done
+A2 share=0.75 daemon=2519590
+idle at 2026-11-19T09:16:03Z
+started A2-sampler pid 2521464
+started A2-queue pid 2521472
+idle at 2026-11-19T09:33:56Z
+done A2
+arm A2 done
+F2 share=1 daemon=2827370
+idle at 2026-11-19T09:34:26Z
+started F2-sampler pid 2829161
+started F2-queue pid 2829169
+idle at 2026-11-19T09:51:19Z
+done F2
+arm F2 done
+sequence done 2026-11-19T09:51:22Z

@@ -1,0 +1,1576 @@
+{
+ "label": "A2",
+ "edits": [
+  [
+   0,
+   "packages/contract/src/ci-wait.ts"
+  ]
+ ],
+ "windowS": 1056.2,
+ "lastRunEndS": 1028.9,
+ "distinctFinished": 1200,
+ "fileRunsPicked": 1200,
+ "fileRunsFinished": 1200,
+ "vitestRuns": 92,
+ "nodeRuns": 8,
+ "vitestBusyS": 1593.3,
+ "vitestSumFileS": 5350.7,
+ "nodeSumFileS": 233.4,
+ "firstNodeStart": 44.7,
+ "lastNodeEnd": 206.3,
+ "gaps": [
+  [
+   56.5,
+   0.6
+  ],
+  [
+   58.8,
+   0.6
+  ],
+  [
+   63.2,
+   0.6
+  ],
+  [
+   66.3,
+   0.6
+  ],
+  [
+   68.9,
+   0.6
+  ],
+  [
+   74.7,
+   0.6
+  ],
+  [
+   94.9,
+   0.6
+  ],
+  [
+   102.6,
+   0.6
+  ],
+  [
+   106.7,
+   0.6
+  ],
+  [
+   120,
+   0.6
+  ],
+  [
+   124.5,
+   0.6
+  ],
+  [
+   144.8,
+   0.6
+  ],
+  [
+   150.2,
+   0.6
+  ],
+  [
+   155.7,
+   0.6
+  ],
+  [
+   189.8,
+   0.6
+  ],
+  [
+   251.6,
+   0.6
+  ],
+  [
+   260.2,
+   0.6
+  ],
+  [
+   277.9,
+   0.6
+  ],
+  [
+   296.7,
+   0.6
+  ],
+  [
+   306,
+   0.6
+  ],
+  [
+   315.9,
+   0.6
+  ],
+  [
+   325.8,
+   0.6
+  ],
+  [
+   336,
+   0.6
+  ],
+  [
+   369.2,
+   0.6
+  ],
+  [
+   394.2,
+   0.6
+  ],
+  [
+   406.5,
+   0.6
+  ],
+  [
+   431.5,
+   0.6
+  ],
+  [
+   482.2,
+   0.6
+  ],
+  [
+   495.3,
+   0.6
+  ],
+  [
+   537.4,
+   0.6
+  ],
+  [
+   567.4,
+   0.6
+  ],
+  [
+   602.1,
+   0.6
+  ],
+  [
+   619.2,
+   0.6
+  ],
+  [
+   638.7,
+   0.6
+  ],
+  [
+   657.3,
+   0.6
+  ],
+  [
+   676.6,
+   0.7
+  ],
+  [
+   695.7,
+   0.7
+  ],
+  [
+   775.4,
+   0.6
+  ],
+  [
+   803.6,
+   15.2
+  ],
+  [
+   943.6,
+   0.8
+  ]
+ ],
+ "hb": {
+  "samples": 536,
+  "max": 5283,
+  "over10s": 0,
+  "over6s": 0
+ },
+ "cpu": {
+  "scopeCpuS": 6951,
+  "daemonCpuS": 808,
+  "meanBusy": 6.6,
+  "maxLoad1": 12.58,
+  "meanLoad1": 7.75,
+  "sampleS": 1069
+ },
+ "queueEvery60": [
+  [
+   -15,
+   97,
+   0
+  ],
+  [
+   45.1,
+   1292,
+   5
+  ],
+  [
+   105.2,
+   1202,
+   6
+  ],
+  [
+   165.2,
+   954,
+   205
+  ],
+  [
+   225.3,
+   795,
+   134
+  ],
+  [
+   285.4,
+   767,
+   134
+  ],
+  [
+   345.4,
+   743,
+   134
+  ],
+  [
+   405.5,
+   524,
+   203
+  ],
+  [
+   465.6,
+   461,
+   51
+  ],
+  [
+   525.6,
+   441,
+   51
+  ],
+  [
+   585.7,
+   279,
+   150
+  ],
+  [
+   645.8,
+   270,
+   149
+  ],
+  [
+   705.8,
+   241,
+   22
+  ],
+  [
+   765.9,
+   229,
+   23
+  ],
+  [
+   825.9,
+   133,
+   94
+  ],
+  [
+   886,
+   133,
+   94
+  ],
+  [
+   946.1,
+   97,
+   36
+  ],
+  [
+   1006.1,
+   97,
+   36
+  ]
+ ],
+ "log": [
+  "1.1  squeal daemon: long write: store.sqlite write lock held 952 ms by reconcileBatch < process.processTicksAndRejections < #pass; 42135 rows written",
+  "33  squeal daemon: no tier for 60 s: a last-resort GC took private memory from 341 to 281 MiB in a 124 ms pause",
+  "44.3  squeal daemon: long write: store.sqlite write lock held 995 ms by storeClosures < applyRunnerPart < process.processTicksAndRejections; 5172 rows written",
+  "44.7  squeal daemon: long write: store.sqlite write lock held 254 ms by startTier < act < startNext; 156 rows written",
+  "45.2  squeal daemon: long write: store.sqlite write lock held 260 ms by startTier < act < startNext; 9 rows written",
+  "46  squeal daemon: the background ceiling refused a backlog tier: 10.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "46  squeal daemon: the pool refused the node-test lane's tier: it waits for CPU (10 of 12 cores in use; Squeal's daemons hold 0 of 11 test slots); the daemon asks again every 2 s",
+  "46.6  squeal daemon: long write: store.sqlite write lock held 460 ms by #write < Ledger.commit < Object.commit; 16 rows written",
+  "46.7  squeal daemon: the background ceiling refused a backlog tier: 10.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "46.7  squeal daemon: the pool granted the node-test lane's tier after 1 s of waiting for CPU",
+  "47.1  squeal daemon: the background ceiling refused a backlog tier: 9.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "47.1  squeal daemon: the pool refused the node-test lane's tier: it waits for CPU (9 of 12 cores in use; Squeal's daemons hold 0 of 11 test slots); the daemon asks again every 2 s",
+  "47.2  squeal daemon: the background ceiling refused a backlog tier: 9.1 busy CPUs, ceiling 9 (0.75 of 12 CPUs)",
+  "48.1  squeal daemon: long write: store.sqlite write lock held 489 ms by #write < #record; 308 rows written",
+  "48.6  squeal daemon: long write: store.sqlite write lock held 434 ms by #write < Ledger.commit < Object.commit; 68 rows written",
+  "49  squeal daemon: the pool granted the node-test lane's tier after 2 s of waiting for CPU",
+  "49.3  squeal daemon: long write: store.sqlite write lock held 261 ms by startTier < act < startNext; 19 rows written",
+  "49.5  squeal daemon: long write: store.sqlite write lock held 265 ms by startTier < act < startNext; 83 rows written",
+  "51.4  squeal daemon: long write: store.sqlite write lock held 460 ms by #write < Ledger.commit < Object.commit; 25 rows written",
+  "52.2  squeal daemon: long write: store.sqlite write lock held 439 ms by #write < #record; 50 rows written",
+  "53.4  squeal daemon: long write: store.sqlite write lock held 440 ms by #write < Ledger.commit < Object.commit; 64 rows written",
+  "53.9  squeal daemon: long write: store.sqlite write lock held 420 ms by #write < #record; 511 rows written",
+  "55  squeal daemon: long write: store.sqlite write lock held 477 ms by #write < #record; 116 rows written",
+  "55.4  squeal daemon: long write: store.sqlite write lock held 270 ms by #start < #select < #launch; 26 rows written",
+  "56.9  squeal daemon: long write: store.sqlite write lock held 452 ms by #write < #record; 48 rows written",
+  "59.2  squeal daemon: long write: store.sqlite write lock held 428 ms by #write < #record; 60 rows written",
+  "61.4  squeal daemon: long write: store.sqlite write lock held 425 ms by #write < #record; 64 rows written",
+  "63.7  squeal daemon: long write: store.sqlite write lock held 485 ms by #write < #record; 48 rows written",
+  "66.8  squeal daemon: long write: store.sqlite write lock held 446 ms by #write < #record; 116 rows written",
+  "68.1  squeal daemon: long write: store.sqlite write lock held 510 ms by #write < #record; 195 rows written",
+  "69.4  squeal daemon: long write: store.sqlite write lock held 413 ms by #write < #record; 100 rows written",
+  "72.1  squeal daemon: long write: store.sqlite write lock held 450 ms by #write < #record; 136 rows written",
+  "75.2  squeal daemon: long write: store.sqlite write lock held 504 ms by #write < #record; 152 rows written",
+  "78.3  squeal daemon: long write: store.sqlite write lock held 413 ms by #write < #record; 92 rows written",
+  "81.4  squeal daemon: long write: store.sqlite write lock held 406 ms by #write < #record; 92 rows written",
+  "81.8  squeal daemon: long write: store.sqlite write lock held 267 ms by #start < #select < #launch; 34 rows written",
+  "84.7  squeal daemon: long write: store.sqlite write lock held 426 ms by #write < #record; 64 rows written",
+  "88.1  squeal daemon: long write: store.sqlite write lock held 493 ms by #write < #record; 84 rows written",
+  "91.6  squeal daemon: long write: store.sqlite write lock held 433 ms by #write < #record; 60 rows written",
+  "95.3  squeal daemon: long write: store.sqlite write lock held 446 ms by #write < #record; 60 rows written",
+  "98.9  squeal daemon: long write: store.sqlite write lock held 417 ms by #write < #record; 116 rows written",
+  "103  squeal daemon: long write: store.sqlite write lock held 469 ms by #write < #record; 48 rows written",
+  "105.2  squeal daemon: long write: store.sqlite write lock held 452 ms by #write < Ledger.commit < Object.commit; 28 rows written",
+  "107.2  squeal daemon: long write: store.sqlite write lock held 426 ms by #write < #record; 52 rows written",
+  "111.4  squeal daemon: long write: store.sqlite write lock held 428 ms by #write < #record; 64 rows written",
+  "115.9  squeal daemon: long write: store.sqlite write lock held 482 ms by #write < #record; 92 rows written",
+  "120.5  squeal daemon: long write: store.sqlite write lock held 455 ms by #write < #record; 80 rows written",
+  "125  squeal daemon: long write: store.sqlite write lock held 445 ms by #write < #record; 56 rows written",
+  "130.1  squeal daemon: long write: store.sqlite write lock held 475 ms by #write < #record; 48 rows written",
+  "134.9  squeal daemon: long write: store.sqlite write lock held 453 ms by #write < #record; 56 rows written",
+  "140  squeal daemon: long write: store.sqlite write lock held 464 ms by #write < #record; 48 rows written",
+  "145.3  squeal daemon: long write: store.sqlite write lock held 451 ms by #write < #record; 72 rows written",
+  "150.7  squeal daemon: long write: store.sqlite write lock held 455 ms by #write < #record; 88 rows written",
+  "156.1  squeal daemon: long write: store.sqlite write lock held 444 ms by #write < #record; 56 rows written",
+  "161.7  squeal daemon: long write: store.sqlite write lock held 455 ms by #write < #record; 112 rows written",
+  "164.8  squeal daemon: long write: store.sqlite write lock held 363 ms by startTier < act < startNext; 7763 rows written",
+  "167.9  squeal daemon: long write: store.sqlite write lock held 504 ms by #write < #record; 152 rows written",
+  "175.1  squeal daemon: long write: store.sqlite write lock held 473 ms by #write < #record; 76 rows written",
+  "175.4  squeal daemon: long write: store.sqlite write lock held 262 ms by #start < #select < #launch; 54 rows written",
+  "182.8  squeal daemon: long write: store.sqlite write lock held 473 ms by #write < #record; 104 rows written",
+  "190.3  squeal daemon: long write: store.sqlite write lock held 503 ms by #write < #record; 112 rows written",
+  "190.7  squeal daemon: long write: store.sqlite write lock held 258 ms by #start < #select < #launch; 28 rows written",
+  "197.6  squeal daemon: long write: store.sqlite write lock held 482 ms by #write < #record; 53 rows written",
+  "205.7  squeal daemon: long write: store.sqlite write lock held 462 ms by #write < #record; 61 rows written",
+  "206.8  squeal daemon: long write: store.sqlite write lock held 511 ms by #write < Ledger.commit < Object.commit; 124 rows written",
+  "211.4  squeal daemon: long write: store.sqlite write lock held 940 ms by #write < #record; 15332 rows written",
+  "211.8  squeal daemon: long write: store.sqlite write lock held 299 ms by startTier < act < startNext; 4025 rows written",
+  "213  squeal daemon: long write: store.sqlite write lock held 433 ms by #write < #record; 125 rows written",
+  "220.4  squeal daemon: long write: store.sqlite write lock held 422 ms by #write < #record; 92 rows written",
+  "228.2  squeal daemon: long write: store.sqlite write lock held 429 ms by #write < #record; 88 rows written",
+  "235.9  squeal daemon: long write: store.sqlite write lock held 453 ms by #write < #record; 112 rows written",
+  "243.8  squeal daemon: long write: store.sqlite write lock held 431 ms by #write < #record; 88 rows written",
+  "252.1  squeal daemon: long write: store.sqlite write lock held 477 ms by #write < #record; 64 rows written",
+  "260.7  squeal daemon: long write: store.sqlite write lock held 471 ms by #write < #record; 112 rows written",
+  "269.4  squeal daemon: long write: store.sqlite write lock held 432 ms by #write < #record; 140 rows written",
+  "278.3  squeal daemon: long write: store.sqlite write lock held 473 ms by #write < #record; 112 rows written",
+  "287.9  squeal daemon: long write: store.sqlite write lock held 444 ms by #write < #record; 112 rows written",
+  "297.2  squeal daemon: long write: store.sqlite write lock held 486 ms by #write < #record; 128 rows written",
+  "306.5  squeal daemon: long write: store.sqlite write lock held 445 ms by #write < #record; 152 rows written",
+  "316.4  squeal daemon: long write: store.sqlite write lock held 430 ms by #write < #record; 100 rows written",
+  "326.3  squeal daemon: long write: store.sqlite write lock held 462 ms by #write < #record; 104 rows written",
+  "336.5  squeal daemon: long write: store.sqlite write lock held 459 ms by #write < #record; 116 rows written",
+  "346.6  squeal daemon: long write: store.sqlite write lock held 446 ms by #write < #record; 172 rows written",
+  "352.4  squeal daemon: long write: store.sqlite write lock held 693 ms by #write < #record; 7921 rows written",
+  "352.8  squeal daemon: long write: store.sqlite write lock held 344 ms by startTier < act < startNext; 5869 rows written",
+  "357.7  squeal daemon: long write: store.sqlite write lock held 439 ms by #write < #record; 244 rows written",
+  "369.7  squeal daemon: long write: store.sqlite write lock held 470 ms by #write < #record; 108 rows written",
+  "382.1  squeal daemon: long write: store.sqlite write lock held 479 ms by #write < #record; 164 rows written",
+  "394.7  squeal daemon: long write: store.sqlite write lock held 489 ms by #write < #record; 176 rows written",
+  "395.1  squeal daemon: long write: store.sqlite write lock held 252 ms by #start < #select < #launch; 68 rows written",
+  "407  squeal daemon: long write: store.sqlite write lock held 467 ms by #write < #record; 133 rows written",
+  "419.9  squeal daemon: long write: store.sqlite write lock held 445 ms by #write < #record; 141 rows written",
+  "420.2  squeal daemon: long write: store.sqlite write lock held 254 ms by #start < #select < #launch; 48 rows written",
+  "432  squeal daemon: long write: store.sqlite write lock held 453 ms by #write < #record; 93 rows written",
+  "444.9  squeal daemon: long write: store.sqlite write lock held 497 ms by #write < #record; 89 rows written",
+  "445.2  squeal daemon: long write: store.sqlite write lock held 270 ms by #start < #select < #launch; 54 rows written",
+  "452.4  squeal daemon: long write: store.sqlite write lock held 886 ms by #write < #record; 11539 rows written",
+  "452.7  squeal daemon: long write: store.sqlite write lock held 294 ms by startTier < act < startNext; 2043 rows written",
+  "457.4  squeal daemon: long write: store.sqlite write lock held 393 ms by #write < #record; 105 rows written",
+  "469.7  squeal daemon: long write: store.sqlite write lock held 407 ms by #write < #record; 112 rows written",
+  "482.7  squeal daemon: long write: store.sqlite write lock held 425 ms by #write < #record; 224 rows written",
+  "495.8  squeal daemon: long write: store.sqlite write lock held 456 ms by #write < #record; 224 rows written",
+  "496.2  squeal daemon: long write: store.sqlite write lock held 294 ms by #start < #select < #launch; 204 rows written",
+  "509.2  squeal daemon: long write: store.sqlite write lock held 423 ms by #write < #record; 404 rows written",
+  "523.4  squeal daemon: long write: store.sqlite write lock held 424 ms by #write < #record; 232 rows written",
+  "537.9  squeal daemon: long write: store.sqlite write lock held 458 ms by #write < #record; 208 rows written",
+  "552.7  squeal daemon: long write: store.sqlite write lock held 465 ms by #write < #record; 356 rows written",
+  "567.9  squeal daemon: long write: store.sqlite write lock held 507 ms by #write < #record; 116 rows written",
+  "570.2  squeal daemon: long write: store.sqlite write lock held 538 ms by #write < #record; 4040 rows written",
+  "570.7  squeal daemon: long write: store.sqlite write lock held 358 ms by startTier < act < startNext; 7393 rows written",
+  "584.6  squeal daemon: long write: store.sqlite write lock held 591 ms by #write < #record; 172 rows written",
+  "584.9  squeal daemon: long write: store.sqlite write lock held 254 ms by #start < #select < #launch; 186 rows written",
+  "602.6  squeal daemon: long write: store.sqlite write lock held 521 ms by #write < #record; 368 rows written",
+  "619.7  squeal daemon: long write: store.sqlite write lock held 484 ms by #write < #record; 70 rows written",
+  "639.2  squeal daemon: long write: store.sqlite write lock held 510 ms by #write < #record; 144 rows written",
+  "657.8  squeal daemon: long write: store.sqlite write lock held 497 ms by #write < #record; 101 rows written",
+  "677.2  squeal daemon: long write: store.sqlite write lock held 545 ms by #write < #record; 172 rows written",
+  "696.2  squeal daemon: long write: store.sqlite write lock held 512 ms by #write < #record; 97 rows written",
+  "696.6  squeal daemon: long write: store.sqlite write lock held 254 ms by #start < #select < #launch; 78 rows written",
+  "703.6  squeal daemon: long write: store.sqlite write lock held 942 ms by #write < #record; 14642 rows written",
+  "704  squeal daemon: long write: store.sqlite write lock held 266 ms by startTier < act < startNext; 1433 rows written",
+  "714.8  squeal daemon: long write: store.sqlite write lock held 443 ms by #write < #record; 153 rows written",
+  "733.6  squeal daemon: long write: store.sqlite write lock held 435 ms by #write < #record; 448 rows written",
+  "752.9  squeal daemon: long write: store.sqlite write lock held 445 ms by #write < #record; 420 rows written",
+  "775.9  squeal daemon: long write: store.sqlite write lock held 509 ms by #write < #record; 228 rows written",
+  "804  squeal daemon: long write: store.sqlite write lock held 404 ms by #write < #record; 82 rows written",
+  "816.8  squeal daemon: coverage: packages/cezar/src/workflows/waits-codex-every-runner-base-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-62",
+  "816.8  squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: packages/cezar/src/workflows/waits-codex-every-runner-base-parity.test.ts: Error: Error:",
+  "818  squeal daemon: busy, heap in use 1928 MiB over twice the last live size of 190 MiB: a last-resort GC took private memory from 2538 to 1919 MiB in a 251 ms pause; 1363 MiB of heap in use after it",
+  "818.6  squeal daemon: long write: store.sqlite write lock held 508 ms by #write < #record; 2848 rows written",
+  "818.7  squeal daemon: coverage: packages/cezar/src/workflows/worker-questions-inbox-capacity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-0fb326e",
+  "818.7  squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 map-error (its payload did not map); the last: packages/cezar/src/workflows/worker-questions-inbox-capacity.test.ts: Error: Error: ENO",
+  "819.1  squeal daemon: long write: store.sqlite write lock held 336 ms by startTier < act < startNext; 5541 rows written",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/workflow-followup-late-start-fresh-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-fc",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/harness-codex-run-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-dccf3c03-04cb-4036-",
+  "822.2  squeal daemon: coverage: 4 completed test files got no record since this daemon started: 4 map-error (its payload did not map); the last: packages/cezar/src/core/harness-codex-run-parity.test.ts: Error: Error: ENOENT: no such",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-questions-reply-settlement.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-93815",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/harness-codex-session-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-12da4947-a560-4",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-codex-every-runner-entries-nudges-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/c",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-opencode-every-runner-base-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage",
+  "822.2  squeal daemon: coverage: 8 completed test files got no record since this daemon started: 8 map-error (its payload did not map); the last: packages/cezar/src/workflows/waits-opencode-every-runner-base-parity.test.ts: Error: Er",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-park-notice.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-a6c1d5a7-d710-477e-b",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-parent-attention-continued-delayed-progress.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.t",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait.testkit.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-07c0ddef-3ae0-4013-",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-parent-attention-continued-ordinary-progress.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-opencode-every-runner-entries-nudges-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tm",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/harness-opencode-pending-request-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-5576",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/workflow-followup-late-ack-continuation-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/covera",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-parent-attention-continued-spawn-ask.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/cove",
+  "822.2  squeal daemon: coverage: 16 completed test files got no record since this daemon started: 16 map-error (its payload did not map); the last: packages/cezar/src/workflows/worker-parent-attention-continued-spawn-ask.test.ts: Err",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-answers-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-49cc0340-f1",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait-settlement.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-60340078-0b2a-48",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-2c5d131e-b3eb-4798-ac4f-d41",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-parent-attention-restart-human-ask.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/covera",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-input-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-88684316-4281",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-mixed-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-f8b5cd58-889e",
+  "822.2  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait-conversations.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-5a0101b7-cac1",
+  "822.2  squeal daemon: coverage: packages/cezar/src/core/workflow-followup-late-start-continuation-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/cove",
+  "944.3  squeal daemon: long write: store.sqlite write lock held 690 ms by #write < #record; 11026 rows written",
+  "984.4  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-entries-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-fd0f2d12-94",
+  "984.4  squeal daemon: coverage: packages/cezar/src/core/harness-claude-owned-input-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-9447f66c-5",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-recovery-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-0d24404c-8",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/worker-location-evidence.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-a8e1b896-a5a4-",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-registration-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-6fcbac",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/harness-opencode-session-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-34804f74-c9b",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/worker-parent-attention-capacity-wake.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-7",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-refusal-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-f3ab3c53-bb",
+  "984.5  squeal daemon: coverage: 32 completed test files got no record since this daemon started: 32 map-error (its payload did not map); the last: packages/cezar/src/workflows/waits-claude-refusal-parity.test.ts: Error: Error: ENOEN",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/harness-claude-session-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-3a1999d7-f8ee-",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait-request-lifecycle.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-2eb6c8ca-",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/harness-opencode-run-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-bc0e7a08-242d-44",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/waits-claude-asks-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-0edca7df-8e8b-",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/worker-wait-capacity-held-ack.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-2e4fc6d0-",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/harness-claude-run-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-48d78021-e735-4198",
+  "984.5  squeal daemon: coverage: packages/cezar/src/workflows/worker-waits-messages.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-3c816a27-c324-4eb",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/workflow-no-progress-progress-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-f7e3c71",
+  "984.5  squeal daemon: coverage: packages/cezar/src/core/model-refusal-parity.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/2b0d75a5588e3dc3/coverage-20KQnT/.tmp/coverage-d96fb018-7e2b-4346-a30e",
+  "1029.5  squeal daemon: long write: store.sqlite write lock held 526 ms by #write < #record; 4003 rows written"
+ ],
+ "vitestRunList": [
+  {
+   "id": "2f06998e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 44.4,
+   "end": 47.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "0fccf70f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 45.7,
+   "end": 51.8,
+   "files": 3,
+   "finished": 3,
+   "sumS": 2.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "a258aa9f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 48.7,
+   "end": 53.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 2.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "da150a07",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 52.4,
+   "end": 54.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 1.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "1bbc727b",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 54,
+   "end": 67.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 21.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "3fda0d95",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 55.1,
+   "end": 56.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 1.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "9a9914d1",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 57.1,
+   "end": 58.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 3.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "635864fc",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 59.4,
+   "end": 61,
+   "files": 4,
+   "finished": 4,
+   "sumS": 3.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "7c4fd37c",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 61.5,
+   "end": 63.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 3.3,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "28df00e7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 63.8,
+   "end": 66.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 4.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "40d9aef2",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 66.9,
+   "end": 68.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 4.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "a7e1134e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 69.5,
+   "end": 71.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 4.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "43770da8",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 72.2,
+   "end": 74.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 5.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "4e09f00f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 75.3,
+   "end": 77.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 6.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "bfc4bcae",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 78.4,
+   "end": 81,
+   "files": 4,
+   "finished": 4,
+   "sumS": 6.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d3677d67",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 81.5,
+   "end": 84.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 7.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "456eaeaf",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 84.8,
+   "end": 87.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 7.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "7b61e6c0",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 88.1,
+   "end": 91.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 8.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "76fad851",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 91.7,
+   "end": 94.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "bef05535",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 95.5,
+   "end": 98.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 8.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e1a98f6f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 99,
+   "end": 102.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 10.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "c4e48bfd",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 103.2,
+   "end": 106.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 10.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d4271700",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 107.3,
+   "end": 111,
+   "files": 4,
+   "finished": 4,
+   "sumS": 11.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "9fefd8cf",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 111.5,
+   "end": 115.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 12,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e1e6e1a6",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 116,
+   "end": 120,
+   "files": 4,
+   "finished": 4,
+   "sumS": 12,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f88c58d7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 120.6,
+   "end": 124.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 12.3,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e61508e9",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 125.1,
+   "end": 129.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 13.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f22e2e83",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 130.1,
+   "end": 134.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 14.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "c42d2693",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 135,
+   "end": 139.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 14.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f2917a57",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 140.1,
+   "end": 144.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 15.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "a8fe49b1",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 145.4,
+   "end": 150.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 15.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "35186bd9",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 150.8,
+   "end": 155.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 16,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "504e01c4",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 156.3,
+   "end": 161.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 16,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "fba243d7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 161.7,
+   "end": 167.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 18,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "2d57d1ba",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 164.4,
+   "end": 210.4,
+   "files": 200,
+   "finished": 200,
+   "sumS": 91.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d2a98b14",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 168,
+   "end": 174.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 21.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "68311580",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 175.1,
+   "end": 182.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 24.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f8abde9d",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 182.8,
+   "end": 189.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 23.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "50ace886",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 190.4,
+   "end": 197.1,
+   "files": 3,
+   "finished": 3,
+   "sumS": 16,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "97155f6a",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 197.6,
+   "end": 205.3,
+   "files": 3,
+   "finished": 3,
+   "sumS": 18.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "a9e30281",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 205.8,
+   "end": 212.6,
+   "files": 3,
+   "finished": 3,
+   "sumS": 16.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "8c02c730",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 211.5,
+   "end": 351.7,
+   "files": 130,
+   "finished": 130,
+   "sumS": 113.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "4303bb45",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 213.1,
+   "end": 220,
+   "files": 4,
+   "finished": 4,
+   "sumS": 22.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "184790e4",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 220.5,
+   "end": 227.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 21.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6cae68e5",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 228.3,
+   "end": 235.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 25,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f409aa08",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 236,
+   "end": 243.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 25.3,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "89eeeae5",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 243.9,
+   "end": 251.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 25.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "389b1fd3",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 252.2,
+   "end": 260.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 28,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6e193e87",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 260.8,
+   "end": 269,
+   "files": 4,
+   "finished": 4,
+   "sumS": 28.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "1df1640e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 269.5,
+   "end": 277.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 29.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "ec4dd4dc",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 278.5,
+   "end": 287.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 31.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "930f9645",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 288,
+   "end": 296.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 30.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6ebf1f0f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 297.3,
+   "end": 306,
+   "files": 4,
+   "finished": 4,
+   "sumS": 30.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "8e7b4e17",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 306.6,
+   "end": 315.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 32.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "183d3e92",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 316.5,
+   "end": 325.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 32.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "7402b974",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 326.4,
+   "end": 336,
+   "files": 4,
+   "finished": 4,
+   "sumS": 33.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "23bfecda",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 336.6,
+   "end": 346.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 34.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "31dee48f",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 346.7,
+   "end": 357.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 37.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "3472154b",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 352.5,
+   "end": 451.5,
+   "files": 200,
+   "finished": 200,
+   "sumS": 337.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "b721a71b",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 357.8,
+   "end": 369.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 39.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d9144d86",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 369.8,
+   "end": 381.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 42.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "7bbfe2d1",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 382.2,
+   "end": 394.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 42.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "244457f4",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 394.8,
+   "end": 406.5,
+   "files": 3,
+   "finished": 3,
+   "sumS": 30.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "0d8c7851",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 407.1,
+   "end": 419.5,
+   "files": 3,
+   "finished": 3,
+   "sumS": 32.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "1a96e613",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 420,
+   "end": 431.5,
+   "files": 3,
+   "finished": 3,
+   "sumS": 30.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "12abdb54",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 432.1,
+   "end": 444.4,
+   "files": 3,
+   "finished": 3,
+   "sumS": 31.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "3835d3c8",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 444.9,
+   "end": 457,
+   "files": 3,
+   "finished": 3,
+   "sumS": 30.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "3f709fe7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 452.5,
+   "end": 569.6,
+   "files": 47,
+   "finished": 47,
+   "sumS": 105.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f9a794be",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 457.5,
+   "end": 469.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 42.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "0182d0f6",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 469.8,
+   "end": 482.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 42.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "4a717142",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 482.8,
+   "end": 495.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 45.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "586131e8",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 495.9,
+   "end": 508.8,
+   "files": 4,
+   "finished": 4,
+   "sumS": 44.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "efea2da7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 509.3,
+   "end": 523,
+   "files": 4,
+   "finished": 4,
+   "sumS": 48.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e5aba817",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 523.5,
+   "end": 537.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 50.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "5a177f09",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 538,
+   "end": 552.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 51.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "31c38f42",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 552.8,
+   "end": 567.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 52.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e6ea4bf7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 568,
+   "end": 584,
+   "files": 4,
+   "finished": 4,
+   "sumS": 56.9,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "5dbd752e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 570.3,
+   "end": 702.7,
+   "files": 146,
+   "finished": 146,
+   "sumS": 605.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "f3a349d5",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 584.7,
+   "end": 602.1,
+   "files": 4,
+   "finished": 4,
+   "sumS": 63.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6582d39e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 602.7,
+   "end": 619.2,
+   "files": 2,
+   "finished": 2,
+   "sumS": 30.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "e7a59dff",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 619.8,
+   "end": 638.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 66.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d7b04ff5",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 639.3,
+   "end": 657.3,
+   "files": 3,
+   "finished": 3,
+   "sumS": 49.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "b5ac86af",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 657.9,
+   "end": 676.6,
+   "files": 4,
+   "finished": 4,
+   "sumS": 69,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "3cc9160e",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 677.3,
+   "end": 695.7,
+   "files": 3,
+   "finished": 3,
+   "sumS": 51.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "34c62f45",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 696.4,
+   "end": 714.3,
+   "files": 3,
+   "finished": 3,
+   "sumS": 48.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "4dbe4078",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 703.7,
+   "end": 818.1,
+   "files": 19,
+   "finished": 19,
+   "sumS": 108.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6ac30a88",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 714.9,
+   "end": 733.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 66.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "2c2df333",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 733.7,
+   "end": 752.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 69.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "78a27eeb",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 753,
+   "end": 775.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 78.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6a039456",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 776,
+   "end": 803.6,
+   "files": 2,
+   "finished": 2,
+   "sumS": 47.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "2dbdafda",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 818.8,
+   "end": 943.6,
+   "files": 94,
+   "finished": 94,
+   "sumS": 1058.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "d046cdf7",
+   "rev": 4,
+   "lane": "vitest",
+   "start": 944.4,
+   "end": 1028.9,
+   "files": 36,
+   "finished": 36,
+   "sumS": 678.6,
+   "width": null,
+   "state": "completed"
+  }
+ ],
+ "firstEndOf": []
+}

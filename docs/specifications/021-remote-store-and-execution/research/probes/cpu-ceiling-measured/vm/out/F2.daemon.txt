@@ -1,0 +1,5 @@
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-F2.scope
+pid=2827370 squeal squawk daemon @1c5a5b24 /home/agent/work/9c589381/squeal/plugins/claude-code/dist/cli/squeal.mjs daemon /home/agent/work/9c589381/squawk 
+pid=2827407 /home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/work/9c589381/squeal/plugins/claude-code/dist/cli/squeal.mjs 
+pid=2827408 /home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/work/9c589381/squeal/plugins/claude-code/dist/cli/squeal.mjs 
+pid=2827410 /home/agent/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /home/agent/work/9c589381/squeal/plugins/claude-code/dist/cli/squeal.mjs 

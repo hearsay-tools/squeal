@@ -1,0 +1,10 @@
+squeal ps · 1 daemon, 0 test processes · no flags
+Host    load 4.6 8.0 6.9 on 12 CPUs · background ceiling 12 busy CPUs · CPU pressure 0.0% · memory pressure 0.0% (0.0% full) · memory 2.2 of 31.3 GiB used, swap 0.0 of 4.0 GiB
+Squeal  CPU 1.6 CPUs (98% of busy) · memory 903 MiB (40% of used) + 0 swap · pool 1 of 11 permits
+
+/home/agent/work/9c589381/squawk (this repository) · 1 daemon · CPU 1.6 · memory 903 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            2211837  1c5a5b24  0.1.563         21s  164%     0m07s  330M    0     97 pending
+    host vitest      2211874  local                     21s    0%     0m03s  462M    0
+    host node-test   2211875  local                     21s    0%     0m00s  50M     0
+    host node-test   2211881  local                     21s    0%     0m00s  61M     0

@@ -1,0 +1,218 @@
+{
+ "window": [
+  "2026-11-14T20:00:00Z",
+  "2026-11-19T08:00:00Z"
+ ],
+ "days": 4.5,
+ "sar": {
+  "samples": 642,
+  "meanBusy": 9.5,
+  "meanNice": 2.07,
+  "pctAbove": {
+   "6": 67.2,
+   "12": 31.8,
+   "16": 24.0,
+   "18": 16.1,
+   "20": 10.3
+  },
+  "niceCoreHperDay": 49.2,
+  "above20": {
+   "n": 66,
+   "otherAtLeast12": 66,
+   "meanOther": 20.3,
+   "meanNice": 2.3
+  }
+ },
+ "tiers": {
+  "backlog": 37914,
+  "edit": 4668,
+  "run-all": 251,
+  "baseline": 101
+ },
+ "fileRuns": {
+  "backlog": 238892,
+  "edit": 15214,
+  "run-all": 651,
+  "baseline": 311
+ },
+ "bgTierWallS": [
+  6.9,
+  42.4
+ ],
+ "edit": {
+  "wallH": 13.43,
+  "wallHperDay": 2.99,
+  "wallS_p50_p90": [
+   4.29,
+   23.46
+  ],
+  "startDelayS_p50_p90": [
+   8.7,
+   38.6
+  ]
+ },
+ "daemons": {
+  "meanBusyDaemons": 1.75,
+  "worktreesWithRunsPerDay": 97.8,
+  "worktrees": 386
+ },
+ "niceCoreHperBusyDaemonH": 1.17,
+ "bgChains": {
+  "tiers": 38015,
+  "startWithin2sOfPrevEndPct": 50.4,
+  "noOtherBgRunningPct": 77.4,
+  "gapS_p50_p90_p99": [
+   0.9,
+   57.0,
+   1011.6
+  ],
+  "gapSameRevisionS_p50_p90_p99": [
+   0.8,
+   17.4,
+   447.6
+  ],
+  "bgTiersWithRevisionRowPct": 19.3
+ },
+ "backlogFinishMin_workweighted_p50_p90": [
+  22.5,
+  73.5
+ ],
+ "backlogFinishMin_unweighted_p50_p90": [
+  1.8,
+  21.8
+ ],
+ "revisionsWithBackground": 554,
+ "fileVsRef": {
+  "bg": {
+   "n": 208084,
+   "median": 1.067,
+   "durationWeightedMean": 2.337
+  },
+  "fg": {
+   "n": 13203,
+   "median": 1.311,
+   "durationWeightedMean": 4.64
+  }
+ },
+ "fileVsRefByBusyBand_median_n": {
+  "0-6 bg": [
+   0.983,
+   18614
+  ],
+  "0-6 fg": [
+   1.001,
+   409
+  ],
+  "6-12 bg": [
+   1.009,
+   103641
+  ],
+  "6-12 fg": [
+   1.054,
+   4155
+  ],
+  "12-16 bg": [
+   1.157,
+   27640
+  ],
+  "12-16 fg": [
+   1.208,
+   2245
+  ],
+  "16-20 bg": [
+   1.401,
+   38220
+  ],
+  "16-20 fg": [
+   1.51,
+   3709
+  ],
+  "20-99 bg": [
+   2.34,
+   18130
+  ],
+  "20-99 fg": [
+   2.957,
+   2528
+  ]
+ },
+ "perWorkCurve": 1.251,
+ "squealCpu": {
+  "bgCoreH": 207.4,
+  "fgCoreH": 13.7,
+  "bgCoreHperDay": 46.1,
+  "fgCoreHperDay": 3.0,
+  "bgIsolatedWorkH": 172.5,
+  "perWork": 1.203,
+  "bgCoreSperTier": 19.6,
+  "bgCoreSperFileRun": 3.12,
+  "bgShareByBusyBandPct": {
+   "0-6": 12.8,
+   "6-12": 44.6,
+   "12-16": 11.7,
+   "16-20": 20.3,
+   "20-99": 10.6
+  },
+  "above16": {
+   "n": 154,
+   "meanOther": 17.1,
+   "meanBg": 2.5
+  }
+ },
+ "refusals": {
+  "lines": 490833,
+  "perDay": 109074,
+  "ceilingText": {
+   "ceiling 18 (0.75 of 24 CPUs, 6 test slots)": 490833
+  },
+  "busyRead_p10_p50_p90": [
+   7.5,
+   15.2,
+   22.8
+  ],
+  "busyReadBelow6": 14,
+  "busyReadAtLeast18": 172993,
+  "episodes": 21613,
+  "episodeHeldS_p50_p90_max": [
+   5.7,
+   90.4,
+   2436.7
+  ],
+  "heldHours": 205.1,
+  "heldHoursMeanBusyBelow18": 137.0,
+  "logFiles": 883,
+  "logFilesStartingAfterWindowStart": 852
+ },
+ "chains5s": {
+  "chainedPct": 57.2,
+  "tierFinishS_p50_p90": [
+   7.5,
+   43.3
+  ],
+  "waitS_p90_p99": [
+   1.4,
+   4.1
+  ],
+  "chains": 12655,
+  "chainFinishMin_workweighted_p50_p90": [
+   4.3,
+   20.0
+  ]
+ },
+ "chainsWithHolds": {
+  "chainedPct": 70.5,
+  "tierFinishS_p50_p90": [
+   8.8,
+   77.4
+  ],
+  "waitS_p90_p99": [
+   12.1,
+   417.5
+  ],
+  "chains": 8361,
+  "chainFinishMin_workweighted_p50_p90": [
+   14.7,
+   65.6
+  ]
+ }
+}

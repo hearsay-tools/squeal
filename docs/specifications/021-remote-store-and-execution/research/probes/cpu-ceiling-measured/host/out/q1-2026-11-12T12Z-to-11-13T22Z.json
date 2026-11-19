@@ -1,0 +1,204 @@
+{
+ "window": [
+  "2026-11-12T12:00:00Z",
+  "2026-11-13T22:20:00Z"
+ ],
+ "days": 1.43,
+ "sar": {
+  "samples": 204,
+  "meanBusy": 13.78,
+  "meanNice": 1.77,
+  "pctAbove": {
+   "6": 86.3,
+   "12": 58.8,
+   "16": 46.1,
+   "18": 38.2,
+   "20": 27.4
+  },
+  "niceCoreHperDay": 42.2,
+  "above20": {
+   "n": 56,
+   "otherAtLeast12": 56,
+   "meanOther": 20.6,
+   "meanNice": 1.9
+  }
+ },
+ "tiers": {
+  "backlog": 6948,
+  "edit": 992
+ },
+ "fileRuns": {
+  "backlog": 51865,
+  "edit": 3411
+ },
+ "bgTierWallS": [
+  8.4,
+  94.0
+ ],
+ "edit": {
+  "wallH": 5.87,
+  "wallHperDay": 4.1,
+  "wallS_p50_p90": [
+   6.76,
+   50.22
+  ],
+  "startDelayS_p50_p90": [
+   36.7,
+   1289.8
+  ]
+ },
+ "daemons": {
+  "meanBusyDaemons": 1.8,
+  "worktreesWithRunsPerDay": 140.5,
+  "worktrees": 190
+ },
+ "niceCoreHperBusyDaemonH": 0.98,
+ "bgChains": {
+  "tiers": 6948,
+  "startWithin2sOfPrevEndPct": 41.7,
+  "noOtherBgRunningPct": 69.8,
+  "gapS_p50_p90_p99": [
+   0.9,
+   137.2,
+   1952.9
+  ],
+  "gapSameRevisionS_p50_p90_p99": [
+   0.7,
+   25.4,
+   751.4
+  ],
+  "bgTiersWithRevisionRowPct": 0.5
+ },
+ "backlogFinishMin_workweighted_p50_p90": [
+  36.9,
+  720.9
+ ],
+ "backlogFinishMin_unweighted_p50_p90": [
+  36.9,
+  464.6
+ ],
+ "revisionsWithBackground": 5,
+ "fileVsRef": {
+  "bg": {
+   "n": 32793,
+   "median": 1.066,
+   "durationWeightedMean": 5.073
+  },
+  "fg": {
+   "n": 2078,
+   "median": 1.439,
+   "durationWeightedMean": 8.219
+  }
+ },
+ "fileVsRefByBusyBand_median_n": {
+  "0-6 bg": [
+   0.994,
+   695
+  ],
+  "0-6 fg": [
+   0.855,
+   60
+  ],
+  "6-12 bg": [
+   0.999,
+   4408
+  ],
+  "6-12 fg": [
+   0.996,
+   237
+  ],
+  "12-16 bg": [
+   0.995,
+   11350
+  ],
+  "12-16 fg": [
+   1.037,
+   414
+  ],
+  "16-20 bg": [
+   1.108,
+   8617
+  ],
+  "16-20 fg": [
+   1.368,
+   514
+  ],
+  "20-99 bg": [
+   2.432,
+   7228
+  ],
+  "20-99 fg": [
+   3.516,
+   816
+  ]
+ },
+ "perWorkCurve": 1.509,
+ "squealCpu": {
+  "bgCoreH": 56.0,
+  "fgCoreH": 4.1,
+  "bgCoreHperDay": 39.1,
+  "fgCoreHperDay": 2.9,
+  "bgIsolatedWorkH": 40.8,
+  "perWork": 1.374,
+  "bgCoreSperTier": 29.0,
+  "bgCoreSperFileRun": 3.89,
+  "bgShareByBusyBandPct": {
+   "0-6": 3.0,
+   "6-12": 12.3,
+   "12-16": 28.7,
+   "16-20": 27.2,
+   "20-99": 28.8
+  },
+  "above16": {
+   "n": 94,
+   "meanOther": 18.6,
+   "meanBg": 2.0
+  }
+ },
+ "refusals": {
+  "lines": 0,
+  "perDay": 0,
+  "ceilingText": {},
+  "busyRead_p10_p50_p90": null,
+  "busyReadBelow6": 0,
+  "busyReadAtLeast18": 0,
+  "episodes": 0,
+  "episodeHeldS_p50_p90_max": null,
+  "heldHours": 0.0,
+  "heldHoursMeanBusyBelow18": 0.0,
+  "logFiles": 883,
+  "logFilesStartingAfterWindowStart": 883
+ },
+ "chains5s": {
+  "chainedPct": 50.2,
+  "tierFinishS_p50_p90": [
+   8.9,
+   95.1
+  ],
+  "waitS_p90_p99": [
+   1.6,
+   4.2
+  ],
+  "chains": 1442,
+  "chainFinishMin_workweighted_p50_p90": [
+   6.7,
+   24.1
+  ]
+ },
+ "chainsWithHolds": {
+  "chainedPct": 50.2,
+  "tierFinishS_p50_p90": [
+   8.9,
+   95.1
+  ],
+  "waitS_p90_p99": [
+   1.6,
+   4.2
+  ],
+  "chains": 1442,
+  "chainFinishMin_workweighted_p50_p90": [
+   6.7,
+   24.1
+  ]
+ }
+}
