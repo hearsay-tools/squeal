@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import type { RelativePath } from "../types/common.js";
-import { reachesTestApi, resolveLocal, specifiersOf, type Tree } from "./import-graph.js";
+import { importsIn, reachesTestApi, type Tree } from "./import-graph.js";
 import { isTestSide } from "./sides.js";
 
 /*
@@ -16,7 +16,11 @@ import { isTestSide } from "./sides.js";
  * exit 3, named, with the `--with` and `--source` reruns. Test code is a
  * test-side path, a `--with` path, a `conftest.py`, or a file that
  * imports a test API directly or through local imports (`reachesTestApi`).
- * No file name settles anything.
+ * No file name settles anything. Third look (`reviews/wave-14-third.md`):
+ * an importer is evidence only when its every import, followed at `HEAD`,
+ * is accounted for and none reaches a test API; the same holds for the
+ * changed file itself. Imports are read by the parsers in
+ * `import-graph.ts`, so a comment or a string never counts.
  */
 
 /** A changed import the proof did not settle: the file does not run. */
@@ -70,7 +74,7 @@ export interface Settling {
   readonly source: ReadonlySet<RelativePath>;
   readonly head: Tree;
   readonly base: Tree;
-  /** The files at `HEAD` that may import `path` (a cheap text search; each is checked). */
+  /** The files at `HEAD` that may import `path` (a text search picks them; the parser decides). */
   candidates(path: RelativePath): Promise<readonly RelativePath[]>;
 }
 
@@ -80,56 +84,47 @@ export async function settle(
   s: Settling,
 ): Promise<{ readonly settled: Settled } | { readonly unsettled: Unsettled }> {
   if (s.source.has(path)) return { settled: { path, why: "--source" } };
-  const test = await testCodeWhy(path, s, [s.head, s.base]);
-  if (test !== null) return { unsettled: { path, testCode: true, why: test } };
+  const own = await kindOf(path, s, [s.head, s.base]);
+  if ("test" in own) return { unsettled: { path, testCode: true, why: own.test } };
+  // Review wave-14 third look, 1: a changed file whose own imports are not all accounted for
+  // may be test code; nothing settles it.
+  if ("unknown" in own) return { unsettled: { path, testCode: false, why: own.unknown } };
   const unknown: string[] = [];
   for (const importer of await s.candidates(path)) {
     if (importer === path) continue;
-    const text = await s.head.text(importer);
-    if (text === null || !imports(importer, text, path, s.head)) continue;
-    const why = await testCodeWhy(importer, s, [s.head]);
-    if (why === null) return { settled: { path, why: `imported by ${importer}` } };
-    if (why === TOO_MANY) unknown.push(importer);
+    // Third look, 2: an import is read by the parser; a text match only picked the candidate.
+    if (!(await importsIn(importer, s.head)).local.includes(path)) continue;
+    const kind = await kindOf(importer, s, [s.head]);
+    if ("none" in kind) return { settled: { path, why: `imported by ${importer}` } };
+    if ("unknown" in kind) unknown.push(kind.unknown);
   }
-  const why =
-    unknown.length > 0
-      ? `its importers' own imports are too many to follow: ${unknown.join(", ")}`
-      : "no project file that is not test code imports it";
+  const why = unknown[0] ?? "no project file that is not test code imports it";
   return { unsettled: { path, testCode: false, why } };
 }
 
-const TOO_MANY = "its local imports are too many to follow";
+/** Whether a file is test code (and why), shown not to be, or unknown (and why). */
+type Kind = { readonly test: string } | { readonly none: true } | { readonly unknown: string };
 
 /**
- * Why `path` is test code at one of `trees`: a test-side or `--with` path,
- * a `conftest.py`, or a test API it reaches; `TOO_MANY` when its imports
- * could not all be followed; `null` when it is not.
+ * Whether `path` is test code at one of `trees`: a test-side or `--with`
+ * path, a `conftest.py`, or a file that reaches a test API; shown not to be
+ * only when every import it reaches at every tree is accounted for.
  */
-async function testCodeWhy(
-  path: RelativePath,
-  s: Settling,
-  trees: readonly Tree[],
-): Promise<string | null> {
-  if (isTestSide(path, s.testSide)) return "test code by its path";
-  if (posix.basename(path) === "conftest.py") return "pytest's conftest.py";
-  let unknown = false;
+async function kindOf(path: RelativePath, s: Settling, trees: readonly Tree[]): Promise<Kind> {
+  if (isTestSide(path, s.testSide)) return { test: "test code by its path" };
+  if (posix.basename(path) === "conftest.py") return { test: "pytest's conftest.py" };
+  let unknown: string | null = null;
   for (const tree of trees) {
     if (!tree.has(path)) continue;
     const reach = await reachesTestApi(path, tree);
-    if (reach === "unknown") unknown = true;
-    else if (reach !== "none") {
+    if (reach === "none") continue;
+    if ("unknown" in reach) unknown ??= reach.unknown;
+    else {
       const via = reach.via.length === 0 ? "" : ` through ${reach.via.join(", ")}`;
-      return `imports ${reach.api}${via} at ${tree.commit.slice(0, 9)}`;
+      return { test: `imports ${reach.api}${via} at ${tree.commit.slice(0, 9)}` };
     }
   }
-  return unknown ? TOO_MANY : null;
-}
-
-/** Whether `importer`'s text names `path` through a local import. */
-function imports(importer: RelativePath, text: string, path: RelativePath, tree: Tree): boolean {
-  return specifiersOf(importer, text).some(
-    (specifier) => resolveLocal(importer, specifier, (p) => tree.has(p)) === path,
-  );
+  return unknown === null ? { none: true } : { unknown };
 }
 
 /**

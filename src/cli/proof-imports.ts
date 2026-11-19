@@ -88,6 +88,7 @@ async function treeOf(root: AbsolutePath, commit: string): Promise<Tree> {
   return {
     commit,
     has: (path) => entries.has(path),
+    paths: () => [...entries.keys()],
     text: (path) => {
       const entry = entries.get(path);
       if (entry === undefined || entry.mode === "120000" || entry.mode === "160000")
