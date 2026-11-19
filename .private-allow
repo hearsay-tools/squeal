@@ -6,3 +6,4 @@ test/harness/recorded/**
 test/harness/codex/input.test.ts
 test/e2e/plugins.ts
 test/harness/check-private.test.ts
+docs/specifications/011-core/research/probes/broad-change-throughput-2/hold.sh
