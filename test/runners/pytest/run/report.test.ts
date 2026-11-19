@@ -61,15 +61,17 @@ describe("readBatch on a recorded batch (spec 007 D3, D6)", () => {
     const results = file("test_phases.py")?.results ?? [];
     const setup = results.find((r) => r.check.fullName === "test_setup_error");
     const teardown = results.find((r) => r.check.fullName === "test_teardown_error");
+    // Row 023-22: setup and teardown run the test's fixtures, its hooks.
     expect(setup?.errors).toMatchObject([
       {
         name: "ValueError",
         message: "[setup] fixture setup",
         location: { path: "outcomes/test_phases.py", line: 6 },
+        stage: "hook",
       },
     ]);
     expect(teardown?.errors).toMatchObject([
-      { name: "ValueError", message: "[teardown] fixture teardown" },
+      { name: "ValueError", message: "[teardown] fixture teardown", stage: "hook" },
     ]);
     const strict = results.find((r) => r.check.fullName === "test_strict_xpass");
     expect(strict?.errors[0]?.message).toContain("[XPASS(strict)]");
@@ -81,6 +83,7 @@ describe("readBatch on a recorded batch (spec 007 D3, D6)", () => {
     expect(failing?.errors[0]).toMatchObject({
       name: "AssertionError",
       location: { path: "outcomes/test_fail.py", line: 6 },
+      stage: "body", // row 023-22: the call phase is the test's body
     });
     expect(failing?.errors[0]?.stack).not.toContain(ROOT);
   });

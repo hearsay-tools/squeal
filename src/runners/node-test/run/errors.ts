@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { CheckError } from "../../../core/types/check.js";
+import type { CheckError, ErrorStage } from "../../../core/types/check.js";
 import type { SourceLocation } from "../../../core/types/common.js";
 import type { SerializedTestError } from "./events.js";
 
@@ -13,6 +13,24 @@ interface Cause {
   readonly expected?: unknown;
   readonly operator?: unknown;
   readonly generatedMessage?: unknown;
+  readonly code?: unknown;
+}
+
+/**
+ * Row 023-22: where in its test an error happened, from the
+ * `ERR_TEST_FAILURE`'s `failureType`. Any other type (a cancellation, an
+ * uncaught error, a callback misuse) is `other`.
+ */
+const STAGES: Readonly<Record<string, ErrorStage>> = {
+  testCodeFailure: "body",
+  hookFailed: "hook",
+  testTimeoutFailure: "timeout",
+};
+
+function stageOf(error: SerializedTestError | undefined): ErrorStage | undefined {
+  const type = error?.failureType;
+  if (type === undefined) return undefined;
+  return Object.hasOwn(STAGES, type) ? STAGES[type] : "other";
 }
 
 /**
@@ -36,6 +54,7 @@ export function toCheckError(
       stack: stack === null ? null : paths.relativizeText(stack),
       location: stack === null ? null : firstProjectLocation(stack, paths),
       diff: assertionDiff(c),
+      ...evidenceOf(c, stageOf(error)),
     };
   }
   const message =
@@ -46,6 +65,26 @@ export function toCheckError(
     stack: null,
     location: null,
     diff: null,
+    ...evidenceOf({}, stageOf(error)),
+  };
+}
+
+/**
+ * Row 023-22: the thrown value's code (`ERR_MODULE_NOT_FOUND`, which no
+ * deliberate throw has), where in its test it was thrown, and whether it
+ * holds assertion evidence (the expected and actual values).
+ */
+function evidenceOf(
+  cause: Cause,
+  stage: ErrorStage | undefined,
+): Pick<CheckError, "code" | "stage" | "assertionEvidence"> {
+  return {
+    // An assertion's `ERR_ASSERTION` is left out: its name says it, and the summary would repeat it.
+    ...(typeof cause.code === "string" && cause.name !== "AssertionError"
+      ? { code: cause.code }
+      : {}),
+    ...(stage === undefined ? {} : { stage }),
+    ...("actual" in cause && "expected" in cause ? { assertionEvidence: true as const } : {}),
   };
 }
 

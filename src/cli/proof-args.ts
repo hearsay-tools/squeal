@@ -35,6 +35,8 @@ export interface ProofArgs {
   readonly repeat?: number;
   /** Row 023-21 (D5.2): each `--with` path as given, copied from the test version as test code. */
   readonly with?: readonly string[];
+  /** Row 023-22 (D5.5): each `--red-error` text; a red failure whose message holds one counts. */
+  readonly redErrors?: readonly string[];
 }
 
 /** A usage problem, told in one line. */
@@ -49,9 +51,16 @@ const VALUED = [
   "--home-keep",
   "--repeat",
   "--with",
+  "--red-error",
 ] as const;
 type Valued = (typeof VALUED)[number];
-const REPEATABLE: ReadonlySet<Valued> = new Set(["--env", "--without", "--home-keep", "--with"]);
+const REPEATABLE: ReadonlySet<Valued> = new Set([
+  "--env",
+  "--without",
+  "--home-keep",
+  "--with",
+  "--red-error",
+]);
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -109,6 +118,8 @@ function checked(
   if (typeof kind === "object" && kind !== null) return kind;
   const counts = countsOf(one("--timeout"), one("--repeat"));
   if ("usage" in counts) return counts;
+  const red = redErrorsOf(values.get("--red-error"));
+  if ("usage" in red) return red;
   return {
     files,
     base,
@@ -118,8 +129,17 @@ function checked(
     without,
     homeKeep: values.get("--home-keep") ?? [],
     with: values.get("--with") ?? [],
+    ...red,
     ...counts,
   };
+}
+
+/** Row 023-22: `--red-error`'s texts, present only when given; an empty text would accept any failure. */
+function redErrorsOf(
+  given: readonly string[] | undefined,
+): { redErrors?: readonly string[] } | ProofUsage {
+  if (given === undefined) return {};
+  return given.includes("") ? { usage: "--red-error needs a text" } : { redErrors: given };
 }
 
 /** `--case`: one of D5's three; `dependency` only with a condition. */

@@ -99,7 +99,24 @@ export interface CheckError {
    * Absent otherwise and in failure texts stored before 001-390.
    */
   readonly recorder?: string;
+  /**
+   * Where in its test the error happened, as the runner's own records say
+   * (row 023-22, spec 023 D5.5): `body` while the test's own function ran,
+   * `hook` in a hook or fixture around it, `timeout` when the runner stopped
+   * it, `other` for any other runner-reported failure (a cancellation, an
+   * uncaught error). Absent when the runner says nothing and in failure
+   * texts stored before 023-22.
+   */
+  readonly stage?: ErrorStage;
+  /**
+   * Set when the error carries assertion evidence whatever its name: the
+   * expected and actual values or a matcher result (row 023-22). Absent
+   * otherwise; a `diff` is evidence too.
+   */
+  readonly assertionEvidence?: true;
 }
+
+export type ErrorStage = "body" | "hook" | "timeout" | "other";
 
 /** One link of `CheckError.causes`: its first line, capped, and its code, whole. */
 export interface CheckErrorCause {

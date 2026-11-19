@@ -13,7 +13,7 @@ import {
   sidesOf,
   testSideCopies,
 } from "../core/proof/sides.js";
-import { NOT_RUN_BUDGET, proofExit, redOnAssertion } from "../core/proof/verdict.js";
+import { NOT_RUN_BUDGET, proofExit, redCounts } from "../core/proof/verdict.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -101,6 +101,7 @@ export async function proofCommand(
     usedMs: Math.round(performance.now() - started),
     conditions,
     repeat: common.repeat,
+    redErrors: args.redErrors ?? [],
     notRun,
     rerun: notRun === 0 ? null : rerunCommand(args, conditions),
     with: at.with,
@@ -120,6 +121,7 @@ type Proved = Omit<
   | "usedMs"
   | "conditions"
   | "repeat"
+  | "redErrors"
   | "notRun"
   | "rerun"
   | "with"
@@ -188,9 +190,11 @@ async function prove(
       if (typeof kind === "object") return kind;
       const sides = sidesOf(kind, base, head);
       const red = proving.length === 0 ? null : await sideOf(common, sides.red, proving, testSide);
-      // The green side decides only after a red side that failed on an assertion.
+      // The green side decides only after a red side that failed on red evidence (row 023-22).
       const decided =
-        red === null ? [] : proving.filter((ref) => redOnAssertion(endOf(red.files, ref).end));
+        red === null
+          ? []
+          : proving.filter((ref) => redCounts(endOf(red.files, ref).end, args.redErrors));
       await open.run(decided);
       // P9: after the green side, so a short budget cuts the control run, not the verdict.
       const control =
@@ -215,6 +219,7 @@ async function prove(
       common.conditions,
       value?.imports ?? NO_IMPORTS.imports,
       base,
+      args.redErrors,
     ),
   };
 }

@@ -91,11 +91,9 @@ describe("proof verdicts (row 023-08, D5.5, D5.6)", () => {
   it("says why a side did not run, never 'not read' (row 023-20, lessons P7)", () => {
     expect(notRunWhy(pass)).toBe("red passed: nothing to prove");
     expect(notRunWhy(fail(error({ name: "TypeError" })))).toBe(
-      "red did not fail on an assertion: nothing to prove",
+      "red failed for another reason: nothing to prove",
     );
-    expect(notRunWhy({ end: "timeout" })).toBe(
-      "red did not fail on an assertion: nothing to prove",
-    );
+    expect(notRunWhy({ end: "timeout" })).toBe("red failed for another reason: nothing to prove");
     expect(notRunWhy({ end: "unknown", reason: NOT_RUN_BUDGET })).toBe(
       "red not run (budget): nothing to compare",
     );

@@ -54,5 +54,6 @@ function commandWords(
     ...conditions.keep.map((k) => `--home-keep ${shellWord(k.given)}`),
     ...withPaths.map((path) => `--with ${shellWord(path)}`),
     ...((args.repeat ?? 1) > 1 ? ["--repeat", String(args.repeat)] : []),
+    ...(args.redErrors ?? []).map((text) => `--red-error ${shellWord(text)}`),
   ];
 }

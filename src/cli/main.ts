@@ -90,7 +90,8 @@ Usage:
                                 tells its estimate first
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
-               [--with <path>]... [--repeat <n>] [--timeout <seconds>] [--json]
+               [--with <path>]... [--repeat <n>] [--red-error <text>]...
+               [--timeout <seconds>] [--json]
                                 A red proof per named test file over committed HEAD:
                                 red is the test at HEAD over the code at --base
                                 (source) or the test at --base over the code at HEAD
@@ -108,10 +109,15 @@ Usage:
                                 from the test version as test code, with no verdict
                                 of its own; a named test unchanged since --base whose
                                 imported helpers changed runs nothing and names them
-                                with that rerun. Verdicts: proven, not red, red for
-                                another reason, not green, not comparable, with the
-                                red side's failure text; exit 0 all proven, 1 not
-                                red or not green, 3 unknown, 2 on a usage error
+                                with that rerun. Red counts on an assertion, or
+                                labelled on an error the test body threw; engine
+                                errors (TypeError, ReferenceError, SyntaxError) and
+                                import, setup, hook or timeout failures are red for
+                                another reason; --red-error accepts a failure whose
+                                message holds the text. Verdicts: proven, not red,
+                                red for another reason, not green, not comparable,
+                                with the red side's failure text; exit 0 all proven,
+                                1 not red or not green, 3 unknown, 2 on a usage error
   squeal why <check> [--include-logs] [--json]
                                 History and provenance of one check, and the run log
                                 holding its console output; --include-logs also prints

@@ -2,7 +2,13 @@ import type { FailedTest } from "../core/code/gate/types.js";
 import { type Conditions, conditionWords, hasConditions } from "../core/proof/conditions.js";
 import { type ChangedImports, stops } from "../core/proof/imports.js";
 import type { ProofCase, Side } from "../core/proof/sides.js";
-import { controlReading, failureKind, type SideEnd, type Verdict } from "../core/proof/verdict.js";
+import {
+  controlReading,
+  failureKind,
+  type RedEvidence,
+  type SideEnd,
+  type Verdict,
+} from "../core/proof/verdict.js";
 import { errorLines } from "../core/status/format-why-replaced.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -24,6 +30,8 @@ export interface ProofFile {
   readonly ref: TestFileRef;
   readonly verdict: Verdict;
   readonly reason: string | null;
+  /** Row 023-22: what a red side that counts failed on; `null` when it does not count. */
+  readonly evidence: RedEvidence | null;
   readonly red: SideFile;
   /** `null` when the green side was not run: the red side already decided. */
   readonly green: SideFile | null;
@@ -62,6 +70,8 @@ export interface ProofReport {
   readonly conditions: Conditions;
   /** Row 023-11 (D5.4): `--repeat`. */
   readonly repeat: number;
+  /** Row 023-22 (D5.5): `--red-error`'s texts. */
+  readonly redErrors: readonly string[];
   /** Row 023-11: the files the budget left a run of not started. */
   readonly notRun: number;
   /** 020's rerun line, with a longer `--timeout`; `null` when every run started. */
@@ -164,13 +174,13 @@ export function formatProof(report: ProofReport): string {
     lines.push(`${file.ref.path}: ${file.verdict}${why}`);
     lines.push(`  red: ${endText(file.red)}`);
     for (const failure of failuresOf(file.red.end)) {
-      lines.push(`  ${failure.test} [${failureKind(failure)}]`);
+      lines.push(`  ${failure.test} [${failureKind(failure, report.redErrors)}]`);
       lines.push(...errorLines(failure.errors).map((line) => `  ${line.replace(/^ {2}/, INDENT)}`));
     }
     const notRun = `not run (${file.greenNotRun ?? "not needed"})`;
     lines.push(...importLines(file, report));
     lines.push(`  green: ${file.green === null ? notRun : endText(file.green)}`);
-    const control = controlLine(file, report.conditions);
+    const control = controlLine(file, report);
     if (control !== null) lines.push(`  ${control}`);
   }
   const counts = countsOf(report.files);
@@ -210,11 +220,11 @@ function importLines(file: ProofFile, report: ProofReport): string[] {
  * only under the conditions` or `red without them too`, with how the run
  * without them ended; why it did not run; `null` with no condition.
  */
-function controlLine(file: ProofFile, conditions: Conditions): string | null {
-  if (!hasConditions(conditions)) return null;
+function controlLine(file: ProofFile, report: ProofReport): string | null {
+  if (!hasConditions(report.conditions)) return null;
   if (file.control === null)
     return `without the conditions: not run (${file.controlNotRun ?? "not needed"})`;
-  const reading = controlReading(file.control.end);
+  const reading = controlReading(file.control.end, report.redErrors);
   const how = `without them: ${endText(file.control)}`;
   return reading === "not known"
     ? `without the conditions: ${endText(file.control)}; not known whether red needs the conditions`
@@ -236,7 +246,7 @@ function countsOf(files: readonly ProofFile[]): Record<Verdict, number> {
 /** D5.5's versioned JSON report. */
 export const PROOF_REPORT_VERSION = "squeal-proof/1";
 
-function sideJson(side: SideFile | null) {
+function sideJson(side: SideFile | null, redErrors: readonly string[]) {
   if (side === null) return null;
   const { end } = side;
   return {
@@ -248,7 +258,7 @@ function sideJson(side: SideFile | null) {
     runs: side.runs,
     failures: failuresOf(end).map((failure) => ({
       test: failure.test,
-      kind: failureKind(failure),
+      kind: failureKind(failure, redErrors),
       text: errorLines(failure.errors)
         .map((line) => line.replace(/^ {2}/, ""))
         .join("\n"),
@@ -277,6 +287,7 @@ export function jsonProof(report: ProofReport): string {
       homeKeep: report.conditions.keep.map((k) => k.given),
     },
     repeat: report.repeat,
+    redErrors: report.redErrors,
     notRun: report.notRun,
     rerun: report.rerun,
     checkoutMs: report.checkoutMs,
@@ -286,11 +297,13 @@ export function jsonProof(report: ProofReport): string {
       path: file.ref.path,
       verdict: file.verdict,
       reason: file.reason,
-      red: sideJson(file.red),
-      green: sideJson(file.green),
+      evidence: file.evidence,
+      red: sideJson(file.red, report.redErrors),
+      green: sideJson(file.green, report.redErrors),
       greenNotRun: file.greenNotRun,
-      control: sideJson(file.control),
-      controlReading: file.control === null ? null : controlReading(file.control.end),
+      control: sideJson(file.control, report.redErrors),
+      controlReading:
+        file.control === null ? null : controlReading(file.control.end, report.redErrors),
       controlNotRun: file.controlNotRun,
       changedImports:
         file.imports === null

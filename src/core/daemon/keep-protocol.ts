@@ -19,6 +19,7 @@ import type { Provenance, ResultRecord } from "../types/store-records.js";
 const MAX_RECORDS = 100_000;
 const OUTCOMES: ReadonlySet<RunOutcome> = new Set(["pass", "fail", "skip"]);
 const PHASES: ReadonlySet<string> = new Set(["load", "after-tests", "setup"]);
+const STAGES: ReadonlySet<string> = new Set(["body", "hook", "timeout", "other"]);
 const RECORD_FIELDS = [
   "check",
   "key",
@@ -187,6 +188,10 @@ function checkId(value: unknown): string | null {
 }
 
 function checkError(value: unknown): string | null {
+  return errorFields(value) ?? evidenceError(value as Fields);
+}
+
+function errorFields(value: unknown): string | null {
   if (!isFields(value)) return "must be an object";
   const fields = [
     "name",
@@ -199,6 +204,8 @@ function checkError(value: unknown): string | null {
     "causes",
     "phase",
     "recorder",
+    "stage",
+    "assertionEvidence",
   ];
   const extra = unknownField(value, fields);
   if (extra !== null) return `has the unknown field "${extra}"`;
@@ -222,6 +229,15 @@ function checkError(value: unknown): string | null {
     (c.code === undefined || typeof c.code === "string") &&
     unknownField(c, ["message", "code"]) === null;
   return Array.isArray(causes) && causes.every(valid) ? null : '"causes" must be a list of causes';
+}
+
+/** Row 023-22: where in its test the error happened, and its assertion evidence. */
+function evidenceError(value: Fields): string | null {
+  if (value.stage !== undefined && !STAGES.has(value.stage as string))
+    return '"stage" must be body, hook, timeout or other';
+  if (value.assertionEvidence !== undefined && value.assertionEvidence !== true)
+    return '"assertionEvidence" must be true';
+  return null;
 }
 
 /** The gate's provenance (`Keeper.#write`): this worktree, its run id `gate-…`. */

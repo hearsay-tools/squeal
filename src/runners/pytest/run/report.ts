@@ -199,6 +199,8 @@ function phaseError(phase: PhaseEvent, paths: WorktreePaths, scrub: Scrub): Chec
     stack: text === "" ? null : paths.relativizeText(text),
     location: phase.crash === null ? null : paths.location(phase.crash.path, phase.crash.line, 1),
     diff: null,
+    // Row 023-22: the call phase is the test's body; setup and teardown run its fixtures.
+    stage: phase.when === "call" ? "body" : "hook",
   };
 }
 

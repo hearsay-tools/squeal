@@ -1,7 +1,13 @@
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions } from "../core/proof/conditions.js";
 import { type ChangedImports, stops } from "../core/proof/imports.js";
-import { notRunWhy, redOnAssertion, verdictOf, withControl } from "../core/proof/verdict.js";
+import {
+  notRunWhy,
+  redCounts,
+  redEvidence,
+  verdictOf,
+  withControl,
+} from "../core/proof/verdict.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { ProofFile, ProofReport } from "./proof-report.js";
 import type { SideAnswer, SideFile } from "./proof-side.js";
@@ -25,6 +31,7 @@ export function provedFiles(
   conditions: Conditions,
   imports: ImportsOf,
   base: string,
+  redErrors: readonly string[] = [],
 ): Pick<ProofReport, "runs" | "checkoutMs" | "files"> {
   const conditioned = hasConditions(conditions);
   const redMs = red?.checkoutMs ?? null;
@@ -41,7 +48,7 @@ export function provedFiles(
       const changed = imports.get(testFileId(ref)) ?? null;
       const stopped = stops(changed) ? stoppedSide(changed, base) : null;
       return {
-        ...fileOf(ref, green.files, red?.files, control?.files, conditioned, stopped),
+        ...fileOf(ref, green.files, red?.files, control?.files, conditioned, stopped, redErrors),
         imports: changed,
       };
     }),
@@ -62,14 +69,16 @@ function fileOf(
   conditioned: boolean,
   /** Row 023-21: the red side of a file that did not run for its changed helpers. */
   stopped: SideFile | null,
+  redErrors: readonly string[],
 ): Omit<ProofFile, "imports"> {
   const greenFile = endOf(green, ref);
   const redFile = stopped ?? (red?.has(testFileId(ref)) === true ? endOf(red, ref) : greenFile);
-  const decides = redOnAssertion(redFile.end);
+  const decides = redCounts(redFile.end, redErrors);
   const controlFile = control?.has(testFileId(ref)) === true ? endOf(control, ref) : null;
   const { verdict, reason } = withControl(
-    verdictOf(redFile.end, decides ? greenFile.end : null),
+    verdictOf(redFile.end, decides ? greenFile.end : null, redErrors),
     controlFile?.end ?? null,
+    redErrors,
   );
   const shown = decides || greenFile.from !== null ? greenFile : null;
   // Row 023-20 (P7): a side not run says why.
@@ -78,6 +87,7 @@ function fileOf(
     ref,
     verdict,
     reason,
+    evidence: redEvidence(redFile.end, redErrors),
     red: redFile,
     green: shown,
     greenNotRun: shown === null ? why : null,
