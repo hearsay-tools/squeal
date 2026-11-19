@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { OVERRUN_FACTOR, OVERRUN_FLOOR_MS } from "../../src/core/scheduler/overrun.js";
+import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
+import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
+import type { EpochMs } from "../../src/core/types/common.js";
 import { BESIDE_LANE_PREFIX, isBesideLane } from "../../src/core/types/runner.js";
+import type { TierOverrun } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { Gate } from "./batch-fixture.js";
 import {
@@ -42,6 +46,12 @@ const besideRuns = (side: CatchUpSide, after: number) =>
   side.runner.runs.slice(after).filter((run) => isBesideLane(run.lane ?? ""));
 const pathsOf = (run: CatchUpRun) => run.files.map((f) => f.path);
 
+/** The overruns `side`'s daemon published in its `yields` row (additive key, row 011-399). */
+function overrunsOf(side: CatchUpSide): TierOverrun[] {
+  const row = readYieldRow(side.store.meta.get(yieldsMetaKey(side.worktreeId)), 0 as EpochMs);
+  return [...(row.overruns ?? new Map<string, TierOverrun>()).values()];
+}
+
 /**
  * After a baseline, an edit of `src/a.ts` queues every file as the edit's
  * work; the first tier holds H and its three mates and stays in flight. Runs
@@ -79,9 +89,11 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(side.runner.runs.slice(after)).toEqual([tier]);
 
     // Under the threshold nothing changes: the lane waits for the tier, as before.
+    const startedAt = side.now();
     side.advance(OVERRUN_FLOOR_MS - 1_000);
     await settle(side);
     expect(side.runner.runs.slice(after)).toEqual([tier]);
+    expect(overrunsOf(side)).toEqual([]);
 
     // At the floor (5 ms x 10 is under it), the next tier starts beside, with no other event.
     side.advance(1_000);
@@ -95,6 +107,13 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(pathsOf(first as CatchUpRun).every((path) => path.startsWith("test/q"))).toBe(true);
     expect(tier.endedAt).toBeNull();
     expect(tier.cancelled).toBe(false);
+    // The row says so, with no other event: since when, the run's deadline and the files left.
+    const [overrun, ...others] = overrunsOf(side);
+    expect(others).toEqual([]);
+    expect(overrun?.files.map((f) => f.path).toSorted()).toEqual([H, ...MATES].toSorted());
+    expect(overrun?.files.every((f) => f.usualMs === 5)).toBe(true);
+    expect(overrun?.at).toBeGreaterThanOrEqual(startedAt + OVERRUN_FLOOR_MS - 1_000);
+    expect(overrun?.deadline).toBeGreaterThan(overrun?.at ?? 0);
 
     // One tier beside at a time; when it ends, the next goes beside while H still runs.
     beside.release();
@@ -104,6 +123,19 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(tier.endedAt).toBeNull();
     hung.stop();
     beside.stop();
+  });
+
+  it("with nothing queued, no tier goes beside, and the row still says the tier overruns", async () => {
+    const { side, hung, tier, after } = await hungTier(5, 0);
+    side.advance(OVERRUN_FLOOR_MS);
+    await settle(side);
+    expect(side.runner.runs.slice(after)).toEqual([tier]);
+    expect(
+      overrunsOf(side)
+        .flatMap((o) => o.files.map((f) => f.path))
+        .toSorted(),
+    ).toEqual([H, ...MATES].toSorted());
+    hung.stop();
   });
 
   it("a file with a known time waits for 10 times it, its result is H's own, and the second instance closes after", async () => {
@@ -118,6 +150,7 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
 
     side.advance(OVERRUN_FACTOR * hMs - OVERRUN_FLOOR_MS);
     await settle(side);
+    expect(overrunsOf(side).map((o) => o.files.find((f) => f.path === H)?.usualMs)).toEqual([hMs]);
     const ranBeside = besideRuns(side, after).flatMap(pathsOf);
     expect(ranBeside.toSorted()).toEqual(queued(12));
     expect(queued(12).every((path) => side.current(path))).toBe(true);
@@ -131,5 +164,6 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(side.current(H)).toBe(true);
     expect(side.runner.runsOf(H).slice(1)).toEqual([tier]);
     expect(side.runner.released).toContain(BESIDE_LANE_PREFIX);
+    expect(overrunsOf(side)).toEqual([]);
   });
 });

@@ -7,6 +7,7 @@ import type { SchedulerContext } from "./context.js";
 import { type Cut, decideYields, holds, YIELD_REMAINDER_MS } from "./decide-yields.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
+import { Overruns } from "./overrun.js";
 import type { CutFiles } from "./sharing.js";
 import type { SchedulerEvent } from "./step-events.js";
 import type { Tier } from "./tiers.js";
@@ -42,6 +43,8 @@ export class TierYields implements CutFiles {
    * by run id.
    */
   readonly #bounds = new Map<string, EpochMs>();
+  /** Row 011-399 (gh-233): the tiers in flight that overrun, and when the others will. */
+  readonly #overruns = new Overruns();
   /** The wake that checks the tiers again at the earliest of `#bounds` (row 011-352). */
   #wake: WakeSlot | null = null;
   /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
@@ -140,8 +143,18 @@ export class TierYields implements CutFiles {
       if (bound === null) this.#bounds.delete(tier.runId);
       else this.#bounds.set(tier.runId, bound);
     }
-    if (decided.changed) this.#publish(context, at);
+    const overran = this.#overruns.check(context, tiers, at);
+    if (decided.changed || overran) this.#publish(context, at);
     this.#arm(context);
+  }
+
+  /**
+   * Row 011-399 (gh-233): `tier` started. It is checked again, with no other
+   * event, when it would start to overrun (`overrunAt`), so the row says so
+   * then; nothing is written now.
+   */
+  started(context: SchedulerContext, tier: Tier): void {
+    if (this.#overruns.started(context, tier)) this.#arm(context);
   }
 
   /**
@@ -182,9 +195,11 @@ export class TierYields implements CutFiles {
    */
   ended(context: SchedulerContext, tier: Tier): void {
     let changed = this.#standing.delete(tier.runId);
+    const { published, bounded } = this.#overruns.ended(tier);
+    changed = published || changed;
     changed = this.#history.ended(context.now(), tier) || changed;
     if (changed) this.#publish(context);
-    if (this.#bounds.delete(tier.runId)) this.#arm(context);
+    if (this.#bounds.delete(tier.runId) || bounded) this.#arm(context);
   }
 
   /**
@@ -194,12 +209,14 @@ export class TierYields implements CutFiles {
    */
   shift(ms: number): void {
     for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
+    this.#overruns.shift(ms);
     this.#history.shift(ms);
   }
 
   /** The scheduler closed: no check comes again. */
   close(): void {
     this.#bounds.clear();
+    this.#overruns.clear();
     this.#disarm();
   }
 
@@ -210,13 +227,14 @@ export class TierYields implements CutFiles {
    */
   #arm(context: SchedulerContext): void {
     this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
-    if (this.#bounds.size === 0) {
+    const bounds = [...this.#bounds.values(), ...this.#overruns.bounds()];
+    if (bounds.length === 0) {
       this.#wake.clear();
       return;
     }
     // Review 0.1.524 B2: the reading first: a calendar step it sees moves the bounds before they are read.
     const now = context.now();
-    this.#wake.after(Math.min(...this.#bounds.values()) - now);
+    this.#wake.after(Math.min(...bounds) - now);
   }
 
   #disarm(): void {
@@ -231,7 +249,8 @@ export class TierYields implements CutFiles {
   #publish(context: SchedulerContext, at: EpochMs = context.now()): void {
     const { store, worktreeId } = context;
     const stamp = context.steps?.stamp(at) ?? at;
-    writeYieldRow(store, worktreeId, stamp, this.#history.row(this.#standing));
+    const row = { ...this.#history.row(this.#standing), overruns: this.#overruns.published };
+    writeYieldRow(store, worktreeId, stamp, row);
   }
 }
 

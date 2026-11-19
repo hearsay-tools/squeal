@@ -1,6 +1,7 @@
 import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import { isGroupLane } from "../types/scheduler.js";
+import type { TierOverrun } from "../types/standing.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { cancels, laneOf, type Tier } from "./tiers.js";
@@ -105,4 +106,82 @@ export function nextOverrun(
     if (ledger.queue.hasFast(inLane)) next = when;
   }
   return next;
+}
+
+/**
+ * What the `yields` row says of `tier`, overrunning since `at`: its run's
+ * deadline, `runner.timeoutMs` from its start, and its files that have not
+ * ended, each with its last-known duration.
+ */
+function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOverrun {
+  const { timeoutMs } = context.policy.runner;
+  const start = tier.startedAt;
+  const deadline = timeoutMs === null || start === undefined ? null : start + timeoutMs;
+  const files = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
+  return { at, deadline: deadline as EpochMs | null, files };
+}
+
+/**
+ * The tiers in flight that overrun, by run id, as `TierYields` publishes
+ * them in the `yields` row, and when each other tier will: `TierYields`
+ * checks the tiers again then, with no other event (row 011-399).
+ */
+export class Overruns {
+  readonly #published = new Map<string, TierOverrun>();
+  readonly #bounds = new Map<string, EpochMs>();
+
+  get published(): ReadonlyMap<string, TierOverrun> {
+    return this.#published;
+  }
+
+  bounds(): EpochMs[] {
+    return [...this.#bounds.values()];
+  }
+
+  /** `tier` started: whether it has a time to overrun at, a bound. */
+  started(context: SchedulerContext, tier: Tier): boolean {
+    const when = overrunAt(context, tier);
+    if (when === null) return false;
+    this.#bounds.set(tier.runId, when);
+    return true;
+  }
+
+  /**
+   * Records which of `tiers` overrun at `at`, and when each other will;
+   * whether the published ones changed.
+   */
+  check(context: SchedulerContext, tiers: readonly Tier[], at: EpochMs): boolean {
+    let changed = false;
+    for (const tier of tiers) {
+      const when = overrunAt(context, tier);
+      if (when === null || when > at) {
+        if (when === null) this.#bounds.delete(tier.runId);
+        else this.#bounds.set(tier.runId, when);
+        changed = this.#published.delete(tier.runId) || changed;
+        continue;
+      }
+      this.#bounds.delete(tier.runId);
+      if (this.#published.has(tier.runId)) continue;
+      this.#published.set(tier.runId, tierOverrun(context, tier, when));
+      changed = true;
+    }
+    return changed;
+  }
+
+  /** `tier` ended: whether it was published, and whether it had a bound. */
+  ended(tier: Tier): { readonly published: boolean; readonly bounded: boolean } {
+    return {
+      published: this.#published.delete(tier.runId),
+      bounded: this.#bounds.delete(tier.runId),
+    };
+  }
+
+  /** The calendar stepped `ms` (row 011-377): each bound moves with it. */
+  shift(ms: number): void {
+    for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
+  }
+
+  clear(): void {
+    this.#bounds.clear();
+  }
 }
