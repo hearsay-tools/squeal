@@ -40,4 +40,4 @@ Amended 2026-11-19 (the human, row 011-396, gh-181, `research/stuck-running.md` 
 ## For the next worker
 
 - `runner-work.ts`, `refinement.ts` and `revision.ts` were over 300 lines before this row; they still are (327, 338, 406).
-- The live run in this worktree hit the old behaviour while verifying: `squeal status --wait` named "it waits for the run in flight, each of its calls bounded at 666 s" with no run open, which is W3's text bug.
+- While verifying, the host daemon (0.1.565, without this row) printed "Vitest has not listed revision 12's test files yet; it waits for the run in flight, each of its calls bounded at 666 s" for this worktree, the text W3 owns.
