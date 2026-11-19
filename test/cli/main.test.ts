@@ -192,6 +192,16 @@ describe("squeal", () => {
     expect(stdout).toContain("squeal why <check> [--include-logs] [--json]");
   });
 
+  // Rows 011-406 and 011-407 (gh-169, gh-242): a folder's selection, and where the JSON is told.
+  it("names the folder selection and the status JSON reference in the help", () => {
+    const text = run(["--help"], fakeRepo().main).stdout.replace(/\s+/g, " ");
+
+    expect(text).toContain("a folder: the listed test files under it;");
+    expect(text).toContain(
+      'every field, result, reason and exit code: "Status JSON" in the squeal skill\'s references/commands.md',
+    );
+  });
+
   // Row 019-51 (019 D6 "Command", "Narrow run"): both forms of a group's run.
   it("names squeal run <group> and its path form in the help", () => {
     const { code, stdout } = run(["--help"], fakeRepo().main);

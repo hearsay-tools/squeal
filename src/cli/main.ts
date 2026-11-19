@@ -51,7 +51,8 @@ Usage:
                                 --notes is --full with every note in full
   squeal status <path>... [--check <text>]... [--full] [--json]
                                 The verdict of the test files the paths select (a test
-                                file, or a file in test files' closures) now, if the
+                                file; a folder: the listed test files under it; or a
+                                file in test files' closures) now, if the
                                 daemon stores its pass over your edits within 750 ms:
                                 exit 0, 1 on known failures, 3 without one; a path
                                 that selects nothing is named beside it, exit 3 unless
@@ -59,6 +60,8 @@ Usage:
                                 status first; --json: the files and their verdicts in
                                 selection.testFiles, and selection.complete false while
                                 the list may still grow (the text says "at least");
+                                every field, result, reason and exit code: "Status
+                                JSON" in the squeal skill's references/commands.md;
                                 --check shows the focused outcome of the named test
                                 files' checks whose name holds the text, and asks for
                                 nothing
