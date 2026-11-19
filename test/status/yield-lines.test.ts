@@ -118,7 +118,7 @@ describe("the lines of a yield kept, a tier's ended files and the run an unliste
     );
     // Row 011-398 (gh-181): none open in the file's lane, so no run and no call bound is said.
     expect(unlisted()).toBe(
-      "the test runner has not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends",
+      "the test runner has not listed revision 5's test files yet; no tier starts until the listing ends",
     );
   });
 });

@@ -282,7 +282,7 @@ function unlistedText(s: Extract<Standing, { kind: "unlisted" }>): string {
   const listed = `${runnersHave(s.runners, false)} not listed revision ${s.revision}'s test files yet`;
   // A yield is a run's: one published with no open run read is still in flight.
   if (s.run === undefined && s.yields === undefined) {
-    return `${listed}; no run is in flight, and no tier starts until the listing ends`;
+    return `${listed}; no tier starts until the listing ends`;
   }
   // Row 011-209: the run it waits for, its lane, start and ended count, when one is read.
   const run = s.run === undefined ? "" : ` (${waitedRunText(s.run)})`;
