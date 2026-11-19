@@ -15,7 +15,8 @@ import { remainderSeconds } from "./next-step.js";
 export function groupId(s: OutstandingStanding): string {
   switch (s.kind) {
     case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
+      // Row 011-399: a file whose tier overruns reads on a line of its own, with its own command.
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)} ${s.overrun?.path ?? "-"}`;
     case "queued":
       return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)} ${s.pool?.since ?? "-"}`;
     case "unlisted":

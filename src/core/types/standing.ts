@@ -122,11 +122,13 @@ export interface TierOverrun {
 
 /**
  * Row 011-399 (gh-233): a running file whose tier overruns, as status words
- * it: how long it has run as of the read, its last-known duration (`null`
+ * it: its path, how long it has run as of the read, its last-known duration (`null`
  * with none), since when its tier overruns, and its run's deadline. It may
  * be hung; nothing about its result changes.
  */
 export interface FileOverrun {
+  /** The file's path from the worktree root, for the command that shows its run. */
+  readonly path: string;
   readonly ranMs: number;
   readonly usualMs: number | null;
   readonly since: EpochMs;
