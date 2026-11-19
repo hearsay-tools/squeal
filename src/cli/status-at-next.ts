@@ -1,5 +1,5 @@
 import { type KeyedFile, resolveCommit, type WhileOpen } from "../core/commit/at-keys-checkout.js";
-import { readHead } from "../core/daemon-loop/head.js";
+import { runGit } from "../core/fs/git.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
@@ -115,18 +115,17 @@ export function nextOf(
 }
 
 /**
- * Q2: the refusal when `--at` names HEAD and the tree is clean (git
- * status: tracked changes and untracked files; ignored files are not
- * counted), so the call would compare HEAD with itself; `null` when the
- * command goes on. The caller asks only without `--run`.
+ * Q2: the refusal when `--at` names HEAD and the tree is clean, so the
+ * call would compare HEAD with itself; `null` when the command goes on.
+ * The caller asks only without `--run`.
  */
 export async function headRefusal(
   root: AbsolutePath,
   commit: string,
   args: { readonly commit: string; readonly paths: readonly string[] },
 ): Promise<string | null> {
-  const head = await readHead(root);
-  if (head.head !== commit || head.dirty) return null;
+  const head = await resolveCommit(root, "HEAD").catch(() => null);
+  if (head !== commit || !(await isClean(root))) return null;
   const what = `${args.commit} is HEAD, your working tree's commit, and the tree is clean`;
   const hasParent = await resolveCommit(root, `${commit}~1`).then(
     () => true,
@@ -135,4 +134,23 @@ export async function headRefusal(
   if (!hasParent) return `${what}; HEAD has no parent, so there is nothing to compare`;
   const command = ["squeal status --at HEAD~1", ...args.paths.map(shellWord)].join(" ");
   return `${what}: compare with its parent, \`${command}\``;
+}
+
+/**
+ * Q2 (review wave-16 B1): whether git sees no difference from HEAD at
+ * all: no tracked change, no untracked file (ignored files are not
+ * counted), and no submodule moved or changed inside. The daemon's
+ * `readHead` ignores submodules, so it is not used here. A git error
+ * reads dirty: in doubt, the command compares.
+ */
+async function isClean(root: AbsolutePath): Promise<boolean> {
+  const status = await runGit(root, [
+    "--no-optional-locks",
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=normal",
+    "--ignore-submodules=none",
+  ]).catch(() => null);
+  return status === "";
 }

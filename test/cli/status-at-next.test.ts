@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
@@ -119,6 +119,34 @@ describe("status --at HEAD (row 023-24, Q2)", SLOW, () => {
     const dirty = await run(f, { commit: "HEAD", json: true });
     expect(dirty.code).toBe(3);
     expect(JSON.parse(dirty.out)).toMatchObject({ dirty: true, counts: { unknown: 2 } });
+    clean(f);
+  });
+
+  it("compares when a submodule changed inside or moved (review wave-16 B1)", async () => {
+    const f = fixture({
+      "src/a.ts": "export const value = 1;\n",
+      "test/a.test.ts": testOf("a", 1),
+    });
+    const dep = join(f.dir, "dep");
+    mkdirSync(dep);
+    git(dep, "init", "-q", "-b", "main");
+    writeFileSync(join(dep, "source.ts"), "export const value = 1;\n");
+    git(dep, "add", "source.ts");
+    git(dep, "commit", "-qm", "initial");
+    git(f.root, "-c", "protocol.file.allow=always", "submodule", "add", "-q", dep, "dep");
+    git(f.root, "commit", "-qam", "add dependency");
+    expect((await run(f, { commit: "HEAD" })).code).toBe(2);
+    // A tracked file edited inside the submodule.
+    writeFileSync(join(f.root, "dep/source.ts"), "export const value = 2;\n");
+    expect(git(f.root, "status", "--porcelain")).toBe(" M dep\n");
+    const edited = await run(f, { commit: "HEAD" });
+    expect(edited.code, edited.err).not.toBe(2);
+    expect(edited.err).not.toContain("the tree is clean");
+    // The submodule moved to a commit HEAD does not record.
+    git(join(f.root, "dep"), "commit", "-qam", "moved");
+    expect(git(f.root, "status", "--porcelain")).toBe(" M dep\n");
+    const moved = await run(f, { commit: "HEAD" });
+    expect(moved.code, moved.err).not.toBe(2);
     clean(f);
   });
 });
