@@ -156,3 +156,37 @@ function tallyOf(tools: Map<LintTool, Tally>, tool: LintTool): Tally {
   }
   return own;
 }
+
+/**
+ * Review 0.1.570 B1: per tool of `behind` (its pass has not keyed the
+ * report's revision), the paths the commit changed and holds with no check
+ * of that tool. The pass has not said whether it lints them.
+ */
+export function unlistedPaths(
+  states: readonly LintKnownState[],
+  side: CommitSide,
+  behind: readonly LintTool[],
+): Map<LintTool, RelativePath[]> {
+  const unlisted = new Map<LintTool, RelativePath[]>();
+  for (const tool of behind) {
+    const known = new Set(states.filter((s) => s.check.tool === tool).map((s) => s.check.path));
+    const paths = [...side.changed].filter((p) => side.committed.has(p) && !known.has(p)).sort();
+    if (paths.length > 0) unlisted.set(tool, paths);
+  }
+  return unlisted;
+}
+
+/** `counts` with each tool's `unlisted` count; a tool with none counted gains a part. */
+export function withUnlisted(
+  counts: CommitLintCounts,
+  unlisted: ReadonlyMap<LintTool, readonly RelativePath[]>,
+): CommitLintCounts {
+  if (unlisted.size === 0) return counts;
+  const tools = new Map((counts.tools ?? []).map((t) => [t.tool, t] as const));
+  for (const [tool, paths] of unlisted) {
+    const own = tools.get(tool) ?? { tool, files: 0, findings: 0, notDetermined: 0, running: 0 };
+    tools.set(tool, { ...own, unlisted: paths.length });
+  }
+  const sorted = [...tools.values()].sort((a, b) => (a.tool < b.tool ? -1 : 1));
+  return { ...counts, tools: sorted };
+}

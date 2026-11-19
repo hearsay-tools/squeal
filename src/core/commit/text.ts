@@ -50,7 +50,10 @@ export function commitReportText(report: CommitReport): string {
  * is the scope, never the repository's other lint commands. The findings
  * lead only when every file is complete, as `lint (oxlint): 0 findings in
  * 7 of 7 files`; otherwise the incomplete files lead, as `lint (oxlint): 4
- * of 7 files still running, 0 findings in the other 3`. With no tool,
+ * of 7 files still running, 0 findings in the other 3`. Review 0.1.570
+ * B1: changed files the tool's pass has not listed lead, and the counts
+ * name the listed files: `lint (eslint): 1 changed file not listed yet, 0
+ * findings in 1 of 1 listed file`. With no tool,
  * `lint not run (<reason>)`. A report stored before 017-32 keeps its line.
  */
 function lintParts(lint: CommitLintCounts): string[] {
@@ -59,16 +62,24 @@ function lintParts(lint: CommitLintCounts): string[] {
   return lint.tools.map(toolPart);
 }
 
-function toolPart({ tool, files, findings, notDetermined, running }: CommitLintToolCounts) {
-  const of = `of ${plural(files, "file")}`;
+function toolPart(counts: CommitLintToolCounts) {
+  const { tool, files, findings, notDetermined, running, unlisted = 0 } = counts;
+  const listed = unlisted > 0 ? "listed file" : "file";
+  const of = `of ${plural(files, listed)}`;
   const complete = files - notDetermined - running;
-  if (complete === files) return `lint (${tool}): ${plural(findings, "finding")} in ${files} ${of}`;
+  if (complete === files && unlisted === 0) {
+    return `lint (${tool}): ${plural(findings, "finding")} in ${files} ${of}`;
+  }
   const open: string[] = [];
+  if (unlisted > 0) open.push(`${plural(unlisted, "changed file")} not listed yet`);
   if (running > 0) open.push(`${running} ${of} still running`);
   if (notDetermined > 0) {
     open.push(`${notDetermined}${running > 0 ? "" : ` ${of}`} not determined`);
   }
-  if (complete > 0) open.push(`${plural(findings, "finding")} in the other ${complete}`);
+  if (complete > 0) {
+    const where = complete === files ? `${files} ${of}` : `the other ${complete}`;
+    open.push(`${plural(findings, "finding")} in ${where}`);
+  }
   return `lint (${tool}): ${open.join(", ")}`;
 }
 

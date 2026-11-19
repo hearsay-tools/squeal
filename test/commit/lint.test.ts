@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { readLintCounts } from "../../src/core/commit/lint.js";
-import { type CommitSide, type LintView, lintCounts } from "../../src/core/commit/lint-tally.js";
+import { commitLint, lintWaitEnded, readLintCounts } from "../../src/core/commit/lint.js";
+import {
+  type CommitSide,
+  type LintView,
+  lintCounts,
+  unlistedPaths,
+  withUnlisted,
+} from "../../src/core/commit/lint-tally.js";
+import type {
+  CommitLintCounts,
+  CommitTestCounts,
+  WaitingLintCheck,
+} from "../../src/core/commit/report.js";
+import { commitReportText } from "../../src/core/commit/text.js";
 import { committedBlobs } from "../../src/core/commit/tree.js";
 import { holdsBlob, type KeyInputs } from "../../src/core/lint/pass/keys.js";
 import {
@@ -27,6 +39,7 @@ import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "../lint/pas
  */
 
 const W = "w1";
+const TESTS: CommitTestCounts = { files: 0, failures: 0, notDetermined: 0, running: 0, unknown: 0 };
 const oxlint = (path: string) => ({ ...check(path), tool: "oxlint" as const });
 const CONFIG = "eslint.config.js";
 
@@ -303,6 +316,25 @@ describe("readLintCounts from the lint store (019-13 slice 2)", () => {
 });
 
 describe("lint counts per tool, in files (017-32, gh-219)", () => {
+  it("a tool behind the report's revision gains its unlisted paths; a tool that listed it does not (review 0.1.570 B1)", () => {
+    const states = [
+      state("src/a.ts", "pass"),
+      { ...state("src/a.ts", "pass"), check: oxlint("src/a.ts") },
+    ];
+    const committed = committedOf("src/a.ts", "src/b.ts", "README.md");
+    const s = side(committed, [], false, ["src/a.ts", "src/b.ts", "README.md"]);
+    const unlisted = unlistedPaths(states, s, ["oxlint"]);
+    expect(unlisted).toEqual(new Map([["oxlint", ["README.md", "src/b.ts"]]]));
+    expect(withUnlisted(lintCounts(view(states), s), unlisted).tools).toEqual([
+      { tool: "eslint", files: 1, findings: 0, notDetermined: 0, running: 0 },
+      { tool: "oxlint", files: 1, findings: 0, notDetermined: 0, running: 0, unlisted: 2 },
+    ]);
+    // A tool with no counted file gains a part of its own.
+    expect(withUnlisted(lintCounts(view([]), s), unlisted).tools).toEqual([
+      { tool: "oxlint", files: 0, findings: 0, notDetermined: 0, running: 0, unlisted: 2 },
+    ]);
+  });
+
   it("counts each tool's files apart, sorted by tool; the totals stay counts of checks", () => {
     const states = [
       state("src/a.ts", "fail"),
@@ -411,6 +443,58 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
       notDetermined: 1,
       running: 0,
     });
+    await pass.close();
+  });
+
+  it("a changed file the pass has not listed keeps the part incomplete; the one update reads it (review 0.1.570 B1)", async () => {
+    const tree = lintTree().write("src/a.js", "ok\n");
+    tree.revise();
+    const { pass } = lintPass(tree, new FakeProvider());
+    pass.nudge();
+    await pass.idle();
+    // A current clean a, then a new failing b and a docs file, committed before the pass lists them.
+    tree.write("src/b.js", "bad no-undef\n").write("notes.md", "notes\n");
+    const listedAt = tree.revise();
+    const head = tree.commit();
+    const committed = await committedBlobs(tree.root, head);
+    const changed = ["src/a.js", "src/b.js", "notes.md"];
+    const at = () => {
+      const made = commitLint(
+        tree.commonDir,
+        LINT_ON,
+        tree.id,
+        side(committed, [], false, changed),
+        listedAt,
+      );
+      if (made === undefined) throw new Error("no lint part");
+      return made;
+    };
+    const ended = (waiting: readonly WaitingLintCheck[]) =>
+      lintWaitEnded(tree.commonDir, LINT_ON, tree.id, waiting, listedAt, (p) => committed.get(p));
+    const first = at();
+    expect(first.counts.tools).toEqual([
+      { tool: "eslint", files: 1, findings: 0, notDetermined: 0, running: 0, unlisted: 2 },
+    ]);
+    expect(first.waiting.map((w) => w.path).sort()).toEqual(["notes.md", "src/b.js"]);
+    const line = (counts: CommitLintCounts) =>
+      commitReportText({ commit: head, revision: listedAt, at: 1, tests: TESTS, lint: counts });
+    expect(line(first.counts)).toBe(
+      `Commit ${head.slice(0, 7)}: 0 known failures; lint (eslint): 2 changed files not listed yet, 0 findings in 1 of 1 listed file`,
+    );
+    expect(line(first.counts)).not.toMatch(/: 0 findings in 1 of 1 file/);
+    expect(ended(first.waiting), "the update waits for the listing").toBe(false);
+
+    // Listed and linted: b fails; the docs file is not one the tool lints. The update is complete.
+    pass.nudge();
+    await pass.idle();
+    expect(ended(first.waiting)).toBe(true);
+    const update = at();
+    expect(update.counts.tools).toEqual([
+      { tool: "eslint", files: 2, findings: 1, notDetermined: 0, running: 0 },
+    ]);
+    expect(line(update.counts)).toBe(
+      `Commit ${head.slice(0, 7)}: 0 known failures; lint (eslint): 1 finding in 2 of 2 files`,
+    );
     await pass.close();
   });
 });
