@@ -1,6 +1,6 @@
 import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { LastYield, TierYield } from "../types/standing.js";
+import type { LastYield, OverrunFile, TierOverrun, TierYield } from "../types/standing.js";
 
 /*
  * Row 011-51, widened by row 011-209 (`research/issue-91.md` F2 to F4): the
@@ -30,6 +30,11 @@ export interface YieldRow {
    * daemon's lane name (rule C, `tasks/011-209/notes.md`).
    */
   readonly lanes: ReadonlyMap<string, TestFileRef>;
+  /**
+   * Row 011-399 (gh-233): the tiers in flight that overrun, by run id
+   * (`overrunAt`); an additive key, none from an older daemon.
+   */
+  readonly overruns?: ReadonlyMap<string, TierOverrun>;
   /** When the daemon wrote it, as read back (`readYieldRow`); absent on a row not yet written. */
   readonly at?: EpochMs;
 }
@@ -46,7 +51,9 @@ export const NO_YIELD_ROW: YieldRow = {
 /** The row's text as of `at`; `null` when it says nothing, so the row goes. */
 export function yieldRowText(at: EpochMs, row: YieldRow): string | null {
   const { tiers, ended, endedFiles, last, lanes } = row;
-  if (tiers.size === 0 && ended.size === 0 && last === null && lanes.size === 0) return null;
+  const overruns = row.overruns ?? new Map<string, TierOverrun>();
+  const empty = tiers.size === 0 && ended.size === 0 && last === null && lanes.size === 0;
+  if (empty && overruns.size === 0) return null;
   return JSON.stringify({
     at,
     tiers: Object.fromEntries(tiers),
@@ -54,6 +61,7 @@ export function yieldRowText(at: EpochMs, row: YieldRow): string | null {
     ...(endedFiles.size === 0 ? {} : { endedFiles: Object.fromEntries(endedFiles) }),
     ...(last === null ? {} : { last }),
     ...(lanes.size === 0 ? {} : { lanes: Object.fromEntries(lanes) }),
+    ...(overruns.size === 0 ? {} : { overruns: Object.fromEntries(overruns) }),
   });
 }
 
@@ -72,6 +80,7 @@ export function readYieldRow(raw: string | null, daemonStartedAt: EpochMs): Yiel
       endedFiles?: unknown;
       last?: unknown;
       lanes?: unknown;
+      overruns?: unknown;
     };
     if (typeof row.at !== "number" || row.at < daemonStartedAt) return NO_YIELD_ROW;
     if (typeof row.tiers !== "object" || row.tiers === null) return NO_YIELD_ROW;
@@ -85,6 +94,9 @@ export function readYieldRow(raw: string | null, daemonStartedAt: EpochMs): Yiel
       ),
       last: isLastYield(row.last) ? row.last : null,
       lanes: new Map(entriesOf(row.lanes).filter((e): e is [string, TestFileRef] => isRef(e[1]))),
+      overruns: new Map(
+        entriesOf(row.overruns).filter((e): e is [string, TierOverrun] => isOverrun(e[1])),
+      ),
       at: row.at,
     };
   } catch {
@@ -139,4 +151,21 @@ function isRef(value: unknown): value is TestFileRef {
   if (typeof value !== "object" || value === null) return false;
   const { project, path } = value as { project?: unknown; path?: unknown };
   return typeof project === "string" && typeof path === "string";
+}
+
+function isOverrun(value: unknown): value is TierOverrun {
+  if (typeof value !== "object" || value === null) return false;
+  const { at, deadline, files } = value as { at?: unknown; deadline?: unknown; files?: unknown };
+  return (
+    typeof at === "number" &&
+    (deadline === null || typeof deadline === "number") &&
+    Array.isArray(files) &&
+    files.every(isOverrunFile)
+  );
+}
+
+function isOverrunFile(value: unknown): value is OverrunFile {
+  if (!isRef(value)) return false;
+  const { usualMs } = value as { usualMs?: unknown };
+  return usualMs === null || typeof usualMs === "number";
 }

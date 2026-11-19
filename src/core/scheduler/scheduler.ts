@@ -1246,6 +1246,8 @@ class TierScheduler implements Scheduler {
     const flight: InFlight = { tier, done: Promise.resolve(), ran: false, held };
     this.#inFlight.set(tier.runId, flight);
     if (tier.beside === true) this.#besideOpen.add(tier.lane);
+    // Row 011-399: the row says when it overruns, checked then with no other event.
+    this.#yields.started(context, tier);
     if (slow !== null) this.#slowRelease.opened(tier.lane);
     // Row 011-74: a hold's cancel reaches a Vitest run as a stop's does; its runner reads it as its cancel.
     const stop =

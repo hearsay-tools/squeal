@@ -99,6 +99,41 @@ export interface FileEnd {
 }
 
 /**
+ * Row 011-399 (gh-233): a file of a tier in flight its daemon published as
+ * overrunning (`TierOverrun`), with its last-known duration, `null` when it
+ * has none.
+ */
+export interface OverrunFile extends TestFileRef {
+  readonly usualMs: number | null;
+}
+
+/**
+ * Row 011-399 (gh-233): a tier in flight whose every unfinished file has run
+ * 10 times its last-known duration and at least 60 s (`overrunAt`), as its
+ * daemon published it in the `yields` row: since when, the run's deadline
+ * (`runner.timeoutMs` from its start; `null` with none), and its files that
+ * had not ended then. Its lane's next tier starts beside it; it runs on.
+ */
+export interface TierOverrun {
+  readonly at: EpochMs;
+  readonly deadline: EpochMs | null;
+  readonly files: readonly OverrunFile[];
+}
+
+/**
+ * Row 011-399 (gh-233): a running file whose tier overruns, as status words
+ * it: how long it has run as of the read, its last-known duration (`null`
+ * with none), since when its tier overruns, and its run's deadline. It may
+ * be hung; nothing about its result changes.
+ */
+export interface FileOverrun {
+  readonly ranMs: number;
+  readonly usualMs: number | null;
+  readonly since: EpochMs;
+  readonly deadline: EpochMs | null;
+}
+
+/**
  * Where a selected file's batch stands (spec 011 C15 as amended
  * 2026-10-29, row 011-268): a named wait's queued files run as one batch,
  * the batches in request order. `position` counts from 1 among the `of`
@@ -196,6 +231,8 @@ export type Standing =
        * started in its lane: no yield before then is kept (row 011-209, rule C).
        */
       readonly yieldsSince?: EpochMs;
+      /** Row 011-399 (gh-233): its tier overruns and it has not ended; absent otherwise, or from an older daemon. */
+      readonly overrun?: FileOverrun;
     }
   | {
       readonly kind: "queued";
