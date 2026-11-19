@@ -1,5 +1,5 @@
 pid 3560850 squeal cezar daemon @6861ca60 ~/.claude/plugins/cache/hearsay/squeal/0.1.566/dist/cli/squeal.mjs daemon ~/projects/cezar/.ai/squawk/worktrees/d8f06792-33cb-4171-b628-4ed7b284b8da  cwd=~/projects/cezar/.git/squeal
-pid 3924544 squeal toolkit-dev daemon @e433a725 ~/.claude/plugins/cache/hearsay/squeal/0.1.566/dist/cli/squeal.mjs daemon ~/projects/toolkit-dev/.ai/squawk/worktrees/1ca8cacd-2be0-405c-a9f2-2e cwd=~/projects/toolkit-dev/.git/squeal
+[line removed: a daemon of a third project, outside this design; redacted 2026-11-19]
 pid 3998710 squeal squeal daemon @1d0e5207 ~/.claude/plugins/cache/hearsay/squeal/0.1.566/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/squawk/worktrees/b99e3c05-b260-4cce-a001-3340dfb3bbac cwd=~/projects/squeal/.git/squeal
 pid 4001803 squeal squeal daemon @2326720e ~/.claude/plugins/cache/hearsay/squeal/0.1.566/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/squawk/worktrees/ac1d439b-a662-4940-81ea-8b6f6b476ed0 cwd=~/projects/squeal/.git/squeal
 pid 4003546 squeal squeal daemon @db0382bd ~/.claude/plugins/cache/hearsay/squeal/0.1.566/dist/cli/squeal.mjs daemon ~/projects/squeal/.ai/squawk/worktrees/d36c4d53-ffd0-42e6-a7ec-4ece832c0182 cwd=~/projects/squeal/.git/squeal
