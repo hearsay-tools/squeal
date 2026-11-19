@@ -75,7 +75,9 @@ export interface UnmatchedPath {
  * the listed test files whose closure in the daemon's key index holds it, at
  * the synced revision, whatever another worktree wrote since; a path it does
  * not name reads the stored closures, which `stored` keeps across a wait's
- * polls until a closure is written (row 011-44). The stored closure is
+ * polls until a closure is written (row 011-44), and the import walks
+ * stored at this worktree's keys, which hold whoever wrote them (row
+ * 011-403, `tasks/011-402/notes.md`: 1 of 688 by the closures alone). The stored closure is
  * the newest any worktree wrote; it is this worktree's when this worktree
  * wrote it, or when the writer's current key for the file is this
  * worktree's, since a key covers every closure path and its content (as
@@ -102,7 +104,12 @@ export function selectNamedFiles(
     }
     // Read only for a path no test file has: every stored closure is a large read (task 011-42),
     // which a wait's `stored` keeps until a closure is written (row 011-44).
-    return storedReaders(store, worktreeId, rows, stored.read(store), rel);
+    const closures = storedReaders(store, worktreeId, rows, stored.read(store), rel);
+    // Row 011-403: and every walk stored at this worktree's key, whoever wrote it.
+    const ids = new Set(
+      [...closures, ...stored.walks.readers(store, rows, rel)].map((r) => testFileId(r.testFile)),
+    );
+    return rows.filter((row) => ids.has(testFileId(row.testFile)));
   };
   const selected = new Map<string, TestFileRef>();
   const unmatched: UnmatchedPath[] = [];
