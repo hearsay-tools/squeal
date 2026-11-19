@@ -1,14 +1,15 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
-import { markKey } from "../../src/core/store-process/guard.js";
 import { A, B, C, C2, read, record, share } from "../code/coverage/parts-fixtures.js";
 import { fakeCounter, pass, worktree } from "../code/pass/helpers.js";
 import {
   type Clone,
   clone,
+  holdLock,
   openThrough,
-  plain,
   relay,
   storeProcess,
   until,
@@ -48,6 +49,21 @@ async function daemonWork(at: Clone, worktreeId: string, store: CodeStore, key: 
   share(store, key, record([A, B, C]), 1_000);
   share(store, `${key}-2`, record([A, B, C2]), 2_000);
 }
+
+/** A transition of `f`'s complexity in worktree `worktreeId`: a row each `append` adds. */
+const transition = (worktreeId: string) => ({
+  worktreeId,
+  check: { kind: "code" as const, path: "src/a.ts", qualifiedName: "f", occurrence: 0 },
+  measure: "complexity" as const,
+  kind: "first-seen-fail" as const,
+  from: null,
+  to: "fail" as const,
+  fromValue: null,
+  toValue: 25,
+  threshold: 20,
+  revision: 1,
+  at: 1_000,
+});
 
 const EXPECTED = ["src/a.ts f pass 3", "src/a.ts g fail 25", "src/b.ts h pass 7"];
 
@@ -102,46 +118,31 @@ describe("a store process per clone (row 021-36)", () => {
     expect(older.counts.direct).toBeGreaterThan(3);
   });
 
-  it("waits no longer than the busy timeout, then settles the batch by its mark, written once", async () => {
+  // Review of 0.1.571 B2b: a batch given up on is settled before its caller is told anything.
+  it("settles a late batch before it fails: the store process never writes it after", async () => {
     const at = fresh();
-    await storeProcess(at);
+    const running = await storeProcess(at);
     const one = relay(at, "w1");
     const store = openThrough(at, one, 200);
     await warm(one, store);
-    store.meta.set("n", "0");
-    expect(one.counts.sent).toBe(1);
-    const bump = () =>
-      store.transaction(() => {
-        store.meta.set("bumped", "1");
-        store.meta.setWhilePresent("n", "1", "n");
-      });
+    const t = transition("w1");
 
-    // Another process holds the lock: the store process waits for it, the daemon does not.
-    const holder = plain(at);
-    holder.exec("BEGIN IMMEDIATE");
-    const started = performance.now();
-    expect(bump).toThrow(/locked|busy/i);
-    const waited = performance.now() - started;
-    holder.exec("COMMIT");
+    // Another process holds the lock past the store process's 1 s busy timeout.
+    const holder = await holdLock(at, 1_500);
+    expect(() => store.transitions.append([t])).toThrow(/locked|busy/i);
+    await holder.done;
+    store.transitions.append([t]);
 
-    // The bound, and room for a loaded host: a direct write waits as long for the lock.
-    expect(waited).toBeLessThan(200 + 300);
-    expect(one.counts.late).toBe(1);
-    // The store process writes the batch once the lock is free; the daemon wrote nothing itself.
-    await until(
-      () => holder.prepare("SELECT 1 FROM meta WHERE key = 'bumped'").get() !== undefined,
-    );
-    const mark = holder.prepare("SELECT value FROM meta WHERE key = ?").get(markKey("w1"));
-    expect(mark).toBeDefined();
-    expect(one.counts.direct).toBe(0);
-
-    // The relay is free again: the next batch goes to the store process.
+    // A barrier through the store process: anything it still held for w1 came before it.
     await until(() => {
-      store.meta.set("after", "1");
-      return one.counts.sent >= 2 || one.counts.direct > 0;
+      store.meta.set("barrier", "1");
+      return one.counts.sent > 0;
     });
-    expect(store.meta.get("after")).toBe("1");
-  });
+    expect(store.transitions.history("w1", t.check)).toHaveLength(1);
+    expect(one.counts.late).toBe(1);
+    expect(one.counts.failed).toBe(1);
+    expect(running.stderr()).toMatch(/a batch of w1 failed/);
+  }, 30_000);
 
   it("exits after its last client's grace, and not while a client lives", async () => {
     const at = fresh();
@@ -164,5 +165,22 @@ describe("a store process per clone (row 021-36)", () => {
     await until(() => ended !== null, 5_000);
     expect(ended).toBe("idle");
     expect(performance.now() - closedAt).toBeGreaterThanOrEqual(900);
+  });
+
+  // Review of 0.1.571 B4: a thread that ended at its start leaves the close nothing to wait for.
+  it("closes at once when its thread already ended, and writes directly meanwhile", async () => {
+    const at = fresh();
+    const bad = join(at.commonDir, "bad-relay.mjs");
+    writeFileSync(bad, "throw new Error('the relay did not start');\n");
+    const one = relay(at, "w1", { thread: { script: bad } });
+    const store = openThrough(at, one);
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    store.meta.set("k", "v");
+    expect(store.meta.get("k")).toBe("v");
+    expect(one.counts.fallback.none).toBe(1);
+
+    const started = performance.now();
+    await one.close();
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });

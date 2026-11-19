@@ -103,6 +103,9 @@ export class WriteDesk {
         return this.release(request);
       case "write-status":
         return this.status(request);
+      case "write-cancel":
+        // Spec 021 D22.4: only a store process withdraws a batch.
+        return errorResponse("a daemon cancels no write");
     }
   }
 

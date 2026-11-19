@@ -17,6 +17,8 @@ import type {
   LeaseResponse,
   ReleaseRequest,
   ReleaseResponse,
+  WriteCancelRequest,
+  WriteCancelResponse,
   WriteRequest,
   WriteResponse,
   WriteStatusRequest,
@@ -256,6 +258,7 @@ export type DaemonRequest =
   | ReleaseRequest
   | WriteRequest
   | WriteStatusRequest
+  | WriteCancelRequest
   | ImportRequest
   | ImportStatusRequest
   | KeepRequest
@@ -558,6 +561,7 @@ export type DaemonResponse =
   | LeaseResponse
   | ReleaseResponse
   | WriteResponse
+  | WriteCancelResponse
   | ImportResponse
   | KeepResponse
   | DaemonErrorResponse;

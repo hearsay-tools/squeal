@@ -109,6 +109,29 @@ export interface WriteRequest {
   readonly seq?: string;
 }
 
+/**
+ * Spec 021 D22.4 (row 021-36, review of 0.1.571): to a store process, the
+ * client gave up waiting for its batch `seq`. A batch the writer has not
+ * begun is withdrawn and never written; one it began is answered with its
+ * outcome once it ends.
+ */
+export interface WriteCancelRequest {
+  readonly type: "write-cancel";
+  readonly worktreeId: WorktreeId;
+  readonly seq: string;
+}
+
+/**
+ * `cancelled`: withdrawn, never written; `writing`: the writer began it, ask
+ * again; `written` or `failed`: it ended so; `unknown`: no such batch here.
+ */
+export interface WriteCancelResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "write-cancel";
+  readonly state: "cancelled" | "writing" | "written" | "failed" | "unknown";
+}
+
 /** Asks how the write `requestId` went. */
 export interface WriteStatusRequest {
   readonly type: "write-status";

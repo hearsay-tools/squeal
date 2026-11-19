@@ -181,3 +181,41 @@ export function alive(pid: number): boolean {
     return false;
   }
 }
+
+/**
+ * Another process holds the code store's write lock for `ms` (review of
+ * 0.1.571): the test's own thread waits inside a batch, so a holder in this
+ * process could never let go. With `userVersion`, it sets the file's
+ * schema under the lock, as a newer Squeal's migration would.
+ */
+export async function holdLock(
+  at: Clone,
+  ms: number,
+  userVersion?: number,
+): Promise<{ readonly done: Promise<void> }> {
+  const path = join(at.commonDir, "squeal", "code.sqlite");
+  const script = `
+    const { DatabaseSync } = require("node:sqlite");
+    const db = new DatabaseSync(${JSON.stringify(path)});
+    db.exec("PRAGMA busy_timeout = 10000");
+    db.exec("BEGIN IMMEDIATE");
+    ${userVersion === undefined ? "" : `db.exec("PRAGMA user_version = ${userVersion}");`}
+    process.stdout.write("held\\n");
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ${ms});
+    db.exec("COMMIT");
+  `;
+  const child = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", "-e", script], {
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const done = new Promise<void>((resolve) => child.on("exit", () => resolve()));
+  at.later(() => done);
+  await new Promise<void>((resolve) => {
+    let out = "";
+    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
+      out += chunk;
+      if (out.includes("held")) resolve();
+    });
+    child.on("exit", () => resolve());
+  });
+  return { done };
+}

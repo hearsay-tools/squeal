@@ -8,15 +8,21 @@ import type {
   LeaseProcess,
   LeaseRequest,
   ReleaseRequest,
+  WriteCancelRequest,
   WriteRequest,
   WriteStatusRequest,
 } from "../types/daemon-writes.js";
 import { parseKeep } from "./keep-protocol.js";
 import { parseBatch } from "./write-batch.js";
 
-export type WriteRequests = LeaseRequest | ReleaseRequest | WriteRequest | WriteStatusRequest;
+export type WriteRequests =
+  | LeaseRequest
+  | ReleaseRequest
+  | WriteRequest
+  | WriteStatusRequest
+  | WriteCancelRequest;
 
-const TYPES = new Set(["lease", "release", "write", "write-status"]);
+const TYPES = new Set(["lease", "release", "write", "write-status", "write-cancel"]);
 
 /** Whether `request` is one of the requests that send writes. */
 export function isWriteRequest(request: { readonly type: string }): request is WriteRequests {
@@ -75,8 +81,8 @@ export function parseWriteRequest(
     case "write":
       return parseWrite(request);
     case "write-status":
-      if (typeof request.requestId !== "string") return '"requestId" must be a string';
-      return { type: "write-status", requestId: request.requestId };
+    case "write-cancel":
+      return parseWriteQuery(request);
     case "import":
       return parseImport(request);
     case "import-status":
@@ -90,6 +96,19 @@ export function parseWriteRequest(
     default:
       return undefined;
   }
+}
+
+/** How a write went, or (spec 021 D22.4, row 021-36) a store process's batch withdrawn. */
+function parseWriteQuery(
+  request: Record<string, unknown>,
+): WriteStatusRequest | WriteCancelRequest | string {
+  if (request.type === "write-status") {
+    if (typeof request.requestId !== "string") return '"requestId" must be a string';
+    return { type: "write-status", requestId: request.requestId };
+  }
+  if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText(request.seq)) return '"seq" must be a non-empty string';
+  return { type: "write-cancel", worktreeId: request.worktreeId as WorktreeId, seq: request.seq };
 }
 
 /** A batch the daemon writes, every statement checked (`parseBatch`). */

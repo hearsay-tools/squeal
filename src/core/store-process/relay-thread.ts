@@ -1,8 +1,10 @@
 import { existsSync } from "node:fs";
 import { type MessagePort, parentPort, workerData } from "node:worker_threads";
+import { requestDaemon } from "../daemon/client.js";
 import type { Statement } from "../daemon/write-batch.js";
-import { DaemonWriter } from "../delivery/daemon-writer.js";
+import { DaemonWriter, SMALL_REQUEST_TIMEOUT_MS } from "../delivery/daemon-writer.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { WriteCancelResponse } from "../types/daemon-writes.js";
 import type { WriteKind } from "./queue.js";
 import { type StoreProcessLaunch, spawnStoreProcess } from "./spawn.js";
 
@@ -46,6 +48,16 @@ export interface RelayJob {
  * can tell.
  */
 export type RelayOutcome = "written" | "none" | "refused" | "failed" | "unknown";
+
+/** Where a cancelled batch stands (`WriteCancelResponse`), or `no-answer` from the store process. */
+export type CancelState = WriteCancelResponse["state"] | "no-answer";
+
+/** To the relay thread: a batch to send, one to cancel, or the end. */
+export interface RelayMessage {
+  readonly job?: RelayJob;
+  readonly cancel?: { readonly n: number; readonly seq: string };
+  readonly close?: true;
+}
 
 /** After a start that did not serve, or a refusal, this long before the next try. */
 const PAUSE_MS = 30_000;
@@ -116,9 +128,29 @@ function serve(data: RelayData): void {
     }
   };
 
+  /** Review of 0.1.571: withdraws a batch the daemon gave up waiting for, or learns where it stands. */
+  const cancel = async ({ n, seq }: { readonly n: number; readonly seq: string }) => {
+    let state: CancelState = "no-answer";
+    try {
+      const request = { type: "write-cancel", worktreeId: data.worktreeId, seq } as const;
+      const answer = await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS);
+      if (answer.ok && answer.type === "write-cancel") state = answer.state;
+    } catch {
+      // No answer: a store process gone or stopped; the mark settles the batch.
+    }
+    data.port.postMessage({ n, cancel: state });
+    Atomics.add(signal, 0, 1);
+    Atomics.notify(signal, 0);
+  };
+
   // One batch at a time, in order: the store process keeps a worktree's batches in the order sent.
   let chain = Promise.resolve();
-  data.port.on("message", (message: { readonly job?: RelayJob; readonly close?: true }) => {
+  data.port.on("message", (message: RelayMessage) => {
+    if (message.cancel !== undefined) {
+      // Not behind the batch it cancels: that one may wait on the store process for long.
+      void cancel(message.cancel);
+      return;
+    }
     if (message.close === true) {
       closing = true;
       chain = chain.then(async () => {

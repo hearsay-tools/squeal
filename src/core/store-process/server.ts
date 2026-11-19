@@ -9,6 +9,7 @@ import { isWriteRequest } from "../daemon/write-protocol.js";
 import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION, type WorktreeId } from "../types/common.js";
 import type { DaemonPhase, DaemonRequest, DaemonResponse } from "../types/daemon.js";
 import type { SentBatch, WriteRequest } from "../types/daemon-writes.js";
+import { Batches } from "./batches.js";
 import { storeProcessLockPath, storeProcessSocketPath } from "./paths.js";
 import { WriteQueue } from "./queue.js";
 import { WriteStats } from "./stats.js";
@@ -91,6 +92,7 @@ export async function startStoreProcess(
   }
   const now = options.now ?? (() => performance.now());
   const queue = new WriteQueue<Item>();
+  const batches = new Batches<Item>(queue);
   const stats = new WriteStats();
   const desks = new Map<WorktreeId, WriteDesk>();
   let phase: DaemonPhase = "ready";
@@ -106,7 +108,7 @@ export async function startStoreProcess(
       else if (request.seq === undefined)
         reject(new Error("a store process writes numbered batches only"));
       else {
-        queue.push(request.worktreeId, request.kind ?? "record", {
+        const queued = queue.push(request.worktreeId, request.kind ?? "record", {
           request,
           from: 0,
           queuedAt: now(),
@@ -115,6 +117,7 @@ export async function startStoreProcess(
           resolve,
           reject,
         });
+        batches.queued(request.worktreeId, request.seq, queued);
         void pump();
       }
     });
@@ -138,6 +141,7 @@ export async function startStoreProcess(
             const { item } = next;
             const waited = (item.startedAt ?? now()) - item.queuedAt;
             stats.record(next.kind, written, waited, item.busyMs);
+            batches.ended(next.worktreeId, item.request.seq as string, written);
           },
         });
       }
@@ -155,6 +159,7 @@ export async function startStoreProcess(
       return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
     }
     if (!isWriteRequest(request)) return errorResponse("a store process answers writes only");
+    if (request.type === "write-cancel") return batches.cancel(request);
     if (request.type === "write-status") {
       for (const desk of desks.values()) {
         const answer = desk.status(request);
@@ -206,8 +211,9 @@ export async function startStoreProcess(
       clearInterval(timer);
       clearInterval(report);
       while (pumping) await new Promise((resolve) => setTimeout(resolve, 5));
-      for (const { kind, item } of queue.drainQueued()) {
+      for (const { kind, worktreeId, item } of queue.drainQueued()) {
         stats.record(kind, false, now() - item.queuedAt, item.busyMs);
+        batches.ended(worktreeId, item.request.seq as string, false);
         item.reject(new Error("the store process is stopping"));
       }
       log(`store process: stopping (${why}): ${stats.take() ?? "no batches since the last line"}`);

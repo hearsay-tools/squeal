@@ -66,7 +66,7 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", () =>
     await until(() => lines.length > 0, 5_000);
     expect(lines[0]).toBe(
       "code store: last minute: 2 batches through the store process, 0 written here " +
-        "(none running 0, timeout 0, refused schema 0, failed 0, lost 0)",
+        "(none running 0, timeout 0, refused schema 0, failed 0, lost 0), 0 failed",
     );
 
     expect(await running.stop()).toBe("stopped");
@@ -84,7 +84,7 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", () =>
     await until(() => lines.length > 0, 5_000);
     expect(lines[0]).toBe(
       "code store: last minute: 0 batches through the store process, 2 written here " +
-        "(none running 2, timeout 0, refused schema 0, failed 0, lost 0)",
+        "(none running 2, timeout 0, refused schema 0, failed 0, lost 0), 0 failed",
     );
   });
 

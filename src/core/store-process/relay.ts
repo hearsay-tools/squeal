@@ -11,12 +11,13 @@ import {
 import type { OpenCodeStoreOptions } from "../code/store/open.js";
 import type { Statement } from "../daemon/write-batch.js";
 import { SendingConnection, type WriteSender } from "../delivery/sending-connection.js";
-import { busySliceMs, type Connection } from "../store/connection.js";
+import { busySliceMs, type Connection, isBusy } from "../store/connection.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import { batchSeq, GuardedWriter } from "./guard.js";
 import { storeProcessSocketPath } from "./paths.js";
 import type { WriteKind } from "./queue.js";
-import type { RelayData, RelayJob, RelayOutcome } from "./relay-thread.js";
+import { noFallback, type RelayCounts, reasonOf, reportLine, snapshotOf } from "./relay-counts.js";
+import type { CancelState, RelayData, RelayJob, RelayOutcome } from "./relay-thread.js";
 import type { StoreProcessLaunch } from "./spawn.js";
 
 /*
@@ -49,39 +50,6 @@ export interface CodeRelayOptions {
   readonly reportMs?: number;
 }
 
-/** Why a batch was written here (D22.6). */
-export type FallbackReason = "none" | "timeout" | "refused" | "failed" | "lost";
-
-const REASONS: Readonly<Record<FallbackReason, string>> = {
-  none: "none running",
-  timeout: "timeout",
-  refused: "refused schema",
-  failed: "failed",
-  lost: "lost",
-};
-
-/** How the daemon's batches went, for tests and the D22.6 measurement. */
-export interface RelayCounts {
-  /** Written by the store process. */
-  sent: number;
-  /** Written here: no store process took them, or none answered in the bound. */
-  direct: number;
-  /** Found written already by the mark when written here. */
-  superseded: number;
-  /** Not answered within the bound. */
-  late: number;
-  /** The batches written here, by why. */
-  readonly fallback: Record<FallbackReason, number>;
-}
-
-const noFallback = (): Record<FallbackReason, number> => ({
-  none: 0,
-  timeout: 0,
-  refused: 0,
-  failed: 0,
-  lost: 0,
-});
-
 interface KindNow {
   readonly kind: WriteKind;
   readonly splittable: boolean;
@@ -110,6 +78,19 @@ export function relayScript(
   return null;
 }
 
+/** How long a batch given up on may take to settle before its caller is told it is unknown. */
+const SETTLE_MS = 30_000;
+/** How often a cancel the store process did not answer is sent again. */
+const ASK_AGAIN_MS = 500;
+
+/** SQLite's busy error, as `isBusy` reads it, so callers treat it as a busy store. */
+function locked(message: string): Error {
+  return Object.assign(new Error(`database is locked: ${message}`), {
+    code: "ERR_SQLITE_ERROR",
+    errcode: 5,
+  });
+}
+
 /** D22.6: how often the daemon logs its code-store batches. */
 const REPORT_MS = 60_000;
 
@@ -119,10 +100,11 @@ export class CodeRelay {
     direct: 0,
     superseded: 0,
     late: 0,
+    failed: 0,
     fallback: noFallback(),
   };
   /** The counts at the last line logged. */
-  #reported = { sent: 0, fallback: noFallback() };
+  #reported = snapshotOf(this.counts);
   #reporter: NodeJS.Timeout | null = null;
   readonly #options: CodeRelayOptions;
   readonly #signal = new Int32Array(new SharedArrayBuffer(4));
@@ -133,6 +115,18 @@ export class CodeRelay {
   #counter = 0;
   /** The batch the thread still sends, answered or not. */
   #inFlight: number | null = null;
+  /** The thread's answers not yet taken: to sends, by batch, and to cancels, by batch. */
+  readonly #answers = new Map<number, RelayOutcome>();
+  readonly #cancels = new Map<number, CancelState>();
+  /** Review of 0.1.571 B4: the thread ended (also before `close`, as at a failed start). */
+  #exited = false;
+  #exit: Promise<void> = Promise.resolve();
+  /** A batch neither written nor withdrawn: its direct write failed, and the store process may still write it. */
+  #pending: {
+    readonly n: number;
+    readonly seq: string;
+    readonly batch: readonly Statement[];
+  } | null = null;
   #closed = false;
 
   constructor(options: CodeRelayOptions) {
@@ -160,6 +154,12 @@ export class CodeRelay {
       ...(thread.execArgv === undefined ? {} : { execArgv: [...thread.execArgv] }),
     });
     this.#worker.on("error", () => {});
+    this.#exit = new Promise<void>((resolve) => {
+      this.#worker?.once("exit", () => {
+        this.#exited = true;
+        resolve();
+      });
+    });
     this.#worker.unref();
     this.#port = port1;
   }
@@ -191,90 +191,203 @@ export class CodeRelay {
     if (this.#reporter !== null) clearInterval(this.#reporter);
     this.#report();
     const worker = this.#worker;
-    if (worker === null) return;
+    if (worker === null || this.#exited) return;
     this.#port?.postMessage({ close: true });
-    const exited = new Promise<void>((resolve) => worker.once("exit", () => resolve()));
+    // Bounded: a thread that does not end in 1 s is terminated, and the close waits 1 s more at most.
     const timer = setTimeout(() => void worker.terminate(), 1_000);
-    await exited;
+    const cap = new Promise<void>((resolve) => setTimeout(resolve, 2_000).unref());
+    await Promise.race([this.#exit, cap]);
     clearTimeout(timer);
   }
 
-  /**
-   * D22.6: one line of the batches since the last, when there were any:
-   * `code store: last minute: 12 batches through the store process, 3
-   * written here (none running 2, timeout 1, refused schema 0, failed 0, lost 0)`.
-   */
+  /** D22.6: the line of the batches since the last (`reportLine`), when there were any. */
   #report(): void {
-    const { sent, fallback } = this.counts;
-    const was = this.#reported;
-    const here = (Object.keys(REASONS) as FallbackReason[]).map(
-      (why) => [why, fallback[why] - was.fallback[why]] as const,
-    );
-    const direct = here.reduce((n, [, count]) => n + count, 0);
-    if (sent === was.sent && direct === 0) return;
-    this.#reported = { sent, fallback: { ...fallback } };
-    const reasons = here.map(([why, count]) => `${REASONS[why]} ${count}`).join(", ");
-    this.#options.log?.(
-      `code store: last minute: ${sent - was.sent} batches through the store process, ` +
-        `${direct} written here (${reasons})`,
-    );
+    const line = reportLine(this.counts, this.#reported);
+    this.#reported = snapshotOf(this.counts);
+    if (line !== null) this.#options.log?.(line);
   }
 
-  /** Writes `batch`: through the store process when it answers within the bound, else here. */
+  /**
+   * Writes `batch`: through the store process when it answers within the
+   * bound, else here. Review of 0.1.571: a batch not answered in time, or
+   * lost, is settled first (`#settle`), and only then written here or
+   * reported failed, so it is never written twice, never after a later
+   * batch of its worktree, and never after its caller was told it failed.
+   */
   #write(db: DatabaseSync, batch: readonly Statement[]): void {
-    const seq = batchSeq(this.#start, ++this.#counter);
+    const n = ++this.#counter;
+    const seq = batchSeq(this.#start, n);
     const bound = boundOf(db);
     const started = performance.now();
-    const outcome = this.#send(seq, batch, bound);
+    const left = () => Math.round(Math.max(0, bound - (performance.now() - started)));
+    if (!this.#settlePending(db, bound)) {
+      this.counts.failed++;
+      throw locked("an earlier code-store batch of this worktree is not settled yet");
+    }
+    let outcome = this.#send(n, seq, batch, bound);
     if (outcome === "written") {
       this.counts.sent++;
       return;
     }
-    if (outcome === "late") this.counts.late++;
-    this.counts.fallback[reasonOf(outcome)]++;
-    // A late batch may still be written there: the mark settles it under the lock, waiting no more.
-    const left = outcome === "late" ? 0 : Math.max(0, bound - (performance.now() - started));
-    this.#direct(db, seq, batch, Math.round(left));
-  }
-
-  /** The thread's answer for a new batch; `late` past `bound`, `busy` while it still sends a late one. */
-  #send(seq: string, batch: readonly Statement[], bound: number): RelayOutcome | "late" | "busy" {
-    this.#drain();
-    if (this.#port === null || this.#closed) return "none";
-    // The thread still sends a late batch: this one is written here without a second wait.
-    if (this.#inFlight !== null) return "busy";
-    const n = this.#counter;
-    const { kind, splittable } = kinds.getStore() ?? { kind: "record", splittable: false };
-    const job: RelayJob = { n, seq, kind, splittable, statements: batch };
-    const seen = Atomics.load(this.#signal, 0);
-    this.#inFlight = n;
-    this.#port.postMessage({ job });
-    const deadline = performance.now() + bound;
-    let last = seen;
-    for (;;) {
-      const outcome = this.#drain(n);
-      if (outcome !== null) return outcome;
-      const left = deadline - performance.now();
-      if (left <= 0) return "late";
-      Atomics.wait(this.#signal, 0, last, left);
-      last = Atomics.load(this.#signal, 0);
+    if (outcome === "late" || outcome === "unknown") {
+      if (outcome === "late") this.counts.late++;
+      const settled = this.#settle(db, n, seq, batch);
+      if (settled === "written") return;
+      if (settled === "unsettled") {
+        this.counts.failed++;
+        this.#pending = { n, seq, batch };
+        throw locked("the store process neither wrote nor withdrew this code-store batch in time");
+      }
+      // Surely not written there: written here now, with no more wait.
+      outcome = "late";
+    }
+    try {
+      if (this.#direct(db, seq, batch, outcome === "late" ? 0 : left()) === "written") {
+        this.counts.fallback[reasonOf(outcome)]++;
+      }
+    } catch (error) {
+      this.counts.failed++;
+      throw error;
     }
   }
 
-  /** Reads the thread's answers; the one for batch `n`, when given and there. */
-  #drain(n?: number): RelayOutcome | null {
-    let found: RelayOutcome | null = null;
+  /**
+   * Settles batch `n`, which its sender gave up on: withdrawn at the store
+   * process (`cancelled`), or ended there (`written`, `failed`); one it
+   * began is waited for. When the store process cannot say (gone, stopped,
+   * the batch unknown there), it is written here under its mark, which the
+   * store process honors. `unsettled` past `SETTLE_MS`.
+   */
+  #settle(
+    db: DatabaseSync,
+    n: number,
+    seq: string,
+    batch: readonly Statement[],
+  ): "written" | "not-written" | "unsettled" {
+    const deadline = performance.now() + SETTLE_MS;
+    let askedAt = Number.NEGATIVE_INFINITY;
+    for (;;) {
+      const seen = Atomics.load(this.#signal, 0);
+      this.#drain();
+      const sent = this.#answers.get(n);
+      const cancel = this.#cancels.get(n);
+      if (sent === "written" || cancel === "written") {
+        this.counts.sent++;
+        return this.#settled(n, "written");
+      }
+      const refused = sent === "none" || sent === "refused" || sent === "failed";
+      if (refused || cancel === "cancelled" || cancel === "failed") {
+        return this.#settled(n, "not-written");
+      }
+      if (sent === "unknown" || cancel === "unknown" || cancel === "no-answer") {
+        try {
+          if (this.#direct(db, seq, batch, 0) === "written") this.counts.fallback.lost++;
+          return this.#settled(n, "written");
+        } catch (error) {
+          if (!isBusy(error)) throw error;
+        }
+      }
+      const now = performance.now();
+      if (now >= deadline) return this.#settled(n, "unsettled");
+      if (this.#port !== null && !this.#exited && now - askedAt >= ASK_AGAIN_MS) {
+        this.#cancels.delete(n);
+        this.#port.postMessage({ cancel: { n, seq } });
+        askedAt = now;
+      }
+      Atomics.wait(this.#signal, 0, seen, Math.min(20, deadline - now));
+    }
+  }
+
+  #settled<T>(n: number, end: T): T {
+    this.#answers.delete(n);
+    this.#cancels.delete(n);
+    return end;
+  }
+
+  /**
+   * Settles a batch left unsettled (`#write`): the store process wrote it
+   * (its answer came), or it is written here under its mark, waiting at most
+   * `busyMs` for the lock. False when the lock stayed busy: it stays pending,
+   * and the batch at hand is not written.
+   */
+  #settlePending(db: DatabaseSync, busyMs: number): boolean {
+    this.#drain();
+    const pending = this.#pending;
+    if (pending === null) return true;
+    if (this.#answers.get(pending.n) !== "written") {
+      try {
+        if (this.#direct(db, pending.seq, pending.batch, busyMs) === "written") {
+          this.counts.fallback.lost++;
+        }
+      } catch (error) {
+        if (isBusy(error)) return false;
+        // It cannot be written at all; the store process fails it as well.
+      }
+    }
+    this.#settled(pending.n, null);
+    this.#pending = null;
+    return true;
+  }
+
+  /** The thread's answer for a new batch; `late` past `bound`, `busy` while it still sends an earlier one. */
+  #send(
+    n: number,
+    seq: string,
+    batch: readonly Statement[],
+    bound: number,
+  ): RelayOutcome | "late" | "busy" {
+    this.#drain();
+    if (this.#port === null || this.#closed || this.#exited) return "none";
+    // The thread still sends an earlier batch, settled already: this one is written here.
+    if (this.#inFlight !== null) return "busy";
+    const { kind, splittable } = kinds.getStore() ?? { kind: "record", splittable: false };
+    const job: RelayJob = { n, seq, kind, splittable, statements: batch };
+    this.#inFlight = n;
+    this.#port.postMessage({ job });
+    const deadline = performance.now() + bound;
+    for (;;) {
+      const seen = Atomics.load(this.#signal, 0);
+      this.#drain();
+      const outcome = this.#answers.get(n);
+      if (outcome === "unknown") return outcome;
+      if (outcome !== undefined) return this.#settled(n, outcome);
+      const left = deadline - performance.now();
+      if (left <= 0) return "late";
+      Atomics.wait(this.#signal, 0, seen, left);
+    }
+  }
+
+  /** Takes the thread's answers. */
+  #drain(): void {
     for (;;) {
       const received = this.#port === null ? undefined : receiveMessageOnPort(this.#port);
-      if (received === undefined) return found;
-      const { n: of, outcome } = received.message as { n: number; outcome: RelayOutcome };
-      if (of === this.#inFlight) this.#inFlight = null;
-      if (of === n) found = outcome;
+      if (received === undefined) return;
+      const message = received.message as {
+        n: number;
+        outcome?: RelayOutcome;
+        cancel?: CancelState;
+      };
+      if (message.cancel !== undefined) {
+        this.#cancels.set(message.n, message.cancel);
+        continue;
+      }
+      if (message.n === this.#inFlight) this.#inFlight = null;
+      if (message.outcome !== undefined) this.#answers.set(message.n, message.outcome);
+      // Answers no one waits for any more are dropped, but a pending batch's.
+      for (const old of this.#answers.keys()) {
+        if (this.#answers.size <= 8) break;
+        if (old !== this.#pending?.n) this.#answers.delete(old);
+      }
     }
   }
 
   /** Writes `batch` on `db` under its mark, waiting at most `busyMs` for the lock. */
-  #direct(db: DatabaseSync, seq: string, batch: readonly Statement[], busyMs: number): void {
+  #direct(
+    db: DatabaseSync,
+    seq: string,
+    batch: readonly Statement[],
+    busyMs: number,
+  ): "written" | "superseded" {
     let writer = this.#writers.get(db);
     if (writer === undefined) {
       writer = new GuardedWriter(db);
@@ -287,23 +400,11 @@ export class CodeRelay {
       const end = writer.write(this.#options.worktreeId, seq, batch);
       if (end.end === "superseded") this.counts.superseded++;
       else this.counts.direct++;
+      return end.end === "superseded" ? "superseded" : "written";
     } finally {
       db.exec("PRAGMA query_only = 1");
       db.exec(`PRAGMA busy_timeout = ${own}`);
     }
-  }
-}
-
-/** Why a batch the thread did not get written there is written here. */
-function reasonOf(outcome: Exclude<RelayOutcome, "written"> | "late" | "busy"): FallbackReason {
-  switch (outcome) {
-    case "late":
-    case "busy":
-      return "timeout";
-    case "unknown":
-      return "lost";
-    default:
-      return outcome;
   }
 }
 

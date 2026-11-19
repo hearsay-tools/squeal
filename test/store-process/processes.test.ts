@@ -8,6 +8,7 @@ import {
   alive,
   type Clone,
   clone,
+  holdLock,
   LAUNCH,
   openThrough,
   plain,
@@ -93,5 +94,34 @@ describe("the store process as a process (row 021-36)", () => {
     store.meta.set("after", "1");
     expect(store.meta.get("after")).toBe("1");
     expect(one.counts.direct + one.counts.superseded).toBe(2);
+  }, 60_000);
+
+  // Review of 0.1.571 B2: the trace that lost a batch, now settled by its mark before the next.
+  it("settles a batch a stopped store process holds before a later batch passes it", async () => {
+    const at = fresh();
+    const running = await storeProcess(at);
+    const one = relay(at, "w1");
+    const store = openThrough(at, one, 200);
+    await warm(one, store);
+    process.kill(running.pid, "SIGSTOP");
+    at.later(() => {
+      if (alive(running.pid)) process.kill(running.pid, "SIGCONT");
+    });
+
+    const holder = await holdLock(at, 600);
+    // No answer from the stopped process: written here under its mark once the lock frees.
+    store.meta.set("first", "1");
+    await holder.done;
+    store.meta.set("second", "2");
+    process.kill(running.pid, "SIGCONT");
+    await until(() => {
+      store.meta.set("barrier", "1");
+      return one.counts.sent > 0;
+    }, 20_000);
+
+    expect(store.meta.get("first")).toBe("1");
+    expect(store.meta.get("second")).toBe("2");
+    expect(one.counts.failed).toBe(0);
+    expect(one.counts.fallback.lost).toBeGreaterThanOrEqual(1);
   }, 60_000);
 });

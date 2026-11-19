@@ -33,12 +33,13 @@ export class WriteQueue<T> {
     return this.#size;
   }
 
-  push(worktreeId: WorktreeId, kind: WriteKind, item: T): void {
+  push(worktreeId: WorktreeId, kind: WriteKind, item: T): Queued<T> {
     const queued: Queued<T> = { worktreeId, kind, item, arrival: this.#arrivals++ };
     const list = this.#byWorktree.get(worktreeId);
     if (list === undefined) this.#byWorktree.set(worktreeId, [queued]);
     else list.push(queued);
     this.#size++;
+    return queued;
   }
 
   /** The batch to write next, left at its worktree's head; `null` when none waits. */
@@ -72,6 +73,17 @@ export class WriteQueue<T> {
     list.shift();
     this.#size--;
     if (list.length === 0) this.#byWorktree.delete(queued.worktreeId);
+  }
+
+  /** Removes `queued` wherever it waits in its worktree's list; false when it is not there. */
+  withdraw(queued: Queued<T>): boolean {
+    const list = this.#byWorktree.get(queued.worktreeId);
+    const at = list?.indexOf(queued) ?? -1;
+    if (list === undefined || at < 0) return false;
+    list.splice(at, 1);
+    this.#size--;
+    if (list.length === 0) this.#byWorktree.delete(queued.worktreeId);
+    return true;
   }
 
   /** Every batch, in no order; the queue is left empty. */
