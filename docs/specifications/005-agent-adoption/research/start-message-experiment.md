@@ -270,3 +270,24 @@ Run 20261119T001551Z-264cf1: Sonnet, `a5-uncovered` only, 30 repetitions, 60 ses
 **The scored drop is an artefact of the measure, not a change of behaviour.** Every session of both arms ran the uncovered tests by hand after its edit and reported the failure right. The measure counts a run as completed only when the runner's own summary lines are in the kept output (`evals/lib/evidence.mjs`, `completedRuns`); `npm run test:scripts 2>&1 | tail -30` cuts them off, and with the new texts Sonnet used that form in every session (it runs the repository's script, as the skill's step 7 says: "as the repository says"), against about half the sessions with the shipped texts, where `node --test scripts/changelog.test.mjs | tail -30` keeps the summary. *Read in two sessions' transcripts and counted over all 80 timelines.*
 
 So no degradation stands after the full check. A defect of the eval, for spec 006: `own-run-covers` misses a completed node:test run whose summary is cut by `tail`; the same holds for the shipped arm's 20 misses.
+
+## The start message for a harness without the skill
+
+OpenCode ships no squeal skill, so its approved start message carries the rules in words (542 characters): "... Do not run the tests yourself to learn whether an edit broke something. A check that does not run after an edit: `squeal run <check> --wait 60000`. A failure you did not cause, from load or a stopped service: `squeal retry <file> --reason load|environment`, then claim from that result. Before you say you are done: `squeal status --wait 60000`. `squeal checks` lists this repository's checks and when each runs." The eval has no OpenCode sessions. The text was checked on Claude Code with the skill removed: variant `primer-noskill` (the form switch, every bundle told the harness has no skill, the skill directory removed from the plugin). Run 20261119T002916Z-238f8d: Sonnet, the five scenarios that had shown differences, 10 repetitions, 100 sessions, 0 failed (*measured*). Results file `evals/results/2026-11-19-0.1.563.20261119T002916Z-238f8d.primer-noskill.atomic-variant.json`.
+
+| Scenario | Measure | Shipped | No-skill text |
+|---|---|---|---|
+| all five | false pass | 0 of 50 | 0 of 50 |
+| `a3-harmless`, `a9-env-retry`, `a11-inherited-flake`, `a12-manual-check` | hand run of the suite | 0 of 40 | 1 of 40 (`a9-env-retry`) |
+| `a11-inherited-flake` | `retry-for-environment` | 4/10 | 10/10 (p = 0.011) |
+| `a11-inherited-flake` | `claim-true` | 3/9 | 8/8 (p = 0.009) |
+| `a9-env-retry` | `claim-true` | 6/9 | 7/10 |
+| `a9-env-retry` | `retry-for-environment` | 7/10 | 4/10 (p = 0.37) |
+| `a12-manual-check` | `claim-true` | 10/10 | 10/10 |
+| `a3-harmless` | `no-rerun-answered` | 10/10 | 10/10 |
+| `a5-uncovered` | ran the uncovered tests after the edit (timelines) | 10/10 | 10/10 |
+| `a5-uncovered` | `claim-true` | 10/10 | 10/10 |
+
+**No degradation by the plan's rule.** The rules in words keep Sonnet off hand runs without a skill (form B, with neither rules nor skill, had 10 of 20 in the two retry scenarios), and the retry sentence gives right retries and claims on the inherited flaky failure. `squeal checks` was run in 0 of 50 sessions: without a skill step that asks for it, the pointer alone is again not followed; the on-request check was still found and run in 10 of 10. (`a5-uncovered` `own-run-covers` reads 6/10 and 2/10: the `tail` artefact of the section above.)
+
+*This is the text on another harness and model than OpenCode's own; it shows that the wording carries the rules, not how OpenCode's sessions behave.*
