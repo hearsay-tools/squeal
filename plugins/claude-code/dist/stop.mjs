@@ -4776,7 +4776,7 @@ function overrunOf(ref2, pending, run2, row, now) {
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline,
-    ...tier.beside === true ? { beside: true } : {}
+    ...tier.laneWaits === void 0 ? {} : { laneWaits: tier.laneWaits }
   };
   return { overrun };
 }
@@ -4851,8 +4851,8 @@ function isRef(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { startedAt, at, deadline, files: files2, beside } = value;
-  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile) && (beside === void 0 || beside === true);
+  const { startedAt, at, deadline, files: files2, laneWaits } = value;
+  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile) && (laneWaits === void 0 || laneWaits === "either" || laneWaits === "it");
 }
 function isOverrunFile(value) {
   if (!isRef(value)) return false;
@@ -8222,7 +8222,14 @@ function lintOf(raw) {
     const tool = countsOf(entry3, TOOL_KEYS);
     const name2 = entry3?.tool;
     if (tool === null || !isText(name2)) return [];
-    return [{ tool: name2, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+    const { unlisted: unlisted3 } = entry3;
+    return [
+      {
+        tool: name2,
+        ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])),
+        ...isCount2(unlisted3) && unlisted3 > 0 ? { unlisted: unlisted3 } : {}
+      }
+    ];
   }) : null;
   return {
     findings: counts.findings,
@@ -8321,16 +8328,24 @@ function lintParts(lint2) {
   if (lint2.tools.length === 0) return [`lint not run (${lint2.notRun ?? "no tool checked a file"})`];
   return lint2.tools.map(toolPart);
 }
-function toolPart({ tool, files: files2, findings, notDetermined, running }) {
-  const of = `of ${plural(files2, "file")}`;
+function toolPart(counts) {
+  const { tool, files: files2, findings, notDetermined, running, unlisted: unlisted3 = 0 } = counts;
+  const listed3 = unlisted3 > 0 ? "listed file" : "file";
+  const of = `of ${plural(files2, listed3)}`;
   const complete = files2 - notDetermined - running;
-  if (complete === files2) return `lint (${tool}): ${plural(findings, "finding")} in ${files2} ${of}`;
+  if (complete === files2 && unlisted3 === 0) {
+    return `lint (${tool}): ${plural(findings, "finding")} in ${files2} ${of}`;
+  }
   const open2 = [];
+  if (unlisted3 > 0) open2.push(`${plural(unlisted3, "changed file")} not listed yet`);
   if (running > 0) open2.push(`${running} ${of} still running`);
   if (notDetermined > 0) {
     open2.push(`${notDetermined}${running > 0 ? "" : ` ${of}`} not determined`);
   }
-  if (complete > 0) open2.push(`${plural(findings, "finding")} in the other ${complete}`);
+  if (complete > 0) {
+    const where3 = complete === files2 ? `${files2} ${of}` : `the other ${complete}`;
+    open2.push(`${plural(findings, "finding")} in ${where3}`);
+  }
   return `lint (${tool}): ${open2.join(", ")}`;
 }
 function legacyLint({ findings, notDetermined, running }) {

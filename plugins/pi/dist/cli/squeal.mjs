@@ -3676,8 +3676,8 @@ function isRef(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { startedAt, at: at2, deadline, files: files5, beside } = value;
-  return typeof startedAt === "number" && typeof at2 === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files5) && files5.every(isOverrunFile) && (beside === void 0 || beside === true);
+  const { startedAt, at: at2, deadline, files: files5, laneWaits: laneWaits2 } = value;
+  return typeof startedAt === "number" && typeof at2 === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files5) && files5.every(isOverrunFile) && (laneWaits2 === void 0 || laneWaits2 === "either" || laneWaits2 === "it");
 }
 function isOverrunFile(value) {
   if (!isRef(value)) return false;
@@ -14210,7 +14210,7 @@ var init_capacity = __esm({
       #failed = null;
       #refused = false;
       constructor(options, worktreeId, note, waits2 = null) {
-        const { dir: dir2, refreshMs, hostSlots, project, host, backgroundShare: backgroundShare2, log } = options;
+        const { dir: dir2, refreshMs, hostSlots, project, host, backgroundShare: backgroundShare2, cpus: cpus3, log } = options;
         this.#dir = dir2;
         this.#note = note;
         this.#waits = waits2;
@@ -14223,6 +14223,7 @@ var init_capacity = __esm({
           ...project === void 0 ? {} : { project },
           ...host === void 0 ? {} : { host },
           ...backgroundShare2 === void 0 ? {} : { backgroundShare: backgroundShare2 },
+          ...cpus3 === void 0 ? {} : { cpus: cpus3 },
           ...log === void 0 ? {} : { log }
         });
       }
@@ -16605,17 +16606,24 @@ function nextOverrun(context, ledger, inFlight, at2) {
   }
   return next;
 }
-function tierOverrun(context, tier, at2, paired) {
+function tierOverrun(context, tier, at2, waits2) {
   const { timeoutMs } = context.policy.runner;
   const startedAt = steppedStart(context, tier) ?? at2;
   const deadline = timeoutMs === null ? null : startedAt + timeoutMs;
   const files5 = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { startedAt, at: at2, deadline, files: files5, ...paired ? { beside: true } : {} };
+  return { startedAt, at: at2, deadline, files: files5, ...waits2 === null ? {} : { laneWaits: waits2 } };
 }
-function pairedAs(o, paired) {
-  if (o.beside === true === paired) return o;
-  const { beside: _, ...rest2 } = o;
-  return paired ? { ...rest2, beside: true } : rest2;
+function waitingAs(o, waits2) {
+  if ((o.laneWaits ?? null) === waits2) return o;
+  const { laneWaits: _, ...rest2 } = o;
+  return waits2 === null ? rest2 : { ...rest2, laneWaits: waits2 };
+}
+function laneWaits(live, runId) {
+  const self = live.get(runId);
+  if (self === void 0) return null;
+  const lane = [...live.values()].filter((t) => t.lane === self.lane);
+  if (!lane.some((t) => t.beside)) return null;
+  return lane.length > 1 ? "either" : "it";
 }
 var OVERRUN_FACTOR, OVERRUN_FLOOR_MS, Overruns;
 var init_overrun = __esm({
@@ -16635,8 +16643,8 @@ var init_overrun = __esm({
       recheck;
       #published = /* @__PURE__ */ new Map();
       #bounds = /* @__PURE__ */ new Map();
-      /** The lane of each published tier, so a beside tier's end clears `beside` there (row 011-405). */
-      #lanes = /* @__PURE__ */ new Map();
+      /** The tiers in flight, as the last check and each end since read them (row 011-405). */
+      #live = /* @__PURE__ */ new Map();
       #wake = null;
       get published() {
         return this.#published;
@@ -16651,52 +16659,46 @@ var init_overrun = __esm({
       /**
        * Records which of `tiers` overrun at `at`, and when each other will;
        * whether the published ones changed. Row 011-405: each published one
-       * carries `beside: true` while its lane holds a tier beside another, both
-       * tiers' (the lane opens no third instance, so its next tiers wait).
+       * says what its lane's next tiers wait for (`laneWaits`), from `tiers`.
        */
       check(context, tiers, at2) {
         let changed2 = false;
-        const paired = new Set(tiers.filter((t) => t.beside === true).map((t) => t.lane));
+        this.#live = new Map(tiers.map((t) => [t.runId, { lane: t.lane, beside: t.beside === true }]));
         for (const tier of tiers) {
           const when = reportedOverrunAt(context, tier);
           if (when === null || when > at2) {
             if (when === null) this.#bounds.delete(tier.runId);
             else this.#bounds.set(tier.runId, when);
-            changed2 = this.#forget(tier.runId) || changed2;
+            changed2 = this.#published.delete(tier.runId) || changed2;
             continue;
           }
           this.#bounds.delete(tier.runId);
-          const pair2 = paired.has(tier.lane);
+          const waits2 = laneWaits(this.#live, tier.runId);
           const was = this.#published.get(tier.runId);
-          const now = was === void 0 ? tierOverrun(context, tier, when, pair2) : pairedAs(was, pair2);
+          const now = was === void 0 ? tierOverrun(context, tier, when, waits2) : waitingAs(was, waits2);
           if (now === was) continue;
           this.#published.set(tier.runId, now);
-          this.#lanes.set(tier.runId, tier.lane);
           changed2 = true;
         }
         this.#arm(at2);
         return changed2;
       }
       /**
-       * `tier` ended: whether the published ones changed. A beside tier's end
-       * leaves its lane one instance, so the others there lose `beside` (row
-       * 011-405).
+       * `tier` ended: whether the published ones changed. Whichever tier of a
+       * lane ends, the others published there say again what the lane's next
+       * tiers wait for (row 011-405, review 0.1.570 B2).
        */
       ended(tier) {
         if (this.#bounds.delete(tier.runId) && this.#bounds.size === 0) this.#wake?.clear();
-        let changed2 = this.#forget(tier.runId);
-        if (tier.beside !== true) return changed2;
-        for (const [runId, lane] of this.#lanes) {
-          const was = this.#published.get(runId);
-          if (lane !== tier.lane || was === void 0 || was.beside !== true) continue;
-          this.#published.set(runId, pairedAs(was, false));
+        this.#live.delete(tier.runId);
+        let changed2 = this.#published.delete(tier.runId);
+        for (const [runId, was] of this.#published) {
+          const now = waitingAs(was, laneWaits(this.#live, runId));
+          if (now === was) continue;
+          this.#published.set(runId, now);
           changed2 = true;
         }
         return changed2;
-      }
-      #forget(runId) {
-        this.#lanes.delete(runId);
-        return this.#published.delete(runId);
       }
       /**
        * The calendar stepped `ms` (row 011-377): each bound moves, and each
@@ -17648,7 +17650,14 @@ function lintOf(raw) {
     const tool = countsOf(entry4, TOOL_KEYS);
     const name3 = entry4?.tool;
     if (tool === null || !isText(name3)) return [];
-    return [{ tool: name3, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+    const { unlisted: unlisted4 } = entry4;
+    return [
+      {
+        tool: name3,
+        ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])),
+        ...isCount3(unlisted4) && unlisted4 > 0 ? { unlisted: unlisted4 } : {}
+      }
+    ];
   }) : null;
   return {
     findings: counts.findings,
@@ -17784,16 +17793,24 @@ function lintParts(lint2) {
   if (lint2.tools.length === 0) return [`lint not run (${lint2.notRun ?? "no tool checked a file"})`];
   return lint2.tools.map(toolPart);
 }
-function toolPart({ tool, files: files5, findings, notDetermined, running: running2 }) {
-  const of = `of ${plural(files5, "file")}`;
+function toolPart(counts) {
+  const { tool, files: files5, findings, notDetermined, running: running2, unlisted: unlisted4 = 0 } = counts;
+  const listed11 = unlisted4 > 0 ? "listed file" : "file";
+  const of = `of ${plural(files5, listed11)}`;
   const complete = files5 - notDetermined - running2;
-  if (complete === files5) return `lint (${tool}): ${plural(findings, "finding")} in ${files5} ${of}`;
+  if (complete === files5 && unlisted4 === 0) {
+    return `lint (${tool}): ${plural(findings, "finding")} in ${files5} ${of}`;
+  }
   const open7 = [];
+  if (unlisted4 > 0) open7.push(`${plural(unlisted4, "changed file")} not listed yet`);
   if (running2 > 0) open7.push(`${running2} ${of} still running`);
   if (notDetermined > 0) {
     open7.push(`${notDetermined}${running2 > 0 ? "" : ` ${of}`} not determined`);
   }
-  if (complete > 0) open7.push(`${plural(findings, "finding")} in the other ${complete}`);
+  if (complete > 0) {
+    const where3 = complete === files5 ? `${files5} ${of}` : `the other ${complete}`;
+    open7.push(`${plural(findings, "finding")} in ${where3}`);
+  }
   return `lint (${tool}): ${open7.join(", ")}`;
 }
 function legacyLint({ findings, notDetermined, running: running2 }) {
@@ -55753,6 +55770,25 @@ function tallyOf(tools2, tool) {
   }
   return own;
 }
+function unlistedPaths(states, side, behind) {
+  const unlisted4 = /* @__PURE__ */ new Map();
+  for (const tool of behind) {
+    const known4 = new Set(states.filter((s) => s.check.tool === tool).map((s) => s.check.path));
+    const paths = [...side.changed].filter((p) => side.committed.has(p) && !known4.has(p)).sort();
+    if (paths.length > 0) unlisted4.set(tool, paths);
+  }
+  return unlisted4;
+}
+function withUnlisted(counts, unlisted4) {
+  if (unlisted4.size === 0) return counts;
+  const tools2 = new Map((counts.tools ?? []).map((t) => [t.tool, t]));
+  for (const [tool, paths] of unlisted4) {
+    const own = tools2.get(tool) ?? { tool, files: 0, findings: 0, notDetermined: 0, running: 0 };
+    tools2.set(tool, { ...own, unlisted: paths.length });
+  }
+  const sorted3 = [...tools2.values()].sort((a, b) => a.tool < b.tool ? -1 : 1);
+  return { ...counts, tools: sorted3 };
+}
 var init_lint_tally = __esm({
   "src/core/commit/lint-tally.ts"() {
     "use strict";
@@ -55793,7 +55829,7 @@ function lintViewOf(store, worktreeId) {
     inputs: inputsOf3
   };
 }
-function commitLint(commonDir, policy, worktreeId, side) {
+function commitLint(commonDir, policy, worktreeId, side, listedAt) {
   const { lint: lint2 } = policy;
   const { changed: changed2 } = side;
   const source2 = {
@@ -55819,7 +55855,16 @@ function commitLint(commonDir, policy, worktreeId, side) {
       const own = released.get(state.check.tool);
       return own !== void 0 && own.get(state.check.path) !== side.committed.get(state.check.path);
     };
-    const { counts, running: running2 } = lintTally(lintViewOf(store, worktreeId), side, held4);
+    const view = lintViewOf(store, worktreeId);
+    const tally2 = lintTally(view, side, held4);
+    const { running: running2 } = tally2;
+    const behind = lint2.tools.filter((tool) => {
+      const scope2 = lintScope(worktreeId, tool);
+      const cursor = readCursor2(store.meta, scope2);
+      return cursor !== null && cursor.revision < listedAt && !passOff(store.meta, scope2);
+    });
+    const unlisted4 = unlistedPaths(view.states, side, behind);
+    const counts = withUnlisted(tally2.counts, unlisted4);
     const waiting2 = /* @__PURE__ */ new Map();
     const wait = (tool, path, blob) => {
       if (blob !== void 0) waiting2.set(`${tool}\0${path}`, { tool, path, blob });
@@ -55829,6 +55874,11 @@ function commitLint(commonDir, policy, worktreeId, side) {
     }
     for (const [tool, paths] of released) {
       for (const path of changed2) if (paths.has(path)) wait(tool, path, paths.get(path));
+    }
+    for (const [tool, paths] of unlisted4) {
+      for (const path of paths) {
+        if (!side.differing.has(path)) wait(tool, path, side.committed.get(path));
+      }
     }
     return {
       counts: withNotRun(store, worktreeId, lint2.tools, counts, waiting2.size > 0),
@@ -56076,12 +56126,13 @@ async function updateCommitReport(context, ledger) {
     if (!lintWaitEnded(commonDir, context.policy, worktreeId, lint2, newest.revision, blobOf4))
       return;
   }
-  const again2 = await commitReport(context, ledger, newest.commit, newest.from ?? null, false);
+  const from = newest.from ?? null;
+  const again2 = await commitReport(context, ledger, newest.commit, from, false, newest.revision);
   if (isFailedReport(again2)) return replaceCommitReport(store.meta, worktreeId, again2);
   const { waiting: _, ...made } = again2;
   replaceCommitReport(store.meta, worktreeId, { ...made, updated: true });
 }
-async function commitReport(context, ledger, commit, before4, asks = true) {
+async function commitReport(context, ledger, commit, before4, asks = true, listedAt = ledger.revision.number) {
   const base = { commit, revision: ledger.revision.number, at: context.now() };
   try {
     const view = viewOf2(context);
@@ -56093,7 +56144,7 @@ async function commitReport(context, ledger, commit, before4, asks = true) {
     const side = { committed, differing, environment, changed: changed2 };
     if (asks) askCommitGroups(context, ledger, { changed: changed2, differing, environment });
     const commonDir = resolveCommonDir(context.root);
-    const lint2 = commonDir === null ? void 0 : commitLint(commonDir, context.policy, context.worktreeId, side);
+    const lint2 = commonDir === null ? void 0 : commitLint(commonDir, context.policy, context.worktreeId, side, listedAt);
     const held4 = heldTestFile(context);
     const asked = askedTestFile(context);
     const untracked = new Set([...differing].filter((path) => !committed.has(path)));
@@ -78688,7 +78739,7 @@ function overrunOf(ref3, pending, run7, row2, now) {
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline,
-    ...tier.beside === true ? { beside: true } : {}
+    ...tier.laneWaits === void 0 ? {} : { laneWaits: tier.laneWaits }
   };
   return { overrun };
 }
@@ -80590,11 +80641,16 @@ function timesText(ratio) {
   const rounded = Math.round(ratio / 10 ** digits) * 10 ** digits;
   return rounded.toLocaleString("en-US");
 }
+var LANE_TEXT = {
+  beside: "the lane runs its next tiers beside it",
+  either: "it runs beside another tier, so the lane's next tiers wait for one of the two to end",
+  it: "the tier it ran beside has ended and no tier starts beside it, so the lane's next tiers wait for it to end"
+};
 function overrunText(o) {
   const ran = `it has run ${durationText(o.ranMs, Math.floor)}`;
   const usual = o.usualMs === null || o.usualMs <= 0 ? "with no usual time known" : `about ${timesText(o.ranMs / o.usualMs)}x its usual ${usualText(o.usualMs)}`;
   const deadline = o.deadline === null ? "" : `, and its run's deadline is ${timeText(o.deadline)}`;
-  const lane = o.beside === true ? "it runs beside another tier, so the lane's next tiers wait for one of the two to end" : "the lane runs its next tiers beside it";
+  const lane = LANE_TEXT[o.laneWaits ?? "beside"];
   return `; ${ran}, ${usual}, so it may be hung; ${lane}${deadline}`;
 }
 
