@@ -14,7 +14,7 @@ No added wait. The selection stays `unsynced`, so 011-401's partial label applie
 ## Decisions
 
 1. **Walks are read at the row's key, not through `readImportGraph`.** `readImportGraph` reads the worktree's keys again on its own. A key that moves between that read and the selection's `test_file_keys` read would pair a row with another key's walk, and the per-wait cache would keep the wrong pair. The query is the one `readImportGraph` and `stored-affected.ts` (`readWalk`) make, at the row's key.
-2. **Only the test file's walk counts, not its environment's.** A config or setup file in the environment walk reaches every test file of the project; the daemon's reverse index, which the synced path reads, does not select by it either. *Read in source code for the daemon side: `keys.index.reverse`.*
+2. **Only the test file's walk counts, not its environment's.** A config or setup file in the environment walk would select every test file of the project. Whether the daemon's reverse index (the synced path) selects by such a file was **not checked**; a reviewer may want the environment walk added if it does.
 3. **Cache.** A walk found is kept per (test file, key) for the life of one wait or snapshot: one key's walk is written once and never changes (`writeImportGraph`, `ON CONFLICT DO NOTHING`). A walk not found is asked again at the next poll, since the daemon may store it meanwhile.
 4. **Cost.** The first unsynced selection of a wait reads one row and inflates one walk per listed test file with a key. Not measured on a large store; the closures read beside it is the larger read (about 45 MB of JSON on cezar's store, row 011-44).
 
