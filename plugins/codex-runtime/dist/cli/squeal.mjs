@@ -91728,7 +91728,7 @@ async function runOne({ pick, index: i3 }, files5, context, suffix = "") {
     ran.push(started2 ? evidence : { ...evidence, notStarted: true });
   }
   try {
-    options.ended?.(ran);
+    options.ended?.(files5.map((ref3, i4) => ({ ref: ref3, evidence: ran[i4] })));
   } catch {
   }
   return {
@@ -94317,12 +94317,12 @@ var StoreWait = class {
   }
 };
 function runTime(runs) {
-  const runOf3 = /* @__PURE__ */ new Map();
-  for (const run7 of runs) for (const file of run7.files) runOf3.set(file, run7);
+  const runOf4 = /* @__PURE__ */ new Map();
+  for (const run7 of runs) for (const file of run7.files) runOf4.set(file, run7);
   return (files5) => {
     const byRun = /* @__PURE__ */ new Map();
     for (const file of files5) {
-      const run7 = runOf3.get(file);
+      const run7 = runOf4.get(file);
       if (run7 !== void 0) byRun.set(run7, [...byRun.get(run7) ?? [], file]);
     }
     let total = 0;
@@ -94518,12 +94518,12 @@ async function openingCheck(runs, at2) {
 function tellUnwaited(changed2, held4, at2) {
   const lost = changed2 - held4.length;
   if (lost > 0 && at2.check.lost) at2.tell(changedAfterLoss(lost));
-  for (const file of held4) at2.notKept.add(file.ref.path, HELD);
+  for (const file of held4) at2.notKept.add(file.ref.path, HELD, file.ref.project);
 }
 function withoutGrown(runs, notKept2) {
   return runs.map((q) => {
     const files5 = q.files.filter((file) => {
-      if (file.grown !== void 0) notKept2.add(file.ref.path, file.grown);
+      if (file.grown !== void 0) notKept2.add(file.ref.path, file.grown, file.ref.project);
       return file.grown === void 0;
     });
     return { ...q, files: files5 };
@@ -94630,15 +94630,27 @@ var NotKept = class {
   #kinds = /* @__PURE__ */ new Map();
   /** Row 023-18 (D2): each file's own reason, kept after `take`. */
   #byFile = /* @__PURE__ */ new Map();
-  /** `path`, a completed test file with a record, was not kept for `decided`. */
-  add(path, decided) {
+  /** Row 023-19 (the human's "A: key per project", 2026-11-19): each file's reason by project. */
+  #byProject = /* @__PURE__ */ new Map();
+  /**
+   * `path`, a completed test file with a record, was not kept for
+   * `decided`; `project`, when given, is the project it ran under.
+   */
+  add(path, decided, project) {
     const { kind, paths } = decided.cause;
     const at2 = this.#kinds.get(kind) ?? { files: [], paths: /* @__PURE__ */ new Set(), reason: decided.reason };
     at2.files.push(path);
     for (const one of paths) at2.paths.add(one);
     this.#kinds.set(kind, at2);
     const behind = paths.length === 0 ? "" : ` (${listPaths([...paths].sort(compare), NAMED4)})`;
-    this.#byFile.set(path, `${phrase(kind, true, decided.reason)}${behind}`);
+    const reason2 = `${phrase(kind, true, decided.reason)}${behind}`;
+    this.#byFile.set(path, reason2);
+    if (project !== void 0)
+      this.#byProject.set(`${project}\0${path}`, { project, path, reason: reason2 });
+  }
+  /** Row 023-19: why each file added with its project was not kept, per project and path. */
+  byProject() {
+    return [...this.#byProject.values()];
   }
   /** Row 023-18 (D2): why each file added so far was not kept, in the note's words for one file. */
   files() {
@@ -94863,14 +94875,15 @@ var Keeper = class {
       if (at2 === void 0) continue;
       const file = keeps(at2.decision) ? atStoreKey(keys, before4, c, at2) : null;
       if (file !== null) kept6.push(file);
-      else this.#notKept.add(c.ref.path, at2);
+      else this.#notKept.add(c.ref.path, at2, c.ref.project);
     }
     return { files: kept6, seen: seenOf(keys, report4, candidates, decided) };
   }
   /** Row 023-19 (review wave-13 B2): what is decided so far, to `KeepOptions.decided`. */
   #decided() {
     try {
-      this.#options.decided?.({ kept: this.keptFiles(), notKept: this.notKeptFiles() });
+      const notKept2 = [...this.#notKept.byProject(), ...this.#passNotKept.byProject()];
+      this.#options.decided?.({ kept: this.keptFiles(), notKept: notKept2 });
     } catch {
     }
   }
@@ -107095,14 +107108,19 @@ init_state();
 
 // src/cli/status-at-report-files.ts
 init_text();
+var MAYBE_STORED = "it may have been stored, and the next status --at shows it";
+var maybeStoredText = (reason2) => reason2?.endsWith(MAYBE_STORED) === true;
 var GROUP_SHOWN = 3;
 var short = (sha) => sha === null ? "none" : sha.slice(0, 9);
 function originText(origin) {
   if (origin.kind === "ci") return "from CI's export";
   if (origin.kind === "import") return `imported from CI at ${short(origin.commit)}`;
   if (origin.kind === "own") return "run in this worktree";
-  if (origin.kind === "run")
-    return origin.stored === true ? "run by this command, stored" : "run by this command, not stored";
+  if (origin.kind === "run") {
+    if (origin.stored === true) return "run by this command, stored";
+    if (maybeStoredText(origin.notStored)) return `run by this command; ${MAYBE_STORED}`;
+    return "run by this command, not stored";
+  }
   return `run in worktree ${(origin.worktreeId ?? "").slice(0, 8)}`;
 }
 function word(side) {
@@ -107177,7 +107195,7 @@ function notStoredLines(reasons, unstored2) {
   const told3 = reasons.length;
   if (told3 < unstored2) counts.set("no reason told", unstored2 - told3);
   return [...counts].map(
-    ([reason2, n]) => `${n} not stored (${reason2}); the next --at has no result for ${n === 1 ? "it" : "them"}`
+    ([reason2, n]) => maybeStoredText(reason2) ? `${n} not known to be stored (${reason2})` : `${n} not stored (${reason2}); the next --at has no result for ${n === 1 ? "it" : "them"}`
   );
 }
 function runLines2(run7, at2) {
@@ -107763,12 +107781,15 @@ function progressHooks(tell) {
   const told3 = () => tell({ runs: [...runs.values()], kept: kept6, notKept: notKept2 });
   return {
     ended: (files5) => {
-      for (const file of files5) runs.set(`${file.runner}\0${file.path}`, fileRun(file));
+      for (const { ref: ref3, evidence } of files5) {
+        const run7 = { ...fileRun(evidence), project: ref3.project };
+        runs.set(`${evidence.runner}\0${ref3.project}\0${ref3.path}`, run7);
+      }
       told3();
     },
     decided: (so) => {
       kept6 = so.kept.map(({ ref: ref3, key: key3 }) => ({ project: ref3.project, path: ref3.path, key: key3 }));
-      notKept2 = [...so.notKept].map(([path, reason2]) => ({ path, reason: reason2 }));
+      notKept2 = [...so.notKept];
       told3();
     }
   };
@@ -107913,7 +107934,7 @@ async function outcomesOf2(input) {
   if (changed2 !== null || input.stored === false) {
     for (const file of input.run) {
       if (!("key" in file.at)) continue;
-      const runs = answer4.result.runs.filter((r) => r.path === file.ref.path);
+      const runs = answer4.result.runs.filter((r) => runOf2(r, file.ref));
       const state = fromGate(file.at.key, runs, commit);
       states.set(testFileId(file.ref), changed2 === null ? state : notTheCommits(state, changed2));
     }
@@ -107929,15 +107950,14 @@ async function outcomesOf2(input) {
   await withStores(input.commonDir, async (main2) => {
     for (const file of [...input.run, ...input.siblings]) {
       if (!("key" in file.at)) continue;
-      const { path } = file.ref;
       const id = testFileId(file.ref);
       const at2 = kept6.get(id);
       const records = main2 === null || at2 === void 0 ? [] : resultsAt(main2, file.ref, at2);
       if (at2 !== void 0 && records.length > 0) {
         states.set(id, asRun2(stateOf3(at2, records, input.own), commit, true));
       } else if (chosen.has(id)) {
-        const runs = answer4.result.runs.filter((r) => r.path === path);
-        const why2 = at2 === void 0 ? notKeptWhy(answer4.result.notKept, path, input.coverage !== false, input.undecided) : "its kept result could not be read back";
+        const runs = answer4.result.runs.filter((r) => runOf2(r, file.ref));
+        const why2 = at2 === void 0 ? notKeptWhy(answer4.result.notKept, file.ref, input.coverage !== false, input.undecided) : "its kept result could not be read back";
         states.set(id, fromGate(file.at.key, runs, commit, why2));
       }
     }
@@ -107950,12 +107970,12 @@ async function unanswered(input, answer4) {
   const states = record2 === void 0 ? /* @__PURE__ */ new Map() : await outcomesOf2({
     ...input,
     answer: { result: { ...record2, timedOut: true, budgetSeconds: 0 } },
-    undecided: answer4.stopped === true ? "the run was stopped at the budget before the gate decided whether to keep it" : "the run ended before the gate decided whether to keep it"
+    undecided: maybeStored(answer4.stopped === true)
   });
   for (const file of input.run) {
     const id = testFileId(file.ref);
     const state = states.get(id);
-    const ran = record2?.runs.some((r) => r.path === file.ref.path) === true;
+    const ran = record2?.runs.some((r) => runOf2(r, file.ref)) === true;
     if (state === void 0 || !ran) states.set(id, missing2);
   }
   return states;
@@ -107970,8 +107990,15 @@ function asRun2(state, commit, stored3) {
   const origin = { kind: "run", worktreeId: null, commit, stored: stored3 };
   return state.state === "pass" || state.state === "fail" ? { ...state, origin } : state;
 }
-function notKeptWhy(notKept2, path, coverage, undecided) {
-  const reason2 = notKept2?.find((n) => n.path === path)?.reason;
+function runOf2(run7, ref3) {
+  return run7.path === ref3.path && (run7.project === void 0 || run7.project === ref3.project);
+}
+function maybeStored(stopped) {
+  const lead = stopped ? "the run was stopped at the budget before its record said whether the gate kept it" : "the run ended before its record said whether the gate kept it";
+  return `${lead}; ${MAYBE_STORED}`;
+}
+function notKeptWhy(notKept2, ref3, coverage, undecided) {
+  const reason2 = notKept2?.find((n) => runOf2(n, ref3))?.reason;
   if (reason2 !== void 0) return `the gate did not keep it: ${reason2}`;
   if (coverage && undecided !== void 0) return undecided;
   return coverage ? "the gate did not keep it and gave no reason" : "the gate keeps a result only with coverage on";
@@ -110678,7 +110705,7 @@ var attribute = (source2, table, owners) => {
       daemonPid: by.pid,
       escaped: ancestor === null,
       lane: parsed3?.lane ?? null,
-      runId: parsed3 === null ? null : runOf2(parsed3, by),
+      runId: parsed3 === null ? null : runOf3(parsed3, by),
       runner: args2 === null ? null : runnerOf3(args2),
       files: args2 === null ? null : filesOf(args2),
       descendants: descendants.get(head2) ?? []
@@ -110716,7 +110743,7 @@ function nearest(table, pid, is) {
   }
   return null;
 }
-function runOf2(mark, owner2) {
+function runOf3(mark, owner2) {
   if (mark.runId !== null) return mark.runId;
   const lane = mark.lane?.startsWith("slow:") === true ? "slow" : "fast";
   const ofLane = owner2.tiers.filter((t) => t.lane === lane);
@@ -114505,7 +114532,7 @@ async function serveRunnerHost(options) {
     if (claimed === null) return { unadmitted: true };
     const lease = claimed === "ungranted" ? null : claimed;
     try {
-      return await runOf3(
+      return await runOf4(
         id,
         files5,
         lease === null ? wire : { ...wire, workers: lease.grant },
@@ -114515,7 +114542,7 @@ async function serveRunnerHost(options) {
       lease?.release();
     }
   };
-  const runOf3 = async (id, files5, wire, lease) => {
+  const runOf4 = async (id, files5, wire, lease) => {
     const current2 = started2();
     const { beforeForce, expected, alive: alive2, admitted: _admitted, permits: _permits, ...data2 } = wire;
     let left = files5.length;
