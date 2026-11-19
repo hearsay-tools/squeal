@@ -40,19 +40,21 @@ export function overrunAfterMs(tier: Tier, durationMs: number | null): number {
 }
 
 /**
- * When `tier` overruns (row 011-399): when every file of it that has not
- * ended has run `OVERRUN_FACTOR` times its last-known duration and at least
- * `OVERRUN_FLOOR_MS` (with no known duration, `OVERRUN_FLOOR_MS` past the
- * tier's estimate), counted from the tier's start, since the daemon does not
- * know when a file of it started. On the step's calendar: the start is
- * moved by the calendar steps since (`CalendarSteps.since`, row 011-377).
- * `null` when it never does here: no file is left, it is slow, of a group's
- * lane or beside another tier, it was cancelled, or its runner does not
- * cancel a run, so its lane has no second instance (C4 step 5, row 011-269).
+ * When `tier`'s files are reported as overrunning (row 011-399): when every
+ * file of it that has not ended has run `OVERRUN_FACTOR` times its
+ * last-known duration and at least `OVERRUN_FLOOR_MS` (with no known
+ * duration, `OVERRUN_FLOOR_MS` past the tier's estimate), counted from the
+ * tier's start, since the daemon does not know when a file of it started.
+ * On the step's calendar: the start is moved by the calendar steps since
+ * (`CalendarSteps.since`, row 011-377). `null` when it never does here: no
+ * file is left, it is slow, of a group's lane, it was cancelled, or its
+ * runner does not cancel a run, so its lane has no second instance (C4
+ * step 5, row 011-269). A tier beside another is reported too (row 011-405,
+ * review 0.1.567 N1); whether its lane opens an instance is `overrunAt`'s.
  */
-export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
+export function reportedOverrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
   const start = steppedStart(context, tier);
-  if (start === null || tier.kind === "slow" || tier.beside === true) return null;
+  if (start === null || tier.kind === "slow") return null;
   // A cancelled tier is ending: its cancel is forced after the runner's grace (D12).
   if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
@@ -62,6 +64,15 @@ export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null
   if (left.length === 0) return null;
   const after = Math.max(...left.map(({ file }) => overrunAfterMs(tier, file.durationMs)));
   return (start + after) as EpochMs;
+}
+
+/**
+ * When `tier` overruns so that its lane's next tier may start beside it
+ * (`reportedOverrunAt`): `null` also for a tier beside another, since a
+ * lane has at most two instances (C4 step 5, row 011-405).
+ */
+export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
+  return tier.beside === true ? null : reportedOverrunAt(context, tier);
 }
 
 /**
@@ -135,7 +146,7 @@ function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOv
   const startedAt = steppedStart(context, tier) ?? at;
   const deadline = timeoutMs === null ? null : ((startedAt + timeoutMs) as EpochMs);
   const files = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { startedAt, at, deadline, files };
+  return { startedAt, at, deadline, files, ...(tier.beside === true ? { beside: true } : {}) };
 }
 
 /**
@@ -161,7 +172,7 @@ export class Overruns {
 
   /** `tier` started: the wake comes when it would overrun, from its start's reading. */
   started(context: SchedulerContext, tier: Tier): void {
-    const when = overrunAt(context, tier);
+    const when = reportedOverrunAt(context, tier);
     if (when === null || tier.startedAt === undefined) return;
     this.#bounds.set(tier.runId, when);
     this.#arm(tier.startedAt as EpochMs);
@@ -174,7 +185,7 @@ export class Overruns {
   check(context: SchedulerContext, tiers: readonly Tier[], at: EpochMs): boolean {
     let changed = false;
     for (const tier of tiers) {
-      const when = overrunAt(context, tier);
+      const when = reportedOverrunAt(context, tier);
       if (when === null || when > at) {
         if (when === null) this.#bounds.delete(tier.runId);
         else this.#bounds.set(tier.runId, when);
