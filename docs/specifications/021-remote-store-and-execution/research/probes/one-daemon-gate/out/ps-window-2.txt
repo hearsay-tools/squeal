@@ -1,0 +1,307 @@
+2026-11-19T10:00:19Z
+squeal: this command runs squeal 0.1.566; plugins: Claude Code 0.1.566 and Codex 0.1.565. Run squeal update to bring the plugins to one version.
+squeal ps · 11 daemons, 0 test processes · 25 flags: stale-socket ×14, stale-pool-mark ×11
+Host    load 10.7 12.3 14.5 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 2.8% · memory pressure 1.1% (1.0% full) · memory 24.1 of 62.8 GiB used, swap 2.6 of 4.0 GiB
+Squeal  CPU 1.5 CPUs (37% of busy) · memory 9.4 GiB (39% of used) + 1.5 GiB swap · pool 2 of 6 permits
+
+~/projects/squeal (this repository) · 4 daemons · CPU 0.0 · memory 2.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1690457  bd2c83af  0.1.566 claude   6m    0%     0m27s  196M    35M   1 session
+    host vitest      1691429  local                      6m    0%     0m00s  43M     53M
+  older (session 52978 holds it)
+                     53331    2326720e  0.1.565 claude  99m    1%    19m32s  511M    87M   364 pending; 1 session
+    host vitest      1737548  local                      4m    0%     0m13s  414M    0
+  older (session 909973 holds it)
+                     1538671  1d0e5207  0.1.565 claude  14m    0%     1m43s  472M    18M   367 pending; 1 session
+    host vitest      1539339  local                     14m    0%     0m48s  152M    245M
+  older (session 871262 holds it)
+                     871711   db0382bd  0.1.565 claude  51m    2%    17m48s  601M    42M   425 pending; 1 session
+    host vitest      1624134  local                     10m    0%     1m47s  264M    91M
+
+~/projects/cezar · 7 daemons · CPU 1.5 · memory 6.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1744843  fb89a140  0.1.566 claude   4m    1%     0m44s  403M    0     idle
+    host vitest      1745100  local                      4m    0%     0m23s  359M    0
+    host node-test   1745101  local                      4m    0%     0m00s  42M     0
+    host node-test   1745102  local                      4m    0%     0m00s  52M     0
+  serving            1221240  6a53f219  0.1.566 claude  27m    1%     6m12s  864M    33M   271 pending; 1 session
+    host node-test   1221545  local                     27m    0%     0m07s  31M     30M
+    host vitest      1790818  local                      1m    0%     1m36s  795M    0
+    host node-test   1790826  local                      1m    0%     0m00s  49M     0
+  serving            1800125  cc199dc3  0.1.566 claude  43s    1%     0m10s  305M    0     1 session
+    host vitest      1800336  local                     42s    0%     0m21s  317M    0
+    host node-test   1800338  local                     42s    0%     0m00s  51M     0
+    host node-test   1800345  local                     42s    0%     0m00s  62M     0
+  older (session 389298 holds it)
+                     389096   e50d78ba  0.1.565 claude  81m   90%    20m53s  1005M   122M  fast tier, 36 files; 413 pending; 1 session
+    host vitest      1775953  local                      2m   26%     0m23s  489M    0
+  serving            1723818  c0145bde  0.1.566 claude   5m    0%     0m49s  311M    392K  idle
+    host vitest      1724084  local                      5m    0%     0m46s  462M    37M
+    host node-test   1724085  local                      5m    0%     0m00s  38M     4M
+    host node-test   1724086  local                      5m    0%     0m00s  46M     3M
+  older (session 1006089 holds it)
+                     438958   a411c182  0.1.563 claude  77m    4%    19m25s  353M    338M  259 pending; 1 session
+  serving            1243974  aebed55a  0.1.566 claude  26m   22%     4m47s  457M    59M   954 pending; 1 session
+    host vitest      1244190  local                     26m    0%     4m12s  486M    293M
+    host node-test   1244192  local                     26m    0%     0m00s  7M      40M
+    host node-test   1244199  local                     26m    0%     0m00s  8M      44M
+
+2026-11-19T10:05:21Z
+squeal ps · 12 daemons, 7 test processes · 25 flags: stale-socket ×14, stale-pool-mark ×11
+Host    load 9.7 11.5 13.6 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 1.4% · memory pressure 0.8% (0.8% full) · memory 31.0 of 62.8 GiB used, swap 2.8 of 4.0 GiB
+Squeal  CPU at least 8.7 CPUs (at least 83% of busy) · memory 15.9 GiB (51% of used) + 1.7 GiB swap · pool 2 of 6 permits
+
+~/projects/squeal (this repository) · 4 daemons · CPU 2.0 · memory 3.2 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1690457  bd2c83af  0.1.566 claude  11m    3%     1m18s  753M    22M   367 pending; 1 session
+    host vitest      1858847  local                      2m    0%     1m05s  327M    0
+  older (session 52978 holds it)
+                     53331    2326720e  0.1.565 claude   1h    2%    19m45s  429M    203M  fast tier, 39 files; 325 pending; 1 session
+    host vitest      1737548  local                      9m    5%     0m16s  306M    151M
+    vitest           1915189  fork worker                0s   24%     0m00s  82M     0     nice 10
+  older (session 909973 holds it)
+                     1538671  1d0e5207  0.1.565 claude  19m   49%     2m00s  457M    82M   fast tier, 31 files; 336 pending; 1 session
+    host vitest      1885362  local                      1m    5%     0m31s  376M    0
+    vitest           1914489  fork worker                2s  104%     0m00s  42M     0     nice 10
+  older (session 871262 holds it)
+                     871711   db0382bd  0.1.565 claude  56m    2%    18m03s  455M    189M  425 pending; 1 session
+
+~/projects/cezar · 8 daemons · CPU at least 6.7 · memory 12.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1881075  c48e0169  0.1.566 claude   1m    1%     0m38s  289M    0     idle
+    host vitest      1881590  local                      1m    0%     0m23s  387M    0
+    host node-test   1881607  local                      1m    0%     0m00s  44M     0
+    host node-test   1881610  local                      1m    0%     0m00s  52M     0
+  serving            1819504  a71b55cc  0.1.566 claude   4m   16%     1m20s  829M    0     1 pending; 1 session
+    host vitest      1820325  local                      4m    0%     1m23s  1.2G    0
+    host node-test   1820326  local                      4m    0%     0m00s  45M     0
+    host node-test   1820346  local                      4m    0%     0m00s  52M     0
+  serving            1880733  d5578048  0.1.566 claude   1m    1%     0m33s  394M    0     1 pending
+    host vitest      1881633  local                      1m    0%     0m49s  438M    0
+    host node-test   1881638  local                      1m    0%     0m00s  43M     0
+    host node-test   1881639  local                      1m    0%     0m00s  47M     0
+  serving            1221240  6a53f219  0.1.566 claude  32m   14%     7m45s  468M    30M   166 pending; 1 session
+    host node-test   1221545  local                     32m    0%     0m10s  34M     27M
+    host vitest      1790818  local                      6m    0%     1m47s  446M    260M
+    host node-test   1790826  local                      6m    0%     0m00s  20M     20M
+  serving            1800125  cc199dc3  0.1.566 claude   5m   56%     1m44s  499M    10M   108 pending; 1 session
+    host vitest      1800336  local                      5m   53%     2m05s  1.1G    30M
+    host node-test   1800338  local                      5m    0%     0m00s  22M     19M
+    host node-test   1800345  local                      5m    0%     0m01s  35M     19M
+  older (session 389298 holds it)
+                     389096   e50d78ba  0.1.565 claude  86m   53%    22m01s  1.1G    69M   408 pending; 1 session
+    host vitest      1775953  local                      7m    0%     1m16s  830M    57M
+    host node-test   1882322  local                      1m    0%     0m00s  42M     0
+    host node-test   1882355  local                      1m    0%     0m00s  48M     0
+    host vitest      1908792  local                     14s    0%     0m08s  373M    0
+  older (session 1006089 holds it)
+                     438958   a411c182  0.1.563 claude  82m   33%    20m15s  583M    166M  240 pending; 1 session
+    host vitest      1809049  local                      5m    0%     1m10s  1.2G    0
+    host node-test   1881204  local                      1m    0%     0m00s  42M     0
+    host node-test   1881226  local                      1m    0%     0m00s  49M     0
+  serving            1243974  aebed55a  0.1.566 claude  31m   81%     5m47s  799M    66M   fast tier, 2 files; fast tier, 4 files; 952 pending; 1 session
+    host vitest      1244190  local                     31m    1%     4m52s  966M    293M
+    host node-test   1244192  local                     31m    0%     0m02s  46M     17M
+    host node-test   1244199  local                     31m   68%     0m01s  27M     28M
+    node-test        1910440  …erge-admission.test.cjs   6s     ?     0m00s  ?       ?     nice 10, +1 child
+    vitest           1910875  fork worker                6s  141%     0m03s  184M    0     nice 10, +1 child
+    vitest           1910896  fork worker                6s  123%     0m00s  91M     0     nice 10, +1 child
+    vitest           1910927  fork worker                6s   26%     0m01s  131M    0     nice 10, +1 child
+    vitest           1910969  fork worker                6s    4%     0m00s  83M     0     nice 10, +2 children
+
+2026-11-19T10:10:24Z
+squeal ps · 14 daemons, 7 test processes · 27 flags: older, past-departure, stale-socket ×14, stale-pool-mark ×11
+Host    load 18.8 15.1 14.4 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 6.7% · memory pressure 2.4% (2.0% full) · memory 30.7 of 62.8 GiB used, swap 4.0 of 4.0 GiB
+Squeal  CPU at least 13.9 CPUs (at least 92% of busy) · memory 16.1 GiB (53% of used) + 3.0 GiB swap · pool 2 of 6 permits
+
+~/projects/squeal (this repository) · 4 daemons · CPU at least 5.9 · memory 5.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+! serving            53331    2326720e  0.1.565 claude   1h    1%    20m45s  499M    97M   325 pending; session left 1m ago
+      older: version 0.1.565; claude installs 0.1.566
+      ends it: squeal stop ~/projects/squeal/.ai/squawk/worktrees/ac1d439b-a662-4940-81ea-8b6f6b476ed0
+      past-departure: its last session left 60 s ago, and no slow work is left
+      ends it: squeal stop ~/projects/squeal/.ai/squawk/worktrees/ac1d439b-a662-4940-81ea-8b6f6b476ed0
+    host vitest      1737548  local                     14m    0%     0m21s  178M    254M
+  older (session 909973 holds it)
+                     1538671  1d0e5207  0.1.565 claude  24m    9%     2m53s  640M    18M   1423 pending; 1 session
+    host vitest      1885362  local                      6m  165%     0m50s  521M    6M
+  serving            1965729  ca65ba23  0.1.566 claude   2m   90%     1m26s  1.4G    0     fast tier, 4 files; 312 pending; 1 session
+    host vitest      1966679  local                      2m  177%     1m09s  466M    0
+    vitest           2023423  fork worker                5s     ?     0m05s  ?       ?     nice 10, +2 children
+    vitest           2023440  fork worker                5s     ?     0m07s  ?       ?     nice 10, +3 children
+    vitest           2023460  fork worker                5s     ?     0m01s  ?       ?     nice 10, +1 child
+    vitest           2023479  fork worker                5s     ?     0m04s  ?       ?     nice 10, +2 children
+  older (session 871262 holds it)
+                     871711   db0382bd  0.1.565 claude  61m  110%    18m58s  1.2G    73M   265 pending; 1 session
+    host vitest      1941831  local                      3m    0%     0m29s  494M    1M
+
+~/projects/cezar · 9 daemons · CPU at least 8.0 · memory 10.4 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1881075  c48e0169  0.1.566 claude   6m    2%     0m51s  307M    27M   idle
+    host vitest      1881590  local                      6m    0%     0m23s  232M    155M
+    host node-test   1881607  local                      6m    0%     0m00s  23M     18M
+    host node-test   1881610  local                      6m    0%     0m00s  24M     25M
+  serving            1819504  a71b55cc  0.1.566 claude   9m   11%     1m48s  404M    43M   1 session
+    host vitest      1820325  local                      9m    0%     1m32s  332M    209M
+    host node-test   1820326  local                      9m    0%     0m00s  10M     34M
+    host node-test   1820346  local                      9m    0%     0m01s  23M     31M
+  serving            1221240  6a53f219  0.1.566 claude  37m   44%     9m47s  770M    39M   fast tier, 2 files; 146 pending; 1 session
+    host node-test   1221545  local                     37m    1%     0m12s  36M     28M
+    host vitest      1790818  local                     11m    0%     2m12s  364M    340M
+    host node-test   1790826  local                     11m    0%     0m00s  10M     31M
+    node-test        2004458  …e-finalization.test.cjs  51s 112%+     0m05s  173M    0     nice 10, +3 children
+  serving            1800125  cc199dc3  0.1.566 claude  10m   59%     3m00s  1.0G    13M   fast tier, 4 files; 61 pending; 1 session
+    host vitest      1800336  local                     10m    0%     2m39s  288M    145M
+    host node-test   1800338  local                     10m    0%     0m00s  16M     26M
+    host node-test   1800345  local                     10m  120%     0m01s  27M     31M
+  older (session 389298 holds it)
+                     389096   e50d78ba  0.1.565 claude  91m    2%    22m34s  935M    167M  fast tier, 1 file; 405 pending; 1 session
+    host vitest      1775953  local                     12m    0%     1m16s  273M    263M
+    host node-test   1882322  local                      6m    0%     0m00s  25M     16M
+    host node-test   1882355  local                      6m    0%     0m00s  26M     20M
+    host vitest      1984830  local                      1m    9%     0m13s  403M    0
+    group:run-loop:vitest2023349  fork worker                5s  120%     0m04s  227M    0     nice 10
+  older (session 1006089 holds it)
+                     438958   a411c182  0.1.563 claude  87m   46%    20m41s  438M    248M  fast tier, 17 files; 222 pending; 1 session
+    host vitest      1809049  local                     10m    2%     1m12s  501M    197M
+    host node-test   1881204  local                      6m    0%     0m00s  29M     11M
+    host node-test   1881226  local                      6m    0%     0m00s  30M     17M
+    vitest           2024474  fork worker                3s  106%     0m03s  210M    0     nice 10
+  serving            1989316  f6827b5a  0.1.566 claude   1m    0%     0m18s  523M    0     idle
+    host vitest      1990617  local                      1m  132%     0m53s  619M    0
+    host node-test   1990619  local                      1m    0%     0m00s  52M     0
+    host node-test   1990626  local                      1m    0%     0m00s  62M     0
+  serving            1243974  aebed55a  0.1.566 claude  36m    5%     6m55s  519M    68M   939 pending; 1 session
+    host vitest      1244190  local                     36m    0%     5m31s  280M    298M
+    host node-test   1244192  local                     36m    0%     0m02s  26M     37M
+    host node-test   1244199  local                     36m    0%     0m01s  15M     39M
+    host vitest      2010617  local                     38s    0%     0m08s  256M    0
+  serving            1984002  00a1d844  0.1.566 claude   1m   21%     0m36s  611M    0     idle
+    host vitest      1984969  local                      1m    0%     0m24s  370M    0
+    host node-test   1984973  local                      1m    0%     0m00s  47M     0
+    host node-test   1984987  local                      1m    0%     0m00s  60M     0
+
+~/projects/toolkit-dev · 1 daemon · CPU 0.0 · memory 449 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1933273  22e66e5f  0.1.566 claude   4m    0%     0m13s  187M    16M   1 session
+    host vitest      1933494  local                      4m    0%     0m02s  139M    29M
+    host node-test   1933495  local                      4m    0%     0m00s  35M     8M
+    host node-test   1933502  local                      4m    0%     0m00s  37M     4M
+    host pytest      1933508  local                      4m    0%     0m01s  50M     6M
+
+2026-11-19T10:15:26Z
+squeal ps · 13 daemons, 2 test processes · 25 flags: stale-socket ×14, stale-pool-mark ×11
+Host    load 20.5 18.6 16.1 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 5.0% · memory pressure 3.4% (3.4% full) · memory 28.9 of 62.8 GiB used, swap 3.3 of 4.0 GiB
+Squeal  CPU 7.4 CPUs (53% of busy) · memory 12.7 GiB (44% of used) + 2.3 GiB swap · pool 2 of 6 permits
+
+~/projects/squeal (this repository) · 3 daemons · CPU 1.7 · memory 4.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 909973 holds it)
+                     1538671  1d0e5207  0.1.565 claude  29m    2%     4m00s  697M    51M   1435 pending; 1 session
+    host vitest      1885362  local                     11m    0%     4m45s  964M    12M
+  serving            1965729  ca65ba23  0.1.566 claude   7m  146%     4m56s  1.5G    17M   fast tier, 4 files; 266 pending; 1 session
+    host vitest      1966679  local                      7m   23%     3m43s  636M    4M
+  older (session 871262 holds it)
+                     871711   db0382bd  0.1.565 claude  66m    2%    20m54s  668M    46M   265 pending; 1 session
+    host vitest      1941831  local                      8m    0%     0m29s  165M    42M
+
+~/projects/cezar · 9 daemons · CPU 5.6 · memory 8.0 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1819504  a71b55cc  0.1.566 claude  14m   12%     2m54s  440M    24M   3 pending; 1 session
+    host vitest      1820325  local                     14m    0%     2m05s  432M    245M
+    host node-test   1820326  local                     14m    0%     0m00s  7M      37M
+    host node-test   1820346  local                     14m    0%     0m01s  21M     33M
+  serving            1221240  6a53f219  0.1.566 claude  42m   14%    10m32s  455M    40M   fast tier, 16 files; 129 pending; 1 session
+    host node-test   1221545  local                     42m    0%     0m12s  30M     31M
+    host vitest      1790818  local                     16m    2%     2m17s  249M    463M
+    host node-test   1790826  local                     16m    0%     0m00s  4M      37M
+    vitest           2120941  fork worker                2s  111%     0m03s  187M    0     nice 10
+  serving            1800125  cc199dc3  0.1.566 claude  15m    3%     4m23s  422M    20M   1 session
+    host node-test   1800345  local                     15m    0%     0m04s  40M     21M
+  older (session 389298 holds it)
+                     389096   e50d78ba  0.1.565 claude  96m   46%    23m44s  1.2G    129M  fast tier, 1 file; 397 pending; 1 session
+    host vitest      2088192  local                      2m    1%     0m17s  265M    0
+    group:run-loop:vitest2119020  fork worker                6s  141%     0m03s  208M    0     nice 10, +1 child
+  older (session 1006089 holds it)
+                     438958   a411c182  0.1.563 claude  92m    2%    21m20s  522M    160M  222 pending; 1 session
+    host vitest      1809049  local                     15m    0%     1m18s  456M    183M
+  serving            1989316  f6827b5a  0.1.566 claude   6m    2%     0m52s  304M    0     idle
+    host vitest      1990617  local                      6m    0%     0m54s  386M    0
+    host node-test   1990619  local                      6m    0%     0m00s  42M     0
+    host node-test   1990626  local                      6m    0%     0m00s  49M     0
+  serving            1243974  aebed55a  0.1.566 claude  41m   41%     7m14s  436M    106M  939 pending; 1 session
+    host vitest      1244190  local                     41m    0%     5m31s  157M    420M
+    host node-test   1244192  local                     41m    0%     0m02s  17M     46M
+    host node-test   1244199  local                     41m    0%     0m01s  6M      48M
+  serving            1984002  00a1d844  0.1.566 claude   6m    2%     1m13s  348M    17M   idle
+    host vitest      1984969  local                      6m    0%     0m24s  335M    35M
+    host node-test   1984973  local                      6m    0%     0m00s  20M     16M
+    host node-test   1984987  local                      6m    0%     0m00s  22M     26M
+  serving            2114589  c58e5d34  0.1.566 claude  19s   46%     0m11s  353M    0     idle
+    host vitest      2114801  local                     18s  141%     0m10s  583M    0
+    host node-test   2114802  local                     18s    0%     0m00s  52M     0
+    host node-test   2114813  local                     18s    0%     0m00s  56M     0
+
+~/projects/toolkit-dev · 1 daemon · CPU 0.0 · memory 170 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1933273  22e66e5f  0.1.566 claude   9m    0%     0m22s  170M    23M   1 session
+
+2026-11-19T10:20:28Z
+squeal ps · 13 daemons, 4 test processes · 25 flags: stale-socket ×14, stale-pool-mark ×11
+Host    load 17.7 19.7 17.4 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 1.0% · memory pressure 0.2% (0.2% full) · memory 27.7 of 62.8 GiB used, swap 4.0 of 4.0 GiB
+Squeal  CPU at least 7.9 CPUs (at least 82% of busy) · memory 12.7 GiB (46% of used) + 2.7 GiB swap · pool 1 of 6 permits
+
+~/projects/squeal (this repository) · 3 daemons · CPU 2.8 · memory 3.9 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 909973 holds it)
+                     1538671  1d0e5207  0.1.565 claude  34m    3%     4m20s  345M    163M  1435 pending; 1 session
+    host vitest      1885362  local                     16m    0%     4m45s  312M    119M
+  serving            1965729  ca65ba23  0.1.566 claude  12m  112%     8m53s  1.2G    35M   fast tier, 4 files; 198 pending; 1 session
+    host vitest      1966679  local                     12m  157%     4m24s  789M    84M
+  older (session 871262 holds it)
+                     871711   db0382bd  0.1.565 claude  72m    1%    22m06s  1.1G    86M   223 pending; 1 session
+    host vitest      1941831  local                     13m    7%     0m39s  160M    70M
+
+~/projects/cezar · 9 daemons · CPU at least 5.1 · memory 8.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1819504  a71b55cc  0.1.566 claude  19m    2%     3m45s  502M    40M   3 pending; 1 session
+    host vitest      1820325  local                     19m    0%     2m15s  223M    318M
+    host node-test   1820326  local                     19m    0%     0m00s  4M      41M
+    host node-test   1820346  local                     19m    0%     0m01s  17M     37M
+  serving            1221240  6a53f219  0.1.566 claude  47m    6%    11m18s  593M    41M   fast tier, 9 files; 120 pending; 1 session
+    host vitest      1790818  local                     21m    2%     2m27s  391M    365M
+    vitest           2281168  fork worker                5s   69%     0m03s  207M    0     nice 10
+  serving            1800125  cc199dc3  0.1.566 claude  20m   55%     5m03s  802M    43M   243 pending; 1 session
+    host node-test   1800345  local                     20m    0%     0m04s  30M     31M
+    host vitest      2244900  local                      1m  172%     2m11s  1.2G    0
+    host node-test   2244913  local                      1m    0%     0m00s  48M     0
+  older (session 389298 holds it)
+                     389096   e50d78ba  0.1.565 claude   1h   17%    25m06s  800M    103M  389 pending; 1 session
+  serving            2153655  e973b030  0.1.566 claude   3m   11%     0m54s  305M    0     idle
+    host vitest      2155250  local                      3m    0%     0m18s  302M    0
+    host node-test   2155261  local                      3m    0%     0m00s  41M     0
+    host node-test   2155275  local                      3m    0%     0m00s  40M     0
+  older (session 1006089 holds it)
+                     438958   a411c182  0.1.563 claude  97m    2%    21m42s  446M    256M  220 pending; 1 session
+    host vitest      1809049  local                     20m    0%     1m19s  278M    354M
+    host node-test   2223852  local                      1m    2%     0m00s  50M     0
+  serving            2182123  a6319b1b  0.1.566 claude   2m    2%     0m38s  276M    0     idle
+    host vitest      2182622  local                      2m    0%     0m53s  450M    0
+    host node-test   2182624  local                      2m    0%     0m00s  43M     0
+    host node-test   2182631  local                      2m    0%     0m00s  47M     0
+  serving            1243974  aebed55a  0.1.566 claude  46m    2%     8m27s  470M    103M  fast tier, 1 file; 945 pending; 1 session
+    host vitest      1244190  local                     46m    0%     5m52s  227M    320M
+    host node-test   1244199  local                     46m    0%     0m01s  13M     41M
+    host node-test   2131991  local                      4m    1%     0m02s  44M     0
+    node-test        2167785  …st-env-launcher.test.ts   3m 117%+     0m04s  79M     0     nice 10, +5 children
+    node-test        2281807                             2s    0%     0m00s  16M     0     escaped, nice 10
+    node-test        2281808                             2s    0%     0m00s  30M     0     escaped, nice 10
+  serving            2114589  c58e5d34  0.1.566 claude   5m   45%     1m07s  435M    1M    idle
+    host vitest      2114801  local                      5m    0%     0m21s  350M    91M
+    host node-test   2114802  local                      5m    0%     0m00s  29M     13M
+    host node-test   2114813  local                      5m    0%     0m00s  29M     15M
+
+~/projects/toolkit-dev · 1 daemon · CPU 0.0 · memory 156 MiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            1933273  22e66e5f  0.1.566 claude  14m    0%     0m31s  156M    36M   1 session
+

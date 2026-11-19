@@ -22,6 +22,8 @@ const heldBy = (project, file, sec, pid) => {
     && Date.parse(h.at) < b && Date.parse(h.at) + Math.max(h.ms, 20) > a);
 };
 const prunes = dirs.flatMap((d) => longWrites(d, 0, Infinity)).filter((w) => w.prune);
+const inPruneOf = (project, file, sec, pid) => { const [a, b] = Number.isInteger(sec) ? [sec * 1000, (sec + 1) * 1000] : [sec * 1000 - 20, sec * 1000 + 20];
+  return prunes.some((w) => w.project === project && w.db === file && w.pid !== pid && w.start < b && w.end > a); };
 const inPrune = (project, sec, pid) => { const [a, b] = Number.isInteger(sec) ? [sec * 1000, (sec + 1) * 1000] : [sec * 1000 - 20, sec * 1000 + 20];
   return prunes.some((w) => w.project === project && w.pid !== pid && w.start < b && w.end > a); };
 const cls = (st, w) => st === "R" ? "R" : w === "hrtimer_nanosleep" ? "sleep" : w === "ep_poll" ? "idle" : /futex/.test(w) ? "futex" : "other";
@@ -30,13 +32,15 @@ let t0 = Infinity, t1 = 0; const loads = [];
 for (const [s, pid, project, wt, st, w, load] of rows) {
   const sec = Number(s); t0 = Math.min(t0, Math.floor(sec)); t1 = Math.max(t1, Math.floor(sec)); loads.push(Number(load));
   const c = cls(st, w);
-  const S = (sum[project] ??= { n: 0, R: 0, sleep: 0, idle: 0, futex: 0, other: 0, sleepStore: 0, sleepCode: 0, sleepBoth: 0, sleepNone: 0, sleepPrune: 0, daemons: new Set() });
+  const S = (sum[project] ??= { n: 0, R: 0, sleep: 0, idle: 0, futex: 0, other: 0, sleepStore: 0, sleepCode: 0, sleepBoth: 0, sleepNone: 0, sleepPrune: 0, storePrune: 0, codePrune: 0, daemons: new Set() });
   S.n++; S[c]++; S.daemons.add(pid);
   const D = (per[`${project} ${wt} ${pid}`] ??= { n: 0, R: 0, sleep: 0, idle: 0, futex: 0, other: 0 }); D.n++; D[c]++;
   if (c === "other") otherW[w] = (otherW[w] ?? 0) + 1;
   if (c === "sleep" && lfile) {
     const st2 = heldBy(project, "store.sqlite", sec, pid), co = heldBy(project, "code.sqlite", sec, pid);
     if (dirs.length && inPrune(project, sec, pid)) S.sleepPrune++;
+    if (dirs.length && st2 && !co && inPruneOf(project, "store.sqlite", sec, pid)) S.storePrune++;
+    if (dirs.length && co && !st2 && inPruneOf(project, "code.sqlite", sec, pid)) S.codePrune++;
     if (st2 && co) S.sleepBoth++; else if (st2) S.sleepStore++; else if (co) S.sleepCode++; else S.sleepNone++;
   }
 }
@@ -45,6 +49,7 @@ console.log(`window ${new Date(t0 * 1000).toISOString()} to ${new Date(t1 * 1000
 for (const [p, S] of Object.entries(sum)) {
   console.log(`${p}: ${S.daemons.size} daemons, ${S.n} samples; running ${pc(S.R, S.n)}, busy wait (hrtimer_nanosleep) ${pc(S.sleep, S.n)}, idle ep_poll ${pc(S.idle, S.n)}, futex ${pc(S.futex, S.n)}, other ${pc(S.other, S.n)}`);
   if (dirs.length) console.log(`  split: (a) busy wait while another daemon was in a logged prune hold ${pc(S.sleepPrune, S.n)} of samples, (b) the rest ${pc(S.sleep - S.sleepPrune, S.n)}`);
+  if (dirs.length && lfile) console.log(`  per store: only store.sqlite held ${pc(S.sleepStore, S.n)} = prune ${pc(S.storePrune, S.n)} + rest ${pc(S.sleepStore - S.storePrune, S.n)}; only code.sqlite held ${pc(S.sleepCode, S.n)} = prune ${pc(S.codePrune, S.n)} + rest ${pc(S.sleepCode - S.codePrune, S.n)}`);
   if (lfile) console.log(`  busy-wait samples while another process held: only store.sqlite ${S.sleepStore} (${pc(S.sleepStore, S.n)} of samples), only code.sqlite ${S.sleepCode} (${pc(S.sleepCode, S.n)}), both ${S.sleepBoth} (${pc(S.sleepBoth, S.n)}), neither ${S.sleepNone} (of ${S.sleep})`);
 }
 console.log("per daemon (project worktree pid: samples, R, sleep, idle):");

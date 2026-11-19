@@ -1,4 +1,4 @@
-# Window 1: lock-watch.mjs 1500 20, 2026-11-19 08:03:03Z to 08:28:03Z; wchan-watch.mjs 08:05:31Z to 08:28:12Z
+# Window 1: lock-watch.mjs 1500 20, 2026-11-19 08:03:03Z to 08:28:03Z; wchan-watch.mjs 08:05:31Z to 08:28:12Z (whole-second samples)
 == cezar/.git/squeal/code.sqlite: 8918 holds; lock held 29.6% of 1500 s; load 6.16-23.51
   daemon                       holds  8909  share  29.6%  max 7844 ms  >=1s 4  >=2s 1  >=5s 1
   hook session-start           holds     2  share   0.0%  max 120 ms  >=1s 0  >=2s 0  >=5s 0
@@ -44,15 +44,19 @@
 window 2026-11-19T08:05:31.000Z to 2026-11-19T08:28:12.000Z, load 6.16-26.77
 cezar: 7 daemons, 5717 samples; running 14.0%, busy wait (hrtimer_nanosleep) 2.0%, idle ep_poll 82.3%, futex 0.2%, other 1.5%
   split: (a) busy wait while another daemon was in a logged prune hold 0.6% of samples, (b) the rest 1.4%
+  per store: only store.sqlite held 0.2% = prune 0.1% + rest 0.1%; only code.sqlite held 0.8% = prune 0.0% + rest 0.8%
   busy-wait samples while another process held: only store.sqlite 11 (0.2% of samples), only code.sqlite 47 (0.8%), both 55 (1.0%), neither 1 (of 114)
 squeal: 14 daemons, 12409 samples; running 12.4%, busy wait (hrtimer_nanosleep) 8.8%, idle ep_poll 77.8%, futex 0.3%, other 0.8%
   split: (a) busy wait while another daemon was in a logged prune hold 0.9% of samples, (b) the rest 7.9%
+  per store: only store.sqlite held 0.1% = prune 0.0% + rest 0.1%; only code.sqlite held 4.2% = prune 0.3% + rest 3.9%
   busy-wait samples while another process held: only store.sqlite 13 (0.1% of samples), only code.sqlite 521 (4.2%), both 562 (4.5%), neither 0 (of 1096)
 main: 13 daemons, 98 samples; running 3.1%, busy wait (hrtimer_nanosleep) 0.0%, idle ep_poll 96.9%, futex 0.0%, other 0.0%
   split: (a) busy wait while another daemon was in a logged prune hold 0.0% of samples, (b) the rest 0.0%
+  per store: only store.sqlite held 0.0% = prune 0.0% + rest 0.0%; only code.sqlite held 0.0% = prune 0.0% + rest 0.0%
   busy-wait samples while another process held: only store.sqlite 0 (0.0% of samples), only code.sqlite 0 (0.0%), both 0 (0.0%), neither 0 (of 0)
 repo: 2 daemons, 2 samples; running 100.0%, busy wait (hrtimer_nanosleep) 0.0%, idle ep_poll 0.0%, futex 0.0%, other 0.0%
   split: (a) busy wait while another daemon was in a logged prune hold 0.0% of samples, (b) the rest 0.0%
+  per store: only store.sqlite held 0.0% = prune 0.0% + rest 0.0%; only code.sqlite held 0.0% = prune 0.0% + rest 0.0%
   busy-wait samples while another process held: only store.sqlite 0 (0.0% of samples), only code.sqlite 0 (0.0%), both 0 (0.0%), neither 0 (of 0)
 per daemon (project worktree pid: samples, R, sleep, idle):
   cezar a41de039 3057842: 29, 3.4%, 0.0%, 96.6%

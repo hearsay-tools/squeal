@@ -28,4 +28,4 @@ node $P/one-daemon-gate/log-windows.mjs 2026-11-16T00:00:00Z 2026-11-19T08:00:00
 node_modules/.bin/tsx $P/one-daemon-gate/explain-prune.mts
 ```
 
-Window 1 used whole-second samples; window 2 samples at millisecond times, matched with holds within 20 ms.
+Window 1 used whole-second samples; window 2 (10:00:19Z, started by a wait-for-load shell loop: at or after 10:00Z, one-minute load at or below 24) sampled at millisecond times, matched with holds within 20 ms. Outputs `window-2.txt`, `lockwatch-2.jsonl.gz`, `wchan-2.txt.gz`, `ps-window-2.txt`.

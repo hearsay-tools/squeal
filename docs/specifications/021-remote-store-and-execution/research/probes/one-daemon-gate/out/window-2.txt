@@ -1,0 +1,100 @@
+# Window 2: lock-watch.mjs 1500 20 and wchan-watch.mjs 1500 (millisecond samples), 2026-11-19 10:00:19Z to 10:25:19Z; load above 24 in 34 of 1500 s
+== cezar/.git/squeal/store.sqlite: 1228 holds; lock held 28.3% of 1500 s; load 8.64-28.22
+  daemon                       holds  1219  share  27.8%  max 7121 ms  >=1s 65  >=2s 34  >=5s 5
+  hook post-tool-batch         holds     6  share   0.3%  max 1389 ms  >=1s 2  >=2s 0  >=5s 0
+  hook session-start           holds     2  share   0.1%  max 946 ms  >=1s 0  >=2s 0  >=5s 0
+  hook user-prompt-submit      holds     1  share   0.0%  max 606 ms  >=1s 0  >=2s 0  >=5s 0
+  split: (a) prune holds the logs name 5.5% (43 holds), (b) everything else 22.8%; per 5 min (b): 10:00 28.5%, 10:05 26.4%, 10:10 18.1%, 10:15 18.8%, 10:20 22.0%
+  per daemon (worktree: share, holds, max): cc199dc3 5.5% 212 5805ms; a71b55cc 3.6% 134 5557ms; 6a53f219 3.5% 148 1458ms; aebed55a 2.7% 121 2092ms; e50d78ba 2.3% 117 2236ms; e973b030 1.4% 82 5816ms; 00a1d844 1.3% 42 7121ms; c58e5d34 1.3% 28 6659ms; 9edc2e47 1.0% 63 4145ms; 6861ca60 0.9% 36 2119ms; f6827b5a 0.9% 19 3350ms; c48e0169 0.7% 52 3410ms; a411c182 0.7% 26 2013ms; a6319b1b 0.6% 21 3348ms; d5578048 0.5% 45 2150ms; 9156aa8b 0.4% 14 3028ms; a41de039 0.4% 49 1923ms; fb89a140 0.1% 4 463ms; c0145bde 0.1% 6 281ms
+  per 5 min (all / daemons): 10:00 34.7%/34.0%, 10:05 28.9%/28.8%, 10:10 25.4%/25.4%, 10:15 27.6%/27.1%, 10:20 24.7%/23.8%
+  longest: 10:10:07 7121ms daemon 00a1d844 frames -193; 10:16:10 6659ms daemon c58e5d34 frames 4; 10:17:47 5816ms daemon e973b030 frames -6529; 10:00:40 5805ms daemon cc199dc3 frames 1; 10:14:59 5557ms daemon a71b55cc frames 0; 10:20:17 4317ms daemon cc199dc3 frames 10935
+== cezar/.git/squeal/code.sqlite: 9381 holds; lock held 42.2% of 1500 s; load 8.64-27.31
+  daemon                       holds  9351  share  41.9%  max 18345 ms  >=1s 36  >=2s 24  >=5s 13
+  hook post-tool-batch         holds    14  share   0.3%  max 749 ms  >=1s 0  >=2s 0  >=5s 0
+  hook session-start           holds     2  share   0.0%  max 40 ms  >=1s 0  >=2s 0  >=5s 0
+  split: (a) prune holds the logs name 13.5% (38 holds), (b) everything else 28.7%; per 5 min (b): 10:00 29.6%, 10:05 24.1%, 10:10 30.5%, 10:15 27.2%, 10:20 32.1%
+  per daemon (worktree: share, holds, max): cc199dc3 5.5% 1463 9968ms; e50d78ba 5.5% 1600 1753ms; a71b55cc 5.1% 893 10161ms; 6a53f219 3.3% 1139 362ms; c58e5d34 3.1% 362 14343ms; aebed55a 2.9% 714 9947ms; 00a1d844 2.7% 426 18345ms; 9edc2e47 2.0% 285 17462ms; f6827b5a 1.9% 164 16125ms; e973b030 1.6% 357 5003ms; 6861ca60 1.5% 369 2055ms; a411c182 1.3% 385 467ms; 9156aa8b 1.1% 288 1984ms; d5578048 1.1% 239 3718ms; c48e0169 1.0% 251 2022ms; a41de039 1.0% 114 9102ms; a6319b1b 1.0% 202 2423ms; fb89a140 0.3% 87 100ms; c0145bde 0.0% 13 80ms
+  per 5 min (all / daemons): 10:00 40.9%/40.6%, 10:05 24.1%/23.8%, 10:10 50.7%/50.1%, 10:15 56.0%/56.0%, 10:20 39.4%/39.1%
+  longest: 10:10:25 18345ms daemon 00a1d844 frames 20; 10:14:16 17462ms daemon 9edc2e47 frames 0; 10:11:00 16125ms daemon f6827b5a frames 0; 10:17:42 14343ms daemon c58e5d34 frames 0; 10:16:44 10161ms daemon a71b55cc frames 0; 10:00:59 9968ms daemon cc199dc3 frames 27
+== cezar/.git/squeal/lint.sqlite: 39 holds; lock held 0.1% of 1500 s; load 9.04-28.22
+  daemon                       holds    37  share   0.1%  max 125 ms  >=1s 0  >=2s 0  >=5s 0
+  hook session-start           holds     1  share   0.0%  max 41 ms  >=1s 0  >=2s 0  >=5s 0
+  hook post-tool-batch         holds     1  share   0.0%  max 20 ms  >=1s 0  >=2s 0  >=5s 0
+  split: (a) prune holds the logs name 0.0% (0 holds), (b) everything else 0.1%; per 5 min (b): 10:00 0.1%, 10:05 0.1%, 10:10 0.1%, 10:15 0.1%, 10:20 0.1%
+  per daemon (worktree: share, holds, max): cc199dc3 0.0% 7 45ms; 9156aa8b 0.0% 1 125ms; 00a1d844 0.0% 5 39ms; a71b55cc 0.0% 5 20ms; e50d78ba 0.0% 4 20ms; aebed55a 0.0% 3 21ms; f6827b5a 0.0% 3 21ms; a411c182 0.0% 3 21ms; c48e0169 0.0% 2 40ms; e973b030 0.0% 1 41ms; a6319b1b 0.0% 2 21ms; c0145bde 0.0% 1 20ms
+  per 5 min (all / daemons): 10:00 0.1%/0.1%, 10:05 0.1%/0.1%, 10:10 0.1%/0.1%, 10:15 0.1%/0.1%, 10:20 0.1%/0.1%
+  longest: 10:22:49 125ms daemon 9156aa8b frames 109; 10:00:47 45ms daemon cc199dc3 frames 1; 10:17:14 41ms daemon e973b030 frames -918; 10:22:01 41ms hook session-start  frames 2; 10:04:15 40ms daemon c48e0169 frames 104; 10:09:48 39ms daemon 00a1d844 frames 105
+== squeal/.git/squeal/store.sqlite: 510 holds; lock held 10.0% of 1500 s; load 8.67-28.15
+  daemon                       holds   497  share   9.7%  max 8300 ms  >=1s 29  >=2s 13  >=5s 2
+  hook post-tool-batch         holds     7  share   0.1%  max 406 ms  >=1s 0  >=2s 0  >=5s 0
+  hook user-prompt-submit      holds     2  share   0.0%  max 459 ms  >=1s 0  >=2s 0  >=5s 0
+  hook session-start           holds     2  share   0.0%  max 605 ms  >=1s 0  >=2s 0  >=5s 0
+  hook stop                    holds     2  share   0.0%  max 384 ms  >=1s 0  >=2s 0  >=5s 0
+  split: (a) prune holds the logs name 1.2% (7 holds), (b) everything else 8.8%; per 5 min (b): 10:00 2.5%, 10:05 10.8%, 10:10 14.7%, 10:15 5.5%, 10:20 10.3%
+  per daemon (worktree: share, holds, max): ca65ba23 4.6% 197 6525ms; 1d0e5207 2.0% 77 4060ms; db0382bd 2.0% 166 8300ms; bd2c83af 0.5% 23 4146ms; 72059d52 0.4% 16 3635ms; 2326720e 0.2% 18 1369ms
+  per 5 min (all / daemons): 10:00 2.5%/2.5%, 10:05 16.8%/16.1%, 10:10 14.7%/14.7%, 10:15 5.5%/5.5%, 10:20 10.3%/9.8%
+  longest: 10:08:46 8300ms daemon db0382bd frames 28; 10:09:07 6525ms daemon ca65ba23 frames -421; 10:23:32 4232ms daemon db0382bd frames 9751; 10:03:42 4146ms daemon bd2c83af frames 6172; 10:14:21 4060ms daemon 1d0e5207 frames 7223; 10:22:51 3817ms daemon 1d0e5207 frames 6342
+== squeal/.git/squeal/code.sqlite: 7330 holds; lock held 24.8% of 1500 s; load 11.06-28.22
+  daemon                       holds  7328  share  24.8%  max 5573 ms  >=1s 1  >=2s 1  >=5s 1
+  hook session-start           holds     1  share   0.0%  max 60 ms  >=1s 0  >=2s 0  >=5s 0
+  hook post-tool-batch         holds     1  share   0.0%  max 20 ms  >=1s 0  >=2s 0  >=5s 0
+  split: (a) prune holds the logs name 0.5% (5 holds), (b) everything else 24.3%; per 5 min (b): 10:00 7.1%, 10:05 20.5%, 10:10 36.6%, 10:15 39.5%, 10:20 17.8%
+  per daemon (worktree: share, holds, max): ca65ba23 15.1% 4264 716ms; db0382bd 5.0% 1541 5573ms; bd2c83af 2.2% 643 151ms; 1d0e5207 1.6% 554 100ms; 2326720e 0.9% 308 102ms; 72059d52 0.0% 18 62ms
+  per 5 min (all / daemons): 10:00 7.1%/7.1%, 10:05 23.2%/23.2%, 10:10 36.6%/36.6%, 10:15 39.5%/39.5%, 10:20 17.8%/17.8%
+  longest: 10:09:50 5573ms daemon db0382bd frames 116; 10:09:56 716ms daemon ca65ba23 frames 0; 10:10:02 669ms daemon ca65ba23 frames 7; 10:10:03 604ms daemon db0382bd frames 0; 10:09:59 567ms daemon ca65ba23 frames 455; 10:14:29 325ms daemon ca65ba23 frames 1
+
+window 2026-11-19T10:00:19.000Z to 2026-11-19T10:25:20.000Z, load 8.64-28.22
+cezar: 19 daemons, 12609 samples; running 14.9%, busy wait (hrtimer_nanosleep) 10.1%, idle ep_poll 72.2%, futex 0.3%, other 2.6%
+  split: (a) busy wait while another daemon was in a logged prune hold 4.2% of samples, (b) the rest 5.9%
+  per store: only store.sqlite held 3.7% = prune 1.3% + rest 2.5%; only code.sqlite held 2.4% = prune 0.9% + rest 1.5%
+  busy-wait samples while another process held: only store.sqlite 472 (3.7% of samples), only code.sqlite 306 (2.4%), both 481 (3.8%), neither 10 (of 1269)
+squeal: 6 daemons, 5273 samples; running 18.5%, busy wait (hrtimer_nanosleep) 3.9%, idle ep_poll 75.0%, futex 0.4%, other 2.2%
+  split: (a) busy wait while another daemon was in a logged prune hold 1.1% of samples, (b) the rest 2.8%
+  per store: only store.sqlite held 1.9% = prune 0.8% + rest 1.0%; only code.sqlite held 1.4% = prune 0.1% + rest 1.2%
+  busy-wait samples while another process held: only store.sqlite 98 (1.9% of samples), only code.sqlite 72 (1.4%), both 27 (0.5%), neither 9 (of 206)
+toolkit-dev: 1 daemons, 1128 samples; running 2.6%, busy wait (hrtimer_nanosleep) 0.0%, idle ep_poll 97.1%, futex 0.1%, other 0.3%
+  split: (a) busy wait while another daemon was in a logged prune hold 0.0% of samples, (b) the rest 0.0%
+  per store: only store.sqlite held 0.0% = prune 0.0% + rest 0.0%; only code.sqlite held 0.0% = prune 0.0% + rest 0.0%
+  busy-wait samples while another process held: only store.sqlite 0 (0.0% of samples), only code.sqlite 0 (0.0%), both 0 (0.0%), neither 0 (of 0)
+repo: 2 daemons, 3 samples; running 0.0%, busy wait (hrtimer_nanosleep) 0.0%, idle ep_poll 100.0%, futex 0.0%, other 0.0%
+  split: (a) busy wait while another daemon was in a logged prune hold 0.0% of samples, (b) the rest 0.0%
+  per store: only store.sqlite held 0.0% = prune 0.0% + rest 0.0%; only code.sqlite held 0.0% = prune 0.0% + rest 0.0%
+  busy-wait samples while another process held: only store.sqlite 0 (0.0% of samples), only code.sqlite 0 (0.0%), both 0 (0.0%), neither 0 (of 0)
+main: 4 daemons, 49 samples; running 4.1%, busy wait (hrtimer_nanosleep) 0.0%, idle ep_poll 95.9%, futex 0.0%, other 0.0%
+  split: (a) busy wait while another daemon was in a logged prune hold 0.0% of samples, (b) the rest 0.0%
+  per store: only store.sqlite held 0.0% = prune 0.0% + rest 0.0%; only code.sqlite held 0.0% = prune 0.0% + rest 0.0%
+  busy-wait samples while another process held: only store.sqlite 0 (0.0% of samples), only code.sqlite 0 (0.0%), both 0 (0.0%), neither 0 (of 0)
+per daemon (project worktree pid: samples, R, sleep, idle):
+  cezar 00a1d844 1984002: 461, 16.1%, 13.0%, 66.2%
+  cezar 6861ca60 2338564: 124, 54.0%, 5.6%, 37.1%
+  cezar 6a53f219 1221240: 1252, 17.2%, 12.5%, 68.7%
+  cezar 9156aa8b 2327628: 181, 17.7%, 9.4%, 71.3%
+  cezar 9edc2e47 2063380: 175, 21.7%, 16.6%, 53.1%
+  cezar a411c182 438958: 1488, 7.7%, 8.5%, 81.8%
+  cezar a41de039 2323861: 198, 15.2%, 12.1%, 67.7%
+  cezar a6319b1b 2182123: 238, 16.4%, 5.9%, 75.2%
+  cezar a71b55cc 1819504: 1435, 14.0%, 10.2%, 71.3%
+  cezar aebed55a 1243974: 1488, 14.7%, 10.2%, 73.3%
+  cezar c0145bde 1723818: 189, 2.6%, 3.7%, 93.7%
+  cezar c48e0169 1881075: 465, 9.7%, 7.5%, 81.3%
+  cezar c58e5d34 2114589: 435, 19.1%, 8.3%, 67.1%
+  cezar cc199dc3 1800125: 1488, 20.8%, 9.9%, 66.1%
+  cezar d5578048 1880733: 319, 13.5%, 6.0%, 77.4%
+  cezar e50d78ba 389096: 1488, 16.0%, 11.9%, 69.8%
+  cezar e973b030 2153655: 528, 11.7%, 7.6%, 77.8%
+  cezar f6827b5a 1989316: 482, 11.2%, 11.8%, 72.0%
+  cezar fb89a140 1744843: 175, 5.1%, 9.1%, 85.7%
+  main 6a74716c 2272080: 12, 0.0%, 0.0%, 100.0%
+  main 86164f51 2277734: 6, 0.0%, 0.0%, 100.0%
+  main 8fb832c5 2260140: 20, 5.0%, 0.0%, 95.0%
+  main d548fdb4 2250483: 11, 9.1%, 0.0%, 90.9%
+  repo 3ae3a321 2200476: 1, 0.0%, 0.0%, 100.0%
+  repo 6e7487a2 1981974: 2, 0.0%, 0.0%, 100.0%
+  squeal 1d0e5207 1538671: 1488, 9.7%, 2.5%, 85.3%
+  squeal 2326720e 53331: 792, 8.5%, 3.9%, 86.1%
+  squeal 72059d52 1967199: 84, 16.7%, 17.9%, 54.8%
+  squeal bd2c83af 1690457: 585, 13.3%, 1.4%, 83.8%
+  squeal ca65ba23 1965729: 836, 51.9%, 4.9%, 39.0%
+  squeal db0382bd 871711: 1488, 16.1%, 5.0%, 76.7%
+  toolkit-dev 22e66e5f 1933273: 1128, 2.6%, 0.0%, 97.1%
+other wchan: {"0":77,"folio_wait_bit_common":278,"xfs_ilock":5,"pipe_read":72,"__flush_workqueue":2,"xlog_wait_on_iclog":3,"percpu_rwsem_wait":3,"submit_bio_wait":2,"lock_mm_and_find_vma":1,"rq_qos_wait":1}
