@@ -133,4 +133,52 @@ describe("squeal proof red evidence (row 023-22, #244)", { timeout: 240_000 }, (
     expect(accepted.files[0]?.red.failures[0]).toMatchObject({ kind: "thrown" });
     clean(f);
   });
+  it("reads the thrown label on a --with proof's red side, and keeps --red-error in its rerun", async () => {
+    const thin = "src/thin.test.ts";
+    const rows = "src/rows.testkit.ts";
+    const kit = (...extra: string[]) =>
+      lines(
+        'import { it } from "vitest";',
+        'import { value } from "./value";',
+        WAIT_HELPER.replace("export async function", "async function"),
+        "export function runKit() {",
+        '  it("existing row", () => {});',
+        ...extra,
+        "}",
+      );
+    const f = fixture({
+      ...ON,
+      "vitest.config.mjs": 'export default { test: { include: ["src/*.test.ts"] } };\n',
+      [thin]: 'import { runKit } from "./rows.testkit";\nrunKit();\n',
+      "src/value.ts": "export const value = 1;\n",
+      [rows]: kit(),
+    });
+    const base = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({
+      "src/value.ts": "export const value = 2;\n",
+      [rows]: kit('  it("waits for the value", async () => waitFor(() => value === 2));'),
+    });
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    // Row 023-21: without --with the unchanged thin test stops; the rerun keeps --red-error.
+    const stopped = await prove(f, { files: [thin], base, redErrors: ["never"] }, options);
+    expect(stopped.code, stopped.why).toBe(3);
+    expect(stopped.report.withRerun).toBe(
+      `squeal proof ${thin} --base ${base} --with ${rows} --red-error never`,
+    );
+    clean(f);
+    const result = await prove(f, { files: [thin], base, with: [rows] }, options);
+    expect(result.code, result.why).toBe(0);
+    expect(result.files[0]).toMatchObject({
+      verdict: "proven",
+      reason:
+        "red on a thrown error, not an assertion: Error: predicate never became truthy: value is 2",
+      evidence: "thrown",
+      red: { end: "fail" },
+      green: { end: "pass" },
+    });
+    expect(result.files[0]?.red.failures).toEqual([
+      expect.objectContaining({ test: "waits for the value", kind: "thrown" }),
+    ]);
+    clean(f);
+  });
 });
