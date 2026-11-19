@@ -1,12 +1,11 @@
 import type { FailedTest } from "../core/code/gate/types.js";
 import { type Conditions, conditionWords, hasConditions } from "../core/proof/conditions.js";
+import { type ChangedImports, stops } from "../core/proof/imports.js";
 import type { ProofCase, Side } from "../core/proof/sides.js";
 import { controlReading, failureKind, type SideEnd, type Verdict } from "../core/proof/verdict.js";
 import { errorLines } from "../core/status/format-why-replaced.js";
-import { shellWord } from "../core/text.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import type { ProofArgs } from "./proof-args.js";
 import type { SideFile } from "./proof-side.js";
 
 /*
@@ -16,7 +15,9 @@ import type { SideFile } from "./proof-side.js";
  * the case and the run count, so an agent can paste it into a pull
  * request. Row 023-11: the conditions, `--repeat`, each side's run count
  * and the rerun line for runs the budget left not started. The JSON is
- * versioned as `status --at`'s is.
+ * versioned as `status --at`'s is. Row 023-21 (D5.2, issue #247): the
+ * `--with` paths per side, a warning per `--with` path no named test
+ * imports, an unchanged test's changed imports and the rerun with them.
  */
 
 export interface ProofFile {
@@ -32,6 +33,8 @@ export interface ProofFile {
   readonly control: SideFile | null;
   /** P9: why the control run did not run, under a condition; `null` otherwise. */
   readonly controlNotRun: string | null;
+  /** Row 023-21: the changed imports of the file while it is unchanged; `null` otherwise. */
+  readonly imports: ChangedImports | null;
 }
 
 export interface ProofReport {
@@ -63,15 +66,28 @@ export interface ProofReport {
   readonly notRun: number;
   /** 020's rerun line, with a longer `--timeout`; `null` when every run started. */
   readonly rerun: string | null;
+  /** Row 023-21: the `--with` paths, from the root; each side holds them at its test version. */
+  readonly with: readonly RelativePath[];
+  /** Row 023-21: the `--with` paths no named test's closure at `HEAD` loads. */
+  readonly withUnused: readonly RelativePath[];
+  /** Row 023-21: the same command with `--with` for each changed helper; `null` when no file stopped. */
+  readonly withRerun: string | null;
 }
 
 const short = (sha: string) => sha.slice(0, 9);
 
-/** A side in words: `the test at X over the code at Y`, or `X` when both are one commit. */
-export function sideText(side: Side): string {
-  return side.tests === side.code
-    ? `the test and code at ${short(side.code)}`
-    : `the test at ${short(side.tests)} over the code at ${short(side.code)}`;
+/**
+ * A side in words: `the test at X over the code at Y`, or `X` when both
+ * are one commit; row 023-21: with the `--with` paths at the test version.
+ */
+export function sideText(side: Side, withPaths: readonly RelativePath[] = []): string {
+  const text =
+    side.tests === side.code
+      ? `the test and code at ${short(side.code)}`
+      : `the test at ${short(side.tests)} over the code at ${short(side.code)}`;
+  return withPaths.length === 0
+    ? text
+    : `${text}, with ${withPaths.join(", ")} at ${short(side.tests)} as test code`;
 }
 
 const FROM_TEXT = {
@@ -123,8 +139,10 @@ function listed(paths: readonly RelativePath[]): string {
 export function formatProof(report: ProofReport): string {
   const lines = [
     `squeal proof (case ${report.case ?? "not decided"}): base ${short(report.base)}, HEAD ${short(report.head)}`,
-    `Red: ${report.red === null ? "none" : sideText(report.red)}. Green: ${sideText(report.green)}; ${checkoutText(report.checkoutMs)}.`,
+    `Red: ${report.red === null ? "none" : sideText(report.red, report.with)}. Green: ${sideText(report.green, report.with)}; ${checkoutText(report.checkoutMs)}.`,
   ];
+  for (const path of report.withUnused)
+    lines.push(`Warning: --with ${path}: no named test imports it at ${short(report.head)}.`);
   const words = conditionWords(report.conditions);
   if (words.length > 0 || report.repeat > 1)
     lines.push(
@@ -150,6 +168,7 @@ export function formatProof(report: ProofReport): string {
       lines.push(...errorLines(failure.errors).map((line) => `  ${line.replace(/^ {2}/, INDENT)}`));
     }
     const notRun = `not run (${file.greenNotRun ?? "not needed"})`;
+    lines.push(...importLines(file, report));
     lines.push(`  green: ${file.green === null ? notRun : endText(file.green)}`);
     const control = controlLine(file, report.conditions);
     if (control !== null) lines.push(`  ${control}`);
@@ -160,7 +179,30 @@ export function formatProof(report: ProofReport): string {
   lines.push(`${parts.join(", ")}; ${report.runs} run${report.runs === 1 ? "" : "s"} (${used})`);
   if (report.rerun !== null)
     lines.push(`${report.notRun} not run (budget). A rerun that fits: ${report.rerun}`);
+  if (report.withRerun !== null)
+    lines.push(`Rerun with the changed helpers as test code: ${report.withRerun}`);
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Row 023-21: an unchanged test's changed imports. A stopped file names
+ * its source changes beside the helpers its reason names; a file that ran
+ * with only source changes says what it compared as source, so a helper
+ * Squeal took for source is never compared silently.
+ */
+function importLines(file: ProofFile, report: ProofReport): string[] {
+  const imports = file.imports;
+  if (imports === null || imports.sources.length === 0) return [];
+  const sources = imports.sources.join(", ");
+  const how =
+    report.case === "source"
+      ? "source changes the proof compares"
+      : `source changes, at ${short(report.head)} on both sides`;
+  if (stops(imports)) return [`  ${how}: ${sources}`];
+  if (imports.testSide) return [];
+  return [
+    `  the test is unchanged since ${short(report.base)}; ${how}: ${sources} (if one is test code, rerun with --with <path>)`,
+  ];
 }
 
 /**
@@ -221,8 +263,10 @@ export function jsonProof(report: ProofReport): string {
     case: report.case,
     base: report.base,
     head: report.head,
-    red: report.red,
-    green: report.green,
+    red: report.red === null ? null : { ...report.red, with: report.with },
+    green: { ...report.green, with: report.with },
+    withUnused: report.withUnused,
+    withRerun: report.withRerun,
     dirty: report.dirty,
     timeoutSeconds: report.timeoutSeconds,
     usedMs: report.usedMs,
@@ -248,29 +292,15 @@ export function jsonProof(report: ProofReport): string {
       control: sideJson(file.control),
       controlReading: file.control === null ? null : controlReading(file.control.end),
       controlNotRun: file.controlNotRun,
+      changedImports:
+        file.imports === null
+          ? null
+          : {
+              helpers: file.imports.helpers,
+              sources: file.imports.sources,
+              stopped: stops(file.imports),
+            },
     })),
   };
   return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-/** How much longer than this call's budget a rerun's `--timeout` is. */
-const RERUN_FACTOR = 2;
-
-/** 020's rerun line for a proof: this call's own arguments with a longer `--timeout`. */
-export function rerunCommand(args: ProofArgs, conditions: Conditions): string {
-  const seconds = Math.max(60, Math.ceil((RERUN_FACTOR * args.timeoutSeconds) / 60) * 60);
-  const words = [
-    "squeal proof",
-    ...args.files.map(shellWord),
-    "--base",
-    shellWord(args.base),
-    ...(args.case === null ? [] : ["--case", args.case]),
-    ...conditions.env.map((e) => `--env ${shellWord(`${e.name}=${e.value ?? ""}`)}`),
-    ...conditions.without.map((w) => `--without ${shellWord(w.given)}`),
-    ...conditions.keep.map((k) => `--home-keep ${shellWord(k.given)}`),
-    ...((args.repeat ?? 1) > 1 ? ["--repeat", String(args.repeat)] : []),
-    "--timeout",
-    String(seconds),
-  ];
-  return words.join(" ");
 }

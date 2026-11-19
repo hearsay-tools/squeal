@@ -1,5 +1,6 @@
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions } from "../core/proof/conditions.js";
+import { type ChangedImports, stops } from "../core/proof/imports.js";
 import { notRunWhy, redOnAssertion, verdictOf, withControl } from "../core/proof/verdict.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { ProofFile, ProofReport } from "./proof-report.js";
@@ -9,8 +10,12 @@ import type { SideAnswer, SideFile } from "./proof-side.js";
  * Spec 023 D5.5 (row 023-08): a proof's files from its sides' answers,
  * with the runs and checkout times. Row 023-20: why a side did not run
  * (lessons P7), and the red side's control run without the conditions
- * (P9).
+ * (P9). Row 023-21 (D5.2, issue #247): an unchanged named test whose
+ * code-side helpers changed runs nothing and reads not comparable.
  */
+
+/** Row 023-21: each named file's changed imports while it is unchanged, by `testFileId`. */
+export type ImportsOf = ReadonlyMap<string, ChangedImports | null>;
 
 /** The proof's files and counts from its sides' answers; red and control `null` when not made. */
 export function provedFiles(
@@ -18,6 +23,8 @@ export function provedFiles(
   red: SideAnswer | null,
   control: SideAnswer | null,
   conditions: Conditions,
+  imports: ImportsOf,
+  base: string,
 ): Pick<ProofReport, "runs" | "checkoutMs" | "files"> {
   const conditioned = hasConditions(conditions);
   const redMs = red?.checkoutMs ?? null;
@@ -30,9 +37,14 @@ export function provedFiles(
       control: controlMs,
       green: green.checkoutMs - (redMs ?? 0) - (controlMs ?? 0),
     },
-    files: green.refs.map((ref) =>
-      fileOf(ref, green.files, red?.files, control?.files, conditioned),
-    ),
+    files: green.refs.map((ref) => {
+      const changed = imports.get(testFileId(ref)) ?? null;
+      const stopped = stops(changed) ? stoppedSide(changed, base) : null;
+      return {
+        ...fileOf(ref, green.files, red?.files, control?.files, conditioned, stopped),
+        imports: changed,
+      };
+    }),
   };
 }
 
@@ -48,9 +60,11 @@ function fileOf(
   red: ReadonlyMap<string, SideFile> | undefined,
   control: ReadonlyMap<string, SideFile> | undefined,
   conditioned: boolean,
-): ProofFile {
+  /** Row 023-21: the red side of a file that did not run for its changed helpers. */
+  stopped: SideFile | null,
+): Omit<ProofFile, "imports"> {
   const greenFile = endOf(green, ref);
-  const redFile = red?.has(testFileId(ref)) === true ? endOf(red, ref) : greenFile;
+  const redFile = stopped ?? (red?.has(testFileId(ref)) === true ? endOf(red, ref) : greenFile);
   const decides = redOnAssertion(redFile.end);
   const controlFile = control?.has(testFileId(ref)) === true ? endOf(control, ref) : null;
   const { verdict, reason } = withControl(
@@ -69,6 +83,24 @@ function fileOf(
     greenNotRun: shown === null ? why : null,
     control: controlFile,
     controlNotRun: conditioned && controlFile === null ? why : null,
+  };
+}
+
+/**
+ * Row 023-21: the red side of an unchanged named test whose code-side
+ * helpers changed: not run, its reason naming the helpers.
+ */
+function stoppedSide(imports: ChangedImports | null, base: string): SideFile {
+  const helpers = imports?.helpers.join(", ") ?? "";
+  return {
+    end: {
+      end: "unknown",
+      reason: `the test is unchanged since ${base.slice(0, 9)}; changed imports: ${helpers}`,
+    },
+    from: null,
+    stored: false,
+    notStored: null,
+    runs: 0,
   };
 }
 
