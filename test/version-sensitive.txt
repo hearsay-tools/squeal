@@ -74,6 +74,7 @@
 #   test/evals/claim-grades.test.ts
 #   test/evals/grade.test.ts
 #   test/evals/malformed.test.ts
+#   test/evals/node-test-cut.test.ts
 #   test/evals/regrade-cells.test.ts
 #   test/evals/regrade.test.ts
 #   test/evals/truth.test.ts
