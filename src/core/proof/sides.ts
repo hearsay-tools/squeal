@@ -102,7 +102,8 @@ export interface Entry {
  * among them: what is copied into the side's checkout. Every such path,
  * not only those the test loads: the closure at the test version is only
  * known in the checkout, and a file the test does not load changes neither
- * its key nor its run.
+ * its key nor its run. Row 023-21: test-side paths the test version lacks
+ * are removed (`testSideRemovals`).
  */
 export function testSideCopies(
   tests: ReadonlyMap<RelativePath, Entry>,
@@ -118,6 +119,25 @@ export function testSideCopies(
       out.push(path);
   }
   return out.sort();
+}
+
+/**
+ * Row 023-21 (review wave-14 seventh look, B1): the test-side paths the
+ * code version holds and the test version lacks (a `--with` path, a named
+ * file or a test-side file deleted at the test version): removed from the
+ * side's checkout before its install, so the side holds the test version's
+ * test code; the whole-checkout check then requires their absence. A
+ * `--source` path stays at the code version.
+ */
+export function testSideRemovals(
+  tests: ReadonlyMap<RelativePath, Entry>,
+  code: ReadonlyMap<RelativePath, Entry>,
+  named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath> = NO_PATHS,
+): RelativePath[] {
+  return [...code.keys()]
+    .filter((path) => !tests.has(path) && isTestSide(path, named, source))
+    .sort();
 }
 
 /**

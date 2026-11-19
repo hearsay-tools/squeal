@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { importsOf, stops, unusedPaths } from "../../src/core/proof/imports.js";
-import { defaultCase, isTestSide, testSideCopies } from "../../src/core/proof/sides.js";
+import {
+  defaultCase,
+  isTestSide,
+  testSideCopies,
+  testSideRemovals,
+} from "../../src/core/proof/sides.js";
 
 /*
  * Row 023-21, spec 023 D5.2 as amended 2026-11-19 ("A: every changed
@@ -74,5 +79,23 @@ describe("an unchanged test's changed files (row 023-21)", () => {
     const changed = new Set(["test/value.ts"]);
     expect(defaultCase(TEST, [TEST, "test/value.ts"], changed, named)).toBe("test");
     expect(defaultCase(TEST, [TEST, "test/value.ts"], changed, named, source)).toBe("source");
+  });
+
+  it("removes test-side paths the test version lacks, never a --source path", () => {
+    const named = new Set([TEST, "support/marker.txt"]);
+    const tests = new Map([[TEST, entry("t")]]);
+    const code = new Map([
+      [TEST, entry("t")],
+      ["support/marker.txt", entry("m")],
+      ["test/fixtures/b.json", entry("b")],
+      ["src/gone.ts", entry("g")],
+    ]);
+    expect(testSideRemovals(tests, code, named)).toEqual([
+      "support/marker.txt",
+      "test/fixtures/b.json",
+    ]);
+    expect(testSideRemovals(tests, code, named, new Set(["test/fixtures/b.json"]))).toEqual([
+      "support/marker.txt",
+    ]);
   });
 });

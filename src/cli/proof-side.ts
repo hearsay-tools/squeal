@@ -68,6 +68,8 @@ export interface SideInput {
   readonly tests: ReadonlyMap<RelativePath, Entry>;
   readonly code: ReadonlyMap<RelativePath, Entry>;
   readonly named: ReadonlySet<RelativePath>;
+  /** Row 023-21 (seventh look B1): test-side paths the test version lacks, removed from the checkout. */
+  readonly removed?: readonly RelativePath[];
   /** Row 023-21 (D5.2): the `--source` paths, product code whatever their names; passed to `missingImport`. */
   readonly source?: ReadonlySet<RelativePath>;
   readonly keying: KeyingOptions & CheckoutOptions;
@@ -178,7 +180,8 @@ export async function withSide<T>(
     files: input.files,
     also: input.also,
     listed,
-    hidden: hiddenInRepository(input.conditions),
+    // Row 023-21: removed test-side paths leave the checkout and its expected tree, as hidden ones do.
+    hidden: [...hiddenInRepository(input.conditions), ...(input.removed ?? [])],
     beforeRemove,
     installTimeoutMs: Math.min(INSTALL_TIMEOUT_MS, left),
   });

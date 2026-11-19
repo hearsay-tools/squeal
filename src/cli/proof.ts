@@ -6,7 +6,7 @@ import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
 import { importsOf, stops, unusedPaths } from "../core/proof/imports.js";
-import { type Side, sidesOf, testSideCopies } from "../core/proof/sides.js";
+import { type Side, sidesOf, testSideCopies, testSideRemovals } from "../core/proof/sides.js";
 import { NOT_RUN_BUDGET, proofExit, redCounts } from "../core/proof/verdict.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
@@ -183,9 +183,10 @@ async function prove(
       const sourceUnused = unusedPaths(given.source, [candidates]);
       // Row 023-21: a stopped file runs nothing; the case is the others'.
       const proving = refs.filter((ref) => !stops(imports.get(testFileId(ref)) ?? null));
-      const kind =
-        args.case ??
-        caseOf(base, proving.length > 0 ? proving : refs, loadsOf, changed, testSide, source);
+      // Seventh look B2: every file stopped: the stop is the report, before any case choice.
+      if (proving.length === 0)
+        return { kind: args.case, red: null, control: null, imports, unused, sourceUnused };
+      const kind = args.case ?? caseOf(base, proving, loadsOf, changed, testSide, source);
       if (typeof kind === "object") return kind;
       const sides = sidesOf(kind, base, head);
       const red =
@@ -260,7 +261,10 @@ async function sideOf(
 ) {
   const tests = await commitEntries(common.root, side.tests);
   const code = await commitEntries(common.root, side.code);
-  // Row 023-21: a `--source` path is never copied from the test version, whatever its name.
-  const also = side.tests === side.code ? [] : testSideCopies(tests, code, named, source);
-  return runSide({ ...common, side, files: refs, also, tests, code, named, source });
+  // Row 023-21: a `--source` path is never copied from the test version, whatever its name;
+  // a test-side path the test version lacks is removed (seventh look B1).
+  const same = side.tests === side.code;
+  const also = same ? [] : testSideCopies(tests, code, named, source);
+  const removed = same ? [] : testSideRemovals(tests, code, named, source);
+  return runSide({ ...common, side, files: refs, also, removed, tests, code, named, source });
 }

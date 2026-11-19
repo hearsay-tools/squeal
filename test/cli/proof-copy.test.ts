@@ -93,7 +93,7 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     clean(f);
   });
 
-  it("asks for --case when the diff touches nothing the test loads (exit 2)", async () => {
+  it("stops on an unrelated change (exit 3), and asks for --case only over an empty diff (exit 2)", async () => {
     const f = fixture({
       ...ON,
       "src/a.ts": "export const value = 2;\n",
@@ -101,7 +101,11 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "README.md": "notes\n" });
-    const result = await prove(f, { files: [TEST.path], base: a });
+    // Row 023-21 (D5.2, seventh look B2): the unnamed README stops the unchanged test first.
+    const stopped = await prove(f, { files: [TEST.path], base: a });
+    expect(stopped.code, stopped.why).toBe(3);
+    expect(stopped.files[0]).toMatchObject({ changedImports: { unsettled: ["README.md"] } });
+    const result = await prove(f, { files: [TEST.path], base: "HEAD" });
     expect(result.code, result.why).toBe(2);
     expect(result.err).toContain("give --case source or --case test");
     clean(f);
