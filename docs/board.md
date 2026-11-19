@@ -2649,7 +2649,7 @@ Spec folder `specifications/023-results-at-commit/` (stage: approved 2026-11-16,
 | 023-23 no-hint dogfood rerun of `status --at` and `squeal proof` on 0.1.568 (5 task groups x 10+ Sonnet sessions, control, warm-store before/after group), on the lab VM as a throwaway user | done (lessons.md "Round 3 (023-23)", tasks/023-23; 58 sessions, $4.16: no hint, 55/55 loaded the skill and used the right command, 0 tree swaps; red proofs 30/30 right; before/after 0/25 used `--run`, empty store 0/20 full answers, warm store 5/5 right; proposals Q1 to Q8) | Testing (dogfood), step 7 | after 023-21, 023-22 |
 | 023-24 before/after report and proof texts from dogfood round 3 (Q1 `--run` next step, Q2 one call and `--at HEAD`, Q5, Q6) | running (wave 16, brief `specifications/023-results-at-commit/tasks/wave-16.md`; the human, 2026-11-19: "Recommended set") | D1, D3, D5 | after 023-23 |
 | 023-25 diagnose the key that differs between the temporary checkout and the worktree at the same commit (Q4) | running (wave 16) | D2, D4 | after 023-23 |
-| 023-26 named wait says only "still starting" before the daemon lists a file (Q7) | proposed (the human approved the change; owner to settle: the named-wait owner or this spec) | D3 | after 023-23 |
+| 023-26 named wait says only "still starting" before the daemon lists a file (Q7) | running (wave 16; the named-wait owner, spec 011's coordinator, handed the files over 2026-11-19) | D3 | after 023-23 |
 | 023-27 keep a commit's keys once computed (Q3); directory paths for `squeal run` (Q8) | proposed (later, the human 2026-11-19) | D2 | after 023-24 |
 
 ## Later
