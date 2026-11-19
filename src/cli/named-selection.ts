@@ -1,5 +1,6 @@
-import { realpathSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { selects } from "../core/commit/at-keys-narrow.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type {
@@ -46,12 +47,14 @@ export interface NamedSelection {
  * file, which selects itself; `source`, any other path, which selects the
  * test files that read it; `not-run`, a test file Squeal does not run
  * (`notRunTestFile`), which selects its readers too, whose verdict is not
- * its own; `unmatched`, a path that selects nothing.
+ * its own; `unmatched`, a path that selects nothing. Row 011-406 (gh-169):
+ * `directory`, a real folder in the worktree (`.` the root), which selects
+ * the listed test files under it, none when it holds none.
  */
 export interface NamedPath {
-  /** As `unmatched` names it: relative to the root, or as given outside it. */
+  /** As `unmatched` names it: relative to the root (`.` the root itself), or as given outside it. */
   readonly path: string;
-  readonly kind: "test-file" | "source" | "not-run" | "unmatched";
+  readonly kind: "test-file" | "source" | "not-run" | "unmatched" | "directory";
   /** How many test files it selects. */
   readonly selects: number;
 }
@@ -65,6 +68,13 @@ export interface UnmatchedPath {
   readonly base?: string;
   /** The listed test file the same path names from the worktree root, which it never selects. */
   readonly fromRoot?: string;
+  /** Row 011-406: a real folder that holds no listed test file. */
+  readonly folder?: true;
+  /**
+   * Row 011-406 (gh-169): for a path that is neither a file nor a folder, the
+   * listed test files whose path starts with it, which it never selects.
+   */
+  readonly startsWith?: readonly string[];
 }
 
 /**
@@ -120,6 +130,18 @@ export function selectNamedFiles(
     return notRunTestFile(store, worktreeId, root, rel, rows, policy);
   };
   for (const path of paths) {
+    const folder = folderPath(root, cwd, path);
+    if (folder !== null) {
+      // Row 011-406 (gh-169): a folder selects the listed test files under it, nothing more.
+      const under = rows.filter((row) => selects([folder], row.testFile.path));
+      const shown = folder === "" ? "." : folder;
+      if (under.length === 0) {
+        unmatched.push({ resolved: shown, given: path, base: baseOf(root, cwd), folder: true });
+      }
+      for (const row of under) selected.set(testFileId(row.testFile), row.testFile);
+      named.push({ path: shown, kind: "directory", selects: under.length });
+      continue;
+    }
     const rel = worktreePath(root, cwd, path);
     const own = rows.filter((row) => row.testFile.path === rel);
     const hits = rel === null ? [] : own.length > 0 ? own : readersOf(rel);
@@ -161,7 +183,8 @@ export function sourcePaths(
   const sources = new Set<RelativePath>();
   for (const path of paths) {
     const rel = worktreePath(root, cwd, path);
-    if (rel !== null && !listed.has(rel)) sources.add(rel);
+    // Row 011-406: a folder selects by the listing, not by readers.
+    if (rel !== null && !listed.has(rel) && folderPath(root, cwd, path) === null) sources.add(rel);
   }
   return [...sources];
 }
@@ -170,6 +193,8 @@ export function sourcePaths(
  * Row 011-27 (gh-39): how `path` was read, `rel` its reading from `cwd`:
  * the directory it was resolved against and, for a relative path given
  * below the root, the listed test file the same path names from the root.
+ * Row 011-406 (gh-169): for a path that is not on disk, the listed test
+ * files whose path starts with it, as a runner's filename filter reads it.
  */
 function unmatchedOf(
   root: AbsolutePath,
@@ -178,7 +203,16 @@ function unmatchedOf(
   rel: RelativePath | null,
   rows: readonly TestFileKeyRecord[],
 ): UnmatchedPath {
-  const own = { resolved: rel ?? path, given: path, base: baseOf(root, cwd) };
+  const starts =
+    rel === null || existsAt(root, rel)
+      ? []
+      : rows.map((row) => row.testFile.path).filter((p) => p.startsWith(rel));
+  const own = {
+    resolved: rel ?? path,
+    given: path,
+    base: baseOf(root, cwd),
+    ...(starts.length > 0 ? { startsWith: [...new Set(starts)] } : {}),
+  };
   if (isAbsolute(path) || own.base === "") return own;
   const fromRoot = worktreePath(root, root, path);
   const listed = fromRoot !== null && rows.some((row) => row.testFile.path === fromRoot);
@@ -202,6 +236,43 @@ export function worktreePath(
     if (rel !== "" && !outside) return rel.split(sep).join("/");
   }
   return null;
+}
+
+/**
+ * Row 011-406 (gh-169): `path` relative to `root` with `/` separators when it
+ * resolves against `cwd` (or its real path) to a real folder in the worktree,
+ * `""` the root itself; else `null`.
+ */
+export function folderPath(
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  path: string,
+): RelativePath | null {
+  for (const base of [cwd, realOrNull(cwd)]) {
+    if (base === null) continue;
+    const at = resolve(base, path);
+    const rel = relative(root, at);
+    const outside = rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+    if (!outside && isFolder(at)) return rel.split(sep).join("/");
+  }
+  return null;
+}
+
+function isFolder(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function existsAt(root: AbsolutePath, rel: RelativePath): boolean {
+  try {
+    statSync(resolve(root, rel));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** `cwd` relative to `root` with `/` (`""` the root itself), as `worktreePath` reads it; else `cwd`. */

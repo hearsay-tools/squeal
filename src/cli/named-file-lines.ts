@@ -202,9 +202,21 @@ export function unmatchedText(selection: NamedSelection): string {
         p.fromRoot === undefined
           ? ""
           : `; from the worktree root that path is the listed test file ${p.fromRoot}`;
-      return `no test file's closure holds ${p.resolved}${base}${root}`;
+      // Row 011-406 (gh-169): a folder with no listed test file, or a runner's filename prefix.
+      if (p.folder === true) return `no listed test file is under the folder ${p.resolved}${base}`;
+      return `no test file's closure holds ${p.resolved}${base}${root}${startsText(p.startsWith)}`;
     })
     .join("; ");
+}
+
+/** Row 011-406: `; it is not a file or folder; 2 listed test files start with it: a, b; name them`. */
+function startsText(starts: readonly string[] | undefined): string {
+  if (starts === undefined || starts.length === 0) return "";
+  // The first five, then a count.
+  const shown = starts.slice(0, 5).join(", ");
+  const more = starts.length > 5 ? ` and ${starts.length - 5} more` : "";
+  const count = plural(starts.length, "listed test file");
+  return `; it is not a file or folder; ${count} start${starts.length === 1 ? "s" : ""} with it: ${shown}${more}; name them`;
 }
 
 /** The selected files' known failures, each as status lists it (spec 005 D2: "in full"). */
