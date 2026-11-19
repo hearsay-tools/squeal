@@ -43,7 +43,7 @@ describe("a run's start", () => {
     const r = await registered();
     const answer = await startRun(about(r), deps());
     expect(answer.primer?.startsWith(PRIMER_OPENING)).toBe(true);
-    expect(answer.primer).toContain(`${COMMAND} status --wait 60000`);
+    expect(answer.primer).toContain(`\`${COMMAND} checks\``);
     expect(answer.news).toBeNull();
     expect(readTurn(r.store, r.consumer()).turn).not.toBe("idle");
   });

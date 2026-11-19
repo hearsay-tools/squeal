@@ -101,7 +101,7 @@ describe("a Codex session keeps its version's copy and the launcher (005-73)", (
     const { r, hook, shell } = await session(A);
     const start = await hook("session-start", "session-start");
     const command = shellWord(launcherOf(m.data));
-    expect(start).toContain(`\`${command} status --wait 60000`);
+    expect(start).toContain(`\`${command} checks\``);
     m.install(B);
     m.remove(A);
 

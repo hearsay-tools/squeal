@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { headerLines } from "../../src/core/delivery/header.js";
 import { readHeader } from "../../src/core/state/header.js";
-import { CODEX } from "../harness/primer-helpers.js";
+import { CODEX } from "../harness/codex-cli.js";
 import { SLOW_A, SLOW_POLICY, seed, slowLine, states, status } from "./slow-tier-seed.js";
 
 /*

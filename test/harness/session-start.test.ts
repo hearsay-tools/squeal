@@ -96,19 +96,15 @@ describe("the SessionStart primer", () => {
     expect(text.endsWith(`\n\n${PRIMER}`)).toBe(true);
   });
 
-  it("says what the human decided, with the next tool call before `status --wait`", () => {
+  // Row 005-128 (spec 005 D6 as amended 2026-11-19): the short start message, 372 characters.
+  it("says what the human decided: the next tool call, the skill, `squeal checks` and `status`", () => {
     expect(PRIMER).toContain("Squeal runs");
-    expect(PRIMER).toMatch(/Vitest/);
-    expect(PRIMER).toMatch(/do not run Vitest to learn whether/i);
-    expect(PRIMER).toMatch(/no daemon/i);
-    expect(PRIMER).toMatch(/unknown/);
-    expect(PRIMER).toMatch(/own gate/);
-    expect(PRIMER).toMatch(/typecheck, build or any other test suite/);
+    expect(PRIMER).toContain("Read the squeal skill before you run or judge tests");
     const next = PRIMER.indexOf("next tool call");
     expect(next).toBeGreaterThan(-1);
-    expect(next).toBeLessThan(PRIMER.indexOf("squeal status --wait"));
-    // Task 005-68: the path wait and `run --all --wait` take it past 1,000.
-    expect(PRIMER.length).toBeLessThan(1_100);
+    expect(next).toBeLessThan(PRIMER.indexOf("`squeal checks`"));
+    expect(PRIMER).toContain("`squeal status`");
+    expect(PRIMER.length).toBeLessThan(400);
   });
 });
 

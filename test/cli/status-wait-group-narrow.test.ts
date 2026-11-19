@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
-import { CODEX } from "../harness/primer-helpers.js";
+import { CODEX } from "../harness/codex-cli.js";
 import { A, B, C, finish, NOW, repoWith } from "./status-wait-fixture.js";
 import { later } from "./wait-clock.js";
 

@@ -123,7 +123,7 @@ describe("every recorded Codex event", () => {
           hookSpecificOutput: {
             hookEventName: "SubagentStart",
             additionalContext: expect.stringMatching(
-              /^SQUEAL · registered at revision 2\n[\s\S]*do not run Vitest/,
+              /^SQUEAL · registered at revision 2\n[\s\S]*Read the squeal skill/,
             ),
           },
         });
