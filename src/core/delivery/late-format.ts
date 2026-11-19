@@ -28,6 +28,16 @@ function nowText(late: Extract<EditsLate, { kind: "owed" }>, command: string): s
 }
 
 /**
+ * Row 011-399 (gh-233; the coordinator, request 626d65e5): an owed file whose tier overruns,
+ * in one short clause with the command that shows its run; empty with none.
+ */
+function hungText(late: Extract<EditsLate, { kind: "owed" }>, command: string): string {
+  if (late.hung === undefined) return "";
+  const path = shellWord(late.hung);
+  return `${late.hung} has run far past its usual time and may be hung; \`${command} why ${path}\` shows its run. `;
+}
+
+/**
  * What a pass does between edits, in the edit lines, the late line and the primer (row 005-94):
  * one text, so the three say it alike. With no test group at `edit`, `quietEditsText` says
  * the opposite in its place.
@@ -41,7 +51,7 @@ export function lateLine(late: EditsLate, command: string): string {
       return (
         `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} ` +
         `after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; ` +
-        `Squeal says once when it has caught up. ${nowText(late, command)}`
+        `Squeal says once when it has caught up. ${hungText(late, command)}${nowText(late, command)}`
       );
     case "unread":
       return (

@@ -337,6 +337,11 @@ export type EditsLate =
       readonly editRevision: RevisionNumber;
       readonly ageMs: number;
       readonly named?: readonly string[];
+      /**
+       * Row 011-399 (gh-233): an owed file whose tier its daemon published as
+       * overrunning, so it may be hung; absent with none.
+       */
+      readonly hung?: string;
     }
   | { readonly kind: "unread"; readonly revision: RevisionNumber; readonly since: EpochMs }
   | {
