@@ -22,7 +22,7 @@ import {
   dropUnusedChecks,
   keptTexts,
 } from "./prune-unused.js";
-import { expireReplaced, keptByReplaced } from "./repos/replaced.js";
+import { expireReplaced } from "./repos/replaced.js";
 import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
 import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
 
