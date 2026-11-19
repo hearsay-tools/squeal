@@ -23,6 +23,13 @@ const DELETE_BATCH = 256;
 const VACUUM_PAGES = 512;
 
 /**
+ * Coverage records per delete: each holds its record as a blob, and a batch
+ * of 256 held the lock 251 to 346 ms on a copy of cezar's code store under
+ * host load (row 021-33, `021-33-notes.md`).
+ */
+const COVERAGE_BATCH = 64;
+
+/**
  * A coverage step's meta key (row 015-12) of a worktree that is not live; the
  * one parameter is the JSON list of live ids.
  */
@@ -199,6 +206,7 @@ function* pruneCoverage(
       key,
       search: `recorded_at < ? OR ${OLDER_RECORD}`,
       searchParams: [cutoff, COVERAGE_RECORD_VERSION],
+      batch: COVERAGE_BATCH,
       removed,
     });
     return;
@@ -212,6 +220,7 @@ function* pruneCoverage(
     key,
     search: `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
     searchParams: [JSON.stringify(held.filter((k) => !kept.has(k))), COVERAGE_RECORD_VERSION],
+    batch: COVERAGE_BATCH,
     removed,
   });
 }

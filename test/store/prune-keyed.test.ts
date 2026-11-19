@@ -109,6 +109,20 @@ describe("deleteByKey (row 021-33)", () => {
     expect(removed).toBe(512);
   });
 
+  it("deletes a rule's own batch per write transaction", () => {
+    const conn = table(100);
+    const seen = writes();
+    for (const slice of deleteByKey(conn, {
+      table: "t",
+      key: ["a", "b"],
+      search: "1",
+      batch: 64,
+    })) {
+      slice();
+    }
+    expect(seen).toEqual([64, 36]);
+  });
+
   it("keeps a key the recheck no longer matches, reads past it, and ends", () => {
     const conn = table(600);
     const seen = writes();

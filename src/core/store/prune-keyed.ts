@@ -23,13 +23,15 @@ export interface KeyedRule {
   readonly recheck?: string;
   /** `recheck`'s parameters, read inside the write transaction; default `searchParams`. */
   readonly recheckParams?: () => Params;
+  /** Keys per read and per delete; default `DELETE_BATCH`. */
+  readonly batch?: number;
   /** Told how many rows each batch deleted. */
   readonly removed?: (n: number) => void;
 }
 
 /**
  * Row 021-33: deletes `rule`'s rows as slices. A read slice takes the next
- * `DELETE_BATCH` keys `search` finds, after the last key read, in a read
+ * `batch` keys `search` finds, after the last key read, in a read
  * transaction, which in WAL takes no write lock; a delete slice then deletes
  * those keys that `recheck` still matches, in one write transaction. A read
  * that finds nothing ends the rule: a prune with nothing to delete takes no
@@ -37,12 +39,13 @@ export interface KeyedRule {
  * as JSON).
  */
 export function* deleteByKey(conn: Connection, rule: KeyedRule): Generator<Slice, void, undefined> {
+  const batch = rule.batch ?? DELETE_BATCH;
   const columns = rule.key.join(", ");
   const after = rule.key.map(() => "?").join(", ");
   const read = (from: boolean) =>
     `SELECT ${columns} FROM ${rule.table}
      WHERE ${from ? `(${columns}) > (${after}) AND ` : ""}(${rule.search})
-     ORDER BY ${columns} LIMIT ${DELETE_BATCH}`;
+     ORDER BY ${columns} LIMIT ${batch}`;
   const first = read(false);
   const next = read(true);
   const named = rule.key.map((_, i) => `value ->> ${i}`).join(", ");
@@ -59,14 +62,14 @@ export function* deleteByKey(conn: Connection, rule: KeyedRule): Generator<Slice
       keys = rows.map((row) => rule.key.map((column) => row[column] as SQLInputValue));
     };
     if (keys.length === 0) return;
-    const batch = JSON.stringify(keys);
+    const list = JSON.stringify(keys);
     yield () => {
       const n = conn.transaction(() =>
-        conn.run(remove, batch, ...(rule.recheckParams?.() ?? searchParams)),
+        conn.run(remove, list, ...(rule.recheckParams?.() ?? searchParams)),
       );
       rule.removed?.(n);
     };
-    if (keys.length < DELETE_BATCH) return;
+    if (keys.length < batch) return;
     last = keys[keys.length - 1] ?? null;
   }
 }
