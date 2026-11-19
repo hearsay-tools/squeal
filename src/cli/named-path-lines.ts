@@ -7,6 +7,7 @@ import type { SelectionResult } from "./verdict.js";
  * Row 011-206 (gh-83, 011 C15): after `Selected:`, a line per named path
  * that is not a listed test file and selects the test files that read it,
  * so `Selected:` keeps naming test files only (the evals parser splits it).
+ * A folder names how many listed test files under it it selects (row 011-406).
  * One Squeal does not run says so, and that their verdict is not its own. A
  * path that selects nothing is named on the verdict line (row 011-63).
  * Row 011-401: a partial list (`NamedSelection.partial`) is said first.
@@ -16,6 +17,12 @@ export function namedPathLines(selection: NamedSelection): string[] {
   const some = selection.partial === undefined ? "the" : "at least";
   const lines = selection.paths.flatMap((p) => {
     if (p.selects === 0 || p.kind === "test-file") return [];
+    if (p.kind === "directory") {
+      // Row 011-406 (gh-169): a folder selects the listed test files under it.
+      return [
+        `Directory: ${p.path}; it selects ${some} ${plural(p.selects, "listed test file")} under it`,
+      ];
+    }
     const readers = `it selects ${some} ${plural(p.selects, "test file")} that ${p.selects === 1 ? "reads" : "read"} it`;
     return p.kind === "not-run"
       ? [`Not run by Squeal: ${p.path} is ${NOT_LISTED}; ${readers}, whose verdict is not its own`]
