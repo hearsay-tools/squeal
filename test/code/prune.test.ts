@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { COVERAGE_RECORD_VERSION as V } from "../../src/core/code/coverage/record.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
-import { worktreeIdsOf } from "../../src/core/code/store/prune.js";
+import { worktreeIdsOf } from "../../src/core/store/prune-keyed.js";
 import type { CodeKnownState, CodeTransition } from "../../src/core/types/code.js";
 import { check, commonDir, count, file, open } from "./helpers.js";
 

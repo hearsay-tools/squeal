@@ -5,6 +5,7 @@ import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import { dropOrphanLoadedModules } from "./loaded-modules.js";
 import type { StorePaths } from "./paths.js";
+import { deleteByKey, worktreeIdList } from "./prune-keyed.js";
 import {
   DAY_MS,
   DELETE_BATCH,
@@ -70,9 +71,10 @@ export function pruneReport(conn: Connection, counts: PruneCounts): PruneReport 
  * leave the lock free between them (the daemon's `SlicedPrune`). Each slice
  * is yielded before it runs, and what follows is read once it ran, so its
  * driver asks for the next only after it succeeded. Rows a slice deletes
- * are tested again under the lock. The `checks`, `checkpoints`, expiry and
- * failure-text steps stay one transaction each: their tables have no index
- * a batch could test by, and the daemon's log names them when they are long.
+ * are tested again under the lock. Row 021-33: the `checks`, `checkpoints`,
+ * failure-text and loaded-list rows are found by a read outside the write
+ * lock and deleted by key (`deleteByKey`); the two expiry steps stay one
+ * short transaction each, of a meta row.
  */
 export function* pruneSlices(
   conn: Connection,
@@ -106,28 +108,40 @@ export function* pruneSlices(
   yield* dropRuns(conn, paths, cutoff, counts);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
-  yield () => {
-    counts.checkpointsRemoved += conn.transaction(() =>
-      conn.run(
-        `DELETE FROM checkpoints
-         WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-           AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-           AND (worktree_id NOT IN (SELECT id FROM worktrees)
-                OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-        cutoff,
-      ),
-    );
-  };
+  yield* deleteByKey(conn, {
+    table: "checkpoints",
+    key: ["id"],
+    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND (worktree_id NOT IN (SELECT id FROM worktrees)
+           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+    searchParams: [cutoff],
+    removed: (n) => {
+      counts.checkpointsRemoved += n;
+    },
+  });
 
-  yield () => {
-    counts.checksRemoved += conn.transaction(() =>
-      conn.run(
-        `DELETE FROM checks WHERE id NOT IN (
-           SELECT check_id FROM results UNION SELECT check_id FROM known_states
-           UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
-      ),
-    );
-  };
+  yield* deleteByKey(conn, {
+    table: "checks",
+    key: ["id"],
+    search: `id NOT IN (
+      SELECT check_id FROM results UNION SELECT check_id FROM known_states
+      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+    // Per key: `results` by its key, `known_states` and `transitions` by worktree id and check id.
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM known_states s
+        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM transitions t
+        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+      AND id NOT IN (SELECT check_id FROM consumer_views)`,
+    recheckParams: () => [
+      worktreeIdList(conn, "known_states"),
+      worktreeIdList(conn, "transitions"),
+    ],
+    removed: (n) => {
+      counts.checksRemoved += n;
+    },
+  });
 
   yield* vacuum(conn);
 }
@@ -243,7 +257,16 @@ function* dropPrunable(
       );
     };
   }
-  yield () => conn.transaction(() => dropOrphanFailureTexts(conn));
+  yield* deleteByKey(conn, {
+    table: "failure_texts",
+    key: ["id"],
+    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    searchParams: [keptTexts(conn)],
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    recheckParams: () => [keptTexts(conn)],
+  });
 }
 
 /**
@@ -299,8 +322,13 @@ function dropOrphanFailureTexts(conn: Connection): void {
     `DELETE FROM failure_texts
      WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
        AND id NOT IN (SELECT value FROM json_each(?))`,
-    JSON.stringify(keptByReplaced(conn).texts),
+    keptTexts(conn),
   );
+}
+
+/** The failure texts kept replaced failures name, as a JSON list. */
+function keptTexts(conn: Connection): string {
+  return JSON.stringify(keptByReplaced(conn).texts);
 }
 
 function usedBytes(conn: Connection): number {

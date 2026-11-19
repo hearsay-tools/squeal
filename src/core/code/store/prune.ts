@@ -1,6 +1,12 @@
 import { str } from "../../store/codec.js";
-import type { Connection, Params } from "../../store/connection.js";
+import type { Connection } from "../../store/connection.js";
 import type { PruneSlice } from "../../store/prune.js";
+import {
+  deleteByKey,
+  type KeyedRule,
+  worktreeIdList,
+  worktreeIdsOf,
+} from "../../store/prune-keyed.js";
 import type { EpochMs } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
@@ -16,20 +22,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DELETE_BATCH = 256;
 const VACUUM_PAGES = 512;
 
-/** A row of one of the worktrees named; the one parameter is the JSON list of their ids. */
-const OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
-
-/**
- * Each worktree id `table` holds, one search of its first key column per id
- * instead of a read of every row (row 011-315: on cezar's code store, 24 ids
- * over 2.8 M state rows, 0.1 k page reads against 68 k).
- */
-export const worktreeIdsOf = (table: string): string => `WITH RECURSIVE ids(id) AS (
-    SELECT min(worktree_id) FROM ${table}
-    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
-      FROM ids WHERE ids.id IS NOT NULL)
-  SELECT id FROM ids WHERE id IS NOT NULL`;
-
 /**
  * A coverage step's meta key (row 015-12) of a worktree that is not live; the
  * one parameter is the JSON list of live ids.
@@ -44,17 +36,6 @@ const COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
  * is `COVERAGE_RECORD_VERSION`.
  */
 const OLDER_RECORD = "provider_version < ?";
-
-/** The columns that name one coverage record. */
-const COVERAGE_KEY = "result_key, provider_version";
-
-/** Per-worktree tables, each with the columns that name one row. */
-const PER_WORKTREE = [
-  ["files", "worktree_id, path"],
-  ["states", "worktree_id, check_id, measure"],
-  ["views", "worktree_id, session_id, agent_id, check_id, measure"],
-  ["transitions", "id"],
-] as const;
 
 /**
  * Spec 015 D4, after 011 C7: rows of worktrees that are no longer live go;
@@ -87,12 +68,32 @@ export function noCodeRemoved(): CodePruneCounts {
 }
 
 /**
+ * Per-worktree tables, each with the columns that name one row; `transitions`
+ * by its index, so one worktree's rows are read in key order.
+ */
+const PER_WORKTREE = [
+  ["files", ["worktree_id", "path"]],
+  ["states", ["worktree_id", "check_id", "measure"]],
+  ["views", ["worktree_id", "session_id", "agent_id", "check_id", "measure"]],
+  ["transitions", ["worktree_id", "check_id", "id"]],
+] as const;
+
+/**
+ * A count no live file names, older than the cutoff; the parameter is the
+ * cutoff. Tested again per key under the write lock (`files_by_count`).
+ */
+const UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
+  AND f.language = counts.language AND f.counter_version = counts.counter_version)`;
+
+/**
  * Row 011-350 (#220): `pruneCodeStore` as slices, each one write transaction
  * of at most `DELETE_BATCH` rows or `VACUUM_PAGES` pages, so its driver can
  * leave the lock free between them (the daemon's `SlicedPrune`, as
- * `pruneSlices` is for the main store). Each slice is yielded before it
- * runs, and what follows is read once it ran. `counts` is filled in as the
- * slices run.
+ * `pruneSlices` is for the main store). Row 021-33: each rule's rows are
+ * found by a read outside the write lock and deleted by key, tested again
+ * under it (`deleteByKey`), so a prune with nothing to delete writes
+ * nothing. Each slice is yielded before it runs, and what follows is read
+ * once it ran. `counts` is filled in as the slices run.
  */
 export function* pruneCodeSlices(
   conn: Connection,
@@ -101,43 +102,43 @@ export function* pruneCodeSlices(
 ): Generator<PruneSlice, void, undefined> {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   const live = JSON.stringify(options.worktrees);
+  const rule = (r: KeyedRule) => deleteByKey(conn, r);
 
   // Row 011-315: the ids found here, so rows a worktree stores after this read stay.
-  const dead = deadWorktrees(conn, options.worktrees);
-  if (dead.length > 0) {
+  const dead = conn.read(() => deadWorktrees(conn, options.worktrees));
+  for (const id of dead) {
     for (const [table, key] of PER_WORKTREE) {
-      yield* deleteInBatches(conn, nothing, table, key, OF_WORKTREES, JSON.stringify(dead));
+      yield* rule({ table, key, search: "worktree_id = ?", searchParams: [id] });
     }
   }
   counts.worktreesRemoved = dead.length;
   // Row 015-12: the coverage step's meta, `coverage:<worktreeId>` and `coverage:<worktreeId>:<path>`.
-  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
+  yield* rule({ table: "meta", key: ["key"], search: COVERAGE_META_OF_DEAD, searchParams: [live] });
 
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.viewsRemoved += n;
-    },
-    "views",
-    "worktree_id, session_id, agent_id, check_id, measure",
-    `(worktree_id, session_id, agent_id) NOT IN (
+  yield* rule({
+    table: "views",
+    key: PER_WORKTREE[2][1],
+    search: `(worktree_id, session_id, agent_id) NOT IN (
        SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
        FROM json_each(?))`,
-    JSON.stringify(options.consumers),
-  );
+    searchParams: [JSON.stringify(options.consumers)],
+    removed: (n) => {
+      counts.viewsRemoved += n;
+    },
+  });
 
-  yield* deleteInBatches(
-    conn,
-    (n) => {
+  // `states` has no index by blob: its test is the read's only (row 021-33, `021-33-notes.md`).
+  yield* rule({
+    table: "counts",
+    key: ["blob", "language", "counter_version"],
+    search: `${UNUSED_COUNT} AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
+    searchParams: [cutoff],
+    recheck: UNUSED_COUNT,
+    recheckParams: () => [cutoff],
+    removed: (n) => {
       counts.countsRemoved += n;
     },
-    "counts",
-    "blob, language, counter_version",
-    `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
-       AND f.language = counts.language AND f.counter_version = counts.counter_version)
-     AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
-    cutoff,
-  );
+  });
   yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
     counts.coverageRemoved += n;
   });
@@ -145,24 +146,28 @@ export function* pruneCodeSlices(
     counts.partsRemoved += n;
   });
 
-  yield* deleteInBatches(
-    conn,
-    (n) => {
+  yield* rule({
+    table: "checks",
+    key: ["id"],
+    search: `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
+       UNION SELECT check_id FROM transitions)`,
+    // Per key: `states` and `transitions` by worktree id and check id, `views` is small.
+    recheck: `NOT EXISTS (SELECT 1 FROM states s
+         WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+       AND NOT EXISTS (SELECT 1 FROM transitions t
+         WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+       AND id NOT IN (SELECT check_id FROM views)`,
+    recheckParams: () => [worktreeIdList(conn, "states"), worktreeIdList(conn, "transitions")],
+    removed: (n) => {
       counts.checksRemoved += n;
     },
-    "checks",
-    "id",
-    `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
-       UNION SELECT check_id FROM transitions)`,
-  );
+  });
 
   yield* vacuum(conn);
 }
 
 /** Where a batch's deleted rows are counted. */
 type Removed = (n: number) => void;
-
-const nothing: Removed = () => {};
 
 /** The worktree ids the per-worktree tables hold that are not in `live`. */
 function deadWorktrees(conn: Connection, live: readonly string[]): string[] {
@@ -187,61 +192,28 @@ function* pruneCoverage(
   cutoff: EpochMs,
   removed: Removed,
 ): Generator<PruneSlice, void, undefined> {
+  const key = ["result_key", "provider_version"];
   if (resultKeys === undefined) {
-    yield* deleteInBatches(
-      conn,
+    yield* deleteByKey(conn, {
+      table: "coverage",
+      key,
+      search: `recorded_at < ? OR ${OLDER_RECORD}`,
+      searchParams: [cutoff, COVERAGE_RECORD_VERSION],
       removed,
-      "coverage",
-      COVERAGE_KEY,
-      `recorded_at < ? OR ${OLDER_RECORD}`,
-      cutoff,
-      COVERAGE_RECORD_VERSION,
-    );
+    });
     return;
   }
   const held = conn
-    .all("SELECT DISTINCT result_key FROM coverage")
+    .read(() => conn.all("SELECT DISTINCT result_key FROM coverage"))
     .map((row) => str(row, "result_key"));
   const kept = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
-  yield* deleteInBatches(
-    conn,
+  yield* deleteByKey(conn, {
+    table: "coverage",
+    key,
+    search: `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    searchParams: [JSON.stringify(held.filter((k) => !kept.has(k))), COVERAGE_RECORD_VERSION],
     removed,
-    "coverage",
-    COVERAGE_KEY,
-    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(held.filter((key) => !kept.has(key))),
-    COVERAGE_RECORD_VERSION,
-  );
-}
-
-/**
- * Deletes the rows of `table` matching `where`, `DELETE_BATCH` at a time,
- * each batch one slice, its own write transaction that re-tests its rows;
- * `removed` counts what each batch deleted. The next batch follows only one
- * that was full.
- */
-function* deleteInBatches(
-  conn: Connection,
-  removed: Removed,
-  table: string,
-  key: string,
-  where: string,
-  ...params: Params
-): Generator<PruneSlice, void, undefined> {
-  let changed = DELETE_BATCH;
-  while (changed === DELETE_BATCH) {
-    changed = 0;
-    yield () => {
-      changed = conn.transaction(() =>
-        conn.run(
-          `DELETE FROM ${table} WHERE (${key}) IN (
-             SELECT ${key} FROM ${table} WHERE ${where} LIMIT ${DELETE_BATCH})`,
-          ...params,
-        ),
-      );
-      removed(changed);
-    };
-  }
+  });
 }
 
 /**

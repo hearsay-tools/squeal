@@ -2,7 +2,7 @@ import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { CheckKey, FileHash } from "../types/keys.js";
 import type { Store } from "../types/store.js";
 import type { Connection } from "./connection.js";
-import { DELETE_BATCH } from "./prune-rules.js";
+import { deleteByKey } from "./prune-keyed.js";
 import { connectionOf } from "./store.js";
 
 /*
@@ -77,25 +77,17 @@ export function writeLoadedModules(store: Store, record: LoadedModulesRecord): v
 
 /**
  * The prune: each list no result is stored at the key of any more,
- * `DELETE_BATCH` per slice, each one write transaction. Nothing on a store
- * without the table.
+ * `DELETE_BATCH` per slice. Row 021-33: the lists are found by a read
+ * outside the write lock, and each slice deletes those still without a
+ * result (`results_by_key`). Nothing on a store without the table.
  */
 export function* dropOrphanLoadedModules(conn: Connection): Generator<() => void, void, undefined> {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  let removed = DELETE_BATCH;
-  while (removed === DELETE_BATCH) {
-    removed = 0;
-    yield () => {
-      removed = conn.transaction(() =>
-        conn.run(
-          `DELETE FROM ${LOADED_MODULES_TABLE} WHERE (project, path, key) IN (
-             SELECT project, path, key FROM ${LOADED_MODULES_TABLE} l
-             WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.key = l.key) LIMIT ?)`,
-          DELETE_BATCH,
-        ),
-      );
-    };
-  }
+  yield* deleteByKey(conn, {
+    table: LOADED_MODULES_TABLE,
+    key: ["project", "path", "key"],
+    search: `NOT EXISTS (SELECT 1 FROM results r WHERE r.key = ${LOADED_MODULES_TABLE}.key)`,
+  });
 }
 
 /** Whether `conn`'s database holds the table. */
