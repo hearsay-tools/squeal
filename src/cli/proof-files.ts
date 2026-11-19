@@ -17,7 +17,7 @@ import type { SideAnswer, SideFile } from "./proof-side.js";
  * with the runs and checkout times. Row 023-20: why a side did not run
  * (lessons P7), and the red side's control run without the conditions
  * (P9). Row 023-21 (D5.2, issue #247): an unchanged named test whose
- * code-side helpers changed runs nothing and reads not comparable.
+ * imported test code changed runs nothing and reads not comparable.
  */
 
 /** Row 023-21: each named file's changed imports while it is unchanged, by `testFileId`. */
@@ -67,7 +67,7 @@ function fileOf(
   red: ReadonlyMap<string, SideFile> | undefined,
   control: ReadonlyMap<string, SideFile> | undefined,
   conditioned: boolean,
-  /** Row 023-21: the red side of a file that did not run for its changed helpers. */
+  /** Row 023-21: the red side of a file that did not run for its changed test code. */
   stopped: SideFile | null,
   redErrors: readonly string[],
 ): Omit<ProofFile, "imports"> {
@@ -98,10 +98,10 @@ function fileOf(
 
 /**
  * Row 023-21: the red side of an unchanged named test whose code-side
- * helpers changed: not run, its reason naming the helpers.
+ * imported test code changed: not run, its reason naming that test code.
  */
 function stoppedSide(imports: ChangedImports | null, base: string): SideFile {
-  const helpers = imports?.helpers.join(", ") ?? "";
+  const helpers = imports?.testCode.map((t) => t.path).join(", ") ?? "";
   return {
     end: {
       end: "unknown",
