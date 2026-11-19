@@ -47,6 +47,7 @@ See the final report in the task; summary:
 - `pnpm run lint`: `biome check .`, 3778 files, no fixes, no warnings.
 - `pnpm run typecheck`: exit 0.
 - `pnpm exec vitest run test/lint/surface/ test/lint/pass/parts.test.ts test/delivery/registration-form.test.ts`: 17 files, 79 tests passed.
+- Direct, `timeout 900 pnpm exec vitest run --maxWorkers=4` over every non-e2e test file that imports `lint/surface`, `lint/pass` or `scheduler/capacity`: 64 files, 382 tests passed.
 - New test fails before the change by construction: `linting.cpuWait` and `backgroundGate` did not exist.
 - e2e: no file under `test/e2e/` names the changed paths or the `linting, ` text; none run.
 - `squeal status --wait 60000 <changed paths>` at revision 14: no verdict; the selection is about 1,203 test files (the changed files are read by most of the suite) and Vitest had not listed revision 14 after 61.8 s; known failures 0. Unknown, not passing.
