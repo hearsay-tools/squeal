@@ -105,6 +105,22 @@ describe("commitReportText (019-13)", () => {
       "lint (oxlint): 2 of 7 files still running, 1 not determined, 0 findings in the other 4",
     ],
     ["none complete", [oxlint({ running: 7 })], "lint (oxlint): 7 of 7 files still running"],
+    // Review 0.1.570 B1: files the pass has not listed lead; the zero never reads complete.
+    [
+      "not listed, the rest clean",
+      [oxlint({ files: 1, unlisted: 1 })],
+      "lint (oxlint): 1 changed file not listed yet, 0 findings in 1 of 1 listed file",
+    ],
+    [
+      "not listed and running",
+      [oxlint({ unlisted: 2, running: 3 })],
+      "lint (oxlint): 2 changed files not listed yet, 3 of 7 listed files still running, 0 findings in the other 4",
+    ],
+    [
+      "only not listed",
+      [oxlint({ files: 0, unlisted: 3 })],
+      "lint (oxlint): 3 changed files not listed yet",
+    ],
     [
       "two tools",
       [{ ...oxlint({ findings: 2 }), tool: "eslint" }, oxlint({ running: 1 })],

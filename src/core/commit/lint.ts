@@ -9,7 +9,14 @@ import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js"
 import type { FileHash } from "../types/keys.js";
 import type { LintKnownState, LintTool } from "../types/lint.js";
 import type { Policy } from "../types/policy.js";
-import { type CommitSide, type LintView, lintCounts, lintTally } from "./lint-tally.js";
+import {
+  type CommitSide,
+  type LintView,
+  lintCounts,
+  lintTally,
+  unlistedPaths,
+  withUnlisted,
+} from "./lint-tally.js";
 import type { CommitLintCounts, WaitingLintCheck } from "./report.js";
 
 /**
@@ -106,14 +113,17 @@ export interface CommitLint {
  * lints them; then the counts. A pending check of a tool a lint group at
  * `manual` holds is never the commit's (row 019-47): not determined.
  * The update waits for the checks counted as running and for the released
- * paths: the pass may not have keyed them yet. `undefined` as
- * `readLintCounts`.
+ * paths: the pass may not have keyed them yet. Review 0.1.570 B1: while a
+ * tool's pass has not keyed `listedAt` (the revision of the commit's first
+ * report), a changed path with no check of the tool is `unlisted` for it,
+ * and the update waits for it too. `undefined` as `readLintCounts`.
  */
 export function commitLint(
   commonDir: AbsolutePath,
   policy: Policy,
   worktreeId: WorktreeId,
   side: CommitSide,
+  listedAt: number,
 ): CommitLint | undefined {
   const { lint } = policy;
   const { changed } = side;
@@ -144,7 +154,16 @@ export function commitLint(
         own !== undefined && own.get(state.check.path) !== side.committed.get(state.check.path)
       );
     };
-    const { counts, running } = lintTally(lintViewOf(store, worktreeId), side, held);
+    const view = lintViewOf(store, worktreeId);
+    const tally = lintTally(view, side, held);
+    const { running } = tally;
+    const behind = lint.tools.filter((tool) => {
+      const scope = lintScope(worktreeId, tool);
+      const cursor = readCursor(store.meta, scope);
+      return cursor !== null && cursor.revision < listedAt && !passOff(store.meta, scope);
+    });
+    const unlisted = unlistedPaths(view.states, side, behind);
+    const counts = withUnlisted(tally.counts, unlisted);
     const waiting = new Map<string, WaitingLintCheck>();
     const wait = (tool: LintTool, path: RelativePath, blob: FileHash | undefined) => {
       if (blob !== undefined) waiting.set(`${tool}\0${path}`, { tool, path, blob });
@@ -154,6 +173,11 @@ export function commitLint(
     }
     for (const [tool, paths] of released) {
       for (const path of changed) if (paths.has(path)) wait(tool, path, paths.get(path));
+    }
+    for (const [tool, paths] of unlisted) {
+      for (const path of paths) {
+        if (!side.differing.has(path)) wait(tool, path, side.committed.get(path));
+      }
     }
     return {
       counts: withNotRun(store, worktreeId, lint.tools, counts, waiting.size > 0),

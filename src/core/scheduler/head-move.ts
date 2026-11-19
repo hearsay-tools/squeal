@@ -109,7 +109,8 @@ export async function updateCommitReport(context: SchedulerContext, ledger: Ledg
     if (!lintWaitEnded(commonDir, context.policy, worktreeId, lint, newest.revision, blobOf))
       return;
   }
-  const again = await commitReport(context, ledger, newest.commit, newest.from ?? null, false);
+  const from = newest.from ?? null;
+  const again = await commitReport(context, ledger, newest.commit, from, false, newest.revision);
   if (isFailedReport(again)) return replaceCommitReport(store.meta, worktreeId, again);
   const { waiting: _, ...made } = again;
   replaceCommitReport(store.meta, worktreeId, { ...made, updated: true });
@@ -122,7 +123,9 @@ export async function updateCommitReport(context: SchedulerContext, ledger: Ledg
  * commit groups run first (`askCommitGroups`), so the files they run count
  * as running. Row 019-28 (lessons P1, P4): only those count as running and
  * are waited for; the lint part counts the files the commit changed, made
- * again from `before` at the update.
+ * again from `before` at the update. Review 0.1.570 B1: the lint part
+ * reads a changed path with no lint check as not listed while the pass has
+ * not keyed `listedAt`, the first report's revision, kept by the update.
  */
 async function commitReport(
   context: SchedulerContext,
@@ -130,6 +133,7 @@ async function commitReport(
   commit: string,
   before: string | null,
   asks = true,
+  listedAt = ledger.revision.number,
 ): Promise<CommitReport> {
   const base = { commit, revision: ledger.revision.number, at: context.now() };
   try {
@@ -148,7 +152,7 @@ async function commitReport(
     const lint =
       commonDir === null
         ? undefined
-        : commitLint(commonDir, context.policy, context.worktreeId, side);
+        : commitLint(commonDir, context.policy, context.worktreeId, side, listedAt);
     const held = heldTestFile(context);
     const asked = askedTestFile(context);
     const untracked = new Set([...differing].filter((path) => !committed.has(path)));

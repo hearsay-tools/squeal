@@ -99,6 +99,12 @@ export interface CommitLintToolCounts {
   readonly findings: number;
   readonly notDetermined: number;
   readonly running: number;
+  /**
+   * Review 0.1.570 B1: the files the commit changed with no check of the
+   * tool while its pass had not listed the report's revision. They may be
+   * files the tool lints or not; the part is incomplete. Absent when none.
+   */
+  readonly unlisted?: number;
 }
 
 interface CommitReportBase {
@@ -221,7 +227,14 @@ function lintOf(raw: unknown): CommitLintCounts | null {
         const tool = countsOf(entry, TOOL_KEYS);
         const name = (entry as Record<string, unknown> | null)?.tool;
         if (tool === null || !isText(name)) return [];
-        return [{ tool: name, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+        const { unlisted } = entry as Record<string, unknown>;
+        return [
+          {
+            tool: name,
+            ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])),
+            ...(isCount(unlisted) && unlisted > 0 ? { unlisted } : {}),
+          },
+        ];
       })
     : null;
   return {

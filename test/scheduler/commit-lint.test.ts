@@ -232,8 +232,9 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
       waiting: { tests: [] },
     });
     const first = commitReportText(stored[0] as CommitReport);
+    // Review 0.1.570 B1: the pass has not listed the edit's revision, so a is not listed yet.
     expect(first).toBe(
-      `Commit ${commit.slice(0, 7)}: 0 known failures; lint (eslint): 1 of 1 file still running`,
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint (eslint): 1 changed file not listed yet, 1 of 1 listed file still running`,
     );
 
     // Lint ends while a's run is still held: the update comes when lint records.
