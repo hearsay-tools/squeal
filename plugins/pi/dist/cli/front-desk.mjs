@@ -24,6 +24,7 @@ import { isAbsolute } from "node:path";
 var MAX_RECORDS = 1e5;
 var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail", "skip"]);
 var PHASES = /* @__PURE__ */ new Set(["load", "after-tests", "setup"]);
+var STAGES = /* @__PURE__ */ new Set(["body", "hook", "timeout", "other"]);
 var RECORD_FIELDS = [
   "check",
   "key",
@@ -165,6 +166,9 @@ function checkId(value) {
   return unknownField(value, ["kind", "project", "testPath", "fullName"]) === null ? null : "has an unknown field";
 }
 function checkError(value) {
+  return errorFields(value) ?? evidenceError(value);
+}
+function errorFields(value) {
   if (!isFields(value)) return "must be an object";
   const fields = [
     "name",
@@ -176,7 +180,9 @@ function checkError(value) {
     "code",
     "causes",
     "phase",
-    "recorder"
+    "recorder",
+    "stage",
+    "assertionEvidence"
   ];
   const extra = unknownField(value, fields);
   if (extra !== null) return `has the unknown field "${extra}"`;
@@ -195,6 +201,13 @@ function checkError(value) {
   if (causes === void 0) return null;
   const valid = (c) => isFields(c) && typeof c.message === "string" && (c.code === void 0 || typeof c.code === "string") && unknownField(c, ["message", "code"]) === null;
   return Array.isArray(causes) && causes.every(valid) ? null : '"causes" must be a list of causes';
+}
+function evidenceError(value) {
+  if (value.stage !== void 0 && !STAGES.has(value.stage))
+    return '"stage" must be body, hook, timeout or other';
+  if (value.assertionEvidence !== void 0 && value.assertionEvidence !== true)
+    return '"assertionEvidence" must be true';
+  return null;
 }
 function gateProvenance(value, worktreeId) {
   if (!isFields(value)) return '"provenance" must be an object';
