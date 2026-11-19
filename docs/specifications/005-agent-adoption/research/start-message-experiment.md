@@ -253,3 +253,20 @@ Open after the check:
 - Sonnet `a5-uncovered` `own-run-covers` 2 of 10 against 5 of 10 (all claims right): 30 more repetitions of that scenario on Sonnet were started after the Sol stage (run 20261119T001551Z-264cf1).
 - Not covered by the eval: OpenCode's start message without a skill (542 characters, the rules in words), Pi, and whether agents now find `squeal proof` and `squeal status --at` (spec 023's own tasks test that).
 - Each cell is 10 against 10; a moderate loss in one scenario would not show.
+
+## `a5-uncovered` on Sonnet: 30 more repetitions, and what the measure missed
+
+Run 20261119T001551Z-264cf1: Sonnet, `a5-uncovered` only, 30 repetitions, 60 sessions, 0 failed (*measured*); the same build and variant. Results file `evals/results/2026-11-19-0.1.563.20261119T001551Z-264cf1.primer-skill.atomic-variant.json`. With the full check's 10: 40 sessions per arm.
+
+| `a5-uncovered`, Sonnet, 40 per arm | Shipped | New texts |
+|---|---|---|
+| `own-run-covers` (the scored measure) | 20/40 | 7/40 (p = 0.004, *derived*) |
+| ran the uncovered tests after its last edit (read from each timeline) | 40/40 | 40/40 |
+| `claim-true` | 40/40 | 40/40 |
+| false pass | 0 | 0 |
+| ran them as `npm run test:scripts` | 21/40 | 40/40 |
+| piped the run's output through `tail` | 23/40 | 40/40 |
+
+**The scored drop is an artefact of the measure, not a change of behaviour.** Every session of both arms ran the uncovered tests by hand after its edit and reported the failure right. The measure counts a run as completed only when the runner's own summary lines are in the kept output (`evals/lib/evidence.mjs`, `completedRuns`); `npm run test:scripts 2>&1 | tail -30` cuts them off, and with the new texts Sonnet used that form in every session (it runs the repository's script, as the skill's step 7 says: "as the repository says"), against about half the sessions with the shipped texts, where `node --test scripts/changelog.test.mjs | tail -30` keeps the summary. *Read in two sessions' transcripts and counted over all 80 timelines.*
+
+So no degradation stands after the full check. A defect of the eval, for spec 006: `own-run-covers` misses a completed node:test run whose summary is cut by `tail`; the same holds for the shipped arm's 20 misses.
