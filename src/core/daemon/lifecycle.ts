@@ -22,6 +22,13 @@ import { SlicedPrune } from "./sliced-prune.js";
 import { SlicedWrites } from "./sliced-writes.js";
 import { type StoreFile, storeCondemned } from "./store-file.js";
 
+/**
+ * How many times per prune interval a daemon reads the clone's prune mark
+ * (row 021-33). A read is one meta row, so a prune is late by at most a
+ * tenth of the interval after the last one's (`clone-prune.ts`).
+ */
+const PRUNE_ASKS = 10;
+
 /** How often the daemon does its periodic work. Every field has a default. */
 export interface DaemonTimings {
   /** Heartbeat into `worktrees` (D10). Status reports the daemon down after two missed ones. */
@@ -36,7 +43,11 @@ export interface DaemonTimings {
    * once the idle waiter is gone, task 001-47).
    */
   readonly expireMs: number;
-  /** Store pruning (D8), first after `firstPruneMs`. */
+  /**
+   * Store pruning (D8): the clone's interval between prunes, first asked
+   * after `firstPruneMs`. Row 021-33: each daemon asks `PRUNE_ASKS` times
+   * per interval; the clone's mark lets one prune per interval through.
+   */
   readonly pruneMs: number;
   readonly firstPruneMs: number;
   /** How often the daemon counts its worktree's consumers. Default 250 ms. */
@@ -442,7 +453,7 @@ export function startTimers(context: TimerContext): () => void {
       () =>
         oncePerClone(
           store,
-          now(),
+          now,
           pruneMs,
           () =>
             pruneSlices(
@@ -482,7 +493,7 @@ export function startTimers(context: TimerContext): () => void {
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check, checkMs),
     setInterval(departure, presenceMs),
-    setInterval(prune, pruneMs),
+    setInterval(prune, pruneMs / PRUNE_ASKS),
     ...(observedKeys.length > 0 && context.observedChanged
       ? [setInterval(observed, timings.observedMs ?? 5_000)]
       : []),
