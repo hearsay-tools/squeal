@@ -94,6 +94,11 @@ export interface StepPorts {
   slowQueued(lane: string, at: EpochMs): boolean;
   /** No batch's tier is left in `lane` at `at`, in flight and running (`besideDone`, row 011-269). */
   besideDone(lane: string, at: EpochMs): boolean;
+  /**
+   * Row 011-399: when a tier in flight with a queued file in its lane next
+   * starts to overrun, after `at` (`nextOverrun`); `null` or absent for none.
+   */
+  overrunWake?(at: EpochMs): EpochMs | null;
   /** Queued files wait on other worktrees' claims (task 001-205). */
   claimsWaiting(): boolean;
   /** The pool refused a tier since the last look; the look clears it (row 011-96). */
@@ -243,9 +248,21 @@ const installWait: Rule = ({ at, ports }) => {
   return halts.has("install-wait") || halts.has("reinstalled") ? END : undefined;
 };
 
+/**
+ * Row 011-399: waits for the next event, or until a tier in flight starts to
+ * overrun, when its lane's next tier may go beside it (`overrunWake`).
+ */
+function eventOrOverrun(ports: StepPorts, at: EpochMs, before: EpochMs | null = null): NextWake {
+  const overrun = ports.overrunWake?.(at) ?? null;
+  const wake = overrun === null ? before : before === null ? overrun : Math.min(before, overrun);
+  return wake === null ? EVENT : { kind: "at", at: wake as EpochMs };
+}
+
 /** At an iteration's first step: no free lane has a file and no lane may be asked. */
 const nothingMayStart: Rule = ({ at, ports, reads }) =>
-  reads !== null && Object.keys(reads).length === 0 && !ports.admit(at).any ? EVENT : undefined;
+  reads !== null && Object.keys(reads).length === 0 && !ports.admit(at).any
+    ? eventOrOverrun(ports, at)
+    : undefined;
 
 /** The install stamp before a tier; one that moved refreshes the keys first. */
 const readInstallStamp: Rule = ({ reads }, out) => {
@@ -378,10 +395,11 @@ const idleAnswer: Rule = ({ at, events, reads, ports }, out) => {
   if (reads?.rewalk !== undefined) return reads.rewalk ? AGAIN : END;
   const idle = out.idle ?? ports.idleNow(at);
   if (idle.idle === "claims" || ports.claimsWaiting()) return { kind: "claims", at };
-  if (idle.idle === "quiet" && idle.wakeAt !== null) return { kind: "at", at: idle.wakeAt };
+  if (idle.idle === "quiet" && idle.wakeAt !== null) return eventOrOverrun(ports, at, idle.wakeAt);
   if (ports.refused() || idle.idle === "pool")
-    return { kind: "at", at: (at + CAPACITY_RECHECK_MS) as EpochMs };
-  if (ports.inFlight() > 0 || events.length > 0) return events.length > 0 ? AGAIN : EVENT;
+    return eventOrOverrun(ports, at, (at + CAPACITY_RECHECK_MS) as EpochMs);
+  if (ports.inFlight() > 0 || events.length > 0)
+    return events.length > 0 ? AGAIN : eventOrOverrun(ports, at);
   out.decide({ kind: "queue-rewalk" });
   return READS;
 };

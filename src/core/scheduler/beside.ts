@@ -2,6 +2,7 @@ import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
+import { overrunLanes, overruns } from "./overrun.js";
 import { cancels, laneOf, type Tier } from "./tiers.js";
 
 /**
@@ -28,6 +29,11 @@ export const BESIDE_BATCH_MS = 30_000;
  * batch's tier: an edited file of it runs beside at its new key, and the
  * batch's run of it at the old key is superseded (`supersededIn`). Every
  * batch rank reads `at`, the decision's one reading (row 011-372).
+ *
+ * Row 011-399 (gh-233): in a lane whose tier in flight overruns at `at`
+ * (`overrunLanes`), the next tier starts beside it the same way, an edit's
+ * tier in the second instance, and takes any fast file queued in the lane,
+ * so one hung file no longer holds the lane until `runner.timeoutMs`.
  */
 export function besideFiles(
   context: SchedulerContext,
@@ -47,7 +53,8 @@ export function besideFiles(
     for (const { file } of tier.files) running.add(rankOf(file.ref));
   }
   for (const tier of inFlight) if (tier.beside === true) lanes.delete(tier.lane);
-  if (lanes.size === 0) return null;
+  const overrun = overrunLanes(context, inFlight, at);
+  if (lanes.size === 0 && overrun.size === 0) return null;
   const inLanes = (ref: TestFileRef) => lanes.has(laneOf(context, ref));
   const sums = new Map<number, number>();
   for (const ref of ledger.orderedBatches(at)) {
@@ -58,6 +65,7 @@ export function besideFiles(
   }
   const small = new Set([...sums].filter(([, ms]) => ms <= BESIDE_BATCH_MS).map(([rank]) => rank));
   const takes = (ref: TestFileRef) => {
+    if (overrun.has(laneOf(context, ref))) return true;
     if (!inLanes(ref)) return false;
     const rank = rankOf(ref);
     return queue.isRecent(ref) || (rank !== null && small.has(rank));
@@ -69,7 +77,8 @@ export function besideFiles(
  * Whether `lane` has no batch left for its second instance (row 011-269): no
  * batch's tier and no tier beside one in flight there, and no file of a
  * batch queued in it at `at`, the step's reading (row 011-372). The
- * scheduler then closes that instance.
+ * scheduler then closes that instance. Row 011-399: nor a tier that
+ * overruns at `at`, which the next tier may go beside again.
  */
 export function besideDone(
   context: SchedulerContext,
@@ -79,7 +88,9 @@ export function besideDone(
   at: EpochMs,
 ): boolean {
   const busy = inFlight.some(
-    (tier) => tier.lane === lane && (tier.promoted === true || tier.beside === true),
+    (tier) =>
+      tier.lane === lane &&
+      (tier.promoted === true || tier.beside === true || overruns(context, tier, at)),
   );
   if (busy) return false;
   return !ledger.queue.hasFast(
