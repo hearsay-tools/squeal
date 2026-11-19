@@ -33,7 +33,7 @@ cleanup() { if [ -n "$ID" ] && [ "$KEEP" = 0 ]; then boat delete "$ID" --yes >/d
 trap cleanup EXIT
 
 for try in $(seq "$TRIES"); do
-  ID=$(boat new --type "$TYPE" --no-env --no-auto-stop --ttl 21600 --name squeal-bench --json 2>/dev/null | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
+  ID=$(boat new --type "$TYPE" --no-env --ttl 21600 --name squeal-bench --json | tail -1 | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
   MODEL=$(boat ssh "$ID" -- 'grep -m1 "model name" /proc/cpuinfo | cut -d: -f2' 2>/dev/null | tr -s ' ' | sed 's/^ //')
   echo "try $try: $ID has $MODEL"
   if [ -z "$CPU" ] || [[ "$MODEL" == *"$CPU"* ]]; then break; fi
