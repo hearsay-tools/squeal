@@ -2,7 +2,12 @@ import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
+import type {
+  AbsolutePath,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
@@ -28,6 +33,12 @@ export interface NamedSelection {
   readonly base?: string;
   /** Row 011-206 (gh-83): each named path, in its order, with how it was read. */
   readonly paths: readonly NamedPath[];
+  /**
+   * Row 011-401 (gh-242): set by the read that ended a wait or snapshot when
+   * the list may be incomplete (`selectionPartial`): the revision Squeal
+   * catches up with, `null` when its pass has not said which.
+   */
+  readonly partial?: { readonly revision: RevisionNumber | null };
 }
 
 /**

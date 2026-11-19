@@ -9,15 +9,32 @@ import type { SelectionResult } from "./verdict.js";
  * so `Selected:` keeps naming test files only (the evals parser splits it).
  * One Squeal does not run says so, and that their verdict is not its own. A
  * path that selects nothing is named on the verdict line (row 011-63).
+ * Row 011-401: a partial list (`NamedSelection.partial`) is said first.
  */
 export function namedPathLines(selection: NamedSelection): string[] {
-  return selection.paths.flatMap((p) => {
+  // Row 011-401 (gh-242): a list that may still grow gives its counts as lower bounds.
+  const some = selection.partial === undefined ? "the" : "at least";
+  const lines = selection.paths.flatMap((p) => {
     if (p.selects === 0 || p.kind === "test-file") return [];
-    const readers = `it selects the ${plural(p.selects, "test file")} that ${p.selects === 1 ? "reads" : "read"} it`;
+    const readers = `it selects ${some} ${plural(p.selects, "test file")} that ${p.selects === 1 ? "reads" : "read"} it`;
     return p.kind === "not-run"
       ? [`Not run by Squeal: ${p.path} is ${NOT_LISTED}; ${readers}, whose verdict is not its own`]
       : [`Not a listed test file: ${p.path}; ${readers}`];
   });
+  return selection.partial === undefined ? lines : [partialLine(selection), ...lines];
+}
+
+/**
+ * Row 011-401 (gh-242): `Selection: at least 1 test file; the list is partial while Squeal
+ * catches up with revision 14`, or with the edits the daemon's pass has not stored;
+ * `no test file yet` when it selects none so far.
+ */
+function partialLine(selection: NamedSelection): string {
+  const revision = selection.partial?.revision ?? null;
+  const target = revision === null ? "your latest edits" : `revision ${revision}`;
+  const n = selection.files.length;
+  const count = n === 0 ? "no test file yet" : `at least ${plural(n, "test file")}`;
+  return `Selection: ${count}; the list is partial while Squeal catches up with ${target}`;
 }
 
 const NOT_LISTED = "not a test file any runner here lists";

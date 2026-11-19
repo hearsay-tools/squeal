@@ -60,6 +60,11 @@ export interface NamedWaitPayload {
   readonly unmatched: readonly string[];
   /** Row 011-206 (gh-83): each named path with how it was read. */
   readonly paths: readonly NamedPath[];
+  /**
+   * Row 011-401 (gh-242, additive): `false` while the list may be incomplete, the runner
+   * not having listed the revision or the daemon's pass not stored (`selectionPartial`).
+   */
+  readonly complete: boolean;
   /** The selected slow files it did not hold for, waiting for a pause or `run --slow` (task 004-78). */
   readonly leftForPause: readonly TestFileRef[];
   readonly verdict: FileVerdict;
@@ -143,6 +148,7 @@ export async function printNamed(
     testFiles: wait.files.map((f) => fileEntry(f, command, wait.selection.base)),
     unmatched: wait.selection.unmatched,
     paths: wait.selection.paths,
+    complete: wait.selection.partial === undefined,
     leftForPause: wait.leftForPause ?? [],
     verdict: wait.verdict,
     ...(wait.focus === undefined ? {} : { focused: focusPayload(wait.focus) }),

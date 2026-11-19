@@ -223,10 +223,17 @@ describe("`--json` of a wait with no verdict (row 011-243)", () => {
       "testFiles",
       "unmatched",
       "paths",
+      "complete",
       "leftForPause",
       "verdict",
     ]);
-    expect(json.selection).toMatchObject({ code: 3, result: "none", reason: "unlisted" });
+    // Row 011-401: ISSUE_99's selection is test files only, so its list is complete.
+    expect(json.selection).toMatchObject({
+      code: 3,
+      result: "none",
+      reason: "unlisted",
+      complete: true,
+    });
     expect(out).not.toContain("timeoutMs");
   });
 });
