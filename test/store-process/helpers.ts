@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
 import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
@@ -19,10 +20,14 @@ const CHILD = fileURLToPath(new URL("./child.ts", import.meta.url));
 const source = (name: string) =>
   fileURLToPath(new URL(`../../src/core/store-process/${name}`, import.meta.url));
 
-/** How a daemon run from the sources starts the store process. */
+/** How a daemon run from the sources starts the store process: the whole CLI, through tsx. */
 export const LAUNCH: StoreProcessLaunch = {
   execPath: process.execPath,
-  execArgv: [...LOADER],
+  execArgv: [
+    "--disable-warning=ExperimentalWarning",
+    "--import",
+    pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href,
+  ],
   cli: fileURLToPath(new URL("../../src/cli/index.ts", import.meta.url)),
 };
 

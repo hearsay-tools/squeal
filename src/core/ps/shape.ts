@@ -1,5 +1,6 @@
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { MemoryKind, PsPlatform } from "./source.js";
+import type { PsStoreProcess } from "./store-processes.js";
 
 /*
  * Spec 014 D8: the versioned shape `squeal ps --json` prints. `render.ts`
@@ -31,6 +32,8 @@ export interface PsSnapshot {
   readonly unflaggedFiles: readonly PsUnflaggedFiles[] | null;
   /** Spec 023 D6: the temporary checkouts, by path; absent from a snapshot that did not read them. */
   readonly checkouts?: readonly PsCheckout[];
+  /** Spec 021 D22.2 (row 021-36): the store processes; absent from a snapshot that did not read them. */
+  readonly storeProcesses?: readonly PsStoreProcess[];
   /** Every flag of the snapshot: on daemons, processes, orphans, files and checkouts. */
   readonly flags: number;
   readonly unknown: readonly PsUnknown[];

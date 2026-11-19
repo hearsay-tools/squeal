@@ -15,6 +15,7 @@ import type {
   PsUnknown,
 } from "./shape.js";
 import type { HostReading, LockEntry, ProcessRow, ProcessTable, PsSource } from "./source.js";
+import type { PsStoreProcess } from "./store-processes.js";
 
 /*
  * Spec 014 D11: the model the `squeal ps` stages pass, and each stage's
@@ -87,6 +88,8 @@ export interface SocketFile {
 
 export interface Discovery {
   readonly daemons: readonly FoundDaemon[];
+  /** Spec 021 D22.2 (row 021-36): the store processes, found by the same reads; absent: none read. */
+  readonly storeProcesses?: readonly PsStoreProcess[];
   readonly sockets: readonly SocketFile[];
   readonly unknown: readonly PsUnknown[];
 }

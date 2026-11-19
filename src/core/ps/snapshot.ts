@@ -67,7 +67,8 @@ export async function takeSnapshot(options: SnapshotOptions): Promise<PsSnapshot
     unknown = [...unknown, { what: "checkouts", why: `not read: ${why}` }];
   }
   const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
-  return { ...shape, checkouts, flags: shape.flags + flags, unknown };
+  const storeProcesses = read.model.discovery.storeProcesses ?? [];
+  return { ...shape, checkouts, storeProcesses, flags: shape.flags + flags, unknown };
 }
 
 async function readWindow(o: SnapshotOptions): Promise<WindowRead> {

@@ -11,6 +11,7 @@ import type { Discover, Discovery, FoundDaemon, PhaseOf, PsPlaces, SocketFile } 
 import { NODE_COMMS, names } from "./reads.js";
 import type { PsUnknown } from "./shape.js";
 import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./source.js";
+import { type PsStoreProcess, storeProcessOf } from "./store-processes.js";
 
 /*
  * Spec 014 D2: every live daemon of the user, without a registry and without
@@ -22,7 +23,8 @@ import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./sou
 
 /** `btime` is whole seconds, so a process start read from it is up to 1 s early. */
 const START_MARGIN_MS = 1_000;
-const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+/** The `squeal` scripts a process of Squeal runs (a daemon, a store process). */
+export const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
 /** An option whose value may be the next argument: `--require`, never `--require=<file>`. */
 const BARE_OPTION = /^-[^=]*$/;
 /** The `unknown` entry of a lock reading that cannot be read. */
@@ -39,12 +41,15 @@ export const discover: Discover = (source, table, places, locks = source.locks()
     unknown.push({ what: HOLDERS, why });
   }
   const daemons: FoundDaemon[] = [];
+  const stores: PsStoreProcess[] = [];
   for (const row of table.values()) {
     if (!NODE_COMMS.has(row.comm)) continue;
     // A uid the source cannot give (D10) is not another user's.
     if (row.uid !== null && row.uid !== places.uid) continue;
     const args = source.cmdline(row.pid);
     const at = args === null ? -1 : daemonVerbAt(args);
+    const store = args === null || at >= 0 ? null : storeProcessOf(row.pid, args);
+    if (store !== null) stores.push(store);
     if (args === null || at < 0) continue;
     const daemon = found(source, row, args, at, locks);
     if (daemon.worktreeId === null) {
@@ -56,7 +61,8 @@ export const discover: Discover = (source, table, places, locks = source.locks()
     }
     daemons.push(daemon);
   }
-  return { daemons, sockets: socketFiles(source, places, daemons), unknown };
+  const sockets = socketFiles(source, places, daemons);
+  return { daemons, sockets, unknown, ...(stores.length === 0 ? {} : { storeProcesses: stores }) };
 };
 
 /**

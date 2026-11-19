@@ -25,6 +25,7 @@ import type {
   PsSqueal,
   PsTestProcess,
 } from "./shape.js";
+import { storeProcessLines } from "./store-processes.js";
 
 /*
  * Spec 014 D8 (task 014-11): the text of `squeal ps`, from the shape alone.
@@ -58,6 +59,7 @@ export const render: Render = (snapshot, { full }) => {
     lines.push("", "Files no live process uses");
     for (const file of snapshot.files) lines.push(...fileLines(file));
   }
+  lines.push(...storeProcessLines(snapshot.storeProcesses ?? []));
   const checkouts = snapshot.checkouts ?? [];
   if (checkouts.length > 0) {
     lines.push("", "Temporary checkouts");
