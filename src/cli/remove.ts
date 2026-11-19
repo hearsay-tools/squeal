@@ -10,6 +10,11 @@ import { resolveCommonDir } from "../core/fs/git-layout.js";
 import { isRecord } from "../core/fs/json.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
+import {
+  type StoreFile,
+  storeProcessLockFile,
+  storeProcessSocketPath,
+} from "../core/store-process/paths.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { WorktreeRecord } from "../core/types/store-records.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, worktreeRoot } from "./daemon-access.js";
@@ -81,11 +86,7 @@ export async function removeCommand(
     for (const worktree of worktrees) if (await askToStop(worktree)) stopped.push(worktree.root);
     const locks = await holdDaemonLocks(commonDir, options.stopWaitMs ?? STOP_WAIT_MS);
     if ("held" in locks) {
-      const holder = worktrees.find((w) => w.id === locks.held)?.root ?? locks.lockPath;
-      io.stderr(
-        `squeal: the daemon for ${holder} did not stop; nothing was removed. ` +
-          `It may be finishing a test run: try again, or stop it with squeal stop.\n`,
-      );
+      io.stderr(notStopped(locks, worktrees));
       return 1;
     }
     try {
@@ -227,22 +228,34 @@ async function askToStop(worktree: WorktreeRecord): Promise<boolean> {
   return response?.ok === true;
 }
 
-type HeldLocks = DaemonLock[] | { readonly held: string; readonly lockPath: AbsolutePath };
+type HeldLocks =
+  | DaemonLock[]
+  | { readonly held: string; readonly lockPath: AbsolutePath; readonly store: boolean };
 
 /**
  * Takes the lock of every daemon of the store (`locks/<worktree-hash>.sqlite`,
  * not the waiters' `waiter-*`), waiting up to `waitMs` for daemons to let go.
  * On a timeout every lock taken is released and the one still held named.
+ * Spec 021 D22 (review of 0.1.571): then the lock of each store process
+ * (`locks/store-<file>.sqlite`), which outlives its daemons by minutes: it is
+ * asked to stop once every daemon let go, so no daemon starts another.
  */
 async function holdDaemonLocks(commonDir: AbsolutePath, waitMs: number): Promise<HeldLocks> {
   const { locksDir } = storePaths(commonDir);
   const names = safeList(locksDir).filter(
     (name) => name.endsWith(".sqlite") && !name.startsWith("waiter-"),
   );
+  // The daemons' locks first: a store process is stopped only after them.
+  const ordered = [
+    ...names.filter((name) => storeProcessLockFile(name) === null),
+    ...names.filter((name) => storeProcessLockFile(name) !== null),
+  ];
   const held: DaemonLock[] = [];
   const deadline = Date.now() + waitMs;
-  for (const name of names) {
+  for (const name of ordered) {
     const lockPath = join(locksDir, name);
+    const store = storeProcessLockFile(name);
+    if (store !== null) await askStoreProcessToStop(commonDir, store);
     for (;;) {
       const lock = acquireDaemonLock(lockPath);
       if (lock !== null) {
@@ -251,12 +264,31 @@ async function holdDaemonLocks(commonDir: AbsolutePath, waitMs: number): Promise
       }
       if (Date.now() > deadline) {
         for (const lock of held) lock.release();
-        return { held: name.slice(0, -".sqlite".length), lockPath };
+        return { held: name.slice(0, -".sqlite".length), lockPath, store: store !== null };
       }
       await sleep(50);
     }
   }
   return held;
+}
+
+/** What `squeal remove` says when a daemon or a store process kept its lock. */
+function notStopped(
+  locks: Exclude<HeldLocks, DaemonLock[]>,
+  worktrees: readonly WorktreeRecord[],
+): string {
+  const holder = worktrees.find((w) => w.id === locks.held)?.root ?? locks.lockPath;
+  const what = locks.store ? "store process" : "daemon";
+  return (
+    `squeal: the ${what} for ${holder} did not stop; nothing was removed. ` +
+    `It may be finishing a test run: try again, or stop it with squeal stop.\n`
+  );
+}
+
+/** Asks the store process of `file` to stop; nothing when none answers. */
+async function askStoreProcessToStop(commonDir: AbsolutePath, file: StoreFile): Promise<void> {
+  const socketPath = storeProcessSocketPath(commonDir, file);
+  await askDaemon(socketPath, { type: "stop" }).catch(() => null);
 }
 
 /**

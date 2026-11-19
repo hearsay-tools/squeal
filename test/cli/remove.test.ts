@@ -17,10 +17,12 @@ import { daemonScratch } from "../../src/core/daemon/scratch.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
+import { storeProcessLockPath } from "../../src/core/store-process/paths.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { daemonSuite, SLOW, spawnCli, waitFor, waitReady } from "../daemon/helpers.js";
 import { recorded } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";
+import { storeProcess } from "../store-process/helpers.js";
 
 /*
  * Task 001-90: `squeal remove` takes Squeal out of a repository. Every
@@ -151,6 +153,44 @@ describe("squeal remove", () => {
       expect(existsSync(join(repo.storeDir, "store.sqlite"))).toBe(true);
       expect(existsSync(join(repo.storeDir, "repository-id"))).toBe(true);
       expect(existsSync(repo.tempDir)).toBe(true);
+    } finally {
+      lock?.release();
+    }
+  });
+
+  // Spec 021 D22 (review of 0.1.571): the store process outlives its daemons by minutes.
+  it("stops a live store process after the daemons, then removes the store", {
+    timeout: 60_000,
+  }, async () => {
+    const repo = storedRepo();
+    const later: (() => unknown)[] = [];
+    const clone = {
+      commonDir: repo.commonDir,
+      env: process.env,
+      later: (f: () => unknown) => later.push(f),
+    };
+    try {
+      const running = await storeProcess({ ...clone, cleanup: async () => {} });
+      const { io, out } = capture(repo.root);
+      expect(await removeCommand([], io, { stopWaitMs: 10_000 }), out.stderr).toBe(0);
+      expect(await running.ended).toBe("stopped");
+      expect(existsSync(repo.storeDir)).toBe(false);
+    } finally {
+      for (const cleanup of later.reverse()) await cleanup();
+    }
+  });
+
+  it("deletes nothing and exits 1 while a store process will not let go of its lock", {
+    timeout: 30_000,
+  }, async () => {
+    const repo = storedRepo();
+    const lock = acquireDaemonLock(storeProcessLockPath(repo.commonDir, "code"));
+    try {
+      const { io, out } = capture(repo.root);
+      expect(await removeCommand([], io, { stopWaitMs: 300 })).toBe(1);
+      expect(out.stderr).toContain("the store process for ");
+      expect(out.stderr).toContain("store-code.sqlite did not stop; nothing was removed");
+      expect(existsSync(join(repo.storeDir, "store.sqlite"))).toBe(true);
     } finally {
       lock?.release();
     }

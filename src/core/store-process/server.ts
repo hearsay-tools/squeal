@@ -6,7 +6,7 @@ import { errorResponse } from "../daemon/protocol.js";
 import { createDaemonServer, type DaemonServer } from "../daemon/server.js";
 import { WriteDesk } from "../daemon/write-desk.js";
 import { isWriteRequest } from "../daemon/write-protocol.js";
-import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION, type WorktreeId } from "../types/common.js";
 import type { DaemonPhase, DaemonRequest, DaemonResponse } from "../types/daemon.js";
 import type { SentBatch, WriteRequest } from "../types/daemon-writes.js";
 import { storeProcessLockPath, storeProcessSocketPath } from "./paths.js";
@@ -149,6 +149,11 @@ export async function startStoreProcess(
   let lastClient = now();
   const handle = (request: DaemonRequest): DaemonResponse => {
     lastClient = now();
+    // `squeal remove` stops it once the daemons stopped, then takes its lock (review of 0.1.571).
+    if (request.type === "stop") {
+      void stop("stopped");
+      return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "stop" };
+    }
     if (!isWriteRequest(request)) return errorResponse("a store process answers writes only");
     if (request.type === "write-status") {
       for (const desk of desks.values()) {

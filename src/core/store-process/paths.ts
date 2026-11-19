@@ -27,6 +27,13 @@ export function storeProcessLockPath(commonDir: AbsolutePath, file: StoreFile): 
   return join(storePaths(commonDir).locksDir, `store-${file}.sqlite`);
 }
 
+const LOCK_NAME = /^store-(code)\.sqlite$/;
+
+/** The store file whose store process holds a `storeProcessLockPath` file named `name`; `null` for any other name. */
+export function storeProcessLockFile(name: string): StoreFile | null {
+  return (LOCK_NAME.exec(name)?.[1] as StoreFile | undefined) ?? null;
+}
+
 /** `logs/store-<file>.log`: the store process's stdout and stderr. */
 export function storeProcessLogPath(commonDir: AbsolutePath, file: StoreFile): AbsolutePath {
   return join(storePaths(commonDir).dir, "logs", `store-${file}.log`);
