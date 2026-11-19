@@ -44,8 +44,9 @@ const fixture = e2eSuite();
 const WAIT_MS = 20_000;
 const MAX_HOLDS = 2;
 const LONG_DELAY_MS = 3 * WAIT_MS;
+/** Row 005-128: the start message names no group; it sends the agent to the skill and `checks`. */
 const PRIMER =
-  /Check groups: unit( and tests \(the test files no group selects\))? after each edit; e2e at Stop, and Stop waits for them; lint when you commit; (`squeal run|the CLI's `run) <group> --wait 60000` runs one now\./;
+  /Read the squeal skill before you run or judge tests[^\n]*`[^`\n]*checks` lists this repository's checks and when each runs/;
 
 const e2eTier = (s: StatusSnapshot) => groupOf(s, "e2e");
 const e2ePending = (s: StatusSnapshot) => e2eTier(s).pending + e2eTier(s).notRun;
@@ -96,8 +97,7 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
     );
     expect(ranAfter(e, e.main, 0)).toEqual(new Set(UNIT_FILES));
     expect(base.lint).toMatchObject({ files: LINTED, failing: 0, pending: LINTED });
-    // D6: the first registration carries the primer (task 001-88); before the daemon
-    // listed the files it also names the default group.
+    // D6: the first registration carries the start message (task 001-88).
     const primed = await e.hook("post-tool-batch", e.main);
     expect(`${prompt.text}\n${primed.text}`).toMatch(PRIMER);
 

@@ -1,8 +1,21 @@
+import { primer } from "../../src/harness/shared/primer.js";
+
 /*
  * Row 005-94 (the human, 2026-11-17, `tasks/005-94/texts.md` "Decided"): what the 0.1.393
  * control's hook texts read as after the wording pass. `squeal status` keeps its counts, its
  * checkpoint and its commit, so a status text (`Revision: …`) is left as printed.
  */
+
+/** A start message: the text's last paragraph, or the whole text after `compact`. */
+const START_MESSAGE = /(^|\n\n)Squeal runs this repository's [^\n]*$/;
+
+/**
+ * Row 005-128 (spec 005 D6 as amended 2026-11-19): the long start message is the short one,
+ * naming the same CLI.
+ */
+function startMessage(text: string, command: string): string {
+  return text.replace(START_MESSAGE, (_, before: string) => `${before}${primer(command)}`);
+}
 
 /** The meaning of "current" the hooks say in place (R1). */
 const DEFINED = "(run on the files as they are now)";
@@ -120,7 +133,7 @@ export function wordingPass(text: string, total: number): string {
   if (text.startsWith("Revision: ")) return text;
   const command = commandOf(text);
   const lines = revisionLines(
-    unlisted(sentences(text), command).replace(
+    unlisted(sentences(startMessage(text, command)), command).replace(
       /^(Revision \d+) · \S+ \+ \d+(?:, dirty)?(?= \(changed |[:.])/gm,
       "$1",
     ),

@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { primer } from "../../src/harness/shared/primer.js";
 import { wordingPass } from "../e2e/control-wording.js";
 
 // Row 005-94: the 0.1.393 control's texts as the wording pass gives them (the `accepted` list of
@@ -38,4 +39,16 @@ it("maps 0.1.393's registration, Stop, owed counts and unlisted forms, and leave
   expect(
     wordingPass("Revision: 3 · <sha> + 0\nKnown failures: 0; all 7 test files current", 7),
   ).toBe("Revision: 3 · <sha> + 0\nKnown failures: 0; all 7 test files current");
+});
+
+// Row 005-128: the long start message after a registration, or alone after `compact`, is the
+// short one, naming the CLI the control's text named.
+it("maps 0.1.393's start message to the short one, naming the same CLI", () => {
+  const old = (cli: string) =>
+    `Squeal runs this repository's Vitest tests in the background after each edit; do not run Vitest to learn whether your edits broke something. Wait only when you need a result: \`${cli} status --wait 60000\` before you finish. Squeal does not cover typecheck, build or any other test suite: run those yourself.`;
+  const head = "SQUEAL · registered at revision 0\nRevision 0.";
+  expect(wordingPass(`${head}\n\n${old("squeal")}`, 7)).toBe(`${head}\n\n${primer()}`);
+  expect(wordingPass(old("squeal"), 7)).toBe(primer());
+  const codex = "node --disable-warning=ExperimentalWarning '/p/dist/cli/squeal.mjs'";
+  expect(wordingPass(`${head}\n\n${old(codex)}`, 7)).toBe(`${head}\n\n${primer(codex)}`);
 });
