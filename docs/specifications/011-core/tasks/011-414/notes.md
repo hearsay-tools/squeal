@@ -57,6 +57,8 @@ The remaining warm CPU after this row is in `moduleGlobs`, `resolutionInputs` an
 - `squeal status --wait 60000` on the five changed paths, revision 9 (`3bf7a89f`): no verdict yet. The edits select 788 test files (`worktree-paths.ts` is read by 780). At 23:24Z: 98 current, all pass, 690 pending (686 queued behind a running tier). The host was at load 55–100 throughout.
 - Expected drift: `test/harness/pi/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them" went PASS → FAIL at revision 9 (`cli/squeal.mjs differs from the build`). The committed bundles no longer match `src/`, because the wave rules forbid `pnpm run build` in a worker worktree. Other bundle-drift tests (`plugins/claude-code/dist`, Codex, OpenCode) will fail the same way. The coordinator rebuilds at candidate time.
 
+- Final Squeal state, recorded on the coordinator's instruction without a later recheck: revision 10 (`3bf7a89f` + notes), 180 of 788 selected test files current and passing, 608 pending, no failure except the expected bundle drift above. The 608 pending files have no verdict here; candidate CI runs the full suite.
+
 ## Proposed spec amendment (for the coordinator)
 
 Spec 015 D11, or 011 C6 under the runner part: "The runner host keeps each path's project-file and relative-path answer (`WorktreePaths`, bounded), and reuses a walked file's `fileImports` entry while its sha1 and absolute targets are those it was made from (row 011-414). Closures, keys and selections are unchanged."
