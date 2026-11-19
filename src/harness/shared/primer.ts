@@ -4,7 +4,7 @@ import {
   SQUEAL_COMMAND,
 } from "../../core/delivery/format.js";
 import type { Registration } from "../../core/types/delivery.js";
-import { PRIMER_FIRST, PRIMER_FORMS, type PrimerForm, UNNAMED_CLI } from "./primer-forms.js";
+import { FORM_TEXTS, PRIMER_FIRST, type PrimerForm, UNNAMED_CLI } from "./primer-forms.js";
 
 /**
  * The longest primer: a CLI whose name would take it past this length is
@@ -59,7 +59,7 @@ export function primer(command: string = SQUEAL_COMMAND, options: PrimerOptions 
     };
     return [
       `${PRIMER_OPENING}${PRIMER_FIRST}`,
-      ...PRIMER_FORMS[form]({ cli, Cli }),
+      ...FORM_TEXTS[form]({ cli, Cli }),
       ...(naming === "none" ? [UNNAMED_CLI] : []),
     ].join(" ");
   };

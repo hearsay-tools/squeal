@@ -20,7 +20,7 @@ export const PRIMER_FIRST =
   "checks in the background and tells you with your next tool call when one changes; a pass is silent.";
 
 /** Each form's sentences after the first. */
-export const PRIMER_FORMS: Readonly<Record<PrimerForm, (names: CliNames) => readonly string[]>> = {
+export const FORM_TEXTS: Readonly<Record<PrimerForm, (names: CliNames) => readonly string[]>> = {
   // For a harness that ships the squeal skill (Claude Code, Codex, Pi).
   skill: ({ cli, Cli }) => [
     "Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause.",
