@@ -17,6 +17,7 @@ const CHANGED = new Set([
   "docs/notes.md",
   "src/value.ts",
   "support/old.ts",
+  "support/rows.py",
   "test/helpers/make.ts",
 ]);
 
