@@ -13,6 +13,8 @@ Wave 122 W3b, shape repair, after 011-398. Issue #242 (the selection audit: `squ
 - JSON writer: `src/cli/named-print.ts`, `printNamed`, the `NamedWaitPayload` of the `selection` field (and the same object under `wait` or `named`). It gets `complete: boolean`, which is `false` exactly when `partial` is set. Additive; it sits after `paths`.
 - Help text: `src/cli/main.ts`, `squeal status <path>...`: "selection.complete false while the list may still grow (the text says "at least")".
 
+Files outside W3's named ownership (accepted by the coordinator, 2026-11-19): `src/cli/wait/named.ts`, `src/cli/wait/snapshot.ts`, `src/cli/named-selection.ts` (the additive `partial` type), `src/cli/named-path-lines.ts`, `src/cli/main.ts` (help). The JSON field is `selection.complete`, as briefed. `NamedSelection.partial` is in memory only, between the read and the writers, and never reaches the JSON (`printNamed` writes `paths`, not the selection object).
+
 `namedText` (`src/cli/status-wait-lines.ts`, W4's file) is not changed. It already prints `namedPathLines(wait.selection)`, so the new line reaches both the plain text and the `--json` stderr lines.
 
 ## Decisions the brief did not settle
