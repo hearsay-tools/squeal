@@ -5,19 +5,23 @@ import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import { dropOrphanLoadedModules } from "./loaded-modules.js";
 import type { StorePaths } from "./paths.js";
-import { deleteByKey, worktreeIdList } from "./prune-keyed.js";
 import {
   DAY_MS,
   DELETE_BATCH,
   EVICTION_BATCH,
   keptRuns,
-  LAST_COMPLETED_CHECKPOINTS,
   LIVE_KEYS,
   PRUNABLE,
   UNPROTECTED,
   UNREFERENCED_RUN,
   VACUUM_PAGES,
 } from "./prune-rules.js";
+import {
+  dropEndedCheckpoints,
+  dropOrphanTexts,
+  dropUnusedChecks,
+  keptTexts,
+} from "./prune-unused.js";
 import { expireReplaced, keptByReplaced } from "./repos/replaced.js";
 import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
 import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
@@ -108,40 +112,8 @@ export function* pruneSlices(
   yield* dropRuns(conn, paths, cutoff, counts);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
-  yield* deleteByKey(conn, {
-    table: "checkpoints",
-    key: ["id"],
-    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-      AND (worktree_id NOT IN (SELECT id FROM worktrees)
-           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-    searchParams: [cutoff],
-    removed: (n) => {
-      counts.checkpointsRemoved += n;
-    },
-  });
-
-  yield* deleteByKey(conn, {
-    table: "checks",
-    key: ["id"],
-    search: `id NOT IN (
-      SELECT check_id FROM results UNION SELECT check_id FROM known_states
-      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
-    // Per key: `results` by its key, `known_states` and `transitions` by worktree id and check id.
-    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
-      AND NOT EXISTS (SELECT 1 FROM known_states s
-        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
-      AND NOT EXISTS (SELECT 1 FROM transitions t
-        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
-      AND id NOT IN (SELECT check_id FROM consumer_views)`,
-    recheckParams: () => [
-      worktreeIdList(conn, "known_states"),
-      worktreeIdList(conn, "transitions"),
-    ],
-    removed: (n) => {
-      counts.checksRemoved += n;
-    },
-  });
+  yield* dropEndedCheckpoints(conn, cutoff, counts);
+  yield* dropUnusedChecks(conn, counts);
 
   yield* vacuum(conn);
 }
@@ -257,16 +229,7 @@ function* dropPrunable(
       );
     };
   }
-  yield* deleteByKey(conn, {
-    table: "failure_texts",
-    key: ["id"],
-    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
-      AND id NOT IN (SELECT value FROM json_each(?))`,
-    searchParams: [keptTexts(conn)],
-    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
-      AND id NOT IN (SELECT value FROM json_each(?))`,
-    recheckParams: () => [keptTexts(conn)],
-  });
+  yield* dropOrphanTexts(conn);
 }
 
 /**
@@ -324,11 +287,6 @@ function dropOrphanFailureTexts(conn: Connection): void {
        AND id NOT IN (SELECT value FROM json_each(?))`,
     keptTexts(conn),
   );
-}
-
-/** The failure texts kept replaced failures name, as a JSON list. */
-function keptTexts(conn: Connection): string {
-  return JSON.stringify(keptByReplaced(conn).texts);
 }
 
 function usedBytes(conn: Connection): number {
