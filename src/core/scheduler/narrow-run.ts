@@ -10,6 +10,7 @@ import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { classify, type FileState } from "./files.js";
 import type { GroupTiers } from "./group-tiers.js";
 import type { Ledger } from "./ledger.js";
+import { answeredOf } from "./promoted-tier.js";
 import type { Request } from "./request-intake-types.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 import { groupView } from "./slow.js";
@@ -150,14 +151,37 @@ export function narrowRequest(
         const { queued, asks } = queueNarrow(ledger, selected);
         groups.lanes(context.policy);
         groups.get(group)?.narrow.add(asks, ledger);
+        // Row 011-397 (gh-181): its queued files form a batch as a named wait's do (C15).
+        promoteNarrow(context, ledger, selected);
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
         const covered = selectedOf(ledger, group, selection);
         return { answer: { revision, queued, narrow, coveredId: id }, covered };
       },
     },
-    wake: { lane: group },
+    wake: { lane: group, checkYields: true },
   };
+}
+
+/**
+ * How long a narrow run's batch takes in a selected file that is queued
+ * after the request (C15 Lifetime): the bound the CLI waits for the request
+ * to be taken without `--wait`. Its files are queued when it is taken, and
+ * a batch's file stays in it past this deadline until it is current.
+ */
+export const NARROW_PROMOTION_MS = 10_000;
+
+/**
+ * Row 011-397 (gh-181, `research/stuck-running.md` E1): a narrow run's
+ * selected files that are queued or running and in no batch form a batch,
+ * as a named wait's do (spec 011 C15 Rank), so "which run now" is true for
+ * a file that was already queued. A current file is not queued, so it
+ * joins none and does not run again.
+ */
+function promoteNarrow(context: SchedulerContext, ledger: Ledger, ids: ReadonlySet<string>): void {
+  const refs = [...ids].flatMap((id) => ledger.files.get(id)?.ref ?? []);
+  if (refs.length === 0) return;
+  ledger.queue.promote(refs, context.now() + NARROW_PROMOTION_MS, answeredOf(context, ledger));
 }
 
 /** Group `group`'s selected files, a narrow run's covered files. */
@@ -226,6 +250,7 @@ export function narrowAnswer(
     unmatched: selection.unmatched,
     current: files.filter((file) => classify(file) === "current").length,
     notRun: files.flatMap((file) => notRunOf(file, waiting)),
+    promoted: files.filter((file) => ledger.queue.isPromoted(file.ref)).length,
   };
 }
 

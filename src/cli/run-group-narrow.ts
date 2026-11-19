@@ -164,7 +164,9 @@ export function narrowText(
   const parts = [
     ...(current > 0 ? [`${current} current`] : []),
     ...(notRun.length > 0 ? [`${notRun.length} not run`] : []),
-    ...(queued > 0 ? [`${queued} queued, which run ${when}`] : []),
+    ...(queued > 0
+      ? [`${queued} queued${promotedText(queued, narrow.promoted)}, which run ${when}`]
+      : []),
   ];
   const what =
     selected === 0
@@ -193,6 +195,17 @@ export function narrowText(
     );
   }
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Row 011-397 (gh-181): how many of the `queued` files the request moved
+ * ahead of the other queued files (011 C15 batch); nothing from a daemon
+ * before it, or with none promoted.
+ */
+function promotedText(queued: number, promoted: number | undefined): string {
+  if (promoted === undefined || promoted === 0) return "";
+  const which = promoted >= queued ? "" : ` ${promoted} of them`;
+  return `,${which} promoted ahead of the other queued files`;
 }
 
 /**

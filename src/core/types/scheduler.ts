@@ -223,6 +223,12 @@ export interface NarrowRun {
    * with why. They do not run and are not current.
    */
   readonly notRun: readonly NarrowNotRun[];
+  /**
+   * Row 011-397 (gh-181): the selected files in a named wait's batch once
+   * the request was taken, its own included (011 C15), so they run ahead of
+   * the other queued files. Absent: a daemon before it, which promoted none.
+   */
+  readonly promoted?: number;
 }
 
 /** A selected file a narrow run could not queue (review 0.1.411, B2). */

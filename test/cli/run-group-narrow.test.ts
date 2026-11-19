@@ -157,6 +157,31 @@ describe("squeal run <group> <path>... (spec 019 D6, row 019-49)", () => {
     ]);
   });
 
+  it("row 011-397: names the files the request moved ahead of the other queued files", async () => {
+    const w = worktree();
+    await daemon(w.socket, 2, {
+      selected: [ref(E2E), ref(E2E_B)],
+      reached: 0,
+      others: [],
+      promoted: 2,
+    });
+    const all = await run(["run", "e2e", E2E, E2E_B], w.root);
+    expect(all.lines[0]).toBe(
+      "Group e2e at revision 3: these paths select 2 test files; 2 queued, promoted ahead of the other queued files, which run now.",
+    );
+    closeFakeDaemons();
+    await daemon(w.socket, 2, {
+      selected: [ref(E2E), ref(E2E_B)],
+      reached: 0,
+      others: [],
+      promoted: 1,
+    });
+    const some = await run(["run", "e2e", E2E, E2E_B], w.root);
+    expect(some.lines[0]).toBe(
+      "Group e2e at revision 3: these paths select 2 test files; 2 queued, 1 of them promoted ahead of the other queued files, which run now.",
+    );
+  });
+
   it("--wait gives the selected files' verdict while the group's other file stays pending", async () => {
     const w = worktree();
     w.file(E2E, { validity: "pending", pending: "queued" });

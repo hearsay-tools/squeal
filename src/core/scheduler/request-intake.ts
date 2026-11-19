@@ -260,8 +260,10 @@ export class RequestIntake {
 
   /** Rule 6 after the record of `covered`; `allLanes` woke before the lock. */
   #wake(wake: WakeRule, covered: readonly FileState[]): void {
-    if ("lane" in wake) this.#host.wakeLane(wake.lane);
-    else if ("coveredLanes" in wake) {
+    if ("lane" in wake) {
+      this.#host.wakeLane(wake.lane);
+      if (wake.checkYields === true) this.#host.checkYields();
+    } else if ("coveredLanes" in wake) {
       const { queue } = this.#host.started().ledger;
       for (const group of new Set(covered.map((file) => queue.checkGroup(file.ref)))) {
         this.#host.wakeLane(group);
