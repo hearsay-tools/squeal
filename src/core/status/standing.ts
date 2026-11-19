@@ -80,7 +80,8 @@ export interface NamedFile {
  * Each of `files`, in their order, from one read of the store: the class
  * `readVerdict` counts it in, its verdict, and why it is pending or
  * `unknown`. `daemon` is the snapshot's liveness: only a live daemon's open
- * runs hold a file.
+ * runs hold a file. Row 011-411 (gh-250): a caller that built the snapshot
+ * passes the rows it read (`reads`), so no state is read again.
  */
 export function readNamedFiles(
   store: Store,
@@ -90,8 +91,9 @@ export function readNamedFiles(
   daemon: DaemonLiveness,
   now: EpochMs,
   load: () => LoadNow = hostLoad,
+  reads?: WorktreeReads,
 ): readonly NamedFile[] {
-  return standingsOf(store, worktreeId, root, daemon, now, load)(files);
+  return standingsOf(store, worktreeId, root, daemon, now, load, reads)(files);
 }
 
 /** What a caller already read of the worktree in its read transaction (row 011-29). */

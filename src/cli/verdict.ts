@@ -5,13 +5,14 @@ import { type FileClass, fileClassOf } from "../core/state/file-class.js";
 import { readHeader } from "../core/state/header.js";
 import { type CheckCounts, checkPartsText } from "../core/status/checks.js";
 import { readHolds } from "../core/status/holds.js";
+import type { WorktreeReads } from "../core/status/standing.js";
 import { unknownFileText } from "../core/status/unknown-files.js";
 import { plural } from "../core/text.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { StatusHold } from "../core/types/standing.js";
 import type { KnownState } from "../core/types/state.js";
-import type { StatusResult } from "../core/types/status.js";
+import type { StatusHeader, StatusResult } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import { listingMayChangeClosures } from "./listing-hold.js";
@@ -108,17 +109,31 @@ export function readClasses(
  * `null`, each file classed by `fileClassOf`. It reads every state: a failed
  * global setup is no test file's and counts for its project's files (task
  * 001-382), and no read lists a worktree's setup checks apart. `fixed` as
- * `readClasses`'.
+ * `readClasses`'. Row 011-411 (gh-250): a caller that built the snapshot
+ * passes the worktree's rows and header it read (`reads`), so no state is
+ * read again.
  */
 export function readVerdict(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly TestFileRef[] | null = null,
   fixed = false,
+  reads?: Pick<WorktreeReads, "states" | "keys" | "header">,
 ): FileVerdict {
-  const states = store.knownStates.list(worktreeId);
-  const keys = store.testFileKeys.list(worktreeId, files ?? undefined);
-  const { classes, ids, rows, checks } = tally(store, worktreeId, files, states, keys, fixed);
+  const states = reads?.states ?? store.knownStates.list(worktreeId);
+  const keys =
+    reads === undefined
+      ? store.testFileKeys.list(worktreeId, files ?? undefined)
+      : keysOf(reads.keys, files);
+  const { classes, ids, rows, checks } = tally(
+    store,
+    worktreeId,
+    files,
+    states,
+    keys,
+    fixed,
+    reads?.header,
+  );
   const failures = { tests: 0, testFiles: 0 };
   for (const id of ids) {
     for (const state of checks.get(id) ?? []) {
@@ -135,7 +150,22 @@ export function readVerdict(
   return { ...classes, failures: setups > 0 ? { ...failures, setups } : failures };
 }
 
-/** `files`' classes from `states` and `keys`, which hold at least theirs, grouped in one pass. */
+/** The rows of `files` among `keys`, or all of them when `null`. */
+function keysOf(
+  keys: readonly TestFileKeyRecord[],
+  files: readonly TestFileRef[] | null,
+): readonly TestFileKeyRecord[] {
+  if (files === null) return keys;
+  const ids = new Set(files.map(testFileId));
+  return keys.filter((row) => ids.has(testFileId(row.testFile)));
+}
+
+/**
+ * `files`' classes from `states` and `keys`, which hold at least theirs,
+ * grouped in one pass. `known`: the worktree's header, when the caller read
+ * it; of it only the revision, the refined revision and the install wait
+ * count, which no state or key row changes.
+ */
 function tally(
   store: Store,
   worktreeId: WorktreeId,
@@ -143,8 +173,9 @@ function tally(
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
   fixed: boolean,
+  known?: StatusHeader,
 ) {
-  const header = readHeader(store, worktreeId, states, keys);
+  const header = known ?? readHeader(store, worktreeId, states, keys);
   const checks = new Map<string, KnownState[]>();
   for (const state of states) {
     const id = testFileKeyOf(state.check);

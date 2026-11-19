@@ -2,12 +2,13 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { worktreeIdFor } from "../../core/fs/git-layout.js";
 import { testFileId } from "../../core/keys/reverse-index.js";
 import { daemonLiveness } from "../../core/presence/heartbeat.js";
+import { hostLoad } from "../../core/retry/load.js";
 import {
   STATUS_BUSY_TIMEOUT_MS,
   type StatusContext,
   withStatusStore,
 } from "../../core/status/open.js";
-import { buildSnapshot } from "../../core/status/snapshot.js";
+import { buildSnapshotWithReads } from "../../core/status/snapshot.js";
 import { pauseOnlyIds, readNamedFiles } from "../../core/status/standing.js";
 import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
 import type { StatusUnavailable } from "../../core/types/status.js";
@@ -148,10 +149,11 @@ function readOnce(
     step = decideStatusWait(ROW, { ...read, hold });
   }
   if (step.kind !== "end") throw new Error("snapshot: its one read ends it");
-  const result = buildSnapshot(store, root, now);
+  // Row 011-411 (gh-250): the verdict and the named files read the snapshot's rows, not every state again.
+  const { snapshot: result, reads } = buildSnapshotWithReads(store, root, now);
   // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
   const focus = snapshotFocus(store, id, root, own, checks);
-  const verdict = readVerdict(store, id, held, fixed);
+  const verdict = readVerdict(store, id, held, fixed, reads);
   return {
     outcome: step.outcome as NamedWaitEnded["outcome"],
     ...(hold === null ? {} : { hold }),
@@ -161,7 +163,7 @@ function readOnce(
     leftForPause,
     ...leftGroupsOf(root, leftForPause),
     verdict,
-    files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
+    files: readNamedFiles(store, id, root, selection.files, result.daemon, now, hostLoad, reads),
     result,
     sync: current,
     snapshot: true,

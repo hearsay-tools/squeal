@@ -53,6 +53,7 @@ import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
 import { runtimeFilesStatus } from "./runtime-files.js";
 import { slowSlotOf } from "./slot-holders.js";
 import { squealMismatchOf } from "./squeal-mismatch.js";
+import type { WorktreeReads } from "./standing.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
@@ -99,7 +100,7 @@ export function createStatusBuilder(
             `worktree ${worktreeId} is not registered in the store`,
           );
         }
-        return snapshot(store, worktreeId, worktree.root, now());
+        return snapshot(store, worktreeId, worktree.root, now()).snapshot;
       });
     },
   };
@@ -113,6 +114,21 @@ export function buildSnapshot(
   load: () => LoadNow = hostLoad,
   shell: ShellSession | null = null,
 ): StatusSnapshot {
+  return buildSnapshotWithReads(store, root, now, load, shell).snapshot;
+}
+
+/**
+ * Row 011-411 (gh-250): `buildSnapshot`, and the worktree's rows it read, so
+ * a named answer's verdict and files (`readVerdict`, `readNamedFiles`) read
+ * no state again.
+ */
+export function buildSnapshotWithReads(
+  store: Store,
+  root: AbsolutePath,
+  now: EpochMs,
+  load: () => LoadNow = hostLoad,
+  shell: ShellSession | null = null,
+): { readonly snapshot: StatusSnapshot; readonly reads: WorktreeReads } {
   return readTransaction(store, () => snapshot(store, worktreeIdFor(root), root, now, load, shell));
 }
 
@@ -123,7 +139,7 @@ function snapshot(
   now: EpochMs,
   hostLoadNow: () => LoadNow = hostLoad,
   shell: ShellSession | null = null,
-): StatusSnapshot {
+): { readonly snapshot: StatusSnapshot; readonly reads: WorktreeReads } {
   const worktree = store.worktrees.get(worktreeId);
   const revision = store.revisions.latest(worktreeId);
   const states = store.knownStates.list(worktreeId);
@@ -182,7 +198,7 @@ function snapshot(
     load,
   );
 
-  return {
+  const snapshot: StatusSnapshot = {
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
     available: true,
     worktreeId,
@@ -227,6 +243,8 @@ function snapshot(
       shell,
     ),
   };
+  const reads = { states, keys, header, runs, holds, slowSlot: slowSlot ?? null };
+  return { snapshot, reads };
 }
 
 /**
