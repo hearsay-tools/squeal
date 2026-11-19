@@ -43,14 +43,14 @@ describe("nextStep: design 011-24 section 3, row by row (011-27)", () => {
     const s: Standing = { kind: "unlisted", revision: 5, callBoundMs: 666_000 };
     expect(one(s)).toEqual({
       reason:
-        "the test runner has not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s",
+        "the test runner has not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends",
       step: "",
       command: null,
     });
     expect(one(s, false).step).toBe("`squeal status --wait 60000` waits for it");
     // Row 011-311: the runners the header names, never "the runner part".
     expect(one({ ...s, runners: ["Vitest", "pytest"] }).reason).toBe(
-      "Vitest and pytest have not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s",
+      "Vitest and pytest have not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends",
     );
   });
 

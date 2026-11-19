@@ -120,14 +120,14 @@ describe("each outstanding group names what advances it (011-29, design section 
     ]);
   });
 
-  it("the revision's runner part: its queued files, each call's bound, and the wait for it", () => {
+  it("the revision's runner part: its queued files, no run in flight, and the wait for it (row 011-398)", () => {
     const { repo, store } = repoWith([B]);
     recordRefinedApplied(store, repo.mainId, 3);
 
     expect(outstanding(repo.main)).toEqual([
       expect.stringMatching(
         new RegExp(
-          `^ {2}1 test file queued, Vitest has not listed revision 4's test files yet; it waits for the run in flight, each of its calls bounded at \\d+ s: ${B}; \`squeal status --wait 60000\` waits for it$`,
+          `^ {2}1 test file queued, Vitest has not listed revision 4's test files yet; no run is in flight, and no tier starts until the listing ends: ${B}; \`squeal status --wait 60000\` waits for it$`,
         ),
       ),
     ]);

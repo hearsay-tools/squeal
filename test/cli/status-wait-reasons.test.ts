@@ -235,7 +235,7 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
     });
   }
 
-  it("revision not listed yet, with the runner part's per-call bound (review wave-1.11 B3)", async () => {
+  it("revision not listed yet, with no run in flight: no wait for one and no call bound (row 011-398)", async () => {
     const { repo, store } = repoWith([A]);
     store.revisions.append({
       worktreeId: repo.mainId,
@@ -249,13 +249,12 @@ describe("a named wait names what holds each pending selected file (011-12)", ()
 
     const { text } = await timedOut(repo.main, [A]);
 
-    // 600 s run timeout + 6 s grace + 60 s margin, per call: the revision's 10 s age is no call's.
+    // Row 011-398 (gh-181): the run and the per-call bound are said only while a run is in flight.
     const reason =
-      "Vitest has not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s";
+      "Vitest has not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends";
     expect(text).toContain(`Pending (1):\n  1 ${reason}: ${A}\n`);
-    expect(text).toContain(
-      `revision 5 is not listed yet (1 test file queued): 1 ${reason}. Worktree:`,
-    );
+    // Row 011-398 (gh-232): a named test file is held by its own class, the listing named in its line.
+    expect(text).toContain(`1 test file still pending at revision 5: 1 ${reason}. Worktree:`);
   });
 });
 

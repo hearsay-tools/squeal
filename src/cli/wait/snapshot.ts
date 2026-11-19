@@ -21,7 +21,7 @@ import {
 } from "../status-sync.js";
 import { CheckUsageError, checkUsage, snapshotFocus } from "../status-wait-focus.js";
 import { leftGroupsOf } from "../status-wait-groups.js";
-import { holdOfWait, readClasses, readVerdict } from "../verdict.js";
+import { fixedSelection, holdOfWait, readClasses, readVerdict } from "../verdict.js";
 import { decideStatusWait } from "./decide.js";
 import { decidedOutcome, ownNamedFiles } from "./named.js";
 import type { NamedSnapshotOptions, NamedWait, NamedWaitEnded } from "./named-types.js";
@@ -110,7 +110,9 @@ function readOnce(
   const current = sync?.current() ?? { state: "unsupported" as const };
   // Row 011-234: a synced daemon's readers of the source paths, else the stored closures.
   const selection = selectNamedFiles(store, id, root, cwd, paths, syncedReaders(current));
-  const all = readClasses(store, id, selection.files);
+  // Row 011-398 (gh-232): a listing does not hold named test files it cannot change.
+  const fixed = fixedSelection(selection.paths);
+  const all = readClasses(store, id, selection.files, fixed);
   const record = store.worktrees.get(id)?.daemon ?? null;
   // The row's `daemon` cell: the raw heartbeat, alive or not.
   const liveness = daemonLiveness(record, now);
@@ -128,7 +130,7 @@ function readOnce(
   );
   const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
   const held = selection.files.filter((f) => !paused.has(testFileId(f)));
-  const classes = paused.size === 0 ? all : readClasses(store, id, held);
+  const classes = paused.size === 0 ? all : readClasses(store, id, held, fixed);
   const decided = ready ? decidedOutcome(selection, held, classes) : null;
   const read: StatusRecord = {
     store: "read",
@@ -156,7 +158,7 @@ function readOnce(
     selection,
     leftForPause,
     ...leftGroupsOf(root, leftForPause),
-    verdict: readVerdict(store, id, held),
+    verdict: readVerdict(store, id, held, fixed),
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,
     sync: current,
