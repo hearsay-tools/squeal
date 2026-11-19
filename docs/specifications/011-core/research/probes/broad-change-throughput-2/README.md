@@ -1,17 +1,17 @@
 # Probe 011-400: where the idle CPU and the selection time go in a broad change
 
-Throwaway. These scripts measured `research/broad-change-throughput-2.md` on 2026-11-19 and are kept only so the numbers can be re-run. They are not product code and nothing imports them. Most are 011-395's (`../broad-change-throughput/`), with the work directory changed to `~/work/011-400`; new or changed files say so in their header.
+Throwaway. These scripts were written for `research/broad-change-throughput-2.md` on 2026-11-19 and **have not run**: the lab VM was reserved until 09:45Z and then withdrawn by the human the same day, and this host is too loaded for measurements. They are kept so the runs can be made later. Each script was checked with `bash -n` or `node --check`; `prof.mjs` was tried on a small local profile. Expect to fix small things at the first run. They are not product code and nothing imports them. Most are 011-395's (`../broad-change-throughput/`), with the work directory changed to `~/work/011-400`; new or changed files say so in their header.
 
 ## What it ran
 
-- Machine: the lab VM the shared notes name (`~/projects/notes/topics/apptension-lab-vm.md`; 12 vCPUs, 31 GiB, Ubuntu 24.04, Node 26.13.0). Work directory `~/work/011-400/`, deleted at the end.
+- Machine: the 12-vCPU lab VM the shared notes name (its topic note under `~/projects/notes/topics/`; 31 GiB, Ubuntu 24.04, Node 26.13.0), or any quiet machine of that size. Work directory `~/work/011-400/`, deleted at the end. Read the note's Linger warning: keep one ssh session open for the whole run.
 - Squeal **0.1.563**: `git archive v0.1.563 plugins/claude-code`, unpacked on the VM. `src/core/scheduler/` and `src/core/capacity/` are the same at 0.1.565 (`git diff --stat v0.1.563 v0.1.565 -- src` touches neither).
 - Repository: a `git bundle` of `hearsay-tools/squawk` at `c11e4edf0`, branch `probe400`, cloned on the VM, `corepack pnpm@12.11.2 install --frozen-lockfile`. Vitest 4.1.10. No credentials were copied.
 - Isolation: `env.sh` gives every step a private `HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME` and `XDG_RUNTIME_DIR` under `~/work/011-400/`. All daemons of this probe share that private permit pool and user config, and nothing else on the VM.
 
 ## The budget patch (question 1, arms T and TS only)
 
-The backlog tier's wall budget is a constant, `BACKLOG_TIER_BUDGET_MS = 120_000` (`src/core/scheduler/backlog.ts:15`), bounded by half of `runner.timeoutMs`. No configuration raises it. On the coordinator's choice (request a06c9bd8), `setup.sh` copies the VM's `dist/cli/squeal.mjs` to `dist/cli/squeal-big.mjs` and changes the one line `BACKLOG_TIER_BUDGET_MS = 12e4;` to `BACKLOG_TIER_BUDGET_MS = 36e5;` (3,600 s). Arms T and TS start their daemon from that copy and set squawk's `runner` to `{"tierSize":4,"timeoutMs":7200000,"backlogTierSize":2000}` in the clone, so the budget is min(3,600 s, 7,200 s / 2) = 3,600 s and a tier may take 2,000 files. The sha256 of both files is in `results/sha256.txt`. The repository's code is unchanged.
+The backlog tier's wall budget is a constant, `BACKLOG_TIER_BUDGET_MS = 120_000` (`src/core/scheduler/backlog.ts:15`), bounded by half of `runner.timeoutMs`. No configuration raises it. On the coordinator's choice (request a06c9bd8), `setup.sh` copies the VM's `dist/cli/squeal.mjs` to `dist/cli/squeal-big.mjs` and changes the one line `BACKLOG_TIER_BUDGET_MS = 12e4;` to `BACKLOG_TIER_BUDGET_MS = 36e5;` (3,600 s). Arms T and TS start their daemon from that copy and set squawk's `runner` to `{"tierSize":4,"timeoutMs":7200000,"backlogTierSize":2000}` in the clone, so the budget is min(3,600 s, 7,200 s / 2) = 3,600 s and a tier may take 2,000 files. `setup.sh` writes the sha256 of both files to `$P/sha256.txt`; copy it to `results/` with the run. The repository's code is unchanged.
 
 ## Steps, in order
 
@@ -33,4 +33,10 @@ All commands run on the VM as `bash -lc '...'` (nvm needs a login shell). `$P` i
 
 `env.sh`, `bg.sh`, `edit.sh`, `files-of.mjs`, `queue-sample.mjs`, `timeline.mjs`, `plain.sh` (011-395's); `refusals.mjs` (row 021-19's); new: `setup.sh`, `warm.sh`, `start-daemon.sh` (011-395's, plus node args for the profile), `sample.sh` (plus `procs_running`), `wait-idle.sh` (plus `HELD`), `workers.mjs`, `run-edit.sh` (plus the worker and permit samplers), `hold.sh`, `arm.sh`, `tiers.mjs`, `q2.sh`, `refined-wait.mjs`, `prof.mjs`, `plainw.sh`, `q4.sh`, `q4.mjs`.
 
-`results/`: RESULTS
+`results/`: empty until the first run.
+
+## Before the first run
+
+- `hold.sh` feeds hook inputs to `user-prompt-submit.mjs`; check with `squeal status` that the `run-loop` group reads as waiting for the agent's pause before trusting a held arm.
+- `q2.sh` needs four paths: the broad edit (`packages/contract/src/ci-wait.ts`), one test file, a module that reaches about 300 files (pick one with `squeal reach` after the warm-up) and a small test file to copy. Check that `--cpu-prof` profiles appear in `$OUT/prof-q2` after `squeal stop`; a daemon or runner host killed rather than exited writes none.
+- `q4.sh` uses the same mid-reach module; its copies of the clone share the probe's private permit pool, as daemons of one user do.
