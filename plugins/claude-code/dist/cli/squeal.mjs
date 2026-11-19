@@ -16686,7 +16686,7 @@ function writeYieldRow(store, worktreeId, at2, row2) {
 function publishedYieldRow(store, worktreeId, daemonStartedAt) {
   return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
 }
-var TierYields, NONE2, CHECK, ADOPT;
+var UNWRITTEN_RETRY_MS, TierYields, NONE2, CHECK, ADOPT;
 var init_yields = __esm({
   "src/core/scheduler/yields.ts"() {
     "use strict";
@@ -16696,6 +16696,7 @@ var init_yields = __esm({
     init_overrun();
     init_yield_history();
     init_yield_row();
+    UNWRITTEN_RETRY_MS = 1e3;
     TierYields = class {
       /**
        * `recheck` checks the tiers in flight again under the scheduler's lock,
@@ -16731,6 +16732,13 @@ var init_yields = __esm({
       #overruns;
       /** The wake that checks the tiers again at the earliest of `#bounds` (row 011-352). */
       #wake = null;
+      /**
+       * Review 0.1.567-r2 B2: the row in memory differs from the stored one, since
+       * a calendar step's write was refused; each check writes it until one lands,
+       * and `#retry` queues a check with no other event.
+       */
+      #unwritten = false;
+      #retry = null;
       /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
       #history = new YieldHistory();
       /**
@@ -16786,7 +16794,10 @@ var init_yields = __esm({
       check(context, ledger, tiers, revision, held4, at2 = context.now()) {
         const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held: held4 };
         const decided = decideYields(at2, revision, view);
-        if (decided === null) return;
+        if (decided === null) {
+          if (this.#unwritten) this.#retryUnwritten();
+          return;
+        }
         for (const note of decided.bookkeeping) {
           if (note.kind === "claim") ledger.claims.record(note.key, note.claimed, at2);
           else ledger.queue.focused.waiting(at2);
@@ -16807,7 +16818,8 @@ var init_yields = __esm({
           else this.#bounds.set(tier.runId, bound);
         }
         const overran = this.#overruns.check(context, tiers, at2);
-        if (decided.changed || overran) this.#publish(context, at2);
+        if (this.#unwritten) this.#retryUnwritten();
+        if (decided.changed || overran || this.#unwritten) this.#publish(context, at2);
         this.#arm(context);
       }
       /**
@@ -16875,11 +16887,19 @@ var init_yields = __esm({
           withBusySliceSync(0, () => this.#publish(context, at2));
         } catch (error) {
           if (!isBusy(error)) throw error;
+          this.#unwritten = true;
+          this.#retryUnwritten();
         }
+      }
+      /** Queues a check `UNWRITTEN_RETRY_MS` from now, which writes the owed row (review 0.1.567-r2 B2). */
+      #retryUnwritten() {
+        this.#retry ??= this.wakes.slot("yield-bound", () => this.recheck());
+        this.#retry.after(UNWRITTEN_RETRY_MS);
       }
       /** The scheduler closed: no check comes again. */
       close() {
         this.#bounds.clear();
+        this.#retry?.clear();
         this.#overruns.close();
         this.#disarm();
       }
@@ -16910,6 +16930,8 @@ var init_yields = __esm({
         const stamp2 = context.steps?.stamp(at2) ?? at2;
         const row2 = { ...this.#history.row(this.#standing), overruns: this.#overruns.published };
         writeYieldRow(store, worktreeId, stamp2, row2);
+        this.#unwritten = false;
+        this.#retry?.clear();
       }
     };
     NONE2 = { reach: "none" };
