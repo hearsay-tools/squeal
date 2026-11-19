@@ -5,6 +5,7 @@ import type { TierOverrun } from "../types/standing.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { cancels, laneOf, type Tier } from "./tiers.js";
+import type { WakeSlot, Wakes } from "./wakes.js";
 import { unfinished } from "./yield-waits.js";
 
 /*
@@ -46,12 +47,14 @@ export function overrunAfterMs(tier: Tier, durationMs: number | null): number {
  * know when a file of it started. On the step's calendar: the start is
  * moved by the calendar steps since (`CalendarSteps.since`, row 011-377).
  * `null` when it never does here: no file is left, it is slow, of a group's
- * lane or beside another tier, or its runner does not cancel a run, so its
- * lane has no second instance (C4 step 5, row 011-269).
+ * lane or beside another tier, it was cancelled, or its runner does not
+ * cancel a run, so its lane has no second instance (C4 step 5, row 011-269).
  */
 export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
   const { startedAt } = tier;
   if (startedAt === undefined || tier.kind === "slow" || tier.beside === true) return null;
+  // A cancelled tier is ending: its cancel is forced after the runner's grace (D12).
+  if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
   const first = tier.files[0]?.file.ref;
   if (first === undefined || !cancels(context, first)) return null;
@@ -123,27 +126,31 @@ function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOv
 
 /**
  * The tiers in flight that overrun, by run id, as `TierYields` publishes
- * them in the `yields` row, and when each other tier will: `TierYields`
- * checks the tiers again then, with no other event (row 011-399).
+ * them in the `yields` row, and when each other tier will: its own wake in
+ * the scheduler's loop (reason `yield-bound`) checks the tiers again then,
+ * with no other event (row 011-399). Each delay is stated from a reading
+ * the caller took (a tier's start, a check's): this reads no clock.
  */
 export class Overruns {
   readonly #published = new Map<string, TierOverrun>();
   readonly #bounds = new Map<string, EpochMs>();
+  #wake: WakeSlot | null = null;
+
+  constructor(
+    private readonly wakes: Wakes,
+    private readonly recheck: () => void,
+  ) {}
 
   get published(): ReadonlyMap<string, TierOverrun> {
     return this.#published;
   }
 
-  bounds(): EpochMs[] {
-    return [...this.#bounds.values()];
-  }
-
-  /** `tier` started: whether it has a time to overrun at, a bound. */
-  started(context: SchedulerContext, tier: Tier): boolean {
+  /** `tier` started: the wake comes when it would overrun, from its start's reading. */
+  started(context: SchedulerContext, tier: Tier): void {
     const when = overrunAt(context, tier);
-    if (when === null) return false;
+    if (when === null || tier.startedAt === undefined) return;
     this.#bounds.set(tier.runId, when);
-    return true;
+    this.#arm(tier.startedAt as EpochMs);
   }
 
   /**
@@ -165,23 +172,30 @@ export class Overruns {
       this.#published.set(tier.runId, tierOverrun(context, tier, when));
       changed = true;
     }
+    this.#arm(at);
     return changed;
   }
 
-  /** `tier` ended: whether it was published, and whether it had a bound. */
-  ended(tier: Tier): { readonly published: boolean; readonly bounded: boolean } {
-    return {
-      published: this.#published.delete(tier.runId),
-      bounded: this.#bounds.delete(tier.runId),
-    };
+  /** `tier` ended: whether it was published. */
+  ended(tier: Tier): boolean {
+    if (this.#bounds.delete(tier.runId) && this.#bounds.size === 0) this.#wake?.clear();
+    return this.#published.delete(tier.runId);
   }
 
-  /** The calendar stepped `ms` (row 011-377): each bound moves with it. */
+  /** The calendar stepped `ms` (row 011-377): each bound moves; the wake counts elapsed time. */
   shift(ms: number): void {
     for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
   }
 
-  clear(): void {
+  close(): void {
     this.#bounds.clear();
+    this.#wake?.clear();
+  }
+
+  /** States the wake at the earliest bound from `at`, a reading the caller took; none without one. */
+  #arm(at: EpochMs): void {
+    this.#wake ??= this.wakes.slot("yield-bound", () => this.recheck());
+    if (this.#bounds.size === 0) this.#wake.clear();
+    else this.#wake.after(Math.min(...this.#bounds.values()) - at);
   }
 }
