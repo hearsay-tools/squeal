@@ -40,3 +40,14 @@ Backlog tiers, the backlog's turn after a batch tier, baselines and catch-up sti
 - Direct, `timeout 900 pnpm exec vitest run --maxWorkers=2 test/scheduler/batch-*.test.ts test/scheduler/host-gate.test.ts test/scheduler/backlog-slots.test.ts test/scheduler/promoted-tier*.test.ts test/scheduler/local-permits.test.ts test/scheduler/edit-beside-backlog.test.ts test/capacity/`: 21 files, 110 tests passed.
 - `test/e2e/**`: no file names `scheduler/capacity`, `tier-pass` or `tier-pick`; nothing to run there.
 - `squeal status --wait 60000 <changed paths>`: see the last section of this file.
+
+## squeal status --wait evidence
+
+Revision 7 (both commits), 2026-11-19 22:30–22:39 UTC, host load average 64 to 110 on 24 CPUs (other coordinators' work, not made on purpose). `capacity.ts` selects 1195 test files, near the whole suite, so no verdict arrived within the wait: after 9 waits of 60 s, 25 current and passing (among them `test/scheduler/batch-ceiling.test.ts`, `host-gate.test.ts`, `local-permits.test.ts`, `test/capacity/pool-failure.test.ts`, `test/runner-host/remote/lane-admission.test.ts`), 1170 pending.
+
+Known failures 3, each with "no pass at these inputs on record", recorded at load 3.5 to 4.1 per CPU:
+- `test/cli/status-at-run-killed.test.ts` (a killed `status --at --run` leaves no process)
+- `test/cli/status-paths-paused.test.ts` (exits within about 1 s of a paused daemon)
+- `test/runner-host/idle-host.test.ts` (an idle runner host closes)
+
+All three are timing checks with no named wait's batch; the change touches only the pool kind a batch tier asks with. I did not rerun them at this load. Not proven unrelated: the coordinator should read them again on the candidate (`squeal retry <file> --reason load`, or CI).
