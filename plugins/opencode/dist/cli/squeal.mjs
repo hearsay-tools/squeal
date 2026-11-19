@@ -106416,7 +106416,7 @@ function redEvidence(red, redErrors = []) {
   if (!redCounts(red, redErrors) || red.end !== "fail") return null;
   return red.failures.some((f) => failureKind(f, redErrors) === "thrown") ? "thrown" : "assertion";
 }
-function verdictOf3(red, green, redErrors = []) {
+function redVerdict(red, redErrors) {
   if (red.end === "unknown")
     return {
       verdict: "not comparable",
@@ -106434,6 +106434,11 @@ function verdictOf3(red, green, redErrors = []) {
       verdict: "red for another reason",
       reason: KIND_TEXT[other ?? "error"]
     };
+  return null;
+}
+function verdictOf3(red, green, redErrors = []) {
+  const settled2 = redVerdict(red, redErrors);
+  if (settled2 !== null) return settled2;
   if (green?.end === "unknown" && green.reason === NOT_RUN_BUDGET)
     return { verdict: "not comparable", reason: "budget" };
   if (green === null || green.end === "unknown") {
@@ -106443,7 +106448,7 @@ function verdictOf3(red, green, redErrors = []) {
   if (green.end === "pass")
     return {
       verdict: "proven",
-      reason: redEvidence(red, redErrors) === "thrown" ? thrownReason(red.failures, redErrors) : null
+      reason: red.end === "fail" && redEvidence(red, redErrors) === "thrown" ? thrownReason(red.failures, redErrors) : null
     };
   const how2 = green.end === "fail" ? "failed" : green.end === "timeout" ? "timed out" : "not prepared";
   return { verdict: "not green", reason: `the green side ${how2}` };
