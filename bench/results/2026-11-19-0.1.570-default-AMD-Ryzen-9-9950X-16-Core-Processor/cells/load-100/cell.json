@@ -1,0 +1,61 @@
+{
+  "name": "load-100",
+  "files": 500,
+  "worktrees": 1,
+  "load": 100,
+  "phases": {
+    "plainVitest": {
+      "ms": 81709.675877,
+      "code": 0
+    },
+    "startMain": {
+      "ms": 919.770107999997,
+      "code": 0,
+      "out": "Squeal daemon spawned for /home/user/results/cells/load-100/work/wt0\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it\nComplexity: no file counted yet.\nMore: `squeal st"
+    },
+    "runAll": {
+      "ms": 295259.505749,
+      "code": 0,
+      "tail": "\nCheckpoint 40cbd635-b993-424c-9555-6d4d60912624 started at revision 0: 500 test files to run, 0 already current\n\nRevision: 0\nKnown failures: 0; all 500 test files current\nAffected checks: 3500 passed (3000 tests, 500 test files loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; 318 files wait for coverage records; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 2 notes\n",
+      "busyMean": 0.9998477369767859
+    },
+    "startOthers": [],
+    "idle": {
+      "ms": 60000,
+      "daemons": 1,
+      "perDaemonCpuPct": [
+        2.550000000000002
+      ]
+    },
+    "sessions": [
+      {
+        "worktree": 0,
+        "ms": 1088738.2968549998,
+        "code": 0
+      }
+    ],
+    "sessionsBusyMean": 0.9998121987486777,
+    "sessionDaemonCpuS": [
+      46.27000000000001
+    ],
+    "edits": 19
+  },
+  "store": {
+    "storeBytes": 5918720,
+    "walBytes": 4618552,
+    "codeBytes": 7147520,
+    "runsDirs": 97,
+    "rows": {
+      "results": 5012,
+      "runs": 99,
+      "revisions": 19,
+      "transitions": 240
+    },
+    "longWrites": 9,
+    "lockFailures": 0
+  },
+  "daemonRss": {
+    "maxDaemonBytes": 366227456,
+    "maxTreeBytes": 1216073728
+  }
+}

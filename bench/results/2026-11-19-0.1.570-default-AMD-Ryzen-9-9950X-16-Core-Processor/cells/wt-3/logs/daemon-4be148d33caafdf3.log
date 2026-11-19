@@ -1,0 +1,15 @@
+2026-11-19T21:07:01.686Z [102564] squeal daemon: long write: store.sqlite write lock held 291 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-19T21:07:02.289Z [102564] squeal daemon: serving /home/user/results/cells/wt-3/work/wt2 on /home/user/results/cells/wt-3/work/run/squeal-4be148d33caafdf3.sock
+2026-11-19T21:08:03.149Z [102564] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 162 to 83 MiB in a 25 ms pause
+2026-11-19T21:09:13.150Z [102564] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 107 to 103 MiB in a 17 ms pause
+2026-11-19T21:10:14.301Z [102564] squeal daemon: busy, heap in use 64 MiB over twice the last live size of 22 MiB: a last-resort GC took private memory from 282 to 148 MiB in a 94 ms pause; 26 MiB of heap in use after it
+2026-11-19T21:11:19.260Z [102564] squeal daemon: busy, heap in use 67 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 268 to 143 MiB in a 39 ms pause; 27 MiB of heap in use after it
+2026-11-19T21:12:23.176Z [102564] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 151 to 128 MiB in a 19 ms pause
+2026-11-19T21:14:03.209Z [102564] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 239 to 129 MiB in a 42 ms pause
+2026-11-19T21:15:23.360Z [102564] squeal daemon: busy, heap in use 97 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 258 to 163 MiB in a 56 ms pause; 47 MiB of heap in use after it
+2026-11-19T21:15:23.789Z [102564] squeal daemon: long write: store.sqlite write lock held 414 ms by #write < #record; 6203 rows written
+2026-11-19T21:15:26.976Z [102564] squeal daemon: long write: code.sqlite write lock held 292 ms by Object.putParts < squeal.mjs:72164 < AsyncLocalStorage.run; 1 row written
+2026-11-19T21:15:27.647Z [102564] squeal daemon: long write: code.sqlite write lock held 372 ms by runCoverageStep < squeal.mjs:73749 < Pace.measure; 357 rows written
+2026-11-19T21:15:42.447Z [102564] squeal daemon: long write: store.sqlite write lock held 256 ms by #write < #record; 6203 rows written
+2026-11-19T21:16:01.339Z [102564] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-19T21:16:01.525Z [102564] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

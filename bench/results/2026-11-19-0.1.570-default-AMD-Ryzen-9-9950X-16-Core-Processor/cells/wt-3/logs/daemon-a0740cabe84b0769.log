@@ -1,0 +1,21 @@
+2026-11-19T21:06:20.945Z [98440] squeal daemon: serving /home/user/results/cells/wt-3/work/wt0 on /home/user/results/cells/wt-3/work/run/squeal-a0740cabe84b0769.sock
+2026-11-19T21:06:20.971Z [98440] squeal daemon: full integrity check: ok
+2026-11-19T21:06:34.808Z [98440] squeal daemon: busy, heap in use 96 MiB over twice the last live size of 32 MiB: a last-resort GC took private memory from 194 to 139 MiB in a 35 ms pause; 42 MiB of heap in use after it
+2026-11-19T21:07:59.078Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 132 to 128 MiB in a 19 ms pause
+2026-11-19T21:09:29.091Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 197 to 128 MiB in a 19 ms pause
+2026-11-19T21:10:34.105Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 193 to 129 MiB in a 25 ms pause
+2026-11-19T21:11:44.106Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 213 to 130 MiB in a 24 ms pause
+2026-11-19T21:12:54.127Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 188 to 130 MiB in a 41 ms pause
+2026-11-19T21:14:14.126Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 222 to 130 MiB in a 36 ms pause
+2026-11-19T21:15:28.813Z [98440] squeal daemon: the background ceiling refused a backlog tier: 3 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-19T21:15:28.815Z [98440] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-19T21:15:54.214Z [98440] squeal daemon: the background ceiling let a backlog tier start after 25 s and 26 refused looks
+2026-11-19T21:15:54.215Z [98440] squeal daemon: the pool granted the vitest lane's tier after 25 s of waiting for CPU
+2026-11-19T21:17:14.339Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 229 to 131 MiB in a 61 ms pause
+2026-11-19T21:18:34.905Z [98440] squeal daemon: busy, heap in use 59 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 218 to 148 MiB in a 141 ms pause; 29 MiB of heap in use after it
+2026-11-19T21:19:39.321Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 154 to 132 MiB in a 33 ms pause
+2026-11-19T21:20:04.502Z [98440] squeal daemon: long write: store.sqlite write lock held 347 ms by reconcileBatch < process.processTicksAndRejections < #pass; 7291 rows written
+2026-11-19T21:21:09.587Z [98440] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 243 to 132 MiB in a 77 ms pause
+2026-11-19T21:22:31.640Z [98440] squeal daemon: busy, heap in use 108 MiB over twice the last live size of 25 MiB: a last-resort GC took private memory from 220 to 166 MiB in a 118 ms pause; 49 MiB of heap in use after it
+2026-11-19T21:22:32.124Z [98440] squeal daemon: long write: store.sqlite write lock held 443 ms by #write < #record; 6203 rows written
+2026-11-19T21:22:58.653Z [98440] squeal daemon: long write: store.sqlite write lock held 855 ms by #write < #record; 6203 rows written

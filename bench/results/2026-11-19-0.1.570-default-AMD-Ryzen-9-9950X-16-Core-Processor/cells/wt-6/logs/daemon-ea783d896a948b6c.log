@@ -1,0 +1,17 @@
+2026-11-19T21:25:01.560Z [134891] squeal daemon: long write: store.sqlite write lock held 451 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-19T21:25:02.507Z [134891] squeal daemon: serving /home/user/results/cells/wt-6/work/wt3 on /home/user/results/cells/wt-6/work/run/squeal-ea783d896a948b6c.sock
+2026-11-19T21:26:03.490Z [134891] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 152 to 82 MiB in a 141 ms pause
+2026-11-19T21:28:03.498Z [134891] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 122 to 119 MiB in a 25 ms pause
+2026-11-19T21:29:08.525Z [134891] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 171 to 120 MiB in a 46 ms pause
+2026-11-19T21:30:11.296Z [134891] squeal daemon: busy, heap in use 70 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 263 to 143 MiB in a 45 ms pause; 27 MiB of heap in use after it
+2026-11-19T21:31:23.526Z [134891] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 202 to 130 MiB in a 31 ms pause
+2026-11-19T21:31:37.717Z [134891] squeal daemon: long write: store.sqlite write lock held 254 ms by reconcileBatch < #pass < withBusySlice; 7809 rows written
+2026-11-19T21:32:43.556Z [134891] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 199 to 131 MiB in a 53 ms pause
+2026-11-19T21:33:38.021Z [134891] squeal daemon: the pool refused the vitest lane's tier: it waits for CPU (3 of 4 cores in use; Squeal's daemons hold 3 of 3 test slots); the daemon asks again every 2 s
+2026-11-19T21:33:42.031Z [134891] squeal daemon: the background ceiling refused a backlog tier: 3.2 busy CPUs, ceiling 3 (0.75 of 4 CPUs)
+2026-11-19T21:34:14.288Z [134891] squeal daemon: the background ceiling let a backlog tier start after 32 s and 17 refused looks
+2026-11-19T21:34:14.290Z [134891] squeal daemon: the pool granted the vitest lane's tier after 36 s of waiting for CPU
+2026-11-19T21:36:41.927Z [134891] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-19T21:36:45.377Z [134891] squeal daemon: coverage: 200 completed test files got no record since this daemon started: 200 closed (the writer closed first); the last: test/m163.test.ts: the writer closed first
+2026-11-19T21:36:46.256Z [134891] squeal daemon: the store was busy for 0.4 s (another connection held its write lock); ran once it was free: the daemon's record
+2026-11-19T21:36:46.298Z [134891] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended

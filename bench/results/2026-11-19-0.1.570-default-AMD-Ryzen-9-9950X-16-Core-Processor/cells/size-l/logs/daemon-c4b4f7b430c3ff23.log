@@ -1,0 +1,27 @@
+2026-11-19T20:49:42.007Z [55835] squeal daemon: serving /home/user/results/cells/size-l/work/wt0 on /home/user/results/cells/size-l/work/run/squeal-c4b4f7b430c3ff23.sock
+2026-11-19T20:49:42.056Z [55835] squeal daemon: full integrity check: ok
+2026-11-19T20:49:58.009Z [55835] squeal daemon: busy, heap in use 126 MiB over twice the last live size of 56 MiB: a last-resort GC took private memory from 488 to 261 MiB in a 96 ms pause; 124 MiB of heap in use after it
+2026-11-19T20:51:03.516Z [55835] squeal daemon: busy, heap in use 313 MiB over twice the last live size of 124 MiB: a last-resort GC took private memory from 562 to 311 MiB in a 134 ms pause; 131 MiB of heap in use after it
+2026-11-19T20:51:03.804Z [55835] squeal daemon: long write: store.sqlite write lock held 268 ms by #write < #record; 9202 rows written
+2026-11-19T20:52:06.076Z [55835] squeal daemon: long write: store.sqlite write lock held 251 ms by #write < #record; 9202 rows written
+2026-11-19T20:52:23.113Z [55835] squeal daemon: long write: store.sqlite write lock held 260 ms by #write < #record; 9203 rows written
+2026-11-19T20:53:26.153Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 502 to 182 MiB in a 60 ms pause
+2026-11-19T20:54:46.169Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 413 to 182 MiB in a 67 ms pause
+2026-11-19T20:56:16.204Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 471 to 194 MiB in a 65 ms pause
+2026-11-19T20:57:26.262Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 426 to 181 MiB in a 113 ms pause
+2026-11-19T20:58:51.206Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 465 to 182 MiB in a 53 ms pause
+2026-11-19T21:00:05.958Z [55835] squeal daemon: busy, heap in use 121 MiB over twice the last live size of 45 MiB: a last-resort GC took private memory from 420 to 210 MiB in a 82 ms pause; 61 MiB of heap in use after it
+2026-11-19T21:01:20.632Z [55835] squeal daemon: long write: store.sqlite write lock held 560 ms by reconcileBatch < #pass < withBusySlice; 31361 rows written
+2026-11-19T21:02:26.455Z [55835] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 371 to 184 MiB in a 81 ms pause
+2026-11-19T21:03:40.379Z [55835] squeal daemon: busy, heap in use 335 MiB over twice the last live size of 45 MiB: a last-resort GC took private memory from 553 to 293 MiB in a 138 ms pause; 140 MiB of heap in use after it
+2026-11-19T21:03:40.778Z [55835] squeal daemon: long write: store.sqlite write lock held 378 ms by #write < #record; 6203 rows written
+2026-11-19T21:04:01.859Z [55835] squeal daemon: long write: store.sqlite write lock held 330 ms by #write < #record; 6203 rows written
+2026-11-19T21:04:22.309Z [55835] squeal daemon: long write: store.sqlite write lock held 422 ms by #write < #record; 6203 rows written
+2026-11-19T21:04:39.657Z [55835] squeal daemon: long write: store.sqlite write lock held 269 ms by #write < #record; 6203 rows written
+2026-11-19T21:04:54.961Z [55835] squeal daemon: long write: store.sqlite write lock held 266 ms by #write < #record; 6203 rows written
+2026-11-19T21:05:10.306Z [55835] squeal daemon: long write: store.sqlite write lock held 262 ms by #write < #record; 6203 rows written
+2026-11-19T21:05:24.613Z [55835] squeal daemon: busy, heap in use 329 MiB over twice the last live size of 140 MiB: a last-resort GC took private memory from 584 to 313 MiB in a 111 ms pause; 141 MiB of heap in use after it
+2026-11-19T21:05:24.953Z [55835] squeal daemon: long write: store.sqlite write lock held 327 ms by #write < #record; 6203 rows written
+2026-11-19T21:05:39.404Z [55835] squeal daemon: long write: store.sqlite write lock held 285 ms by #write < #record; 6203 rows written
+2026-11-19T21:05:53.908Z [55835] squeal daemon: long write: store.sqlite write lock held 279 ms by #write < #record; 6203 rows written
+2026-11-19T21:06:09.267Z [55835] squeal daemon: long write: store.sqlite write lock held 251 ms by #write < #record; 6079 rows written

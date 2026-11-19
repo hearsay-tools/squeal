@@ -1,0 +1,6 @@
+[2026-11-19T21:43:13.591Z] load-50: plain vitest run
+[2026-11-19T21:44:04.928Z] load-50: squeal start + run --all
+[2026-11-19T21:45:04.932Z] load-50: idle
+[2026-11-19T21:46:04.937Z] load-50: sessions
+[2026-11-19T22:02:47.480Z] load-50: collect
+[2026-11-19T22:02:51.104Z] load-50: done

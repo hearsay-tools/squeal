@@ -1,0 +1,14 @@
+2026-11-19T21:25:02.107Z [135089] squeal daemon: long write: store.sqlite write lock held 353 ms by #write < Ledger.commit < retryWhileBusy; 15001 rows written
+2026-11-19T21:25:03.207Z [135089] squeal daemon: serving /home/user/results/cells/wt-6/work/wt5 on /home/user/results/cells/wt-6/work/run/squeal-635c2d3393dcd1ee.sock
+2026-11-19T21:26:06.751Z [135089] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 157 to 83 MiB in a 153 ms pause
+2026-11-19T21:27:19.724Z [135089] squeal daemon: busy, heap in use 61 MiB over twice the last live size of 21 MiB: a last-resort GC took private memory from 188 to 133 MiB in a 60 ms pause; 26 MiB of heap in use after it
+2026-11-19T21:28:28.745Z [135089] squeal daemon: busy, heap in use 82 MiB over twice the last live size of 26 MiB: a last-resort GC took private memory from 264 to 144 MiB in a 62 ms pause; 26 MiB of heap in use after it
+2026-11-19T21:29:46.685Z [135089] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 208 to 131 MiB in a 42 ms pause
+2026-11-19T21:31:01.700Z [135089] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 192 to 131 MiB in a 49 ms pause
+2026-11-19T21:32:06.689Z [135089] squeal daemon: no tier for 60 s: a last-resort GC took private memory from 203 to 132 MiB in a 31 ms pause
+2026-11-19T21:33:19.780Z [135089] squeal daemon: busy, heap in use 48 MiB over twice the last live size of 24 MiB: a last-resort GC took private memory from 227 to 167 MiB in a 51 ms pause; 47 MiB of heap in use after it
+2026-11-19T21:34:12.339Z [135089] squeal daemon: long write: store.sqlite write lock held 374 ms by #write < #record; 6203 rows written
+2026-11-19T21:35:14.391Z [135089] squeal daemon: long write: store.sqlite write lock held 600 ms by #write < #record; 2980 rows written
+2026-11-19T21:35:19.752Z [135089] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
+2026-11-19T21:35:19.824Z [135089] squeal daemon: coverage: 9 completed test files got no record since this daemon started: 9 closed (the writer closed first); the last: test/m371.test.ts: the writer closed first
+2026-11-19T21:35:20.310Z [135089] squeal daemon: daemon stopped: no session registered for 3 s after its last one ended
