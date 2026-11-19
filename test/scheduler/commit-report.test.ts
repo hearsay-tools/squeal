@@ -176,7 +176,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     const report = await reportedOnce(side, head(root));
     expect(report).toMatchObject({ lint: { findings: 2, notDetermined: 0, running: 0 } });
     expect(commitReportText(report)).toBe(
-      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 2 findings; 1 test file not determined (unstaged changes)`,
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint (eslint): 2 findings in 1 of 1 file; 1 test file not determined (unstaged changes)`,
     );
 
     // Review 0.1.396 B2: a rule change left unstaged, linted (the record names its config).
@@ -188,7 +188,7 @@ describe("commit reports from the HEAD move (019-13)", { timeout: 60_000 }, () =
     const unstaged = await reportedOnce(side, head(root));
     expect(unstaged).toMatchObject({ lint: { findings: 0, notDetermined: 1, running: 0 } });
     expect(commitReportText(unstaged)).toBe(
-      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint 0 findings, 1 file not determined`,
+      `Commit ${head(root).slice(0, 7)}: 0 known failures; lint (eslint): 1 of 1 file not determined`,
     );
   });
 

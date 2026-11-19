@@ -77,6 +77,28 @@ export interface CommitLintCounts {
   readonly notDetermined: number;
   /** Lint checks whose file is the committed blob and is not linted yet. */
   readonly running: number;
+  /**
+   * Row 017-32 (gh-219, gh-237): the same counts per tool that checked a
+   * file the commit changed, by tool name. A tool has one check per file,
+   * so each count is of files. Absent in reports stored before 017-32.
+   */
+  readonly tools?: readonly CommitLintToolCounts[];
+  /**
+   * Row 017-32 (gh-170): why no tool checked a file the commit changed,
+   * when `tools` is empty: `off: <reason>`, the pass has not listed the
+   * changed files yet, or no changed file is linted.
+   */
+  readonly notRun?: string;
+}
+
+/** Row 017-32: one tool's part of a commit's lint counts, in files. */
+export interface CommitLintToolCounts {
+  readonly tool: string;
+  /** The files the commit changed that the tool has a check for: the others' total. */
+  readonly files: number;
+  readonly findings: number;
+  readonly notDetermined: number;
+  readonly running: number;
 }
 
 interface CommitReportBase {
@@ -164,7 +186,7 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
   if (tests === null) return null;
   const pick = <K extends string>(counts: Record<K, number>, keys: readonly K[]) =>
     Object.fromEntries(keys.map((key) => [key, counts[key]])) as Record<K, number>;
-  const lint = value.lint === undefined ? undefined : countsOf(value.lint, LINT_KEYS);
+  const lint = value.lint === undefined ? undefined : lintOf(value.lint);
   if (lint === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
@@ -179,13 +201,37 @@ export function parseCommitReport(raw: unknown): CommitReport | null {
       ...(isCount(unanswered) && unanswered > 0 ? { unanswered } : {}),
       ...(files.length > 0 ? { notDeterminedFiles: files } : {}),
     },
-    ...(lint === undefined ? {} : { lint: pick(lint, LINT_KEYS) }),
+    ...(lint === undefined ? {} : { lint }),
     ...(waiting === null ? {} : { waiting }),
     ...(value.updated === true ? { updated: true as const } : {}),
   };
 }
 
 const isText = (value: unknown): value is string => typeof value === "string";
+
+const TOOL_KEYS = ["files", ...LINT_KEYS] as const;
+
+/** A stored lint part, with its tools and `notRun` when stored (row 017-32); `null` when not one. */
+function lintOf(raw: unknown): CommitLintCounts | null {
+  const counts = countsOf(raw, LINT_KEYS);
+  if (counts === null) return null;
+  const { tools, notRun } = raw as Record<string, unknown>;
+  const own = Array.isArray(tools)
+    ? tools.flatMap((entry: unknown) => {
+        const tool = countsOf(entry, TOOL_KEYS);
+        const name = (entry as Record<string, unknown> | null)?.tool;
+        if (tool === null || !isText(name)) return [];
+        return [{ tool: name, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+      })
+    : null;
+  return {
+    findings: counts.findings,
+    notDetermined: counts.notDetermined,
+    running: counts.running,
+    ...(own === null ? {} : { tools: own as CommitLintToolCounts[] }),
+    ...(isText(notRun) ? { notRun } : {}),
+  };
+}
 
 /** Entries of `raw` that have each of `keys` as a string, with those keys only. */
 function entriesOf<K extends string>(raw: unknown, keys: readonly K[]): Record<K, string>[] {

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CommitSide,
-  type LintView,
-  lintCounts,
-  readLintCounts,
-} from "../../src/core/commit/lint.js";
+import { readLintCounts } from "../../src/core/commit/lint.js";
+import { type CommitSide, type LintView, lintCounts } from "../../src/core/commit/lint-tally.js";
 import { committedBlobs } from "../../src/core/commit/tree.js";
 import { holdsBlob, type KeyInputs } from "../../src/core/lint/pass/keys.js";
 import {
@@ -13,6 +9,7 @@ import {
   readInputs,
   writeCursor,
   writeInputs,
+  writeOff,
   writeProgram,
 } from "../../src/core/lint/pass/records.js";
 import type { LintKnownState } from "../../src/core/types/lint.js";
@@ -30,6 +27,7 @@ import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "../lint/pas
  */
 
 const W = "w1";
+const oxlint = (path: string) => ({ ...check(path), tool: "oxlint" as const });
 const CONFIG = "eslint.config.js";
 
 function state(
@@ -102,7 +100,7 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
         "src/b.ts": 3,
       },
     );
-    expect(lintCounts(v, side(committedOf("src/a.ts", "src/b.ts", "src/c.ts")))).toEqual({
+    expect(lintCounts(v, side(committedOf("src/a.ts", "src/b.ts", "src/c.ts")))).toMatchObject({
       findings: 5,
       notDetermined: 0,
       running: 0,
@@ -122,7 +120,7 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
       { "src/d.ts": null },
     );
     const committed = committedOf("src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts");
-    expect(lintCounts(v, side(committed, ["src/a.ts"]))).toEqual({
+    expect(lintCounts(v, side(committed, ["src/a.ts"]))).toMatchObject({
       findings: 1,
       notDetermined: 4,
       running: 0,
@@ -131,7 +129,7 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
 
   it("pending at a file that does not differ is running; at one that differs, not determined", () => {
     const v = view([state("src/a.ts", "pending"), state("src/b.ts", "pending")]);
-    expect(lintCounts(v, side(committedOf("src/a.ts", "src/b.ts"), ["src/b.ts"]))).toEqual({
+    expect(lintCounts(v, side(committedOf("src/a.ts", "src/b.ts"), ["src/b.ts"]))).toMatchObject({
       findings: 0,
       notDetermined: 1,
       running: 1,
@@ -141,14 +139,14 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
   it("a whole-program check counts while nothing differs, and is not determined once a file its keys hold the bytes of does", () => {
     const v = view([state("src/a.ts", "fail"), state("src/b.ts", "fail")], ["src/a.ts"]);
     const committed = committedOf("src/a.ts", "src/b.ts");
-    expect(lintCounts(v, side(committed))).toEqual({
+    expect(lintCounts(v, side(committed))).toMatchObject({
       findings: 2,
       notDetermined: 0,
       running: 0,
     });
     const notDetermined = { findings: 1, notDetermined: 1, running: 0 };
     for (const path of ["src/other.ts", "data.json", "src/view.vue"]) {
-      expect(lintCounts(v, side(committed, [path])), path).toEqual(notDetermined);
+      expect(lintCounts(v, side(committed, [path])), path).toMatchObject(notDetermined);
     }
   });
 
@@ -171,12 +169,12 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
     const committed = committedOf("src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts");
     const changed = ["src/a.ts", "src/b.ts", "src/gone.ts"];
     // c was never linted and d waits: neither is the commit's change.
-    expect(lintCounts(v, side(committed, [], false, changed))).toEqual({
+    expect(lintCounts(v, side(committed, [], false, changed))).toMatchObject({
       findings: 1,
       notDetermined: 0,
       running: 1,
     });
-    expect(lintCounts(v, side(committed, [], false, []))).toEqual({
+    expect(lintCounts(v, side(committed, [], false, []))).toMatchObject({
       findings: 0,
       notDetermined: 0,
       running: 0,
@@ -192,12 +190,14 @@ describe("lintCounts (019-13 slice 2, 019-21)", () => {
     const committed = committedOf("src/a.ts", "src/b.ts", "src/c.ts");
     const none = { findings: 0, notDetermined: 3, running: 0 };
     // The source blobs are the commit's: only the config tells the results apart.
-    expect(lintCounts(view(states, [], {}, made("blob-edited")), side(committed))).toEqual(none);
-    expect(lintCounts(view(states, [], {}, made(null)), side(committed))).toEqual(none);
-    expect(lintCounts(view(states, [], {}, null), side(committed))).toEqual(none);
+    expect(lintCounts(view(states, [], {}, made("blob-edited")), side(committed))).toMatchObject(
+      none,
+    );
+    expect(lintCounts(view(states, [], {}, made(null)), side(committed))).toMatchObject(none);
+    expect(lintCounts(view(states, [], {}, null), side(committed))).toMatchObject(none);
     // A config the commit does not hold, and the keys read none: the same.
     const without = new Map([...committed].filter(([p]) => p !== CONFIG));
-    expect(lintCounts(view(states, [], {}, made(null)), side(without))).toEqual({
+    expect(lintCounts(view(states, [], {}, made(null)), side(without))).toMatchObject({
       findings: 1,
       notDetermined: 0,
       running: 1,
@@ -245,19 +245,19 @@ describe("readLintCounts from the lint store (019-13 slice 2)", () => {
     writeCursor(store.meta, scope, { revision: 1, environment: "e1" });
     writeInputs(store.meta, scope, { environment: "e1", ...made() });
     const committed = committedOf("src/a.ts", "src/b.ts");
-    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed))).toEqual({
+    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed))).toMatchObject({
       findings: 4,
       notDetermined: 0,
       running: 0,
     });
-    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed, ["src/c.ts"]))).toEqual({
+    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed, ["src/c.ts"]))).toMatchObject({
       findings: 2,
       notDetermined: 1,
       running: 0,
     });
     // A cursor an older daemon moved, with no record of its own: no evidence.
     writeCursor(store.meta, scope, { revision: 2, environment: "e2" });
-    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed))).toEqual({
+    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed))).toMatchObject({
       findings: 0,
       notDetermined: 2,
       running: 0,
@@ -274,6 +274,53 @@ describe("readLintCounts from the lint store (019-13 slice 2)", () => {
       findings: 0,
       notDetermined: 0,
       running: 0,
+      tools: [],
+      notRun: "the lint pass has not listed the changed files yet",
+    });
+  });
+
+  it("says why no tool checked a changed file: off, or none of them is linted (017-32, gh-170)", () => {
+    const dir = commonDir();
+    const store = open(dir);
+    const committed = committedOf("src/a.ts", "README.md");
+    const notRun = () => readLintCounts(dir, LINT_ON.lint, W, side(committed))?.notRun;
+    for (const tool of ["eslint", "oxlint"] as const) {
+      writeOff(store.meta, lintScope(W, tool), `${tool} is not installed`, tool);
+    }
+    expect(notRun()).toMatch(/^off: (eslint|oxlint) is not installed$/);
+    writeOff(store.meta, lintScope(W, "oxlint"), null, "oxlint");
+    writeCursor(store.meta, lintScope(W, "oxlint"), { revision: 1, environment: "e1" });
+    expect(notRun()).toBe("no changed file is linted");
+    // A check of a changed file: the tool names the part, and no reason is given.
+    store.states.upsertMany([{ ...state("src/a.ts", "pending"), check: oxlint("src/a.ts") }]);
+    expect(readLintCounts(dir, LINT_ON.lint, W, side(committed))).toEqual({
+      findings: 0,
+      notDetermined: 1,
+      running: 0,
+      tools: [{ tool: "oxlint", files: 1, findings: 0, notDetermined: 1, running: 0 }],
+    });
+  });
+});
+
+describe("lint counts per tool, in files (017-32, gh-219)", () => {
+  it("counts each tool's files apart, sorted by tool; the totals stay counts of checks", () => {
+    const states = [
+      state("src/a.ts", "fail"),
+      state("src/b.ts", "pending"),
+      { ...state("src/a.ts", "pass"), check: oxlint("src/a.ts") },
+      { ...state("src/b.ts", "fail"), check: oxlint("src/b.ts") },
+      { ...state("src/c.ts", "fail", {}, "blob-worktree"), check: oxlint("src/c.ts") },
+    ];
+    const v = view(states, [], { "src/a.ts": 2, "src/b.ts": 1 });
+    const committed = committedOf("src/a.ts", "src/b.ts", "src/c.ts");
+    expect(lintCounts(v, side(committed, ["src/c.ts"]))).toEqual({
+      findings: 3,
+      notDetermined: 1,
+      running: 1,
+      tools: [
+        { tool: "eslint", files: 2, findings: 2, notDetermined: 0, running: 1 },
+        { tool: "oxlint", files: 3, findings: 1, notDetermined: 1, running: 0 },
+      ],
     });
   });
 });
@@ -308,7 +355,7 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
     tree.revise();
     pass.nudge();
     await pass.idle();
-    expect(await countsAt(tree, head, ["src/b.js"])).toEqual({
+    expect(await countsAt(tree, head, ["src/b.js"])).toMatchObject({
       findings: 1,
       notDetermined: 1,
       running: 0,
@@ -317,7 +364,7 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
     // A config edit not yet linted: the results are still the committed config's.
     provider.off.add("no-undef");
     tree.write(CONFIG, "export default [{ rules: { 'no-undef': 'off' } }];\n");
-    expect(await countsAt(tree, head, ["src/b.js", CONFIG])).toEqual({
+    expect(await countsAt(tree, head, ["src/b.js", CONFIG])).toMatchObject({
       findings: 1,
       notDetermined: 1,
       running: 0,
@@ -328,7 +375,7 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
     pass.nudge();
     await pass.idle();
     expect(outcomes(store, tree)).toEqual({ "src/a.js": "pass", "src/b.js": "fail" });
-    expect(await countsAt(tree, head, ["src/b.js", CONFIG])).toEqual({
+    expect(await countsAt(tree, head, ["src/b.js", CONFIG])).toMatchObject({
       findings: 0,
       notDetermined: 2,
       running: 0,
@@ -336,7 +383,7 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
 
     // The edited config committed: its results are the new commit's.
     const next = tree.commit(CONFIG);
-    expect(await countsAt(tree, next, ["src/b.js"])).toEqual({
+    expect(await countsAt(tree, next, ["src/b.js"])).toMatchObject({
       findings: 0,
       notDetermined: 1,
       running: 0,
@@ -352,10 +399,18 @@ describe("lint evidence through the lint pass (019-21, review 0.1.396 B2)", () =
     pass.nudge();
     await pass.idle();
     const head = tree.commit();
-    expect(await countsAt(tree, head, [])).toEqual({ findings: 1, notDetermined: 0, running: 0 });
+    expect(await countsAt(tree, head, [])).toMatchObject({
+      findings: 1,
+      notDetermined: 0,
+      running: 0,
+    });
     const store = storeOf(tree);
     store.meta.delete(inputsKey(lintScope(tree.id, "eslint")));
-    expect(await countsAt(tree, head, [])).toEqual({ findings: 0, notDetermined: 1, running: 0 });
+    expect(await countsAt(tree, head, [])).toMatchObject({
+      findings: 0,
+      notDetermined: 1,
+      running: 0,
+    });
     await pass.close();
   });
 });

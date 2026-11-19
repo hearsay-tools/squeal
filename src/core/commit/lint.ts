@@ -1,142 +1,40 @@
 import { heldForCommit, passOff, readReleased, release } from "../lint/pass/commit-entry.js";
-import { holdsBlob, type KeyInputs } from "../lint/pass/keys.js";
+import { holdsBlob } from "../lint/pass/keys.js";
 import { heldBy } from "../lint/pass/moment.js";
 import { lintScope, readCursor, readInputs, readProgram } from "../lint/pass/records.js";
 import type { LintStore } from "../lint/store/types.js";
-import { findingsOf } from "../lint/surface/snapshot.js";
+import { findingsOf, reasonsOf } from "../lint/surface/snapshot.js";
 import { openForReading, readOrNull, withLint } from "../lint/surface/source.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
 import type { LintKnownState, LintTool } from "../types/lint.js";
 import type { Policy } from "../types/policy.js";
+import { type CommitSide, type LintView, lintCounts, lintTally } from "./lint-tally.js";
 import type { CommitLintCounts, WaitingLintCheck } from "./report.js";
 
-/** What the lint store says of one worktree's lint checks, for one commit. */
-export interface LintView {
-  readonly states: readonly LintKnownState[];
-  /** True for a whole-program check: its key reads every program file (017 D5). */
-  wholeProgram(state: LintKnownState): boolean;
-  /**
-   * Row 019-28: true when the whole-program keys of the check's tool hold
-   * the bytes of `path`: a module file or one the tool lints (`holdsBlob`
-   * with the extensions its program recorded).
-   */
-  segmentHolds(state: LintKnownState, path: RelativePath): boolean;
-  /** The findings of a check's judged result; `null` when that result is not stored. */
-  findings(state: LintKnownState): number | null;
-  /**
-   * What the keys of the check's tool were made of beside each file's own
-   * bytes (row 019-21); `null` when the lint pass recorded none for its
-   * cursor.
-   */
-  inputs(state: LintKnownState): KeyInputs | null;
-}
-
-/** What the commit says beside its blobs. */
-export interface CommitSide {
-  readonly committed: ReadonlyMap<RelativePath, FileHash>;
-  /**
-   * Row 019-28: the paths the commit changed (`changedPaths`); only the
-   * checks of those the commit holds count.
-   */
-  readonly changed: ReadonlySet<RelativePath>;
-  /** The paths whose working-tree file is not the commit's (`differingPaths`). */
-  readonly differing: ReadonlySet<RelativePath>;
-  /**
-   * True when one of `differing` is an environment input of the worktree's
-   * tests (`environmentDiffers`): an installed lockfile and its patches are
-   * among them, and they move the install fingerprint a lint key may hold.
-   */
-  readonly environment: boolean;
-}
-
-/** Whether keys made of `inputs` are the commit's: each blob is the committed one. */
-function commitsInputs(inputs: KeyInputs | null, side: CommitSide): boolean {
-  if (inputs === null || (inputs.installed && side.environment)) return false;
-  return inputs.files.every(([path, blob]) => (side.committed.get(path) ?? null) === blob);
-}
-
 /**
- * Row 019-13 slice 2 (spec 019 D5 step 2), file-local only, with row 019-21
- * (review 0.1.396 B2): a lint check is the commit's when it is judged, not
- * stale and not `unknown`, at the committed blob of its file, and the
- * config files and their closure its tool's keys were made of are each the
- * committed blob (`LintView.inputs`); its findings then count. Inputs not
- * recorded are no evidence. A whole-program check is not determined while
- * a path whose bytes its keys hold (`segmentHolds`) differs between the
- * commit and the working tree; with none, the program is the commit's. A
- * check pending at a file that does not differ, under the commit's inputs,
- * is still running; any other check is not determined, as is a failure
- * whose findings are not stored. Row 019-28 (lessons P4): only the checks
- * of the files the commit changed and holds count (`CommitSide.changed`).
+ * Row 017-32 (gh-170): why no tool checked a file of the commit, when none
+ * did: lint is off for its reason, no tool's pass listed the files yet (or
+ * the paths a commit released for it, `waits`), or the commit changed no
+ * file a tool lints. `counts` unchanged otherwise.
  */
-export function lintCounts(view: LintView, side: CommitSide): CommitLintCounts {
-  return lintTally(view, side, () => false).counts;
-}
-
-/** The counts of one report's lint checks, and those it counts as running. */
-export interface LintTally {
-  readonly counts: CommitLintCounts;
-  readonly running: readonly LintKnownState[];
-}
-
-/**
- * `lintCounts`, and the checks counted as running. A pending check that
- * waits for a commit or a request none gave it (`held`, row 019-22) runs
- * for no one: it is not determined.
- */
-export function lintTally(
-  view: LintView,
-  side: CommitSide,
-  held: (state: LintKnownState) => boolean,
-): LintTally {
-  const { committed, differing, changed } = side;
-  const counts = { findings: 0, notDetermined: 0, running: 0 };
-  const running: LintKnownState[] = [];
-  const verdicts = new Map<KeyInputs | null, boolean>();
-  const ownInputs = (state: LintKnownState) => {
-    const inputs = view.inputs(state);
-    let verdict = verdicts.get(inputs);
-    if (verdict === undefined) {
-      verdict = commitsInputs(inputs, side);
-      verdicts.set(inputs, verdict);
-    }
-    return verdict;
-  };
-  const programs = new Map<LintKnownState["check"]["tool"], boolean>();
-  const programDiffers = (state: LintKnownState) => {
-    const { tool } = state.check;
-    let verdict = programs.get(tool);
-    if (verdict === undefined) {
-      verdict = [...differing].some((path) => view.segmentHolds(state, path));
-      programs.set(tool, verdict);
-    }
-    return verdict;
-  };
-  for (const state of view.states) {
-    const { path } = state.check;
-    if (!changed.has(path) || !committed.has(path)) continue;
-    if (state.outcome === "pending" && !differing.has(path) && ownInputs(state) && !held(state)) {
-      counts.running += 1;
-      running.push(state);
-      continue;
-    }
-    const judged = state.judged;
-    const own =
-      judged !== null &&
-      !state.stale &&
-      state.outcome !== "unknown" &&
-      state.outcome !== "pending" &&
-      judged.blob === (committed.get(path) ?? null) &&
-      ownInputs(state);
-    const found = own && judged.outcome === "fail" ? view.findings(state) : 0;
-    if (!own || (view.wholeProgram(state) && programDiffers(state)) || found === null) {
-      counts.notDetermined += 1;
-      continue;
-    }
-    counts.findings += found;
-  }
-  return { counts, running };
+function withNotRun(
+  store: LintStore,
+  worktreeId: WorktreeId,
+  tools: readonly LintTool[],
+  counts: CommitLintCounts,
+  waits = false,
+): CommitLintCounts {
+  if ((counts.tools?.length ?? 0) > 0) return counts;
+  const { off } = reasonsOf(store, worktreeId);
+  const keyed = tools.some((tool) => readCursor(store.meta, lintScope(worktreeId, tool)) !== null);
+  const notRun =
+    off !== undefined
+      ? `off: ${off}`
+      : keyed && !waits
+        ? "no changed file is linted"
+        : "the lint pass has not listed the changed files yet";
+  return { ...counts, notRun };
 }
 
 /** `read(scope)` once per scope of a state's tool. */
@@ -188,7 +86,9 @@ export function readLintCounts(
     policy: () => (lint.enabled ? lint : null),
     open: () => openForReading(commonDir, lint),
   };
-  const read = withLint(source, ({ store }) => lintCounts(lintViewOf(store, worktreeId), side));
+  const read = withLint(source, ({ store }) =>
+    withNotRun(store, worktreeId, lint.tools, lintCounts(lintViewOf(store, worktreeId), side)),
+  );
   return readOrNull(read) ?? undefined;
 }
 
@@ -255,7 +155,10 @@ export function commitLint(
     for (const [tool, paths] of released) {
       for (const path of changed) if (paths.has(path)) wait(tool, path, paths.get(path));
     }
-    return { counts, waiting: [...waiting.values()] };
+    return {
+      counts: withNotRun(store, worktreeId, lint.tools, counts, waiting.size > 0),
+      waiting: [...waiting.values()],
+    };
   });
   return readOrNull(read) ?? undefined;
 }

@@ -36,6 +36,15 @@ const A = "test/a.test.ts";
 const FILES: CatchUpFile[] = [{ path: A, ms: 10, imports: ["src/a.ts"] }];
 const X = "src/x.js";
 const Y = "src/y.js";
+/** One eslint file's part of a report's lint counts (row 017-32). */
+const eslint = (counts: { notDetermined?: number; running?: number }) => ({
+  tool: "eslint",
+  files: 1,
+  findings: 0,
+  notDetermined: 0,
+  running: 0,
+  ...counts,
+});
 const LINT_AT_COMMIT: CheckGroup = { name: "lint", lint: true, at: "commit" };
 const POLICY: Policy = {
   ...DEFAULT_POLICY,
@@ -138,7 +147,9 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(stored).toHaveLength(2);
     expect(stored[1]).toMatchObject({ commit, updated: true, lint: { findings: 1, running: 0 } });
     expect(stored[1]).not.toHaveProperty("waiting");
-    expect(commitReportText(stored[1] as CommitReport)).toContain("lint 1 finding");
+    expect(commitReportText(stored[1] as CommitReport)).toContain(
+      "lint (eslint): 1 finding in 1 of 1 file",
+    );
 
     // An edit, then a commit that does not hold it: nothing lints.
     writeFileSync(join(root, Y), "bad semi\n");
@@ -170,7 +181,7 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(stored).toHaveLength(2);
     expect(stored[1]).toMatchObject({ commit, updated: true, lint: { findings: 1, running: 0 } });
     expect(commitReportText(stored[1] as CommitReport)).toBe(
-      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 1 finding`,
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint (eslint): 1 finding in 1 of 1 file`,
     );
     expect(errors).toEqual([]);
   });
@@ -194,8 +205,8 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(lintedPaths(provider), "nothing lints before the next commit").toEqual([]);
     // y, which the commit did not change, is in neither (019-28, P4).
     expect(stored.map((r) => ("lint" in r ? r.lint : r))).toEqual([
-      { findings: 0, notDetermined: 0, running: 1 },
-      { findings: 0, notDetermined: 1, running: 0 },
+      { findings: 0, notDetermined: 0, running: 1, tools: [eslint({ running: 1 })] },
+      { findings: 0, notDetermined: 1, running: 0, tools: [eslint({ notDetermined: 1 })] },
     ]);
     expect(stored[1]).toMatchObject({ updated: true });
     expect(errors).toEqual([]);
@@ -222,7 +233,7 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     });
     const first = commitReportText(stored[0] as CommitReport);
     expect(first).toBe(
-      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 0 findings, 1 file still running`,
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint (eslint): 1 of 1 file still running`,
     );
 
     // Lint ends while a's run is still held: the update comes when lint records.
@@ -231,7 +242,7 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     expect(side.current(A), "a's run is still held").toBe(false);
     expect(stored).toHaveLength(2);
     expect(commitReportText(stored[1] as CommitReport)).toBe(
-      `Commit ${commit.slice(0, 7)}: 0 known failures; lint 1 finding`,
+      `Commit ${commit.slice(0, 7)}: 0 known failures; lint (eslint): 1 finding in 1 of 1 file`,
     );
     side.runner.release();
     await settle();
@@ -259,13 +270,15 @@ describe("a lint group at commit (019-22)", { timeout: 60_000 }, () => {
     writeFileSync(join(root, "notes.md"), "scratch\n");
     writeFileSync(join(root, "run.log"), "output\n");
     await watch(side, "notes.md", "run.log");
-    expect(await commitX("bad no-undef\n")).toBe(": 0 known failures; lint 1 finding");
+    expect(await commitX("bad no-undef\n")).toBe(
+      ": 0 known failures; lint (eslint): 1 finding in 1 of 1 file",
+    );
 
     // A module file the commit lacks: the whole-program check is not the commit's.
     writeFileSync(join(root, "src/z.js"), "export const z = 1;\n");
     await watch(side, "src/z.js");
     expect(await commitX("bad semi\n")).toBe(
-      ": 0 known failures; lint 0 findings, 1 file not determined",
+      ": 0 known failures; lint (eslint): 1 of 1 file not determined",
     );
     expect(lintedPaths(provider)).toContain(X);
     expect(errors).toEqual([]);
