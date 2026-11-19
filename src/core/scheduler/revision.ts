@@ -43,6 +43,20 @@ export interface ContentRekey {
    * revision added, finds it is (`Queue.toCatchUp`, review wave 5, B1).
    */
   readonly recent?: readonly TestFileRef[];
+  /**
+   * Row 011-396: the revisions a runner part stands for when a newer one
+   * superseded a queued one (`supersede`), each counted on its own for
+   * catch-up (`isCatchUp`). Absent: the one revision it re-keyed.
+   */
+  readonly edits?: readonly RevisionEdit[];
+}
+
+/** One revision a superseding runner part stands for (`ContentRekey.edits`). */
+export interface RevisionEdit {
+  /** The paths it changed. */
+  readonly paths: ReadonlySet<RelativePath>;
+  /** Its content part found it catch-up, or it changed only editor scratch files. */
+  readonly catchUp: boolean;
 }
 
 /**

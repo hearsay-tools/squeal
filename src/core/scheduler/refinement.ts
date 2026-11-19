@@ -17,6 +17,7 @@ import {
   applyListing,
   type ContentRekey,
   isCatchUp,
+  type RevisionEdit,
   storeClosures,
   toInvalidatedPath,
 } from "./revision.js";
@@ -42,6 +43,8 @@ export interface RunnerPart {
   readonly catchUp?: boolean;
   /** `ContentRekey.recent`: the files the content part left recent. */
   readonly recent?: readonly TestFileRef[];
+  /** `ContentRekey.edits`: the revisions a superseding part stands for (row 011-396). */
+  readonly edits?: readonly RevisionEdit[];
   /**
    * The edit cut (`fetchEditCut`, task 011-25); absent when `affected`
    * gave no answer or the revision is catch-up, so every reached file stays
@@ -83,7 +86,8 @@ export interface RunnerPart {
  * wait for them no longer than the bound.
  *
  * Refinements run one at a time and in revision order, so each sees the
- * runner as every earlier one left it. They run beside the tiers in flight
+ * runner as every earlier one left it. A queued one that has not started
+ * stands for every later revision too (`supersede`, row 011-396). They run beside the tiers in flight
  * (task 001-140), whose stability check covers what changes meanwhile.
  */
 export async function fetchRunnerPart(
@@ -195,8 +199,7 @@ export async function fetchRunnerPart(
     environments,
     listed,
     direct: new Set((affected?.direct ?? []).map(testFileId)),
-    ...(content.catchUp === true ? { catchUp: true } : {}),
-    ...(content.recent === undefined ? {} : { recent: content.recent }),
+    ...contentFields(content),
     ...(cut === undefined ? {} : { cut }),
     reresolved: [...reresolve.values()],
     closures,
@@ -272,9 +275,7 @@ export async function applyRunnerPart(
   touch(part.reresolved);
   // 016 D4: read once the refresh above took another worktree's marks, over the closures applied.
   const observedDirect = observedDirectOf(keys, changed, part.direct);
-  // The listing and the closures count what the content part could not (review wave 5, B1).
-  const catchUp =
-    part.catchUp === true || (keyedAt !== undefined && isCatchUp(context, ledger, changed));
+  const catchUp = isCatchUpPart(context, ledger, part, changed, keyedAt);
   if (catchUp && part.catchUp !== true && keyedAt !== undefined) {
     // What another revision's edit made recent stays so (`Queue.toCatchUp`).
     for (const ref of part.recent ?? []) ledger.queue.toCatchUp(ref, keyedAt);
@@ -297,6 +298,34 @@ export async function applyRunnerPart(
     quietCaughtUp(context, ledger, ids);
   }
   return stale;
+}
+
+/** What the runner part carries of its content part. */
+function contentFields(content: ContentRekey): Pick<RunnerPart, "catchUp" | "recent" | "edits"> {
+  return {
+    ...(content.catchUp === true ? { catchUp: true } : {}),
+    ...(content.recent === undefined ? {} : { recent: content.recent }),
+    ...(content.edits === undefined ? {} : { edits: content.edits }),
+  };
+}
+
+/**
+ * Whether the part's revision is catch-up: the listing and the closures
+ * count what the content part could not (review wave 5, B1). A superseding
+ * part's revisions count each on their own, never their union (row
+ * 011-396, review wave 5, B3).
+ */
+function isCatchUpPart(
+  context: SchedulerContext,
+  ledger: Ledger,
+  part: RunnerPart,
+  changed: ReadonlySet<RelativePath>,
+  keyedAt: RevisionNumber | undefined,
+): boolean {
+  if (part.catchUp === true) return true;
+  if (keyedAt === undefined) return false;
+  const edits = part.edits ?? [{ paths: changed, catchUp: false }];
+  return edits.every((edit) => edit.catchUp || isCatchUp(context, ledger, edit.paths));
 }
 
 /** The test files as the runner part's listing leaves them. */

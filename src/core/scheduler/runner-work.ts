@@ -10,6 +10,7 @@ import { type ApplyHost, applyRefinement, recordRefined } from "./refine-apply.j
 import { fetchRunnerPart, recheckRunner } from "./refinement.js";
 import type { ContentRekey } from "./revision.js";
 import { runnerPartBound } from "./runner-work-bound.js";
+import { type QueuedRefine, supersede } from "./superseded.js";
 
 /**
  * Work that calls the runner outside a tier: the refinement of a revision, a
@@ -25,6 +26,8 @@ interface RunnerTask {
   readonly touched?: Set<RelativePath>;
   /** A recheck (`queueRecheck`), which stands in for no refinement. */
   readonly recheck?: true;
+  /** A revision's runner part (`queueRefine`) until it starts; a newer revision supersedes it. */
+  queued?: QueuedRefine;
 }
 
 /** A runner-only refinement re-keys no content. */
@@ -67,17 +70,34 @@ export class RunnerWork {
     return this.#refining;
   }
 
-  /** Queues the runner part of `revision`, and of the files its batch touched (`queueTouched`). */
+  /**
+   * Queues the runner part of `revision`, and of the files its batch touched
+   * (`queueTouched`). One of an earlier revision queued and not started yet
+   * takes it instead (`supersede`, row 011-396): while edits come faster
+   * than the runner lists them, only the newest revision is listed, beside
+   * the one in flight.
+   */
   queueRefine(
     revision: Revision,
     content: ContentRekey,
     touched: readonly RelativePath[] = [],
   ): void {
-    this.#tasks.push({
-      run: () => this.#refine(revision, content, revision.number, touched),
+    const newer: QueuedRefine = { revision, content, touched };
+    const waiting = this.#tasks.find((task) => task.queued !== undefined);
+    if (waiting?.queued !== undefined) {
+      waiting.queued = supersede(waiting.queued, newer);
+      return;
+    }
+    const task: RunnerTask = {
+      run: () => {
+        const { revision: last, content: found, touched: paths } = task.queued ?? newer;
+        return this.#refine(last, found, last.number, paths);
+      },
       cancel: () => {},
       refine: true,
-    });
+      queued: newer,
+    };
+    this.#tasks.push(task);
   }
 
   /**
