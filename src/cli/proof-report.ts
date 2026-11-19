@@ -12,6 +12,7 @@ import {
 import { errorLines } from "../core/status/format-why-replaced.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import { callLines, importLines, rerunLines } from "./proof-report-imports.js";
 import type { SideFile } from "./proof-side.js";
 
 /*
@@ -22,8 +23,8 @@ import type { SideFile } from "./proof-side.js";
  * request. Row 023-11: the conditions, `--repeat`, each side's run count
  * and the rerun line for runs the budget left not started. The JSON is
  * versioned as `status --at`'s is. Row 023-21 (D5.2, issue #247): the
- * `--with` paths per side, a warning per `--with` path no named test
- * imports, an unchanged test's changed imports and the rerun with them.
+ * `--with` and `--source` paths per side, and an unchanged test's
+ * changed imports with the stop's reruns (`proof-report-imports.ts`).
  */
 
 export interface ProofFile {
@@ -80,8 +81,14 @@ export interface ProofReport {
   readonly with: readonly RelativePath[];
   /** Row 023-21: the `--with` paths no named test's closure at `HEAD` loads. */
   readonly withUnused: readonly RelativePath[];
-  /** Row 023-21: the same command with `--with` for each changed helper; `null` when no file stopped. */
+  /** Row 023-21: the `--source` paths, from the root: changed imports settled as product code. */
+  readonly source: readonly RelativePath[];
+  /** Row 023-21: the `--source` paths that are no changed import of an unchanged named test. */
+  readonly sourceUnused: readonly RelativePath[];
+  /** Row 023-21: the stop's rerun with `--with` for each unsettled import; `null` when no file stopped. */
   readonly withRerun: string | null;
+  /** Row 023-21: the stop's rerun with `--source` for those not shown to be test code; `null` when none. */
+  readonly sourceRerun: string | null;
 }
 
 const short = (sha: string) => sha.slice(0, 9);
@@ -151,8 +158,7 @@ export function formatProof(report: ProofReport): string {
     `squeal proof (case ${report.case ?? "not decided"}): base ${short(report.base)}, HEAD ${short(report.head)}`,
     `Red: ${report.red === null ? "none" : sideText(report.red, report.with)}. Green: ${sideText(report.green, report.with)}; ${checkoutText(report.checkoutMs)}.`,
   ];
-  for (const path of report.withUnused)
-    lines.push(`Warning: --with ${path}: no named test imports it at ${short(report.head)}.`);
+  lines.push(...callLines(report));
   const words = conditionWords(report.conditions);
   if (words.length > 0 || report.repeat > 1)
     lines.push(
@@ -178,7 +184,7 @@ export function formatProof(report: ProofReport): string {
       lines.push(...errorLines(failure.errors).map((line) => `  ${line.replace(/^ {2}/, INDENT)}`));
     }
     const notRun = `not run (${file.greenNotRun ?? "not needed"})`;
-    lines.push(...importLines(file, report));
+    lines.push(...importLines(file.imports, report));
     lines.push(`  green: ${file.green === null ? notRun : endText(file.green)}`);
     const control = controlLine(file, report);
     if (control !== null) lines.push(`  ${control}`);
@@ -189,36 +195,8 @@ export function formatProof(report: ProofReport): string {
   lines.push(`${parts.join(", ")}; ${report.runs} run${report.runs === 1 ? "" : "s"} (${used})`);
   if (report.rerun !== null)
     lines.push(`${report.notRun} not run (budget). A rerun that fits: ${report.rerun}`);
-  if (report.withRerun !== null)
-    lines.push(
-      `Rerun with the changed test code copied from the test version: ${report.withRerun}`,
-    );
+  lines.push(...rerunLines(report));
   return `${lines.join("\n")}\n`;
-}
-
-/**
- * Row 023-21: an unchanged test's changed imports. A stopped file names
- * the evidence for each import taken for test code, then its source
- * changes; a file that ran with only source changes says what it compared
- * as source, so a helper Squeal took for source is never compared
- * silently (review wave-14 B1).
- */
-function importLines(file: ProofFile, report: ProofReport): string[] {
-  const imports = file.imports;
-  if (imports === null) return [];
-  const testCode = imports.testCode.map((t) => `${t.path} (${t.why})`).join(", ");
-  const lines = testCode === "" ? [] : [`  test code it imports: ${testCode}`];
-  if (imports.sources.length === 0) return lines;
-  const sources = imports.sources.join(", ");
-  const how =
-    report.case === "source"
-      ? "source changes the proof compares"
-      : `source changes, at ${short(report.head)} on both sides`;
-  if (stops(imports)) return [...lines, `  ${how}: ${sources}`];
-  if (imports.testSide) return [];
-  return [
-    `  the test is unchanged since ${short(report.base)}; ${how}: ${sources} (if one is test code, rerun with --with <path>)`,
-  ];
 }
 
 /**
@@ -279,10 +257,12 @@ export function jsonProof(report: ProofReport): string {
     case: report.case,
     base: report.base,
     head: report.head,
-    red: report.red === null ? null : { ...report.red, with: report.with },
-    green: { ...report.green, with: report.with },
+    red: report.red === null ? null : { ...report.red, with: report.with, source: report.source },
+    green: { ...report.green, with: report.with, source: report.source },
     withUnused: report.withUnused,
+    sourceUnused: report.sourceUnused,
     withRerun: report.withRerun,
+    sourceRerun: report.sourceRerun,
     dirty: report.dirty,
     timeoutSeconds: report.timeoutSeconds,
     usedMs: report.usedMs,
@@ -315,7 +295,7 @@ export function jsonProof(report: ProofReport): string {
         file.imports === null
           ? null
           : {
-              testCode: file.imports.testCode,
+              unsettled: file.imports.unsettled,
               sources: file.imports.sources,
               stopped: stops(file.imports),
             },

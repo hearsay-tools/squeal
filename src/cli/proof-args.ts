@@ -8,7 +8,8 @@ import type { ProofCase } from "../core/proof/sides.js";
  * condition. A `--without` path is placed (repository or `HOME`) once the
  * worktree is known (`placeWithout`). Row 023-21 (D5.2, issue #247):
  * `--with <path>`, repeatable, copies a helper from the test version as
- * test code, with no verdict of its own.
+ * test code, with no verdict of its own; `--source <path>`, repeatable,
+ * settles a changed import as product code for the call.
  */
 
 /** The default budget, the checkouts and installs included, as D4.6's. */
@@ -35,6 +36,8 @@ export interface ProofArgs {
   readonly repeat?: number;
   /** Row 023-21 (D5.2): each `--with` path as given, copied from the test version as test code. */
   readonly with?: readonly string[];
+  /** Row 023-21 (D5.2, "A: stop when unsure"): each `--source` path as given, a changed import settled as product code. */
+  readonly source?: readonly string[];
   /** Row 023-22 (D5.5): each `--red-error` text; a red failure whose message holds one counts. */
   readonly redErrors?: readonly string[];
 }
@@ -51,6 +54,7 @@ const VALUED = [
   "--home-keep",
   "--repeat",
   "--with",
+  "--source",
   "--red-error",
 ] as const;
 type Valued = (typeof VALUED)[number];
@@ -59,6 +63,7 @@ const REPEATABLE: ReadonlySet<Valued> = new Set([
   "--without",
   "--home-keep",
   "--with",
+  "--source",
   "--red-error",
 ]);
 
@@ -129,6 +134,7 @@ function checked(
     without,
     homeKeep: values.get("--home-keep") ?? [],
     with: values.get("--with") ?? [],
+    source: values.get("--source") ?? [],
     ...red,
     ...counts,
   };

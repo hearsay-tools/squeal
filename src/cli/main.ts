@@ -92,8 +92,8 @@ Usage:
                                 tells its estimate first
   squeal proof <test file>... --base <commit> [--case source|test|dependency]
                [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
-               [--with <path>]... [--repeat <n>] [--red-error <text>]...
-               [--timeout <seconds>] [--json]
+               [--repeat <n>] [--with <path>]... [--source <path>]...
+               [--red-error <text>]... [--timeout <seconds>] [--json]
                                 A red proof per named test file over committed HEAD:
                                 red is the test at HEAD over the code at --base
                                 (source) or the test at --base over the code at HEAD
@@ -107,11 +107,13 @@ Usage:
                                 links). A side under a condition always runs and is
                                 never stored; dependency needs one. --repeat runs red
                                 up to n times (to its first failure) and green n times
-                                (1 to 100). --with copies a helper the test imports
-                                from the test version as test code, with no verdict
-                                of its own; a named test unchanged since --base whose
-                                imported helpers changed runs nothing and names them
-                                with that rerun. Red counts on an assertion, or
+                                (1 to 100). A named test unchanged since --base whose
+                                changed imports are not shown to be product code
+                                (imported by a file that is not test code) runs
+                                nothing and names them with two reruns: --with copies
+                                one from the test version as test code, with no
+                                verdict of its own; --source compares one as product
+                                code. Red counts on an assertion, or
                                 labelled on an error the test body threw; engine
                                 errors (TypeError, ReferenceError, SyntaxError) and
                                 import, setup, hook or timeout failures are red for

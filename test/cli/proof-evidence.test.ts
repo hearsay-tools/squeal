@@ -151,6 +151,8 @@ describe("squeal proof red evidence (row 023-22, #244)", { timeout: 240_000 }, (
       "vitest.config.mjs": 'export default { test: { include: ["src/*.test.ts"] } };\n',
       [thin]: 'import { runKit } from "./rows.testkit";\nrunKit();\n',
       "src/value.ts": "export const value = 1;\n",
+      // Row 023-21 ("A: stop when unsure"): product code imports value, so it is settled as source.
+      "src/main.ts": 'import { value } from "./value";\nexport const main = value;\n',
       [rows]: kit(),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();

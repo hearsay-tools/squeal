@@ -33,6 +33,8 @@ export interface Located {
   readonly conditions: Conditions;
   /** Row 023-21 (D5.2): the `--with` paths, relative to the root, each once. */
   readonly with: readonly RelativePath[];
+  /** Row 023-21 (D5.2): the `--source` paths, relative to the root, each once. */
+  readonly source: readonly RelativePath[];
 }
 
 /** The worktree, both commits and the named files; a setup problem as a string. */
@@ -61,17 +63,45 @@ export async function locate(
     if (rel === null) return `${file} lies outside ${root}`;
     paths.push(rel);
   }
-  const withPaths: RelativePath[] = [];
-  for (const given of args.with ?? []) {
-    const rel = inRoot(root, cwd, given);
-    if (rel === null || rel === "") return `--with ${given} names no file inside ${root}`;
-    if (!withPaths.includes(rel) && !paths.includes(rel)) withPaths.push(rel);
-  }
+  const withPaths = placed("--with", args.with ?? [], root, cwd, paths);
+  if (typeof withPaths === "string") return withPaths;
+  const sourcePaths = placed("--source", args.source ?? [], root, cwd, paths);
+  if (typeof sourcePaths === "string") return sourcePaths;
+  const both = sourcePaths.find((path) => withPaths.includes(path));
+  if (both !== undefined)
+    return `${both} is given with --with and --source: it is test code or product code, not both`;
   const conditions = conditionsOf(args, cwd, root, (io.env ?? process.env).HOME, deadline);
   if (typeof conditions === "string") return conditions;
   const linked = await linkedWithout(root, [base, head], conditions);
   if (linked !== null) return linked;
-  return { root, cwd, commonDir, base, head, paths, conditions, with: withPaths };
+  return {
+    root,
+    cwd,
+    commonDir,
+    base,
+    head,
+    paths,
+    conditions,
+    with: withPaths,
+    source: sourcePaths,
+  };
+}
+
+/** Row 023-21: `--with` or `--source` paths from the root, each once, named files left out. */
+function placed(
+  flag: string,
+  given: readonly string[],
+  root: AbsolutePath,
+  cwd: AbsolutePath,
+  named: readonly RelativePath[],
+): RelativePath[] | string {
+  const out: RelativePath[] = [];
+  for (const path of given) {
+    const rel = inRoot(root, cwd, path);
+    if (rel === null || rel === "") return `${flag} ${path} names no file inside ${root}`;
+    if (!out.includes(rel) && !named.includes(rel)) out.push(rel);
+  }
+  return out;
 }
 
 /**

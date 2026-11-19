@@ -83,6 +83,9 @@ function report(files: readonly ProofFile[], conditions: Conditions = NO_CONDITI
     with: [],
     withUnused: [],
     withRerun: null,
+    source: [],
+    sourceUnused: [],
+    sourceRerun: null,
   };
 }
 

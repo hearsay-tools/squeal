@@ -39,6 +39,7 @@ describe("squeal proof arguments (row 023-08)", () => {
       without: [],
       homeKeep: [],
       with: [],
+      source: [],
       repeat: 1,
     });
     expect(parseProof(["a.test.ts", "--base=main"])).toMatchObject({

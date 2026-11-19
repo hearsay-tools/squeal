@@ -1,37 +1,46 @@
-import { extname, posix } from "node:path";
-import { isConfigPath, isHelperPath } from "../reach/names.js";
+import { posix } from "node:path";
 import type { RelativePath } from "../types/common.js";
+import { reachesTestApi, resolveLocal, specifiersOf, type Tree } from "./import-graph.js";
 import { isTestSide } from "./sides.js";
 
 /*
- * Spec 023 D5.2, amended 2026-11-19 (the human on issue #247, "A: explain
- * + --with"; row 023-21, repaired after `reviews/wave-14.md` B1): a named
- * test that is unchanged in `base..HEAD` while files its closure imports
- * (directly or not, added ones too) changed. A changed import on the test
- * side (`isTestSide`, `--with` paths included) is copied with the test
- * version already. A code-side one is test code when its own text, at
- * `HEAD` or at `base`, imports a test API (`testApiOf`), or when it is
- * pytest's `conftest.py`, or has a test helper's name (`isHelperPath`, an
- * extra signal only): the file does not run and the report names it with
- * the `--with` rerun. Every other changed import is source, compared as
- * before, and the report names it. Known blind spot: a test helper that
- * imports no test API and has an ordinary name (pure data rows) counts as
- * source (`tasks/023-21-notes.md`).
+ * Spec 023 D5.2, amended 2026-11-19 twice (the human on issue #247, "A:
+ * explain + --with"; then after `reviews/wave-14-rereview.md` B1, "A: stop
+ * when unsure"; row 023-21): a named test unchanged in `base..HEAD` while
+ * files its closure imports (directly or not, added ones too) changed. A
+ * changed import on the test side (`isTestSide`, named and `--with` paths
+ * included) is copied from the test version already. A code-side one is
+ * product code, compared as source, only when Squeal can show it: a
+ * `--source` path, or a file that at least one project file that is not
+ * test code imports at `HEAD`. Every other changed import stops the file:
+ * exit 3, named, with the `--with` and `--source` reruns. Test code is a
+ * test-side path, a `--with` path, a `conftest.py`, or a file that
+ * imports a test API directly or through local imports (`reachesTestApi`).
+ * No file name settles anything.
  */
 
-/** One changed import taken for test code, and the evidence. */
-export interface TestCode {
+/** A changed import the proof did not settle: the file does not run. */
+export interface Unsettled {
   readonly path: RelativePath;
-  /** `imports vitest at <sha>`, `pytest's conftest.py`, `a test helper's name`. */
+  /** It is test code by its own imports or name (`conftest.py`): `--with` is its rerun. */
+  readonly testCode: boolean;
+  /** `imports vitest through support/api.ts at <sha>`, or why nothing settles it. */
   readonly why: string;
 }
 
-/** A named test's changed imports while the test itself is unchanged. */
+/** A changed import settled as product code. */
+export interface Settled {
+  readonly path: RelativePath;
+  /** `imported by src/main.ts`, or `--source`. */
+  readonly why: string;
+}
+
+/** A named test's changed code-side imports while the test itself is unchanged. */
 export interface ChangedImports {
-  /** Code-side imports taken for test code: the `--with` candidates. With any, the file does not run. */
-  readonly testCode: readonly TestCode[];
-  /** The other code-side changed imports: source the case compares, or runs at `HEAD` on both sides. */
-  readonly sources: readonly RelativePath[];
+  /** Not settled: with any, the file does not run. */
+  readonly unsettled: readonly Unsettled[];
+  /** Settled as product code: the case compares them, or runs them at `HEAD` on both sides. */
+  readonly sources: readonly Settled[];
   /** A changed import on the test side (named, `--with`, or by `isTestSide`), copied already. */
   readonly testSide: boolean;
 }
@@ -53,111 +62,89 @@ export function codeSideChanges(
   return { code, testSide: code.length < touched.length };
 }
 
-/**
- * `file`'s changed imports, each code-side one split by `whyTestCode`
- * (`testCodeWhy` over its texts); `null` when `file` changed or no
- * code-side import did.
- */
-export function changedImports(
-  file: RelativePath,
-  loads: readonly RelativePath[],
-  changed: ReadonlySet<RelativePath>,
-  testSide: ReadonlySet<RelativePath>,
-  whyTestCode: (path: RelativePath) => string | null,
-): ChangedImports | null {
-  const side = codeSideChanges(file, loads, changed, testSide);
-  if (side.code.length === 0) return null;
-  const testCode: TestCode[] = [];
-  const sources: RelativePath[] = [];
-  for (const path of side.code) {
-    const why = whyTestCode(path);
-    if (why === null) sources.push(path);
-    else testCode.push({ path, why });
-  }
-  return { testCode, sources, testSide: side.testSide };
+/** What settles one changed import: the call's flags and the trees at `HEAD` and at `base`. */
+export interface Settling {
+  /** The named files and the `--with` paths: test code. */
+  readonly testSide: ReadonlySet<RelativePath>;
+  /** The `--source` paths: product code. */
+  readonly source: ReadonlySet<RelativePath>;
+  readonly head: Tree;
+  readonly base: Tree;
+  /** The files at `HEAD` that may import `path` (a cheap text search; each is checked). */
+  candidates(path: RelativePath): Promise<readonly RelativePath[]>;
 }
 
-/** A file's text at one commit; `null` when the commit lacks it. */
-export interface Version {
-  readonly commit: string;
-  readonly text: string | null;
+/** One changed import, settled as product code or not. */
+export async function settle(
+  path: RelativePath,
+  s: Settling,
+): Promise<{ readonly settled: Settled } | { readonly unsettled: Unsettled }> {
+  if (s.source.has(path)) return { settled: { path, why: "--source" } };
+  const test = await testCodeWhy(path, s, [s.head, s.base]);
+  if (test !== null) return { unsettled: { path, testCode: true, why: test } };
+  const unknown: string[] = [];
+  for (const importer of await s.candidates(path)) {
+    if (importer === path) continue;
+    const text = await s.head.text(importer);
+    if (text === null || !imports(importer, text, path, s.head)) continue;
+    const why = await testCodeWhy(importer, s, [s.head]);
+    if (why === null) return { settled: { path, why: `imported by ${importer}` } };
+    if (why === TOO_MANY) unknown.push(importer);
+  }
+  const why =
+    unknown.length > 0
+      ? `its importers' own imports are too many to follow: ${unknown.join(", ")}`
+      : "no project file that is not test code imports it";
+  return { unsettled: { path, testCode: false, why } };
 }
 
+const TOO_MANY = "its local imports are too many to follow";
+
 /**
- * Why `path` is test code, from its texts at `HEAD` and at `base`; `null`
- * when nothing shows it. A runner config is never taken for test code: it
- * imports `vitest/config`, and it is compared as source.
+ * Why `path` is test code at one of `trees`: a test-side or `--with` path,
+ * a `conftest.py`, or a test API it reaches; `TOO_MANY` when its imports
+ * could not all be followed; `null` when it is not.
  */
-export function testCodeWhy(path: RelativePath, versions: readonly Version[]): string | null {
-  if (isConfigPath(path)) return null;
-  for (const { commit, text } of versions) {
-    const api = text === null ? null : testApiOf(path, text);
-    if (api !== null) return `imports ${api} at ${commit.slice(0, 9)}`;
-  }
+async function testCodeWhy(
+  path: RelativePath,
+  s: Settling,
+  trees: readonly Tree[],
+): Promise<string | null> {
+  if (isTestSide(path, s.testSide)) return "test code by its path";
   if (posix.basename(path) === "conftest.py") return "pytest's conftest.py";
-  return isHelperPath(path) ? "a test helper's name" : null;
-}
-
-/**
- * The test APIs of Squeal's runners and the libraries commonly run under
- * them: Vitest, node:test and pytest themselves, then `expect` libraries,
- * Playwright Test, Jest's globals, Testing Library and `unittest`.
- */
-const JS_TEST_APIS = [
-  "vitest",
-  "@vitest/",
-  "node:test",
-  "@playwright/test",
-  "@jest/globals",
-  "chai",
-  "sinon",
-  "@testing-library/",
-];
-const PY_TEST_APIS = ["pytest", "_pytest", "unittest"];
-
-const JS_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
-/** `from "x"`, `import "x"`, `import("x")`, `require("x")`: each module specifier. */
-const JS_SPECIFIER = /\b(?:from|import|require)\s*\(?\s*["']([^"'\n]+)["']/g;
-/** `import x`, `import x.y`, `from x import`, `from x.y import`: each top-level module. */
-const PY_IMPORT = /^[ \t]*(?:import|from)[ \t]+([A-Za-z_][A-Za-z0-9_]*)/gm;
-
-/** The first test API `text` imports, by `path`'s language; `null` for none. */
-export function testApiOf(path: RelativePath, text: string): string | null {
-  const ext = extname(path);
-  if (JS_EXTENSIONS.has(ext)) {
-    for (const [, specifier] of text.matchAll(JS_SPECIFIER))
-      if (specifier !== undefined && JS_TEST_APIS.some((api) => isModule(specifier, api)))
-        return specifier;
-    return null;
+  let unknown = false;
+  for (const tree of trees) {
+    if (!tree.has(path)) continue;
+    const reach = await reachesTestApi(path, tree);
+    if (reach === "unknown") unknown = true;
+    else if (reach !== "none") {
+      const via = reach.via.length === 0 ? "" : ` through ${reach.via.join(", ")}`;
+      return `imports ${reach.api}${via} at ${tree.commit.slice(0, 9)}`;
+    }
   }
-  if (ext === ".py")
-    for (const [, module] of text.matchAll(PY_IMPORT))
-      if (module !== undefined && PY_TEST_APIS.includes(module)) return module;
-  return null;
+  return unknown ? TOO_MANY : null;
 }
 
-/** `specifier` is module `api` or a subpath of it (`api` ending in `/` is a scope). */
-function isModule(specifier: string, api: string): boolean {
-  return api.endsWith("/")
-    ? specifier.startsWith(api)
-    : specifier === api || specifier.startsWith(`${api}/`);
+/** Whether `importer`'s text names `path` through a local import. */
+function imports(importer: RelativePath, text: string, path: RelativePath, tree: Tree): boolean {
+  return specifiersOf(importer, text).some(
+    (specifier) => resolveLocal(importer, specifier, (p) => tree.has(p)) === path,
+  );
 }
 
 /**
  * Whether the file stops (exit 3, nothing run): a changed code-side
- * import is test code while the test did not change. Without one the file
- * runs; with only source changes and no test-side change, the report
- * notes what it compares as source.
+ * import was not settled as product code while the test did not change.
  */
 export function stops(imports: ChangedImports | null): boolean {
-  return imports !== null && imports.testCode.length > 0;
+  return imports !== null && imports.unsettled.length > 0;
 }
 
-/** The `--with` paths no named test's closure loads: each reads a warning, not an error. */
-export function unusedWith(
-  withPaths: readonly RelativePath[],
-  loads: readonly (readonly RelativePath[])[],
+/** The `--with` or `--source` paths outside `known`: each reads a warning, not an error. */
+export function unusedPaths(
+  paths: readonly RelativePath[],
+  known: readonly (readonly RelativePath[])[],
 ): RelativePath[] {
-  const loaded = new Set(loads.flat());
-  return withPaths.filter((path) => !loaded.has(path));
+  const all = new Set(known.flat());
+  return paths.filter((path) => !all.has(path));
 }

@@ -5,7 +5,7 @@ import { squealVersion } from "../core/daemon/version.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
-import { stops, unusedWith } from "../core/proof/imports.js";
+import { stops, unusedPaths } from "../core/proof/imports.js";
 import {
   defaultCase,
   type ProofCase,
@@ -24,7 +24,7 @@ import { endOf, provedFiles } from "./proof-files.js";
 import { importsOf } from "./proof-imports.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
-import { rerunCommand, withRerunCommand } from "./proof-rerun.js";
+import { rerunCommand, stopReruns } from "./proof-rerun.js";
 import { runSide, withSide } from "./proof-side.js";
 import type { AtOptions } from "./status-at.js";
 
@@ -80,16 +80,8 @@ export async function proofCommand(
     note(
       `proving ${plural(paths.length, "test file")} against ${base.slice(0, 9)} in temporary checkouts`,
     );
-  const proved = await prove(common, args, base, head, named, at.with);
+  const proved = await prove(common, args, base, head, named, at);
   if ("usage" in proved) return fail(proved.usage);
-  // Row 023-21: the stopped files' changed test code, as paths from the cwd for the rerun.
-  const helpers = [
-    ...new Set(
-      proved.files.flatMap((f) =>
-        stops(f.imports) ? (f.imports?.testCode ?? []).map((t) => t.path) : [],
-      ),
-    ),
-  ].sort();
   const fromCwd = (path: RelativePath) => relative(cwd, join(root, path)).split(sep).join("/");
   // Row 023-20 (P9): a control run the budget left not started counts as not run too.
   const notRun = proved.files.filter(
@@ -110,8 +102,8 @@ export async function proofCommand(
     notRun,
     rerun: notRun === 0 ? null : rerunCommand(args, conditions),
     with: at.with,
-    withRerun:
-      helpers.length === 0 ? null : withRerunCommand(args, conditions, helpers.map(fromCwd)),
+    source: at.source,
+    ...stopReruns(proved.files, args, conditions, fromCwd),
   };
   io.stdout(args.json ? jsonProof(report) : formatProof(report));
   return proofExit(report.files.map((f) => f.verdict));
@@ -130,7 +122,9 @@ type Proved = Omit<
   | "notRun"
   | "rerun"
   | "with"
+  | "source"
   | "withRerun"
+  | "sourceRerun"
 >;
 
 /**
@@ -156,8 +150,9 @@ async function prove(
   base: string,
   head: string,
   named: ReadonlySet<RelativePath>,
-  withPaths: readonly RelativePath[],
+  given: { readonly with: readonly RelativePath[]; readonly source: readonly RelativePath[] },
 ): Promise<Proved | { usage: string }> {
+  const withPaths = given.with;
   const testSide = new Set([...named, ...withPaths]);
   const headEntries = await commitEntries(common.root, head);
   const greenSide = { tests: head, code: head };
@@ -181,15 +176,18 @@ async function prove(
       );
       const loadsOf = (ref: TestFileRef) => loads.get(testFileId(ref)) ?? [];
       const changed = await changedPaths(common.root, base, head);
-      const imports = await importsOf(
-        common.root,
-        { base, head },
+      const { imports, candidates } = await importsOf({
+        root: common.root,
+        base,
+        head,
         refs,
         loadsOf,
         changed,
         testSide,
-      );
-      const unused = unusedWith(withPaths, refs.map(loadsOf));
+        source: new Set(given.source),
+      });
+      const unused = unusedPaths(withPaths, refs.map(loadsOf));
+      const sourceUnused = unusedPaths(given.source, [candidates]);
       // Row 023-21: a stopped file runs nothing; the case is the others'.
       const proving = refs.filter((ref) => !stops(imports.get(testFileId(ref)) ?? null));
       const kind =
@@ -208,7 +206,7 @@ async function prove(
         hasConditions(common.conditions) && decided.length > 0
           ? await sideOf({ ...common, conditions: NO_CONDITIONS }, sides.red, decided, testSide)
           : null;
-      return { kind, red, control, imports, unused };
+      return { kind, red, control, imports, unused, sourceUnused };
     },
   );
   const value = green.value;
@@ -219,6 +217,7 @@ async function prove(
   return {
     ...at,
     withUnused: value?.unused ?? [],
+    sourceUnused: value?.sourceUnused ?? [],
     ...provedFiles(
       green,
       value?.red ?? null,
@@ -232,7 +231,11 @@ async function prove(
 }
 
 /** No changed imports read and no `--with` path unused: the green side keyed no named file. */
-const NO_IMPORTS = { imports: new Map(), unused: [] as RelativePath[] } as const;
+const NO_IMPORTS = {
+  imports: new Map(),
+  unused: [] as RelativePath[],
+  sourceUnused: [] as RelativePath[],
+} as const;
 
 /**
  * D5's default case: one for every named file, from the diff `base..HEAD`
