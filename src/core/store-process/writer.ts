@@ -5,6 +5,7 @@ import { Worker } from "node:worker_threads";
 import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
 import { decodeBatch } from "../daemon/write-batch.js";
 import { Connection } from "../store/connection.js";
+import { logLongWrites, longWriteLine } from "../store/long-write.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { SentBatch } from "../types/daemon-writes.js";
 import { type GuardedEnd, GuardedWriter } from "./guard.js";
@@ -69,9 +70,10 @@ export function openWriteConnection(
 }
 
 /** Runs one job on `writer`. */
-export function runJob(writer: GuardedWriter, job: WriteJob): GuardedEnd {
+export function runJob(writer: GuardedWriter, job: WriteJob, schema: number): GuardedEnd {
   return writer.write(job.worktreeId, job.seq, decodeBatch(job.batch), {
     from: job.from,
+    schema,
     ...(job.sliceMs === undefined ? {} : { sliceMs: job.sliceMs }),
   });
 }
@@ -92,11 +94,17 @@ export function writerScript(module: URL = new URL(import.meta.url)): WriterScri
 }
 
 /** The store's writer: in a worker thread with `script`, else on this thread. */
-export function startWriter(commonDir: AbsolutePath, script: WriterScript | null): StoreWriter {
-  return script === null ? inThread(commonDir) : inWorker(commonDir, script);
+export function startWriter(
+  commonDir: AbsolutePath,
+  script: WriterScript | null,
+  log: (line: string) => void,
+): StoreWriter {
+  return script === null ? inThread(commonDir, log) : inWorker(commonDir, script, log);
 }
 
-function inThread(commonDir: AbsolutePath): StoreWriter {
+function inThread(commonDir: AbsolutePath, log: (line: string) => void): StoreWriter {
+  // D3 (review of 0.1.571): its long writes go to the store process's log.
+  logLongWrites((write) => log(`store process: ${longWriteLine(write)}`));
   const opened = openWriteConnection(commonDir);
   return {
     ready: Promise.resolve(
@@ -104,7 +112,7 @@ function inThread(commonDir: AbsolutePath): StoreWriter {
     ),
     run: async (job) => {
       if (typeof opened === "string") throw new Error(opened);
-      return runJob(opened.writer, job);
+      return runJob(opened.writer, job, opened.schema);
     },
     close: async () => {
       if (typeof opened !== "string") opened.close();
@@ -113,11 +121,16 @@ function inThread(commonDir: AbsolutePath): StoreWriter {
 }
 
 type FromWorker =
+  | { readonly type: "log"; readonly line: string }
   | { readonly type: "ready"; readonly ready: WriterReady }
   | { readonly type: "done"; readonly id: number; readonly end: GuardedEnd }
   | { readonly type: "failed"; readonly id: number; readonly error: string };
 
-function inWorker(commonDir: AbsolutePath, script: WriterScript): StoreWriter {
+function inWorker(
+  commonDir: AbsolutePath,
+  script: WriterScript,
+  log: (line: string) => void,
+): StoreWriter {
   const worker = new Worker(script.script, {
     workerData: { commonDir },
     ...(script.execArgv === undefined ? {} : { execArgv: [...script.execArgv] }),
@@ -136,6 +149,10 @@ function inWorker(commonDir: AbsolutePath, script: WriterScript): StoreWriter {
     waiting.clear();
   };
   worker.on("message", (message: FromWorker) => {
+    if (message.type === "log") {
+      log(message.line);
+      return;
+    }
     if (message.type === "ready") {
       readied(message.ready);
       return;

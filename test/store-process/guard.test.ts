@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
+import { type LongWrite, logLongWrites } from "../../src/core/store/long-write.js";
 import { batchSeq, GuardedWriter, markKey } from "../../src/core/store-process/guard.js";
 
 /*
@@ -85,5 +86,26 @@ describe("the batch mark", () => {
     expect(db.prepare("SELECT value FROM meta WHERE key = ?").get(markKey("w1"))).toEqual({
       value: seq,
     });
+  });
+
+  // Review of 0.1.571 B6: the store process's writes hold the lock in its own transactions.
+  it("tells D3's long-write log of a write that held the lock past 250 ms", () => {
+    const db = database();
+    const writes: LongWrite[] = [];
+    const stop = logLongWrites((write) => writes.push(write));
+    try {
+      const many = `WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < ?)
+        INSERT INTO n (v) SELECT x FROM c`;
+      const writer = new GuardedWriter(db);
+      let rows = 200_000;
+      for (let tries = 0; writes.length === 0 && tries < 6; tries++, rows *= 2) {
+        writer.write("w1", batchSeq(5, tries + 1), [{ sql: many, params: [rows] }]);
+      }
+    } finally {
+      stop();
+    }
+    expect(writes.length).toBeGreaterThan(0);
+    expect(writes[0]?.database).toBe("code.sqlite");
+    expect(writes[0]?.ms).toBeGreaterThan(250);
   });
 });

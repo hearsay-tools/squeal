@@ -1,6 +1,6 @@
 import type { DatabaseSync, StatementSync } from "node:sqlite";
 import type { Statement } from "../daemon/write-batch.js";
-import { rollback } from "../store/connection.js";
+import { observedWrite, rollback } from "../store/connection.js";
 import type { WorktreeId } from "../types/common.js";
 
 /*
@@ -48,6 +48,12 @@ export interface GuardedSlice {
   readonly sliceMs?: number;
   /** Default `performance.now`. */
   readonly now?: () => number;
+  /**
+   * The schema the writer opened the file at: a batch is refused when the
+   * file's `user_version` differs under the lock (review of 0.1.571), so a
+   * newer Squeal's migration is never written over with older statements.
+   */
+  readonly schema?: number;
 }
 
 const MARK_READ = "SELECT value FROM meta WHERE key = ?";
@@ -91,7 +97,15 @@ export class GuardedWriter {
     const now = slice.now ?? (() => performance.now());
     const started = now();
     this.#db.exec("BEGIN IMMEDIATE");
+    // D3: a write that holds the lock past 250 ms is logged, as a daemon's own transactions are.
+    const ended = observedWrite(this.#db);
     try {
+      if (slice.schema !== undefined) {
+        const found = Number(Object.values(this.#statement("PRAGMA user_version").get() ?? {})[0]);
+        if (found !== slice.schema) {
+          throw new Error(`the code store is at schema ${found}, not ${slice.schema}`);
+        }
+      }
       const mark = this.mark(worktreeId);
       if (mark !== null && mark >= seq) {
         this.#db.exec("COMMIT");
@@ -113,6 +127,8 @@ export class GuardedWriter {
     } catch (error) {
       rollback(this.#db);
       throw error;
+    } finally {
+      ended?.();
     }
   }
 

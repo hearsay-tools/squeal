@@ -146,6 +146,16 @@ export function observeWrites(next: WriteObserver | null): void {
   observer = next;
 }
 
+/**
+ * Tells this thread's write observer that `db` holds the write lock now;
+ * what it returns is told at the end. For a writer that runs its own
+ * `BEGIN IMMEDIATE` (spec 021 D22, the store process's `GuardedWriter`), so
+ * D3's long-write line covers it too (review of 0.1.571).
+ */
+export function observedWrite(db: DatabaseSync): WriteEnd | null {
+  return observer?.(db) ?? null;
+}
+
 /** A busy slice of one async context; `live` until the work it was given settles. */
 interface Slice {
   readonly ms: number;

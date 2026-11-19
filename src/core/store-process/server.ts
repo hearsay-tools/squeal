@@ -82,7 +82,7 @@ export async function startStoreProcess(
   const { commonDir, log } = options;
   const lock = acquireDaemonLock(storeProcessLockPath(commonDir, "code"));
   if (lock === null) return "lost-lock";
-  const writer = startWriter(commonDir, options.writer);
+  const writer = startWriter(commonDir, options.writer, log);
   const ready = await writer.ready;
   if ("failed" in ready) {
     log(`store process: ${ready.failed}`);
@@ -133,7 +133,8 @@ export async function startStoreProcess(
     if (pumping) return;
     pumping = true;
     try {
-      for (let next = queue.peek(); next !== null; next = queue.peek()) {
+      // Once stopping, nothing more is begun: what waits is refused by the stop (review of 0.1.571).
+      for (let next = queue.peek(); next !== null && phase !== "stopping"; next = queue.peek()) {
         await runOne(writer, next.item, () => queue.remove(next), {
           log,
           now,

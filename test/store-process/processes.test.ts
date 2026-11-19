@@ -1,7 +1,12 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { markKey } from "../../src/core/store-process/guard.js";
+import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
+import { requestDaemon } from "../../src/core/daemon/client.js";
+import { encodeBatch } from "../../src/core/daemon/write-batch.js";
+import { batchSeq, markKey } from "../../src/core/store-process/guard.js";
 import { storeProcessSocketPath } from "../../src/core/store-process/paths.js";
 import { spawnStoreProcess } from "../../src/core/store-process/spawn.js";
 import {
@@ -123,5 +128,41 @@ describe("the store process as a process (row 021-36)", () => {
     expect(store.meta.get("second")).toBe("2");
     expect(one.counts.failed).toBe(0);
     expect(one.counts.fallback.lost).toBeGreaterThanOrEqual(1);
+  }, 60_000);
+
+  // Review of 0.1.571 B3: old-schema batches are refused once the file's schema moved on.
+  it("refuses old-schema batches when a newer schema arrives, and stops", async () => {
+    const at = fresh();
+    const running = await storeProcess(at);
+    const socket = storeProcessSocketPath(at.commonDir, "code", at.env);
+    const write = (seq: string, key: string, schema = CODE_SCHEMA_VERSION) =>
+      requestDaemon(
+        socket,
+        {
+          type: "write",
+          worktreeId: "w1",
+          storeSchema: schema,
+          token: null,
+          release: false,
+          seq,
+          batch: encodeBatch([
+            { sql: "INSERT INTO meta (key, value) VALUES (?, ?)", params: [key, "x"] },
+          ]),
+        },
+        2_000,
+      );
+    const holder = await holdLock(at, 800, CODE_SCHEMA_VERSION + 1);
+    expect((await write(batchSeq(1, 1), "one")).ok).toBe(true);
+    expect((await write(batchSeq(1, 2), "two")).ok).toBe(true);
+    expect((await write(batchSeq(1, 3), "three", CODE_SCHEMA_VERSION + 1)).ok).toBe(false);
+    await holder.done;
+
+    expect(await running.ended).toBe("newer-schema");
+    const db = new DatabaseSync(join(at.commonDir, "squeal", "code.sqlite"));
+    at.later(() => db.close());
+    expect(db.prepare("SELECT key FROM meta WHERE key IN ('one', 'two', 'three')").all()).toEqual(
+      [],
+    );
+    expect(running.stderr()).toMatch(/is at schema \d+, not \d+/);
   }, 60_000);
 });
