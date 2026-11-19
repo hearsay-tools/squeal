@@ -60,6 +60,8 @@ interface Here {
   readonly environments: ReadonlyMap<ProjectName, string>;
   /** The imports whose observed entries the daemon's keys have not taken yet. */
   readonly waiting: ReadonlySet<string>;
+  /** A test file's current states counted by the import each came from, by `testFileId`. */
+  fromImport(id: string): ReadonlyMap<string, number>;
   closure(file: ImportFileRecord): string | null;
   observed(file: ImportFileRecord): string;
 }
@@ -97,8 +99,7 @@ export function readImports(
       const reason = reasonOf(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
-      const current = here.current.get(testFileId(file)) ?? [];
-      currentResults += current.filter((s) => fromImport(s, record.id)).length;
+      currentResults += here.fromImport(testFileId(file)).get(record.id) ?? 0;
     }
     return [
       {
@@ -174,28 +175,57 @@ function hereOf(
     maps.set(key, read);
     return read;
   };
+  const current = currentByFile(states);
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
-    current: currentByFile(states),
+    current,
     stored: (importId, key) =>
       store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     waiting: new Set(importsWaiting(store, worktreeId)),
-    closure: (file) => {
-      const record = store.testFiles.get(file);
-      if (record === null) return null;
-      if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
-      return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
-    },
-    observed: (file) => {
+    fromImport: memoBy(String, (id) => countByImport(current.get(id) ?? [])),
+    // Row 011-411 (gh-250): what this worktree holds for a file is the same for every
+    // import, so each file's closure and observed hash is made once per read.
+    closure: memoBy(
+      (file) => `${file.closure.startsWith(STATIC_LIST) ? "static" : "list"}:${testFileId(file)}`,
+      (file) => {
+        const record = store.testFiles.get(file);
+        if (record === null) return null;
+        if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
+        return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
+      },
+    ),
+    observed: memoBy(testFileId, (file: ImportFileRecord) => {
       const observed: { -readonly [M in keyof ObservedEntries]: ObservedEntries[M] } = {};
       for (const map of OBSERVED_MAPS) {
         const paths = entries(map, file.project)[file.path];
         if (paths !== undefined) observed[map] = paths;
       }
       return observedHash(observed);
-    },
+    }),
   };
+}
+
+/** `make`, made once per `idOf` of its argument. */
+function memoBy<A, T>(idOf: (arg: A) => string, make: (arg: A) => T): (arg: A) => T {
+  const made = new Map<string, T>();
+  return (arg) => {
+    const id = idOf(arg);
+    if (made.has(id)) return made.get(id) as T;
+    const value = make(arg);
+    made.set(id, value);
+    return value;
+  };
+}
+
+/** How many of `states` came from each import, by import id. */
+function countByImport(states: readonly KnownState[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const s of states) {
+    if (s.origin?.kind !== "imported") continue;
+    counts.set(s.origin.importId, (counts.get(s.origin.importId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /**
