@@ -18,6 +18,13 @@ import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
 export { YIELD_REMAINDER_MS };
 
 /**
+ * Review 0.1.567-r2 B2: a calendar step's write of the row that a busy store
+ * refused is tried again this long after, by the check its wake queues,
+ * until one lands.
+ */
+export const UNWRITTEN_RETRY_MS = 1_000;
+
+/**
  * Spec 011 C4 step 5 as amended 2026-10-21 (row 011-51): which fast tiers in
  * flight a revision, a runner part or a promotion cancels, the files a yield
  * cut, and what each tier in flight does for a promoted file's wait,
@@ -47,6 +54,13 @@ export class TierYields implements CutFiles {
   readonly #overruns: Overruns;
   /** The wake that checks the tiers again at the earliest of `#bounds` (row 011-352). */
   #wake: WakeSlot | null = null;
+  /**
+   * Review 0.1.567-r2 B2: the row in memory differs from the stored one, since
+   * a calendar step's write was refused; each check writes it until one lands,
+   * and `#retry` queues a check with no other event.
+   */
+  #unwritten = false;
+  #retry: WakeSlot | null = null;
   /** What status reads beside the standings: the last yield, the lanes, the ended counts (row 011-209). */
   readonly #history = new YieldHistory();
 
@@ -124,7 +138,11 @@ export class TierYields implements CutFiles {
   ): void {
     const view = { context, ledger, tiers, marks: this.#cut, standing: this.#standing, held };
     const decided = decideYields(at, revision, view);
-    if (decided === null) return;
+    if (decided === null) {
+      // A hold stands: nothing is decided, but a refused write is still owed.
+      if (this.#unwritten) this.#retryUnwritten();
+      return;
+    }
     // Review 0.1.514 B1, row 011-361: what the decision's reads record, in order, as they read it.
     for (const note of decided.bookkeeping) {
       if (note.kind === "claim") ledger.claims.record(note.key, note.claimed, at);
@@ -146,7 +164,9 @@ export class TierYields implements CutFiles {
       else this.#bounds.set(tier.runId, bound);
     }
     const overran = this.#overruns.check(context, tiers, at);
-    if (decided.changed || overran) this.#publish(context, at);
+    // An owed write states its next try first: a write that throws busy here keeps it owed.
+    if (this.#unwritten) this.#retryUnwritten();
+    if (decided.changed || overran || this.#unwritten) this.#publish(context, at);
     this.#arm(context);
   }
 
@@ -220,12 +240,22 @@ export class TierYields implements CutFiles {
       withBusySliceSync(0, () => this.#publish(context, at));
     } catch (error) {
       if (!isBusy(error)) throw error;
+      // Review 0.1.567-r2 B2: memory moved and the row did not; it is owed until a write lands.
+      this.#unwritten = true;
+      this.#retryUnwritten();
     }
+  }
+
+  /** Queues a check `UNWRITTEN_RETRY_MS` from now, which writes the owed row (review 0.1.567-r2 B2). */
+  #retryUnwritten(): void {
+    this.#retry ??= this.wakes.slot("yield-bound", () => this.recheck());
+    this.#retry.after(UNWRITTEN_RETRY_MS);
   }
 
   /** The scheduler closed: no check comes again. */
   close(): void {
     this.#bounds.clear();
+    this.#retry?.clear();
     this.#overruns.close();
     this.#disarm();
   }
@@ -260,6 +290,9 @@ export class TierYields implements CutFiles {
     const stamp = context.steps?.stamp(at) ?? at;
     const row = { ...this.#history.row(this.#standing), overruns: this.#overruns.published };
     writeYieldRow(store, worktreeId, stamp, row);
+    // Only a write that landed ends an owed one (review 0.1.567-r2 B2).
+    this.#unwritten = false;
+    this.#retry?.clear();
   }
 }
 
