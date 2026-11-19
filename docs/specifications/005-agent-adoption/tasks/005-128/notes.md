@@ -42,7 +42,8 @@ Eval variants deleted: `primer-minimal`, `primer-minimal-rules`, `primer-minimal
    - "With the key, the session's first message names each moment's groups;" → "`squeal checks` lists each check with its moment and the command that runs it;".
 4. `references/policy.md`, `vitest.excludeProjects` row: "`squeal status` and the session's first message name each as not run," → "`squeal status` names each as not run,".
 5. `references/policy.md`, `vitest.exclude` row: "`squeal status`, `squeal setup --check` and the session's first message name the globs as not covered," → "`squeal status`, `squeal setup --check` and `squeal checks` name the globs as not covered,".
-6. `README.md` (human-read): a new section "The checks of a repository" on `squeal checks` and `description`, and in "Tests Squeal does not cover" "the session's first message" → "`squeal checks`".
+6. `references/commands.md`, the `squeal checks` section (review 0.1.565 B1): after "… or only on request) and who starts it" it adds "; `never`, with the reason, for a lint check Squeal does not run (lint off, or checks above it own its tools), which then has no run command." `squeal checks` itself prints two new `Runs:` lines: "never: lint is off (lint.enabled in squeal.config.json)" and "never: a check above it owns each of its tools".
+7. `README.md` (human-read): a new section "The checks of a repository" on `squeal checks` and `description`, and in "Tests Squeal does not cover" "the session's first message" → "`squeal checks`".
 
 No hook, status, Stop or `squeal --help` text said "the primer lists" or leaned on a sentence only the long primer had: the edit lines' no-test-group sentence (`quietEditsText`) states its own condition and command, and `--help` already lists `squeal checks`.
 
@@ -72,3 +73,7 @@ The specs describe the long primer in decisions and amendment logs that the 2026
 ## Repair after the review of cand/0.1.565
 
 `squeal checks` hid the default lint block once any `checks` entry was a lint check, so a tool no lint check owns (lint at each edit, 019 D2) went unlisted (D6). The block now lists the tools `lintGroupOf` (`src/core/lint/pass/moment.ts`, the lint pass's own ownership rule) finds no group for, and is absent when lint checks own every tool. `test/cli/checks.test.ts` pins the reviewer's config (eslint and oxlint, a manual group with eslint only: an `oxlint` block), every tool owned, no lint check, and lint off.
+
+B1's second half: a declared lint check printed `Runs: after each edit` (or its moment) and a run command while lint was off, which the lint pass never lints (`src/core/lint/pass/index.ts`). `squeal checks` now says of each lint check only what the pass does: its `Selects` names the tools `lintGroupOf` gives it; with lint off, or with no tool left to it, it reads `Runs: never: <reason>` and has no `Run it now` line. Tests: the reviewer's second config (`{"checks":[{"name":"style","lint":["eslint"],"at":"edit"}]}`, lint off by default), and a check whose tools an earlier `lint: true` check owns. The existing Stop/commit test had declared a lint check with lint off; it now enables lint and expects the owned tools.
+
+Review N3: `test/evals/start-message.test.ts` registers each case with its own CLI, so the two Codex cases read a Codex registration (asserted), not the `squeal` one.

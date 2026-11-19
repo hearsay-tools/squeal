@@ -260,6 +260,39 @@ describe("squeal checks (row 005-126)", () => {
       const off = { lint: { enabled: false }, checks: tests };
       expect(run(repo(off)).stdout).not.toContain("lint");
     });
+
+    // Review of cand/0.1.565, B1's second config: lint is off by default, so the pass lints
+    // nothing, and a declared lint check says so instead of claiming it runs.
+    it("says a lint check never runs while lint is off, and gives no run command", () => {
+      const config = { checks: [{ name: "style", lint: ["eslint"], at: "edit" }] };
+      const { stdout } = run(repo(config));
+      expect(stdout).toContain(
+        [
+          "style",
+          "  Selects: lint with eslint",
+          "  Runs: never: lint is off (lint.enabled in squeal.config.json)",
+          "",
+        ].join("\n"),
+      );
+      expect(stdout).not.toContain("squeal run style");
+      expect(stdout).not.toContain("\nlint\n");
+    });
+
+    it("says a lint check never runs when checks above it own each of its tools", () => {
+      const config = {
+        lint: { enabled: true, tools: ["eslint", "oxlint"] },
+        checks: [
+          { name: "all", lint: true, at: "commit" },
+          { name: "fast", lint: ["oxlint"], at: "manual" },
+        ],
+      };
+      const { stdout } = run(repo(config));
+      expect(stdout).toContain("all\n  Selects: lint with eslint and oxlint\n");
+      expect(stdout).toContain(
+        "fast\n  Selects: lint with oxlint\n  Runs: never: a check above it owns each of its tools\n",
+      );
+      expect(stdout).not.toContain("squeal run fast");
+    });
   });
 
   it("refuses an argument", () => {
@@ -273,7 +306,7 @@ describe("squeal checks (row 005-126)", () => {
       { name: "e2e", runner: "vitest", tests: ["test/e2e/**"], at: "stop" },
       { name: "style", lint: true, at: "commit", description: "ESLint." },
     ];
-    const { stdout } = run(repo({ checks }));
+    const { stdout } = run(repo({ lint: { enabled: true }, checks }));
     expect(stdout).toContain(
       "  Runs: at Stop: Squeal starts it when you stop, and Stop waits for it, not after an edit\n",
     );
@@ -281,7 +314,7 @@ describe("squeal checks (row 005-126)", () => {
       [
         "style",
         "  Description: ESLint.",
-        "  Selects: lint, every tool in lint.tools",
+        "  Selects: lint with eslint and oxlint",
         "  Runs: when you commit: Squeal starts it when it sees a new commit, not after an edit",
         "  Run it now: `squeal run style --wait 60000`",
       ].join("\n"),

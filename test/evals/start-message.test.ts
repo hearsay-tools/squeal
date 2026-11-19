@@ -18,28 +18,35 @@ const registration = {
   knownFailures: [],
 } as never as Registration;
 
-const FORMS = [
-  ["skill, squeal", primer()],
-  ["no skill, squeal", primer(undefined, { skill: false })],
-  ["skill, Codex", primer(CODEX)],
-  ["no skill, Codex", primer(CODEX, { skill: false })],
-] as const;
+/** Each form: its name, the CLI it names, whether the harness ships the skill, and its text. */
+const FORMS = (
+  [
+    ["skill, squeal", "squeal", true],
+    ["no skill, squeal", "squeal", false],
+    ["skill, Codex", CODEX, true],
+    ["no skill, Codex", CODEX, false],
+  ] as const
+).map(([name, command, skill]) => [name, primer(command, { skill }), command, skill] as const);
 
 describe("the start message as the eval reads it (row 005-128)", () => {
   it.each(FORMS)("%s: alone it is no evidence", (_, text) => {
     expect(squealEvidence(text, "push")).toBeNull();
   });
 
-  it.each(FORMS)("%s: after a registration it adds nothing to the registration's", (_, text) => {
-    const full = withPrimer(registration, undefined, {
-      skill: !text.includes("Do not run the tests yourself"),
-    });
-    const head = full.slice(0, full.indexOf("\n\nSqueal runs this repository's"));
-    const step = squealEvidence(full, "push");
-    expect(step).not.toBeNull();
-    expect(step).toEqual(squealEvidence(head, "push"));
-    expect(step).not.toHaveProperty("waiting");
-  });
+  // Review 0.1.565 N3: each case registers with its own CLI, so the Codex cases read a Codex text.
+  it.each(FORMS)(
+    "%s: after a registration it adds nothing to the registration's",
+    (_, text, command, skill) => {
+      const full = withPrimer(registration, command, { skill });
+      expect(full.endsWith(`\n\n${text}`)).toBe(true);
+      expect(full).toContain(`\`${command} `);
+      const head = full.slice(0, full.indexOf("\n\nSqueal runs this repository's"));
+      const step = squealEvidence(full, "push");
+      expect(step).not.toBeNull();
+      expect(step).toEqual(squealEvidence(head, "push"));
+      expect(step).not.toHaveProperty("waiting");
+    },
+  );
 
   it.each(FORMS)("%s: the grader counts it as a registration", (_, text) => {
     const grade = graded([{ squeal: text }], { truthPass: true, status: "pass" });

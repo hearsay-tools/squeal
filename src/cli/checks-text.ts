@@ -57,7 +57,7 @@ export function checksText(
 ): string {
   const blocks = groups.flatMap((group) => {
     const shown = group.index !== null || defaultShown(group, policy, store);
-    return shown ? [groupBlock(group, store, command)] : [];
+    return shown ? [groupBlock(group, policy, store, command)] : [];
   });
   const lint = defaultLintBlock(policy, command);
   if (lint !== null) blocks.push(lint);
@@ -84,16 +84,22 @@ function marks(select: Extract<ResolvedGroup["select"], { kind: "marked" }>): bo
   return select.include.length > 0 || select.projects.length > 0;
 }
 
-function groupBlock(group: ResolvedGroup, store: StoreView | null, command: string): string {
+function groupBlock(
+  group: ResolvedGroup,
+  policy: Policy,
+  store: StoreView | null,
+  command: string,
+): string {
   const results = store?.results.get(group.name);
+  const off = never(group, policy);
   const lines = [
     group.name,
     ...(group.description === undefined ? [] : [`  Description: ${group.description}`]),
-    `  Selects: ${selects(group)}`,
+    `  Selects: ${selects(group, policy)}`,
     ...(results === undefined ? [] : [`  Test files now: ${results.files}`]),
-    `  Runs: ${runs(group, command)}`,
+    `  Runs: ${off === null ? runs(group, command) : `never: ${off}`}`,
     ...(group.after.length === 0 ? [] : [`  Starts after: ${group.after.join(", ")}`]),
-    `  Run it now: \`${command} run ${group.name} --wait 60000\``,
+    ...(off === null ? [`  Run it now: \`${command} run ${group.name} --wait 60000\``] : []),
     ...(results === undefined || results.files === 0
       ? []
       : [`  Last result${revisionText(store)}: ${resultText(results)}`]),
@@ -101,7 +107,27 @@ function groupBlock(group: ResolvedGroup, store: StoreView | null, command: stri
   return `${lines.join("\n")}\n`;
 }
 
-function selects(group: ResolvedGroup): string {
+/**
+ * Review of cand/0.1.565, B1: the tools of lint check `group` the lint pass
+ * runs, by the pass's own ownership rule (`lintGroupOf`, the first check
+ * that selects a tool of `lint.tools`).
+ */
+function ownedTools(group: ResolvedGroup, policy: Policy): readonly string[] {
+  return policy.lint.tools.filter((tool) => lintGroupOf(policy, tool)?.name === group.name);
+}
+
+/**
+ * Why the lint pass never runs lint check `group`, or `null` when it does:
+ * lint is off (the pass lints nothing, `lint/pass/index.ts`), or a check
+ * above it owns each of its tools. A test check always runs.
+ */
+function never(group: ResolvedGroup, policy: Policy): string | null {
+  if (group.select.kind !== "lint") return null;
+  if (!policy.lint.enabled) return "lint is off (lint.enabled in squeal.config.json)";
+  return ownedTools(group, policy).length === 0 ? "a check above it owns each of its tools" : null;
+}
+
+function selects(group: ResolvedGroup, policy: Policy): string {
   const { select } = group;
   switch (select.kind) {
     case "tests": {
@@ -109,10 +135,13 @@ function selects(group: ResolvedGroup): string {
       const tests = select.tests === null ? "" : ` matching ${select.tests.join(", ")}`;
       return `${RUNNER[select.runner]} test files${project}${tests}`;
     }
-    case "lint":
+    case "lint": {
+      const owned = ownedTools(group, policy);
+      if (owned.length > 0) return `lint with ${owned.join(" and ")}`;
       return select.tools === null
         ? "lint, every tool in lint.tools"
         : `lint with ${select.tools.join(" and ")}`;
+    }
     case "marked": {
       const named = [
         ...(select.include.length === 0 ? [] : [`slow.include ${select.include.join(", ")}`]),
