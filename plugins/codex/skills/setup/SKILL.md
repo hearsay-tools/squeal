@@ -11,4 +11,4 @@ This plugin holds Squeal's hooks and a frozen seed; Squeal's instructions ship w
 2. Without that line, read `<plugin data>/runtime/current.json`; its `version` names the runtime new sessions use, at `<plugin data>/versions/<version>/`.
 3. Without that file, use the seed this plugin carries, `<plugin root>/seed/`, the plugin root being the directory that holds `seed/` and `skills/`.
 
-The plugin data directory is `<Codex home>/plugins/data/squeal-hearsay/`, where the Codex home is `$CODEX_HOME`, by default `~/.codex`. Under Codex `squeal` is not on the PATH: run the command the SQUEAL primer names, or `node --disable-warning=ExperimentalWarning "<runtime>/dist/cli/squeal.mjs"` with the runtime found above.
+The plugin data directory is `<Codex home>/plugins/data/squeal-hearsay/`, where the Codex home is `$CODEX_HOME`, by default `~/.codex`. Under Codex `squeal` is not on the PATH: run the command the SQUEAL messages name, or `node --disable-warning=ExperimentalWarning "<runtime>/dist/cli/squeal.mjs"` with the runtime found above.
