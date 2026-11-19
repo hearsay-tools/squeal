@@ -113,8 +113,11 @@ export async function lowerWhile(
 /** A process by its pid and its start, as `statOf` reads them. */
 export type Identity = Pick<ProcessEntry, "pid" | "start">;
 
-/** Every descendant `pid` has now, but one already exiting. */
-function below(pid: number): Identity[] {
+/**
+ * Every descendant `pid` has now, but one already exiting: a child killed
+ * and not yet reaped is skipped, not an error (row 011-409).
+ */
+export function below(pid: number): Identity[] {
   const found: Identity[] = [];
   for (let queue = childrenOf(pid), next = queue.pop(); next !== undefined; next = queue.pop()) {
     const entry = statOf(next);

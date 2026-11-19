@@ -5,8 +5,8 @@ import { createInterface } from "node:readline";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
-import { type Identity, lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
-import { childrenOf, statOf } from "../../src/core/daemon/terminate.js";
+import { below, type Identity, lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
+import { statOf } from "../../src/core/daemon/terminate.js";
 import type { CheckPriority } from "../../src/core/types/check-groups.js";
 import { leaderGroup, SCAN_EVERY_MS, watched } from "./low-priority-helpers.js";
 
@@ -64,11 +64,6 @@ require("node:readline").createInterface({ input: process.stdin }).once("line", 
 });
 console.log("ready");
 `;
-
-/** Every descendant `pid` has now, as the daemon's walk lists them. */
-function descendants(pid: number): number[] {
-  return childrenOf(pid).flatMap((child) => [child, ...descendants(child)]);
-}
 
 /** `pid` by its pid and start, as the daemon's walk lists it. */
 function identity(pid: number): Identity {
@@ -271,19 +266,34 @@ describe.runIf(process.platform === "linux")("lowerWhile: forks at nice 10 (001-
     };
     const settled = new AbortController();
     let walks = 0;
-    // the first walk lists the middle child alone, its sleeper not yet made; it exits after
+    // The first walk lists the middle child alone, its sleeper not yet made; it is killed
+    // after, and the carrier reaps it only 300 ms later, as on a busy runner: the next walks,
+    // the daemon's own, find it exiting (row 011-409).
     const lowering = lowerWhile(daemon, "fast", "normal", since, settled.signal, (pid) => {
-      if (++walks > 1) return descendants(pid).map(identity);
+      if (++walks > 1) return below(pid);
+      process.kill(pid, "SIGSTOP");
+      setTimeout(() => {
+        try {
+          process.kill(pid, "SIGCONT");
+        } catch {
+          // gone with the test's group
+        }
+      }, 300);
       setTimeout(() => process.kill(middle, "SIGKILL"), 10);
       return [identity(middle)];
+    });
+    let ended = false;
+    void lowering.then(() => {
+      ended = true;
     });
     onTestFinished(async () => {
       settled.abort();
       await lowering;
     });
-    for (let waited = 0; waited < 5_000 && getPriority(late) < TEST_NICE; waited += 50)
+    for (let waited = 0; waited < 5_000 && !ended && getPriority(late) < TEST_NICE; waited += 50)
       await sleep(50);
-    expect(getPriority(late)).toBe(TEST_NICE);
+    // ended early: a walk threw, which the lowering takes for its abort
+    expect({ late: getPriority(late), ended }).toEqual({ late: TEST_NICE, ended: false });
   });
 
   it("keeps another lane's orphan for that lane's look when one lane's look scans (wave-13bt S1)", async () => {
