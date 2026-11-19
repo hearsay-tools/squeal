@@ -116,9 +116,9 @@ describe("the lines of a yield kept, a tier's ended files and the run an unliste
     expect(unlisted({ lane: "vitest", since: START, files: 1 })).toBe(
       `the test runner has not listed revision 5's test files yet; it waits for the run in flight (running since ${T(START)} in the vitest lane), each of its calls bounded at 666 s`,
     );
-    // None open in the file's lane: the line as before.
+    // Row 011-398 (gh-181): none open in the file's lane, so no run and no call bound is said.
     expect(unlisted()).toBe(
-      "the test runner has not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s",
+      "the test runner has not listed revision 5's test files yet; no run is in flight, and no tier starts until the listing ends",
     );
   });
 });

@@ -14,6 +14,7 @@ import type { KnownState } from "../core/types/state.js";
 import type { StatusResult } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
+import type { NamedPath } from "./named-selection.js";
 import type { SyncState } from "./status-sync.js";
 import { passReached } from "./wait/synced.js";
 
@@ -26,7 +27,11 @@ export interface FileClasses {
   readonly revision: RevisionNumber;
   readonly testFiles: number;
   readonly byClass: Readonly<Record<FileClass, number>>;
-  /** The runner has not listed the revision's test files yet (`runnerPartPending`). */
+  /**
+   * The runner has not listed the revision's test files yet (`runnerPartPending`), or an
+   * install is awaited. Row 011-398 (gh-232): a listing does not count for a fixed set of
+   * named files (`fixedSelection`), which it cannot change.
+   */
   readonly unlisted: boolean;
 }
 
@@ -36,34 +41,50 @@ export interface FileVerdict extends FileClasses {
 }
 
 /**
+ * Row 011-398 (gh-232, spec 005 D2): whether listing a revision cannot change
+ * which files a named selection holds: every named path is a test file the
+ * worktree lists, which selects itself. A source path selects the files that
+ * read it, and an unmatched or not-run path may become a test file, so the
+ * listing can change those; a selection of none of them is fixed.
+ */
+export function fixedSelection(paths: readonly Pick<NamedPath, "kind">[]): boolean {
+  return paths.every((path) => path.kind === "test-file");
+}
+
+/**
  * The classes of `files`, or of every test file the worktree lists when
  * `null`, read from their own states and rows only: a wait's poll reads
  * this, never every state of the worktree for a few files (task 011-42).
+ * `fixed`: `files` is a named set the listing cannot change (`fixedSelection`).
  */
 export function readClasses(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly TestFileRef[] | null = null,
+  fixed = false,
 ): FileClasses {
   const only = files ?? undefined;
   const states = store.knownStates.list(worktreeId, only);
-  return tally(store, worktreeId, files, states, store.testFileKeys.list(worktreeId, only)).classes;
+  const keys = store.testFileKeys.list(worktreeId, only);
+  return tally(store, worktreeId, files, states, keys, fixed).classes;
 }
 
 /**
  * Reads the verdict on `files`, or on every test file the worktree lists when
  * `null`, each file classed by `fileClassOf`. It reads every state: a failed
  * global setup is no test file's and counts for its project's files (task
- * 001-382), and no read lists a worktree's setup checks apart.
+ * 001-382), and no read lists a worktree's setup checks apart. `fixed` as
+ * `readClasses`'.
  */
 export function readVerdict(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly TestFileRef[] | null = null,
+  fixed = false,
 ): FileVerdict {
   const states = store.knownStates.list(worktreeId);
   const keys = store.testFileKeys.list(worktreeId, files ?? undefined);
-  const { classes, ids, rows, checks } = tally(store, worktreeId, files, states, keys);
+  const { classes, ids, rows, checks } = tally(store, worktreeId, files, states, keys, fixed);
   const failures = { tests: 0, testFiles: 0 };
   for (const id of ids) {
     for (const state of checks.get(id) ?? []) {
@@ -87,6 +108,7 @@ function tally(
   files: readonly TestFileRef[] | null,
   states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
+  fixed: boolean,
 ) {
   const header = readHeader(store, worktreeId, states, keys);
   const checks = new Map<string, KnownState[]>();
@@ -104,7 +126,11 @@ function tally(
     revision: header.revision,
     testFiles: ids.length,
     byClass,
-    unlisted: header.runnerPartPending === true || header.awaitingInstall === true,
+    // Row 011-398 (gh-232): a pending listing holds no fixed named set, whose files the
+    // daemon's pass already classed; an awaited install holds every set.
+    unlisted:
+      (header.runnerPartPending === true && !(fixed && files !== null)) ||
+      header.awaitingInstall === true,
   };
   return { classes, ids, rows, checks };
 }

@@ -25,7 +25,13 @@ import {
 import { leftGroupsOf } from "../status-wait-groups.js";
 import { type FocusReply, focusNamed, promoteNamed } from "../status-wait-promote.js";
 import { StoredClosures } from "../stored-closures.js";
-import { type FileClasses, holdOfWait, readClasses, readVerdict } from "../verdict.js";
+import {
+  type FileClasses,
+  fixedSelection,
+  holdOfWait,
+  readClasses,
+  readVerdict,
+} from "../verdict.js";
 import { type DaemonWatch, lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
 import type { NamedWaitEnded, NamedWaitOptions } from "./named-types.js";
@@ -96,8 +102,10 @@ export function namedPoll(
       const current = sync.current();
       const readers = syncedReaders(current);
       const selection = selectNamedFiles(store, id, root, cwd, paths, readers, stored);
+      // Row 011-398 (gh-232): a listing does not hold named test files it cannot change.
+      const fixed = fixedSelection(selection.paths);
       // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
-      const all = readClasses(store, id, selection.files);
+      const all = readClasses(store, id, selection.files, fixed);
       const settled = final || elapsed() >= options.settleMs;
       watch ??= watchOf(id, commonDir, options.downMs);
       const { view: daemon, worktree, at: readAt } = judgeWait(watch, store, id, options.now);
@@ -112,7 +120,7 @@ export function namedPoll(
       }
       const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
       const held = selection.files.filter((f) => !paused.has(testFileId(f)));
-      const classes = leftForPause.length === 0 ? all : readClasses(store, id, held);
+      const classes = leftForPause.length === 0 ? all : readClasses(store, id, held, fixed);
       // The files named by their own paths, read once the selection is decided: to promote, or to focus.
       const own =
         ready && (checks.length > 0 || !promoted) ? ownNamedFiles(root, cwd, paths, selection) : [];
@@ -180,7 +188,7 @@ export function namedPoll(
         }
         return null;
       }
-      const verdict = heldAsVerdict(readVerdict(store, id, held), untaken);
+      const verdict = heldAsVerdict(readVerdict(store, id, held, fixed), untaken);
       const result = buildSnapshot(store, root, options.now());
       // Row 011-63 (gh-51 3): a read at the deadline names what held each file as of
       // its last millisecond, while the promotion this wait sent still held it.

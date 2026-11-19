@@ -274,15 +274,21 @@ function lookupOnly(on: boolean): string {
 /**
  * `Vitest has not listed revision 5's test files yet; it waits for the run in flight (…), …`.
  * Row 011-311: the runner is named, "the test runner" when the standing names none, never
- * "the runner part".
+ * "the runner part". Row 011-398 (gh-181): the run in flight and the bound on each call,
+ * which a call waits out only behind that run, are said only while one is open in the
+ * file's lane or yields; with none, that no tier starts until the listing ends (C4).
  */
 function unlistedText(s: Extract<Standing, { kind: "unlisted" }>): string {
-  // Row 011-209: the run it waits for, its lane, start and ended count, when one is open.
+  const listed = `${runnersHave(s.runners, false)} not listed revision ${s.revision}'s test files yet`;
+  // A yield is a run's: one published with no open run read is still in flight.
+  if (s.run === undefined && s.yields === undefined) {
+    return `${listed}; no run is in flight, and no tier starts until the listing ends`;
+  }
+  // Row 011-209: the run it waits for, its lane, start and ended count, when one is read.
   const run = s.run === undefined ? "" : ` (${waitedRunText(s.run)})`;
   const bound = `each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s`;
   const yielded = s.yields === undefined ? "" : yieldText(s.yields, "run");
-  const runners = runnersHave(s.runners, false);
-  return `${runners} not listed revision ${s.revision}'s test files yet; it waits for the run in flight${run}, ${bound}${yielded}`;
+  return `${listed}; it waits for the run in flight${run}, ${bound}${yielded}`;
 }
 
 /** Row 011-209 (F2, F3): a queued line names the last yield in its lane; the verdict line does not. */
