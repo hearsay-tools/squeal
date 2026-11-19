@@ -47,3 +47,15 @@ Done when: with a 4-file tier where one file blocks (as the research's `hang.tes
 ## Review brief
 
 Use /reviewer. One candidate for rows 011-396 to 011-399; the range is the candidate's commits over `origin/main` at its base. One section and verdict per row, then PASS or FAIL. Check especially: W1 never loses an added/deleted test file; W4 never changes a stored result and its beside instance respects the CPU ceiling (C10).
+
+## Added 2026-11-19: partial selection lists (the human: "label now + find cause")
+
+Evidence: a read-only selection audit of the squawk repository (Squeal 0.1.563), summarised on [#242](https://github.com/hearsay-tools/squeal/issues/242) (comment of 2026-11-19): `squeal status <source path> --json` at one revision gave `selection.testFiles` lengths 688 / 1 / 1, 2 / 2 / 701, 315 / 18 / 315; the short ones had `selection.reason: "unsynced"`, the long ones matched an independent import-graph model.
+
+### W3b: 011-401 a partial selection says it is partial (worker of W3, after 011-398)
+
+Use /worker. Shape: repair. Outcome: while a selection's list can be incomplete (`unsynced`, `unlisted`), the plain text says "at least N test files; the list is partial while Squeal catches up with revision R" and the JSON adds `selection.complete: false` (additive; `true` otherwise). Owns: W3's files plus the selection JSON writer (name it in notes). Done when: tests for both reasons and for a complete selection; the help text names `complete`. Separate commit(s) after 011-398's.
+
+### W1b: 011-402 why a complete selection shrinks at one revision (worker of W1, after 011-396; investigation)
+
+Use /worker. Shape: survey. Outcome: notes in `tasks/011-402/notes.md` naming the code path that makes `status <source path>` return 688 files, then 1, at one revision: for example a read of `test_file_imports` or the reverse index while the runner part rewrites them (`src/core/store/import-edges.ts` 179-189, `src/core/scheduler/stored-affected.ts`), or keys read across two revisions. Reproduce with a test in your worktree if cheap (under 30 min, `timeout` on every run). No product change unless it is a one-transaction fix inside your files; otherwise propose the fix in notes.
