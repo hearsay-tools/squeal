@@ -28,12 +28,14 @@ As commit `236275066`: `CODEX_ADAPTER_VERSION` in `src/harness/codex/build-adapt
 
 New test: `test/harness/codex/packaging/skill-description.test.ts` (2 cases, `squeal` and `setup`): the fixed plugin's description equals the runtime copy's. It fails on the old fixed text. `adapter.test.ts` already compares the built plugin's skill files with the committed ones; no test compared the fixed and runtime descriptions before.
 
-### Point 3: does Codex's hook approval depend on the skill files? No
+### Point 3: does Codex's hook approval depend on the skill files? Yes, on Codex with the plugin-content fingerprint
 
-- Trust is a hash of each handler's declaration only. `src/cli/codex/hash.ts` ports Codex 0.160.1's `hook_hash` (`codex-rs/hooks/src/engine/discovery.rs`) and `version_for_toml`: the identity is `{event_name, matcher, hooks: [{type, command, timeout, async, statusMessage?, additionalContextLimit?}]}` (`../../../002-codex-adapter/research/wave-0-checks.md` 3). The key is `squeal@hearsay:hooks/hooks.json` (`PLUGIN_KEY_SOURCE`).
-- The commands use `${PLUGIN_ROOT}` unexpanded (`node --disable-warning=ExperimentalWarning "${PLUGIN_ROOT}/dist/session-start.mjs"`), so the plugin version in the cache path does not enter the hash either.
-- `research/codex-sessions-and-wake.md` row 4 and line 102: a plugin's skill loads without trust.
-- So by the ported code, 1.0.4 changes no trust hash, and users should not need to approve the hooks again. `adapter.test.ts` "keeps exactly ten handlers at their positions, with the committed trust hashes" passes. Caveat: the port was checked against Codex 0.160.1; a later Codex that fingerprints the whole plugin is not ruled out, and I did not run Codex. `research/wrapper-install-flow.md` 5 says "changing a bundled skill would invalidate wrapper trust"; that sentence is about the wrapper design, and its source is not cited there. The human's approval of "one off hooks approval" therefore covers a cost that, by our code, may not occur.
+Corrected by the coordinator after review `../../reviews/0.1.566.md` S1; the worker's first answer was "No" and read only the declaration hash.
+
+- The ten handler declarations and their declaration hashes are unchanged (`src/cli/codex/hash.ts`, the port of Codex 0.160.1's `hook_hash`; `adapter.test.ts` "keeps exactly ten handlers at their positions, with the committed trust hashes" passes).
+- Approval has a second identity. Codex 0.164.0 hashes the paths, entry types and bytes under the plugin root, the manifest included, and `hooks/list.currentHash` combines the declaration hash with that content hash (`../../../002-codex-adapter/research/stable-hook-approval.md`, "Two separate identities"; spec 002 open question 3). A manifest-only upgrade changed all ten approvals there, and hooks marked modified did not run (`../../../002-codex-adapter/research/stable-wrapper-plugin.md`, "Approval and execution proof"). The skill files are inside that tree.
+- So adapter 1.0.4 (manifest and two skill files changed) needs a new approval of all ten hooks on such a Codex. The human accepted that cost on 2026-11-19.
+- The step for a Codex user: run `squeal update` with Codex on the PATH, restart Codex, then approve the ten hooks of `squeal@hearsay` in `/hooks` (both Stop entries included), or run `squeal init --harness codex --trust` and answer yes. No Codex session was run for this row or its review.
 
 ## Row 005-130: changed sentences
 
