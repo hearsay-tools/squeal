@@ -276,12 +276,13 @@ const NAMED =
 
 /**
  * Row 005-127: the check groups text `t` names as waiting for their own run (spec 019 D1,
- * `manual`): the primer's "contract waits for `squeal run contract`" (or "the CLI's `run
- * contract`" for a long CLI path) and status's "contract: 1 test file; 1 pending, waiting for
- * `squeal run contract`".
+ * `manual`): status's "contract: 1 test file; 1 pending, waiting for `squeal run contract`", the
+ * CLI named as the status names it. Row 005-128: the start message names no check; the long one
+ * said "contract waits for `squeal run contract`", which a kept session's registration still
+ * holds, and which counts as no look-up (`check-evidence.mjs`, `lookedUp`: a reply only).
  */
 function waitingOf(t) {
-  const re = /\b(?:waits?|waiting) for (?:the CLI's )?`[^`\n]*?\brun ([\w.-]+)`/g;
+  const re = /\b(?:waits?|waiting) for `[^`\n]*?\brun ([\w.-]+)`/g;
   return [...new Set([...t.matchAll(re)].map((m) => m[1]))];
 }
 

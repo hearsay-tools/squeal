@@ -232,12 +232,15 @@ export function gradeCell({
 
 /**
  * Row 005-127: the checks a `squeal checks` reply lists as running only on request (005-126's
- * form: a block per check, its name alone on the first line, `  Runs: only on request`).
+ * form: a block per check, its name alone on the first line, then `  Runs: only on request`).
+ * Row 005-128: the shipped line goes on, `  Runs: only on request: Squeal does not start it;
+ * ...`; the bare form read only that and missed every real reply (`test/evals/manual-check.test.ts`
+ * gates it on the CLI's own output).
  */
 export function manualChecks(out) {
   return String(out ?? "")
     .split(/\n\s*\n/)
-    .filter((b) => /^ {2}Runs: only on request$/m.test(b))
+    .filter((b) => /^ {2}Runs: only on request(?::|$)/m.test(b))
     .map((b) => b.trim().split("\n")[0].trim());
 }
 

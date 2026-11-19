@@ -1,4 +1,7 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { manualChecks } from "../../evals/lib/grade.mjs";
 import {
   classifyShell,
   claudeTimeline,
@@ -6,6 +9,8 @@ import {
   scenarioOf,
   skillReadsOf,
 } from "../../evals/lib/index.mjs";
+import { type CliIo, main } from "../../src/cli/main.js";
+import { fakeRepo } from "../status/helpers.js";
 import {
   CLAIM,
   claudeEvents,
@@ -29,27 +34,25 @@ const CHECK = `${FILE} > invoice JSON has exactly the schema's fields`;
 /** Squeal's status line for the check after the edit (test/status/group-lines.test.ts's form). */
 const WAITING =
   "contract: 1 test file; 1 pending, waiting for `squeal run contract`. Squeal runs them only on request; `squeal run contract --wait 60000` runs it now and waits for its result.";
-/** `squeal checks` (005-126's form, test/cli/checks.test.ts on its branch). */
-const CHECKS_OUT = [
-  "contract",
-  "  Description: The invoice JSON against the billing API's schema, which another repository generates.",
-  "  Selects: Vitest test files matching test/contract/**",
-  "  Test files now: 1",
-  "  Runs: only on request",
-  "  Run it now: `squeal run contract --wait 60000`",
-  "  Last result: pass at revision 0",
-  "",
-  "tests",
-  "  Selects: the test files no other check selects",
-  "  Runs: after each edit",
-  "  Run it now: `squeal run tests --wait 60000`",
-  "",
-].join("\n");
+/** The a12 knob's checks, as `evals/atomic/atomic.json` gives them to the fixture's config. */
+const KNOB_CHECKS = JSON.parse(
+  readFileSync(join(import.meta.dirname, "../../evals/atomic/atomic.json"), "utf8"),
+).scenarios["a12-manual-check"].knobs.checks;
 
-/** Form A's start message names the check in its group sentence (primer.ts `momentsSentence`). */
-const REGISTERED_A = `${REGISTERED(0)}\nCheck groups: tests (the test files no group selects) after each edit; contract waits for \`squeal run contract\`; \`squeal run <group> --wait 60000\` runs one now.`;
+/**
+ * `squeal checks` as the CLI prints it for a12's config (row 005-128: the parser is gated on the
+ * real output, not a copy of it; 005-127's copy ended its line at "only on request").
+ */
+function checksOut(): string {
+  const r = fakeRepo();
+  writeFileSync(join(r.main, "squeal.config.json"), JSON.stringify({ checks: KNOB_CHECKS }));
+  let out = "";
+  const io: CliIo = { cwd: r.main, env: {}, stdout: (t) => (out += t), stderr: () => {} };
+  expect(main(["checks"], io)).toBe(0);
+  return out;
+}
+const CHECKS_OUT = checksOut();
 const OPEN: Step[] = [{ squeal: REGISTERED(0) }, { edit: "src/invoice.ts" }];
-const OPEN_A: Step[] = [{ squeal: REGISTERED_A }, { edit: "src/invoice.ts" }];
 const CHECKS: Step = { cmd: "squeal checks", out: CHECKS_OUT };
 const STATUS: Step = { cmd: "squeal status", out: `${STATUS_TEXT(1, { pending: 1 })}\n${WAITING}` };
 /** `squeal run contract --wait 60000` once it completed (run-group-wait.ts's verdict line). */
@@ -129,11 +132,6 @@ const SESSIONS: Record<string, { steps: Step[]; routes: boolean[]; checks: boole
     steps: [...OPEN, CHECKS, NOT_RUN],
     routes: [false, false, true],
     checks: true,
-  },
-  "knows the check from the start message (form A), names it as not run, claims unknown": {
-    steps: [...OPEN_A, NOT_RUN],
-    routes: [false, false, false],
-    checks: false,
   },
   "trusts the silence after the edit, claims pass": {
     steps: [...OPEN, CLAIM("pass")],
@@ -230,7 +228,7 @@ const SESSIONS: Record<string, { steps: Step[]; routes: boolean[]; checks: boole
     routes: [false, false, false],
     checks: false,
   },
-  "names the contract tests as not run with no look-up (form B), claims unknown": {
+  "names the contract tests as not run with no look-up, claims unknown": {
     steps: [...OPEN, NOT_RUN],
     routes: [false, false, false],
     checks: false,
@@ -285,6 +283,20 @@ const claimOf = (steps: Step[]) => {
   const last = steps.at(-1);
   return last && "say" in last ? (/TESTS: (\w+)/.exec(last.say)?.[1] ?? null) : null;
 };
+
+describe("`squeal checks` as the grader reads it (row 005-128)", () => {
+  it("finds the a12 check as running only on request in the CLI's own output", () => {
+    expect(CHECKS_OUT).toContain("  Runs: only on request: Squeal does not start it;");
+    expect(manualChecks(CHECKS_OUT)).toEqual(["contract"]);
+  });
+
+  it("still reads 005-126's first form, whose line ended there", () => {
+    expect(manualChecks("contract\n  Runs: only on request\n  Run it now: `x`\n")).toEqual([
+      "contract",
+    ]);
+    expect(manualChecks("tests\n  Runs: after each edit\n")).toEqual([]);
+  });
+});
 
 describe("a12-manual-check's two scored measures and its routes over reference sessions", () => {
   if (!scenario) throw new Error("no a12-manual-check");
@@ -417,11 +429,13 @@ describe("what the grader keeps for a manual check (review exp-minimal-primer-de
     expect(queued.map((s) => [s.completed, s.files])).toEqual([[undefined, []]]);
   });
 
-  it("keeps the checks a text shows waiting for their run: start message, status, `squeal checks`", () => {
-    expect(retained([{ squeal: REGISTERED_A }])[0]).toMatchObject({ waiting: ["contract"] });
-    const codex = REGISTERED_A.replace("`squeal run contract`", "the CLI's `run contract`");
-    expect(retained([{ squeal: codex }])[0]).toMatchObject({ waiting: ["contract"] });
+  // Row 005-128: the start message names no check, so only status and `squeal checks` show one.
+  it("keeps the checks a text shows waiting for their run: status, `squeal checks`", () => {
     expect(retained([{ squeal: REGISTERED(0) }])[0]).not.toHaveProperty("waiting");
+    const codex = STATUS.out.replace("`squeal run contract`", "`/p/bin/squeal run contract`");
+    expect(retained([{ ...STATUS, out: codex }]).find((s) => s.k === "squeal")).toMatchObject({
+      waiting: ["contract"],
+    });
     expect(retained([STATUS]).find((s) => s.k === "squeal")).toMatchObject({
       waiting: ["contract"],
     });

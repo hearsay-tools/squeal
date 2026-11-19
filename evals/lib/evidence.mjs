@@ -75,7 +75,11 @@ const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
  * contract): Vitest's `Test Files` line or JSON report with a file passed or failed, node:test's
  * `tests` count with a test that was not skipped, or, cut above that line, a `pass` or `fail`
  * count above 0. No tests found, a runner that failed to start
- * and a summary of only skipped tests (review wave 2.6, B3) show none.
+ * and a summary of only skipped tests (review wave 2.6, B3) show none. Row 005-128 (findings
+ * `start-message-experiment.md`, `a5-uncovered`): a node:test output with no `tests` line at all,
+ * its summary cut by `| tail` down to `todo` and `duration_ms`, completed when it still shows a
+ * test of its own that passed or failed: the spec reporter's `✔`/`✖ <name> (<n>ms)` or TAP's
+ * `ok`/`not ok N - <name>`, neither skipped nor todo.
  */
 export function completedRuns(out) {
   const text = String(out ?? "").replace(ANSI, "");
@@ -87,13 +91,23 @@ export function completedRuns(out) {
     ).length;
   // Before the first `tests` line, a summary cut above it (`… | tail`) still shows its `pass`
   // and `fail` lines; it completed when either counts a test (006-40).
-  const nodeTest = text.split(/^(?=(?:# |\u2139 )tests \d+)/m).filter((b) => {
+  const blocks = text.split(/^(?=(?:# |\u2139 )tests \d+)/m);
+  const nodeTest = blocks.filter((b) => {
     const n = (k) => Number(new RegExp(`^(?:# |\u2139 )${k} (\\d+)`, "m").exec(b)?.[1] ?? 0);
-    if (!/^(?:# |\u2139 )tests \d+/.test(b)) return n("pass") + n("fail") > 0;
+    if (!/^(?:# |\u2139 )tests \d+/.test(b))
+      return n("pass") + n("fail") > 0 || (blocks.length === 1 && NODE_TEST_RESULT.test(b));
     return n("tests") - n("skipped") - n("todo") > 0;
   }).length;
   return { vitest, "node:test": nodeTest };
 }
+
+/**
+ * A node:test test that passed or failed, as its reporter names it: spec's `✔ name (1.2ms)` or
+ * `✖ name (1.2ms)` (a skipped or todo test ends `# SKIP` or `# TODO` after the time, a suite's
+ * `✖ failing tests:` has none), or TAP's `ok 1 - name` and `not ok 1 - name` without a directive.
+ */
+const NODE_TEST_RESULT =
+  /^\s*(?:[\u2714\u2716] .+ \(\d+(?:\.\d+)?m?s\)|(?:not )?ok \d+ - (?:(?!# (?:SKIP|TODO)\b).)+)\s*$/im;
 
 const num = (text, key) => Number(new RegExp(`"${key}":\\s*(\\d+)`).exec(text)?.[1] ?? 0);
 
