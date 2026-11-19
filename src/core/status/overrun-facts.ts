@@ -39,7 +39,7 @@ export function overrunOf(
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline,
-    ...(tier.beside === true ? { beside: true } : {}),
+    ...(tier.laneWaits === undefined ? {} : { laneWaits: tier.laneWaits }),
   };
   return { overrun };
 }

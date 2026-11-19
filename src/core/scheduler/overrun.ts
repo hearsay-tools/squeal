@@ -1,7 +1,7 @@
 import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import { isGroupLane } from "../types/scheduler.js";
-import type { TierOverrun } from "../types/standing.js";
+import type { LaneWaits, TierOverrun } from "../types/standing.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { cancels, laneOf, type Tier } from "./tiers.js";
@@ -140,27 +140,49 @@ export function nextOverrun(
  * moved by the calendar steps since, the run's deadline, `runner.timeoutMs`
  * from that start, and its files that have not ended, each with its
  * last-known duration. All three times are on one basis (review 0.1.567 B2).
- * `paired`: its lane holds a tier beside another, so `beside: true` (row
- * 011-405).
+ * `waits`: what its lane's next tiers wait for (`laneWaits`, row 011-405).
  */
 function tierOverrun(
   context: SchedulerContext,
   tier: Tier,
   at: EpochMs,
-  paired: boolean,
+  waits: LaneWaits | null,
 ): TierOverrun {
   const { timeoutMs } = context.policy.runner;
   const startedAt = steppedStart(context, tier) ?? at;
   const deadline = timeoutMs === null ? null : ((startedAt + timeoutMs) as EpochMs);
   const files = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { startedAt, at, deadline, files, ...(paired ? { beside: true } : {}) };
+  return { startedAt, at, deadline, files, ...(waits === null ? {} : { laneWaits: waits }) };
 }
 
-/** `o` with `beside: true` when `paired`, without it otherwise (row 011-405). */
-function pairedAs(o: TierOverrun, paired: boolean): TierOverrun {
-  if ((o.beside === true) === paired) return o;
-  const { beside: _, ...rest } = o;
-  return paired ? { ...rest, beside: true } : rest;
+/** `o` with `laneWaits` set to `waits`, or without it for `null` (row 011-405). */
+function waitingAs(o: TierOverrun, waits: LaneWaits | null): TierOverrun {
+  if ((o.laneWaits ?? null) === waits) return o;
+  const { laneWaits: _, ...rest } = o;
+  return waits === null ? rest : { ...rest, laneWaits: waits };
+}
+
+/** A tier in flight as `laneWaits` reads it. */
+interface Live {
+  readonly lane: string;
+  readonly beside: boolean;
+}
+
+/**
+ * What the next tiers of `runId`'s lane wait for, from the tiers in flight
+ * `live` now, not from how a tier started (review 0.1.570 B2), under the
+ * admission rule (`overrunLanes`, `busyLanes`): `either` while the lane
+ * holds a tier beside another and that other, as no third instance opens;
+ * `it` when the tier is beside one that has ended, since no tier starts
+ * beside a beside tier and it holds the lane's first instance; `null`
+ * otherwise, when the lane's next tier starts beside it.
+ */
+function laneWaits(live: ReadonlyMap<string, Live>, runId: string): LaneWaits | null {
+  const self = live.get(runId);
+  if (self === undefined) return null;
+  const lane = [...live.values()].filter((t) => t.lane === self.lane);
+  if (!lane.some((t) => t.beside)) return null;
+  return lane.length > 1 ? "either" : "it";
 }
 
 /**
@@ -173,8 +195,8 @@ function pairedAs(o: TierOverrun, paired: boolean): TierOverrun {
 export class Overruns {
   readonly #published = new Map<string, TierOverrun>();
   readonly #bounds = new Map<string, EpochMs>();
-  /** The lane of each published tier, so a beside tier's end clears `beside` there (row 011-405). */
-  readonly #lanes = new Map<string, string>();
+  /** The tiers in flight, as the last check and each end since read them (row 011-405). */
+  #live = new Map<string, Live>();
   #wake: WakeSlot | null = null;
 
   constructor(
@@ -197,27 +219,26 @@ export class Overruns {
   /**
    * Records which of `tiers` overrun at `at`, and when each other will;
    * whether the published ones changed. Row 011-405: each published one
-   * carries `beside: true` while its lane holds a tier beside another, both
-   * tiers' (the lane opens no third instance, so its next tiers wait).
+   * says what its lane's next tiers wait for (`laneWaits`), from `tiers`.
    */
   check(context: SchedulerContext, tiers: readonly Tier[], at: EpochMs): boolean {
     let changed = false;
-    const paired = new Set(tiers.filter((t) => t.beside === true).map((t) => t.lane));
+    this.#live = new Map(tiers.map((t) => [t.runId, { lane: t.lane, beside: t.beside === true }]));
     for (const tier of tiers) {
       const when = reportedOverrunAt(context, tier);
       if (when === null || when > at) {
         if (when === null) this.#bounds.delete(tier.runId);
         else this.#bounds.set(tier.runId, when);
-        changed = this.#forget(tier.runId) || changed;
+        changed = this.#published.delete(tier.runId) || changed;
         continue;
       }
       this.#bounds.delete(tier.runId);
-      const pair = paired.has(tier.lane);
+      const waits = laneWaits(this.#live, tier.runId);
       const was = this.#published.get(tier.runId);
-      const now = was === undefined ? tierOverrun(context, tier, when, pair) : pairedAs(was, pair);
+      const now =
+        was === undefined ? tierOverrun(context, tier, when, waits) : waitingAs(was, waits);
       if (now === was) continue;
       this.#published.set(tier.runId, now);
-      this.#lanes.set(tier.runId, tier.lane);
       changed = true;
     }
     this.#arm(at);
@@ -225,26 +246,21 @@ export class Overruns {
   }
 
   /**
-   * `tier` ended: whether the published ones changed. A beside tier's end
-   * leaves its lane one instance, so the others there lose `beside` (row
-   * 011-405).
+   * `tier` ended: whether the published ones changed. Whichever tier of a
+   * lane ends, the others published there say again what the lane's next
+   * tiers wait for (row 011-405, review 0.1.570 B2).
    */
   ended(tier: Tier): boolean {
     if (this.#bounds.delete(tier.runId) && this.#bounds.size === 0) this.#wake?.clear();
-    let changed = this.#forget(tier.runId);
-    if (tier.beside !== true) return changed;
-    for (const [runId, lane] of this.#lanes) {
-      const was = this.#published.get(runId);
-      if (lane !== tier.lane || was === undefined || was.beside !== true) continue;
-      this.#published.set(runId, pairedAs(was, false));
+    this.#live.delete(tier.runId);
+    let changed = this.#published.delete(tier.runId);
+    for (const [runId, was] of this.#published) {
+      const now = waitingAs(was, laneWaits(this.#live, runId));
+      if (now === was) continue;
+      this.#published.set(runId, now);
       changed = true;
     }
     return changed;
-  }
-
-  #forget(runId: string): boolean {
-    this.#lanes.delete(runId);
-    return this.#published.delete(runId);
   }
 
   /**

@@ -100,13 +100,22 @@ function timesText(ratio: number): string {
   return rounded.toLocaleString("en-US");
 }
 
+/** Row 011-405: what an overrunning file's line says of its lane, by `FileOverrun.laneWaits`. */
+const LANE_TEXT = {
+  beside: "the lane runs its next tiers beside it",
+  either: "it runs beside another tier, so the lane's next tiers wait for one of the two to end",
+  it: "the tier it ran beside has ended and no tier starts beside it, so the lane's next tiers wait for it to end",
+} as const;
+
 /**
  * Row 011-399 (gh-233): `; it has run 4 min 2 s, about 600x its usual
  * 0.4 s, so it may be hung; the lane runs its next tiers beside it, and
  * its run's deadline is 16:30:12`. Nothing about its result changes; with
- * no usual time known, the line says so. Row 011-405: while its lane holds
- * two tiers, either tier's file says `it runs beside another tier, so the lane's next
- * tiers wait for one of the two to end` instead, as no third instance opens.
+ * no usual time known, the line says so. Row 011-405: while the lane
+ * holds a tier beside another, `it runs beside another tier, so the lane's
+ * next tiers wait for one of the two to end`; for a tier left after the one
+ * it ran beside ended, `the tier it ran beside has ended and no tier starts
+ * beside it, so the lane's next tiers wait for it to end`.
  */
 export function overrunText(o: FileOverrun): string {
   const ran = `it has run ${durationText(o.ranMs, Math.floor)}`;
@@ -115,9 +124,6 @@ export function overrunText(o: FileOverrun): string {
       ? "with no usual time known"
       : `about ${timesText(o.ranMs / o.usualMs)}x its usual ${usualText(o.usualMs)}`;
   const deadline = o.deadline === null ? "" : `, and its run's deadline is ${timeText(o.deadline)}`;
-  const lane =
-    o.beside === true
-      ? "it runs beside another tier, so the lane's next tiers wait for one of the two to end"
-      : "the lane runs its next tiers beside it";
+  const lane = LANE_TEXT[o.laneWaits ?? "beside"];
   return `; ${ran}, ${usual}, so it may be hung; ${lane}${deadline}`;
 }
