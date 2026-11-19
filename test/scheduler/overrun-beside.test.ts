@@ -1,23 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { OVERRUN_FACTOR, OVERRUN_FLOOR_MS } from "../../src/core/scheduler/overrun.js";
-import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
-import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
-import { standingsOf } from "../../src/core/status/standing.js";
-import type { EpochMs } from "../../src/core/types/common.js";
-import { BESIDE_LANE_PREFIX, isBesideLane } from "../../src/core/types/runner.js";
-import type { TierOverrun } from "../../src/core/types/standing.js";
-import { RUN_MISSING } from "../helpers/baseline.js";
-import { Gate } from "./batch-fixture.js";
+import { BESIDE_LANE_PREFIX } from "../../src/core/types/runner.js";
+import type { CatchUpRun } from "./catch-up-fixture.js";
 import {
-  type CatchUpFile,
-  type CatchUpRun,
-  type CatchUpSide,
-  catchUpRepo,
-  catchUpSide,
-} from "./catch-up-fixture.js";
-import { heldRun, ref, settle } from "./tier-yields-fixture.js";
+  besideRuns,
+  H,
+  hungTier,
+  MATES,
+  overrunsOf,
+  pathsOf,
+  queued,
+  read,
+} from "./overrun-fixture.js";
+import { settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-399 (gh-233, `research/stuck-running.md` shape 1, E1b): a tier of
@@ -30,71 +26,6 @@ import { heldRun, ref, settle } from "./tier-yields-fixture.js";
  * file's end, so the tier's four files are all unfinished, as E1b's hung
  * tier was before its mates ended.
  */
-
-const H = "test/h.test.ts";
-const MATES = ["test/m0.test.ts", "test/m1.test.ts", "test/m2.test.ts"];
-const queued = (count: number) =>
-  Array.from({ length: count }, (_, i) => `test/q${String(i).padStart(4, "0")}.test.ts`);
-
-/** H and its mates lead the edit's order (shortest first); every file imports `src/a.ts`. */
-function files(hMs: number, count: number): CatchUpFile[] {
-  return [
-    { path: H, ms: hMs, imports: ["src/a.ts"] },
-    ...MATES.map((path) => ({ path, ms: hMs, imports: ["src/a.ts"] })),
-    ...queued(count).map((path) => ({ path, ms: Math.max(10, hMs + 1), imports: ["src/a.ts"] })),
-  ];
-}
-
-const besideRuns = (side: CatchUpSide, after: number) =>
-  side.runner.runs.slice(after).filter((run) => isBesideLane(run.lane ?? ""));
-const pathsOf = (run: CatchUpRun) => run.files.map((f) => f.path);
-
-/** The overruns `side`'s daemon published in its `yields` row (additive key, row 011-399). */
-function overrunsOf(side: CatchUpSide): TierOverrun[] {
-  const row = readYieldRow(side.store.meta.get(yieldsMetaKey(side.worktreeId)), 0 as EpochMs);
-  return [...(row.overruns ?? new Map<string, TierOverrun>()).values()];
-}
-
-/** What status reads of `paths` at the scheduler's calendar time, its daemon alive on the host's. */
-function read(side: CatchUpSide, paths: readonly string[]) {
-  const { store, worktreeId, root } = side;
-  const daemon = daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, Date.now());
-  return standingsOf(
-    store,
-    worktreeId,
-    root,
-    daemon,
-    side.now() as EpochMs,
-  )(paths.map((p) => ref(p)));
-}
-
-/**
- * After a baseline, an edit of `src/a.ts` queues every file as the edit's
- * work; the first tier holds H and its three mates and stays in flight. Runs
- * beside it wait on `beside` while it holds.
- */
-async function hungTier(hMs: number, count: number) {
-  const all = files(hMs, count);
-  const repo = catchUpRepo(all);
-  const side = catchUpSide(repo, repo.main, {
-    files: all,
-    hostSlots: 8,
-    policy: RUN_MISSING,
-    clock: "virtual",
-  });
-  await side.scheduler.start();
-  await settle(side);
-  const hung = new Gate();
-  const beside = new Gate();
-  side.runner.holdOf = (run) => {
-    if (isBesideLane(run.lane ?? "")) return beside.wait();
-    return pathsOf(run).includes(H) ? hung.wait() : undefined;
-  };
-  const after = side.runner.runs.length;
-  await side.edit("watch", "src/a.ts");
-  const tier = await heldRun(side, H, after);
-  return { side, hung, beside, tier, after };
-}
 
 describe("a file far past its own time does not block its lane (row 011-399, gh-233)", {
   timeout: 120_000,

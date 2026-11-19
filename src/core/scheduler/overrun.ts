@@ -51,8 +51,8 @@ export function overrunAfterMs(tier: Tier, durationMs: number | null): number {
  * cancel a run, so its lane has no second instance (C4 step 5, row 011-269).
  */
 export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null {
-  const { startedAt } = tier;
-  if (startedAt === undefined || tier.kind === "slow" || tier.beside === true) return null;
+  const start = steppedStart(context, tier);
+  if (start === null || tier.kind === "slow" || tier.beside === true) return null;
   // A cancelled tier is ending: its cancel is forced after the runner's grace (D12).
   if (tier.cancel?.signal.aborted === true) return null;
   if (isGroupLane(tier.lane)) return null;
@@ -61,8 +61,21 @@ export function overrunAt(context: SchedulerContext, tier: Tier): EpochMs | null
   const left = unfinished(tier);
   if (left.length === 0) return null;
   const after = Math.max(...left.map(({ file }) => overrunAfterMs(tier, file.durationMs)));
-  const start = context.steps?.since(startedAt as EpochMs, tier.startedStep ?? 0) ?? startedAt;
   return (start + after) as EpochMs;
+}
+
+/**
+ * `tier`'s start on the calendar now: its stored start moved by the calendar
+ * steps since (`CalendarSteps.since`, row 011-377); `null` before it has one.
+ * The overrun's threshold, age and deadline all count from it (review
+ * 0.1.567 B2).
+ */
+function steppedStart(context: SchedulerContext, tier: Tier): EpochMs | null {
+  const { startedAt } = tier;
+  if (startedAt === undefined) return null;
+  return (
+    context.steps?.since(startedAt as EpochMs, tier.startedStep ?? 0) ?? (startedAt as EpochMs)
+  );
 }
 
 /** Whether `tier` overruns at `at` (`overrunAt`). */
@@ -112,16 +125,17 @@ export function nextOverrun(
 }
 
 /**
- * What the `yields` row says of `tier`, overrunning since `at`: its run's
- * deadline, `runner.timeoutMs` from its start, and its files that have not
- * ended, each with its last-known duration.
+ * What the `yields` row says of `tier`, overrunning since `at`: its start
+ * moved by the calendar steps since, the run's deadline, `runner.timeoutMs`
+ * from that start, and its files that have not ended, each with its
+ * last-known duration. All three times are on one basis (review 0.1.567 B2).
  */
 function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOverrun {
   const { timeoutMs } = context.policy.runner;
-  const start = tier.startedAt;
-  const deadline = timeoutMs === null || start === undefined ? null : start + timeoutMs;
+  const startedAt = steppedStart(context, tier) ?? at;
+  const deadline = timeoutMs === null ? null : ((startedAt + timeoutMs) as EpochMs);
   const files = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { at, deadline: deadline as EpochMs | null, files };
+  return { startedAt, at, deadline, files };
 }
 
 /**
@@ -182,9 +196,22 @@ export class Overruns {
     return this.#published.delete(tier.runId);
   }
 
-  /** The calendar stepped `ms` (row 011-377): each bound moves; the wake counts elapsed time. */
-  shift(ms: number): void {
+  /**
+   * The calendar stepped `ms` (row 011-377): each bound moves, and each
+   * published overrun's start, threshold and deadline with it (review 0.1.567
+   * B2); the wake counts elapsed time. Whether a published one moved, so the
+   * row is written again.
+   */
+  shift(ms: number): boolean {
     for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
+    for (const [runId, o] of this.#published)
+      this.#published.set(runId, {
+        ...o,
+        startedAt: (o.startedAt + ms) as EpochMs,
+        at: (o.at + ms) as EpochMs,
+        deadline: o.deadline === null ? null : ((o.deadline + ms) as EpochMs),
+      });
+    return ms !== 0 && this.#published.size > 0;
   }
 
   close(): void {

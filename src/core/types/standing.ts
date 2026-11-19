@@ -110,11 +110,17 @@ export interface OverrunFile extends TestFileRef {
 /**
  * Row 011-399 (gh-233): a tier in flight whose every unfinished file has run
  * 10 times its last-known duration and at least 60 s (`overrunAt`), as its
- * daemon published it in the `yields` row: since when, the run's deadline
- * (`runner.timeoutMs` from its start; `null` with none), and its files that
- * had not ended then. Its lane's next tier starts beside it; it runs on.
+ * daemon published it in the `yields` row: its start and since when, both
+ * moved by calendar steps, the run's deadline (`runner.timeoutMs` from that
+ * start; `null` with none), and its files that had not ended then. Its lane's next tier starts beside it; it runs on.
  */
 export interface TierOverrun {
+  /**
+   * The tier's start on the daemon's calendar now: its stored start moved by
+   * the calendar steps since (review 0.1.567 B2). The threshold, the age and
+   * the deadline all count from it; the run row keeps the stored start.
+   */
+  readonly startedAt: EpochMs;
   readonly at: EpochMs;
   readonly deadline: EpochMs | null;
   readonly files: readonly OverrunFile[];

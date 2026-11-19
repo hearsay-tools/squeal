@@ -33,7 +33,9 @@ export function overrunOf(
   if (file === undefined) return {};
   const overrun: FileOverrun = {
     path: ref.path,
-    ranMs: Math.max(0, now - run.startedAt),
+    // Review 0.1.567 B2: the age counts from the start the daemon moved by calendar steps, the
+    // threshold's and the deadline's; the run row's `startedAt` stays the stored provenance.
+    ranMs: Math.max(0, now - tier.startedAt),
     usualMs: file.usualMs,
     since: tier.at,
     deadline: tier.deadline,

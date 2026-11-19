@@ -206,12 +206,21 @@ export class TierYields implements CutFiles {
   /**
    * Row 011-377: the calendar stepped `ms` (`CalendarSteps`): each bound
    * and the ended count's last write move with it. The wake already counts
-   * its delay on elapsed time.
+   * its delay on elapsed time. Review 0.1.567 B2: a published overrun moves
+   * too, and the row is written again at `at`, the reading that saw the
+   * step, so status reads its age and deadline on the new calendar; a busy
+   * store skips the write, as a file end's does.
    */
-  shift(ms: number): void {
-    for (const [runId, at] of this.#bounds) this.#bounds.set(runId, (at + ms) as EpochMs);
-    this.#overruns.shift(ms);
+  shift(ms: number, at?: EpochMs, context?: SchedulerContext): void {
+    for (const [runId, bound] of this.#bounds) this.#bounds.set(runId, (bound + ms) as EpochMs);
+    const moved = this.#overruns.shift(ms);
     this.#history.shift(ms);
+    if (!moved || context === undefined) return;
+    try {
+      withBusySliceSync(0, () => this.#publish(context, at));
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
   }
 
   /** The scheduler closed: no check comes again. */
