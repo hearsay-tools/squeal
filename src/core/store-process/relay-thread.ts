@@ -1,21 +1,38 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+import { setTimeout as sleep } from "node:timers/promises";
 import { type MessagePort, parentPort, workerData } from "node:worker_threads";
+import { codeStorePath } from "../code/store/open.js";
 import { requestDaemon } from "../daemon/client.js";
-import type { Statement } from "../daemon/write-batch.js";
-import { DaemonWriter, SMALL_REQUEST_TIMEOUT_MS } from "../delivery/daemon-writer.js";
+import { leaseProcess } from "../daemon/lease-process.js";
+import { acquireDaemonLock } from "../daemon/lock.js";
+import { encodeBatch } from "../daemon/write-batch.js";
+import { SMALL_REQUEST_TIMEOUT_MS } from "../delivery/daemon-writer.js";
+import { createProcSource } from "../ps/proc.js";
+import { logLongWrites, longWriteLine } from "../store/long-write.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
-import type { WriteCancelResponse } from "../types/daemon-writes.js";
-import type { WriteKind } from "./queue.js";
+import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
+import { GuardedWriter } from "./guard.js";
+import {
+  BatchOwner,
+  type Instance,
+  OWNER_TIMING,
+  type OwnedJob,
+  type OwnerPorts,
+  type OwnerTiming,
+  type Settled,
+} from "./owner.js";
+import { storeProcessLockPath } from "./paths.js";
 import { type StoreProcessLaunch, spawnStoreProcess } from "./spawn.js";
 
 /*
- * Spec 021 D22 (row 021-36): the daemon's side of the store process, in a
- * worker thread of its own, so the daemon's main thread can wait for a
- * batch with `Atomics.wait` while this thread talks to the socket. It sends
- * each batch with D15's client (`DaemonWriter`) under the worktree's lease,
- * held for the daemon's life, which is how the store process counts its
- * clients. Each answer goes back on the port, and the shared counter wakes
- * the main thread.
+ * Spec 021 D22.3 and D22.4 (row 021-36, rebuilt 2026-11-19): the daemon's
+ * side of the store process, in a worker thread of its own. The main
+ * thread posts each batch and goes on; this thread owns it until it is
+ * written exactly once (`BatchOwner`), one batch at a time, so a
+ * worktree's batches keep their order. It holds a lease at the store
+ * process for the daemon's life, which is how that process counts its
+ * clients, and answers each batch on the port.
  */
 
 /** What the relay is told at its start. */
@@ -28,157 +45,200 @@ export interface RelayData {
   readonly launch: StoreProcessLaunch | null;
   readonly env: NodeJS.ProcessEnv;
   readonly port: MessagePort;
-  readonly signal: SharedArrayBuffer;
+  /** Tests shorten the owner's bounds. */
+  readonly timing?: Partial<OwnerTiming>;
 }
 
-/** One batch to send. */
-export interface RelayJob {
-  readonly n: number;
-  readonly seq: string;
-  readonly kind: WriteKind;
-  readonly splittable: boolean;
-  readonly statements: readonly Statement[];
-}
-
-/**
- * How it went: `written` by the store process (or found written by the
- * mark); surely not written there, as no store process serves (`none`), it
- * refused the batch (`refused`: another schema, a stopping process) or
- * rolled it back (`failed`); `unknown` sent and then lost, so only the mark
- * can tell.
- */
-export type RelayOutcome = "written" | "none" | "refused" | "failed" | "unknown";
-
-/** Where a cancelled batch stands (`WriteCancelResponse`), or `no-answer` from the store process. */
-export type CancelState = WriteCancelResponse["state"] | "no-answer";
-
-/** To the relay thread: a batch to send, one to cancel, or the end. */
+/** To the relay thread: a batch to settle, or the end. */
 export interface RelayMessage {
-  readonly job?: RelayJob;
-  readonly cancel?: { readonly n: number; readonly seq: string };
+  readonly job?: OwnedJob;
   readonly close?: true;
   /** With `close`: the daemon was stopped on purpose (spec 021 D22.2). */
   readonly leaving?: boolean;
 }
 
-/** After a start that did not serve, or a refusal, this long before the next try. */
-const PAUSE_MS = 30_000;
-/** D1's bound for a lease and for a sent batch's answer. */
-const BOUND_MS = 10_000;
+/** From the relay thread: how a batch ended, or a line for the daemon's log. */
+export type RelayAnswer =
+  | { readonly n: number; readonly settled: Settled }
+  | { readonly log: string };
+
+/** How long a ping may take before the store process counts as silent. */
+const PING_MS = 1_000;
+/** D1's bound for handing a batch over: a large batch takes long to send. */
+const SUBMIT_MS = 10_000;
 
 const data = workerData as RelayData | undefined;
 if (parentPort !== null && data !== undefined) serve(data);
 
 function serve(data: RelayData): void {
-  const signal = new Int32Array(data.signal);
-  let writer: DaemonWriter | null = null;
-  let pauseUntil = 0;
-  /** Why the relay pauses: what each batch until `pauseUntil` is told. */
-  let paused: "none" | "refused" = "none";
-  let spawnedAt = Number.NEGATIVE_INFINITY;
-  let closing = false;
+  const port = data.port;
+  // D3: a write here that holds the lock past 250 ms is a line in the daemon's log.
+  logLongWrites((write) => port.postMessage({ log: longWriteLine(write) }));
+  const lockPath = storeProcessLockPath(data.commonDir, "code");
+  let token: string | null = null;
+  let leasedAt: Instance | null = null;
+  let db: { readonly raw: DatabaseSync; readonly writer: GuardedWriter } | null = null;
 
-  const offFor = (why: "none" | "refused") => {
-    writer = null;
-    paused = why;
-    pauseUntil = Date.now() + PAUSE_MS;
-  };
-  const start = () => {
-    if (data.launch === null || Date.now() - spawnedAt < PAUSE_MS) return;
-    spawnedAt = Date.now();
-    spawnStoreProcess(data.commonDir, data.launch, data.env);
-  };
-  const connect = async (): Promise<DaemonWriter | null> => {
-    if (writer !== null) return writer;
-    if (Date.now() < pauseUntil) return null;
-    if (!existsSync(data.socketPath)) {
-      start();
-      return null;
-    }
-    const next = new DaemonWriter({
-      worktreeId: data.worktreeId,
-      storeSchema: data.storeSchema,
-      socketPath: () => data.socketPath,
-      holder: `${process.pid} daemon`,
-      boundMs: BOUND_MS,
-    });
-    try {
-      if (!(await next.acquire())) {
-        start();
+  const ask = (request: DaemonRequest, timeoutMs: number): Promise<DaemonResponse> =>
+    requestDaemon(data.socketPath, request, timeoutMs);
+
+  const ports: OwnerPorts = {
+    lockFree: () => {
+      const lock = acquireDaemonLock(lockPath);
+      lock?.release();
+      return lock !== null;
+    },
+    start: () => {
+      if (data.launch !== null) spawnStoreProcess(data.commonDir, data.launch, data.env);
+    },
+    ping: async () => {
+      try {
+        const answer = await ask({ type: "ping" }, PING_MS);
+        if (!answer.ok || answer.type !== "ping") return null;
+        const instance = { pid: answer.pid, startedAt: answer.startedAt };
+        await lease(instance);
+        return instance;
+      } catch {
         return null;
       }
-    } catch {
-      return null;
-    }
-    writer = next;
-    return writer;
-  };
-  const send = async (job: RelayJob): Promise<RelayOutcome> => {
-    const connected = await connect();
-    if (connected === null) return Date.now() < pauseUntil ? paused : "none";
-    try {
-      const queued = { kind: job.kind, splittable: job.splittable, seq: job.seq };
-      if ((await connected.send(job.statements, false, queued)) === "written") return "written";
-      const why = connected.notTakenBy ?? "none";
-      // A rolled-back batch fails here too; a refusal or a store process gone is waited out.
-      if (why === "failed") writer = null;
-      else offFor(why);
-      return why;
-    } catch {
-      writer = null;
-      return "unknown";
-    }
+    },
+    submit: async (job) => {
+      const request = {
+        type: "write",
+        worktreeId: data.worktreeId,
+        storeSchema: data.storeSchema,
+        token: null,
+        release: false,
+        batch: encodeBatch(job.statements),
+        kind: job.kind,
+        splittable: job.splittable,
+        seq: job.seq,
+      } as const;
+      try {
+        const answer = await ask(request, SUBMIT_MS);
+        if (!answer.ok) return { refused: answer.error };
+        if (answer.type !== "write") return { refused: `unexpected answer ${answer.type}` };
+        return { id: answer.requestId, state: answer };
+      } catch {
+        return "lost";
+      }
+    },
+    status: async (id) => {
+      try {
+        const answer = await ask({ type: "write-status", requestId: id }, SMALL_REQUEST_TIMEOUT_MS);
+        if (!answer.ok || answer.type !== "write") return "unknown";
+        return answer;
+      } catch {
+        return "lost";
+      }
+    },
+    holder: () => storeProcessHolder(lockPath),
+    kill: (pid) => {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // Gone already.
+      }
+    },
+    direct: (job, busyMs) => {
+      db ??= openHere(data.commonDir);
+      db.raw.exec(`PRAGMA busy_timeout = ${busyMs}`);
+      return db.writer.write(data.worktreeId, job.seq, job.statements).end === "superseded"
+        ? "superseded"
+        : "written";
+    },
+    sleep: (ms) => sleep(ms),
+    now: () => performance.now(),
   };
 
-  /** Review of 0.1.571: withdraws a batch the daemon gave up waiting for, or learns where it stands. */
-  const cancel = async ({ n, seq }: { readonly n: number; readonly seq: string }) => {
-    let state: CancelState = "no-answer";
-    try {
-      const request = { type: "write-cancel", worktreeId: data.worktreeId, seq } as const;
-      const answer = await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS);
-      if (answer.ok && answer.type === "write-cancel") state = answer.state;
-    } catch {
-      // No answer: a store process gone or stopped; the mark settles the batch.
-    }
-    data.port.postMessage({ n, cancel: state });
-    Atomics.add(signal, 0, 1);
-    Atomics.notify(signal, 0);
+  /** The lease the store process counts this daemon by, taken again at each new instance. */
+  const lease = async (instance: Instance) => {
+    if (leasedAt?.pid === instance.pid && leasedAt.startedAt === instance.startedAt) return;
+    leasedAt = instance;
+    token = null;
+    const request = {
+      type: "lease",
+      worktreeId: data.worktreeId,
+      holder: `${process.pid} daemon`,
+      process: leaseProcess(),
+    } as const;
+    const answer = await ask(request, SMALL_REQUEST_TIMEOUT_MS).catch(() => null);
+    if (answer?.ok === true && answer.type === "lease") token = answer.token;
   };
 
+  const owner = new BatchOwner(ports, timingOf(data.timing));
+  let closing = false;
   // One batch at a time, in order: the store process keeps a worktree's batches in the order sent.
   let chain = Promise.resolve();
-  data.port.on("message", (message: RelayMessage) => {
-    if (message.cancel !== undefined) {
-      // Not behind the batch it cancels: that one may wait on the store process for long.
-      void cancel(message.cancel);
-      return;
-    }
+  port.on("message", (message: RelayMessage) => {
     if (message.close === true) {
       closing = true;
       const leaving = message.leaving === true;
       chain = chain.then(async () => {
-        if (writer !== null) await writer.release(leaving).catch(() => {});
-        else if (leaving && existsSync(data.socketPath)) {
-          // No lease taken: the store process still hears that this daemon left on purpose.
-          const request = {
-            type: "release",
-            worktreeId: data.worktreeId,
-            token: "-",
-            leaving,
-          } as const;
-          await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS).catch(() => null);
-        }
-        data.port.close();
+        await release(data, token, leaving);
+        db?.raw.close();
+        port.close();
       });
       return;
     }
     const job = message.job;
     if (job === undefined || closing) return;
     chain = chain.then(async () => {
-      const outcome = await send(job);
-      data.port.postMessage({ n: job.n, outcome });
-      Atomics.add(signal, 0, 1);
-      Atomics.notify(signal, 0);
+      port.postMessage({ n: job.n, settled: await owner.settle(job) });
     });
   });
+}
+
+function timingOf(timing: Partial<OwnerTiming> | undefined): OwnerTiming {
+  return { ...OWNER_TIMING, ...timing };
+}
+
+/** The daemon leaves: its lease ends, and with `leaving` the store process hears it was stopped on purpose. */
+async function release(data: RelayData, token: string | null, leaving: boolean): Promise<void> {
+  if (token === null && !(leaving && existsSync(data.socketPath))) return;
+  const request = {
+    type: "release",
+    worktreeId: data.worktreeId,
+    token: token ?? "-",
+    ...(leaving ? { leaving } : {}),
+  } as const;
+  await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS).catch(() => null);
+}
+
+/** This thread's own write connection, used only while no store process lives. */
+function openHere(commonDir: AbsolutePath): { raw: DatabaseSync; writer: GuardedWriter } {
+  const raw = new DatabaseSync(codeStorePath(commonDir));
+  raw.exec("PRAGMA synchronous = NORMAL");
+  return { raw, writer: new GuardedWriter(raw) };
+}
+
+/**
+ * The pid that holds the store process's lock file, read from
+ * `/proc/locks`, when its command line is a store process's; `null`
+ * elsewhere, or when another process holds it (`squeal remove`).
+ */
+function storeProcessHolder(lockPath: AbsolutePath): number | null {
+  if (process.platform !== "linux") return null;
+  try {
+    const source = createProcSource();
+    const key = source.fileKey(lockPath);
+    if (key === null) return null;
+    for (const lock of source.locks() ?? []) {
+      if (lock.file !== key || lock.blocked || lock.pid === null || lock.pid === process.pid)
+        continue;
+      const args = source.cmdline(lock.pid) ?? cmdlineOf(lock.pid);
+      if (args.includes("store-process")) return lock.pid;
+    }
+  } catch {
+    // Unreadable: nothing is ended.
+  }
+  return null;
+}
+
+function cmdlineOf(pid: number): readonly string[] {
+  try {
+    return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0");
+  } catch {
+    return [];
+  }
 }

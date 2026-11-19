@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { ObjectFormat } from "../../hash/blob.js";
 import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
-import { isBusy, withBusySliceSync } from "../../store/connection.js";
+import { isBusy, withBusySlice } from "../../store/connection.js";
 import { withWriteKind } from "../../store-process/relay.js";
 import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
@@ -182,7 +182,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     return opened;
   };
   /** Its record at its key; a busy store keeps both for a retry, never mapping it again. */
-  const keep = (job: Job, key: CheckKey, record: SharedRecord): void => {
+  const keep = async (job: Job, key: CheckKey, record: SharedRecord): Promise<void> => {
     let cause: DropCause = "store-open";
     try {
       const opened = open();
@@ -192,10 +192,11 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       }
       cause = "store-error";
       const at = { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION };
-      // Row 021-36: a record's parts may run twice, so the store process may write them in slices.
-      withWriteKind(
+      // Row 021-36: a record's parts may run twice, so the store process may write them in slices;
+      // `putParts` ends once they are written, so `onStored`'s step reads them.
+      await withWriteKind(
         "record",
-        () => withBusySliceSync(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now())),
+        () => withBusySlice(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now())),
         true,
       );
     } catch (error) {
@@ -243,7 +244,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     held.set(timer, job);
   };
   /** One paced unit: the job's key, kept once found, then its record, unless the store is busy. */
-  const place = (job: Job, record: SharedRecord): void => {
+  const place = (job: Job, record: SharedRecord): Promise<void> | undefined => {
     if (job.key === undefined) {
       job.attempt++;
       const key = options.resultKey(job.runId, job.file.testFile);
@@ -252,7 +253,8 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
     if (job.key === undefined) later(job);
     // While a record waits for the store, the next waits with it: one retry, one slice.
     else if (stalled.length > 0) stall(job);
-    else keep(job, job.key, record);
+    else return keep(job, job.key, record);
+    return undefined;
   };
   const step = async (job: Job): Promise<void> => {
     let record: SharedRecord;
@@ -266,12 +268,14 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       drop(job, "closed");
       return;
     }
+    let kept: Promise<void> | undefined;
     try {
-      pace.measure(() => place(job, record));
+      kept = pace.measure(() => place(job, record));
     } catch (error) {
       // Only the result's lookup throws here: `keep` takes its own.
       drop(job, "no-result", String(error));
     }
+    await kept;
   };
   const loop = async () => {
     for (let job = queue.shift(); job !== undefined; job = queue.shift()) {

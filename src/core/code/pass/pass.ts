@@ -60,6 +60,13 @@ export interface PassContext {
  * file is counted as any file is, so nothing waits for a runner listing.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
+  const report = await passOnce(ctx);
+  // Spec 021 D22.3 (row 021-36): a pass ends once what it wrote is written, so whoever reads next sees it.
+  await ctx.store.sent();
+  return report;
+}
+
+async function passOnce(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
   const latest = source.latestRevision();
   const cursor = readCursor(store.meta, worktreeId);
@@ -89,6 +96,8 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     );
     store.files.upsertMany(worktreeId, filesRows(entries, ctx.counter.version, latest));
   });
+  // Row 021-36: a pass the store's lock aborts here counts nothing, as when this write threw at once.
+  await store.sent();
   const quiet = reason !== null;
   const { counted, skipped, links } = await countMissing(ctx, entries, failed, {
     now: started,
@@ -96,6 +105,8 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     threshold: ctx.complexity.threshold,
     edits,
   });
+  // Row 021-36: the ends read the counts and the record of failed counts this pass just wrote.
+  await store.sent();
   const end = { latest, reason, current, counted, failed };
   if (reason !== null) return quietEnd(ctx, { ...end, reason }, entries, { skipped, links });
   const seeds = quietPaths(entries, failed);

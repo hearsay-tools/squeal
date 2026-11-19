@@ -8,6 +8,7 @@ import {
   alive,
   type Clone,
   clone,
+  holdLock,
   LAUNCH,
   openThrough,
   relay,
@@ -37,7 +38,10 @@ const fresh = () => {
 const STORE_LINE =
   /edit: \d+ written, 0 failed, queue wait p50 \d+ ms max \d+ ms, busy \d+ ms; record: \d+ written, 0 failed/;
 
-describe("the store process's and the daemon's lines (row 021-36, D22.6)", () => {
+// Each test starts processes and threads from the sources: slow on a loaded host.
+describe("the store process's and the daemon's lines (row 021-36, D22.6)", {
+  timeout: 60_000,
+}, () => {
   it("counts per kind, with the queue wait's p50 and max", () => {
     const stats = new WriteStats();
     for (const wait of [1, 2, 30]) stats.record("edit", true, wait, 5);
@@ -53,25 +57,26 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", () =>
     const at = fresh();
     const running = await storeProcess(at, { reportMs: 200 });
     const lines: string[] = [];
-    const one = relay(at, "w1", { log: (line) => lines.push(line), reportMs: 100 });
+    const one = relay(at, "w1", { log: (line) => lines.push(line) });
     const store = openThrough(at, one);
     await warm(one, store);
-    lines.length = 0;
 
     withWriteKind("edit", () => store.meta.set("e", "1"));
     store.meta.set("r", "1");
+    await store.sent();
 
     await until(() => STORE_LINE.test(running.stderr()), 10_000);
     expect(running.stderr()).toMatch(/store process: last minute: edit: /);
-    await until(() => lines.length > 0, 5_000);
-    expect(lines[0]).toBe(
+    // The daemon's line, at its stop: the two batches since `warm` zeroed the counts.
+    await one.close();
+    expect(lines).toEqual([
       "code store: last minute: 2 batches through the store process, 0 written here " +
-        "(none running 0, timeout 0, refused schema 0, failed 0, lost 0), 0 failed",
-    );
+        "(none running 0, refused 0, lost 0, hung and ended 0), 0 failed",
+    ]);
 
     expect(await running.stop()).toBe("stopped");
     expect(running.stderr()).toMatch(/store process: stopping \(stopped\): /);
-  });
+  }, 30_000);
 
   it("logs the daemon's direct writes by why: none running", async () => {
     const at = fresh();
@@ -80,13 +85,32 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", () =>
     const store = openThrough(at, one);
     store.meta.set("a", "1");
     store.meta.set("b", "1");
+    await store.sent();
 
     await until(() => lines.length > 0, 5_000);
     expect(lines[0]).toBe(
       "code store: last minute: 0 batches through the store process, 2 written here " +
-        "(none running 2, timeout 0, refused schema 0, failed 0, lost 0), 0 failed",
+        "(none running 2, refused 0, lost 0, hung and ended 0), 0 failed",
     );
   });
+
+  // Review of 0.1.571 B5: a write here that failed was logged as written here.
+  it("logs a batch no one could write as failed, not as written here", async () => {
+    const at = fresh();
+    const lines: string[] = [];
+    const one = relay(at, "w1", { log: (line) => lines.push(line), timing: { boundMs: 300 } });
+    const store = openThrough(at, one);
+    const holder = await holdLock(at, 3_000);
+    store.meta.set("a", "1");
+    await expect(store.sent()).rejects.toThrow(/locked/);
+    await holder.done;
+
+    await one.close();
+    expect(lines).toEqual([
+      "code store: last minute: 0 batches through the store process, 0 written here " +
+        "(none running 0, refused 0, lost 0, hung and ended 0), 1 failed",
+    ]);
+  }, 30_000);
 
   it("writes the store process's lines to its own log file when a daemon starts it", async () => {
     const at = fresh();

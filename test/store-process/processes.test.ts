@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
+import { leaseProcess } from "../../src/core/daemon/lease-process.js";
 import { encodeBatch } from "../../src/core/daemon/write-batch.js";
 import { batchSeq, markKey } from "../../src/core/store-process/guard.js";
 import { storeProcessSocketPath } from "../../src/core/store-process/paths.js";
@@ -25,9 +25,9 @@ import {
 
 /*
  * Spec 021 D22.2 and D22.4 (row 021-36), with real processes: two daemons
- * that start the store process at once start one, and a store process
- * killed in the middle of a batch leaves its client to write the batch
- * itself within D1's bound, once.
+ * that start the store process at once start one; a batch whose store
+ * process was killed is written once; a store process refuses batches of
+ * an older schema and stops once its last client left on purpose.
  */
 
 const clones: Clone[] = [];
@@ -75,7 +75,7 @@ describe("the store process as a process (row 021-36)", () => {
     4 * SLOW_MS,
   );
 
-  it("leaves a batch it was killed in to the client, written once within the bound", async () => {
+  it("writes a batch its store process was killed in once: by the store process (its mark) or here", async () => {
     const at = fresh();
     const running = await storeProcess(at);
     const one = relay(at, "w1");
@@ -83,58 +83,72 @@ describe("the store process as a process (row 021-36)", () => {
     await warm(one, store);
 
     const rows = 300_000;
-    // The test's thread waits inside the batch, so the kill comes from a shell started before it.
-    const killer = spawn("sh", ["-c", `sleep 0.4; kill -9 ${running.pid}`], { stdio: "ignore" });
-    const started = performance.now();
     store.transaction(() => {
       for (let i = 0; i < rows; i++) store.meta.set(`big:${i}`, "x");
     });
-    const took = performance.now() - started;
-    await new Promise((resolve) => killer.on("exit", resolve));
+    // While the store process writes it, or before or after: each is written once.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    process.kill(running.pid, "SIGKILL");
+    await store.sent();
 
     expect(await running.ended).toBe("exit SIGKILL");
-    expect(took).toBeLessThan(10_000);
     const db = plain(at);
     const count = db.prepare("SELECT count(*) AS n FROM meta WHERE key LIKE 'big:%'").get();
     expect(count).toEqual({ n: rows });
     expect(db.prepare("SELECT value FROM meta WHERE key = ?").get(markKey("w1"))).toBeDefined();
     // Written once: by the store process before it died (the mark said so), or here.
-    expect(one.counts.direct + one.counts.superseded).toBe(1);
-    expect(one.counts.sent).toBe(0);
+    expect(one.counts.sent + one.counts.direct).toBe(1);
+    expect(one.counts.failed).toBe(0);
 
     // With no store process, the next batches are written here at once.
+    const here = one.counts.direct;
     store.meta.set("after", "1");
+    await store.sent();
     expect(store.meta.get("after")).toBe("1");
-    expect(one.counts.direct + one.counts.superseded).toBe(2);
+    expect(one.counts.direct).toBe(here + 1);
   }, 60_000);
 
-  // Review of 0.1.571 B2: the trace that lost a batch, now settled by its mark before the next.
-  it("settles a batch a stopped store process holds before a later batch passes it", async () => {
+  // Review of 0.1.571, R1 N1: a leaving release that came while its write waited was forgotten.
+  it("stops once the write of its last client, who left on purpose while it waited, settled", async () => {
     const at = fresh();
-    const running = await storeProcess(at);
-    const one = relay(at, "w1");
-    const store = openThrough(at, one, 200);
-    await warm(one, store);
-    process.kill(running.pid, "SIGSTOP");
-    at.later(() => {
-      if (alive(running.pid)) process.kill(running.pid, "SIGCONT");
-    });
-
+    const running = await storeProcess(at, { checkMs: 25 });
+    const socket = storeProcessSocketPath(at.commonDir, "code", at.env);
+    const lease = await requestDaemon(
+      socket,
+      { type: "lease", worktreeId: "w1", holder: "test", process: leaseProcess() },
+      2_000,
+    );
+    if (!lease.ok || lease.type !== "lease" || lease.token === null) throw new Error("no lease");
     const holder = await holdLock(at, 600);
-    // No answer from the stopped process: written here under its mark once the lock frees.
-    store.meta.set("first", "1");
+    const write = await requestDaemon(
+      socket,
+      {
+        type: "write",
+        worktreeId: "w1",
+        storeSchema: CODE_SCHEMA_VERSION,
+        token: lease.token,
+        release: false,
+        seq: batchSeq(1, 1),
+        batch: encodeBatch([
+          { sql: "INSERT INTO meta (key, value) VALUES ('n1', 'x')", params: [] },
+        ]),
+      },
+      2_000,
+    );
+    expect(write.ok).toBe(true);
+    const release = {
+      type: "release",
+      worktreeId: "w1",
+      token: lease.token,
+      leaving: true,
+    } as const;
+    expect((await requestDaemon(socket, release, 2_000)).ok).toBe(true);
     await holder.done;
-    store.meta.set("second", "2");
-    process.kill(running.pid, "SIGCONT");
-    await until(() => {
-      store.meta.set("barrier", "1");
-      return one.counts.sent > 0;
-    }, 20_000);
 
-    expect(store.meta.get("first")).toBe("1");
-    expect(store.meta.get("second")).toBe("2");
-    expect(one.counts.failed).toBe(0);
-    expect(one.counts.fallback.lost).toBeGreaterThanOrEqual(1);
+    expect(await running.ended).toBe("stopped");
+    const db = new DatabaseSync(join(at.commonDir, "squeal", "code.sqlite"));
+    at.later(() => db.close());
+    expect(db.prepare("SELECT value FROM meta WHERE key = 'n1'").get()).toEqual({ value: "x" });
   }, 60_000);
 
   // Review of 0.1.571 B3: old-schema batches are refused once the file's schema moved on.

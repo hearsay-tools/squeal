@@ -4,13 +4,16 @@ import { writerScript } from "../../src/core/store-process/writer.js";
 /*
  * Row 021-36: the store process in a process of its own, as a daemon
  * starts it, without loading the whole CLI: `child.ts <common dir>
- * [<grace ms> <check ms> [<report ms>]]`. A daemon's main thread waits for its batches,
- * so a store process inside the test's own process could never answer.
+ * [<grace ms> <check ms> [<report ms>]]`. A test stops it (SIGSTOP) or kills it, so it
+ * cannot run in the test's own process.
  * Prints `ready` once it serves, its log lines to stderr, `ended <why>` at
  * its end.
  */
 
-const [commonDir, grace, check, report] = process.argv.slice(2);
+// A last argument `store-process` only names it so in its command line (`ps`, a relay's holder lookup).
+const [commonDir, grace, check, report] = process.argv
+  .slice(2)
+  .filter((arg) => arg !== "store-process");
 if (commonDir === undefined)
   throw new Error("usage: child.ts <common dir> [<grace ms> <check ms> [<report ms>]]");
 const started = await startStoreProcess({

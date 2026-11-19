@@ -41,8 +41,14 @@ export function record(sources: CoverageSource[], unread: string[] = []): Covera
 }
 
 /** Stores `value` at `key` as its parts. */
-export function share(store: CodeStore, key: string, value: CoverageRecord, time: number): void {
-  store.coverage.putParts(at(key), shareRecord(value, V), time);
+/** Stores `value` at `key`; at once on a plain connection, so only a relay's connection awaits it. */
+export function share(
+  store: CodeStore,
+  key: string,
+  value: CoverageRecord,
+  time: number,
+): Promise<void> {
+  return store.coverage.putParts(at(key), shareRecord(value, V), time);
 }
 
 /** The record at `key`, decoded as the CRAP step decodes it. */

@@ -17,6 +17,9 @@ import type { Policy } from "../../src/core/types/policy.js";
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const LOADER = ["--disable-warning=ExperimentalWarning", "--import", register] as const;
 const CHILD = fileURLToPath(new URL("./child.ts", import.meta.url));
+const PAUSE_PRELOAD = pathToFileURL(
+  fileURLToPath(new URL("../daemon/pause-preload.mjs", import.meta.url)),
+).href;
 const source = (name: string) =>
   fileURLToPath(new URL(`../../src/core/store-process/${name}`, import.meta.url));
 
@@ -75,17 +78,29 @@ export interface ChildStore {
  */
 export async function storeProcess(
   at: Clone,
-  timing: { readonly graceMs?: number; readonly checkMs?: number; readonly reportMs?: number } = {},
+  timing: {
+    readonly graceMs?: number;
+    readonly checkMs?: number;
+    readonly reportMs?: number;
+    /** A test pause point (`pauseAt`) where it stops itself with SIGSTOP. */
+    readonly pauseAt?: string;
+  } = {},
 ): Promise<ChildStore> {
   const args = [
     String(timing.graceMs ?? 300_000),
     String(timing.checkMs ?? 10_000),
     String(timing.reportMs ?? 60_000),
   ];
-  const child = spawn(process.execPath, [...LOADER, CHILD, at.commonDir, ...args], {
-    env: at.env,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const pause = timing.pauseAt === undefined ? [] : ["--import", PAUSE_PRELOAD];
+  // `store-process` in its arguments: a relay ends a hung one only when its command line says so.
+  const child = spawn(
+    process.execPath,
+    [...LOADER, ...pause, CHILD, at.commonDir, ...args, "store-process"],
+    {
+      env: timing.pauseAt === undefined ? at.env : { ...at.env, SQUEAL_TEST_PAUSE: timing.pauseAt },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   let out = "";
   let err = "";
   child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
@@ -117,6 +132,7 @@ export function relay(
   worktreeId: string,
   options: Partial<CodeRelayOptions> = {},
 ): CodeRelay {
+  // A child store process may be stopped (SIGSTOP) by a test: it is ended within a second.
   const made = new CodeRelay({
     commonDir: at.commonDir,
     worktreeId,
@@ -124,6 +140,7 @@ export function relay(
     launch: null,
     env: at.env,
     thread: { script: source("relay-thread.ts"), execArgv: [...LOADER] },
+    timing: { hungMs: 1_000 },
     ...options,
   });
   at.later(() => made.close());
@@ -144,12 +161,16 @@ export function openThrough(at: Clone, through: CodeRelay, busyTimeoutMs = 2_000
  * can take longer than a short bound.
  */
 export async function warm(through: CodeRelay, store: CodeStore): Promise<void> {
-  await until(() => {
+  const deadline = Date.now() + 30_000;
+  for (;;) {
     store.meta.set("warm", "1");
-    return through.counts.sent > 0;
-  }, 30_000);
-  Object.assign(through.counts, { sent: 0, direct: 0, superseded: 0, late: 0 });
-  Object.assign(through.counts.fallback, { none: 0, timeout: 0, refused: 0, failed: 0, lost: 0 });
+    await store.sent();
+    if (through.counts.sent > 0) break;
+    if (Date.now() > deadline) throw new Error("timed out");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  Object.assign(through.counts, { sent: 0, direct: 0, superseded: 0, failed: 0 });
+  Object.assign(through.counts.fallback, { none: 0, refused: 0, lost: 0, hung: 0 });
 }
 
 /** A plain connection to the clone's code store, for a test's own reads and locks. */

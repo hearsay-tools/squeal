@@ -4,12 +4,7 @@ import { leaseProcess } from "../daemon/lease-process.js";
 import { encodeBatch, type Statement } from "../daemon/write-batch.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
-import type {
-  LeaseProcess,
-  LeaseResponse,
-  WriteRequest,
-  WriteResponse,
-} from "../types/daemon-writes.js";
+import type { LeaseProcess, LeaseResponse, WriteResponse } from "../types/daemon-writes.js";
 import type { SendOutcome, WriteSender } from "./sending-connection.js";
 
 export interface DaemonWriterOptions {
@@ -58,12 +53,6 @@ export class DaemonWriter implements WriteSender {
   #process: LeaseProcess | undefined;
   /** No daemon takes writes: every later call says so at once. */
   #off = false;
-  /**
-   * Spec 021 D22.6 (row 021-36): why the last `send` answered `not-taken`:
-   * nothing answered, the daemon refused the write (another schema, a
-   * stopping one), or it wrote and rolled it back.
-   */
-  notTakenBy: "none" | "refused" | "failed" | null = null;
 
   constructor(options: DaemonWriterOptions) {
     this.#options = options;
@@ -100,20 +89,9 @@ export class DaemonWriter implements WriteSender {
     }
   }
 
-  /**
-   * `queued` (spec 021 D22, row 021-36): a store process's fields of the
-   * write, its kind, whether it may be split and its number.
-   */
-  async send(
-    batch: readonly Statement[],
-    release: boolean,
-    queued: Pick<WriteRequest, "kind" | "splittable" | "seq"> = {},
-  ): Promise<SendOutcome> {
+  async send(batch: readonly Statement[], release: boolean): Promise<SendOutcome> {
     const socket = this.#socketPath();
-    if (socket === null) {
-      this.notTakenBy = "none";
-      return "not-taken";
-    }
+    if (socket === null) return "not-taken";
     const token = this.#token;
     if (release) this.#token = null;
     const request = {
@@ -123,13 +101,9 @@ export class DaemonWriter implements WriteSender {
       token,
       release,
       batch: encodeBatch(batch),
-      ...queued,
     } as const;
     const answer = await this.#ask(socket, request);
-    if (!isWrite(answer)) {
-      this.notTakenBy = answer === null ? "none" : "refused";
-      return this.#notTaken("not-taken", socket, token);
-    }
+    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer;
     for (let attempt = 0; state.written === null; attempt++) {
@@ -146,23 +120,16 @@ export class DaemonWriter implements WriteSender {
     }
     if (state.written) return "written";
     // The daemon rolled it back: written here instead, where a failure surfaces as it would have.
-    this.notTakenBy = "failed";
     return this.#notTaken("not-taken", socket, release ? null : token);
   }
 
-  /** `leaving` (spec 021 D22.2): to a store process, this client's daemon was stopped on purpose. */
-  async release(leaving = false): Promise<void> {
+  async release(): Promise<void> {
     const token = this.#token;
     const socket = this.#socket;
     this.#token = null;
     if (token === null || socket === null || socket === undefined) return;
     const { worktreeId } = this.#options;
-    await this.#ask(socket, {
-      type: "release",
-      worktreeId,
-      token,
-      ...(leaving ? { leaving } : {}),
-    });
+    await this.#ask(socket, { type: "release", worktreeId, token });
   }
 
   #socketPath(): AbsolutePath | null {

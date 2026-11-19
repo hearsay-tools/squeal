@@ -1,7 +1,7 @@
 import { channel } from "node:diagnostics_channel";
 
 /** Where a daemon, or `squeal stop`, tells a test it may pause it (task 001-355). */
-export type TestPause = "stop-gap" | "lock-wait" | "stop-mark" | "store-open";
+export type TestPause = "stop-gap" | "lock-wait" | "stop-mark" | "store-open" | "store-written";
 
 /** The channel a test's preload subscribes to (`test/daemon/pause-preload.mjs`). */
 const TEST_PAUSE_CHANNEL = "squeal:test-pause";
@@ -21,7 +21,9 @@ const pauses = channel(TEST_PAUSE_CHANNEL);
  * one cannot. `stop-mark` is `squeal stop` once it saw the socket go and
  * before it leaves the stopped mark (row 011-20). `store-open` is a start
  * once it holds the lock and opened the store, before its socket and its
- * record: a start slower than its hook (row 011-250).
+ * record: a start slower than its hook (row 011-250). `store-written` is a
+ * store process (spec 021 D22) once a batch committed and before its client
+ * can hear so: the answer a relay then loses (row 021-36, review of 0.1.571 B5).
  */
 export function pauseAt(point: TestPause): void {
   if (pauses.hasSubscribers) pauses.publish(point);

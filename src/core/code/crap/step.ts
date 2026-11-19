@@ -139,7 +139,8 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
     const seed = cache.seed(() => beginSeed(input, start, summary));
     const seeded = store.transaction(() => seed.advance(input, countOf, slice));
     if (seeded === "uncounted") return null;
-    if (seeded === "more") return SEEDING;
+    // Row 021-36: the walk reads the pending states the seed wrote; handed over, they are read next step.
+    if (seeded === "more" || store.unsettled()) return SEEDING;
   }
   const loaders = cache.loaders(
     (map) => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }, map),

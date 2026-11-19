@@ -176,12 +176,14 @@ export interface CodeCoverageRepo {
    */
   put(key: CoverageRecordKey, record: Uint8Array, at: EpochMs): void;
   /**
-   * Row 015-85: stores a record as its parts, over one at the same key, in
-   * one transaction. A part already stored is listed, not stored again, and
-   * its `used_at` moves to the record's stored time when it is older by
+   * Row 015-85: stores a record as its parts, over one at the same key. A
+   * part already stored is listed, not stored again, and its `used_at`
+   * moves to the record's stored time when it is older by
    * `PART_REFRESH_MS`; the record's stored time moves as `put`'s does.
+   * Row 021-36: two transactions, the manifest's after the parts' are
+   * written (it names them by id); resolves once both are.
    */
-  putParts(key: CoverageRecordKey, record: SharedRecord, at: EpochMs): void;
+  putParts(key: CoverageRecordKey, record: SharedRecord, at: EpochMs): Promise<void>;
 }
 
 export interface CodeMetaRepo {
@@ -257,6 +259,16 @@ export interface CodeStore {
    * that leaves the lock free between them; `counts` fills in as they run.
    */
   pruneSlices(options: CodePruneOptions, counts: CodePruneCounts): Iterable<PruneSlice>;
+  /**
+   * Spec 021 D22.3 (row 021-36): waits until every transaction of this
+   * store so far is written, and throws the first that failed. A daemon's
+   * writes are handed to its relay and written later, so a caller that
+   * reads what it wrote awaits this first; with a plain connection it ends
+   * at once.
+   */
+  sent(): Promise<void>;
+  /** Row 021-36: whether a transaction of this store is not written yet; never with a plain connection. */
+  unsettled(): boolean;
   close(): void;
 }
 

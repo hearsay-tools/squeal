@@ -16,12 +16,16 @@ export interface WriteSender {
   /** Ends the lease, if held. */
   release(): Promise<void>;
   /**
-   * Spec 021 D22 (row 021-36): writes `batch` before it returns, through a
-   * store process or on the connection itself, and throws as a write would.
-   * A sender that has it is used for every batch in place of `send`, and
-   * no read waits for a batch.
+   * Spec 021 D22.3 (row 021-36): hands `batch` over to be written, without
+   * waiting; resolves once it is written, rejects when it never will be. A
+   * sender that has it is used for every batch in place of `send`. Reads
+   * do not wait for it: a caller that reads what it wrote awaits `sent()`.
+   * A failed batch is thrown by the connection's next transaction or
+   * `sent()`, which then call `surfaced`.
    */
-  sendNow?(batch: readonly Statement[]): void;
+  post?(batch: readonly Statement[]): Promise<void>;
+  /** The caller was told of a failed `post`: batches posted from now on no longer follow from it. */
+  surfaced?(): void;
 }
 
 /** How a sent batch went: written by the daemon, or not taken by any daemon (written here instead). */
@@ -122,12 +126,24 @@ export class SendingConnection extends HoldingConnection {
     }
   }
 
+  /** Row 021-36: whether a batch sent is not written yet (or a failed one not yet told). */
+  get unsettled(): boolean {
+    return this.#sending.size > 0 || this.#failure !== null;
+  }
+
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
   async sent(): Promise<void> {
     while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
+    this.#rethrow();
+  }
+
+  /** Throws the first failed batch not yet told, once. */
+  #rethrow(): void {
     const failure = this.#failure;
+    if (failure === null) return;
     this.#failure = null;
-    if (failure !== null) throw failure;
+    this.#sender.surfaced?.();
+    throw failure;
   }
 
   override run(sql: string, ...params: Params): number {
@@ -159,6 +175,8 @@ export class SendingConnection extends HoldingConnection {
     const outer = this.#depth === 0;
     if (outer) {
       if (this.#held === null && !this.#sender.leased) throw new NeedsLease();
+      // Row 021-36: a posted batch that failed is thrown here, as a write that failed would have been.
+      if (this.#sender.post !== undefined) this.#rethrow();
       this.#readable();
       this.db.exec("BEGIN");
     }
@@ -270,7 +288,7 @@ export class SendingConnection extends HoldingConnection {
   #end(batch: Statement[]): void {
     this.#batch = [];
     if (batch.length === 0) return;
-    if (this.#sender.sendNow !== undefined) this.#sender.sendNow(batch);
+    if (this.#sender.post !== undefined) this.#track(this.#sender.post(batch), false);
     else if (this.#held !== null) this.#held.push(...batch);
     else this.#track(this.#send(batch, false), true);
   }

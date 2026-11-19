@@ -1,3 +1,4 @@
+import { SendingConnection } from "../../delivery/sending-connection.js";
 import { str } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
 import type { AbsolutePath } from "../../types/common.js";
@@ -15,6 +16,8 @@ export function createCodeStore(
   schemaVersion: number,
   path: AbsolutePath,
 ): CodeStore {
+  const posting = conn instanceof SendingConnection;
+  const sent = posting ? () => conn.sent() : async () => {};
   return {
     path,
     schemaVersion,
@@ -24,11 +27,13 @@ export function createCodeStore(
     states: createStateRepo(conn),
     transitions: createTransitionRepo(conn),
     views: createViewRepo(conn),
-    coverage: createCoverageRepo(conn),
+    coverage: createCoverageRepo(conn, posting ? sent : undefined),
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
     pruneSlices: (options, counts) => pruneCodeSlices(conn, options, counts),
+    sent,
+    unsettled: () => posting && conn.unsettled,
     close: () => conn.close(),
   };
 }

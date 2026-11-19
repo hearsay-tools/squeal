@@ -5,9 +5,16 @@ import { acquireDaemonLock } from "../daemon/lock.js";
 import { prepareSocketDir } from "../daemon/paths.js";
 import { errorResponse } from "../daemon/protocol.js";
 import { createDaemonServer, type DaemonServer } from "../daemon/server.js";
+import { pauseAt } from "../daemon/test-pause.js";
+import { squealVersion } from "../daemon/version.js";
 import { WriteDesk } from "../daemon/write-desk.js";
 import { isWriteRequest } from "../daemon/write-protocol.js";
-import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION, type WorktreeId } from "../types/common.js";
+import {
+  type AbsolutePath,
+  type EpochMs,
+  PAYLOAD_SCHEMA_VERSION,
+  type WorktreeId,
+} from "../types/common.js";
 import type { DaemonPhase, DaemonRequest, DaemonResponse } from "../types/daemon.js";
 import type { SentBatch, WriteRequest } from "../types/daemon-writes.js";
 import { Batches } from "./batches.js";
@@ -137,6 +144,21 @@ export async function startStoreProcess(
     }
     return desk;
   };
+  /**
+   * Review of 0.1.571 N1: the last client's daemon was stopped on purpose
+   * (a `release` with `leaving`). Asked again whenever a batch ends, so a
+   * release that came while its write waited still stops the process once
+   * that write settled; a new lease forgets it.
+   */
+  let leavingAsked = false;
+  const afterLeaving = () => {
+    if (!leavingAsked) return;
+    // After the desks settled the batch that just ended (their `then` runs after it).
+    setImmediate(() => {
+      if (leavingAsked && queue.size === 0 && ![...desks.values()].some((desk) => desk.leased))
+        void stop("stopped");
+    });
+  };
   const pump = async () => {
     if (pumping) return;
     pumping = true;
@@ -151,6 +173,7 @@ export async function startStoreProcess(
             const waited = (item.startedAt ?? now()) - item.queuedAt;
             stats.record(next.kind, written, waited, item.busyMs);
             batches.ended(next.worktreeId, item.request.seq as string, written);
+            afterLeaving();
           },
         });
       }
@@ -160,8 +183,23 @@ export async function startStoreProcess(
   };
   /** When a client last held a lease or asked anything. */
   let lastClient = now();
+  const startedAt = Date.now() as EpochMs;
   const handle = (request: DaemonRequest): DaemonResponse => {
     lastClient = now();
+    // D22.4: a relay asks whether this process still answers before it ends one that does not.
+    if (request.type === "ping") {
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        ok: true,
+        type: "ping",
+        pid: process.pid,
+        worktreeId: "" as WorktreeId,
+        root: commonDir,
+        squealVersion: squealVersion(),
+        phase,
+        startedAt,
+      };
+    }
     // `squeal remove` stops it once the daemons stopped, then takes its lock (review of 0.1.571).
     if (request.type === "stop") {
       void stop("stopped");
@@ -169,13 +207,12 @@ export async function startStoreProcess(
     }
     if (!isWriteRequest(request)) return errorResponse("a store process answers writes only");
     if (request.type === "write-cancel") return batches.cancel(request);
+    if (request.type === "lease") leavingAsked = false;
     if (request.type === "release" && request.leaving === true) {
       // D22.2: the client's daemon was stopped on purpose; with no client left, no grace either.
       const answer = deskOf(request.worktreeId).answer(request, phase);
-      setImmediate(() => {
-        if (queue.size === 0 && ![...desks.values()].some((desk) => desk.leased))
-          void stop("stopped");
-      });
+      leavingAsked = true;
+      afterLeaving();
       return answer;
     }
     if (request.type === "write-status") {
@@ -278,6 +315,7 @@ async function runOne(
       item.from = end.next;
       return;
     }
+    pauseAt("store-written");
     remove();
     ended(true);
     item.resolve();

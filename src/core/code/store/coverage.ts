@@ -34,7 +34,12 @@ const UPSERT = `INSERT INTO coverage (result_key, provider_version, record, reco
  * stored time names the record (row 015-44). Since row 015-85 (D4) a
  * record is a manifest of its sources' parts in `coverage_parts`.
  */
-export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
+/**
+ * `sent`: how to wait for `conn`'s transactions to be written, for a
+ * connection that hands them over (row 021-36); absent, they are written
+ * at once, and `putParts` ends before it returns.
+ */
+export function createCoverageRepo(conn: Connection, sent?: () => Promise<void>): CodeCoverageRepo {
   // Row 015-44: the index gives `recorded_at` without the row's blob; a store a daemon that
   // predates it left, opened by a reader, has none.
   const indexed =
@@ -91,11 +96,11 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
     put(key, record, at) {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
-    putParts(key, record, at) {
+    async putParts(key, record, at) {
       // Row 021-36 (D22.5): two transactions, since a batch sent to the store process cannot
-      // read back the ids its inserts made. The first writes the parts by hash, the second the
-      // manifest that names them by id. A part the first wrote or refreshed is used at `stored`,
-      // so no prune between the two takes it.
+      // read back the ids its inserts made. The first writes the parts by hash, the second, once
+      // the first is written (`sent`), the manifest that names them by id. A part the first wrote
+      // or refreshed is used at `stored`, so no prune between the two takes it.
       const hashes = JSON.stringify(record.parts.map((p) => p.hash));
       const stored = conn.transaction(() => {
         const before = storedAt(key);
@@ -130,6 +135,7 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
         }
         return stored;
       });
+      if (sent !== undefined) await sent();
       conn.transaction(() => {
         const ids = new Map<string, number>();
         for (const row of conn.all(
@@ -150,6 +156,7 @@ export function createCoverageRepo(conn: Connection): CodeCoverageRepo {
           stored,
         );
       });
+      if (sent !== undefined) await sent();
     },
   };
 }

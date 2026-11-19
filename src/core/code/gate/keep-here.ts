@@ -1,7 +1,7 @@
 import { healsUnheld } from "../../scheduler/hold.js";
 import { storeResults } from "../../scheduler/store-results.js";
 import { BUSY_SLICE_MS } from "../../store/busy.js";
-import { isBusy, withBusySliceSync } from "../../store/connection.js";
+import { isBusy, withBusySlice } from "../../store/connection.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
 import type { Policy } from "../../types/policy.js";
 import type { Store } from "../../types/store.js";
@@ -52,10 +52,13 @@ export function writeHere(
  */
 export const EARLY_SLICE_MS = 20;
 
-/** `write`, one synchronous transaction, tried once with one busy slice of `sliceMs`. */
-function triedOnce(write: () => unknown, sliceMs: number): Tried {
+/**
+ * `write`, one transaction (or `putParts`' two, row 021-36), tried once
+ * with one busy slice of `sliceMs`.
+ */
+async function triedOnce(write: () => unknown, sliceMs: number): Promise<Tried> {
   try {
-    withBusySliceSync(sliceMs, write);
+    await withBusySlice(sliceMs, async () => write());
     return "kept";
   } catch (error) {
     if (!isBusy(error)) throw error;

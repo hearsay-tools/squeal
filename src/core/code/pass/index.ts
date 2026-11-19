@@ -165,7 +165,13 @@ export function createCodePass(options: CodePassOptions): CodePass {
     }
     const opened = open(policy);
     if (opened === null) return;
-    if (!budgeted) restartRetries(opened.meta, options.worktreeId, now());
+    // Spec 021 D22.3 (row 021-36): a pass and a coverage step read what the last ones wrote.
+    await opened.sent();
+    if (!budgeted) {
+      restartRetries(opened.meta, options.worktreeId, now());
+      // The pass reads the budget back.
+      await opened.sent();
+    }
     budgeted = true;
     counter ??= options.counter();
     const loaded = await counter.catch((error: unknown) => {

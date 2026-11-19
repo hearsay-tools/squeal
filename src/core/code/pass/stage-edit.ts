@@ -86,6 +86,8 @@ export async function stagedEditEnd(
   await stageTransitions(ctx, removal.transitions);
   const transitions = [...failures, ...staged.transitions, ...removal.transitions];
   await nextTurn();
+  // Row 021-36: the adoption counts the staged rows, so they are written first.
+  await store.sent();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...plan.links]);
     moveChecks(store, worktreeId, moves, ctx.coverageExcluded);

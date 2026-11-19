@@ -157,6 +157,8 @@ export async function quietEnd(
   const staged = await stageQuiet(ctx, judged, links, end.latest);
   // The switch takes a turn of its own, never a part's (row 015-56).
   await nextTurn();
+  // Row 021-36: the adoption counts the staged rows, so they are written first.
+  await store.sent();
   const done = store.transaction(() => {
     store.files.removeMany(worktreeId, [...links]);
     adoptStaged(store, worktreeId, staged);

@@ -1,11 +1,15 @@
 import { rmSync, writeFileSync } from "node:fs";
+import { loadavg } from "node:os";
 import { join } from "node:path";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { afterEach, describe, expect, it } from "vitest";
 import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
 import type { CodeStore } from "../../src/core/code/store/types.js";
+import { isBusy } from "../../src/core/store/connection.js";
 import { A, B, C, C2, read, record, share } from "../code/coverage/parts-fixtures.js";
 import { fakeCounter, pass, worktree } from "../code/pass/helpers.js";
 import {
+  alive,
   type Clone,
   clone,
   holdLock,
@@ -17,10 +21,11 @@ import {
 } from "./helpers.js";
 
 /*
- * Spec 021 D22 (row 021-36): a daemon's code-store writes go through its
- * relay to the clone's one store process, which is then the file's only
- * regular writer; with none, or one that refuses or does not answer, the
- * daemon writes directly, each batch once.
+ * Spec 021 D22.3 and D22.4 (row 021-36, rebuilt on one owner per batch): a
+ * daemon's code-store writes go through its relay to the clone's one store
+ * process, which is then the file's only regular writer. The daemon's main
+ * thread never waits for a write; the relay's thread writes a batch itself
+ * only when no store process can write it any more.
  */
 
 const clones: Clone[] = [];
@@ -39,15 +44,16 @@ const complexity = (store: CodeStore, worktreeId: string) =>
     .map((s) => `${s.check.path} ${s.check.qualifiedName} ${s.outcome} ${s.value}`)
     .sort();
 
-/** One daemon's code pass over a tree of two files, then a coverage record. */
+/** One daemon's code pass over a tree of two files, then a coverage record; written once it returns. */
 async function daemonWork(at: Clone, worktreeId: string, store: CodeStore, key: string) {
   const tree = worktree(worktreeId, at.commonDir);
   tree.write("src/a.ts", `f 3 a-${worktreeId}\ng 25 b-${worktreeId}\n`);
   tree.write("src/b.ts", `h 7 c-${worktreeId}\n`);
   tree.revise();
   await pass(tree, store, fakeCounter());
-  share(store, key, record([A, B, C]), 1_000);
-  share(store, `${key}-2`, record([A, B, C2]), 2_000);
+  await share(store, key, record([A, B, C]), 1_000);
+  await share(store, `${key}-2`, record([A, B, C2]), 2_000);
+  await store.sent();
 }
 
 /** A transition of `f`'s complexity in worktree `worktreeId`: a row each `append` adds. */
@@ -67,8 +73,12 @@ const transition = (worktreeId: string) => ({
 
 const EXPECTED = ["src/a.ts f pass 3", "src/a.ts g fail 25", "src/b.ts h pass 7"];
 
-describe("a store process per clone (row 021-36)", () => {
-  it("writes two daemons' complexity and coverage, and neither daemon takes the write lock", async () => {
+/** Timing is asserted on a machine loaded no more than the other timing tests allow (chain-load). */
+const quiet = () => (loadavg()[0] ?? 0) <= 8;
+
+// Each test starts processes and threads from the sources: slow on a loaded host.
+describe("a store process per clone (row 021-36)", { timeout: 60_000 }, () => {
+  it("writes two daemons' complexity and coverage, and neither daemon writes the store itself", async () => {
     const at = fresh();
     const running = await storeProcess(at);
     const one = relay(at, "w1");
@@ -83,16 +93,15 @@ describe("a store process per clone (row 021-36)", () => {
     expect(complexity(second, "w2")).toEqual(EXPECTED);
     expect(read(first, "k2")).toEqual(record([A, B, C]));
     expect(read(second, "k1-2")).toEqual(record([A, B, C2]));
-    // Every batch went to the store process: the daemons never asked for the lock, so their busy
-    // handler never ran (`direct` and `superseded` count each write the daemon made itself).
+    // Every batch went to the store process: the daemons never asked SQLite for its write lock.
     for (const counts of [one.counts, two.counts]) {
       expect(counts.sent).toBeGreaterThan(3);
-      expect(counts).toMatchObject({ direct: 0, superseded: 0, late: 0 });
+      expect(counts).toMatchObject({ direct: 0, superseded: 0, failed: 0 });
     }
     expect(running.stderr()).not.toMatch(/failed/);
   });
 
-  it("writes directly, as before, while no store process serves", async () => {
+  it("writes in its thread, as before, while no store process serves", async () => {
     const at = fresh();
     const one = relay(at, "w1");
     const store = openThrough(at, one);
@@ -102,10 +111,10 @@ describe("a store process per clone (row 021-36)", () => {
     expect(complexity(store, "w1")).toEqual(EXPECTED);
     expect(read(store, "k1")).toEqual(record([A, B, C]));
     expect(one.counts.sent).toBe(0);
-    expect(one.counts.direct).toBeGreaterThan(3);
+    expect(one.counts.fallback.none).toBeGreaterThan(3);
   });
 
-  it("writes directly when the store process refuses the client's schema", async () => {
+  it("writes in its thread what the store process refuses for the client's schema", async () => {
     const at = fresh();
     await storeProcess(at);
     const older = relay(at, "w1", { storeSchema: CODE_SCHEMA_VERSION - 1 });
@@ -115,11 +124,37 @@ describe("a store process per clone (row 021-36)", () => {
 
     expect(complexity(store, "w1")).toEqual(EXPECTED);
     expect(older.counts.sent).toBe(0);
-    expect(older.counts.direct).toBeGreaterThan(3);
+    expect(older.counts.fallback.refused).toBeGreaterThan(3);
   });
 
-  // Review of 0.1.571 B2b: a batch given up on is settled before its caller is told anything.
-  it("settles a late batch before it fails: the store process never writes it after", async () => {
+  // Review of 0.1.571, R1 B2 (bound): the daemon's main thread waited 1,025 ms against a 200 ms bound.
+  it("never blocks the daemon's main thread while another process holds the lock", async () => {
+    const at = fresh();
+    await storeProcess(at);
+    const one = relay(at, "w1");
+    const store = openThrough(at, one, 200);
+    await warm(one, store);
+    const t = transition("w1");
+
+    // Past the store process's own 1 s busy timeout: it fails the batch busy and is sent it again.
+    const holder = await holdLock(at, 1_500);
+    const delay = monitorEventLoopDelay({ resolution: 10 });
+    delay.enable();
+    const began = performance.now();
+    store.transitions.append([t]);
+    const call = performance.now() - began;
+    await store.sent();
+    delay.disable();
+    await holder.done;
+
+    expect(call).toBeLessThan(50);
+    if (quiet()) expect(delay.max / 1e6).toBeLessThan(50);
+    expect(store.transitions.history("w1", t.check)).toHaveLength(1);
+    expect(one.counts).toMatchObject({ sent: 1, direct: 0, failed: 0 });
+  }, 30_000);
+
+  // Review of 0.1.571, R1 B2: after the 30 s cap a failed attempt and its retry both committed.
+  it("ends a stopped store process, then fails busy only what nobody can write: a retry leaves one row", async () => {
     const at = fresh();
     const running = await storeProcess(at);
     const one = relay(at, "w1");
@@ -127,21 +162,50 @@ describe("a store process per clone (row 021-36)", () => {
     await warm(one, store);
     const t = transition("w1");
 
-    // Another process holds the lock past the store process's 1 s busy timeout.
-    const holder = await holdLock(at, 1_500);
-    expect(() => store.transitions.append([t])).toThrow(/locked|busy/i);
-    await holder.done;
-    store.transitions.append([t]);
-
-    // A barrier through the store process: anything it still held for w1 came before it.
-    await until(() => {
-      store.meta.set("barrier", "1");
-      return one.counts.sent > 0;
+    process.kill(running.pid, "SIGSTOP");
+    at.later(() => {
+      if (alive(running.pid)) process.kill(running.pid, "SIGCONT");
     });
+    const holder = await holdLock(at, 31_000);
+    store.transitions.append([t]);
+    // The stopped process answers no ping: ended within a second; the lock stays busy past D1's bound.
+    await expect(store.sent()).rejects.toSatisfy(isBusy);
+    expect(await running.ended).toBe("exit SIGKILL");
+    // The caller retries, as a busy-write caller does, until the lock is free.
+    for (;;) {
+      store.transitions.append([t]);
+      try {
+        await store.sent();
+        break;
+      } catch (error) {
+        if (!isBusy(error)) throw error;
+      }
+    }
+    await holder.done;
+
     expect(store.transitions.history("w1", t.check)).toHaveLength(1);
-    expect(one.counts.late).toBe(1);
-    expect(one.counts.failed).toBe(1);
-    expect(running.stderr()).toMatch(/a batch of w1 failed/);
+    expect(one.counts.fallback.none + one.counts.fallback.hung).toBe(1);
+    expect(one.counts.sent).toBe(0);
+  }, 90_000);
+
+  // Review of 0.1.571, R1 B5: a mark-confirmed remote commit was missing from the D22.6 counts.
+  it("counts a committed batch whose answer was lost once, as the store process's, and writes it no more", async () => {
+    const at = fresh();
+    // The store process stops itself once a batch committed, before its client can hear so.
+    const running = await storeProcess(at, { pauseAt: "store-written" });
+    at.later(() => {
+      if (alive(running.pid)) process.kill(running.pid, "SIGCONT");
+    });
+    const one = relay(at, "w1");
+    const store = openThrough(at, one);
+    const t = transition("w1");
+
+    store.transitions.append([t]);
+    await store.sent();
+
+    expect(await running.ended).toBe("exit SIGKILL");
+    expect(store.transitions.history("w1", t.check)).toHaveLength(1);
+    expect(one.counts).toMatchObject({ sent: 1, superseded: 1, direct: 0, failed: 0 });
   }, 30_000);
 
   it("exits after its last client's grace, and not while a client lives", async () => {
@@ -151,6 +215,7 @@ describe("a store process per clone (row 021-36)", () => {
     const store = openThrough(at, one);
     await warm(one, store);
     store.meta.set("k", "v");
+    await store.sent();
     expect(one.counts.sent).toBe(1);
 
     let ended: string | null = null;
@@ -168,7 +233,7 @@ describe("a store process per clone (row 021-36)", () => {
   });
 
   // Review of 0.1.571 B4: a thread that ended at its start leaves the close nothing to wait for.
-  it("closes at once when its thread already ended, and writes directly meanwhile", async () => {
+  it("closes at once when its thread already ended, and fails its writes without waiting", async () => {
     const at = fresh();
     const bad = join(at.commonDir, "bad-relay.mjs");
     writeFileSync(bad, "throw new Error('the relay did not start');\n");
@@ -176,8 +241,8 @@ describe("a store process per clone (row 021-36)", () => {
     const store = openThrough(at, one);
     await new Promise((resolve) => setTimeout(resolve, 1_000));
     store.meta.set("k", "v");
-    expect(store.meta.get("k")).toBe("v");
-    expect(one.counts.fallback.none).toBe(1);
+    await expect(store.sent()).rejects.toThrow(/relay/);
+    expect(one.counts.failed).toBe(1);
 
     const started = performance.now();
     await one.close();
