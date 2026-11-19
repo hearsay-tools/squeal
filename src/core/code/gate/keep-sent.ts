@@ -7,6 +7,7 @@ import type { DaemonRequest, DaemonResponse } from "../../types/daemon.js";
 import type { KeepResponse, KeepWrite, SeenReads } from "../../types/daemon-writes.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { Store } from "../../types/store.js";
+import type { ResultRecord } from "../../types/store-records.js";
 import { OlderDaemon } from "./keep-seen.js";
 import type { KeepWriter, Tried } from "./keep-write.js";
 
@@ -139,15 +140,43 @@ export function writeThroughDaemon(target: {
       return "kept";
     },
     coverage: (file) => tryOnce({ kind: "coverage", key: file.key, record: file.record }),
-    results: (file, records, keys) =>
-      tryOnce({
+    results: async (file, records, keys) => {
+      const write = (sent: readonly ResultRecord[]): KeepWrite => ({
         kind: "results",
         key: file.key,
-        records,
+        records: sent,
         paths: file.paths,
         environmentFiles: keys.environmentFiles(file.ref.project),
-      }),
+      });
+      try {
+        return await tryOnce(write(records));
+      } catch (error) {
+        // Review wave-14 N1: a daemon before row 023-22 refuses its error fields; once more without them.
+        if (!(error instanceof KeepRefused && OLDER_ERROR_FIELD.test(error.message))) throw error;
+        return tryOnce(write(withoutNewFields(records)));
+      }
+    },
   };
+}
+
+/**
+ * Review wave-14 N1: a daemon before row 023-22 refuses an error with
+ * `stage` or `assertionEvidence` (`has the unknown field "stage"`). No
+ * version handover replaces a daemon that serves the worktree when a newer
+ * CLI runs, so such a daemon can serve a newer gate.
+ */
+const OLDER_ERROR_FIELD = /has the unknown field "(?:stage|assertionEvidence)"$/;
+
+/**
+ * The records with their errors' `stage` and `assertionEvidence` left out,
+ * as a daemon before row 023-22 takes them. Safe since review wave-14 B2:
+ * an error without its stage can never prove a red side.
+ */
+export function withoutNewFields(records: readonly ResultRecord[]): ResultRecord[] {
+  return records.map((record) => ({
+    ...record,
+    errors: record.errors.map(({ stage: _stage, assertionEvidence: _evidence, ...error }) => error),
+  }));
 }
 
 /**
