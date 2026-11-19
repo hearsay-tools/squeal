@@ -40,6 +40,8 @@ Additive: `lowerWhile` gains an optional seventh parameter `report`. No other si
 
 Each case uses a unique message, since the dedupe set is per process.
 
+Coordinator repair (request 33d22591, 2026-11-19): at nice 10, as Squeal runs the file, cases 1 and 2 failed with `expected [] to have a length of 1 but got +0`. Cause: a sleeper started by a test process at nice 10 is at nice 10 already, so the poll for nice 10 ended before the look that throws, and no report existed yet. Now each case waits for the look after the one that lowers (walk 6, look 5; a look lowers what it found before the next starts), then asserts the loop has not ended, the priorities and the single report. At nice 0 the priority check still proves the lowering; at nice 10 the look count and the report carry the check. Red against the old `low-priority.ts`, at nice 0 and at nice 10: cases 1 and 2 fail at once with `expected { walks: false, ended: true } to deeply equal { walks: true, ended: false }` (and `looks` for case 2), `Tests 2 failed | 1 passed (3)`. Green after the repair: the three low-priority files together, `--maxWorkers=2`, 3 runs at nice 0 and 3 at nice 10 (`nice` printed each), `Tests 13 passed (13)` in all six; host load average 100 to 119 on 24 CPUs.
+
 ## Evidence
 
 All direct runs at nice 0 (`nice` printed 0), `timeout`, `--maxWorkers=2`, on this host at load average about 119 on 24 CPUs (other coordinators' work; no artificial load).
