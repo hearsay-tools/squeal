@@ -16,7 +16,7 @@ contract
   Last result at revision 4: 1 pass
 ```
 
-`Description` appears only where the config gives one; `Test files now` and `Last result` only where the store has the check's files. `Runs` says when the check runs (after each edit, between your turns, at Stop, when you commit, or only on request) and who starts it; `never`, with the reason, for a lint check Squeal does not run (lint off, or checks above it own its tools), which then has no run command. The last line names what Squeal does not run here, such as typecheck and build: those are yours to run. It needs no daemon and changes nothing.
+`Description` appears only where the config gives one; `Test files now` and `Last result` only where the store has the check's files. `Runs` says when the check runs (after each edit, between your turns, at Stop, when you commit, or only on request) and who starts it; `never`, with the reason, for a lint check Squeal does not run (lint off, no lint tools, or checks above it own its tools), which then has no run command. The last line names what Squeal does not run here, such as typecheck and build: those are yours to run. It needs no daemon and changes nothing.
 
 ## squeal status
 

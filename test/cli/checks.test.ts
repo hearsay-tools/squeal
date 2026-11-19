@@ -293,6 +293,19 @@ describe("squeal checks (row 005-126)", () => {
       );
       expect(stdout).not.toContain("squeal run fast");
     });
+
+    // Review 0.1.565-r2 N1 (row 005-130): with no tools there is no check above it to name.
+    it("says a lint check never runs when lint.tools is empty", () => {
+      const config = {
+        lint: { enabled: true, tools: [] },
+        checks: [{ name: "style", lint: true, at: "edit" }],
+      };
+      const { stdout } = run(repo(config));
+      expect(stdout).toContain(
+        "style\n  Selects: lint, every tool in lint.tools\n  Runs: never: lint.tools is empty (squeal.config.json)\n",
+      );
+      expect(stdout).not.toContain("squeal run style");
+    });
   });
 
   it("refuses an argument", () => {
