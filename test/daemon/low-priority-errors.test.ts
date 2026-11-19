@@ -55,11 +55,14 @@ function lowering(
   return { reports, ended: () => ended, stop };
 }
 
-/** Waits up to 5 s for `pid` to reach nice 10. */
-async function niced(pid: number): Promise<number> {
-  for (let waited = 0; waited < 5_000 && getPriority(pid) < TEST_NICE; waited += 50)
-    await sleep(50);
-  return getPriority(pid);
+/**
+ * Waits up to 5 s for `done()`, a look's count past the one that lowers:
+ * a look lowers what it found before the next starts. A child started under
+ * a test process at nice 10 is at nice 10 already, so the priority alone
+ * cannot say the look ran.
+ */
+async function until(done: () => boolean): Promise<void> {
+  for (let waited = 0; waited < 5_000 && !done(); waited += 20) await sleep(20);
 }
 
 describe.runIf(process.platform === "linux")(
@@ -78,9 +81,13 @@ describe.runIf(process.platform === "linux")(
           return walks > 4 ? [late] : [];
         },
       );
-      expect(await niced(late.pid)).toBe(TEST_NICE);
-      expect(run.ended()).toBe(false);
-      expect(getPriority(fork.pid)).toBe(TEST_NICE);
+      // walk 5 lists `late`; walk 6 starts once look 5 has lowered it
+      await until(() => walks >= 6 || run.ended());
+      expect({ walks: walks >= 6, ended: run.ended() }).toEqual({ walks: true, ended: false });
+      expect({ late: getPriority(late.pid), fork: getPriority(fork.pid) }).toEqual({
+        late: TEST_NICE,
+        fork: TEST_NICE,
+      });
       expect(run.reports.filter((line) => line.includes(message))).toHaveLength(1);
     });
 
@@ -93,8 +100,10 @@ describe.runIf(process.platform === "linux")(
         if (looks <= 3) throw new Error(message);
         return [fork];
       });
-      expect(await niced(fork.pid)).toBe(TEST_NICE);
-      expect(run.ended()).toBe(false);
+      // look 4 lists `fork`; look 5 starts once look 4 has lowered it
+      await until(() => looks >= 5 || run.ended());
+      expect({ looks: looks >= 5, ended: run.ended() }).toEqual({ looks: true, ended: false });
+      expect(getPriority(fork.pid)).toBe(TEST_NICE);
       expect(run.reports.filter((line) => line.includes(message))).toHaveLength(1);
     });
 
