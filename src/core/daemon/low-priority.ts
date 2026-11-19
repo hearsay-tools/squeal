@@ -55,7 +55,11 @@ export function runPriority(named: CheckPriority | undefined, lane: string): Che
  * mark of their own: they keep the daemon's priority. A process starts at
  * normal priority and runs so until the next look: `EVERY_MS` plus the look's
  * own time, no deadline. `walk` lists a process's descendants, `below` but in
- * a test. Never rejects.
+ * a test. Only `signal` ends it (row 011-410): an error from `carriers` or
+ * from one carrier's `walk` goes to `report`, the daemon's stderr but in a
+ * test, once per message in this process, and the next look tries again;
+ * `lost` stays set and a carrier whose walk failed is walked again, so what
+ * the failed look missed is found then. Never rejects.
  */
 export async function lowerWhile(
   children: Pick<EscapedChildren, "carriers">,
@@ -64,6 +68,7 @@ export async function lowerWhile(
   since: number,
   signal: AbortSignal,
   walk: (pid: number) => Identity[] = below,
+  report: (message: string) => void = toStderr,
 ): Promise<void> {
   if (process.platform !== "linux") return;
   // Each lowered carrier while it lives, by pid and start: when it was lowered and last
@@ -74,18 +79,36 @@ export async function lowerWhile(
   >();
   // A descendant a walk listed is gone: what it started may be in the daemon's group now.
   let lost = false;
-  try {
-    for (;;) {
+  const failed = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (reported.has(message) || reported.size >= REPORTED_MAX) return;
+    reported.add(message);
+    report(
+      `squeal: lowering the test processes of ${lane} failed, the next look retries: ${message}`,
+    );
+  };
+  while (!signal.aborted) {
+    try {
       await sleep(EVERY_MS, undefined, { signal });
-      const found = await children.carriers(lane, since, lost);
-      lost = false;
-      const at = Date.now();
+    } catch {
+      return; // Aborted: the run settled.
+    }
+    try {
       const fresh: Identity[] = [];
-      for (const { pid, start } of found)
-        if (!lowered.has(`${pid}:${start}`)) {
-          lowered.set(`${pid}:${start}`, { pid, start, since: at, walked: 0, seen: new Set() });
-          fresh.push({ pid, start });
-        }
+      try {
+        const found = await children.carriers(lane, since, lost);
+        lost = false;
+        const at = Date.now();
+        for (const { pid, start } of found)
+          if (!lowered.has(`${pid}:${start}`)) {
+            lowered.set(`${pid}:${start}`, { pid, start, since: at, walked: 0, seen: new Set() });
+            fresh.push({ pid, start });
+          }
+      } catch (error) {
+        if (signal.aborted) return;
+        failed(error);
+      }
+      const at = Date.now();
       for (const [id, carrier] of lowered) {
         if (at - carrier.since >= WALK_MS && at - carrier.walked < WALK_MS) continue;
         if (statOf(carrier.pid)?.start !== carrier.start) {
@@ -93,9 +116,16 @@ export async function lowerWhile(
           lost = true;
           continue;
         }
+        let descendants: Identity[];
+        try {
+          descendants = walk(carrier.pid);
+        } catch (error) {
+          failed(error);
+          continue;
+        }
         carrier.walked = at;
         const current = new Set<string>();
-        for (const descendant of walk(carrier.pid)) {
+        for (const descendant of descendants) {
           const id = `${descendant.pid}:${descendant.start}`;
           current.add(id);
           if (!carrier.seen.has(id)) fresh.push(descendant);
@@ -104,10 +134,22 @@ export async function lowerWhile(
         carrier.seen = current;
       }
       if (fresh.length > 0) lower(fresh, priority === "low");
+    } catch (error) {
+      if (signal.aborted) return;
+      failed(error);
     }
-  } catch {
-    // Aborted: the run settled.
   }
+}
+
+/**
+ * The messages `lowerWhile` reported in this process: each once, and none past
+ * the first `REPORTED_MAX`, as a message naming a pid can differ every look.
+ */
+const reported = new Set<string>();
+const REPORTED_MAX = 100;
+
+function toStderr(message: string): void {
+  process.stderr.write(`${message}\n`);
 }
 
 /** A process by its pid and its start, as `statOf` reads them. */
