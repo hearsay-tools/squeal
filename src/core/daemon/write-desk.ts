@@ -39,8 +39,12 @@ export interface WriteDeskContext {
   readonly worktreeId: WorktreeId;
   /** `user_version` of the daemon's store; a batch read at another one is refused. */
   readonly storeSchema: number;
-  /** Writes one batch in the daemon's retried path; rejects with why it was not written. */
-  readonly requestWrite: (batch: SentBatch) => Promise<void>;
+  /**
+   * Writes one batch in the daemon's retried path; rejects with why it was
+   * not written. `request` is the whole write, for a store process's queue
+   * (spec 021 D22, row 021-36).
+   */
+  readonly requestWrite: (batch: SentBatch, request: WriteRequest) => Promise<void>;
   /** Milliseconds that never go back and do not run while the host sleeps. Default `performance.now`. */
   readonly now?: () => number;
   /** Whether a lease's process lives (`leaseProcessAlive`); a test gives its own. */
@@ -120,6 +124,11 @@ export class WriteDesk {
     return this.#leaseAnswer(token, null);
   }
 
+  /** Spec 021 D22.2 (row 021-36): whether a client holds the lease now, its process alive. */
+  get leased(): boolean {
+    return this.#current() !== null;
+  }
+
   release(request: ReleaseRequest): ReleaseResponse | DaemonErrorResponse {
     const refused = this.#otherWorktree(request.worktreeId) ?? this.#unknownToken(request.token);
     if (refused !== null) return refused;
@@ -163,7 +172,7 @@ export class WriteDesk {
       lease.until = this.#now() + LEASE_TTL_MS;
       if (lease.releasing && lease.pending === 0 && this.#lease === lease) this.#lease = null;
     };
-    this.#context.requestWrite(request.batch).then(
+    this.#context.requestWrite(request.batch, request).then(
       () => settle(null),
       (error: unknown) => settle(error instanceof Error ? error.message : String(error)),
     );

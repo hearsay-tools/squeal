@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import type { PoolCapacity } from "../capacity/pool.js";
 import type { CoverageWriter } from "../code/coverage/writer.js";
 import type { CodePass } from "../code/pass/index.js";
+import type { OpenCodeStoreOptions } from "../code/store/open.js";
+import { CODE_SCHEMA_VERSION } from "../code/store/schema.js";
 import type { DaemonLoop } from "../daemon-loop/index.js";
 import { linkedWorktreeDir } from "../fs/git-layout.js";
 import type { LintPass } from "../lint/pass/index.js";
@@ -26,6 +28,7 @@ import { setBusyTimeout } from "../store/open.js";
 import { lockFileFor } from "../store/paths.js";
 import { ensureBirthMarks } from "../store/state-born.js";
 import { ensureWriteMarkers } from "../store/write-markers.js";
+import { CodeRelay } from "../store-process/relay.js";
 import type { Capacity } from "../types/capacity.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonExit, DaemonExitReason, DaemonPhase, SyncAnswer } from "../types/daemon.js";
@@ -238,6 +241,8 @@ class Daemon {
   readonly #lints = new Map<LintTool, LintPass>();
   /** Spec 015 D8 (row 015-11): stores each run's coverage records; opens nothing while coverage is off. */
   #coverage: CoverageWriter | null = null;
+  /** Spec 021 D22 (row 021-36): sends the code store's writes to the clone's store process. */
+  #relay: CodeRelay | null = null;
   /** Spec 018 D14 (row 018-20): CI's export of the nearest main commit; fetches only with `shared.ref`. */
   #shared: SharedReader | null = null;
   /** Row 018-28: the imports whose observed entries this daemon's keys read. */
@@ -343,6 +348,22 @@ class Daemon {
     if (fixed !== undefined) return () => fixed;
     const user = loadUserConfig({ env: this.options.env }).config.runner.hostIdleMinutes;
     return hostIdleMs(user, () => this.#policy.runner.hostIdleMinutes, defaultHostIdleMinutes());
+  }
+
+  /**
+   * Spec 021 D22 (row 021-36): the code store's connections, whose writes
+   * go to the clone's store process; the relay is made at the first ask.
+   */
+  #codeStore(): Pick<OpenCodeStoreOptions, "connection"> {
+    const { commonDir, worktreeId } = this.opened;
+    this.#relay ??= new CodeRelay({
+      commonDir,
+      worktreeId,
+      storeSchema: CODE_SCHEMA_VERSION,
+      launch: this.options.runnerHost ?? null,
+      ...(this.options.env === undefined ? {} : { env: this.options.env }),
+    });
+    return this.#relay.codeStoreOptions();
   }
 
   /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
@@ -819,9 +840,11 @@ class Daemon {
       const format = await readObjectFormat(root);
       // Row 015-45: the writer and the coverage step keep to one half of the main thread together.
       const pace = new Pace(this.#now);
+      const codeStore = this.#codeStore();
       // Spec 015 D8: the records, stored at their results' keys off the run's path.
       this.#coverage = createCoverageWriter({
         commonDir,
+        codeStore,
         format,
         policy: () => this.#policy,
         resultKey: coverage.mainStoreResultKey(store, worktreeId),
@@ -837,6 +860,7 @@ class Daemon {
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
       const code = createCodePass({
         worktreeId,
+        codeStore,
         root,
         commonDir,
         format,
@@ -1065,6 +1089,7 @@ class Daemon {
           keepInDaemon(
             {
               commonDir: this.opened.commonDir,
+              codeStore: this.#codeStore(),
               worktreeId: this.opened.worktreeId,
               store: this.opened.store,
               policy: () => this.#policy,
@@ -1308,6 +1333,7 @@ class Daemon {
         await Promise.all([...this.#lints.values()].map((pass) => pass.close()));
       });
       await this.#step("coverage.close", () => this.#coverage?.close());
+      await this.#step("relay.close", () => this.#relay?.close());
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();

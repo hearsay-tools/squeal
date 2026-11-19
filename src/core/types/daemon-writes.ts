@@ -95,6 +95,18 @@ export interface WriteRequest {
   readonly token: string | null;
   readonly release: boolean;
   readonly batch: SentBatch;
+  /**
+   * Spec 021 D22.3 (row 021-36): to a store process, the batch's turn in its
+   * queue; absent, `record`. A daemon ignores it.
+   */
+  readonly kind?: "edit" | "record" | "prune";
+  /** D22.3: a store process may write it in slices of at most 250 ms; its statements may run twice. */
+  readonly splittable?: boolean;
+  /**
+   * D22.4: the client's number of the batch (`batchSeq`); a store process
+   * writes it only while the worktree's mark is below it, and sets the mark.
+   */
+  readonly seq?: string;
 }
 
 /** Asks how the write `requestId` went. */

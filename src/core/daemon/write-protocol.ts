@@ -101,6 +101,8 @@ function parseWrite(request: Record<string, unknown>): WriteRequest | string {
   if (typeof release !== "boolean") return '"release" must be true or false';
   const batch = parseBatch(request.batch);
   if (typeof batch === "string") return batch;
+  const queued = parseQueued(request);
+  if (typeof queued === "string") return queued;
   return {
     type: "write",
     worktreeId: worktreeId as WorktreeId,
@@ -108,6 +110,28 @@ function parseWrite(request: Record<string, unknown>): WriteRequest | string {
     token,
     release,
     batch,
+    ...queued,
+  };
+}
+
+const KINDS = new Set(["edit", "record", "prune"]);
+
+/** Spec 021 D22 (row 021-36): a store process's fields of a write, each optional. */
+function parseQueued(
+  request: Record<string, unknown>,
+): Pick<WriteRequest, "kind" | "splittable" | "seq"> | string {
+  const { kind, splittable, seq } = request;
+  if (kind !== undefined && !KINDS.has(kind as string)) {
+    return '"kind" must be "edit", "record" or "prune"';
+  }
+  if (splittable !== undefined && typeof splittable !== "boolean") {
+    return '"splittable" must be true or false';
+  }
+  if (seq !== undefined && !isText(seq)) return '"seq" must be a non-empty string';
+  return {
+    ...(kind === undefined ? {} : { kind: kind as NonNullable<WriteRequest["kind"]> }),
+    ...(splittable === undefined ? {} : { splittable }),
+    ...(seq === undefined ? {} : { seq: seq as string }),
   };
 }
 

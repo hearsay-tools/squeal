@@ -167,6 +167,10 @@ export function bundleOptions(
       { in: "src/core/code/coverage/map-worker.ts", out: "cli/coverage-map" },
       // The ESLint provider's worker thread, found beside the CLI by `lintWorkerScript` (017-04).
       { in: "src/core/lint/provider/worker.ts", out: "cli/lint-worker" },
+      // Spec 021 D22 (row 021-36): the store process's writer thread (`writerScript`) and the
+      // daemon's thread that sends it the code store's writes (`relayScript`).
+      { in: "src/core/store-process/writer-thread.ts", out: "cli/store-writer" },
+      { in: "src/core/store-process/relay-thread.ts", out: "cli/store-relay" },
     ],
     outdir,
     outExtension: { ".js": ".mjs" },

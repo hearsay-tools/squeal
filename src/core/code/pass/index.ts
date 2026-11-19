@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { ObjectFormat } from "../../hash/blob.js";
+import { withWriteKind } from "../../store-process/relay.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
@@ -11,7 +12,12 @@ import { type CoverageChecks, coverageChecks, sameChecks } from "../crap/checks.
 import type { LoaderCondition, LoaderInputs } from "../crap/loaders.js";
 import { clearCoverage } from "../crap/removed.js";
 import { runCoverageStep } from "../crap/step.js";
-import { codeStorePath, isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
+import {
+  codeStorePath,
+  isCodeStoreOpenFailure,
+  type OpenCodeStoreOptions,
+  openCodeStore,
+} from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import { nextRetry, RETRY_AFTER_MS, readUncountable, restartRetries } from "./failed.js";
 import { runPass } from "./pass.js";
@@ -21,6 +27,8 @@ export type * from "./types.js";
 
 export interface CodePassOptions {
   readonly worktreeId: WorktreeId;
+  /** Spec 021 D22 (row 021-36): the code store's connection, through the store process. */
+  readonly codeStore?: Pick<OpenCodeStoreOptions, "connection">;
   readonly root: AbsolutePath;
   readonly commonDir: AbsolutePath;
   readonly format: ObjectFormat;
@@ -131,13 +139,13 @@ export function createCodePass(options: CodePassOptions): CodePass {
   };
   const open = (policy: Policy): CodeStore | null => {
     if (store !== null) return store;
-    let opened = openCodeStore(options.commonDir, policy);
+    let opened = openCodeStore(options.commonDir, policy, options.codeStore);
     if (isCodeStoreOpenFailure(opened) && opened.reason === "corrupt") {
       options.log(`complexity: the code store was corrupt (${opened.error}); counting again`);
       for (const suffix of ["", "-wal", "-shm"]) {
         rmSync(`${codeStorePath(options.commonDir)}${suffix}`, { force: true });
       }
-      opened = openCodeStore(options.commonDir, policy);
+      opened = openCodeStore(options.commonDir, policy, options.codeStore);
     }
     if (!isCodeStoreOpenFailure(opened)) {
       store = opened;
@@ -164,21 +172,24 @@ export function createCodePass(options: CodePassOptions): CodePass {
       counter = null;
       throw error;
     });
-    const report = await runPass({
-      worktreeId: options.worktreeId,
-      root: options.root,
-      format: options.format,
-      store: opened,
-      source: options.source,
-      counter: loaded,
-      complexity: policy.complexity,
-      switchedOn: wasOff,
-      retry,
-      now,
-      log: options.log,
-      coverageExcluded: checksOf(policy).excluded,
-      ...(options.sliceFiles === undefined ? {} : { sliceFiles: options.sliceFiles }),
-    });
+    // Spec 021 D22.3 (row 021-36): the counts of a revision are the code store's edit-tier results.
+    const report = await withWriteKind("edit", () =>
+      runPass({
+        worktreeId: options.worktreeId,
+        root: options.root,
+        format: options.format,
+        store: opened,
+        source: options.source,
+        counter: loaded,
+        complexity: policy.complexity,
+        switchedOn: wasOff,
+        retry,
+        now,
+        log: options.log,
+        coverageExcluded: checksOf(policy).excluded,
+        ...(options.sliceFiles === undefined ? {} : { sliceFiles: options.sliceFiles }),
+      }),
+    );
     if (report !== null) {
       wasOff = false;
       options.onPass?.(report);

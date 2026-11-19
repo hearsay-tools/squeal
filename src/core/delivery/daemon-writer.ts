@@ -4,7 +4,12 @@ import { leaseProcess } from "../daemon/lease-process.js";
 import { encodeBatch, type Statement } from "../daemon/write-batch.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
-import type { LeaseProcess, LeaseResponse, WriteResponse } from "../types/daemon-writes.js";
+import type {
+  LeaseProcess,
+  LeaseResponse,
+  WriteRequest,
+  WriteResponse,
+} from "../types/daemon-writes.js";
 import type { SendOutcome, WriteSender } from "./sending-connection.js";
 
 export interface DaemonWriterOptions {
@@ -89,7 +94,15 @@ export class DaemonWriter implements WriteSender {
     }
   }
 
-  async send(batch: readonly Statement[], release: boolean): Promise<SendOutcome> {
+  /**
+   * `queued` (spec 021 D22, row 021-36): a store process's fields of the
+   * write, its kind, whether it may be split and its number.
+   */
+  async send(
+    batch: readonly Statement[],
+    release: boolean,
+    queued: Pick<WriteRequest, "kind" | "splittable" | "seq"> = {},
+  ): Promise<SendOutcome> {
     const socket = this.#socketPath();
     if (socket === null) return "not-taken";
     const token = this.#token;
@@ -101,6 +114,7 @@ export class DaemonWriter implements WriteSender {
       token,
       release,
       batch: encodeBatch(batch),
+      ...queued,
     } as const;
     const answer = await this.#ask(socket, request);
     if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);

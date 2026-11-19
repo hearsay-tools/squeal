@@ -2,7 +2,11 @@ import { shareRecord } from "../code/coverage/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../code/coverage/record.js";
 import type { CoverageRecord } from "../code/coverage/types.js";
 import { mergeSeen } from "../code/gate/keep-seen.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
+import {
+  isCodeStoreOpenFailure,
+  type OpenCodeStoreOptions,
+  openCodeStore,
+} from "../code/store/open.js";
 import { healsUnheld } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import { storeResults } from "../scheduler/store-results.js";
@@ -16,6 +20,8 @@ import type { DaemonWrites } from "./busy-writes.js";
 
 export interface KeepInDaemonContext {
   readonly commonDir: AbsolutePath;
+  /** Spec 021 D22 (row 021-36): the code store's connection, through the store process. */
+  readonly codeStore?: Pick<OpenCodeStoreOptions, "connection">;
   readonly worktreeId: WorktreeId;
   readonly store: Store;
   /** The policy the code store opens with (`complexity.enabled`). */
@@ -50,6 +56,7 @@ export async function keepInDaemon(
   if (write.kind === "coverage") {
     const code = openCodeStore(context.commonDir, context.policy(), {
       busyTimeoutMs: BUSY_SLICE_MS,
+      ...context.codeStore,
     });
     if (isCodeStoreOpenFailure(code)) {
       return { failed: `the code store did not open: ${code.reason}` };

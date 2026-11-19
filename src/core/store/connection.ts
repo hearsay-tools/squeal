@@ -170,6 +170,16 @@ export async function withBusySlice<T>(ms: number, fn: () => Promise<T>): Promis
   }
 }
 
+/**
+ * The busy slice of the caller's async context, in ms; `null` outside one.
+ * Spec 021 D22 (row 021-36): a write sent to the store process waits no
+ * longer than a write here would wait for the lock.
+ */
+export function busySliceMs(): number | null {
+  const slice = slices.getStore();
+  return slice === undefined || !slice.live ? null : slice.ms;
+}
+
 /** `withBusySlice` for synchronous work: the slice ends when `fn` returns. */
 export function withBusySliceSync<T>(ms: number, fn: () => T): T {
   const slice: Slice = { ms, live: true };

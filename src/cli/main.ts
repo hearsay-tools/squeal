@@ -36,6 +36,7 @@ import { namedSnapshotCommand } from "./status-paths.js";
 import { statusWaitCommand, waitConsumer } from "./status-wait.js";
 import { CHECK_NEEDS_TEST_FILE, takeChecks } from "./status-wait-focus.js";
 import { stopCommand } from "./stop.js";
+import { storeProcessCommand } from "./store-process.js";
 import { updateCommand } from "./update.js";
 import { takeWait } from "./wait-arg.js";
 import { warmupCommand } from "./warmup.js";
@@ -399,6 +400,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   update: updateCommand,
   "codex-runtime": codexRuntimeCommand,
   "runner-host": runnerHostCommand,
+  // Spec 021 D22 (row 021-36): hidden, a daemon starts it.
+  "store-process": storeProcessCommand,
 };
 
 /** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */

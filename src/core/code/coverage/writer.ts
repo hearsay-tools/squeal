@@ -2,10 +2,11 @@ import { existsSync, rmSync } from "node:fs";
 import type { ObjectFormat } from "../../hash/blob.js";
 import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
 import { isBusy, withBusySliceSync } from "../../store/connection.js";
+import { withWriteKind } from "../../store-process/relay.js";
 import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
+import { isCodeStoreOpenFailure, type OpenCodeStoreOptions, openCodeStore } from "../store/open.js";
 import type { CodeStore, CodeStoreOpenFailure } from "../store/types.js";
 import { type DropCause, Drops } from "./drops.js";
 import {
@@ -36,6 +37,8 @@ export const BUSY_BUDGET_MS = 120_000;
 
 export interface CoverageWriterOptions {
   readonly commonDir: AbsolutePath;
+  /** Spec 021 D22 (row 021-36): the code store's connection, through the store process. */
+  readonly codeStore?: Pick<OpenCodeStoreOptions, "connection">;
   readonly format: ObjectFormat;
   /** The policy now; the code store opens only while `complexity.enabled` holds (D4). */
   readonly policy: () => Policy;
@@ -174,7 +177,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
 
   const open = (): CodeStore | CodeStoreOpenFailure => {
     if (store !== null) return store;
-    const opened = openCodeStore(options.commonDir, options.policy());
+    const opened = openCodeStore(options.commonDir, options.policy(), options.codeStore);
     if (!isCodeStoreOpenFailure(opened)) store = opened;
     return opened;
   };
@@ -189,7 +192,12 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
       }
       cause = "store-error";
       const at = { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION };
-      withBusySliceSync(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now()));
+      // Row 021-36: a record's parts may run twice, so the store process may write them in slices.
+      withWriteKind(
+        "record",
+        () => withBusySliceSync(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now())),
+        true,
+      );
     } catch (error) {
       if (isBusy(error)) stall(job);
       else drop(job, cause, String(error));

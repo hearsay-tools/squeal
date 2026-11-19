@@ -15,6 +15,13 @@ export interface WriteSender {
   send(batch: readonly Statement[], release: boolean): Promise<SendOutcome>;
   /** Ends the lease, if held. */
   release(): Promise<void>;
+  /**
+   * Spec 021 D22 (row 021-36): writes `batch` before it returns, through a
+   * store process or on the connection itself, and throws as a write would.
+   * A sender that has it is used for every batch in place of `send`, and
+   * no read waits for a batch.
+   */
+  sendNow?(batch: readonly Statement[]): void;
 }
 
 /** How a sent batch went: written by the daemon, or not taken by any daemon (written here instead). */
@@ -263,7 +270,8 @@ export class SendingConnection extends HoldingConnection {
   #end(batch: Statement[]): void {
     this.#batch = [];
     if (batch.length === 0) return;
-    if (this.#held !== null) this.#held.push(...batch);
+    if (this.#sender.sendNow !== undefined) this.#sender.sendNow(batch);
+    else if (this.#held !== null) this.#held.push(...batch);
     else this.#track(this.#send(batch, false), true);
   }
 
