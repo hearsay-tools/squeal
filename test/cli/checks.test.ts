@@ -1,9 +1,12 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
+import { PLUGIN_DIR } from "../../src/harness/claude-code/build.js";
+import { CODEX_RUNTIME_DIR, CODEX_SKILL } from "../../src/harness/codex/build.js";
+import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
 /*
@@ -50,6 +53,13 @@ function repo(config: object, files: readonly [string, "pass" | "fail" | "stale"
   }
   return r.main;
 }
+
+/** Every shipped copy of the squeal skill. */
+const SKILL_COPIES = [
+  join(PLUGIN_DIR, "skills", "squeal"),
+  join(CODEX_RUNTIME_DIR, CODEX_SKILL),
+  join(PI_PLUGIN_DIR, PI_SKILL),
+];
 
 function run(cwd: string, args: readonly string[] = []) {
   let stdout = "";
@@ -185,6 +195,26 @@ describe("squeal checks (row 005-126)", () => {
     expect(stdout).toContain(
       "  Selects: the test files no other check selects, except those marked slow\n",
     );
+  });
+
+  it("prints the block the skill's commands.md shows, in every copy (row 005-128)", () => {
+    const contract = {
+      name: "contract",
+      runner: "vitest",
+      tests: ["test/contract/**"],
+      at: "manual",
+      description: "The invoice JSON against the billing API's schema.",
+    };
+    const { stdout } = run(repo({ checks: [contract] }, [["test/contract/a.test.ts", "pass"]]));
+    const block = stdout.slice(
+      stdout.indexOf("contract\n"),
+      stdout.indexOf("\n\n", stdout.indexOf("contract\n")),
+    );
+    expect(block.split("\n")).toHaveLength(7);
+    for (const dir of SKILL_COPIES) {
+      const commands = readFileSync(join(dir, "references", "commands.md"), "utf8");
+      expect(commands).toContain(`\`\`\`text\n${block}\n\`\`\``);
+    }
   });
 
   it("refuses an argument", () => {

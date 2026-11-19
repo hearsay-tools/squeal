@@ -31,7 +31,7 @@ export const PI_PLUGIN: PluginBuild = {
  * command the primer names, as in the Codex copy (002 D1 as amended).
  */
 export const PI_SKILL_NOTE =
-  'Under Pi `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names, the Node that runs Pi with `--disable-warning=ExperimentalWarning "<package root>/dist/cli/squeal.mjs"`, the package root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.';
+  'Under Pi `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL messages name, the Node that runs Pi with `--disable-warning=ExperimentalWarning "<package root>/dist/cli/squeal.mjs"`, the package root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too.';
 
 const SKILL_TITLE = "# Squeal\n";
 

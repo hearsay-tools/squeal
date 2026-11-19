@@ -2,6 +2,22 @@
 
 `squeal --help` lists every command and flag. This file says what their output means.
 
+## squeal checks
+
+Lists the checks Squeal runs in this repository, from `squeal.config.json`, or the default ones when it has no `checks` key. One block per check, one fact per line:
+
+```text
+contract
+  Description: The invoice JSON against the billing API's schema.
+  Selects: Vitest test files matching test/contract/**
+  Test files now: 1
+  Runs: only on request: Squeal does not start it; `squeal run contract --wait 60000` does
+  Run it now: `squeal run contract --wait 60000`
+  Last result at revision 4: 1 pass
+```
+
+`Description` appears only where the config gives one; `Test files now` and `Last result` only where the store has the check's files. `Runs` says when the check runs (after each edit, between your turns, at Stop, when you commit, or only on request) and who starts it. The last line names what Squeal does not run here, such as typecheck and build: those are yours to run. It needs no daemon and changes nothing.
+
 ## squeal status
 
 Prints the current state of this worktree, its verdict first. It reads the store and needs no daemon.
@@ -17,7 +33,7 @@ Outstanding:
 More: `squeal status --full` adds the worktree and daemon
 ```
 
-`Known failures: 0` with test files not current means "no known failures yet": the current revision is not fully validated. The skill's step 4 says what to claim from it. When slow files are among the checks running and queued, `Affected checks` names them, a few by path and the rest by count, and `squeal run --slow --wait 60000`, which waits for their results.
+`Known failures: 0` with test files not current means "no known failures yet": the current revision is not fully validated. The skill's step 6 says what to claim from it. When slow files are among the checks running and queued, `Affected checks` names them, a few by path and the rest by count, and `squeal run --slow --wait 60000`, which waits for their results.
 
 `Outstanding:` groups the test files that are not current by what holds them, and each group ends with the command that advances it, or says that none does and why: no daemon validates (`squeal start`), files never run or stale at their inputs (`squeal retry <test file>...`, or `squeal run --all --wait` for all of them), a running tier, a queue, another worktree's run of the same inputs, a pending retry, a checkpoint in progress. It shows at most six groups and three paths a group, and counts the rest. Slow files the `Slow tier:` line counts are not repeated there. Run a group's command only when you need that result now; results still arrive with your next tool call. With every test file current, there is no `Outstanding:` block.
 
@@ -54,7 +70,7 @@ Results for some checks of a large test file arrive with your next tool call too
 
 ## Red/green: checking that a test catches the bug
 
-To show that a test fails without your fix and passes with it, let Squeal run it rather than running it yourself. Results would arrive with your next tool call anyway; here each step needs its result before the next, so wait after each edit:
+While your fix is still uncommitted in your tree, show that a test fails without it and passes with it by letting Squeal run it rather than running it yourself. Results would arrive with your next tool call anyway; here each step needs its result before the next, so wait after each edit:
 ```sh
 # 1. Revert the fix, then:
 squeal status --wait 60000   # Returned on news: the test's PASS -> FAIL
@@ -62,6 +78,8 @@ squeal status --wait 60000   # Returned on news: the test's PASS -> FAIL
 squeal status --wait 60000   # Returned on news: FAIL -> PASS
 ```
 Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes, so that wait may return on quiet instead of news. Quiet says no result your edits owe is outstanding, not that it passed: read the outcome in the snapshot the wait prints. The test catches the bug when it is listed under `Known failures` after the revert and gone from it after the restore; listed as passing after the revert, it does not. For one test of a large test file, name the file and add `--check '<test name>'` to each wait: it returns at that test's own first run, before the file's, which still decides.
+
+For a fix that is already committed, or when your tree must stay as it is, use `squeal proof <test file> --base <commit>` instead: it runs the old and the new side in temporary checkouts and changes no file in your tree (`--env` and `--without` for a hidden dependency, `--repeat` for a flaky test). To compare results with an earlier commit, use `squeal status --at <commit>`.
 
 ## squeal why
 
@@ -211,11 +229,11 @@ Queues every test file that has no result for the current files (`--force` queue
 
 ## squeal run --slow
 
-Asks the daemon to run the repository's slow files (`slow` in `squeal.config.json`: end-to-end and other suites too slow to run after every edit) as soon as no fast work of an edit is pending (background work such as a baseline does not hold them back). They also run on their own after the fast tests (under `slow.trigger: "idle"`, only while you are idle), and when your last session ends the daemon runs them before it exits; ask when you need their result now, for example before saying slow tests pass. It prints how many slow files it queued at which revision, or that there are none to run (none declared, or all current at this revision). Their results arrive with your next tool call, so by default keep working; `--wait <ms>` waits after the request as `squeal status --wait` does, and also until every slow file it queued has its result (one already running counts: the wait joins its run instead of starting another), then prints status, and last the line saying why it returned. Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 4): `Stop waits up to … for them or holds the agent …` means it is, once you change a file, and Stop keeps you going at most `stop.maxHolds` times in one turn (the line ends `once` at the default 1, else `up to 3 times in a turn`); any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current. That last line says `the N slow files run --slow queued have their results`; on timeout it says how many of them are still pending and their paths, so say so, or wait again. A change of one of their checks (a slow failure) ends it early, as news. Exit 1 means no daemon runs, or the daemon predates `run --slow` (restart it with `squeal stop` then `squeal start`). With `--wait`, exit 3 means it has no verdict: the wait returned without a daemon, or timed out with a slow file it queued still pending; say so, or wait again.
+Asks the daemon to run the repository's slow files (`slow` in `squeal.config.json`: end-to-end and other suites too slow to run after every edit) as soon as no fast work of an edit is pending (background work such as a baseline does not hold them back). They also run on their own after the fast tests (under `slow.trigger: "idle"`, only while you are idle), and when your last session ends the daemon runs them before it exits; ask when you need their result now, for example before saying slow tests pass. It prints how many slow files it queued at which revision, or that there are none to run (none declared, or all current at this revision). Their results arrive with your next tool call, so by default keep working; `--wait <ms>` waits after the request as `squeal status --wait` does, and also until every slow file it queued has its result (one already running counts: the wait joins its run instead of starting another), then prints status, and last the line saying why it returned. Whether it is needed before saying the task is done is the repository's policy, read off the end of the `Slow tier:` line (the skill's step 6): `Stop waits up to … for them or holds the agent …` means it is, once you change a file, and Stop keeps you going at most `stop.maxHolds` times in one turn (the line ends `once` at the default 1, else `up to 3 times in a turn`); any other ending means it is not, and a claim that slow tests pass still needs the line to say every slow file is current. That last line says `the N slow files run --slow queued have their results`; on timeout it says how many of them are still pending and their paths, so say so, or wait again. A change of one of their checks (a slow failure) ends it early, as news. Exit 1 means no daemon runs, or the daemon predates `run --slow` (restart it with `squeal stop` then `squeal start`). With `--wait`, exit 3 means it has no verdict: the wait returned without a daemon, or timed out with a slow file it queued still pending; say so, or wait again.
 
 ## squeal run <group> <path>...
 
-Runs now only the test files of group `<group>` (`checks` in `policy.md`) that the paths select, whatever the group's moment, `"manual"` included. Use it where the primer says no test group runs after each edit: there no message between edits is not a pass. A test file's path selects that test file. Any other path, such as a source file, selects what an edit of it runs first, among the group's files: its namesakes (`src/parse.ts` selects `parse.test.ts`), or with none the test files that import it directly, then the `runner.tierSize` shortest of its other direct importers. A selected file that is current does not run again; its result counts. The group's other files keep waiting for its moment or `squeal run <group>`: a narrow run never makes the group current, and Stop still waits for every file of a group at `"stop"`.
+Runs now only the test files of group `<group>` (`checks` in `policy.md`) that the paths select, whatever the group's moment, `"manual"` included. Use it where `squeal checks` shows no check that runs after each edit: there no message between edits is not a pass. A test file's path selects that test file. Any other path, such as a source file, selects what an edit of it runs first, among the group's files: its namesakes (`src/parse.ts` selects `parse.test.ts`), or with none the test files that import it directly, then the `runner.tierSize` shortest of its other direct importers. A selected file that is current does not run again; its result counts. The group's other files keep waiting for its moment or `squeal run <group>`: a narrow run never makes the group current, and Stop still waits for every file of a group at `"stop"`.
 
 It prints what the paths select, such as ``Group e2e at revision 12: these paths select 2 test files; 2 queued, which run now.``, then, when there are any: the group's other test files that read the paths and what they wait for; each other group with test files the paths select, with its own command, ``Group unit has 1 test file these paths select: `squeal run unit src/parse.ts` runs it.``; and the paths that select no test file of any group. With `--wait <ms>` it then waits for the selected files only and gives their verdict first, ``Selected test files of group e2e completed at revision 12: no known failures; 2 test files, 2 queued by this request``, then status. Exit 0 when every selected file is current and passing, 1 with a known failure among them, 3 without a verdict: a file pending at the deadline or without a current result, no file of the group selected, or a path that selects nothing while the others pass. A lint group takes no paths (exit 2): run `squeal run <group>`. A daemon older than this command runs nothing and says it predates narrow runs; `squeal stop`, then `squeal start`, starts the installed version.
 

@@ -7,7 +7,7 @@ import { PI_PLUGIN_DIR, PI_SKILL } from "../../src/harness/pi/build.js";
 
 /*
  * Spec 005 D6 as amended by the human (2026-10-17, task 005-68, issue 18):
- * the skill says which wait applies when, as the primer does, and what a
+ * the skill says which wait applies when, and what a
  * path selects since 005-67: a listed test file only itself, any other
  * path every test file that reads it.
  */
@@ -18,12 +18,13 @@ const COPIES = [
   join(PI_PLUGIN_DIR, PI_SKILL),
 ];
 const read = (dir: string, name: string) => readFileSync(join(dir, name), "utf8");
-const step3 = (text: string) => text.slice(text.indexOf("3. **"), text.indexOf("4. **"));
+// Row 005-128: the wait step is step 5 since the human's steps 1 and 4.
+const step5 = (text: string) => text.slice(text.indexOf("5. **"), text.indexOf("6. **"));
 const [claude] = COPIES as [string];
 
 describe("the skill's waits (005-68)", () => {
-  it("names the path wait for files just changed, then the waits before done, in step 3", () => {
-    const step = step3(read(claude, "SKILL.md"));
+  it("names the path wait for files just changed, then the waits before done, in step 5", () => {
+    const step = step5(read(claude, "SKILL.md"));
     expect(step).toContain(
       "For files you just changed, `squeal status --wait 60000 <path>...` gives the verdict of the test files they select.",
     );
@@ -32,9 +33,9 @@ describe("the skill's waits (005-68)", () => {
     expect(step.indexOf("next tool call")).toBeLessThan(step.indexOf("status --wait"));
   });
 
-  it("says the same step 3 in every copy", () => {
+  it("says the same step 5 in every copy", () => {
     for (const dir of COPIES.slice(1)) {
-      expect(step3(read(dir, "SKILL.md"))).toBe(step3(read(claude, "SKILL.md")));
+      expect(step5(read(dir, "SKILL.md"))).toBe(step5(read(claude, "SKILL.md")));
     }
   });
 

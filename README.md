@@ -43,6 +43,20 @@ Installing the plugin from inside a harness instead: [plugins/claude-code/README
 
 Each worktree has a daemon of its own, which runs that worktree's tests in the background. Before deleting a worktree, run `squeal stop <worktree>`: it cancels the tests in flight, stops the daemon and every process it started, and returns once none of them is left, so nothing of Squeal's holds the directory. It exits 0 then, and 1 when something still runs past its bound, naming what. `git worktree remove` succeeds without it; a tool that refuses to remove a directory a live process holds needs it first. A hook starts the daemon again at the next edit; `squeal stop --until-start` keeps it stopped through edits and Git operations until `squeal start`. A daemon that a hook or `squeal start` started writes its log to `.git/squeal/logs/daemon-<worktree id>.log` in the repository's common Git directory, each of its own lines with the UTC time and its process id (output Node writes there itself, such as a crash's stack trace, has no prefix); at 4 MiB its content moves to `daemon-<worktree id>.log.1`, over the one before, so a worktree keeps about 8 MiB of log (the size is checked after each line and once a minute). The worktree id is the 16 hex characters that also name the worktree's lock file, `.git/squeal/locks/<worktree id>.sqlite`.
 
+## The checks of a repository
+
+`squeal checks` lists the checks Squeal runs in the repository, from `squeal.config.json` or, with no `checks` key, the default ones. For each it prints its name, its description, the test files it selects, when it runs (after each edit, between the agent's turns, at Stop, at a commit, or only on request) and who starts it, the command that runs it now, and, where the store has results, how many test files it holds and its last result. The last line says what Squeal does not run: typecheck, build and other suites. It needs no daemon and writes nothing. A check in `squeal.config.json` can carry `"description"`, one line of up to 200 characters that only `squeal checks` prints, for example why a check runs only on request:
+
+```json
+{
+  "checks": [
+    { "name": "contract", "runner": "vitest", "tests": ["test/contract/**"], "at": "manual", "description": "The invoice JSON against the billing API's schema." }
+  ]
+}
+```
+
+The agent's start message sends it to the squeal skill and names `squeal checks` and `squeal status`; the skill's first step runs `squeal checks`.
+
 ## Slow tests
 
 Slow test files (`slow.include` in `squeal.config.json`, or `"slow": true` on a `nodeTest` or `pytest` project) run in a tier of their own, after the fast ones: once the latest edit's fast tests are done and no edit has come for `slow.quietMs` (default 3000), whether or not the agent is mid-turn, so a slow result reaches the agent with its next tool call; or on `squeal run --slow`. With `"slow": { "trigger": "idle" }` they run only when the agent pauses. They are keyed, run and inherited by another worktree as any test file is. The `Slow tier:` line in `squeal status` says how many there are and which are current, pending, running or not run.
@@ -57,7 +71,7 @@ Squeal covers no test of a build output it does not produce, such as an end-to-e
 }
 ```
 
-`vitest.exclude` lists globs, relative to the worktree root, of Vitest test files Squeal never lists, runs, keys or counts. `squeal status`, `squeal setup --check` and the session's first message name them as not covered. For a node:test or pytest project, its entry's own `exclude` does the same.
+`vitest.exclude` lists globs, relative to the worktree root, of Vitest test files Squeal never lists, runs, keys or counts. `squeal status`, `squeal setup --check` and `squeal checks` name them as not covered. For a node:test or pytest project, its entry's own `exclude` does the same.
 
 ## The quality check in CI
 

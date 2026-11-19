@@ -16,7 +16,7 @@ Every other SQUEAL message carries the news only: the same changed files, then h
 
 Passes stay silent unless they follow a failure. When the results for your edits take more than twice the usual wait, one message says so, titled `SQUEAL · results for your edits are late at revision 42`: how many of the test files your edits affect have not run, and how to have them now; when Squeal has not read your edits or not listed their revision yet, it says that instead. After it, one message titled `SQUEAL · caught up at revision 45` says every one has run with no new failure. A failure in between is reported as a failure, and no caught-up message follows it.
 
-- **revision**: as the SQUEAL primer defines it; not a git commit. Edits by a build, another session or a person move it too, and the header's file list says which files did.
+- **revision**: Squeal's number for each saved change to this worktree's files; every result names the revision it ran at. Not a git commit. Edits by a build, another session or a person move it too, and the header's file list says which files did.
 - **current**: the result was produced from exactly the files as they are now.
 - **pending**: a run for the current files is queued or running. The outcome shown is the last one known.
 - **stale**: a result exists, but for older file contents. Nothing is queued for it yet.

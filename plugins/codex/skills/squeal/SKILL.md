@@ -1,6 +1,6 @@
 ---
 name: squeal
-description: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the suites its primer lists as covered; this says when to wait for their results and how to read its reports.
+description: Use before you run tests yourself, when a test fails or a SQUEAL message reports a failure, to show that a test catches a bug (fails without the fix), or to compare test results with an earlier commit, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the tests in the background; this says which checks this repository defines, what to do instead of a hand run, how to retry a failure you did not cause, and how to read its reports.
 ---
 
 # Squeal
@@ -11,4 +11,4 @@ This plugin holds Squeal's hooks and a frozen seed; Squeal's instructions ship w
 2. Without that line, read `<plugin data>/runtime/current.json`; its `version` names the runtime new sessions use, at `<plugin data>/versions/<version>/`.
 3. Without that file, use the seed this plugin carries, `<plugin root>/seed/`, the plugin root being the directory that holds `seed/` and `skills/`.
 
-The plugin data directory is `<Codex home>/plugins/data/squeal-hearsay/`, where the Codex home is `$CODEX_HOME`, by default `~/.codex`. Under Codex `squeal` is not on the PATH: run the command the SQUEAL primer names, or `node --disable-warning=ExperimentalWarning "<runtime>/dist/cli/squeal.mjs"` with the runtime found above.
+The plugin data directory is `<Codex home>/plugins/data/squeal-hearsay/`, where the Codex home is `$CODEX_HOME`, by default `~/.codex`. Under Codex `squeal` is not on the PATH: run the command the SQUEAL messages name, or `node --disable-warning=ExperimentalWarning "<runtime>/dist/cli/squeal.mjs"` with the runtime found above.

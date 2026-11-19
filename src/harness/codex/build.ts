@@ -70,7 +70,7 @@ export const CODEX_RUNTIME: PluginBuild = {
  * names this version's copy of the skill, which a plugin update leaves.
  */
 export const CODEX_SKILL_NOTE =
-  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names. That is the launcher `<plugin data>/bin/squeal`, in the plugin data directory where Squeal keeps a copy of each version; before the first copy, it is `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too. A plugin update deletes the plugin root of the version a session started on; this skill stays readable at `<plugin data>/versions/<version>/skills/squeal/`, the path the SessionStart message names.';
+  'Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL messages name. That is the launcher `<plugin data>/bin/squeal`, in the plugin data directory where Squeal keeps a copy of each version; before the first copy, it is `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too. A plugin update deletes the plugin root of the version a session started on; this skill stays readable at `<plugin data>/versions/<version>/skills/squeal/`, the path the SessionStart message names.';
 
 const SKILL_TITLE = "# Squeal\n";
 
