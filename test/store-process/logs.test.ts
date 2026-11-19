@@ -97,12 +97,13 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", () =>
     at.later(async () => {
       if (pid !== null && alive(pid)) process.kill(pid, "SIGKILL");
     });
-    await until(() => /store process: serving /.test(read()), 30_000);
+    // The whole CLI loads from the sources: on a slow runner that takes long (CI, Node 22).
+    await until(() => /store process: serving /.test(read()), 120_000);
 
     process.kill(pid as number, "SIGTERM");
-    await until(() => !alive(pid as number), 10_000);
+    await until(() => !alive(pid as number), 60_000);
     expect(read()).toMatch(
       /^\S+Z \[\d+\] store process: stopping \(stopped\): no batches since the last line$/m,
     );
-  }, 60_000);
+  }, 240_000);
 });

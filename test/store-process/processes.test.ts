@@ -40,33 +40,40 @@ const fresh = () => {
   return at;
 };
 
+/** A wait on an event of a process started from the sources: generous for a slow CI runner. */
+const SLOW_MS = 120_000;
+
 describe("the store process as a process (row 021-36)", () => {
-  it("starts once when two daemons start it at once", async () => {
-    const at = fresh();
-    const pids = [
-      spawnStoreProcess(at.commonDir, LAUNCH, at.env),
-      spawnStoreProcess(at.commonDir, LAUNCH, at.env),
-    ];
-    for (const pid of pids) expect(pid).not.toBeNull();
-    at.later(async () => {
-      for (const pid of pids) if (pid !== null && alive(pid)) process.kill(pid, "SIGTERM");
-      await until(() => pids.every((pid) => pid === null || !alive(pid)), 10_000);
-    });
+  it(
+    "starts once when two daemons start it at once",
+    async () => {
+      const at = fresh();
+      const pids = [
+        spawnStoreProcess(at.commonDir, LAUNCH, at.env),
+        spawnStoreProcess(at.commonDir, LAUNCH, at.env),
+      ];
+      for (const pid of pids) expect(pid).not.toBeNull();
+      at.later(async () => {
+        for (const pid of pids) if (pid !== null && alive(pid)) process.kill(pid, "SIGTERM");
+        await until(() => pids.every((pid) => pid === null || !alive(pid)), SLOW_MS);
+      });
 
-    const socket = storeProcessSocketPath(at.commonDir, "code", at.env);
-    await until(() => existsSync(socket), 30_000);
-    // The one that did not take the lock exits at once; the other serves.
-    await until(() => pids.filter((pid) => pid !== null && alive(pid)).length === 1, 30_000);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    expect(pids.filter((pid) => pid !== null && alive(pid))).toHaveLength(1);
-
-    const one = relay(at, "w1");
-    const store = openThrough(at, one);
-    await until(() => {
-      store.meta.set("k", "v");
-      return one.counts.sent > 0;
-    }, 10_000);
-  }, 60_000);
+      // Each loads the whole CLI from the sources: on a slow runner that takes long (CI, Node 22).
+      const socket = storeProcessSocketPath(at.commonDir, "code", at.env);
+      await until(() => existsSync(socket), SLOW_MS);
+      // The one that did not take the lock exits at once; the other serves.
+      await until(() => pids.filter((pid) => pid !== null && alive(pid)).length === 1, SLOW_MS);
+      const one = relay(at, "w1");
+      const store = openThrough(at, one);
+      await until(() => {
+        store.meta.set("k", "v");
+        return one.counts.sent > 0;
+      }, SLOW_MS);
+      // It served a batch, and still only one runs.
+      expect(pids.filter((pid) => pid !== null && alive(pid))).toHaveLength(1);
+    },
+    4 * SLOW_MS,
+  );
 
   it("leaves a batch it was killed in to the client, written once within the bound", async () => {
     const at = fresh();
