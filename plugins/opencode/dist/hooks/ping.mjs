@@ -109,20 +109,6 @@ var SAFE_WORD = /^[\w@%+=:,./-]+$/;
 function shellWord(word) {
   return SAFE_WORD.test(word) ? word : `'${word.replaceAll("'", `'\\''`)}'`;
 }
-function excludedProjectsText(entries) {
-  const quoted = (list, join6) => {
-    const all = list.map((entry) => JSON.stringify(entry));
-    const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join6} ${last}`;
-  };
-  const names2 = entries.filter((entry) => !entry.includes("*"));
-  const patterns = entries.filter((entry) => entry.includes("*"));
-  const parts = [
-    ...names2.length === 0 ? [] : [`${names2.length === 1 ? "project" : "projects"} ${quoted(names2, "and")}`],
-    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
-  ];
-  return { text: parts.join(" and "), plural: patterns.length > 0 || names2.length > 1 };
-}
 var EXCLUDED_GLOBS_NAMED = 3;
 function excludedFilesText(globs4) {
   const quoted = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
@@ -215,8 +201,8 @@ function projectEntries(value, path, fields, required, withDefaults3, check) {
 function entryProblem(entry, at, kept2, fields, required, check) {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
-  const named3 = nonEmptyString(entry.name) === null ? entry.name : null;
-  const skipped = named3 === null ? "it is skipped" : `project ${JSON.stringify(named3)} is skipped`;
+  const named2 = nonEmptyString(entry.name) === null ? entry.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry)) {
     if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
@@ -230,8 +216,8 @@ function entryProblem(entry, at, kept2, fields, required, check) {
   }
   const across = check?.(entry) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept2.some((project) => project.name === named3)) {
-    return `"${at}.name" repeats ${JSON.stringify(named3)} of an earlier project; it is skipped`;
+  if (kept2.some((project) => project.name === named2)) {
+    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -252,6 +238,11 @@ var name = must(
 var names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
+);
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
 );
 var tests = (value, path) => {
   const wrong = must(
@@ -288,6 +279,7 @@ var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits
@@ -298,7 +290,7 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ name, at: moment, lint });
+var LINT_RULES = object({ name, at: moment, description, lint });
 var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
@@ -337,7 +329,7 @@ function shapeProblem(entry, at) {
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry[key] !== void 0);
     if (unbuilt !== void 0) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {
@@ -975,12 +967,9 @@ var UNCONFIGURED = { nodeTest: [] };
 var NODE_TEST = {
   runner: "node-test",
   name: "node:test",
-  fallback: false,
   unconfigured: UNCONFIGURED,
   projects: (policy) => policy.nodeTest,
   coverage: ({ projects }) => ({ nodeTest: projects }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
   excluded: () => null,
   context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
   command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
@@ -1117,12 +1106,9 @@ var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|
 var PYTEST = {
   runner: "pytest",
   name: "pytest",
-  fallback: false,
   unconfigured: {},
   projects: (policy) => policy.pytest,
   coverage: ({ projects }) => ({ pytest: projects }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
   excluded: () => null,
   context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
   command: (words, context) => pytestCommand(words, context.pytest ?? []),
@@ -1180,13 +1166,13 @@ function invocation(words, dir, env) {
 function pytestFiles(command, listing) {
   if (command.paths === null) return null;
   const own = listing.files.filter((ref2) => ref2.project === command.project);
-  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
-  return own.filter((ref2) => named3.has(ref2.path));
+  const named2 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named2].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
+  return own.filter((ref2) => named2.has(ref2.path));
 }
 
 // src/runners/vitest/describe.ts
-import { existsSync as existsSync2, readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync3 } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolve as resolve3 } from "node:path";
 
 // src/core/daemon/runner.ts
@@ -1241,31 +1227,21 @@ function readManifest2(path) {
 }
 
 // src/runners/vitest/describe.ts
-var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
-var CONFIG_NAMES = ["vitest.config", "vite.config"];
-var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var UNCONFIGURED2 = { vitest: true };
 var REPORTER = "--reporter";
 var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
 var VITEST = {
   runner: "vitest",
   name: "Vitest",
-  fallback: true,
   unconfigured: UNCONFIGURED2,
   projects: () => [],
   coverage({ policy, root, configured }) {
     const vitest = !configured || vitestDetected(root);
     return {
       vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
       vitestExcludedFiles: vitest ? policy.vitest.exclude : []
     };
   },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? []
-  }),
   // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
   excluded(coverage) {
     const globs4 = coverage.vitestExcludedFiles ?? [];
@@ -1351,17 +1327,8 @@ function rootScripts(root) {
     return {};
   }
 }
-function configFile(root) {
-  for (const name2 of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync2(join5(root, `${name2}${extension}`))) return `${name2}${extension}`;
-    }
-  }
-  return null;
-}
 
 // src/runners/descriptions.ts
-var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
 var UNCONFIGURED3 = {
   ...VITEST.unconfigured,
   ...NODE_TEST.unconfigured,
@@ -1559,11 +1526,6 @@ var MOVES_RETENTION_MS = 60 * 6e4;
 
 // src/core/retry/gate.ts
 var LOAD_RETRY_WAIT_MS = 6e5;
-
-// src/core/state/slow-text.ts
-function holdsText(maxHolds) {
-  return maxHolds === void 0 || maxHolds <= 1 ? "once" : `up to ${maxHolds} times in a turn`;
-}
 
 // src/core/retry/text.ts
 function waitedText(ms) {
@@ -1767,9 +1729,6 @@ var ONLY_ALLOWED = configFieldHash(true);
 // src/core/scheduler/pool-wait.ts
 var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 
-// src/harness/shared/coverage.ts
-var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
-
 // src/core/daemon/log-file.ts
 var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
 
@@ -1895,177 +1854,58 @@ function findHarnessProcess(lookup = {}) {
   return null;
 }
 
-// src/core/delivery/late-format.ts
-var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
-
 // src/core/delivery/format.ts
 var SQUEAL_COMMAND = "squeal";
+
+// src/harness/shared/primer-forms.ts
+var PRIMER_FIRST = "checks in the background and tells you with your next tool call when one changes; a pass is silent.";
+var FORM_TEXTS = {
+  // For a harness that ships the squeal skill (Claude Code, Codex, Pi).
+  skill: ({ cli, Cli }) => [
+    "Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause.",
+    `${Cli("checks")} lists this repository's checks and when each runs; ${cli("status")} gives the current results.`
+  ],
+  // For a harness with no squeal skill (OpenCode): the skill's rules in words.
+  "no-skill": ({ cli, Cli }) => [
+    "Do not run the tests yourself to learn whether an edit broke something.",
+    `A check that does not run after an edit: ${cli("run <check> --wait 60000")}.`,
+    `A failure you did not cause, from load or a stopped service: ${cli("retry <file> --reason load|environment")}, then claim from that result.`,
+    `Before you say you are done: ${cli("status --wait 60000")}.`,
+    `${Cli("checks")} lists this repository's checks and when each runs.`
+  ]
+};
+var UNNAMED_CLI = "These are commands of the CLI SQUEAL messages name.";
 
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
-var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
-function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
-  const names2 = runnersOf(coverage).map((runner) => runner.name);
-  const groups2 = coverage.groups;
-  const when = groups2 === void 0 ? " after each edit" : "";
-  const quiet = groups2?.noTestsAtEdit === true;
-  const arrivals = quiet ? [
-    ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
-    ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
-  ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed; ${PASSES_SILENT_TEXT}, so keep working;`
-  ];
-  const most = Math.max(
-    0,
-    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
-  );
-  const sentences = (arrival, dropped) => (covers2, naming, wait) => [
-    `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${arrival} do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
-    ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
-    waitSentence(command, naming, wait, quiet),
-    ...coverage.slow === null || dropped.includes("slow") ? [] : slowSentences(command, naming, coverage.slow).slice(
-      0,
-      dropped.includes("slow arrival") ? 1 : 2
-    ),
-    ...dropped.includes("run yourself") ? [] : [RUN_YOURSELF],
-    ...dropped.includes("retry") ? [] : [retrySentence(command, naming)],
-    ...dropped.includes("revision") ? [] : [REVISION],
-    covers2,
-    notCovered(coverage)
-  ].join(" ");
-  for (const dropped of [[], ...droppable(coverage)]) {
-    for (const arrival of arrivals) {
-      const kept2 = withPathWait(sentences(arrival, dropped), coverage, most);
-      if (kept2 !== null) return kept2;
-    }
-  }
+function primer(command = SQUEAL_COMMAND, options = {}) {
+  const form = options.skill ?? true ? "skill" : "no-skill";
+  const render = (naming) => {
+    let named2 = false;
+    const cli = (sub) => {
+      if (naming === "none") return `\`${sub}\``;
+      const full = naming === "every" || !named2;
+      named2 = true;
+      return full ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
+    };
+    const Cli = (sub) => {
+      const text2 = cli(sub);
+      return text2.startsWith("the ") ? `T${text2.slice(1)}` : text2;
+    };
+    return [
+      `${PRIMER_OPENING}${PRIMER_FIRST}`,
+      ...FORM_TEXTS[form]({ cli, Cli }),
+      ...naming === "none" ? [UNNAMED_CLI] : []
+    ].join(" ");
+  };
+  const namings = command === SQUEAL_COMMAND ? ["every"] : ["first", "none"];
   let text = "";
-  for (const dropped of [[], ...droppable(coverage)]) {
-    for (const arrival of arrivals) {
-      text = folded(sentences(arrival, dropped), coverage, most);
-      if (text.length <= PRIMER_CAP_CHARS) return text;
-    }
+  for (const naming of namings) {
+    text = render(naming);
+    if (text.length <= PRIMER_CAP_CHARS) return text;
   }
   return text;
-}
-var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it.";
-function droppable(coverage) {
-  const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
-  const order = [...first, "retry", "run yourself", "revision"];
-  return order.map((_, at) => order.slice(0, at + 1));
-}
-function withPathWait(sentences, coverage, most) {
-  for (const naming of ["every", "first"]) {
-    for (let node2 = most; node2 >= 0; node2--) {
-      const text = sentences(coversSentence(coverage, node2), naming, "paths");
-      if (text.length <= PRIMER_CAP_CHARS) return text;
-    }
-  }
-  return null;
-}
-function folded(sentences, coverage, most) {
-  let text = "";
-  for (let node2 = most; node2 >= 0; node2--) {
-    text = sentences(coversSentence(coverage, node2), "none", "plain");
-    if (text.length > PRIMER_CAP_CHARS) continue;
-    const paths = sentences(coversSentence(coverage, node2), "none", "paths");
-    return paths.length <= PRIMER_CAP_CHARS ? paths : text;
-  }
-  return text;
-}
-function waitSentence(command, naming, form, quiet = false) {
-  if (form === "plain") {
-    return "Wait only when you need a result before your next step, for example before saying the task is done: `status --wait 60000` on the CLI SQUEAL messages name.";
-  }
-  const full = naming === "every" && command === SQUEAL_COMMAND;
-  const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
-  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
-  const finish = `${cli("status --wait 60000", false)} before you finish.`;
-  if (quiet) {
-    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
-  }
-  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed, and ${finish}`;
-}
-var AT = {
-  edit: "after each edit",
-  pause: "between your turns",
-  stop: "at Stop, and Stop waits for them",
-  commit: "when you commit"
-};
-function momentsSentence(command, naming, groups2) {
-  const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
-  const clauses = groups2.moments.map(({ at, names: names2 }) => {
-    const named3 = listed(
-      names2.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
-      "and"
-    );
-    if (at !== "manual") return `${named3} ${AT[at]}`;
-    const one = names2.length === 1;
-    return `${named3} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names2[0] : "<group>"}`)}`;
-  });
-  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
-}
-function retrySentence(command, naming) {
-  const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
-  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
-}
-function runnersOf(coverage) {
-  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
-  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || runner.fallback && !others);
-}
-function projectsOf(covered) {
-  return "projects" in covered ? covered.projects : null;
-}
-function listed(words, conjunction) {
-  if (words.length <= 2) return words.join(` ${conjunction} `);
-  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
-}
-function coversSentence(coverage, node2) {
-  const suites = runnersOf(coverage).map(
-    (runner) => suite(runner.name, runner.covered(coverage), node2)
-  );
-  const files = coverage.slow?.files;
-  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${listed(suites, "and")}${slow}.`;
-}
-function suite(runner, covered, shown) {
-  if (!("projects" in covered)) {
-    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
-    return `${config}${excluded(covered.excludedProjects)}`;
-  }
-  const entries = covered.projects.map(
-    ({ name: name2, include }) => `${JSON.stringify(name2)} (${include.join(", ")})`
-  );
-  const list = named2("project", entries, shown);
-  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
-}
-function excluded(entries) {
-  if (entries.length === 0) return "";
-  const { text, plural: plural2 } = excludedProjectsText(entries);
-  return `; its ${text} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
-}
-function notCovered(coverage) {
-  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
-  const what = files.length === 0 ? "typecheck, build" : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
-  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
-}
-function named2(noun, entries, shown) {
-  const nouns = entries.length === 1 ? noun : `${noun}s`;
-  if (shown === 0) return `${entries.length} ${nouns}`;
-  const listed2 = entries.slice(0, shown);
-  const rest = entries.length - shown;
-  const tail = rest > 0 ? [...listed2, `${rest} more`] : listed2;
-  const last = tail.pop();
-  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
-}
-function slowSentences(command, naming, slow) {
-  const run2 = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
-  const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
-  return [
-    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run2} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you ${holdsText(slow.maxHolds)}.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run2}.`,
-    command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
-  ];
 }
 var PRIMER = primer();
 
@@ -2110,6 +1950,8 @@ function bridgeDeps(module, host) {
     // Row 005-117: the primer is the system prompt's (D3): every answer that registers carries it
     // in its own `primer` field when the plugin has none (`hooks.ts`), for the next request.
     registrationPrimer: false,
+    // Row 005-126 (experiment): the OpenCode package ships no squeal skill.
+    skill: false,
     harnessProcess: () => findHarnessProcess({ ppid: host.pid })
   };
 }

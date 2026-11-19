@@ -391,20 +391,6 @@ function listPaths(paths, max = PATHS_NAMED) {
   const shown = paths.slice(0, max).join(", ");
   return paths.length > max ? `${shown} and ${paths.length - max} more` : shown;
 }
-function excludedProjectsText(entries) {
-  const quoted = (list, join38) => {
-    const all = list.map((entry3) => JSON.stringify(entry3));
-    const last = all.pop();
-    return all.length === 0 ? last : `${all.join(", ")} ${join38} ${last}`;
-  };
-  const names3 = entries.filter((entry3) => !entry3.includes("*"));
-  const patterns = entries.filter((entry3) => entry3.includes("*"));
-  const parts = [
-    ...names3.length === 0 ? [] : [`${names3.length === 1 ? "project" : "projects"} ${quoted(names3, "and")}`],
-    ...patterns.length === 0 ? [] : [`projects matching ${quoted(patterns, "or")}`]
-  ];
-  return { text: parts.join(" and "), plural: patterns.length > 0 || names3.length > 1 };
-}
 var EXCLUDED_GLOBS_NAMED = 3;
 function excludedFilesText(globs4) {
   const quoted = globs4.slice(0, EXCLUDED_GLOBS_NAMED).map((glob) => JSON.stringify(glob));
@@ -476,6 +462,7 @@ function resolveEntry(group, index) {
     name: group.name,
     index,
     at: group.at,
+    ...group.description === void 0 ? {} : { description: group.description },
     stopRequires: group.at === "stop",
     after: group.after ?? [],
     quietMs: group.quietMs ?? 0,
@@ -600,8 +587,8 @@ function projectEntries(value, path, fields, required, withDefaults3, check) {
 function entryProblem(entry3, at, kept3, fields, required, check) {
   if (!isRecord(entry3))
     return `"${at}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
-  const named3 = nonEmptyString(entry3.name) === null ? entry3.name : null;
-  const skipped = named3 === null ? "it is skipped" : `project ${JSON.stringify(named3)} is skipped`;
+  const named2 = nonEmptyString(entry3.name) === null ? entry3.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry3)) {
     if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
@@ -615,8 +602,8 @@ function entryProblem(entry3, at, kept3, fields, required, check) {
   }
   const across = check?.(entry3) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept3.some((project) => project.name === named3)) {
-    return `"${at}.name" repeats ${JSON.stringify(named3)} of an earlier project; it is skipped`;
+  if (kept3.some((project) => project.name === named2)) {
+    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -637,6 +624,11 @@ var name = must(
 var names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
+);
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
 );
 var tests = (value, path) => {
   const wrong = must(
@@ -673,6 +665,7 @@ var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits
@@ -683,7 +676,7 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ name, at: moment, lint });
+var LINT_RULES = object({ name, at: moment, description, lint });
 var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
@@ -722,7 +715,7 @@ function shapeProblem(entry3, at) {
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry3[key] !== void 0);
     if (unbuilt !== void 0) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {
@@ -773,11 +766,11 @@ function keyProblem(policy, group) {
 }
 function afterProblem(group, byName, defaults, all) {
   for (const name2 of group.after ?? []) {
-    const named3 = byName.get(name2);
-    if (named3 !== void 0 && "lint" in named3) {
+    const named2 = byName.get(name2);
+    if (named2 !== void 0 && "lint" in named2) {
       return `"after" names "${name2}", a lint group; a group follows test groups only`;
     }
-    const at = named3?.at ?? defaults.get(name2);
+    const at = named2?.at ?? defaults.get(name2);
     if (at === void 0) {
       return all.some((other) => other.name === name2) ? `"after" names "${name2}", a group that is left out` : `"after" names no group "${name2}"`;
     }
@@ -1096,7 +1089,7 @@ function isNumber2(value) {
 }
 
 // src/harness/shared/context.ts
-import { existsSync as existsSync12 } from "node:fs";
+import { existsSync as existsSync11 } from "node:fs";
 import { join as join29 } from "node:path";
 
 // src/core/store/mark.ts
@@ -1266,8 +1259,8 @@ function markUnder(commonDir, file, mark, waitMs) {
     if (at === void 0 || at.dev !== file.dev || at.ino !== file.ino) return "replaced";
     dropStaleMark(paths.database);
     if (currentMark(paths.database) !== null) return "kept";
-    const named3 = { ...mark, file: { dev: file.dev, ino: file.ino } };
-    writeFileSync(markPath(paths.database), JSON.stringify(named3), { flag: "wx" });
+    const named2 = { ...mark, file: { dev: file.dev, ino: file.ino } };
+    writeFileSync(markPath(paths.database), JSON.stringify(named2), { flag: "wx" });
     return "marked";
   } finally {
     rollback(lock2);
@@ -1312,12 +1305,12 @@ function readMark(path) {
     const { at, problem, found: found2, file } = JSON.parse(text2);
     if (typeof at === "number" && typeof problem === "string") {
       const finder = MARK_FINDERS.find((known) => known === found2);
-      const named3 = fileOf(file);
+      const named2 = fileOf(file);
       return {
         at,
         problem,
         ...finder === void 0 ? {} : { found: finder },
-        ...named3 === null ? {} : { file: named3 }
+        ...named2 === null ? {} : { file: named2 }
       };
     }
   } catch {
@@ -2993,10 +2986,10 @@ function createCheckRepo(conn) {
       e.runner
     ])
   );
-  const recordRunners = (worktreeId, named3) => {
+  const recordRunners = (worktreeId, named2) => {
     const kept3 = runners(worktreeId);
     let changed = false;
-    for (const [project, runner] of named3) {
+    for (const [project, runner] of named2) {
       if (runner === void 0 || kept3.get(project) === runner) continue;
       kept3.set(project, runner);
       changed = true;
@@ -4078,10 +4071,10 @@ function filterTerms(filter) {
 }
 function createStateRepo(conn) {
   const indexed = indexesIn(conn, [STATES_FAILING, STATES_EDITED]);
-  const named3 = (index, used) => used && indexed.has(index) ? index : null;
+  const named2 = (index, used) => used && indexed.has(index) ? index : null;
   return {
     list(worktreeId, filter = {}) {
-      const index = named3(STATES_FAILING, filter.outcome === "fail");
+      const index = named2(STATES_FAILING, filter.outcome === "fail");
       const { from, params } = statesOf(worktreeId, filter.paths, index);
       const terms = filterTerms(filter);
       return conn.all(
@@ -4115,7 +4108,7 @@ function createStateRepo(conn) {
       });
     },
     edits(worktreeId, measure2, paths) {
-      const { from, params } = statesOf(worktreeId, paths, named3(STATES_EDITED, true));
+      const { from, params } = statesOf(worktreeId, paths, named2(STATES_EDITED, true));
       return conn.all(
         `SELECT s.measure, s.edited_revision, s.edited_at, ${CHECK_COLUMNS2} FROM ${from}
              AND s.measure = ? AND s.edited_at IS NOT NULL
@@ -4497,20 +4490,14 @@ function makeIndexes2(db) {
   }
 }
 
-// src/runners/descriptions.ts
-import { posix as posix4 } from "node:path";
-
 // src/runners/node-test/describe.ts
 var UNCONFIGURED = { nodeTest: [] };
 var NODE_TEST = {
   runner: "node-test",
   name: "node:test",
-  fallback: false,
   unconfigured: UNCONFIGURED,
   projects: (policy) => policy.nodeTest,
   coverage: ({ projects: projects2 }) => ({ nodeTest: projects2 }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
   excluded: () => null,
   context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
   command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
@@ -4647,12 +4634,9 @@ var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|
 var PYTEST = {
   runner: "pytest",
   name: "pytest",
-  fallback: false,
   unconfigured: {},
   projects: (policy) => policy.pytest,
   coverage: ({ projects: projects2 }) => ({ pytest: projects2 }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
   excluded: () => null,
   context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
   command: (words, context) => pytestCommand(words, context.pytest ?? []),
@@ -4710,13 +4694,13 @@ function invocation(words, dir, env) {
 function pytestFiles(command, listing) {
   if (command.paths === null) return null;
   const own = listing.files.filter((ref2) => ref2.project === command.project);
-  const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
-  return own.filter((ref2) => named3.has(ref2.path));
+  const named2 = new Set(command.paths.map((path) => listing.pathOf(path)));
+  if (![...named2].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
+  return own.filter((ref2) => named2.has(ref2.path));
 }
 
 // src/runners/vitest/describe.ts
-import { existsSync as existsSync6, readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { isAbsolute as isAbsolute5, join as join11, relative as relative3, resolve as resolve4 } from "node:path";
 
 // src/core/daemon/runner.ts
@@ -4827,31 +4811,21 @@ function readManifest2(path) {
 }
 
 // src/runners/vitest/describe.ts
-var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
-var CONFIG_NAMES = ["vitest.config", "vite.config"];
-var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var UNCONFIGURED2 = { vitest: true };
 var REPORTER = "--reporter";
 var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
 var VITEST = {
   runner: "vitest",
   name: "Vitest",
-  fallback: true,
   unconfigured: UNCONFIGURED2,
   projects: () => [],
   coverage({ policy, root, configured }) {
     const vitest = !configured || vitestDetected(root);
     return {
       vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
       vitestExcludedFiles: vitest ? policy.vitest.exclude : []
     };
   },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? []
-  }),
   // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
   excluded(coverage) {
     const globs4 = coverage.vitestExcludedFiles ?? [];
@@ -4937,14 +4911,6 @@ function rootScripts(root) {
     return {};
   }
 }
-function configFile(root) {
-  for (const name2 of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync6(join11(root, `${name2}${extension}`))) return `${name2}${extension}`;
-    }
-  }
-  return null;
-}
 
 // src/runners/descriptions.ts
 var DESCRIPTIONS = [VITEST, NODE_TEST, PYTEST];
@@ -4954,21 +4920,7 @@ var UNCONFIGURED3 = {
   ...PYTEST.unconfigured
 };
 function configuredProjects(policy) {
-  return DESCRIPTIONS.flatMap((description) => description.projects(policy));
-}
-function runnerCoverage(policy, root) {
-  const configured = configuredProjects(policy).length > 0;
-  const read5 = (description) => ({
-    policy,
-    root,
-    configured,
-    projects: description.projects(policy).map(fromRoot)
-  });
-  return {
-    ...VITEST.coverage(read5(VITEST)),
-    ...NODE_TEST.coverage(read5(NODE_TEST)),
-    ...PYTEST.coverage(read5(PYTEST))
-  };
+  return DESCRIPTIONS.flatMap((description2) => description2.projects(policy));
 }
 function commandContext(policy, root, cwd) {
   return {
@@ -4980,14 +4932,8 @@ function commandContext(policy, root, cwd) {
 }
 function describing(command) {
   return DESCRIPTIONS.find(
-    (description) => description.runner === command.runner
+    (description2) => description2.runner === command.runner
   );
-}
-function fromRoot({ name: name2, cwd, include }) {
-  return {
-    name: name2,
-    include: include.map((glob) => cwd === void 0 ? glob : posix4.join(cwd, glob))
-  };
 }
 
 // src/core/code/coverage/runtime.ts
@@ -5588,7 +5534,7 @@ function testFileId(ref2) {
 }
 
 // src/core/slow/classify.ts
-import { posix as posix5 } from "node:path";
+import { posix as posix4 } from "node:path";
 function slowFiles(policy, projects2) {
   const matches2 = createInputMatcher(policy.slow.include);
   const slowProjects = new Set(
@@ -5600,7 +5546,7 @@ function slowGlobs(policy, projects2) {
   const globs4 = [...policy.slow.include];
   for (const project of marked(policy, projects2)) {
     const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs4.push(posix5.join(cwd, glob));
+    for (const glob of project.include) globs4.push(posix4.join(cwd, glob));
   }
   return globs4;
 }
@@ -5815,7 +5761,7 @@ function findingsOf(store, state) {
 }
 
 // src/core/lint/store/open.ts
-import { existsSync as existsSync7, mkdirSync as mkdirSync4 } from "node:fs";
+import { existsSync as existsSync6, mkdirSync as mkdirSync4 } from "node:fs";
 import { join as join12 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
@@ -6214,7 +6160,7 @@ function isLintStoreOpenFailure(value) {
 function openLintStore(commonDir, policy, options = {}) {
   if (!policy.lint.enabled) return { reason: "off" };
   const path = lintStorePath(commonDir);
-  if (!existsSync7(path)) {
+  if (!existsSync6(path)) {
     if (options.create === false) return { reason: "missing" };
     mkdirSync4(storePaths(commonDir).dir, { recursive: true });
   }
@@ -6334,9 +6280,9 @@ function lintStep(store, consumer, at, seenUpTo2) {
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
   const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
-  const listed4 = (filter) => store.states.list(worktreeId, filter);
+  const listed3 = (filter) => store.states.list(worktreeId, filter);
   const states = new Map(
-    (paths.length === 0 ? [] : listed4({ paths })).map((s) => [lintCheckName(s.check), s])
+    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [lintCheckName(s.check), s])
   );
   const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   const keying = readKeying(store.meta, worktreeId);
@@ -6351,7 +6297,7 @@ function lintStep(store, consumer, at, seenUpTo2) {
     at
   });
   let all = null;
-  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed4({}));
+  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed3({}));
   const told = plan.entries.slice(0, LINT_LISTED_MAX);
   const notices = noticesOf(store, worktreeId);
   const next = {
@@ -6496,7 +6442,7 @@ function worktreeLiveness(worktree, now) {
 }
 
 // src/core/presence/marks.ts
-import { existsSync as existsSync8, readFileSync as readFileSync7, statSync as statSync4 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync7, statSync as statSync4 } from "node:fs";
 
 // src/core/daemon/lock.ts
 import { mkdirSync as mkdirSync5 } from "node:fs";
@@ -6641,7 +6587,7 @@ function spawnedAt(lockFile) {
   }
 }
 function lockFree(lockFile) {
-  if (!existsSync8(lockFile)) return false;
+  if (!existsSync7(lockFile)) return false;
   try {
     const lock2 = acquireDaemonLock(lockFile);
     lock2?.release();
@@ -7538,16 +7484,16 @@ import { isAbsolute as isAbsolute6, join as join13 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
 var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
 function staleHiddenLockfile(dir, lockfile) {
-  const listed4 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed4 === null) return "not valid JSON";
+  const listed3 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed3 === null) return "not valid JSON";
   const lockTime = lstatSync(join13(dir, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir, workspaces(listed4));
+  const folders = packageFolders(dir, workspaces(listed3));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
+  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
-    (folder) => Object.hasOwn(listed4, folder.path) && folder.mtimeMs > lockTime
+    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
   );
-  const missing = Object.keys(listed4).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
     ["not listed in it", unlisted3],
     ["newer than it", newer.map((folder) => folder.path)],
@@ -7591,8 +7537,8 @@ function insideInstall(path) {
 function isWorkspace(path) {
   return insideInstall(path) && !isInstalledFolder(path);
 }
-function workspaces(listed4) {
-  return Object.keys(listed4).filter(isWorkspace);
+function workspaces(listed3) {
+  return Object.keys(listed3).filter(isWorkspace);
 }
 function packageFolders(dir, workspaceFolders) {
   const folders = [];
@@ -7640,7 +7586,7 @@ function example(paths) {
 }
 
 // src/core/keys/packages.ts
-import { join as join15, posix as posix6 } from "node:path";
+import { join as join15, posix as posix5 } from "node:path";
 
 // src/core/keys/package-scans.ts
 import { readdirSync as readdirSync5, readFileSync as readFileSync9 } from "node:fs";
@@ -7843,7 +7789,7 @@ function absent(from, name2) {
   return `absent:${from}>${name2}`;
 }
 function parent(dir) {
-  const up = posix6.dirname(dir);
+  const up = posix5.dirname(dir);
   return up === "." ? "" : up;
 }
 function text(value) {
@@ -7856,8 +7802,8 @@ function npmReading(dir, base, content, scans) {
     return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
   }
   if (hidden === null) return WHOLE;
-  const listed4 = packagesOf(content);
-  const graph = listed4 === null || base === null ? null : new InstalledGraph(dir, base, listed4, scans);
+  const listed3 = packagesOf(content);
+  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir, base, listed3, scans);
   return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
 }
 var WHOLE = { manager: null, stale: null, text: null, graph: null };
@@ -7876,7 +7822,7 @@ import { lstatSync as lstatSync2, readdirSync as readdirSync6, readFileSync as r
 import { join as join17 } from "node:path";
 
 // src/core/keys/pnpm-graph.ts
-import { join as join16, posix as posix7 } from "node:path";
+import { join as join16, posix as posix6 } from "node:path";
 
 // src/core/keys/pnpm-lockfile.ts
 import { createHash as createHash4 } from "node:crypto";
@@ -8257,7 +8203,7 @@ function childOf(name2, ref2) {
   return ref2.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref2 : `${name2}@${ref2}`;
 }
 function workspace(dir, ref2) {
-  return `workspace:${posix7.normalize(posix7.join(dir, ref2.slice("link:".length)))}`;
+  return `workspace:${posix6.normalize(posix6.join(dir, ref2.slice("link:".length)))}`;
 }
 
 // src/core/keys/pnpm-install.ts
@@ -9019,11 +8965,11 @@ function consumerInTurn(store, worktreeId) {
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
-function testsAtEdit(policy, listed4) {
+function testsAtEdit(policy, listed3) {
   const view = groupView(policy);
-  const owns = (name2) => listed4.some((row) => view.of(row.testFile).name === name2);
+  const owns = (name2) => listed3.some((row) => view.of(row.testFile).name === name2);
   return view.groups.some(
-    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed4.length === 0 || owns(group.name))
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed3.length === 0 || owns(group.name))
   );
 }
 function groupLaneCounts(states, keys, policy) {
@@ -9151,12 +9097,12 @@ function countSlowPending(states, keys, isSlow) {
     testFilesWithoutChecks++;
     files2.set(id, row.testFile);
   }
-  const named3 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  const named2 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
   return {
     testFiles: files2.size,
     checks,
     testFilesWithoutChecks,
-    ...named3.length === 0 ? {} : { files: named3 }
+    ...named2.length === 0 ? {} : { files: named2 }
   };
 }
 function hasKey(row) {
@@ -9481,22 +9427,22 @@ function read2(store, worktreeId) {
 var identity2 = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
 function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept3 }) {
   const recorded = read2(store, worktreeId);
-  const named3 = /* @__PURE__ */ new Map();
+  const named2 = /* @__PURE__ */ new Map();
   for (const [at, index] of Object.entries(recorded.slots)) {
     const keys = recorded.snapshots[index];
-    if (keys !== void 0 && kept3.has(at) && (resumed || at !== slot2)) named3.set(at, keys);
+    if (keys !== void 0 && kept3.has(at) && (resumed || at !== slot2)) named2.set(at, keys);
   }
   if (!resumed) {
     const keys = {};
     for (const row of store.testFileKeys.list(worktreeId)) {
       if (row.key !== null) keys[testFileId(row.testFile)] = row.key;
     }
-    named3.set(slot2, keys);
+    named2.set(slot2, keys);
   }
   const snapshots = [];
   const indexOf = /* @__PURE__ */ new Map();
   const slots = {};
-  for (const [at, keys] of named3) {
+  for (const [at, keys] of named2) {
     const id = identity2(keys);
     let index = indexOf.get(id);
     if (index === void 0) {
@@ -9566,10 +9512,10 @@ function positions(stack) {
   });
 }
 function prefixOf(found2, location2) {
-  const named3 = found2.find(
+  const named2 = found2.find(
     (p) => p.line === location2.line && (p.column === void 0 || p.column === location2.column) && (p.path === location2.path || location2.path.endsWith(`/${p.path}`))
   );
-  return named3 === void 0 ? null : location2.path.slice(0, -named3.path.length);
+  return named2 === void 0 ? null : location2.path.slice(0, -named2.path.length);
 }
 function testFileFrame(check, errors) {
   const first = errors[0];
@@ -9628,9 +9574,9 @@ function closureFor(store, worktreeId) {
 function loaderCounts(store, worktreeId) {
   let closures;
   const read5 = () => {
-    const listed4 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
+    const listed3 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
     const trusts = closureTrust(store, worktreeId);
-    return store.testFiles.list().filter((r) => listed4.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
+    return store.testFiles.list().filter((r) => listed3.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
   };
   return (path) => {
     closures ??= read5();
@@ -9657,14 +9603,14 @@ import { join as join19 } from "node:path";
 
 // src/core/fs/git-layout.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync9, lstatSync as lstatSync3, readFileSync as readFileSync11, realpathSync as realpathSync3 } from "node:fs";
+import { existsSync as existsSync8, lstatSync as lstatSync3, readFileSync as readFileSync11, realpathSync as realpathSync3 } from "node:fs";
 import { dirname as dirname4, isAbsolute as isAbsolute7, join as join18, resolve as resolve5 } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve5(path);
-  if (existsSync9(dir)) dir = realpathSync3(dir);
+  if (existsSync8(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync9(join18(dir, ".git"))) return dir;
+    if (existsSync8(join18(dir, ".git"))) return dir;
     const parent2 = dirname4(dir);
     if (parent2 === dir) return null;
     dir = parent2;
@@ -10629,10 +10575,10 @@ function codeStep(store, consumer, { at, since, limit }, write2, reads) {
     toldAt: at,
     pulled: pulledReader(store.meta, worktreeId)
   });
-  const listed4 = plan.entries.slice(0, CODE_LISTED_MAX);
+  const listed3 = plan.entries.slice(0, CODE_LISTED_MAX);
   const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => !isStillFail(e.kind)).length;
   if (write2) {
-    const full = new Set(listed4.map(codeKey));
+    const full = new Set(listed3.map(codeKey));
     store.views.removeMany(consumer, plan.removals);
     store.views.writeMany(
       consumer,
@@ -10641,7 +10587,7 @@ function codeStep(store, consumer, { at, since, limit }, write2, reads) {
   }
   const writes = plan.removals.length + plan.writes.length + tooBig.length > 0;
   if (plan.entries.length === 0 && tooBig.length === 0) return { news: null, writes };
-  const entries = listed4.map((e) => ({
+  const entries = listed3.map((e) => ({
     ...e,
     line: e.kind === "removed" ? null : lineOf(store, worktreeId, e.check),
     ...evidenceOf(store, worktreeId, e)
@@ -11425,7 +11371,7 @@ function currentUid() {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync10 } from "node:fs";
+import { existsSync as existsSync9 } from "node:fs";
 import { dirname as dirname7, isAbsolute as isAbsolute9, join as join23 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
@@ -11497,13 +11443,13 @@ function slowSlotDir(env = process.env, userDir = userTmpDir()) {
 function heldPermits(request) {
   const { dir } = request;
   const files2 = slotFiles(request.group);
-  if (!existsSync10(dir)) return [];
+  if (!existsSync9(dir)) return [];
   checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = files2.permit(i);
     const path = join23(dir, file);
-    if (!existsSync10(path)) continue;
+    if (!existsSync9(path)) continue;
     let free;
     try {
       free = permitFree(path);
@@ -12136,7 +12082,7 @@ function lateParts(lateness) {
 
 // src/core/waiter-lock/waiter-lock.ts
 import { createHash as createHash9 } from "node:crypto";
-import { existsSync as existsSync11, mkdirSync as mkdirSync8, rmSync as rmSync5 } from "node:fs";
+import { existsSync as existsSync10, mkdirSync as mkdirSync8, rmSync as rmSync5 } from "node:fs";
 import { join as join24 } from "node:path";
 import { DatabaseSync as DatabaseSync7 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
@@ -12145,7 +12091,7 @@ function waiterLockPath(locksDir, consumer) {
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync11(path)) return;
+  if (!existsSync10(path)) return;
   const db = lock(path);
   if (db === null) return;
   try {
@@ -12372,7 +12318,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.564";
+  if (true) return "0.1.565";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12861,11 +12807,11 @@ function recordUncoveredTold(store, consumer, told) {
   else if (readSlot(store, key, consumer) !== void 0) writeSlot(store, key, consumer, null);
 }
 function readByTests(store, worktreeId) {
-  const listed4 = store.testFileKeys.list(worktreeId);
-  if (listed4.length === 0) return null;
+  const listed3 = store.testFileKeys.list(worktreeId);
+  if (listed3.length === 0) return null;
   const closureOf = closureFor(store, worktreeId);
   const read5 = /* @__PURE__ */ new Set();
-  for (const { testFile } of listed4) {
+  for (const { testFile } of listed3) {
     const closure = closureOf(testFile);
     if (closure === void 0) return null;
     read5.add(testFile.path);
@@ -13366,8 +13312,8 @@ function headerRestarts(daemon) {
 var MOVED_ONLY = /^(?:[\w-]+: )?vitest adapter: the run may have executed bytes no check key names, since (?:(.+) changed on disk after this run loaded (?:it|them) \(task 001-146\)|\d+ files changed on disk after this run loaded them \(task 001-146\): .+; every path: (.+))$/;
 function movedPaths(reason) {
   const match = MOVED_ONLY.exec(reason);
-  const named3 = match?.[1] ?? match?.[2];
-  return named3 === void 0 ? null : named3.split(", ");
+  const named2 = match?.[1] ?? match?.[2];
+  return named2 === void 0 ? null : named2.split(", ");
 }
 function ownEditUnknown(store, consumer, revision) {
   let changed;
@@ -14683,7 +14629,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
   const without = idle.length === 0 ? {} : { withoutCoverage: idle };
   const source = codeSource(commonDir, at.root);
   const since = () => codeSince(store, worktreeId, shell);
-  const coverageOf2 = (code) => {
+  const coverageOf = (code) => {
     const coverage = coverageOn(policy) ? coverageStatusOf(code, worktreeId, policy) : void 0;
     return coverage === void 0 ? {} : { coverage };
   };
@@ -14703,7 +14649,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
         files: total,
         unknown: states.filter((s) => s.outcome === "unknown").length,
         ...uncountable === 0 ? {} : { uncountable },
-        ...coverageOf2(code),
+        ...coverageOf(code),
         ...without
       };
     })
@@ -15180,20 +15126,20 @@ function environmentOf(store, worktreeId, files2) {
       differing.set(f.project, [f.environment, ours]);
     }
   }
-  const named3 = [];
+  const named2 = [];
   const gaps = [];
   for (const [project, [hash3, ours]] of differing) {
     const theirs = readEnvironment(store, hash3);
     const texts = blockingDifferences(theirs, ours.descriptor);
     if (texts.length === 0) continue;
     gaps.push(nodeGap(theirs, ours.descriptor));
-    named3.push(...projects2 === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`));
+    named2.push(...projects2 === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`));
   }
   const versions = gaps.find((g) => g.versions !== null)?.versions;
-  if (versions === void 0 || versions === null) return { environmentDifferences: named3 };
+  if (versions === void 0 || versions === null) return { environmentDifferences: named2 };
   const [theirNode, here] = versions;
   const only = gaps.every((g) => g.onlyNode);
-  return { environmentDifferences: named3, node: { exported: theirNode, here, only } };
+  return { environmentDifferences: named2, node: { exported: theirNode, here, only } };
 }
 
 // src/core/lint/surface/format.ts
@@ -15204,9 +15150,9 @@ var ruleOf = (f) => f.rule ?? lineOf2(f.message);
 function byRule(sign, findings) {
   const counts = /* @__PURE__ */ new Map();
   for (const f of findings) counts.set(ruleOf(f), (counts.get(ruleOf(f)) ?? 0) + 1);
-  const named3 = [...counts].slice(0, NAMED_RULES).map(([rule, n]) => `${sign}${n} ${rule}`);
+  const named2 = [...counts].slice(0, NAMED_RULES).map(([rule, n]) => `${sign}${n} ${rule}`);
   const rest = [...counts.values()].slice(NAMED_RULES).reduce((a, n) => a + n, 0);
-  return rest === 0 ? named3 : [...named3, `${sign}${rest} more`];
+  return rest === 0 ? named2 : [...named2, `${sign}${rest} more`];
 }
 var LINT_STALE = "an input changed since it was linted; linting resumes when the agent is idle";
 var findingsWords = (n) => n === null ? "findings not stored" : plural(n, "finding");
@@ -15747,9 +15693,9 @@ function endOf(ref2, pending2, run2, { row }) {
   return end === void 0 ? {} : { end };
 }
 function fileEndOf(ref2, run2, row) {
-  const named3 = row.endedFiles.get(run2.id);
-  if (named3 === void 0 || row.at === void 0) return void 0;
-  const ended = new Set(named3.map(testFileId));
+  const named2 = row.endedFiles.get(run2.id);
+  if (named2 === void 0 || row.at === void 0) return void 0;
+  const ended = new Set(named2.map(testFileId));
   if (!ended.has(testFileId(ref2))) return void 0;
   const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
   return {
@@ -16450,7 +16396,7 @@ function locate(cwd) {
   return commonDir === null ? null : { root, commonDir };
 }
 function usesSqueal(location2) {
-  return existsSync12(storePaths(location2.commonDir).database) || existsSync12(join29(location2.root, "squeal.config.json"));
+  return existsSync11(storePaths(location2.commonDir).database) || existsSync11(join29(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
   const worktreeId = worktreeIdFor(location2.root);
@@ -16580,11 +16526,11 @@ function retryAdviceText(failures, command) {
   if (busy2.length > 0) {
     const files2 = [...new Set(busy2.map((f) => f.path))];
     const words = files2.map(shellWord).join(" ");
-    const named3 = files2.length > FILES_NAMED || words.length > FILES_NAMED_MAX_CHARS ? "<test file>..." : words;
+    const named2 = files2.length > FILES_NAMED || words.length > FILES_NAMED_MAX_CHARS ? "<test file>..." : words;
     const when = busy2.every((f) => f.facts.noEarlierPass === true) ? "if the changed files are not the cause, " : "";
     const them = files2.length === 1 ? "it" : "them";
     parts.push(
-      `${when}\`${command} retry ${named3} --reason load\` runs ${them} once more when the one-minute load average is below the CPU count`
+      `${when}\`${command} retry ${named2} --reason load\` runs ${them} once more when the one-minute load average is below the CPU count`
     );
   }
   if (parts.length === 0) return null;
@@ -16667,12 +16613,12 @@ function crapRecountLine({ threshold, over }, command) {
 }
 function coverageChangeLine({
   off,
-  excluded: excluded2
+  excluded
 }) {
   const parts = [
     ...off.includes("crap") ? ["CRAP off (crap.enabled)"] : [],
     ...off.includes("uncovered") ? ["untested off (coverage.untested)"] : [],
-    ...excluded2 === 0 ? [] : [`${plural(excluded2, "file")} no longer checked (coverage.exclude)`]
+    ...excluded === 0 ? [] : [`${plural(excluded, "file")} no longer checked (coverage.exclude)`]
   ];
   return `Coverage checks changed: ${parts.join("; ")}.`;
 }
@@ -16725,8 +16671,8 @@ var andList = (words) => words.length < 2 ? words[0] ?? "" : `${words.slice(0, -
 var notJudgedFile = (file) => file.reason === "too-big" ? `${file.path} (${kib(file.size)}, over the ${kib(file.limit)} limit of complexity.maxFileBytes)` : `${file.path} (could not count)`;
 function notJudgedWords({ files: files2, more }) {
   const total = files2.length + more;
-  const named3 = files2.map(notJudgedFile);
-  const list = more === 0 ? andList(named3) : `${named3.join(", ")} and ${more} more`;
+  const named2 = files2.map(notJudgedFile);
+  const list = more === 0 ? andList(named2) : `${named2.join(", ")} and ${more} more`;
   return `${plural(total, "file")} this session changed ${total === 1 ? "is" : "are"} not judged: ${list}`;
 }
 function toldOverLine({ toldOver: toldOver2, notJudged }, command) {
@@ -17078,14 +17024,14 @@ function unknownBlocks(entries, command) {
     const first = group[0]?.check;
     const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText(from(o))})`);
-    const listed4 = files2.slice(0, 5).join(", ");
+    const listed3 = files2.slice(0, 5).join(", ");
     const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block2(
       `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
       [
         counts.join(", "),
         cap(reason, SUMMARY_MAX_CHARS),
-        `${listed4}${more}`,
+        `${listed3}${more}`,
         first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
       ],
       group.map((e) => ({ check: e.check, shown: "unknown" }))
@@ -17346,7 +17292,7 @@ function readHookHandoff(store, worktreeId, row, from, at) {
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
-import { closeSync as closeSync2, existsSync as existsSync13, mkdirSync as mkdirSync10 } from "node:fs";
+import { closeSync as closeSync2, existsSync as existsSync12, mkdirSync as mkdirSync10 } from "node:fs";
 
 // src/core/process-label.ts
 import { basename as basename5, delimiter as delimiter2, dirname as dirname11, resolve as resolve7 } from "node:path";
@@ -17477,7 +17423,7 @@ async function ensureDaemonProcess(root, options = {}) {
   }
   const lockWait = options.awaitLockMs === void 0 ? [] : ["--await-lock", String(options.awaitLockMs)];
   const cli = daemonCliEntry(options.cli, options.env);
-  if (cli === null || !existsSync13(cli)) return UNAVAILABLE;
+  if (cli === null || !existsSync12(cli)) return UNAVAILABLE;
   try {
     const commonDir = resolveCommonDir(root);
     if (commonDir === null) return UNAVAILABLE;
@@ -17816,203 +17762,55 @@ function isRegistered(context) {
   return context.store.consumers.get(context.consumer) !== null;
 }
 
-// src/harness/shared/coverage.ts
-var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
-function coverageOf(context) {
-  const policy = readPolicy(context.root);
-  const keys = context.store.testFileKeys.list(context.consumer.worktreeId);
-  const runners = runnerCoverage(policy, context.root);
-  const configured = new Set(configuredProjects(policy).map((project) => project.name));
-  const fallback2 = DESCRIPTIONS.some((runner) => runner.fallback && runner.built(runners));
-  const listed4 = fallback2 ? keys : keys.filter((row) => configured.has(row.testFile.project));
-  const view = slowPolicyView(policy);
-  return {
-    ...runners,
-    ...policy.checks.length === 0 ? {} : { groups: groupsCoverage(policy, listed4) },
-    slow: view === null ? null : {
-      files: keys.length === 0 ? null : listed4.filter((row) => view.isSlow(row.testFile)).length,
-      requireSlowSuite: policy.stop.requireSlowSuite,
-      pausesOnly: policy.slow.trigger === "idle",
-      ...policy.stop.maxHolds > 1 ? { maxHolds: policy.stop.maxHolds } : {}
-    }
-  };
-}
-function groupsCoverage(policy, listed4) {
-  const view = groupView(policy);
-  const testsOwn = listed4.length === 0 || listed4.some((row) => view.of(row.testFile).name === TESTS_GROUP);
-  const moments = CHECK_MOMENTS.flatMap((at) => {
-    const names3 = view.groups.filter((group) => group.index !== null && group.at === at).map((group) => group.name);
-    if (at === "edit" && testsOwn) names3.push(TESTS_GROUP);
-    return names3.length === 0 ? [] : [{ at, names: names3 }];
-  });
-  return testsAtEdit(policy, listed4) ? { moments } : { moments, noTestsAtEdit: true };
-}
+// src/harness/shared/primer-forms.ts
+var PRIMER_FIRST = "checks in the background and tells you with your next tool call when one changes; a pass is silent.";
+var FORM_TEXTS = {
+  // For a harness that ships the squeal skill (Claude Code, Codex, Pi).
+  skill: ({ cli, Cli }) => [
+    "Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause.",
+    `${Cli("checks")} lists this repository's checks and when each runs; ${cli("status")} gives the current results.`
+  ],
+  // For a harness with no squeal skill (OpenCode): the skill's rules in words.
+  "no-skill": ({ cli, Cli }) => [
+    "Do not run the tests yourself to learn whether an edit broke something.",
+    `A check that does not run after an edit: ${cli("run <check> --wait 60000")}.`,
+    `A failure you did not cause, from load or a stopped service: ${cli("retry <file> --reason load|environment")}, then claim from that result.`,
+    `Before you say you are done: ${cli("status --wait 60000")}.`,
+    `${Cli("checks")} lists this repository's checks and when each runs.`
+  ]
+};
+var UNNAMED_CLI = "These are commands of the CLI SQUEAL messages name.";
 
 // src/harness/shared/primer.ts
 var PRIMER_CAP_CHARS = 1500;
 var PRIMER_OPENING = "Squeal runs this repository's ";
-var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
-function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
-  const names3 = runnersOf(coverage).map((runner) => runner.name);
-  const groups2 = coverage.groups;
-  const when = groups2 === void 0 ? " after each edit" : "";
-  const quiet = groups2?.noTestsAtEdit === true;
-  const arrivals = quiet ? [
-    ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
-    ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
-  ] : [
-    `${when}; a SQUEAL message with your next tool call means a check changed; ${PASSES_SILENT_TEXT}, so keep working;`
-  ];
-  const most = Math.max(
-    0,
-    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0)
-  );
-  const sentences = (arrival, dropped) => (covers2, naming, wait) => [
-    `${PRIMER_OPENING}${listed3(names3, "and")} tests in the background${arrival} do not run ${listed3(names3, "or")} to learn whether your edits broke something.`,
-    ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
-    waitSentence(command, naming, wait, quiet),
-    ...coverage.slow === null || dropped.includes("slow") ? [] : slowSentences(command, naming, coverage.slow).slice(
-      0,
-      dropped.includes("slow arrival") ? 1 : 2
-    ),
-    ...dropped.includes("run yourself") ? [] : [RUN_YOURSELF],
-    ...dropped.includes("retry") ? [] : [retrySentence(command, naming)],
-    ...dropped.includes("revision") ? [] : [REVISION],
-    covers2,
-    notCovered(coverage)
-  ].join(" ");
-  for (const dropped of [[], ...droppable(coverage)]) {
-    for (const arrival of arrivals) {
-      const kept3 = withPathWait(sentences(arrival, dropped), coverage, most);
-      if (kept3 !== null) return kept3;
-    }
-  }
+function primer(command = SQUEAL_COMMAND, options = {}) {
+  const form = options.skill ?? true ? "skill" : "no-skill";
+  const render = (naming) => {
+    let named2 = false;
+    const cli = (sub) => {
+      if (naming === "none") return `\`${sub}\``;
+      const full = naming === "every" || !named2;
+      named2 = true;
+      return full ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
+    };
+    const Cli = (sub) => {
+      const text3 = cli(sub);
+      return text3.startsWith("the ") ? `T${text3.slice(1)}` : text3;
+    };
+    return [
+      `${PRIMER_OPENING}${PRIMER_FIRST}`,
+      ...FORM_TEXTS[form]({ cli, Cli }),
+      ...naming === "none" ? [UNNAMED_CLI] : []
+    ].join(" ");
+  };
+  const namings = command === SQUEAL_COMMAND ? ["every"] : ["first", "none"];
   let text2 = "";
-  for (const dropped of [[], ...droppable(coverage)]) {
-    for (const arrival of arrivals) {
-      text2 = folded(sentences(arrival, dropped), coverage, most);
-      if (text2.length <= PRIMER_CAP_CHARS) return text2;
-    }
+  for (const naming of namings) {
+    text2 = render(naming);
+    if (text2.length <= PRIMER_CAP_CHARS) return text2;
   }
   return text2;
-}
-var RUN_YOURSELF = "Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it.";
-function droppable(coverage) {
-  const first = coverage.slow?.files === 0 ? ["slow"] : ["slow arrival"];
-  const order = [...first, "retry", "run yourself", "revision"];
-  return order.map((_, at) => order.slice(0, at + 1));
-}
-function withPathWait(sentences, coverage, most) {
-  for (const naming of ["every", "first"]) {
-    for (let node2 = most; node2 >= 0; node2--) {
-      const text2 = sentences(coversSentence(coverage, node2), naming, "paths");
-      if (text2.length <= PRIMER_CAP_CHARS) return text2;
-    }
-  }
-  return null;
-}
-function folded(sentences, coverage, most) {
-  let text2 = "";
-  for (let node2 = most; node2 >= 0; node2--) {
-    text2 = sentences(coversSentence(coverage, node2), "none", "plain");
-    if (text2.length > PRIMER_CAP_CHARS) continue;
-    const paths = sentences(coversSentence(coverage, node2), "none", "paths");
-    return paths.length <= PRIMER_CAP_CHARS ? paths : text2;
-  }
-  return text2;
-}
-function waitSentence(command, naming, form, quiet = false) {
-  if (form === "plain") {
-    return "Wait only when you need a result before your next step, for example before saying the task is done: `status --wait 60000` on the CLI SQUEAL messages name.";
-  }
-  const full = naming === "every" && command === SQUEAL_COMMAND;
-  const cli = (sub, first) => naming !== "none" && (first || full) ? `\`${command} ${sub}\`` : naming === "none" ? `\`${sub}\`` : `the CLI's \`${sub}\``;
-  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
-  const finish = `${cli("status --wait 60000", false)} before you finish.`;
-  if (quiet) {
-    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
-  }
-  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed, and ${finish}`;
-}
-var AT = {
-  edit: "after each edit",
-  pause: "between your turns",
-  stop: "at Stop, and Stop waits for them",
-  commit: "when you commit"
-};
-function momentsSentence(command, naming, groups2) {
-  const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
-  const clauses = groups2.moments.map(({ at, names: names3 }) => {
-    const named3 = listed3(
-      names3.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
-      "and"
-    );
-    if (at !== "manual") return `${named3} ${AT[at]}`;
-    const one = names3.length === 1;
-    return `${named3} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names3[0] : "<group>"}`)}`;
-  });
-  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
-}
-function retrySentence(command, naming) {
-  const cli = naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
-  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
-}
-function runnersOf(coverage) {
-  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
-  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || runner.fallback && !others);
-}
-function projectsOf(covered) {
-  return "projects" in covered ? covered.projects : null;
-}
-function listed3(words, conjunction) {
-  if (words.length <= 2) return words.join(` ${conjunction} `);
-  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
-}
-function coversSentence(coverage, node2) {
-  const suites = runnersOf(coverage).map(
-    (runner) => suite(runner.name, runner.covered(coverage), node2)
-  );
-  const files2 = coverage.slow?.files;
-  const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${listed3(suites, "and")}${slow}.`;
-}
-function suite(runner, covered, shown) {
-  if (!("projects" in covered)) {
-    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
-    return `${config}${excluded(covered.excludedProjects)}`;
-  }
-  const entries = covered.projects.map(
-    ({ name: name2, include }) => `${JSON.stringify(name2)} (${include.join(", ")})`
-  );
-  const list = named2("project", entries, shown);
-  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
-}
-function excluded(entries) {
-  if (entries.length === 0) return "";
-  const { text: text2, plural: plural2 } = excludedProjectsText(entries);
-  return `; its ${text2} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
-}
-function notCovered(coverage) {
-  const files2 = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
-  const what = files2.length === 0 ? "typecheck, build" : `typecheck, build, the ${files2.join(", the ")}, which squeal.config.json excludes,`;
-  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
-}
-function named2(noun, entries, shown) {
-  const nouns = entries.length === 1 ? noun : `${noun}s`;
-  if (shown === 0) return `${entries.length} ${nouns}`;
-  const listed4 = entries.slice(0, shown);
-  const rest = entries.length - shown;
-  const tail = rest > 0 ? [...listed4, `${rest} more`] : listed4;
-  const last = tail.pop();
-  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
-}
-function slowSentences(command, naming, slow) {
-  const run2 = naming === "every" ? `\`${command} run --slow --wait 60000\`` : "the CLI's `run --slow --wait 60000`";
-  const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
-  return [
-    slow.requireSlowSuite === true ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run2} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you ${holdsText(slow.maxHolds)}.` : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run2}.`,
-    command === SQUEAL_COMMAND ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call." : "A slow failure arrives with your next prompt or tool call."
-  ];
 }
 function trailingPrimer(text2) {
   const at = text2.lastIndexOf(`
@@ -18023,8 +17821,8 @@ ${PRIMER_OPENING}`);
   return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
 }
 var PRIMER = primer();
-function withPrimer(registration2, command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
-  const tail = primer(command, coverage);
+function withPrimer(registration2, command = SQUEAL_COMMAND, options = {}) {
+  const tail = primer(command, options);
   const max = MESSAGE_CAP_CHARS - tail.length - 2;
   return `${formatRegistration(registration2, max, command)}
 
@@ -18040,7 +17838,7 @@ async function registerOwing(context, deps, owed2, options) {
     ...options,
     owesText: owed2
   });
-  return owed2.primer ? withPrimer(registration2, deps.command, coverageOf(context)) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
+  return owed2.primer ? withPrimer(registration2, deps.command, { skill: deps.skill }) : formatRegistration(registration2, MESSAGE_CAP_CHARS, deps.command);
 }
 async function registerSaying(context, deps, options) {
   const text2 = await registerOwing(context, deps, owedOf(deps), options);
@@ -18084,7 +17882,7 @@ async function registerThenEnsure(first, register) {
 }
 
 // src/harness/shared/uncovered-edit.ts
-import { existsSync as existsSync14 } from "node:fs";
+import { existsSync as existsSync13 } from "node:fs";
 import { join as join31 } from "node:path";
 var SHOWN2 = 3;
 var UNCOVERED_LINE_CAP_CHARS = 1e3;
@@ -18095,7 +17893,7 @@ function uncoveredEditLine(context) {
   const paths = tellUncovered(
     context.store,
     context.consumer,
-    (path) => existsSync14(join31(context.root, path))
+    (path) => existsSync13(join31(context.root, path))
   );
   return paths.length === 0 ? null : fitUncovered(paths);
 }
@@ -18161,8 +17959,8 @@ function recordTestCommandDenied(store, consumer, revision) {
 function recognizeTestCommand(command, context) {
   const words = shellWords(command);
   if (words === null) return null;
-  for (const description of DESCRIPTIONS) {
-    const recognized = description.command(words, context, shellWords);
+  for (const description2 of DESCRIPTIONS) {
+    const recognized = description2.command(words, context, shellWords);
     if (recognized !== null) return recognized;
   }
   return null;
@@ -18290,10 +18088,10 @@ function knownFailuresLine(failures, command = SQUEAL_COMMAND, header) {
 }
 function countLine(failures, command) {
   if (failures.length === 0) return "Known failures: 0";
-  const named3 = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
+  const named2 = failures.slice(0, NAMED_FAILURES).map(checkName).join(", ");
   const more = failures.length - NAMED_FAILURES;
   const rest = more > 0 ? ` and ${more} more; \`${command} status\` lists every one` : "";
-  return `Known failures: ${failures.length} (${named3}${rest})`;
+  return `Known failures: ${failures.length} (${named2}${rest})`;
 }
 function denialSentence(toolName) {
   return `Squeal policy interrupt.onRegression denied this ${toolName} call, so the edit was not applied. The same call can be re-issued; this regression does not deny again.`;
@@ -18308,18 +18106,18 @@ function knownFailuresReason(revision, current2, earlier2 = []) {
   const sentences = [
     `Squeal policy stop.blockOnKnownFailures is on and ${plural(current2.length, "known failure")} ${verb} at revision ${revision}: ${listNames(current2.map((f) => formatCheck(f.check)))}.`
   ];
-  const named3 = (fs) => listNames(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
+  const named2 = (fs) => listNames(fs.map((f) => `${formatCheck(f.check)} (failed at revision ${f.observedAt})`));
   const pending2 = earlier2.filter((f) => f.validity === "pending");
   if (pending2.length > 0) {
     const its = pending2.length === 1 ? "its re-run" : "their re-runs";
     sentences.push(
-      `${plural(pending2.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending2.length === 1 ? "is" : "are"} pending: ${named3(pending2)}.`
+      `${plural(pending2.length, "check")} last failed at an earlier revision and ${its} at revision ${revision} ${pending2.length === 1 ? "is" : "are"} pending: ${named2(pending2)}.`
     );
   }
   const unrun = earlier2.filter((f) => f.validity !== "pending");
   if (unrun.length > 0) {
     sentences.push(
-      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named3(unrun)}.`
+      `${plural(unrun.length, "check")} last failed at an earlier revision and ${unrun.length === 1 ? "has" : "have"} no result for the current files: ${named2(unrun)}.`
     );
   }
   return sentences.join(" ");
@@ -18492,7 +18290,7 @@ async function startSession(input, location2, deps) {
 async function registerAtStart(input, context, deps, startingSince) {
   const main = input.agent_id === void 0;
   if (main && input.source === "compact" && isRegistered(context))
-    return { text: primer(deps.command, coverageOf(context)), owes: false };
+    return { text: primer(deps.command, { skill: deps.skill }), owes: false };
   if (main && input.source !== void 0 && SWEEP_SOURCES.has(input.source)) {
     await unregisterSession(context, input.session_id, {
       removeLocks: false,
@@ -18772,11 +18570,11 @@ function wentToFailLint(context, only) {
 }
 function blockingReason(files2, command) {
   if (files2.length === 0) return [];
-  const named3 = files2.map(
+  const named2 = files2.map(
     (f) => f.findings === null ? f.path : `${f.path} (${plural(f.findings, "finding")})`
   );
   return [
-    `Squeal policy lint.blocking is on and ${plural(named3.length, "file")} went to fail lint since this session started: ${listPaths(named3)}. \`${command} lint --changed\` lists them.`
+    `Squeal policy lint.blocking is on and ${plural(named2.length, "file")} went to fail lint since this session started: ${listPaths(named2)}. \`${command} lint --changed\` lists them.`
   ];
 }
 function lintStopReasons(context, command = SQUEAL_COMMAND, required = null) {
@@ -19431,7 +19229,7 @@ import {
   chmodSync as chmodSync2,
   copyFileSync as copyFileSync2,
   cpSync,
-  existsSync as existsSync15,
+  existsSync as existsSync14,
   mkdirSync as mkdirSync13,
   readdirSync as readdirSync11,
   readFileSync as readFileSync21,
@@ -19548,9 +19346,9 @@ function copyOf(data, version) {
   return join33(data, "versions", version);
 }
 function manifestVersion2(dir) {
-  const named3 = versionIn(join33(dir, MANIFEST));
-  if (!existsSync15(join33(dir, RUNTIME_MANIFEST2))) return named3;
-  return versionIn(join33(dir, RUNTIME_MANIFEST2)) === named3 ? named3 : null;
+  const named2 = versionIn(join33(dir, MANIFEST));
+  if (!existsSync14(join33(dir, RUNTIME_MANIFEST2))) return named2;
+  return versionIn(join33(dir, RUNTIME_MANIFEST2)) === named2 ? named2 : null;
 }
 function versionIn(path) {
   try {
@@ -19563,7 +19361,7 @@ function versionIn(path) {
 function kept2(data, version, file) {
   const dir = copyOf(data, version);
   const path = join33(dir, file);
-  return existsSync15(path) && manifestVersion2(dir) === version ? path : null;
+  return existsSync14(path) && manifestVersion2(dir) === version ? path : null;
 }
 function keptCli(data, version) {
   return kept2(data, version, CLI);
@@ -19577,11 +19375,11 @@ function keptSkill(data, version) {
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
-  if (!VERSION2.test(version) || !existsSync15(join33(root, CLI))) return null;
+  if (!VERSION2.test(version) || !existsSync14(join33(root, CLI))) return null;
   try {
     const versions = join33(data, "versions");
     const whole = keptCli(data, version) !== null;
-    if (!whole && existsSync15(dir) && manifestVersion2(dir) !== version) remove(versions, version);
+    if (!whole && existsSync14(dir) && manifestVersion2(dir) !== version) remove(versions, version);
     if (manifestVersion2(root) !== version) return whole ? dir : null;
     let made = false;
     if (!whole) {
@@ -19589,7 +19387,7 @@ function keepVersion({ root, data, version }) {
       const part = join33(versions, `.${version}.${process.pid}.tmp`);
       rmSync8(part, { recursive: true, force: true });
       for (const name2 of COPIED) {
-        if (existsSync15(join33(root, name2))) {
+        if (existsSync14(join33(root, name2))) {
           cpSync(join33(root, name2), join33(part, name2), { recursive: true, dereference: true });
         }
       }
@@ -19610,8 +19408,8 @@ function keepVersion({ root, data, version }) {
 function writeLauncher(root, data, version) {
   const target = dataLauncher(data);
   const source = join33(root, LAUNCHER_SOURCE);
-  if (!existsSync15(source)) return;
-  if (existsSync15(target)) {
+  if (!existsSync14(source)) return;
+  if (existsSync14(target)) {
     if (copies(data).some((v) => isNewerVersion(v, version))) return;
     if (readFileSync21(target, "utf8") === readFileSync21(source, "utf8")) return;
   }
@@ -19679,11 +19477,11 @@ function alive(pid) {
 }
 
 // src/harness/codex/command.ts
-import { existsSync as existsSync16 } from "node:fs";
+import { existsSync as existsSync15 } from "node:fs";
 import { join as join34 } from "node:path";
 function codexCommand(env, bundleCli) {
   const data = env.PLUGIN_DATA === void 0 || env.PLUGIN_DATA === "" ? dataOfCopy(bundleCli) : env.PLUGIN_DATA;
-  if (data !== null && existsSync16(dataLauncher(data))) return shellWord(dataLauncher(data));
+  if (data !== null && existsSync15(dataLauncher(data))) return shellWord(dataLauncher(data));
   const root = env.PLUGIN_ROOT;
   const cli = root === void 0 || root === "" ? bundleCli : join34(root, "dist/cli/squeal.mjs");
   return `node --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
@@ -19857,7 +19655,7 @@ var sessionEnd = async (input, location2, deps) => {
 // src/harness/shared/session-root.ts
 import { createHash as createHash13 } from "node:crypto";
 import {
-  existsSync as existsSync17,
+  existsSync as existsSync16,
   lstatSync as lstatSync6,
   readdirSync as readdirSync12,
   readFileSync as readFileSync22,
@@ -19943,7 +19741,7 @@ function readKept(file) {
   if (!isRecord(kept3) || typeof kept3.root !== "string" || typeof kept3.commonDir !== "string") {
     return null;
   }
-  return existsSync17(kept3.root) ? { root: kept3.root, commonDir: kept3.commonDir } : null;
+  return existsSync16(kept3.root) ? { root: kept3.root, commonDir: kept3.commonDir } : null;
 }
 
 // src/harness/codex/input.ts
@@ -20146,7 +19944,7 @@ async function runHookInput(name2, handler, stdin, env, overrides = {}) {
 
 // src/harness/codex/runtime-update/schedule.ts
 import { spawn as spawn3 } from "node:child_process";
-import { existsSync as existsSync18 } from "node:fs";
+import { existsSync as existsSync17 } from "node:fs";
 import { join as join37 } from "node:path";
 
 // src/harness/codex/runtime-update/paths.ts
@@ -20199,7 +19997,7 @@ function scheduleRuntimeUpdate(options) {
   if (adapter === "" || runtime === "" || data === "" || !isAdapterRoot(adapter)) return null;
   if (!isDue(readUpdateState(data), (options.now ?? Date.now)())) return null;
   const cli = join37(runtime, CLI2);
-  if (!existsSync18(cli)) return null;
+  if (!existsSync17(cli)) return null;
   const args = [
     cli,
     "codex-runtime",

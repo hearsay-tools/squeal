@@ -465,6 +465,7 @@ function resolveEntry(group, index) {
     name: group.name,
     index,
     at: group.at,
+    ...group.description === void 0 ? {} : { description: group.description },
     stopRequires: group.at === "stop",
     after: group.after ?? [],
     quietMs: group.quietMs ?? 0,
@@ -627,6 +628,11 @@ var names = must(
   "an array of group names",
   (v) => Array.isArray(v) && v.every((s) => typeof s === "string")
 );
+var DESCRIPTION_MAX_CHARS = 200;
+var description = must(
+  `one line of 1 to ${DESCRIPTION_MAX_CHARS} characters`,
+  (v) => typeof v === "string" && v.trim().length > 0 && v.length <= DESCRIPTION_MAX_CHARS && !/[\r\n]/.test(v)
+);
 var tests = (value, path) => {
   const wrong = must(
     "a non-empty array of strings",
@@ -662,6 +668,7 @@ var moment = oneOf(CHECK_MOMENTS);
 var COMMON = {
   name,
   at: moment,
+  description,
   after: names,
   quietMs: atLeastZero,
   limits
@@ -672,7 +679,7 @@ var TEST_RULES = object({
   project: must("a non-empty string", (v) => typeof v === "string" && v.length > 0),
   tests
 });
-var LINT_RULES = object({ name, at: moment, lint });
+var LINT_RULES = object({ name, at: moment, description, lint });
 var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
@@ -711,7 +718,7 @@ function shapeProblem(entry3, at) {
     if (testKey !== void 0) return `"${at}.${testKey}" needs "runner"; a lint group has none`;
     const unbuilt = TEST_GROUP_ONLY.find((key) => entry3[key] !== void 0);
     if (unbuilt !== void 0) {
-      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint" and "at"`;
+      return `"${at}.${unbuilt}" applies to test groups only; a lint group has "name", "lint", "at" and "description"`;
     }
   }
   for (const key of ["name", "at"]) {
@@ -1091,7 +1098,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.564";
+  if (true) return "0.1.565";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8661,12 +8668,9 @@ var UNCONFIGURED = { nodeTest: [] };
 var NODE_TEST = {
   runner: "node-test",
   name: "node:test",
-  fallback: false,
   unconfigured: UNCONFIGURED,
   projects: (policy) => policy.nodeTest,
   coverage: ({ projects: projects2 }) => ({ nodeTest: projects2 }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
   excluded: () => null,
   context: (policy, _root, _cwd) => ({ nodeTest: policy.nodeTest }),
   command: (words, context) => context.atRoot === false ? null : nodeTestCommand(words, context.nodeTest),
@@ -8790,12 +8794,9 @@ var OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|native|
 var PYTEST = {
   runner: "pytest",
   name: "pytest",
-  fallback: false,
   unconfigured: {},
   projects: (policy) => policy.pytest,
   coverage: ({ projects: projects2 }) => ({ pytest: projects2 }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
   excluded: () => null,
   context: (policy, root, cwd) => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
   command: (words, context) => pytestCommand(words, context.pytest ?? []),
@@ -8859,33 +8860,23 @@ function pytestFiles(command, listing) {
 }
 
 // src/runners/vitest/describe.ts
-import { existsSync as existsSync8, readFileSync as readFileSync12 } from "node:fs";
+import { readFileSync as readFileSync12 } from "node:fs";
 import { isAbsolute as isAbsolute6, join as join18, relative as relative3, resolve as resolve4 } from "node:path";
-var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
-var CONFIG_NAMES = ["vitest.config", "vite.config"];
-var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+var UNCONFIGURED2 = { vitest: true };
 var REPORTER = "--reporter";
 var SILENT_VALUES = /* @__PURE__ */ new Set(["true", "false", "yes", "no", "passed-only"]);
 var VITEST = {
   runner: "vitest",
   name: "Vitest",
-  fallback: true,
   unconfigured: UNCONFIGURED2,
   projects: () => [],
   coverage({ policy, root, configured }) {
     const vitest = !configured || vitestDetected(root);
     return {
       vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
       vitestExcludedFiles: vitest ? policy.vitest.exclude : []
     };
   },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? []
-  }),
   // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
   excluded(coverage) {
     const globs4 = coverage.vitestExcludedFiles ?? [];
@@ -8970,14 +8961,6 @@ function rootScripts(root) {
   } catch {
     return {};
   }
-}
-function configFile(root) {
-  for (const name2 of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync8(join18(root, `${name2}${extension}`))) return `${name2}${extension}`;
-    }
-  }
-  return null;
 }
 
 // src/runners/descriptions.ts
@@ -10311,14 +10294,14 @@ import { join as join20 } from "node:path";
 
 // src/core/fs/git-layout.ts
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync9, lstatSync as lstatSync3, readFileSync as readFileSync13, realpathSync as realpathSync3 } from "node:fs";
+import { existsSync as existsSync8, lstatSync as lstatSync3, readFileSync as readFileSync13, realpathSync as realpathSync3 } from "node:fs";
 import { dirname as dirname5, isAbsolute as isAbsolute7, join as join19, resolve as resolve5 } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve5(path);
-  if (existsSync9(dir)) dir = realpathSync3(dir);
+  if (existsSync8(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync9(join19(dir, ".git"))) return dir;
+    if (existsSync8(join19(dir, ".git"))) return dir;
     const parent2 = dirname5(dir);
     if (parent2 === dir) return null;
     dir = parent2;
@@ -11835,7 +11818,7 @@ function currentUid() {
 }
 
 // src/core/slow/slot.ts
-import { existsSync as existsSync10 } from "node:fs";
+import { existsSync as existsSync9 } from "node:fs";
 import { dirname as dirname8, isAbsolute as isAbsolute9, join as join24 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
@@ -11907,13 +11890,13 @@ function slowSlotDir(env = process.env, userDir = userTmpDir()) {
 function heldPermits(request) {
   const { dir } = request;
   const files2 = slotFiles(request.group);
-  if (!existsSync10(dir)) return [];
+  if (!existsSync9(dir)) return [];
   checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
     const file = files2.permit(i);
     const path = join24(dir, file);
-    if (!existsSync10(path)) continue;
+    if (!existsSync9(path)) continue;
     let free;
     try {
       free = permitFree(path);
@@ -17760,7 +17743,7 @@ async function writeThenCommit(handOff, outputs, boundMs = HAND_OFF_BOUND_MS) {
 // src/harness/shared/session-root.ts
 import { createHash as createHash11 } from "node:crypto";
 import {
-  existsSync as existsSync11,
+  existsSync as existsSync10,
   lstatSync as lstatSync6,
   readdirSync as readdirSync10,
   readFileSync as readFileSync20,
@@ -17846,7 +17829,7 @@ function readKept(file) {
   if (!isRecord(kept2) || typeof kept2.root !== "string" || typeof kept2.commonDir !== "string") {
     return null;
   }
-  return existsSync11(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
+  return existsSync10(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
 }
 
 // src/harness/shared/test-command.ts
