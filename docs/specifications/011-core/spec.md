@@ -244,6 +244,8 @@ Amended 2026-11-19 (row 011-407, gh-242): the skill's `references/commands.md`, 
 
 Amended 2026-11-19 (the human, gh-250 option A "cheaper reads", row 011-411, `research/issue-250-profile.md`): a status read compares each test file this worktree lists with the stored imports once per read, not once per import: its closure hash, its observed hash and its current results by import are made once and serve every import (018 D5, unchanged output). A named snapshot's verdict and named files read the rows its snapshot read, in the snapshot's read transaction, not every state again. The named wait's last read takes the same reads once row 023-26 lands. Output is unchanged. On a copy of a store with 188 imports, a two-file named `status --json` fell from 10.7 s to 5.6 s user CPU (medians of 5, at load 96 to 126 on 24 CPUs). Spec 018 D5 and D19 stay unchanged: every import is still listed and compared.
 
+Amended 2026-11-19 (the human, card of coordinator 4abb5168: "cache path checks"; row 011-414, `research/broad-change-throughput-2.md`): the runner host keeps each path's project-file and relative-path answer (`WorktreePaths`, bounded at 50,000 paths per memo), and reuses a walked file's `fileImports` entry while its sha1 and absolute targets are those it was made from. Closures, keys and selections are unchanged; warm closures went from 27 to 34 ms to 10 to 12 ms of CPU a test file on this repository.
+
 ### C7. Shared store
 
 <!-- 001 spec.md@60965d3b lines 153 (D8) -->
