@@ -181,6 +181,8 @@ describe("status --at selects a folder at both versions (review wave-6 B5)", SLO
   it("keeps a named file that exists on neither side, with no checkout", async () => {
     const f = fixture({ ...SOURCES, [PLAIN.path]: testOf("plain", 1) });
     const before = git(f.root, "rev-parse", "HEAD").trim();
+    // Row 023-24 (Q2): a clean HEAD without --run is refused; the commit is HEAD's parent.
+    f.commit({ "src/plain.ts": "export const value = 1; // later\n" });
     const install = linkInstall();
     const options = { cacheRoot: f.cacheRoot, install: install.install };
     const { code, out } = await run(
