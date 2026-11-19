@@ -147,6 +147,11 @@ describe("a store process per clone (row 021-36)", { timeout: 60_000 }, () => {
     delay.disable();
     await holder.done;
 
+    const load = loadavg()[0] ?? 0;
+    console.log(
+      `main thread beside a 1.5 s lock: append ${call.toFixed(1)} ms, event-loop delay max ` +
+        `${(delay.max / 1e6).toFixed(1)} ms; load average ${load.toFixed(1)}`,
+    );
     expect(call).toBeLessThan(50);
     if (quiet()) expect(delay.max / 1e6).toBeLessThan(50);
     expect(store.transitions.history("w1", t.check)).toHaveLength(1);
