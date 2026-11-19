@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { PRUNED_AT_KEY } from "../../src/core/daemon/clone-prune.js";
 import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
 import { runtimeFilesMetaKey } from "../../src/core/keys/runtime-applied.js";
@@ -46,6 +47,7 @@ const SHARED_KEY_CONSTANTS = [
   "META_FULL_CHECK",
   "META_FULL_CHECK_HOLDER",
   "META_STORE_RECOVERED",
+  "PRUNED_AT_KEY",
   "RERUN_FIRST_META_KEY",
   "RETRIES_META_KEY",
   "RUN_LOADS_META_KEY",
@@ -75,6 +77,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
       FLAKY_META_KEY,
       META_FULL_CHECK,
       META_STORE_RECOVERED,
+      PRUNED_AT_KEY,
       RERUN_FIRST_META_KEY,
       RETRIES_META_KEY,
       RUN_LOADS_META_KEY,

@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { PRUNED_AT_KEY } from "../../src/core/daemon/clone-prune.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
@@ -70,6 +71,8 @@ function query<T>(repo: FixtureRepo, fn: (db: DatabaseSync) => T): T {
 /** A worktree whose root is gone, owning `REMOVED_RESULTS` results, written in short transactions. */
 function seedRemoved(repo: FixtureRepo, id: string): void {
   query(repo, (db) => {
+    // Row 021-33: a clone prunes once per interval; each round's second daemon must prune again.
+    db.prepare("DELETE FROM meta WHERE key = ?").run(PRUNED_AT_KEY);
     db.prepare(
       `INSERT INTO worktrees (id, root, common_dir, is_main, registered_at)
        VALUES (?, ?, ?, 0, 1)`,
