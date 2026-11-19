@@ -1098,7 +1098,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.569";
+  if (true) return "0.1.570";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3071,7 +3071,7 @@ function parseCommitReport(raw) {
   const tests2 = countsOf(value.tests, TEST_KEYS);
   if (tests2 === null) return null;
   const pick = (counts, keys) => Object.fromEntries(keys.map((key) => [key, counts[key]]));
-  const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
+  const lint2 = value.lint === void 0 ? void 0 : lintOf(value.lint);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
@@ -3086,12 +3086,31 @@ function parseCommitReport(raw) {
       ...isCount(unanswered) && unanswered > 0 ? { unanswered } : {},
       ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
     },
-    ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
+    ...lint2 === void 0 ? {} : { lint: lint2 },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
   };
 }
 var isText = (value) => typeof value === "string";
+var TOOL_KEYS = ["files", ...LINT_KEYS];
+function lintOf(raw) {
+  const counts = countsOf(raw, LINT_KEYS);
+  if (counts === null) return null;
+  const { tools: tools2, notRun: notRun2 } = raw;
+  const own = Array.isArray(tools2) ? tools2.flatMap((entry3) => {
+    const tool = countsOf(entry3, TOOL_KEYS);
+    const name2 = entry3?.tool;
+    if (tool === null || !isText(name2)) return [];
+    return [{ tool: name2, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+  }) : null;
+  return {
+    findings: counts.findings,
+    notDetermined: counts.notDetermined,
+    running: counts.running,
+    ...own === null ? {} : { tools: own },
+    ...isText(notRun2) ? { notRun: notRun2 } : {}
+  };
+}
 function entriesOf4(raw, keys) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry3) => {
@@ -3159,13 +3178,7 @@ function commitReportText(report) {
   if (isFailedReport(report)) return `${head}: no report (${report.failed})`;
   const { tests: tests2, lint: lint2 } = report;
   const parts = [plural(tests2.failures, "known failure")];
-  if (lint2 !== void 0) {
-    const more = [
-      ...lint2.notDetermined > 0 ? [`${plural(lint2.notDetermined, "file")} not determined`] : [],
-      ...lint2.running > 0 ? [`${plural(lint2.running, "file")} still running`] : []
-    ];
-    parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
-  }
+  if (lint2 !== void 0) parts.push(...lintParts(lint2));
   const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
   const unanswered = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
   const unstaged = tests2.notDetermined - untracked - unanswered;
@@ -3181,6 +3194,30 @@ function commitReportText(report) {
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
   return `${head}: ${parts.join("; ")}`;
+}
+function lintParts(lint2) {
+  if (lint2.tools === void 0) return [legacyLint(lint2)];
+  if (lint2.tools.length === 0) return [`lint not run (${lint2.notRun ?? "no tool checked a file"})`];
+  return lint2.tools.map(toolPart);
+}
+function toolPart({ tool, files: files2, findings, notDetermined, running }) {
+  const of = `of ${plural(files2, "file")}`;
+  const complete = files2 - notDetermined - running;
+  if (complete === files2) return `lint (${tool}): ${plural(findings, "finding")} in ${files2} ${of}`;
+  const open2 = [];
+  if (running > 0) open2.push(`${running} ${of} still running`);
+  if (notDetermined > 0) {
+    open2.push(`${notDetermined}${running > 0 ? "" : ` ${of}`} not determined`);
+  }
+  if (complete > 0) open2.push(`${plural(findings, "finding")} in the other ${complete}`);
+  return `lint (${tool}): ${open2.join(", ")}`;
+}
+function legacyLint({ findings, notDetermined, running }) {
+  const more = [
+    ...notDetermined > 0 ? [`${plural(notDetermined, "file")} not determined`] : [],
+    ...running > 0 ? [`${plural(running, "file")} still running`] : []
+  ];
+  return [`lint ${plural(findings, "finding")}`, ...more].join(", ");
 }
 function commitLine(report) {
   const line = { commit: report.commit, text: commitReportText(report) };
@@ -9591,6 +9628,128 @@ function planLintNews(input) {
   return { entries: sorted, writes, removals, deferred };
 }
 
+// src/core/slow/slot-files.ts
+import { createHash as createHash7 } from "node:crypto";
+import { basename as basename4, join as join21 } from "node:path";
+
+// src/core/daemon/scratch.ts
+import { createHash as createHash6, randomBytes } from "node:crypto";
+import {
+  linkSync,
+  lstatSync as lstatSync4,
+  mkdirSync as mkdirSync7,
+  mkdtempSync,
+  readdirSync as readdirSync8,
+  readFileSync as readFileSync13,
+  renameSync as renameSync3,
+  rmSync as rmSync4,
+  unlinkSync,
+  writeFileSync as writeFileSync2
+} from "node:fs";
+import { basename as basename3, dirname as dirname6, join as join20 } from "node:path";
+
+// src/core/daemon/paths.ts
+import { chmodSync, lstatSync as lstatSync3, mkdirSync as mkdirSync6 } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute7, join as join19 } from "node:path";
+function runtimeDir(env = process.env) {
+  return xdgRuntimeDir(env) ?? userTmpDir();
+}
+function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
+  mkdirSync6(dirname5(dir), { recursive: true });
+  try {
+    mkdirSync6(dir, { mode: 448 });
+    chmodSync(dir, 448);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  checkPrivateDir(dir, uid, role);
+}
+function checkPrivateDir(dir, uid, role = "socket directory") {
+  const stat = lstatSync3(dir);
+  if (!stat.isDirectory()) {
+    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
+  }
+  if (stat.uid !== uid) {
+    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
+  }
+  if ((stat.mode & 63) !== 0) {
+    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
+    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
+  }
+}
+function userTmpDir(uid = currentUid()) {
+  return join19("/tmp", `squeal-${uid}`);
+}
+function xdgRuntimeDir(env) {
+  const xdg = env.XDG_RUNTIME_DIR;
+  return xdg !== void 0 && xdg !== "" && isAbsolute7(xdg) ? xdg : null;
+}
+function currentUid() {
+  return process.getuid?.() ?? 0;
+}
+
+// src/core/daemon/scratch.ts
+function repositoryId(commonDir) {
+  const dir = storePaths(commonDir).dir;
+  const file = join20(dir, "repository-id");
+  mkdirSync7(dir, { recursive: true });
+  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
+  writeFileSync2(draft, `${randomBytes(16).toString("hex")}
+`);
+  try {
+    linkSync(draft, file);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  } finally {
+    unlinkSync(draft);
+  }
+  return readFileSync13(file, "utf8").trim();
+}
+
+// src/core/slow/slot-files.ts
+var SLOW_LOCK_FILE = "slow.lock";
+var SLOW_GROUP2 = "slow";
+var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+var GROUP_SLOT_SCOPES = ["user", "repository"];
+var DEFAULT_GROUP_SLOT_SCOPE = "repository";
+function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
+  const dir = (base, commonDir) => scope === "user" ? base : join21(base, `repo.${hash(repositoryId(commonDir))}`);
+  if (group === SLOW_GROUP2) {
+    return {
+      dir,
+      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
+      waiterPrefix: "slow.wait."
+    };
+  }
+  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
+  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
+}
+function hash(text2) {
+  return createHash7("sha256").update(text2).digest("hex").slice(0, 16);
+}
+var SLOT_WAITER_FRESH_MS = 3e4;
+
+// src/core/lint/pass/cpu-wait.ts
+var cpuWaitKey = (scope) => `lint-cpu-wait:${scope}`;
+function readRecord(meta, scope) {
+  const raw = meta.get(cpuWaitKey(scope));
+  if (raw === null) return null;
+  try {
+    const r = JSON.parse(raw);
+    const busy2 = r.busy;
+    if (typeof r.since !== "number" || typeof r.at !== "number" || typeof r.limit !== "number" || busy2 !== null && typeof busy2 !== "number")
+      return null;
+    return { since: r.since, at: r.at, busy: busy2, limit: r.limit };
+  } catch {
+    return null;
+  }
+}
+function readCpuWait(meta, scope, now) {
+  const r = readRecord(meta, scope);
+  if (r === null || now - r.at > SLOT_WAITER_FRESH_MS) return null;
+  return { since: r.since, busy: r.busy, limit: r.limit };
+}
+
 // src/core/lint/surface/snapshot.ts
 var isCurrentFail = (s) => s.outcome === "fail" && !s.stale;
 function countsOf2(states) {
@@ -9639,7 +9798,7 @@ function awaitingRun(meta, worktreeId, states) {
   const byGroup2 = awaiting(meta, worktreeId, states, (held) => held.at === "manual");
   return [...byGroup2].map(([group, checks]) => ({ group, checks }));
 }
-function progressOf(store, worktreeId, states) {
+function progressOf(store, worktreeId, states, now = Date.now()) {
   const pending = states.filter((s) => s.outcome === "pending");
   let held = 0;
   let waiting = false;
@@ -9653,7 +9812,20 @@ function progressOf(store, worktreeId, states) {
     }
   }
   if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
-  return { done: states.length - pending.length, total: states.length - held };
+  const cpuWait = cpuWaitOf(store.meta, worktreeId, now);
+  return {
+    done: states.length - pending.length,
+    total: states.length - held,
+    ...cpuWait === null ? {} : { cpuWait }
+  };
+}
+function cpuWaitOf(meta, worktreeId, now) {
+  let found2 = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const wait = readCpuWait(meta, scope, now);
+    if (wait !== null && (found2 === null || wait.since < found2.since)) found2 = wait;
+  }
+  return found2;
 }
 function keyingLinted(store, worktreeId, states) {
   if (!anyKeyed(store.meta, worktreeId)) return false;
@@ -9819,7 +9991,7 @@ function registerLint(source, consumer, at) {
         ...noticesOf(store, worktreeId)
       });
       const { failing, stale } = countsOf2(states);
-      const linting = progressOf(store, worktreeId, states);
+      const linting = progressOf(store, worktreeId, states, at);
       return { v: 1, failing, stale, ...linting === void 0 ? {} : { linting }, ...reasons };
     })
   );
@@ -10368,20 +10540,20 @@ function scannedBy(store, worktreeId, startedAt) {
 }
 
 // src/core/status/git-head.ts
-import { readFileSync as readFileSync14 } from "node:fs";
-import { join as join20 } from "node:path";
+import { readFileSync as readFileSync15 } from "node:fs";
+import { join as join23 } from "node:path";
 
 // src/core/fs/git-layout.ts
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync8, lstatSync as lstatSync3, readFileSync as readFileSync13, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute7, join as join19, resolve as resolve5 } from "node:path";
+import { createHash as createHash8 } from "node:crypto";
+import { existsSync as existsSync8, lstatSync as lstatSync5, readFileSync as readFileSync14, realpathSync as realpathSync3 } from "node:fs";
+import { dirname as dirname7, isAbsolute as isAbsolute8, join as join22, resolve as resolve5 } from "node:path";
 var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
 function findWorktreeRoot(path) {
   let dir = resolve5(path);
   if (existsSync8(dir)) dir = realpathSync3(dir);
   for (; ; ) {
-    if (existsSync8(join19(dir, ".git"))) return dir;
-    const parent2 = dirname5(dir);
+    if (existsSync8(join22(dir, ".git"))) return dir;
+    const parent2 = dirname7(dir);
     if (parent2 === dir) return null;
     dir = parent2;
   }
@@ -10390,7 +10562,7 @@ function worktreeIdFor(root) {
   return worktreeIdOfRealPath(realpathSync3(root));
 }
 function worktreeIdOfRealPath(realPath2) {
-  return createHash6("sha256").update(realPath2).digest("hex").slice(0, 16);
+  return createHash8("sha256").update(realPath2).digest("hex").slice(0, 16);
 }
 function gitDirOf(root) {
   return dotGit(root)?.gitDir ?? null;
@@ -10401,27 +10573,27 @@ function resolveCommonDir(root) {
   if (!entry3.isFile) return realpathSync3(entry3.gitDir);
   const { gitDir } = entry3;
   if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join19(gitDir, "commondir");
+  const commondirFile = join22(gitDir, "commondir");
   if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
-  const commondir = readFileSync13(commondirFile, "utf8").trim();
-  const common = isAbsolute7(commondir) ? commondir : resolve5(gitDir, commondir);
+  const commondir = readFileSync14(commondirFile, "utf8").trim();
+  const common = isAbsolute8(commondir) ? commondir : resolve5(gitDir, commondir);
   return lstatOrNull(common) === null ? null : realpathSync3(common);
 }
 function lstatOrNull(path) {
   try {
-    return lstatSync3(path);
+    return lstatSync5(path);
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
   }
 }
 function dotGit(root) {
-  const path = join19(root, ".git");
+  const path = join22(root, ".git");
   const stat = lstatOrNull(path);
   if (stat === null) return null;
   if (stat.isDirectory()) return { gitDir: path, isFile: false };
   if (!stat.isFile()) return null;
-  const match = GITDIR_LINE.exec(readFileSync13(path, "utf8"));
+  const match = GITDIR_LINE.exec(readFileSync14(path, "utf8"));
   return match?.[1] ? { gitDir: resolve5(root, match[1]), isFile: true } : null;
 }
 
@@ -10432,17 +10604,17 @@ function readGitHead(root) {
   const gitDir = gitDirOf(root);
   const commonDir = resolveCommonDir(root);
   if (gitDir === null || commonDir === null) return null;
-  let value = read3(join20(gitDir, "HEAD"));
+  let value = read3(join23(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
     const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
     if (ref2 === void 0) return null;
-    value = read3(join20(gitDir, ref2)) ?? read3(join20(commonDir, ref2)) ?? packed(commonDir, ref2);
+    value = read3(join23(gitDir, ref2)) ?? read3(join23(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
 function packed(commonDir, ref2) {
-  for (const line of (read3(join20(commonDir, "packed-refs")) ?? "").split("\n")) {
+  for (const line of (read3(join23(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name2] = line.split(" ");
     if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
@@ -10450,7 +10622,7 @@ function packed(commonDir, ref2) {
 }
 function read3(path) {
   try {
-    return readFileSync14(path, "utf8").trim();
+    return readFileSync15(path, "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -11519,7 +11691,8 @@ function overrunOf(ref2, pending, run2, row, now) {
     ranMs: Math.max(0, now - tier.startedAt),
     usualMs: file.usualMs,
     since: tier.at,
-    deadline: tier.deadline
+    deadline: tier.deadline,
+    ...tier.beside === true ? { beside: true } : {}
   };
   return { overrun };
 }
@@ -11594,8 +11767,8 @@ function isRef2(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { startedAt, at, deadline, files: files2 } = value;
-  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile);
+  const { startedAt, at, deadline, files: files2, beside } = value;
+  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile) && (beside === void 0 || beside === true);
 }
 function isOverrunFile(value) {
   if (!isRef2(value)) return false;
@@ -11956,44 +12129,10 @@ function knownCause(entry3) {
   return rest;
 }
 
-// src/core/daemon/paths.ts
-import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync6 } from "node:fs";
-import { dirname as dirname6, isAbsolute as isAbsolute8, join as join21 } from "node:path";
-function runtimeDir(env = process.env) {
-  return xdgRuntimeDir(env) ?? userTmpDir();
-}
-function preparePrivateDir(dir, uid = currentUid(), role = "socket directory") {
-  mkdirSync6(dirname6(dir), { recursive: true });
-  try {
-    mkdirSync6(dir, { mode: 448 });
-    chmodSync(dir, 448);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  checkPrivateDir(dir, uid, role);
-}
-function checkPrivateDir(dir, uid, role = "socket directory") {
-  const stat = lstatSync4(dir);
-  if (!stat.isDirectory()) {
-    throw new Error(`${role} ${dir} is not a directory; refusing to use it`);
-  }
-  if (stat.uid !== uid) {
-    throw new Error(`${role} ${dir} is owned by uid ${stat.uid}, not ${uid}; refusing to use it`);
-  }
-  if ((stat.mode & 63) !== 0) {
-    const mode = (stat.mode & 511).toString(8).padStart(3, "0");
-    throw new Error(`${role} ${dir} has mode ${mode}, not 700; refusing to use it`);
-  }
-}
-function userTmpDir(uid = currentUid()) {
-  return join21("/tmp", `squeal-${uid}`);
-}
-function xdgRuntimeDir(env) {
-  const xdg = env.XDG_RUNTIME_DIR;
-  return xdg !== void 0 && xdg !== "" && isAbsolute8(xdg) ? xdg : null;
-}
-function currentUid() {
-  return process.getuid?.() ?? 0;
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 // src/core/slow/slot.ts
@@ -12001,67 +12140,6 @@ import { existsSync as existsSync9 } from "node:fs";
 import { dirname as dirname8, isAbsolute as isAbsolute9, join as join24 } from "node:path";
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
 import { pathToFileURL } from "node:url";
-
-// src/core/slow/slot-files.ts
-import { createHash as createHash8 } from "node:crypto";
-import { basename as basename4, join as join23 } from "node:path";
-
-// src/core/daemon/scratch.ts
-import { createHash as createHash7, randomBytes } from "node:crypto";
-import {
-  linkSync,
-  lstatSync as lstatSync5,
-  mkdirSync as mkdirSync7,
-  mkdtempSync,
-  readdirSync as readdirSync8,
-  readFileSync as readFileSync15,
-  renameSync as renameSync3,
-  rmSync as rmSync4,
-  unlinkSync,
-  writeFileSync as writeFileSync2
-} from "node:fs";
-import { basename as basename3, dirname as dirname7, join as join22 } from "node:path";
-function repositoryId(commonDir) {
-  const dir = storePaths(commonDir).dir;
-  const file = join22(dir, "repository-id");
-  mkdirSync7(dir, { recursive: true });
-  const draft = `${file}.${process.pid}-${randomBytes(4).toString("hex")}`;
-  writeFileSync2(draft, `${randomBytes(16).toString("hex")}
-`);
-  try {
-    linkSync(draft, file);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  } finally {
-    unlinkSync(draft);
-  }
-  return readFileSync15(file, "utf8").trim();
-}
-
-// src/core/slow/slot-files.ts
-var SLOW_LOCK_FILE = "slow.lock";
-var SLOW_GROUP2 = "slow";
-var GROUP_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-var GROUP_SLOT_SCOPES = ["user", "repository"];
-var DEFAULT_GROUP_SLOT_SCOPE = "repository";
-function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
-  const dir = (base, commonDir) => scope === "user" ? base : join23(base, `repo.${hash(repositoryId(commonDir))}`);
-  if (group === SLOW_GROUP2) {
-    return {
-      dir,
-      permit: (i) => i === 0 ? SLOW_LOCK_FILE : `slow.${i}.lock`,
-      waiterPrefix: "slow.wait."
-    };
-  }
-  if (!GROUP_NAME.test(group)) throw new Error(`not a check group name: ${JSON.stringify(group)}`);
-  return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
-}
-function hash(text2) {
-  return createHash8("sha256").update(text2).digest("hex").slice(0, 16);
-}
-var SLOT_WAITER_FRESH_MS = 3e4;
-
-// src/core/slow/slot.ts
 function slowSlotDir(env = process.env, userDir = userTmpDir()) {
   const xdg = env.XDG_RUNTIME_DIR;
   return xdg !== void 0 && xdg !== "" && isAbsolute9(xdg) ? join24(xdg, "squeal") : userDir;
@@ -12130,12 +12208,6 @@ function permitFree(path) {
   } finally {
     db.close();
   }
-}
-
-// src/core/capacity/background.ts
-var DEFAULT_BACKGROUND_SHARE = 0.75;
-function isBackgroundShare(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 // src/core/daemon/outlived.ts
@@ -15263,7 +15335,11 @@ function lintTitleWords(news) {
   const changes = lintChanges(news);
   return changes === 0 ? null : `${changes} lint ${changes === 1 ? "change" : "changes"}`;
 }
-var lintingWords = ({ done, total }) => total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`;
+var lintingWords = ({ done, total, cpuWait }) => (total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`) + (cpuWait === void 0 ? "" : `; ${cpuWaitWords(cpuWait)}`);
+function cpuWaitWords({ busy: busy2, limit }) {
+  const busyWords = busy2 === null ? "" : `${Math.round(busy2)} busy, `;
+  return `waiting for CPU (${busyWords}limit ${Math.round(limit * 100) / 100})`;
+}
 function lintRegistrationLine(reg, command) {
   if (reg.off !== void 0) return lintOffLine(reg.off);
   if (reg.unreadable !== void 0) {

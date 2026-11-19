@@ -1229,7 +1229,11 @@ function lintTitleWords(news) {
   const changes = lintChanges(news);
   return changes === 0 ? null : `${changes} lint ${changes === 1 ? "change" : "changes"}`;
 }
-var lintingWords = ({ done, total }) => total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`;
+var lintingWords = ({ done, total, cpuWait }) => (total === 0 ? "linting has not started" : `linting, ${done} of ${plural(total, "file")}`) + (cpuWait === void 0 ? "" : `; ${cpuWaitWords(cpuWait)}`);
+function cpuWaitWords({ busy: busy2, limit }) {
+  const busyWords = busy2 === null ? "" : `${Math.round(busy2)} busy, `;
+  return `waiting for CPU (${busyWords}limit ${Math.round(limit * 100) / 100})`;
+}
 function lintRegistrationLine(reg, command) {
   if (reg.off !== void 0) return lintOffLine(reg.off);
   if (reg.unreadable !== void 0) {
@@ -2940,7 +2944,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.569";
+  if (true) return "0.1.570";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4771,7 +4775,8 @@ function overrunOf(ref2, pending, run2, row, now) {
     ranMs: Math.max(0, now - tier.startedAt),
     usualMs: file.usualMs,
     since: tier.at,
-    deadline: tier.deadline
+    deadline: tier.deadline,
+    ...tier.beside === true ? { beside: true } : {}
   };
   return { overrun };
 }
@@ -4846,8 +4851,8 @@ function isRef(value) {
 }
 function isOverrun(value) {
   if (typeof value !== "object" || value === null) return false;
-  const { startedAt, at, deadline, files: files2 } = value;
-  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile);
+  const { startedAt, at, deadline, files: files2, beside } = value;
+  return typeof startedAt === "number" && typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile) && (beside === void 0 || beside === true);
 }
 function isOverrunFile(value) {
   if (!isRef(value)) return false;
@@ -6964,6 +6969,12 @@ function laneFor(policy, ref2, runnerLane) {
   return groupLane(groupView(policy).of(ref2).name, runnerLane);
 }
 
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync2, mkdirSync as mkdirSync2 } from "node:fs";
 import { dirname as dirname6, isAbsolute as isAbsolute7, join as join12 } from "node:path";
@@ -7147,12 +7158,6 @@ function permitFree(path) {
   } finally {
     db.close();
   }
-}
-
-// src/core/capacity/background.ts
-var DEFAULT_BACKGROUND_SHARE = 0.75;
-function isBackgroundShare(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
 // src/core/daemon/outlived.ts
@@ -8187,7 +8192,7 @@ function parseCommitReport(raw) {
   const tests2 = countsOf(value.tests, TEST_KEYS);
   if (tests2 === null) return null;
   const pick = (counts, keys) => Object.fromEntries(keys.map((key) => [key, counts[key]]));
-  const lint2 = value.lint === void 0 ? void 0 : countsOf(value.lint, LINT_KEYS);
+  const lint2 = value.lint === void 0 ? void 0 : lintOf(value.lint);
   if (lint2 === null) return null;
   const waiting = waitingOf(value.waiting);
   const { from } = value;
@@ -8202,12 +8207,31 @@ function parseCommitReport(raw) {
       ...isCount2(unanswered) && unanswered > 0 ? { unanswered } : {},
       ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
     },
-    ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
+    ...lint2 === void 0 ? {} : { lint: lint2 },
     ...waiting === null ? {} : { waiting },
     ...value.updated === true ? { updated: true } : {}
   };
 }
 var isText = (value) => typeof value === "string";
+var TOOL_KEYS = ["files", ...LINT_KEYS];
+function lintOf(raw) {
+  const counts = countsOf(raw, LINT_KEYS);
+  if (counts === null) return null;
+  const { tools: tools2, notRun: notRun2 } = raw;
+  const own = Array.isArray(tools2) ? tools2.flatMap((entry3) => {
+    const tool = countsOf(entry3, TOOL_KEYS);
+    const name2 = entry3?.tool;
+    if (tool === null || !isText(name2)) return [];
+    return [{ tool: name2, ...Object.fromEntries(TOOL_KEYS.map((k) => [k, tool[k]])) }];
+  }) : null;
+  return {
+    findings: counts.findings,
+    notDetermined: counts.notDetermined,
+    running: counts.running,
+    ...own === null ? {} : { tools: own },
+    ...isText(notRun2) ? { notRun: notRun2 } : {}
+  };
+}
 function entriesOf2(raw, keys) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry3) => {
@@ -8275,13 +8299,7 @@ function commitReportText(report) {
   if (isFailedReport(report)) return `${head}: no report (${report.failed})`;
   const { tests: tests2, lint: lint2 } = report;
   const parts = [plural(tests2.failures, "known failure")];
-  if (lint2 !== void 0) {
-    const more = [
-      ...lint2.notDetermined > 0 ? [`${plural(lint2.notDetermined, "file")} not determined`] : [],
-      ...lint2.running > 0 ? [`${plural(lint2.running, "file")} still running`] : []
-    ];
-    parts.push([`lint ${plural(lint2.findings, "finding")}`, ...more].join(", "));
-  }
+  if (lint2 !== void 0) parts.push(...lintParts(lint2));
   const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
   const unanswered = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
   const unstaged = tests2.notDetermined - untracked - unanswered;
@@ -8297,6 +8315,30 @@ function commitReportText(report) {
   if (tests2.running > 0) parts.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts.push(`${plural(tests2.unknown, "test file")} unknown`);
   return `${head}: ${parts.join("; ")}`;
+}
+function lintParts(lint2) {
+  if (lint2.tools === void 0) return [legacyLint(lint2)];
+  if (lint2.tools.length === 0) return [`lint not run (${lint2.notRun ?? "no tool checked a file"})`];
+  return lint2.tools.map(toolPart);
+}
+function toolPart({ tool, files: files2, findings, notDetermined, running }) {
+  const of = `of ${plural(files2, "file")}`;
+  const complete = files2 - notDetermined - running;
+  if (complete === files2) return `lint (${tool}): ${plural(findings, "finding")} in ${files2} ${of}`;
+  const open2 = [];
+  if (running > 0) open2.push(`${running} ${of} still running`);
+  if (notDetermined > 0) {
+    open2.push(`${notDetermined}${running > 0 ? "" : ` ${of}`} not determined`);
+  }
+  if (complete > 0) open2.push(`${plural(findings, "finding")} in the other ${complete}`);
+  return `lint (${tool}): ${open2.join(", ")}`;
+}
+function legacyLint({ findings, notDetermined, running }) {
+  const more = [
+    ...notDetermined > 0 ? [`${plural(notDetermined, "file")} not determined`] : [],
+    ...running > 0 ? [`${plural(running, "file")} still running`] : []
+  ];
+  return [`lint ${plural(findings, "finding")}`, ...more].join(", ");
 }
 function commitLine(report) {
   const line = { commit: report.commit, text: commitReportText(report) };
@@ -12407,6 +12449,27 @@ function planLintNews(input) {
   return { entries: sorted, writes, removals, deferred };
 }
 
+// src/core/lint/pass/cpu-wait.ts
+var cpuWaitKey = (scope) => `lint-cpu-wait:${scope}`;
+function readRecord(meta, scope) {
+  const raw = meta.get(cpuWaitKey(scope));
+  if (raw === null) return null;
+  try {
+    const r = JSON.parse(raw);
+    const busy2 = r.busy;
+    if (typeof r.since !== "number" || typeof r.at !== "number" || typeof r.limit !== "number" || busy2 !== null && typeof busy2 !== "number")
+      return null;
+    return { since: r.since, at: r.at, busy: busy2, limit: r.limit };
+  } catch {
+    return null;
+  }
+}
+function readCpuWait(meta, scope, now) {
+  const r = readRecord(meta, scope);
+  if (r === null || now - r.at > SLOT_WAITER_FRESH_MS) return null;
+  return { since: r.since, busy: r.busy, limit: r.limit };
+}
+
 // src/core/lint/surface/snapshot.ts
 var isCurrentFail = (s) => s.outcome === "fail" && !s.stale;
 function countsOf2(states) {
@@ -12455,7 +12518,7 @@ function awaitingRun(meta, worktreeId, states) {
   const byGroup2 = awaiting(meta, worktreeId, states, (held) => held.at === "manual");
   return [...byGroup2].map(([group, checks]) => ({ group, checks }));
 }
-function progressOf(store, worktreeId, states) {
+function progressOf(store, worktreeId, states, now = Date.now()) {
   const pending = states.filter((s) => s.outcome === "pending");
   let held = 0;
   let waiting = false;
@@ -12469,7 +12532,20 @@ function progressOf(store, worktreeId, states) {
     }
   }
   if (anyKeyed(store.meta, worktreeId) && !waiting) return void 0;
-  return { done: states.length - pending.length, total: states.length - held };
+  const cpuWait = cpuWaitOf(store.meta, worktreeId, now);
+  return {
+    done: states.length - pending.length,
+    total: states.length - held,
+    ...cpuWait === null ? {} : { cpuWait }
+  };
+}
+function cpuWaitOf(meta, worktreeId, now) {
+  let found2 = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const wait = readCpuWait(meta, scope, now);
+    if (wait !== null && (found2 === null || wait.since < found2.since)) found2 = wait;
+  }
+  return found2;
 }
 function keyingLinted(store, worktreeId, states) {
   if (!anyKeyed(store.meta, worktreeId)) return false;
@@ -12635,7 +12711,7 @@ function registerLint(source, consumer, at) {
         ...noticesOf(store, worktreeId)
       });
       const { failing, stale } = countsOf2(states);
-      const linting = progressOf(store, worktreeId, states);
+      const linting = progressOf(store, worktreeId, states, at);
       return { v: 1, failing, stale, ...linting === void 0 ? {} : { linting }, ...reasons };
     })
   );
