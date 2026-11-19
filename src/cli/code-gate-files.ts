@@ -98,6 +98,11 @@ export interface GateFileRun {
   readonly skipped: boolean;
   /** With `not-run`: why. */
   readonly reason?: "budget" | "prepare";
+  /**
+   * Row 023-19 (the third look): the project it ran under, in a completion
+   * record only; an answer's runs have none (a path's projects agree or not).
+   */
+  readonly project?: string;
 }
 
 /** `runGateFiles`' answer. */
@@ -127,7 +132,9 @@ export interface GateFilesResult {
 /**
  * Row 023-19 (review wave-13 B2): what the call completed so far, per run
  * as it ended (a rerun's outcome replaces its first run's), and per project
- * and path what the keeper kept at which key, or why it did not.
+ * and path what the keeper kept at which key, or why it did not. The third
+ * look (the human, "A: key per project"): every entry names its project,
+ * so a path two projects run keeps each project's own outcome.
  */
 export interface GateFilesProgress {
   readonly runs: readonly GateFileRun[];
@@ -136,7 +143,11 @@ export interface GateFilesProgress {
     readonly path: string;
     readonly key: string;
   }[];
-  readonly notKept: readonly { readonly path: string; readonly reason: string }[];
+  readonly notKept: readonly {
+    readonly project: string;
+    readonly path: string;
+    readonly reason: string;
+  }[];
 }
 
 /**
@@ -260,12 +271,15 @@ function progressHooks(
   const told = () => tell({ runs: [...runs.values()], kept, notKept });
   return {
     ended: (files) => {
-      for (const file of files) runs.set(`${file.runner}\0${file.path}`, fileRun(file));
+      for (const { ref, evidence } of files) {
+        const run = { ...fileRun(evidence), project: ref.project };
+        runs.set(`${evidence.runner}\0${ref.project}\0${ref.path}`, run);
+      }
       told();
     },
     decided: (so) => {
       kept = so.kept.map(({ ref, key }) => ({ project: ref.project, path: ref.path, key }));
-      notKept = [...so.notKept].map(([path, reason]) => ({ path, reason }));
+      notKept = [...so.notKept];
       told();
     },
   };

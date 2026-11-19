@@ -3,8 +3,10 @@ import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { compare } from "../core/fs/compare.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import type { GateFileRun } from "./code-gate-files.js";
 import { type Origin, type SideState, stateOf } from "./status-at-report.js";
+import { MAYBE_STORED } from "./status-at-report-files.js";
 import type { RunAnswer } from "./status-at-run-child.js";
 
 /*
@@ -64,7 +66,7 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
   if (changed !== null || input.stored === false) {
     for (const file of input.run) {
       if (!("key" in file.at)) continue;
-      const runs = answer.result.runs.filter((r) => r.path === file.ref.path);
+      const runs = answer.result.runs.filter((r) => runOf(r, file.ref));
       const state = fromGate(file.at.key, runs, commit);
       states.set(testFileId(file.ref), changed === null ? state : notTheCommits(state, changed));
     }
@@ -82,17 +84,16 @@ export async function outcomesOf(input: OutcomeInput): Promise<Map<string, SideS
   await withStores(input.commonDir, async (main) => {
     for (const file of [...input.run, ...input.siblings]) {
       if (!("key" in file.at)) continue;
-      const { path } = file.ref;
       const id = testFileId(file.ref);
       const at = kept.get(id);
       const records = main === null || at === undefined ? [] : resultsAt(main, file.ref, at);
       if (at !== undefined && records.length > 0) {
         states.set(id, asRun(stateOf(at, records, input.own), commit, true));
       } else if (chosen.has(id)) {
-        const runs = answer.result.runs.filter((r) => r.path === path);
+        const runs = answer.result.runs.filter((r) => runOf(r, file.ref));
         const why =
           at === undefined
-            ? notKeptWhy(answer.result.notKept, path, input.coverage !== false, input.undecided)
+            ? notKeptWhy(answer.result.notKept, file.ref, input.coverage !== false, input.undecided)
             : "its kept result could not be read back";
         states.set(id, fromGate(file.at.key, runs, commit, why));
       }
@@ -129,15 +130,12 @@ async function unanswered(
       : await outcomesOf({
           ...input,
           answer: { result: { ...record, timedOut: true, budgetSeconds: 0 } },
-          undecided:
-            answer.stopped === true
-              ? "the run was stopped at the budget before the gate decided whether to keep it"
-              : "the run ended before the gate decided whether to keep it",
+          undecided: maybeStored(answer.stopped === true),
         });
   for (const file of input.run) {
     const id = testFileId(file.ref);
     const state = states.get(id);
-    const ran = record?.runs.some((r) => r.path === file.ref.path) === true;
+    const ran = record?.runs.some((r) => runOf(r, file.ref)) === true;
     if (state === undefined || !ran) states.set(id, missing);
   }
   return states;
@@ -158,16 +156,45 @@ function asRun(state: SideState, commit: string, stored: boolean): SideState {
 }
 
 /**
+ * Row 023-19 (the third look, the human's "A: key per project"): whether
+ * `run` is `ref`'s: its path, and its project when it names one. A
+ * completion record's runs name it, so each project reads its own outcome;
+ * an answer's runs do not, so a path's projects must agree (`fromGate`).
+ */
+function runOf(
+  run: { readonly path: string; readonly project?: string },
+  ref: TestFileRef,
+): boolean {
+  return run.path === ref.path && (run.project === undefined || run.project === ref.project);
+}
+
+/**
+ * Row 023-19 (the third look, accepted limit): the reason for a completed
+ * file that a child with no answer recorded before its keep decision. A stop
+ * while the record was being rewritten after a keep that landed leaves the
+ * record before it, so the result may be in the store.
+ */
+export function maybeStored(stopped: boolean): string {
+  const lead = stopped
+    ? "the run was stopped at the budget before its record said whether the gate kept it"
+    : "the run ended before its record said whether the gate kept it";
+  return `${lead}; ${MAYBE_STORED}`;
+}
+
+/**
  * Row 023-18 (D2): why a run file of a storing run is not in the store: the
- * keeper's own reason for its path, else coverage off, else no reason told.
+ * keeper's own reason for its path (row 023-19: and project, when the
+ * reason names one), else coverage off, else no reason told.
  */
 export function notKeptWhy(
-  notKept: readonly { readonly path: string; readonly reason: string }[] | undefined,
-  path: string,
+  notKept:
+    | readonly { readonly project?: string; readonly path: string; readonly reason: string }[]
+    | undefined,
+  ref: TestFileRef,
   coverage: boolean,
   undecided?: string,
 ): string {
-  const reason = notKept?.find((n) => n.path === path)?.reason;
+  const reason = notKept?.find((n) => runOf(n, ref))?.reason;
   if (reason !== undefined) return `the gate did not keep it: ${reason}`;
   if (coverage && undecided !== undefined) return undecided;
   return coverage

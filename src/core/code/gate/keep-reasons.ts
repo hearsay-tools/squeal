@@ -35,16 +35,33 @@ export class NotKept {
   readonly #kinds = new Map<Kind, Gathered>();
   /** Row 023-18 (D2): each file's own reason, kept after `take`. */
   readonly #byFile = new Map<string, string>();
+  /** Row 023-19 (the human's "A: key per project", 2026-11-19): each file's reason by project. */
+  readonly #byProject = new Map<string, { project: string; path: string; reason: string }>();
 
-  /** `path`, a completed test file with a record, was not kept for `decided`. */
-  add(path: string, decided: Pick<FileDecision, "cause" | "reason">): void {
+  /**
+   * `path`, a completed test file with a record, was not kept for
+   * `decided`; `project`, when given, is the project it ran under.
+   */
+  add(path: string, decided: Pick<FileDecision, "cause" | "reason">, project?: string): void {
     const { kind, paths } = decided.cause;
     const at = this.#kinds.get(kind) ?? { files: [], paths: new Set(), reason: decided.reason };
     at.files.push(path);
     for (const one of paths) at.paths.add(one);
     this.#kinds.set(kind, at);
     const behind = paths.length === 0 ? "" : ` (${listPaths([...paths].sort(compare), NAMED)})`;
-    this.#byFile.set(path, `${phrase(kind, true, decided.reason)}${behind}`);
+    const reason = `${phrase(kind, true, decided.reason)}${behind}`;
+    this.#byFile.set(path, reason);
+    if (project !== undefined)
+      this.#byProject.set(`${project}\0${path}`, { project, path, reason });
+  }
+
+  /** Row 023-19: why each file added with its project was not kept, per project and path. */
+  byProject(): readonly {
+    readonly project: string;
+    readonly path: string;
+    readonly reason: string;
+  }[] {
+    return [...this.#byProject.values()];
   }
 
   /** Row 023-18 (D2): why each file added so far was not kept, in the note's words for one file. */

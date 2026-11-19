@@ -1,5 +1,6 @@
 import type { RunEstimate } from "../core/code/gate/estimate.js";
 import { changedText } from "../core/commit/at-keys-walk.js";
+import { maybeStoredText } from "./status-at-report-files.js";
 
 /*
  * Spec 023 D1 (row 023-07): `--run`'s part of the `status --at` report:
@@ -52,9 +53,10 @@ function notStoredLines(reasons: readonly string[], unstored: number): string[] 
   for (const reason of reasons) counts.set(reason, (counts.get(reason) ?? 0) + 1);
   const told = reasons.length;
   if (told < unstored) counts.set("no reason told", unstored - told);
-  return [...counts].map(
-    ([reason, n]) =>
-      `${n} not stored (${reason}); the next --at has no result for ${n === 1 ? "it" : "them"}`,
+  return [...counts].map(([reason, n]) =>
+    maybeStoredText(reason)
+      ? `${n} not known to be stored (${reason})`
+      : `${n} not stored (${reason}); the next --at has no result for ${n === 1 ? "it" : "them"}`,
   );
 }
 

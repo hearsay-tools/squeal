@@ -12,6 +12,17 @@ import type { FileReport, Origin, SideState } from "./status-at-report.js";
  * before/after question with a red proof, or missed the new test).
  */
 
+/**
+ * Row 023-19 (the third look, accepted limit): the end of a not-stored
+ * reason when the run's record could not say whether the gate kept the
+ * file; then it may be in the store.
+ */
+export const MAYBE_STORED = "it may have been stored, and the next status --at shows it";
+
+/** Whether a run's not-stored reason says the result may be stored after all. */
+export const maybeStoredText = (reason: string | undefined) =>
+  reason?.endsWith(MAYBE_STORED) === true;
+
 /** The most files a group lists one per line, and the paths a larger group names. */
 export const GROUP_SHOWN = 3;
 
@@ -21,10 +32,12 @@ export function originText(origin: Origin): string {
   if (origin.kind === "ci") return "from CI's export";
   if (origin.kind === "import") return `imported from CI at ${short(origin.commit)}`;
   if (origin.kind === "own") return "run in this worktree";
-  if (origin.kind === "run")
-    return origin.stored === true
-      ? "run by this command, stored"
-      : "run by this command, not stored";
+  if (origin.kind === "run") {
+    if (origin.stored === true) return "run by this command, stored";
+    // The third look: a stop before the record said whether the gate kept it.
+    if (maybeStoredText(origin.notStored)) return `run by this command; ${MAYBE_STORED}`;
+    return "run by this command, not stored";
+  }
   return `run in worktree ${(origin.worktreeId ?? "").slice(0, 8)}`;
 }
 

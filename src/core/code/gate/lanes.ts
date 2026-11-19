@@ -278,7 +278,7 @@ async function runOne(
   }
   // Row 023-19 (review wave-13 B2): a caller that may be stopped records each run as it ends.
   try {
-    options.ended?.(ran);
+    options.ended?.(files.map((ref, i) => ({ ref, evidence: ran[i] as TestFileEvidence })));
   } catch {
     // A listener's failure only costs its own record.
   }

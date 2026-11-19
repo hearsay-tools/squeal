@@ -109,10 +109,13 @@ export interface CollectOptions {
   readonly ran?: (run: GateRun) => Promise<void>;
   /**
    * Row 023-19 (review wave-13 B2): told each run's files as the run
-   * ended, with their evidence, before the other runs end; a rerun's files
-   * are told again. Absent, none is told.
+   * ended, each with its project and its evidence (the third look: a path
+   * two projects run is two files), before the other runs end; a rerun's
+   * files are told again. Absent, none is told.
    */
-  readonly ended?: (files: readonly TestFileEvidence[]) => void;
+  readonly ended?: (
+    files: readonly { readonly ref: TestFileRef; readonly evidence: TestFileEvidence }[],
+  ) => void;
   /**
    * Row 023-19 (review wave-13 B2): with the stores, the keeper's
    * decisions as they are made (`KeepOptions.decided`); read by

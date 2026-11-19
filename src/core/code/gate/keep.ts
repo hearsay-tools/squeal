@@ -241,7 +241,7 @@ export class Keeper {
       if (at === undefined) continue;
       const file = keeps(at.decision) ? atStoreKey(keys, before, c, at) : null;
       if (file !== null) kept.push(file);
-      else this.#notKept.add(c.ref.path, at);
+      else this.#notKept.add(c.ref.path, at, c.ref.project);
     }
     return { files: kept, seen: seenOf(keys, report, candidates, decided) };
   }
@@ -249,7 +249,8 @@ export class Keeper {
   /** Row 023-19 (review wave-13 B2): what is decided so far, to `KeepOptions.decided`. */
   #decided(): void {
     try {
-      this.#options.decided?.({ kept: this.keptFiles(), notKept: this.notKeptFiles() });
+      const notKept = [...this.#notKept.byProject(), ...this.#passNotKept.byProject()];
+      this.#options.decided?.({ kept: this.keptFiles(), notKept });
     } catch {
       // A listener's failure only costs its own record.
     }

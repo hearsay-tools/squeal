@@ -83,7 +83,12 @@ export interface KeepOptions {
 /** Row 023-19: what the keeper decided so far (`KeepOptions.decided`). */
 export interface KeeperDecisions {
   readonly kept: readonly { readonly ref: TestFileRef; readonly key: CheckKey }[];
-  readonly notKept: ReadonlyMap<string, string>;
+  /** Per project and path (row 023-19, the third look), each completed file not kept, and why. */
+  readonly notKept: readonly {
+    readonly project: string;
+    readonly path: string;
+    readonly reason: string;
+  }[];
 }
 
 /** One run's files that may be kept, and its reads to merge (row 020-39), until a pass writes them. */
@@ -356,7 +361,7 @@ function tellUnwaited(changed: number, held: readonly Kept[], at: PassContext): 
   // Row 020-59: a file moved after a busy store's refusal in an early pass is dropped as the
   // opening check drops one; one moved after a try a daemon never received is told.
   if (lost > 0 && at.check.lost) at.tell(changedAfterLoss(lost));
-  for (const file of held) at.notKept.add(file.ref.path, HELD);
+  for (const file of held) at.notKept.add(file.ref.path, HELD, file.ref.project);
 }
 
 /**
@@ -367,7 +372,7 @@ function tellUnwaited(changed: number, held: readonly Kept[], at: PassContext): 
 export function withoutGrown(runs: readonly Queued[], notKept: NotKept): Queued[] {
   return runs.map((q) => {
     const files = q.files.filter((file) => {
-      if (file.grown !== undefined) notKept.add(file.ref.path, file.grown);
+      if (file.grown !== undefined) notKept.add(file.ref.path, file.grown, file.ref.project);
       return file.grown === undefined;
     });
     return { ...q, files };
