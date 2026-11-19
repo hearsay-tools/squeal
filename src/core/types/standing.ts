@@ -108,14 +108,22 @@ export interface OverrunFile extends TestFileRef {
 }
 
 /**
+ * Row 011-405 (reviews 0.1.567 N1, 0.1.570 B2): what the next tiers of an
+ * overrunning tier's lane wait for, from the tiers in flight now. `either`:
+ * the lane holds a tier beside another and that other; no third instance
+ * opens, so they wait for one of the two to end. `it`: the tier ran beside
+ * one that has ended; no tier starts beside it, so they wait for it to end.
+ */
+export type LaneWaits = "either" | "it";
+
+/**
  * Row 011-399 (gh-233): a tier in flight whose every unfinished file has run
  * 10 times its last-known duration and at least 60 s (`overrunAt`), as its
  * daemon published it in the `yields` row: its start and since when, both
  * moved by calendar steps, the run's deadline (`runner.timeoutMs` from that
  * start; `null` with none), and its files that had not ended then. Its lane's next tier starts beside it; it runs on.
- * Row 011-405: a tier that itself runs beside another is published too.
- * While a lane holds two tiers, each one published there carries
- * `beside: true`: the lane opens no third instance, so its next tiers wait.
+ * Row 011-405: a tier that itself runs beside another is published too,
+ * with what its lane's next tiers wait for (`laneWaits`).
  */
 export interface TierOverrun {
   /**
@@ -127,8 +135,8 @@ export interface TierOverrun {
   readonly at: EpochMs;
   readonly deadline: EpochMs | null;
   readonly files: readonly OverrunFile[];
-  /** Row 011-405: its lane holds a tier beside another, so the lane's next tiers wait; absent otherwise. */
-  readonly beside?: true;
+  /** Row 011-405: what its lane's next tiers wait for; absent when the next tier starts beside it. */
+  readonly laneWaits?: LaneWaits;
 }
 
 /**
@@ -144,8 +152,8 @@ export interface FileOverrun {
   readonly usualMs: number | null;
   readonly since: EpochMs;
   readonly deadline: EpochMs | null;
-  /** Row 011-405: its tier runs beside another, so the lane's next tiers wait; absent otherwise. */
-  readonly beside?: true;
+  /** Row 011-405: what its lane's next tiers wait for, as its tier's `TierOverrun`; absent otherwise. */
+  readonly laneWaits?: LaneWaits;
 }
 
 /**
