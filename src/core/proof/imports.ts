@@ -1,7 +1,6 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import { isTestSide } from "./sides.js";
 
 /*
  * Spec 023 D5.2, amended 2026-11-19 (the human on issue #247, "A: explain
@@ -9,12 +8,13 @@ import { isTestSide } from "./sides.js";
  * guessing", `reviews/wave-14-fourth.md`): Squeal does not guess whether a
  * changed import is test or product code. When a named test is unchanged
  * in `base..HEAD`, every changed file its closure loads (directly or
- * through other files, added ones too) that is not already copied from
- * the test version (a test-side path, `isTestSide`, the named files and
- * the `--with` paths among them) stops the file unless `--source` names
- * it: exit 3, the files listed, with the exact reruns. Earlier rules that
- * read test code from names or imports are withdrawn: each review found
- * test code that read as product code and gave a false `proven`.
+ * through other files, added ones too) stops the file unless `--with` or
+ * `--source` names it: exit 3, the files listed, with the exact reruns.
+ * No name rule exempts one (`reviews/wave-14-fifth.md` 1): a changed
+ * `test/rows.ts` stops like any other. Earlier rules that read test code
+ * from names or imports are withdrawn: each review found test code that
+ * read as product code and gave a false `proven`. The closure here is the
+ * keyed one; `inputs.ts` checks what the runs read after they ran.
  */
 
 /** A named test's changed code-side imports while the test itself is unchanged. */
@@ -23,8 +23,6 @@ export interface ChangedImports {
   readonly unsettled: readonly RelativePath[];
   /** Named by `--source`: product code, taken from each side's code version. */
   readonly sources: readonly RelativePath[];
-  /** A changed import on the test side (named, `--with`, or by `isTestSide`), copied already. */
-  readonly testSide: boolean;
 }
 
 export interface ImportsInput {
@@ -33,7 +31,7 @@ export interface ImportsInput {
   readonly loadsOf: (ref: TestFileRef) => readonly RelativePath[];
   /** The diff `base..HEAD`. */
   readonly changed: ReadonlySet<RelativePath>;
-  /** The named files and the `--with` paths. */
+  /** The named files and the `--with` paths: copied from the test version. */
   readonly testSide: ReadonlySet<RelativePath>;
   /** The `--source` paths. */
   readonly source: ReadonlySet<RelativePath>;
@@ -51,16 +49,15 @@ export function importsOf(input: ImportsInput): ImportsAnswer {
   const imports = new Map<string, ChangedImports | null>();
   const candidates = new Set<RelativePath>();
   for (const ref of input.refs) {
-    const side = codeSideChanges(ref.path, input.loadsOf(ref), input.changed, input.testSide);
-    for (const path of side.code) candidates.add(path);
+    const code = changedImports(ref.path, input.loadsOf(ref), input.changed, input.testSide);
+    for (const path of code) candidates.add(path);
     imports.set(
       testFileId(ref),
-      side.code.length === 0
+      code.length === 0
         ? null
         : {
-            unsettled: side.code.filter((path) => !input.source.has(path)),
-            sources: side.code.filter((path) => input.source.has(path)),
-            testSide: side.testSide,
+            unsettled: code.filter((path) => !input.source.has(path)),
+            sources: code.filter((path) => input.source.has(path)),
           },
     );
   }
@@ -68,19 +65,18 @@ export function importsOf(input: ImportsInput): ImportsAnswer {
 }
 
 /**
- * The code-side paths of `file`'s closure `loads` that `changed` holds,
- * when `file` itself is unchanged; empty otherwise.
+ * The paths of `file`'s closure `loads` that `changed` holds, other than
+ * the named files and `--with` paths (`testSide`), when `file` itself is
+ * unchanged; empty otherwise. No name rule leaves one out.
  */
-export function codeSideChanges(
+export function changedImports(
   file: RelativePath,
   loads: readonly RelativePath[],
   changed: ReadonlySet<RelativePath>,
   testSide: ReadonlySet<RelativePath>,
-): { readonly code: RelativePath[]; readonly testSide: boolean } {
-  if (changed.has(file)) return { code: [], testSide: false };
-  const touched = [...new Set(loads)].filter((path) => path !== file && changed.has(path)).sort();
-  const code = touched.filter((path) => !isTestSide(path, testSide));
-  return { code, testSide: code.length < touched.length };
+): RelativePath[] {
+  if (changed.has(file)) return [];
+  return [...new Set(loads)].filter((path) => changed.has(path) && !testSide.has(path)).sort();
 }
 
 /** Whether the file stops (exit 3, nothing run): a changed import neither flag names. */

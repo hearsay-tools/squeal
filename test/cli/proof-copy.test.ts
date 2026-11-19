@@ -34,7 +34,17 @@ describe("squeal proof copies and storing (row 023-08, D5.2)", { timeout: 240_00
     });
     const a = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({ "test/helpers/wanted.ts": "export const wanted = 2;\n" });
-    const result = await prove(f, { files: [TEST.path], base: a });
+    // Row 023-21 (D5.2, "A: stop guessing"): the unchanged test stops until a flag names the helper.
+    const stopped = await prove(f, { files: [TEST.path], base: a });
+    expect(stopped.code, stopped.why).toBe(3);
+    expect(stopped.files[0]).toMatchObject({
+      changedImports: { unsettled: ["test/helpers/wanted.ts"] },
+    });
+    const result = await prove(f, {
+      files: [TEST.path],
+      base: a,
+      with: ["test/helpers/wanted.ts"],
+    });
     expect(result.code, result.why).toBe(0);
     expect(result.report.case).toBe("test");
     expect(result.files[0]).toMatchObject({

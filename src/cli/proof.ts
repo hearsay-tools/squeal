@@ -6,13 +6,7 @@ import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
 import { importsOf, stops, unusedPaths } from "../core/proof/imports.js";
-import {
-  defaultCase,
-  type ProofCase,
-  type Side,
-  sidesOf,
-  testSideCopies,
-} from "../core/proof/sides.js";
+import { type Side, sidesOf, testSideCopies } from "../core/proof/sides.js";
 import { NOT_RUN_BUDGET, proofExit, redCounts } from "../core/proof/verdict.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
@@ -20,7 +14,9 @@ import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
+import { caseOf, unrecordedWhy } from "./proof-case.js";
 import { endOf, provedFiles } from "./proof-files.js";
+import { unnamedOf } from "./proof-inputs.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
 import { rerunCommand, stopReruns } from "./proof-rerun.js";
@@ -153,6 +149,7 @@ async function prove(
 ): Promise<Proved | { usage: string }> {
   const withPaths = given.with;
   const testSide = new Set([...named, ...withPaths]);
+  const source = new Set(given.source);
   const headEntries = await commitEntries(common.root, head);
   const greenSide = { tests: head, code: head };
   const asked = [...named].map((path) => ({ project: "", path }));
@@ -180,29 +177,53 @@ async function prove(
         loadsOf,
         changed,
         testSide,
-        source: new Set(given.source),
+        source,
       });
       const unused = unusedPaths(withPaths, refs.map(loadsOf));
       const sourceUnused = unusedPaths(given.source, [candidates]);
       // Row 023-21: a stopped file runs nothing; the case is the others'.
       const proving = refs.filter((ref) => !stops(imports.get(testFileId(ref)) ?? null));
       const kind =
-        args.case ?? caseOf(base, proving.length > 0 ? proving : refs, loadsOf, changed, testSide);
+        args.case ??
+        caseOf(base, proving.length > 0 ? proving : refs, loadsOf, changed, testSide, source);
       if (typeof kind === "object") return kind;
       const sides = sidesOf(kind, base, head);
-      const red = proving.length === 0 ? null : await sideOf(common, sides.red, proving, testSide);
+      const red =
+        proving.length === 0 ? null : await sideOf(common, sides.red, proving, testSide, source);
+      // Row 023-21 (fifth look 2): what an unchanged named test's runs read, checked after them.
+      const unnamed = () =>
+        unnamedOf({
+          root: common.root,
+          refs: proving.filter((ref) => !changed.has(ref.path)),
+          loadsOf,
+          changed,
+          settled: new Set([...testSide, ...source]),
+          unrecorded: unrecordedWhy(common),
+        });
+      const afterRed = await unnamed();
       // The green side decides only after a red side that failed on red evidence (row 023-22).
       const decided =
         red === null
           ? []
-          : proving.filter((ref) => redCounts(endOf(red.files, ref).end, args.redErrors));
+          : proving.filter(
+              (ref) =>
+                !afterRed.has(testFileId(ref)) &&
+                redCounts(endOf(red.files, ref).end, args.redErrors),
+            );
       await open.run(decided);
       // P9: after the green side, so a short budget cuts the control run, not the verdict.
       const control =
         hasConditions(common.conditions) && decided.length > 0
-          ? await sideOf({ ...common, conditions: NO_CONDITIONS }, sides.red, decided, testSide)
+          ? await sideOf(
+              { ...common, conditions: NO_CONDITIONS },
+              sides.red,
+              decided,
+              testSide,
+              source,
+            )
           : null;
-      return { kind, red, control, imports, unused, sourceUnused };
+      const late = await unnamed();
+      return { kind, red, control, imports, unused, sourceUnused, late };
     },
   );
   const value = green.value;
@@ -222,6 +243,7 @@ async function prove(
       value?.imports ?? NO_IMPORTS.imports,
       base,
       args.redErrors,
+      value?.late ?? NO_IMPORTS.late,
     ),
   };
 }
@@ -229,39 +251,10 @@ async function prove(
 /** No changed imports read and no `--with` path unused: the green side keyed no named file. */
 const NO_IMPORTS = {
   imports: new Map(),
+  late: new Map(),
   unused: [] as RelativePath[],
   sourceUnused: [] as RelativePath[],
 } as const;
-
-/**
- * D5's default case: one for every named file, from the diff `base..HEAD`
- * and each file's closure now; a usage problem when the files need
- * different ones, or one needs neither. Row 023-21: `named` holds the
- * `--with` paths too, so a helper given there counts as test-side.
- */
-function caseOf(
-  base: string,
-  refs: readonly TestFileRef[],
-  loads: (ref: TestFileRef) => readonly RelativePath[],
-  changed: ReadonlySet<RelativePath>,
-  named: ReadonlySet<RelativePath>,
-): ProofCase | { usage: string } {
-  const cases = new Map<RelativePath, ProofCase | null>();
-  for (const ref of refs) cases.set(ref.path, defaultCase(ref.path, loads(ref), changed, named));
-  const none = [...cases].filter(([, kind]) => kind === null).map(([path]) => path);
-  if (none.length > 0)
-    return {
-      usage: `${base.slice(0, 9)}..HEAD changes nothing ${none.join(", ")} loads; give --case source or --case test`,
-    };
-  const kinds = new Set(cases.values());
-  if (kinds.size > 1) {
-    const each = [...cases].map(([path, kind]) => `${path}: ${kind}`).join(", ");
-    return {
-      usage: `the named files need different cases (${each}); give --case or prove them in separate calls`,
-    };
-  }
-  return [...kinds][0] as ProofCase;
-}
 
 interface Common {
   readonly root: AbsolutePath;
@@ -281,9 +274,11 @@ async function sideOf(
   side: Side,
   refs: readonly TestFileRef[],
   named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath>,
 ) {
   const tests = await commitEntries(common.root, side.tests);
   const code = await commitEntries(common.root, side.code);
-  const also = side.tests === side.code ? [] : testSideCopies(tests, code, named);
-  return runSide({ ...common, side, files: refs, also, tests, code, named });
+  // Row 023-21: a `--source` path is never copied from the test version, whatever its name.
+  const also = side.tests === side.code ? [] : testSideCopies(tests, code, named, source);
+  return runSide({ ...common, side, files: refs, also, tests, code, named, source });
 }

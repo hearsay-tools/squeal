@@ -47,15 +47,25 @@ const TEST_FOLDERS = new Set([
   "testdata",
 ]);
 
+const NO_PATHS: ReadonlySet<RelativePath> = new Set();
+
 /** A test file's own name: `*.test.*`, `*.spec.*`, `*_test.*`, `test_*.py`. */
 const TEST_NAME = /(\.(test|spec)\.[^/]+|_test\.[^/.]+|^test_[^/]+\.py)$/;
 
 /**
  * D5.2: whether `path` is on the test side, not the code side: a named
  * test file, a file in a test folder (`TEST_FOLDERS`), or a file with a
- * test file's name.
+ * test file's name; never a `--source` path (row 023-21). For an
+ * unchanged named test the name rule decides nothing: every changed
+ * import needs a flag (`imports.ts`).
  */
-export function isTestSide(path: RelativePath, named: ReadonlySet<RelativePath>): boolean {
+export function isTestSide(
+  path: RelativePath,
+  named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath> = NO_PATHS,
+): boolean {
+  // Row 023-21 (D5.2, "A: stop guessing"): a `--source` path is product code, whatever its name.
+  if (source.has(path)) return false;
   if (named.has(path)) return true;
   const parts = path.split("/");
   const name = parts.pop() ?? "";
@@ -73,10 +83,11 @@ export function defaultCase(
   loads: readonly RelativePath[],
   changed: ReadonlySet<RelativePath>,
   named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath> = NO_PATHS,
 ): ProofCase | null {
   const touched = [...new Set([file, ...loads])].filter((path) => changed.has(path));
   if (touched.length === 0) return null;
-  return touched.some((path) => !isTestSide(path, named)) ? "source" : "test";
+  return touched.some((path) => !isTestSide(path, named, source)) ? "source" : "test";
 }
 
 /** One version's entry for a path: its git mode and blob. */
@@ -97,10 +108,11 @@ export function testSideCopies(
   tests: ReadonlyMap<RelativePath, Entry>,
   code: ReadonlyMap<RelativePath, Entry>,
   named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath> = NO_PATHS,
 ): RelativePath[] {
   const out: RelativePath[] = [];
   for (const [path, entry] of tests) {
-    if (!isTestSide(path, named)) continue;
+    if (!isTestSide(path, named, source)) continue;
     const there = code.get(path);
     if (there === undefined || there.blob !== entry.blob || there.mode !== entry.mode)
       out.push(path);
@@ -119,9 +131,10 @@ export function missingImport(
   tests: ReadonlyMap<RelativePath, Entry>,
   code: ReadonlyMap<RelativePath, Entry>,
   named: ReadonlySet<RelativePath>,
+  source: ReadonlySet<RelativePath> = NO_PATHS,
 ): RelativePath | null {
   for (const path of [...loads].sort()) {
-    if (isTestSide(path, named)) continue;
+    if (isTestSide(path, named, source)) continue;
     if (!code.has(path) && tests.has(path)) return path;
   }
   return null;

@@ -68,6 +68,8 @@ export interface SideInput {
   readonly tests: ReadonlyMap<RelativePath, Entry>;
   readonly code: ReadonlyMap<RelativePath, Entry>;
   readonly named: ReadonlySet<RelativePath>;
+  /** Row 023-21 (D5.2): the `--source` paths, product code whatever their names; passed to `missingImport`. */
+  readonly source?: ReadonlySet<RelativePath>;
   readonly keying: KeyingOptions & CheckoutOptions;
   /** `CliIo.relaunch`, for the run's child. */
   readonly relaunch: readonly string[] | undefined;
@@ -138,7 +140,7 @@ export async function withSide<T>(
         continue;
       }
       const loads = file.at.loads ?? [];
-      const missing = missingImport(loads, input.tests, input.code, input.named);
+      const missing = missingImport(loads, input.tests, input.code, input.named, input.source);
       const needed = missing === null ? needs(file) : null;
       if (missing !== null)
         files.set(id, unknown(`imports ${missing}, absent at ${side.code.slice(0, 9)}`));

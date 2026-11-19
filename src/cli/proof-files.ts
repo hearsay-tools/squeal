@@ -1,6 +1,7 @@
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions } from "../core/proof/conditions.js";
 import { type ChangedImports, stops } from "../core/proof/imports.js";
+import { type UnnamedInputs, unnamedReason } from "../core/proof/inputs.js";
 import {
   notRunWhy,
   redCounts,
@@ -33,6 +34,8 @@ export function provedFiles(
   imports: ImportsOf,
   base: string,
   redErrors: readonly string[] = [],
+  /** Row 023-21 (fifth look 2): changed inputs the runs read that the call did not name. */
+  late: ReadonlyMap<string, UnnamedInputs> = new Map(),
 ): Pick<ProofReport, "runs" | "checkoutMs" | "files"> {
   const conditioned = hasConditions(conditions);
   const redMs = red?.checkoutMs ?? null;
@@ -48,11 +51,31 @@ export function provedFiles(
     files: green.refs.map((ref) => {
       const changed = imports.get(testFileId(ref)) ?? null;
       const stopped = stops(changed) ? stoppedSide(changed, base) : null;
-      return {
+      const file = {
         ...fileOf(ref, green.files, red?.files, control?.files, conditioned, stopped, redErrors),
         imports: changed,
       };
+      const unnamed = stopped === null ? late.get(testFileId(ref)) : undefined;
+      return unnamed === undefined ? file : withUnnamed(file, unnamed);
     }),
+  };
+}
+
+/**
+ * Row 023-21 (fifth look 2): a file whose runs read changed inputs the call
+ * did not name: not comparable, never `proven`, whatever its sides ended
+ * as; the inputs join its unsettled imports, so the stop's reruns name them.
+ */
+function withUnnamed(file: ProofFile, unnamed: UnnamedInputs): ProofFile {
+  const imports = file.imports ?? { unsettled: [], sources: [] };
+  return {
+    ...file,
+    verdict: "not comparable",
+    reason: unnamedReason(unnamed),
+    imports: {
+      ...imports,
+      unsettled: [...new Set([...imports.unsettled, ...unnamed.paths])].sort(),
+    },
   };
 }
 
