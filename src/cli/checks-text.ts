@@ -1,3 +1,4 @@
+import { lintGroupOf } from "../core/lint/pass/moment.js";
 import type { CheckMoment, CheckRunner, ResolvedGroup } from "../core/types/check-groups.js";
 import type { Policy } from "../core/types/policy.js";
 import { TESTS_GROUP } from "../core/types/scheduler.js";
@@ -146,14 +147,18 @@ function resultText({ pass, fail, notCurrent }: CheckResults): string {
 }
 
 /**
- * Lint as the config enables it when no `checks` entry is a lint check: the
- * edited file at each edit (spec 017 D5), with no run command of its own.
+ * Lint as the config enables it for the tools no lint check owns (019 D2):
+ * the edited file at each edit (spec 017 D5), with no run command of its
+ * own. Ownership is the lint pass's own (`lintGroupOf`); with every tool
+ * owned, no block (review of cand/0.1.565).
  */
 function defaultLintBlock(policy: Policy, command: string): string | null {
-  if (!policy.lint.enabled || policy.checks.some((group) => "lint" in group)) return null;
+  if (!policy.lint.enabled) return null;
+  const tools = policy.lint.tools.filter((tool) => lintGroupOf(policy, tool) === null);
+  if (tools.length === 0) return null;
   return [
     "lint",
-    `  Selects: lint with ${policy.lint.tools.join(" and ")}`,
+    `  Selects: lint with ${tools.join(" and ")}`,
     "  Runs: after each edit, on the edited file",
     `  Findings: \`${command} lint\``,
     "",

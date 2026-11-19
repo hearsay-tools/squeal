@@ -217,6 +217,51 @@ describe("squeal checks (row 005-126)", () => {
     }
   });
 
+  // Review of cand/0.1.565: lint tools no lint check owns keep lint's own moment (019 D2), and
+  // `squeal checks` lists them (D6), as the lint pass reads ownership (`lintGroupOf`).
+  describe("the default lint check beside lint checks", () => {
+    const LINT_BLOCK = (tools: string) =>
+      [
+        "lint",
+        `  Selects: lint with ${tools}`,
+        "  Runs: after each edit, on the edited file",
+        "  Findings: `squeal lint`",
+      ].join("\n");
+
+    it("lists the tools no lint check owns, after each edit", () => {
+      const config = {
+        lint: { enabled: true, tools: ["eslint", "oxlint"] },
+        checks: [{ name: "style", lint: ["eslint"], at: "manual" }],
+      };
+      const { stdout } = run(repo(config));
+      expect(stdout).toContain(
+        "style\n  Selects: lint with eslint\n  Runs: only on request: Squeal does not start it;",
+      );
+      expect(stdout).toContain(`\n${LINT_BLOCK("oxlint")}\n`);
+    });
+
+    it("lists no default lint check when lint checks own every tool", () => {
+      const config = {
+        lint: { enabled: true, tools: ["eslint", "oxlint"] },
+        checks: [
+          { name: "style", lint: ["eslint"], at: "manual" },
+          { name: "fast", lint: ["oxlint"], at: "commit" },
+        ],
+      };
+      expect(run(repo(config)).stdout).not.toContain("\nlint\n");
+      const all = { lint: { enabled: true }, checks: [{ name: "style", lint: true, at: "pause" }] };
+      expect(run(repo(all)).stdout).not.toContain("\nlint\n");
+    });
+
+    it("lists every tool with no lint check, and no lint with lint off", () => {
+      const tests = [{ name: "unit", runner: "vitest", tests: ["test/**"], at: "edit" }];
+      const on = { lint: { enabled: true, tools: ["eslint", "oxlint"] }, checks: tests };
+      expect(run(repo(on)).stdout).toContain(`\n${LINT_BLOCK("eslint and oxlint")}\n`);
+      const off = { lint: { enabled: false }, checks: tests };
+      expect(run(repo(off)).stdout).not.toContain("lint");
+    });
+  });
+
   it("refuses an argument", () => {
     const { code, stderr } = run(repo({}), ["--json"]);
     expect(code).toBe(2);
