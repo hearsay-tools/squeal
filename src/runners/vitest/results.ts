@@ -3,7 +3,12 @@ import type { SerializedError, TestCase, TestModule } from "vitest/node";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { cap } from "../../core/text.js";
-import type { CheckError, CheckErrorCause, RunOutcome } from "../../core/types/check.js";
+import type {
+  CheckError,
+  CheckErrorCause,
+  ErrorStage,
+  RunOutcome,
+} from "../../core/types/check.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { CheckRunResult, EnumeratedCheck } from "../../core/types/runner.js";
 
@@ -40,7 +45,21 @@ export function toCheckError(error: SerializedError, paths: WorktreePaths): Chec
     diff: diff === null ? null : paths.relativizeText(diff),
     ...(code === undefined ? {} : { code }),
     ...(causes.length === 0 ? {} : { causes }),
+    ...(hasAssertionEvidence(error) ? { assertionEvidence: true as const } : {}),
   };
+}
+
+/**
+ * Row 023-22: an error carries assertion evidence whatever its name when it
+ * holds the expected and actual values (chai, `node:assert`) or a matcher
+ * result (Jest's and Playwright's `expect`).
+ */
+function hasAssertionEvidence(error: SerializedError): boolean {
+  const { matcherResult } = error as { matcherResult?: unknown };
+  return (
+    ("expected" in error && "actual" in error) ||
+    (typeof matcherResult === "object" && matcherResult !== null)
+  );
 }
 
 /** Links of a cause chain kept, outermost first (task 001-361). */
@@ -73,6 +92,27 @@ function causeChain(cause: unknown, paths: WorktreePaths): CheckErrorCause[] {
     link = object !== null && "cause" in object ? object.cause : undefined;
   }
   return chain;
+}
+
+/**
+ * Row 023-22: where in a test its errors happened, from Vitest's own
+ * record of the test's hooks: a hook that threw keeps the state `run`, as
+ * Vitest sets `pass` only after every hook of its kind returned. `null`
+ * when the record is not there (`TestCase.task` is Vitest's internal).
+ */
+export function testStage(testCase: TestCase): ErrorStage | null {
+  const { task } = testCase as unknown as {
+    task?: { result?: { hooks?: Readonly<Record<string, string>> } };
+  };
+  const result = task?.result;
+  if (result === undefined) return null;
+  return Object.values(result.hooks ?? {}).some((state) => state !== "pass") ? "hook" : "body";
+}
+
+/** The error with where in its test it happened: a timeout by Vitest's message, else `stage`. */
+export function withStage(error: CheckError, stage: ErrorStage | null): CheckError {
+  const where = TIMEOUT.test(error.message) ? "timeout" : stage;
+  return where === null ? error : { ...error, stage: where };
 }
 
 /** Vitest's message for a test or hook that ran past its timeout. */
@@ -157,7 +197,11 @@ export function toCheckRunResult(
       ? { path: testFile.path, line: location.line, column: location.column }
       : null,
     errors:
-      outcome === "fail" ? (result.errors ?? []).map((e) => withLoad(toCheckError(e, paths))) : [],
+      outcome === "fail"
+        ? (result.errors ?? []).map((e) =>
+            withStage(withLoad(toCheckError(e, paths)), testStage(testCase)),
+          )
+        : [],
   };
 }
 
