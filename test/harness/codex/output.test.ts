@@ -6,7 +6,6 @@ import {
   capContext,
   deny,
 } from "../../../src/harness/codex/output.js";
-import { DEFAULT_COVERAGE as VITEST_ONLY } from "../../../src/harness/shared/coverage.js";
 import { PRIMER, primer } from "../../../src/harness/shared/primer.js";
 
 const lines = (n: number) =>
@@ -54,13 +53,6 @@ describe("capContext", () => {
     expect(capped).toContain(
       `\nSQUEAL · cut to fit a Codex hook; \`${command} status\` has the rest.\n`,
     );
-  });
-
-  it("keeps the primer that names node:test whole too (003 lessons, defect 1)", () => {
-    const tail = `\n\n${primer("squeal", { ...VITEST_ONLY, nodeTest: [{ name: "unit", include: ["test/*.test.mjs"] }] })}`;
-    const capped = capContext(`${lines(600)}${tail}`);
-    expect(capped.length).toBeLessThanOrEqual(CONTEXT_CAP_CHARS);
-    expect(capped.endsWith(tail)).toBe(true);
   });
 
   it("cuts a text with no primer and no line breaks", () => {

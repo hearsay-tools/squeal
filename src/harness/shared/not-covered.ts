@@ -1,9 +1,8 @@
-import { DESCRIPTIONS } from "../../runners/descriptions.js";
-import type { Coverage } from "./coverage.js";
+import { DESCRIPTIONS, type RunnerCoverage } from "../../runners/descriptions.js";
 
 /*
- * The primer's last sentence, on its own so `squeal checks` ends with it
- * (row 005-126) without bundling the primer into the CLI.
+ * What Squeal does not run, the sentence `squeal checks` ends with (row
+ * 005-126). The start message said it until row 005-128.
  */
 
 /**
@@ -11,7 +10,7 @@ import type { Coverage } from "./coverage.js";
  * amended 2026-10-18 (task 004-81): with the test files each runner's
  * excludes drop named, as its description names them.
  */
-export function notCovered(coverage: Coverage): string {
+export function notCovered(coverage: RunnerCoverage): string {
   const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
   const what =
     files.length === 0

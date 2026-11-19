@@ -4,7 +4,6 @@ import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import type { EpochMs } from "../../core/types/common.js";
 import type { RegisterOptions } from "../../core/types/delivery.js";
 import type { HookContext, HookLocation } from "./context.js";
-import { coverageOf } from "./coverage.js";
 import { registerFirst, type StartFirst } from "./ensure.js";
 import type { HookDeps } from "./hook.js";
 import { withPrimer } from "./primer.js";
@@ -53,7 +52,7 @@ export async function registerOwing(
     owesText: owed,
   });
   return owed.primer
-    ? withPrimer(registration, deps.command, coverageOf(context), { skill: deps.skill })
+    ? withPrimer(registration, deps.command, { skill: deps.skill })
     : formatRegistration(registration, MESSAGE_CAP_CHARS, deps.command);
 }
 

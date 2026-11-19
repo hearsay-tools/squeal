@@ -8,9 +8,6 @@ import { readHeader } from "../../src/core/state/header.js";
 import { clockText } from "../../src/core/state/slow-text.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
-import { DEFAULT_COVERAGE } from "../../src/harness/shared/coverage.js";
-import { primer } from "../../src/harness/shared/primer.js";
-import { CODEX } from "../harness/primer-helpers.js";
 import {
   FAST,
   keys,
@@ -27,9 +24,10 @@ import {
  * Row 019-16 (spec 019 D6, wave 2's contract "Unchanged without `checks`"):
  * today's texts, recorded before the per-group lines, the moments sentence
  * and the commit line were written. With no `checks` key each must stay
- * byte-identical: the primer, the status text and the header's two forms.
- * Row 005-94 (the human, 2026-11-17) changed the full form: no counts or
- * checkpoint, and no line after the title with nothing to say.
+ * byte-identical: the status text and the header's two forms. Row 005-94
+ * (the human, 2026-11-17) changed the full form: no counts or checkpoint, and
+ * no line after the title with nothing to say. Row 005-128 removed the primer
+ * this pinned: the start message no longer names groups.
  */
 
 let runtime: string;
@@ -114,23 +112,6 @@ describe("texts without a `checks` key are today's (019-16 golden)", () => {
       Complexity: no file counted yet.
       More: \`squeal status --full\` adds the worktree and daemon
       ",
-      }
-    `);
-  });
-
-  it("the primer under each slow policy", () => {
-    const slow = (o: object) => ({ ...DEFAULT_COVERAGE, slow: { files: 2, ...o } });
-    expect({
-      none: primer(),
-      continuous: primer("squeal", slow({ requireSlowSuite: false })),
-      idleRequired: primer("squeal", slow({ requireSlowSuite: true, pausesOnly: true })),
-      codex: primer(CODEX, slow({ requireSlowSuite: true })),
-    }).toMatchInlineSnapshot(`
-      {
-        "codex": "Squeal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: \`node --disable-warning=ExperimentalWarning /home/someone/.codex/plugins/cache/squeal/squeal/0.1.107/dist/cli/squeal.mjs status --wait 60000 <path>...\` for the verdict on files you just changed, and the CLI's \`status --wait 60000\` before you finish. Slow test files run after the fast tests; this repository requires them once you change a file: before you say the task is done, wait with the CLI's \`run --slow --wait 60000\` unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once. Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: the CLI's \`retry <file> --reason load|environment\`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest, with 2 slow test files at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself.",
-        "continuous": "Squeal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: \`squeal status --wait 60000 <path>...\` for the verdict on files you just changed, and \`squeal status --wait 60000\` before you finish. Slow test files run after the fast tests; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with \`squeal run --slow --wait 60000\`. A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call. Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: \`squeal retry <file> --reason load|environment\`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest, with 2 slow test files at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself.",
-        "idleRequired": "Squeal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: \`squeal status --wait 60000 <path>...\` for the verdict on files you just changed, and \`squeal status --wait 60000\` before you finish. Slow test files run between your turns; this repository requires them once you change a file: before you say the task is done, wait with \`squeal run --slow --wait 60000\` unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you once. A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call. Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: \`squeal retry <file> --reason load|environment\`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest, with 2 slow test files at the daemon's last listing. Squeal does not cover typecheck, build or any other test suite: run those yourself.",
-        "none": "Squeal runs this repository's Vitest tests in the background after each edit; a SQUEAL message with your next tool call means a check changed; passes stay silent unless they follow a failure, so keep working; do not run Vitest to learn whether your edits broke something. Wait only when you need a result before your next step: \`squeal status --wait 60000 <path>...\` for the verdict on files you just changed, and \`squeal status --wait 60000\` before you finish. Run tests yourself only when no daemon is validating, when Squeal's run left a result unknown, or when the repository's own gate requires it. For a failure from load or a stopped service: \`squeal retry <file> --reason load|environment\`, never past a real one. A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed. Squeal covers Vitest. Squeal does not cover typecheck, build or any other test suite: run those yourself.",
       }
     `);
   });

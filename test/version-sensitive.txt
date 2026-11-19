@@ -77,15 +77,7 @@
 #   test/evals/regrade-cells.test.ts
 #   test/evals/regrade.test.ts
 #   test/evals/truth.test.ts
-#   test/harness/codex/output.test.ts
 #   test/harness/opencode/turn.test.ts
-#   test/harness/primer-coverage.test.ts
-#   test/harness/primer-listing.test.ts
-#   test/harness/primer-no-edit-cap.test.ts
-#   test/harness/primer-over-cap.test.ts
-#   test/harness/primer-wait-forms.test.ts
-#   test/harness/primer-wait.test.ts
-#   test/harness/shared/primer-pytest.test.ts
 #   test/harness/shared/skill-pytest.test.ts
 #   test/harness/shared/test-command-pytest.test.ts
 #   test/harness/skill.test.ts

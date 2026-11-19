@@ -36,8 +36,8 @@ export function checksCommand(args: readonly string[], io: CliIo): number {
     readTransaction(store, () => storeView(store, root, view)),
   );
   const store = read === null || "available" in read ? null : read;
-  // The primer's sentence on what Squeal does not run, for this repository's runners.
-  const left = notCovered({ ...runnerCoverage(policy, root), slow: null });
+  // What Squeal does not run, for this repository's runners.
+  const left = notCovered(runnerCoverage(policy, root));
   io.stdout(checksText(policy, view.groups, store, statusCommand(io.env ?? process.env), left));
   return 0;
 }

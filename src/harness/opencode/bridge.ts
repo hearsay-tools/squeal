@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
-import { coverageOf } from "../shared/coverage.js";
 import { ensure } from "../shared/ensure.js";
 import { HAND_OFF_BOUND_MS, HandOff, type OutputStream, written } from "../shared/hand-off.js";
 import { findHarnessProcess } from "../shared/harness-process.js";
@@ -94,7 +93,7 @@ export async function register(
       return {
         header,
         registered: true,
-        primer: primer(deps.command, coverageOf(context), { skill: deps.skill }),
+        primer: primer(deps.command, { skill: deps.skill }),
         stopWaitMs: readPolicy(location.root).stop.waitMs,
       };
     },
@@ -120,7 +119,7 @@ export async function prompt(
   const input = consumerInput(request.consumer);
   const text = await submitPrompt(input, location, deps, { register: true });
   const current = await withContext(input, location, deps, async (context) =>
-    isRegistered(context) ? primer(deps.command, coverageOf(context), { skill: deps.skill }) : null,
+    isRegistered(context) ? primer(deps.command, { skill: deps.skill }) : null,
   );
   return { text, stopWaitMs: readPolicy(location.root).stop.waitMs, primer: current };
 }

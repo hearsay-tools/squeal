@@ -28,7 +28,7 @@ export interface StoreView {
 
 /**
  * When a check runs, and who starts it, for each moment but `manual`
- * (`runs`): spec 019 D6's words for the moment, as the primer says them.
+ * (`runs`): spec 019 D6's words for the moment.
  */
 const WHEN: Readonly<Record<Exclude<CheckMoment, "manual">, string>> = {
   edit: "after each edit",

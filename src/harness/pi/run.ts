@@ -1,6 +1,5 @@
 import { readPolicy } from "../../core/daemon/policy.js";
 import { locate, usesSqueal } from "../shared/context.js";
-import { coverageOf } from "../shared/coverage.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { type HookDeps, withContext } from "../shared/hook.js";
 import { primer } from "../shared/primer.js";
@@ -36,7 +35,7 @@ export async function startRun(session: PiSession, deps: PiDeps): Promise<RunAns
   const answer = await withContext(consumerInput(session), location, deps, async (opened) => {
     // Review 0.1.546 B1: a registration this worker handed is not owed again.
     const context = await entered(opened, deps);
-    const section = primer(deps.command, coverageOf(context));
+    const section = primer(deps.command, { skill: deps.skill });
     // Row 005-117: the prompt's news, as 001's prompt registers; the primer is `section`.
     return { primer: section, news: await turnNews(context, location, deps, { register: true }) };
   });

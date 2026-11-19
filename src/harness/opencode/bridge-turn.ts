@@ -1,7 +1,6 @@
 import { readPolicy } from "../../core/daemon/policy.js";
 import { endTurn as idleAt } from "../../core/delivery/turn.js";
 import { type HookContext, locate } from "../shared/context.js";
-import { coverageOf } from "../shared/coverage.js";
 import { deliver } from "../shared/deliver.js";
 import { denyCurrentTestCommand, denyOnRegression, testCommandOf } from "../shared/deny.js";
 import { withContext } from "../shared/hook.js";
@@ -94,7 +93,7 @@ export const after: OcHandler<"after"> = async (request, deps) => {
       if (request.primer !== true) return { text };
       return {
         text,
-        primer: primer(deps.command, coverageOf(context), { skill: deps.skill }),
+        primer: primer(deps.command, { skill: deps.skill }),
         stopWaitMs: readPolicy(location.root).stop.waitMs,
       };
     },
