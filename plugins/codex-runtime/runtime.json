@@ -76,7 +76,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "70faccc560576e703d7fdbeacf2888bfc818da4ce51dce940177774cbdaa5992",
+      "sha256": "cc953e0cfe1e44df9b28a5b33d1f8383a2b644b53ff2a00729e620b560468ccb",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {

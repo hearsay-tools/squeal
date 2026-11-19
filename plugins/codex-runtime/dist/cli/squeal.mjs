@@ -16109,7 +16109,7 @@ function parseCommitReport(raw) {
   if (lint2 === null) return null;
   const waiting2 = waitingOf(value.waiting);
   const { from } = value;
-  const { untracked, unanswered, notDeterminedFiles } = value.tests;
+  const { untracked, unanswered: unanswered2, notDeterminedFiles } = value.tests;
   const files5 = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
@@ -16117,7 +16117,7 @@ function parseCommitReport(raw) {
     tests: {
       ...pick(tests2, TEST_KEYS),
       ...isCount2(untracked) && untracked > 0 ? { untracked } : {},
-      ...isCount2(unanswered) && unanswered > 0 ? { unanswered } : {},
+      ...isCount2(unanswered2) && unanswered2 > 0 ? { unanswered: unanswered2 } : {},
       ...files5.length > 0 ? { notDeterminedFiles: files5 } : {}
     },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
@@ -16145,10 +16145,10 @@ function notDeterminedOf(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((entry4) => {
     if (typeof entry4 !== "object" || entry4 === null) return [];
-    const { project, path, through, more: more2, deleted, unanswered } = entry4;
+    const { project, path, through, more: more2, deleted, unanswered: unanswered2 } = entry4;
     if (!isText(project) || !isText(path)) return [];
     if (!Array.isArray(through) || !through.every(isText)) return [];
-    const silent2 = Array.isArray(unanswered) ? through.filter((p) => unanswered.includes(p)) : [];
+    const silent2 = Array.isArray(unanswered2) ? through.filter((p) => unanswered2.includes(p)) : [];
     return [
       {
         project,
@@ -16236,16 +16236,16 @@ function commitReportText(report4) {
     parts3.push([`lint ${plural(lint2.findings, "finding")}`, ...more2].join(", "));
   }
   const untracked = Math.min(tests2.untracked ?? 0, tests2.notDetermined);
-  const unanswered = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
-  const unstaged = tests2.notDetermined - untracked - unanswered;
+  const unanswered2 = Math.min(tests2.unanswered ?? 0, tests2.notDetermined - untracked);
+  const unstaged = tests2.notDetermined - untracked - unanswered2;
   if (unstaged > 0) {
     parts3.push(`${plural(unstaged, "test file")} not determined (unstaged changes)`);
   }
   if (untracked > 0) {
     parts3.push(`${plural(untracked, "test file")} not determined (untracked files)`);
   }
-  if (unanswered > 0) {
-    parts3.push(`${plural(unanswered, "test file")} not determined (git did not answer)`);
+  if (unanswered2 > 0) {
+    parts3.push(`${plural(unanswered2, "test file")} not determined (git did not answer)`);
   }
   if (tests2.running > 0) parts3.push(`${plural(tests2.running, "test file")} still running`);
   if (tests2.unknown > 0) parts3.push(`${plural(tests2.unknown, "test file")} unknown`);
@@ -54927,11 +54927,11 @@ async function differingPaths(view, committed) {
   for (const path of committed.keys()) consider(path);
   if (absent3.length > 0) for (const path of await view.ignoredAmong(absent3)) differing.delete(path);
   if (both.size === 0) return { differing, unanswered: /* @__PURE__ */ new Set() };
-  const { blobs, unanswered } = await view.storedBlobs(both);
+  const { blobs, unanswered: unanswered2 } = await view.storedBlobs(both);
   for (const [path, stored3] of blobs) {
     if (stored3 === committed.get(path)) differing.delete(path);
   }
-  return { differing, unanswered };
+  return { differing, unanswered: unanswered2 };
 }
 function environmentDiffers(view, differing) {
   return [...differing].some((path) => view.isEnvironmentInput(path));
@@ -54953,7 +54953,7 @@ async function deletedTestFiles(view, committed) {
   return deleted;
 }
 function testTally(view, side) {
-  const { differing, untracked = /* @__PURE__ */ new Set(), unanswered = /* @__PURE__ */ new Set(), deleted = [] } = side;
+  const { differing, untracked = /* @__PURE__ */ new Set(), unanswered: unanswered2 = /* @__PURE__ */ new Set(), deleted = [] } = side;
   const { asked = () => false, held: held4 = () => false } = side;
   const environment = [...differing].filter((path) => view.isEnvironmentInput(path));
   const byFile = /* @__PURE__ */ new Map();
@@ -54986,9 +54986,9 @@ function testTally(view, side) {
     const apart = [.../* @__PURE__ */ new Set([...environment, ...closure.filter((path) => differing.has(path))])];
     if (apart.length > 0) {
       counts.notDetermined += 1;
-      const by = apartBy(apart, untracked, unanswered);
+      const by = apartBy(apart, untracked, unanswered2);
       if (by !== "unstaged") counts[by] += 1;
-      named4.push(notDeterminedFile(record2.testFile, apart, unanswered));
+      named4.push(notDeterminedFile(record2.testFile, apart, unanswered2));
       continue;
     }
     const states = byFile.get(fileId2(record2.testFile.project, record2.testFile.path)) ?? [];
@@ -55004,25 +55004,25 @@ function testTally(view, side) {
   }
   return { counts: shownCounts(counts, named4), running: running2 };
 }
-function apartBy(apart, untracked, unanswered) {
+function apartBy(apart, untracked, unanswered2) {
   if (apart.every((path) => untracked.has(path))) return "untracked";
-  const differs = (path) => !untracked.has(path) && !unanswered.has(path);
+  const differs = (path) => !untracked.has(path) && !unanswered2.has(path);
   return apart.some(differs) ? "unstaged" : "unanswered";
 }
 function shownCounts(counts, named4) {
-  const { untracked, unanswered, ...rest2 } = counts;
+  const { untracked, unanswered: unanswered2, ...rest2 } = counts;
   const kept6 = named4.slice(0, NOT_DETERMINED_KEPT);
   return {
     ...rest2,
     ...untracked > 0 ? { untracked } : {},
-    ...unanswered > 0 ? { unanswered } : {},
+    ...unanswered2 > 0 ? { unanswered: unanswered2 } : {},
     ...kept6.length > 0 ? { notDeterminedFiles: kept6 } : {}
   };
 }
-function notDeterminedFile(testFile, apart, unanswered) {
+function notDeterminedFile(testFile, apart, unanswered2) {
   const more2 = apart.length - THROUGH_KEPT;
   const through = apart.slice(0, THROUGH_KEPT);
-  const silent2 = through.filter((path) => unanswered.has(path));
+  const silent2 = through.filter((path) => unanswered2.has(path));
   return {
     project: testFile.project,
     path: testFile.path,
@@ -55305,7 +55305,7 @@ async function storedBlobs(root, hashes) {
   const files5 = read6.flatMap((file) => file === null ? [] : [file]);
   const none3 = { blobs: /* @__PURE__ */ new Map(), unanswered: /* @__PURE__ */ new Set() };
   if (files5.length === 0) return none3;
-  const unanswered = { ...none3, unanswered: new Set(files5.map((file) => file.path)) };
+  const unanswered2 = { ...none3, unanswered: new Set(files5.map((file) => file.path)) };
   let out2;
   try {
     out2 = await runGit(root, ["hash-object", "--stdin-paths"], {
@@ -55314,10 +55314,10 @@ async function storedBlobs(root, hashes) {
       timeoutMs: STORED_BLOBS_TIMEOUT_MS
     });
   } catch {
-    return unanswered;
+    return unanswered2;
   }
   const blobs = out2.split("\n").filter((line) => line !== "");
-  if (blobs.length !== files5.length) return unanswered;
+  if (blobs.length !== files5.length) return unanswered2;
   const still = await mapConcurrent(files5, (file) => statOf2(join101(root, file.path)));
   const stored3 = /* @__PURE__ */ new Map();
   files5.forEach((file, i3) => {
@@ -55507,7 +55507,7 @@ async function commitReport(context, ledger, commit, before4, asks = true) {
   try {
     const view = viewOf2(context);
     const committed = await committedBlobs(context.root, commit);
-    const { differing, unanswered } = await differingPaths(view, committed);
+    const { differing, unanswered: unanswered2 } = await differingPaths(view, committed);
     const deleted = await deletedTestFiles(view, committed);
     const environment = environmentDiffers(view, differing);
     const changed2 = before4 === null ? new Set(committed.keys()) : await changedPaths2(context.root, before4, commit);
@@ -55521,7 +55521,7 @@ async function commitReport(context, ledger, commit, before4, asks = true) {
     const tests2 = testTally(view, {
       differing,
       untracked,
-      unanswered,
+      unanswered: unanswered2,
       deleted,
       asked: (record2) => asked(record2.testFile),
       held: (record2) => held4(record2.testFile)
@@ -91727,6 +91727,10 @@ async function runOne({ pick, index: i3 }, files5, context, suffix = "") {
     const started2 = evidence.completed || progress2.wasStarted(runner.kind, ref3);
     ran.push(started2 ? evidence : { ...evidence, notStarted: true });
   }
+  try {
+    options.ended?.(ran);
+  } catch {
+  }
   return {
     runner: runner.kind,
     files: files5,
@@ -94723,6 +94727,7 @@ var Keeper = class {
    */
   async ran(run7) {
     for (const taken3 of this.#expected.take(run7)) await this.#queue(taken3, run7);
+    this.#decided();
     this.#early.kick();
   }
   /**
@@ -94740,6 +94745,7 @@ var Keeper = class {
     for (const text3 of this.#deferred.splice(0)) this.#tell(text3);
     const queued = this.#queued.splice(0);
     if (queued.length > 0) this.#tally.heard(await writePass(queued, this.#pass(false)));
+    this.#decided();
     this.#tellNotKept(this.#passNotKept);
     if (this.#completed === 0) return;
     const counts = { completed: this.#completed, early: this.#keptEarly };
@@ -94775,6 +94781,7 @@ var Keeper = class {
     const { written: written2, left } = pass2;
     this.#keptEarly += written2;
     this.#tally.heard(pass2);
+    this.#decided();
     if (left.length === 0) return "done";
     this.#queued.unshift(...left);
     return "left";
@@ -94860,6 +94867,13 @@ var Keeper = class {
     }
     return { files: kept6, seen: seenOf(keys, report4, candidates, decided) };
   }
+  /** Row 023-19 (review wave-13 B2): what is decided so far, to `KeepOptions.decided`. */
+  #decided() {
+    try {
+      this.#options.decided?.({ kept: this.keptFiles(), notKept: this.notKeptFiles() });
+    } catch {
+    }
+  }
   #tellNotKept(notKept2) {
     for (const line of notKept2.take()) this.#tell(line);
   }
@@ -94902,12 +94916,13 @@ function fileOf3(file) {
 function openStored(options) {
   const stores = readStores(options.commonDir);
   if (stores === null) return null;
-  const keeper = new Keeper({
+  const keeper2 = new Keeper({
     root: options.root,
     commonDir: options.commonDir,
     policy: options.policy,
     head: () => readHead(options.root),
-    ...options.note === void 0 ? {} : { note: options.note }
+    ...options.note === void 0 ? {} : { note: options.note },
+    ...options.decided === void 0 ? {} : { decided: options.decided }
   });
   let keyer = null;
   const keyerOf = () => {
@@ -94942,8 +94957,8 @@ function openStored(options) {
       };
       const store = stores.main;
       const revisions = store === void 0 ? {} : { revisions: { store, worktreeId } };
-      keeper.expect(runner, keyer2.keys, keyer2.hasher, runs, { runtime, ...revisions });
-      keeper.expect(runner, keyer2.keys, keyer2.hasher, again2, { runtime, ...revisions });
+      keeper2.expect(runner, keyer2.keys, keyer2.hasher, runs, { runtime, ...revisions });
+      keeper2.expect(runner, keyer2.keys, keyer2.hasher, again2, { runtime, ...revisions });
       return found4;
     } catch (error) {
       const why2 = error instanceof Error ? error.message : String(error);
@@ -94953,7 +94968,7 @@ function openStored(options) {
     }
   };
   const close = async () => {
-    keeper.close();
+    keeper2.close();
     try {
       await keyer?.then(
         (k) => k.close(),
@@ -94966,10 +94981,10 @@ function openStored(options) {
   };
   return {
     stored: stored3,
-    ran: (run7) => keeper.ran(run7),
-    flush: () => keeper.flush(),
-    notKept: () => keeper.notKeptFiles(),
-    kept: () => keeper.keptFiles(),
+    ran: (run7) => keeper2.ran(run7),
+    flush: () => keeper2.flush(),
+    notKept: () => keeper2.notKeptFiles(),
+    kept: () => keeper2.keptFiles(),
     keys,
     close
   };
@@ -95101,7 +95116,15 @@ async function collectWithStores(root, env, changed2, options, parts3 = [], reru
     refused: (refusal3) => refused.push(refusal3)
   });
   const opened3 = [];
-  const stored3 = storedFiles(root, env, note, children, () => opened3, rerunFailures);
+  const stored3 = storedFiles(
+    root,
+    env,
+    note,
+    children,
+    () => opened3,
+    rerunFailures,
+    options.decided
+  );
   let evidence;
   try {
     const known4 = inOrder([fromParts, stored3?.stored]);
@@ -95163,7 +95186,7 @@ function inOrder(sources) {
     return found4;
   };
 }
-function storedFiles(root, env, note, children = false, runners2, rerunFailures = false) {
+function storedFiles(root, env, note, children = false, runners2, rerunFailures = false, decided) {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
   const worktree = readPolicy(root);
@@ -95178,7 +95201,8 @@ function storedFiles(root, env, note, children = false, runners2, rerunFailures 
     adapters: (tempDir) => daemonAdapters(root, policy, tempDir),
     ...runners2 === void 0 ? {} : { runners: runners2 },
     note,
-    ...rerunFailures ? { rerunFailures } : {}
+    ...rerunFailures ? { rerunFailures } : {},
+    ...decided === void 0 ? {} : { decided }
   });
 }
 async function daemonAdapters(root, policy, tempDir) {
@@ -107500,7 +107524,6 @@ function union2(selected2, sources) {
 // src/cli/status-at-run.ts
 init_runtime2();
 init_policy2();
-init_git_layout();
 init_reverse_index();
 init_text();
 
@@ -107592,7 +107615,7 @@ function stopMargin(leftSeconds) {
 
 // src/cli/status-at-run-child.ts
 import { spawn as spawn16 } from "node:child_process";
-import { existsSync as existsSync66, readFileSync as readFileSync79, rmSync as rmSync37, writeFileSync as writeFileSync27 } from "node:fs";
+import { existsSync as existsSync66, readFileSync as readFileSync79, renameSync as renameSync11, rmSync as rmSync37, writeFileSync as writeFileSync27 } from "node:fs";
 import { availableParallelism as availableParallelism9 } from "node:os";
 import { join as join176 } from "node:path";
 
@@ -107680,7 +107703,8 @@ async function gateFiles(options, env) {
     ...options.output === void 0 ? {} : { output: options.output },
     ...durations2 === null ? {} : { durations: durations2.of },
     ...options.hostLoad === void 0 ? {} : { hostLoad: options.hostLoad },
-    ...options.chunkFiles === void 0 ? {} : { chunkFiles: options.chunkFiles }
+    ...options.chunkFiles === void 0 ? {} : { chunkFiles: options.chunkFiles },
+    ...progressHooks(options.progress)
   };
   const changed2 = namedOnly(head2);
   try {
@@ -107731,6 +107755,24 @@ function fileRun(file) {
   }
   return { ...base, outcome: "not-finished", failed: [] };
 }
+function progressHooks(tell) {
+  if (tell === void 0) return {};
+  const runs = /* @__PURE__ */ new Map();
+  let kept6 = [];
+  let notKept2 = [];
+  const told3 = () => tell({ runs: [...runs.values()], kept: kept6, notKept: notKept2 });
+  return {
+    ended: (files5) => {
+      for (const file of files5) runs.set(`${file.runner}\0${file.path}`, fileRun(file));
+      told3();
+    },
+    decided: (so) => {
+      kept6 = so.kept.map(({ ref: ref3, key: key3 }) => ({ project: ref3.project, path: ref3.path, key: key3 }));
+      notKept2 = [...so.notKept].map(([path, reason2]) => ({ path, reason: reason2 }));
+      told3();
+    }
+  };
+}
 
 // src/cli/status-at-run-child.ts
 var RUN_REQUEST_VARIABLE = "SQUEAL_STATUS_AT_RUN_REQUEST";
@@ -107757,6 +107799,7 @@ async function runChild(request) {
       tempDir: asked.tempDir,
       store: asked.store,
       ...asked.retry === false ? { hostLoad: noLoadRetry } : {},
+      ...asked.progress === void 0 ? {} : { progress: keeper(asked.progress) },
       note: (text3) => process.stderr.write(`squeal: ${text3}
 `),
       output: () => {
@@ -107769,12 +107812,30 @@ async function runChild(request) {
   writeFileSync27(asked.answer, JSON.stringify(answer4));
   return 0;
 }
+function keeper(path) {
+  const next = `${path}.next`;
+  return (record2) => {
+    try {
+      writeFileSync27(next, JSON.stringify(record2));
+      renameSync11(next, path);
+    } catch {
+    }
+  };
+}
+function recordAt(path) {
+  try {
+    return JSON.parse(readFileSync79(path, "utf8"));
+  } catch {
+    return void 0;
+  }
+}
 async function runInChild(run7) {
   const [command, ...flags2] = run7.relaunch ?? [];
   if (command === void 0) return { error: "no command to start the run's process with" };
   const { checkout } = run7;
   const request = join176(checkout.folder, "at-run-request.json");
   const answer4 = join176(checkout.folder, "at-run-answer.json");
+  const progress2 = join176(checkout.folder, "at-run-record.json");
   const asked = {
     tree: checkout.tree,
     files: run7.files,
@@ -107782,10 +107843,12 @@ async function runInChild(run7) {
     tempDir: checkout.run,
     answer: answer4,
     store: run7.store,
-    ...run7.retry === void 0 ? {} : { retry: run7.retry }
+    ...run7.retry === void 0 ? {} : { retry: run7.retry },
+    progress: progress2
   };
   writeFileSync27(request, JSON.stringify(asked));
   rmSync37(answer4, { force: true });
+  rmSync37(progress2, { force: true });
   const child = spawn16(command, [...flags2, "status", "--at", checkout.commit], {
     cwd: checkout.tree,
     env: {
@@ -107825,7 +107888,12 @@ async function runInChild(run7) {
   });
   if (!existsSync66(answer4)) {
     const error = `the run's process ended ${how2} with no answer`;
-    return stopped ? { error, stopped: true } : { error };
+    const record2 = recordAt(progress2);
+    return {
+      error,
+      ...stopped ? { stopped: true } : {},
+      ...record2 === void 0 ? {} : { record: record2 }
+    };
   }
   try {
     return JSON.parse(readFileSync79(answer4, "utf8"));
@@ -107840,13 +107908,7 @@ init_reverse_index();
 async function outcomesOf2(input) {
   const { answer: answer4, commit } = input;
   const states = /* @__PURE__ */ new Map();
-  if ("error" in answer4) {
-    if (answer4.stopped === true) return stoppedOutcomes(input);
-    const reason2 = `run: ${answer4.error}`;
-    for (const file of input.run)
-      states.set(testFileId(file.ref), { state: "not determined", reason: reason2 });
-    return states;
-  }
+  if ("error" in answer4) return unanswered(input, answer4);
   const { changed: changed2 } = input;
   if (changed2 !== null || input.stored === false) {
     for (const file of input.run) {
@@ -107875,28 +107937,27 @@ async function outcomesOf2(input) {
         states.set(id, asRun2(stateOf3(at2, records, input.own), commit, true));
       } else if (chosen.has(id)) {
         const runs = answer4.result.runs.filter((r) => r.path === path);
-        const why2 = at2 === void 0 ? notKeptWhy(answer4.result.notKept, path, input.coverage !== false) : "its kept result could not be read back";
+        const why2 = at2 === void 0 ? notKeptWhy(answer4.result.notKept, path, input.coverage !== false, input.undecided) : "its kept result could not be read back";
         states.set(id, fromGate(file.at.key, runs, commit, why2));
       }
     }
   });
   return states;
 }
-async function stoppedOutcomes(input) {
-  const states = /* @__PURE__ */ new Map();
-  const budget2 = { state: "not run", reason: "budget" };
-  const { writer } = input;
-  const reads2 = input.changed === null && input.stored !== false && writer !== void 0;
-  await withStores(input.commonDir, async (main2) => {
-    for (const file of input.run) {
-      const id = testFileId(file.ref);
-      const records = reads2 && main2 !== null ? main2.results.newestForTestFile(file.ref) : [];
-      const [first2] = records;
-      if (first2 !== void 0 && records.some((r) => r.provenance.worktreeId === writer))
-        states.set(id, asRun2(stateOf3(first2.key, records, input.own), input.commit, true));
-      else states.set(id, budget2);
-    }
+async function unanswered(input, answer4) {
+  const missing2 = answer4.stopped === true ? { state: "not run", reason: "budget" } : { state: "not determined", reason: `run: ${answer4.error}` };
+  const { record: record2 } = answer4;
+  const states = record2 === void 0 ? /* @__PURE__ */ new Map() : await outcomesOf2({
+    ...input,
+    answer: { result: { ...record2, timedOut: true, budgetSeconds: 0 } },
+    undecided: answer4.stopped === true ? "the run was stopped at the budget before the gate decided whether to keep it" : "the run ended before the gate decided whether to keep it"
   });
+  for (const file of input.run) {
+    const id = testFileId(file.ref);
+    const state = states.get(id);
+    const ran = record2?.runs.some((r) => r.path === file.ref.path) === true;
+    if (state === void 0 || !ran) states.set(id, missing2);
+  }
   return states;
 }
 function notTheCommits(state, changed2) {
@@ -107909,9 +107970,10 @@ function asRun2(state, commit, stored3) {
   const origin = { kind: "run", worktreeId: null, commit, stored: stored3 };
   return state.state === "pass" || state.state === "fail" ? { ...state, origin } : state;
 }
-function notKeptWhy(notKept2, path, coverage) {
+function notKeptWhy(notKept2, path, coverage, undecided) {
   const reason2 = notKept2?.find((n) => n.path === path)?.reason;
   if (reason2 !== void 0) return `the gate did not keep it: ${reason2}`;
+  if (coverage && undecided !== void 0) return undecided;
   return coverage ? "the gate did not keep it and gave no reason" : "the gate keeps a result only with coverage on";
 }
 function fromGate(key3, runs, commit, why2) {
@@ -108129,9 +108191,7 @@ function atRun(input) {
       siblings,
       answer: answer4,
       changed: changed2,
-      coverage: coverageOn(readPolicy(checkout.tree)),
-      // Review wave-13 B2: a stopped batch is read where its gate wrote, by this provenance.
-      writer: worktreeIdFor(checkout.tree)
+      coverage: coverageOn(readPolicy(checkout.tree))
     });
     for (const [id, state] of outcomes2) states.set(id, state);
   }
@@ -114062,14 +114122,14 @@ function requestedText3({ revision, queued, installWait: installWait3 }) {
 ` : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.
 `;
 }
-function pendingText4({ pending: requestId, unanswered }, waitedMs) {
+function pendingText4({ pending: requestId, unanswered: unanswered2 }, waitedMs) {
   if (waitedMs === null) {
-    const busy2 = unanswered === void 0 ? "" : ` did not answer about it${unanswered} and`;
+    const busy2 = unanswered2 === void 0 ? "" : ` did not answer about it${unanswered2} and`;
     return `Slow tier requested (request ${requestId}); the daemon${busy2} takes it once its current work allows
 `;
   }
   const after3 = `after ${(waitedMs / 1e3).toFixed(1)} s`;
-  const ended2 = unanswered === void 0 ? `Returned on timeout ${after3}: the daemon has not taken slow tier request ${requestId} yet` : `Returned without a verdict ${after3}: the daemon did not answer about slow tier request ${requestId}${unanswered}`;
+  const ended2 = unanswered2 === void 0 ? `Returned on timeout ${after3}: the daemon has not taken slow tier request ${requestId} yet` : `Returned without a verdict ${after3}: the daemon did not answer about slow tier request ${requestId}${unanswered2}`;
   return `${ended2}; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
 `;
 }
