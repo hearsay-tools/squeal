@@ -32,7 +32,12 @@ afterEach(() => {
 
 /** A daemon's capacity over the pool of 4 permits, and its tier's grant of all 4. */
 function tier(): { capacity: TierCapacity; lease: PoolLease } {
-  const capacity = new TierCapacity({ dir, hostSlots: 4, host: null }, "daemon", () => {});
+  // 64 CPUs on any machine: the ceiling, 48, stays above the slots, so they bind (row 011-404).
+  const capacity = new TierCapacity(
+    { dir, hostSlots: 4, host: null, cpus: 64 },
+    "daemon",
+    () => {},
+  );
   closing.push(capacity);
   const lease = capacity.take(4, "fast", 1, "backlog");
   if (lease === null || lease === WAIT_FOR_CAPACITY) throw new Error("no grant");

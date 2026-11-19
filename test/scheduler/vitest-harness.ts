@@ -186,7 +186,10 @@ function passedThrough(options: HarnessOptions): Partial<SchedulerOptions> {
     ...(options.onReinstall === undefined ? {} : { onReinstall: options.onReinstall }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     // A pool reads the host's busy cores only when the test gives it some (row 011-182).
-    ...(options.capacity === undefined ? {} : { capacity: { host: null, ...options.capacity } }),
+    // 64 CPUs on any machine: the ceiling, 48, stays above the slots, so they bind (row 011-404).
+    ...(options.capacity === undefined
+      ? {}
+      : { capacity: { host: null, cpus: 64, ...options.capacity } }),
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.hostLoad === undefined ? {} : { hostLoad: options.hostLoad }),
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),

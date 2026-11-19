@@ -53,6 +53,7 @@ function remoteAdmissionIn(dir: string): HostAdmission {
       dir,
       owner: { pid: process.pid, worktreeId: "runner-host:/remote/tree" },
       hostSlots: 23,
+      // 64 CPUs on any machine: the ceiling, 48, stays above the slots, so they bind (row 011-404).
       cpus: 24,
       cores: tree,
       host: busy(20),
@@ -96,7 +97,11 @@ function held(dir: string, slots: number): number {
 
 /** A background tier's local grant of all 4 permits of the pool in `dir`, as `executeTier` passes it. */
 function localTier(dir: string, recheckMs = 20): TierPermits {
-  const capacity = new TierCapacity({ dir, hostSlots: 4, host: null }, `local-${++n}`, () => {});
+  const capacity = new TierCapacity(
+    { dir, hostSlots: 4, host: null, cpus: 64 },
+    `local-${++n}`,
+    () => {},
+  );
   closing.push(capacity);
   const lease = capacity.take(4, "fast", 1, "backlog");
   if (lease === null || lease === WAIT_FOR_CAPACITY) throw new Error("no local grant");

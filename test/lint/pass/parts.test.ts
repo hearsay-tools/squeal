@@ -21,7 +21,12 @@ afterEach(() => {
 /** The scheduler's pool over a fresh directory, `slots` wide, with no host gate. */
 function pool(worktreeId: string, slots: number): TierCapacity {
   const dir = mkdtempSync(join(tmpdir(), "squeal-lint-pool-"));
-  const capacity = new TierCapacity({ dir, hostSlots: slots, host: null }, worktreeId, () => {});
+  // 64 CPUs on any machine: the ceiling, 48, stays above the slots, so they bind (row 011-404).
+  const capacity = new TierCapacity(
+    { dir, hostSlots: slots, host: null, cpus: 64 },
+    worktreeId,
+    () => {},
+  );
   cleanups.push(() => {
     capacity.close();
     rmSync(dir, { recursive: true, force: true });

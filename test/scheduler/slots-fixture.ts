@@ -109,7 +109,9 @@ export async function slotHarness(options: SlotOptions): Promise<SlotHarness> {
     backlogTierSize: options.backlogTierSize ?? 200,
     ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
     adapters: [timed],
-    capacity: { dir: poolDir, hostSlots: options.hostSlots },
+    // A machine of 64 CPUs, whatever runs the test: its background ceiling, 48 busy CPUs, does not
+    // bind, so the slots alone size the backlog (row 011-404; a 4-CPU CI runner's ceiling is 3).
+    capacity: { dir: poolDir, hostSlots: options.hostSlots, cpus: 64 },
     ...(options.policy === undefined ? {} : { policy: options.policy }),
   });
   const applyMs = options.applyMs ?? 0;
