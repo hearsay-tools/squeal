@@ -1,0 +1,145 @@
+[
+  {
+    "command": [
+      "git",
+      "init",
+      "--quiet"
+    ],
+    "exit": 0,
+    "seconds": 0.003,
+    "output": ""
+  },
+  {
+    "command": [
+      "--version"
+    ],
+    "exit": 0,
+    "seconds": 0.154,
+    "output": "0.1.563\n"
+  },
+  {
+    "command": [
+      "start"
+    ],
+    "exit": 0,
+    "seconds": 0.507,
+    "output": "Squeal daemon spawned for <fixture>\n\nRevision: 0\nSqueal is still starting in this worktree and has no results yet. `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 <path>...` waits for the files you change.\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)\nOutstanding:\n  the daemon is still listing this worktree's test files; `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000` waits for it\nMore: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --full` adds the worktree and daemon and 1 note\n"
+  },
+  {
+    "command": [
+      "status",
+      "--wait",
+      "15000",
+      "tiny.test.ts"
+    ],
+    "exit": 0,
+    "seconds": 1.711,
+    "output": "Revision: 0\nSelected: tiny.test.ts\nRun asked: tiny.test.ts was unknown with nothing queued, so this wait asked its one run at these inputs, as `~/.codex/plugins/data/squeal-hearsay/bin/squeal retry tiny.test.ts` does.\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 1.5 s. Worktree: known failures 0; all 1 test file current\n"
+  },
+  {
+    "command": [
+      "stop"
+    ],
+    "exit": 0,
+    "seconds": 0.276,
+    "output": "Squeal daemon stopped for <fixture>; `~/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start` keeps it stopped through edits and Git operations\n"
+  },
+  {
+    "command": [
+      "start"
+    ],
+    "exit": 0,
+    "seconds": 0.417,
+    "output": "Squeal daemon spawned for <fixture>\n\nRevision: 0\nKnown failures: 0; all 1 test file current\nAffected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued\nFull-suite checkpoint: none completed at any revision (the counts are for revision 0; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)\nMore: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --full` adds the worktree and daemon and 3 notes\n"
+  },
+  {
+    "command": [
+      "status",
+      "tiny.test.ts"
+    ],
+    "exit": 3,
+    "seconds": 0.931,
+    "output": "Revision: 1\nSelected: tiny.test.ts\nStale (1):\n  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): tiny.test.ts; `~/.codex/plugins/data/squeal-hearsay/bin/squeal retry tiny.test.ts` runs it once\nNamed test files have no verdict: results are as of revision 1; the daemon has not stored its pass over the latest edits. Worktree: known failures 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 tiny.test.ts`\n"
+  },
+  {
+    "command": [
+      "status",
+      "--wait",
+      "5000",
+      "tiny.test.ts",
+      "--check",
+      "serves every named query from its index"
+    ],
+    "exit": 3,
+    "seconds": 1.456,
+    "output": "Revision: 1\nSelected: tiny.test.ts\nFocused: 1 check of tiny.test.ts at revision 1, run alone in 0.2 s; not the file's verdict.\n  pass  serves every named query from its index\n        at tiny.test.ts:2:1\n  A first run each, not re-run; the file's own run (1 check) decides.\nStale (1):\n  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): tiny.test.ts; `~/.codex/plugins/data/squeal-hearsay/bin/squeal retry tiny.test.ts` runs it once\nFocused: 0 of 1 selected check failed; no verdict for the file yet: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 600000 tiny.test.ts` waits for it. Worktree: known failures 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale)\n"
+  },
+  {
+    "command": [
+      "status",
+      "--wait",
+      "15000",
+      "tiny.test.ts"
+    ],
+    "exit": 0,
+    "seconds": 1.471,
+    "output": "Revision: 1\nSelected: tiny.test.ts\nRun asked: tiny.test.ts was stale with nothing queued, so this wait asked its one run at these inputs, as `~/.codex/plugins/data/squeal-hearsay/bin/squeal retry tiny.test.ts` does.\nNamed test files at revision 1: no known failures; 1 test file, each with a current result, after 1.3 s. Worktree: known failures 0; all 1 test file current\n"
+  },
+  {
+    "command": [
+      "stop"
+    ],
+    "exit": 0,
+    "seconds": 0.313,
+    "output": "Squeal daemon stopped for <fixture>; `~/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start` keeps it stopped through edits and Git operations\n"
+  },
+  {
+    "command": [
+      "start"
+    ],
+    "exit": 0,
+    "seconds": 0.43,
+    "output": "Squeal daemon spawned for <fixture>\n\nRevision: 1\nKnown failures: 0; all 1 test file current\nAffected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued\nFull-suite checkpoint: none completed at any revision (the counts are for revision 1; `~/.codex/plugins/data/squeal-hearsay/bin/squeal run --all` requests one)\nMore: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --full` adds the worktree and daemon and 2 notes\n"
+  },
+  {
+    "command": [
+      "status",
+      "--wait",
+      "5000",
+      "tiny.test.ts",
+      "--check",
+      "serves every named query from its index"
+    ],
+    "exit": 3,
+    "seconds": 1.951,
+    "output": "Revision: 2\nSelected: tiny.test.ts\nFocused: 1 check of tiny.test.ts at revision 2, run alone in 0.2 s; not the file's verdict.\n  pass  serves every named query from its index\n        at tiny.test.ts:2:1\n  A first run each, not re-run; the file's own run (1 check) decides.\nStale (1):\n  1 last passed at other inputs, nothing queued it (the baseline is lookup-only): tiny.test.ts; `~/.codex/plugins/data/squeal-hearsay/bin/squeal retry tiny.test.ts` runs it once\nFocused: 0 of 1 selected check failed; no verdict for the file yet: `~/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 600000 tiny.test.ts` waits for it. Worktree: known failures 0; not current: 1 of 1 test file (1 stale), 1 test (1 stale)\n"
+  },
+  {
+    "command": [
+      "retry",
+      "tiny.test.ts"
+    ],
+    "exit": 0,
+    "seconds": 0.174,
+    "output": "Run queued: tiny.test.ts has no result at its inputs (stale: its last result is at other inputs). It runs once in its turn at its normal priority; that is its one run at these inputs, and it spends no retry of this session. squeal status --wait 60000 tiny.test.ts waits for its result and moves it ahead in the queue.\n"
+  },
+  {
+    "command": [
+      "status",
+      "--wait",
+      "15000",
+      "tiny.test.ts"
+    ],
+    "exit": 0,
+    "seconds": 0.449,
+    "output": "Revision: 2\nSelected: tiny.test.ts\nNamed test files at revision 2: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n"
+  },
+  {
+    "command": [
+      "stop"
+    ],
+    "exit": 0,
+    "seconds": 0.293,
+    "output": "Squeal daemon stopped for <fixture>; `~/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start` keeps it stopped through edits and Git operations\n"
+  }
+]
