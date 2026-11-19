@@ -43,15 +43,30 @@ This text exists only in `src/cli/group-pending.ts:80` (`run <group> --wait`, th
 
 No key-format or validity change: `test/keys/key-format.test.ts` needs no case.
 
-## Residual risk
+## Review 0.1.567 B1 repair: the listing hold stays while it may change a named closure
 
-A named file that is current while the revision is unlisted gives its verdict now. The listing re-resolves the closures of the files it picks (`refinement.ts`: re-keyed files, the runner's `affected` answer, runtime-unresolved imports, and others). If the runner's module graph finds that a file the pass left current reads a changed path that the static index did not see, the file is re-keyed after the listing. A wait that ended before that gave the older result. The daemon's pass already re-keys every file whose stored closure holds a changed path, so this needs an import that the stored closure misses. The brief's outcome (c) accepts this. The edit-time check still reruns the file after the listing.
+The review proved a false pass. `test/math.test.ts` imports `add` from the extensionless `../src/choice`, which `src/choice/index.ts` answers. An added `src/choice.ts` takes that import over. The content pass keeps the test's key, so the old pass read as current and the wait exited 0. Only the runner part found the new closure, and then the test failed.
+
+The repair (`src/cli/listing-hold.ts`, `listingMayChangeClosures`, called from `tally` in `verdict.ts`): a fixed named set gives its verdict during an unlisted revision only when the listing still to come cannot change a named file's closure. The CLI cannot read the content pass's re-resolve set (`ContentRekey`, daemon memory), so it reads what the store keeps. The listing hold stays, as before 011-398, when:
+
+- any pending revision (after the refined revision, up to the current one) adds or deletes a path, the case `closuresToReresolve` re-resolves;
+- any pending revision changes a `package.json`, which `closuresToReresolve` also re-resolves;
+- any named file's key row was written after the refined revision. The content pass writes a row when it re-keys the file, and the runner part re-resolves the closure of every file the content pass re-keyed. A row rewritten only for a phase change at a later revision also holds, which costs an early verdict but never gives a false one;
+- a named file has no key row.
+
+An unrelated content edit (no add, no delete, no `package.json`, no named row written) still gives the early verdict. That is the gh-232 case.
+
+What the store does not show, so this rule cannot see it: the runner part also re-resolves files with runtime-unresolved imports (`keys.runtimeUnresolved()`), files carried from a failed runner part (`carried`, `ledger.broken`), and touched paths. A named file in one of those sets that is current at its stored key can still give an early verdict. Closing that gap needs the daemon to record the re-resolve set in the store with the revision, beside the refined revision. I propose that as a follow-up row if the coordinator wants it closed.
+
+Tests for the repair:
+- `test/scheduler/named-unlisted-structural.test.ts` (real Vitest, `barrel` fixture, `RUN_MISSING`, `tierSize: 1`, `invalidate` held): the review's reproduction. An unrelated edit of `src/strings.ts` gives exit 0 from both the snapshot and the wait. After `src/choice.ts` and `src/wrong.ts` are added, the key is unchanged and the pass is current, and both exit 3. After the runner part is released, the key changes and `adds` fails. With the hold disabled, the test fails with `[0, 0]` in place of `[3, 3]`.
+- `test/cli/named-unlisted-verdict.test.ts`: a pending add, a delete, a `package.json` edit (wait and snapshot), and a named row written at the pending revision each exit 3. All four fail with the hold disabled.
 
 ## Proposed spec amendments (plain text; the coordinator lands them)
 
 005 D2, after "and exits as D1 for those files only.":
 
-> Amended 2026-11-19 (the human, row 011-398, gh-232): while the runner has not listed the worktree's revision, a wait or snapshot whose named paths are all listed test files gives their verdict (exit 0, or 1 with failures) when each is current. A named path that is not a listed test file (a source path, a path that selects nothing, a test file Squeal does not run) may select other files once the revision is listed, so that wait still exits 3 and names the listing. An awaited install holds every wait as before.
+> Amended 2026-11-19 (the human, row 011-398, gh-232; review 0.1.567 B1): while the runner has not listed the worktree's revision, a wait or snapshot whose named paths are all listed test files gives their verdict (exit 0, or 1 with failures) when each is current and no revision still to be listed can change a named file's closure: none adds or deletes a path or changes a `package.json`, and no named file was re-keyed by one. Otherwise it exits 3 and names the listing. A named path that is not a listed test file (a source path, a path that selects nothing, a test file Squeal does not run) may select other files once the revision is listed, so that wait still exits 3 and names the listing. An awaited install holds every wait as before.
 
 011 C15, the unlisted reason (spec line about "revision N not listed yet, because the runner part waits for the run in flight, …"):
 
