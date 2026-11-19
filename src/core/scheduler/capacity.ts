@@ -1,4 +1,9 @@
 import {
+  backgroundCeiling,
+  DEFAULT_BACKGROUND_SHARE,
+  isBackgroundShare,
+} from "../capacity/background.js";
+import {
   createPermitPool,
   type PermitPool,
   type PoolLane,
@@ -32,6 +37,7 @@ export class TierCapacity {
   readonly #dir: string;
   readonly #note: (message: string) => void;
   readonly #waits: PoolWaits | null;
+  readonly #backgroundShare: number;
   #failed: string | null = null;
   #refused = false;
 
@@ -45,6 +51,9 @@ export class TierCapacity {
     this.#dir = dir;
     this.#note = note;
     this.#waits = waits;
+    this.#backgroundShare = isBackgroundShare(backgroundShare)
+      ? backgroundShare
+      : DEFAULT_BACKGROUND_SHARE;
     this.#pool = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId },
@@ -101,6 +110,18 @@ export class TierCapacity {
       const gate = this.#pool.gate();
       if (gate !== null) this.#waits.refused(lane, gate);
     }
+  }
+
+  /**
+   * Row 017-33 (gh-238): what the last look read against the background
+   * ceiling (spec 021 D18): the busy CPUs the gate counted, `null` when it
+   * read none, and the ceiling, the CPUs a background tier stays below.
+   * `null` before the first look.
+   */
+  backgroundGate(): { readonly busy: number | null; readonly limit: number } | null {
+    const gate = this.#pool.gate();
+    if (gate === null) return null;
+    return { busy: gate.busyCores, limit: backgroundCeiling(this.#backgroundShare, gate.cpus) };
   }
 
   /**
