@@ -2,6 +2,8 @@ import { isRecord } from "../fs/json.js";
 import { readPresence } from "../presence/decide.js";
 import { headerView } from "../presence/views.js";
 import { FEED_LATE_MS, lateOf } from "../status/feed-late.js";
+import { firstOverrunning } from "../status/overrun-facts.js";
+import { liveYieldRow } from "../status/standing-yields.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CaughtUp, Consumer, EditsLate } from "../types/delivery.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -181,6 +183,9 @@ function lateNow(
   const due = owed.map((o) => o.file);
   if (!pastBound(store, worktreeId, due, ageMs)) return null;
   const files = own.owed.map((o) => o.file);
+  // Row 011-399 (gh-233): an owed file whose tier overruns may be hung.
+  const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? null;
+  const hung = firstOverrunning(files, liveYieldRow(store, worktreeId, startedAt), at);
   return {
     kind: "owed",
     revision,
@@ -189,6 +194,7 @@ function lateNow(
     editRevision: oldest.from,
     ageMs,
     ...(files.length <= NAMED_MAX ? { named: files.map((f) => f.path) } : {}),
+    ...(hung === null ? {} : { hung: hung.path }),
   };
 }
 

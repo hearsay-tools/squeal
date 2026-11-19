@@ -40,3 +40,22 @@ export function overrunOf(
   };
   return { overrun };
 }
+
+/**
+ * The first of `files` that a tier in flight overruns with as of `now` in
+ * `row` and that the runner has not named ended (row 011-399): the late
+ * line says it may be hung. `null` with none, also from an older daemon.
+ */
+export function firstOverrunning(
+  files: readonly TestFileRef[],
+  row: YieldRow,
+  now: EpochMs,
+): TestFileRef | null {
+  const left = new Set<string>();
+  for (const [runId, tier] of row.overruns ?? []) {
+    if (now < tier.at) continue;
+    const ended = new Set((row.endedFiles.get(runId) ?? []).map(testFileId));
+    for (const f of tier.files) if (!ended.has(testFileId(f))) left.add(testFileId(f));
+  }
+  return files.find((f) => left.has(testFileId(f))) ?? null;
+}
