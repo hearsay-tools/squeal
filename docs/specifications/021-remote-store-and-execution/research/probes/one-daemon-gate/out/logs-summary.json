@@ -1,0 +1,927 @@
+{
+ "cezar": {
+  "files": 596,
+  "rotatedWorktrees": 1,
+  "firstLine": "2026-11-14T16:06:43.436Z",
+  "lastLine": "2026-11-19T08:00:00.984Z",
+  "long": {
+   "store.sqlite": {
+    "n": 67332,
+    "p50": 499,
+    "p90": 1328,
+    "p99": 5432,
+    "max": 29132,
+    "sumS": 51856,
+    "over1s": 10352,
+    "over2s": 3573,
+    "over5s": 786,
+    "zeroRows": {
+     "n": 1969,
+     "p50": 525,
+     "p90": 2996,
+     "p99": 7800,
+     "max": 17083,
+     "sumS": 2313
+    },
+    "byDay": {
+     "2026-11-14": {
+      "n": 3616,
+      "p50": 613,
+      "p90": 1409,
+      "p99": 3858,
+      "max": 11563,
+      "sumS": 2897
+     },
+     "2026-11-15": {
+      "n": 9616,
+      "p50": 531,
+      "p90": 3273,
+      "p99": 11364,
+      "max": 29132,
+      "sumS": 12994
+     },
+     "2026-11-16": {
+      "n": 20506,
+      "p50": 484,
+      "p90": 1229,
+      "p99": 3617,
+      "max": 11338,
+      "sumS": 13883
+     },
+     "2026-11-17": {
+      "n": 13708,
+      "p50": 491,
+      "p90": 1184,
+      "p99": 3744,
+      "max": 12179,
+      "sumS": 9192
+     },
+     "2026-11-18": {
+      "n": 13846,
+      "p50": 500,
+      "p90": 1139,
+      "p99": 3202,
+      "max": 11163,
+      "sumS": 9312
+     },
+     "2026-11-19": {
+      "n": 6040,
+      "p50": 492,
+      "p90": 869,
+      "p99": 2526,
+      "max": 11713,
+      "sumS": 3577
+     }
+    },
+    "topOpsByTotal": {
+     "#write < #record": {
+      "n": 23266,
+      "p50": 569,
+      "p90": 950,
+      "p99": 1664,
+      "max": 12179,
+      "sumS": 14766
+     },
+     "storeClosures < applyRunnerPart < apply3": {
+      "n": 1720,
+      "p50": 2424,
+      "p90": 7689,
+      "p99": 14862,
+      "max": 29132,
+      "sumS": 5898
+     },
+     "startTier < act < startNext": {
+      "n": 8459,
+      "p50": 330,
+      "p90": 563,
+      "p99": 1197,
+      "max": 2754,
+      "sumS": 3277
+     },
+     "#write < Ledger.commit < StoredKeys.adopt": {
+      "n": 5021,
+      "p50": 505,
+      "p90": 1073,
+      "p99": 2244,
+      "max": 4948,
+      "sumS": 3149
+     },
+     "reconcileBatch < process.processTicksAndRejections < #pass": {
+      "n": 2934,
+      "p50": 480,
+      "p90": 2012,
+      "p99": 5027,
+      "max": 16630,
+      "sumS": 2642
+     },
+     "(bundle line) < AsyncLocalStorage.run < withBusySliceSync": {
+      "n": 2225,
+      "p50": 507,
+      "p90": 2798,
+      "p99": 7098,
+      "max": 17083,
+      "sumS": 2496
+     },
+     "#write < Ledger.commit < commitFirst": {
+      "n": 1089,
+      "p50": 1684,
+      "p90": 3580,
+      "p99": 9797,
+      "max": 17207,
+      "sumS": 2361
+     },
+     "storeClosures < applyRunnerPart < process.processTicksAndRejections": {
+      "n": 2355,
+      "p50": 505,
+      "p90": 2145,
+      "p99": 6047,
+      "max": 13903,
+      "sumS": 2330
+     },
+     "storeClosures < applyRunnerPart < runNextTicks": {
+      "n": 955,
+      "p50": 1615,
+      "p90": 5506,
+      "p99": 12276,
+      "max": 22724,
+      "sumS": 2311
+     },
+     "reconcileBatch < #pass < withBusySlice": {
+      "n": 1765,
+      "p50": 593,
+      "p90": 2321,
+      "p99": 6422,
+      "max": 16457,
+      "sumS": 1871
+     },
+     "#start < #select < #launch": {
+      "n": 5078,
+      "p50": 299,
+      "p90": 445,
+      "p99": 757,
+      "max": 1406,
+      "sumS": 1690
+     },
+     "storeClosures < resolveClosures < process.processTicksAndRejections": {
+      "n": 1135,
+      "p50": 1051,
+      "p90": 2575,
+      "p99": 8186,
+      "max": 17193,
+      "sumS": 1525
+     }
+    }
+   },
+   "code.sqlite": {
+    "n": 11214,
+    "p50": 1712,
+    "p90": 2593,
+    "p99": 14299,
+    "max": 61929,
+    "sumS": 23955,
+    "over1s": 10005,
+    "over2s": 2706,
+    "over5s": 459,
+    "zeroRows": {
+     "n": 9733,
+     "p50": 1746,
+     "p90": 2541,
+     "p99": 12507,
+     "max": 61929,
+     "sumS": 21225
+    },
+    "byDay": {
+     "2026-11-14": {
+      "n": 1027,
+      "p50": 2267,
+      "p90": 3253,
+      "p99": 4575,
+      "max": 18915,
+      "sumS": 2281
+     },
+     "2026-11-15": {
+      "n": 7853,
+      "p50": 1709,
+      "p90": 2120,
+      "p99": 10218,
+      "max": 61929,
+      "sumS": 15671
+     },
+     "2026-11-16": {
+      "n": 964,
+      "p50": 1460,
+      "p90": 4382,
+      "p99": 20740,
+      "max": 30437,
+      "sumS": 2214
+     },
+     "2026-11-17": {
+      "n": 714,
+      "p50": 1557,
+      "p90": 8585,
+      "p99": 20391,
+      "max": 29253,
+      "sumS": 2065
+     },
+     "2026-11-18": {
+      "n": 520,
+      "p50": 1466,
+      "p90": 6149,
+      "p99": 19813,
+      "max": 24479,
+      "sumS": 1360
+     },
+     "2026-11-19": {
+      "n": 136,
+      "p50": 1457,
+      "p90": 9688,
+      "p99": 14501,
+      "max": 25768,
+      "sumS": 363
+     }
+    },
+    "topOpsByTotal": {
+     "deleteInBatches < pruneCodeStore < Object.prune": {
+      "n": 8001,
+      "p50": 1742,
+      "p90": 2258,
+      "p99": 3454,
+      "max": 18915,
+      "sumS": 14536
+     },
+     "(bundle line) < AsyncLocalStorage.run < withBusySliceSync": {
+      "n": 2354,
+      "p50": 1756,
+      "p90": 9688,
+      "p99": 31698,
+      "max": 61929,
+      "sumS": 9011
+     },
+     "runPass < once4 < loop": {
+      "n": 322,
+      "p50": 492,
+      "p90": 1101,
+      "p99": 2170,
+      "max": 3159,
+      "sumS": 196
+     },
+     "quietEnd < once4 < loop": {
+      "n": 178,
+      "p50": 326,
+      "p90": 770,
+      "p99": 2047,
+      "max": 2271,
+      "sumS": 78
+     },
+     "runCoverageStep < squeal.mjs:71806 < Pace.measure": {
+      "n": 133,
+      "p50": 291,
+      "p90": 392,
+      "p99": 809,
+      "max": 1812,
+      "sumS": 43
+     },
+     "runPass < once4 < runNextTicks": {
+      "n": 36,
+      "p50": 625,
+      "p90": 1170,
+      "p99": 1551,
+      "max": 1551,
+      "sumS": 25
+     },
+     "runCoverageStep < squeal.mjs:71925 < Pace.measure": {
+      "n": 55,
+      "p50": 319,
+      "p90": 454,
+      "p99": 578,
+      "max": 578,
+      "sumS": 19
+     },
+     "runCoverageStep < squeal.mjs:70448 < Pace.measure": {
+      "n": 23,
+      "p50": 302,
+      "p90": 372,
+      "p99": 556,
+      "max": 556,
+      "sumS": 7
+     },
+     "runCoverageStep < squeal.mjs:72986 < Pace.measure": {
+      "n": 22,
+      "p50": 289,
+      "p90": 462,
+      "p99": 706,
+      "max": 706,
+      "sumS": 7
+     },
+     "runCoverageStep < squeal.mjs:72212 < Pace.measure": {
+      "n": 17,
+      "p50": 312,
+      "p90": 418,
+      "p99": 465,
+      "max": 465,
+      "sumS": 6
+     },
+     "deleteInBatches < pruneCoverage < pruneCodeStore": {
+      "n": 6,
+      "p50": 600,
+      "p90": 1001,
+      "p99": 1001,
+      "max": 1001,
+      "sumS": 4
+     },
+     "runCoverageStep < squeal.mjs:72961 < Pace.measure": {
+      "n": 14,
+      "p50": 281,
+      "p90": 384,
+      "p99": 508,
+      "max": 508,
+      "sumS": 4
+     }
+    }
+   },
+   "lint.sqlite": {
+    "n": 5,
+    "p50": 281,
+    "p90": 592,
+    "p99": 592,
+    "max": 592,
+    "sumS": 2,
+    "over1s": 0,
+    "over2s": 0,
+    "over5s": 0,
+    "zeroRows": {
+     "n": 0,
+     "p50": null,
+     "p90": null,
+     "p99": null,
+     "max": null,
+     "sumS": 0
+    },
+    "byDay": {
+     "2026-11-15": {
+      "n": 4,
+      "p50": 281,
+      "p90": 592,
+      "p99": 592,
+      "max": 592,
+      "sumS": 1
+     },
+     "2026-11-16": {
+      "n": 1,
+      "p50": 317,
+      "p90": 317,
+      "p99": 317,
+      "max": 317,
+      "sumS": 0
+     }
+    },
+    "topOpsByTotal": {
+     "failKeying < rekey < told2": {
+      "n": 3,
+      "p50": 317,
+      "p90": 592,
+      "p99": 592,
+      "max": 592,
+      "sumS": 1
+     },
+     "rekey < process.processTicksAndRejections < told2": {
+      "n": 1,
+      "p50": 281,
+      "p90": 281,
+      "p99": 281,
+      "max": 281,
+      "sumS": 0
+     },
+     "rekey < told2 < runLintPass": {
+      "n": 1,
+      "p50": 266,
+      "p90": 266,
+      "p99": 266,
+      "max": 266,
+      "sumS": 0
+     }
+    }
+   }
+  },
+  "busyNotes": {
+   "n": 74633,
+   "p50": 700,
+   "p90": 7000,
+   "p99": 63800,
+   "max": 7138300,
+   "sumS": 420800,
+   "byDay": {
+    "2026-11-14": {
+     "n": 7047,
+     "p50": 600,
+     "p90": 3700,
+     "p99": 48700,
+     "max": 1542600,
+     "sumS": 23145
+    },
+    "2026-11-15": {
+     "n": 10954,
+     "p50": 1400,
+     "p90": 14300,
+     "p99": 214800,
+     "max": 7138300,
+     "sumS": 189142
+    },
+    "2026-11-16": {
+     "n": 23034,
+     "p50": 600,
+     "p90": 6900,
+     "p99": 57100,
+     "max": 3418200,
+     "sumS": 101079
+    },
+    "2026-11-17": {
+     "n": 14735,
+     "p50": 600,
+     "p90": 4500,
+     "p99": 43700,
+     "max": 420200,
+     "sumS": 40339
+    },
+    "2026-11-18": {
+     "n": 14711,
+     "p50": 900,
+     "p90": 6500,
+     "p99": 44400,
+     "max": 427400,
+     "sumS": 51795
+    },
+    "2026-11-19": {
+     "n": 4152,
+     "p50": 500,
+     "p90": 6000,
+     "p99": 84800,
+     "max": 426200,
+     "sumS": 15300
+    }
+   },
+   "waited": {
+    "the next tier": 40484,
+    "the heartbeat": 38491,
+    "consumer expiry": 4524,
+    "a hook's or command's writes": 3910,
+    "the results of N files": 2192,
+    "the results of N file": 1618,
+    "the runner part of revision N": 1210,
+    "pruning": 1202,
+    "revision N": 857,
+    "a reconciliation pass": 692,
+    "the daemon's registration": 246,
+    "the runner's observed paths": 173
+   }
+  },
+  "locked": {
+   "complexity: database is locked": 4691,
+   "could not record the optimizer note: Error: database is locked": 32,
+   "daemon error: squeal scheduler: could not persist a note (squeal: could not record the mer": 27,
+   "could not mark the shutdown: database is locked": 26,
+   "shutdown: setDaemon failed: database is locked": 22,
+   "daemon error: database is locked": 14,
+   "daemon error: squeal scheduler: could not persist a note (runner testFiles failed: databas": 11,
+   "unused check failed: Error: database is locked": 10,
+   "CI results: database is locked": 8,
+   "daemon error: squeal scheduler: could not persist a note (runner closure ... failed ...): ": 8,
+   "daemon error: squeal scheduler: could not persist a note (could not check the tiers in fli": 4,
+   "shutdown: loop.close failed: database is locked": 1,
+   "daemon error: squeal scheduler: could not persist a note (could not re-read imports: Error": 1
+  },
+  "lockedByDay": {
+   "2026-11-17": 647,
+   "2026-11-16": 1008,
+   "2026-11-15": 1971,
+   "2026-11-18": 706,
+   "2026-11-14": 394,
+   "2026-11-19": 129
+  }
+ },
+ "squeal": {
+  "files": 295,
+  "rotatedWorktrees": 0,
+  "firstLine": "2026-11-14T16:04:10.934Z",
+  "lastLine": "2026-11-19T07:48:54.400Z",
+  "long": {
+   "store.sqlite": {
+    "n": 15598,
+    "p50": 476,
+    "p90": 1386,
+    "p99": 4114,
+    "max": 32040,
+    "sumS": 11166,
+    "over1s": 2648,
+    "over2s": 661,
+    "over5s": 96,
+    "zeroRows": {
+     "n": 746,
+     "p50": 476,
+     "p90": 3080,
+     "p99": 7923,
+     "max": 12859,
+     "sumS": 887
+    },
+    "byDay": {
+     "2026-11-14": {
+      "n": 946,
+      "p50": 488,
+      "p90": 1628,
+      "p99": 3658,
+      "max": 5409,
+      "sumS": 734
+     },
+     "2026-11-15": {
+      "n": 1249,
+      "p50": 500,
+      "p90": 1783,
+      "p99": 8600,
+      "max": 32040,
+      "sumS": 1261
+     },
+     "2026-11-16": {
+      "n": 4503,
+      "p50": 468,
+      "p90": 1210,
+      "p99": 3015,
+      "max": 9112,
+      "sumS": 2900
+     },
+     "2026-11-17": {
+      "n": 6574,
+      "p50": 463,
+      "p90": 1309,
+      "p99": 3465,
+      "max": 12859,
+      "sumS": 4425
+     },
+     "2026-11-18": {
+      "n": 1962,
+      "p50": 512,
+      "p90": 1470,
+      "p99": 4598,
+      "max": 8858,
+      "sumS": 1497
+     },
+     "2026-11-19": {
+      "n": 364,
+      "p50": 560,
+      "p90": 1919,
+      "p99": 5414,
+      "max": 9652,
+      "sumS": 350
+     }
+    },
+    "topOpsByTotal": {
+     "#write < #record": {
+      "n": 5530,
+      "p50": 462,
+      "p90": 826,
+      "p99": 1704,
+      "max": 4200,
+      "sumS": 2923
+     },
+     "storeClosures < applyRunnerPart < process.processTicksAndRejections": {
+      "n": 1652,
+      "p50": 913,
+      "p90": 2112,
+      "p99": 6527,
+      "max": 20351,
+      "sumS": 1961
+     },
+     "#write < #record < process.processTicksAndRejections": {
+      "n": 2184,
+      "p50": 432,
+      "p90": 836,
+      "p99": 2002,
+      "max": 6199,
+      "sumS": 1126
+     },
+     "(bundle line) < AsyncLocalStorage.run < withBusySliceSync": {
+      "n": 766,
+      "p50": 449,
+      "p90": 3010,
+      "p99": 7923,
+      "max": 12859,
+      "sumS": 850
+     },
+     "storeClosures < resolveClosures < process.processTicksAndRejections": {
+      "n": 510,
+      "p50": 1431,
+      "p90": 2808,
+      "p99": 7180,
+      "max": 32040,
+      "sumS": 849
+     },
+     "reconcileBatch < process.processTicksAndRejections < #pass": {
+      "n": 872,
+      "p50": 461,
+      "p90": 1773,
+      "p99": 4258,
+      "max": 11118,
+      "sumS": 707
+     },
+     "#write < Ledger.commit < commitFirst": {
+      "n": 631,
+      "p50": 916,
+      "p90": 1600,
+      "p99": 3102,
+      "max": 5143,
+      "sumS": 653
+     },
+     "reconcileBatch < #pass < withBusySlice": {
+      "n": 740,
+      "p50": 499,
+      "p90": 1901,
+      "p99": 3956,
+      "max": 5400,
+      "sumS": 632
+     },
+     "storeClosures < applyRunnerPart < apply3": {
+      "n": 213,
+      "p50": 995,
+      "p90": 2533,
+      "p99": 7596,
+      "max": 8963,
+      "sumS": 286
+     },
+     "startTier < act < startNext": {
+      "n": 677,
+      "p50": 314,
+      "p90": 542,
+      "p99": 1220,
+      "max": 1600,
+      "sumS": 253
+     },
+     "#write < Ledger.commit < StoredKeys.adopt": {
+      "n": 667,
+      "p50": 319,
+      "p90": 512,
+      "p99": 869,
+      "max": 1247,
+      "sumS": 241
+     },
+     "#write < Ledger.commit < retryWhileBusy": {
+      "n": 328,
+      "p50": 448,
+      "p90": 919,
+      "p99": 1860,
+      "max": 3617,
+      "sumS": 185
+     }
+    }
+   },
+   "code.sqlite": {
+    "n": 2546,
+    "p50": 460,
+    "p90": 1891,
+    "p99": 6911,
+    "max": 14383,
+    "sumS": 2220,
+    "over1s": 348,
+    "over2s": 252,
+    "over5s": 67,
+    "zeroRows": {
+     "n": 1481,
+     "p50": 495,
+     "p90": 2710,
+     "p99": 7036,
+     "max": 14169,
+     "sumS": 1449
+    },
+    "byDay": {
+     "2026-11-14": {
+      "n": 184,
+      "p50": 476,
+      "p90": 1080,
+      "p99": 6155,
+      "max": 6291,
+      "sumS": 128
+     },
+     "2026-11-15": {
+      "n": 201,
+      "p50": 341,
+      "p90": 2060,
+      "p99": 7579,
+      "max": 14169,
+      "sumS": 182
+     },
+     "2026-11-16": {
+      "n": 760,
+      "p50": 421,
+      "p90": 1256,
+      "p99": 5326,
+      "max": 7062,
+      "sumS": 550
+     },
+     "2026-11-17": {
+      "n": 973,
+      "p50": 498,
+      "p90": 2448,
+      "p99": 7221,
+      "max": 14383,
+      "sumS": 925
+     },
+     "2026-11-18": {
+      "n": 329,
+      "p50": 439,
+      "p90": 2481,
+      "p99": 7596,
+      "max": 9794,
+      "sumS": 304
+     },
+     "2026-11-19": {
+      "n": 99,
+      "p50": 511,
+      "p90": 4870,
+      "p99": 10775,
+      "max": 10775,
+      "sumS": 131
+     }
+    },
+    "topOpsByTotal": {
+     "(bundle line) < AsyncLocalStorage.run < withBusySliceSync": {
+      "n": 1662,
+      "p50": 510,
+      "p90": 3247,
+      "p99": 7365,
+      "max": 14383,
+      "sumS": 1825
+     },
+     "deleteInBatches < pruneCodeStore < Object.prune": {
+      "n": 157,
+      "p50": 487,
+      "p90": 1307,
+      "p99": 6155,
+      "max": 6291,
+      "sumS": 119
+     },
+     "runPass < once4 < loop": {
+      "n": 111,
+      "p50": 529,
+      "p90": 854,
+      "p99": 1480,
+      "max": 1522,
+      "sumS": 63
+     },
+     "runCoverageStep < squeal.mjs:71925 < Pace.measure": {
+      "n": 118,
+      "p50": 306,
+      "p90": 456,
+      "p99": 720,
+      "max": 786,
+      "sumS": 40
+     },
+     "runCoverageStep < squeal.mjs:71958 < Pace.measure": {
+      "n": 81,
+      "p50": 289,
+      "p90": 365,
+      "p99": 596,
+      "max": 596,
+      "sumS": 25
+     },
+     "runCoverageStep < squeal.mjs:72961 < Pace.measure": {
+      "n": 68,
+      "p50": 342,
+      "p90": 516,
+      "p99": 643,
+      "max": 643,
+      "sumS": 24
+     },
+     "runCoverageStep < squeal.mjs:72986 < Pace.measure": {
+      "n": 76,
+      "p50": 274,
+      "p90": 356,
+      "p99": 593,
+      "max": 593,
+      "sumS": 22
+     },
+     "runCoverageStep < squeal.mjs:71806 < Pace.measure": {
+      "n": 46,
+      "p50": 333,
+      "p90": 616,
+      "p99": 1891,
+      "max": 1891,
+      "sumS": 19
+     },
+     "runCoverageStep < squeal.mjs:72212 < Pace.measure": {
+      "n": 46,
+      "p50": 280,
+      "p90": 422,
+      "p99": 548,
+      "max": 548,
+      "sumS": 14
+     },
+     "quietEnd < once4 < loop": {
+      "n": 20,
+      "p50": 364,
+      "p90": 515,
+      "p99": 703,
+      "max": 703,
+      "sumS": 7
+     },
+     "runCoverageStep < squeal.mjs:72555 < Pace.measure": {
+      "n": 22,
+      "p50": 270,
+      "p90": 392,
+      "p99": 407,
+      "max": 407,
+      "sumS": 7
+     },
+     "leaveOutSeeded < beginSeed < squeal.mjs:70695": {
+      "n": 13,
+      "p50": 411,
+      "p90": 634,
+      "p99": 800,
+      "max": 800,
+      "sumS": 6
+     }
+    }
+   }
+  },
+  "busyNotes": {
+   "n": 10585,
+   "p50": 500,
+   "p90": 2400,
+   "p99": 12500,
+   "max": 81100,
+   "sumS": 12681,
+   "byDay": {
+    "2026-11-14": {
+     "n": 866,
+     "p50": 600,
+     "p90": 2500,
+     "p99": 7700,
+     "max": 20600,
+     "sumS": 884
+    },
+    "2026-11-15": {
+     "n": 389,
+     "p50": 900,
+     "p90": 7200,
+     "p99": 31900,
+     "max": 40500,
+     "sumS": 1099
+    },
+    "2026-11-16": {
+     "n": 3143,
+     "p50": 400,
+     "p90": 2000,
+     "p99": 11700,
+     "max": 73100,
+     "sumS": 3311
+    },
+    "2026-11-17": {
+     "n": 5360,
+     "p50": 500,
+     "p90": 2400,
+     "p99": 12200,
+     "max": 81100,
+     "sumS": 6357
+    },
+    "2026-11-18": {
+     "n": 659,
+     "p50": 400,
+     "p90": 2000,
+     "p99": 14500,
+     "max": 48700,
+     "sumS": 736
+    },
+    "2026-11-19": {
+     "n": 168,
+     "p50": 900,
+     "p90": 4200,
+     "p99": 32100,
+     "max": 32200.000000000004,
+     "sumS": 294
+    }
+   },
+   "waited": {
+    "the heartbeat": 5242,
+    "the next tier": 3919,
+    "a hook's or command's writes": 968,
+    "consumer expiry": 546,
+    "pruning": 352,
+    "the results of N files": 314,
+    "the runner part of revision N": 223,
+    "revision N": 147,
+    "a reconciliation pass": 112,
+    "the daemon's registration": 66,
+    "the shutdown's mark": 44,
+    "the daemon's record": 25
+   }
+  },
+  "locked": {
+   "complexity: database is locked": 646
+  },
+  "lockedByDay": {
+   "2026-11-14": 9,
+   "2026-11-15": 9,
+   "2026-11-17": 408,
+   "2026-11-18": 18,
+   "2026-11-16": 194,
+   "2026-11-19": 8
+  }
+ }
+}

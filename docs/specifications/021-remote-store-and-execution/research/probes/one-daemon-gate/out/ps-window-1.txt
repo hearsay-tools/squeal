@@ -1,0 +1,227 @@
+2026-11-19T08:05:39Z
+squeal ps · 11 daemons, 3 test processes · 25 flags: stale-socket ×14, stale-pool-mark ×11
+Host    load 9.8 9.4 8.8 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 1.4% · memory pressure 1.9% (1.9% full) · memory 29.7 of 62.8 GiB used, swap 0.4 of 4.0 GiB
+Squeal  CPU at least 8.6 CPUs (at least 89% of busy) · memory 12.6 GiB (42% of used) + 20 MiB swap · pool 4 of 6 permits
+
+~/projects/squeal (this repository) · 6 daemons · CPU 2.4 · memory 3.9 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3991705  72059d52  0.1.563 claude  17s   13%     0m05s  258M    0     1 session
+    host vitest      3992522  local                     16s  105%     0m21s  304M    0
+  serving            3807080  bd2c83af  0.1.563 claude   5m    0%     0m47s  353M    0     1 session
+    host vitest      3808029  local                      5m    0%     0m11s  288M    0
+  serving            3833454  a9cd6b09  0.1.563 claude   3m    0%     0m44s  360M    0     1 session
+    host vitest      3833840  local                      3m    0%     0m23s  403M    0
+  serving            3988760  1d0e5207  0.1.563 claude  19s    0%     0m10s  322M    0     24 pending; 1 session
+    host vitest      3990360  local                     18s    0%     0m12s  329M    0
+  serving            3831177  675f559c  0.1.563 claude   3m    0%     0m47s  402M    0     1 session
+    host vitest      3831539  local                      3m    0%     0m33s  389M    0
+  serving            3992945  db0382bd  0.1.563 claude  15s   12%     0m06s  289M    0     5 pending; 1 session
+    host vitest      3994739  local                     14s  111%     0m18s  330M    0
+
+~/projects/cezar · 5 daemons · CPU at least 6.1 · memory 8.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            3057842  a41de039  0.1.563 claude  49m    0%     1m15s  312M    0     97 pending; 1 session
+  serving            3806820  c9473641  0.1.563 claude   5m   47%     2m13s  881M    0     1 session
+    host vitest      3807318  local                      5m    0%     0m38s  454M    0
+    host node-test   3807320  local                      5m    0%     0m00s  41M     0
+    host node-test   3807326  local                      5m    0%     0m00s  50M     0
+  serving            3573068  def16906  0.1.563 claude  16m  100%     6m23s  2.2G    0     fast tier, 41 files; fast tier, 1 file; 466 pending; 1 session
+    host vitest      3573377  local                     16m    1%     3m22s  840M    0
+    host node-test   3573384  local                     16m    0%     0m01s  59M     0
+    host vitest      3816447  local                      4m   13%     0m36s  385M    0
+    vitest           4002462  fork worker                1s     ?     0m01s  176M    0     nice 10, +2 children
+  serving            1675147  d3f491b2  0.1.563 claude   2h   49%    53m14s  1.4G    20M   fast tier, 2 files; 107 pending; 1 session
+    host vitest      3505365  local                     21m    0%     2m51s  768M    0
+    host vitest      3675528  local                     11m    2%     0m52s  511M    0
+    group:run-loop:vitest4000731  fork worker                8s     ?     0m06s  240M    0     nice 10, +2 children
+    group:run-loop:vitest4000737  fork worker                8s     ?     0m05s  194M    0     nice 10, +2 children
+  serving            3495590  cc3559cf  0.1.563 claude  22m   10%     0m52s  313M    0     97 pending; 1 session
+
+2026-11-19T08:10:46Z
+squeal: this command runs squeal 0.1.565; plugins: Claude Code 0.1.565 and Codex 0.1.563. Run squeal update to bring the plugins to one version.
+squeal ps · 10 daemons, 1 test process · 27 flags: older, past-departure, stale-socket ×14, stale-pool-mark ×11
+Host    load 9.7 9.5 9.0 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 2.5% · memory pressure 0.0% (0.0% full) · memory 25.8 of 62.8 GiB used, swap 0.6 of 4.0 GiB
+Squeal  CPU 5.0 CPUs (89% of busy) · memory 8.6 GiB (33% of used) + 132 MiB swap · pool 4 of 6 permits
+
+~/projects/squeal (this repository) · 6 daemons · CPU 0.6 · memory 4.6 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 3990424 holds it)
+                     3991705  72059d52  0.1.563 claude   5m    0%     0m29s  319M    0     1 session
+    host vitest      3992522  local                      5m    0%     0m54s  224M    0
+  older (session 3806840 holds it)
+                     3807080  bd2c83af  0.1.563 claude  10m    0%     1m10s  351M    0     1 session
+  older (session 3833338 holds it)
+                     3833454  a9cd6b09  0.1.563 claude   8m    0%     1m09s  612M    0     1 session
+    host vitest      3833840  local                      8m    0%     0m24s  285M    0
+  older (session 3987952 holds it)
+                     3988760  1d0e5207  0.1.563 claude   5m   56%     1m04s  1.1G    0     fast tier, 2 files; 12 pending; 1 session
+    host vitest      3990360  local                      5m    1%     0m19s  234M    0
+    vitest           4073459  fork worker               11s    0%     0m01s  175M    0     nice 10, +1 child
+  older (session 3831040 holds it)
+                     3831177  675f559c  0.1.563 claude   8m    0%     1m09s  445M    0     1 session
+    host vitest      3831539  local                      8m    0%     0m34s  248M    0
+  older (session 3992356 holds it)
+                     3992945  db0382bd  0.1.563 claude   5m    0%     1m12s  430M    0     2 pending; 1 session
+    host vitest      3994739  local                      5m    0%     0m27s  283M    0
+
+~/projects/cezar · 4 daemons · CPU 4.4 · memory 4.0 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 3807307 holds it)
+                     3806820  c9473641  0.1.563 claude  10m    0%     3m07s  756M    0     1 session
+! serving            3573068  def16906  0.1.563 claude  21m   79%     9m36s  1.2G    0     381 pending; session left 2m ago
+      older: version 0.1.563; claude installs 0.1.565
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+      past-departure: its last session left 2m ago, and no slow work is left
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+    host vitest      3573377  local                     21m    0%     3m31s  760M    0
+    host vitest      4035040  local                      2m  365%     0m22s  380M    0
+  older (session 1035921 holds it)
+                     1675147  d3f491b2  0.1.563 claude   2h    0%    54m38s  730M    60M   97 pending; 1 session
+  older (session 3495222 holds it)
+                     3495590  cc3559cf  0.1.563 claude  27m    0%     0m56s  231M    72M   97 pending; 1 session
+
+2026-11-19T08:15:48Z
+squeal ps · 13 daemons, 3 test processes · 27 flags: older, past-departure, stale-socket ×14, stale-pool-mark ×11
+Host    load 7.8 8.4 8.7 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 3.6% · memory pressure 1.4% (1.3% full) · memory 32.0 of 62.8 GiB used, swap 0.8 of 4.0 GiB
+Squeal  CPU 8.3 CPUs (91% of busy) · memory 14.8 GiB (46% of used) + 367 MiB swap · pool 3 of 6 permits
+
+~/projects/squeal (this repository) · 8 daemons · CPU 5.0 · memory 10.1 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 3990424 holds it)
+                     3991705  72059d52  0.1.563 claude  10m    0%     0m36s  320M    0     1 session
+  older (session 3806840 holds it)
+                     3807080  bd2c83af  0.1.563 claude  15m   16%     1m44s  942M    0     1 session
+  older (session 3833338 holds it)
+                     3833454  a9cd6b09  0.1.563 claude  13m    0%     1m49s  1.1G    0     1 session
+    host vitest      3833840  local                     13m    0%     0m26s  293M    0
+  older (session 3987952 holds it)
+                     3988760  1d0e5207  0.1.563 claude  10m    0%     2m06s  1.3G    0     10 pending; 1 session
+    host vitest      3990360  local                     10m    0%     0m23s  273M    0
+  serving            4111313  ca65ba23  0.1.565 claude   2m   48%     0m51s  987M    0     1 session
+    host vitest      4112190  local                      2m    0%     0m46s  433M    0
+  serving            4126844  32088e17  0.1.565 claude   2m  135%     1m30s  1.4G    0     322 pending; 1 session
+    host vitest      4127860  local                      2m  297%     1m11s  667M    0
+  older (session 3831040 holds it)
+                     3831177  675f559c  0.1.563 claude  13m    0%     1m25s  902M    0     1 session
+  older (session 3992356 holds it)
+                     3992945  db0382bd  0.1.563 claude  10m    1%     2m11s  894M    0     fast tier, 2 files; 12 pending; 1 session
+    host vitest      3994739  local                     10m    1%     1m34s  261M    0
+    vitest           4162268  fork worker               23s    0%     0m04s  497M    0     nice 10, +1 child
+
+~/projects/cezar · 5 daemons · CPU 3.3 · memory 4.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            4078998  a41de039  0.1.565 claude   4m    0%     0m32s  230M    0     97 pending; 1 session
+    host vitest      4079229  local                      4m    0%     0m03s  342M    0
+    host node-test   4079230  local                      4m    0%     0m00s  37M     0
+    host node-test   4079231  local                      4m    0%     0m00s  46M     0
+  older (session 3807307 holds it)
+                     3806820  c9473641  0.1.563 claude  15m    0%     3m47s  829M    0     1 session
+! serving            3573068  def16906  0.1.563 claude  26m   67%    12m50s  1.2G    13M   fast tier, 2 files; 319 pending; session left 7m ago
+      older: version 0.1.563; claude installs 0.1.565
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+      past-departure: its last session left 7m ago, and no slow work is left
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+    host vitest      3573377  local                     26m    0%     3m31s  572M    188M
+    host vitest      4035040  local                      7m    6%     0m45s  347M    0
+    group:run-loop:vitest4166250  fork worker                8s  140%     0m03s  218M    0     nice 10, +1 child
+    group:run-loop:vitest4166283  fork worker                8s  118%     0m05s  218M    0     nice 10, +1 child
+  older (session 1035921 holds it)
+                     1675147  d3f491b2  0.1.563 claude   2h    1%    54m44s  596M    65M   97 pending; 1 session
+  older (session 3495222 holds it)
+                     3495590  cc3559cf  0.1.563 claude  32m    0%     1m00s  227M    100M  97 pending; 1 session
+
+2026-11-19T08:20:50Z
+squeal ps · 12 daemons, 2 test processes · 27 flags: older, past-departure, stale-socket ×14, stale-pool-mark ×11
+Host    load 9.9 9.3 9.0 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 1.1% · memory pressure 0.5% (0.5% full) · memory 30.8 of 62.8 GiB used, swap 0.6 of 4.0 GiB
+Squeal  CPU at least 9.6 CPUs (at least 97% of busy) · memory 13.1 GiB (42% of used) + 145 MiB swap · pool 4 of 6 permits
+
+~/projects/squeal (this repository) · 8 daemons · CPU 6.1 · memory 9.7 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 3990424 holds it)
+                     3991705  72059d52  0.1.563 claude  15m    0%     0m43s  325M    0     1 session
+  older (session 3806840 holds it)
+                     3807080  bd2c83af  0.1.563 claude  20m    0%     2m18s  919M    7M    1 session
+  older (session 3833338 holds it)
+                     3833454  a9cd6b09  0.1.563 claude  18m   63%     2m28s  1.2G    0     1 session
+    host vitest      3833840  local                     18m    0%     0m27s  375M    0
+  older (session 3987952 holds it)
+                     3988760  1d0e5207  0.1.563 claude  15m    0%     3m16s  1003M   0     7 pending; 1 session
+    host vitest      3990360  local                     15m    0%     0m38s  447M    0
+  serving            4111313  ca65ba23  0.1.565 claude   7m   98%     3m38s  1.4G    0     312 pending; 1 session
+    host vitest      4112190  local                      7m  352%     2m48s  739M    0
+  serving            4126844  32088e17  0.1.565 claude   7m   15%     2m47s  626M    0     fast tier, 135 files; 174 pending; 1 session
+    host vitest      4127860  local                      7m   75%     1m24s  530M    0
+  older (session 3831040 holds it)
+                     3831177  675f559c  0.1.563 claude  19m    0%     1m54s  1.0G    0     1 session
+  older (session 3992356 holds it)
+                     3992945  db0382bd  0.1.563 claude  15m    1%     3m24s  1.0G    0     8 pending; 1 session
+    host vitest      3994739  local                     15m    0%     1m39s  297M    0
+
+~/projects/cezar · 4 daemons · CPU at least 3.6 · memory 3.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            4078998  a41de039  0.1.565 claude   9m    0%     0m36s  226M    0     97 pending; 1 session
+  older (session 3807307 holds it)
+                     3806820  c9473641  0.1.563 claude  20m   55%     4m33s  844M    14M   1 session
+! serving            3573068  def16906  0.1.563 claude  31m   15%    15m32s  1.3G    23M   fast tier, 2 files; 279 pending; session left 12m ago
+      older: version 0.1.563; claude installs 0.1.565
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+      past-departure: its last session left 12m ago, and no slow work is left
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+    host vitest      4035040  local                     12m    5%     1m04s  348M    0
+    group:run-loop:vitest42106    fork worker                8s     ?     0m03s  186M    0     nice 10, +3 children
+    group:run-loop:vitest42113    fork worker                8s  141%     0m03s  209M    0     nice 10
+  older (session 3495222 holds it)
+                     3495590  cc3559cf  0.1.563 claude  37m    0%     1m05s  201M    101M  97 pending; 1 session
+
+2026-11-19T08:25:52Z
+squeal ps · 17 daemons, 2 test processes · 28 flags: older, past-departure, stale-socket ×14, stale-pool-mark ×12
+Host    load 17.7 14.7 11.4 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 2.8% · memory pressure 0.9% (0.7% full) · memory 37.8 of 62.8 GiB used, swap 2.3 of 4.0 GiB
+Squeal  CPU at least 12.8 CPUs (at least 89% of busy) · memory 19.2 GiB (51% of used) + 1.2 GiB swap · pool 2 of 6 permits
+
+~/projects/squeal (this repository) · 14 daemons · CPU at least 10.6 · memory 16.3 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  older (session 3990424 holds it)
+                     3991705  72059d52  0.1.563 claude  20m    0%     0m51s  222M    100M  1 session
+  older (session 3806840 holds it)
+                     3807080  bd2c83af  0.1.563 claude  25m    0%     2m39s  934M    38M   1 session
+  serving            50410    20e772ea  0.1.565 claude   4m    7%     1m41s  687M    15M   1404 pending; 1 session
+    host vitest      52927    local                      4m   96%     1m27s  410M    17M
+  older (session 3833338 holds it)
+                     3833454  a9cd6b09  0.1.563 claude  23m   13%     2m58s  1.1G    40M   1 session
+  serving            49905    b0c3090d  0.1.565 claude   4m    2%     1m18s  891M    22M   1119 pending; 1 session
+    host vitest      50703    local                      4m  106%     2m03s  490M    26M
+  serving            55030    7a5a0dc3  0.1.565 claude   4m    0%     1m23s  958M    4M    2 sessions
+    host vitest      56289    local                      4m    0%     0m13s  162M    0
+  serving            53331    2326720e  0.1.565 claude   4m    0%     0m44s  911M    20M   1 session
+    host vitest      55060    local                      4m    0%     0m12s  183M    8M
+  older (session 3987952 holds it)
+                     3988760  1d0e5207  0.1.563 claude  20m   47%     4m05s  952M    34M   4 pending; 1 session
+    host vitest      3990360  local                     20m    0%     0m44s  352M    93M
+  serving            4111313  ca65ba23  0.1.565 claude  12m  104%     5m37s  1.0G    29M   313 pending; 1 session
+    host vitest      4112190  local                     12m    0%     3m17s  594M    99M
+  serving            4126844  32088e17  0.1.565 claude  12m    1%     4m26s  1.1G    35M   178 pending; 1 session
+    host vitest      4127860  local                     12m    0%     1m32s  319M    163M
+  older (session 3831040 holds it)
+                     3831177  675f559c  0.1.563 claude  24m   66%     2m24s  962M    55M   1 session
+  older (session 3992356 holds it)
+                     3992945  db0382bd  0.1.563 claude  20m    2%     3m59s  918M    43M   fast tier, 1 file; 3 pending; 1 session
+    host vitest      3994739  local                     20m    1%     1m57s  291M    62M
+    vitest           108445   fork worker                1m     ?     0m29s  262M    0     nice 10, +6 children
+  serving            71199    07ed0d32  0.1.565 claude   3m   34%     0m47s  1.0G    0     1 session
+    host vitest      72581    local                      3m    0%     0m12s  175M    0
+  serving            51488    73679d6a  0.1.565 claude   4m  105%     1m19s  1.1G    21M   664 pending; 1 session
+    host vitest      53470    local                      4m   22%     1m06s  571M    17M
+
+~/projects/cezar · 3 daemons · CPU 2.2 · memory 2.9 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            4078998  a41de039  0.1.565 claude  14m   30%     0m41s  175M    49M   97 pending; 1 session
+  older (session 3807307 holds it)
+                     3806820  c9473641  0.1.563 claude  25m   93%     5m30s  866M    59M   1 session
+! serving            3573068  def16906  0.1.563 claude  36m    2%    17m36s  1.4G    106M  fast tier, 1 file; 260 pending; session left 17m ago
+      older: version 0.1.563; claude installs 0.1.565
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+      past-departure: its last session left 17m ago, and no slow work is left
+      ends it: squeal stop ~/projects/cezar/.ai/squawk/worktrees/0a6c5807-21f1-45db-b569-9656a3eeeab2
+    host vitest      4035040  local                     17m    1%     1m19s  240M    115M
+    group:run-loop:vitest136418   fork worker                9s   98%     0m03s  185M    0     nice 10, +1 child
+
