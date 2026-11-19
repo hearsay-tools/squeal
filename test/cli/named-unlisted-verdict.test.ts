@@ -20,8 +20,12 @@ const SOURCE = "src/b.ts" as RelativePath;
 /** The verdict line names the listing that holds a source path's selection. */
 const LISTING = /revision 5 is not listed yet \(.*\), so this result may not cover it/;
 
-/** B and C current at revision 4, A queued; revision 5 is stored and not listed. */
-function unlistedRepo() {
+type Change = { path: string; oldHash: string | null; newHash: string | null };
+/** An unrelated content edit: it changes no closure the listing would re-resolve. */
+const UNRELATED: Change = { path: "src/other.ts", oldHash: "a", newHash: "b" };
+
+/** B and C current at revision 4, A queued; revision 5, of `changes`, is stored and not listed. */
+function unlistedRepo(changes: readonly Change[] = [UNRELATED]) {
   const { repo, store } = repoWith([A], [B, C]);
   store.revisions.append({
     worktreeId: repo.mainId,
@@ -29,7 +33,7 @@ function unlistedRepo() {
     head: null,
     dirty: false,
     trigger: "watch",
-    changes: [{ path: "src/other.ts", oldHash: "a", newHash: "b" }],
+    changes: changes as never,
   });
   recordRefinedApplied(store, repo.mainId, 4);
   return { repo, store };
@@ -102,6 +106,43 @@ describe("a named wait during an unlisted revision judges its named files (row 0
     expect(namedCode(files)).toBe(0);
     expect(namedCode(source)).toBe(3);
     expect(namedText(source, NOW)).toMatch(LISTING);
+  });
+});
+
+describe("a pending revision that may change a named closure keeps the listing hold (review 0.1.567 B1)", () => {
+  const changes: [string, Change[]][] = [
+    ["adds a path", [{ path: "src/choice.ts", oldHash: null, newHash: "n" }]],
+    ["deletes a path", [UNRELATED, { path: "src/choice.ts", oldHash: "o", newHash: null }]],
+    ["changes a package.json", [{ path: "pkg/package.json", oldHash: "a", newHash: "b" }]],
+  ];
+
+  it.each(changes)("exits 3 with the listing named when it %s", async (_, pending) => {
+    const { repo } = unlistedRepo(pending);
+
+    const got = await wait(repo.main, [B, C]);
+    const snapshot = await namedSnapshot(repo.main, [B, C], { now: () => NOW, settleMs: 0, sync });
+
+    if (got.outcome === "unavailable" || snapshot.outcome === "unavailable") {
+      throw new Error("unavailable");
+    }
+    for (const read of [got, snapshot]) {
+      expect(read.verdict.unlisted).toBe(true);
+      expect(namedCode(read)).toBe(3);
+      expect(namedText(read, NOW)).toMatch(/revision 5 is not listed yet/);
+    }
+  });
+
+  it("exits 3 when a named file's key row was written by the pending revision", async () => {
+    const { repo, store } = unlistedRepo();
+    // The content pass re-keyed B at revision 5 and found its result: the listing re-resolves it.
+    const [row] = store.testFileKeys.list(repo.mainId, [ref(B)]);
+    if (row === undefined) throw new Error("no row");
+    store.testFileKeys.upsertMany([{ ...row, revision: 5 as RevisionNumber }]);
+
+    const got = await wait(repo.main, [B, C]);
+
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+    expect(namedCode(got)).toBe(3);
   });
 });
 

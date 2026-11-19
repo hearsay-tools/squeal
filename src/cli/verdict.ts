@@ -14,6 +14,7 @@ import type { KnownState } from "../core/types/state.js";
 import type { StatusResult } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
+import { listingMayChangeClosures } from "./listing-hold.js";
 import type { NamedPath, NamedSelection } from "./named-selection.js";
 import type { SyncState } from "./status-sync.js";
 import { passReached } from "./wait/synced.js";
@@ -30,7 +31,8 @@ export interface FileClasses {
   /**
    * The runner has not listed the revision's test files yet (`runnerPartPending`), or an
    * install is awaited. Row 011-398 (gh-232): a listing does not count for a fixed set of
-   * named files (`fixedSelection`), which it cannot change.
+   * named files (`fixedSelection`) unless it may change their closures (review 0.1.567 B1,
+   * `listingMayChangeClosures`).
    */
   readonly unlisted: boolean;
 }
@@ -87,7 +89,7 @@ export function withPartial(
  * The classes of `files`, or of every test file the worktree lists when
  * `null`, read from their own states and rows only: a wait's poll reads
  * this, never every state of the worktree for a few files (task 011-42).
- * `fixed`: `files` is a named set the listing cannot change (`fixedSelection`).
+ * `fixed`: `files` is a named set the listing cannot add to (`fixedSelection`).
  */
 export function readClasses(
   store: Store,
@@ -154,15 +156,24 @@ function tally(
   const ids = files === null ? [...rows.keys()] : [...new Set(files.map(testFileId))];
   const byClass: Record<FileClass, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
   for (const id of ids) byClass[fileClassOf(rows.get(id), checks.get(id) ?? [])]++;
+  // Row 011-398 (gh-232; review 0.1.567 B1): a pending listing holds no fixed named set
+  // whose closures it cannot change; an awaited install holds every set.
+  const listingHolds =
+    header.runnerPartPending === true &&
+    (!fixed ||
+      files === null ||
+      listingMayChangeClosures(
+        store,
+        worktreeId,
+        header.revision,
+        header.refinedRevision,
+        ids.map((id) => rows.get(id)),
+      ));
   const classes: FileClasses = {
     revision: header.revision,
     testFiles: ids.length,
     byClass,
-    // Row 011-398 (gh-232): a pending listing holds no fixed named set, whose files the
-    // daemon's pass already classed; an awaited install holds every set.
-    unlisted:
-      (header.runnerPartPending === true && !(fixed && files !== null)) ||
-      header.awaitingInstall === true,
+    unlisted: listingHolds || header.awaitingInstall === true,
   };
   return { classes, ids, rows, checks };
 }
