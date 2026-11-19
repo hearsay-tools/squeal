@@ -15,6 +15,7 @@ import type { DaemonExitReason } from "../types/daemon.js";
 import type { Policy } from "../types/policy.js";
 import type { SlowWaiting } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
+import { oncePerClone } from "./clone-prune.js";
 import { CHECKPOINT_BUSY_MS, IdleCheckpoint, truncateWal } from "./idle-checkpoint.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedPrune } from "./sliced-prune.js";
@@ -434,34 +435,48 @@ export function startTimers(context: TimerContext): () => void {
     });
   // Spec 021 D3 (row 021-09): the main store's prune in slices, the lock free between them.
   const pruning = new SlicedPrune(context);
-  const prune = () =>
+  const prune = () => {
+    // Row 021-33: one daemon of the clone prunes both stores per interval; this one, if claimed.
+    const turn = { claimed: false };
     void pruning.run(
       () =>
-        pruneSlices(
-          connectionOf(store),
-          store.worktrees,
-          storePaths(context.commonDir),
-          {
-            now: now(),
-            retentionDays: context.policy.store.retentionDays,
-            maxSizeMb: context.policy.store.maxSizeMb,
+        oncePerClone(
+          store,
+          now(),
+          pruneMs,
+          () =>
+            pruneSlices(
+              connectionOf(store),
+              store.worktrees,
+              storePaths(context.commonDir),
+              {
+                now: now(),
+                retentionDays: context.policy.store.retentionDays,
+                maxSizeMb: context.policy.store.maxSizeMb,
+              },
+              noneRemoved(),
+            ),
+          () => {
+            turn.claimed = true;
           },
-          noneRemoved(),
         ),
       // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
       // after the main store, while it exists and the policy is on. Row 011-350 (#220): in
       // slices by the same driver, so a writer of another worktree gets turns between them.
-      () =>
+      () => {
+        if (!turn.claimed) return;
         void pruning.run(
           () =>
             pruneCodeSlicesAfter(store, context.commonDir, context.policy, now(), noCodeRemoved()),
           undefined,
           "code prune",
-        ),
+        );
+      },
       "prune",
       // Row 011-391: the main store's prune only; the code store is another file.
       context.storeFault,
     );
+  };
 
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
