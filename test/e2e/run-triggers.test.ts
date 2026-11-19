@@ -123,8 +123,8 @@ describe.each(PLUGINS)("run triggers end to end, $name", (plugin) => {
     const sha = commitAll(e.main, "a debugger statement");
     const lines = await commitLines(e, sha);
     expect(lines).toEqual([
-      `Commit ${sha.slice(0, 7)}: 0 known failures; lint 0 findings, 1 file still running`,
-      `Commit ${sha.slice(0, 7)}: 0 known failures; lint 1 finding`,
+      `Commit ${sha.slice(0, 7)}: 0 known failures; lint (oxlint): 1 of 1 file still running`,
+      `Commit ${sha.slice(0, 7)}: 0 known failures; lint (oxlint): 1 finding in 1 of 1 file`,
     ]);
     const committed = await e.status(e.main);
     expect(committed.lint).toMatchObject({ failing: 1 });
