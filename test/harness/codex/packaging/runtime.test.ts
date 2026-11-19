@@ -74,6 +74,8 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     expect(existsSync(join(built.dir, "cli/squeal.mjs"))).toBe(true);
     expect(existsSync(join(built.dir, "cli/front-desk.mjs"))).toBe(true);
     expect(existsSync(join(built.dir, "cli/coverage-map.mjs"))).toBe(true);
+    expect(existsSync(join(built.dir, "cli/store-writer.mjs"))).toBe(true);
+    expect(existsSync(join(built.dir, "cli/store-relay.mjs"))).toBe(true);
   });
 
   it("gives hook bundles and the runtime entry nothing at runtime but Node built-ins", async () => {
@@ -133,8 +135,9 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     for (const file of runtime) execFileSync(process.execPath, ["--check", join(built.dir, file)]);
     const bundles = files.filter((f) => !verbatim(f));
     // The hooks, the runtime entry (002-29), the CLI, its socket worker, `ps` alone (spec 014
-    // goal 6), the coverage records' mapping worker (015-42) and the ESLint provider's worker (017-04).
-    expect(bundles).toHaveLength(CONTRACT.length + 6);
+    // goal 6), the coverage records' mapping worker (015-42), the ESLint provider's worker (017-04),
+    // and the store process's writer thread and the daemon's relay thread (021-36).
+    expect(bundles).toHaveLength(CONTRACT.length + 8);
     for (const file of bundles) {
       const path = join(built.dir, file);
       expect(readFileSync(path, "utf8"), file).toMatch(
