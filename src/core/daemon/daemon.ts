@@ -209,6 +209,15 @@ const BUSY_TOPIC = "daemon:store-busy";
 /** The topic of the note on a Vitest below the root (003 D7 as amended 2026-10-22). */
 const VITEST_BELOW_ROOT_TOPIC = "vitest:below-root";
 
+/** Exits on purpose (spec 021 D22.2): the store process need not wait out its grace for them. */
+const LEAVING: ReadonlySet<DaemonExitReason> = new Set([
+  "stop-requested",
+  "signal",
+  "root-removed",
+  "worktree-removed",
+  "reinstalled",
+]);
+
 class Daemon {
   readonly #log: (line: string) => void;
   readonly #now: () => EpochMs;
@@ -1335,7 +1344,8 @@ class Daemon {
         await Promise.all([...this.#lints.values()].map((pass) => pass.close()));
       });
       await this.#step("coverage.close", () => this.#coverage?.close());
-      await this.#step("relay.close", () => this.#relay?.close());
+      // Spec 021 D22.2: a daemon stopped on purpose lets the store process go now if it was the last.
+      await this.#step("relay.close", () => this.#relay?.close(LEAVING.has(reason)));
       await this.#step("runner.close", () => this.#runner?.close());
       await this.#step("escaped children", async () => {
         const stop = await this.#children.atExit();

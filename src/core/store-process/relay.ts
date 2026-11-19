@@ -185,14 +185,14 @@ export class CodeRelay {
   }
 
   /** Ends the thread; its lease at the store process ends with it. */
-  async close(): Promise<void> {
+  async close(leaving = false): Promise<void> {
     if (this.#closed) return;
     this.#closed = true;
     if (this.#reporter !== null) clearInterval(this.#reporter);
     this.#report();
     const worker = this.#worker;
     if (worker === null || this.#exited) return;
-    this.#port?.postMessage({ close: true });
+    this.#port?.postMessage({ close: true, leaving });
     // Bounded: a thread that does not end in 1 s is terminated, and the close waits 1 s more at most.
     const timer = setTimeout(() => void worker.terminate(), 1_000);
     const cap = new Promise<void>((resolve) => setTimeout(resolve, 2_000).unref());

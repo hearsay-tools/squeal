@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { codeStorePath } from "../code/store/open.js";
 import { acquireDaemonLock } from "../daemon/lock.js";
@@ -52,7 +53,14 @@ export interface StoreProcessOptions {
 }
 
 /** Why the store process ended. */
-export type StoreProcessEnd = "lost-lock" | "open-failed" | "idle" | "newer-schema" | "stopped";
+export type StoreProcessEnd =
+  | "lost-lock"
+  | "open-failed"
+  | "idle"
+  | "newer-schema"
+  | "stopped"
+  /** Its file is gone: the repository or its store was removed under it. */
+  | "removed";
 
 export interface RunningStoreProcess {
   readonly socketPath: AbsolutePath;
@@ -161,6 +169,15 @@ export async function startStoreProcess(
     }
     if (!isWriteRequest(request)) return errorResponse("a store process answers writes only");
     if (request.type === "write-cancel") return batches.cancel(request);
+    if (request.type === "release" && request.leaving === true) {
+      // D22.2: the client's daemon was stopped on purpose; with no client left, no grace either.
+      const answer = deskOf(request.worktreeId).answer(request, phase);
+      setImmediate(() => {
+        if (queue.size === 0 && ![...desks.values()].some((desk) => desk.leased))
+          void stop("stopped");
+      });
+      return answer;
+    }
     if (request.type === "write-status") {
       for (const desk of desks.values()) {
         const answer = desk.status(request);
@@ -197,6 +214,8 @@ export async function startStoreProcess(
     if ([...desks.values()].some((desk) => desk.leased) || queue.size > 0) lastClient = now();
     else if (now() - lastClient >= graceMs) void stop("idle");
     if (fileSchema(commonDir) > ready.schema) void stop("newer-schema");
+    // A repository removed under it (a harness's temp checkout, a test's) leaves nothing to serve.
+    if (!existsSync(codeStorePath(commonDir))) void stop("removed");
   };
   const timer = setInterval(check, Math.min(options.checkMs ?? CHECK_MS, graceMs));
   // D22.6: a line a minute while it wrote anything.

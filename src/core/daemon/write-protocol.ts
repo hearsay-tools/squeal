@@ -77,6 +77,7 @@ export function parseWriteRequest(
         type: "release",
         worktreeId: request.worktreeId as WorktreeId,
         token: request.token,
+        ...(request.leaving === true ? { leaving: true } : {}),
       };
     case "write":
       return parseWrite(request);

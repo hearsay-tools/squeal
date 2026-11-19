@@ -57,6 +57,8 @@ export interface RelayMessage {
   readonly job?: RelayJob;
   readonly cancel?: { readonly n: number; readonly seq: string };
   readonly close?: true;
+  /** With `close`: the daemon was stopped on purpose (spec 021 D22.2). */
+  readonly leaving?: boolean;
 }
 
 /** After a start that did not serve, or a refusal, this long before the next try. */
@@ -153,8 +155,19 @@ function serve(data: RelayData): void {
     }
     if (message.close === true) {
       closing = true;
+      const leaving = message.leaving === true;
       chain = chain.then(async () => {
-        await writer?.release().catch(() => {});
+        if (writer !== null) await writer.release(leaving).catch(() => {});
+        else if (leaving && existsSync(data.socketPath)) {
+          // No lease taken: the store process still hears that this daemon left on purpose.
+          const request = {
+            type: "release",
+            worktreeId: data.worktreeId,
+            token: "-",
+            leaving,
+          } as const;
+          await requestDaemon(data.socketPath, request, SMALL_REQUEST_TIMEOUT_MS).catch(() => null);
+        }
         data.port.close();
       });
       return;

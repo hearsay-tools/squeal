@@ -150,13 +150,19 @@ export class DaemonWriter implements WriteSender {
     return this.#notTaken("not-taken", socket, release ? null : token);
   }
 
-  async release(): Promise<void> {
+  /** `leaving` (spec 021 D22.2): to a store process, this client's daemon was stopped on purpose. */
+  async release(leaving = false): Promise<void> {
     const token = this.#token;
     const socket = this.#socket;
     this.#token = null;
     if (token === null || socket === null || socket === undefined) return;
     const { worktreeId } = this.#options;
-    await this.#ask(socket, { type: "release", worktreeId, token });
+    await this.#ask(socket, {
+      type: "release",
+      worktreeId,
+      token,
+      ...(leaving ? { leaving } : {}),
+    });
   }
 
   #socketPath(): AbsolutePath | null {

@@ -74,6 +74,12 @@ export interface ReleaseRequest {
   readonly type: "release";
   readonly worktreeId: WorktreeId;
   readonly token: string;
+  /**
+   * Spec 021 D22.2 (row 021-36): to a store process, the client's daemon was
+   * stopped on purpose; with no other client, the store process stops now
+   * rather than after its grace. A daemon ignores it.
+   */
+  readonly leaving?: boolean;
 }
 
 export interface ReleaseResponse {

@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CODE_SCHEMA_VERSION } from "../../src/core/code/store/schema.js";
@@ -183,4 +183,40 @@ describe("a store process per clone (row 021-36)", () => {
     await one.close();
     expect(performance.now() - started).toBeLessThan(500);
   });
+
+  // D22.2 (candidate CI of 0.1.571): store processes outlived the daemons tests stopped.
+  it("stops when the last client's daemon was stopped on purpose, and keeps its grace otherwise", async () => {
+    const at = fresh();
+    const running = await storeProcess(at);
+    let ended: string | null = null;
+    void running.ended.then((end) => {
+      ended = end;
+    });
+    const clients = ["w1", "w2", "w3"].map((id) => {
+      const through = relay(at, id);
+      return { through, store: openThrough(at, through) };
+    });
+    for (const { through, store } of clients) await warm(through, store);
+
+    // Other clients still hold their leases: no stop.
+    await clients[0]?.through.close(true);
+    await clients[1]?.through.close(true);
+    // The last client's daemon ends on its own: the grace holds.
+    await clients[2]?.through.close(false);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(ended).toBeNull();
+
+    // A daemon that comes and is stopped on purpose, the only client: the store process goes.
+    const last = relay(at, "w4");
+    await warm(last, openThrough(at, last));
+    await last.close(true);
+    expect(await running.ended).toBe("stopped");
+  }, 60_000);
+
+  it("stops when its repository was removed under it", async () => {
+    const at = fresh();
+    const running = await storeProcess(at, { checkMs: 50 });
+    rmSync(join(at.commonDir, "squeal"), { recursive: true, force: true });
+    expect(await running.ended).toBe("removed");
+  }, 60_000);
 });

@@ -15,7 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, expect } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { PingResponse } from "../../src/core/types/daemon.js";
 import type { DaemonNote } from "../../src/core/types/scheduler.js";
@@ -336,6 +336,21 @@ export async function stopStrays(root: string): Promise<void> {
   );
   await killProcesses(strays, 60_000);
   await awaitRunnerHosts(root);
+  // Spec 021 D22 (row 021-36): the clone's store process outlives its daemons by its grace.
+  const commonDir = commonDirOf(root);
+  const stores = findProcesses(`${TEST_CACHE}/`).filter(({ args }) =>
+    args.includes(` store-process ${commonDir} `),
+  );
+  await killProcesses(stores, 10_000);
+}
+
+/** The common dir of the repository at `root`, also once `root` is gone: `<root>/.git` then. */
+function commonDirOf(root: string): string {
+  try {
+    return resolveCommonDir(realpathSync(root)) ?? join(root, ".git");
+  } catch {
+    return join(root, ".git");
+  }
 }
 
 /** The runner hosts (`squeal runner-host <root>`, spec 021 D6) a test build runs for `root`. */
