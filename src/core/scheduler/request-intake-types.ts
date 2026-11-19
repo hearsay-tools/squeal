@@ -130,8 +130,11 @@ export interface ApplyRule<A> extends Skip {
 export type WakeRule =
   /** Every group's lane, before the lock: the reason. */
   | { readonly allLanes: string }
-  /** The group's lane, after the record. */
-  | { readonly lane: string }
+  /**
+   * The group's lane, after the record; with `checkYields`, the tiers in
+   * flight are checked too (row 011-397: a narrow run's batch).
+   */
+  | { readonly lane: string; readonly checkYields?: true }
   /**
    * The lanes of its covered files' groups, after the record: the reason.
    * A group with no lane of its own (`tests`) has none to wake.
