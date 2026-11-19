@@ -1,6 +1,6 @@
 import type { FailedTest } from "../code/gate/types.js";
 import { cap } from "../text.js";
-import type { CheckError } from "../types/check.js";
+import { errorKind, type FailureKind, failureKind, RED_KINDS, recordedKind } from "./evidence.js";
 
 /*
  * Spec 023 D5.5, D5.6 (row 023-08): a red proof's verdict per test file,
@@ -8,12 +8,14 @@ import type { CheckError } from "../types/check.js";
  * failure records, as `squeal why` reads them: an error's class name and
  * code, the phase a file-level error happened in, the load a timeout
  * recorded, and (row 023-22, D5.5 as amended 2026-11-19) where in its test
- * the error happened and its assertion evidence. No message text is read,
- * except for the texts `--red-error` names.
+ * the error happened and its assertion evidence (`evidence.ts`). No message
+ * text is read, except for the texts `--red-error` names.
  */
 
 /** A side's reason when the budget left a run of it not started (row 023-11). */
 export const NOT_RUN_BUDGET = "not run (budget)";
+
+export { errorKind, type FailureKind, failureKind } from "./evidence.js";
 
 /** How one side of one file ended. */
 export type SideEnd =
@@ -40,98 +42,20 @@ export interface FileVerdict {
 }
 
 /**
- * What kind of failure an error is: an assertion, a deliberate throw in the
- * test body (row 023-22), or what else stopped the test.
+ * Review wave-14 B2: the reason of a red side whose failure does not say
+ * where in its test it happened: a result stored before the runners
+ * recorded it (refreshed by a run when the side can run), or a runner
+ * that does not record it.
  */
-export type FailureKind =
-  | "assertion"
-  | "thrown"
-  | "import"
-  | "setup"
-  | "hook"
-  | "timeout"
-  | "error";
+export const UNSTAGED =
+  "the red side's failure does not record where in its test it happened (stored before Squeal recorded it, or a runner that does not); run the proof again to refresh it";
 
-/** The kinds a red side may fail on for the green side to decide (D5.5 as amended 2026-11-19). */
-const RED_KINDS: ReadonlySet<FailureKind> = new Set(["assertion", "thrown"]);
-
-/** An assertion library's own error: `expect`'s (chai) and `node:assert`'s. */
-const ASSERTION_NAMES = new Set(["AssertionError"]);
-
-/**
- * Row 023-22: the engine's programming errors, which no test throws on
- * purpose: JavaScript's and Python's (pytest), with their subclasses.
- */
-const ENGINE_ERRORS = new Set([
-  "TypeError",
-  "ReferenceError",
-  "SyntaxError",
-  "RangeError",
-  "EvalError",
-  "URIError",
-  "NameError",
-  "UnboundLocalError",
-  "AttributeError",
-  "ImportError",
-  "ModuleNotFoundError",
-  "IndentationError",
-  "TabError",
-]);
-
-/** A Node error code (`ERR_MODULE_NOT_FOUND`) or a system one (`ECONNREFUSED`): no deliberate throw. */
-const SYSTEM_CODE = /^(?:ERR_[A-Z0-9_]+|E[A-Z0-9]+)$/;
-
-/** Whether an error carries assertion evidence: its class, its code, expected and actual values, a diff. */
-function isAssertion(error: CheckError): boolean {
+/** Review wave-14 B2: whether a failed side holds an error with no stage, which can never prove it. */
+export function lacksStage(end: SideEnd): boolean {
   return (
-    ASSERTION_NAMES.has(error.name) ||
-    error.code === "ERR_ASSERTION" ||
-    error.assertionEvidence === true ||
-    error.diff !== null
+    end.end === "fail" &&
+    end.failures.some((f) => f.errors.some((error) => recordedKind(error) === "unstaged"))
   );
-}
-
-/** An `Error` or a custom subclass the test body threw: not an engine error, no system code. */
-function isDeliberate(error: CheckError): boolean {
-  const name = error.name.slice(error.name.lastIndexOf(".") + 1);
-  return !ENGINE_ERRORS.has(name) && !(error.code !== undefined && SYSTEM_CODE.test(error.code));
-}
-
-/** The kind of one recorded error by the runner's records alone. */
-function recordedKind(error: CheckError): FailureKind {
-  if (error.phase === "load") return "import";
-  if (error.phase === "setup") return "setup";
-  if (error.phase === "after-tests") return "hook";
-  // The runner records the load average with a test's or hook's timeout, and with nothing else.
-  if (error.loadAverage !== undefined || error.stage === "timeout") return "timeout";
-  if (error.stage === "hook") return "hook";
-  if (isAssertion(error)) return "assertion";
-  return error.stage === "body" && isDeliberate(error) ? "thrown" : "error";
-}
-
-/**
- * The kind of one recorded error. `redErrors` are `--red-error`'s texts: an
- * error whose message holds one counts as `thrown` whatever else it is,
- * except where its test did not start (an import, the project's setup).
- */
-export function errorKind(error: CheckError, redErrors: readonly string[] = []): FailureKind {
-  const kind = recordedKind(error);
-  if (RED_KINDS.has(kind) || kind === "import" || kind === "setup") return kind;
-  return redErrors.some((text) => error.message.includes(text)) ? "thrown" : kind;
-}
-
-/**
- * The kind of one failed test: `assertion` only when every error it
- * recorded is one; `thrown` when every error is an assertion or a thrown
- * error and one is thrown; else the first other kind. A failure with no
- * recorded error is `error`: nothing shows it was an assertion.
- */
-export function failureKind(failure: FailedTest, redErrors: readonly string[] = []): FailureKind {
-  const kinds = failure.errors.map((error) => errorKind(error, redErrors));
-  const other = kinds.find((kind) => !RED_KINDS.has(kind));
-  if (other !== undefined) return other;
-  if (kinds.includes("thrown")) return "thrown";
-  return kinds.length > 0 ? "assertion" : "error";
 }
 
 const KIND_TEXT: Readonly<Record<Exclude<FailureKind, "assertion" | "thrown">, string>> = {
@@ -139,6 +63,7 @@ const KIND_TEXT: Readonly<Record<Exclude<FailureKind, "assertion" | "thrown">, s
   setup: "the project's setup failed",
   hook: "a hook or the file's teardown failed",
   timeout: "a test or hook timed out",
+  unstaged: UNSTAGED,
   error: "a test threw an engine error, or an error outside its body",
 };
 
@@ -187,6 +112,7 @@ export function verdictOf(
   const other = red.failures
     .map((failure) => failureKind(failure, redErrors))
     .find((kind) => !RED_KINDS.has(kind));
+  if (other === "unstaged") return { verdict: "not comparable", reason: UNSTAGED };
   if (red.failures.length === 0 || other !== undefined)
     return {
       verdict: "red for another reason",

@@ -39,6 +39,8 @@ interface RunRequest {
   readonly store: boolean;
   /** Row 023-11: `false` when a failed file must never run again under load (`NO_LOAD_RETRY`). */
   readonly retry?: boolean;
+  /** Review wave-14 B2: each stored failure runs once more (`runGateFiles`' `rerunFailures`). */
+  readonly rerunFailures?: boolean;
   /**
    * Row 023-19 (review wave-13 B2): where the child keeps its completion
    * record as the run goes (`GateFilesProgress`), in the run's own folder.
@@ -89,6 +91,7 @@ export async function runChild(request: string): Promise<number> {
       budgetSeconds: asked.budgetSeconds,
       tempDir: asked.tempDir,
       store: asked.store,
+      ...(asked.rerunFailures === true ? { rerunFailures: true } : {}),
       ...(asked.retry === false ? { hostLoad: noLoadRetry } : {}),
       ...(asked.progress === undefined ? {} : { progress: keeper(asked.progress) }),
       note: (text) => process.stderr.write(`squeal: ${text}\n`),
@@ -137,6 +140,8 @@ export interface ChildRun {
   readonly store: boolean;
   /** Row 023-11: `false` for a proof's run: no failed file runs again under load (`noLoadRetry`). */
   readonly retry?: boolean;
+  /** Review wave-14 B2: each stored failure runs once more and its rerun is kept. */
+  readonly rerunFailures?: boolean;
   /**
    * Row 023-19 (P3): seconds from the child's start to the parent's hard
    * stop of its group; default the budget plus 60 s.
@@ -168,6 +173,7 @@ export async function runInChild(run: ChildRun): Promise<RunAnswer> {
     answer,
     store: run.store,
     ...(run.retry === undefined ? {} : { retry: run.retry }),
+    ...(run.rerunFailures === true ? { rerunFailures: true } : {}),
     progress,
   };
   writeFileSync(request, JSON.stringify(asked));

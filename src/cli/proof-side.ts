@@ -5,9 +5,10 @@ import { type Changed, changedText } from "../core/commit/at-keys-walk.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, hiddenInRepository } from "../core/proof/conditions.js";
 import { type Entry, missingImport, type Side } from "../core/proof/sides.js";
-import type { SideEnd } from "../core/proof/verdict.js";
+import { lacksStage, type SideEnd } from "../core/proof/verdict.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
+import type { ResultRecord } from "../core/types/store-records.js";
 import { endOfRecords, forcedReason, runFiles } from "./proof-run.js";
 import { needsOf } from "./status-at-run-select.js";
 
@@ -24,6 +25,8 @@ import { needsOf } from "./status-at-run-select.js";
  * install; its outcome counts either way. Row 023-11 (D5.3, D5.4): a side
  * under a condition, or repeated, is never read from the store and never
  * stored; a repository path `--without` names is removed from its checkout.
+ * Review wave-14 B2: a stored failure that does not record where in its
+ * test an error happened is run again, not read (`reusable`).
  */
 
 /** Where one file's side came from. */
@@ -140,7 +143,7 @@ export async function withSide<T>(
       if (missing !== null)
         files.set(id, unknown(`imports ${missing}, absent at ${side.code.slice(0, 9)}`));
       else if (needed !== null) files.set(id, unknown(`needs ${needed}`));
-      else if (change === null && forced === null && file.at.stored.length > 0)
+      else if (change === null && forced === null && reusable(file.at.stored))
         files.set(id, {
           end: endOfRecords(file.at.stored),
           from: "store",
@@ -203,6 +206,17 @@ export async function runSide(input: SideInput): Promise<SideAnswer> {
 /** The named files whose path no runner in the checkout listed, each as it was named. */
 function unlistedOf(named: readonly TestFileRef[], keyed: readonly TestFileRef[]): TestFileRef[] {
   return named.filter((ref) => !keyed.some((k) => k.path === ref.path));
+}
+
+/**
+ * Review wave-14 B2: a stored result is read unless it is a failure with
+ * an error that does not record where in its test it happened (stored
+ * before the runners recorded it). Such a failure can never prove a side,
+ * so the side runs it again, unconditioned and stored as any run; if it
+ * cannot run, it reads not comparable as any file not run.
+ */
+function reusable(stored: readonly ResultRecord[]): boolean {
+  return stored.length > 0 && !lacksStage(endOfRecords(stored));
 }
 
 function unknown(reason: string): SideFile {

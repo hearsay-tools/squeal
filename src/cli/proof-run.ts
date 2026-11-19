@@ -143,6 +143,9 @@ async function runOnce(
     store: forced === null && change === null,
     // CI of 0.1.562: each run is one observation; the gate's load retry would replace a failure.
     retry: false,
+    // Review wave-14 B2: a stored failure reaches a run only when the side may not read it
+    // (`reusable` in `proof-side.ts`): the gate runs it again and keeps the rerun.
+    rerunFailures: forced === null && change === null,
     env,
     forward: input.forward,
   });

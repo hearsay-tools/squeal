@@ -25,6 +25,8 @@ const error = (more: Partial<CheckError>): CheckError => ({
   stack: null,
   location: null,
   diff: null,
+  // Row 023-22: the runners record where in its test an error happened.
+  stage: "body",
   ...more,
 });
 const assertion = error({ name: "AssertionError" });
