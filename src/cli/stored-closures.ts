@@ -4,6 +4,7 @@ import type { RelativePath, WorktreeId } from "../core/types/common.js";
 import type { CheckKey, TestFileRef } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
+import { StoredWalks } from "./stored-walks.js";
 
 /*
  * Row 011-44: the stored closures a named selection reads for a path the
@@ -47,6 +48,8 @@ const KEY_CHUNK = 500;
 
 /** The stored closures of one wait, by test-file id; a selection without a wait makes its own. */
 export class StoredClosures {
+  /** Row 011-403: the walks the same selections read beside the closures. */
+  readonly walks = new StoredWalks();
   #marker: string | null = null;
   #closures: ReadonlyMap<string, StoredClosure> | undefined;
 
