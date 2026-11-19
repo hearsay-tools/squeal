@@ -1,4 +1,4 @@
-import type { RelativePath, RevisionNumber } from "./common.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "./common.js";
 import type { FileHash } from "./keys.js";
 import type { LintFinding, LintOutcome, LintTool, LintTransitionKind } from "./lint.js";
 
@@ -58,6 +58,22 @@ export interface LintNews {
 export interface LintProgress {
   readonly done: number;
   readonly total: number;
+  /**
+   * Row 017-33 (gh-238, D7, D9): the pool refuses the parts' background
+   * lease, so linting waits for CPU; absent when it does not.
+   */
+  readonly cpuWait?: LintCpuWait;
+}
+
+/**
+ * Row 017-33: lint's wait for the background CPU limit (spec 021 D18), as
+ * the pool read it at the last refusal: since when, the busy CPUs it
+ * counted (`null` when it read none) and the limit they must fall below.
+ */
+export interface LintCpuWait {
+  readonly since: EpochMs;
+  readonly busy: number | null;
+  readonly limit: number;
 }
 
 /** Why the surfaces cannot say more; each absent when it does not hold. */
