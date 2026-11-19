@@ -18,6 +18,10 @@ Ruled out, for the status selection:
 - `test_file_imports` read while a runner part rewrites it (`src/core/store/import-edges.ts` 179-189). No code under `src/cli` reads the import graph; `stored-affected.ts` serves the scheduler's `affected`, not status.
 - Keys read across two revisions. The store rule reads `test_file_keys` and `test_files` in one read; the shrink needs neither to move. The daemon's `readers` reads the index under the lock, so it never sees a half-applied runner part.
 
+## Live instance, this worktree
+
+On 2026-11-19 near 09:13 UTC, during a long catch-up on a busy host, `squeal status --json src/core/scheduler/runner-work.ts src/core/scheduler/revision.ts` returned `selection.reason: "unsynced"` with `testFiles: 3` after 1.9 s. Earlier that morning (from 08:27 UTC), `status --wait` on the same paths said they select 618 and 1,119 test files. *Verified by experiment* (one sample); which lock holder delayed the answer was not read.
+
 ## Reproduction
 
 `test/cli/snapshot-selection-shrinks.test.ts` (committed, passes): one store, 13 readers of `src/cli/start.ts`, 12 of their closures written by another worktree under keys this worktree does not hold, 1 by this worktree. A snapshot whose daemon answers within the settle time selects 13; one whose daemon does not answer selects 1, with `{ result: "none", reason: "unsynced" }`. The existing `test/cli/source-path-readers.test.ts` ("selects all 13 readers at S1, S3, S6b and S7b, where the store rule selects none") shows the store rule's other losses.
