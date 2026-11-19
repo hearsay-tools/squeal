@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { errorKind, failureKind } from "../../src/core/proof/evidence.js";
 import {
   controlReading,
-  errorKind,
-  failureKind,
   NOT_RUN_BUDGET,
   NOT_SHOWN_TO_MATTER,
   notRunWhy,
