@@ -94,13 +94,14 @@ function bundle(runId: string, key: (path: string) => string): ResultsBundle {
 function worktree() {
   const { repo, store } = repoWith([A], [B, C]);
   fail(store, repo.mainId, check(C, "holds"));
-  importResults(store, bundle("1", (p) => `old-${p}`), { importId: "i1", fileHash: "h1", now: 5 });
-  importResults(store, bundle("2", (p) => `key-${p}-done`), {
-    importId: "i2",
-    fileHash: "h2",
-    now: 6,
-  });
-  importResults(store, bundle("3", (p) => `new-${p}`), { importId: "i3", fileHash: "h3", now: 7 });
+  const runs: [string, (path: string) => string][] = [
+    ["1", (p) => `old-${p}`],
+    ["2", (p) => `key-${p}-done`],
+    ["3", (p) => `new-${p}`],
+  ];
+  for (const [run, key] of runs) {
+    importResults(store, bundle(run, key), { importId: `i${run}`, fileHash: `h${run}`, now: 5 });
+  }
   return { repo, store };
 }
 
