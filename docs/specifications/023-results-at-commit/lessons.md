@@ -127,7 +127,7 @@ Row 023-23, wave 15, worker 37851dda, 2026-11-19 15:35Z to 17:29Z, on the lab VM
 | Daemon | Started by each session's hooks, lookup-only. s1 to s6: no stored result at the start. |
 | s7 store | s7-01's clone ran `squeal start`, then `squeal run --all --wait` for 32 min (load about 11): 1,823 of 1,920 test files current; the 97 `browser` files run only on request and stayed without a result; 3 known failures from the VM (no Chrome for the e2e global setup; 2 tests in `packages/web/src/test/poll.test.ts`). s7-02 to s7-05 (the coordinator's choice, a test shortcut, not what a user does): a fresh clone at the same commit with its own install, s7-01's `.git/squeal` copied in (without `locks` and `logs`) before Squeal started there; `squeal status --wait 120000` then read 1,823 current and 97 not current, the same as s7-01, and `--full` listed the results as "Inherited from other worktrees: 33884 current results … from …/s7-01". s7-01 stayed on disk until s7-05 ended. |
 | Cost | 58 sessions, $4.16 in all (the last result event of each session; `total_cost_usd` is cumulative). |
-| Cleanup | After each session `squeal stop` and the clone removed. The transcripts stay on the VM under the case root until the coordinator lets them go. |
+| Cleanup | After each session `squeal stop` and the clone removed; at the end every clone, the sources, the stores, the installs and the user's `/tmp` files removed, no process of the user left. The transcripts (`~squeal-w15/runs/w15/claude/projects`, 14 MB; the agents' background outputs under `tmp`, 9 MB) and the full streams under the work folder stay on the VM until the coordinator lets them go. |
 
 ### Per group
 
@@ -181,6 +181,7 @@ Not product defects, recorded for the coordinator:
 - **s6-03's revert** came after Q7's text, but discarding a user's uncommitted edit is the agent's own step; it restored the edit itself.
 - **s1-04's lead sentence** ("No existing test file changed") contradicts its own later text; Squeal said nothing to that effect.
 - **The s7 store copy** is a test shortcut; `squeal status --full` named the results as inherited from s7-01, and no s7 agent mentioned inheritance.
+- **Empty folders stay behind.** After the round the user's `~/.cache/squeal/checkouts` held 56 empty folders (224 KB), one per clone that ran `status --at` or `proof`; the checkouts in them were removed (spec D6). Harmless, but a user's cache grows by one folder per repository and copy.
 - **The warm-up** (`squeal run --all --wait`) took 32 min on 12 CPUs and ended with exit 3 because the 97 `browser` files run only on request.
 
 ### Open for a later round
