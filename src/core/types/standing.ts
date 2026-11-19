@@ -113,9 +113,9 @@ export interface OverrunFile extends TestFileRef {
  * daemon published it in the `yields` row: its start and since when, both
  * moved by calendar steps, the run's deadline (`runner.timeoutMs` from that
  * start; `null` with none), and its files that had not ended then. Its lane's next tier starts beside it; it runs on.
- * Row 011-405: a tier that itself runs beside another is published too,
- * with `beside: true`; its lane opens no third instance, so its next tiers
- * wait.
+ * Row 011-405: a tier that itself runs beside another is published too.
+ * While a lane holds two tiers, each one published there carries
+ * `beside: true`: the lane opens no third instance, so its next tiers wait.
  */
 export interface TierOverrun {
   /**
@@ -127,7 +127,7 @@ export interface TierOverrun {
   readonly at: EpochMs;
   readonly deadline: EpochMs | null;
   readonly files: readonly OverrunFile[];
-  /** Row 011-405: the tier runs beside another (its lane's second instance); absent otherwise. */
+  /** Row 011-405: its lane holds a tier beside another, so the lane's next tiers wait; absent otherwise. */
   readonly beside?: true;
 }
 
