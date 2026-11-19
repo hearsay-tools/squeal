@@ -17,7 +17,10 @@
 #     prepare <id>   one session's fresh clone: s<g>-<nn>, group g as in prompts.json; its own
 #              pnpm install; s5's fixture commits, s6's uncommitted bug; s7: squeal start, then
 #              squeal run --all --wait, then squeal stop (the store holds HEAD's results)
-#     remove <id>    removes a session's clone
+#     remove <id>    removes a session's clone, unless <work>/KEEP-<id> exists
+#     prepare-copy <id> <from>   s7 without its own warm-up: a fresh clone and install as prepare,
+#              then <from>'s store (.git/squeal, without locks and logs) copied in; <from> must
+#              be an s7 clone whose warm-up ended and whose daemon is stopped
 #     teardown removes the user, its home, /opt/squeal-w15 and every process of the user
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -121,7 +124,23 @@ case "$step" in
     as "$id" git log --oneline -2
     as "$id" git status --short
     ;;
+  prepare-copy)
+    id=$1 from=$2
+    case "$id" in s7-*) ;; *) echo "prepare-copy is for s7"; exit 2 ;; esac
+    u test -f "$R/$from/.git/squeal/store.sqlite"
+    squawk_at "$id" 8be977ad6
+    as "$id" git config user.name "Dana User"
+    as "$id" git config user.email dana@example.invalid
+    as "$id" pnpm install --frozen-lockfile --reporter=silent
+    as "$id" sh -c 'mkdir -p .git/squeal && cd "$1/.git/squeal" && tar --exclude=./locks --exclude=./logs -cf - . | tar -xf - -C "$2/.git/squeal"' sh "$R/$from" "$R/$id"
+    as "$id" squeal start >/dev/null
+    as "$id" squeal status --wait 120000 --full | head -20
+    as "$id" squeal stop
+    as "$id" git log --oneline -2
+    as "$id" git status --short
+    ;;
   remove)
+    if [ -e "$W/KEEP-$1" ]; then echo "kept $1 ($W/KEEP-$1)"; exit 0; fi
     u rm -rf "${R:?}/$1"
     ;;
   teardown)

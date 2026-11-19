@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Throwaway probe for 023-23. Not product code. Runs sessions on the lab VM, at most N at once:
 //
-//   node batch.mjs [--parallel 3] [--keep] <id>...
+//   node batch.mjs [--parallel 3] [--keep] [--prepared] <id>...
 //
 // Each session: `sh setup.sh prepare <id>` (a fresh clone), `node session.mjs <id>`, then
-// `sh setup.sh remove <id>` unless --keep. A session starts only while the 1-minute load is
+// `sh setup.sh remove <id>` unless --keep. --prepared skips the prepare step (clones made before,
+// as s7's by `setup.sh prepare-copy`). A session starts only while the 1-minute load is
 // below the CPU count (checked every 15 s), no <work>/STOP file exists, and the cost of the
 // sessions in <work>/logs stays under $25. Each start is logged to <work>/logs/batch.log with the
 // load seen.
@@ -26,7 +27,8 @@ const flag = (name) => {
 };
 const parallel = Number(flag("--parallel") ?? 3);
 const keep = argv.includes("--keep");
-const queue = argv.filter((a) => a !== "--keep");
+const prepared = argv.includes("--prepared");
+const queue = argv.filter((a) => a !== "--keep" && a !== "--prepared");
 if (parallel < 1 || parallel > 3) throw new Error("at most 3 sessions at once");
 for (const id of queue) if (!/^s[1-7]-\d\d$/.test(id)) throw new Error(`bad id ${id}`);
 const n = cpus().length;
@@ -63,7 +65,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function one(id) {
   const t = Date.now();
-  const prep = await run("sh", [join(here, "setup.sh"), "prepare", id], join(logs, `${id}.prepare.txt`));
+  const prep = prepared ? 0 : await run("sh", [join(here, "setup.sh"), "prepare", id], join(logs, `${id}.prepare.txt`));
   if (prep !== 0) {
     log(`${id} prepare failed (exit ${prep}); see ${id}.prepare.txt`);
     return;
