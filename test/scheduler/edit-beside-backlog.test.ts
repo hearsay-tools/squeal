@@ -130,7 +130,8 @@ async function harness(
     tierSize: 4,
     backlogTierSize: 8,
     adapters: [timed],
-    capacity: { dir, hostSlots: 4 },
+    // 64 CPUs whatever runs the test: the ceiling, 48, does not bind; the 4 slots do (row 011-404).
+    capacity: { dir, hostSlots: 4, cpus: 64 },
     clock: "virtual",
     policy: RUN_MISSING,
   });

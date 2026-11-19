@@ -389,7 +389,8 @@ export function catchUpSide(repo: CatchUpRepo, root: string, options: CatchUpOpt
     runsDir: storePaths(commonDir).runsDir,
     head: () => readHead(root),
     // No live host CPU in the gate (row 011-182).
-    capacity: { dir: repo.poolDir, hostSlots: options.hostSlots, host: null },
+    // 64 CPUs on any machine: the ceiling, 48, stays above the slots, so they bind (row 011-404).
+    capacity: { dir: repo.poolDir, hostSlots: options.hostSlots, host: null, cpus: 64 },
     ...(options.runnerPartMs === undefined ? {} : { runnerPartMs: options.runnerPartMs }),
     ...(options.resumesRest === undefined ? {} : { resumesRest: options.resumesRest }),
     ...clocked,

@@ -45,6 +45,12 @@ export interface PoolCapacity {
    */
   readonly backgroundShare?: number;
   /**
+   * The CPUs the machine reports, of which the ceiling is a share. Default
+   * `os.availableParallelism()`; tests pin it so the ceiling does not
+   * depend on the machine that runs them (row 011-404, CI 44553135113).
+   */
+  readonly cpus?: number;
+  /**
    * The daemon's log: one line for each episode of refusals of a background
    * tier by the ceiling, and one at its end (D18, row 011-404). Absent: none.
    */
@@ -66,8 +72,6 @@ export interface PermitPoolOptions extends PoolCapacity {
    * gate and no mark for an edit's tier.
    */
   readonly cores?: TreeCpu | null;
-  /** The CPUs the machine reports, of which the ceiling is a share. Default `os.availableParallelism()`. */
-  readonly cpus?: number;
 }
 
 /** One backlog or checkpoint tier's grant, held until the tier ends. */

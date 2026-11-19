@@ -47,7 +47,7 @@ export class TierCapacity {
     note: (message: string) => void,
     waits: PoolWaits | null = null,
   ) {
-    const { dir, refreshMs, hostSlots, project, host, backgroundShare, log } = options;
+    const { dir, refreshMs, hostSlots, project, host, backgroundShare, cpus, log } = options;
     this.#dir = dir;
     this.#note = note;
     this.#waits = waits;
@@ -62,6 +62,7 @@ export class TierCapacity {
       ...(project === undefined ? {} : { project }),
       ...(host === undefined ? {} : { host }),
       ...(backgroundShare === undefined ? {} : { backgroundShare }),
+      ...(cpus === undefined ? {} : { cpus }),
       ...(log === undefined ? {} : { log }),
     });
   }
