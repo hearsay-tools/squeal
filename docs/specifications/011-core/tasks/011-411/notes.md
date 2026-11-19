@@ -69,7 +69,18 @@ Set 1, 2026-11-19 about 22:39 to 22:44 UTC, before and after interleaved. The ho
 | 5 | 10.41 | 24.9 | 96.0 | 5.60 | 10.5 | 102.5 |
 | **Median** | **10.70** | **24.9** | | **5.61** | **13.2** | |
 
-User CPU fell by 5.1 s, or 48 %. The profile inferred up to about 2.5 s of 7 s at load 20. Why the cut is larger here is `inferred`, not measured: at load above 100 each CPU-bound step costs more user time, and this copy holds 188 imports, not 185. What is left grows with the number of imports: the `import_files` rows and the per-file reason, which options B and C address.
+Set 2, 2026-11-19 about 23:22 to 23:25 UTC, interleaved, at the host's own load of 46 to 56:
+
+| Run | Before user s | Before wall | Load (1 min) | After user s | After wall | Load (1 min) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 8.82 | 10.7 | 48.1 | 4.54 | 5.7 | 47.3 |
+| 2 | 10.05 | 12.6 | 45.6 | 5.15 | 7.4 | 52.2 |
+| 3 | 9.45 | 11.5 | 53.5 | 5.26 | 7.1 | 53.9 |
+| 4 | 9.16 | 11.0 | 54.3 | 4.64 | 6.1 | 54.4 |
+| 5 | 8.97 | 11.4 | 56.3 | 4.54 | 6.1 | 55.6 |
+| **Median** | **9.16** | **11.4** | | **4.64** | **6.1** | |
+
+User CPU fell by 5.1 s (48 %) in set 1 and by 4.5 s (49 %) in set 2. Wall time fell from 24.9 to 13.2 s and from 11.4 to 6.1 s. The profile inferred up to about 2.5 s of 7 s at load 20. Why the cut is larger here is `inferred`, not measured: at load above 100 each CPU-bound step costs more user time, and this copy holds 188 imports, not 185. What is left grows with the number of imports: the `import_files` rows and the per-file reason, which options B and C address.
 
 Other single runs on the same copy, at load 105 to 121: the text form (no `--json`) took 10.30 s user before and 5.31 s after. Pathless `status --json` took 8.79 s before and 5.44 s after.
 
@@ -91,7 +102,11 @@ Spec 018 D5 and D19 stay unchanged: every import is still listed and compared.
 
 - `pnpm exec tsc --noEmit -p .` passed with no output. `pnpm exec biome check src test/...` reported no fixes.
 - The direct runs of the two new test files passed (2 and 2) on this branch. Their red checks against the old code are above.
-- `squeal status --wait 60000 <changed paths>`: see the final report of this row. At 22:46 UTC, at load about 120, 69 affected files passed, 589 were queued, and 1 had failed.
-- That failure, `test/daemon/start-mark.test.ts`, timed out at 5,000 ms. A direct run on this branch failed the same way. A direct run on the base `b213fdfbb`, from a scratch `git archive`, also failed the same way at load about 105. So host load causes it, not this change.
+- `squeal status --wait 60000 <5 changed src paths> <2 new tests>`, last read at 23:26 UTC, at load about 55: 173 affected files pass, 485 are still queued (Squeal's queue moved slowly at load 50 to 120), and 3 failed, all timeouts under load (below). It gave no verdict.
+- Direct run instead of waiting for that queue: every test file that imports a changed module (108 files, from `grep` of `test/` outside `test/e2e`) plus `test/cli/codex.test.ts`, with `timeout 1800 node_modules/.bin/vitest run --maxWorkers=2`, at load 49 to 65: 108 files and 758 tests passed. The 485 queued files read the changed modules only through other modules; CI's full suite covers them.
+- Squeal's three failures:
+  - `test/cli/codex.test.ts` (`squeal init --harness codex`) timed out at 60 s at load 112. It passed in the direct run.
+  - `test/cli/status-paths-paused.test.ts` has a 1.3 s wall-clock bound, and it failed under load. It passed directly on this branch and on the base (2 of 2 each).
+  - `test/daemon/start-mark.test.ts` timed out at 5,000 ms. A direct run on this branch failed the same way. A direct run on the base `b213fdfbb`, from a scratch `git archive`, also failed the same way at load about 105. In the later direct run at load 49 to 65 it passed on this branch. So host load causes it, not this change.
 - `test/e2e/torn-status.test.ts` is the only `test/e2e` file that imports a changed module (`buildSnapshot`). It is an opt-in probe, and it was skipped without `SQUEAL_PROBE_TORN_STATUS` (2 skipped). I did not run it with the probe on, because it busy-waits on purpose. `buildSnapshot`'s signature and behaviour are unchanged.
 - I did not run a full suite, a version raise or a build in the worktree.
