@@ -37,18 +37,57 @@ export interface CeilingRefusal {
   readonly ceiling: number;
   readonly share: number;
   readonly cpus: number;
-  readonly hostSlots: number;
 }
 
 /**
  * `the background ceiling refused a backlog tier: 19.4 busy CPUs, ceiling 18
- * (0.75 of 24 CPUs)`; with fewer test slots than the ceiling, they bound it
- * and the line names them.
+ * (0.75 of 24 CPUs)`. The test slots do not bound the ceiling, so the line
+ * does not name them (row 011-404, gh-225).
  */
 export function ceilingRefusalLine(r: CeilingRefusal): string {
-  const slots = r.hostSlots < r.ceiling ? `, ${r.hostSlots} test slots` : "";
-  const ceiling = `ceiling ${round(r.ceiling)} (${r.share} of ${r.cpus} CPUs${slots})`;
+  const ceiling = `ceiling ${round(r.ceiling)} (${r.share} of ${r.cpus} CPUs)`;
   return `the background ceiling refused a backlog tier: ${round(r.busy)} busy CPUs, ${ceiling}`;
+}
+
+/**
+ * Row 011-404 (021-19 recommendation 4): the daemon's log has one refusal
+ * line per refusal episode, not one per look. The first refused look of a
+ * waiting backlog tier logs; later ones stay quiet until a backlog grant
+ * ends the episode, with one line of its length, or until no refused look
+ * came for `quietMs`, the wait's freshness: the next refusal starts a new
+ * episode.
+ */
+export class RefusalEpisodes {
+  readonly #log: (line: string) => void;
+  readonly #quietMs: number;
+  #episode: { readonly since: number; last: number; looks: number } | null = null;
+
+  constructor(log: (line: string) => void, quietMs: number) {
+    this.#log = log;
+    this.#quietMs = quietMs;
+  }
+
+  /** A look the ceiling refused at `now`: `line` is logged at its episode's first. */
+  refused(now: number, line: () => string): void {
+    const episode = this.#episode;
+    if (episode !== null && now - episode.last < this.#quietMs) {
+      episode.last = now;
+      episode.looks++;
+      return;
+    }
+    this.#episode = { since: now, last: now, looks: 1 };
+    this.#log(line());
+  }
+
+  /** A backlog tier got permits at `now`: an open episode ends with its length. */
+  granted(now: number): void {
+    const episode = this.#episode;
+    this.#episode = null;
+    if (episode === null || now - episode.last >= this.#quietMs) return;
+    const seconds = Math.round((now - episode.since) / 1_000);
+    const looks = episode.looks === 1 ? "1 refused look" : `${episode.looks} refused looks`;
+    this.#log(`the background ceiling let a backlog tier start after ${seconds} s and ${looks}`);
+  }
 }
 
 function round(value: number): number {

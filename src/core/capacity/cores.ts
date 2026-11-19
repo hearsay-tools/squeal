@@ -72,10 +72,11 @@ export interface BackgroundGate {
  *   marks' grants below half of them. So it shrinks toward half the slots
  *   while Squeal's tests use more CPU than the slots, and always moves.
  * - A background tier, with `background` (spec 021 D18, row 021-18): each
- *   permit needs the cores below the slots, and with the host's busy cores
- *   read, below the ceiling too, the cores starting at the busy cores when
- *   they are more than the marks'. No grants term: the pool's floor keeps
- *   background work moving.
+ *   permit needs the cores below the ceiling alone, the cores starting at
+ *   the host's busy cores when they are read and more than the marks'.
+ *   The slots do not bound it (row 011-404, gh-225): they count test runs,
+ *   the permit files and the fair shares, not busy CPUs. No grants term:
+ *   the pool's floor keeps background work moving.
  */
 export function gatedPermits(
   marks: readonly PoolMark[],
@@ -87,8 +88,7 @@ export function gatedPermits(
   let cores = gatedCores(marks, own.cores, background?.busy ?? null);
   let taken = 0;
   if (background !== null) {
-    const limit = background.busy === null ? hostSlots : Math.min(hostSlots, background.ceiling);
-    for (; taken < want && cores < limit; taken++) cores++;
+    for (; taken < want && cores < background.ceiling; taken++) cores++;
     return taken;
   }
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
