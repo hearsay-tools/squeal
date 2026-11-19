@@ -5,7 +5,7 @@ import { squealVersion } from "../core/daemon/version.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
-import { changedImports, stops, unusedWith } from "../core/proof/imports.js";
+import { stops, unusedWith } from "../core/proof/imports.js";
 import {
   defaultCase,
   type ProofCase,
@@ -21,6 +21,7 @@ import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
 import { endOf, provedFiles } from "./proof-files.js";
+import { importsOf } from "./proof-imports.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
 import { rerunCommand, withRerunCommand } from "./proof-rerun.js";
@@ -81,9 +82,13 @@ export async function proofCommand(
     );
   const proved = await prove(common, args, base, head, named, at.with);
   if ("usage" in proved) return fail(proved.usage);
-  // Row 023-21: the stopped files' helpers, as paths from the cwd for the rerun.
+  // Row 023-21: the stopped files' changed test code, as paths from the cwd for the rerun.
   const helpers = [
-    ...new Set(proved.files.flatMap((f) => (stops(f.imports) ? (f.imports?.helpers ?? []) : []))),
+    ...new Set(
+      proved.files.flatMap((f) =>
+        stops(f.imports) ? (f.imports?.testCode ?? []).map((t) => t.path) : [],
+      ),
+    ),
   ].sort();
   const fromCwd = (path: RelativePath) => relative(cwd, join(root, path)).split(sep).join("/");
   // Row 023-20 (P9): a control run the budget left not started counts as not run too.
@@ -176,11 +181,13 @@ async function prove(
       );
       const loadsOf = (ref: TestFileRef) => loads.get(testFileId(ref)) ?? [];
       const changed = await changedPaths(common.root, base, head);
-      const imports = new Map(
-        refs.map((ref) => [
-          testFileId(ref),
-          changedImports(ref.path, loadsOf(ref), changed, testSide),
-        ]),
+      const imports = await importsOf(
+        common.root,
+        { base, head },
+        refs,
+        loadsOf,
+        changed,
+        testSide,
       );
       const unused = unusedWith(withPaths, refs.map(loadsOf));
       // Row 023-21: a stopped file runs nothing; the case is the others'.

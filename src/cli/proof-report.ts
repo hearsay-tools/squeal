@@ -190,25 +190,31 @@ export function formatProof(report: ProofReport): string {
   if (report.rerun !== null)
     lines.push(`${report.notRun} not run (budget). A rerun that fits: ${report.rerun}`);
   if (report.withRerun !== null)
-    lines.push(`Rerun with the changed helpers as test code: ${report.withRerun}`);
+    lines.push(
+      `Rerun with the changed test code copied from the test version: ${report.withRerun}`,
+    );
   return `${lines.join("\n")}\n`;
 }
 
 /**
  * Row 023-21: an unchanged test's changed imports. A stopped file names
- * its source changes beside the helpers its reason names; a file that ran
- * with only source changes says what it compared as source, so a helper
- * Squeal took for source is never compared silently.
+ * the evidence for each import taken for test code, then its source
+ * changes; a file that ran with only source changes says what it compared
+ * as source, so a helper Squeal took for source is never compared
+ * silently (review wave-14 B1).
  */
 function importLines(file: ProofFile, report: ProofReport): string[] {
   const imports = file.imports;
-  if (imports === null || imports.sources.length === 0) return [];
+  if (imports === null) return [];
+  const testCode = imports.testCode.map((t) => `${t.path} (${t.why})`).join(", ");
+  const lines = testCode === "" ? [] : [`  test code it imports: ${testCode}`];
+  if (imports.sources.length === 0) return lines;
   const sources = imports.sources.join(", ");
   const how =
     report.case === "source"
       ? "source changes the proof compares"
       : `source changes, at ${short(report.head)} on both sides`;
-  if (stops(imports)) return [`  ${how}: ${sources}`];
+  if (stops(imports)) return [...lines, `  ${how}: ${sources}`];
   if (imports.testSide) return [];
   return [
     `  the test is unchanged since ${short(report.base)}; ${how}: ${sources} (if one is test code, rerun with --with <path>)`,
@@ -309,7 +315,7 @@ export function jsonProof(report: ProofReport): string {
         file.imports === null
           ? null
           : {
-              helpers: file.imports.helpers,
+              testCode: file.imports.testCode,
               sources: file.imports.sources,
               stopped: stops(file.imports),
             },
