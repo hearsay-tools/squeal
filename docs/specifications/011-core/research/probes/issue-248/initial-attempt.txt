@@ -1,0 +1,14 @@
+{"at":"2026-11-19T09:20:37.753Z","metadata":{"node":"v26.13.0","load":[11.27,11.55,13.02],"cpus":24,"commit":"6b490e0fa1d58cf4c889140a56be445401d6f49a","version":"0.1.565","vitest":"5.0.3"}}
+{"at":"2026-11-19T09:20:37.771Z","config":{"baseline":{"onStart":"lookup-then-run-missing"},"runner":{"tierSize":1,"backlogTierSize":1,"timeoutMs":60000},"inputs":{"declared.test.ts":["lib.ts"]},"complexity":{"enabled":false},"coverage":{"enabled":false}}}
+{"at":"2026-11-19T09:20:39.542Z","phase":"baseline","keys":[{"path":"declared.test.ts","key":"d96877759e0617a32826f9b80df8299ae1dead46800bcc15c04b6f5612d5b0e0","revision":0,"pending":null},{"path":"importer.test.ts","key":"3591349ab860ae0e52ac98bd2085f2037c58a51636f7f5d04dd3233cb6e25490","revision":0,"pending":null},{"path":"reader.test.ts","key":"d2d36c546ed83ae1fc501a5418473ce583b2dd01de2dca7f9eeddeae5e7f24db","revision":0,"pending":null},{"path":"unrelated.test.ts","key":"1ddd5cd8674707a1ba909355fb724f070cba41a7d6245e731a1ae04beafdd163","revision":0,"pending":null}],"events":[{"name":"declared","phase":"baseline","observed":1},{"name":"importer","phase":"baseline","observed":1},{"name":"reader","phase":"baseline","observed":"// original note\nexport type Shape = { x: number };\nexport const value = 1;\n"},{"name":"unrelated","phase":"baseline","observed":1}]}
+{"at":"2026-11-19T09:21:24.814Z","cleanup":{"args":["stop","<fixture>"],"code":0,"signal":null,"stdout":"Squeal daemon stopped for ~/projects/squeal/.ai/squawk/t/74e121b3/sq248-UX4AbK/repo; `~/.codex/plugins/data/squeal-hearsay/bin/squeal stop --until-start` keeps it stopped through edits and Git operations\n","stderr":""}}
+{"at":"2026-11-19T09:21:24.815Z","daemon":{"args":["daemon","<fixture>"],"code":0,"signal":null,"stdout":"","stderr":"squeal daemon: serving ~/projects/squeal/.ai/squawk/t/74e121b3/sq248-UX4AbK/repo on ~/projects/squeal/.ai/squawk/t/74e121b3/sq248-UX4AbK/runtime/squeal-c635ee0cd7ba6cec.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: squeal stop\nsqueal daemon: daemon stopped: squeal stop\n"}}
+file://~/projects/squeal/.ai/squawk/worktrees/74e121b3-5468-418e-aabb-ec7df396ad3f/research/probes/issue-248/probe.mjs:53
+async function until(predicate, label) { const end = Date.now() + 45000; while (!predicate()) { if (Date.now() > end) throw new Error(`deadline: ${label}`); await delay(50); } }
+                                                                                                                            ^
+
+Error: deadline: type execution
+    at until (file://~/projects/squeal/.ai/squawk/worktrees/74e121b3-5468-418e-aabb-ec7df396ad3f/research/probes/issue-248/probe.mjs:53:125)
+    at async file://~/projects/squeal/.ai/squawk/worktrees/74e121b3-5468-418e-aabb-ec7df396ad3f/research/probes/issue-248/probe.mjs:68:5
+
+Node.js v26.13.0

@@ -1,0 +1,7 @@
+{"name":"type","node":"v26.13.0","vite":"8.3.2","oxcCodeEqual":true,"mappingsEqual":true,"nodeStripEqual":true,"beforeCode":"export const value = 1;\n","afterCode":"export const value = 1;\n"}
+{"name":"type-length","node":"v26.13.0","vite":"8.3.2","oxcCodeEqual":true,"mappingsEqual":true,"nodeStripEqual":false,"beforeCode":"export const value = 1;\n","afterCode":"export const value = 1;\n"}
+{"name":"comment","node":"v26.13.0","vite":"8.3.2","oxcCodeEqual":true,"mappingsEqual":true,"nodeStripEqual":false,"beforeCode":"export const value = 1;\n","afterCode":"export const value = 1;\n"}
+{"name":"behavior","node":"v26.13.0","vite":"8.3.2","oxcCodeEqual":false,"mappingsEqual":true,"nodeStripEqual":false,"beforeCode":"export const value = 1;\n","afterCode":"export const value = 2;\n"}
+{"name":"function-comment","node":"v26.13.0","vite":"8.3.2","oxcCodeEqual":false,"mappingsEqual":false,"nodeStripEqual":false,"beforeCode":"export function f() {\n\t/* original */ return 1;\n}\n","afterCode":"export function f() {\n\t/* changed */ return 1;\n}\n"}
+(node:1083175) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
