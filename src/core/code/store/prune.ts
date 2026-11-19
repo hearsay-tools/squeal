@@ -3,6 +3,7 @@ import type { Connection } from "../../store/connection.js";
 import type { PruneSlice } from "../../store/prune.js";
 import {
   deleteByKey,
+  hasIndexes,
   type KeyedRule,
   worktreeIdList,
   worktreeIdsOf,
@@ -86,11 +87,24 @@ const PER_WORKTREE = [
 ] as const;
 
 /**
- * A count no live file names, older than the cutoff; the parameter is the
- * cutoff. Tested again per key under the write lock (`files_by_count`).
+ * A count no live file and no kept state names, older than the cutoff; the
+ * parameter is the cutoff. Each test is a search, by `files_by_count` and
+ * `states_by_blob`, so it is tested again per key under the write lock.
  */
 const UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
-  AND f.language = counts.language AND f.counter_version = counts.counter_version)`;
+    AND f.language = counts.language AND f.counter_version = counts.counter_version)
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+
+/**
+ * A check nothing names. Each test is a search: `states` and `transitions`
+ * by worktree id and check id (one search per worktree id; the parameters
+ * are their ids, read under the lock), `views` by `views_by_check`.
+ */
+const UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
+    WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM transitions t
+    WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM views v WHERE v.check_id = checks.id)`;
 
 /**
  * Row 011-350 (#220): `pruneCodeStore` as slices, each one write transaction
@@ -134,18 +148,19 @@ export function* pruneCodeSlices(
     },
   });
 
-  // `states` has no index by blob: its test is the read's only (row 021-33, `021-33-notes.md`).
-  yield* rule({
-    table: "counts",
-    key: ["blob", "language", "counter_version"],
-    search: `${UNUSED_COUNT} AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
-    searchParams: [cutoff],
-    recheck: UNUSED_COUNT,
-    recheckParams: () => [cutoff],
-    removed: (n) => {
-      counts.countsRemoved += n;
-    },
-  });
+  // Row 021-33: a rule whose test needs an index the file lacks waits for an opener to make it.
+  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  if (indexed) {
+    yield* rule({
+      table: "counts",
+      key: ["blob", "language", "counter_version"],
+      search: UNUSED_COUNT,
+      searchParams: [cutoff],
+      removed: (n) => {
+        counts.countsRemoved += n;
+      },
+    });
+  }
   yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
     counts.coverageRemoved += n;
   });
@@ -153,22 +168,19 @@ export function* pruneCodeSlices(
     counts.partsRemoved += n;
   });
 
-  yield* rule({
-    table: "checks",
-    key: ["id"],
-    search: `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
-       UNION SELECT check_id FROM transitions)`,
-    // Per key: `states` and `transitions` by worktree id and check id, `views` is small.
-    recheck: `NOT EXISTS (SELECT 1 FROM states s
-         WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
-       AND NOT EXISTS (SELECT 1 FROM transitions t
-         WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
-       AND id NOT IN (SELECT check_id FROM views)`,
-    recheckParams: () => [worktreeIdList(conn, "states"), worktreeIdList(conn, "transitions")],
-    removed: (n) => {
-      counts.checksRemoved += n;
-    },
-  });
+  if (indexed) {
+    yield* rule({
+      table: "checks",
+      key: ["id"],
+      search: `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
+         UNION SELECT check_id FROM transitions)`,
+      recheck: UNUSED_CHECK,
+      recheckParams: () => [worktreeIdList(conn, "states"), worktreeIdList(conn, "transitions")],
+      removed: (n) => {
+        counts.checksRemoved += n;
+      },
+    });
+  }
 
   yield* vacuum(conn);
 }

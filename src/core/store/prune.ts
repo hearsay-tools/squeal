@@ -21,6 +21,7 @@ import {
   dropOrphanTexts,
   dropUnusedChecks,
   keptTexts,
+  PRUNABLE_BY_KEY,
 } from "./prune-unused.js";
 import { expireReplaced } from "./repos/replaced.js";
 import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
@@ -222,7 +223,7 @@ function* dropPrunable(
     yield () => {
       counts.resultsRemoved += conn.transaction(() =>
         conn.run(
-          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
           batch,
           cutoff,
         ),

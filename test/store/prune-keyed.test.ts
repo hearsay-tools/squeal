@@ -9,12 +9,13 @@ import {
   writeLoadedModules,
 } from "../../src/core/store/loaded-modules.js";
 import { storePaths } from "../../src/core/store/paths.js";
-import { noneRemoved, type PruneSlice, pruneSlices } from "../../src/core/store/prune.js";
+import { noneRemoved, pruneSlices } from "../../src/core/store/prune.js";
 import { deleteByKey } from "../../src/core/store/prune-keyed.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import type { CodeKnownState } from "../../src/core/types/code.js";
 import * as code from "../code/helpers.js";
 import { DAY_MS, fakeCommonDir, knownState, open, result, testCheck } from "./helpers.js";
+import { raceAfterRead } from "./prune-race.js";
 
 /*
  * Row 021-33: a prune finds the rows it deletes by a read outside the write
@@ -45,33 +46,6 @@ function codeConnection(dir: string): Connection {
   const conn = new Connection(new DatabaseSync(codeStorePath(dir)));
   conn.db.exec("PRAGMA busy_timeout = 0");
   return conn;
-}
-
-/**
- * Runs `slices`; once a slice read `table`'s keys (a `SELECT` of `conn`
- * from it), runs `between` before the next slice, which deletes them.
- */
-function raceAfterRead(
-  conn: Connection,
-  slices: Iterable<PruneSlice>,
-  table: string,
-  between: () => void,
-): void {
-  const all = conn.all.bind(conn);
-  let read = false;
-  conn.all = (sql, ...params) => {
-    if (sql.trimStart().startsWith("SELECT") && sql.includes(` FROM ${table}\n`)) read = true;
-    return all(sql, ...params);
-  };
-  let raced = false;
-  for (const slice of slices) {
-    slice();
-    if (read && !raced) {
-      between();
-      raced = true;
-    }
-  }
-  expect(raced).toBe(true);
 }
 
 /** A code store of one live worktree, with an old count it uses and a check its state names. */
@@ -180,6 +154,23 @@ describe("a prune with nothing to delete (row 021-33)", () => {
   });
 });
 
+describe("a rule whose index the file lacks (row 021-33)", () => {
+  it("waits for an opener to make it, and scans nothing meanwhile", () => {
+    const { dir, store } = liveCodeStore();
+    store.counts.put(code.count("unused"), OLD);
+    const conn = codeConnection(dir);
+    conn.db.exec("DROP INDEX states_by_blob");
+    const counts = noCodeRemoved();
+    for (const slice of pruneCodeSlices(conn, CODE_OPTIONS, counts)) slice();
+    expect(counts.countsRemoved).toBe(0);
+    expect(store.counts.get("unused", "typescript", 1)).not.toBeNull();
+    // The next creating open makes it, and the prune after it deletes the count.
+    code.open(dir);
+    for (const slice of pruneCodeSlices(conn, CODE_OPTIONS, counts)) slice();
+    expect(counts.countsRemoved).toBe(1);
+  });
+});
+
 describe("a row that stops matching between the read and the delete (row 021-33)", () => {
   it("keeps a code-store count a file came to use", () => {
     const { dir, store } = liveCodeStore();
@@ -189,6 +180,21 @@ describe("a row that stops matching between the read and the delete (row 021-33)
     raceAfterRead(conn, pruneCodeSlices(conn, CODE_OPTIONS, counts), "counts", () =>
       store.files.upsertMany("w1", [code.file("src/b.ts", "unused")]),
     );
+    expect(counts.countsRemoved).toBe(0);
+    expect(store.counts.get("unused", "typescript", 1)).not.toBeNull();
+  });
+
+  it("keeps a code-store count a state came to name, though no file names its blob (review 0.1.568 B1)", () => {
+    const { dir, store } = liveCodeStore();
+    store.counts.put(code.count("unused"), OLD);
+    const conn = codeConnection(dir);
+    const counts = noCodeRemoved();
+    raceAfterRead(conn, pruneCodeSlices(conn, CODE_OPTIONS, counts), "counts", () =>
+      store.states.upsertMany([
+        { ...stateOf("w1"), check: code.check("Ledger.open"), blob: "unused" },
+      ]),
+    );
+    expect(Number(conn.get("SELECT count(*) AS n FROM files WHERE blob = 'unused'")?.n)).toBe(0);
     expect(counts.countsRemoved).toBe(0);
     expect(store.counts.get("unused", "typescript", 1)).not.toBeNull();
   });

@@ -221,9 +221,12 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
  * - `runs_open`: the runs still in flight (`runs.inFlight`), which scanned
  *   every run of every worktree (row 005-103: 10.6 ms warm and 459 ms cold
  *   on a copy of 35,718 runs, 0.02 ms with the index).
+ * - `consumer_views_by_check`: lets the prune test one check again under the
+ *   write lock by a search, not a scan of `consumer_views` (row 021-33).
  */
 export const STORE_INDEXES: Readonly<Record<string, string>> = {
   runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
+  consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)",
 };
 
 export function userVersion(db: DatabaseSync): number {

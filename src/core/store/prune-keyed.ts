@@ -93,3 +93,14 @@ export const worktreeIdsOf = (table: string): string => `WITH RECURSIVE ids(id) 
 export function worktreeIdList(conn: Connection, table: string): string {
   return JSON.stringify(conn.all(worktreeIdsOf(table)).map((row) => row.id));
 }
+
+/**
+ * Whether `conn`'s database holds every index named. A prune rule whose
+ * write-side test searches by one skips while it is absent: an opener that
+ * may create the file makes it (`STORE_INDEXES`, `CODE_INDEXES`), and
+ * without it the test would scan under the write lock (row 021-33).
+ */
+export function hasIndexes(conn: Connection, ...names: readonly string[]): boolean {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
+  return names.every((name) => conn.get(sql, name) !== null);
+}
