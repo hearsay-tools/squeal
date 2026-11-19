@@ -216,7 +216,7 @@ function candidateOf(
           want: width,
           least: slot !== null ? 1 : fewest(view, files),
           offer,
-          kind: poolKind(view.checkpointActive(), files),
+          kind: poolKind(view.checkpointActive(), files, batch),
           lane,
           // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an
           // edit's; a grant ends the lane's wait either way (review 0.1.413 B2).
