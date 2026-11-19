@@ -23,11 +23,19 @@ const PAUSE_PRELOAD = pathToFileURL(
 const source = (name: string) =>
   fileURLToPath(new URL(`../../src/core/store-process/${name}`, import.meta.url));
 
-/** How a daemon run from the sources starts the store process: the whole CLI, through tsx. */
+/**
+ * How a daemon run from the sources starts the store process: the whole CLI,
+ * through tsx, which its parameter properties need. On Node 22 tsx's hooks
+ * do not reach worker threads, so the store process's writer thread could
+ * not load and the process ended at once, never serving (candidate CI of
+ * 0.1.571): `register-ts.mjs`, registered first, loads the threads there.
+ */
 export const LAUNCH: StoreProcessLaunch = {
   execPath: process.execPath,
   execArgv: [
     "--disable-warning=ExperimentalWarning",
+    "--import",
+    pathToFileURL(register).href,
     "--import",
     pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href,
   ],

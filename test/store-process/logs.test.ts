@@ -81,17 +81,17 @@ describe("the store process's and the daemon's lines (row 021-36, D22.6)", {
   it("logs the daemon's direct writes by why: none running", async () => {
     const at = fresh();
     const lines: string[] = [];
-    const one = relay(at, "w1", { log: (line) => lines.push(line), reportMs: 100 });
+    const one = relay(at, "w1", { log: (line) => lines.push(line) });
     const store = openThrough(at, one);
     store.meta.set("a", "1");
     store.meta.set("b", "1");
     await store.sent();
 
-    await until(() => lines.length > 0, 5_000);
-    expect(lines[0]).toBe(
+    await one.close();
+    expect(lines).toEqual([
       "code store: last minute: 0 batches through the store process, 2 written here " +
         "(none running 2, refused 0, lost 0, hung and ended 0), 0 failed",
-    );
+    ]);
   });
 
   // Review of 0.1.571 B5: a write here that failed was logged as written here.
