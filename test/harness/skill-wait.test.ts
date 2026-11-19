@@ -130,4 +130,36 @@ describe("the skill's waits (005-68)", () => {
       "With `--wait`, exit 3 means it has no verdict: the wait returned without a daemon, or timed out with a slow file it queued still pending; say so, or wait again.",
     );
   });
+
+  /*
+   * Row 011-407 (gh-242, research `issue-242.md`): one "Status JSON" section
+   * names every reason in the order `selectionResult` gives them, what
+   * `complete` is not, the unavailable store and a killed command.
+   */
+  it("gives the status JSON contract in every copy of `commands.md`", () => {
+    const reasons = ["no-daemon", "lapsed", "on-hold", "paused", "focused", "unmatched"];
+    const rest = ["unsynced", "unlisted", "pending", "not-current", "not-run", "unmatched"];
+    for (const dir of COPIES) {
+      const commands = read(dir, "references/commands.md");
+      const section = commands.slice(commands.indexOf("## Status JSON"));
+      const body = section.slice(0, section.indexOf("\n## ", 1));
+      const at = [...reasons, ...rest].map((r, i) => body.indexOf(`  ${i + 1}. \`${r}\``));
+      expect(
+        at.every((n) => n > 0),
+        dir,
+      ).toBe(true);
+      expect(at, dir).toEqual([...at].sort((a, b) => a - b));
+      for (const text of [
+        "`selection.complete`: `false` while the list of selected files may still grow",
+        "It is not a verdict: read `selection.result` for that.",
+        "`unlisted`: the runner has not listed that revision's test files yet",
+        "`directory`",
+        '`{ "available": false, "reason": ..., "message": ... }` with exit 3 and no `selection` field',
+        "is never a Squeal answer",
+        "0 pass, 1 a known failure among the selected files, 2 a usage error (no JSON), 3 no verdict",
+      ]) {
+        expect(body, dir).toContain(text);
+      }
+    }
+  });
 });
