@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OVERRUN_FLOOR_MS } from "../../src/core/scheduler/overrun.js";
-import type { VirtualClock } from "../helpers/virtual-clock.js";
-import { besideRuns, H, hungTier, overrunsOf, read } from "./overrun-fixture.js";
+import { besideRuns, facts, hung, overrunsOf } from "./overrun-fixture.js";
 import { settle } from "./tier-yields-fixture.js";
 
 /*
@@ -17,27 +16,6 @@ import { settle } from "./tier-yields-fixture.js";
 
 const HOUR = 3_600_000;
 const TIMEOUT_MS = 600_000;
-
-async function hung() {
-  const held = await hungTier(5, 4);
-  const { store, worktreeId } = held.side;
-  const daemon = store.worktrees.get(worktreeId)?.daemon;
-  if (daemon)
-    store.worktrees.setDaemon(worktreeId, { ...daemon, startedAt: daemon.startedAt - 2 * HOUR });
-  return { ...held, start: held.side.now(), clock: held.side.clock as VirtualClock };
-}
-
-/** H's overrun as status reads it now: its age and the time left to its deadline. */
-function facts(side: Awaited<ReturnType<typeof hung>>["side"]) {
-  const [named] = read(side, [H]);
-  const standing = named?.standing;
-  const overrun = standing?.kind === "running" ? standing.overrun : undefined;
-  const deadline = overrun?.deadline ?? null;
-  return {
-    ranMs: overrun?.ranMs,
-    leftMs: deadline === null ? null : deadline - side.now(),
-  };
-}
 
 describe("an overrun's age and deadline count on the threshold's basis (review 0.1.567 B2)", {
   timeout: 120_000,

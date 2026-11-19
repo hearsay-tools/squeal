@@ -6,6 +6,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import { isBesideLane } from "../../src/core/types/runner.js";
 import type { TierOverrun } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import type { VirtualClock } from "../helpers/virtual-clock.js";
 import { Gate } from "./batch-fixture.js";
 import {
   type CatchUpFile,
@@ -86,4 +87,30 @@ export async function hungTier(hMs: number, count: number) {
   await side.edit("watch", "src/a.ts");
   const tier = await heldRun(side, H, after);
   return { side, hung, beside, tier, after };
+}
+
+/**
+ * `hungTier(5, 4)` with the live daemon's record started 2 h earlier, so the
+ * row's stamp floor (row 011-386) plays no part in a calendar step; `start`
+ * is the calendar time at the tier's start (review 0.1.567 B2).
+ */
+export async function hung() {
+  const held = await hungTier(5, 4);
+  const { store, worktreeId } = held.side;
+  const daemon = store.worktrees.get(worktreeId)?.daemon;
+  if (daemon)
+    store.worktrees.setDaemon(worktreeId, { ...daemon, startedAt: daemon.startedAt - 7_200_000 });
+  return { ...held, start: held.side.now(), clock: held.side.clock as VirtualClock };
+}
+
+/** H's overrun as status reads it now: its age and the time left to its deadline. */
+export function facts(side: Awaited<ReturnType<typeof hung>>["side"]) {
+  const [named] = read(side, [H]);
+  const standing = named?.standing;
+  const overrun = standing?.kind === "running" ? standing.overrun : undefined;
+  const deadline = overrun?.deadline ?? null;
+  return {
+    ranMs: overrun?.ranMs,
+    leftMs: deadline === null ? null : deadline - side.now(),
+  };
 }
