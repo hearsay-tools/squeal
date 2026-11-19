@@ -19,6 +19,8 @@ import type { PoolGate, PoolWait } from "../../src/core/types/standing.js";
  * `tier-start-batch.test.ts`'s (row 011-349).
  */
 
+/** A background ceiling of 12 busy CPUs, the slots, on any machine with 12 CPUs or more (row 011-404). */
+const CEILING_12 = Math.min(1, 12 / availableParallelism());
 const GATE: PoolGate = { busyCores: 21.4, cpus: 24, hostSlots: 12, grants: 7 };
 
 /** A `PoolWaits` on a clock the test moves, its log lines and its writes. */
@@ -104,7 +106,7 @@ describe("TierCapacity tells a lane's wait what the pool read (row 011-309)", ()
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   it("a refused tier that names its lane starts its wait, and a grant there ends it", () => {
-    // Two other daemons hold 7 of 12 permits on 13 cores: the gate refuses (row 011-98).
+    // Two other daemons hold 7 of 12 permits on 13 cores, above the ceiling: the gate refuses (row 011-98).
     const others: PoolMark[] = [
       { id: "other-0", want: 3, grant: 3, since: null, cores: 6 },
       { id: "other-1", want: 4, grant: 4, since: null, cores: 7 },
@@ -112,7 +114,7 @@ describe("TierCapacity tells a lane's wait what the pool read (row 011-309)", ()
     for (const mark of others) writeMark(dir, mark);
     const { pool, at, lines, rows } = waits();
     const capacity = new TierCapacity(
-      { dir, hostSlots: 12, host: null },
+      { dir, hostSlots: 12, host: null, backgroundShare: CEILING_12 },
       "wt-011-309" as WorktreeId,
       () => {},
       pool,
@@ -150,7 +152,7 @@ describe("TierCapacity tells a lane's wait what the pool read (row 011-309)", ()
     for (const mark of others) writeMark(dir, mark);
     const { pool, at, lines, rows } = waits();
     const capacity = new TierCapacity(
-      { dir, hostSlots: 12, host: null },
+      { dir, hostSlots: 12, host: null, backgroundShare: CEILING_12 },
       "wt-011-309" as WorktreeId,
       () => {},
       pool,

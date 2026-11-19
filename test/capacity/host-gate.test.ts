@@ -124,6 +124,14 @@ describe("gatedPermits with the host's busy cores (row 011-182)", () => {
     expect(gatedPermits(marks, own, 12, 10, busy(null))).toBe(8);
   });
 
+  test("the slots do not bound a background tier: the ceiling alone does, read or not (row 011-404)", () => {
+    const ceiling18 = (cores: number | null) => ({ busy: cores, ceiling: 18 });
+    expect(gatedPermits([], own, 6, 20, ceiling18(10))).toBe(8);
+    expect(gatedPermits([], own, 6, 20, ceiling18(18))).toBe(0);
+    const marks: PoolMark[] = [{ id: "a", want: 50, grant: 6, since: null, cores: 10 }];
+    expect(gatedPermits(marks, own, 6, 20, ceiling18(null))).toBe(8);
+  });
+
   test("the larger of the marks' cores and the busy cores counts, never their sum", () => {
     const marks: PoolMark[] = [{ id: "a", want: 50, grant: 2, since: null, cores: 4 }];
     // Squeal's own tests are in both: 4 busy cores beside a mark of 4 cores leave 8 permits.

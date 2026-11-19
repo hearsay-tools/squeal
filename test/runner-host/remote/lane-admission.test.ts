@@ -155,7 +155,10 @@ describe("a remote lane under the remote machine's own ceiling (spec 021 D18, ro
       },
     });
     const running = lane.run([REF], background({ permits, workers: 4 }));
-    await until(() => logs.filter((line) => line === REFUSAL).length >= 2);
+    await until(() => logs.includes(REFUSAL));
+    // Later looks of the same wait log no more refusal lines (row 011-404).
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(logs.filter((line) => line === REFUSAL)).toHaveLength(1);
     // The run waits there and holds nothing here: this machine's background tiers may run.
     expect(remoteRuns).toHaveLength(0);
     expect(free(here, 4)).toBe(4);

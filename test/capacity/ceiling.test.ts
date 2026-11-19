@@ -17,8 +17,9 @@ import { createPermitPool, type PermitPool } from "../../src/core/capacity/pool.
  * the machine's CPUs (`capacity.backgroundShare`, default 0.75). When no
  * background tier of the user's daemons runs, the oldest waiting one takes
  * its fewest workers. Checkpoints keep today's gate. Each refusal by the
- * ceiling writes one line to the daemon's log. The machine here has 24 CPUs
- * and 23 slots, so the default ceiling is 18 busy CPUs.
+ * ceiling writes one line to the daemon's log, once per episode (row
+ * 011-404). The machine here has 24 CPUs and 23 slots, so the default
+ * ceiling is 18 busy CPUs; fewer slots do not lower it (row 011-404).
  */
 
 let root: string;
@@ -51,12 +52,12 @@ function host(cores: number | null): HostCpu & { cores: number | null } {
 function daemon(
   id: string,
   busy: HostCpu | null,
-  options: { share?: number; log?: string[]; now?: () => number } = {},
+  options: { share?: number; log?: string[]; now?: () => number; slots?: number } = {},
 ): PermitPool {
   const pool = createPermitPool({
     dir,
     owner: { pid: process.pid, worktreeId: id },
-    hostSlots: 23,
+    hostSlots: options.slots ?? 23,
     cpus: 24,
     cores: tree,
     host: busy,
@@ -116,7 +117,8 @@ describe("the background ceiling (spec 021 D18)", () => {
     // A share of 0: no permit past the floor. One above 1 is not taken: the default, 18, stands.
     expect(grant(0.5, 0)).toBe(0);
     expect(grant(17, 1.5)).toBe(1);
-    expect(grant(17, 1)).toBe(6);
+    // A share of 1: the ceiling is all 24 CPUs; the 23 slots do not lower it (row 011-404).
+    expect(grant(17, 1)).toBe(7);
   });
 
   test("defaults to 75% of the CPUs: 3 on a 4-CPU machine, 18 on a 24-CPU one", () => {
@@ -126,9 +128,10 @@ describe("the background ceiling (spec 021 D18)", () => {
     expect(backgroundCeiling(0.1, 3)).toBe(0.3);
   });
 
-  test("does not bind where the host's busy cores are not read: the slots do", () => {
+  test("binds the marks' cores where the host's busy cores are not read (row 011-404)", () => {
     backgroundRuns();
-    expect(daemon("unread", host(null)).acquire(30, "fast", 1, "backlog")?.grant).toBe(22);
+    // The other daemon's mark states 1 core: 17 permits reach the ceiling of 18.
+    expect(daemon("unread", host(null)).acquire(30, "fast", 1, "backlog")?.grant).toBe(17);
   });
 });
 
@@ -185,17 +188,68 @@ describe("the floor (spec 021 D18)", () => {
   });
 });
 
-describe("the refusal's log line (spec 021 D18)", () => {
-  test("is written for each refusal by the ceiling, with the busy CPUs read, and for no offer", () => {
+describe("test slots and the ceiling (row 011-404, gh-225)", () => {
+  test("6 slots do not lower the ceiling of 18: 10 busy CPUs grant, 18 refuse", () => {
+    backgroundRuns();
+    const slots = 6;
+    expect(daemon("me", host(10), { slots }).acquire(4, "fast", 1, "backlog")?.grant).toBe(4);
+    closeAll();
+    expect(daemon("me", host(18), { slots }).acquire(4, "fast", 1, "backlog")).toBeNull();
+  });
+
+  test("the slots still size the permits: a tier gets at most its fair share of them", () => {
+    expect(daemon("me", host(0), { slots: 6 }).acquire(20, "fast", 1, "backlog")?.grant).toBe(6);
+  });
+});
+
+describe("the refusal's log line (spec 021 D18, row 011-404)", () => {
+  const line =
+    "the background ceiling refused a backlog tier: 19.4 busy CPUs, ceiling 18 (0.75 of 24 CPUs)";
+
+  test("is written once for an episode of refused looks, and for no offer", () => {
     backgroundRuns();
     const log: string[] = [];
-    const me = daemon("me", host(19.36), { log });
+    let clock = 1_000_000;
+    const me = daemon("me", host(19.36), { log, now: () => clock });
     expect(me.offer(8, "fast", "backlog")).toBe(0);
     expect(log).toEqual([]);
+    for (let look = 0; look < 100; look++) {
+      expect(me.acquire(8, "fast", 1, "backlog")).toBeNull();
+      clock += 2_000;
+    }
+    expect(log).toEqual([line]);
+  });
+
+  test("a grant ends the episode with its length; the next refusal starts another", () => {
+    backgroundRuns();
+    const log: string[] = [];
+    let clock = 1_000_000;
+    const busy = host(19.36);
+    const me = daemon("me", busy, { log, now: () => clock });
+    for (let look = 0; look < 5; look++) {
+      expect(me.acquire(8, "fast", 1, "backlog")).toBeNull();
+      clock += 2_000;
+    }
+    // The host is read again once its window is no longer fresh, 30 s after the first read.
+    busy.cores = 10;
+    clock = 1_030_000;
+    me.acquire(1, "fast", 1, "backlog")?.release();
+    const end = "the background ceiling let a backlog tier start after 30 s and 5 refused looks";
+    expect(log).toEqual([line, end]);
+    busy.cores = 19.36;
+    clock += 31_000;
     expect(me.acquire(8, "fast", 1, "backlog")).toBeNull();
+    expect(log).toEqual([line, end, line]);
+  });
+
+  test("a refusal after the wait's freshness passed quietly starts another episode", () => {
+    backgroundRuns();
+    const log: string[] = [];
+    let clock = 1_000_000;
+    const me = daemon("me", host(19.36), { log, now: () => clock });
     expect(me.acquire(8, "fast", 1, "backlog")).toBeNull();
-    const line =
-      "the background ceiling refused a backlog tier: 19.4 busy CPUs, ceiling 18 (0.75 of 24 CPUs)";
+    clock += 60_000;
+    expect(me.acquire(8, "fast", 1, "backlog")).toBeNull();
     expect(log).toEqual([line, line]);
   });
 
@@ -212,10 +266,10 @@ describe("the refusal's log line (spec 021 D18)", () => {
     expect(log).toEqual([]);
   });
 
-  test("names the slots when they are fewer than the ceiling", () => {
-    const refusal = { busy: 7, ceiling: 18, share: 0.75, cpus: 24, hostSlots: 6 };
+  test("names the ceiling only, never the test slots", () => {
+    const refusal = { busy: 7, ceiling: 18, share: 0.75, cpus: 24 };
     expect(ceilingRefusalLine(refusal)).toBe(
-      "the background ceiling refused a backlog tier: 7 busy CPUs, ceiling 18 (0.75 of 24 CPUs, 6 test slots)",
+      "the background ceiling refused a backlog tier: 7 busy CPUs, ceiling 18 (0.75 of 24 CPUs)",
     );
   });
 });

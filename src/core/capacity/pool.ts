@@ -13,6 +13,7 @@ import {
   ceilingRefusalLine,
   DEFAULT_BACKGROUND_SHARE,
   isBackgroundShare,
+  RefusalEpisodes,
 } from "./background.js";
 import {
   createHostCpu,
@@ -43,7 +44,10 @@ export interface PoolCapacity {
    * CPUs. A number from 0 to 1; default `DEFAULT_BACKGROUND_SHARE`.
    */
   readonly backgroundShare?: number;
-  /** The daemon's log: one line for each background tier the ceiling refuses (D18). Absent: none. */
+  /**
+   * The daemon's log: one line for each episode of refusals of a background
+   * tier by the ceiling, and one at its end (D18, row 011-404). Absent: none.
+   */
   readonly log?: (line: string) => void;
 }
 
@@ -200,9 +204,9 @@ interface Lease {
  *   the host's busy cores over the same window; a backlog tier's cores
  *   start at what the host used beyond the tree, plus the tree's cores now,
  *   when that is more (row 011-182).
- * - A backlog tier has no grants term (spec 021 D18, row 021-18): with the
- *   host read, each permit needs those cores below the ceiling,
- *   `backgroundShare` of the CPUs, too. When no daemon's mark states a
+ * - A backlog tier has no grants term (spec 021 D18, row 021-18): each
+ *   permit needs those cores below the ceiling, `backgroundShare` of the
+ *   CPUs, alone; the slots do not bound it (row 011-404, gh-225). When no daemon's mark states a
  *   background permit and this one holds none, the waiter served first
  *   takes its tier's fewest workers (the floor), and then waits behind the
  *   others at its next look.
@@ -245,6 +249,8 @@ class LockFilePool implements PermitPool {
   #floored = false;
   /** The last look read the host's busy cores. */
   #hostRead = false;
+  /** The ceiling's refusals, logged once per episode (row 011-404); `null` without a log. */
+  readonly #refusals: RefusalEpisodes | null;
   #closed = false;
 
   constructor(options: PermitPoolOptions) {
@@ -256,6 +262,8 @@ class LockFilePool implements PermitPool {
       ? options.backgroundShare
       : DEFAULT_BACKGROUND_SHARE;
     this.#ceiling = backgroundCeiling(this.#backgroundShare, this.#cpus);
+    this.#refusals =
+      options.log === undefined ? null : new RefusalEpisodes(options.log, SLOT_WAITER_FRESH_MS);
     this.#tree = options.cores === undefined ? createTreeCpu() : options.cores;
     this.#host =
       this.#tree === null ? null : options.host === undefined ? createHostCpu() : options.host;
@@ -289,11 +297,11 @@ class LockFilePool implements PermitPool {
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
     const gated = this.#gated(others, inUse, target, kind, lane, rank, fewest);
     const allowed = Math.min(target, gated);
-    if (kind === "backlog") this.#logRefusal(gated, fewest, target);
     const permits = allowed < fewest ? [] : this.#take(allowed, reserve);
     // A tier that runs `fewest` workers on fewer permits would run more than it holds.
     if (permits.length < fewest) for (const db of permits.splice(0)) db.close();
     const grant = permits.length;
+    if (kind === "backlog") this.#logRefusal({ gated, fewest, target, grant }, now);
     const since = this.#since;
     const slowWaiting = this.#slowWaiting;
     const previousLeast = this.#least;
@@ -542,21 +550,27 @@ class LockFilePool implements PermitPool {
   }
 
   /**
-   * D18: the daemon's log has each refusal of a backlog tier by the ceiling,
-   * with the busy CPUs the gate read: the gate read the host and left the
-   * tier fewer than `fewest` workers where its share, `target`, had them.
+   * D18: a refusal of a backlog tier by the ceiling, with the busy CPUs the
+   * gate read: the gate read the host and left the tier fewer than `fewest`
+   * workers where its share, `target`, had them. The log has the first of
+   * each episode, and a grant ends it (row 011-404).
    */
-  #logRefusal(gated: number, fewest: number, target: number): void {
+  #logRefusal(
+    look: { gated: number; fewest: number; target: number; grant: number },
+    now: number,
+  ): void {
+    const { gated, fewest, target, grant } = look;
+    if (grant > 0) this.#refusals?.granted(now);
     const gate = this.#gate;
-    if (gated >= fewest || target < fewest || this.#options.log === undefined) return;
+    if (gated >= fewest || target < fewest || this.#refusals === null) return;
     if (!this.#hostRead || gate === null || gate.busyCores === null) return;
-    this.#options.log(
+    const busy = gate.busyCores;
+    this.#refusals.refused(now, () =>
       ceilingRefusalLine({
-        busy: gate.busyCores,
+        busy,
         ceiling: this.#ceiling,
         share: this.#backgroundShare,
         cpus: this.#cpus,
-        hostSlots: this.#hostSlots,
       }),
     );
   }
