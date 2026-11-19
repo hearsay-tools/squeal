@@ -208,4 +208,48 @@ Every other scored measure is 10 of 10 in both arms (`a1-break`, `a2-slow`, `a6-
 4. **One measure points down and is not resolved**: `a5-uncovered` `own-run-covers`, 2 of 10 against 5 of 10 (p = 0.35). All 20 sessions claimed `fail`, which is right. *Not determined: whether the new texts make Sonnet run the uncovered tests in the way the measure accepts less often, or whether this is the scenario's known spread (5 of 10 and 3 of 10 in earlier runs).*
 5. Session time moved both ways (medians, shipped then new): `a1-break` 92 s and 34 s, `a8-load-hold` 85 s and 28 s, `a10-retry-real` 27 s and 11 s, `a12-manual-check` 27 s and 14 s; `a3-harmless` 83 s and 141 s, `a2-slow` 27 s and 38 s.
 
-Each cell is 10 against 10: this rules out a collapse in every scenario, not a moderate loss. Next by the plan: the same check on Sol.
+Each cell is 10 against 10: this rules out a collapse in every scenario, not a moderate loss.
+
+## Full check of the approved texts: Sol
+
+Run 20261118T213820Z-452919: Sol, all 12 scenarios, 10 repetitions, 240 sessions, 0 failed, coverage complete (*measured*); the same build and variant as the Sonnet check. Results file `evals/results/2026-11-18-0.1.563.20261118T213820Z-452919.primer-skill.atomic-variant.json`. The run took about 2.6 hours: the host's load was 21 to 28 on 24 CPUs for much of it and the runner held sessions back (380 hold lines).
+
+**By the plan's rule: no degradation on Sol in any of the 12 scenarios.**
+
+| | Shipped | New texts |
+|---|---|---|
+| Scored measures lower with the new texts | | none |
+| False pass | 0 of 120 | 0 of 120 |
+| Skill loaded | 120 of 120 | 120 of 120 |
+| `squeal checks` run | 0 of 120 | 120 of 120 |
+| Hand run of the tests where it is wrong | 0 of 100 | 0 of 100 |
+| `a9-env-retry`: `retry-for-environment` | 1/3 | 10/10 (p = 0.038) |
+| `a9-env-retry`: `claim-after-retry` | 1/3 | 10/10 (p = 0.038) |
+| `a5-uncovered`: `own-run-covers` | 10/10 | 10/10 |
+| `a4-pending`: `no-claim-on-pending` | 10/10 | 1/1 |
+
+Every other scored measure is 10 of 10 in both arms (`a3-harmless` `current-before-claim` 9/9 and 9/9). Every claim is right in both arms (`a3-harmless`: 9 `pass` and 1 `unknown` in each).
+
+1. Sol ran `squeal checks` in every session with the new texts and in none with the shipped ones.
+2. The retry for a stopped service became computable and right in 10 of 10 sessions (shipped: computable in 3, right in 1).
+3. The `a5-uncovered` measure that pointed down on Sonnet is 10 of 10 in both arms here.
+4. `a4-pending`: checks were pending at the second turn in 10 of 10 shipped sessions and 1 of 10 with the new texts, so the measure is computable once there; the claim was right in all 20. The same shift, in either direction, appeared in every stage (it follows when the agent waits within its first turn).
+5. Sessions with the new texts took somewhat longer in several scenarios, as the agent runs one more command (medians, shipped then new: `a7-stale` 27 s and 45 s, `a10-retry-real` 25 s and 39 s, `a12-manual-check` 32 s and 42 s, `a9-env-retry` 47 s and 60 s; `a11-inherited-flake` 119 s and 98 s). *The host load differed within the run, so these are weak.*
+
+## Reading after the full check (480 sessions, both models)
+
+| | Shipped texts | New texts |
+|---|---|---|
+| False pass | 0 of 240 | 0 of 240 |
+| Wrong hand run | 0 of 200 | 0 of 200 |
+| Skill loaded | 120 of 240 (all Sol) | 239 of 240 |
+| `squeal checks` run | 0 of 240 | 210 of 240 |
+| Scored measure lower at p < 0.05 | | none |
+| Scored measure higher at p < 0.05 | | Sonnet `a11-inherited-flake` retry and claim (0/10 to 8/10 and 7/9); Sol `a9-env-retry` retry (1/3 to 10/10) |
+
+The approved texts do not degrade either model in any scenario at this size, bring both models into the skill and into `squeal checks`, and repair the handling of a failure the agent did not cause. The start message shrinks from 1,449 characters (in the repository that raised the question) to 372.
+
+Open after the check:
+- Sonnet `a5-uncovered` `own-run-covers` 2 of 10 against 5 of 10 (all claims right): 30 more repetitions of that scenario on Sonnet were started after the Sol stage (run 20261119T001551Z-264cf1).
+- Not covered by the eval: OpenCode's start message without a skill (542 characters, the rules in words), Pi, and whether agents now find `squeal proof` and `squeal status --at` (spec 023's own tasks test that).
+- Each cell is 10 against 10; a moderate loss in one scenario would not show.
