@@ -1335,6 +1335,9 @@ var UNCONFIGURED3 = {
   ...PYTEST.unconfigured
 };
 
+// src/core/slow/slot-files.ts
+var SLOT_WAITER_FRESH_MS = 3e4;
+
 // src/core/lint/store/open.ts
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
@@ -1466,6 +1469,10 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 var PNPM_VIRTUAL_STORE = "node_modules/.pnpm";
 var PNPM_LOCKFILE = `${PNPM_VIRTUAL_STORE}/lock.yaml`;
 
+// src/core/commit/report.ts
+var LINT_KEYS = ["findings", "notDetermined", "running"];
+var TOOL_KEYS = ["files", ...LINT_KEYS];
+
 // src/core/retry/kept.ts
 var ASKED_KEY_MS = 7 * 24 * 60 * 60 * 1e3;
 
@@ -1535,9 +1542,6 @@ var BOUND_TEXT = waitedText(LOAD_RETRY_WAIT_MS);
 
 // src/core/slow/slot.ts
 import { DatabaseSync as DatabaseSync6 } from "node:sqlite";
-
-// src/core/slow/slot-files.ts
-var SLOT_WAITER_FRESH_MS = 3e4;
 
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
