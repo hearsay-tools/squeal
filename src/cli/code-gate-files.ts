@@ -56,6 +56,13 @@ export interface GateFilesOptions {
    */
   readonly store?: boolean;
   /**
+   * Review wave-14 B2 (row 023-22): each failure the stores give runs once
+   * more and its rerun is kept (row 020-60's `rerunFailures`); only with
+   * `store`. A proof sends a file to run only when it may not read its
+   * stored failure.
+   */
+  readonly rerunFailures?: boolean;
+  /**
    * `TMPDIR` for the call, over `env`'s: the gate's folders, Vitest's and
    * the tests' workers' go under it. Held in `process.env` as `env` is.
    * Absent, as `env` has it.
@@ -207,7 +214,14 @@ async function gateFiles(
       const evidence = await collectEvidence(root, changed, collect);
       return { runs: evidence.testFiles.map(fileRun), timedOut: evidence.timedOut, budgetSeconds };
     }
-    const collected = await collectWithStores(root, env, changed, collect);
+    const collected = await collectWithStores(
+      root,
+      env,
+      changed,
+      collect,
+      [],
+      options.rerunFailures === true,
+    );
     await collected.keep();
     const { evidence } = collected;
     const notKept = [...collected.notKept()].map(([path, reason]) => ({ path, reason }));

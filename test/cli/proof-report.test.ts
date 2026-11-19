@@ -39,6 +39,7 @@ const assertionFail: SideFile["end"] = {
           stack: null,
           location: null,
           diff: null,
+          stage: "body",
         },
       ],
     },

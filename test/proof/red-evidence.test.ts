@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   errorKind,
   failureKind,
+  lacksStage,
   NOT_SHOWN_TO_MATTER,
   proofExit,
   redCounts,
   redEvidence,
   type SideEnd,
   THROWN_REASON,
+  UNSTAGED,
   verdictOf,
   withControl,
 } from "../../src/core/proof/verdict.js";
@@ -69,12 +71,10 @@ describe("red evidence (row 023-22, D5.5 as amended for #244)", () => {
     ["an error with a diff", { diff: "- Expected\n+ Received" }],
     ["node:assert's code", { code: "ERR_ASSERTION" }],
   ])("counts %s as an assertion, wherever it was thrown", (_label, more) => {
-    for (const stage of [undefined, "body"] as const) {
-      const e = error({ ...more, ...(stage === undefined ? {} : { stage }) });
-      expect(errorKind(e)).toBe("assertion");
-      expect(verdictOf(fail(e), pass)).toEqual({ verdict: "proven", reason: null });
-      expect(redEvidence(fail(e))).toBe("assertion");
-    }
+    const e = error({ ...more, stage: "body" });
+    expect(errorKind(e)).toBe("assertion");
+    expect(verdictOf(fail(e), pass)).toEqual({ verdict: "proven", reason: null });
+    expect(redEvidence(fail(e))).toBe("assertion");
   });
 
   it.each([
@@ -104,7 +104,6 @@ describe("red evidence (row 023-22, D5.5 as amended for #244)", () => {
     ["the project's setup", { phase: "setup" as const }, "setup"],
     ["the file's teardown", { phase: "after-tests" as const }, "hook"],
     ["a cancellation or uncaught error", { stage: "other" as const }, "error"],
-    ["a record with no stage (stored before 023-22)", {}, "error"],
   ])("keeps an Error from %s red for another reason", (_label, more, kind) => {
     const e = error(more);
     expect(errorKind(e)).toBe(kind);
@@ -156,5 +155,37 @@ describe("red evidence (row 023-22, D5.5 as amended for #244)", () => {
       verdict: "proven",
       reason: `${proven.reason}; ${NOT_SHOWN_TO_MATTER}`,
     });
+  });
+});
+
+describe("records with no stage (review wave-14 B2)", () => {
+  it.each([
+    [
+      "an old hook assertion (name and diff, no stage)",
+      { name: "AssertionError", diff: "- 2\n+ 1" },
+    ],
+    ["an old matcher error", { assertionEvidence: true as const }],
+    ["an old node:assert error", { code: "ERR_ASSERTION" }],
+    ["an old plain Error", {}],
+    ["an old TypeError", { name: "TypeError" }],
+  ])("never proves with %s: not comparable, never inferred from the rest", (_label, more) => {
+    const e = error(more);
+    expect(errorKind(e)).toBe("unstaged");
+    expect(lacksStage(fail(e))).toBe(true);
+    expect(redCounts(fail(e))).toBe(false);
+    expect(verdictOf(fail(e), pass)).toEqual({ verdict: "not comparable", reason: UNSTAGED });
+    expect(proofExit(["not comparable"])).toBe(3);
+  });
+
+  it("is not accepted by --red-error either", () => {
+    expect(errorKind(error({}), ["predicate"])).toBe("unstaged");
+  });
+
+  it("keeps a recorded phase or timeout load what it was, and a staged record readable", () => {
+    expect(errorKind(error({ phase: "load" }))).toBe("import");
+    expect(errorKind(error({ loadAverage: 2 }))).toBe("timeout");
+    expect(lacksStage(fail(error({ phase: "after-tests" })))).toBe(false);
+    expect(lacksStage(fail(WAIT))).toBe(false);
+    expect(lacksStage(pass)).toBe(false);
   });
 });
