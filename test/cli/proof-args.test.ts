@@ -145,3 +145,24 @@ describe("squeal proof arguments (row 023-08)", () => {
     expect(err).toContain("squeal proof <test file>... --base <commit>");
   });
 });
+
+describe("squeal proof --red-error (row 023-22)", () => {
+  it("reads each --red-error text, repeatable, and refuses an empty one", () => {
+    const parsed = parseProof([
+      "test/a.test.ts",
+      "--base",
+      "HEAD~1",
+      "--red-error",
+      "waitForSelector",
+      "--red-error=Timed out 5000ms",
+    ]);
+    expect(parsed).toMatchObject({ redErrors: ["waitForSelector", "Timed out 5000ms"] });
+    expect(parseProof(["test/a.test.ts", "--base", "HEAD~1"])).not.toHaveProperty("redErrors");
+    expect(parseProof(["test/a.test.ts", "--base", "HEAD~1", "--red-error="])).toEqual({
+      usage: "--red-error needs a text",
+    });
+    expect(parseProof(["test/a.test.ts", "--base", "HEAD~1", "--red-error"])).toEqual({
+      usage: "--red-error needs a value",
+    });
+  });
+});

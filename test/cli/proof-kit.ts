@@ -18,6 +18,8 @@ export interface ProofFileJson {
   readonly path: string;
   readonly verdict: string;
   readonly reason: string | null;
+  /** Row 023-22: what a red side that counts failed on, `assertion` or `thrown`. */
+  readonly evidence?: string | null;
   readonly red: {
     readonly end: string;
     readonly reason: string | null;
