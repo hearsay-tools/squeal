@@ -64,7 +64,8 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(overrun?.deadline).toBeGreaterThan(overrun?.at ?? 0);
 
     // Status, the named wait's line and its JSON say so: how long, how many times its usual time,
-    // that it may be hung, the deadline and the command that shows its run.
+    // that it may be hung, the deadline and the command that shows its run. A tier now runs
+    // beside it, so the lane's next tiers wait for one of the two (row 011-405).
     const [named] = read(side, [H]);
     expect(named?.standing).toMatchObject({
       kind: "running",
@@ -72,7 +73,7 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     });
     expect(classLines(read(side, [H]), "squeal").slice(1)).toEqual([
       expect.stringMatching(
-        /^ {2}1 in the vitest tier of 4 test files running since \S+; it has run 1 min, about 12,000x its usual 5 ms, so it may be hung; the lane runs its next tiers beside it, and its run's deadline is \S+: test\/h\.test\.ts; `squeal why test\/h\.test\.ts` shows its run and the run log$/,
+        /^ {2}1 in the vitest tier of 4 test files running since \S+; it has run 1 min, about 12,000x its usual 5 ms, so it may be hung; it runs beside another tier, so the lane's next tiers wait for one of the two to end, and its run's deadline is \S+: test\/h\.test\.ts; `squeal why test\/h\.test\.ts` shows its run and the run log$/,
       ),
     ]);
     expect(named === undefined ? null : fileEntry(named, "squeal")).toMatchObject({

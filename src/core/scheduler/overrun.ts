@@ -140,13 +140,27 @@ export function nextOverrun(
  * moved by the calendar steps since, the run's deadline, `runner.timeoutMs`
  * from that start, and its files that have not ended, each with its
  * last-known duration. All three times are on one basis (review 0.1.567 B2).
+ * `paired`: its lane holds a tier beside another, so `beside: true` (row
+ * 011-405).
  */
-function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOverrun {
+function tierOverrun(
+  context: SchedulerContext,
+  tier: Tier,
+  at: EpochMs,
+  paired: boolean,
+): TierOverrun {
   const { timeoutMs } = context.policy.runner;
   const startedAt = steppedStart(context, tier) ?? at;
   const deadline = timeoutMs === null ? null : ((startedAt + timeoutMs) as EpochMs);
   const files = unfinished(tier).map(({ file }) => ({ ...file.ref, usualMs: file.durationMs }));
-  return { startedAt, at, deadline, files, ...(tier.beside === true ? { beside: true } : {}) };
+  return { startedAt, at, deadline, files, ...(paired ? { beside: true } : {}) };
+}
+
+/** `o` with `beside: true` when `paired`, without it otherwise (row 011-405). */
+function pairedAs(o: TierOverrun, paired: boolean): TierOverrun {
+  if ((o.beside === true) === paired) return o;
+  const { beside: _, ...rest } = o;
+  return paired ? { ...rest, beside: true } : rest;
 }
 
 /**
@@ -159,6 +173,8 @@ function tierOverrun(context: SchedulerContext, tier: Tier, at: EpochMs): TierOv
 export class Overruns {
   readonly #published = new Map<string, TierOverrun>();
   readonly #bounds = new Map<string, EpochMs>();
+  /** The lane of each published tier, so a beside tier's end clears `beside` there (row 011-405). */
+  readonly #lanes = new Map<string, string>();
   #wake: WakeSlot | null = null;
 
   constructor(
@@ -180,31 +196,55 @@ export class Overruns {
 
   /**
    * Records which of `tiers` overrun at `at`, and when each other will;
-   * whether the published ones changed.
+   * whether the published ones changed. Row 011-405: each published one
+   * carries `beside: true` while its lane holds a tier beside another, both
+   * tiers' (the lane opens no third instance, so its next tiers wait).
    */
   check(context: SchedulerContext, tiers: readonly Tier[], at: EpochMs): boolean {
     let changed = false;
+    const paired = new Set(tiers.filter((t) => t.beside === true).map((t) => t.lane));
     for (const tier of tiers) {
       const when = reportedOverrunAt(context, tier);
       if (when === null || when > at) {
         if (when === null) this.#bounds.delete(tier.runId);
         else this.#bounds.set(tier.runId, when);
-        changed = this.#published.delete(tier.runId) || changed;
+        changed = this.#forget(tier.runId) || changed;
         continue;
       }
       this.#bounds.delete(tier.runId);
-      if (this.#published.has(tier.runId)) continue;
-      this.#published.set(tier.runId, tierOverrun(context, tier, when));
+      const pair = paired.has(tier.lane);
+      const was = this.#published.get(tier.runId);
+      const now = was === undefined ? tierOverrun(context, tier, when, pair) : pairedAs(was, pair);
+      if (now === was) continue;
+      this.#published.set(tier.runId, now);
+      this.#lanes.set(tier.runId, tier.lane);
       changed = true;
     }
     this.#arm(at);
     return changed;
   }
 
-  /** `tier` ended: whether it was published. */
+  /**
+   * `tier` ended: whether the published ones changed. A beside tier's end
+   * leaves its lane one instance, so the others there lose `beside` (row
+   * 011-405).
+   */
   ended(tier: Tier): boolean {
     if (this.#bounds.delete(tier.runId) && this.#bounds.size === 0) this.#wake?.clear();
-    return this.#published.delete(tier.runId);
+    let changed = this.#forget(tier.runId);
+    if (tier.beside !== true) return changed;
+    for (const [runId, lane] of this.#lanes) {
+      const was = this.#published.get(runId);
+      if (lane !== tier.lane || was === undefined || was.beside !== true) continue;
+      this.#published.set(runId, pairedAs(was, false));
+      changed = true;
+    }
+    return changed;
+  }
+
+  #forget(runId: string): boolean {
+    this.#lanes.delete(runId);
+    return this.#published.delete(runId);
   }
 
   /**

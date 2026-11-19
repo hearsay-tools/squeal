@@ -104,8 +104,8 @@ function timesText(ratio: number): string {
  * Row 011-399 (gh-233): `; it has run 4 min 2 s, about 600x its usual
  * 0.4 s, so it may be hung; the lane runs its next tiers beside it, and
  * its run's deadline is 16:30:12`. Nothing about its result changes; with
- * no usual time known, the line says so. Row 011-405: a file of a tier
- * beside another says `it runs beside another tier, so the lane's next
+ * no usual time known, the line says so. Row 011-405: while its lane holds
+ * two tiers, either tier's file says `it runs beside another tier, so the lane's next
  * tiers wait for one of the two to end` instead, as no third instance opens.
  */
 export function overrunText(o: FileOverrun): string {
