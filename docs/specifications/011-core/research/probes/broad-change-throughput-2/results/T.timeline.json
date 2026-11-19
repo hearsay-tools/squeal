@@ -1,0 +1,238 @@
+{
+ "label": "T",
+ "edits": [
+  [
+   0,
+   "packages/contract/src/ci-wait.ts"
+  ]
+ ],
+ "windowS": 1194.1,
+ "lastRunEndS": 1156.3,
+ "distinctFinished": 892,
+ "fileRunsPicked": 892,
+ "fileRunsFinished": 892,
+ "vitestRuns": 4,
+ "nodeRuns": 8,
+ "vitestBusyS": 1011.7,
+ "vitestSumFileS": 7272.5,
+ "nodeSumFileS": 408.4,
+ "firstNodeStart": 69.3,
+ "lastNodeEnd": 377.5,
+ "gaps": [
+  [
+   78.7,
+   0.9
+  ],
+  [
+   88.2,
+   2.2
+  ],
+  [
+   114.9,
+   73.3
+  ]
+ ],
+ "hb": {
+  "samples": 604,
+  "max": 10003,
+  "over10s": 1,
+  "over6s": 3
+ },
+ "cpu": {
+  "scopeCpuS": 8329,
+  "daemonCpuS": 294,
+  "meanBusy": 7.34,
+  "maxLoad1": 14.8,
+  "meanLoad1": 10.29,
+  "sampleS": 1200
+ },
+ "queueEvery60": [
+  [
+   -14.9,
+   405,
+   0
+  ],
+  [
+   45.2,
+   1297,
+   0
+  ],
+  [
+   105.2,
+   1277,
+   6
+  ],
+  [
+   165.3,
+   1277,
+   1
+  ],
+  [
+   225.4,
+   405,
+   873
+  ],
+  [
+   285.6,
+   405,
+   873
+  ],
+  [
+   345.7,
+   405,
+   873
+  ],
+  [
+   405.8,
+   405,
+   872
+  ],
+  [
+   465.9,
+   405,
+   872
+  ],
+  [
+   526,
+   405,
+   872
+  ],
+  [
+   586.1,
+   405,
+   872
+  ],
+  [
+   646.2,
+   405,
+   872
+  ],
+  [
+   706.3,
+   405,
+   872
+  ],
+  [
+   766.4,
+   405,
+   872
+  ],
+  [
+   826.5,
+   405,
+   872
+  ],
+  [
+   886.6,
+   405,
+   872
+  ],
+  [
+   946.8,
+   405,
+   872
+  ],
+  [
+   1006.9,
+   405,
+   872
+  ],
+  [
+   1067,
+   405,
+   872
+  ],
+  [
+   1127.1,
+   405,
+   872
+  ],
+  [
+   1187.2,
+   405,
+   0
+  ]
+ ],
+ "log": [
+  "1.6 squeal daemon: long write: store.sqlite write lock held 1471 ms by reconcileBatch < process.processTicksAndRejections < #pass; 37615 rows written",
+  "34.4 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 472 to 257 MiB in a 182 ms pause",
+  "67.6 squeal daemon: long write: store.sqlite write lock held 2341 ms by storeClosures < applyRunnerPart < process.processTicksAndRejections; 5269 rows written",
+  "68.7 squeal daemon: long write: store.sqlite write lock held 495 ms by startTier < act < startNext; 186 rows written",
+  "69.7 squeal daemon: long write: store.sqlite write lock held 413 ms by startTier < act < startNext; 11 rows written",
+  "70.1 squeal daemon: long write: store.sqlite write lock held 399 ms by startTier < act < startNext; 29 rows written",
+  "70.5 squeal daemon: long write: store.sqlite write lock held 370 ms by startTier < act < startNext; 9 rows written",
+  "70.9 squeal daemon: long write: store.sqlite write lock held 358 ms by startTier < act < startNext; 11 rows written",
+  "72.9 squeal daemon: long write: store.sqlite write lock held 771 ms by #write < Ledger.commit < Object.commit; 16 rows written",
+  "73.3 squeal daemon: long write: store.sqlite write lock held 316 ms by startTier < act < startNext; 17 rows written",
+  "73.9 squeal daemon: long write: store.sqlite write lock held 359 ms by startTier < act < startNext; 43 rows written",
+  "74.3 squeal daemon: long write: store.sqlite write lock held 360 ms by startTier < act < startNext; 19 rows written",
+  "74.8 squeal daemon: long write: store.sqlite write lock held 407 ms by startTier < act < startNext; 83 rows written",
+  "77.5 squeal daemon: long write: store.sqlite write lock held 729 ms by #write < Ledger.commit < Object.commit; 91 rows written",
+  "79.5 squeal daemon: long write: store.sqlite write lock held 815 ms by #write < #record; 368 rows written",
+  "80 squeal daemon: long write: store.sqlite write lock held 426 ms by startTier < act < startNext; 49 rows written",
+  "89.1 squeal daemon: long write: store.sqlite write lock held 859 ms by #write < #record; 95 rows written",
+  "90 squeal daemon: long write: store.sqlite write lock held 850 ms by #write < Ledger.commit < Object.commit; 64 rows written",
+  "90.8 squeal daemon: long write: store.sqlite write lock held 406 ms by startTier < act < startNext; 117 rows written",
+  "115.9 squeal daemon: long write: store.sqlite write lock held 939 ms by #write < #record; 231 rows written",
+  "117.3 squeal daemon: long write: code.sqlite write lock held 349 ms by runCoverageStep < squeal-big.mjs:72986 < Pace.measure; 1 row written",
+  "118.2 squeal daemon: long write: code.sqlite write lock held 268 ms by Object.putParts < squeal-big.mjs:71401 < AsyncLocalStorage.run; 1 row written",
+  "140.4 squeal daemon: long write: store.sqlite write lock held 779 ms by #write < Ledger.commit < Object.commit; 28 rows written",
+  "189.7 squeal daemon: long write: store.sqlite write lock held 1575 ms by startTier < act < startNext; 36239 rows written",
+  "378.6 squeal daemon: long write: store.sqlite write lock held 1082 ms by #write < Ledger.commit < Object.commit; 124 rows written",
+  "1155.9 squeal daemon: busy, heap in use 1286 MiB over twice the last live size of 147 MiB: a last-resort GC took private memory from 1544 to 711 MiB in a 379 ms pause; 498 MiB of heap in use after it",
+  "1165.3 squeal daemon: long write: store.sqlite write lock held 8943 ms by #write < #record; 71670 rows written",
+  "1173.7 squeal daemon: long write: code.sqlite write lock held 424 ms by runCoverageStep < squeal-big.mjs:72986 < Pace.measure; 1 row written",
+  "1174.6 squeal daemon: long write: code.sqlite write lock held 412 ms by runCoverageStep < squeal-big.mjs:72986 < Pace.measure; 1 row written"
+ ],
+ "vitestRunList": [
+  {
+   "id": "00b82296",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 68.2,
+   "end": 78.7,
+   "files": 4,
+   "finished": 4,
+   "sumS": 2.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "922224fa",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 79.6,
+   "end": 88.2,
+   "files": 4,
+   "finished": 4,
+   "sumS": 10.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "ee8d3793",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 90.4,
+   "end": 114.9,
+   "files": 4,
+   "finished": 4,
+   "sumS": 34.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "cd1372ba",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 188.2,
+   "end": 1156.3,
+   "files": 872,
+   "finished": 872,
+   "sumS": 7225.5,
+   "width": null,
+   "state": "completed"
+  }
+ ],
+ "firstEndOf": []
+}

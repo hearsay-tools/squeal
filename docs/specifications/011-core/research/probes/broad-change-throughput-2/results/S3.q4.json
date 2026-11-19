@@ -1,0 +1,54 @@
+{
+ "label": "S3",
+ "daemons": 3,
+ "user": "{\"capacity\":{\"hostSlots\":11,\"backgroundShare\":1}}",
+ "spanS": 854.1,
+ "filesFinished": 885,
+ "filesPerMin": 62.2,
+ "machine": {
+  "meanBusy": 8.53,
+  "meanLoad1": 11.67,
+  "overshoot": {
+   "samplesAtOrAbove11_5BusyPct": 0,
+   "samplesRunnableAboveCpusPct": 57.65,
+   "meanRunnable": 13.11,
+   "maxRunnable": 27
+  },
+  "underUse": {
+   "samplesWithQueue": 170,
+   "meanIdleCoresWhileQueued": 3.47,
+   "samplesBelow9BusyWhileQueuedPct": 35.88
+  },
+  "liveWorkers": {
+   "mean": 7.35,
+   "max": 14,
+   "secondsAboveCpusPct": 0.23
+  }
+ },
+ "perDaemon": [
+  {
+   "copy": 1,
+   "runs": 11,
+   "vitestTiers": 6,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 854.1
+  },
+  {
+   "copy": 2,
+   "runs": 11,
+   "vitestTiers": 6,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 798.4
+  },
+  {
+   "copy": 3,
+   "runs": 12,
+   "vitestTiers": 7,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 686.1
+  }
+ ]
+}

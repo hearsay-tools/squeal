@@ -1,0 +1,46 @@
+{
+ "label": "C2",
+ "daemons": 2,
+ "user": "{\"capacity\":{\"hostSlots\":48,\"backgroundShare\":0.92}}",
+ "spanS": 520.3,
+ "filesFinished": 590,
+ "filesPerMin": 68,
+ "machine": {
+  "meanBusy": 7.03,
+  "meanLoad1": 8.3,
+  "overshoot": {
+   "samplesAtOrAbove11_5BusyPct": 5.77,
+   "samplesRunnableAboveCpusPct": 37.5,
+   "meanRunnable": 10.53,
+   "maxRunnable": 25
+  },
+  "underUse": {
+   "samplesWithQueue": 104,
+   "meanIdleCoresWhileQueued": 4.97,
+   "samplesBelow9BusyWhileQueuedPct": 64.42
+  },
+  "liveWorkers": {
+   "mean": 6,
+   "max": 14,
+   "secondsAboveCpusPct": 0.58
+  }
+ },
+ "perDaemon": [
+  {
+   "copy": 1,
+   "runs": 10,
+   "vitestTiers": 5,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 520.3
+  },
+  {
+   "copy": 2,
+   "runs": 10,
+   "vitestTiers": 5,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 352.4
+  }
+ ]
+}

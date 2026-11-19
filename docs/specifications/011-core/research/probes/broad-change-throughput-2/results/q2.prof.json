@@ -1,0 +1,1669 @@
+[
+ {
+  "window": "b1",
+  "rev": "1",
+  "wallS": 50.2,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 50.17,
+  "busyS": 17.21,
+  "inclusiveS": {
+   "transaction": 5.61,
+   "applyRunnerPart": 3.81,
+   "setClosure": 2.11,
+   "storeClosures": 1.44,
+   "regrowObserved": 1.05,
+   "(garbage collector)": 0.57,
+   "rekeyContent": 0.25,
+   "settle": 0.18,
+   "fetchRunnerPart": 0.12,
+   "closure": 0.07,
+   "fetchEditCut": 0.05,
+   "parse": 0.03,
+   "quietCaughtUp": 0.02,
+   "trackUntracked": 0.01,
+   "bindWalks": 0.01,
+   "editWork": 0.01,
+   "quietQueued": 0,
+   "askAffected": 0,
+   "demote": 0,
+   "invalidate": 0,
+   "affected": 0,
+   "regrowStartup": 0
+  },
+  "topSelfS": [
+   [
+    "get cli/squeal.mjs:1083",
+    1.41
+   ],
+   [
+    "changes cli/squeal.mjs:1080",
+    1.35
+   ],
+   [
+    "takePermit cli/squeal.mjs:11854",
+    1.25
+   ],
+   [
+    "all cli/squeal.mjs:1086",
+    1.24
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.99
+   ],
+   [
+    "#release cli/squeal.mjs:13749",
+    0.8
+   ],
+   [
+    "processChunkSync node:zlib:436",
+    0.64
+   ],
+   [
+    "spawn node:internal/child_process:384",
+    0.6
+   ],
+   [
+    "(garbage collector) :0",
+    0.57
+   ],
+   [
+    "unlink cli/squeal.mjs:795",
+    0.56
+   ],
+   [
+    "update crypto/hash:179",
+    0.41
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    0.4
+   ]
+  ]
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 27.53,
+  "busyS": 8.8,
+  "inclusiveS": {
+   "applyRunnerPart": 3.28,
+   "transaction": 3.02,
+   "setClosure": 1.78,
+   "storeClosures": 1.28,
+   "(garbage collector)": 0.67,
+   "regrowObserved": 0.58,
+   "rekeyContent": 0.24,
+   "settle": 0.21,
+   "fetchRunnerPart": 0.09,
+   "closure": 0.08,
+   "fetchEditCut": 0.04,
+   "bindWalks": 0.01,
+   "trackUntracked": 0.01,
+   "editWork": 0.01,
+   "parse": 0,
+   "quietQueued": 0,
+   "askAffected": 0,
+   "quietCaughtUp": 0
+  },
+  "topSelfS": [
+   [
+    "all cli/squeal.mjs:1086",
+    0.96
+   ],
+   [
+    "(garbage collector) :0",
+    0.67
+   ],
+   [
+    "processChunkSync node:zlib:436",
+    0.63
+   ],
+   [
+    "unlink cli/squeal.mjs:795",
+    0.5
+   ],
+   [
+    "changes cli/squeal.mjs:1080",
+    0.44
+   ],
+   [
+    "takePermit cli/squeal.mjs:11854",
+    0.41
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    0.4
+   ],
+   [
+    "push cli/squeal.mjs:67141",
+    0.34
+   ],
+   [
+    "update crypto/hash:179",
+    0.32
+   ],
+   [
+    "get cli/squeal.mjs:1083",
+    0.23
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.23
+   ],
+   [
+    "spawn node:internal/child_process:384",
+    0.23
+   ]
+  ]
+ },
+ {
+  "window": "t1",
+  "rev": "3",
+  "wallS": 7.271,
+  "queued": 1280,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 7.27,
+  "busyS": 2.9,
+  "inclusiveS": {
+   "applyRunnerPart": 1.25,
+   "transaction": 1.19,
+   "setClosure": 1.06,
+   "regrowObserved": 0.49,
+   "(garbage collector)": 0.15,
+   "storeClosures": 0.15,
+   "rekeyContent": 0.1,
+   "settle": 0.03,
+   "closure": 0.01,
+   "fetchRunnerPart": 0.01,
+   "editWork": 0,
+   "askAffected": 0,
+   "quietCaughtUp": 0,
+   "fetchEditCut": 0,
+   "invalidate": 0,
+   "quietQueued": 0
+  },
+  "topSelfS": [
+   [
+    "all cli/squeal.mjs:1086",
+    0.43
+   ],
+   [
+    "unlink cli/squeal.mjs:795",
+    0.3
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    0.22
+   ],
+   [
+    "update crypto/hash:179",
+    0.2
+   ],
+   [
+    "(garbage collector) :0",
+    0.15
+   ],
+   [
+    "writeSummary cli/squeal.mjs:17236",
+    0.14
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.1
+   ],
+   [
+    "acquire cli/squeal.mjs:26198",
+    0.07
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:71887",
+    0.07
+   ],
+   [
+    "get cli/squeal.mjs:1083",
+    0.06
+   ],
+   [
+    "spawn node:internal/child_process:384",
+    0.06
+   ],
+   [
+    "changes cli/squeal.mjs:1080",
+    0.06
+   ]
+  ]
+ },
+ {
+  "window": "m1",
+  "rev": "4",
+  "wallS": 13.696,
+  "queued": 1289,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 13.7,
+  "busyS": 4.64,
+  "inclusiveS": {
+   "applyRunnerPart": 2.43,
+   "setClosure": 1.79,
+   "transaction": 1.77,
+   "regrowObserved": 0.83,
+   "storeClosures": 0.54,
+   "(garbage collector)": 0.23,
+   "rekeyContent": 0.13,
+   "settle": 0.06,
+   "closure": 0.04,
+   "fetchRunnerPart": 0.03,
+   "fetchEditCut": 0.02,
+   "trackUntracked": 0.01,
+   "bindWalks": 0.01,
+   "editWork": 0,
+   "quietQueued": 0,
+   "askAffected": 0
+  },
+  "topSelfS": [
+   [
+    "unlink cli/squeal.mjs:795",
+    0.54
+   ],
+   [
+    "all cli/squeal.mjs:1086",
+    0.45
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    0.41
+   ],
+   [
+    "update crypto/hash:179",
+    0.29
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.23
+   ],
+   [
+    "(garbage collector) :0",
+    0.23
+   ],
+   [
+    "changes cli/squeal.mjs:1080",
+    0.23
+   ],
+   [
+    "processChunkSync node:zlib:436",
+    0.23
+   ],
+   [
+    "acquire cli/squeal.mjs:26198",
+    0.11
+   ],
+   [
+    "push cli/squeal.mjs:67141",
+    0.09
+   ],
+   [
+    "hashOf cli/squeal.mjs:10395",
+    0.09
+   ],
+   [
+    "keyFromSegments cli/squeal.mjs:26008",
+    0.08
+   ]
+  ]
+ },
+ {
+  "window": "a1",
+  "rev": "5",
+  "wallS": 12.908,
+  "queued": 1284,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 12.91,
+  "busyS": 7.31,
+  "inclusiveS": {
+   "transaction": 3.99,
+   "setClosure": 3.09,
+   "rekeyContent": 2.12,
+   "applyRunnerPart": 1.07,
+   "regrowObserved": 1.06,
+   "(garbage collector)": 0.32,
+   "closure": 0.01,
+   "fetchRunnerPart": 0.01,
+   "settle": 0.01,
+   "trackUntracked": 0.01,
+   "editWork": 0,
+   "fetchEditCut": 0,
+   "quietCaughtUp": 0,
+   "quietQueued": 0
+  },
+  "topSelfS": [
+   [
+    "unlink cli/squeal.mjs:795",
+    0.93
+   ],
+   [
+    "all cli/squeal.mjs:1086",
+    0.79
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    0.77
+   ],
+   [
+    "#spread cli/squeal.mjs:70996",
+    0.65
+   ],
+   [
+    "(garbage collector) :0",
+    0.32
+   ],
+   [
+    "update crypto/hash:179",
+    0.27
+   ],
+   [
+    "parse2 cli/squeal.mjs:17221",
+    0.2
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:71887",
+    0.19
+   ],
+   [
+    "acquire cli/squeal.mjs:26198",
+    0.18
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.17
+   ],
+   [
+    "spawn node:internal/child_process:384",
+    0.16
+   ],
+   [
+    "setClosure cli/squeal.mjs:26099",
+    0.14
+   ]
+  ]
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.143831.283355.0.001.cpuprofile",
+  "process": "daemon",
+  "sampledS": 19.95,
+  "busyS": 8.71,
+  "inclusiveS": {
+   "transaction": 4.51,
+   "setClosure": 4.28,
+   "applyRunnerPart": 2.44,
+   "rekeyContent": 2.26,
+   "regrowObserved": 1.11,
+   "(garbage collector)": 0.28,
+   "storeClosures": 0.17,
+   "closure": 0.03,
+   "settle": 0.03,
+   "fetchRunnerPart": 0.02,
+   "trackUntracked": 0.01,
+   "fetchEditCut": 0.01,
+   "invalidate": 0,
+   "quietQueued": 0,
+   "editWork": 0
+  },
+  "topSelfS": [
+   [
+    "unlink cli/squeal.mjs:795",
+    1.19
+   ],
+   [
+    "set cli/squeal.mjs:745",
+    1.13
+   ],
+   [
+    "all cli/squeal.mjs:1086",
+    0.84
+   ],
+   [
+    "update crypto/hash:179",
+    0.43
+   ],
+   [
+    "#spread cli/squeal.mjs:70996",
+    0.31
+   ],
+   [
+    "(garbage collector) :0",
+    0.28
+   ],
+   [
+    "changes cli/squeal.mjs:1080",
+    0.25
+   ],
+   [
+    "acquire cli/squeal.mjs:26198",
+    0.24
+   ],
+   [
+    "transaction cli/squeal.mjs:1097",
+    0.23
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:71887",
+    0.21
+   ],
+   [
+    "get cli/squeal.mjs:1083",
+    0.2
+   ],
+   [
+    "keyFromSegments cli/squeal.mjs:26008",
+    0.19
+   ]
+  ]
+ },
+ {
+  "window": "b1",
+  "rev": "1",
+  "wallS": 50.2,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 50.2,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 27.53,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "t1",
+  "rev": "3",
+  "wallS": 7.271,
+  "queued": 1280,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 7.27,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "m1",
+  "rev": "4",
+  "wallS": 13.696,
+  "queued": 1289,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 13.7,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "a1",
+  "rev": "5",
+  "wallS": 12.908,
+  "queued": 1284,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 12.91,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.143831.283355.1.002.cpuprofile",
+  "process": "daemon",
+  "sampledS": 19.94,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": []
+ },
+ {
+  "window": "b1",
+  "rev": "1",
+  "wallS": 50.2,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 50.2,
+  "busyS": 39.24,
+  "inclusiveS": {
+   "fileImports": 7.32,
+   "(garbage collector)": 2.89,
+   "parseAst": 2.64,
+   "moduleGlobs": 1.9,
+   "resolutionInputs": 1.56,
+   "closurePackages": 0.59,
+   "parse": 0.44,
+   "transformRequest": 0.29,
+   "readHash": 0.15,
+   "affectedTestFiles": 0.14,
+   "importClosure": 0.06,
+   "closure": 0
+  },
+  "topSelfS": [
+   [
+    "normalizeString node:path:92",
+    3.88
+   ],
+   [
+    "jsonParseAst shared/parse-D4dtlfWy.mjs:25",
+    3.31
+   ],
+   [
+    "isProjectFile cli/squeal.mjs:24594",
+    3.24
+   ],
+   [
+    "(garbage collector) :0",
+    2.89
+   ],
+   [
+    "existsSync :0",
+    2.76
+   ],
+   [
+    "relative node:path:1353",
+    2.26
+   ],
+   [
+    "resolve node:path:1245",
+    1.03
+   ],
+   [
+    "visit2 cli/squeal.mjs:24864",
+    1.03
+   ],
+   [
+    "walk cli/squeal.mjs:29054",
+    0.99
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    0.89
+   ],
+   [
+    "transformSync shared/resolve-tsconfig-DxqIJB3x.mjs:93",
+    0.87
+   ],
+   [
+    "wrappedHook shared/normalize-string-or-regex-dnh67V_w.mjs:19",
+    0.71
+   ]
+  ]
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 27.53,
+  "busyS": 21.12,
+  "inclusiveS": {
+   "fileImports": 6.19,
+   "moduleGlobs": 1.61,
+   "(garbage collector)": 1.39,
+   "resolutionInputs": 1.23,
+   "closurePackages": 0.44,
+   "readHash": 0.12,
+   "affectedTestFiles": 0.1,
+   "importClosure": 0.06,
+   "transformRequest": 0.03,
+   "closure": 0.01,
+   "parseAst": 0.01,
+   "missingCandidates": 0
+  },
+  "topSelfS": [
+   [
+    "relative node:path:1353",
+    2.98
+   ],
+   [
+    "normalizeString node:path:92",
+    2.91
+   ],
+   [
+    "isProjectFile cli/squeal.mjs:24594",
+    2.76
+   ],
+   [
+    "existsSync :0",
+    2.67
+   ],
+   [
+    "(garbage collector) :0",
+    1.39
+   ],
+   [
+    "runMicrotasks :0",
+    1.02
+   ],
+   [
+    "visit2 cli/squeal.mjs:24864",
+    0.92
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    0.84
+   ],
+   [
+    "relative36 cli/squeal.mjs:24952",
+    0.48
+   ],
+   [
+    "encodeLine cli/squeal.mjs:67119",
+    0.43
+   ],
+   [
+    "addImports chunks/cli-api.BK8pd4xc.js:11510",
+    0.37
+   ],
+   [
+    "normalizeString shared/pathe.M-eThtNZ.mjs:101",
+    0.34
+   ]
+  ]
+ },
+ {
+  "window": "t1",
+  "rev": "3",
+  "wallS": 7.271,
+  "queued": 1280,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 7.27,
+  "busyS": 5.24,
+  "inclusiveS": {
+   "affectedTestFiles": 3.35,
+   "(garbage collector)": 0.89,
+   "fileImports": 0.05,
+   "moduleGlobs": 0.02,
+   "resolutionInputs": 0.02,
+   "closurePackages": 0.01,
+   "importClosure": 0.01,
+   "parseAst": 0
+  },
+  "topSelfS": [
+   [
+    "existsSync :0",
+    1.63
+   ],
+   [
+    "(garbage collector) :0",
+    0.89
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    0.7
+   ],
+   [
+    "runMicrotasks :0",
+    0.6
+   ],
+   [
+    "normalizeString shared/pathe.M-eThtNZ.mjs:101",
+    0.34
+   ],
+   [
+    "addImports chunks/cli-api.BK8pd4xc.js:11510",
+    0.28
+   ],
+   [
+    "normalizeWindowsPath shared/pathe.M-eThtNZ.mjs:13",
+    0.23
+   ],
+   [
+    "normalize shared/pathe.M-eThtNZ.mjs:27",
+    0.14
+   ],
+   [
+    "isProjectFile cli/squeal.mjs:24594",
+    0.05
+   ],
+   [
+    "isAbsolute shared/pathe.M-eThtNZ.mjs:160",
+    0.05
+   ],
+   [
+    "RegExp: ^[/\\\\](?![/\\\\])|^[/\\\\]{2}(?!\\.)|^[A-Za-z]:[/\\\\] :0",
+    0.04
+   ],
+   [
+    "lstat :0",
+    0.04
+   ]
+  ]
+ },
+ {
+  "window": "m1",
+  "rev": "4",
+  "wallS": 13.696,
+  "queued": 1289,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 13.7,
+  "busyS": 10.1,
+  "inclusiveS": {
+   "affectedTestFiles": 2.55,
+   "fileImports": 2,
+   "(garbage collector)": 1.05,
+   "moduleGlobs": 0.51,
+   "resolutionInputs": 0.41,
+   "closurePackages": 0.13,
+   "readHash": 0.04,
+   "importClosure": 0.02,
+   "parseAst": 0.02,
+   "transformRequest": 0,
+   "closure": 0
+  },
+  "topSelfS": [
+   [
+    "existsSync :0",
+    1.92
+   ],
+   [
+    "(garbage collector) :0",
+    1.05
+   ],
+   [
+    "relative node:path:1353",
+    0.94
+   ],
+   [
+    "isProjectFile cli/squeal.mjs:24594",
+    0.92
+   ],
+   [
+    "normalizeString node:path:92",
+    0.88
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    0.68
+   ],
+   [
+    "runMicrotasks :0",
+    0.67
+   ],
+   [
+    "normalizeString shared/pathe.M-eThtNZ.mjs:101",
+    0.39
+   ],
+   [
+    "visit2 cli/squeal.mjs:24864",
+    0.35
+   ],
+   [
+    "addImports chunks/cli-api.BK8pd4xc.js:11510",
+    0.26
+   ],
+   [
+    "normalizeWindowsPath shared/pathe.M-eThtNZ.mjs:13",
+    0.23
+   ],
+   [
+    "relative36 cli/squeal.mjs:24952",
+    0.16
+   ]
+  ]
+ },
+ {
+  "window": "a1",
+  "rev": "5",
+  "wallS": 12.908,
+  "queued": 1284,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 12.91,
+  "busyS": 8.26,
+  "inclusiveS": {
+   "affectedTestFiles": 5.07,
+   "(garbage collector)": 1.43,
+   "globTestSpecifications": 0,
+   "importClosure": 0,
+   "parse": 0
+  },
+  "topSelfS": [
+   [
+    "existsSync :0",
+    2.11
+   ],
+   [
+    "(garbage collector) :0",
+    1.43
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    1.25
+   ],
+   [
+    "runMicrotasks :0",
+    0.93
+   ],
+   [
+    "normalizeString shared/pathe.M-eThtNZ.mjs:101",
+    0.64
+   ],
+   [
+    "addImports chunks/cli-api.BK8pd4xc.js:11510",
+    0.54
+   ],
+   [
+    "normalizeWindowsPath shared/pathe.M-eThtNZ.mjs:13",
+    0.29
+   ],
+   [
+    "normalize shared/pathe.M-eThtNZ.mjs:27",
+    0.24
+   ],
+   [
+    "lstat :0",
+    0.17
+   ],
+   [
+    "readFileUtf8 :0",
+    0.1
+   ],
+   [
+    "isAbsolute shared/pathe.M-eThtNZ.mjs:160",
+    0.07
+   ],
+   [
+    "join shared/pathe.M-eThtNZ.mjs:56",
+    0.04
+   ]
+  ]
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.143831.283405.0.001.cpuprofile",
+  "process": "runner-host vitest",
+  "sampledS": 19.94,
+  "busyS": 13.45,
+  "inclusiveS": {
+   "affectedTestFiles": 4.94,
+   "(garbage collector)": 1.58,
+   "importClosure": 0.09,
+   "fileImports": 0.09,
+   "moduleGlobs": 0.03,
+   "resolutionInputs": 0.01,
+   "closurePackages": 0.01,
+   "readHash": 0,
+   "globTestSpecifications": 0
+  },
+  "topSelfS": [
+   [
+    "existsSync :0",
+    3.37
+   ],
+   [
+    "visit2 cli/squeal.mjs:24864",
+    1.78
+   ],
+   [
+    "(garbage collector) :0",
+    1.58
+   ],
+   [
+    "(anonymous) chunks/cli-api.BK8pd4xc.js:11516",
+    1.16
+   ],
+   [
+    "runMicrotasks :0",
+    0.98
+   ],
+   [
+    "addImports chunks/cli-api.BK8pd4xc.js:11510",
+    0.6
+   ],
+   [
+    "normalizeString shared/pathe.M-eThtNZ.mjs:101",
+    0.53
+   ],
+   [
+    "normalizeString node:path:92",
+    0.48
+   ],
+   [
+    "importTargets cli/squeal.mjs:24900",
+    0.47
+   ],
+   [
+    "join node:path:1329",
+    0.44
+   ],
+   [
+    "depToPath cli/squeal.mjs:25008",
+    0.39
+   ],
+   [
+    "normalizeWindowsPath shared/pathe.M-eThtNZ.mjs:13",
+    0.39
+   ]
+  ]
+ },
+ {
+  "window": "b1",
+  "rev": "1",
+  "wallS": 50.2,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 50.2,
+  "busyS": 0,
+  "inclusiveS": {
+   "invalidate": 0
+  },
+  "topSelfS": [
+   [
+    "parseModule cli/squeal.mjs:43178",
+    0
+   ],
+   [
+    "call cli/squeal.mjs:114207",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 27.53,
+  "busyS": 0.04,
+  "inclusiveS": {
+   "(garbage collector)": 0,
+   "invalidate": 0
+  },
+  "topSelfS": [
+   [
+    "open :0",
+    0.01
+   ],
+   [
+    "close :0",
+    0.01
+   ],
+   [
+    "listOnTimeout node:internal/timers:623",
+    0
+   ],
+   [
+    "read :0",
+    0
+   ],
+   [
+    "processTimers node:internal/timers:603",
+    0
+   ],
+   [
+    "below2 cli/squeal.mjs:12132",
+    0
+   ],
+   [
+    "(garbage collector) :0",
+    0
+   ],
+   [
+    "node cli/squeal.mjs:43289",
+    0
+   ],
+   [
+    "toString node:buffer:975",
+    0
+   ],
+   [
+    "createUnsafeAlignedBuffer node:internal/buffer:1132",
+    0
+   ],
+   [
+    "pushAsyncContext node:internal/async_hooks:549",
+    0
+   ],
+   [
+    "shift node:internal/priority_queue:109",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "t1",
+  "rev": "3",
+  "wallS": 7.271,
+  "queued": 1280,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 7.27,
+  "busyS": 0.01,
+  "inclusiveS": {},
+  "topSelfS": [
+   [
+    "open :0",
+    0.01
+   ],
+   [
+    "emitBeforeScript node:internal/async_hooks:519",
+    0
+   ],
+   [
+    "lifeOf cli/squeal.mjs:1246",
+    0
+   ],
+   [
+    "read :0",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "m1",
+  "rev": "4",
+  "wallS": 13.696,
+  "queued": 1289,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 13.7,
+  "busyS": 0.03,
+  "inclusiveS": {},
+  "topSelfS": [
+   [
+    "read :0",
+    0
+   ],
+   [
+    "readdir :0",
+    0
+   ],
+   [
+    "createUnsafeArrayBuffer :0",
+    0
+   ],
+   [
+    "lowerWhile cli/squeal.mjs:12094",
+    0
+   ],
+   [
+    "setTimeout node:timers/promises:53",
+    0
+   ],
+   [
+    "close :0",
+    0
+   ],
+   [
+    "processTimers node:internal/timers:603",
+    0
+   ],
+   [
+    "fstat :0",
+    0
+   ],
+   [
+    "pushAsyncContext node:internal/async_hooks:549",
+    0
+   ],
+   [
+    "emitBeforeScript node:internal/async_hooks:519",
+    0
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:1281",
+    0
+   ],
+   [
+    "#children cli/squeal.mjs:12802",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "a1",
+  "rev": "5",
+  "wallS": 12.908,
+  "queued": 1284,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 12.91,
+  "busyS": 0.26,
+  "inclusiveS": {
+   "(garbage collector)": 0.06,
+   "invalidate": 0.06
+  },
+  "topSelfS": [
+   [
+    "(garbage collector) :0",
+    0.06
+   ],
+   [
+    "open :0",
+    0.03
+   ],
+   [
+    "read :0",
+    0.02
+   ],
+   [
+    "readdir :0",
+    0.01
+   ],
+   [
+    "#children cli/squeal.mjs:12802",
+    0.01
+   ],
+   [
+    "fstat :0",
+    0.01
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:47797",
+    0.01
+   ],
+   [
+    "processTimers node:internal/timers:603",
+    0.01
+   ],
+   [
+    "resolve cli/squeal.mjs:52947",
+    0.01
+   ],
+   [
+    "childrenOf cli/squeal.mjs:1274",
+    0.01
+   ],
+   [
+    "lifeOf cli/squeal.mjs:1246",
+    0.01
+   ],
+   [
+    "carriers cli/squeal.mjs:12794",
+    0.01
+   ]
+  ]
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.143831.283406.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 19.95,
+  "busyS": 0.25,
+  "inclusiveS": {
+   "invalidate": 0.03,
+   "(garbage collector)": 0.03,
+   "parse": 0
+  },
+  "topSelfS": [
+   [
+    "(garbage collector) :0",
+    0.03
+   ],
+   [
+    "readFileUtf8 :0",
+    0.03
+   ],
+   [
+    "rooted cli/squeal.mjs:53254",
+    0.03
+   ],
+   [
+    "parseLines cli/squeal.mjs:53269",
+    0.02
+   ],
+   [
+    "open :0",
+    0.01
+   ],
+   [
+    "observedClosure cli/squeal.mjs:53232",
+    0.01
+   ],
+   [
+    "lifeOf cli/squeal.mjs:1246",
+    0.01
+   ],
+   [
+    "provideSync cli/squeal.mjs:44049",
+    0.01
+   ],
+   [
+    "(anonymous) per_context/primordials:494",
+    0.01
+   ],
+   [
+    "getOptions fs/utils:407",
+    0.01
+   ],
+   [
+    "normalize node:path:1292",
+    0
+   ],
+   [
+    "resolve node:path:1245",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "b1",
+  "rev": "1",
+  "wallS": 50.2,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 50.2,
+  "busyS": 0.01,
+  "inclusiveS": {
+   "closure": 0
+  },
+  "topSelfS": [
+   [
+    "call cli/squeal.mjs:114207",
+    0
+   ],
+   [
+    "writeUtf8String :0",
+    0
+   ],
+   [
+    "closure cli/squeal.mjs:53832",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 27.53,
+  "busyS": 0.05,
+  "inclusiveS": {
+   "(garbage collector)": 0,
+   "invalidate": 0
+  },
+  "topSelfS": [
+   [
+    "open :0",
+    0.02
+   ],
+   [
+    "read :0",
+    0.01
+   ],
+   [
+    "(garbage collector) :0",
+    0
+   ],
+   [
+    "processTimers node:internal/timers:603",
+    0
+   ],
+   [
+    "isInt32 node:internal/validators:47",
+    0
+   ],
+   [
+    "insert node:internal/timers:426",
+    0
+   ],
+   [
+    "percolateUp node:internal/priority_queue:71",
+    0
+   ],
+   [
+    "lowerWhile cli/squeal.mjs:12094",
+    0
+   ],
+   [
+    "get enabled node:internal/async_context_frame:31",
+    0
+   ],
+   [
+    "pairs cli/squeal.mjs:43597",
+    0
+   ],
+   [
+    "valuesOf cli/squeal.mjs:113970",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "t1",
+  "rev": "3",
+  "wallS": 7.271,
+  "queued": 1280,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 7.27,
+  "busyS": 0.01,
+  "inclusiveS": {
+   "(garbage collector)": 0
+  },
+  "topSelfS": [
+   [
+    "processTimers node:internal/timers:603",
+    0
+   ],
+   [
+    "(garbage collector) :0",
+    0
+   ],
+   [
+    "allocUnsafe node:buffer:473",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "m1",
+  "rev": "4",
+  "wallS": 13.696,
+  "queued": 1289,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 13.7,
+  "busyS": 0,
+  "inclusiveS": {},
+  "topSelfS": [
+   [
+    "write node:string_decoder:76",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "a1",
+  "rev": "5",
+  "wallS": 12.908,
+  "queued": 1284,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 12.91,
+  "busyS": 0.15,
+  "inclusiveS": {
+   "invalidate": 0.07,
+   "(garbage collector)": 0.03,
+   "affected": 0
+  },
+  "topSelfS": [
+   [
+    "(garbage collector) :0",
+    0.03
+   ],
+   [
+    "open :0",
+    0.01
+   ],
+   [
+    "resolveModule cli/squeal.mjs:43335",
+    0.01
+   ],
+   [
+    "isUsed cli/squeal.mjs:48566",
+    0.01
+   ],
+   [
+    "affected cli/squeal.mjs:54047",
+    0
+   ],
+   [
+    "closeComponents cli/squeal.mjs:42914",
+    0
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:44371",
+    0
+   ],
+   [
+    "readFileUtf8 :0",
+    0
+   ],
+   [
+    "stat :0",
+    0
+   ],
+   [
+    "(anonymous) node:timers/promises:91",
+    0
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:46295",
+    0
+   ],
+   [
+    "concat node:buffer:684",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.143831.283412.0.001.cpuprofile",
+  "process": "runner-host node-test",
+  "sampledS": 19.95,
+  "busyS": 0.06,
+  "inclusiveS": {
+   "invalidate": 0.04,
+   "(garbage collector)": 0.01
+  },
+  "topSelfS": [
+   [
+    "(garbage collector) :0",
+    0.01
+   ],
+   [
+    "openSync node:fs:774",
+    0
+   ],
+   [
+    "(anonymous) cli/squeal.mjs:50690",
+    0
+   ],
+   [
+    "cdUp cli/squeal.mjs:45405",
+    0
+   ],
+   [
+    "readableAddChunkPushByteMode streams/readable:507",
+    0
+   ],
+   [
+    "onStreamRead node:internal/stream_base_commons:171",
+    0
+   ],
+   [
+    "reachable cli/squeal.mjs:42786",
+    0
+   ],
+   [
+    "getHook cli/squeal.mjs:49952",
+    0
+   ],
+   [
+    "join cli/squeal.mjs:50393",
+    0
+   ],
+   [
+    "provideSync cli/squeal.mjs:44049",
+    0
+   ],
+   [
+    "ClosureIndex cli/squeal.mjs:42830",
+    0
+   ],
+   [
+    "Stats fs/utils:730",
+    0
+   ]
+  ]
+ },
+ {
+  "window": "b2",
+  "rev": "2",
+  "wallS": 27.527,
+  "queued": 1297,
+  "file": "CPU.20261119.144028.283355.8.009.cpuprofile",
+  "process": "daemon",
+  "sampledS": 3.02,
+  "busyS": 0.38,
+  "inclusiveS": {
+   "(garbage collector)": 0.06,
+   "parse": 0
+  },
+  "topSelfS": [
+   [
+    "decodeMappings cli/coverage-map.mjs:195",
+    0.06
+   ],
+   [
+    "(garbage collector) :0",
+    0.06
+   ],
+   [
+    "endSegment cli/coverage-map.mjs:205",
+    0.04
+   ],
+   [
+    "linesOf cli/coverage-map.mjs:314",
+    0.03
+   ],
+   [
+    "segments cli/coverage-map.mjs:256",
+    0.02
+   ],
+   [
+    "mapScript cli/coverage-map.mjs:287",
+    0.02
+   ],
+   [
+    "take cli/coverage-map.mjs:634",
+    0.01
+   ],
+   [
+    "PositionMap cli/coverage-map.mjs:248",
+    0.01
+   ],
+   [
+    "subarray node:buffer:1340",
+    0.01
+   ],
+   [
+    "(anonymous) cli/coverage-map.mjs:241",
+    0.01
+   ],
+   [
+    "bitset cli/coverage-map.mjs:450",
+    0.01
+   ],
+   [
+    "update crypto/hash:179",
+    0.01
+   ]
+  ]
+ },
+ {
+  "window": "d1",
+  "rev": "6",
+  "wallS": 19.945,
+  "queued": 1273,
+  "file": "CPU.20261119.144326.283355.31.032.cpuprofile",
+  "process": "daemon",
+  "sampledS": 0.13,
+  "busyS": 0.13,
+  "inclusiveS": {
+   "(garbage collector)": 0.01
+  },
+  "topSelfS": [
+   [
+    "__require undici/undici:5",
+    0.01
+   ],
+   [
+    "(garbage collector) :0",
+    0.01
+   ],
+   [
+    "take cli/coverage-map.mjs:634",
+    0.01
+   ],
+   [
+    "compileForInternalLoader bootstrap/realm:425",
+    0.01
+   ],
+   [
+    "validMappings cli/coverage-map.mjs:77",
+    0.01
+   ],
+   [
+    "ownRecord cli/coverage-map.mjs:486",
+    0.01
+   ],
+   [
+    "decodeMappings cli/coverage-map.mjs:195",
+    0.01
+   ],
+   [
+    "internalBinding bootstrap/realm:169",
+    0.01
+   ],
+   [
+    "segments cli/coverage-map.mjs:256",
+    0.01
+   ],
+   [
+    "linesOf cli/coverage-map.mjs:314",
+    0.01
+   ],
+   [
+    "end cli/coverage-map.mjs:95",
+    0
+   ],
+   [
+    "bitset cli/coverage-map.mjs:450",
+    0
+   ]
+  ]
+ }
+]

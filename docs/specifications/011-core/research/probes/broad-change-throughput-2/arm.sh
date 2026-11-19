@@ -11,7 +11,7 @@
 d=$(cd "$(dirname "$0")" && pwd)
 label=$1; cli=$2; runner=$3; ucfg=$4; held=$5; path=$6; max=${7:-4500}
 export SQ_CLI
-[ "$cli" = big ] && SQ_CLI="$HOME/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs"
+[ "$cli" = big ] && SQ_CLI="${P:-$HOME/work/011-400}/squeal/plugins/claude-code/dist/cli/squeal-big.mjs"
 . "$d/env.sh"
 export HELD=$held
 sq stop >/dev/null 2>&1; sleep 3

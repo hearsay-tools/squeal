@@ -1,0 +1,12 @@
+2026-11-19T14:08:55Z
+ 15:08:55 up  3:49,  2 users,  load average: 2.72, 8.35, 8.74
+    PID     ELAPSED %CPU COMMAND
+ 577829       00:29 88.5 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 577782       00:30 39.7 squeal squawk daemon @57c0314b ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal.mjs daemon ~/wor
+ 577836       00:29  2.5 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 577830       00:29  2.0 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 488509       13:24  0.2 [kworker/u24:14-iou_exit]
+     17    03:49:24  0.2 [rcu_preempt]
+ 327681       27:19  0.2 [kworker/u24:13-iou_exit]
+2026-11-19T14:24:39Z
+ 15:24:39 up  4:05,  4 users,  load average: 5.42, 9.23, 8.98

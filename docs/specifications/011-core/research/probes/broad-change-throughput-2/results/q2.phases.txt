@@ -1,0 +1,24 @@
+
+## b1 wall 50.2
+  283355 rekey 0.2-0.4s busy 0.25 | fetch 1.3-46.2s busy 0.12 | invalidate 1.3-1.3s busy 0.00 | editCut 46.2-46.2s busy 0.05 | apply 46.2-50.1s busy 3.81 | storeClosures 48.5-50.0s busy 1.44
+  283405 affected 1.4-18.9s busy 0.14 | ssr 3.9-18.8s busy 4.53 | closure 18.9-46.2s busy 9.89
+
+## b2 wall 27.5
+  283355 rekey 0.7-0.9s busy 0.24 | fetch 1.6-24.0s busy 0.09 | editCut 24.0-24.0s busy 0.04 | apply 24.0-27.4s busy 3.28 | storeClosures 25.9-27.2s busy 1.28
+  283405 affected 1.6-7.1s busy 0.10 | ssr 7.0-7.1s busy 0.01 | closure 7.1-24.0s busy 8.15
+
+## t1 wall 7.3
+  283355 rekey 0.1-0.2s busy 0.10 | fetch 0.5-5.9s busy 0.01 | invalidate 0.5-0.5s busy 0.00 | editCut 5.9-5.9s busy 0.00 | apply 5.9-7.2s busy 1.25 | storeClosures 7.0-7.1s busy 0.15
+  283405 affected 0.7-5.6s busy 3.35 | closure 5.7-5.9s busy 0.08
+
+## m1 wall 13.7
+  283355 rekey 0.2-0.3s busy 0.13 | fetch 0.9-11.2s busy 0.03 | editCut 11.2-11.2s busy 0.02 | apply 11.2-13.6s busy 2.43 | storeClosures 13.0-13.6s busy 0.54
+  283405 affected 0.9-5.8s busy 2.55 | ssr 5.8-5.8s busy 0.00 | closure 5.8-11.2s busy 2.63
+
+## a1 wall 12.9
+  283355 rekey 0.2-2.3s busy 2.12 | fetch 2.8-11.2s busy 0.01 | editCut 11.2-11.2s busy 0.00 | apply 11.2-12.5s busy 1.07
+  283405 glob 3.4-3.4s busy 0.00 | affected 3.5-11.2s busy 5.07 | ssr 11.2-11.2s busy 0.01 | closure 11.2-11.2s busy 0.00
+
+## d1 wall 19.9
+  283355 rekey 0.4-2.7s busy 2.26 | invalidate 3.3-3.3s busy 0.00 | fetch 3.6-17.4s busy 0.02 | editCut 17.4-17.4s busy 0.01 | apply 17.4-19.9s busy 2.44 | storeClosures 19.7-19.9s busy 0.17
+  283405 glob 3.6-3.6s busy 0.00 | affected 3.7-17.0s busy 4.94 | ssr 11.1-12.9s busy 0.01 | closure 17.1-17.4s busy 0.14

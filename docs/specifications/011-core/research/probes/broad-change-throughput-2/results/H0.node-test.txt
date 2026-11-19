@@ -1,0 +1,8 @@
+root:test:unit .github/scripts/change-surface-readers.test.cjs
+root:test:unit .github/scripts/no-compat-policy.test.cjs
+root:test:unit scripts/product-env-raw.test.mjs
+root:test:unit scripts/regression-proof.test.mjs
+root:test:unit scripts/test-inputs.test.mjs
+test:unit packages/cezar/test/unit/codex-reasoning-summary.test.ts
+test:unit packages/cezar/test/unit/planner.test.ts
+test:unit packages/cezar/test/unit/test-env-launcher.test.ts

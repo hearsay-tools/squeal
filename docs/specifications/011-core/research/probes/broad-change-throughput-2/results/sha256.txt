@@ -1,0 +1,2 @@
+bea14d75e5ba510041cddf4d87ba5deb895db44e383bd4c4ba7d481d64990c48  squeal/plugins/claude-code/dist/cli/squeal.mjs
+fa1bdecb2be1f94247134b993eb58491daaf9d49c1a18684c46736a826817477  squeal/plugins/claude-code/dist/cli/squeal-big.mjs

@@ -1,5 +1,5 @@
 #!/bin/bash
-# plainw.sh <label> <prefix> <maxWorkers>: question 3's long run. The Vitest
+# plainw.sh <label> <prefix> <maxWorkers> [vitest args...]: question 3's long run. The Vitest
 # files of <prefix>.vitest.txt in one plain `vitest run` at --maxWorkers
 # <maxWorkers>: one Vitest instance, one run, files handed to whichever worker
 # frees first (Vitest 4.1.10 `Pool.schedule`), no tier barrier. No coverage,
@@ -7,13 +7,13 @@
 # every 5 s and live fork workers every 1 s (its own cgroup: a systemd scope).
 . "$(dirname "$0")/env.sh"
 d=$(cd "$(dirname "$0")" && pwd)
-label=$1; prefix=$2; w=$3
+label=$1; prefix=$2; w=$3; shift 3; extra="$*"  # extra vitest args, e.g. --coverage.enabled
 mapfile -t vfiles < <(cut -d' ' -f2- "$prefix.vitest.txt" | grep .)
 projects=$(cut -d' ' -f1 "$prefix.vitest.txt" | sort -u | grep . | sed 's/^/--project /' | tr '\n' ' ')
 printf '%s\n' "${vfiles[@]}" > "$OUT/$label.files.txt"
 cat > "$OUT/$label.cmd.sh" <<EOS
 cd '$SQ_REPO'
-exec /usr/bin/time -f "cpu_s=%U+%S wall=%e" -o '$OUT/$label.vitest.time' timeout 3600 node_modules/.bin/vitest run $projects --maxWorkers=$w --reporter=dot --passWithNoTests \$(cat '$OUT/$label.files.txt') > '$OUT/$label.vitest.log' 2>&1
+exec /usr/bin/time -f "cpu_s=%U+%S wall=%e" -o '$OUT/$label.vitest.time' timeout 3600 node_modules/.bin/vitest run $projects --maxWorkers=$w $extra --reporter=dot --passWithNoTests \$(cat '$OUT/$label.files.txt') > '$OUT/$label.vitest.log' 2>&1
 EOS
 U="XDG_RUNTIME_DIR=/run/user/$(id -u)"
 cg=/sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice/sq-$label.scope

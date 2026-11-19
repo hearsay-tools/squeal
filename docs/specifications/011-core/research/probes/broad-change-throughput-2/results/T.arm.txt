@@ -1,0 +1,9 @@
+cli=~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs
+fa1bdecb2be1f94247134b993eb58491daaf9d49c1a18684c46736a826817477  ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs
+runner={"tierSize":4,"timeoutMs":7200000,"backlogTierSize":2000}
+user={} held=1 path=packages/contract/src/ci-wait.ts
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-T.scope
+pid=385490 squeal squawk daemon @57c0314b ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs daemon ~/work/011-400/squawk 
+pid=385537 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs runner-host ~/work/011-400/squawk --runner vitest 
+pid=385539 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs runner-host ~/work/011-400/squawk --runner node-test 
+pid=385544 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal-big.mjs runner-host ~/work/011-400/squawk --runner node-test 

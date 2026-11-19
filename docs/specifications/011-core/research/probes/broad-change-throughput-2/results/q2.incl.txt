@@ -1,0 +1,192 @@
+
+## b1 window 50.2 s busy 39.2 s
+  39.24 (root)@:0
+  23.06 processTicksAndRejections@task_queues:72
+  23.06 runMicrotasks@:0
+  9.89 (anon)@squeal.mjs:30377
+  7.45 toRelative@squeal.mjs:24591
+  7.44 toRelative@squeal.mjs:9966
+  7.32 fileImports@squeal.mjs:24951
+  7.25 isProjectFile@squeal.mjs:24594
+  7.10 relative@node:path:1353
+  5.36 relative36@squeal.mjs:24952
+  4.73 (anon)@squeal.mjs:24953
+  4.62 resolve@node:path:1245
+  4.53 ssrTransformScript@node.js:11862
+  4.14 addImports@cli-api.BK8pd4xc.js:11510
+  4.07 (anon)@cli-api.BK8pd4xc.js:11516
+  3.88 normalizeString@node:path:92
+  3.75 wrap@parse-ast-index.mjs:4
+  3.72 get program@parse-D4dtlfWy.mjs:7
+  3.54 visit2@squeal.mjs:24864
+  3.34 jsonParseAst@parse-D4dtlfWy.mjs:25
+  2.89 (garbage collector)@:0
+  2.87 existsSync@node:fs:319
+  2.76 existsSync@:0
+  2.64 parseAst@parse-ast-index.mjs:39
+  2.34 (anon)@squeal.mjs:29598
+  2.25 transform@node.js:30119
+  1.91 parseAstAsync@parse-ast-index.mjs:53
+  1.90 moduleGlobs@squeal.mjs:28967
+  1.81 walk@node.js:12037
+  1.56 resolutionInputs@squeal.mjs:29701
+
+## b2 window 27.5 s busy 21.1 s
+  21.12 (root)@:0
+  19.52 processTicksAndRejections@task_queues:72
+  19.50 runMicrotasks@:0
+  8.15 (anon)@squeal.mjs:30377
+  6.20 toRelative@squeal.mjs:9966
+  6.20 toRelative@squeal.mjs:24591
+  6.19 fileImports@squeal.mjs:24951
+  6.06 isProjectFile@squeal.mjs:24594
+  6.01 relative@node:path:1353
+  4.54 relative36@squeal.mjs:24952
+  4.05 (anon)@squeal.mjs:24953
+  3.71 addImports@cli-api.BK8pd4xc.js:11510
+  3.69 (anon)@cli-api.BK8pd4xc.js:11516
+  3.14 visit2@squeal.mjs:24864
+  2.91 normalizeString@node:path:92
+  2.87 resolve@node:path:1245
+  2.75 existsSync@node:fs:319
+  2.67 existsSync@:0
+  1.61 moduleGlobs@squeal.mjs:28967
+  1.39 (garbage collector)@:0
+  1.23 resolutionInputs@squeal.mjs:29701
+  1.21 (anon)@squeal.mjs:30388
+  1.19 importTargets@squeal.mjs:24900
+  0.86 join@pathe.M-eThtNZ.mjs:56
+  0.84 normalize@pathe.M-eThtNZ.mjs:27
+  0.74 depToPath@squeal.mjs:25008
+  0.56 (anon)@squeal.mjs:114178
+  0.54 join@node:path:1329
+  0.53 send@squeal.mjs:113955
+  0.44 closurePackages@squeal.mjs:29447
+
+## t1 window 7.3 s busy 5.2 s
+  5.24 (root)@:0
+  4.26 runMicrotasks@:0
+  4.26 processTicksAndRejections@task_queues:72
+  3.42 (anon)@cli-api.BK8pd4xc.js:11516
+  3.40 addImports@cli-api.BK8pd4xc.js:11510
+  3.35 getTestDependencies@cli-api.BK8pd4xc.js:11509
+  3.35 affectedTestFiles@squeal.mjs:27573
+  3.34 (anon)@squeal.mjs:30366
+  3.34 filterTestsBySource@cli-api.BK8pd4xc.js:11484
+  3.34 relatedSpecifications@squeal.mjs:27550
+  3.34 (anon)@cli-api.BK8pd4xc.js:11500
+  1.67 existsSync@node:fs:319
+  1.63 existsSync@:0
+  0.89 (garbage collector)@:0
+  0.85 join@pathe.M-eThtNZ.mjs:56
+  0.84 normalize@pathe.M-eThtNZ.mjs:27
+  0.34 normalizeString@pathe.M-eThtNZ.mjs:101
+  0.24 normalizeWindowsPath@pathe.M-eThtNZ.mjs:13
+  0.09 isAbsolute@pathe.M-eThtNZ.mjs:160
+  0.09 isProjectFile@squeal.mjs:24594
+  0.08 (anon)@squeal.mjs:30377
+  0.05 relative@node:path:1353
+  0.05 toRelative@squeal.mjs:9966
+  0.05 toRelative@squeal.mjs:24591
+  0.05 fileImports@squeal.mjs:24951
+  0.04 RegExp: ^[/\\](?![/\\])|^[/\\]{2}(?!\.)|^[A-Za-z]:[/\\]@:0
+  0.04 worker@squeal.mjs:10461
+  0.04 (anon)@squeal.mjs:28577
+  0.04 relative36@squeal.mjs:24952
+  0.04 statOrNull2@squeal.mjs:28042
+
+## m1 window 13.7 s busy 10.1 s
+  10.10 (root)@:0
+  8.89 processTicksAndRejections@task_queues:72
+  8.89 runMicrotasks@:0
+  3.34 addImports@cli-api.BK8pd4xc.js:11510
+  3.34 (anon)@cli-api.BK8pd4xc.js:11516
+  2.63 (anon)@squeal.mjs:30377
+  2.55 affectedTestFiles@squeal.mjs:27573
+  2.54 (anon)@squeal.mjs:30366
+  2.54 filterTestsBySource@cli-api.BK8pd4xc.js:11484
+  2.54 relatedSpecifications@squeal.mjs:27550
+  2.54 (anon)@cli-api.BK8pd4xc.js:11500
+  2.53 getTestDependencies@cli-api.BK8pd4xc.js:11509
+  2.00 fileImports@squeal.mjs:24951
+  2.00 isProjectFile@squeal.mjs:24594
+  1.96 existsSync@node:fs:319
+  1.93 toRelative@squeal.mjs:24591
+  1.93 toRelative@squeal.mjs:9966
+  1.92 existsSync@:0
+  1.87 relative@node:path:1353
+  1.45 relative36@squeal.mjs:24952
+  1.29 (anon)@squeal.mjs:24953
+  1.05 (garbage collector)@:0
+  1.04 visit2@squeal.mjs:24864
+  0.88 normalizeString@node:path:92
+  0.87 resolve@node:path:1245
+  0.86 join@pathe.M-eThtNZ.mjs:56
+  0.84 normalize@pathe.M-eThtNZ.mjs:27
+  0.51 moduleGlobs@squeal.mjs:28967
+  0.41 resolutionInputs@squeal.mjs:29701
+  0.39 normalizeString@pathe.M-eThtNZ.mjs:101
+
+## a1 window 12.9 s busy 8.3 s
+  8.26 (root)@:0
+  6.30 runMicrotasks@:0
+  6.30 processTicksAndRejections@task_queues:72
+  5.18 (anon)@cli-api.BK8pd4xc.js:11516
+  5.17 addImports@cli-api.BK8pd4xc.js:11510
+  5.08 (anon)@squeal.mjs:30366
+  5.07 affectedTestFiles@squeal.mjs:27573
+  5.07 filterTestsBySource@cli-api.BK8pd4xc.js:11484
+  5.07 relatedSpecifications@squeal.mjs:27550
+  5.06 (anon)@cli-api.BK8pd4xc.js:11500
+  5.06 getTestDependencies@cli-api.BK8pd4xc.js:11509
+  2.17 existsSync@node:fs:319
+  2.11 existsSync@:0
+  1.43 (garbage collector)@:0
+  1.34 join@pathe.M-eThtNZ.mjs:56
+  1.31 normalize@pathe.M-eThtNZ.mjs:27
+  0.64 normalizeString@pathe.M-eThtNZ.mjs:101
+  0.30 normalizeWindowsPath@pathe.M-eThtNZ.mjs:13
+  0.25 (anon)@squeal.mjs:30327
+  0.20 invalidateStructural@squeal.mjs:28144
+  0.19 staleTransforms@squeal.mjs:28204
+  0.18 worker@squeal.mjs:10461
+  0.18 (anon)@squeal.mjs:28577
+  0.18 statOrNull2@squeal.mjs:28042
+  0.18 (anon)@squeal.mjs:28571
+  0.18 memo@squeal.mjs:28372
+  0.18 statOnce@squeal.mjs:28571
+  0.18 lstat@promises:1871
+  0.17 lstat@:0
+  0.12 expandsFromDisk@squeal.mjs:28115
+
+## d1 window 19.9 s busy 13.4 s
+  13.45 (root)@:0
+  6.45 runMicrotasks@:0
+  6.45 processTicksAndRejections@task_queues:72
+  5.28 visit2@squeal.mjs:24864
+  4.96 (anon)@cli-api.BK8pd4xc.js:11516
+  4.96 addImports@cli-api.BK8pd4xc.js:11510
+  4.94 affectedTestFiles@squeal.mjs:27573
+  4.83 filterTestsBySource@cli-api.BK8pd4xc.js:11484
+  4.83 (anon)@squeal.mjs:30366
+  4.82 relatedSpecifications@squeal.mjs:27550
+  4.81 getTestDependencies@cli-api.BK8pd4xc.js:11509
+  4.81 (anon)@cli-api.BK8pd4xc.js:11500
+  3.47 existsSync@node:fs:319
+  3.37 existsSync@:0
+  2.07 importTargets@squeal.mjs:24900
+  1.58 (garbage collector)@:0
+  1.31 join@pathe.M-eThtNZ.mjs:56
+  1.29 depToPath@squeal.mjs:25008
+  1.28 normalize@pathe.M-eThtNZ.mjs:27
+  0.90 join@node:path:1329
+  0.53 normalizeString@pathe.M-eThtNZ.mjs:101
+  0.48 normalizeString@node:path:92
+  0.44 normalize@node:path:1292
+  0.40 normalizeWindowsPath@pathe.M-eThtNZ.mjs:13
+  0.23 moduleLoads@squeal.mjs:24816
+  0.14 (anon)@squeal.mjs:30377
+  0.14 isProjectFile@squeal.mjs:24594
+  0.13 toRelative@squeal.mjs:9966
+  0.13 toRelative@squeal.mjs:24591
+  0.13 relative@node:path:1353

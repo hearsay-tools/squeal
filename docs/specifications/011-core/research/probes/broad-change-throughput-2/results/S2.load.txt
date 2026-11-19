@@ -1,0 +1,11 @@
+2026-11-19T14:33:41Z
+ 15:33:41 up  4:14,  2 users,  load average: 6.56, 10.16, 9.74
+    PID     ELAPSED %CPU COMMAND
+ 919904       00:00  107 ~/.nvm/versions/node/v26.13.0/bin/node --import /tmp/squeal-1001/tmp/0d473bdf8b040072/squeal-oxlint-czDz9L/preload.
+ 917179       00:43 86.5 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 917414       00:39 85.0 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 917294       00:41 38.1 squeal q4-2 daemon @06be66f7 ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/
+ 917061       00:45 36.4 squeal q4-1 daemon @a1d48682 ~/work/011-400/squeal/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/
+ 917421       00:39  1.4 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+ 917415       00:39  1.1 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/011-400/squeal/plugin
+{"capacity":{"hostSlots":11,"backgroundShare":1}}

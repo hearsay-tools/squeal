@@ -6,10 +6,12 @@
 # Starts each in its own scope sq-<label>-<i>, waits until each is idle,
 # samples the host (load, busy cores, procs_running every 5 s), each scope's
 # live Vitest workers every 1 s and each store's queue every 2 s, edits
-# <path> in every copy within a second, and waits until all are idle.
+# <path> in every copy within a second, and waits until all are idle. Each
+# copy has one agent in turn (hold.sh), so its run-loop group waits (HELD=1).
 d=$(cd "$(dirname "$0")" && pwd)
 label=$1; n=$2; ucfg=$3; path=$4
 . "$d/env.sh"
+export HELD=1
 mkdir -p "$XDG_CONFIG_HOME/squeal"; echo "$ucfg" > "$XDG_CONFIG_HOME/squeal/config.json"
 cgs=(); pids=()
 for i in $(seq 1 "$n"); do
@@ -17,6 +19,8 @@ for i in $(seq 1 "$n"); do
   sq stop >/dev/null 2>&1; sleep 2
   out=$(bash "$d/start-daemon.sh" "sq-$label-$i"); echo "$out" > "$OUT/$label.$i.daemon.txt"
   pids+=("$(echo "$out" | awk '/^pid=/ && / daemon /{sub("pid=","",$1); print $1; exit}')")
+  # an agent mid-turn in every copy, as in arms H0 and T: run-loop held (first run, 2026-11-19)
+  bash "$d/hold.sh" "$label-$i" > "$OUT/$label.$i.hold.store.txt" 2>&1
   cgs+=("/sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice/sq-$label-$i.scope")
 done
 for i in $(seq 1 "$n"); do (export SQ_REPO="$P/q4-$i"; bash "$d/wait-idle.sh" 1800); done

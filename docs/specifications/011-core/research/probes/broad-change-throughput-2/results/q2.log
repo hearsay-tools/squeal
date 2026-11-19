@@ -1,0 +1,83 @@
+idle at 2026-11-19T13:38:59Z
+started q2-sampler pid 284698
+started q2-workers pid 284705
+b1 rev=1 runner part end=1795095596097 queued=1297 (50 s)
+b2 rev=2 runner part end=1795095656637 queued=1297 (27 s)
+t1 rev=3 runner part end=1795095696913 queued=1280 (7 s)
+m1 rev=4 runner part end=1795095733617 queued=1289 (13 s)
+a1 rev=5 runner part end=1795095779535 queued=1284 (12 s)
+d1 rev=6 runner part end=1795095822490 queued=1273 (19 s)
+Squeal daemon stopped for ~/work/011-400/squawk; `squeal stop --until-start` keeps it stopped through edits and Git operations
+total 27416
+drwxrwxr-x 2 agent agent    4096 Nov 19 14:44 .
+drwxrwxr-x 3 agent agent    4096 Nov 19 14:44 ..
+-rw------- 1 agent agent 3004752 Nov 19 14:44 CPU.20261119.143831.283355.0.001.cpuprofile
+-rw------- 1 agent agent 1118130 Nov 19 14:44 CPU.20261119.143831.283355.1.002.cpuprofile
+-rw------- 1 agent agent 2686042 Nov 19 14:44 CPU.20261119.143831.283405.0.001.cpuprofile
+-rw------- 1 agent agent 1627826 Nov 19 14:44 CPU.20261119.143831.283406.0.001.cpuprofile
+-rw------- 1 agent agent 1745048 Nov 19 14:44 CPU.20261119.143831.283412.0.001.cpuprofile
+-rw------- 1 agent agent  370260 Nov 19 14:39 CPU.20261119.143957.287733.0.001.cpuprofile
+-rw------- 1 agent agent  210313 Nov 19 14:39 CPU.20261119.143957.287739.0.001.cpuprofile
+-rw------- 1 agent agent  235986 Nov 19 14:39 CPU.20261119.143957.287746.0.001.cpuprofile
+-rw------- 1 agent agent  199999 Nov 19 14:39 CPU.20261119.143957.287754.0.001.cpuprofile
+-rw------- 1 agent agent   32985 Nov 19 14:40 CPU.20261119.143958.283355.2.003.cpuprofile
+-rw------- 1 agent agent   36820 Nov 19 14:40 CPU.20261119.144000.283355.3.004.cpuprofile
+-rw------- 1 agent agent   34747 Nov 19 14:40 CPU.20261119.144003.283355.4.005.cpuprofile
+-rw------- 1 agent agent  448316 Nov 19 14:40 CPU.20261119.144006.293712.0.001.cpuprofile
+-rw------- 1 agent agent  679827 Nov 19 14:40 CPU.20261119.144006.293758.0.001.cpuprofile
+-rw------- 1 agent agent  307152 Nov 19 14:40 CPU.20261119.144006.293836.0.001.cpuprofile
+-rw------- 1 agent agent   37118 Nov 19 14:40 CPU.20261119.144007.283355.5.006.cpuprofile
+-rw------- 1 agent agent   26540 Nov 19 14:40 CPU.20261119.144010.283355.6.007.cpuprofile
+-rw------- 1 agent agent   44858 Nov 19 14:40 CPU.20261119.144011.283355.7.008.cpuprofile
+-rw------- 1 agent agent 1862582 Nov 19 14:40 CPU.20261119.144012.298131.0.001.cpuprofile
+-rw------- 1 agent agent  524808 Nov 19 14:40 CPU.20261119.144012.298138.0.001.cpuprofile
+-rw------- 1 agent agent  462380 Nov 19 14:40 CPU.20261119.144012.298150.0.001.cpuprofile
+-rw------- 1 agent agent 1250492 Nov 19 14:40 CPU.20261119.144012.298165.0.001.cpuprofile
+-rw------- 1 agent agent   51705 Nov 19 14:40 CPU.20261119.144028.283355.8.009.cpuprofile
+-rw------- 1 agent agent  344307 Nov 19 14:40 CPU.20261119.144056.308297.0.001.cpuprofile
+-rw------- 1 agent agent  211649 Nov 19 14:40 CPU.20261119.144056.308304.0.001.cpuprofile
+-rw------- 1 agent agent  234529 Nov 19 14:40 CPU.20261119.144056.308311.0.001.cpuprofile
+-rw------- 1 agent agent  219600 Nov 19 14:40 CPU.20261119.144056.308328.0.001.cpuprofile
+-rw------- 1 agent agent   25119 Nov 19 14:40 CPU.20261119.144057.283355.10.011.cpuprofile
+-rw------- 1 agent agent   24059 Nov 19 14:40 CPU.20261119.144057.283355.9.010.cpuprofile
+-rw------- 1 agent agent   28468 Nov 19 14:40 CPU.20261119.144058.283355.11.012.cpuprofile
+-rw------- 1 agent agent   30800 Nov 19 14:40 CPU.20261119.144058.283355.12.013.cpuprofile
+-rw------- 1 agent agent   68629 Nov 19 14:41 CPU.20261119.144059.283355.13.014.cpuprofile
+-rw------- 1 agent agent  638975 Nov 19 14:41 CPU.20261119.144100.313897.0.001.cpuprofile
+-rw------- 1 agent agent  350707 Nov 19 14:41 CPU.20261119.144100.313917.0.001.cpuprofile
+-rw------- 1 agent agent  347498 Nov 19 14:41 CPU.20261119.144100.313947.0.001.cpuprofile
+-rw------- 1 agent agent  265340 Nov 19 14:41 CPU.20261119.144100.313998.0.001.cpuprofile
+-rw------- 1 agent agent 2332646 Nov 19 14:41 CPU.20261119.144106.318723.0.001.cpuprofile
+-rw------- 1 agent agent   41947 Nov 19 14:41 CPU.20261119.144122.283355.14.015.cpuprofile
+-rw------- 1 agent agent   28681 Nov 19 14:41 CPU.20261119.144137.283355.15.016.cpuprofile
+-rw------- 1 agent agent  133861 Nov 19 14:41 CPU.20261119.144137.328043.0.001.cpuprofile
+-rw------- 1 agent agent  224759 Nov 19 14:41 CPU.20261119.144137.328055.0.001.cpuprofile
+-rw------- 1 agent agent  263071 Nov 19 14:41 CPU.20261119.144137.328065.0.001.cpuprofile
+-rw------- 1 agent agent  239173 Nov 19 14:41 CPU.20261119.144137.328078.0.001.cpuprofile
+-rw------- 1 agent agent   41082 Nov 19 14:41 CPU.20261119.144139.283355.16.017.cpuprofile
+-rw------- 1 agent agent   21889 Nov 19 14:41 CPU.20261119.144143.283355.17.018.cpuprofile
+-rw------- 1 agent agent   24943 Nov 19 14:41 CPU.20261119.144150.283355.18.019.cpuprofile
+-rw------- 1 agent agent   29311 Nov 19 14:41 CPU.20261119.144153.283355.19.020.cpuprofile
+-rw------- 1 agent agent  328310 Nov 19 14:42 CPU.20261119.144214.346266.0.001.cpuprofile
+-rw------- 1 agent agent  205888 Nov 19 14:42 CPU.20261119.144214.346282.0.001.cpuprofile
+-rw------- 1 agent agent  771320 Nov 19 14:42 CPU.20261119.144214.346292.0.001.cpuprofile
+-rw------- 1 agent agent  863233 Nov 19 14:42 CPU.20261119.144214.346314.0.001.cpuprofile
+-rw------- 1 agent agent   30016 Nov 19 14:42 CPU.20261119.144215.283355.20.021.cpuprofile
+-rw------- 1 agent agent   28332 Nov 19 14:42 CPU.20261119.144216.283355.21.022.cpuprofile
+-rw------- 1 agent agent   32008 Nov 19 14:42 CPU.20261119.144221.283355.22.023.cpuprofile
+-rw------- 1 agent agent   65030 Nov 19 14:42 CPU.20261119.144222.283355.23.024.cpuprofile
+-rw------- 1 agent agent  894567 Nov 19 14:42 CPU.20261119.144223.357044.0.001.cpuprofile
+-rw------- 1 agent agent   57625 Nov 19 14:42 CPU.20261119.144233.283355.24.025.cpuprofile
+-rw------- 1 agent agent   28203 Nov 19 14:43 CPU.20261119.144300.283355.25.026.cpuprofile
+-rw------- 1 agent agent  140431 Nov 19 14:43 CPU.20261119.144300.363509.0.001.cpuprofile
+-rw------- 1 agent agent  236937 Nov 19 14:43 CPU.20261119.144300.363523.0.001.cpuprofile
+-rw------- 1 agent agent  254170 Nov 19 14:43 CPU.20261119.144300.363535.0.001.cpuprofile
+-rw------- 1 agent agent  264122 Nov 19 14:43 CPU.20261119.144300.363549.0.001.cpuprofile
+-rw------- 1 agent agent   43760 Nov 19 14:43 CPU.20261119.144302.283355.26.027.cpuprofile
+-rw------- 1 agent agent  360519 Nov 19 14:43 CPU.20261119.144303.364281.0.001.cpuprofile
+-rw------- 1 agent agent   30083 Nov 19 14:43 CPU.20261119.144307.283355.27.028.cpuprofile
+-rw------- 1 agent agent   33647 Nov 19 14:43 CPU.20261119.144310.283355.28.029.cpuprofile
+-rw------- 1 agent agent   31232 Nov 19 14:43 CPU.20261119.144315.283355.29.030.cpuprofile
+-rw------- 1 agent agent   20537 Nov 19 14:43 CPU.20261119.144315.283355.30.031.cpuprofile
+-rw------- 1 agent agent   30589 Nov 19 14:43 CPU.20261119.144326.283355.31.032.cpuprofile
+q2 done 2026-11-19T13:44:16Z
