@@ -1,0 +1,51 @@
+# Row 011-399: a file far past its own time is reported, and does not block its lane
+
+Worker ac1d439b, wave 122 W4 (`../wave-122.md`), 2026-11-19. Evidence: `../../research/stuck-running.md` shape 1, E1b, "What can Squeal know".
+
+## What changed
+
+1. **Overrun rule** (`src/core/scheduler/overrun.ts`, new). A tier overruns at `start + max over its unfinished files of after(f)`, where `after(f) = max(10 × last-known duration, 60 s)`, or `tier estimate + 60 s` for a file with no known duration. The tier estimate is the longest last-known duration among the tier's files (unknown counts 0), as `remainder` reads it at the start. "Unfinished" means the runner has not named the file ended (`Tier.ended`). The daemon cannot see when a file of a tier started, so the time runs from the tier's start. Calendar steps move the start (`CalendarSteps.since`, row 011-377). Never for a slow tier, a group lane's tier, a tier beside another, a cancelled tier, or a lane whose runner cannot cancel (node:test and pytest have no second instance).
+2. **Beside instance** (`beside.ts`, `tier-pick.ts`, `scheduler.ts`). `besideFiles` also returns lanes whose tier overruns and has no tier beside it. The predicate takes any queued fast file of that lane. A beside pass is always an edit's tier (`tier-pick.ts` `shapeOf`: `backlog` is false when `p.beside !== null`). It takes `runner.tierSize` files that share by duration, with no grant and no permit, in the lane's second instance, which is `runner.tierSize` wide. So it uses at most `runner.tierSize` workers above the overrunning tier, the same bound C10 accepted for row 011-269. For the batch-beside predicate this changes nothing, because its files are always first group. One tier runs beside at a time. When it ends, the next one goes beside while the tier still overruns. `besideDone` keeps the instance open while a tier in the lane overruns. The scheduler records the lanes whose second instance a beside tier opened (`#besideOpen`). Any tier of such a lane that ends asks the step whether to close it, so the instance closes after the overrunning tier ends too.
+3. **Wake with no event** (`step.ts`, `step-live.ts`). New optional port `StepPorts.overrunWake(at)` (`nextOverrun`): the earliest overrun time after `at` of a tier in flight whose lane has a queued fast file and no beside tier. `nothingMayStart` and `idleAnswer` return `{ kind: "at" }` at that time instead of `EVENT`, or the earlier of it and the quiet or pool wake (`eventOrOverrun`).
+4. **Published overrun** (`yields.ts`, `yield-row.ts`, `overrun.ts` `Overruns`). The `yields` meta row has a new additive key, `overruns`: by run id, `{ at, deadline, files: [{ project, path, usualMs }] }`. `deadline` is the tier start plus `runner.timeoutMs`, or `null` when there is none. At a tier's start, `Overruns` sets its own `yield-bound` wake slot at the overrun time and writes nothing. When that wake fires, the yield check publishes the entry. The entry goes when the tier ends. The delays are counted from a reading the caller took, so a step reads no clock of its own (step-reading test) and `TierYields.#arm` keeps its own reading (review 0.1.524 B2).
+5. **Status** (`overrun-facts.ts` new, `standing.ts`, `standing-groups.ts`, `tier-text.ts`, `next-step.ts`, `named-file-lines.ts`). A running file whose run is in `overruns`, at or past `at`, and not in `endedFiles` gets `overrun: { path, ranMs, usualMs, since, deadline }` on its standing (an additive type field). It reads on a line of its own (`groupId` adds the path). The text: `in the vitest tier of 4 test files running since 10:01:02; it has run 1 min, about 12,000x its usual 5 ms, so it may be hung; the lane runs its next tiers beside it, and its run's deadline is 10:11:02`, then the step: `` `squeal why test/h.test.ts` shows its run and the run log ``. Status JSON carries it through `outstanding[].standing`; the named wait's JSON entry has `overrun` and `command`.
+6. **Hook** (`late.ts`, `late-format.ts`, `types/delivery.ts`). The coordinator assigned these files (request 626d65e5). When the late line's owed form is said and an owed file's tier overruns (`firstOverrunning`), the line adds `<file> has run far past its usual time and may be hung; `squeal why <file>` shows its run.` before "To have it now". `late.ts` reads the live yields row only when an owed late line goes out.
+
+What does not change: no result kind, no stored result, no cancel. The overrunning tier runs to `runner.timeoutMs`, and the runner's own timeout ends it as before (a timed-out file alone is `unknown`, "timed out after N s", D12). The fake runner in the new test ignores `timeoutMs`, so the existing real-Vitest `test/scheduler/timed-out-tier.test.ts` covers that path. Its code is unchanged.
+
+## Files outside the brief's ownership, and why
+
+- `src/core/scheduler/step.ts` (overlap with W1). Lines in the final diff: the `StepPorts.overrunWake` member after `besideDone` (about 97-101); the helper `eventOrOverrun` and `nothingMayStart` (about 251-265); and `idleAnswer`'s three returns (about 398-402). None of these is `drainRunnerWork` (W1's 233-237, now about 239-243).
+- `src/core/status/next-step.ts` (W3): the overrun branch in `runningStep` and its import, by agreement (coordinator, request 626d65e5); a commit of its own. `standing-yields.ts` (W3) is untouched: the overrun facts are in the new `overrun-facts.ts`.
+- `src/core/status/standing.ts` (one spread in the running pending) and `standing-groups.ts` (`groupId` running): neither file belongs to a row of this wave.
+- `src/core/delivery/late.ts`, `src/core/types/delivery.ts`, `src/core/types/standing.ts`: additive fields only.
+- `src/core/scheduler/scheduler.ts` (beside-instance code): `#besideOpen`, the `started` call in `#fly`, and the close at a tier's end.
+- Not changed, worth a follow-up: `daemon.ts` names the second instance's failures "the tier beside a named wait's batch". The instance now also runs tiers beside an overrunning tier.
+
+## Decisions the spec did not settle (my choice)
+
+- The beside tier for an overrun is an edit's tier (`runner.tierSize` files, no permit), as for a batch. It is not a backlog tier at a grant, because the second instance is `runner.tierSize` wide and C10 accepted that bound. Cost: 1,000 queued files go 4 at a time while the tier overruns, not at the backlog's width.
+- The time runs from the tier's start (the daemon has no per-file start). One file of four that hangs while its mates end normally overruns at the hung file's own threshold, because the mates leave the unfinished set when the runner names their end.
+- A tier beside another tier never counts as overrunning. When a beside tier hangs, the lane waits as before. A third instance is not built.
+- The hook clause gives no numbers ("far past its usual time"), so it stays one short clause. Status and the named wait give the numbers.
+- The status command is `squeal why <file>` with the root-relative path. A named wait run from a subdirectory prints the root-relative path too, because the step is a fixed command and not the retry form, which rebases paths.
+
+## Proposed spec amendment (the coordinator lands it)
+
+011 C4 step 5, after the paragraph on the second instance beside a batch's tier (row 011-269):
+
+> Amended 2026-11-19 (the human, card of coordinator b99e3c05, "fix all four", hung file "report + unblock others"; row 011-399, gh-233, `research/stuck-running.md` shape 1, E1b: one hung file held a tier of 4 for 121 s while 1,198 files waited): a fast tier in a lane whose runner cancels a run overruns when every file of it that has not ended has run 10 times its last-known duration and at least 60 s (a file with no known duration: 60 s past the tier's estimate, its longest last-known duration), counted from the tier's start. While it overruns, the lane's next tier starts beside it in the second instance, one at a time, as beside a batch's tier: an edit's tier of any queued file of the lane, `runner.tierSize` files that share by duration, no permit (C10), counting toward neither turn. The daemon wakes at that time with no other event. The overrunning tier is not cancelled and runs to `runner.timeoutMs`; its results, and a timeout's `unknown`, are as before. A slow tier, a group lane's tier, a cancelled tier and a tier beside another never overrun. The second instance closes once no batch's tier, overrunning tier or tier beside one is in flight in the lane and no batch file is queued.
+
+011 C6 (status) and C15 (named wait line):
+
+> Amended 2026-11-19 (row 011-399): a running file whose tier overruns, and that the runner has not named ended, reads on a line of its own: how long it has run, about how many times its last-known duration, that it may be hung, that the lane runs its next tiers beside it, the run's deadline, and `squeal why <file>`. `--json` carries `overrun` (`path`, `ranMs`, `usualMs`, `since`, `deadline`) on its standing and on the named wait's file entry. The daemon publishes the overrun in its `yields` row (`overruns`, additive).
+
+005 D2 (late line): one clause after "Squeal says once when it has caught up.": `<file> has run far past its usual time and may be hung; `squeal why <file>` shows its run.`, for the first owed file whose tier overruns.
+
+No key-format or validity change: no case in `test/keys/key-format.test.ts` is needed.
+
+## Tests
+
+- `test/scheduler/overrun-beside.test.ts` (virtual clock, fake runner that reports no file end). 1,000 queued: nothing changes at 59 s; at 60 s one tier of 4 starts beside, with no grant; the next starts when it ends; the row, status, the named wait's line and its JSON name the overrun. With nothing queued, the row still names it. A file of 10 s known: nothing at 60 s, beside at 100 s; its own result lands when it ends, and the second instance then closes. Red before: all three fail without the overrun lanes in `besideFiles` or without the step's wake. The nothing-queued case fails without `TierYields.started`.
+- `test/scheduler/overrun-row.test.ts`: the threshold arithmetic, and the row key round trip, a malformed entry, and a row from an older daemon.
+- `test/delivery/late-hung.test.ts`: the late line's clause. It is absent before the overrun time and for a file named ended. Red before: the clause test fails with `hungText` disabled.
