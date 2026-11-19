@@ -90,12 +90,8 @@ export function redEvidence(red: SideEnd, redErrors: readonly string[] = []): Re
   return red.failures.some((f) => failureKind(f, redErrors) === "thrown") ? "thrown" : "assertion";
 }
 
-/** D5.5: the verdict of one file from its red and green ends; green `null` when it was not read. */
-export function verdictOf(
-  red: SideEnd,
-  green: SideEnd | null,
-  redErrors: readonly string[] = [],
-): FileVerdict {
+/** D5.5: the verdict a red side settles alone, before the green side counts; `null` when the green side decides. */
+function redVerdict(red: SideEnd, redErrors: readonly string[]): FileVerdict | null {
   // Row 023-11: a run the budget left not started, on either side, reads `not comparable (budget)`.
   if (red.end === "unknown")
     return {
@@ -116,6 +112,17 @@ export function verdictOf(
       verdict: "red for another reason",
       reason: KIND_TEXT[(other ?? "error") as keyof typeof KIND_TEXT],
     };
+  return null;
+}
+
+/** D5.5: the verdict of one file from its red and green ends; green `null` when it was not read. */
+export function verdictOf(
+  red: SideEnd,
+  green: SideEnd | null,
+  redErrors: readonly string[] = [],
+): FileVerdict {
+  const settled = redVerdict(red, redErrors);
+  if (settled !== null) return settled;
   if (green?.end === "unknown" && green.reason === NOT_RUN_BUDGET)
     return { verdict: "not comparable", reason: "budget" };
   if (green === null || green.end === "unknown") {
@@ -127,7 +134,9 @@ export function verdictOf(
     return {
       verdict: "proven",
       reason:
-        redEvidence(red, redErrors) === "thrown" ? thrownReason(red.failures, redErrors) : null,
+        red.end === "fail" && redEvidence(red, redErrors) === "thrown"
+          ? thrownReason(red.failures, redErrors)
+          : null,
     };
   const how =
     green.end === "fail" ? "failed" : green.end === "timeout" ? "timed out" : "not prepared";
