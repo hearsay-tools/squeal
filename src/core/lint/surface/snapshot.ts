@@ -1,11 +1,13 @@
-import type { WorktreeId } from "../../types/common.js";
+import type { EpochMs, WorktreeId } from "../../types/common.js";
 import type { LintFinding, LintKnownState, LintTool } from "../../types/lint.js";
 import type {
   LintAwaitingRun,
+  LintCpuWait,
   LintProgress,
   LintReasons,
   LintUnknownReason,
 } from "../../types/lint-delivery.js";
+import { readCpuWait } from "../pass/cpu-wait.js";
 import { type HeldBy, pauseReleases, readHeld } from "../pass/moment.js";
 import {
   failedKey,
@@ -140,12 +142,14 @@ export function awaitingRun(
  * quiet file that reads `unknown` waits for no lint, so it ends no wait;
  * nor does one that waits for a commit (row 019-43) or the agent's pause
  * (row 019-45), and the count leaves it out. `undefined` once they are linted. Counts are of checks: a file
- * per tool.
+ * per tool. Row 017-33: `cpuWait` while the pool refuses the parts' lease
+ * as of `now` (`cpuWaitOf`).
  */
 export function progressOf(
   store: LintStore,
   worktreeId: WorktreeId,
   states: readonly LintKnownState[],
+  now: EpochMs = Date.now() as EpochMs,
 ): LintProgress | undefined {
   const pending = states.filter((s) => s.outcome === "pending");
   let held = 0;
@@ -160,7 +164,30 @@ export function progressOf(
     }
   }
   if (anyKeyed(store.meta, worktreeId) && !waiting) return undefined;
-  return { done: states.length - pending.length, total: states.length - held };
+  const cpuWait = cpuWaitOf(store.meta, worktreeId, now);
+  return {
+    done: states.length - pending.length,
+    total: states.length - held,
+    ...(cpuWait === null ? {} : { cpuWait }),
+  };
+}
+
+/**
+ * Row 017-33 (gh-238): the pool refuses a tool's lint parts their lease, as
+ * its pass recorded; with two tools waiting, the one that waits longest,
+ * ESLint's on a tie. `null` while no pass waits for CPU.
+ */
+export function cpuWaitOf(
+  meta: LintMetaRepo,
+  worktreeId: WorktreeId,
+  now: EpochMs,
+): LintCpuWait | null {
+  let found: LintCpuWait | null = null;
+  for (const [, scope] of scopes(worktreeId)) {
+    const wait = readCpuWait(meta, scope, now);
+    if (wait !== null && (found === null || wait.since < found.since)) found = wait;
+  }
+  return found;
 }
 
 /**
