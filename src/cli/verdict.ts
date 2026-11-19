@@ -14,7 +14,7 @@ import type { KnownState } from "../core/types/state.js";
 import type { StatusResult } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
-import type { NamedPath } from "./named-selection.js";
+import type { NamedPath, NamedSelection } from "./named-selection.js";
 import type { SyncState } from "./status-sync.js";
 import { passReached } from "./wait/synced.js";
 
@@ -49,6 +49,38 @@ export interface FileVerdict extends FileClasses {
  */
 export function fixedSelection(paths: readonly Pick<NamedPath, "kind">[]): boolean {
   return paths.every((path) => path.kind === "test-file");
+}
+
+/**
+ * Row 011-401 (gh-242): whether the read that ended a named wait or snapshot
+ * may hold an incomplete list, and the revision Squeal catches up with. A
+ * selection that is not fixed (`fixedSelection`) may grow while the runner
+ * has not listed the revision (`unlisted`), or while the daemon's pass over
+ * the edits made before the read is not stored (`unsynced`): its readers
+ * then come from stored closures. `null`: the list is complete.
+ */
+export function selectionPartial(read: {
+  readonly paths: readonly Pick<NamedPath, "kind">[];
+  readonly verdict: FileClasses;
+  readonly sync: SyncState;
+  readonly snapshot?: boolean;
+}): { readonly revision: RevisionNumber | null } | null {
+  const { paths, verdict, sync } = read;
+  if (fixedSelection(paths)) return null;
+  if (verdict.unlisted) return { revision: verdict.revision };
+  if (!unsynced(sync, verdict.revision, read.snapshot)) return null;
+  return { revision: sync.state === "synced" ? sync.revision : null };
+}
+
+/** `selection` with `partial` set when `selectionPartial` finds its list may be incomplete. */
+export function withPartial(
+  selection: NamedSelection,
+  verdict: FileClasses,
+  sync: SyncState,
+  snapshot = false,
+): NamedSelection {
+  const partial = selectionPartial({ paths: selection.paths, verdict, sync, snapshot });
+  return partial === null ? selection : { ...selection, partial };
 }
 
 /**

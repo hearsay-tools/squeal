@@ -21,7 +21,7 @@ import {
 } from "../status-sync.js";
 import { CheckUsageError, checkUsage, snapshotFocus } from "../status-wait-focus.js";
 import { leftGroupsOf } from "../status-wait-groups.js";
-import { fixedSelection, holdOfWait, readClasses, readVerdict } from "../verdict.js";
+import { fixedSelection, holdOfWait, readClasses, readVerdict, withPartial } from "../verdict.js";
 import { decideStatusWait } from "./decide.js";
 import { decidedOutcome, ownNamedFiles } from "./named.js";
 import type { NamedSnapshotOptions, NamedWait, NamedWaitEnded } from "./named-types.js";
@@ -151,14 +151,16 @@ function readOnce(
   const result = buildSnapshot(store, root, now);
   // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
   const focus = snapshotFocus(store, id, root, own, checks);
+  const verdict = readVerdict(store, id, held, fixed);
   return {
     outcome: step.outcome as NamedWaitEnded["outcome"],
     ...(hold === null ? {} : { hold }),
     ...(focus === undefined ? {} : { focus }),
-    selection,
+    // Row 011-401 (gh-242): whether the list may still grow.
+    selection: withPartial(selection, verdict, current, true),
     leftForPause,
     ...leftGroupsOf(root, leftForPause),
-    verdict: readVerdict(store, id, held, fixed),
+    verdict,
     files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
     result,
     sync: current,

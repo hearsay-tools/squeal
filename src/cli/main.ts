@@ -57,9 +57,11 @@ Usage:
                                 that selects nothing is named beside it, exit 3 unless
                                 a selected file fails; --full prints this worktree's
                                 status first; --json: the files and their verdicts in
-                                selection.testFiles; --check shows the focused outcome
-                                of the named test files' checks whose name holds the
-                                text, and asks for nothing
+                                selection.testFiles, and selection.complete false while
+                                the list may still grow (the text says "at least");
+                                --check shows the focused outcome of the named test
+                                files' checks whose name holds the text, and asks for
+                                nothing
   squeal status --wait <ms> [--full] [--json]
                                 Wait up to <ms> until nothing is pending at the current
                                 revision or a check changed, then print status (--full:

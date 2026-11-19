@@ -31,6 +31,7 @@ import {
   holdOfWait,
   readClasses,
   readVerdict,
+  withPartial,
 } from "../verdict.js";
 import { type DaemonWatch, lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
@@ -200,7 +201,8 @@ export function namedPoll(
       return {
         end: {
           outcome,
-          selection,
+          // Row 011-401 (gh-242): whether the list may still grow.
+          selection: withPartial(selection, verdict, current),
           leftForPause,
           ...leftGroupsOf(root, leftForPause),
           verdict,
