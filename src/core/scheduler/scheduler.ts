@@ -11,7 +11,7 @@ import { describeFailure } from "../state/fingerprint.js";
 import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
-import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
+import type { EpochMs, ProjectName, RelativePath, RevisionNumber } from "../types/common.js";
 import { daemonIncarnation, type SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
@@ -798,6 +798,11 @@ class TierScheduler implements Scheduler {
     return this.#lock.watch(listener, (error) =>
       this.#backgroundError("could not tell what holds the scheduler", error),
     );
+  }
+
+  /** Row 011-397: the newest revision while a runner part runs with the lock free (`Scheduler.listing`). */
+  listing(): RevisionNumber | null {
+    return this.#runnerWork.refining ? (this.#ledger?.revision.number ?? null) : null;
   }
 
   /** Spec 004 D2 trigger (b); the slow tier still waits for pending fast work. */

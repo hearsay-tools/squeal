@@ -6,7 +6,7 @@ import {
   type RelativePath,
 } from "../types/common.js";
 import type { DaemonResponse, GroupHolder, RunGroupResponse } from "../types/daemon.js";
-import type { NarrowRun, Scheduler } from "../types/scheduler.js";
+import type { LockHolder, NarrowRun, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 
@@ -29,6 +29,13 @@ export const NARROW_NOT_SUPPORTED =
 /** What a group request queued; for a narrow run (row 019-49), what its paths selected. */
 export type GroupRequested = SlowSuiteRequested & { readonly narrow?: NarrowRun };
 
+/**
+ * Row 011-397: how often a request that waits with the scheduler's lock
+ * free reads whether a listing holds it; a listing starts and ends with no
+ * change of the lock's holder, which is all `watchLock` tells.
+ */
+export const LISTING_CHECK_MS = 500;
+
 /** How long `requestGroupRun` waits for the daemon's first answer by default: the CLI's socket budget. */
 export const GROUP_REQUEST_MS = 2_000;
 
@@ -40,6 +47,8 @@ export const GROUP_REQUEST_MS = 2_000;
 export type HeldBy =
   | { readonly kind: "startup"; readonly since: EpochMs }
   | { readonly kind: "scheduler"; readonly operation: string | null; readonly since: EpochMs }
+  /** Row 011-397: the lock is free while Squeal lists revisions up to `revision`. */
+  | { readonly kind: "listing"; readonly revision: number }
   | null;
 
 /** The main thread tells the socket what holds a request, each time it changes (row 011-302). */
@@ -107,12 +116,7 @@ export async function requestGroup(
   if (paths !== undefined && typeof groups.requestGroupPaths !== "function") {
     throw new Error(NARROW_NOT_SUPPORTED);
   }
-  const stop =
-    held === undefined
-      ? undefined
-      : scheduler.watchLock?.((holder) =>
-          held(holder === null ? null : { kind: "scheduler", ...holder }),
-        );
+  const stop = held === undefined ? undefined : watchHolder(scheduler, held);
   if (stop === undefined) held?.(null);
   try {
     if (paths !== undefined) return (await scheduler.requestGroupPaths?.(group, paths)) ?? null;
@@ -120,6 +124,41 @@ export async function requestGroup(
   } finally {
     stop?.();
   }
+}
+
+/**
+ * Row 011-302: tells `held` each holder of the scheduler's lock; row
+ * 011-397: while the lock is free, the listing the request waits for
+ * (`Scheduler.listing`), read at each change and every `LISTING_CHECK_MS`,
+ * each holder told once. `undefined` for a scheduler without `watchLock`.
+ */
+function watchHolder(scheduler: Scheduler, held: Held): (() => void) | undefined {
+  let lock: LockHolder | null = null;
+  let told: string | undefined;
+  const tell = () => {
+    const revision = lock === null ? (scheduler.listing?.() ?? null) : null;
+    const holder: HeldBy =
+      lock !== null
+        ? { kind: "scheduler", ...lock }
+        : revision === null
+          ? null
+          : { kind: "listing", revision };
+    const text = JSON.stringify(holder);
+    if (text === told) return;
+    told = text;
+    held(holder);
+  };
+  const stop = scheduler.watchLock?.((holder) => {
+    lock = holder;
+    tell();
+  });
+  if (stop === undefined) return undefined;
+  const timer = scheduler.listing === undefined ? null : setInterval(tell, LISTING_CHECK_MS);
+  timer?.unref();
+  return () => {
+    if (timer !== null) clearInterval(timer);
+    stop();
+  };
 }
 
 /** One `run-group` request as the socket remembers it for `run-group-status`. */
@@ -175,6 +214,7 @@ export function groupRequests(
     if (held === undefined) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
     if (held === null) return { kind: "unknown", ...stepped };
     if (held.kind === "startup") return { kind: "startup", heldMs: since(held.since), ...stepped };
+    if (held.kind === "listing") return { kind: "listing", revision: held.revision, ...stepped };
     const { operation } = held;
     return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
   };

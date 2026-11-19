@@ -382,6 +382,9 @@ export interface RunGroupResponse {
  * - `scheduler`: the scheduler's lock, which one task holds at a time;
  *   `operation` is what it does, in words that follow "has been", `null`
  *   when it named nothing;
+ * - `listing`: the scheduler's lock is free while Squeal lists the
+ *   worktree's revisions, up to `revision`, which a request waits for
+ *   (row 011-397; before it, `unknown`);
  * - `unknown`: the main thread read the request and recorded no holder.
  *
  * `step` is a step the main thread said it runs, which may block it (lint
@@ -391,6 +394,7 @@ export type GroupHolder = (
   | { readonly kind: "unanswered"; readonly heldMs: number }
   | { readonly kind: "startup"; readonly heldMs: number }
   | { readonly kind: "scheduler"; readonly operation: string | null; readonly heldMs: number }
+  | { readonly kind: "listing"; readonly revision: number }
   | { readonly kind: "unknown" }
 ) & { readonly step: { readonly operation: string; readonly heldMs: number } | null };
 
