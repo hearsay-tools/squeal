@@ -1,0 +1,52 @@
+    2.3 TOOL Skill: squeal:squeal
+    2.5 RES  Launching skill: squeal:squeal
+    2.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    5.7 TOOL Bash: git show e71888f9 --stat --format=%B | head -30; git show e71888f9 | head -80; sed -n 1,200p ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -A12 'proof'
+    5.9 RES  test(automations): pin the clock in the unhandled-polls history test (#2539)
+             
+              packages/cezar/src/automations/unhandled-polls.test.ts | 12 ++++++++++--
+              1 file changed, 10 insertions(+), 2 deletions(-)
+             commit e71888f911ea6c9a29a219f1e332cdde5c42229c
+             Author: Wiktor Jarka <wjarka@users.noreply.github.com>
+             Date:   Tue Nov 3 00:47:10 2026 +0000
+             
+                 test(automations): pin the clock in the unhandled-polls history test (#2539)
+             
+             diff --git a/packages/cezar/src/automations/ …[3774 chars]
+    8.2 TOOL Bash: squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -60
+   29.3 RES  squeal: proving 1 test file against fb045d07c in temporary checkouts
+             squeal: node-test project "root:test:unit": 0 of 13 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 13 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 13 in incompleteClosures.
+             squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one  …[2859 chars]
+   34.1 SAY  The old test was the problem. It fails against today's code, and the new version passes.
+
+I ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. Squeal ran both sides in temporary checkouts and left your tree alone. The code is the same on both sides (HEAD, `e71888f91`). Only the test file differs.
+
+| Side | Test file | Code | Result |
+|---|---|---|---|
+| Red | old, from `fb045d07c` | `e71888f91` | **fail** |
+| Green | new, from `e71888f91` | `e71888f91` | **pass** |
+
+The failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The history poll returned no issues at all.
+
+The old test used fixture events dated from `2026-10-27`, relative to a fixed `epoch`. The poller works out its history window from the real `Date`. Today is 2026-11-19, so those fixtures have fallen outside the window and are filtered out. The test was failing only because time had passed, not because the product code broke.
+
+The commit adds `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime(epoch + 86_400_000)`. That pins the clock one day after the epoch, so the fixtures stay inside the window. The clock is restored with `vi.useRealTimers()` in `afterEach`.
+
+Squeal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. It does not affect this test.
+   34.3 END  success turns=5 duration=33524ms cost=$0.0622625 usage={"input_tokens":8,"cache_creation_input_tokens":16825,"cache_read_input_tokens":86140,"output_tokens":1157,"output_tokens_details":{"thinking_tokens":226},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":16825},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   34.3 FINAL The old test was the problem. It fails against today's code, and the new version passes.
+
+I ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. Squeal ran both sides in temporary checkouts and left your tree alone. The code is the same on both sides (HEAD, `e71888f91`). Only the test file differs.
+
+| Side | Test file | Code | Result |
+|---|---|---|---|
+| Red | old, from `fb045d07c` | `e71888f91` | **fail** |
+| Green | new, from `e71888f91` | `e71888f91` | **pass** |
+
+The failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The history poll returned no issues at all.
+
+The old test used fixture events dated from `2026-10-27`, relative to a fixed `epoch`. The poller works out its history window from the real `Date`. Today is 2026-11-19, so those fixtures have fallen outside the window and are filtered out. The test was failing only because time had passed, not because the product code broke.
+
+The commit adds `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime(epoch + 86_400_000)`. That pins the clock one day after the epoch, so the fixtures stay inside the window. The clock is restored with `vi.useRealTimers()` in `afterEach`.
+
+Squeal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. It does not affect this test.

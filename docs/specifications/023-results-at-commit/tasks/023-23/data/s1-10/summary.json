@@ -1,0 +1,29 @@
+{
+  "id": "s1-10",
+  "loadStart": "3.72",
+  "exit": 0,
+  "wallSeconds": 250.088,
+  "squeal": [
+    "3s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 7,
+  "costUsd": 0.0678593,
+  "usage": {
+    "cache_creation_input_tokens": 16592,
+    "cache_read_input_tokens": 138113,
+    "output_tokens": 1254
+  },
+  "firstFinal": "The comparison is still running in the background, so I don't have results yet. I ran `squeal status --at 8be977ad6`, which runs the tests in a temporary checkout of that commit. It passed the 120s foreground limit and moved to the background. I'll report when it finishes. I haven't yet run the same check on the parent commit (`8be977ad6~1`), which I need for the comparison.\n\nThe commit is `perf(lint): share active-run owner syntax indexes`. From its message, it looks like a lint-rule change, but I haven't confirmed that. Any test-result difference would show up in the lint-rule tests. I'm not guessing which ones until the numbers are in.",
+  "final": "I can't tell. Squeal has no recorded results for either commit, so it couldn't compare anything. Both runs reported `0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown`. The daemon in this worktree is still at revision 0 and hasn't run any tests. That means \"no change\" would be an unsupported claim.\n\nWhat the comparison does show is that the commit added one test file, `packages/cezar/src/lint/active-run-write-index.test.ts`. It doesn't exist at the parent commit (`d8abcfe46`), and the other 1919 test files exist at both. I don't know yet whether the new file passes. Its absence at the parent isn't a failure, so it counts as a new test, not a regression.\n\nThe commit's lint code may also have changed how existing lint-rule tests behave, and I haven't checked that. To get real results, I could do one of these:\n- Run the lint tests on the current commit (`squeal run` on `packages/cezar/src/lint/`), then run `squeal proof` on the new test file with `--base d8abcfe46`. That would be quick and cover the likely-affected tests.\n- Run the full suite at both commits, which could take a long time.\n\nDo you want me to go with the first one?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

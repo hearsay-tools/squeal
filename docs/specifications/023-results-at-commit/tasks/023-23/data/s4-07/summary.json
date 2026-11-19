@@ -1,0 +1,29 @@
+{
+  "id": "s4-07",
+  "loadStart": "5.78",
+  "exit": 0,
+  "wallSeconds": 23.388,
+  "squeal": [
+    "4s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0499632,
+  "usage": {
+    "cache_creation_input_tokens": 15177,
+    "cache_read_input_tokens": 59287,
+    "output_tokens": 608
+  },
+  "firstFinal": "The old test was the problem. `squeal proof` ran it in a temporary checkout and it failed against today's code. The new test passed on the same code.\n\n- **Red:** the old test file from `fb045d07c` (the parent of `e71888f91`), run over the code at `e71888f91`, failed.\n  - Test: `counts only unhandled matching issues and resumes after restart (history=true)`\n  - Failure: `AssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]` at `unhandled-polls.test.ts:72`.\n  - The test expected issues 101–105 and got an empty list.\n- **Green:** the new test and code at `e71888f91` passed.\n\nBecause the product code was the same in both runs, the old test fails by itself. That fits the commit title: the old test depended on the clock, and the commit pinned it.\n\nI didn't check which timing assumption the old test made, so I can't say from this run why it got an empty list.\n\nSqueal flagged that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That file isn't part of this test, and the proof ran only the one test file.",
+  "final": "The old test was the problem. `squeal proof` ran it in a temporary checkout and it failed against today's code. The new test passed on the same code.\n\n- **Red:** the old test file from `fb045d07c` (the parent of `e71888f91`), run over the code at `e71888f91`, failed.\n  - Test: `counts only unhandled matching issues and resumes after restart (history=true)`\n  - Failure: `AssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]` at `unhandled-polls.test.ts:72`.\n  - The test expected issues 101–105 and got an empty list.\n- **Green:** the new test and code at `e71888f91` passed.\n\nBecause the product code was the same in both runs, the old test fails by itself. That fits the commit title: the old test depended on the clock, and the commit pinned it.\n\nI didn't check which timing assumption the old test made, so I can't say from this run why it got an empty list.\n\nSqueal flagged that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That file isn't part of this test, and the proof ran only the one test file.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

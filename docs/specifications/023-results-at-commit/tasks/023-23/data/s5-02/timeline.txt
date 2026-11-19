@@ -1,0 +1,73 @@
+    2.2 TOOL Skill: squeal:squeal
+    2.4 RES  Launching skill: squeal:squeal
+    3.0 TOOL Bash: git show 4fadedf3 5dbf15f9 --stat --format='%h %s' && git show 4fadedf3 5dbf15f9 -- scripts/release-identity.test.mjs
+    3.2 RES  4fadedf3 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             5dbf15f9 test(release): build identity test runs with the workflow's environment
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             commit 4fadedf34a936d987b51a588100faf17d5a74593
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 16 …[3888 chars]
+    3.4 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    5.5 TOOL Bash: squeal proof --help 2>&1 | head -40; grep -n -B2 -A12 'proof' ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | head -80
+    5.7 RES  Usage:
+               squeal proof <test file>... --base <commit> [--case source|test|dependency]
+                            [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
+                            [--repeat <n>] [--with <path>]... [--source <path>]...
+                            [--red-error <text>]... [--timeout <seconds>] [--json]
+                                             A red proof per named test file over committed HEAD:
+                                             red is the test at HEAD over the code at --base
+                                             (s …[5064 chars]
+   11.6 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base 5dbf15f9 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40; echo "--- control: same base, env unset"; squeal proof scripts/release-identity.test.mjs --base 5dbf15f9 --case test --env GITHUB_RUN_ATTEMPT= 2>&1 | tail -20
+   61.5 RES                  at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402:25)
+                             at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+                             at Test.postRun (node:internal/test_runner/test:1542:19)
+                             at Test.run (node:internal/test_runner/test:1467:12)
+                             at async startSubtestAfterBootstrap (node:internal/test_r …[5474 chars]
+   67.8 SAY  The old test depended on `GITHUB_RUN_ATTEMPT`. The fixed one doesn't. I ran both versions of `scripts/release-identity.test.mjs` with `squeal proof`, against the same release scripts at HEAD.
+
+**What changed.** The test's `run()` helper builds the child process environment.
+- **Old version (`5dbf15f9`):** it filtered the inherited environment with `GITHUB_ACTIONS$` and never set `GITHUB_RUN_ATTEMPT`. Whatever the runner exported leaked into the release script.
+- **Fixed version (`4fadedf3`):** it filters out every `GITHUB_*` variable and then pins `GITHUB_RUN_ATTEMPT: '1'`.
+
+**Run with `GITHUB_RUN_ATTEMPT=2`**, as on a CI re-run:
+
+| Test | Old version | Fixed version |
+|---|---|---|
+| Nightly release | actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9` | pass |
+| PR release | actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9` | pass |
+
+The tail of the output I captured shows those two tests, and the run counts one red failure for the file. The "fixed version passes" row comes from the proof's green side, not a separate run.
+
+**Control run with `GITHUB_RUN_ATTEMPT` unset.** The old test passed (verdict "not red"). So the failure comes from that variable and from nothing else.
+
+**What this means for the commit.** `4fadedf3` is the exact inverse of `5dbf15f9` on this file. The fix puts back the `GITHUB_` filter and the pinned `GITHUB_RUN_ATTEMPT` that `5dbf15f9` had removed. I only compared the two commits' diffs for this file, so I don't know whether `5dbf15f9 …[1831 chars]
+   68.4 END  success turns=6 duration=67793ms cost=$0.0809623 usage={"input_tokens":8,"cache_creation_input_tokens":20258,"cache_read_input_tokens":90113,"output_tokens":2129,"output_tokens_details":{"thinking_tokens":776},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":20258},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   68.4 FINAL The old test depended on `GITHUB_RUN_ATTEMPT`. The fixed one doesn't. I ran both versions of `scripts/release-identity.test.mjs` with `squeal proof`, against the same release scripts at HEAD.
+
+**What changed.** The test's `run()` helper builds the child process environment.
+- **Old version (`5dbf15f9`):** it filtered the inherited environment with `GITHUB_ACTIONS$` and never set `GITHUB_RUN_ATTEMPT`. Whatever the runner exported leaked into the release script.
+- **Fixed version (`4fadedf3`):** it filters out every `GITHUB_*` variable and then pins `GITHUB_RUN_ATTEMPT: '1'`.
+
+**Run with `GITHUB_RUN_ATTEMPT=2`**, as on a CI re-run:
+
+| Test | Old version | Fixed version |
+|---|---|---|
+| Nightly release | actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9` | pass |
+| PR release | actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9` | pass |
+
+The tail of the output I captured shows those two tests, and the run counts one red failure for the file. The "fixed version passes" row comes from the proof's green side, not a separate run.
+
+**Control run with `GITHUB_RUN_ATTEMPT` unset.** The old test passed (verdict "not red"). So the failure comes from that variable and from nothing else.
+
+**What this means for the commit.** `4fadedf3` is the exact inverse of `5dbf15f9` on this file. The fix puts back the `GITHUB_` filter and the pinned `GITHUB_RUN_ATTEMPT` that `5dbf15f9` had removed. I only compared the two commits' diffs for this file, so I don't know whether `5dbf15f9` removed them on purpose, for example to test with the workflow's real environment.
+
+**Limits.**
+- I only set `GITHUB_RUN_ATTEMPT=2`. The proof doesn't show whether other `GITHUB_*` variables also leak through the old filter.
+- The `GITHUB_RUN_ATTEMPT=2` condition makes both sides run fresh, so Squeal didn't store their results.

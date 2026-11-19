@@ -1,0 +1,29 @@
+{
+  "id": "s3-10",
+  "loadStart": "2.49",
+  "exit": 0,
+  "wallSeconds": 27.814,
+  "squeal": [
+    "3s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.055039,
+  "usage": {
+    "cache_creation_input_tokens": 16222,
+    "cache_read_input_tokens": 59320,
+    "output_tokens": 854
+  },
+  "firstFinal": "The new tests in `.github/scripts/queue-ci-proof.test.cjs` fail without the fix and pass with it. I ran `squeal proof` against the parent commit `24694ced5`, which uses a temporary checkout and leaves your working tree alone.\n\n**Command**\n```\nsqueal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1\n```\n\n**Result:** proven. Red ran the test file from `6414b6c20` over the code from `24694ced5`, and green ran test and code both at `6414b6c20`.\n\n| Test | Without the fix | With the fix |\n|---|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | fail: `false !== true` | pass |\n| a running queue run whose gate passes during the bounded wait is proof | fail: `false !== true` | pass |\n| a new attempt of a running queue run during the final read invalidates its proof | fail: got `reason: 'source-pending'`, expected `'source-changed'` | pass |\n\nThe summary line was `1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable`. Both runs together took 18.8 s.\n\n**Draft text for the PR description:**\n\n> Red/green proof: `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1`. Without the fix, three new tests fail. Two return `false` where `true` is expected, so a running queue run whose gate passed is not accepted as proof. The third reports `source-pending` where `source-changed` is expected. With the fix, all three pass.\n\n`squeal proof` printed some warnings about the `scripts/test-home-env.mjs` preload and incomplete static import closures for some test files. They don't affect this result.",
+  "final": "The new tests in `.github/scripts/queue-ci-proof.test.cjs` fail without the fix and pass with it. I ran `squeal proof` against the parent commit `24694ced5`, which uses a temporary checkout and leaves your working tree alone.\n\n**Command**\n```\nsqueal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1\n```\n\n**Result:** proven. Red ran the test file from `6414b6c20` over the code from `24694ced5`, and green ran test and code both at `6414b6c20`.\n\n| Test | Without the fix | With the fix |\n|---|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | fail: `false !== true` | pass |\n| a running queue run whose gate passes during the bounded wait is proof | fail: `false !== true` | pass |\n| a new attempt of a running queue run during the final read invalidates its proof | fail: got `reason: 'source-pending'`, expected `'source-changed'` | pass |\n\nThe summary line was `1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable`. Both runs together took 18.8 s.\n\n**Draft text for the PR description:**\n\n> Red/green proof: `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1`. Without the fix, three new tests fail. Two return `false` where `true` is expected, so a running queue run whose gate passed is not accepted as proof. The third reports `source-pending` where `source-changed` is expected. With the fix, all three pass.\n\n`squeal proof` printed some warnings about the `scripts/test-home-env.mjs` preload and incomplete static import closures for some test files. They don't affect this result.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

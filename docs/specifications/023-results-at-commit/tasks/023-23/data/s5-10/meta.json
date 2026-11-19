@@ -1,0 +1,14 @@
+{
+  "id": "s5-10",
+  "group": "s5",
+  "clone": "~squeal-w15/runs/w15/s5-10",
+  "prompt": "The last commit fixed scripts/release-identity.test.mjs: on CI re-runs the old version picked up GITHUB_RUN_ATTEMPT from the workflow and computed the wrong version. Show me that the old test depended on that environment variable, and that the fixed one doesn't.",
+  "start": "2026-11-19T16:36:14.992Z",
+  "loadStart": "3.70",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 49.718,
+  "end": "2026-11-19T16:37:04.711Z",
+  "loadEnd": "4.44",
+  "transcript": "~squeal-w15/runs/w15/claude/projects/-home-squeal-w15-runs-w15-s5-10/407792c2-547d-4fe9-b664-102fc2fc57a6.jsonl"
+}

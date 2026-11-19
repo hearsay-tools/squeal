@@ -1,0 +1,32 @@
+{
+  "id": "s5-08",
+  "loadStart": "6.55",
+  "exit": 0,
+  "wallSeconds": 59.14,
+  "squeal": [
+    "4s git show HEAD --stat --format='%h %s' && git show HEAD && git show HEAD~1 --stat --format='%h %s'; squeal proof --help 2>&1 | head -30",
+    "7s squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [
+    "4s git show HEAD --stat --format='%h %s' && git show HEAD && git show HEAD~1 --stat --format='%h %s'; squeal proof --help 2>&1 | head -30"
+  ],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0630956,
+  "usage": {
+    "cache_creation_input_tokens": 17133,
+    "cache_read_input_tokens": 86471,
+    "output_tokens": 1160
+  },
+  "firstFinal": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't.\n\nI ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. It runs the test file from before the fix and the test file from the fix against the same product code, with `GITHUB_RUN_ATTEMPT=2` set, as on a CI re-run.\n\n- **Old test (`HEAD~1`) fails with the variable set to 2.** The release versions come out with an extra attempt suffix:\n  - nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- **Fixed test (`HEAD`) passes under the same variable.**\n- **Old test passes without the variable.** Squeal's report shows it passing with `GITHUB_RUN_ATTEMPT` unset, which is why the failure only appeared on re-runs.\n\nThe verdict was \"1 proven\", from 3 runs.\n\nThe cause is in the test's `run()` helper, which strips workflow variables from `process.env` before spawning the release script. The old filter only removed `GITHUB_ACTIONS`, so `GITHUB_RUN_ATTEMPT` leaked through whenever CI set it. The fix changes the filter to drop every `GITHUB_*` variable. It also sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the spawned environment, so the expected versions no longer depend on the host.\n\nI haven't tested the fixed test under other `GITHUB_*` variables, such as `GITHUB_SHA`. The new filter removes them all, so I'd expect it to hold, but the proof only covered `GITHUB_RUN_ATTEMPT`.",
+  "final": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't.\n\nI ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. It runs the test file from before the fix and the test file from the fix against the same product code, with `GITHUB_RUN_ATTEMPT=2` set, as on a CI re-run.\n\n- **Old test (`HEAD~1`) fails with the variable set to 2.** The release versions come out with an extra attempt suffix:\n  - nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- **Fixed test (`HEAD`) passes under the same variable.**\n- **Old test passes without the variable.** Squeal's report shows it passing with `GITHUB_RUN_ATTEMPT` unset, which is why the failure only appeared on re-runs.\n\nThe verdict was \"1 proven\", from 3 runs.\n\nThe cause is in the test's `run()` helper, which strips workflow variables from `process.env` before spawning the release script. The old filter only removed `GITHUB_ACTIONS`, so `GITHUB_RUN_ATTEMPT` leaked through whenever CI set it. The fix changes the filter to drop every `GITHUB_*` variable. It also sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the spawned environment, so the expected versions no longer depend on the host.\n\nI haven't tested the fixed test under other `GITHUB_*` variables, such as `GITHUB_SHA`. The new filter removes them all, so I'd expect it to hold, but the proof only covered `GITHUB_RUN_ATTEMPT`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

@@ -1,0 +1,66 @@
+    2.6 TOOL Skill: squeal:squeal
+    2.7 RES  Launching skill: squeal:squeal
+    2.8 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.2 TOOL Bash: git show HEAD~1 --stat --format='%h %s' && git show HEAD --format='%h %s' && git show HEAD~1 -- scripts/release-identity.test.mjs | head -80; squeal proof --help 2>&1 | head -30
+    4.5 RES  6a0ff949 test(release): build identity test runs with the workflow's environment
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             9408de7a fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+             diff --git a/scripts/release-identity.test.mjs b/scripts/release-identity.test.mjs
+             index 36fa5184..55eb5bd9 100644
+             --- a/scripts/release-identity.test.mjs
+             +++ b/scripts/release-identity.test.mjs
+             @@ -63,1 …[6241 chars]
+   12.3 TOOL Bash: git log --oneline -4 --stat -- scripts/release-identity.test.mjs scripts/release-snapshot.mjs | head -30; git status --short | head; grep -n "GITHUB_RUN_ATTEMPT" -r scripts .github | head -20
+   12.5 RES  9408de7a fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             6a0ff949 test(release): build identity test runs with the workflow's environment
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             a10e734c fix(git): start every Git child through git-command.ts and refuse other Git spawns (#3659)
+              scripts/release-identity.test.mjs | 2 +-
+          …[1212 chars]
+   17.3 TOOL Bash: sed -n 64,67p scripts/release-identity.test.mjs; squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40
+   42.7 RES  function run(dir, channel, packOnly = false) {
+               const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+                 !/^(CEZ_|HSQ_|GITHUB_|ACTIONS_ID_TOKEN_|NODE_AUTH_TOKEN)/.test(key)));
+               return execFileSync(process.execPath, [join(dir, 'scripts', channel.script || 'release-snapshot.mjs'),
+                             at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402: …[3435 chars]
+   49.1 SAY  Yes. The old test depended on `GITHUB_RUN_ATTEMPT` from the environment, and the fixed one doesn't. I ran the old version and the fixed version of the test with the variable set to `2`, as it would be on a CI re-run.
+
+I ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. That runs the test as it was at `6a0ff949` and as it is at `9408de7a`, over the same release code.
+
+- **Old test (`6a0ff949`): fails.** The version it computes has the run attempt appended. The nightly and PR release tests both fail:
+  - nightly: `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- **Fixed test (`9408de7a`): passes.** With the same `GITHUB_RUN_ATTEMPT=2` in the environment, it passes. Without that variable set, the old test also passes, so the failure depends only on the variable.
+
+The cause is in how `run()` builds the child environment in `scripts/release-identity.test.mjs`. The old version stripped only `GITHUB_ACTIONS` from the inherited environment. `GITHUB_RUN_ATTEMPT` therefore leaked through to `scripts/release-snapshot.mjs:62`, which reads it and adds it to the version when it is numeric. A first CI run has attempt `1`, which doesn't change the version. A re-run has attempt `2` or higher, which does.
+
+The fixed version does two things:
+- It strips every inherited `GITHUB_*` variable, with the filter `GITHUB_`.
+- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the chil …[1787 chars]
+   49.3 END  success turns=6 duration=48596ms cost=$0.08965000000000001 usage={"input_tokens":10,"cache_creation_input_tokens":19934,"cache_read_input_tokens":116450,"output_tokens":2815,"output_tokens_details":{"thinking_tokens":1588},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":19934},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   49.3 FINAL Yes. The old test depended on `GITHUB_RUN_ATTEMPT` from the environment, and the fixed one doesn't. I ran the old version and the fixed version of the test with the variable set to `2`, as it would be on a CI re-run.
+
+I ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. That runs the test as it was at `6a0ff949` and as it is at `9408de7a`, over the same release code.
+
+- **Old test (`6a0ff949`): fails.** The version it computes has the run attempt appended. The nightly and PR release tests both fail:
+  - nightly: `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- **Fixed test (`9408de7a`): passes.** With the same `GITHUB_RUN_ATTEMPT=2` in the environment, it passes. Without that variable set, the old test also passes, so the failure depends only on the variable.
+
+The cause is in how `run()` builds the child environment in `scripts/release-identity.test.mjs`. The old version stripped only `GITHUB_ACTIONS` from the inherited environment. `GITHUB_RUN_ATTEMPT` therefore leaked through to `scripts/release-snapshot.mjs:62`, which reads it and adds it to the version when it is numeric. A first CI run has attempt `1`, which doesn't change the version. A re-run has attempt `2` or higher, which does.
+
+The fixed version does two things:
+- It strips every inherited `GITHUB_*` variable, with the filter `GITHUB_`.
+- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.
+
+The test now gets the same attempt number whatever the CI runner provides.
+
+The proof reports 1 proven, 0 not red, 0 red for another reason, 0 not green. The green run was executed by the command and isn't stored, because a run under an injected variable is never stored.

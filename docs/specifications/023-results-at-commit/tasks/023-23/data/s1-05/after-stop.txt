@@ -1,0 +1,153 @@
+## head
+8be977ad65ee8c46183e7dde9084b816215aa00c
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+8be977ad HEAD@{2026-11-19 17:02:12 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w15/runs/w15/s1-05
+HEAD 8be977ad65ee8c46183e7dde9084b816215aa00c
+branch refs/heads/main
+
+
+## checkouts
+home/.cache/squeal/checkouts/16035e617f9fca91:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:52 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/22af33ddcf533458:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/2411de584c6b1883:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:01 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/2df1f07724de6da9:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/313f8f1a7d05d5f4:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:49 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/33234499331c1fec:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:55 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/586a7ef7a8c8f6d6:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:01 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/60a7bcc0217f10f7:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/618a053b33f08e2a:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:54 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/65761093b3f88a67:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:46 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/6adf78e2ead2ceff:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:39 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/72330c18266f5d94:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:48 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/7874c31c9523073a:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/853f4db63c15ff57:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:53 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/8c2d1f64e12715df:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/8e82bf5595c86805:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/9813efe816961780:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:02 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/af66c44ab7c9ab6c:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:58 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/b4fb8e20e098d2d4:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/c8e99bcbe2000406:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:00 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/cffb64c34eb47461:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:55 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/de5794712d0c2430:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/ea6c6ab7e0f2d071:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:05 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/eb77de5ebdea3c86:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:04 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+home/.cache/squeal/checkouts/f034cef6465110e8:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 27 squeal-w15 squeal-w15 4096 Nov 19 17:07 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+1378122 1378121       00:54 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions The last commit fixed scripts/release-identity.test.mjs: on CI re-runs the old version picked up GITHUB_RUN_ATTEMPT from the workflow and computed the wrong version. Show me that the old test depended on that environment variable, and that the fixed one doesn't.
+1378124 1378122       00:54 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions The last commit fixed scripts/release-identity.test.mjs: on CI re-runs the old version picked up GITHUB_RUN_ATTEMPT from the workflow and computed the wrong version. Show me that the old test depended on that environment variable, and that the fixed one doesn't.
+1378219       1       00:53 squeal s5-05 daemon @aebd04db ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs daemon ~squeal-w15/runs/w15/s5-05
+1378420 1378219       00:52 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s5-05 --runner vitest
+1378421 1378219       00:52 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s5-05 --runner node-test
+1378427 1378219       00:52 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s5-05 --runner node-test

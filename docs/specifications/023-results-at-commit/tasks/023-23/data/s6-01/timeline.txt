@@ -1,0 +1,35 @@
+    2.7 TOOL Bash: git diff packages/contract/src/report-title.ts && cat packages/contract/src/report-title.test.ts | head -80
+    2.9 RES  diff --git a/packages/contract/src/report-title.ts b/packages/contract/src/report-title.ts
+             index dd264f24..dcdb3d37 100644
+             --- a/packages/contract/src/report-title.ts
+             +++ b/packages/contract/src/report-title.ts
+             @@ -2,5 +2,5 @@ import type { PublishedArtifact } from './artifacts.ts';
+              
+              /** Shared display name for a published HTML snapshot. */
+              export function reportTitle(artifact: Pick<PublishedArtifact, 'name' | 'title'>): string {
+             -  return artifact.title || artifact.name.replace(/(.+)\.[^ …[1254 chars]
+    3.1 TOOL Bash: squeal run tests packages/contract/src/report-title.test.ts --wait 60000 2>&1 | tail -40
+   63.6 RES  Group tests has no verdict: the deadline passed before the daemon took request 63012d88-3e09-4ccd-a206-d9a5bbb55964; it waits for the daemon's startup, which has run for 1 min 2 s. The request stays pending: wait again with squeal run tests --wait.
+   63.8 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+   67.7 TOOL Edit: ~squeal-w15/runs/w15/s6-01/packages/contract/src/report-title.ts
+   67.7 TOOL Bash: squeal status --wait 60000 packages/contract/src/report-title.test.ts 2>&1 | tail -20
+   67.9 RES  The file ~squeal-w15/runs/w15/s6-01/packages/contract/src/report-title.ts has been updated successfully.
+   93.9 RES  Revision: 1 · 0dfe0724 + 1
+             Selected: packages/contract/src/report-title.test.ts
+             Named test files at revision 1: no known failures; 1 test file, each with a current result, after 25.6 s. Worktree: known failures 0; not current: 1920 of 1922 test files (3 running, 280 queued, 1637 unknown)
+   94.4 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · your edit queued 285 test files; first results in this worktree; run-loop group waiting; browser group waiting at revision 1\nRevision 1 (changed packages/contract/src/report-title.ts): 2 of 1922 test files are current (run on the files as they are now), and `squeal status` counts the rest.\nrun-loop: 319 test files; 14 pending, waiting for the agent to pause; 305 not run at revision 1. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run run-loop --wait 60000` runs them now and waits for their results.\nbrowser: 97 test files; 97 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.\nSqueal saw your edit and queued 285 test files; results arrive with later tool calls, and passes stay silent unless they follow a failure."}}
+   96.7 SAY  `report-title.test.ts` passes again. Squeal reports no known failures for it at the current revision.
+
+I fixed `reportTitle` in `packages/contract/src/report-title.ts` rather than the test. Your change replaced the regex `/(.+)\.[^.]+$/` with `/\..*$/`, which strips everything from the first dot. That turned `quarterly.results.html` into `quarterly` and `.report` into an empty string. The test expects `quarterly.results` and `.report`, so I put the original regex back.
+
+If you meant to change the behavior and strip from the first dot, tell me. The test's expectations would need updating instead.
+
+Squeal has queued the other test files that depend on this file. I haven't seen their results yet.
+   97.0 END  success turns=5 duration=96181ms cost=$0.0763853 usage={"input_tokens":6,"cache_creation_input_tokens":24853,"cache_read_input_tokens":46608,"output_tokens":958,"output_tokens_details":{"thinking_tokens":163},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":24853},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   97.0 FINAL `report-title.test.ts` passes again. Squeal reports no known failures for it at the current revision.
+
+I fixed `reportTitle` in `packages/contract/src/report-title.ts` rather than the test. Your change replaced the regex `/(.+)\.[^.]+$/` with `/\..*$/`, which strips everything from the first dot. That turned `quarterly.results.html` into `quarterly` and `.report` into an empty string. The test expects `quarterly.results` and `.report`, so I put the original regex back.
+
+If you meant to change the behavior and strip from the first dot, tell me. The test's expectations would need updating instead.
+
+Squeal has queued the other test files that depend on this file. I haven't seen their results yet.

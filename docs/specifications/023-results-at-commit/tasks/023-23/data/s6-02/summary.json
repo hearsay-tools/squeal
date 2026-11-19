@@ -1,0 +1,30 @@
+{
+  "id": "s6-02",
+  "loadStart": "2.81",
+  "exit": 0,
+  "wallSeconds": 96.59,
+  "squeal": [
+    "3s squeal status --wait 60000 packages/contract/src/report-title.test.ts 2>&1 | tail -30",
+    "65s squeal status --wait 60000 packages/contract/src/report-title.test.ts 2>&1 | tail -8"
+  ],
+  "skill": [],
+  "swaps": [],
+  "edits": [
+    "65s Edit ~squeal-w15/runs/w15/s6-02/packages/contract/src/report-title.ts"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.049388800000000004,
+  "usage": {
+    "cache_creation_input_tokens": 14181,
+    "cache_read_input_tokens": 58243,
+    "output_tokens": 810
+  },
+  "firstFinal": "`report-title.test.ts` passes again. I restored the original regex in `packages/contract/src/report-title.ts`, undoing your edit.\n\nYour change to `/\\..*$/` stripped everything from the first dot. `quarterly.results.html` became `quarterly`, where the test expects `quarterly.results`. The original `/(.+)\\.[^.]+$/` removes only the last extension. It also leaves a name that is only a leading dot, like `.report`, untouched.\n\nIf you meant to change how titles are derived, tell me what behavior you wanted and I'll update the test and implementation together. I only ran that one test file. Squeal has queued about 285 other test files that read this module, and those results haven't come back yet.",
+  "final": "`report-title.test.ts` passes again. I restored the original regex in `packages/contract/src/report-title.ts`, undoing your edit.\n\nYour change to `/\\..*$/` stripped everything from the first dot. `quarterly.results.html` became `quarterly`, where the test expects `quarterly.results`. The original `/(.+)\\.[^.]+$/` removes only the last extension. It also leaves a name that is only a leading dot, like `.report`, untouched.\n\nIf you meant to change how titles are derived, tell me what behavior you wanted and I'll update the test and implementation together. I only ran that one test file. Squeal has queued about 285 other test files that read this module, and those results haven't come back yet.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": false
+}

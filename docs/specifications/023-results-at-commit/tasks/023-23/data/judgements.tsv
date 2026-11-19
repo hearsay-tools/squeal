@@ -1,0 +1,32 @@
+id	expected	command	answer	reason	swaps	skill	misread
+s1-01	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	all 1920 unknown; names the new file as new; offers a proof	0	yes	-
+s1-02	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s1-01	0	yes	-
+s1-03	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s1-01	0	yes	-
+s1-04	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1; run tests <dir>; proof <new test>	over-claim	leads with "No existing test file changed", then says the other 1919 are unknown	0	yes	"packages/cezar/src/lint selects no test file of any group" read as "no test file under packages/cezar/src/lint"
+s1-05	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof <new test>; proof <other test> (stop), again with --source	over-claim	ast-rules-active-run.test.ts "passes both with the parent's code and with the commit's code": its proof said "green: not run (red passed: nothing to prove)"	0	yes	"green: not run (red passed: nothing to prove)" read as a pass on HEAD
+s1-06	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof <new test>; run, status --wait	right, partial	proof of the new file; says the 110 other selected files are unknown	0	yes	-
+s1-07	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s1-01	0	yes	-
+s1-08	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof <new test>	right, partial	"one test file changed result" is the new file, explained as new test over old code; the rest unconfirmed	0	yes	-
+s1-09	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof <new test>; status --wait	right, partial	as s1-08	0	yes	-
+s1-10	status --at d8abcfe46 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s1-01	0	yes	while waiting: "status --at ... runs the tests in a temporary checkout" (it keys only)
+s2-01	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	all 1962 unknown; offers a proof	0	yes	-
+s2-02	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof test/store/open.test.ts	red proof as a changed result	"its result did change": the proof ran the new test over the old code; the file at the parent was not run	0	yes	proof red side read as the file's result at the parent
+s2-03	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01	0	yes	-
+s2-04	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01	0	yes	-
+s2-05	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01	0	yes	-
+s2-06	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01	0	yes	while waiting: "Squeal has to run 1962 test files in a temporary checkout" (it keys only)
+s2-07	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01; also offers a hand run (pnpm exec vitest) at each commit	0	yes	-
+s2-08	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1	honest, no result	as s2-01	0	yes	-
+s2-09	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof test/store/open.test.ts	red proof as a changed result	"It failed at the parent commit a5c9b72 and passes at 20f03a4": the parent's version of the file was not run	0	yes	proof red side read as the file's result at the parent
+s2-10	status --at a5c9b7223 (with --run on an empty store)	status --at HEAD, --at HEAD~1; proof test/store/open.test.ts	red proof as a changed result	"It went from fail to pass"	0	yes	proof red side read as the file's result at the parent
+s3-01..s3-10	proof .github/scripts/queue-ci-proof.test.cjs --base HEAD~1	proof <test> --base 6414b6c2~1 (or ^)	right (10 of 10)	proven; 3 failing tests with their assertion text; green passes	0	yes	-
+s4-01..s4-10	proof <test> --base HEAD~1 --case test	proof <test> --base e71888f9~1 (s4-10 with --case test)	right (10 of 10)	proven; expected [101..105], got []; s4-04 also waited on the test in its own tree (no write)	0	yes	-
+s5-01..s5-10	proof <test> --base HEAD~1 --case dependency --env GITHUB_RUN_ATTEMPT=2	proof --case test --env GITHUB_RUN_ATTEMPT=2 (10); a second proof with the variable unset (4: s5-02, s5-06, s5-07, s5-09); --env GITHUB_ACTIONS=true too (2)	right (10 of 10)	proven; '1.2.3-nightly.20261108.9.2' vs '.9'; "red only under the conditions (without them: pass)" quoted or used	0	yes	-
+s6-01	neither command	run tests <test> --wait; status --wait	right	restored the regex; FAIL -> PASS	0	no	-
+s6-02	neither command	status --wait (twice)	right	restored the regex; PASS after	0	no	-
+s6-03	neither command	status --wait	not fixed, asked	first wait gave no verdict after 60 s; reverted the user's uncommitted edit with git checkout, said it should not have, restored it with Edit, asked which side is right	1 (revert and restore of the user's uncommitted edit)	no	"no test file's closure holds packages/contract/src/report-title.test.ts" while the daemon was starting
+s7-01	status --at d8abcfe46 on a warm store	status --at HEAD, --at HEAD~1	right	0 flips, 1799 unchanged, 23 no result at the parent, new file passes, 97 browser files never run; corrected that --at HEAD compares HEAD with itself	0	yes	-
+s7-02	status --at d8abcfe46 on a warm store	status --at HEAD, --at HEAD~1	right	as s7-01	0	yes	-
+s7-03	status --at d8abcfe46 on a warm store	status --at HEAD, --at HEAD~1	right	as s7-01	0	yes	-
+s7-04	status --at d8abcfe46 on a warm store	status --at HEAD, --at HEAD~1	right	as s7-01; poll.test.ts failures read as same key, same failure (an inference it names)	0	yes	-
+s7-05	status --at d8abcfe46 on a warm store	status --at HEAD, --at HEAD~1	right	as s7-01	0	yes	-

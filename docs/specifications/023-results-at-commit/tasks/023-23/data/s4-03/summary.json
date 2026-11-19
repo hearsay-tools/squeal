@@ -1,0 +1,31 @@
+{
+  "id": "s4-03",
+  "loadStart": "7.70",
+  "exit": 0,
+  "wallSeconds": 34.752,
+  "squeal": [
+    "6s git show e71888f9 --stat --format=%B | head -30; git show e71888f9 | head -80; sed -n 1,200p ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -A12 'proof'",
+    "8s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "6s Bash git show e71888f9 --stat --format=%B | head -30; git show e71888f9 | head -80; sed -n 1,200p ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md "
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0622625,
+  "usage": {
+    "cache_creation_input_tokens": 16825,
+    "cache_read_input_tokens": 86140,
+    "output_tokens": 1157
+  },
+  "firstFinal": "The old test was the problem. It fails against today's code, and the new version passes.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. Squeal ran both sides in temporary checkouts and left your tree alone. The code is the same on both sides (HEAD, `e71888f91`). Only the test file differs.\n\n| Side | Test file | Code | Result |\n|---|---|---|---|\n| Red | old, from `fb045d07c` | `e71888f91` | **fail** |\n| Green | new, from `e71888f91` | `e71888f91` | **pass** |\n\nThe failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The history poll returned no issues at all.\n\nThe old test used fixture events dated from `2026-10-27`, relative to a fixed `epoch`. The poller works out its history window from the real `Date`. Today is 2026-11-19, so those fixtures have fallen outside the window and are filtered out. The test was failing only because time had passed, not because the product code broke.\n\nThe commit adds `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime(epoch + 86_400_000)`. That pins the clock one day after the epoch, so the fixtures stay inside the window. The clock is restored with `vi.useRealTimers()` in `afterEach`.\n\nSqueal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. It does not affect this test.",
+  "final": "The old test was the problem. It fails against today's code, and the new version passes.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. Squeal ran both sides in temporary checkouts and left your tree alone. The code is the same on both sides (HEAD, `e71888f91`). Only the test file differs.\n\n| Side | Test file | Code | Result |\n|---|---|---|---|\n| Red | old, from `fb045d07c` | `e71888f91` | **fail** |\n| Green | new, from `e71888f91` | `e71888f91` | **pass** |\n\nThe failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The history poll returned no issues at all.\n\nThe old test used fixture events dated from `2026-10-27`, relative to a fixed `epoch`. The poller works out its history window from the real `Date`. Today is 2026-11-19, so those fixtures have fallen outside the window and are filtered out. The test was failing only because time had passed, not because the product code broke.\n\nThe commit adds `vi.useFakeTimers({ toFake: ['Date'] })` and `vi.setSystemTime(epoch + 86_400_000)`. That pins the clock one day after the epoch, so the fixtures stay inside the window. The clock is restored with `vi.useRealTimers()` in `afterEach`.\n\nSqueal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. It does not affect this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

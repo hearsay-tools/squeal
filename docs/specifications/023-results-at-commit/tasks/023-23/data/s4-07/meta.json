@@ -1,0 +1,14 @@
+{
+  "id": "s4-07",
+  "group": "s4",
+  "clone": "~squeal-w15/runs/w15/s4-07",
+  "prompt": "The last commit (e71888f91) only changed the test packages/cezar/src/automations/unhandled-polls.test.ts. Show me that the old version of that test was the problem: the old test fails against today's code, and the new one passes.",
+  "start": "2026-11-19T16:15:59.037Z",
+  "loadStart": "5.78",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 23.388,
+  "end": "2026-11-19T16:16:22.426Z",
+  "loadEnd": "7.72",
+  "transcript": "~squeal-w15/runs/w15/claude/projects/-home-squeal-w15-runs-w15-s4-07/4f934e55-9269-4f7a-8ad6-1b238eb94a56.jsonl"
+}

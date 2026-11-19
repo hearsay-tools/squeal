@@ -1,0 +1,81 @@
+    2.9 TOOL Skill: squeal:squeal
+    3.2 RES  Launching skill: squeal:squeal
+    3.5 TOOL Bash: git show a9a1fbf9 --stat --format=%B && git show a9a1fbf9 -- scripts/release-identity.test.mjs && git show 593679a5 --stat --format=%B
+    3.8 RES  fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             commit a9a1fbf99b7ec1732b38aad876b0e25043deb310
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 16:41:58 2026 +0100
+             
+                 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+             diff --git a/scripts/release-identity.test.mjs b/scripts/release …[2177 chars]
+    4.1 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    6.5 TOOL Bash: cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s5-01 && squeal checks | head -30
+    7.0 RES  80-Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes, so that wait may return on quiet instead of news. Quiet says no result your edits owe is outstanding, not that it passed: read the outcome in the snapshot the wait prints. The test catches the bug when it is listed under `Known failures` after the revert and gone from it after the restore; listed as passing after the revert, it does not. For one test of a large test file, nam …[4927 chars]
+    9.1 TOOL Bash: squeal proof --help 2>&1 | head -30; grep -n 'GITHUB_RUN_ATTEMPT' -r scripts/*.mjs | head
+    9.4 RES  Usage:
+               squeal proof <test file>... --base <commit> [--case source|test|dependency]
+                            [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
+                            [--repeat <n>] [--with <path>]... [--source <path>]...
+                            [--red-error <text>]... [--timeout <seconds>] [--json]
+                                             A red proof per named test file over committed HEAD:
+                                             red is the test at HEAD over the code at --base
+                                             (s …[3074 chars]
+   11.4 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2 --timeout 300 2>&1 | tail -40
+   51.5 RES                  at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402:25)
+                             at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+                             at Test.postRun (node:internal/test_runner/test:1542:19)
+                             at Test.run (node:internal/test_runner/test:1467:12)
+                             at async startSubtestAfterBootstrap (node:internal/test_r …[3077 chars]
+   57.4 SAY  The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran the proof with `GITHUB_RUN_ATTEMPT=2`, the value a CI re-run supplies.
+
+**Why it depended on it.** The test builds the child process environment from `process.env` and strips some variables first. In the old version (`593679a5`) the filter was `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|ACTIONS_ID_TOKEN_|NODE_AUTH_TOKEN)/`. That removed `GITHUB_ACTIONS` but not `GITHUB_RUN_ATTEMPT`, so the variable passed through from the workflow. `scripts/release-snapshot.mjs:62` reads it and adds the attempt number to the version when it matches `/^\d+$/`. The test never set it itself.
+
+**What the fix changed (`a9a1fbf9`).**
+- The filter now strips every `GITHUB_*` variable.
+- The test sets `GITHUB_RUN_ATTEMPT: '1'` explicitly, so the expected versions don't depend on the runner.
+
+**The proof.** I ran `squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2`. It ran the old test file against the current code and the fixed file against the same code, both with that variable set.
+
+| Side | Result |
+|---|---|
+| Old test (`a9a1fbf9^`), attempt=2 | Fails with the wrong version |
+| Fixed test (`HEAD`), attempt=2 | Passes |
+| Old test without the variable | Passes, so the failure comes from the variable alone |
+
+Verdict: 1 proven, 0 not red, 0 red for another reason, 0 not green.
+
+The failures in the old run are the ones you saw on CI re-runs:
+- nightly: got `1.2.3-nightly.20261108.9 …[1751 chars]
+   57.5 END  success turns=7 duration=56667ms cost=$0.0777004 usage={"input_tokens":10,"cache_creation_input_tokens":19277,"cache_read_input_tokens":117979,"output_tokens":1769,"output_tokens_details":{"thinking_tokens":369},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":19277},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   57.5 FINAL The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran the proof with `GITHUB_RUN_ATTEMPT=2`, the value a CI re-run supplies.
+
+**Why it depended on it.** The test builds the child process environment from `process.env` and strips some variables first. In the old version (`593679a5`) the filter was `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|ACTIONS_ID_TOKEN_|NODE_AUTH_TOKEN)/`. That removed `GITHUB_ACTIONS` but not `GITHUB_RUN_ATTEMPT`, so the variable passed through from the workflow. `scripts/release-snapshot.mjs:62` reads it and adds the attempt number to the version when it matches `/^\d+$/`. The test never set it itself.
+
+**What the fix changed (`a9a1fbf9`).**
+- The filter now strips every `GITHUB_*` variable.
+- The test sets `GITHUB_RUN_ATTEMPT: '1'` explicitly, so the expected versions don't depend on the runner.
+
+**The proof.** I ran `squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2`. It ran the old test file against the current code and the fixed file against the same code, both with that variable set.
+
+| Side | Result |
+|---|---|
+| Old test (`a9a1fbf9^`), attempt=2 | Fails with the wrong version |
+| Fixed test (`HEAD`), attempt=2 | Passes |
+| Old test without the variable | Passes, so the failure comes from the variable alone |
+
+Verdict: 1 proven, 0 not red, 0 red for another reason, 0 not green.
+
+The failures in the old run are the ones you saw on CI re-runs:
+- nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+- PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+
+The same assertion at `scripts/release-identity.test.mjs:96` failed for each of these channels.
+
+The run was in temporary checkouts, so your tree is untouched.

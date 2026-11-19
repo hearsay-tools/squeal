@@ -1,0 +1,30 @@
+{
+  "id": "s7-01",
+  "loadStart": "1.49",
+  "exit": 0,
+  "wallSeconds": 237.574,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ---; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "128s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-01/55917862-0d4e-4803-aa56-a5c0c9dfcd0e/tasks/bz44r2e38.output"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 10,
+  "costUsd": 0.12373100000000002,
+  "usage": {
+    "cache_creation_input_tokens": 31992,
+    "cache_read_input_tokens": 228970,
+    "output_tokens": 2081
+  },
+  "firstFinal": "One correction to my last message: the first comparison doesn't answer your question. It compared 8be977ad6 against the working tree, which is the same commit, so \"0 pass -> fail\" there says nothing about the change from the parent. The useful run is the one against `8be977ad6~1`, and it hasn't finished.\n\nI'm waiting on that background job. It will notify me when it completes, and I'll report the per-file differences then. I won't answer from the first output.",
+  "final": "**Short answer:** No test file went from pass to fail or from fail to pass between the parent (d8abcfe46) and 8be977ad6. This comes with a limit: Squeal had no stored result for the parent's version of 24 files, so it can't compare them.\n\nThe comparison was `squeal status --at d8abcfe46` against the working tree, which is at 8be977ad6:\n\n- **Pass to fail:** 0\n- **Fail to pass:** 0\n- **Unchanged:** 1799 test files\n- **Unknown:** 121 test files\n\nThe unknown files break down like this:\n\n- **97 browser e2e files** (`packages/web/e2e/*.e2e.ts`): no result at either commit. Squeal only runs these on request.\n- **23 test files with no stored result at the parent:** they pass now. Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`, plus 20 more. Their content changed in this commit, so there is no parent result to compare. A pass now doesn't show how they behaved before.\n- **`packages/cezar/src/lint/active-run-write-index.test.ts`:** new in this commit, and it passes.\n\nTwo failures currently on record don't tell us anything about this commit:\n\n- **`packages/web/src/test/poll.test.ts`:** two tests fail, \"closes the successful health response socket\" and \"closes every rejected non-2xx socket\". Squeal recorded them at the current revision, with no earlier pass on record, so it can't say whether they predate the commit. The commit's subject is lint-related, so a link is unlikely, but I haven't confirmed that.\n- **`[e2e]` global setup:** Chrome failed to launch, which is an environment problem.\n\nTo close the gap on the 24 files and the two `poll.test.ts` failures, I can run `squeal proof` against d8abcfe46 for each of them. It checks them in a temporary checkout and leaves your tree alone.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

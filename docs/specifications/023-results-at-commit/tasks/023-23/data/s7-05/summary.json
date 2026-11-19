@@ -1,0 +1,31 @@
+{
+  "id": "s7-05",
+  "loadStart": "2.84",
+  "exit": 0,
+  "wallSeconds": 222.881,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ---; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "129s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-05/130fb7f9-9e4a-4731-b472-c91595f6458d/tasks/b2o4zi3k9.output",
+    "135s f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-05/130fb7f9-9e4a-4731-b472-c91595f6458d/tasks/b2o4zi3k9.output; until grep -q \"unknown\" <(sed -n '10,$p' $f); do sleep 3; done; sed -n '10,$p' $f"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.07940660000000001,
+  "usage": {
+    "cache_creation_input_tokens": 17861,
+    "cache_read_input_tokens": 150561,
+    "output_tokens": 1967
+  },
+  "firstFinal": "No test file flipped between pass and fail in 8be977ad6 compared with its parent d8abcfe46. Squeal reports 0 pass→fail and 0 fail→pass, but 121 of 1920 files have no result to compare.\n\n- **1799 files** have the same inputs and the same recorded results on both commits.\n- **23 files** went from \"no result\" to pass. The commit changed what they read, so Squeal has no stored result at the parent's inputs, and they pass now. That shows no change in outcome, only that I can't compare. These files include `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. The other 20 are cut off in the output (`--full` lists them).\n- **1 file is new:** `packages/cezar/src/lint/active-run-write-index.test.ts` passes, and it didn't exist at the parent.\n- **97 browser/e2e files** have no result on either side. They haven't been run.\n\nThe two failures in `packages/web/src/test/poll.test.ts` (the socket-closing tests) do not appear among the changes. The commit only touches lint code, which that test doesn't seem to read. Squeal has no pass on record for it at any inputs, so I can't say whether it was already failing at the parent. To settle it, run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46`. To turn the 23 \"no result\" files into real comparisons, run them at the parent with `--base d8abcfe46`.",
+  "final": "No test file flipped between pass and fail in 8be977ad6 compared with its parent d8abcfe46. Squeal reports 0 pass→fail and 0 fail→pass, but 121 of 1920 files have no result to compare.\n\n- **1799 files** have the same inputs and the same recorded results on both commits.\n- **23 files** went from \"no result\" to pass. The commit changed what they read, so Squeal has no stored result at the parent's inputs, and they pass now. That shows no change in outcome, only that I can't compare. These files include `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. The other 20 are cut off in the output (`--full` lists them).\n- **1 file is new:** `packages/cezar/src/lint/active-run-write-index.test.ts` passes, and it didn't exist at the parent.\n- **97 browser/e2e files** have no result on either side. They haven't been run.\n\nThe two failures in `packages/web/src/test/poll.test.ts` (the socket-closing tests) do not appear among the changes. The commit only touches lint code, which that test doesn't seem to read. Squeal has no pass on record for it at any inputs, so I can't say whether it was already failing at the parent. To settle it, run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46`. To turn the 23 \"no result\" files into real comparisons, run them at the parent with `--base d8abcfe46`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

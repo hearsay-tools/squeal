@@ -1,0 +1,32 @@
+{
+  "id": "s2-07",
+  "loadStart": "5.15",
+  "exit": 0,
+  "wallSeconds": 207.889,
+  "squeal": [
+    "3s squeal status --at 20f03a4 2>&1 | head -60; echo ----; squeal status --at 20f03a4~1 2>&1 | head -60",
+    "125s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-07/2473658a-69b0-4b97-b777-528d6ad9614d/tasks/bzujabfaj.output | head -80",
+    "129s f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-07/2473658a-69b0-4b97-b777-528d6ad9614d/tasks/bzujabfaj.output; for i in $(seq 55); do [ -s $f ] && break; sleep 10; done; head -c 6000 $f",
+    "143s f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-07/2473658a-69b0-4b97-b777-528d6ad9614d/tasks/bzujabfaj.output; for i in $(seq 55); do grep -q 'unknown$' <(tail -n +9 $f) && break; [ $(grep -c 'pass -> fail' $f) -ge 2 ] && break; sleep 10; done; tail -n +8 $f | head -c 6000"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.0629021,
+  "usage": {
+    "cache_creation_input_tokens": 13263,
+    "cache_read_input_tokens": 142866,
+    "output_tokens": 1543
+  },
+  "firstFinal": "I couldn't determine this. Squeal had no stored results for either commit, so there is nothing to compare.\n\nI ran `squeal status --at` on `20f03a4` and on its parent `a5c9b72`. Both reported the same thing:\n\n- 1962 test files, all \"no result -> no result\".\n- 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown.\n\nThis worktree's Squeal daemon was still at revision 0 and had run none of the test files. Squeal only compares results it has already recorded, so \"0 changes\" here means \"nothing was run\". It does not mean the results are identical.\n\nTo get a real answer, run the tests at both commits, for example:\n\n- Let the daemon finish its warm-up, then re-run `squeal status --at a5c9b72`.\n- For one suspect test, run `squeal proof <test file> --base a5c9b72`.\n- Or run `pnpm exec vitest run <paths>` on the test files the commit touched, at each commit.\n\nI haven't looked at what the commit changed. I can check which test files it affects and run those at both commits. Do you want me to do that?",
+  "final": "I couldn't determine this. Squeal had no stored results for either commit, so there is nothing to compare.\n\nI ran `squeal status --at` on `20f03a4` and on its parent `a5c9b72`. Both reported the same thing:\n\n- 1962 test files, all \"no result -> no result\".\n- 0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown.\n\nThis worktree's Squeal daemon was still at revision 0 and had run none of the test files. Squeal only compares results it has already recorded, so \"0 changes\" here means \"nothing was run\". It does not mean the results are identical.\n\nTo get a real answer, run the tests at both commits, for example:\n\n- Let the daemon finish its warm-up, then re-run `squeal status --at a5c9b72`.\n- For one suspect test, run `squeal proof <test file> --base a5c9b72`.\n- Or run `pnpm exec vitest run <paths>` on the test files the commit touched, at each commit.\n\nI haven't looked at what the commit changed. I can check which test files it affects and run those at both commits. Do you want me to do that?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

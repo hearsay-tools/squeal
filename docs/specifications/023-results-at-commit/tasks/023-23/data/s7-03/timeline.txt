@@ -1,0 +1,55 @@
+    1.1 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: The daemon is stopped by request (`squeal stop`); a hook starts one at the next edit, or run `squeal start`; results are as of revision 0. For a manual run across edits, `squeal hold -- <command>` holds validation until the command exits.\nKnown failures: 2 (2 tests); 1823 of 1920 test files are current (run on the files as they are now), and `squeal status` counts the rest.\nbrowser: 97 test files; 97 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.\nComplexity: 5 functions over 20; squeal code lists them.\n\nFAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes every rejected non-2xx socket across repeated JSON probes\n      expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1\n      at packages/web/src/test/poll.test.ts:257:36\n      Recorded 2 min ago in this worktree at revision 0, load 0.08 per CPU when it ran; no pass at these inputs is on record before it; no retry asked at these inputs\n\nFAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes the successful health response socket after accepting headers\n      expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1\n      at packages/web/src …[2374 chars]
+    3.2 TOOL Skill: squeal:squeal
+    3.3 RES  Launching skill: squeal:squeal
+    5.3 TOOL Bash: squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60
+  125.5 RES  squeal: keying test files at 8be977ad6 in a temporary checkout
+             squeal status --at 8be977ad6: 1920 test files, against the working tree (HEAD 8be977ad6)
+             No daemon runs in this worktree: now is the stored results at the working tree's keys.
+             Keys at 8be977ad6 from a temporary checkout, 58.7 s (checked against the commit in 600 ms).
+             97 test files: no result -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+             packages/cezar/src/home/runtime-cli.tes …[1395 chars]
+  129.3 TOOL Bash: until [ -s ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output ] && grep -q "pass -> fail" ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output; do sleep 5; done; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output
+  129.4 RES  squeal: keying test files at 8be977ad6 in a temporary checkout
+             squeal status --at 8be977ad6: 1920 test files, against the working tree (HEAD 8be977ad6)
+             No daemon runs in this worktree: now is the stored results at the working tree's keys.
+             Keys at 8be977ad6 from a temporary checkout, 58.7 s (checked against the commit in 600 ms).
+             97 test files: no result -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+             packages/cezar/src/home/runtime-cli.tes …[820 chars]
+  132.6 TOOL Bash: sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output | tail -15
+  132.6 RES  <tool_use_error>Blocked: sleep 100 followed by: cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output tail -15. To wait for a condition, use Monitor with an until-loop (e.g. `until <check>; do sleep 2; done`). To wait for a command you started, use run_in_background: true. Do not chain shorter sleeps to work around this block.</tool_use_error>
+  134.7 TOOL Read: ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output
+  134.9 RES  1	squeal: keying test files at 8be977ad6 in a temporary checkout
+             2	squeal status --at 8be977ad6: 1920 test files, against the working tree (HEAD 8be977ad6)
+             3	No daemon runs in this worktree: now is the stored results at the working tree's keys.
+             4	Keys at 8be977ad6 from a temporary checkout, 58.7 s (checked against the commit in 600 ms).
+             5	97 test files: no result -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+             6	packages/cezar/src/home/run …[855 chars]
+  138.8 TOOL Bash: f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output; until [ "$(grep -c 'pass -> fail' $f)" -ge 2 ]; do sleep 3; done; sed -n '9,$p' $f
+  217.1 RES  ----
+             squeal: keying test files at d8abcfe46 in a temporary checkout
+             squeal status --at d8abcfe46: 1920 test files, against the working tree (HEAD 8be977ad6)
+             No daemon runs in this worktree: now is the stored results at the working tree's keys.
+             Keys at d8abcfe46 from a temporary checkout, 57.6 s (checked against the commit in 601 ms).
+             97 test files: no result -> no result: packages/web/e2e/activity.e2e.ts, packages/web/e2e/agent-browser-tabs.e2e.ts, packages/web/e2e/agents-dock.e2e.ts and 94 more
+             23 test files: no res …[1352 chars]
+  224.5 SAY  **No recorded test result differs between `8be977ad6` and its parent `d8abcfe46`: 0 pass→fail and 0 fail→pass. That is not proof that nothing changed.**
+
+- **Compared:** 1799 test files have the same result at both commits.
+- **No pass/fail to compare (121 files):**
+  - 97 are browser e2e files that haven't been run at either commit.
+  - 23 test files have a result now but none on record at the parent, so the status line reads "no result → pass". Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. That is missing history, not a verified behaviour change.
+  - `packages/cezar/src/lint/active-run-write-index.test.ts` is new since the parent and passes now.
+- **Failures on record:** `packages/web/src/test/poll.test.ts` has 2 failing tests ("closes every rejected non-2xx socket…" and "closes the successful health response socket…"). They were recorded at revision 0 of this worktree, with no earlier pass on record to compare against. I haven't checked whether they fail at the parent too, and I didn't read the commit's diff. Its title (`perf(lint)`) suggests a lint-only change, but that is a guess.
+
+To close the gaps, I can run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46` to see whether the two failures predate the commit. I can also run `squeal run` on the 23 files with no parent result. Say if you want either.
+  225.6 END  success turns=8 duration=224422ms cost=$0.0876333 usage={"input_tokens":16,"cache_creation_input_tokens":18630,"cache_read_input_tokens":180763,"output_tokens":2295,"output_tokens_details":{"thinking_tokens":472},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":18630},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+  225.6 FINAL **No recorded test result differs between `8be977ad6` and its parent `d8abcfe46`: 0 pass→fail and 0 fail→pass. That is not proof that nothing changed.**
+
+- **Compared:** 1799 test files have the same result at both commits.
+- **No pass/fail to compare (121 files):**
+  - 97 are browser e2e files that haven't been run at either commit.
+  - 23 test files have a result now but none on record at the parent, so the status line reads "no result → pass". Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. That is missing history, not a verified behaviour change.
+  - `packages/cezar/src/lint/active-run-write-index.test.ts` is new since the parent and passes now.
+- **Failures on record:** `packages/web/src/test/poll.test.ts` has 2 failing tests ("closes every rejected non-2xx socket…" and "closes the successful health response socket…"). They were recorded at revision 0 of this worktree, with no earlier pass on record to compare against. I haven't checked whether they fail at the parent too, and I didn't read the commit's diff. Its title (`perf(lint)`) suggests a lint-only change, but that is a guess.
+
+To close the gaps, I can run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46` to see whether the two failures predate the commit. I can also run `squeal run` on the 23 files with no parent result. Say if you want either.

@@ -1,0 +1,14 @@
+{
+  "id": "s3-02",
+  "group": "s3",
+  "clone": "~squeal-w15/runs/w15/s3-02",
+  "prompt": "The last commit (6414b6c20) fixes how main reuses a queue run and adds regression tests to .github/scripts/queue-ci-proof.test.cjs. For the PR description, show me that the new tests fail without the fix and pass with it.",
+  "start": "2026-11-19T15:46:59.582Z",
+  "loadStart": "4.83",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 28.259,
+  "end": "2026-11-19T15:47:27.843Z",
+  "loadEnd": "4.40",
+  "transcript": "~squeal-w15/runs/w15/claude/projects/-home-squeal-w15-runs-w15-s3-02/d6c9bcdf-f499-4c98-b216-e3a302f4ecc6.jsonl"
+}

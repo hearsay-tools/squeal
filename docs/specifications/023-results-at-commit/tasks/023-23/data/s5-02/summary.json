@@ -1,0 +1,31 @@
+{
+  "id": "s5-02",
+  "loadStart": "2.93",
+  "exit": 0,
+  "wallSeconds": 68.741,
+  "squeal": [
+    "5s squeal proof --help 2>&1 | head -40; grep -n -B2 -A12 'proof' ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | head -80",
+    "12s squeal proof scripts/release-identity.test.mjs --base 5dbf15f9 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40; echo \"--- control: same base, env unset\"; squeal proof scripts/release-identity.test.mjs --base 5dbf15f9 --case test --env GITHUB_RUN_ATTEMPT= 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "5s Bash squeal proof --help 2>&1 | head -40; grep -n -B2 -A12 'proof' ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | head -80"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0809623,
+  "usage": {
+    "cache_creation_input_tokens": 20258,
+    "cache_read_input_tokens": 90113,
+    "output_tokens": 2129
+  },
+  "firstFinal": "The old test depended on `GITHUB_RUN_ATTEMPT`. The fixed one doesn't. I ran both versions of `scripts/release-identity.test.mjs` with `squeal proof`, against the same release scripts at HEAD.\n\n**What changed.** The test's `run()` helper builds the child process environment.\n- **Old version (`5dbf15f9`):** it filtered the inherited environment with `GITHUB_ACTIONS$` and never set `GITHUB_RUN_ATTEMPT`. Whatever the runner exported leaked into the release script.\n- **Fixed version (`4fadedf3`):** it filters out every `GITHUB_*` variable and then pins `GITHUB_RUN_ATTEMPT: '1'`.\n\n**Run with `GITHUB_RUN_ATTEMPT=2`**, as on a CI re-run:\n\n| Test | Old version | Fixed version |\n|---|---|---|\n| Nightly release | actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9` | pass |\n| PR release | actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9` | pass |\n\nThe tail of the output I captured shows those two tests, and the run counts one red failure for the file. The \"fixed version passes\" row comes from the proof's green side, not a separate run.\n\n**Control run with `GITHUB_RUN_ATTEMPT` unset.** The old test passed (verdict \"not red\"). So the failure comes from that variable and from nothing else.\n\n**What this means for the commit.** `4fadedf3` is the exact inverse of `5dbf15f9` on this file. The fix puts back the `GITHUB_` filter and the pinned `GITHUB_RUN_ATTEMPT` that `5dbf15f9` had removed. I only compared the two commits' diffs for this file, so I don't know whether `5dbf15f9` removed them on purpose, for example to test with the workflow's real environment.\n\n**Limits.**\n- I only set `GITHUB_RUN_ATTEMPT=2`. The proof doesn't show whether other `GITHUB_*` variables also leak through the old filter.\n- The `GITHUB_RUN_ATTEMPT=2` condition makes both sides run fresh, so Squeal didn't store their results.",
+  "final": "The old test depended on `GITHUB_RUN_ATTEMPT`. The fixed one doesn't. I ran both versions of `scripts/release-identity.test.mjs` with `squeal proof`, against the same release scripts at HEAD.\n\n**What changed.** The test's `run()` helper builds the child process environment.\n- **Old version (`5dbf15f9`):** it filtered the inherited environment with `GITHUB_ACTIONS$` and never set `GITHUB_RUN_ATTEMPT`. Whatever the runner exported leaked into the release script.\n- **Fixed version (`4fadedf3`):** it filters out every `GITHUB_*` variable and then pins `GITHUB_RUN_ATTEMPT: '1'`.\n\n**Run with `GITHUB_RUN_ATTEMPT=2`**, as on a CI re-run:\n\n| Test | Old version | Fixed version |\n|---|---|---|\n| Nightly release | actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9` | pass |\n| PR release | actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9` | pass |\n\nThe tail of the output I captured shows those two tests, and the run counts one red failure for the file. The \"fixed version passes\" row comes from the proof's green side, not a separate run.\n\n**Control run with `GITHUB_RUN_ATTEMPT` unset.** The old test passed (verdict \"not red\"). So the failure comes from that variable and from nothing else.\n\n**What this means for the commit.** `4fadedf3` is the exact inverse of `5dbf15f9` on this file. The fix puts back the `GITHUB_` filter and the pinned `GITHUB_RUN_ATTEMPT` that `5dbf15f9` had removed. I only compared the two commits' diffs for this file, so I don't know whether `5dbf15f9` removed them on purpose, for example to test with the workflow's real environment.\n\n**Limits.**\n- I only set `GITHUB_RUN_ATTEMPT=2`. The proof doesn't show whether other `GITHUB_*` variables also leak through the old filter.\n- The `GITHUB_RUN_ATTEMPT=2` condition makes both sides run fresh, so Squeal didn't store their results.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

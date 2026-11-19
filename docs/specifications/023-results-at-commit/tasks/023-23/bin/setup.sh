@@ -4,7 +4,7 @@
 # ~/work/<task id> (deploy.sh makes both). Inputs made on the worker's host and copied to <work>/in:
 # hub.bundle (the private hub at d84397e), squawk.bundle (squawk's history to 0dfe0724c),
 # install.sh (the release's own, git show squeal--v0.1.568:install.sh). Throwaway user squeal-w15,
-# case root /home/squeal-w15/runs/w15; step dirs copies the inputs and fixtures into its in/.
+# case root /home/$U/runs/w15 (U=squeal-w15); step dirs copies the inputs and fixtures into its in/.
 #   sh setup.sh <step>...
 #     user     the throwaway user squeal-w15 (no password, no sudo)
 #     node     Node 24.21.0 from nodejs.org, checked against SHASUMS256.txt, at /opt/squeal-w15/node24

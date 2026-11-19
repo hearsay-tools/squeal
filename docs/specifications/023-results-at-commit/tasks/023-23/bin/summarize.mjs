@@ -48,9 +48,18 @@ for (const id of readdirSync(logs).sort()) {
         if (["Edit", "Write", "MultiEdit", "NotebookEdit"].includes(c.name)) s.edits.push(`${t.toFixed(0)}s ${c.name} ${i.file_path ?? ""}`);
       }
     if (ev.type === "result") {
-      s.turns = ev.num_turns;
+      // A background task's notification starts another turn with its own result event;
+      // total_cost_usd and modelUsage are cumulative over the session, usage is the last turn's.
+      s.results = (s.results ?? 0) + 1;
+      s.turns = (s.turns ?? 0) + (ev.num_turns ?? 0);
       s.costUsd = ev.total_cost_usd;
-      s.usage = ev.usage;
+      const m = Object.values(ev.modelUsage ?? {});
+      s.usage = {
+        cache_creation_input_tokens: m.reduce((a, x) => a + (x.cacheCreationInputTokens ?? 0), 0),
+        cache_read_input_tokens: m.reduce((a, x) => a + (x.cacheReadInputTokens ?? 0), 0),
+        output_tokens: m.reduce((a, x) => a + (x.outputTokens ?? 0), 0),
+      };
+      s.firstFinal ??= ev.result;
       s.final = ev.result;
     }
   }
@@ -74,6 +83,7 @@ for (const id of readdirSync(logs).sort()) {
       s.skill.length ? "skill" : "",
       s.swaps.length,
       s.edits.length,
+      s.results,
       JSON.stringify(s.statusAfter),
       s.worktreesAfter,
       u.cache_creation_input_tokens,
@@ -83,6 +93,6 @@ for (const id of readdirSync(logs).sort()) {
     ].join("\t"),
   );
 }
-const head = "id\tload\texit\twall_s\tat\tproof\tskill\tswap_cmds\tedits\tstatus_after\tworktrees\tcache_w\tcache_r\tout\tusd";
+const head = "id\tload\texit\twall_s\tat\tproof\tskill\tswap_cmds\tedits\tresults\tstatus_after\tworktrees\tcache_w\tcache_r\tout\tusd";
 writeFileSync(join(logs, "summary.tsv"), `${[head, ...rows].join("\n")}\n`);
 console.log([head, ...rows].join("\n"));

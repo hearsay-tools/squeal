@@ -1,0 +1,74 @@
+    2.1 TOOL Skill: squeal:squeal
+    2.2 RES  Launching skill: squeal:squeal
+    2.7 TOOL Bash: git show HEAD --stat --format=%H%n%s && git show HEAD -- scripts/release-identity.test.mjs && git show HEAD~1 --stat --format=%H%n%s
+    2.9 RES  149cf90bac96e691286911e172f0b733f689cd8b
+             fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             commit 149cf90bac96e691286911e172f0b733f689cd8b
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 17:16:43 2026 +0100
+             
+                 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+             diff --git a/scripts/rel …[2257 chars]
+    3.0 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.7 TOOL Bash: squeal proof --help 2>&1 | head -40; squeal checks 2>&1 | head -20
+    5.2 RES  Usage:
+               squeal proof <test file>... --base <commit> [--case source|test|dependency]
+                            [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
+                            [--repeat <n>] [--with <path>]... [--source <path>]...
+                            [--red-error <text>]... [--timeout <seconds>] [--json]
+                                             A red proof per named test file over committed HEAD:
+                                             red is the test at HEAD over the code at --base
+                                             (s …[3924 chars]
+    8.4 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 --timeout 300 2>&1 | tail -40
+    8.9 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT= --timeout 300 2>&1 | tail -20
+   37.7 RES                  at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402:25)
+                             at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+                             at Test.postRun (node:internal/test_runner/test:1542:19)
+                             at Test.run (node:internal/test_runner/test:1467:12)
+                             at async startSubtestAfterBootstrap (node:internal/test_r …[3077 chars]
+   51.7 RES  squeal: proving 1 test file against cf088d930 in temporary checkouts
+             squeal: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs); resolving with tsx's rules
+             squeal: node-test project "root:test:unit": preload "scripts/test-home-env.mjs …[2335 chars]
+   58.4 SAY  The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` for both cases, each in a temporary checkout, so your tree is untouched.
+
+**What the commit changed** (`149cf90b`, `scripts/release-identity.test.mjs`, `run()`):
+- The old environment filter removed only `GITHUB_ACTIONS` from the inherited env. It matched `GITHUB_ACTIONS$` among its prefixes, so every other `GITHUB_*` variable, including `GITHUB_RUN_ATTEMPT`, passed through to the release script.
+- The fix widens the filter to `GITHUB_`, so all inherited `GITHUB_*` variables are stripped.
+- It then sets `GITHUB_RUN_ATTEMPT: '1'` explicitly.
+
+**Proof 1: `GITHUB_RUN_ATTEMPT=2`, as in a CI re-run.** The old test over the current code (red side) failed and the fixed test (green side) passed. Squeal reported "1 proven".
+- The old test failed on the nightly and PR publish checks with these assertion errors:
+  - nightly: actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- The release script appends the attempt number once it is above 1. The old test leaked the runner's value in, and the expected version had no attempt suffix.
+
+**Proof 2: `GITHUB_RUN_ATTEMPT` unset, as in a first run or locally.** Squeal reported "not red", so the old test passed. It only broke when the variable was present, so the bug showed only on re-runs.
+
+**Notes:**
+- The proof sets the variable in the harness environment, so the old test i …[1866 chars]
+   58.6 END  success turns=7 duration=58095ms cost=$0.0728595 usage={"input_tokens":8,"cache_creation_input_tokens":18810,"cache_read_input_tokens":88185,"output_tokens":1700,"output_tokens_details":{"thinking_tokens":376},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":18810},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   58.6 FINAL The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` for both cases, each in a temporary checkout, so your tree is untouched.
+
+**What the commit changed** (`149cf90b`, `scripts/release-identity.test.mjs`, `run()`):
+- The old environment filter removed only `GITHUB_ACTIONS` from the inherited env. It matched `GITHUB_ACTIONS$` among its prefixes, so every other `GITHUB_*` variable, including `GITHUB_RUN_ATTEMPT`, passed through to the release script.
+- The fix widens the filter to `GITHUB_`, so all inherited `GITHUB_*` variables are stripped.
+- It then sets `GITHUB_RUN_ATTEMPT: '1'` explicitly.
+
+**Proof 1: `GITHUB_RUN_ATTEMPT=2`, as in a CI re-run.** The old test over the current code (red side) failed and the fixed test (green side) passed. Squeal reported "1 proven".
+- The old test failed on the nightly and PR publish checks with these assertion errors:
+  - nightly: actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- The release script appends the attempt number once it is above 1. The old test leaked the runner's value in, and the expected version had no attempt suffix.
+
+**Proof 2: `GITHUB_RUN_ATTEMPT` unset, as in a first run or locally.** Squeal reported "not red", so the old test passed. It only broke when the variable was present, so the bug showed only on re-runs.
+
+**Notes:**
+- The proof sets the variable in the harness environment, so the old test inherited it. That matches what CI does on a re-run.
+- In the fixed test the value is hardcoded to `'1'` and everything else matching `GITHUB_` is dropped. The test no longer depends on the surrounding environment for that variable.
+- Squeal printed a warning that the test-home preload may register module hooks that it can't track. It doesn't affect these verdicts.

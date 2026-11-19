@@ -1,0 +1,30 @@
+{
+  "id": "s4-04",
+  "loadStart": "6.39",
+  "exit": 0,
+  "wallSeconds": 89.799,
+  "squeal": [
+    "5s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f91~1 2>&1 | tail -60",
+    "5s git show e71888f91 --stat | head -20 && squeal status --wait 60000 packages/cezar/src/automations/unhandled-polls.test.ts 2>&1 | tail -15"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.054733199999999996,
+  "usage": {
+    "cache_creation_input_tokens": 16249,
+    "cache_read_input_tokens": 59287,
+    "output_tokens": 817
+  },
+  "firstFinal": "The proof shows the old test was the problem. It fails against today's code, and the new one passes.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f91~1`. It put the old test (from `fb045d07c`) over the current code (`e71888f91`) in a temporary checkout. It then ran the new test over the same code.\n\n- **Red (old test, today's code):** it fails. The test is \"counts only unhandled matching issues and resumes after restart (history=true)\", and the assertion at `unhandled-polls.test.ts:72` reports `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. It got no issues where it expected five.\n- **Green (new test, today's code):** it passes.\n\nThe only file changed in that commit is the test (10 lines added, 2 removed). Since the code is identical in both runs, the test change alone moves the result from fail to pass. The commit message says it pins the clock in the history test, so the old test was probably time-dependent. I didn't read the diff, so I haven't confirmed that is why it failed.\n\nSqueal's own background run of the full suite is still queued. It had no verdict for this file when I stopped waiting, so the proof above is the evidence. The proof also noted that its checkout changed `packages/mobile/android/gradlew.bat` because of git's checkout rules. That has no bearing on this test.",
+  "final": "The proof shows the old test was the problem. It fails against today's code, and the new one passes.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f91~1`. It put the old test (from `fb045d07c`) over the current code (`e71888f91`) in a temporary checkout. It then ran the new test over the same code.\n\n- **Red (old test, today's code):** it fails. The test is \"counts only unhandled matching issues and resumes after restart (history=true)\", and the assertion at `unhandled-polls.test.ts:72` reports `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. It got no issues where it expected five.\n- **Green (new test, today's code):** it passes.\n\nThe only file changed in that commit is the test (10 lines added, 2 removed). Since the code is identical in both runs, the test change alone moves the result from fail to pass. The commit message says it pins the clock in the history test, so the old test was probably time-dependent. I didn't read the diff, so I haven't confirmed that is why it failed.\n\nSqueal's own background run of the full suite is still queued. It had no verdict for this file when I stopped waiting, so the proof above is the evidence. The proof also noted that its checkout changed `packages/mobile/android/gradlew.bat` because of git's checkout rules. That has no bearing on this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

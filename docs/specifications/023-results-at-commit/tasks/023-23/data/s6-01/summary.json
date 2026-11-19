@@ -1,0 +1,30 @@
+{
+  "id": "s6-01",
+  "loadStart": "0.95",
+  "exit": 0,
+  "wallSeconds": 97.37,
+  "squeal": [
+    "3s squeal run tests packages/contract/src/report-title.test.ts --wait 60000 2>&1 | tail -40",
+    "68s squeal status --wait 60000 packages/contract/src/report-title.test.ts 2>&1 | tail -20"
+  ],
+  "skill": [],
+  "swaps": [],
+  "edits": [
+    "68s Edit ~squeal-w15/runs/w15/s6-01/packages/contract/src/report-title.ts"
+  ],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0763853,
+  "usage": {
+    "cache_creation_input_tokens": 24853,
+    "cache_read_input_tokens": 46608,
+    "output_tokens": 958
+  },
+  "firstFinal": "`report-title.test.ts` passes again. Squeal reports no known failures for it at the current revision.\n\nI fixed `reportTitle` in `packages/contract/src/report-title.ts` rather than the test. Your change replaced the regex `/(.+)\\.[^.]+$/` with `/\\..*$/`, which strips everything from the first dot. That turned `quarterly.results.html` into `quarterly` and `.report` into an empty string. The test expects `quarterly.results` and `.report`, so I put the original regex back.\n\nIf you meant to change the behavior and strip from the first dot, tell me. The test's expectations would need updating instead.\n\nSqueal has queued the other test files that depend on this file. I haven't seen their results yet.",
+  "final": "`report-title.test.ts` passes again. Squeal reports no known failures for it at the current revision.\n\nI fixed `reportTitle` in `packages/contract/src/report-title.ts` rather than the test. Your change replaced the regex `/(.+)\\.[^.]+$/` with `/\\..*$/`, which strips everything from the first dot. That turned `quarterly.results.html` into `quarterly` and `.report` into an empty string. The test expects `quarterly.results` and `.report`, so I put the original regex back.\n\nIf you meant to change the behavior and strip from the first dot, tell me. The test's expectations would need updating instead.\n\nSqueal has queued the other test files that depend on this file. I haven't seen their results yet.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": false
+}

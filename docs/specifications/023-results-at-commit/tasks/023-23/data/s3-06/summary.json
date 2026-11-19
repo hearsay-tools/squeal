@@ -1,0 +1,29 @@
+{
+  "id": "s3-06",
+  "loadStart": "6.10",
+  "exit": 0,
+  "wallSeconds": 32.863,
+  "squeal": [
+    "4s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.053716,
+  "usage": {
+    "cache_creation_input_tokens": 16138,
+    "cache_read_input_tokens": 59290,
+    "output_tokens": 743
+  },
+  "firstFinal": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs` against the parent commit. Each side ran in a temporary checkout, so your tree wasn't touched.\n\n- **Red:** the test file from `6414b6c20` run over the code at `24694ced5` (the parent). 3 tests fail.\n- **Green:** the test and code both at `6414b6c20`. All tests pass.\n\nRed failures without the fix:\n\n| Test | Failure |\n| --- | --- |\n| a running queue run whose gate passed is proof while jobs outside the gate still run | expected `true`, got `false` |\n| a running queue run whose gate passes during the bounded wait is proof | expected `true`, got `false` |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` |\n\nThe outcome was \"1 proven, 0 not red, 0 red for another reason, 0 not green\". Each of the three failures is an assertion failure, not a crash or setup error.\n\nSuggested PR description text:\n\n> **Regression proof:** `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1` reports the file as proven. Against the pre-fix code (`24694ced5`) three tests fail: the two \"running queue run … is proof\" cases and the \"new attempt … invalidates its proof\" case. With the fix, all pass.\n\nSqueal also printed warnings about its static-closure analysis and the node-test preload (`scripts/test-home-env.mjs`). They affect which test files Squeal selects for a changed path, not this proof, which ran the file directly.",
+  "final": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs` against the parent commit. Each side ran in a temporary checkout, so your tree wasn't touched.\n\n- **Red:** the test file from `6414b6c20` run over the code at `24694ced5` (the parent). 3 tests fail.\n- **Green:** the test and code both at `6414b6c20`. All tests pass.\n\nRed failures without the fix:\n\n| Test | Failure |\n| --- | --- |\n| a running queue run whose gate passed is proof while jobs outside the gate still run | expected `true`, got `false` |\n| a running queue run whose gate passes during the bounded wait is proof | expected `true`, got `false` |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` |\n\nThe outcome was \"1 proven, 0 not red, 0 red for another reason, 0 not green\". Each of the three failures is an assertion failure, not a crash or setup error.\n\nSuggested PR description text:\n\n> **Regression proof:** `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1` reports the file as proven. Against the pre-fix code (`24694ced5`) three tests fail: the two \"running queue run … is proof\" cases and the \"new attempt … invalidates its proof\" case. With the fix, all pass.\n\nSqueal also printed warnings about its static-closure analysis and the node-test preload (`scripts/test-home-env.mjs`). They affect which test files Squeal selects for a changed path, not this proof, which ran the file directly.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

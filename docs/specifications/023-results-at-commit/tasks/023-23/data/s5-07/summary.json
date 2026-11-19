@@ -1,0 +1,31 @@
+{
+  "id": "s5-07",
+  "loadStart": "6.59",
+  "exit": 0,
+  "wallSeconds": 59.009,
+  "squeal": [
+    "5s squeal proof --help 2>&1 | head -40; squeal checks 2>&1 | head -20",
+    "8s squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 --timeout 300 2>&1 | tail -40",
+    "9s squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT= --timeout 300 2>&1 | tail -20"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0728595,
+  "usage": {
+    "cache_creation_input_tokens": 18810,
+    "cache_read_input_tokens": 88185,
+    "output_tokens": 1700
+  },
+  "firstFinal": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` for both cases, each in a temporary checkout, so your tree is untouched.\n\n**What the commit changed** (`149cf90b`, `scripts/release-identity.test.mjs`, `run()`):\n- The old environment filter removed only `GITHUB_ACTIONS` from the inherited env. It matched `GITHUB_ACTIONS$` among its prefixes, so every other `GITHUB_*` variable, including `GITHUB_RUN_ATTEMPT`, passed through to the release script.\n- The fix widens the filter to `GITHUB_`, so all inherited `GITHUB_*` variables are stripped.\n- It then sets `GITHUB_RUN_ATTEMPT: '1'` explicitly.\n\n**Proof 1: `GITHUB_RUN_ATTEMPT=2`, as in a CI re-run.** The old test over the current code (red side) failed and the fixed test (green side) passed. Squeal reported \"1 proven\".\n- The old test failed on the nightly and PR publish checks with these assertion errors:\n  - nightly: actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- The release script appends the attempt number once it is above 1. The old test leaked the runner's value in, and the expected version had no attempt suffix.\n\n**Proof 2: `GITHUB_RUN_ATTEMPT` unset, as in a first run or locally.** Squeal reported \"not red\", so the old test passed. It only broke when the variable was present, so the bug showed only on re-runs.\n\n**Notes:**\n- The proof sets the variable in the harness environment, so the old test inherited it. That matches what CI does on a re-run.\n- In the fixed test the value is hardcoded to `'1'` and everything else matching `GITHUB_` is dropped. The test no longer depends on the surrounding environment for that variable.\n- Squeal printed a warning that the test-home preload may register module hooks that it can't track. It doesn't affect these verdicts.",
+  "final": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` for both cases, each in a temporary checkout, so your tree is untouched.\n\n**What the commit changed** (`149cf90b`, `scripts/release-identity.test.mjs`, `run()`):\n- The old environment filter removed only `GITHUB_ACTIONS` from the inherited env. It matched `GITHUB_ACTIONS$` among its prefixes, so every other `GITHUB_*` variable, including `GITHUB_RUN_ATTEMPT`, passed through to the release script.\n- The fix widens the filter to `GITHUB_`, so all inherited `GITHUB_*` variables are stripped.\n- It then sets `GITHUB_RUN_ATTEMPT: '1'` explicitly.\n\n**Proof 1: `GITHUB_RUN_ATTEMPT=2`, as in a CI re-run.** The old test over the current code (red side) failed and the fixed test (green side) passed. Squeal reported \"1 proven\".\n- The old test failed on the nightly and PR publish checks with these assertion errors:\n  - nightly: actual `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: actual `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- The release script appends the attempt number once it is above 1. The old test leaked the runner's value in, and the expected version had no attempt suffix.\n\n**Proof 2: `GITHUB_RUN_ATTEMPT` unset, as in a first run or locally.** Squeal reported \"not red\", so the old test passed. It only broke when the variable was present, so the bug showed only on re-runs.\n\n**Notes:**\n- The proof sets the variable in the harness environment, so the old test inherited it. That matches what CI does on a re-run.\n- In the fixed test the value is hardcoded to `'1'` and everything else matching `GITHUB_` is dropped. The test no longer depends on the surrounding environment for that variable.\n- Squeal printed a warning that the test-home preload may register module hooks that it can't track. It doesn't affect these verdicts.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

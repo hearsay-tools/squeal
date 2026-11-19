@@ -1,0 +1,31 @@
+{
+  "id": "s4-09",
+  "loadStart": "6.01",
+  "exit": 0,
+  "wallSeconds": 32.435,
+  "squeal": [
+    "5s git show e71888f9 --stat --format=%H%n%s | head; git show e71888f9 | head -80; cat ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -B2 -A12 proof | head -80",
+    "8s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "5s Bash git show e71888f9 --stat --format=%H%n%s | head; git show e71888f9 | head -80; cat ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n "
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.061181400000000004,
+  "usage": {
+    "cache_creation_input_tokens": 17094,
+    "cache_read_input_tokens": 86404,
+    "output_tokens": 979
+  },
+  "firstFinal": "The old test was the problem. `squeal proof` ran the old and new versions of the test file against the same current code (HEAD `e71888f91`), and the result is \"proven\".\n\n- **Red (old test, today's code):** `counts only unhandled matching issues and resumes after restart (history=true)` fails at `unhandled-polls.test.ts:72`. The assertion is `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The poller found none of the five fixture issues.\n- **Green (new test, today's code):** the same file passes.\n\nThe old test never pinned the clock. Its fixture events are dated around `2026-10-27` (`epoch`), and the poller's history window is measured from the real `Date.now()`. Once real time moved far enough past those dates, the events fell outside the window and nothing was counted. The commit fixes this by faking only `Date` and setting it to `epoch + 1 day`, so the events stay inside the window. No production code changed.\n\nSqueal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in both temporary checkouts. That is unrelated to this test.",
+  "final": "The old test was the problem. `squeal proof` ran the old and new versions of the test file against the same current code (HEAD `e71888f91`), and the result is \"proven\".\n\n- **Red (old test, today's code):** `counts only unhandled matching issues and resumes after restart (history=true)` fails at `unhandled-polls.test.ts:72`. The assertion is `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The poller found none of the five fixture issues.\n- **Green (new test, today's code):** the same file passes.\n\nThe old test never pinned the clock. Its fixture events are dated around `2026-10-27` (`epoch`), and the poller's history window is measured from the real `Date.now()`. Once real time moved far enough past those dates, the events fell outside the window and nothing was counted. The commit fixes this by faking only `Date` and setting it to `epoch + 1 day`, so the events stay inside the window. No production code changed.\n\nSqueal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in both temporary checkouts. That is unrelated to this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

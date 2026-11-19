@@ -1,0 +1,79 @@
+    2.4 TOOL Skill: squeal:squeal
+    2.6 RES  Launching skill: squeal:squeal
+    2.9 TOOL Bash: git show 50d4ce31 --stat && git show 936cbecf --stat | head -20
+    3.1 RES  commit 50d4ce3162d749ba1ab82f0472d5232d36a8154d
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 16:54:43 2026 +0100
+             
+                 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             commit 936cbecf05ee8130b77313f4f4c81a3395b75511
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 16:54:43 2026 +0100
+             
+                 te …[802 chars]
+    3.3 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.4 TOOL Bash: git show 936cbecf 50d4ce31 -- scripts/release-identity.test.mjs; squeal checks | head -30
+    4.8 RES  commit 936cbecf05ee8130b77313f4f4c81a3395b75511
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 16:54:43 2026 +0100
+             
+                 test(release): build identity test runs with the workflow's environment
+             
+             diff --git a/scripts/release-identity.test.mjs b/scripts/release-identity.test.mjs
+             index 55eb5bd9..36fa5184 100644
+             --- a/scripts/release-identity.test.mjs
+             +++ b/scripts/release-identity.test.mjs
+             @@ -63,13 +63,13 @@ const channels = {
+              
+              f …[4746 chars]
+    8.5 TOOL Bash: squeal proof --help 2>&1 | head -40; squeal checks | sed -n 30,80p
+    9.1 RES  Usage:
+               squeal proof <test file>... --base <commit> [--case source|test|dependency]
+                            [--env NAME=[value]]... [--without <path>]... [--home-keep <path>]...
+                            [--repeat <n>] [--with <path>]... [--source <path>]...
+                            [--red-error <text>]... [--timeout <seconds>] [--json]
+                                             A red proof per named test file over committed HEAD:
+                                             red is the test at HEAD over the code at --base
+                                             (s …[2963 chars]
+   11.0 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true 2>&1 | tail -40
+   46.5 RES                  at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402:25)
+                             at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+                             at Test.postRun (node:internal/test_runner/test:1542:19)
+                             at Test.run (node:internal/test_runner/test:1467:12)
+                             at async startSubtestAfterBootstrap (node:internal/test_r …[3077 chars]
+   52.3 SAY  I ran a red proof of the old test file against the current code, in a temporary checkout. It confirms the old test depended on `GITHUB_RUN_ATTEMPT`, and the fixed test doesn't. The command was `squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true`.
+
+**Why the old test leaked.** In `936cbecf`, the `run()` helper in `scripts/release-identity.test.mjs` stripped the ambient environment with `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|…)/`. That removes only `GITHUB_ACTIONS`. It also no longer set `GITHUB_RUN_ATTEMPT: '1'` itself. So whatever `GITHUB_RUN_ATTEMPT` the workflow supplied passed straight into the release script.
+
+**What the proof showed.** The red side (old test, `GITHUB_RUN_ATTEMPT=2`, as on a CI re-run) failed. The nightly and PR release cases, shown here, each gave a version with a `.2` suffix:
+- Nightly: `1.2.3-nightly.20261108.9.2` instead of `1.2.3-nightly.20261108.9`.
+- PR: `1.2.3-pr7.9.2` instead of `1.2.3-pr7.9`.
+
+**Why the fixed test doesn't depend on it.** The fix in `50d4ce31` makes two changes:
+- It widens the filter back to `GITHUB_`, so every ambient `GITHUB_*` variable is stripped.
+- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.
+
+The green side (the fixed test at HEAD, run under the same injected `GITHUB_RUN_ATTEMPT=2`) passed. The same test also passes without the injected variables. The result was 1 proven, 0 not red, 0 not green.
+
+The "old" test here is the `936cbe …[1696 chars]
+   52.5 END  success turns=7 duration=51852ms cost=$0.0764361 usage={"input_tokens":10,"cache_creation_input_tokens":19032,"cache_read_input_tokens":116661,"output_tokens":1717,"output_tokens_details":{"thinking_tokens":489},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":19032},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   52.5 FINAL I ran a red proof of the old test file against the current code, in a temporary checkout. It confirms the old test depended on `GITHUB_RUN_ATTEMPT`, and the fixed test doesn't. The command was `squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true`.
+
+**Why the old test leaked.** In `936cbecf`, the `run()` helper in `scripts/release-identity.test.mjs` stripped the ambient environment with `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|…)/`. That removes only `GITHUB_ACTIONS`. It also no longer set `GITHUB_RUN_ATTEMPT: '1'` itself. So whatever `GITHUB_RUN_ATTEMPT` the workflow supplied passed straight into the release script.
+
+**What the proof showed.** The red side (old test, `GITHUB_RUN_ATTEMPT=2`, as on a CI re-run) failed. The nightly and PR release cases, shown here, each gave a version with a `.2` suffix:
+- Nightly: `1.2.3-nightly.20261108.9.2` instead of `1.2.3-nightly.20261108.9`.
+- PR: `1.2.3-pr7.9.2` instead of `1.2.3-pr7.9`.
+
+**Why the fixed test doesn't depend on it.** The fix in `50d4ce31` makes two changes:
+- It widens the filter back to `GITHUB_`, so every ambient `GITHUB_*` variable is stripped.
+- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.
+
+The green side (the fixed test at HEAD, run under the same injected `GITHUB_RUN_ATTEMPT=2`) passed. The same test also passes without the injected variables. The result was 1 proven, 0 not red, 0 not green.
+
+The "old" test here is the `936cbecf` version, which is the one the last commit replaced. That commit was a partial revert of it, and the change in `936cbecf` is what introduced the dependency. I did not edit anything in the tree.

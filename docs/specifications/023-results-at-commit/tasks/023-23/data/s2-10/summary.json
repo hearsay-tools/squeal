@@ -1,0 +1,32 @@
+{
+  "id": "s2-10",
+  "loadStart": "2.28",
+  "exit": 0,
+  "wallSeconds": 211.396,
+  "squeal": [
+    "3s squeal status --at 20f03a4 2>&1 | head -60; echo ----; squeal status --at 20f03a4~1 2>&1 | head -60",
+    "125s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-10/a03c9c4f-20dc-4d1e-8b71-0cc1d754e7be/tasks/bhcktu13y.output | head -60",
+    "132s until [ -s ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-10/a03c9c4f-20dc-4d1e-8b71-0cc1d754e7be/tasks/bhcktu13y.output ]; do sleep 5; done; head -80 ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-10/a03c9c4f-20dc-4d1e-8b71-0cc1d754e7be/tasks/bhcktu13y.output",
+    "139s squeal proof test/store/open.test.ts --base 20f03a4~1 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 14,
+  "costUsd": 0.10400140000000001,
+  "usage": {
+    "cache_creation_input_tokens": 20117,
+    "cache_read_input_tokens": 288769,
+    "output_tokens": 2478
+  },
+  "firstFinal": "Only one test file's result changed, as far as I could verify: `test/store/open.test.ts`. It went from fail to pass.\n\n- **What changed:** I proved this with `squeal proof test/store/open.test.ts --base 20f03a4~1`. The new test is \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". Against the code at a5c9b72, it fails because the `found: \"unknown\"` field is missing. At 20f03a4 it passes.\n- **Scope of the commit:** The commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`.\n- **Gap:** I did not confirm that the other 1,961 test files are unchanged.\n  - `squeal status --at` could only report \"no result\" for all of them, because the daemon in this worktree hasn't run any tests yet.\n  - Another test that reads `mark.ts` could in principle have changed too.\n  - A full comparison needs the daemon to finish its first run. I didn't run a full suite, per the project rules.",
+  "final": "The full comparison finished, but it doesn't change my earlier answer. Both runs reported \"no result\" for all 1,962 test files, because the daemon in this worktree hasn't run any tests yet. The final line for each was \"0 pass -> fail, 0 fail -> pass, 0 unchanged, 1962 unknown\".\n\nSo the only evidence I have is the proof run. In it, `test/store/open.test.ts` failed against the code at a5c9b72 and passed at 20f03a4.\n\nI haven't confirmed that the other 1,961 files are unchanged. The commit touched only `src/core/store/mark.ts` and `test/store/open.test.ts`, so any other changes would have to come from tests that read `mark.ts`.\n\nTo check those, I can run the tests that depend on `mark.ts` through Squeal at both commits. Say if you want that.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

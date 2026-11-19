@@ -1,0 +1,54 @@
+    2.3 TOOL Skill: squeal:squeal
+    2.4 RES  Launching skill: squeal:squeal
+    2.6 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.1 TOOL Bash: git show HEAD --stat --format='%h %s' && git show HEAD && git show HEAD~1 --stat --format='%h %s'; squeal proof --help 2>&1 | head -30
+    4.5 RES  cce828a6 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+              scripts/release-identity.test.mjs | 4 ++--
+              1 file changed, 2 insertions(+), 2 deletions(-)
+             commit cce828a6a8c23049859ad405ecb1255706c73255
+             Author: Dana User <dana@example.invalid>
+             Date:   Thu Nov 19 17:21:29 2026 +0100
+             
+                 fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+             
+             diff --git a/scripts/release-identity.test.mjs b/scripts/release-iden …[4947 chars]
+    6.7 TOOL Bash: squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40
+   53.5 RES                  at TestContext.<anonymous> (scripts/release-identity.test.mjs:96:14)
+                             at Test.runInAsyncScope (node:async_hooks:227:14)
+                             at Test.run (node:internal/test_runner/test:1402:25)
+                             at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+                             at Test.postRun (node:internal/test_runner/test:1542:19)
+                             at Test.run (node:internal/test_runner/test:1467:12)
+                             at async startSubtestAfterBootstrap (node:internal/test_r …[3077 chars]
+   58.6 SAY  The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't.
+
+I ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. It runs the test file from before the fix and the test file from the fix against the same product code, with `GITHUB_RUN_ATTEMPT=2` set, as on a CI re-run.
+
+- **Old test (`HEAD~1`) fails with the variable set to 2.** The release versions come out with an extra attempt suffix:
+  - nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- **Fixed test (`HEAD`) passes under the same variable.**
+- **Old test passes without the variable.** Squeal's report shows it passing with `GITHUB_RUN_ATTEMPT` unset, which is why the failure only appeared on re-runs.
+
+The verdict was "1 proven", from 3 runs.
+
+The cause is in the test's `run()` helper, which strips workflow variables from `process.env` before spawning the release script. The old filter only removed `GITHUB_ACTIONS`, so `GITHUB_RUN_ATTEMPT` leaked through whenever CI set it. The fix changes the filter to drop every `GITHUB_*` variable. It also sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the spawned environment, so the expected versions no longer depend on the host.
+
+I haven't tested the fixed test under other `GITHUB_*` variables, such as `GITHUB_SHA`. The new filter removes them all, so I'd expect it to hold, but the proof only covered `GITHUB_RUN_ATTEMPT`.
+   58.8 END  success turns=5 duration=58174ms cost=$0.0630956 usage={"input_tokens":8,"cache_creation_input_tokens":17133,"cache_read_input_tokens":86471,"output_tokens":1160,"output_tokens_details":{"thinking_tokens":186},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":17133},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   58.8 FINAL The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't.
+
+I ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. It runs the test file from before the fix and the test file from the fix against the same product code, with `GITHUB_RUN_ATTEMPT=2` set, as on a CI re-run.
+
+- **Old test (`HEAD~1`) fails with the variable set to 2.** The release versions come out with an extra attempt suffix:
+  - nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`
+  - PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`
+- **Fixed test (`HEAD`) passes under the same variable.**
+- **Old test passes without the variable.** Squeal's report shows it passing with `GITHUB_RUN_ATTEMPT` unset, which is why the failure only appeared on re-runs.
+
+The verdict was "1 proven", from 3 runs.
+
+The cause is in the test's `run()` helper, which strips workflow variables from `process.env` before spawning the release script. The old filter only removed `GITHUB_ACTIONS`, so `GITHUB_RUN_ATTEMPT` leaked through whenever CI set it. The fix changes the filter to drop every `GITHUB_*` variable. It also sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the spawned environment, so the expected versions no longer depend on the host.
+
+I haven't tested the fixed test under other `GITHUB_*` variables, such as `GITHUB_SHA`. The new filter removes them all, so I'd expect it to hold, but the proof only covered `GITHUB_RUN_ATTEMPT`.

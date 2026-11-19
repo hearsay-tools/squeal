@@ -1,0 +1,29 @@
+{
+  "id": "s1-02",
+  "loadStart": "5.01",
+  "exit": 0,
+  "wallSeconds": 236.969,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.05643430000000001,
+  "usage": {
+    "cache_creation_input_tokens": 15655,
+    "cache_read_input_tokens": 85708,
+    "output_tokens": 871
+  },
+  "firstFinal": "I can't tell you yet. Squeal had no stored results at either commit, so the comparison came back empty.\n\n`squeal status --at` gave 0 pass→fail, 0 fail→pass and 0 unchanged. All 1920 test files were \"no result\" at both 8be977ad6 and its parent d8abcfe46. The worktree's daemon had only just started and hadn't run anything.\n\nThe commit is small. It changed two files:\n- `packages/cezar/src/lint/active-run-write.ts` is a refactor with a perf goal. It is 107 lines changed.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new, with 72 lines. It didn't exist at the parent, so it can't \"now pass differently\". It simply has no baseline.\n\nAny behavior change would most likely show up in the lint tests that exercise `active-run-write.ts`, plus that new test file. I haven't run those.\n\nI can get a real answer by running `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46`. I could also run the existing lint tests at both commits, in temporary checkouts that leave your tree alone. Want me to?",
+  "final": "I can't tell you yet. Squeal had no stored results at either commit, so the comparison came back empty.\n\n`squeal status --at` gave 0 pass→fail, 0 fail→pass and 0 unchanged. All 1920 test files were \"no result\" at both 8be977ad6 and its parent d8abcfe46. The worktree's daemon had only just started and hadn't run anything.\n\nThe commit is small. It changed two files:\n- `packages/cezar/src/lint/active-run-write.ts` is a refactor with a perf goal. It is 107 lines changed.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is new, with 72 lines. It didn't exist at the parent, so it can't \"now pass differently\". It simply has no baseline.\n\nAny behavior change would most likely show up in the lint tests that exercise `active-run-write.ts`, plus that new test file. I haven't run those.\n\nI can get a real answer by running `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46`. I could also run the existing lint tests at both commits, in temporary checkouts that leave your tree alone. Want me to?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

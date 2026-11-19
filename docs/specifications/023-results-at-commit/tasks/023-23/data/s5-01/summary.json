@@ -1,0 +1,32 @@
+{
+  "id": "s5-01",
+  "loadStart": "5.97",
+  "exit": 0,
+  "wallSeconds": 57.843,
+  "squeal": [
+    "7s cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s5-01 && squeal checks | head -30",
+    "9s squeal proof --help 2>&1 | head -30; grep -n 'GITHUB_RUN_ATTEMPT' -r scripts/*.mjs | head",
+    "11s squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2 --timeout 300 2>&1 | tail -40"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal",
+    "7s Bash cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s5-01 && squeal chec"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0777004,
+  "usage": {
+    "cache_creation_input_tokens": 19277,
+    "cache_read_input_tokens": 117979,
+    "output_tokens": 1769
+  },
+  "firstFinal": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran the proof with `GITHUB_RUN_ATTEMPT=2`, the value a CI re-run supplies.\n\n**Why it depended on it.** The test builds the child process environment from `process.env` and strips some variables first. In the old version (`593679a5`) the filter was `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|ACTIONS_ID_TOKEN_|NODE_AUTH_TOKEN)/`. That removed `GITHUB_ACTIONS` but not `GITHUB_RUN_ATTEMPT`, so the variable passed through from the workflow. `scripts/release-snapshot.mjs:62` reads it and adds the attempt number to the version when it matches `/^\\d+$/`. The test never set it itself.\n\n**What the fix changed (`a9a1fbf9`).**\n- The filter now strips every `GITHUB_*` variable.\n- The test sets `GITHUB_RUN_ATTEMPT: '1'` explicitly, so the expected versions don't depend on the runner.\n\n**The proof.** I ran `squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2`. It ran the old test file against the current code and the fixed file against the same code, both with that variable set.\n\n| Side | Result |\n|---|---|\n| Old test (`a9a1fbf9^`), attempt=2 | Fails with the wrong version |\n| Fixed test (`HEAD`), attempt=2 | Passes |\n| Old test without the variable | Passes, so the failure comes from the variable alone |\n\nVerdict: 1 proven, 0 not red, 0 red for another reason, 0 not green.\n\nThe failures in the old run are the ones you saw on CI re-runs:\n- nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n- PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n\nThe same assertion at `scripts/release-identity.test.mjs:96` failed for each of these channels.\n\nThe run was in temporary checkouts, so your tree is untouched.",
+  "final": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran the proof with `GITHUB_RUN_ATTEMPT=2`, the value a CI re-run supplies.\n\n**Why it depended on it.** The test builds the child process environment from `process.env` and strips some variables first. In the old version (`593679a5`) the filter was `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|ACTIONS_ID_TOKEN_|NODE_AUTH_TOKEN)/`. That removed `GITHUB_ACTIONS` but not `GITHUB_RUN_ATTEMPT`, so the variable passed through from the workflow. `scripts/release-snapshot.mjs:62` reads it and adds the attempt number to the version when it matches `/^\\d+$/`. The test never set it itself.\n\n**What the fix changed (`a9a1fbf9`).**\n- The filter now strips every `GITHUB_*` variable.\n- The test sets `GITHUB_RUN_ATTEMPT: '1'` explicitly, so the expected versions don't depend on the runner.\n\n**The proof.** I ran `squeal proof scripts/release-identity.test.mjs --base a9a1fbf9^ --case test --env GITHUB_RUN_ATTEMPT=2`. It ran the old test file against the current code and the fixed file against the same code, both with that variable set.\n\n| Side | Result |\n|---|---|\n| Old test (`a9a1fbf9^`), attempt=2 | Fails with the wrong version |\n| Fixed test (`HEAD`), attempt=2 | Passes |\n| Old test without the variable | Passes, so the failure comes from the variable alone |\n\nVerdict: 1 proven, 0 not red, 0 red for another reason, 0 not green.\n\nThe failures in the old run are the ones you saw on CI re-runs:\n- nightly: got `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n- PR: got `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n\nThe same assertion at `scripts/release-identity.test.mjs:96` failed for each of these channels.\n\nThe run was in temporary checkouts, so your tree is untouched.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

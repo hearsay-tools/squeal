@@ -1,0 +1,37 @@
+    2.2 TOOL Skill: squeal:squeal
+    2.3 RES  Launching skill: squeal:squeal
+    2.5 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    5.2 TOOL Bash: git show e71888f9 --stat --format=%H%n%s | head; git show e71888f9 | head -80; cat ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -B2 -A12 proof | head -80
+    5.4 RES  e71888f911ea6c9a29a219f1e332cdde5c42229c
+             test(automations): pin the clock in the unhandled-polls history test (#2539)
+             
+              packages/cezar/src/automations/unhandled-polls.test.ts | 12 ++++++++++--
+              1 file changed, 10 insertions(+), 2 deletions(-)
+             commit e71888f911ea6c9a29a219f1e332cdde5c42229c
+             Author: Wiktor Jarka <wjarka@users.noreply.github.com>
+             Date:   Tue Nov 3 00:47:10 2026 +0000
+             
+                 test(automations): pin the clock in the unhandled-polls history test (#2539)
+             
+    …[4596 chars]
+    7.6 TOOL Bash: squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -60
+   28.3 RES  squeal: proving 1 test file against fb045d07c in temporary checkouts
+             squeal: node-test project "root:test:unit": 0 of 13 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 13 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 13 in incompleteClosures.
+             squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one  …[2859 chars]
+   31.8 SAY  The old test was the problem. `squeal proof` ran the old and new versions of the test file against the same current code (HEAD `e71888f91`), and the result is "proven".
+
+- **Red (old test, today's code):** `counts only unhandled matching issues and resumes after restart (history=true)` fails at `unhandled-polls.test.ts:72`. The assertion is `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The poller found none of the five fixture issues.
+- **Green (new test, today's code):** the same file passes.
+
+The old test never pinned the clock. Its fixture events are dated around `2026-10-27` (`epoch`), and the poller's history window is measured from the real `Date.now()`. Once real time moved far enough past those dates, the events fell outside the window and nothing was counted. The commit fixes this by faking only `Date` and setting it to `epoch + 1 day`, so the events stay inside the window. No production code changed.
+
+Squeal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in both temporary checkouts. That is unrelated to this test.
+   32.0 END  success turns=5 duration=31442ms cost=$0.061181400000000004 usage={"input_tokens":8,"cache_creation_input_tokens":17094,"cache_read_input_tokens":86404,"output_tokens":979,"output_tokens_details":{"thinking_tokens":244},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":17094},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   32.0 FINAL The old test was the problem. `squeal proof` ran the old and new versions of the test file against the same current code (HEAD `e71888f91`), and the result is "proven".
+
+- **Red (old test, today's code):** `counts only unhandled matching issues and resumes after restart (history=true)` fails at `unhandled-polls.test.ts:72`. The assertion is `expected [] to deeply equal [ 101, 102, 103, 104, 105 ]`. The poller found none of the five fixture issues.
+- **Green (new test, today's code):** the same file passes.
+
+The old test never pinned the clock. Its fixture events are dated around `2026-10-27` (`epoch`), and the poller's history window is measured from the real `Date.now()`. Once real time moved far enough past those dates, the events fell outside the window and nothing was counted. The commit fixes this by faking only `Date` and setting it to `epoch + 1 day`, so the events stay inside the window. No production code changed.
+
+Squeal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in both temporary checkouts. That is unrelated to this test.

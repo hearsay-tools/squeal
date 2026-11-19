@@ -1,0 +1,29 @@
+{
+  "id": "s4-01",
+  "loadStart": "6.16",
+  "exit": 0,
+  "wallSeconds": 25.032,
+  "squeal": [
+    "4s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9~1 2>&1 | tail -40; git show e71888f9 --stat | tail -5"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.05021020000000001,
+  "usage": {
+    "cache_creation_input_tokens": 15280,
+    "cache_read_input_tokens": 59282,
+    "output_tokens": 607
+  },
+  "firstFinal": "The old test was the problem. Squeal's proof ran both versions against the same code, today's code at `e71888f91`, in temporary checkouts, so your tree wasn't touched.\n\n- **Old test, today's code: fails.** The test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [101, 102, 103, 104, 105]`. The code returned no issues where the test expected five.\n- **New test, today's code: passes.**\n\nSqueal's verdict is `proven`: 1 test file, 0 not red, 0 red for another reason, 0 not green.\n\nThe commit only changed the test file, so the same product code produces opposite results. The old test depended on the real clock. Its fixtures presumably aged out of the history window as time passed, which is why the commit pins the clock. I inferred that from the commit title and the failure shape and didn't read the diff.\n\nSqueal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in its temporary checkouts. That file isn't related to this test.",
+  "final": "The old test was the problem. Squeal's proof ran both versions against the same code, today's code at `e71888f91`, in temporary checkouts, so your tree wasn't touched.\n\n- **Old test, today's code: fails.** The test is `counts only unhandled matching issues and resumes after restart (history=true)`. It fails at `unhandled-polls.test.ts:72` with `expected [] to deeply equal [101, 102, 103, 104, 105]`. The code returned no issues where the test expected five.\n- **New test, today's code: passes.**\n\nSqueal's verdict is `proven`: 1 test file, 0 not red, 0 red for another reason, 0 not green.\n\nThe commit only changed the test file, so the same product code produces opposite results. The old test depended on the real clock. Its fixtures presumably aged out of the history window as time passed, which is why the commit pins the clock. I inferred that from the commit title and the failure shape and didn't read the diff.\n\nSqueal printed a note that git's checkout rules changed `packages/mobile/android/gradlew.bat` in its temporary checkouts. That file isn't related to this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

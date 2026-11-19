@@ -1,0 +1,29 @@
+{
+  "id": "s4-05",
+  "loadStart": "6.64",
+  "exit": 0,
+  "wallSeconds": 32.938,
+  "squeal": [
+    "5s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f91~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.050053600000000004,
+  "usage": {
+    "cache_creation_input_tokens": 15210,
+    "cache_read_input_tokens": 59266,
+    "output_tokens": 609
+  },
+  "firstFinal": "The old test was the problem. `squeal proof` ran both versions against the same code, which is today's code at `e71888f91`.\n\n- **Red, old test (`fb045d07c`):** it fails. The test \"counts only unhandled matching issues and resumes after restart (history=true)\" breaks at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` and got `[]`.\n- **Green, new test (`e71888f91`):** it passes.\n\nSqueal's verdict was \"proven\", with no \"red for another reason\". The failure is an assertion on the test's own output, not a crash or an environment problem. This matches the commit message, \"pin the clock in the unhandled-polls history test\". The old test most likely depended on the real clock, so the issues fell outside the history window. I didn't open the diff to confirm that.\n\nThe red run was done in a temporary checkout, so your working tree is untouched. Squeal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in that checkout. That doesn't affect this result.",
+  "final": "The old test was the problem. `squeal proof` ran both versions against the same code, which is today's code at `e71888f91`.\n\n- **Red, old test (`fb045d07c`):** it fails. The test \"counts only unhandled matching issues and resumes after restart (history=true)\" breaks at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` and got `[]`.\n- **Green, new test (`e71888f91`):** it passes.\n\nSqueal's verdict was \"proven\", with no \"red for another reason\". The failure is an assertion on the test's own output, not a crash or an environment problem. This matches the commit message, \"pin the clock in the unhandled-polls history test\". The old test most likely depended on the real clock, so the issues fell outside the history window. I didn't open the diff to confirm that.\n\nThe red run was done in a temporary checkout, so your working tree is untouched. Squeal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in that checkout. That doesn't affect this result.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

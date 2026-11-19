@@ -1,0 +1,31 @@
+{
+  "id": "s5-03",
+  "loadStart": "5.40",
+  "exit": 0,
+  "wallSeconds": 52.914,
+  "squeal": [
+    "4s git show 936cbecf 50d4ce31 -- scripts/release-identity.test.mjs; squeal checks | head -30",
+    "9s squeal proof --help 2>&1 | head -40; squeal checks | sed -n 30,80p",
+    "11s squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 7,
+  "costUsd": 0.0764361,
+  "usage": {
+    "cache_creation_input_tokens": 19032,
+    "cache_read_input_tokens": 116661,
+    "output_tokens": 1717
+  },
+  "firstFinal": "I ran a red proof of the old test file against the current code, in a temporary checkout. It confirms the old test depended on `GITHUB_RUN_ATTEMPT`, and the fixed test doesn't. The command was `squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true`.\n\n**Why the old test leaked.** In `936cbecf`, the `run()` helper in `scripts/release-identity.test.mjs` stripped the ambient environment with `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|…)/`. That removes only `GITHUB_ACTIONS`. It also no longer set `GITHUB_RUN_ATTEMPT: '1'` itself. So whatever `GITHUB_RUN_ATTEMPT` the workflow supplied passed straight into the release script.\n\n**What the proof showed.** The red side (old test, `GITHUB_RUN_ATTEMPT=2`, as on a CI re-run) failed. The nightly and PR release cases, shown here, each gave a version with a `.2` suffix:\n- Nightly: `1.2.3-nightly.20261108.9.2` instead of `1.2.3-nightly.20261108.9`.\n- PR: `1.2.3-pr7.9.2` instead of `1.2.3-pr7.9`.\n\n**Why the fixed test doesn't depend on it.** The fix in `50d4ce31` makes two changes:\n- It widens the filter back to `GITHUB_`, so every ambient `GITHUB_*` variable is stripped.\n- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.\n\nThe green side (the fixed test at HEAD, run under the same injected `GITHUB_RUN_ATTEMPT=2`) passed. The same test also passes without the injected variables. The result was 1 proven, 0 not red, 0 not green.\n\nThe \"old\" test here is the `936cbecf` version, which is the one the last commit replaced. That commit was a partial revert of it, and the change in `936cbecf` is what introduced the dependency. I did not edit anything in the tree.",
+  "final": "I ran a red proof of the old test file against the current code, in a temporary checkout. It confirms the old test depended on `GITHUB_RUN_ATTEMPT`, and the fixed test doesn't. The command was `squeal proof scripts/release-identity.test.mjs --base 936cbecf --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true`.\n\n**Why the old test leaked.** In `936cbecf`, the `run()` helper in `scripts/release-identity.test.mjs` stripped the ambient environment with `/^(CEZ_|HSQ_|GITHUB_ACTIONS$|…)/`. That removes only `GITHUB_ACTIONS`. It also no longer set `GITHUB_RUN_ATTEMPT: '1'` itself. So whatever `GITHUB_RUN_ATTEMPT` the workflow supplied passed straight into the release script.\n\n**What the proof showed.** The red side (old test, `GITHUB_RUN_ATTEMPT=2`, as on a CI re-run) failed. The nightly and PR release cases, shown here, each gave a version with a `.2` suffix:\n- Nightly: `1.2.3-nightly.20261108.9.2` instead of `1.2.3-nightly.20261108.9`.\n- PR: `1.2.3-pr7.9.2` instead of `1.2.3-pr7.9`.\n\n**Why the fixed test doesn't depend on it.** The fix in `50d4ce31` makes two changes:\n- It widens the filter back to `GITHUB_`, so every ambient `GITHUB_*` variable is stripped.\n- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.\n\nThe green side (the fixed test at HEAD, run under the same injected `GITHUB_RUN_ATTEMPT=2`) passed. The same test also passes without the injected variables. The result was 1 proven, 0 not red, 0 not green.\n\nThe \"old\" test here is the `936cbecf` version, which is the one the last commit replaced. That commit was a partial revert of it, and the change in `936cbecf` is what introduced the dependency. I did not edit anything in the tree.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

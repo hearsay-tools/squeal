@@ -1,0 +1,32 @@
+{
+  "id": "s2-02",
+  "loadStart": "4.23",
+  "exit": 0,
+  "wallSeconds": 237.326,
+  "squeal": [
+    "4s squeal status --at 20f03a431 2>&1 | head -60; echo ----; squeal status --at 20f03a431~1 2>&1 | head -60",
+    "129s f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-02/b7c58708-d573-46ad-9c78-5856f23d30fd/tasks/blmrn5kg9.output; timeout 110 bash -c \"until [ -s $f ]; do sleep 3; done\"; cat $f | head -60",
+    "157s squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -30",
+    "234s cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-02/b7c58708-d573-46ad-9c78-5856f23d30fd/tasks/blmrn5kg9.output | head -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 10,
+  "costUsd": 0.0767605,
+  "usage": {
+    "cache_creation_input_tokens": 15315,
+    "cache_read_input_tokens": 193430,
+    "output_tokens": 1909
+  },
+  "firstFinal": "I can't give you a full before-and-after comparison of the whole suite, but the one test file the commit touched is `test/store/open.test.ts`, and its result did change.\n\n**What I ran**\n- `squeal status --at` for both commits returned \"no result\" for all 1962 test files. Squeal hadn't recorded results at either commit, so it couldn't say what changed across the suite.\n- `squeal proof test/store/open.test.ts --base 20f03a431~1` ran that file in temporary checkouts. The checkouts were the test at `20f03a431` over the code at `a5c9b72`, and the test and code both at `20f03a431`.\n\n**Result for `test/store/open.test.ts`**\n- With the old code and the new test, it fails. The failing test is \"keeps a parsed mark's unknown finder, never the full check's (review 0.1.559 S1)\". It expected `found: \"unknown\"` but got only `{at: 1, problem: 'p'}`.\n- With the new code and the new test, it passes.\n- So the commit adds a new test (+27 lines) that fails without the `src/core/store/mark.ts` change and passes with it.\n\n**What this doesn't cover**\n- The only other file in the commit is `src/core/store/mark.ts`. I didn't run any other test file at either commit.\n- I haven't shown that no other file changed result. If you need that, a run of the tests that depend on `mark.ts` at both commits would answer it.",
+  "final": "That background command finished, and its output matches what I told you. Squeal had no stored results at either `20f03a431` or its parent `a5c9b7223`, so the suite-wide comparison shows 0 pass→fail, 0 fail→pass, 0 unchanged and 1962 unknown. It can't show a before-and-after for the whole suite.\n\nThe answer I gave still stands:\n- **Changed result:** `test/store/open.test.ts` is the one file I can show changing. The new test fails against the old `src/core/store/mark.ts` and passes with the fix.\n- **Not checked:** I didn't run any other test file at either commit, so I can't rule out other files changing. Only `mark.ts` and `open.test.ts` were touched, so any other change would have to come through tests that depend on `mark.ts`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

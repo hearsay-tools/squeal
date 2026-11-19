@@ -1,0 +1,31 @@
+{
+  "id": "s5-04",
+  "loadStart": "10.69",
+  "exit": 0,
+  "wallSeconds": 46.59,
+  "squeal": [
+    "7s squeal proof --help 2>&1 | head -40; ls ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/",
+    "10s squeal proof scripts/release-identity.test.mjs --base 7b36cf10 --case test --env GITHUB_RUN_ATTEMPT=2 --env GITHUB_ACTIONS=true 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "7s Bash squeal proof --help 2>&1 | head -40; ls ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0723327,
+  "usage": {
+    "cache_creation_input_tokens": 18544,
+    "cache_read_input_tokens": 89767,
+    "output_tokens": 1698
+  },
+  "firstFinal": "The proof confirms it. I ran `squeal proof` with the old test file at `7b36cf10`, the commit before the fix, against the current code. I set `GITHUB_RUN_ATTEMPT=2` and `GITHUB_ACTIONS=true` on both sides, which is roughly what a CI re-run provides.\n\n| Side | Result |\n|---|---|\n| Old test (`7b36cf10`) with `GITHUB_RUN_ATTEMPT=2` | **Fails** |\n| Fixed test (HEAD) with the same environment | **Passes** |\n| Old test with no such variables | Passes |\n\nThe last row is why CI only broke on re-runs: the test was fine whenever the variable was unset.\n\n**Failure in the old test.** The nightly channel expected `1.2.3-nightly.20261108.9` and got `1.2.3-nightly.20261108.9.2`. The PR channel expected `1.2.3-pr7.9` and got `1.2.3-pr7.9.2`. The release script appends the run attempt to the version when it is greater than 1. The old test's `run()` helper in `scripts/release-identity.test.mjs` leaked the real `GITHUB_RUN_ATTEMPT` into the child process.\n\n**Why the old test leaked it.** Its env filter was `GITHUB_ACTIONS$`, which strips only that one `GITHUB_` variable. `GITHUB_RUN_ATTEMPT` passed through from the workflow.\n\n**What the fix changes** (`41f16d67`):\n- The filter is now `GITHUB_`, so every inherited `GITHUB_*` variable is stripped.\n- The test sets `GITHUB_RUN_ATTEMPT: '1'` itself, so the expected versions no longer depend on the host.\n\n`7b36cf10`, the commit before the fix, had narrowed the filter from `GITHUB_` to `GITHUB_ACTIONS$` and dropped the pin. That narrowing is what let the variable through.",
+  "final": "The proof confirms it. I ran `squeal proof` with the old test file at `7b36cf10`, the commit before the fix, against the current code. I set `GITHUB_RUN_ATTEMPT=2` and `GITHUB_ACTIONS=true` on both sides, which is roughly what a CI re-run provides.\n\n| Side | Result |\n|---|---|\n| Old test (`7b36cf10`) with `GITHUB_RUN_ATTEMPT=2` | **Fails** |\n| Fixed test (HEAD) with the same environment | **Passes** |\n| Old test with no such variables | Passes |\n\nThe last row is why CI only broke on re-runs: the test was fine whenever the variable was unset.\n\n**Failure in the old test.** The nightly channel expected `1.2.3-nightly.20261108.9` and got `1.2.3-nightly.20261108.9.2`. The PR channel expected `1.2.3-pr7.9` and got `1.2.3-pr7.9.2`. The release script appends the run attempt to the version when it is greater than 1. The old test's `run()` helper in `scripts/release-identity.test.mjs` leaked the real `GITHUB_RUN_ATTEMPT` into the child process.\n\n**Why the old test leaked it.** Its env filter was `GITHUB_ACTIONS$`, which strips only that one `GITHUB_` variable. `GITHUB_RUN_ATTEMPT` passed through from the workflow.\n\n**What the fix changes** (`41f16d67`):\n- The filter is now `GITHUB_`, so every inherited `GITHUB_*` variable is stripped.\n- The test sets `GITHUB_RUN_ATTEMPT: '1'` itself, so the expected versions no longer depend on the host.\n\n`7b36cf10`, the commit before the fix, had narrowed the filter from `GITHUB_` to `GITHUB_ACTIONS$` and dropped the pin. That narrowing is what let the variable through.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

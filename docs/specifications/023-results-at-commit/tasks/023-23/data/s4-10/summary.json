@@ -1,0 +1,31 @@
+{
+  "id": "s4-10",
+  "loadStart": "3.00",
+  "exit": 0,
+  "wallSeconds": 29.682,
+  "squeal": [
+    "5s cd ~squeal-w15/runs/w15/s4-10; squeal proof --help 2>&1 | head -40; ls ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/",
+    "7s cd ~squeal-w15/runs/w15/s4-10; squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ --case test --timeout 300 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "5s Bash cd ~squeal-w15/runs/w15/s4-10; squeal proof --help 2>&1 | head -40; ls ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.058871,
+  "usage": {
+    "cache_creation_input_tokens": 16158,
+    "cache_read_input_tokens": 85500,
+    "output_tokens": 991
+  },
+  "firstFinal": "The old test was the problem. `squeal proof` came back **proven**.\n\nI ran the test file from the parent commit (`fb045d07c`) against today's code (`e71888f91`). I then ran the current test file against the same code.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | old (`fb045d07c`) | today's (`e71888f91`) | **fails** |\n| Green | new (`e71888f91`) | today's (`e71888f91`) | **passes** |\n\nThe old version failed on `counts only unhandled matching issues and resumes after restart (history=true)`:\n\n```\nAssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]\n    at packages/cezar/src/automations/unhandled-polls.test.ts:72:20\n```\n\nThis is an assertion failure, not an import or setup error. It expected issues 101–105 and got none. The code didn't change in that commit, so the test was reading something that no longer held. That fits the commit message, \"pin the clock in the unhandled-polls history test\". I didn't open the diff, so I haven't confirmed the cause was the unpinned clock.\n\nSqueal ran both sides in temporary checkouts, so your working tree is untouched. Its output also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat`. That was in the temporary checkouts and doesn't affect the verdict.",
+  "final": "The old test was the problem. `squeal proof` came back **proven**.\n\nI ran the test file from the parent commit (`fb045d07c`) against today's code (`e71888f91`). I then ran the current test file against the same code.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | old (`fb045d07c`) | today's (`e71888f91`) | **fails** |\n| Green | new (`e71888f91`) | today's (`e71888f91`) | **passes** |\n\nThe old version failed on `counts only unhandled matching issues and resumes after restart (history=true)`:\n\n```\nAssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]\n    at packages/cezar/src/automations/unhandled-polls.test.ts:72:20\n```\n\nThis is an assertion failure, not an import or setup error. It expected issues 101–105 and got none. The code didn't change in that commit, so the test was reading something that no longer held. That fits the commit message, \"pin the clock in the unhandled-polls history test\". I didn't open the diff, so I haven't confirmed the cause was the unpinned clock.\n\nSqueal ran both sides in temporary checkouts, so your working tree is untouched. Its output also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat`. That was in the temporary checkouts and doesn't affect the verdict.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

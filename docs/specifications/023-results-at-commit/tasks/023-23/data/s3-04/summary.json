@@ -1,0 +1,29 @@
+{
+  "id": "s3-04",
+  "loadStart": "5.27",
+  "exit": 0,
+  "wallSeconds": 37.633,
+  "squeal": [
+    "4s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.053556,
+  "usage": {
+    "cache_creation_input_tokens": 16138,
+    "cache_read_input_tokens": 59290,
+    "output_tokens": 727
+  },
+  "firstFinal": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs`, using the parent commit `24694ced5` as the base. It did this in temporary checkouts, so your tree is untouched.\n\n- **Red:** the test file from `6414b6c20` run against the code from `24694ced5`.\n- **Green:** the test and the code both at `6414b6c20`.\n- **Result:** the file is proven. That means 1 proven, 0 not red, 0 red for another reason, 0 not green and 0 not comparable.\n\n**Red failures without the fix** (three tests):\n\n| Test | Failure |\n|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | `false !== true` (`queue-ci-proof.test.cjs:96`) |\n| a running queue run whose gate passes during the bounded wait is proof | `false !== true` (`:117`) |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` (`:122`) |\n\nAll three failed on assertions, not on a crash or a setup error. With the fix, the whole file passes.\n\nText for the PR description:\n\n> **Regression proof** (`squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1`): at the parent code (`24694ced5`) three new tests fail on assertions. Two reject a running queue run whose gate passed, returning `false` where `true` is expected. One reports `source-pending` where `source-changed` is expected. At `6414b6c20` the file passes.",
+  "final": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs`, using the parent commit `24694ced5` as the base. It did this in temporary checkouts, so your tree is untouched.\n\n- **Red:** the test file from `6414b6c20` run against the code from `24694ced5`.\n- **Green:** the test and the code both at `6414b6c20`.\n- **Result:** the file is proven. That means 1 proven, 0 not red, 0 red for another reason, 0 not green and 0 not comparable.\n\n**Red failures without the fix** (three tests):\n\n| Test | Failure |\n|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | `false !== true` (`queue-ci-proof.test.cjs:96`) |\n| a running queue run whose gate passes during the bounded wait is proof | `false !== true` (`:117`) |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` (`:122`) |\n\nAll three failed on assertions, not on a crash or a setup error. With the fix, the whole file passes.\n\nText for the PR description:\n\n> **Regression proof** (`squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1`): at the parent code (`24694ced5`) three new tests fail on assertions. Two reject a running queue run whose gate passed, returning `false` where `true` is expected. One reports `source-pending` where `source-changed` is expected. At `6414b6c20` the file passes.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

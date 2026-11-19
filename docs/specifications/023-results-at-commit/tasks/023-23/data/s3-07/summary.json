@@ -1,0 +1,29 @@
+{
+  "id": "s3-07",
+  "loadStart": "6.08",
+  "exit": 0,
+  "wallSeconds": 29.673,
+  "squeal": [
+    "4s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.052426,
+  "usage": {
+    "cache_creation_input_tokens": 16138,
+    "cache_read_input_tokens": 59290,
+    "output_tokens": 614
+  },
+  "firstFinal": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs`, with the test file from `6414b6c20` against the code from its parent `24694ced5`. Squeal ran both sides in temporary checkouts, so your tree is untouched.\n\n**Result:** 1 proven, 0 not red, 0 red for another reason, 0 not green.\n\n**Red** (new tests over the old code): 3 tests fail.\n- `a running queue run whose gate passed is proof while jobs outside the gate still run` fails with `false !== true`.\n- `a running queue run whose gate passes during the bounded wait is proof` fails with `false !== true`.\n- `a new attempt of a running queue run during the final read invalidates its proof` fails because the old code returns `{ reason: 'source-pending', verified: false }`. The test expects `source-changed`.\n\n**Green** (tests and code at `6414b6c20`): the file passes.\n\nFor the PR description:\n\n> Red/green proof: `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1` shows the three new tests fail against the pre-fix code (24694ced5) and pass at 6414b6c20.\n\nI did not check which other tests in the file were already in place and passed on both sides.",
+  "final": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs`, with the test file from `6414b6c20` against the code from its parent `24694ced5`. Squeal ran both sides in temporary checkouts, so your tree is untouched.\n\n**Result:** 1 proven, 0 not red, 0 red for another reason, 0 not green.\n\n**Red** (new tests over the old code): 3 tests fail.\n- `a running queue run whose gate passed is proof while jobs outside the gate still run` fails with `false !== true`.\n- `a running queue run whose gate passes during the bounded wait is proof` fails with `false !== true`.\n- `a new attempt of a running queue run during the final read invalidates its proof` fails because the old code returns `{ reason: 'source-pending', verified: false }`. The test expects `source-changed`.\n\n**Green** (tests and code at `6414b6c20`): the file passes.\n\nFor the PR description:\n\n> Red/green proof: `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1` shows the three new tests fail against the pre-fix code (24694ced5) and pass at 6414b6c20.\n\nI did not check which other tests in the file were already in place and passed on both sides.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

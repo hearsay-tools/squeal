@@ -1,0 +1,33 @@
+{
+  "id": "s5-06",
+  "loadStart": "6.61",
+  "exit": 0,
+  "wallSeconds": 66.412,
+  "squeal": [
+    "4s git show HEAD --stat --format='%h %s' && git show HEAD && cat references/commands.md 2>/dev/null | head -0; squeal checks | head -30",
+    "6s squeal proof --help 2>&1 | head -40; grep -n \"RUN_ATTEMPT\" scripts/*.mjs | head",
+    "9s echo \"== env GITHUB_RUN_ATTEMPT=2 ==\"; squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -30; echo \"== env unset ==\"; squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT= 2>&1 | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [
+    "4s git show HEAD --stat --format='%h %s' && git show HEAD && cat references/commands.md 2>/dev/null | head -0; squeal checks | head -30"
+  ],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.07292850000000001,
+  "usage": {
+    "cache_creation_input_tokens": 18494,
+    "cache_read_input_tokens": 113935,
+    "output_tokens": 1528
+  },
+  "firstFinal": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` with the old test (at `HEAD~1`) against the current code, once with the variable set and once with it unset.\n\n**What the diff changed** (`scripts/release-identity.test.mjs`, `run()`):\n- **Old env filter:** it dropped `CEZ_`, `HSQ_`, `GITHUB_ACTIONS`, `ACTIONS_ID_TOKEN_*` and `NODE_AUTH_TOKEN`. Any other `GITHUB_*` variable from the runner went through to `release-snapshot.mjs`.\n- **Why that matters:** `scripts/release-snapshot.mjs:62` reads `GITHUB_RUN_ATTEMPT` and adds it to the version when it's numeric.\n- **New env filter:** it drops every `GITHUB_*` variable.\n- **New pin:** the test sets `GITHUB_RUN_ATTEMPT: '1'` itself.\n\n**Old test, with `GITHUB_RUN_ATTEMPT=2` in the environment (a CI re-run): it fails.**\n```\nnightly: actual '1.2.3-nightly.20261108.9.2'   expected '1.2.3-nightly.20261108.9'\npr:      actual '1.2.3-pr7.9.2'                 expected '1.2.3-pr7.9'\n```\nThe `.2` suffix is the leaked run attempt.\n\n**Old test, with the variable unset (a first CI run or a local run): it passes.** Squeal reported \"not red\". That is why the bug only appeared on re-runs.\n\n**Fixed test, with `GITHUB_RUN_ATTEMPT=2` in the environment:** it passes. The proof's green side ran with the same `GITHUB_RUN_ATTEMPT=2` and passed, so the version no longer picks up the variable.\n\nSqueal's overall verdict was \"1 proven\". That is a red proof for a test change, over 3 runs in temporary checkouts, so your working tree wasn't touched.\n\nI didn't check whether the new `GITHUB_RUN_ATTEMPT: '1'` yields the same version string as before for the cases that assert on it. Those pass at HEAD in the proof above.",
+  "final": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I ran `squeal proof` with the old test (at `HEAD~1`) against the current code, once with the variable set and once with it unset.\n\n**What the diff changed** (`scripts/release-identity.test.mjs`, `run()`):\n- **Old env filter:** it dropped `CEZ_`, `HSQ_`, `GITHUB_ACTIONS`, `ACTIONS_ID_TOKEN_*` and `NODE_AUTH_TOKEN`. Any other `GITHUB_*` variable from the runner went through to `release-snapshot.mjs`.\n- **Why that matters:** `scripts/release-snapshot.mjs:62` reads `GITHUB_RUN_ATTEMPT` and adds it to the version when it's numeric.\n- **New env filter:** it drops every `GITHUB_*` variable.\n- **New pin:** the test sets `GITHUB_RUN_ATTEMPT: '1'` itself.\n\n**Old test, with `GITHUB_RUN_ATTEMPT=2` in the environment (a CI re-run): it fails.**\n```\nnightly: actual '1.2.3-nightly.20261108.9.2'   expected '1.2.3-nightly.20261108.9'\npr:      actual '1.2.3-pr7.9.2'                 expected '1.2.3-pr7.9'\n```\nThe `.2` suffix is the leaked run attempt.\n\n**Old test, with the variable unset (a first CI run or a local run): it passes.** Squeal reported \"not red\". That is why the bug only appeared on re-runs.\n\n**Fixed test, with `GITHUB_RUN_ATTEMPT=2` in the environment:** it passes. The proof's green side ran with the same `GITHUB_RUN_ATTEMPT=2` and passed, so the version no longer picks up the variable.\n\nSqueal's overall verdict was \"1 proven\". That is a red proof for a test change, over 3 runs in temporary checkouts, so your working tree wasn't touched.\n\nI didn't check whether the new `GITHUB_RUN_ATTEMPT: '1'` yields the same version string as before for the cases that assert on it. Those pass at HEAD in the proof above.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

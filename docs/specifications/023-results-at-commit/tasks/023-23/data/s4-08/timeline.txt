@@ -1,0 +1,45 @@
+    2.4 TOOL Skill: squeal:squeal
+    2.6 RES  Launching skill: squeal:squeal
+    2.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    5.5 TOOL Bash: cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -i -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s4-08 && git show e71888f9 --stat | head
+    5.7 RES  80-Each edit is its own revision, so the first wait reports the revert, not the fix: the result is the FAIL the test had before your fix, often looked up from the store at once since the reverted files are the same bytes, so that wait may return on quiet instead of news. Quiet says no result your edits owe is outstanding, not that it passed: read the outcome in the snapshot the wait prints. The test catches the bug when it is listed under `Known failures` after the revert and gone from it after the restore; listed as passing after the revert, it does not. For one test of a large test file, nam …[4057 chars]
+    8.1 TOOL Bash: git show e71888f9 | head -60; squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -40
+   27.0 RES  commit e71888f911ea6c9a29a219f1e332cdde5c42229c
+             Author: Wiktor Jarka <wjarka@users.noreply.github.com>
+             Date:   Tue Nov 3 00:47:10 2026 +0000
+             
+                 test(automations): pin the clock in the unhandled-polls history test (#2539)
+             
+             diff --git a/packages/cezar/src/automations/unhandled-polls.test.ts b/packages/cezar/src/automations/unhandled-polls.test.ts
+             index 78524a01..a0251d56 100644
+             --- a/packages/cezar/src/automations/unhandled-polls.test.ts
+             +++ b/packages/cezar/src/automations/unha …[5059 chars]
+   31.4 SAY  The old test was the problem. Its failure came from the test's own use of the real clock, not from the product code.
+
+I ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It used two temporary checkouts, so your tree is untouched.
+
+| Side | Test version | Code | Result |
+|---|---|---|---|
+| Red | before the commit (`fb045d07c`) | today's code (`e71888f91`) | **fail** |
+| Green | after the commit | today's code (`e71888f91`) | **pass** |
+
+- **Red failure:** the test `counts only unhandled matching issues and resumes after restart (history=true)` failed at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` but got `[]`.
+- **Cause:** the fixtures are dated around `epoch = 2026-10-27`, and the old test ran against the real clock. The history window moves with real time, so once that date fell outside the window, the fixture events no longer counted.
+- **Fix in the commit:** it adds `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(epoch + 1 day)`. It also resets with `vi.useRealTimers()` in `afterEach`. That keeps the events inside the history window regardless of the real date.
+
+Squeal's verdict was "1 proven, 0 not red, 0 not green". Both runs also noted "git's checkout rules changed packages/mobile/android/gradlew.bat". Squeal printed that note only, and it doesn't affect this test.
+   31.6 END  success turns=5 duration=30884ms cost=$0.0640814 usage={"input_tokens":8,"cache_creation_input_tokens":17598,"cache_read_input_tokens":86104,"output_tokens":1146,"output_tokens_details":{"thinking_tokens":236},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":17598},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   31.6 FINAL The old test was the problem. Its failure came from the test's own use of the real clock, not from the product code.
+
+I ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It used two temporary checkouts, so your tree is untouched.
+
+| Side | Test version | Code | Result |
+|---|---|---|---|
+| Red | before the commit (`fb045d07c`) | today's code (`e71888f91`) | **fail** |
+| Green | after the commit | today's code (`e71888f91`) | **pass** |
+
+- **Red failure:** the test `counts only unhandled matching issues and resumes after restart (history=true)` failed at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` but got `[]`.
+- **Cause:** the fixtures are dated around `epoch = 2026-10-27`, and the old test ran against the real clock. The history window moves with real time, so once that date fell outside the window, the fixture events no longer counted.
+- **Fix in the commit:** it adds `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(epoch + 1 day)`. It also resets with `vi.useRealTimers()` in `afterEach`. That keeps the events inside the history window regardless of the real date.
+
+Squeal's verdict was "1 proven, 0 not red, 0 not green". Both runs also noted "git's checkout rules changed packages/mobile/android/gradlew.bat". Squeal printed that note only, and it doesn't affect this test.

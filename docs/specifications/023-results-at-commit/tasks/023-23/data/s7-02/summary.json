@@ -1,0 +1,30 @@
+{
+  "id": "s7-02",
+  "loadStart": "1.38",
+  "exit": 0,
+  "wallSeconds": 235.557,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "128s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-02/162af5a6-f7e4-43ca-bec4-cb7acecfa782/tasks/b5y7qj3tm.output"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 10,
+  "costUsd": 0.09728039999999999,
+  "usage": {
+    "cache_creation_input_tokens": 19737,
+    "cache_read_input_tokens": 241439,
+    "output_tokens": 2375
+  },
+  "firstFinal": "The comparison with the parent commit isn't finished, so I can't give a full answer yet.\n\n**So far:**\n- `squeal status --at 8be977ad6` reports 0 pass→fail and 0 fail→pass. It marks 1822 test files unchanged and 98 unknown.\n- Of the 98 unknown, 97 are the browser e2e files, which Squeal hasn't run. The other is `packages/cezar/src/home/runtime-cli.test.ts`, which went from no result to pass.\n- That output compares the commit against the current working tree, and the tree is at that same commit. It is not a comparison with the parent.\n\n**Still running:** `squeal status --at 8be977ad6~1`, which would give the parent-commit comparison. It was moved to the background because it passed the 120 s timeout. I'll report when it finishes.\n\n**Failing tests:** the two failures in `packages/web/src/test/poll.test.ts` (the \"settled probes close unread streamed bodies\" cases) have no earlier pass on record. I can't say yet whether this commit caused them. Squeal's own hint is to check the changed files that test reads. The commit is a lint refactor, so I'd expect it not to touch that file. I haven't verified that.",
+  "final": "No test file changed from pass to fail or from fail to pass between the parent (`d8abcfe46`) and `8be977ad6`. That is only what Squeal's stored results show, though. For 24 files it has no earlier result to compare.\n\n**Squeal's counts for the parent against HEAD:** 0 pass→fail, 0 fail→pass, 1799 unchanged, 121 unknown.\n\n**Files that differ or are unknown:**\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` did not exist at the parent. It passes now.\n- **23 files with no result at the parent, pass now:**\n  - Examples: `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs`, `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`, and 20 more.\n  - They most likely re-ran because the commit touched files they read.\n  - Squeal never ran them at the parent, so I can't say they passed there.\n  - `squeal proof <file> --base d8abcfe46` can confirm any one of them.\n- **97 browser e2e files:** no result at either commit, because Squeal hasn't run them.\n\n**The two `poll.test.ts` failures:** they are not among the differences, so Squeal sees no change in them between the parent and this commit. Their report says no pass is on record before the failure, so I can't tell whether they were already failing at the parent. A red proof against the parent would settle it. I haven't run one.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

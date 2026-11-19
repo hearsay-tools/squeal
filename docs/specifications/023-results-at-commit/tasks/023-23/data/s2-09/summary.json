@@ -1,0 +1,30 @@
+{
+  "id": "s2-09",
+  "loadStart": "4.17",
+  "exit": 0,
+  "wallSeconds": 729.656,
+  "squeal": [
+    "3s squeal status --at 20f03a431 2>&1 | head -60; echo ======; squeal status --at 20f03a431~1 2>&1 | head -60",
+    "158s squeal proof test/store/open.test.ts --base 20f03a431~1 2>&1 | tail -30"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 4,
+  "turns": 14,
+  "costUsd": 0.1388721,
+  "usage": {
+    "cache_creation_input_tokens": 33699,
+    "cache_read_input_tokens": 279106,
+    "output_tokens": 2665
+  },
+  "firstFinal": "I'm waiting on the first of the two `squeal status --at` runs. I haven't run the second one yet, for the parent commit `20f03a431~1`. Squeal asks for one copy at a time, so I'll start that when the first finishes.\n\nI'll give you the answer once both are in.",
+  "final": "That notification is only the first monitor timing out. It was watching the output file I've already read, so there's nothing new in it.\n\nMy answer is unchanged. Commit `20f03a4` changed the result of one test file: `test/store/open.test.ts`. It failed at the parent commit `a5c9b72` and passes at `20f03a4`.\n\nI confirmed that with `squeal proof` on that file. The whole-suite `squeal status --at` comparison had no stored results, so it showed nothing. I haven't directly checked other test files that might import `mark.ts`.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

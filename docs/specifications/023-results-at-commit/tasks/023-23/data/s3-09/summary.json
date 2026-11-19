@@ -1,0 +1,29 @@
+{
+  "id": "s3-09",
+  "loadStart": "5.34",
+  "exit": 0,
+  "wallSeconds": 31.636,
+  "squeal": [
+    "4s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.053964399999999996,
+  "usage": {
+    "cache_creation_input_tokens": 16172,
+    "cache_read_input_tokens": 59324,
+    "output_tokens": 759
+  },
+  "firstFinal": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs` with the base at `6414b6c20~1` (`24694ced5`). It used temporary checkouts, so your tree is untouched.\n\n- **Red:** the new test file run against the old code at `24694ced5`. Three tests fail.\n- **Green:** the test and the code both at `6414b6c20`. The file passes.\n\nSqueal's verdict is `1 proven, 0 not red, 0 red for another reason, 0 not green`. Each red failure is an assertion failure, not a crash or setup error.\n\n| Test | Failure without the fix |\n|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | `false !== true` (line 96) |\n| a running queue run whose gate passes during the bounded wait is proof | `false !== true` (line 117) |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` (line 122) |\n\nFor the PR description:\n\n```\nRegression proof (`squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1`):\n- Red: the new tests against the pre-fix code (24694ced5) fail 3 assertions: the two\n  \"running queue run … is proof\" cases return false instead of true, and the\n  new-attempt case reports `source-pending` instead of `source-changed`.\n- Green: the same tests with the fix pass.\n```\n\nThe check is already stored in Squeal, so repeating it on the same bytes reads the saved result.",
+  "final": "The new tests fail without the fix and pass with it. I ran `squeal proof` on `.github/scripts/queue-ci-proof.test.cjs` with the base at `6414b6c20~1` (`24694ced5`). It used temporary checkouts, so your tree is untouched.\n\n- **Red:** the new test file run against the old code at `24694ced5`. Three tests fail.\n- **Green:** the test and the code both at `6414b6c20`. The file passes.\n\nSqueal's verdict is `1 proven, 0 not red, 0 red for another reason, 0 not green`. Each red failure is an assertion failure, not a crash or setup error.\n\n| Test | Failure without the fix |\n|---|---|\n| a running queue run whose gate passed is proof while jobs outside the gate still run | `false !== true` (line 96) |\n| a running queue run whose gate passes during the bounded wait is proof | `false !== true` (line 117) |\n| a new attempt of a running queue run during the final read invalidates its proof | got `reason: 'source-pending'`, expected `'source-changed'` (line 122) |\n\nFor the PR description:\n\n```\nRegression proof (`squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c20~1`):\n- Red: the new tests against the pre-fix code (24694ced5) fail 3 assertions: the two\n  \"running queue run … is proof\" cases return false instead of true, and the\n  new-attempt case reports `source-pending` instead of `source-changed`.\n- Green: the same tests with the fix pass.\n```\n\nThe check is already stored in Squeal, so repeating it on the same bytes reads the saved result.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

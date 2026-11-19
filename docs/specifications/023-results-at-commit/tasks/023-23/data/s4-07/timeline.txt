@@ -1,0 +1,34 @@
+    2.4 TOOL Skill: squeal:squeal
+    2.5 RES  Launching skill: squeal:squeal
+    2.7 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    4.1 TOOL Bash: squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9~1 2>&1 | tail -60
+   19.3 RES  squeal: proving 1 test file against fb045d07c in temporary checkouts
+             squeal: node-test project "root:test:unit": 0 of 13 test files with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other 13 do not run for a changed path they load only through a computed import() or require(). The --json report lists all 13 in incompleteClosures.
+             squeal: node-test project "test:unit": 0 of 1 test file with an incomplete static closure are in this check. The gate selects test files by their static imports, so the other one  …[2857 chars]
+   22.9 SAY  The old test was the problem. `squeal proof` ran it in a temporary checkout and it failed against today's code. The new test passed on the same code.
+
+- **Red:** the old test file from `fb045d07c` (the parent of `e71888f91`), run over the code at `e71888f91`, failed.
+  - Test: `counts only unhandled matching issues and resumes after restart (history=true)`
+  - Failure: `AssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]` at `unhandled-polls.test.ts:72`.
+  - The test expected issues 101–105 and got an empty list.
+- **Green:** the new test and code at `e71888f91` passed.
+
+Because the product code was the same in both runs, the old test fails by itself. That fits the commit title: the old test depended on the clock, and the commit pinned it.
+
+I didn't check which timing assumption the old test made, so I can't say from this run why it got an empty list.
+
+Squeal flagged that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That file isn't part of this test, and the proof ran only the one test file.
+   23.0 END  success turns=4 duration=22386ms cost=$0.0499632 usage={"input_tokens":6,"cache_creation_input_tokens":15177,"cache_read_input_tokens":59287,"output_tokens":608,"output_tokens_details":{"thinking_tokens":50},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":15177},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   23.0 FINAL The old test was the problem. `squeal proof` ran it in a temporary checkout and it failed against today's code. The new test passed on the same code.
+
+- **Red:** the old test file from `fb045d07c` (the parent of `e71888f91`), run over the code at `e71888f91`, failed.
+  - Test: `counts only unhandled matching issues and resumes after restart (history=true)`
+  - Failure: `AssertionError: expected [] to deeply equal [ 101, 102, 103, 104, 105 ]` at `unhandled-polls.test.ts:72`.
+  - The test expected issues 101–105 and got an empty list.
+- **Green:** the new test and code at `e71888f91` passed.
+
+Because the product code was the same in both runs, the old test fails by itself. That fits the commit title: the old test depended on the clock, and the commit pinned it.
+
+I didn't check which timing assumption the old test made, so I can't say from this run why it got an empty list.
+
+Squeal flagged that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That file isn't part of this test, and the proof ran only the one test file.

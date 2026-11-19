@@ -1,0 +1,29 @@
+{
+  "id": "s1-07",
+  "loadStart": "6.15",
+  "exit": 0,
+  "wallSeconds": 206.73,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.056104600000000004,
+  "usage": {
+    "cache_creation_input_tokens": 15631,
+    "cache_read_input_tokens": 85711,
+    "output_tokens": 844
+  },
+  "firstFinal": "I can't tell you from recorded results. Squeal has no stored results at 8be977ad6 or at its parent d8abcfe46, so the comparison came back empty. Of 1920 test files, 0 went pass→fail, 0 went fail→pass, 0 were unchanged, and all 1920 were unknown. Nothing has been run yet in this worktree.\n\nThe commit touched only two files:\n- `packages/cezar/src/lint/active-run-write.ts` was refactored for performance, with 107 lines changed.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is a new 72-line test file. It doesn't exist at the parent, so it can't have changed from pass to fail.\n\nAny real difference would be in tests that exercise `active-run-write.ts`, most likely the lint rule tests that use it. I haven't identified or run them.\n\nI can run those lint tests with `squeal run`, and use `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` to see whether the new test fails on the old code. Do you want me to?",
+  "final": "I can't tell you from recorded results. Squeal has no stored results at 8be977ad6 or at its parent d8abcfe46, so the comparison came back empty. Of 1920 test files, 0 went pass→fail, 0 went fail→pass, 0 were unchanged, and all 1920 were unknown. Nothing has been run yet in this worktree.\n\nThe commit touched only two files:\n- `packages/cezar/src/lint/active-run-write.ts` was refactored for performance, with 107 lines changed.\n- `packages/cezar/src/lint/active-run-write-index.test.ts` is a new 72-line test file. It doesn't exist at the parent, so it can't have changed from pass to fail.\n\nAny real difference would be in tests that exercise `active-run-write.ts`, most likely the lint rule tests that use it. I haven't identified or run them.\n\nI can run those lint tests with `squeal run`, and use `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` to see whether the new test fails on the old code. Do you want me to?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

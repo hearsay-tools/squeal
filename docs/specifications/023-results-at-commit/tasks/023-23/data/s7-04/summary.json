@@ -1,0 +1,31 @@
+{
+  "id": "s7-04",
+  "loadStart": "3.20",
+  "exit": 0,
+  "wallSeconds": 221.633,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ---; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "128s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-04/7e62c115-1712-4980-8681-552b73365cbc/tasks/bll1440tv.output",
+    "138s until grep -q \"pass -> fail\" <(tail -n +10 ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-04/7e62c115-1712-4980-8681-552b73365cbc/tasks/bll1440tv.output); do sleep 3; done; tail -n +10 ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-04/7e62c115-1712-4980-8681-552b73365cbc/tasks/bll1440tv.output"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 11,
+  "costUsd": 0.11489660000000002,
+  "usage": {
+    "cache_creation_input_tokens": 22979,
+    "cache_read_input_tokens": 282011,
+    "output_tokens": 2920
+  },
+  "firstFinal": "I'm still waiting on the parent-commit comparison, so I can't yet say which test files changed between 8be977ad6 and its parent.\n\n**What I have so far**\n- I ran `squeal status --at 8be977ad6`. It compares that commit's keys against the working tree, which is at HEAD (8be977ad6). It does not compare against the parent.\n- It shows 0 pass→fail and 0 fail→pass, with 1822 unchanged and 98 unknown. The unknowns are the 97 e2e files, which have not been run, plus `packages/cezar/src/home/runtime-cli.test.ts`.\n- `runtime-cli.test.ts` went from \"no result\" to pass, but only because it was run in this worktree. That is not a change caused by the commit.\n\n**Two failures that predate the comparison**\n- Two tests in `packages/web/src/test/poll.test.ts` currently fail. They are `closes every rejected non-2xx socket…` and `closes the successful health response socket…`.\n- They failed at revision 0 with no earlier pass on record, so I can't attribute them to this commit or to the parent.\n- The commit is a lint-only perf change, so a link to a web polling test looks unlikely. I haven't verified that.\n\n**What happens next**\n- The parent comparison (`squeal status --at 8be977ad6~1`) is running in the background, and I'll report the per-file differences when it finishes.\n- If it also leaves `poll.test.ts` unknown, I'll check the commit's diff for files that test reads, and use `squeal proof` or `squeal retry` for a verdict on those two tests.",
+  "final": "Based on Squeal's records, no test file now passes or fails differently because of 8be977ad6, but the evidence is incomplete for 24 files.\n\nI compared the commit with its parent, d8abcfe46, using `squeal status --at d8abcfe46`. That command measures against the working tree, which is at HEAD.\n\n- **Flips:** 0 pass→fail and 0 fail→pass.\n- **Unchanged:** 1799 files have the same state at both commits.\n- **Not run at the parent:** 23 test files have no stored result at the parent and pass now. Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. Squeal never ran them at the parent, so these are not regressions or fixes, but I can't say how they behaved before.\n- **New test file:** `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit and passes. `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46` would show whether it fails on the parent's code.\n- **Never run:** the 97 e2e files (`packages/web/e2e/*.e2e.ts`) have no result at either commit.\n\n**The two `poll.test.ts` failures.** `packages/web/src/test/poll.test.ts` has two failing tests: `closes every rejected non-2xx socket…` and `closes the successful health response socket…`. The file is not in the list of files whose state differs between the commits. That suggests the same inputs and the same failure before and after, so this commit didn't cause them. That is an inference. Squeal has no pass on record for those inputs, and I haven't run a retry.\n\nI can run `squeal proof` on the new test file, or `squeal retry packages/web/src/test/poll.test.ts --reason load` to see whether the failures hold.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

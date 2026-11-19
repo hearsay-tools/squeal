@@ -1,0 +1,59 @@
+    2.0 TOOL Skill: squeal:squeal
+    2.2 RES  Launching skill: squeal:squeal
+    2.3 HOOK hook_response: {"hookSpecificOutput":{"hookEventName":"PostToolBatch","additionalContext":"SQUEAL · registered at revision 0\nRevision 0: Squeal is still starting in this worktree and has no results yet. `squeal status --wait 60000 <path>...` waits for the files you change.\n\nSqueal runs this repository's checks in the background and tells you with your next tool call when one changes; a pass is silent. Read the squeal skill before you run or judge tests: it says what to do instead of a hand run, and with a failure you did not cause. `squeal checks` lists this repository's checks and when each runs; `squeal status` gives the current results."}}
+    3.6 TOOL Bash: git show --stat HEAD | head -20 && squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1 2>&1 | tail -40
+   31.5 RES  commit 6414b6c2077f7d600b2b50cbdbec502ca654d066
+             Author: Wiktor Jarka <wjarka@users.noreply.github.com>
+             Date:   Mon Nov 16 20:42:37 2026 +0000
+             
+                 fix(ci): let main reuse a queue run once its gate passed (#3759)
+                 
+                 A main push waited at most 60 seconds for the queue run to complete,
+                 but the Squeal export and publish jobs end 1.5 to 2.5 minutes after
+                 verify. While the queue run still runs, the probe now reads its jobs
+                 and reuses it once every gate job succeeded. …[5439 chars]
+   36.2 SAY  The new tests fail without the fix and pass with it. I ran `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1`. It runs the test file from `6414b6c20` over the old code, then over the fixed code, in a temporary checkout, so your working tree is untouched.
+
+**Red** (the new tests against the code at `24694ced5`, before the fix): 3 tests fail.
+
+| Test | Failure without the fix |
+|---|---|
+| `a running queue run whose gate passed is proof while jobs outside the gate still run` | `false !== true` (the run is not accepted as proof) |
+| `a running queue run whose gate passes during the bounded wait is proof` | `false !== true` |
+| `a new attempt of a running queue run during the final read invalidates its proof` | got `reason: 'source-pending'`, expected `'source-changed'` |
+
+**Green** (test and code at `6414b6c20`): the file passes.
+
+Squeal's verdict: `1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable`. The run took 27.5 s of the 600 s budget.
+
+**PR description text:**
+
+> **Regression proof.** `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1` runs the new tests over the pre-fix code (`24694ced5`) and over the fix. Without the fix, 3 tests fail:
+> - A running queue run whose gate passed is not accepted as proof while jobs outside the gate still run (`false !== true`).
+> - The same run is not accepted when its gate passes during the bounded wait (`false !== true`).
+> - A new attempt during the final read returns  …[1802 chars]
+   36.4 END  success turns=4 duration=35646ms cost=$0.054726 usage={"input_tokens":6,"cache_creation_input_tokens":16038,"cache_read_input_tokens":59290,"output_tokens":869,"output_tokens_details":{"thinking_tokens":0},"server_tool_use":{"web_search_requests":0,"web_fetch_requests":0},"service_tier":"standard","cache_creation":{"ephemeral_1h_input_tokens":0,"ephemeral_5m_input_tokens":16038},"inference_geo":"global","iterations":[],"speed":"standard","fallback_credit":null}
+   36.4 FINAL The new tests fail without the fix and pass with it. I ran `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1`. It runs the test file from `6414b6c20` over the old code, then over the fixed code, in a temporary checkout, so your working tree is untouched.
+
+**Red** (the new tests against the code at `24694ced5`, before the fix): 3 tests fail.
+
+| Test | Failure without the fix |
+|---|---|
+| `a running queue run whose gate passed is proof while jobs outside the gate still run` | `false !== true` (the run is not accepted as proof) |
+| `a running queue run whose gate passes during the bounded wait is proof` | `false !== true` |
+| `a new attempt of a running queue run during the final read invalidates its proof` | got `reason: 'source-pending'`, expected `'source-changed'` |
+
+**Green** (test and code at `6414b6c20`): the file passes.
+
+Squeal's verdict: `1 proven, 0 not red, 0 red for another reason, 0 not green, 0 not comparable`. The run took 27.5 s of the 600 s budget.
+
+**PR description text:**
+
+> **Regression proof.** `squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1` runs the new tests over the pre-fix code (`24694ced5`) and over the fix. Without the fix, 3 tests fail:
+> - A running queue run whose gate passed is not accepted as proof while jobs outside the gate still run (`false !== true`).
+> - The same run is not accepted when its gate passes during the bounded wait (`false !== true`).
+> - A new attempt during the final read returns `source-pending` instead of `source-changed`.
+>
+> With the fix, all pass. Squeal reports `1 proven, 0 not red, 0 not green`.
+
+The command also printed warnings about the node-test preload `scripts/test-home-env.mjs` and incomplete static closures. They concern how Squeal selects tests, not the result.

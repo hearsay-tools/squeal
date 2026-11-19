@@ -1,0 +1,33 @@
+{
+  "id": "s1-05",
+  "loadStart": "6.18",
+  "exit": 0,
+  "wallSeconds": 336.237,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "254s cd ~squeal-w15/runs/w15/s1-05; grep -rl \"active-run-write\" packages --include=*.ts --include=*.mjs --include=*.cjs -l | grep -v node_modules; squeal run tests packages/cezar/src/lint --wait 120000 2>&1 | tail -30",
+    "255s cd ~squeal-w15/runs/w15/s1-05; squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base 8be977ad6~1 2>&1 | tail -30",
+    "293s cd ~squeal-w15/runs/w15/s1-05; squeal proof packages/cezar/src/lint/ast-rules-active-run.test.ts --base 8be977ad6~1 2>&1 | grep -v '^squeal: node-test' | tail -15",
+    "304s cd ~squeal-w15/runs/w15/s1-05; squeal proof packages/cezar/src/lint/ast-rules-active-run.test.ts --base 8be977ad6~1 --source packages/cezar/src/lint/active-run-write-index.test.ts --source packages/cezar/src/lint/active-run-write.ts 2>&1 | grep -v '^squeal: node-test' | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 9,
+  "costUsd": 0.08399259999999999,
+  "usage": {
+    "cache_creation_input_tokens": 19357,
+    "cache_read_input_tokens": 171121,
+    "output_tokens": 1846
+  },
+  "firstFinal": "Yes, one test file changed result. It is the new file `packages/cezar/src/lint/active-run-write-index.test.ts`, which the commit added.\n\n- **That file:** it didn't exist at the parent (`d8abcfe46`). Run against the parent's code, its test \"waits for a candidate and shares the Program walk across all eight owners\" fails with `expected 16 to be +0`. Against the commit's code it passes. So it goes from absent to passing, and it is a real regression test for the change in `active-run-write.ts`.\n- **`packages/cezar/src/lint/ast-rules-active-run.test.ts`:** this is the only other test file that imports the changed module (`plugin.ts` imports it too, but it isn't a test). It passes both with the parent's code and with the commit's code, so its result is unchanged.\n- **Everything else:** I didn't run the other test files. `squeal status --at` had no stored results for any of the 1920 test files, at either commit, so its whole-suite diff came back \"unknown\". The two-file answer rests on import analysis plus the two comparisons above. I didn't run the whole suite, so a test that reaches `active-run-write.ts` only through a computed `import()` could have been missed.\n\nThe commit touched only `active-run-write.ts` and the new test file.",
+  "final": "Yes, one test file changed result. It is the new file `packages/cezar/src/lint/active-run-write-index.test.ts`, which the commit added.\n\n- **That file:** it didn't exist at the parent (`d8abcfe46`). Run against the parent's code, its test \"waits for a candidate and shares the Program walk across all eight owners\" fails with `expected 16 to be +0`. Against the commit's code it passes. So it goes from absent to passing, and it is a real regression test for the change in `active-run-write.ts`.\n- **`packages/cezar/src/lint/ast-rules-active-run.test.ts`:** this is the only other test file that imports the changed module (`plugin.ts` imports it too, but it isn't a test). It passes both with the parent's code and with the commit's code, so its result is unchanged.\n- **Everything else:** I didn't run the other test files. `squeal status --at` had no stored results for any of the 1920 test files, at either commit, so its whole-suite diff came back \"unknown\". The two-file answer rests on import analysis plus the two comparisons above. I didn't run the whole suite, so a test that reaches `active-run-write.ts` only through a computed `import()` could have been missed.\n\nThe commit touched only `active-run-write.ts` and the new test file.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

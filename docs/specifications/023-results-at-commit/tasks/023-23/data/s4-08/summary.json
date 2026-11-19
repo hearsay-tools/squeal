@@ -1,0 +1,31 @@
+{
+  "id": "s4-08",
+  "loadStart": "6.50",
+  "exit": 0,
+  "wallSeconds": 31.908,
+  "squeal": [
+    "6s cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -i -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s4-08 && git show e71888f9 --stat | head",
+    "8s git show e71888f9 | head -60; squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -40"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal",
+    "6s Bash cd ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references && grep -n -i -B2 -A25 'proof' commands.md | head -120; cd ~squeal-w15/runs/w15/s4-08 && git show"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0640814,
+  "usage": {
+    "cache_creation_input_tokens": 17598,
+    "cache_read_input_tokens": 86104,
+    "output_tokens": 1146
+  },
+  "firstFinal": "The old test was the problem. Its failure came from the test's own use of the real clock, not from the product code.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It used two temporary checkouts, so your tree is untouched.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | before the commit (`fb045d07c`) | today's code (`e71888f91`) | **fail** |\n| Green | after the commit | today's code (`e71888f91`) | **pass** |\n\n- **Red failure:** the test `counts only unhandled matching issues and resumes after restart (history=true)` failed at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` but got `[]`.\n- **Cause:** the fixtures are dated around `epoch = 2026-10-27`, and the old test ran against the real clock. The history window moves with real time, so once that date fell outside the window, the fixture events no longer counted.\n- **Fix in the commit:** it adds `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(epoch + 1 day)`. It also resets with `vi.useRealTimers()` in `afterEach`. That keeps the events inside the history window regardless of the real date.\n\nSqueal's verdict was \"1 proven, 0 not red, 0 not green\". Both runs also noted \"git's checkout rules changed packages/mobile/android/gradlew.bat\". Squeal printed that note only, and it doesn't affect this test.",
+  "final": "The old test was the problem. Its failure came from the test's own use of the real clock, not from the product code.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It used two temporary checkouts, so your tree is untouched.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | before the commit (`fb045d07c`) | today's code (`e71888f91`) | **fail** |\n| Green | after the commit | today's code (`e71888f91`) | **pass** |\n\n- **Red failure:** the test `counts only unhandled matching issues and resumes after restart (history=true)` failed at `unhandled-polls.test.ts:72`. It expected `[101, 102, 103, 104, 105]` but got `[]`.\n- **Cause:** the fixtures are dated around `epoch = 2026-10-27`, and the old test ran against the real clock. The history window moves with real time, so once that date fell outside the window, the fixture events no longer counted.\n- **Fix in the commit:** it adds `vi.useFakeTimers({ toFake: ['Date'] })` with `vi.setSystemTime(epoch + 1 day)`. It also resets with `vi.useRealTimers()` in `afterEach`. That keeps the events inside the history window regardless of the real date.\n\nSqueal's verdict was \"1 proven, 0 not red, 0 not green\". Both runs also noted \"git's checkout rules changed packages/mobile/android/gradlew.bat\". Squeal printed that note only, and it doesn't affect this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

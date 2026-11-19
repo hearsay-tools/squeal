@@ -1,0 +1,24 @@
+== prepare-copy s7-04 s7-01 2026-11-19T17:19:19Z load 1.23
+Revision: 0
+Known failures: 2 (2 tests); not current: 97 of 1920 test files (97 unknown)
+  FAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes every rejected non-2xx socket across repeated JSON probes
+        expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+        at packages/web/src/test/poll.test.ts:257:36, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.13 per CPU when it ran; no retry asked at these inputs
+  FAIL  [web] packages/web/src/test/poll.test.ts > settled probes close unread streamed bodies (#764 review) > closes the successful health response socket after accepting headers
+        expected 1 to be +0 // Object.is equality; diff (- Expected, + Received): - 0 | + 1
+        at packages/web/src/test/poll.test.ts:245:36, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded just now in this worktree at revision 0, load 0.13 per CPU when it ran; no retry asked at these inputs
+Affected checks: 33873 passed (32050 tests, 1823 test files loaded), 0 running, 0 queued, 30 skipped (30 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 97 test files; 97 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Complexity: 5 functions over 20; squeal code lists them.
+Lint: linting has not started.
+
+Worktree: ~squeal-w15/runs/w15/s7-04 (HEAD 8be977a, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 6 s ago
+Inherited from other worktrees: 33884 current results (32062 tests, 1822 test files loaded)
+  33884 (32062 tests, 1822 test files loaded) from ~squeal-w15/runs/w15/s7-01 at 8be977a
+Squeal daemon stopped for ~squeal-w15/runs/w15/s7-04; `squeal stop --until-start` keeps it stopped through edits and Git operations
+8be977ad perf(lint): share active-run owner syntax indexes (#3785)
+d8abcfe4 refactor(lint): port owner and reader rules from ast-grep to oxlint (#3778)

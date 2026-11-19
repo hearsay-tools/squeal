@@ -1,0 +1,30 @@
+{
+  "id": "s1-04",
+  "loadStart": "3.81",
+  "exit": 0,
+  "wallSeconds": 309.828,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "265s squeal run tests packages/cezar/src/lint --wait 300000 2>&1 | tail -25; echo ----; squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base 8be977ad6~1 2>&1 | tail -25"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0654536,
+  "usage": {
+    "cache_creation_input_tokens": 16894,
+    "cache_read_input_tokens": 112486,
+    "output_tokens": 1195
+  },
+  "firstFinal": "Yes, but only for the one test file the commit added. No existing test file changed from pass to fail or from fail to pass.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the change itself) and a new test, `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n**Stored results.** `squeal status --at` could not compare the whole suite, because no results are stored at either commit. It reported 0 pass→fail, 0 fail→pass and 1920 unknown across all test files, so it says nothing about the other 1919 files.\n\n**The new test.** `squeal proof` ran it against the parent's code and against the commit's code:\n- **Parent code (`d8abcfe46`):** fails. The test \"waits for a candidate and shares the Program walk across all eight owners\" gets 16 where it expects 0, at line 58.\n- **Commit code (`8be977ad6`):** passes.\n\nThe test is new, so it has no result at the parent commit. It fails on the parent's code, which fits the commit's goal of sharing the syntax walk across the eight owners.\n\n**Other tests.** I did not run any other test file at either commit. Squeal found no test file under `packages/cezar/src/lint` to select in the `tests` group. So I can't confirm the rest of the suite is unchanged, only that the diff touches nothing else. CI's full run is the check for that.",
+  "final": "Yes, but only for the one test file the commit added. No existing test file changed from pass to fail or from fail to pass.\n\nThe commit changed two files: `packages/cezar/src/lint/active-run-write.ts` (the change itself) and a new test, `packages/cezar/src/lint/active-run-write-index.test.ts`.\n\n**Stored results.** `squeal status --at` could not compare the whole suite, because no results are stored at either commit. It reported 0 pass→fail, 0 fail→pass and 1920 unknown across all test files, so it says nothing about the other 1919 files.\n\n**The new test.** `squeal proof` ran it against the parent's code and against the commit's code:\n- **Parent code (`d8abcfe46`):** fails. The test \"waits for a candidate and shares the Program walk across all eight owners\" gets 16 where it expects 0, at line 58.\n- **Commit code (`8be977ad6`):** passes.\n\nThe test is new, so it has no result at the parent commit. It fails on the parent's code, which fits the commit's goal of sharing the syntax walk across the eight owners.\n\n**Other tests.** I did not run any other test file at either commit. Squeal found no test file under `packages/cezar/src/lint` to select in the `tests` group. So I can't confirm the rest of the suite is unchanged, only that the diff touches nothing else. CI's full run is the check for that.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

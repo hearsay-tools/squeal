@@ -1,0 +1,32 @@
+{
+  "id": "s1-08",
+  "loadStart": "4.86",
+  "exit": 0,
+  "wallSeconds": 230.724,
+  "squeal": [
+    "3s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "128s until [ -s ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s1-08/e7bd0232-f021-432b-a2e9-6d3f3cc544c3/tasks/byu01fdea.output ]; do sleep 5; done; head -c 4000 ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s1-08/e7bd0232-f021-432b-a2e9-6d3f3cc544c3/tasks/byu01fdea.output",
+    "159s ls packages/cezar/src/lint | grep -i active-run-write; squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base 8be977ad6~1 2>&1 | tail -30",
+    "227s cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s1-08/e7bd0232-f021-432b-a2e9-6d3f3cc544c3/tasks/byu01fdea.output | tail -15"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 2,
+  "turns": 10,
+  "costUsd": 0.09134659999999999,
+  "usage": {
+    "cache_creation_input_tokens": 19338,
+    "cache_read_input_tokens": 223616,
+    "output_tokens": 2060
+  },
+  "firstFinal": "Yes, one test file changed result. It is the new `packages/cezar/src/lint/active-run-write-index.test.ts`, and it fails on the parent commit and passes on 8be977ad6.\n\n- **`active-run-write-index.test.ts`**: This file doesn't exist in the parent, so \"fails before\" means the new test run against the old code. The test is \"waits for a candidate and shares the Program walk across all eight owners\". On the parent code it fails at line 58 with `expected 16 to be +0`. On 8be977ad6 it passes. This is Squeal's red/green proof, and it ran only this one file.\n\n- **Everything else**: I did not confirm that other test files are unchanged. Squeal had no stored results for any of the 1920 test files at either commit, so `squeal status --at` could not compare the two commits. The commit only touched `active-run-write.ts` and the new test file, so I'd expect other tests to behave the same. I haven't run the existing tests that exercise `active-run-write.ts` at both commits, so that is unverified.\n\nI can run those existing lint tests at both commits if you want that checked.",
+  "final": "The background comparison finished. It agrees with what I reported: Squeal had no stored results at either commit, so `squeal status --at` could not compare the two.\n\n- **Parent commit (d8abcfe46):** 1919 test files, all \"no result\". `active-run-write-index.test.ts` is listed as new since that commit (absent there).\n- **8be977ad6:** 1920 test files, all \"no result\".\n- **Total:** 0 pass→fail, 0 fail→pass, 0 unchanged, 1920 unknown.\n\nThe only confirmed change is the one from the proof run. `packages/cezar/src/lint/active-run-write-index.test.ts` is new in this commit. It fails against the parent's `active-run-write.ts` and passes against the new one.\n\nI haven't checked whether any existing test file changed result, including tests that exercise `active-run-write.ts`. I can run those at both commits if you want.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": true
+}

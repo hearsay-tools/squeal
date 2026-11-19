@@ -1,0 +1,29 @@
+{
+  "id": "s3-08",
+  "loadStart": "5.16",
+  "exit": 0,
+  "wallSeconds": 36.736,
+  "squeal": [
+    "4s squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.054495999999999996,
+  "usage": {
+    "cache_creation_input_tokens": 16138,
+    "cache_read_input_tokens": 59290,
+    "output_tokens": 821
+  },
+  "firstFinal": "The new tests in `.github/scripts/queue-ci-proof.test.cjs` fail without the fix and pass with it. I ran `squeal proof` on that file against the parent commit.\n\n`squeal proof` ran the tests from 6414b6c20 against the code from 24694ced5, the parent. It then ran the same tests against the code at 6414b6c20. It used temporary checkouts, so your tree is untouched. The proof was `.github/scripts/queue-ci-proof.test.cjs: proven`, with 1 proven and 0 not red, red for another reason, or not green.\n\n**Red (fix reverted):** three tests fail.\n- `a running queue run whose gate passed is proof while jobs outside the gate still run` fails with `false !== true` (the test's line 96).\n- `a running queue run whose gate passes during the bounded wait is proof` fails with `false !== true` (line 117).\n- `a new attempt of a running queue run during the final read invalidates its proof` fails (line 122). It gets `{ reason: 'source-pending', verified: false }` and expects `reason: 'source-changed'`.\n\n**Green (fix applied):** the file passes.\n\nYou can paste this into the PR description:\n\n```\nRed/green proof (squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1):\n- Red (new tests over 24694ced5, the code before the fix): 3 tests fail\n  - \"a running queue run whose gate passed is proof while jobs outside the gate still run\": false !== true\n  - \"a running queue run whose gate passes during the bounded wait is proof\": false !== true\n  - \"a new attempt of a running queue run during the final read invalidates its proof\":\n    got reason 'source-pending', expected 'source-changed'\n- Green (6414b6c20): all pass\n```\n\nSqueal also printed warnings about the node-test projects. They concern preload hooks and tests with incomplete static closures. They did not change the proof result.",
+  "final": "The new tests in `.github/scripts/queue-ci-proof.test.cjs` fail without the fix and pass with it. I ran `squeal proof` on that file against the parent commit.\n\n`squeal proof` ran the tests from 6414b6c20 against the code from 24694ced5, the parent. It then ran the same tests against the code at 6414b6c20. It used temporary checkouts, so your tree is untouched. The proof was `.github/scripts/queue-ci-proof.test.cjs: proven`, with 1 proven and 0 not red, red for another reason, or not green.\n\n**Red (fix reverted):** three tests fail.\n- `a running queue run whose gate passed is proof while jobs outside the gate still run` fails with `false !== true` (the test's line 96).\n- `a running queue run whose gate passes during the bounded wait is proof` fails with `false !== true` (line 117).\n- `a new attempt of a running queue run during the final read invalidates its proof` fails (line 122). It gets `{ reason: 'source-pending', verified: false }` and expects `reason: 'source-changed'`.\n\n**Green (fix applied):** the file passes.\n\nYou can paste this into the PR description:\n\n```\nRed/green proof (squeal proof .github/scripts/queue-ci-proof.test.cjs --base 6414b6c2~1):\n- Red (new tests over 24694ced5, the code before the fix): 3 tests fail\n  - \"a running queue run whose gate passed is proof while jobs outside the gate still run\": false !== true\n  - \"a running queue run whose gate passes during the bounded wait is proof\": false !== true\n  - \"a new attempt of a running queue run during the final read invalidates its proof\":\n    got reason 'source-pending', expected 'source-changed'\n- Green (6414b6c20): all pass\n```\n\nSqueal also printed warnings about the node-test projects. They concern preload hooks and tests with incomplete static closures. They did not change the proof result.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

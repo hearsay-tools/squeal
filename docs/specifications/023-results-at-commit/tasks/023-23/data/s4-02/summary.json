@@ -1,0 +1,31 @@
+{
+  "id": "s4-02",
+  "loadStart": "3.30",
+  "exit": 0,
+  "wallSeconds": 31.05,
+  "squeal": [
+    "5s cat ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -B2 -A12 proof; git show e71888f9 --stat | head",
+    "7s git show e71888f9 | tail -40; squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -40"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal",
+    "5s Bash cat ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | grep -n -i -B2 -A12 proof; git show e71888f9 --stat | head"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0610021,
+  "usage": {
+    "cache_creation_input_tokens": 17025,
+    "cache_read_input_tokens": 85636,
+    "output_tokens": 986
+  },
+  "firstFinal": "The old test was the problem. `squeal proof` came back **proven**: the old test fails against today's code, and the new test passes against it.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It uses temporary checkouts, so your tree is untouched.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | before the commit (`fb045d07`) | `e71888f9` (today's) | **fail** |\n| Green | `e71888f9` | `e71888f9` | **pass** |\n\nThe failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. The assertion at `unhandled-polls.test.ts:72` got `[]` where it expected `[101, 102, 103, 104, 105]`.\n\n**Why it failed:** the fixtures are dated around `epoch` = 2026-10-27, and the history window is measured from the real current time. Today is 2026-11-19, so those fixed dates have fallen outside the window, and the poll returned no issues. The old test depended on the wall clock, so it would keep failing as time passed.\n\n**What the commit changed:** only the test. It fakes just `Date` and pins the system time to `epoch + 1 day`, so the fixture events stay inside the window. It restores real timers in `afterEach`. No production code changed.\n\nSqueal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That is unrelated to this test.",
+  "final": "The old test was the problem. `squeal proof` came back **proven**: the old test fails against today's code, and the new test passes against it.\n\nI ran `squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^`. It uses temporary checkouts, so your tree is untouched.\n\n| Side | Test version | Code | Result |\n|---|---|---|---|\n| Red | before the commit (`fb045d07`) | `e71888f9` (today's) | **fail** |\n| Green | `e71888f9` | `e71888f9` | **pass** |\n\nThe failing test is `counts only unhandled matching issues and resumes after restart (history=true)`. The assertion at `unhandled-polls.test.ts:72` got `[]` where it expected `[101, 102, 103, 104, 105]`.\n\n**Why it failed:** the fixtures are dated around `epoch` = 2026-10-27, and the history window is measured from the real current time. Today is 2026-11-19, so those fixed dates have fallen outside the window, and the poll returned no issues. The old test depended on the wall clock, so it would keep failing as time passed.\n\n**What the commit changed:** only the test. It fakes just `Date` and pins the system time to `epoch + 1 day`, so the fixture events stay inside the window. It restores real timers in `afterEach`. No production code changed.\n\nSqueal also noted that git's checkout rules changed `packages/mobile/android/gradlew.bat` in the temporary checkouts. That is unrelated to this test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

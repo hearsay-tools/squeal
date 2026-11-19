@@ -101,3 +101,89 @@ Not product defects, recorded for the coordinator:
 
 - Round 2's sentence is not a product text. After P1 and P2, run the five tasks again with no hint; the question is whether the skill and primer alone bring the commands in.
 - r2's task again after P3, and a before/after task in a repository where the store already holds the current side (a worktree that has run its tests), which is the usual case for a user; every session here started with an empty store.
+
+## Round 3 (023-23)
+
+Row 023-23, wave 15, worker 37851dda, 2026-11-19 15:35Z to 17:29Z, on the lab VM. Squeal 0.1.568 as released (hub entry `d84397e`, tag `squeal--v0.1.568`), which carries round 1's P1 and P2 (the skill's step 8 and the "Red/green" section name `status --at` and `proof`) and fixes for P5 to P9. Claude Code 2.1.327, model `claude-sonnet-5-5`, no hint in any prompt. The brief is `tasks/wave-15.md`; the scripts, the per-session data and the judgements are in `tasks/023-23/`.
+
+### Verdict
+
+- **Discovery works now.** With no hint, 55 of 55 non-control sessions loaded the skill and used the right command: `squeal proof` in 30 of 30 red-proof sessions, `squeal status --at` in 25 of 25 before/after sessions. Round 1: 0 of 5. The 3 control sessions used neither.
+- **No session that used them wrote to its tree.** 0 swaps in 55. The only write that swapped versions was in a control session (s6-03, below).
+- **Red proofs are right.** 30 of 30 answers right, 23 to 90 s per session (round 1 by hand: 21 to 118 s). Every s5 session read P9's new line, "red only under the conditions (without them: pass)", and claimed no more than it showed.
+- **Before/after does not get an answer on an empty store.** No session of 25 passed `--run`. With an empty store (s1, s2) every file read `no result -> no result`, so no session could answer the question in full: 12 of 20 said they could not tell, 3 added a proof of the new test and stated the rest as unknown, 5 claimed more than they had (2 over-claims, 3 gave a red proof as the file's changed result). With the store holding HEAD's results (s7), 5 of 5 answered right: no file changed result, 1,799 unchanged, the new file passes, and 24 files left unknown that `--run` would have settled.
+- **Every before/after session also ran `status --at` on HEAD itself** (25 of 25), believing it gives the "after" side. Each call keyed 1,920 or 1,962 test files in 57 to 104 s; the pair passed the agent's 120 s tool limit in 19 of 25 sessions, which then polled a background output file.
+- **New findings:** the report on no-result files names no next step (no `--run`); the key of one test file at `--at HEAD` differs from its key in a clean worktree at HEAD; the daemon in squawk took more than 60 s to start, so 3 of 3 control sessions got no verdict from their first wait; a directory path to `squeal run <group>` selects nothing and the text misled one agent.
+
+### Setup
+
+| Item | Value |
+|---|---|
+| Machine | The lab VM, 12 CPUs. 1-minute load 0.95 to 10.69 at each session's start; at most 3 sessions at once, each started only while the load was below 12 (`bin/batch.mjs`). |
+| Isolation | Throwaway OS user `squeal-w15`, case root `~squeal-w15/runs/w15` (`HOME`, `TMPDIR`, `CLAUDE_CONFIG_DIR`, `XDG_RUNTIME_DIR`, the pnpm store under it), cwd `/`, `env -i`; never the VM's `agent` HOME or its Claude Code configuration. The VM's Claude Code reaches the API through `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` (no login file); both passed by name only through `sudo --preserve-env`. |
+| Squeal | The release's own `install.sh` (`git show squeal--v0.1.568:install.sh`) with `SQUEAL_MARKETPLACE` pointing at a clone of the hub at `d84397e`; `claude plugin install squeal@hearsay` fetched the plugin from public github.com; `squeal --version` printed 0.1.568. |
+| Harness | Node 24.21.0 (nodejs.org, checked against `SHASUMS256.txt`); Claude Code 2.1.327 from npm into the case root; `timeout 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions <prompt>`, the prompts exactly as round 1 (`tasks/023-23/bin/prompts.json`; s7 has s1's prompt). |
+| Repositories | squawk: a bundle of history up to `0dfe0724c`, one fresh clone per session at the session's commit; Squeal: `git fetch --depth 50` of `20f03a431` from github.com. Each clone had its own `pnpm install --frozen-lockfile` (2 to 11 s with the shared store) and its own Squeal store. s5 and s6: round 1's fixtures (`tasks/023-10/bin/fixture-s5.mjs`, `fixture-s6.mjs`). |
+| Daemon | Started by each session's hooks, lookup-only. s1 to s6: no stored result at the start. |
+| s7 store | s7-01's clone ran `squeal start`, then `squeal run --all --wait` for 32 min (load about 11): 1,823 of 1,920 test files current; the 97 `browser` files run only on request and stayed without a result; 3 known failures from the VM (no Chrome for the e2e global setup; 2 tests in `packages/web/src/test/poll.test.ts`). s7-02 to s7-05 (the coordinator's choice, a test shortcut, not what a user does): a fresh clone at the same commit with its own install, s7-01's `.git/squeal` copied in (without `locks` and `logs`) before Squeal started there; `squeal status --wait 120000` then read 1,823 current and 97 not current, the same as s7-01, and `--full` listed the results as "Inherited from other worktrees: 33884 current results … from …/s7-01". s7-01 stayed on disk until s7-05 ended. |
+| Cost | 58 sessions, $4.16 in all (the last result event of each session; `total_cost_usd` is cumulative). |
+| Cleanup | After each session `squeal stop` and the clone removed. The transcripts stay on the VM under the case root until the coordinator lets them go. |
+
+### Per group
+
+Wall time is the session's, from its first stream line; cost is the sum over the group.
+
+| Group (n) | Expected | Right command | Answer | Swaps | Skill loaded | Wall median (range) | Cost |
+|---|---|---|---|---|---|---|---|
+| s1 before/after, squawk `8be977ad6`, empty store (10) | `status --at d8abcfe46`, with `--run` | `status --at` 10 of 10, never `--run`; `proof` of the new test 5 of 10 | full 0; honest "cannot tell" 5; partial with a proof 3; over-claim 2 (s1-04, s1-05) | 0 | 10 | 251 s (207 to 699) | $0.79 |
+| s2 before/after, Squeal `20f03a431`, empty store (10) | `status --at a5c9b7223`, with `--run` | `status --at` 10 of 10, never `--run`; `proof` 3 of 10 | full 0; honest "cannot tell" 7; red proof given as the file's changed result 3 (s2-02, s2-09, s2-10) | 0 | 10 | 262 s (208 to 730) | $0.83 |
+| s3 red proof, source fix, squawk `6414b6c20` (10) | `proof <test> --base HEAD~1` | 10 of 10 | right 10 (proven; the 3 failing tests and their assertions) | 0 | 10 | 35 s (28 to 38) | $0.54 |
+| s4 red proof, test-only fix, squawk `e71888f91` (10) | `proof <test> --base HEAD~1 --case test` | 10 of 10 (9 left `--case` to its default, which picked `test`) | right 10 (proven; expected `[101 … 105]`, got `[]`) | 0 | 10 | 32 s (23 to 90) | $0.56 |
+| s5 red proof, hidden dependency (10) | `proof <test> --base HEAD~1 --env GITHUB_RUN_ATTEMPT=2` | 10 of 10, all with `--case test` (the same sides as `dependency` here); 4 also ran a proof with the variable unset | right 10 | 0 | 10 | 59 s (47 to 73) | $0.76 |
+| s6 control: fix `report-title.test.ts` (3) | neither command | neither, 3 of 3 | fixed 2; s6-03 asked instead | 1 (s6-03) | 0 | 97 s (75 to 97) | $0.18 |
+| s7 before/after, squawk `8be977ad6`, HEAD's results stored (5) | `status --at d8abcfe46`, `--run` for the files with no result there | `status --at` 5 of 5, never `--run` | right 5: 0 flips, 1,799 unchanged, the new file passes; 23 files with no result at the parent and 97 never run, all stated as unknown | 0 | 5 | 226 s (222 to 238) | $0.50 |
+
+Per session: `tasks/023-23/data/judgements.tsv` (command, answer and reason, swaps, misread text) and `data/<id>/` (timeline, summary, the clone's git state after the session).
+
+s6-03 in detail: its first `squeal status --wait 60000 packages/contract/src/report-title.test.ts` returned after 60 s with no verdict while the daemon was starting. The agent then ran `git checkout packages/contract/src/report-title.ts`, discarding the user's uncommitted edit, wrote "I shouldn't have reverted that", restored the edit with Edit and asked the user which side is right. Its tree ended with the user's edit as before.
+
+### Squeal text read wrong or not acted on
+
+| Text | Sessions | What the agent did |
+|---|---|---|
+| A report of only unknown files, ending `0 pass -> fail, 0 fail -> pass, 0 unchanged, 1920 unknown`, after `1920 test files: no result -> no result: … and 1917 more`; no next step | s1, s2: 20 of 20 | Read it right ("no stored results, nothing to compare") but never found `--run`; offered `proof`, a wait, or a hand run (s2-07: `pnpm exec vitest run` at each commit). |
+| `squeal status --at <commit>: … against the working tree (HEAD <sha>)` | 25 of 25 | Ran `--at` on HEAD too, as the "after" side. Only s7-01, s7-02 and s7-04 said afterwards that the HEAD call compared HEAD with itself. |
+| `squeal: keying test files at <commit> in a temporary checkout` | s1-10, s2-06 | Said while waiting that Squeal "runs the tests" / "has to run 1962 test files" in the checkout; it keys only. |
+| `green: not run (red passed: nothing to prove)` | s1-05 | Wrote that `ast-rules-active-run.test.ts` "passes both with the parent's code and with the commit's code". Round 1's P7 text was changed and the misreading stayed (r1 there, s1-05 here). |
+| A source-case proof's red side (`the test at <HEAD> over the code at <base>`) | s2-02, s2-09, s2-10 | Gave it as the file's result at the parent: "its result did change", "It failed at the parent commit", "It went from fail to pass". The parent's own version of `test/store/open.test.ts` was never run. |
+| `packages/cezar/src/lint selects no test file of any group.` (from `squeal run tests packages/cezar/src/lint --wait 300000`) | s1-04 | "Squeal found no test file under `packages/cezar/src/lint`"; there are several. A directory is not a path the command selects by. |
+| `no test file's closure holds packages/contract/src/report-title.test.ts` (first wait, daemon starting) | s6-03 | Gave up on the wait and reverted the user's edit (above). The file is a test file; the daemon had not listed it yet. |
+
+Read right, round 1's fixes at work: the startup line "This worktree's daemon has not listed its test files yet: now is the stored results at the working tree's keys" (P5); the grouped unknown files, so `head -60` showed the whole report (P6); the line "`<file>` is new since `<commit>`: `squeal proof <file> --base <commit>` shows whether it fails on the code at `<commit>`" (P8), which 10 of 10 s1 sessions offered (5) or ran (5); s1-05's stop on an unchanged test ("changed files neither --with nor --source names") and its rerun with `--source`, as D5.2 intends; the e2e and `poll.test.ts` failures in s7, which every s7 agent named as unrelated or not settled.
+
+### What went wrong, and the changes the evidence asks for
+
+Proposals, not code. The coordinator numbers rows.
+
+| # | Problem, with the evidence | Proposed change |
+|---|---|---|
+| Q1 | **`--run` is never found.** 0 of 25 before/after sessions passed it; on an empty store none of 20 could answer, and in s7 24 files stayed unknown. The report gives no next step, and the skill's step 8 and the "Red/green" section name `status --at <commit>` without `--run`. | When files read `no result` at the commit, end the report with the command and its size: "`squeal status --at d8abcfe46 --run` runs the 23 files with no result there (estimate …)". Name `--run` in step 8: "files with no result at the commit: add `--run`". |
+| Q2 | **`--at HEAD` is run as the "after" side.** 25 of 25 sessions ran it; each cost 57 to 104 s of keying, and the pair passed Claude Code's 120 s tool limit in 19 of 25 sessions, which then polled a background file. | Step 8 and the help: "`--at <commit>` compares that commit with your working tree; one call is the whole comparison". When `<commit>` is HEAD, say "HEAD is your working tree's commit: compare with its parent, `--at HEAD~1`" and do not key. |
+| Q3 | **Keying a commit takes about a minute every time.** 57 to 104 s per call on 12 CPUs for 1,920 or 1,962 test files, repeated for the same commit within a session; two agents believed it runs the tests. | Keep a commit's keys once computed (they do not change), so a repeated call is instant; start with "keying 1920 test files at <commit> (no test runs; about a minute)". |
+| Q4 | **One key differs between the temporary checkout and the worktree.** In all 5 s7 sessions (the same store), `status --at 8be977ad6` with HEAD at `8be977ad6` and a clean tree read `packages/cezar/src/home/runtime-cli.test.ts: no result -> pass (now: run in this worktree)`, where every other file read unchanged. | Diagnose: something this test's key reads differs between a fresh checkout with a frozen install and the worktree (D5.1 names installed packages as one such input). Not diagnosed here. |
+| Q5 | **A red proof is still given as the file's changed result** (s2-02, s2-09, s2-10; round 1's s1 and r1, P8). | In step 8: "a proof answers 'does the new test fail on the old code'; for the old version of the file at the commit, use `status --at`". In a source-case report whose test changed: "red is not the file's result at <base>: that version is `squeal status --at <base> <file>`". |
+| Q6 | **"green: not run (red passed: nothing to prove)" still read as a pass at HEAD** (s1-05; round 1's r1, P7). | "green: not run. Red passed, so this proof says nothing about HEAD; `squeal status <file>` gives its result now." |
+| Q7 | **A slow start reads as a verdict on the file.** In squawk the daemon took more than 60 s to start from an empty store: 3 of 3 control sessions' first 60 s wait returned with no verdict; s6-03's text said "no test file's closure holds" the test file itself, and the agent reverted the user's edit. | While the daemon is starting, say only that: "Squeal is still starting here (62 s); wait again with the same command"; never a closure statement about a file it has not listed. |
+| Q8 | **A directory path selects nothing** (s1-04, "selects no test file of any group"). | Take a directory as its test files, or say "a directory is not a path `squeal run` selects by; name test or source files". |
+
+Not product defects, recorded for the coordinator:
+
+- **s6-03's revert** came after Q7's text, but discarding a user's uncommitted edit is the agent's own step; it restored the edit itself.
+- **s1-04's lead sentence** ("No existing test file changed") contradicts its own later text; Squeal said nothing to that effect.
+- **The s7 store copy** is a test shortcut; `squeal status --full` named the results as inherited from s7-01, and no s7 agent mentioned inheritance.
+- **The warm-up** (`squeal run --all --wait`) took 32 min on 12 CPUs and ended with exit 3 because the 97 `browser` files run only on request.
+
+### Open for a later round
+
+- After Q1 to Q3, s1 and s2 again with no hint: whether the report's next step brings in `--run` and a full answer fits the session's limit. Round 1's P3 (`--run` in Squeal's repository past its budget) stays untested: no session here passed `--run`.
+- These rounds used Claude Code and Sonnet only; the Codex, Pi and OpenCode copies of the skill text were not exercised.

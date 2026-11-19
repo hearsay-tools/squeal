@@ -1,0 +1,29 @@
+{
+  "id": "s1-01",
+  "loadStart": "1.24",
+  "exit": 0,
+  "wallSeconds": 239.329,
+  "squeal": [
+    "4s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 5,
+  "costUsd": 0.0564653,
+  "usage": {
+    "cache_creation_input_tokens": 15647,
+    "cache_read_input_tokens": 85718,
+    "output_tokens": 876
+  },
+  "firstFinal": "I can't say whether any test result changed, because Squeal has no stored results at either commit. For both `8be977ad6` and its parent `d8abcfe46`, `squeal status --at` reported `no result` for every test file: 0 pass→fail, 0 fail→pass, and 1920 unknown. The daemon in this worktree is still at revision 0 and hasn't run anything, so there was nothing to compare.\n\nWhat the commit changed:\n- **`packages/cezar/src/lint/active-run-write.ts`** is a refactor with 107 lines touched. It's the only source file changed.\n- **`packages/cezar/src/lint/active-run-write-index.test.ts`** is a new test file with 72 lines. It doesn't exist at the parent, so its result can't be \"changed\". It's either new and passing or new and failing.\n\nAny other test whose result could differ is one that exercises `active-run-write.ts`, most likely the lint rule tests that depend on it.\n\nTo get a real answer I can run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46`. That checks whether the new test fails against the old code. I can also run the lint tests at both commits and diff them. Want me to do either?",
+  "final": "I can't say whether any test result changed, because Squeal has no stored results at either commit. For both `8be977ad6` and its parent `d8abcfe46`, `squeal status --at` reported `no result` for every test file: 0 pass→fail, 0 fail→pass, and 1920 unknown. The daemon in this worktree is still at revision 0 and hasn't run anything, so there was nothing to compare.\n\nWhat the commit changed:\n- **`packages/cezar/src/lint/active-run-write.ts`** is a refactor with 107 lines touched. It's the only source file changed.\n- **`packages/cezar/src/lint/active-run-write-index.test.ts`** is a new test file with 72 lines. It doesn't exist at the parent, so its result can't be \"changed\". It's either new and passing or new and failing.\n\nAny other test whose result could differ is one that exercises `active-run-write.ts`, most likely the lint rule tests that depend on it.\n\nTo get a real answer I can run `squeal proof packages/cezar/src/lint/active-run-write-index.test.ts --base d8abcfe46`. That checks whether the new test fails against the old code. I can also run the lint tests at both commits and diff them. Want me to do either?",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

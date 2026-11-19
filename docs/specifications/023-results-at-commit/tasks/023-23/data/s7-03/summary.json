@@ -1,0 +1,32 @@
+{
+  "id": "s7-03",
+  "loadStart": "1.77",
+  "exit": 0,
+  "wallSeconds": 225.952,
+  "squeal": [
+    "5s squeal status --at 8be977ad6 2>&1 | head -60; echo ----; squeal status --at 8be977ad6~1 2>&1 | head -60",
+    "129s until [ -s ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output ] && grep -q \"pass -> fail\" ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output; do sleep 5; done; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output",
+    "133s sleep 100; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output | tail -15",
+    "139s f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s7-03/194a7067-ae29-4169-96ac-4b53e3f2dc0f/tasks/bhd3kyas3.output; until [ \"$(grep -c 'pass -> fail' $f)\" -ge 2 ]; do sleep 3; done; sed -n '9,$p' $f"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 8,
+  "costUsd": 0.0876333,
+  "usage": {
+    "cache_creation_input_tokens": 18630,
+    "cache_read_input_tokens": 180763,
+    "output_tokens": 2295
+  },
+  "firstFinal": "**No recorded test result differs between `8be977ad6` and its parent `d8abcfe46`: 0 pass→fail and 0 fail→pass. That is not proof that nothing changed.**\n\n- **Compared:** 1799 test files have the same result at both commits.\n- **No pass/fail to compare (121 files):**\n  - 97 are browser e2e files that haven't been run at either commit.\n  - 23 test files have a result now but none on record at the parent, so the status line reads \"no result → pass\". Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. That is missing history, not a verified behaviour change.\n  - `packages/cezar/src/lint/active-run-write-index.test.ts` is new since the parent and passes now.\n- **Failures on record:** `packages/web/src/test/poll.test.ts` has 2 failing tests (\"closes every rejected non-2xx socket…\" and \"closes the successful health response socket…\"). They were recorded at revision 0 of this worktree, with no earlier pass on record to compare against. I haven't checked whether they fail at the parent too, and I didn't read the commit's diff. Its title (`perf(lint)`) suggests a lint-only change, but that is a guess.\n\nTo close the gaps, I can run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46` to see whether the two failures predate the commit. I can also run `squeal run` on the 23 files with no parent result. Say if you want either.",
+  "final": "**No recorded test result differs between `8be977ad6` and its parent `d8abcfe46`: 0 pass→fail and 0 fail→pass. That is not proof that nothing changed.**\n\n- **Compared:** 1799 test files have the same result at both commits.\n- **No pass/fail to compare (121 files):**\n  - 97 are browser e2e files that haven't been run at either commit.\n  - 23 test files have a result now but none on record at the parent, so the status line reads \"no result → pass\". Examples are `.github/scripts/change-surface-readers.test.cjs`, `.github/scripts/no-compat-policy.test.cjs` and `packages/cezar/src/core/ci-tools-definitions-validation.test.ts`. That is missing history, not a verified behaviour change.\n  - `packages/cezar/src/lint/active-run-write-index.test.ts` is new since the parent and passes now.\n- **Failures on record:** `packages/web/src/test/poll.test.ts` has 2 failing tests (\"closes every rejected non-2xx socket…\" and \"closes the successful health response socket…\"). They were recorded at revision 0 of this worktree, with no earlier pass on record to compare against. I haven't checked whether they fail at the parent too, and I didn't read the commit's diff. Its title (`perf(lint)`) suggests a lint-only change, but that is a guess.\n\nTo close the gaps, I can run `squeal proof packages/web/src/test/poll.test.ts --base d8abcfe46` to see whether the two failures predate the commit. I can also run `squeal run` on the 23 files with no parent result. Say if you want either.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": true,
+  "usedProof": false
+}

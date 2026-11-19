@@ -1,0 +1,30 @@
+{
+  "id": "s5-10",
+  "loadStart": "3.70",
+  "exit": 0,
+  "wallSeconds": 49.718,
+  "squeal": [
+    "4s git show HEAD~1 --stat --format='%h %s' && git show HEAD --format='%h %s' && git show HEAD~1 -- scripts/release-identity.test.mjs | head -80; squeal proof --help 2>&1 | head -30",
+    "17s sed -n 64,67p scripts/release-identity.test.mjs; squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40"
+  ],
+  "skill": [
+    "3s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.08965000000000001,
+  "usage": {
+    "cache_creation_input_tokens": 19934,
+    "cache_read_input_tokens": 116450,
+    "output_tokens": 2815
+  },
+  "firstFinal": "Yes. The old test depended on `GITHUB_RUN_ATTEMPT` from the environment, and the fixed one doesn't. I ran the old version and the fixed version of the test with the variable set to `2`, as it would be on a CI re-run.\n\nI ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. That runs the test as it was at `6a0ff949` and as it is at `9408de7a`, over the same release code.\n\n- **Old test (`6a0ff949`): fails.** The version it computes has the run attempt appended. The nightly and PR release tests both fail:\n  - nightly: `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- **Fixed test (`9408de7a`): passes.** With the same `GITHUB_RUN_ATTEMPT=2` in the environment, it passes. Without that variable set, the old test also passes, so the failure depends only on the variable.\n\nThe cause is in how `run()` builds the child environment in `scripts/release-identity.test.mjs`. The old version stripped only `GITHUB_ACTIONS` from the inherited environment. `GITHUB_RUN_ATTEMPT` therefore leaked through to `scripts/release-snapshot.mjs:62`, which reads it and adds it to the version when it is numeric. A first CI run has attempt `1`, which doesn't change the version. A re-run has attempt `2` or higher, which does.\n\nThe fixed version does two things:\n- It strips every inherited `GITHUB_*` variable, with the filter `GITHUB_`.\n- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.\n\nThe test now gets the same attempt number whatever the CI runner provides.\n\nThe proof reports 1 proven, 0 not red, 0 red for another reason, 0 not green. The green run was executed by the command and isn't stored, because a run under an injected variable is never stored.",
+  "final": "Yes. The old test depended on `GITHUB_RUN_ATTEMPT` from the environment, and the fixed one doesn't. I ran the old version and the fixed version of the test with the variable set to `2`, as it would be on a CI re-run.\n\nI ran `squeal proof scripts/release-identity.test.mjs --base HEAD~1 --case test --env GITHUB_RUN_ATTEMPT=2`. That runs the test as it was at `6a0ff949` and as it is at `9408de7a`, over the same release code.\n\n- **Old test (`6a0ff949`): fails.** The version it computes has the run attempt appended. The nightly and PR release tests both fail:\n  - nightly: `1.2.3-nightly.20261108.9.2`, expected `1.2.3-nightly.20261108.9`\n  - PR: `1.2.3-pr7.9.2`, expected `1.2.3-pr7.9`\n- **Fixed test (`9408de7a`): passes.** With the same `GITHUB_RUN_ATTEMPT=2` in the environment, it passes. Without that variable set, the old test also passes, so the failure depends only on the variable.\n\nThe cause is in how `run()` builds the child environment in `scripts/release-identity.test.mjs`. The old version stripped only `GITHUB_ACTIONS` from the inherited environment. `GITHUB_RUN_ATTEMPT` therefore leaked through to `scripts/release-snapshot.mjs:62`, which reads it and adds it to the version when it is numeric. A first CI run has attempt `1`, which doesn't change the version. A re-run has attempt `2` or higher, which does.\n\nThe fixed version does two things:\n- It strips every inherited `GITHUB_*` variable, with the filter `GITHUB_`.\n- It sets `GITHUB_RUN_ATTEMPT: '1'` explicitly in the child environment.\n\nThe test now gets the same attempt number whatever the CI runner provides.\n\nThe proof reports 1 proven, 0 not red, 0 red for another reason, 0 not green. The green run was executed by the command and isn't stored, because a run under an injected variable is never stored.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

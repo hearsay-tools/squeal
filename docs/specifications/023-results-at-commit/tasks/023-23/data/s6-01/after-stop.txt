@@ -1,0 +1,25 @@
+## head
+0dfe0724cbf81ddc5b7cf7382ac717aea8c829bb
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+0dfe0724 HEAD@{2026-11-19 16:35:13 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w15/runs/w15/s6-01
+HEAD 0dfe0724cbf81ddc5b7cf7382ac717aea8c829bb
+branch refs/heads/main
+
+
+## checkouts
+ls: cannot access 'home/.cache/squeal/checkouts/*': No such file or directory
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+(none)

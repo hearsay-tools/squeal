@@ -1,0 +1,84 @@
+## head
+6414b6c2077f7d600b2b50cbdbec502ca654d066
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+6414b6c2 HEAD@{2026-11-19 16:46:56 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w15/runs/w15/s3-02
+HEAD 6414b6c2077f7d600b2b50cbdbec502ca654d066
+branch refs/heads/main
+
+
+## checkouts
+home/.cache/squeal/checkouts/22af33ddcf533458:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/2df1f07724de6da9:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/60a7bcc0217f10f7:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/65761093b3f88a67:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:46 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/6adf78e2ead2ceff:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:39 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/72330c18266f5d94:
+total 16
+drwxrwxr-x  4 squeal-w15 squeal-w15 4096 Nov 19 16:48 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+drwxrwxr-x  4 squeal-w15 squeal-w15 4096 Nov 19 16:48 mwnq5ck3-46a2b0cb
+drwxrwxr-x  4 squeal-w15 squeal-w15 4096 Nov 19 16:48 mwnq5g1d-3550cd0e
+
+home/.cache/squeal/checkouts/8c2d1f64e12715df:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/b4fb8e20e098d2d4:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+home/.cache/squeal/checkouts/f034cef6465110e8:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 11 squeal-w15 squeal-w15 4096 Nov 19 16:48 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+1264611 1264610       09:38 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+1264613 1264611       09:38 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+1264680       1       09:37 squeal s2-01 daemon @72aa99fc ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs daemon ~squeal-w15/runs/w15/s2-01
+1274363 1264613       07:07 /bin/bash -c source ~squeal-w15/runs/w15/claude/shell-snapshots/snapshot-bash-1795102721975-x3mys7.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-01/965454c9-ab3f-4b64-88dd-00fb4739ecf8/tasks/b8fhnra5e.output; for i in $(seq 1 100); do grep -q '"'"'unknown$'"'"' <(tail -n1 $f) && [ $(grep -c '"'"'unknown\|unchanged'"'"' $f) -ge 2 ] && break; sleep 5; done; cat $f' < /dev/null && pwd -P >| ~squeal-w15/runs/w15/tmp/claude-d215-cwd
+1294142 1294141       00:17 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions The last commit (e71888f91) only changed the test packages/cezar/src/automations/unhandled-polls.test.ts. Show me that the old version of that test was the problem: the old test fails against today's code, and the new one passes.
+1294144 1294142       00:17 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions The last commit (e71888f91) only changed the test packages/cezar/src/automations/unhandled-polls.test.ts. Show me that the old version of that test was the problem: the old test fails against today's code, and the new one passes.
+1294245       1       00:16 squeal s4-02 daemon @c3ff1553 ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs daemon ~squeal-w15/runs/w15/s4-02
+1294369 1294245       00:16 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s4-02 --runner vitest
+1294370 1294245       00:16 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s4-02 --runner node-test
+1294371 1294245       00:16 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s4-02 --runner node-test
+1294503 1294144       00:10 /bin/bash -c source ~squeal-w15/runs/w15/claude/shell-snapshots/snapshot-bash-1795103284415-z135pv.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'git show e71888f9 | tail -40; squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^ 2>&1 | tail -40' < /dev/null && pwd -P >| ~squeal-w15/runs/w15/tmp/claude-fb6e-cwd
+1294506 1294503       00:10 node --disable-warning=ExperimentalWarning -e  const { createHash } = require("node:crypto"); const { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } = require("node:fs"); const { basename, dirname, isAbsolute, join, sep } = require("node:path"); const { pathToFileURL } = require("node:url"); const env = process.env; const home = env.HOME ?? ""; const cliOf = (dir) => join(dir, "dist", "cli", "squeal.mjs"); const compare = (a, b) => {   const x = a.split(".").map(Number);   const y = b.split(".").map(Number);   for (let i = 0; i < Math.max(x.length, y.length); i++) {     const d = (x[i] ?? 0) - (y[i] ?? 0);     if (d !== 0) return d;   }   return 0; }; const newestIn = (dir) =>   readdirSync(dir)     .filter((v) => /^\d+(\.\d+)*$/.test(v) && existsSync(cliOf(join(dir, v))))     .sort(compare)     .at(-1); const fail = (text) => {   process.stderr.write(`squeal: ${text}\n`);   process.exit(1); }; const found = []; try {   const config = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");   const file = JSON.parse(readFileSync(join(config, "plugins", "installed_plugins.json"), "utf8"));   const cwd = process.cwd();   const applies = (e) =>     e.scope === "user" ||     (e.scope === "project" &&       typeof e.projectPath === "string" &&       (cwd === e.projectPath || cwd.startsWith(e.projectPath + sep)));   const entry = (file.plugins?.["squeal@hearsay"] ?? []).find(     (e) => applies(e) && typeof e.installPath === "string" && existsSync(cliOf(e.installPath)),   );   if (entry) {     const version = typeof entry.version === "string" ? entry.version : basename(entry.installPath);     found.push({ harness: "Claude Code", version, dir: entry.installPath });   } } catch {} const codexHome = env.CODEX_HOME ?? join(home, ".codex"); // A runtime version names a directory, so it is a plain release, never a path. const plain = (v) => typeof v === "string" && /^\d+\.\d+\.\d+$/.test(v); const versionIn = (file) => {   try {     return JSON.parse(readFileSync(file, "utf8")).version;   } catch {} }; // A whole runtime: runtime.json and its plugin manifest name one version, and its CLI is there. const runtimeAt = (dir) => {   const v = versionIn(join(dir, "runtime.json"));   return plain(v) && v === versionIn(join(dir, ".codex-plugin", "plugin.json")) && existsSync(cliOf(dir)) ? v : undefined; }; let self; try {   self = dirname(dirname(realpathSync(process.argv[1]))); } catch {} const data = self !== undefined && existsSync(join(self, "runtime")) ? self : join(codexHome, "plugins", "data", "squeal-hearsay"); let adapter; let codex; try {   const cache = join(codexHome, "plugins", "cache", "hearsay", "squeal");   for (const v of readdirSync(cache).filter((v) => /^\d+(\.\d+)*$/.test(v)).sort(compare)) {     const dir = join(cache, v);     if (existsSync(join(dir, "hooks", "hooks.json")) && existsSync(join(dir, "seed"))) adapter = dir;     else if (existsSync(cliOf(dir))) codex = { harness: "Codex", version: v, dir };   } } catch {} const managed = adapter !== undefined || existsSync(join(data, "runtime")); let pinned; for (const id of [env.CODEX_SESSION_ID, env.CODEX_THREAD_ID]) {   if (!id || pinned) continue;   const file = join(data, "runtime", "sessions", `${createHash("sha256").update(id).digest("hex")}.json`);   let pin;   try {     pin = readFileSync(file, "utf8");   } catch {     continue;   }   try {     pin = JSON.parse(pin);   } catch {}   if (pin?.schema !== 1 || pin.sessionId !== id || !plain(pin.version))     fail(`the runtime record of this Codex session, ${file}, is unreadable. Squeal does not guess the runtime of a running session. Start a new Codex session.`);   const dir = join(data, "versions", pin.version);   if (runtimeAt(dir) !== pin.version)     fail(`Squeal runtime ${pin.version}, which this Codex session started with, is missing or incomplete at ${dir}. Squeal does not switch a running session to another runtime. Start a new Codex session to use the installed runtime.`);   pinned = { harness: "Codex", version: pin.version, dir }; } let problem; if (managed) {   const current = versionIn(join(data, "runtime", "current.json"));   const root = plain(current) ? join(data, "versions", current) : undefined;   const now = root && runtimeAt(root) === current ? { harness: "Codex", version: current, dir: root } : undefined;   const seed = adapter && runtimeAt(join(adapter, "seed"));   const chosen = seed && (!now || compare(seed, now.version) > 0) ? { harness: "Codex", version: seed, dir: join(adapter, "seed") } : now;   if (chosen && (!codex || compare(chosen.version, codex.version) >= 0)) codex = chosen;   if (!chosen && adapter)     problem = `the squeal@hearsay plugin for Codex at ${adapter} has no usable runtime: none in ${data} is current and whole, and its seed is incomplete. Run install.sh again, or reinstall the plugin: codex plugin remove squeal@hearsay && codex plugin add squeal@hearsay`; } if (codex) found.push(codex); for (const [harness, name] of [["Pi", "pi"], ["OpenCode", "opencode"]]) {   try {     const packages = join(env.XDG_DATA_HOME || join(home, ".local", "share"), "squeal", name);     const version = newestIn(packages);     if (version) found.push({ harness, version, dir: join(packages, version) });   } catch {} } // Spec 005 D3 copies decide only without the managed runtimes of spec 002 D9. let kept; try {   const versions = join(self, "versions");   const version = managed ? undefined : newestIn(versions);   if (version) kept = { version, dir: join(versions, version) }; } catch {} if (found.length === 0 && kept === undefined && pinned === undefined) {   if (problem) fail(problem);   process.stderr.write(     "squeal: no squeal@hearsay plugin is installed in Claude Code or Codex, and no Squeal package in Pi or OpenCode. Install it:\n" +       "  claude plugin marketplace add hearsay-tools/marketplace && claude plugin install squeal@hearsay\n" +       "  codex plugin marketplace add hearsay-tools/marketplace && codex plugin add squeal@hearsay\n" +       "or run install.sh as https://github.com/hearsay-tools/squeal#install shows, which also installs Squeal in Pi and OpenCode.\n",   );   process.exit(1); } const newest = found.reduce((a, b) => (compare(b.version, a.version) > 0 ? b : a), found[0]); const run = pinned ?? (newest === undefined || (kept && compare(kept.version, newest.version) >= 0) ? kept : newest); // gh-85: an unchanged line prints once per scope, a session or, outside one, // the machine; its mark lives in the data directory this launcher runs from, // else in the state directory install.sh records in. A mark that cannot be // written prints each time. const notice = (line) => {   const scope =     env.CLAUDE_CODE_SESSION_ID || env.CODEX_SESSION_ID || env.OPENCODE_SESSION_ID || env.PI_SESSION_ID || "";   const dir = kept     ? dirname(dirname(kept.dir))     : data === self       ? data       : join(env.XDG_STATE_HOME || join(home, ".local", "state"), "squeal");   const mark = join(dir, "launcher-notices.json");   try {     let seen = [];     try {       const read = JSON.parse(readFileSync(mark, "utf8"));       if (Array.isArray(read)) seen = read.filter(Array.isArray);     } catch {}     if (seen.some(([s, l]) => s === scope && l === line)) return;     if (!isAbsolute(dir)) throw new Error("no state directory");     mkdirSync(dir, { recursive: true });     const next = join(dir, `.launcher-notices.${process.pid}.tmp`);     writeFileSync(next, JSON.stringify([...seen.filter(([s]) => s !== scope), [scope, line]].slice(-64)));     renameSync(next, mark);   } catch {}   process.stderr.write(line); }; // One line names each version apart: the CLI this command runs, the plugin // of each harness, and the version Codex sessions started before an update keep. const skewed = found.some((f) => f.version !== newest.version); const older = kept && compare(kept.version, run.version) < 0; const behind = pinned && newest && compare(newest.version, pinned.version) > 0; if (skewed || older || behind) {   const plugins = found.map((f) => `${f.harness} ${f.version}`);   const listed = plugins.length > 1 ? `${plugins.slice(0, -1).join(", ")} and ${plugins.at(-1)}` : plugins[0];   notice(     `squeal: this command runs squeal ${run.version}; plugins: ${listed}` +       (older ? `; Codex sessions started on ${kept.version} keep ${kept.version} until they restart` : "") +       (behind ? `; this Codex session started on ${pinned.version} and keeps it until it restarts` : "") +       (skewed ? ". Run squeal update to bring the plugins to one version.\n" : ".\n"),   ); } // `ps` runs the bundle of its own beside the CLI, which loads only its code (spec 014 // goal 6); an older plugin has none. const ps = join(run.dir, "dist", "cli", "ps.mjs"); const cli = process.argv[2] === "ps" && existsSync(ps) ? ps : cliOf(run.dir); process.argv.splice(1, 1, cli); process.execArgv.splice(-2); import(pathToFileURL(cli).href);  ~squeal-w15/runs/w15/home/.local/bin/squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9^
+1294507 1294503       00:10 tail -40
+1294877 1274363       00:01 sleep 5
+1295013 1294506       00:00 git check-attr -z --stdin eol text crlf filter ident working-tree-encoding

@@ -12,7 +12,7 @@
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 : "${LAB:?LAB=<user@vm>}" "${TASK:?TASK=<task id>}"
-SCRATCH=${SCRATCH:-/home/agent/projects/squeal/.ai/squawk/t/${TASK%%-*}/w15}
+SCRATCH=${SCRATCH:-$HOME/projects/squeal/.ai/squawk/t/${TASK%%-*}/w15}
 WT=$(cd "$here/../../../../../.." && pwd)
 CEZ=$HOME/projects/cezar
 HUB=d84397e

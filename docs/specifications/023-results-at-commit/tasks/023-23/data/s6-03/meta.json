@@ -1,0 +1,14 @@
+{
+  "id": "s6-03",
+  "group": "s6",
+  "clone": "~squeal-w15/runs/w15/s6-03",
+  "prompt": "packages/contract/src/report-title.test.ts fails since my last change to report-title.ts. Please fix it.",
+  "start": "2026-11-19T15:55:29.316Z",
+  "loadStart": "4.52",
+  "cpus": 12,
+  "exit": 0,
+  "wallSeconds": 75.203,
+  "end": "2026-11-19T15:56:44.521Z",
+  "loadEnd": "4.43",
+  "transcript": "~squeal-w15/runs/w15/claude/projects/-home-squeal-w15-runs-w15-s6-03/2c33804f-c911-46ab-983e-3dac541fee1d.jsonl"
+}

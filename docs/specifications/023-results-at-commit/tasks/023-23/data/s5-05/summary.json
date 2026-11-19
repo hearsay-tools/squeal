@@ -1,0 +1,31 @@
+{
+  "id": "s5-05",
+  "loadStart": "7.07",
+  "exit": 0,
+  "wallSeconds": 59.302,
+  "squeal": [
+    "8s squeal proof --help 2>&1 | head -40; grep -n -B2 -A12 -i 'proof' ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | head -80",
+    "11s squeal proof scripts/release-identity.test.mjs --base 9e9bcc5f~1 --case test --env GITHUB_RUN_ATTEMPT=2 2>&1 | tail -40; echo \"exit=${PIPESTATUS[0]}\""
+  ],
+  "skill": [
+    "3s Skill squeal:squeal",
+    "8s Bash squeal proof --help 2>&1 | head -40; grep -n -B2 -A12 -i 'proof' ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/skills/squeal/references/commands.md | head -80"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 6,
+  "costUsd": 0.0754895,
+  "usage": {
+    "cache_creation_input_tokens": 19169,
+    "cache_read_input_tokens": 90410,
+    "output_tokens": 1851
+  },
+  "firstFinal": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I used `squeal proof` to show this without touching your tree.\n\nI ran it with the old test file (`9e9bcc5f~1`) over current code, and again with the fixed test at HEAD. Both sides got `GITHUB_RUN_ATTEMPT=2`, which is what a CI re-run sets:\n\n```\nsqueal proof scripts/release-identity.test.mjs --base 9e9bcc5f~1 --case test --env GITHUB_RUN_ATTEMPT=2\n```\n\n- **Old test (red):** it fails with `GITHUB_RUN_ATTEMPT=2`. The versions it computes carry an extra attempt suffix, for example:\n  - `1.2.3-nightly.20261108.9.2` instead of the expected `1.2.3-nightly.20261108.9`\n  - `1.2.3-pr7.9.2` instead of the expected `1.2.3-pr7.9`\n- **Fixed test (green):** it passes under the same condition.\n- **Without the variable:** the old test also passes when `GITHUB_RUN_ATTEMPT` isn't set. The failure comes from the variable and not from some other bug.\n- **Verdict:** `1 proven, 0 not red, 0 red for another reason, 0 not green`.\n\n**Why the old test failed:** `run()` in `scripts/release-identity.test.mjs` copies `process.env` into the child process, minus a filter. The old filter, `GITHUB_ACTIONS$`, removed only `GITHUB_ACTIONS` itself. So `GITHUB_RUN_ATTEMPT` from the workflow passed straight through. The release script appends it to the version when it is above 1, which changes the version the test expects.\n\n**What the fix changes:** the fixed `run()` does two things.\n- It widens the filter to `GITHUB_`, so no workflow `GITHUB_*` variable leaks in.\n- It pins `GITHUB_RUN_ATTEMPT: '1'` in the child environment.\n\nThe filter alone would make the run behave as if `GITHUB_RUN_ATTEMPT` were unset. The pin makes the attempt number explicit and constant.\n\nI haven't separately checked which of the two changes is enough on its own.",
+  "final": "The old test did depend on `GITHUB_RUN_ATTEMPT`, and the fixed one doesn't. I used `squeal proof` to show this without touching your tree.\n\nI ran it with the old test file (`9e9bcc5f~1`) over current code, and again with the fixed test at HEAD. Both sides got `GITHUB_RUN_ATTEMPT=2`, which is what a CI re-run sets:\n\n```\nsqueal proof scripts/release-identity.test.mjs --base 9e9bcc5f~1 --case test --env GITHUB_RUN_ATTEMPT=2\n```\n\n- **Old test (red):** it fails with `GITHUB_RUN_ATTEMPT=2`. The versions it computes carry an extra attempt suffix, for example:\n  - `1.2.3-nightly.20261108.9.2` instead of the expected `1.2.3-nightly.20261108.9`\n  - `1.2.3-pr7.9.2` instead of the expected `1.2.3-pr7.9`\n- **Fixed test (green):** it passes under the same condition.\n- **Without the variable:** the old test also passes when `GITHUB_RUN_ATTEMPT` isn't set. The failure comes from the variable and not from some other bug.\n- **Verdict:** `1 proven, 0 not red, 0 red for another reason, 0 not green`.\n\n**Why the old test failed:** `run()` in `scripts/release-identity.test.mjs` copies `process.env` into the child process, minus a filter. The old filter, `GITHUB_ACTIONS$`, removed only `GITHUB_ACTIONS` itself. So `GITHUB_RUN_ATTEMPT` from the workflow passed straight through. The release script appends it to the version when it is above 1, which changes the version the test expects.\n\n**What the fix changes:** the fixed `run()` does two things.\n- It widens the filter to `GITHUB_`, so no workflow `GITHUB_*` variable leaks in.\n- It pins `GITHUB_RUN_ATTEMPT: '1'` in the child environment.\n\nThe filter alone would make the run behave as if `GITHUB_RUN_ATTEMPT` were unset. The pin makes the attempt number explicit and constant.\n\nI haven't separately checked which of the two changes is enough on its own.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}

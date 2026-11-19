@@ -43,10 +43,13 @@ const spent = () => {
   for (const d of readdirSync(logs, { withFileTypes: true })) {
     const f = join(logs, d.name, "stream.jsonl");
     if (!d.isDirectory() || !existsSync(f)) continue;
+    // total_cost_usd is cumulative over a session: its last result event holds the session's cost.
+    let last = 0;
     for (const raw of readFileSync(f, "utf8").split("\n")) {
       const ev = raw.slice(raw.indexOf("\t") + 1);
-      if (ev.includes('"type":"result"')) usd += JSON.parse(ev).total_cost_usd ?? 0;
+      if (ev.includes('"type":"result"')) last = JSON.parse(ev).total_cost_usd ?? last;
     }
+    usd += last;
   }
   return usd;
 };

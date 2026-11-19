@@ -1,0 +1,181 @@
+2026-11-19T15:35:12.874Z s6-01 start, load 0.29 of 12 CPUs, 0 running
+2026-11-19T15:35:21.359Z s6-01 prepared in 8 s; session starts, load 0.95
+2026-11-19T15:37:10.910Z s6-01 session ended (exit 0) after 118 s; spent $0.08
+2026-11-19T15:37:10.910Z batch done
+2026-11-19T15:37:41.112Z s1-01 start, load 1.17 of 12 CPUs, 0 running
+2026-11-19T15:37:43.834Z s1-01 prepared in 3 s; session starts, load 1.17
+2026-11-19T15:38:26.124Z s2-01 start, load 1.75 of 12 CPUs, 1 running
+2026-11-19T15:38:37.513Z s2-01 prepared in 11 s; session starts, load 2.83
+2026-11-19T15:39:11.131Z s3-01 start, load 4.08 of 12 CPUs, 2 running
+2026-11-19T15:39:14.097Z s3-01 prepared in 3 s; session starts, load 4.08
+2026-11-19T15:40:44.975Z s3-01 session ended (exit 0) after 94 s; spent $0.13
+2026-11-19T15:40:56.166Z s4-01 start, load 6.26 of 12 CPUs, 2 running
+2026-11-19T15:40:59.363Z s4-01 prepared in 3 s; session starts, load 6.16
+2026-11-19T15:41:47.436Z s1-01 session ended (exit 0) after 246 s; spent $0.24
+2026-11-19T15:41:56.184Z s5-01 start, load 5.97 of 12 CPUs, 2 running
+2026-11-19T15:41:58.643Z s5-01 prepared in 2 s; session starts, load 5.97
+2026-11-19T15:42:07.503Z s4-01 session ended (exit 0) after 71 s; spent $0.24
+2026-11-19T15:42:41.191Z s1-02 start, load 4.92 of 12 CPUs, 2 running
+2026-11-19T15:42:44.189Z s1-02 prepared in 3 s; session starts, load 4.92
+2026-11-19T15:43:33.071Z s5-01 session ended (exit 0) after 97 s; spent $0.31
+2026-11-19T15:43:41.209Z s2-02 start, load 4.34 of 12 CPUs, 2 running
+2026-11-19T15:43:46.542Z s2-02 prepared in 5 s; session starts, load 4.23
+2026-11-19T15:46:45.590Z s1-02 session ended (exit 0) after 244 s; spent $0.37
+2026-11-19T15:46:56.269Z s3-02 start, load 4.99 of 12 CPUs, 2 running
+2026-11-19T15:46:59.103Z s3-02 prepared in 3 s; session starts, load 4.99
+2026-11-19T15:47:47.952Z s2-02 session ended (exit 0) after 247 s; spent $0.56
+2026-11-19T15:47:56.279Z s4-02 start, load 3.3 of 12 CPUs, 2 running
+2026-11-19T15:47:58.318Z s4-02 prepared in 2 s; session starts, load 3.3
+2026-11-19T15:48:16.641Z s3-02 session ended (exit 0) after 80 s; spent $0.56
+2026-11-19T15:48:41.290Z s5-02 start, load 2.93 of 12 CPUs, 2 running
+2026-11-19T15:48:43.273Z s5-02 prepared in 2 s; session starts, load 2.93
+2026-11-19T15:48:58.008Z s4-02 session ended (exit 0) after 62 s; spent $0.63
+2026-11-19T15:49:26.298Z s6-02 start, load 2.81 of 12 CPUs, 2 running
+2026-11-19T15:49:28.579Z s6-02 prepared in 2 s; session starts, load 2.81
+2026-11-19T15:49:40.125Z s2-01 session ended (exit 0) after 674 s; spent $0.72
+2026-11-19T15:50:09.825Z s5-02 session ended (exit 0) after 89 s; spent $0.80
+2026-11-19T15:50:11.304Z s1-03 start, load 3.35 of 12 CPUs, 1 running
+2026-11-19T15:50:13.064Z s1-03 prepared in 2 s; session starts, load 3.35
+2026-11-19T15:50:56.313Z s2-03 start, load 4.81 of 12 CPUs, 2 running
+2026-11-19T15:51:00.103Z s2-03 prepared in 4 s; session starts, load 4.9
+2026-11-19T15:51:11.167Z s6-02 session ended (exit 0) after 105 s; spent $0.85
+2026-11-19T15:51:41.325Z s3-03 start, load 5.56 of 12 CPUs, 2 running
+2026-11-19T15:51:43.580Z s3-03 prepared in 2 s; session starts, load 5.56
+2026-11-19T15:53:24.169Z s3-03 session ended (exit 0) after 103 s; spent $0.90
+2026-11-19T15:53:26.356Z s4-03 start, load 7.7 of 12 CPUs, 2 running
+2026-11-19T15:53:28.828Z s4-03 prepared in 2 s; session starts, load 7.7
+2026-11-19T15:54:29.174Z s1-03 session ended (exit 0) after 258 s; spent $1.02
+2026-11-19T15:54:38.197Z s4-03 session ended (exit 0) after 72 s; spent $1.02
+2026-11-19T15:54:41.377Z s5-03 start, load 5.4 of 12 CPUs, 1 running
+2026-11-19T15:54:43.515Z s5-03 prepared in 2 s; session starts, load 5.4
+2026-11-19T15:55:26.389Z s6-03 start, load 4.52 of 12 CPUs, 2 running
+2026-11-19T15:55:28.471Z s2-03 session ended (exit 0) after 272 s; spent $1.08
+2026-11-19T15:55:28.832Z s6-03 prepared in 2 s; session starts, load 4.52
+2026-11-19T15:56:11.397Z s1-04 start, load 3.81 of 12 CPUs, 2 running
+2026-11-19T15:56:13.227Z s1-04 prepared in 2 s; session starts, load 3.81
+2026-11-19T15:56:15.044Z s5-03 session ended (exit 0) after 94 s; spent $1.16
+2026-11-19T15:56:56.409Z s2-04 start, load 4.28 of 12 CPUs, 2 running
+2026-11-19T15:57:00.327Z s2-04 prepared in 4 s; session starts, load 4.26
+2026-11-19T15:57:06.978Z s6-03 session ended (exit 0) after 101 s; spent $1.21
+2026-11-19T15:57:41.417Z s3-04 start, load 5.03 of 12 CPUs, 2 running
+2026-11-19T15:57:44.262Z s3-04 prepared in 3 s; session starts, load 5.03
+2026-11-19T15:59:26.085Z s3-04 session ended (exit 0) after 105 s; spent $1.27
+2026-11-19T15:59:41.466Z s4-04 start, load 6.39 of 12 CPUs, 2 running
+2026-11-19T15:59:43.521Z s4-04 prepared in 2 s; session starts, load 6.39
+2026-11-19T16:01:20.812Z s4-04 session ended (exit 0) after 99 s; spent $1.32
+2026-11-19T16:01:26.515Z s5-04 start, load 10.69 of 12 CPUs, 2 running
+2026-11-19T16:01:27.995Z s1-04 session ended (exit 0) after 317 s; spent $1.39
+2026-11-19T16:01:28.244Z s5-04 prepared in 2 s; session starts, load 10.69
+2026-11-19T16:01:43.413Z s2-04 session ended (exit 0) after 287 s; spent $1.45
+2026-11-19T16:02:11.525Z s1-05 start, load 6.18 of 12 CPUs, 1 running
+2026-11-19T16:02:13.005Z s1-05 prepared in 1 s; session starts, load 6.18
+2026-11-19T16:02:47.627Z s5-04 session ended (exit 0) after 81 s; spent $1.53
+2026-11-19T16:02:56.532Z s2-05 start, load 4.57 of 12 CPUs, 1 running
+2026-11-19T16:03:01.355Z s2-05 prepared in 5 s; session starts, load 4.36
+2026-11-19T16:03:41.545Z s3-05 start, load 6.25 of 12 CPUs, 2 running
+2026-11-19T16:03:43.553Z s3-05 prepared in 2 s; session starts, load 6.25
+2026-11-19T16:05:21.526Z s3-05 session ended (exit 0) after 100 s; spent $1.58
+2026-11-19T16:05:26.586Z s4-05 start, load 6.64 of 12 CPUs, 2 running
+2026-11-19T16:05:28.232Z s4-05 prepared in 2 s; session starts, load 6.64
+2026-11-19T16:06:44.180Z s4-05 session ended (exit 0) after 78 s; spent $1.70
+2026-11-19T16:06:56.626Z s5-05 start, load 6.82 of 12 CPUs, 2 running
+2026-11-19T16:06:59.088Z s5-05 prepared in 2 s; session starts, load 6.82
+2026-11-19T16:07:44.294Z s2-05 session ended (exit 0) after 288 s; spent $1.77
+2026-11-19T16:07:54.410Z s1-05 session ended (exit 0) after 343 s; spent $1.86
+2026-11-19T16:07:56.647Z s1-06 start, load 6.59 of 12 CPUs, 1 running
+2026-11-19T16:07:58.542Z s1-06 prepared in 2 s; session starts, load 6.59
+2026-11-19T16:08:40.753Z s5-05 session ended (exit 0) after 104 s; spent $1.93
+2026-11-19T16:08:41.655Z s2-06 start, load 5.16 of 12 CPUs, 1 running
+2026-11-19T16:08:45.743Z s2-06 prepared in 4 s; session starts, load 4.99
+2026-11-19T16:09:26.666Z s3-06 start, load 6.1 of 12 CPUs, 2 running
+2026-11-19T16:09:28.281Z s3-06 prepared in 2 s; session starts, load 6.1
+2026-11-19T16:10:55.840Z s3-06 session ended (exit 0) after 89 s; spent $1.99
+2026-11-19T16:10:56.708Z s4-06 start, load 6.73 of 12 CPUs, 2 running
+2026-11-19T16:10:59.024Z s4-06 prepared in 2 s; session starts, load 6.73
+2026-11-19T16:12:03.284Z s4-06 session ended (exit 0) after 67 s; spent $2.16
+2026-11-19T16:12:11.737Z s5-06 start, load 6.61 of 12 CPUs, 2 running
+2026-11-19T16:12:13.717Z s5-06 prepared in 2 s; session starts, load 6.61
+2026-11-19T16:12:48.016Z s1-06 session ended (exit 0) after 291 s; spent $2.34
+2026-11-19T16:12:51.497Z s2-06 session ended (exit 0) after 250 s; spent $2.34
+2026-11-19T16:12:56.745Z s1-07 start, load 6.15 of 12 CPUs, 1 running
+2026-11-19T16:12:59.053Z s1-07 prepared in 2 s; session starts, load 6.15
+2026-11-19T16:13:38.730Z s5-06 session ended (exit 0) after 87 s; spent $2.42
+2026-11-19T16:13:41.753Z s2-07 start, load 4.9 of 12 CPUs, 1 running
+2026-11-19T16:13:44.881Z s2-07 prepared in 3 s; session starts, load 5.15
+2026-11-19T16:14:26.765Z s3-07 start, load 6.08 of 12 CPUs, 2 running
+2026-11-19T16:14:28.541Z s3-07 prepared in 2 s; session starts, load 6.08
+2026-11-19T16:15:46.666Z s3-07 session ended (exit 0) after 80 s; spent $2.47
+2026-11-19T16:15:56.810Z s4-07 start, load 5.78 of 12 CPUs, 2 running
+2026-11-19T16:15:58.613Z s4-07 prepared in 2 s; session starts, load 5.78
+2026-11-19T16:16:30.733Z s1-07 session ended (exit 0) after 214 s; spent $2.57
+2026-11-19T16:16:41.817Z s5-07 start, load 6.59 of 12 CPUs, 2 running
+2026-11-19T16:16:43.436Z s5-07 prepared in 2 s; session starts, load 6.59
+2026-11-19T16:16:48.675Z s4-07 session ended (exit 0) after 52 s; spent $2.57
+2026-11-19T16:17:16.746Z s2-07 session ended (exit 0) after 215 s; spent $2.64
+2026-11-19T16:17:26.830Z s1-08 start, load 4.86 of 12 CPUs, 1 running
+2026-11-19T16:17:28.497Z s1-08 prepared in 2 s; session starts, load 4.86
+2026-11-19T16:17:59.723Z s5-07 session ended (exit 0) after 78 s; spent $2.71
+2026-11-19T16:18:11.837Z s2-08 start, load 4.02 of 12 CPUs, 1 running
+2026-11-19T16:18:16.089Z s2-08 prepared in 4 s; session starts, load 4.02
+2026-11-19T16:18:56.852Z s3-08 start, load 4.83 of 12 CPUs, 2 running
+2026-11-19T16:19:00.227Z s3-08 prepared in 3 s; session starts, load 5.16
+2026-11-19T16:20:34.004Z s3-08 session ended (exit 0) after 97 s; spent $2.84
+2026-11-19T16:20:41.909Z s4-08 start, load 6.72 of 12 CPUs, 2 running
+2026-11-19T16:20:44.323Z s4-08 prepared in 2 s; session starts, load 6.72
+2026-11-19T16:21:23.332Z s1-08 session ended (exit 0) after 236 s; spent $3.00
+2026-11-19T16:21:26.918Z s5-08 start, load 6.55 of 12 CPUs, 2 running
+2026-11-19T16:21:29.196Z s5-08 prepared in 2 s; session starts, load 6.55
+2026-11-19T16:21:44.641Z s4-08 session ended (exit 0) after 63 s; spent $3.00
+2026-11-19T16:22:11.943Z s1-09 start, load 4.89 of 12 CPUs, 2 running
+2026-11-19T16:22:14.746Z s1-09 prepared in 3 s; session starts, load 4.82
+2026-11-19T16:22:39.197Z s2-08 session ended (exit 0) after 267 s; spent $3.12
+2026-11-19T16:22:56.963Z s2-09 start, load 4.18 of 12 CPUs, 2 running
+2026-11-19T16:23:00.729Z s2-09 prepared in 4 s; session starts, load 4.17
+2026-11-19T16:23:10.816Z s5-08 session ended (exit 0) after 104 s; spent $3.12
+2026-11-19T16:23:41.978Z s3-09 start, load 5.34 of 12 CPUs, 2 running
+2026-11-19T16:23:44.029Z s3-09 prepared in 2 s; session starts, load 5.34
+2026-11-19T16:25:12.512Z s3-09 session ended (exit 0) after 91 s; spent $3.37
+2026-11-19T16:25:27.048Z s4-09 start, load 6.19 of 12 CPUs, 2 running
+2026-11-19T16:25:29.549Z s4-09 prepared in 3 s; session starts, load 6.19
+2026-11-19T16:26:33.635Z s4-09 session ended (exit 0) after 67 s; spent $3.58
+2026-11-19T16:26:42.079Z s5-09 start, load 6.19 of 12 CPUs, 2 running
+2026-11-19T16:26:44.192Z s5-09 prepared in 2 s; session starts, load 6.19
+2026-11-19T16:28:17.823Z s5-09 session ended (exit 0) after 96 s; spent $3.89
+2026-11-19T16:28:27.137Z s1-10 start, load 3.72 of 12 CPUs, 2 running
+2026-11-19T16:28:28.610Z s1-10 prepared in 1 s; session starts, load 3.72
+2026-11-19T16:32:42.683Z s1-10 session ended (exit 0) after 256 s; spent $4.16
+2026-11-19T16:32:57.349Z s2-10 start, load 2.39 of 12 CPUs, 2 running
+2026-11-19T16:33:01.289Z s2-10 prepared in 4 s; session starts, load 2.28
+2026-11-19T16:33:57.711Z s1-09 session ended (exit 0) after 706 s; spent $4.31
+2026-11-19T16:34:12.394Z s3-10 start, load 2.49 of 12 CPUs, 2 running
+2026-11-19T16:34:14.080Z s3-10 prepared in 2 s; session starts, load 2.49
+2026-11-19T16:35:14.051Z s2-09 session ended (exit 0) after 737 s; spent $4.50
+2026-11-19T16:35:24.323Z s3-10 session ended (exit 0) after 72 s; spent $4.50
+2026-11-19T16:35:27.425Z s4-10 start, load 3 of 12 CPUs, 1 running
+2026-11-19T16:35:29.379Z s4-10 prepared in 2 s; session starts, load 3
+2026-11-19T16:36:12.439Z s5-10 start, load 3.33 of 12 CPUs, 2 running
+2026-11-19T16:36:14.504Z s5-10 prepared in 2 s; session starts, load 3.33
+2026-11-19T16:36:26.795Z s4-10 session ended (exit 0) after 59 s; spent $4.65
+2026-11-19T16:36:36.499Z s2-10 session ended (exit 0) after 219 s; spent $4.76
+2026-11-19T16:36:58.952Z s7-01 start, load 3.26 of 12 CPUs, 0 running
+2026-11-19T16:37:24.720Z s5-10 session ended (exit 0) after 72 s; spent $4.85
+2026-11-19T16:37:25.067Z batch done
+2026-11-19T17:00:00.342Z STOP file: 4 sessions not started: s7-02 s7-03 s7-04 s7-05
+2026-11-19T17:09:21.248Z s7-01 prepare failed (exit 127); see s7-01.prepare.txt
+2026-11-19T17:09:21.248Z batch done
+2026-11-19T17:20:00.503Z s7-01 start, load 1.49 of 12 CPUs, 0 running
+2026-11-19T17:20:00.504Z s7-01 prepared in 0 s; session starts, load 1.49
+2026-11-19T17:20:45.526Z s7-02 start, load 1.38 of 12 CPUs, 1 running
+2026-11-19T17:20:45.527Z s7-02 prepared in 0 s; session starts, load 1.38
+2026-11-19T17:21:30.540Z s7-03 start, load 1.77 of 12 CPUs, 2 running
+2026-11-19T17:21:30.541Z s7-03 prepared in 0 s; session starts, load 1.77
+2026-11-19T17:24:01.365Z s7-01 session ended (exit 0) after 241 s; spent $5.15
+2026-11-19T17:24:15.652Z s7-04 start, load 3.2 of 12 CPUs, 2 running
+2026-11-19T17:24:15.652Z s7-04 prepared in 0 s; session starts, load 3.2
+2026-11-19T17:24:44.302Z s7-02 session ended (exit 0) after 239 s; spent $5.25
+2026-11-19T17:25:00.663Z s7-05 start, load 2.84 of 12 CPUs, 2 running
+2026-11-19T17:25:00.663Z s7-05 prepared in 0 s; session starts, load 2.84
+2026-11-19T17:25:19.676Z s7-03 session ended (exit 0) after 229 s; spent $5.34
+2026-11-19T17:28:00.652Z s7-04 session ended (exit 0) after 225 s; spent $5.54
+2026-11-19T17:28:46.909Z s7-05 session ended (exit 0) after 226 s; spent $5.62
+2026-11-19T17:28:47.392Z batch done

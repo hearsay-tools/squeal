@@ -11,7 +11,7 @@
 //   sudo -n [--preserve-env=<names>] -u squeal-w15 -H env [-i] HOME=… PATH=… <scratch vars>
 //     /bin/sh -c 'mkdir -p "$1" && cd "$1" || exit 125; shift; exec "$@"' sh <cwd> <cmd> …
 //
-// The case root must be /home/squeal-w15/runs/<id>, and cwd lies under it. HOME, TMPDIR,
+// The case root must be /home/${U}/runs/<id> (U = squeal-w15), and cwd lies under it. HOME, TMPDIR,
 // CODEX_HOME, CLAUDE_CONFIG_DIR, XDG_RUNTIME_DIR, SQ_EVALS_ROOT and uv's cache and Python
 // directories are under it.
 // Credentials pass by name only (E2E_PRESERVE, comma-separated), never in argv: sudo is spawned
@@ -29,10 +29,11 @@ const refuse = (why) => {
   process.exit(2);
 };
 if (!root0 || !cwd0 || !cmd) refuse("usage: as-user.mjs <case root> <cwd> <cmd> [args...]");
-if (userInfo().username === "squeal-w15") refuse("run this as agent, not squeal-w15");
+const U = "squeal-w15";
+if (userInfo().username === U) refuse(`run this as agent, not ${U}`);
 const root = posix.normalize(root0);
 const cwd = posix.normalize(cwd0);
-if (!/^\/home\/squeal-w15\/runs\/[a-z0-9-]+$/.test(root)) refuse(`case root ${root0}`);
+if (!new RegExp(`^/home/${U}/runs/[a-z0-9-]+$`).test(root)) refuse(`case root ${root0}`);
 if (cwd !== root && !cwd.startsWith(`${root}/`)) refuse(`cwd ${cwd0} is outside ${root}`);
 const node = process.env.E2E_NODE ?? "24";
 if (node !== "22" && node !== "24") refuse(`E2E_NODE=${node}`);
@@ -55,7 +56,7 @@ const vars = {
   pnpm_config_store_dir: `${root}/pnpm-store`,
   DISABLE_AUTOUPDATER: "1",
   LANG: "C.UTF-8",
-  PATH: `${root}/home/.local/bin:${root}/bin:/opt/squeal-w15/node${node}/bin:/usr/bin:/bin`,
+  PATH: `${root}/home/.local/bin:${root}/bin:/opt/${U}/node${node}/bin:/usr/bin:/bin`,
 };
 for (const [k, v] of Object.entries(process.env))
   if (k.startsWith("E2E_VAR_")) {
@@ -70,7 +71,7 @@ const line = [
   "-n",
   ...(preserve.length ? [`--preserve-env=${preserve.join(",")}`] : []),
   "-u",
-  "squeal-w15",
+  U,
   "-H",
   "env",
   ...(preserve.length ? [] : ["-i"]),

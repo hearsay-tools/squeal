@@ -1,0 +1,262 @@
+## head
+b07a19224cc17652678a322187031cc634325906
+
+## branch
+main
+
+## status
+
+## stash
+
+## reflog
+b07a1922 HEAD@{2026-11-19 17:26:43 +0100}: commit: fix(release): pin GITHUB_RUN_ATTEMPT so CI re-runs stop failing the identity test
+3e7269a0 HEAD@{2026-11-19 17:26:43 +0100}: commit: test(release): build identity test runs with the workflow's environment
+0dfe0724 HEAD@{2026-11-19 17:26:42 +0100}: checkout: moving from master to main
+
+## worktrees
+worktree ~squeal-w15/runs/w15/s5-09
+HEAD b07a19224cc17652678a322187031cc634325906
+branch refs/heads/main
+
+
+## checkouts
+home/.cache/squeal/checkouts/00935b10a3c05597:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:17 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/03ebebc376d1c4ac:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:21 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/09b122fe7f2c3716:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:16 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/0dd9f145e3159ad2:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:25 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/10e9914913d964a8:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:12 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/1413903b776de796:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:27 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/16035e617f9fca91:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:52 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/200a58fb6ae464a9:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:19 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/22af33ddcf533458:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/2411de584c6b1883:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:01 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/26ba9f1619dc6f48:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:17 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/2df1f07724de6da9:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/313f8f1a7d05d5f4:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:49 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/33234499331c1fec:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:55 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/41dddc359b490c5f:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:16 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/586a7ef7a8c8f6d6:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:01 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/60a7bcc0217f10f7:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:42 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/61702ae2f5c41e35:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:26 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/618a053b33f08e2a:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:54 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/65761093b3f88a67:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:46 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/6adf78e2ead2ceff:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:39 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/72330c18266f5d94:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:48 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/7874c31c9523073a:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/790f673cb8483f5b:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:09 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/7ec0b9e9bc8d2fd0:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:22 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/853f4db63c15ff57:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:53 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/87551964f4cfe6ed:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:13 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/8c2d1f64e12715df:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:41 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/8e82bf5595c86805:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/908efe5694cde083:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:26 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/9813efe816961780:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:02 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/9e0dfd266a9a89b1:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:12 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/ad70a7ccf71a28d9:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:22 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/af66c44ab7c9ab6c:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:58 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/b4fb8e20e098d2d4:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/b503334d5cea579d:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:14 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/bf77512bc94564ba:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:24 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/c8e99bcbe2000406:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:00 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/cffb64c34eb47461:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:55 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/dc65c4eb466a02ba:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:11 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/de5794712d0c2430:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:07 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/e16c7a13afbfb538:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:21 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/ea6c6ab7e0f2d071:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:05 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/eb77de5ebdea3c86:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 17:04 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+home/.cache/squeal/checkouts/f034cef6465110e8:
+total 8
+drwxrwxr-x  2 squeal-w15 squeal-w15 4096 Nov 19 16:47 .
+drwxrwxr-x 47 squeal-w15 squeal-w15 4096 Nov 19 17:26 ..
+
+## processes
+    PID    PPID     ELAPSED COMMAND
+1441248 1441247       06:02 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.
+1441250 1441248       06:02 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did the last commit (8be977ad6) change any test results compared with its parent commit? Tell me which test files, if any, now pass or fail differently.
+1441319       1       06:01 squeal s1-09 daemon @7aac1f64 ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs daemon ~squeal-w15/runs/w15/s1-09
+1441543 1441319       05:59 /opt/squeal-w15/node24/bin/node --disable-warning=ExperimentalWarning ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs runner-host ~squeal-w15/runs/w15/s1-09 --runner vitest
+1443384 1443383       05:16 timeout --kill-after=30 1200 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+1443386 1443384       05:16 claude -p --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode bypassPermissions Did commit 20f03a431 (the last one) change any test results compared with the commit before it? List the test files whose result changed, if any.
+1443455       1       05:15 squeal s2-09 daemon @fd8429da ~squeal-w15/runs/w15/claude/plugins/cache/hearsay/squeal/0.1.568/dist/cli/squeal.mjs daemon ~squeal-w15/runs/w15/s2-09
+1449025 1441250       03:46 /bin/bash -c source ~squeal-w15/runs/w15/claude/shell-snapshots/snapshot-bash-1795105340422-yx3qoj.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s1-09/7b036624-e142-45ae-9c80-d2574145d817/tasks/bn43pr51r.output; prev=0; for i in $(seq 1 280); do n=$(wc -l < $f); if [ "$n" != "$prev" ]; then echo "output now $n lines"; prev=$n; fi; sleep 2; done' && pwd -P >| ~squeal-w15/runs/w15/tmp/claude-dbf1-cwd
+1450929 1441250       03:19 /bin/bash -c source ~squeal-w15/runs/w15/claude/shell-snapshots/snapshot-bash-1795105340422-yx3qoj.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'f=~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s1-09/7b036624-e142-45ae-9c80-d2574145d817/tasks/bn43pr51r.output; until [ "$(grep -c '"'"'^---$'"'"' $f)" -ge 3 ] || ! pgrep -f '"'"'squeal status --at'"'"' >/dev/null; do sleep 3; done; tail -8 $f' < /dev/null && pwd -P >| ~squeal-w15/runs/w15/tmp/claude-2cf1-cwd
+1451300 1443386       03:09 /bin/bash -c source ~squeal-w15/runs/w15/claude/shell-snapshots/snapshot-bash-1795105384658-bro13l.sh 2>/dev/null || true && \builtin shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'until [ -s ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-09/0793d5b6-d144-4b1e-ad5f-1dc31cc6c2b4/tasks/b2f29kgwp.output ] && ! pgrep -f "squeal status --at" >/dev/null; do sleep 5; done; cat ~squeal-w15/runs/w15/tmp/claude-1002/-home-squeal-w15-runs-w15-s2-09/0793d5b6-d144-4b1e-ad5f-1dc31cc6c2b4/tasks/b2f29kgwp.output | head -80' < /dev/null && pwd -P >| ~squeal-w15/runs/w15/tmp/claude-36e3-cwd
+1466550 1451300       00:04 sleep 5
+1466562 1450929       00:02 sleep 3
+1466568 1449025       00:00 sleep 2

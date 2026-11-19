@@ -1,0 +1,29 @@
+{
+  "id": "s4-06",
+  "loadStart": "6.83",
+  "exit": 0,
+  "wallSeconds": 30.662,
+  "squeal": [
+    "4s squeal proof packages/cezar/src/automations/unhandled-polls.test.ts --base e71888f9~1 2>&1 | tail -60"
+  ],
+  "skill": [
+    "2s Skill squeal:squeal"
+  ],
+  "swaps": [],
+  "edits": [],
+  "results": 1,
+  "turns": 4,
+  "costUsd": 0.0497164,
+  "usage": {
+    "cache_creation_input_tokens": 15159,
+    "cache_read_input_tokens": 59269,
+    "output_tokens": 588
+  },
+  "firstFinal": "The old test was the problem. The proof ran the test from the commit before `e71888f91` against today's code, and it failed there. The new test, run with the same code, passed.\n\n`squeal proof` ran both versions in temporary checkouts, so your working tree wasn't touched:\n\n- **Red (old test, today's code):** `unhandled-polls.test.ts` failed on \"counts only unhandled matching issues and resumes after restart (history=true)\". The assertion at line 72 expected `[101, 102, 103, 104, 105]` but got `[]`.\n- **Green (new test, today's code):** the same file passed.\n\nSqueal's verdict was \"1 proven, 0 not red, 0 red for another reason, 0 not green\". So the old test failed for the failure above, not for some unrelated reason.\n\nThe empty result suggests the old version depended on the real clock, which fits the commit message \"pin the clock\". I didn't read the diff, so that is an inference.\n\nBoth checkouts also reported \"git's checkout rules changed packages/mobile/android/gradlew.bat\". That is a file-mode or line-ending quirk in the temporary checkout. It doesn't touch the test or the code under test.",
+  "final": "The old test was the problem. The proof ran the test from the commit before `e71888f91` against today's code, and it failed there. The new test, run with the same code, passed.\n\n`squeal proof` ran both versions in temporary checkouts, so your working tree wasn't touched:\n\n- **Red (old test, today's code):** `unhandled-polls.test.ts` failed on \"counts only unhandled matching issues and resumes after restart (history=true)\". The assertion at line 72 expected `[101, 102, 103, 104, 105]` but got `[]`.\n- **Green (new test, today's code):** the same file passed.\n\nSqueal's verdict was \"1 proven, 0 not red, 0 red for another reason, 0 not green\". So the old test failed for the failure above, not for some unrelated reason.\n\nThe empty result suggests the old version depended on the real clock, which fits the commit message \"pin the clock\". I didn't read the diff, so that is an inference.\n\nBoth checkouts also reported \"git's checkout rules changed packages/mobile/android/gradlew.bat\". That is a file-mode or line-ending quirk in the temporary checkout. It doesn't touch the test or the code under test.",
+  "statusAfter": "",
+  "stashAfter": "",
+  "worktreesAfter": 1,
+  "usedAt": false,
+  "usedProof": true
+}
