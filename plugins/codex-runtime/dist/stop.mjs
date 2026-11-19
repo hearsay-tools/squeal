@@ -1517,7 +1517,8 @@ CREATE TABLE consumer_views (
 var MIGRATIONS = [(db) => db.exec(V1)];
 var SCHEMA_VERSION = MIGRATIONS.length;
 var STORE_INDEXES = {
-  runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL"
+  runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
+  consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)"
 };
 function userVersion(db) {
   return Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
@@ -1827,28 +1828,137 @@ var LAST_COMPLETED_CHECKPOINTS = `
     FROM worktrees w
   ) WHERE id IS NOT NULL`;
 
+// src/core/store/prune-keyed.ts
+function* deleteByKey(conn, rule) {
+  const batch = rule.batch ?? DELETE_BATCH;
+  const columns = rule.key.join(", ");
+  const after = rule.key.map(() => "?").join(", ");
+  const read4 = (from) => `SELECT ${columns} FROM ${rule.table}
+     WHERE ${from ? `(${columns}) > (${after}) AND ` : ""}(${rule.search})
+     ORDER BY ${columns} LIMIT ${batch}`;
+  const first = read4(false);
+  const next = read4(true);
+  const named2 = rule.key.map((_, i) => `value ->> ${i}`).join(", ");
+  const remove2 = `DELETE FROM ${rule.table}
+    WHERE (${columns}) IN (SELECT ${named2} FROM json_each(?)) AND (${rule.recheck ?? rule.search})`;
+  const searchParams = rule.searchParams ?? [];
+  let last = null;
+  for (; ; ) {
+    let keys = [];
+    yield () => {
+      const rows = conn.read(
+        () => last === null ? conn.all(first, ...searchParams) : conn.all(next, ...last, ...searchParams)
+      );
+      keys = rows.map((row) => rule.key.map((column) => row[column]));
+    };
+    if (keys.length === 0) return;
+    const list = JSON.stringify(keys);
+    yield () => {
+      const n = conn.transaction(
+        () => conn.run(remove2, list, ...rule.recheckParams?.() ?? searchParams)
+      );
+      rule.removed?.(n);
+    };
+    if (keys.length < batch) return;
+    last = keys[keys.length - 1] ?? null;
+  }
+}
+var worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
+    SELECT min(worktree_id) FROM ${table}
+    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
+      FROM ids WHERE ids.id IS NOT NULL)
+  SELECT id FROM ids WHERE id IS NOT NULL`;
+function worktreeIdList(conn, table) {
+  return JSON.stringify(conn.all(worktreeIdsOf(table)).map((row) => row.id));
+}
+function hasIndexes(conn, ...names3) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
+  return names3.every((name2) => conn.get(sql, name2) !== null);
+}
+
 // src/core/store/loaded-modules.ts
 var LOADED_MODULES_TABLE = "loaded_modules";
 function* dropOrphanLoadedModules(conn) {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  let removed = DELETE_BATCH;
-  while (removed === DELETE_BATCH) {
-    removed = 0;
-    yield () => {
-      removed = conn.transaction(
-        () => conn.run(
-          `DELETE FROM ${LOADED_MODULES_TABLE} WHERE (project, path, key) IN (
-             SELECT project, path, key FROM ${LOADED_MODULES_TABLE} l
-             WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.key = l.key) LIMIT ?)`,
-          DELETE_BATCH
-        )
-      );
-    };
-  }
+  yield* deleteByKey(conn, {
+    table: LOADED_MODULES_TABLE,
+    key: ["project", "path", "key"],
+    search: `NOT EXISTS (SELECT 1 FROM results r WHERE r.key = ${LOADED_MODULES_TABLE}.key)`
+  });
 }
 function hasLoadedModulesTable(conn) {
   const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
   return conn.get(sql, LOADED_MODULES_TABLE) !== null;
+}
+
+// src/core/store/prune-unused.ts
+var PRUNABLE_BY_KEY = `NOT EXISTS (SELECT 1 FROM test_file_keys k
+    JOIN worktrees w ON w.id = k.worktree_id WHERE k.key = results.key)
+  AND NOT (EXISTS (SELECT 1 FROM worktrees m WHERE m.id = results.worktree_id AND m.is_main = 1)
+    AND NOT EXISTS (SELECT 1 FROM results n JOIN worktrees m ON m.id = n.worktree_id AND m.is_main = 1
+      WHERE n.check_id = results.check_id
+        AND (n.recorded_at > results.recorded_at
+             OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))
+  AND recorded_at < ?`;
+function dropEndedCheckpoints(conn, cutoff, counts) {
+  return deleteByKey(conn, {
+    table: "checkpoints",
+    key: ["id"],
+    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND (worktree_id NOT IN (SELECT id FROM worktrees)
+           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+    searchParams: [cutoff],
+    recheck: `NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND CASE WHEN EXISTS (SELECT 1 FROM worktrees w WHERE w.id = checkpoints.worktree_id)
+        THEN id IS NOT (SELECT x.id FROM checkpoints x
+               WHERE x.worktree_id = checkpoints.worktree_id AND x.end_state = 'completed'
+               ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1)
+             AND end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?
+        ELSE 1 END`,
+    recheckParams: () => [cutoff],
+    removed: (n) => {
+      counts.checkpointsRemoved += n;
+    }
+  });
+}
+function* dropUnusedChecks(conn, counts) {
+  if (!conn.read(() => hasIndexes(conn, "consumer_views_by_check"))) return;
+  yield* deleteByKey(conn, {
+    table: "checks",
+    key: ["id"],
+    search: `id NOT IN (
+      SELECT check_id FROM results UNION SELECT check_id FROM known_states
+      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM known_states s
+        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM transitions t
+        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM consumer_views v WHERE v.check_id = checks.id)`,
+    recheckParams: () => [
+      worktreeIdList(conn, "known_states"),
+      worktreeIdList(conn, "transitions")
+    ],
+    removed: (n) => {
+      counts.checksRemoved += n;
+    }
+  });
+}
+function dropOrphanTexts(conn) {
+  return deleteByKey(conn, {
+    table: "failure_texts",
+    key: ["id"],
+    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    searchParams: [keptTexts(conn)],
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    recheckParams: () => [keptTexts(conn)]
+  });
+}
+function keptTexts(conn) {
+  return JSON.stringify(keptByReplaced(conn).texts);
 }
 
 // src/core/store/repos/worktrees.ts
@@ -2041,27 +2151,8 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   }
   yield* dropOrphanLoadedModules(conn);
   yield* dropRuns(conn, paths, cutoff, counts);
-  yield () => {
-    counts.checkpointsRemoved += conn.transaction(
-      () => conn.run(
-        `DELETE FROM checkpoints
-         WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-           AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-           AND (worktree_id NOT IN (SELECT id FROM worktrees)
-                OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-        cutoff
-      )
-    );
-  };
-  yield () => {
-    counts.checksRemoved += conn.transaction(
-      () => conn.run(
-        `DELETE FROM checks WHERE id NOT IN (
-           SELECT check_id FROM results UNION SELECT check_id FROM known_states
-           UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`
-      )
-    );
-  };
+  yield* dropEndedCheckpoints(conn, cutoff, counts);
+  yield* dropUnusedChecks(conn, counts);
   yield* vacuum(conn);
 }
 function isGone(root) {
@@ -2126,14 +2217,14 @@ function* dropPrunable(conn, cutoff, counts) {
     yield () => {
       counts.resultsRemoved += conn.transaction(
         () => conn.run(
-          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
           batch,
           cutoff
         )
       );
     };
   }
-  yield () => conn.transaction(() => dropOrphanFailureTexts(conn));
+  yield* dropOrphanTexts(conn);
 }
 function* vacuum(conn) {
   let free = pragmaNumber(conn, "freelist_count");
@@ -2170,7 +2261,7 @@ function dropOrphanFailureTexts(conn) {
     `DELETE FROM failure_texts
      WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
        AND id NOT IN (SELECT value FROM json_each(?))`,
-    JSON.stringify(keptByReplaced(conn).texts)
+    keptTexts(conn)
   );
 }
 function usedBytes(conn) {
@@ -3458,7 +3549,9 @@ var CODE_INDEXES = {
   coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
   counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
   states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
-  states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL"
+  states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+  states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
+  views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
 };
 var CODE_TABLES = {
   coverage_parts: `
@@ -3840,23 +3933,11 @@ var COVERAGE_RECORD_VERSION = 4;
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH2 = 256;
 var VACUUM_PAGES2 = 512;
-var OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
-var worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
-    SELECT min(worktree_id) FROM ${table}
-    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
-      FROM ids WHERE ids.id IS NOT NULL)
-  SELECT id FROM ids WHERE id IS NOT NULL`;
+var COVERAGE_BATCH = 64;
 var COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
 var OLDER_RECORD = "provider_version < ?";
-var COVERAGE_KEY = "result_key, provider_version";
-var PER_WORKTREE = [
-  ["files", "worktree_id, path"],
-  ["states", "worktree_id, check_id, measure"],
-  ["views", "worktree_id, session_id, agent_id, check_id, measure"],
-  ["transitions", "id"]
-];
 function pruneCodeStore(conn, options) {
   const counts = noCodeRemoved();
   for (const slice of pruneCodeSlices(conn, options, counts)) slice();
@@ -3872,61 +3953,76 @@ function noCodeRemoved() {
     checksRemoved: 0
   };
 }
+var PER_WORKTREE = [
+  ["files", ["worktree_id", "path"]],
+  ["states", ["worktree_id", "check_id", "measure"]],
+  ["views", ["worktree_id", "session_id", "agent_id", "check_id", "measure"]],
+  ["transitions", ["worktree_id", "check_id", "id"]]
+];
+var UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
+    AND f.language = counts.language AND f.counter_version = counts.counter_version)
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+var UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
+    WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM transitions t
+    WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM views v WHERE v.check_id = checks.id)`;
 function* pruneCodeSlices(conn, options, counts) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
-  const dead = deadWorktrees(conn, options.worktrees);
-  if (dead.length > 0) {
+  const rule = (r) => deleteByKey(conn, r);
+  const dead = conn.read(() => deadWorktrees(conn, options.worktrees));
+  for (const id of dead) {
     for (const [table, key] of PER_WORKTREE) {
-      yield* deleteInBatches(conn, nothing, table, key, OF_WORKTREES, JSON.stringify(dead));
+      yield* rule({ table, key, search: "worktree_id = ?", searchParams: [id] });
     }
   }
   counts.worktreesRemoved = dead.length;
-  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.viewsRemoved += n;
-    },
-    "views",
-    "worktree_id, session_id, agent_id, check_id, measure",
-    `(worktree_id, session_id, agent_id) NOT IN (
+  yield* rule({ table: "meta", key: ["key"], search: COVERAGE_META_OF_DEAD, searchParams: [live] });
+  yield* rule({
+    table: "views",
+    key: PER_WORKTREE[2][1],
+    search: `(worktree_id, session_id, agent_id) NOT IN (
        SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
        FROM json_each(?))`,
-    JSON.stringify(options.consumers)
-  );
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.countsRemoved += n;
-    },
-    "counts",
-    "blob, language, counter_version",
-    `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
-       AND f.language = counts.language AND f.counter_version = counts.counter_version)
-     AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
-    cutoff
-  );
+    searchParams: [JSON.stringify(options.consumers)],
+    removed: (n) => {
+      counts.viewsRemoved += n;
+    }
+  });
+  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  if (indexed) {
+    yield* rule({
+      table: "counts",
+      key: ["blob", "language", "counter_version"],
+      search: UNUSED_COUNT,
+      searchParams: [cutoff],
+      removed: (n) => {
+        counts.countsRemoved += n;
+      }
+    });
+  }
   yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
     counts.coverageRemoved += n;
   });
   yield* pruneParts(conn, cutoff, DELETE_BATCH2, (n) => {
     counts.partsRemoved += n;
   });
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.checksRemoved += n;
-    },
-    "checks",
-    "id",
-    `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
-       UNION SELECT check_id FROM transitions)`
-  );
+  if (indexed) {
+    yield* rule({
+      table: "checks",
+      key: ["id"],
+      search: `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
+         UNION SELECT check_id FROM transitions)`,
+      recheck: UNUSED_CHECK,
+      recheckParams: () => [worktreeIdList(conn, "states"), worktreeIdList(conn, "transitions")],
+      removed: (n) => {
+        counts.checksRemoved += n;
+      }
+    });
+  }
   yield* vacuum2(conn);
 }
-var nothing = () => {
-};
 function deadWorktrees(conn, live) {
   const kept3 = new Set(live);
   const found2 = new Set(
@@ -3935,45 +4031,28 @@ function deadWorktrees(conn, live) {
   return [...found2].filter((id) => !kept3.has(id));
 }
 function* pruneCoverage(conn, resultKeys, cutoff, removed) {
+  const key = ["result_key", "provider_version"];
   if (resultKeys === void 0) {
-    yield* deleteInBatches(
-      conn,
-      removed,
-      "coverage",
-      COVERAGE_KEY,
-      `recorded_at < ? OR ${OLDER_RECORD}`,
-      cutoff,
-      COVERAGE_RECORD_VERSION
-    );
+    yield* deleteByKey(conn, {
+      table: "coverage",
+      key,
+      search: `recorded_at < ? OR ${OLDER_RECORD}`,
+      searchParams: [cutoff, COVERAGE_RECORD_VERSION],
+      batch: COVERAGE_BATCH,
+      removed
+    });
     return;
   }
-  const held = conn.all("SELECT DISTINCT result_key FROM coverage").map((row) => str(row, "result_key"));
+  const held = conn.read(() => conn.all("SELECT DISTINCT result_key FROM coverage")).map((row) => str(row, "result_key"));
   const kept3 = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
-  yield* deleteInBatches(
-    conn,
-    removed,
-    "coverage",
-    COVERAGE_KEY,
-    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(held.filter((key) => !kept3.has(key))),
-    COVERAGE_RECORD_VERSION
-  );
-}
-function* deleteInBatches(conn, removed, table, key, where3, ...params) {
-  let changed = DELETE_BATCH2;
-  while (changed === DELETE_BATCH2) {
-    changed = 0;
-    yield () => {
-      changed = conn.transaction(
-        () => conn.run(
-          `DELETE FROM ${table} WHERE (${key}) IN (
-             SELECT ${key} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
-          ...params
-        )
-      );
-      removed(changed);
-    };
-  }
+  yield* deleteByKey(conn, {
+    table: "coverage",
+    key,
+    search: `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    searchParams: [JSON.stringify(held.filter((k) => !kept3.has(k))), COVERAGE_RECORD_VERSION],
+    batch: COVERAGE_BATCH,
+    removed
+  });
 }
 function* vacuum2(conn) {
   let free = freePages(conn);
@@ -12384,7 +12463,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.568";
+  if (true) return "0.1.569";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

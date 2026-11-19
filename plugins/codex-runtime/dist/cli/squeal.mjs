@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.568";
+  if (true) return "0.1.569";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -4938,6 +4938,61 @@ var init_prune_rules = __esm({
   }
 });
 
+// src/core/store/prune-keyed.ts
+function* deleteByKey(conn, rule3) {
+  const batch = rule3.batch ?? DELETE_BATCH;
+  const columns = rule3.key.join(", ");
+  const after3 = rule3.key.map(() => "?").join(", ");
+  const read6 = (from) => `SELECT ${columns} FROM ${rule3.table}
+     WHERE ${from ? `(${columns}) > (${after3}) AND ` : ""}(${rule3.search})
+     ORDER BY ${columns} LIMIT ${batch}`;
+  const first2 = read6(false);
+  const next = read6(true);
+  const named4 = rule3.key.map((_, i3) => `value ->> ${i3}`).join(", ");
+  const remove2 = `DELETE FROM ${rule3.table}
+    WHERE (${columns}) IN (SELECT ${named4} FROM json_each(?)) AND (${rule3.recheck ?? rule3.search})`;
+  const searchParams = rule3.searchParams ?? [];
+  let last = null;
+  for (; ; ) {
+    let keys = [];
+    yield () => {
+      const rows = conn.read(
+        () => last === null ? conn.all(first2, ...searchParams) : conn.all(next, ...last, ...searchParams)
+      );
+      keys = rows.map((row2) => rule3.key.map((column) => row2[column]));
+    };
+    if (keys.length === 0) return;
+    const list2 = JSON.stringify(keys);
+    yield () => {
+      const n = conn.transaction(
+        () => conn.run(remove2, list2, ...rule3.recheckParams?.() ?? searchParams)
+      );
+      rule3.removed?.(n);
+    };
+    if (keys.length < batch) return;
+    last = keys[keys.length - 1] ?? null;
+  }
+}
+function worktreeIdList(conn, table) {
+  return JSON.stringify(conn.all(worktreeIdsOf(table)).map((row2) => row2.id));
+}
+function hasIndexes(conn, ...names8) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?";
+  return names8.every((name3) => conn.get(sql, name3) !== null);
+}
+var worktreeIdsOf;
+var init_prune_keyed = __esm({
+  "src/core/store/prune-keyed.ts"() {
+    "use strict";
+    init_prune_rules();
+    worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
+    SELECT min(worktree_id) FROM ${table}
+    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
+      FROM ids WHERE ids.id IS NOT NULL)
+  SELECT id FROM ids WHERE id IS NOT NULL`;
+  }
+});
+
 // src/core/store/loaded-modules.ts
 function writeLoadedModules(store, record2) {
   const conn = connectionOrNull(store);
@@ -4955,20 +5010,11 @@ function writeLoadedModules(store, record2) {
 }
 function* dropOrphanLoadedModules(conn) {
   if (!conn.read(() => hasLoadedModulesTable(conn))) return;
-  let removed = DELETE_BATCH;
-  while (removed === DELETE_BATCH) {
-    removed = 0;
-    yield () => {
-      removed = conn.transaction(
-        () => conn.run(
-          `DELETE FROM ${LOADED_MODULES_TABLE} WHERE (project, path, key) IN (
-             SELECT project, path, key FROM ${LOADED_MODULES_TABLE} l
-             WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.key = l.key) LIMIT ?)`,
-          DELETE_BATCH
-        )
-      );
-    };
-  }
+  yield* deleteByKey(conn, {
+    table: LOADED_MODULES_TABLE,
+    key: ["project", "path", "key"],
+    search: `NOT EXISTS (SELECT 1 FROM results r WHERE r.key = ${LOADED_MODULES_TABLE}.key)`
+  });
 }
 function hasLoadedModulesTable(conn) {
   const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
@@ -4985,7 +5031,7 @@ var LOADED_MODULES_TABLE, LOADED_MODULES_SQL;
 var init_loaded_modules = __esm({
   "src/core/store/loaded-modules.ts"() {
     "use strict";
-    init_prune_rules();
+    init_prune_keyed();
     init_store2();
     LOADED_MODULES_TABLE = "loaded_modules";
     LOADED_MODULES_SQL = `
@@ -4998,6 +5044,85 @@ CREATE TABLE loaded_modules (
   PRIMARY KEY (project, path, key)
 ) STRICT, WITHOUT ROWID;
 `;
+  }
+});
+
+// src/core/store/prune-unused.ts
+function dropEndedCheckpoints(conn, cutoff, counts) {
+  return deleteByKey(conn, {
+    table: "checkpoints",
+    key: ["id"],
+    search: `id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+      AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND (worktree_id NOT IN (SELECT id FROM worktrees)
+           OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+    searchParams: [cutoff],
+    recheck: `NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+      AND CASE WHEN EXISTS (SELECT 1 FROM worktrees w WHERE w.id = checkpoints.worktree_id)
+        THEN id IS NOT (SELECT x.id FROM checkpoints x
+               WHERE x.worktree_id = checkpoints.worktree_id AND x.end_state = 'completed'
+               ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1)
+             AND end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?
+        ELSE 1 END`,
+    recheckParams: () => [cutoff],
+    removed: (n) => {
+      counts.checkpointsRemoved += n;
+    }
+  });
+}
+function* dropUnusedChecks(conn, counts) {
+  if (!conn.read(() => hasIndexes(conn, "consumer_views_by_check"))) return;
+  yield* deleteByKey(conn, {
+    table: "checks",
+    key: ["id"],
+    search: `id NOT IN (
+      SELECT check_id FROM results UNION SELECT check_id FROM known_states
+      UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM known_states s
+        WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM transitions t
+        WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+      AND NOT EXISTS (SELECT 1 FROM consumer_views v WHERE v.check_id = checks.id)`,
+    recheckParams: () => [
+      worktreeIdList(conn, "known_states"),
+      worktreeIdList(conn, "transitions")
+    ],
+    removed: (n) => {
+      counts.checksRemoved += n;
+    }
+  });
+}
+function dropOrphanTexts(conn) {
+  return deleteByKey(conn, {
+    table: "failure_texts",
+    key: ["id"],
+    search: `id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    searchParams: [keptTexts(conn)],
+    recheck: `NOT EXISTS (SELECT 1 FROM results r WHERE r.failure_id = failure_texts.id)
+      AND id NOT IN (SELECT value FROM json_each(?))`,
+    recheckParams: () => [keptTexts(conn)]
+  });
+}
+function keptTexts(conn) {
+  return JSON.stringify(keptByReplaced(conn).texts);
+}
+var PRUNABLE_BY_KEY;
+var init_prune_unused = __esm({
+  "src/core/store/prune-unused.ts"() {
+    "use strict";
+    init_prune_keyed();
+    init_prune_rules();
+    init_replaced();
+    PRUNABLE_BY_KEY = `NOT EXISTS (SELECT 1 FROM test_file_keys k
+    JOIN worktrees w ON w.id = k.worktree_id WHERE k.key = results.key)
+  AND NOT (EXISTS (SELECT 1 FROM worktrees m WHERE m.id = results.worktree_id AND m.is_main = 1)
+    AND NOT EXISTS (SELECT 1 FROM results n JOIN worktrees m ON m.id = n.worktree_id AND m.is_main = 1
+      WHERE n.check_id = results.check_id
+        AND (n.recorded_at > results.recorded_at
+             OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))
+  AND recorded_at < ?`;
   }
 });
 
@@ -5202,27 +5327,8 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   }
   yield* dropOrphanLoadedModules(conn);
   yield* dropRuns(conn, paths, cutoff, counts);
-  yield () => {
-    counts.checkpointsRemoved += conn.transaction(
-      () => conn.run(
-        `DELETE FROM checkpoints
-         WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-           AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-           AND (worktree_id NOT IN (SELECT id FROM worktrees)
-                OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-        cutoff
-      )
-    );
-  };
-  yield () => {
-    counts.checksRemoved += conn.transaction(
-      () => conn.run(
-        `DELETE FROM checks WHERE id NOT IN (
-           SELECT check_id FROM results UNION SELECT check_id FROM known_states
-           UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`
-      )
-    );
-  };
+  yield* dropEndedCheckpoints(conn, cutoff, counts);
+  yield* dropUnusedChecks(conn, counts);
   yield* vacuum(conn);
 }
 function isGone(root) {
@@ -5283,14 +5389,14 @@ function* dropPrunable(conn, cutoff, counts) {
     yield () => {
       counts.resultsRemoved += conn.transaction(
         () => conn.run(
-          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE_BY_KEY}`,
           batch,
           cutoff
         )
       );
     };
   }
-  yield () => conn.transaction(() => dropOrphanFailureTexts(conn));
+  yield* dropOrphanTexts(conn);
 }
 function* vacuum(conn) {
   let free = pragmaNumber(conn, "freelist_count");
@@ -5327,7 +5433,7 @@ function dropOrphanFailureTexts(conn) {
     `DELETE FROM failure_texts
      WHERE id NOT IN (SELECT failure_id FROM results WHERE failure_id IS NOT NULL)
        AND id NOT IN (SELECT value FROM json_each(?))`,
-    JSON.stringify(keptByReplaced(conn).texts)
+    keptTexts(conn)
   );
 }
 function usedBytes(conn) {
@@ -5351,6 +5457,7 @@ var init_prune = __esm({
     init_codec();
     init_loaded_modules();
     init_prune_rules();
+    init_prune_unused();
     init_replaced();
     init_unknown_runs();
     init_worktrees();
@@ -6639,8 +6746,8 @@ function recordBaselineFindings(store, worktreeId, checkpointId, transitions) {
   const baseline2 = checkpointId !== null && store.checkpoints.get(checkpointId)?.kind === "baseline";
   const current2 = read2(store, worktreeId);
   if (!baseline2 && current2 === null) return;
-  const fresh = baseline2 && current2?.checkpointId !== checkpointId;
-  const entries3 = new Set(fresh ? [] : current2?.entries);
+  const fresh2 = baseline2 && current2?.checkpointId !== checkpointId;
+  const entries3 = new Set(fresh2 ? [] : current2?.entries);
   const touched2 = new Set(transitions.map((t) => checkIdentity(t.check)));
   for (const e of entries3) if (touched2.has(e.slice(0, e.lastIndexOf("\0")))) entries3.delete(e);
   if (baseline2) {
@@ -8401,16 +8508,16 @@ function addAskedKeys(store, records, held4 = heldIn(store)) {
   const now = records.reduce((at2, r) => Math.max(at2, r.askedAt), 0);
   const entries3 = readAskedKeys(store);
   const kept6 = new Map(entries3.map((e) => [factId(e, e.key), e.askedAt]));
-  const fresh = /* @__PURE__ */ new Map();
+  const fresh2 = /* @__PURE__ */ new Map();
   for (const r of records) {
     const id = factId(r.testFile, r.key);
     const entry4 = { ...r.testFile, key: r.key, askedAt: r.askedAt };
-    const known4 = fresh.get(id)?.askedAt ?? kept6.get(id);
+    const known4 = fresh2.get(id)?.askedAt ?? kept6.get(id);
     if (known4 !== void 0 && known4 >= r.askedAt || lapsed(entry4, held4, now)) continue;
-    fresh.set(id, entry4);
+    fresh2.set(id, entry4);
   }
-  if (fresh.size === 0) return;
-  const merged3 = [...entries3.filter((e) => !fresh.has(factId(e, e.key))), ...fresh.values()];
+  if (fresh2.size === 0) return;
+  const merged3 = [...entries3.filter((e) => !fresh2.has(factId(e, e.key))), ...fresh2.values()];
   merged3.sort((a, b) => a.askedAt - b.askedAt);
   store.meta.set(
     ASKED_KEYS_META_KEY,
@@ -8883,9 +8990,9 @@ function loadPerCpuText(loadPerCpu2) {
   return loadPerCpu2 === null ? "load per CPU then not recorded" : `load ${loadPerCpu2.toFixed(2)} per CPU when it ran`;
 }
 function recordedText(facts, here, now, words) {
-  const fresh = facts.noEarlierPass === true;
-  const retry2 = facts.retry === void 0 ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh)}` : retryStateText(facts);
-  const lead = fresh ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
+  const fresh2 = facts.noEarlierPass === true;
+  const retry2 = facts.retry === void 0 ? `${retryStateText(facts)}${loadRetryText(facts.loadPerCpu, words, fresh2)}` : retryStateText(facts);
+  const lead = fresh2 ? `${NO_EARLIER_PASS_TEXT} this failure: look first at the changed files it reads; ` : "";
   return `${lead}${recordedWhereText(facts, here, now)}; ${retry2}`;
 }
 function recordedWhereText(facts, here, now) {
@@ -8899,9 +9006,9 @@ function retryStateText(facts) {
 function busyLoad(loadPerCpu2) {
   return loadPerCpu2 !== null && !loadAllows({ oneMinute: loadPerCpu2, cpus: 1 });
 }
-function loadRetryText(loadPerCpu2, words, fresh) {
+function loadRetryText(loadPerCpu2, words, fresh2) {
   if (!busyLoad(loadPerCpu2)) return "";
-  const when = fresh ? "if the changed files are not the cause, " : "";
+  const when = fresh2 ? "if the changed files are not the cause, " : "";
   return `; ${when}\`${words.command} retry ${shellWord(words.path)} --reason load\` runs it once more when the one-minute load average is below the CPU count`;
 }
 var BOUND_TEXT, IN_TURN_TEXT, RECORDED_UNKNOWN_TEXT;
@@ -10380,7 +10487,7 @@ function ignoredListings(paths, ignored) {
 }
 async function inputsOfReads(root, reads2, below3) {
   const candidates = /* @__PURE__ */ new Set();
-  const fresh = [];
+  const fresh2 = [];
   for (const { closure, observed: observed2 } of reads2) {
     const listed11 = new Set(observed2.directories.map(listingPath));
     for (const directory of observed2.recursive ?? []) {
@@ -10392,7 +10499,7 @@ async function inputsOfReads(root, reads2, below3) {
       (path) => !closure.has(path)
     );
     for (const path of paths) candidates.add(listedDirectory(path) ?? path);
-    fresh.push(paths);
+    fresh2.push(paths);
   }
   const ignored = await checkIgnored(
     root,
@@ -10400,7 +10507,7 @@ async function inputsOfReads(root, reads2, below3) {
   );
   const inputs2 = reads2.map(({ observed: observed2 }, at2) => {
     const scratch = scratchOf(observed2.written ?? [], ignored);
-    return (fresh[at2] ?? []).filter((path) => !scratch(listedDirectory(path) ?? path));
+    return (fresh2[at2] ?? []).filter((path) => !scratch(listedDirectory(path) ?? path));
   });
   return { inputs: inputs2, ignored };
 }
@@ -12179,11 +12286,11 @@ async function lowerWhile(children, lane, priority, since, signal2, walk7 = belo
       const found4 = await children.carriers(lane, since, lost);
       lost = false;
       const at2 = Date.now();
-      const fresh = [];
+      const fresh2 = [];
       for (const { pid, start: start2 } of found4)
         if (!lowered.has(`${pid}:${start2}`)) {
           lowered.set(`${pid}:${start2}`, { pid, start: start2, since: at2, walked: 0, seen: /* @__PURE__ */ new Set() });
-          fresh.push({ pid, start: start2 });
+          fresh2.push({ pid, start: start2 });
         }
       for (const [id, carrier] of lowered) {
         if (at2 - carrier.since >= WALK_MS && at2 - carrier.walked < WALK_MS) continue;
@@ -12197,12 +12304,12 @@ async function lowerWhile(children, lane, priority, since, signal2, walk7 = belo
         for (const descendant of walk7(carrier.pid)) {
           const id2 = `${descendant.pid}:${descendant.start}`;
           current2.add(id2);
-          if (!carrier.seen.has(id2)) fresh.push(descendant);
+          if (!carrier.seen.has(id2)) fresh2.push(descendant);
         }
         for (const id2 of carrier.seen) if (!current2.has(id2)) lost = true;
         carrier.seen = current2;
       }
-      if (fresh.length > 0) lower(fresh, priority === "low");
+      if (fresh2.length > 0) lower(fresh2, priority === "low");
     }
   } catch {
   }
@@ -12255,22 +12362,22 @@ var init_low_priority = __esm({
 function tokenizeNodeOptions(value) {
   const tokens = [];
   let quoted2 = false;
-  let fresh = true;
+  let fresh2 = true;
   for (let i3 = 0; i3 < value.length; i3++) {
     let c = value[i3];
     if (c === "\\" && quoted2) {
       if (i3 + 1 === value.length) return null;
       c = value[++i3];
     } else if (c === " " && !quoted2) {
-      fresh = true;
+      fresh2 = true;
       continue;
     } else if (c === '"') {
       quoted2 = !quoted2;
       continue;
     }
-    if (fresh) tokens.push(c);
+    if (fresh2) tokens.push(c);
     else tokens[tokens.length - 1] += c;
-    fresh = false;
+    fresh2 = false;
   }
   return quoted2 ? null : tokens;
 }
@@ -13936,9 +14043,9 @@ var init_pool = __esm({
       #busy(cores) {
         if (this.#host === null) return null;
         const now = this.#now();
-        const fresh = () => this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
-        if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
-        return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
+        const fresh2 = () => this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
+        if (!fresh2() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+        return fresh2() && this.#beyond !== null ? this.#beyond.cores + cores : null;
       }
       /** Reads the tree and the host over one window; the tree's cores, as `TreeCpu.read` gives them. */
       #read() {
@@ -17071,10 +17178,10 @@ var init_runner_traits = __esm({
 });
 
 // src/core/daemon/runner-idle.ts
-async function reopened(fresh, was, paths) {
-  const heard = await fresh.invalidate(paths);
+async function reopened(fresh2, was, paths) {
+  const heard = await fresh2.invalidate(paths);
   const policy = paths.some((p) => p.path === POLICY_FILE);
-  const environment = was.environment === null && !policy ? null : await fresh.environment().catch(() => null);
+  const environment = was.environment === null && !policy ? null : await fresh2.environment().catch(() => null);
   const drifted = driftedProjects(was.environment, environment, policy);
   const projects2 = [.../* @__PURE__ */ new Set([...heard.recreatedProjects, ...drifted])].sort();
   return { result: { recreatedProjects: projects2 }, environment };
@@ -17259,9 +17366,9 @@ function createRecoveringRunner(options) {
       try {
         const current2 = live();
         if (!closed && !replaced && parked !== null && (current2 !== null || error === null)) {
-          const fresh2 = current2 ?? await adapter();
-          const { result, environment } = await reopened(fresh2, parked, paths);
-          if (environment !== null && fresh2 === inner) answered2 = environment;
+          const fresh3 = current2 ?? await adapter();
+          const { result, environment } = await reopened(fresh3, parked, paths);
+          if (environment !== null && fresh3 === inner) answered2 = environment;
           parked = null;
           return result;
         }
@@ -17271,9 +17378,9 @@ function createRecoveringRunner(options) {
         if (current2 === null) retry2 = true;
         replaced = false;
         parked = null;
-        const fresh = await adapter();
-        if (current2 !== null) await fresh.invalidate(paths);
-        return { recreatedProjects: await projectsOf(fresh) };
+        const fresh2 = await adapter();
+        if (current2 !== null) await fresh2.invalidate(paths);
+        return { recreatedProjects: await projectsOf(fresh2) };
       } finally {
         clock.end();
       }
@@ -19525,7 +19632,8 @@ CREATE TABLE consumer_views (
     MIGRATIONS = [(db) => db.exec(V1)];
     SCHEMA_VERSION = MIGRATIONS.length;
     STORE_INDEXES = {
-      runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL"
+      runs_open: "CREATE INDEX runs_open ON runs (worktree_id, started_at) WHERE end_state IS NULL",
+      consumer_views_by_check: "CREATE INDEX consumer_views_by_check ON consumer_views (check_id)"
     };
   }
 });
@@ -19628,13 +19736,13 @@ function recover(paths, options) {
     const now = options.now ?? Date.now;
     const at2 = now();
     const movedTo = moveAside(paths.database, at2);
-    const fresh = connect(paths, { ...options, recoverFaults: false });
-    if ("corrupt" in fresh) return { reason: "corrupt", movedTo };
-    if (!isStoreOpenFailure(fresh)) {
+    const fresh2 = connect(paths, { ...options, recoverFaults: false });
+    if ("corrupt" in fresh2) return { reason: "corrupt", movedTo };
+    if (!isStoreOpenFailure(fresh2)) {
       const note = JSON.stringify({ at: at2, movedTo, reason: again2.corrupt, ...foundBy(again2.mark) });
-      fresh.transaction(() => fresh.meta.set(META_STORE_RECOVERED, note));
+      fresh2.transaction(() => fresh2.meta.set(META_STORE_RECOVERED, note));
     }
-    return fresh;
+    return fresh2;
   } finally {
     rollback(lock2);
     lock2.close();
@@ -19788,7 +19896,9 @@ CREATE TABLE coverage (
       coverage_recorded: "CREATE INDEX coverage_recorded ON coverage (recorded_at)",
       counts_keys: "CREATE INDEX counts_keys ON counts (blob, language, counter_version)",
       states_failing: "CREATE INDEX states_failing ON states (worktree_id, measure) WHERE outcome = 'fail'",
-      states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL"
+      states_edited: "CREATE INDEX states_edited ON states (worktree_id, measure) WHERE edited_at IS NOT NULL",
+      states_by_blob: "CREATE INDEX states_by_blob ON states (blob)",
+      views_by_check: "CREATE INDEX views_by_check ON views (check_id)"
     };
     CODE_TABLES = {
       coverage_parts: `
@@ -20669,54 +20779,57 @@ function noCodeRemoved() {
 function* pruneCodeSlices(conn, options, counts) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
-  const dead = deadWorktrees(conn, options.worktrees);
-  if (dead.length > 0) {
+  const rule3 = (r) => deleteByKey(conn, r);
+  const dead = conn.read(() => deadWorktrees(conn, options.worktrees));
+  for (const id of dead) {
     for (const [table, key3] of PER_WORKTREE) {
-      yield* deleteInBatches(conn, nothing, table, key3, OF_WORKTREES, JSON.stringify(dead));
+      yield* rule3({ table, key: key3, search: "worktree_id = ?", searchParams: [id] });
     }
   }
   counts.worktreesRemoved = dead.length;
-  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.viewsRemoved += n;
-    },
-    "views",
-    "worktree_id, session_id, agent_id, check_id, measure",
-    `(worktree_id, session_id, agent_id) NOT IN (
+  yield* rule3({ table: "meta", key: ["key"], search: COVERAGE_META_OF_DEAD, searchParams: [live] });
+  yield* rule3({
+    table: "views",
+    key: PER_WORKTREE[2][1],
+    search: `(worktree_id, session_id, agent_id) NOT IN (
        SELECT value ->> 'worktreeId', value ->> 'sessionId', value ->> 'agentId'
        FROM json_each(?))`,
-    JSON.stringify(options.consumers)
-  );
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.countsRemoved += n;
-    },
-    "counts",
-    "blob, language, counter_version",
-    `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
-       AND f.language = counts.language AND f.counter_version = counts.counter_version)
-     AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
-    cutoff
-  );
+    searchParams: [JSON.stringify(options.consumers)],
+    removed: (n) => {
+      counts.viewsRemoved += n;
+    }
+  });
+  const indexed = conn.read(() => hasIndexes(conn, "states_by_blob", "views_by_check"));
+  if (indexed) {
+    yield* rule3({
+      table: "counts",
+      key: ["blob", "language", "counter_version"],
+      search: UNUSED_COUNT,
+      searchParams: [cutoff],
+      removed: (n) => {
+        counts.countsRemoved += n;
+      }
+    });
+  }
   yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
     counts.coverageRemoved += n;
   });
   yield* pruneParts(conn, cutoff, DELETE_BATCH2, (n) => {
     counts.partsRemoved += n;
   });
-  yield* deleteInBatches(
-    conn,
-    (n) => {
-      counts.checksRemoved += n;
-    },
-    "checks",
-    "id",
-    `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
-       UNION SELECT check_id FROM transitions)`
-  );
+  if (indexed) {
+    yield* rule3({
+      table: "checks",
+      key: ["id"],
+      search: `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
+         UNION SELECT check_id FROM transitions)`,
+      recheck: UNUSED_CHECK,
+      recheckParams: () => [worktreeIdList(conn, "states"), worktreeIdList(conn, "transitions")],
+      removed: (n) => {
+        counts.checksRemoved += n;
+      }
+    });
+  }
   yield* vacuum2(conn);
 }
 function deadWorktrees(conn, live) {
@@ -20727,45 +20840,28 @@ function deadWorktrees(conn, live) {
   return [...found4].filter((id) => !kept6.has(id));
 }
 function* pruneCoverage(conn, resultKeys, cutoff, removed) {
+  const key3 = ["result_key", "provider_version"];
   if (resultKeys === void 0) {
-    yield* deleteInBatches(
-      conn,
-      removed,
-      "coverage",
-      COVERAGE_KEY,
-      `recorded_at < ? OR ${OLDER_RECORD}`,
-      cutoff,
-      COVERAGE_RECORD_VERSION
-    );
+    yield* deleteByKey(conn, {
+      table: "coverage",
+      key: key3,
+      search: `recorded_at < ? OR ${OLDER_RECORD}`,
+      searchParams: [cutoff, COVERAGE_RECORD_VERSION],
+      batch: COVERAGE_BATCH,
+      removed
+    });
     return;
   }
-  const held4 = conn.all("SELECT DISTINCT result_key FROM coverage").map((row2) => str(row2, "result_key"));
+  const held4 = conn.read(() => conn.all("SELECT DISTINCT result_key FROM coverage")).map((row2) => str(row2, "result_key"));
   const kept6 = new Set(typeof resultKeys === "function" ? resultKeys(held4) : resultKeys);
-  yield* deleteInBatches(
-    conn,
-    removed,
-    "coverage",
-    COVERAGE_KEY,
-    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(held4.filter((key3) => !kept6.has(key3))),
-    COVERAGE_RECORD_VERSION
-  );
-}
-function* deleteInBatches(conn, removed, table, key3, where3, ...params) {
-  let changed2 = DELETE_BATCH2;
-  while (changed2 === DELETE_BATCH2) {
-    changed2 = 0;
-    yield () => {
-      changed2 = conn.transaction(
-        () => conn.run(
-          `DELETE FROM ${table} WHERE (${key3}) IN (
-             SELECT ${key3} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
-          ...params
-        )
-      );
-      removed(changed2);
-    };
-  }
+  yield* deleteByKey(conn, {
+    table: "coverage",
+    key: key3,
+    search: `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    searchParams: [JSON.stringify(held4.filter((k) => !kept6.has(k))), COVERAGE_RECORD_VERSION],
+    batch: COVERAGE_BATCH,
+    removed
+  });
 }
 function* vacuum2(conn) {
   let free = freePages(conn);
@@ -20779,35 +20875,36 @@ function* vacuum2(conn) {
 function freePages(conn) {
   return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }
-var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, OF_WORKTREES, worktreeIdsOf, COVERAGE_META_OF_DEAD, OLDER_RECORD, COVERAGE_KEY, PER_WORKTREE, nothing;
+var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, COVERAGE_BATCH, COVERAGE_META_OF_DEAD, OLDER_RECORD, PER_WORKTREE, UNUSED_COUNT, UNUSED_CHECK;
 var init_prune2 = __esm({
   "src/core/code/store/prune.ts"() {
     "use strict";
     init_codec();
+    init_prune_keyed();
     init_record();
     init_parts2();
     DAY_MS2 = 24 * 60 * 60 * 1e3;
     DELETE_BATCH2 = 256;
     VACUUM_PAGES2 = 512;
-    OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
-    worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
-    SELECT min(worktree_id) FROM ${table}
-    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
-      FROM ids WHERE ids.id IS NOT NULL)
-  SELECT id FROM ids WHERE id IS NOT NULL`;
+    COVERAGE_BATCH = 64;
     COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
     OLDER_RECORD = "provider_version < ?";
-    COVERAGE_KEY = "result_key, provider_version";
     PER_WORKTREE = [
-      ["files", "worktree_id, path"],
-      ["states", "worktree_id, check_id, measure"],
-      ["views", "worktree_id, session_id, agent_id, check_id, measure"],
-      ["transitions", "id"]
+      ["files", ["worktree_id", "path"]],
+      ["states", ["worktree_id", "check_id", "measure"]],
+      ["views", ["worktree_id", "session_id", "agent_id", "check_id", "measure"]],
+      ["transitions", ["worktree_id", "check_id", "id"]]
     ];
-    nothing = () => {
-    };
+    UNUSED_COUNT = `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
+    AND f.language = counts.language AND f.counter_version = counts.counter_version)
+  AND NOT EXISTS (SELECT 1 FROM states s WHERE s.blob = counts.blob)`;
+    UNUSED_CHECK = `NOT EXISTS (SELECT 1 FROM states s
+    WHERE s.worktree_id IN (SELECT value FROM json_each(?)) AND s.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM transitions t
+    WHERE t.worktree_id IN (SELECT value FROM json_each(?)) AND t.check_id = checks.id)
+  AND NOT EXISTS (SELECT 1 FROM views v WHERE v.check_id = checks.id)`;
   }
 });
 
@@ -30638,11 +30735,11 @@ var init_adapter = __esm({
           const coverage = coverageWanted(this.#coverage) !== this.#coverageOn || childrenWanted(this.#coverage) !== (this.#instanceCoverage?.children === true);
           if (exclusion2 || coverage || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
             const before4 = vitest.projects.map((p) => p.name);
-            const fresh = await hold.exclusive(async () => {
+            const fresh2 = await hold.exclusive(async () => {
               if (this.#closed) throw new Error("vitest adapter: closed");
               return this.#recreate(this.#vitest);
             });
-            const names8 = /* @__PURE__ */ new Set([...before4, ...fresh.projects.map((p) => p.name)]);
+            const names8 = /* @__PURE__ */ new Set([...before4, ...fresh2.projects.map((p) => p.name)]);
             return { recreatedProjects: [...names8].sort() };
           }
           if (this.#running) {
@@ -31485,8 +31582,8 @@ function add2(meta, key3, paths) {
 function release2(meta, scope2, paths) {
   if (paths.size === 0) return;
   add2(meta, releaseKey(scope2), paths);
-  const fresh = [...paths].map(([path, blob]) => [path, { blob, seq: 0 }]);
-  writeCommitted(meta, scope2, new Map([...readCommitted(meta, scope2), ...fresh]));
+  const fresh2 = [...paths].map(([path, blob]) => [path, { blob, seq: 0 }]);
+  writeCommitted(meta, scope2, new Map([...readCommitted(meta, scope2), ...fresh2]));
 }
 function releasedNow(meta, scope2, waiting2, blobOf4) {
   const released = readReleased(meta, scope2);
@@ -56550,7 +56647,7 @@ function abandonFullSuite(ledger) {
   ledger.commit();
   return { ...record2, owner: record2.id };
 }
-function queueFullSuite(ledger, force, fresh = false, only2) {
+function queueFullSuite(ledger, force, fresh2 = false, only2) {
   const id = randomUUID15();
   const revision = ledger.revision.number;
   const { checkpoints } = ledger;
@@ -56560,7 +56657,7 @@ function queueFullSuite(ledger, force, fresh = false, only2) {
   const unrunnable = files5.filter((file) => file.key === null || file.blocked !== null);
   const runnable2 = files5.filter((file) => file.key !== null && file.blocked === null);
   const open7 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
-  const joins = !fresh && open7.length + unrunnable.length > 0 && checkpoints.covers(refs([...open7, ...unrunnable]), force);
+  const joins = !fresh2 && open7.length + unrunnable.length > 0 && checkpoints.covers(refs([...open7, ...unrunnable]), force);
   const attributed = joins ? checkpoints.active?.record.id ?? id : id;
   let requested;
   if (force) {
@@ -60976,8 +61073,8 @@ var init_stored_keys = __esm({
       adopt(context, ledger, at2) {
         const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
         const readAt2 = at2 ?? context.now();
-        const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
-        const keys = new Set(fresh.map(({ key: key3 }) => key3));
+        const fresh2 = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
+        const keys = new Set(fresh2.map(({ key: key3 }) => key3));
         const { index } = context.keys;
         const refs2 = keys.size === 0 ? [] : [...ledger.files.values()].filter((file) => withoutResult(file, keys, index)).map((f) => f.ref);
         if (refs2.length > 0) {
@@ -60993,7 +61090,7 @@ var init_stored_keys = __esm({
         }
         this.#readAt = readAt2;
         for (const [key3, at3] of this.#seen) if (at3 <= since) this.#seen.delete(key3);
-        for (const { key: key3, recordedAt: recordedAt2 } of fresh) this.#seen.set(key3, recordedAt2);
+        for (const { key: key3, recordedAt: recordedAt2 } of fresh2) this.#seen.set(key3, recordedAt2);
       }
     };
   }
@@ -64675,13 +64772,13 @@ var init_chokidar_backend = __esm({
             const nowExcluded = next.excluded.filter((p) => !before4.excluded.includes(p));
             if (nowExcluded.length > 0) {
               const nextFilter = new Filter(next);
-              const fresh = await open5(next, nextFilter, listener);
+              const fresh2 = await open5(next, nextFilter, listener);
               if (closed) {
-                await fresh.close();
+                await fresh2.close();
                 return;
               }
               const old = watcher;
-              watcher = fresh;
+              watcher = fresh2;
               filter = nextFilter;
               current2 = next;
               await old.close();
@@ -98894,12 +98991,12 @@ var ImportsSeen = class {
    * request waits for the lock and for a busy store).
    */
   async take(reread) {
-    const fresh = listImports(this.store).filter((i3) => !this.#seen.has(i3.id));
-    if (fresh.length === 0) return;
+    const fresh2 = listImports(this.store).filter((i3) => !this.#seen.has(i3.id));
+    if (fresh2.length === 0) return;
     const projects2 = new Set(
-      fresh.flatMap((i3) => importFiles(this.store, i3.id).map((f) => f.project))
+      fresh2.flatMap((i3) => importFiles(this.store, i3.id).map((f) => f.project))
     );
-    const ids = fresh.map((i3) => i3.id);
+    const ids = fresh2.map((i3) => i3.id);
     for (const id of ids) this.#seen.add(id);
     let taken3 = false;
     try {
@@ -101117,6 +101214,34 @@ init_prune();
 init_store2();
 init_text();
 
+// src/core/daemon/clone-prune.ts
+var PRUNED_AT_KEY = "prune:last-at";
+function fresh(value, at2, intervalMs) {
+  if (value === null) return false;
+  const since = at2 - Number(value);
+  return since >= 0 && since < intervalMs;
+}
+function* oncePerClone(store, clock, intervalMs, slices2, claimed) {
+  let seen = null;
+  let due = false;
+  yield () => {
+    seen = store.meta.get(PRUNED_AT_KEY);
+    due = !fresh(seen, clock(), intervalMs);
+  };
+  if (!due) return;
+  let won = false;
+  yield () => {
+    won = store.transaction(() => {
+      if (store.meta.get(PRUNED_AT_KEY) !== seen) return false;
+      store.meta.set(PRUNED_AT_KEY, String(clock()));
+      return true;
+    });
+  };
+  if (!won) return;
+  claimed();
+  yield* slices2();
+}
+
 // src/core/daemon/idle-checkpoint.ts
 var IDLE_CHECKPOINT_MS = 6e4;
 var CHECKPOINT_BUSY_MS = 100;
@@ -101299,6 +101424,7 @@ var SlicedWrites = class {
 };
 
 // src/core/daemon/lifecycle.ts
+var PRUNE_ASKS = 10;
 function startTimers(context) {
   const { store, worktreeId, now, timings } = context;
   const idleMs = context.policy.daemon.idleExitMinutes * 6e4;
@@ -101463,35 +101589,49 @@ function startTimers(context) {
     if (read6 !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read6;
   });
   const pruning = new SlicedPrune(context);
-  const prune6 = () => void pruning.run(
-    () => pruneSlices(
-      connectionOf(store),
-      store.worktrees,
-      storePaths(context.commonDir),
-      {
-        now: now(),
-        retentionDays: context.policy.store.retentionDays,
-        maxSizeMb: context.policy.store.maxSizeMb
+  const prune6 = () => {
+    const turn = { claimed: false };
+    void pruning.run(
+      () => oncePerClone(
+        store,
+        now,
+        pruneMs,
+        () => pruneSlices(
+          connectionOf(store),
+          store.worktrees,
+          storePaths(context.commonDir),
+          {
+            now: now(),
+            retentionDays: context.policy.store.retentionDays,
+            maxSizeMb: context.policy.store.maxSizeMb
+          },
+          noneRemoved()
+        ),
+        () => {
+          turn.claimed = true;
+        }
+      ),
+      // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
+      // after the main store, while it exists and the policy is on. Row 011-350 (#220): in
+      // slices by the same driver, so a writer of another worktree gets turns between them.
+      () => {
+        if (!turn.claimed) return;
+        void pruning.run(
+          () => pruneCodeSlicesAfter(store, context.commonDir, context.policy, now(), noCodeRemoved()),
+          void 0,
+          "code prune"
+        );
       },
-      noneRemoved()
-    ),
-    // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
-    // after the main store, while it exists and the policy is on. Row 011-350 (#220): in
-    // slices by the same driver, so a writer of another worktree gets turns between them.
-    () => void pruning.run(
-      () => pruneCodeSlicesAfter(store, context.commonDir, context.policy, now(), noCodeRemoved()),
-      void 0,
-      "code prune"
-    ),
-    "prune",
-    // Row 011-391: the main store's prune only; the code store is another file.
-    context.storeFault
-  );
+      "prune",
+      // Row 011-391: the main store's prune only; the code store is another file.
+      context.storeFault
+    );
+  };
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
     setInterval(check3, checkMs),
     setInterval(departure, presenceMs),
-    setInterval(prune6, pruneMs),
+    setInterval(prune6, pruneMs / PRUNE_ASKS),
     ...observedKeys.length > 0 && context.observedChanged ? [setInterval(observed2, timings.observedMs ?? 5e3)] : []
   ];
   const first2 = setTimeout(prune6, timings.firstPruneMs ?? 6e4);
@@ -102829,8 +102969,8 @@ var EslintProvider = class {
         if ("off" in started2) return started2;
         if (started2.started) return { ...this.environment(), declaration: started2.declaration };
         try {
-          const fresh = level === "instance";
-          const answer4 = await started2.thread.call({ type: "refresh", fresh }, this.loadGuardMs);
+          const fresh2 = level === "instance";
+          const answer4 = await started2.thread.call({ type: "refresh", fresh: fresh2 }, this.loadGuardMs);
           if (answer4.type === "off") return await this.refused(answer4.reason);
           if (answer4.type !== "snapshot") throw new Error(`refresh answered ${answer4.type}`);
           if (answer4.moved) {
@@ -108149,13 +108289,13 @@ function proofCommand(path, commit) {
   return `squeal proof ${shellWord(path)} --base ${short(commit)}`;
 }
 function newFileLines(files5, commit, full) {
-  const fresh = files5.filter(isNew);
-  const shown = full ? fresh : fresh.slice(0, GROUP_SHOWN);
+  const fresh2 = files5.filter(isNew);
+  const shown = full ? fresh2 : fresh2.slice(0, GROUP_SHOWN);
   const at2 = short(commit);
   const lines = shown.map(
     (f) => `${f.ref.path} is new since ${at2}: \`${proofCommand(f.ref.path, commit)}\` shows whether it fails on the code at ${at2}.`
   );
-  const left = fresh.length - shown.length;
+  const left = fresh2.length - shown.length;
   if (left > 0)
     lines.push(
       `${left} more test file${left === 1 ? " is" : "s are"} new since ${at2}; \`squeal proof <file> --base ${at2}\` does the same for each.`
@@ -110639,8 +110779,8 @@ function phaseOn(source2) {
     const own = (startedAt) => ownStart(daemon, startedAt);
     const record2 = work.record;
     if (daemon.holdsLock === null) {
-      const fresh = record2 !== null && heartbeatFresh(record2, now);
-      return fresh && own(record2.startedAt) === true ? "serving" : "unknown";
+      const fresh2 = record2 !== null && heartbeatFresh(record2, now);
+      return fresh2 && own(record2.startedAt) === true ? "serving" : "unknown";
     }
     const recorded2 = work.recordedStartedAt;
     if (recorded2 === null) return "starting";
@@ -113791,7 +113931,7 @@ function noListsReason(facts) {
 
 // src/core/reach/proposals.ts
 init_compare();
-var COVERAGE_KEY2 = '"coverage": { "enabled": true }';
+var COVERAGE_KEY = '"coverage": { "enabled": true }';
 var COMPLEXITY_KEY = '"complexity": { "enabled": true }';
 function proposals(snapshot3, analysis, history2, { command, listed: listed11 }) {
   const warmup = `${command} warmup`;
@@ -113808,7 +113948,7 @@ function proposals(snapshot3, analysis, history2, { command, listed: listed11 })
   const { coverage } = snapshot3;
   if (!coverage.on) {
     const keys = [
-      ...coverage.coverageEnabled ? [] : [COVERAGE_KEY2],
+      ...coverage.coverageEnabled ? [] : [COVERAGE_KEY],
       ...coverage.complexityEnabled ? [] : [COMPLEXITY_KEY]
     ];
     out2.push({ kind: "coverage", keys, command: warmup });
@@ -114807,12 +114947,12 @@ function endedLine(wait, verdict, none3) {
   const why2 = noVerdictText(verdict);
   if (why2 !== null) return none3(why2);
   const unmatched2 = wait.narrow?.unmatched ?? [];
-  const nothing2 = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
+  const nothing = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
   const code = verdictCode(verdict);
-  if (code === 0 && nothing2 !== "") return none3(nothing2);
+  if (code === 0 && nothing !== "") return none3(nothing);
   const queued = Math.min(wait.queued, verdict.testFiles);
   return [
-    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing2 === "" ? "" : `; ${nothing2}`}`,
+    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing === "" ? "" : `; ${nothing}`}`,
     code
   ];
 }
@@ -116452,12 +116592,12 @@ async function servingDaemon(root, record2, io) {
   const id = worktreeIdOfRealPath(root);
   const computed = socketPathFor(id);
   const recorded2 = record2?.socketPath === computed ? null : record2;
-  const fresh = recorded2 !== null && heartbeatFresh(recorded2, Date.now());
-  for (const socketPath of fresh ? [recorded2.socketPath, computed] : [computed]) {
+  const fresh2 = recorded2 !== null && heartbeatFresh(recorded2, Date.now());
+  for (const socketPath of fresh2 ? [recorded2.socketPath, computed] : [computed]) {
     const found4 = await servingAt(socketPath, root, id, io);
     if (found4 !== null) return found4;
   }
-  if (recorded2 === null || fresh) return null;
+  if (recorded2 === null || fresh2) return null;
   const late = await askDaemon(recorded2.socketPath, { type: "ping" }).catch(() => "busy");
   if (late === null) return null;
   const at2 = new Date(recorded2.heartbeatAt).toISOString();
