@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { OVERRUN_FACTOR, OVERRUN_FLOOR_MS } from "../../src/core/scheduler/overrun.js";
 import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
 import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
+import { standingsOf } from "../../src/core/status/standing.js";
 import type { EpochMs } from "../../src/core/types/common.js";
 import { BESIDE_LANE_PREFIX, isBesideLane } from "../../src/core/types/runner.js";
 import type { TierOverrun } from "../../src/core/types/standing.js";
@@ -14,7 +17,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { heldRun, settle } from "./tier-yields-fixture.js";
+import { heldRun, ref, settle } from "./tier-yields-fixture.js";
 
 /*
  * Row 011-399 (gh-233, `research/stuck-running.md` shape 1, E1b): a tier of
@@ -50,6 +53,19 @@ const pathsOf = (run: CatchUpRun) => run.files.map((f) => f.path);
 function overrunsOf(side: CatchUpSide): TierOverrun[] {
   const row = readYieldRow(side.store.meta.get(yieldsMetaKey(side.worktreeId)), 0 as EpochMs);
   return [...(row.overruns ?? new Map<string, TierOverrun>()).values()];
+}
+
+/** What status reads of `paths` at the scheduler's calendar time, its daemon alive on the host's. */
+function read(side: CatchUpSide, paths: readonly string[]) {
+  const { store, worktreeId, root } = side;
+  const daemon = daemonLiveness(store.worktrees.get(worktreeId)?.daemon ?? null, Date.now());
+  return standingsOf(
+    store,
+    worktreeId,
+    root,
+    daemon,
+    side.now() as EpochMs,
+  )(paths.map((p) => ref(p)));
 }
 
 /**
@@ -94,6 +110,7 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     await settle(side);
     expect(side.runner.runs.slice(after)).toEqual([tier]);
     expect(overrunsOf(side)).toEqual([]);
+    expect(classLines(read(side, [H]), "squeal").join("\n")).not.toContain("may be hung");
 
     // At the floor (5 ms x 10 is under it), the next tier starts beside, with no other event.
     side.advance(1_000);
@@ -114,6 +131,23 @@ describe("a file far past its own time does not block its lane (row 011-399, gh-
     expect(overrun?.files.every((f) => f.usualMs === 5)).toBe(true);
     expect(overrun?.at).toBeGreaterThanOrEqual(startedAt + OVERRUN_FLOOR_MS - 1_000);
     expect(overrun?.deadline).toBeGreaterThan(overrun?.at ?? 0);
+
+    // Status, the named wait's line and its JSON say so: how long, how many times its usual time,
+    // that it may be hung, the deadline and the command that shows its run.
+    const [named] = read(side, [H]);
+    expect(named?.standing).toMatchObject({
+      kind: "running",
+      overrun: { path: H, usualMs: 5, deadline: overrun?.deadline },
+    });
+    expect(classLines(read(side, [H]), "squeal").slice(1)).toEqual([
+      expect.stringMatching(
+        /^ {2}1 in the vitest tier of 4 test files running since \S+; it has run 1 min, about 12,000x its usual 5 ms, so it may be hung; the lane runs its next tiers beside it, and its run's deadline is \S+: test\/h\.test\.ts; `squeal why test\/h\.test\.ts` shows its run and the run log$/,
+      ),
+    ]);
+    expect(named === undefined ? null : fileEntry(named, "squeal")).toMatchObject({
+      command: `squeal why ${H}`,
+      overrun: { path: H, usualMs: 5 },
+    });
 
     // One tier beside at a time; when it ends, the next goes beside while H still runs.
     beside.release();

@@ -1,7 +1,7 @@
 import { loadText } from "../retry/text.js";
 import { ASKS_AGAIN, gateText } from "../scheduler/pool-wait.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
-import { timeText } from "../text.js";
+import { shellWord, timeText } from "../text.js";
 import type { CheckMoment } from "../types/check-groups.js";
 import { isSlowLane } from "../types/runner.js";
 import { isGroupLane, laneGroup } from "../types/scheduler.js";
@@ -9,7 +9,14 @@ import type { BatchPlace, Standing, TierYield } from "../types/standing.js";
 import { runnersHave } from "./feed-late.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
-import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
+import {
+  keptYieldText,
+  laneText,
+  noKeptYieldText,
+  overrunText,
+  runText,
+  waitedRunText,
+} from "./tier-text.js";
 
 /*
  * Row 011-27 (011 C15 as amended 2026-10-20; `tasks/011-24/design.md`
@@ -61,6 +68,9 @@ export interface StepContext {
 }
 
 const NOT_INTERRUPTED = "no command runs {it} sooner (a running tier is not interrupted)";
+
+/** Row 011-399: the step of a file whose tier overruns. */
+const SHOWS_RUN = "{command} shows its run and the run log";
 
 /** A tier that does not yield (C4 step 5 as amended 2026-10-21, row 011-51) is waited for. */
 const NOT_YIELDING =
@@ -307,6 +317,16 @@ function runningStep(s: Extract<Standing, { kind: "running" }>, context: StepCon
       : context.named && s.yieldsSince !== undefined
         ? noKeptYieldText(s.yieldsSince)
         : "";
+  // Row 011-399 (gh-233): its tier overruns; it may be hung, and the command shows its run.
+  if (s.overrun !== undefined) {
+    const over = `${where}${overrunText(s.overrun)}`;
+    const args = `why ${shellWord(s.overrun.path)}`;
+    return {
+      reason: `${over}${kept}`,
+      short: over,
+      step: { kind: "command", args, text: SHOWS_RUN },
+    };
+  }
   // Row 019-16: a group lane's tier is waited for as a slow one, unless its daemon published a
   // yield standing for it (a `normal` group's tier is an edit's kind, 019-10 decision 5).
   if (isSlowLane(s.lane) || (isGroupLane(s.lane) && s.yields === undefined)) {
