@@ -1,230 +1,294 @@
+import { symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { importsOf } from "../../src/cli/proof-imports.js";
-import { testFileId } from "../../src/core/keys/reverse-index.js";
-import type { AbsolutePath } from "../../src/core/types/common.js";
-import { fixture, git } from "../commit/at-keys-fixture.js";
+import { fixture, git, link } from "../commit/at-keys-fixture.js";
 import { prove } from "./proof-kit.js";
 import { clean } from "./status-at-kit.js";
 
 /*
  * Row 023-21, spec 023 D5.2 as amended 2026-11-19 (issue #247, "A: explain
- * + --with"; then "A: stop when unsure" after `reviews/wave-14-rereview.md`
- * B1): an unchanged named test whose changed imports Squeal cannot show to
- * be product code (imported by a project file that is not test code)
- * runs nothing, exit 3, with a `--with` and a `--source` rerun. The
- * reviews' reproductions (a helper importing vitest, through a local
- * barrel, a data-only helper) stop; each `--with` control reads not red.
+ * + --with"; last, after `reviews/wave-14-fourth.md`, "A: stop guessing"):
+ * Squeal does not tell test code from product code. When a named test is
+ * unchanged, every changed file it loads that is not on the test side
+ * stops the proof (exit 3, nothing run) unless `--with` (test code, copied
+ * from the test version) or `--source` (product code, each side's code
+ * version) names it. Every review's reproduction stops; each control with
+ * the right flags reads not red.
  */
 
 const TEST = "test/a.test.ts";
 const ROWS = "support/rows.ts";
-const MORE = "support/more.ts";
+const DATA = "support/data.ts";
+const VALUE = "src/value.ts";
 const MAIN = { "src/main.ts": 'import { value } from "./value";\nexport const main = value;\n' };
-
-const ON = {
-  "squeal.config.json": "{}\n",
-  [TEST]: 'import { runRows } from "../support/rows";\nrunRows();\n',
-};
-
-/** A helper that imports `it` and `expect` from `api` and `value`, with `rows` inside `runRows`. */
-const helper = (api: string, ...rows: string[]) =>
-  [
-    `import { it, expect } from "${api}";`,
-    'import { value } from "../src/value";',
-    ...rows.filter((row) => row.startsWith("import")),
-    "export function runRows() {",
-    ...rows.filter((row) => !row.startsWith("import")).map((row) => `  ${row}`),
-    "}",
-    "",
-  ].join("\n");
-
-const EXISTING = "it('existing row', () => expect(value).toBeGreaterThanOrEqual(1));";
+const ON = { "squeal.config.json": "{}\n", ...MAIN };
 const short = (sha: string) => sha.slice(0, 9);
+const lines = (...l: string[]) => [...l, ""].join("\n");
 
-/** The review's fixture: base's helper fails on both sources, HEAD's passes on both. */
-function rowsFixture(api: string, more: Record<string, string> = {}) {
-  const f = fixture({
-    ...ON,
-    ...MAIN,
-    ...more,
-    "src/value.ts": "export const value = 1;\n",
-    [ROWS]: helper(api, "it('row', () => expect(value).toBe(3));"),
-  });
-  const base = git(f.root, "rev-parse", "HEAD").trim();
-  const head = f.commit({
-    "src/value.ts": "export const value = 2;\n",
-    [ROWS]: helper(api, "it('row', () => expect(value).toBeGreaterThanOrEqual(1));"),
-  });
-  return { f, base, head };
+/** An unchanged thin test over `support/rows.ts`, which imports `it` and `expect` from `api`. */
+const THIN = { [TEST]: lines('import { runRows } from "../support/rows";', "runRows();") };
+const rowsOver = (api: string, check: string) =>
+  lines(
+    `import { it, expect } from "${api}";`,
+    'import { min } from "./data";',
+    'import { value } from "../src/value";',
+    "export function runRows() {",
+    `  it("row", () => ${check});`,
+    "}",
+  );
+/** The data-only case: `value` 1 to 2 and `min` 3 to 1; HEAD's data passes over the old value. */
+const DATA_CHANGE = {
+  base: { [VALUE]: "export const value = 1;\n", [DATA]: "export const min = 3;\n" },
+  head: { [VALUE]: "export const value = 2;\n", [DATA]: "export const min = 1;\n" },
+};
+const OVER_MIN = "expect(value).toBeGreaterThanOrEqual(min)";
+
+interface Case {
+  readonly name: string;
+  readonly files: Record<string, string>;
+  readonly head: Record<string, string>;
+  readonly unsettled: readonly string[];
+  readonly control: { readonly with: string[]; readonly source: string[] };
+  readonly install?: (tree: string) => void;
 }
+
+const CASES: readonly Case[] = [
+  {
+    name: "a helper that imports vitest (review B1)",
+    files: {
+      ...THIN,
+      [VALUE]: "export const value = 1;\n",
+      [DATA]: "export const min = 1;\n",
+      [ROWS]: rowsOver("vitest", "expect(value).toBe(3)"),
+    },
+    head: { [VALUE]: "export const value = 2;\n", [ROWS]: rowsOver("vitest", OVER_MIN) },
+    unsettled: [VALUE, ROWS],
+    control: { with: [ROWS], source: [VALUE] },
+  },
+  {
+    name: "a helper that takes vitest through a local barrel (re-review)",
+    files: {
+      ...THIN,
+      "support/api.ts": 'export { it, expect } from "vitest";\n',
+      [VALUE]: "export const value = 1;\n",
+      [DATA]: "export const min = 1;\n",
+      [ROWS]: rowsOver("./api", "expect(value).toBe(3)"),
+    },
+    head: { [VALUE]: "export const value = 2;\n", [ROWS]: rowsOver("./api", OVER_MIN) },
+    unsettled: [VALUE, ROWS],
+    control: { with: [ROWS], source: [VALUE] },
+  },
+  {
+    name: "a data-only helper the test imports (re-review)",
+    files: {
+      [TEST]: lines(
+        'import { it, expect } from "vitest";',
+        'import { value } from "../src/value";',
+        'import { min } from "../support/data";',
+        `it("row", () => ${OVER_MIN});`,
+      ),
+      ...DATA_CHANGE.base,
+    },
+    head: DATA_CHANGE.head,
+    unsettled: [VALUE, DATA],
+    control: { with: [DATA], source: [VALUE] },
+  },
+  {
+    name: "a commented-out import in product code (third look)",
+    files: {
+      [TEST]: lines(
+        'import { it, expect } from "vitest";',
+        'import { value } from "../src/value";',
+        'import { min } from "../support/data";',
+        `it("row", () => ${OVER_MIN});`,
+      ),
+      "src/example.ts":
+        '// import { min } from "../support/data";\nexport const label = "example";\n',
+      ...DATA_CHANGE.base,
+    },
+    head: DATA_CHANGE.head,
+    unsettled: [VALUE, DATA],
+    control: { with: [DATA], source: [VALUE] },
+  },
+  {
+    name: "a package #imports alias to a vitest barrel (third look)",
+    files: {
+      ...THIN,
+      "package.json": `${JSON.stringify({ name: "fixture", type: "module", imports: { "#api": "./support/api.ts" } })}\n`,
+      "support/api.ts": 'export { it, expect } from "vitest";\n',
+      [ROWS]: rowsOver("#api", OVER_MIN),
+      ...DATA_CHANGE.base,
+    },
+    head: DATA_CHANGE.head,
+    unsettled: [VALUE, DATA],
+    control: { with: [DATA], source: [VALUE] },
+  },
+  {
+    name: "a tsconfig paths alias to a vitest barrel (third look)",
+    files: {
+      ...THIN,
+      "tsconfig.json": `${JSON.stringify({ compilerOptions: { paths: { "~/*": ["./support/*"] } } })}\n`,
+      "vitest.config.mjs":
+        'export default { resolve: { tsconfigPaths: true }, test: { include: ["test/*.test.ts"] } };\n',
+      "support/api.ts": 'export { it, expect } from "vitest";\n',
+      [ROWS]: rowsOver("~/api", OVER_MIN),
+      ...DATA_CHANGE.base,
+    },
+    head: DATA_CHANGE.head,
+    unsettled: [VALUE, DATA],
+    control: { with: [DATA], source: [VALUE] },
+  },
+  {
+    name: "a declared local package that re-exports vitest (fourth look)",
+    files: {
+      ...THIN,
+      "package.json": `${JSON.stringify({ name: "fixture", type: "module", dependencies: { "review-api": "file:./packages/api" } })}\n`,
+      "packages/api/package.json": `${JSON.stringify({ name: "review-api", type: "module", exports: "./index.js" })}\n`,
+      "packages/api/index.js": 'export { it, expect } from "vitest";\n',
+      [ROWS]: rowsOver("review-api", OVER_MIN),
+      ...DATA_CHANGE.base,
+    },
+    head: DATA_CHANGE.head,
+    unsettled: [VALUE, DATA],
+    control: { with: [DATA], source: [VALUE] },
+    install: (tree) =>
+      symlinkSync(join(tree, "packages/api"), join(tree, "node_modules/review-api")),
+  },
+];
 
 describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)", {
   timeout: 300_000,
 }, () => {
-  it("B1: stops on a changed helper that imports vitest; its --with control reads not red", async () => {
-    const { f, base, head } = rowsFixture("vitest");
-    const result = await prove(f, { files: [TEST], base });
+  it.each(CASES)("stops on $name; the control with the right flags reads not red", async (c) => {
+    const f = fixture({ ...ON, ...c.files });
+    const base = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit(c.head);
+    const test = TEST;
+    const install = async (tree: string) => {
+      link(tree);
+      c.install?.(tree);
+      return { ok: true as const, command: "link", ms: 0 };
+    };
+    const options = { cacheRoot: f.cacheRoot, install };
+    const result = await prove(f, { files: [test], base }, options);
     expect(result.code, result.why).toBe(3);
     expect(result.report.runs).toBe(0);
-    expect(result.report.checkoutMs.red).toBeNull();
-    expect(result.files).toHaveLength(1);
     expect(result.files[0]).toMatchObject({
-      path: TEST,
       verdict: "not comparable",
-      reason: `the test is unchanged since ${short(base)}; changed imports: ${ROWS}`,
-      red: { end: "unknown", runs: 0 },
-      changedImports: {
-        unsettled: [{ path: ROWS, testCode: true, why: `imports vitest at ${short(head)}` }],
-        sources: [{ path: "src/value.ts", why: "imported by src/main.ts" }],
-        stopped: true,
-      },
+      reason: `the test is unchanged since ${short(base)}; changed imports: ${c.unsettled.join(", ")}`,
+      changedImports: { unsettled: c.unsettled, sources: [], stopped: true },
     });
-    expect(result.report.withRerun).toBe(`squeal proof ${TEST} --base ${base} --with ${ROWS}`);
-    expect(result.report.sourceRerun).toBeNull();
-    const text = await prove(f, { files: [TEST], base, json: false });
-    expect(text.out).toContain(
-      `  not settled: ${ROWS} (test code: imports vitest at ${short(head)})\n`,
-    );
-    expect(text.out).toContain(
-      "  product code the proof compares: src/value.ts (imported by src/main.ts)\n",
-    );
-    expect(text.out).toContain(
-      `If the changed imports are test code, rerun: squeal proof ${TEST} --base ${base} --with ${ROWS}\n`,
-    );
-    const control = await prove(f, { files: [TEST], base, with: [ROWS] });
+    const control = await prove(f, { files: [test], base, ...c.control }, options);
     expect(control.code, control.why).toBe(1);
     expect(control.files[0]).toMatchObject({ verdict: "not red", red: { end: "pass" } });
     clean(f);
   });
 
-  it("re-review B1: stops on a helper that takes vitest through an unchanged local barrel", async () => {
-    const api = { "support/api.ts": 'export { it, expect } from "vitest";\n' };
-    const { f, base, head } = rowsFixture("./api", api);
-    const result = await prove(f, { files: [TEST], base });
-    expect(result.code, result.why).toBe(3);
-    expect(result.report.runs).toBe(0);
-    expect(result.files[0]).toMatchObject({
-      verdict: "not comparable",
-      changedImports: {
-        unsettled: [
-          {
-            path: ROWS,
-            testCode: true,
-            why: `imports vitest through support/api.ts at ${short(head)}`,
-          },
-        ],
-        stopped: true,
-      },
-    });
-    const control = await prove(f, { files: [TEST], base, with: [ROWS] });
-    expect(control.code, control.why).toBe(1);
-    expect(control.files[0]).toMatchObject({ verdict: "not red" });
-    clean(f);
-  });
-
-  it("re-review B1: stops on a changed data-only helper; --with reads not red, --source compares it", async () => {
-    const f = fixture({
-      ...ON,
-      ...MAIN,
-      [TEST]: [
-        'import { it, expect } from "vitest";',
-        'import { value } from "../src/value";',
-        'import { min } from "../support/data";',
-        "it('row', () => expect(value).toBeGreaterThanOrEqual(min));",
-        "",
-      ].join("\n"),
-      "src/value.ts": "export const value = 1;\n",
-      "support/data.ts": "export const min = 3;\n",
-    });
+  it("prints both reruns and that the flags may be mixed per file", async () => {
+    const c = CASES[0] as Case;
+    const f = fixture({ ...ON, ...c.files });
     const base = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({
-      "src/value.ts": "export const value = 2;\n",
-      "support/data.ts": "export const min = 1;\n",
-    });
+    f.commit(c.head);
     const result = await prove(f, { files: [TEST], base, json: false });
     expect(result.code, result.why).toBe(3);
     expect(result.out).toContain(
-      "  not settled: support/data.ts (could not tell whether it is test or product code: no project file that is not test code imports it)\n",
+      `  changed imports neither --with nor --source names: ${VALUE}, ${ROWS}\n`,
     );
     expect(result.out).toContain(
-      `If the changed imports are test code, rerun: squeal proof ${TEST} --base ${base} --with support/data.ts\n`,
+      `Squeal does not tell test code from product code. If they are product code, rerun: squeal proof ${TEST} --base ${base} --source ${VALUE} --source ${ROWS}\n`,
     );
     expect(result.out).toContain(
-      `If the ones not shown to be test code are product code, rerun: squeal proof ${TEST} --base ${base} --source support/data.ts\n`,
+      `If they are test code, rerun: squeal proof ${TEST} --base ${base} --with ${VALUE} --with ${ROWS}\n`,
     );
-    const control = await prove(f, { files: [TEST], base, with: ["support/data.ts"] });
-    expect(control.code, control.why).toBe(1);
-    expect(control.files[0]).toMatchObject({ verdict: "not red" });
+    expect(result.out).toContain(
+      "Or name each file with --source (product code, taken from each side's code version) or --with (test code, copied from the test version).\n",
+    );
     clean(f);
   });
 
-  it("proves an unchanged test over src/value.ts that src/main.ts imports, with no flag", async () => {
+  it("stops on a product fix behind an unchanged test, and proves it with --source", async () => {
     const f = fixture({
       ...ON,
-      ...MAIN,
-      "src/value.ts": "export const value = 1;\n",
-      [TEST]: [
+      [VALUE]: "export const value = 1;\n",
+      [TEST]: lines(
         'import { expect, it } from "vitest";',
         'import { value } from "../src/value";',
-        "it('value', () => expect(value).toBe(2));",
-        "",
-      ].join("\n"),
+        'it("value", () => expect(value).toBe(2));',
+      ),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({ "src/value.ts": "export const value = 2;\n" });
-    const result = await prove(f, { files: [TEST], base, json: false });
-    expect(result.code, result.why).toBe(0);
-    expect(result.out).toContain(`${TEST}: proven\n`);
-    expect(result.out).toContain(
-      `  the test is unchanged since ${short(base)}; product code the proof compares: src/value.ts (imported by src/main.ts)\n`,
-    );
-    expect(result.out).not.toContain("rerun:");
-    clean(f);
-  });
-
-  it("stops over src/value.ts only tests import, and proves with --source src/value.ts", async () => {
-    const f = fixture({
-      ...ON,
-      "src/value.ts": "export const value = 1;\n",
-      [TEST]: [
-        'import { expect, it } from "vitest";',
-        'import { value } from "../src/value";',
-        "it('value', () => expect(value).toBe(2));",
-        "",
-      ].join("\n"),
-    });
-    const base = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({ "src/value.ts": "export const value = 2;\n" });
+    f.commit({ [VALUE]: "export const value = 2;\n" });
     const stopped = await prove(f, { files: [TEST], base });
     expect(stopped.code, stopped.why).toBe(3);
-    expect(stopped.files[0]).toMatchObject({
-      changedImports: { unsettled: [{ path: "src/value.ts", testCode: false }], stopped: true },
-    });
     expect(stopped.report.sourceRerun).toBe(
-      `squeal proof ${TEST} --base ${base} --source src/value.ts`,
+      `squeal proof ${TEST} --base ${base} --source ${VALUE}`,
     );
-    const proved = await prove(f, { files: [TEST], base, source: ["src/value.ts"] });
+    const proved = await prove(f, { files: [TEST], base, source: [VALUE], json: false });
     expect(proved.code, proved.why).toBe(0);
-    expect(proved.files[0]).toMatchObject({
-      verdict: "proven",
-      changedImports: { sources: [{ path: "src/value.ts", why: "--source" }], stopped: false },
+    expect(proved.out).toContain(`${TEST}: proven\n`);
+    expect(proved.out).toContain(`  product code by --source, compared: ${VALUE}\n`);
+    clean(f);
+  });
+
+  it("proves with --with on two helpers (one added, loaded through the other) and --source on the fix, then reuses the store", async () => {
+    const more = "support/more.ts";
+    const f = fixture({
+      ...ON,
+      ...THIN,
+      [VALUE]: "export const value = 1;\n",
+      [DATA]: "export const min = 1;\n",
+      [ROWS]: rowsOver("vitest", OVER_MIN),
     });
-    expect(proved.report.red).toMatchObject({ code: base, source: ["src/value.ts"], with: [] });
-    expect(proved.report.green.source).toEqual(["src/value.ts"]);
+    const base = git(f.root, "rev-parse", "HEAD").trim();
+    const head = f.commit({
+      [VALUE]: "export const value = 2;\n",
+      [more]: lines(
+        'import { it, expect } from "vitest";',
+        'import { value } from "../src/value";',
+        'export const moreRows = () => it("new row", () => expect(value).toBe(2));',
+      ),
+      [ROWS]: lines(
+        'import { it, expect } from "vitest";',
+        'import { moreRows } from "./more";',
+        'import { value } from "../src/value";',
+        'export function runRows() { it("row", () => expect(value).toBeGreaterThanOrEqual(1)); moreRows(); }',
+      ),
+    });
+    const stopped = await prove(f, { files: [TEST], base });
+    expect(stopped.files[0]).toMatchObject({ changedImports: { unsettled: [VALUE, more, ROWS] } });
+    const args = { files: [TEST], base, with: [ROWS, more], source: [VALUE] };
+    const first = await prove(f, args);
+    expect(first.code, first.why).toBe(0);
+    expect(first.files).toHaveLength(1);
+    expect(first.files[0]).toMatchObject({
+      verdict: "proven",
+      red: { end: "fail", from: "run", stored: true },
+      changedImports: { unsettled: [], sources: [VALUE], stopped: false },
+    });
+    expect(first.files[0]?.red.failures[0]?.text).toContain("expected 1 to be 2");
+    expect(first.report.red).toMatchObject({
+      tests: head,
+      code: base,
+      with: [ROWS, more],
+      source: [VALUE],
+    });
+    const second = await prove(f, args);
+    expect(second.code, second.why).toBe(0);
+    expect(second.report.runs).toBe(0);
     clean(f);
   });
 
   it("refuses one path in --with and --source, and a --with path outside the worktree", async () => {
-    const f = fixture({ ...ON, "src/value.ts": "export const value = 1;\n" });
+    const f = fixture({ ...ON, [VALUE]: "export const value = 1;\n" });
     const both = await prove(f, {
       files: [TEST],
       base: "HEAD",
-      with: ["src/value.ts"],
-      source: ["./src/value.ts"],
+      with: [VALUE],
+      source: [`./${VALUE}`],
     });
     expect(both.code).toBe(2);
     expect(both.err).toContain(
-      "src/value.ts is given with --with and --source: it is test code or product code, not both",
+      `${VALUE} is given with --with and --source: it is test code or product code, not both`,
     );
     const outside = await prove(f, { files: [TEST], base: "HEAD", with: ["../elsewhere.ts"] });
     expect(outside.code).toBe(2);
@@ -232,68 +296,18 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
     clean(f);
   });
 
-  it("stops on a transitive, newly added helper, proves with --with on both, and reuses the store", async () => {
-    const f = fixture({
-      ...ON,
-      ...MAIN,
-      "src/value.ts": "export const value = 1;\n",
-      [ROWS]: helper("vitest", EXISTING),
-    });
-    const base = git(f.root, "rev-parse", "HEAD").trim();
-    const head = f.commit({
-      "src/value.ts": "export const value = 2;\n",
-      [MORE]: [
-        'import { it, expect } from "vitest";',
-        'import { value } from "../src/value";',
-        "export function moreRows() {",
-        "  it('new row catches the bug', () => expect(value).toBe(2));",
-        "}",
-        "",
-      ].join("\n"),
-      [ROWS]: helper("vitest", 'import { moreRows } from "./more";', EXISTING, "moreRows();"),
-    });
-    const stopped = await prove(f, { files: [TEST], base });
-    expect(stopped.code, stopped.why).toBe(3);
-    const why = `imports vitest at ${short(head)}`;
-    expect(stopped.files[0]).toMatchObject({
-      changedImports: {
-        unsettled: [
-          { path: MORE, testCode: true, why },
-          { path: ROWS, testCode: true, why },
-        ],
-      },
-    });
-    expect(stopped.report.withRerun).toBe(
-      `squeal proof ${TEST} --base ${base} --with ${MORE} --with ${ROWS}`,
-    );
-    const args = { files: [TEST], base, with: [ROWS, MORE] };
-    const first = await prove(f, args);
-    expect(first.code, first.why).toBe(0);
-    expect(first.report.case).toBe("source");
-    expect(first.files).toHaveLength(1);
-    expect(first.files[0]).toMatchObject({
-      verdict: "proven",
-      red: { end: "fail", from: "run", stored: true },
-      green: { end: "pass" },
-    });
-    expect(first.files[0]?.red.failures[0]?.text).toContain("expected 1 to be 2");
-    expect(first.report.red).toMatchObject({ tests: head, code: base, with: [ROWS, MORE] });
-    const second = await prove(f, args);
-    expect(second.code, second.why).toBe(0);
-    expect(second.report.runs).toBe(0);
-    clean(f);
-  });
-
   it("gives each named file its verdict, and warns for --with and --source paths that change nothing", async () => {
-    const { f, base } = rowsFixture("vitest", { "support/unused.ts": "export const u = 1;\n" });
+    const c = CASES[0] as Case;
+    const f = fixture({ ...ON, ...c.files, "support/unused.ts": "export const u = 1;\n" });
+    const base = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit(c.head);
     const direct = "test/direct.test.ts";
     const head = f.commit({
-      [direct]: [
+      [direct]: lines(
         'import { expect, it } from "vitest";',
         'import { value } from "../src/value";',
-        "it('direct', () => expect(value).toBe(2));",
-        "",
-      ].join("\n"),
+        'it("direct", () => expect(value).toBe(2));',
+      ),
     });
     const result = await prove(f, {
       files: [TEST, direct],
@@ -311,188 +325,32 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
     expect(result.out).toContain(
       "Warning: --source src/main.ts: not a changed import of an unchanged named test; it settles nothing.\n",
     );
-    expect(result.out).toContain(
-      `If the changed imports are test code, rerun: squeal proof ${TEST} ${direct} --base ${base} --with support/unused.ts --with ${ROWS} --source src/main.ts\n`,
-    );
     clean(f);
   });
 
   it("still refuses a source file the base lacks once --with and --source settle the imports", async () => {
     const f = fixture({
       ...ON,
-      ...MAIN,
-      "src/value.ts": "export const value = 1;\n",
-      [ROWS]: helper("vitest", EXISTING),
+      ...THIN,
+      [VALUE]: "export const value = 1;\n",
+      [DATA]: "export const min = 1;\n",
+      [ROWS]: rowsOver("vitest", OVER_MIN),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();
     f.commit({
       "src/added.ts": "export const added = 2;\n",
-      [ROWS]: helper(
-        "vitest",
+      [ROWS]: lines(
+        'import { it, expect } from "vitest";',
         'import { added } from "../src/added";',
-        "it('new', () => expect(added).toBe(2));",
+        'export function runRows() { it("new", () => expect(added).toBe(2)); }',
       ),
     });
-    const result = await prove(f, {
-      files: [TEST],
-      base,
-      with: [ROWS],
-      source: ["src/added.ts"],
-    });
+    const result = await prove(f, { files: [TEST], base, with: [ROWS], source: ["src/added.ts"] });
     expect(result.code, result.why).toBe(3);
     expect(result.files[0]).toMatchObject({
       verdict: "not comparable",
       reason: `imports src/added.ts, absent at ${short(base)}`,
     });
     clean(f);
-  });
-
-  it.each([
-    [
-      "a package #imports alias",
-      "#api",
-      {
-        "package.json": `${JSON.stringify({ name: "fixture", type: "module", imports: { "#api": "./support/api.ts" } })}\n`,
-      },
-    ],
-    [
-      "a tsconfig paths alias",
-      "~/api",
-      {
-        "tsconfig.json": `${JSON.stringify({ compilerOptions: { paths: { "~/*": ["./support/*"] } } })}\n`,
-        "vitest.config.mjs":
-          'export default { resolve: { tsconfigPaths: true }, test: { include: ["test/*.test.ts"] } };\n',
-      },
-    ],
-  ])(
-    "third look 1: stops when the data's only importer takes vitest through %s; --with reads not red",
-    async (_, alias, more) => {
-      const f = fixture({
-        ...ON,
-        ...MAIN,
-        ...more,
-        "support/api.ts": 'export { it, expect } from "vitest";\n',
-        [ROWS]: [
-          `import { it, expect } from "${alias}";`,
-          'import { min } from "./data";',
-          'import { value } from "../src/value";',
-          "export function runRows() {",
-          "  it('row', () => expect(value).toBeGreaterThanOrEqual(min));",
-          "}",
-          "",
-        ].join("\n"),
-        "src/value.ts": "export const value = 1;\n",
-        "support/data.ts": "export const min = 3;\n",
-      });
-      const base = git(f.root, "rev-parse", "HEAD").trim();
-      f.commit({
-        "src/value.ts": "export const value = 2;\n",
-        "support/data.ts": "export const min = 1;\n",
-      });
-      const result = await prove(f, { files: [TEST], base });
-      expect(result.code, result.why).toBe(3);
-      expect(result.report.runs).toBe(0);
-      expect(result.files[0]).toMatchObject({
-        verdict: "not comparable",
-        changedImports: {
-          unsettled: [
-            {
-              path: "support/data.ts",
-              testCode: false,
-              why: `could not resolve ${alias} in ${ROWS}`,
-            },
-          ],
-          sources: [{ path: "src/value.ts", why: "imported by src/main.ts" }],
-          stopped: true,
-        },
-      });
-      expect(result.report.withRerun).toBe(
-        `squeal proof ${TEST} --base ${base} --with support/data.ts`,
-      );
-      expect(result.report.sourceRerun).toBe(
-        `squeal proof ${TEST} --base ${base} --source support/data.ts`,
-      );
-      const control = await prove(f, { files: [TEST], base, with: ["support/data.ts"] });
-      expect(control.code, control.why).toBe(1);
-      expect(control.files[0]).toMatchObject({ verdict: "not red" });
-      clean(f);
-    },
-  );
-
-  it("third look 2: a commented-out import is no importer; the data stops, --with reads not red", async () => {
-    const f = fixture({
-      ...ON,
-      ...MAIN,
-      [TEST]: [
-        'import { it, expect } from "vitest";',
-        'import { value } from "../src/value";',
-        'import { min } from "../support/data";',
-        "it('row', () => expect(value).toBeGreaterThanOrEqual(min));",
-        "",
-      ].join("\n"),
-      "src/example.ts":
-        '// import { min } from "../support/data";\nexport const label = "example";\n',
-      "src/value.ts": "export const value = 1;\n",
-      "support/data.ts": "export const min = 3;\n",
-    });
-    const base = git(f.root, "rev-parse", "HEAD").trim();
-    f.commit({
-      "src/value.ts": "export const value = 2;\n",
-      "support/data.ts": "export const min = 1;\n",
-    });
-    const result = await prove(f, { files: [TEST], base });
-    expect(result.code, result.why).toBe(3);
-    expect(result.files[0]).toMatchObject({
-      verdict: "not comparable",
-      changedImports: {
-        unsettled: [
-          {
-            path: "support/data.ts",
-            testCode: false,
-            why: "no project file that is not test code imports it",
-          },
-        ],
-        stopped: true,
-      },
-    });
-    const control = await prove(f, { files: [TEST], base, with: ["support/data.ts"] });
-    expect(control.code, control.why).toBe(1);
-    expect(control.files[0]).toMatchObject({ verdict: "not red" });
-    clean(f);
-  });
-
-  it("reads a pytest helper that imports pytest, and a conftest, as test code from git", async () => {
-    const f = fixture({
-      "tests/test_a.py": "from support.rows import ROWS\n",
-      "support/rows.py": "ROWS = [1]\n",
-      "pkg/conftest.py": "X = 1\n",
-      "pkg/value.py": "VALUE = 1\n",
-      "pkg/main.py": "from pkg.value import VALUE\n",
-    });
-    const base = git(f.root, "rev-parse", "HEAD").trim();
-    const head = f.commit({
-      "support/rows.py": "import pytest\nROWS = [pytest.param(1), 2]\n",
-      "pkg/conftest.py": "X = 2\n",
-      "pkg/value.py": "VALUE = 2\n",
-    });
-    const ref = { project: "", path: "tests/test_a.py" };
-    const { imports } = await importsOf({
-      root: f.root as AbsolutePath,
-      base,
-      head,
-      refs: [ref],
-      loadsOf: () => ["tests/test_a.py", "support/rows.py", "pkg/conftest.py", "pkg/value.py"],
-      changed: new Set(["support/rows.py", "pkg/conftest.py", "pkg/value.py"]),
-      testSide: new Set([ref.path]),
-      source: new Set(),
-    });
-    expect(imports.get(testFileId(ref))).toEqual({
-      unsettled: [
-        { path: "pkg/conftest.py", testCode: true, why: "pytest's conftest.py" },
-        { path: "support/rows.py", testCode: true, why: `imports pytest at ${short(head)}` },
-      ],
-      sources: [{ path: "pkg/value.py", why: "imported by pkg/main.py" }],
-      testSide: false,
-    });
   });
 });

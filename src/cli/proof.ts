@@ -5,7 +5,7 @@ import { squealVersion } from "../core/daemon/version.js";
 import { worktreeIdFor } from "../core/fs/git-layout.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { type Conditions, hasConditions, NO_CONDITIONS } from "../core/proof/conditions.js";
-import { stops, unusedPaths } from "../core/proof/imports.js";
+import { importsOf, stops, unusedPaths } from "../core/proof/imports.js";
 import {
   defaultCase,
   type ProofCase,
@@ -21,7 +21,6 @@ import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
 import { type ProofArgs, parseProof } from "./proof-args.js";
 import { endOf, provedFiles } from "./proof-files.js";
-import { importsOf } from "./proof-imports.js";
 import { dirtyPaths, locate } from "./proof-locate.js";
 import { formatProof, jsonProof, type ProofReport } from "./proof-report.js";
 import { rerunCommand, stopReruns } from "./proof-rerun.js";
@@ -176,10 +175,7 @@ async function prove(
       );
       const loadsOf = (ref: TestFileRef) => loads.get(testFileId(ref)) ?? [];
       const changed = await changedPaths(common.root, base, head);
-      const { imports, candidates } = await importsOf({
-        root: common.root,
-        base,
-        head,
+      const { imports, candidates } = importsOf({
         refs,
         loadsOf,
         changed,

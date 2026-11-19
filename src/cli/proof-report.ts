@@ -87,7 +87,7 @@ export interface ProofReport {
   readonly sourceUnused: readonly RelativePath[];
   /** Row 023-21: the stop's rerun with `--with` for each unsettled import; `null` when no file stopped. */
   readonly withRerun: string | null;
-  /** Row 023-21: the stop's rerun with `--source` for those not shown to be test code; `null` when none. */
+  /** Row 023-21: the stop's rerun with `--source` for each unsettled import; `null` when no file stopped. */
   readonly sourceRerun: string | null;
 }
 

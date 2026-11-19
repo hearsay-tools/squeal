@@ -151,8 +151,6 @@ describe("squeal proof red evidence (row 023-22, #244)", { timeout: 240_000 }, (
       "vitest.config.mjs": 'export default { test: { include: ["src/*.test.ts"] } };\n',
       [thin]: 'import { runKit } from "./rows.testkit";\nrunKit();\n',
       "src/value.ts": "export const value = 1;\n",
-      // Row 023-21 ("A: stop when unsure"): product code imports value, so it is settled as source.
-      "src/main.ts": 'import { value } from "./value";\nexport const main = value;\n',
       [rows]: kit(),
     });
     const base = git(f.root, "rev-parse", "HEAD").trim();
@@ -161,14 +159,19 @@ describe("squeal proof red evidence (row 023-22, #244)", { timeout: 240_000 }, (
       [rows]: kit('  it("waits for the value", async () => waitFor(() => value === 2));'),
     });
     const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
-    // Row 023-21: without --with the unchanged thin test stops; the rerun keeps --red-error.
+    // Row 023-21 ("A: stop guessing"): the unchanged thin test stops on both changed files;
+    // the rerun keeps --red-error.
     const stopped = await prove(f, { files: [thin], base, redErrors: ["never"] }, options);
     expect(stopped.code, stopped.why).toBe(3);
     expect(stopped.report.withRerun).toBe(
-      `squeal proof ${thin} --base ${base} --with ${rows} --red-error never`,
+      `squeal proof ${thin} --base ${base} --with ${rows} --with src/value.ts --red-error never`,
     );
     clean(f);
-    const result = await prove(f, { files: [thin], base, with: [rows] }, options);
+    const result = await prove(
+      f,
+      { files: [thin], base, with: [rows], source: ["src/value.ts"] },
+      options,
+    );
     expect(result.code, result.why).toBe(0);
     expect(result.files[0]).toMatchObject({
       verdict: "proven",

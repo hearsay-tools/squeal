@@ -102,7 +102,7 @@ function fileOf(
  * changed imports were not settled: not run, its reason naming them.
  */
 function stoppedSide(imports: ChangedImports | null, base: string): SideFile {
-  const helpers = imports?.unsettled.map((u) => u.path).join(", ") ?? "";
+  const helpers = imports?.unsettled.join(", ") ?? "";
   return {
     end: {
       end: "unknown",

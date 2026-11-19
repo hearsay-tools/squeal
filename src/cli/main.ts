@@ -108,12 +108,11 @@ Usage:
                                 never stored; dependency needs one. --repeat runs red
                                 up to n times (to its first failure) and green n times
                                 (1 to 100). A named test unchanged since --base whose
-                                changed imports are not shown to be product code
-                                (imported by a file that is not test code) runs
-                                nothing and names them with two reruns: --with copies
-                                one from the test version as test code, with no
-                                verdict of its own; --source compares one as product
-                                code. Red counts on an assertion, or
+                                imports changed runs nothing until each changed file
+                                is named: --with copies it from the test version as
+                                test code, with no verdict of its own; --source takes
+                                it from each side's code version as product code.
+                                Red counts on an assertion, or
                                 labelled on an error the test body threw; engine
                                 errors (TypeError, ReferenceError, SyntaxError) and
                                 import, setup, hook or timeout failures are red for

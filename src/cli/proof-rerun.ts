@@ -69,10 +69,9 @@ function commandWords(
 }
 
 /**
- * Row 023-21 (D5.2, "A: stop when unsure"): the two reruns a stop names.
- * `with`: every unsettled changed import as test code. `source`: the ones
- * not shown to be test code as product code, the test code still with
- * `--with`; `null` when every one is test code. Paths are from the cwd.
+ * Row 023-21 (D5.2, "A: stop guessing"): the two reruns a stop names:
+ * every changed import neither flag named, all as `--source`, and all as
+ * `--with`; `null` when no file stopped. Paths are from the cwd.
  */
 export function stopReruns(
   files: readonly ProofFile[],
@@ -80,17 +79,14 @@ export function stopReruns(
   conditions: Conditions,
   fromCwd: (path: RelativePath) => string,
 ): { readonly withRerun: string | null; readonly sourceRerun: string | null } {
-  const unsettled = new Map<RelativePath, boolean>();
-  for (const file of files)
-    for (const u of stops(file.imports) ? (file.imports?.unsettled ?? []) : [])
-      unsettled.set(u.path, (unsettled.get(u.path) ?? false) || u.testCode);
-  if (unsettled.size === 0) return { withRerun: null, sourceRerun: null };
-  const paths = [...unsettled.keys()].sort();
-  const test = paths.filter((path) => unsettled.get(path) === true).map(fromCwd);
-  const other = paths.filter((path) => unsettled.get(path) !== true).map(fromCwd);
+  const paths = [
+    ...new Set(files.flatMap((f) => (stops(f.imports) ? (f.imports?.unsettled ?? []) : []))),
+  ]
+    .sort()
+    .map(fromCwd);
+  if (paths.length === 0) return { withRerun: null, sourceRerun: null };
   return {
-    withRerun: withRerunCommand(args, conditions, { with: paths.map(fromCwd), source: [] }),
-    sourceRerun:
-      other.length === 0 ? null : withRerunCommand(args, conditions, { with: test, source: other }),
+    withRerun: withRerunCommand(args, conditions, { with: paths, source: [] }),
+    sourceRerun: withRerunCommand(args, conditions, { with: [], source: paths }),
   };
 }
