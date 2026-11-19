@@ -30,3 +30,4 @@ Started: 2026-11-16
 - 2026-11-19, rows 023-19 and 023-20 landed as 0.1.564 on main `7cee589d5` (`reviews/wave-13-fourth.md` PASS on `903f185d5`). The human chose, after the second and third reviews: a per-run completion record ("A: repair once more"), then records keyed per project ("A: key per project") with the save-moment under-report accepted as a limit (spec D4.6). --run default budget 300 s.
 - 2026-11-19, the human on issue #247: "A: explain + --with" (D5.2 amended; row 023-21). 0.1.564 released inside 0.1.565 (4d2ecbfc).
 - 2026-11-19, the human on issue #244: "A: evidence rule" (D5.5 amended; row 023-22).
+- 2026-11-19, wave 14 review (`reviews/wave-14.md`) and re-review (`reviews/wave-14-rereview.md`) failed on row 023-21's helper rule (a name list, then direct test-API imports, both left false `proven`); B2 and N1 of row 023-22 closed. The human: "A: stop when unsure" (D5.2 amended; new flag `--source <path>`), and ship rows 023-21 and 023-22 together.
