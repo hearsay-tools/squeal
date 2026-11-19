@@ -1,10 +1,10 @@
 import type { FailedTest } from "../core/code/gate/types.js";
 import { type Conditions, conditionWords, hasConditions } from "../core/proof/conditions.js";
+import { failureKind } from "../core/proof/evidence.js";
 import { type ChangedImports, stops } from "../core/proof/imports.js";
 import type { ProofCase, Side } from "../core/proof/sides.js";
 import {
   controlReading,
-  failureKind,
   type RedEvidence,
   type SideEnd,
   type Verdict,

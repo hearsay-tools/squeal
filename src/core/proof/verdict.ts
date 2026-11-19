@@ -15,8 +15,6 @@ import { errorKind, type FailureKind, failureKind, RED_KINDS, recordedKind } fro
 /** A side's reason when the budget left a run of it not started (row 023-11). */
 export const NOT_RUN_BUDGET = "not run (budget)";
 
-export { errorKind, type FailureKind, failureKind } from "./evidence.js";
-
 /** How one side of one file ended. */
 export type SideEnd =
   | { readonly end: "pass" }

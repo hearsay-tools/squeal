@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { errorKind, failureKind } from "../../src/core/proof/evidence.js";
 import {
-  errorKind,
-  failureKind,
   lacksStage,
   NOT_SHOWN_TO_MATTER,
   proofExit,
