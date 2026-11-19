@@ -732,6 +732,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
     if (held === void 0) return { kind: "unanswered", heldMs: since(request.at), ...stepped };
     if (held === null) return { kind: "unknown", ...stepped };
     if (held.kind === "startup") return { kind: "startup", heldMs: since(held.since), ...stepped };
+    if (held.kind === "listing") return { kind: "listing", revision: held.revision, ...stepped };
     const { operation } = held;
     return { kind: "scheduler", operation, heldMs: since(held.since), ...stepped };
   };

@@ -3262,7 +3262,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.566";
+  if (true) return "0.1.567";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4892,6 +4892,104 @@ function diedText(daemon) {
 }
 function noneRunning(daemon) {
   return daemon?.state === "down" && toldOf(daemon).state === "gone";
+}
+
+// src/core/status/overrun-facts.ts
+function overrunOf(ref2, pending2, run2, row, now) {
+  if (pending2.kind !== "running" || run2 === void 0) return {};
+  const tier = row.overruns?.get(run2.id);
+  if (tier === void 0 || now < tier.at) return {};
+  const id = testFileId(ref2);
+  if ((row.endedFiles.get(run2.id) ?? []).some((f) => testFileId(f) === id)) return {};
+  const file = tier.files.find((f) => testFileId(f) === id);
+  if (file === void 0) return {};
+  const overrun = {
+    path: ref2.path,
+    ranMs: Math.max(0, now - run2.startedAt),
+    usualMs: file.usualMs,
+    since: tier.at,
+    deadline: tier.deadline
+  };
+  return { overrun };
+}
+function firstOverrunning(files2, row, now) {
+  const left = /* @__PURE__ */ new Set();
+  for (const [runId, tier] of row.overruns ?? []) {
+    if (now < tier.at) continue;
+    const ended = new Set((row.endedFiles.get(runId) ?? []).map(testFileId));
+    for (const f of tier.files) if (!ended.has(testFileId(f))) left.add(testFileId(f));
+  }
+  return files2.find((f) => left.has(testFileId(f))) ?? null;
+}
+
+// src/core/scheduler/yield-row.ts
+var NO_YIELD_ROW = {
+  tiers: /* @__PURE__ */ new Map(),
+  ended: /* @__PURE__ */ new Map(),
+  endedFiles: /* @__PURE__ */ new Map(),
+  last: null,
+  lanes: /* @__PURE__ */ new Map()
+};
+function readYieldRow(raw, daemonStartedAt) {
+  if (raw === null) return NO_YIELD_ROW;
+  try {
+    const row = JSON.parse(raw);
+    if (typeof row.at !== "number" || row.at < daemonStartedAt) return NO_YIELD_ROW;
+    if (typeof row.tiers !== "object" || row.tiers === null) return NO_YIELD_ROW;
+    return {
+      tiers: new Map(
+        Object.entries(row.tiers).filter((e) => isYield(e[1]))
+      ),
+      ended: new Map(entriesOf2(row.ended).filter((e) => isCount2(e[1]))),
+      endedFiles: new Map(
+        entriesOf2(row.endedFiles).filter((e) => isRefs(e[1]))
+      ),
+      last: isLastYield(row.last) ? row.last : null,
+      lanes: new Map(entriesOf2(row.lanes).filter((e) => isRef(e[1]))),
+      overruns: new Map(
+        entriesOf2(row.overruns).filter((e) => isOverrun(e[1]))
+      ),
+      at: row.at
+    };
+  } catch {
+    return NO_YIELD_ROW;
+  }
+}
+function entriesOf2(value) {
+  return typeof value === "object" && value !== null ? Object.entries(value) : [];
+}
+function isCount2(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+function isYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, remainderMs, yieldsAt } = value;
+  if (kind === "remainder") return typeof remainderMs === "number";
+  if (kind === "overrun") return typeof yieldsAt === "number";
+  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
+}
+function isLastYield(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value;
+  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
+}
+function isRefs(value) {
+  return Array.isArray(value) && value.every(isRef);
+}
+function isRef(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { project, path } = value;
+  return typeof project === "string" && typeof path === "string";
+}
+function isOverrun(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { at, deadline, files: files2 } = value;
+  return typeof at === "number" && (deadline === null || typeof deadline === "number") && Array.isArray(files2) && files2.every(isOverrunFile);
+}
+function isOverrunFile(value) {
+  if (!isRef(value)) return false;
+  const { usualMs } = value;
+  return usualMs === null || typeof usualMs === "number";
 }
 
 // src/core/slow/rank.ts
@@ -7314,6 +7412,73 @@ function wallEstimate(sum, longest, width) {
   return sum / width + (1 - 1 / width) * longest;
 }
 
+// src/core/scheduler/yields.ts
+function yieldsMetaKey(worktreeId) {
+  return worktreeMetaKey("yields", worktreeId);
+}
+function publishedYieldRow(store, worktreeId, daemonStartedAt) {
+  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
+}
+
+// src/core/status/standing-yields.ts
+function liveYieldRow(store, worktreeId, startedAt) {
+  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
+}
+function withYieldFacts(pending2, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
+  const last = lastIn(row, lane, run2?.id, laneOf2);
+  const ended = run2 === void 0 ? void 0 : row.ended.get(run2.id);
+  if (pending2.kind === "queued")
+    return last === void 0 ? pending2 : { ...pending2, lastYield: last };
+  if (run2 === void 0) return pending2;
+  if (pending2.kind === "unlisted") {
+    const waited = {
+      lane,
+      since: run2.startedAt,
+      files: run2.testFiles.length,
+      ...ended === void 0 ? {} : { ended }
+    };
+    return { ...pending2, run: waited };
+  }
+  const tier = row.tiers.get(run2.id);
+  const first = startedAt !== null && firstTier(row, lane, run2, laneOf2);
+  return {
+    ...pending2,
+    ...tier === void 0 ? {} : { yields: tier },
+    ...ended === void 0 ? {} : { ended },
+    ...last === void 0 ? {} : { lastYield: last },
+    ...first ? { yieldsSince: startedAt } : {}
+  };
+}
+var UNREPORTED_SHOWN = 3;
+function endOf(ref2, pending2, run2, { row }) {
+  if (pending2.kind !== "running" || run2 === void 0) return {};
+  const end = fileEndOf(ref2, run2, row);
+  return end === void 0 ? {} : { end };
+}
+function fileEndOf(ref2, run2, row) {
+  const named2 = row.endedFiles.get(run2.id);
+  if (named2 === void 0 || row.at === void 0) return void 0;
+  const ended = new Set(named2.map(testFileId));
+  if (!ended.has(testFileId(ref2))) return void 0;
+  const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
+  return {
+    revision: run2.revision,
+    asOf: row.at,
+    unreported: unreported.slice(0, UNREPORTED_SHOWN),
+    unreportedCount: unreported.length
+  };
+}
+function lastIn(row, lane, runId, laneOf2) {
+  const { last } = row;
+  const [cut] = last?.files ?? [];
+  if (last === null || cut === void 0 || last.runId === runId) return void 0;
+  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
+}
+function firstTier(row, lane, run2, laneOf2) {
+  if (run2.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
+  return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
+}
+
 // src/core/scheduler/edit-timings.ts
 function editTimingsMetaKey(worktreeId) {
   return worktreeMetaKey("editTimings", worktreeId);
@@ -7485,6 +7650,8 @@ function lateNow(store, worktreeId, own, at, unreadSince) {
   const due = owed2.map((o) => o.file);
   if (!pastBound(store, worktreeId, due, ageMs)) return null;
   const files2 = own.owed.map((o) => o.file);
+  const startedAt = store.worktrees.get(worktreeId)?.daemon?.startedAt ?? null;
+  const hung = firstOverrunning(files2, liveYieldRow(store, worktreeId, startedAt), at);
   return {
     kind: "owed",
     revision,
@@ -7492,7 +7659,8 @@ function lateNow(store, worktreeId, own, at, unreadSince) {
     files: own.files,
     editRevision: oldest.from,
     ageMs,
-    ...files2.length <= NAMED_MAX ? { named: files2.map((f) => f.path) } : {}
+    ...files2.length <= NAMED_MAX ? { named: files2.map((f) => f.path) } : {},
+    ...hung === null ? {} : { hung: hung.path }
   };
 }
 function quietFor(header) {
@@ -7635,11 +7803,16 @@ function nowText(late, command) {
   }
   return `To have them now, \`${command} status --wait 60000 <path>...\` runs the files your paths select first.`;
 }
+function hungText(late, command) {
+  if (late.hung === void 0) return "";
+  const path = shellWord(late.hung);
+  return `${late.hung} has run far past its usual time and may be hung; \`${command} why ${path}\` shows its run. `;
+}
 var PASSES_SILENT_TEXT = "passes stay silent unless they follow a failure";
 function lateLine(late, command) {
   switch (late.kind) {
     case "owed":
-      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${nowText(late, command)}`;
+      return `${capitalize(notRunText(late.owed, late.files))}, ${durationText(late.ageMs, Math.floor)} after your edit at revision ${late.editRevision}. ${capitalize(PASSES_SILENT_TEXT)}; Squeal says once when it has caught up. ${hungText(late, command)}${nowText(late, command)}`;
     case "unread":
       return `Squeal has not read edits made after ${utcTimeText(late.since)}, so it has not queued their test files. ${readWaitText(command)}`;
     case "unlisted":
@@ -11638,11 +11811,11 @@ function packageFolders(dir, workspaceFolders) {
     if (!link) walk(`${path}/node_modules`);
   };
   const walk = (modules) => {
-    for (const entry3 of entriesOf2(join22(dir, modules))) {
+    for (const entry3 of entriesOf3(join22(dir, modules))) {
       if (entry3.name.startsWith(".")) continue;
       const path = `${modules}/${entry3.name}`;
       if (entry3.name.startsWith("@") && entry3.isDirectory()) {
-        for (const child of entriesOf2(join22(dir, path))) visit(`${path}/${child.name}`, child);
+        for (const child of entriesOf3(join22(dir, path))) visit(`${path}/${child.name}`, child);
       } else {
         visit(path, entry3);
       }
@@ -11652,7 +11825,7 @@ function packageFolders(dir, workspaceFolders) {
     walk(path === "" ? "node_modules" : `${path}/node_modules`);
   return folders;
 }
-function entriesOf2(path) {
+function entriesOf3(path) {
   try {
     return readdirSync7(path, { withFileTypes: true });
   } catch (error) {
@@ -11718,7 +11891,7 @@ var PackageScans = class {
   }
 };
 function hasRuntimeFile(dir) {
-  const entries = entriesOf3(dir);
+  const entries = entriesOf4(dir);
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
@@ -11727,7 +11900,7 @@ function hasRuntimeFile(dir) {
   });
 }
 function referencesOpaque(dir) {
-  const entries = entriesOf3(dir);
+  const entries = entriesOf4(dir);
   if (entries === null) return true;
   return entries.some((entry3) => {
     if (entry3.name === "node_modules") return false;
@@ -11741,7 +11914,7 @@ function referencesOpaque(dir) {
     }
   });
 }
-function entriesOf3(dir) {
+function entriesOf4(dir) {
   try {
     return readdirSync8(dir, { withFileTypes: true });
   } catch {
@@ -12022,7 +12195,7 @@ function readEntryLine(reader, part, indent, body) {
     reader.reading = (part === "importers" ? IMPORTER_FIELDS : SNAPSHOT_FIELDS).has(key);
     return reader.reading ? value === "" : UNREAD[part].has(key);
   }
-  if (part === "snapshots") return isRef(value) && setOnce(entry3, key, value);
+  if (part === "snapshots") return isRef2(value) && setOnce(entry3, key, value);
   return readDependencyLine(reader, entry3, indent, pair);
 }
 function readDependencyLine(reader, entry3, indent, [key, value]) {
@@ -12032,7 +12205,7 @@ function readDependencyLine(reader, entry3, indent, [key, value]) {
     if (!entry3.has(key)) entry3.set(key, "");
     return true;
   }
-  if (key === "version") return isRef(value) && setOnce(entry3, reader.dependency, value);
+  if (key === "version") return isRef2(value) && setOnce(entry3, reader.dependency, value);
   return key === "specifier";
 }
 function lockfileOf({ version, importers, integrity, snapshots }) {
@@ -12044,7 +12217,7 @@ function lockfileOf({ version, importers, integrity, snapshots }) {
 function isPart(key) {
   return key === "importers" || key === "packages" || key === "snapshots";
 }
-function isRef(value) {
+function isRef2(value) {
   return value !== "" && !value.startsWith("{") && !value.startsWith("[");
 }
 function setOnce(map, name2, value) {
@@ -12396,7 +12569,7 @@ function pnpmPackageFoldersFingerprint(dir, importers) {
   const roots = /* @__PURE__ */ new Set(["node_modules", `${PNPM_VIRTUAL_STORE}/node_modules`]);
   for (const importer of importers)
     roots.add(importer === "." ? "node_modules" : `${importer}/node_modules`);
-  for (const folder of entriesOf4(join26(dir, PNPM_VIRTUAL_STORE))) {
+  for (const folder of entriesOf5(join26(dir, PNPM_VIRTUAL_STORE))) {
     if (folder.isDirectory() && folder.name !== "node_modules") {
       roots.add(`${PNPM_VIRTUAL_STORE}/${folder.name}/node_modules`);
     }
@@ -12417,16 +12590,16 @@ function pnpmPackageFoldersFingerprint(dir, importers) {
 }
 function namesIn(modules) {
   const names3 = [];
-  for (const entry3 of entriesOf4(modules)) {
+  for (const entry3 of entriesOf5(modules)) {
     if (entry3.name.startsWith(".")) continue;
     if (entry3.name.startsWith("@") && entry3.isDirectory()) {
-      for (const child of entriesOf4(join26(modules, entry3.name)))
+      for (const child of entriesOf5(join26(modules, entry3.name)))
         names3.push(`${entry3.name}/${child.name}`);
     } else names3.push(entry3.name);
   }
   return names3.sort(compare);
 }
-function entriesOf4(path) {
+function entriesOf5(path) {
   try {
     return readdirSync9(path, { withFileTypes: true });
   } catch {
@@ -14542,7 +14715,7 @@ function fromTestFileId(id) {
   const at = id.indexOf("\0");
   return { project: id.slice(0, at), path: id.slice(at + 1) };
 }
-function waitedFor(state, entry3, keys) {
+function waitedFor2(state, entry3, keys) {
   if (state.turn !== "idle") return false;
   const file = testFileKeyOf(entry3.check);
   if (state.testFiles.includes(file)) return atKey(state, file, keys);
@@ -14930,7 +15103,7 @@ function createDelivery(store, options) {
       keys ??= store.testFileKeys.list(consumer.worktreeId);
       const current2 = currentKeys(keys);
       return {
-        only: (entry3) => waitedFor(turn, entry3, current2),
+        only: (entry3) => waitedFor2(turn, entry3, current2),
         trim: trimmed(turn, states, keys)
       };
     };
@@ -16609,130 +16782,6 @@ function once2(read4) {
   };
 }
 
-// src/core/scheduler/yield-row.ts
-var NO_YIELD_ROW = {
-  tiers: /* @__PURE__ */ new Map(),
-  ended: /* @__PURE__ */ new Map(),
-  endedFiles: /* @__PURE__ */ new Map(),
-  last: null,
-  lanes: /* @__PURE__ */ new Map()
-};
-function readYieldRow(raw, daemonStartedAt) {
-  if (raw === null) return NO_YIELD_ROW;
-  try {
-    const row = JSON.parse(raw);
-    if (typeof row.at !== "number" || row.at < daemonStartedAt) return NO_YIELD_ROW;
-    if (typeof row.tiers !== "object" || row.tiers === null) return NO_YIELD_ROW;
-    return {
-      tiers: new Map(
-        Object.entries(row.tiers).filter((e) => isYield(e[1]))
-      ),
-      ended: new Map(entriesOf5(row.ended).filter((e) => isCount2(e[1]))),
-      endedFiles: new Map(
-        entriesOf5(row.endedFiles).filter((e) => isRefs(e[1]))
-      ),
-      last: isLastYield(row.last) ? row.last : null,
-      lanes: new Map(entriesOf5(row.lanes).filter((e) => isRef2(e[1]))),
-      at: row.at
-    };
-  } catch {
-    return NO_YIELD_ROW;
-  }
-}
-function entriesOf5(value) {
-  return typeof value === "object" && value !== null ? Object.entries(value) : [];
-}
-function isCount2(value) {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
-}
-function isYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { kind, remainderMs, yieldsAt } = value;
-  if (kind === "remainder") return typeof remainderMs === "number";
-  if (kind === "overrun") return typeof yieldsAt === "number";
-  return kind === "yields" || kind === "cut" || kind === "turn" || kind === "runner" || kind === "named";
-}
-function isLastYield(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value;
-  return typeof v.at === "number" && typeof v.runId === "string" && (v.to === "edit" || v.to === "promoted" || v.to === "runner") && (v.rule === "remainder" || v.rule === "overrun") && typeof v.remainderMs === "number" && typeof v.lane === "string" && Array.isArray(v.files) && v.files.every(isRef2) && typeof v.runStartedAt === "number" && (v.runEndedAt === null || typeof v.runEndedAt === "number");
-}
-function isRefs(value) {
-  return Array.isArray(value) && value.every(isRef2);
-}
-function isRef2(value) {
-  if (typeof value !== "object" || value === null) return false;
-  const { project, path } = value;
-  return typeof project === "string" && typeof path === "string";
-}
-
-// src/core/scheduler/yields.ts
-function yieldsMetaKey(worktreeId) {
-  return worktreeMetaKey("yields", worktreeId);
-}
-function publishedYieldRow(store, worktreeId, daemonStartedAt) {
-  return readYieldRow(store.meta.get(yieldsMetaKey(worktreeId)), daemonStartedAt);
-}
-
-// src/core/status/standing-yields.ts
-function liveYieldRow(store, worktreeId, startedAt) {
-  return startedAt === null ? NO_YIELD_ROW : publishedYieldRow(store, worktreeId, startedAt);
-}
-function withYieldFacts(pending2, lane, run2, { row, startedAt, laneOf: laneOf2 }) {
-  const last = lastIn(row, lane, run2?.id, laneOf2);
-  const ended = run2 === void 0 ? void 0 : row.ended.get(run2.id);
-  if (pending2.kind === "queued")
-    return last === void 0 ? pending2 : { ...pending2, lastYield: last };
-  if (run2 === void 0) return pending2;
-  if (pending2.kind === "unlisted") {
-    const waited = {
-      lane,
-      since: run2.startedAt,
-      files: run2.testFiles.length,
-      ...ended === void 0 ? {} : { ended }
-    };
-    return { ...pending2, run: waited };
-  }
-  const tier = row.tiers.get(run2.id);
-  const first = startedAt !== null && firstTier(row, lane, run2, laneOf2);
-  return {
-    ...pending2,
-    ...tier === void 0 ? {} : { yields: tier },
-    ...ended === void 0 ? {} : { ended },
-    ...last === void 0 ? {} : { lastYield: last },
-    ...first ? { yieldsSince: startedAt } : {}
-  };
-}
-var UNREPORTED_SHOWN = 3;
-function endOf(ref2, pending2, run2, { row }) {
-  if (pending2.kind !== "running" || run2 === void 0) return {};
-  const end = fileEndOf(ref2, run2, row);
-  return end === void 0 ? {} : { end };
-}
-function fileEndOf(ref2, run2, row) {
-  const named2 = row.endedFiles.get(run2.id);
-  if (named2 === void 0 || row.at === void 0) return void 0;
-  const ended = new Set(named2.map(testFileId));
-  if (!ended.has(testFileId(ref2))) return void 0;
-  const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
-  return {
-    revision: run2.revision,
-    asOf: row.at,
-    unreported: unreported.slice(0, UNREPORTED_SHOWN),
-    unreportedCount: unreported.length
-  };
-}
-function lastIn(row, lane, runId, laneOf2) {
-  const { last } = row;
-  const [cut] = last?.files ?? [];
-  if (last === null || cut === void 0 || last.runId === runId) return void 0;
-  return laneOf2(cut) === lane ? { ...last, lane } : void 0;
-}
-function firstTier(row, lane, run2, laneOf2) {
-  if (run2.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
-  return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
-}
-
 // src/core/status/standing.ts
 function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, reads) {
   const states = reads?.states ?? store.knownStates.list(worktreeId);
@@ -16824,7 +16873,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     } : unlisted3 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
     const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key);
-    const pending2 = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
+    const pending2 = told.kind === "running" ? { ...told, ...batchOf(ref2), ...overrunOf(ref2, told, run2, yieldReads.row, now) } : asRetry ? { ...told, retried: true } : told;
     if (hold !== void 0 && (pending2.kind === "queued" || pending2.kind === "slow")) {
       const held = { kind: "on-hold", hold };
       return { testFile: ref2, state, pending: held, standing: held };
@@ -16953,7 +17002,7 @@ function remainderSeconds(remainderMs) {
 function groupId(s) {
   switch (s.kind) {
     case "running":
-      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
+      return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)} ${s.overrun?.path ?? "-"}`;
     case "queued":
       return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)} ${s.pool?.since ?? "-"}`;
     case "unlisted":
