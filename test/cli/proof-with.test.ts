@@ -170,6 +170,52 @@ describe("squeal proof: an unchanged test's changed imports (row 023-21, D5.2)",
     clean(f);
   });
 
+  it("gives each named file its own verdict: a stopped file beside a proven one exits 3", async () => {
+    const { f, base } = issueFixture();
+    const direct = "src/direct.test.ts";
+    f.commit({
+      [direct]: [
+        'import { expect, it } from "vitest";',
+        'import { value } from "./value";',
+        "it('direct', () => expect(value).toBe(2));",
+        "",
+      ].join("\n"),
+    });
+    const result = await prove(f, { files: [THIN, direct], base });
+    expect(result.code, result.why).toBe(3);
+    expect(result.report.case).toBe("source");
+    const byPath = new Map(result.files.map((file) => [file.path, file]));
+    expect(byPath.get(THIN)).toMatchObject({ verdict: "not comparable", red: { runs: 0 } });
+    expect(byPath.get(direct)).toMatchObject({ verdict: "proven", red: { end: "fail" } });
+    expect(result.report.withRerun).toBe(
+      `squeal proof ${THIN} ${direct} --base ${base} --with ${MORE} --with ${ROWS}`,
+    );
+    clean(f);
+  });
+
+  it("still refuses a source file the base lacks when --with copies the helper that imports it", async () => {
+    const f = fixture({ ...ON, "src/value.ts": "export const value = 1;\n", [ROWS]: kit() });
+    const base = git(f.root, "rev-parse", "HEAD").trim();
+    f.commit({
+      "src/added.ts": "export const added = 2;\n",
+      [ROWS]: kit(
+        'import { added } from "./added";',
+        "it('new row', () => expect(added).toBe(2));",
+      ),
+    });
+    const stopped = await prove(f, { files: [THIN], base });
+    expect(stopped.files[0]).toMatchObject({
+      changedImports: { helpers: [ROWS], sources: ["src/added.ts"], stopped: true },
+    });
+    const result = await prove(f, { files: [THIN], base, with: [ROWS] });
+    expect(result.code, result.why).toBe(3);
+    expect(result.files[0]).toMatchObject({
+      verdict: "not comparable",
+      reason: `imports src/added.ts, absent at ${base.slice(0, 9)}`,
+    });
+    clean(f);
+  });
+
   it("refuses a --with path outside the worktree before any checkout", async () => {
     const { f, base } = issueFixture();
     const result = await prove(f, { files: [THIN], base, with: ["../elsewhere.ts"] });
