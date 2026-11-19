@@ -5,6 +5,7 @@ import { namedLine } from "../../src/cli/status-wait-lines.js";
 import { namedResult, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { NamedFile } from "../../src/core/status/standing.js";
+import type { RelativePath } from "../../src/core/types/common.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "./wait-again-fixture.js";
 
@@ -157,8 +158,8 @@ describe("the command to wait again (row 011-243)", () => {
 });
 
 describe("a real named wait at an unlisted revision (row 011-243)", () => {
-  it("reads the passes' revision and the queued files from the store, and exits 3 as before", async () => {
-    // Revision 5 not listed (the runner part at 4), A current and passing, B queued.
+  /** Revision 5 not listed (the runner part at 4), A current and passing, B queued. */
+  function unlisted() {
     const { repo, store } = repoWith([B], [A]);
     store.revisions.append({
       worktreeId: repo.mainId,
@@ -169,21 +170,39 @@ describe("a real named wait at an unlisted revision (row 011-243)", () => {
       changes: [{ path: "src/other.ts", oldHash: "a", newHash: "b" }],
     });
     recordRefinedApplied(store, repo.mainId, 4);
-
-    const wait = await waitForNamed(repo.main, [A], {
+    return repo.main;
+  }
+  // The daemon's pass at 5 names A as the source path's one reader.
+  const synced = () => ({
+    ...SYNCED(5),
+    readers: new Map([["src/a.ts" as RelativePath, [ref(A)]]]),
+  });
+  const wait = (root: string, path: string) =>
+    waitForNamed(root as never, [path], {
       timeoutMs: 60,
       pollMs: 20,
       settleMs: 0,
       now: () => NOW,
-      sync: () => ({ current: () => SYNCED(5), stop: () => {} }),
+      sync: () => ({ current: synced, stop: () => {} }),
       ask: async () => [],
     });
-    if (wait.outcome === "unavailable") throw new Error("unavailable");
 
-    expect(namedResult(wait)).toEqual({ result: "none", reason: "unlisted" });
-    expect(namedLine(wait)).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; revision 5 is not listed yet \(1 test file queued\), so this result may not cover it\. Worktree: .*\. For the verdict, wait again: `squeal status --wait \d+ src\/a\.test\.ts`$/,
+  it("reads the passes' revision and the queued files from the store, and exits 3 as before", async () => {
+    // Row 011-398 (gh-232): a source path, since the listing may change what it selects.
+    const got = await wait(unlisted(), "src/a.ts");
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+
+    expect(namedResult(got)).toEqual({ result: "none", reason: "unlisted" });
+    expect(namedLine(got)).toMatch(
+      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; revision 5 is not listed yet \(1 test file queued\), so this result may not cover it\. Worktree: .*\. For the verdict, wait again: `squeal status --wait \d+ src\/a\.ts`$/,
     );
+  });
+
+  it("gives the verdict of a named test file that is current (row 011-398, gh-232)", async () => {
+    const got = await wait(unlisted(), A);
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+
+    expect(namedResult(got)).toEqual({ result: "pass" });
   });
 });
 
