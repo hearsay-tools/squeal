@@ -17,6 +17,7 @@ beforeEach(() => setUp());
 /** The live daemon published `FILE`'s tier as overrunning since `at`. */
 function overruns(at: number, ended: readonly string[] = []): void {
   const tier: TierOverrun = {
+    startedAt: (at - 60_000) as EpochMs,
     at: at as EpochMs,
     deadline: (at + 540_000) as EpochMs,
     files: [{ ...FILE, usualMs: 1_000 }],

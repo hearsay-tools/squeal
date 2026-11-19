@@ -1435,7 +1435,7 @@ class TierScheduler implements Scheduler {
     this.#ledger?.claims.shift(ms);
     this.#groups.shift(ms);
     this.#slowRelease.shift(ms);
-    this.#yields.shift(ms);
+    this.#yields.shift(ms, at, this.#context ?? undefined);
   }
 
   /**

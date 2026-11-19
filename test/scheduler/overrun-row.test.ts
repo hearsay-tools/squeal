@@ -30,6 +30,7 @@ describe("when a file of a tier overruns (row 011-399)", () => {
 
 describe("the yields row's overruns (row 011-399)", () => {
   const overrun: TierOverrun = {
+    startedAt: 0 as EpochMs,
     at: 1_000 as EpochMs,
     deadline: 601_000 as EpochMs,
     files: [{ project: "", path: "test/h.test.ts", usualMs: 200 }],
