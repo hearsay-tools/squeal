@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.565";
+  if (true) return "0.1.566";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -82721,6 +82721,7 @@ function ownedTools(group, policy) {
 function never(group, policy) {
   if (group.select.kind !== "lint") return null;
   if (!policy.lint.enabled) return "lint is off (lint.enabled in squeal.config.json)";
+  if (policy.lint.tools.length === 0) return "lint.tools is empty (squeal.config.json)";
   return ownedTools(group, policy).length === 0 ? "a check above it owns each of its tools" : null;
 }
 function selects2(group, policy) {
