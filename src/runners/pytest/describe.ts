@@ -29,7 +29,7 @@ export interface PytestCommand {
   readonly paths: readonly AbsolutePath[] | null;
 }
 
-/** What the primer says of pytest (spec 007 D8). */
+/** pytest's part of a worktree's coverage (spec 007 D8). */
 export interface PytestCoverage {
   /** Each `pytest` project, as `nodeTest`'s. Absent means none. */
   readonly pytest?: readonly CoveredProject[];
@@ -50,18 +50,15 @@ const OUTPUT_FLAG = /^(-[qvs]+|-r[fEsxXpPaAwN]+|--tb=(auto|long|short|line|nativ
 
 /**
  * pytest as the harness knows it (spec 016 D5): built for its configured
- * projects, which the primer names with their globs, and whose commands are
+ * projects, and whose commands are
  * recognized from a project's `cwd`, inside the worktree root or below it.
  */
 export const PYTEST = {
   runner: "pytest",
   name: "pytest",
-  fallback: false,
   unconfigured: {},
   projects: (policy) => policy.pytest,
   coverage: ({ projects }): PytestCoverage => ({ pytest: projects }),
-  built: (coverage) => (coverage.pytest?.length ?? 0) > 0,
-  covered: (coverage) => ({ projects: coverage.pytest ?? [] }),
   excluded: () => null,
   context: (policy, root, cwd): PytestContext => ({ pytest: pytestHere(root, cwd, policy.pytest) }),
   command: (words, context) => pytestCommand(words, context.pytest ?? []),

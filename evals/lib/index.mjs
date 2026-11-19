@@ -89,7 +89,7 @@ export {
   slowThroughSqueal,
   squealEvidence,
 } from "./evidence.mjs";
-export { gradeCell, groundTruthOf, serviceStartsOf, squealState } from "./grade.mjs";
+export { gradeCell, groundTruthOf, manualChecks, serviceStartsOf, squealState } from "./grade.mjs";
 export {
   claudeRunner,
   claudeVersion,

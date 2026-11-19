@@ -835,6 +835,8 @@ export function addChecks(
 export function checksProblem(text: string): boolean;
 /** Throws on a config problem line: the cell's setup fails, never a silent skip (B2). */
 export function assertChecksAccepted(text: string): void;
+/** The checks a `squeal checks` reply lists as running only on request, by name. */
+export function manualChecks(out: string | null | undefined): string[];
 /** How a session met `check` before its claim, as context; `null` without a timeline. */
 export function manualCheckRoutes(
   timeline: readonly Step[] | null | undefined,

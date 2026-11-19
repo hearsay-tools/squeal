@@ -11,7 +11,7 @@ export interface NodeTestCommand {
   readonly files: readonly string[] | null;
 }
 
-/** What the primer says of node:test (task 001-234). */
+/** node:test's part of a worktree's coverage (task 001-234). */
 export interface NodeTestCoverage {
   /** Each `nodeTest` project: its name and its include globs, relative to the root. */
   readonly nodeTest: readonly CoveredProject[];
@@ -22,23 +22,19 @@ export interface NodeTestContext {
   readonly nodeTest: readonly NodeTestProject[];
 }
 
-/** No `nodeTest` project: what `PRIMER` says. */
+/** No `nodeTest` project. */
 const UNCONFIGURED: NodeTestCoverage = { nodeTest: [] };
 
 /**
  * node:test as the harness knows it (spec 016 D5): built for its
- * configured projects, which the primer names with their globs (spec 007
- * D8), and whose own commands are recognized from the worktree root only.
+ * configured projects (spec 007 D8), and whose own commands are recognized from the worktree root only.
  */
 export const NODE_TEST = {
   runner: "node-test",
   name: "node:test",
-  fallback: false,
   unconfigured: UNCONFIGURED,
   projects: (policy) => policy.nodeTest,
   coverage: ({ projects }): NodeTestCoverage => ({ nodeTest: projects }),
-  built: (coverage) => coverage.nodeTest.length > 0,
-  covered: (coverage) => ({ projects: coverage.nodeTest }),
   excluded: () => null,
   context: (policy, _root, _cwd): NodeTestContext => ({ nodeTest: policy.nodeTest }),
   command: (words, context) =>

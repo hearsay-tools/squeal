@@ -24,12 +24,12 @@ import {
 /*
  * Spec 016 D5: what the harness knows of each runner, said by the runner in
  * its own `describe.ts`: how its test commands look, for 005 D8's deny, with
- * what the deny discovers for them; its name in the primer and its entry in
- * the coverage list. `src/harness/shared` reads every runner here and names
+ * what the deny discovers for them, and what `squeal checks` says it does
+ * not run. `src/harness/shared` reads every runner here and names
  * none. The rules of 005 D8 and 011 C8 stay where they are.
  */
 
-/** One project as the primer lists it: its name and its include globs, relative to the root. */
+/** One configured project: its name and its include globs, relative to the root. */
 export interface CoveredProject {
   readonly name: string;
   readonly include: readonly string[];
@@ -56,26 +56,13 @@ export type CommandContext = VitestContext &
 /** A recognized test command: what it runs, before resolution to test files. */
 export type TestCommand = VitestCommand | NodeTestCommand | PytestCommand;
 
-/** A runner's entry in the primer's coverage list: the config it reads, or its projects. */
-export type Covered =
-  | {
-      /** The config file the runner finds at the root; `null` without one. */
-      readonly config: string | null;
-      /** Its projects squeal.config.json excludes, never run (001 D11, task 001-349). */
-      readonly excludedProjects: readonly string[];
-    }
-  | {
-      /** Each configured project, with its globs from the root (spec 007 D8). */
-      readonly projects: readonly CoveredProject[];
-    };
-
 /** What a runner reads of a worktree for its part of the coverage, as the daemon reads it. */
 export interface CoverageRead {
   readonly policy: Policy;
   readonly root: AbsolutePath;
   /** Whether squeal.config.json configures any runner's project. */
   readonly configured: boolean;
-  /** The runner's own configured projects, as the primer lists them. */
+  /** The runner's own configured projects, their globs from the root. */
   readonly projects: readonly CoveredProject[];
 }
 
@@ -100,24 +87,15 @@ export type ShellWords = (text: string) => readonly string[] | null;
 export interface RunnerDescription {
   /** The `runner` of its test commands. */
   readonly runner: TestCommand["runner"];
-  /** Its name, as the primer says it. */
+  /** Its name, as Squeal's texts say it. */
   readonly name: string;
-  /**
-   * Spec 003 D7: the runner the daemon builds when squeal.config.json
-   * configures no other; its projects are the listing's others.
-   */
-  readonly fallback: boolean;
   /** Its part of the coverage of a repository whose root is not read yet. */
   readonly unconfigured: Partial<RunnerCoverage>;
   /** Its projects squeal.config.json configures. */
   projects(policy: Policy): readonly ConfiguredProject[];
   /** Its part of the coverage of a worktree. */
   coverage(read: CoverageRead): Partial<RunnerCoverage>;
-  /** Whether the daemon builds it, by `coverage`. */
-  built(coverage: RunnerCoverage): boolean;
-  /** Its entry in the primer's coverage list. */
-  covered(coverage: RunnerCoverage): Covered;
-  /** Its test files squeal.config.json excludes, as the primer names them; `null` for none. */
+  /** Its test files squeal.config.json excludes, as `squeal checks` names them; `null` for none. */
   excluded(coverage: RunnerCoverage): string | null;
   /** Its part of a command's context, for a command run from the real directory `cwd`. */
   context(policy: Policy, root: AbsolutePath, cwd: string): Partial<CommandContext>;
@@ -131,7 +109,7 @@ export interface RunnerDescription {
   slowProjects(policy: Policy): readonly NodeTestProject[];
 }
 
-/** Every runner, in the order the primer names them and recognition tries their commands. */
+/** Every runner, in the order recognition tries their commands. */
 export const DESCRIPTIONS: readonly RunnerDescription[] = [VITEST, NODE_TEST, PYTEST];
 
 /** The runners' part of the coverage of a repository whose root is not read yet. */

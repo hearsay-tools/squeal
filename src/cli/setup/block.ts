@@ -23,7 +23,7 @@ export const BLOCK_VERSION = 1;
 const BEGIN = /^<!-- squeal:begin v(\d+)\b.*-->\s*$/;
 const END = /^<!-- squeal:end -->\s*$/;
 
-/** The runners the block names, as the primer does (`src/harness/shared/primer.ts`). */
+/** The runners the block names. */
 export interface BlockRunners {
   readonly vitest: boolean;
   readonly nodeTest: boolean;
@@ -73,7 +73,7 @@ function withPytest(runners: BlockRunners): string {
   ].join("\n");
 }
 
-/** `words` as "a and b", or "a, b and c" past two, as the primer lists runners. */
+/** `words` as "a and b", or "a, b and c" past two. */
 function listed(words: readonly string[], conjunction: "and" | "or"): string {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;

@@ -42,8 +42,9 @@ export interface HookDeps {
    */
   readonly registrationPrimer?: boolean;
   /**
-   * Row 005-126 (experiment): whether this harness ships the squeal skill, which the primer's
-   * `"skill"` form points to. Default `true` (Claude Code, Codex, Pi); `false` for OpenCode.
+   * Row 005-126: whether this harness ships the squeal skill, which the start message sends the
+   * agent to (row 005-128). Default `true` (Claude Code, Codex, Pi); `false` for OpenCode, whose
+   * start message says the skill's rules itself.
    */
   readonly skill?: boolean;
   /**

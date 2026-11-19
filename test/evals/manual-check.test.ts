@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { manualChecks } from "../../evals/lib/grade.mjs";
 import {
   classifyShell,
   claudeTimeline,
+  manualChecks,
   pilotRecord,
   scenarioOf,
   skillReadsOf,
@@ -432,7 +432,10 @@ describe("what the grader keeps for a manual check (review exp-minimal-primer-de
   // Row 005-128: the start message names no check, so only status and `squeal checks` show one.
   it("keeps the checks a text shows waiting for their run: status, `squeal checks`", () => {
     expect(retained([{ squeal: REGISTERED(0) }])[0]).not.toHaveProperty("waiting");
-    const codex = STATUS.out.replace("`squeal run contract`", "`/p/bin/squeal run contract`");
+    const codex = String(STATUS.out).replace(
+      "`squeal run contract`",
+      "`/p/bin/squeal run contract`",
+    );
     expect(retained([{ ...STATUS, out: codex }]).find((s) => s.k === "squeal")).toMatchObject({
       waiting: ["contract"],
     });

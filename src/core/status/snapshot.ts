@@ -231,7 +231,7 @@ function snapshot(
 
 /**
  * Task 001-349: the Vitest projects the policy at `root` excludes, by the
- * daemon's rule for building Vitest (spec 003 D7), as the primer names them;
+ * daemon's rule for building Vitest (spec 003 D7);
  * task 004-81: its `vitest.exclude` globs alike.
  */
 function vitestExcluded(root: AbsolutePath): {

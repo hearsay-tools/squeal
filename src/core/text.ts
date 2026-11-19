@@ -91,7 +91,7 @@ export function pathsReason(
 }
 
 /**
- * Policy `vitest.excludeProjects` as status and the primer name it (task
+ * Policy `vitest.excludeProjects` as status names it (task
  * 001-370, review wave-13bl S2): a plain name as the project it is, a
  * pattern (a `*`) as a selector, since no project has that name. `plural`
  * says which verb follows.
@@ -120,7 +120,7 @@ export function excludedProjectsText(entries: readonly string[]): {
 const EXCLUDED_GLOBS_NAMED = 3;
 
 /**
- * Policy `vitest.exclude` as status, the primer and `setup --check` name it
+ * Policy `vitest.exclude` as status, `squeal checks` and `setup --check` name it
  * (spec 004 D7, D8 as amended 2026-10-18, task 004-81): `Vitest test files
  * matching "a" or "b"`, the globs past three as "and N more".
  */

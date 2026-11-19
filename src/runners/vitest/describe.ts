@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { vitestDetected } from "../../core/daemon/runner.js";
 import { isRecord } from "../../core/fs/json.js";
@@ -14,7 +14,7 @@ export interface VitestCommand {
   readonly filters: readonly string[];
 }
 
-/** What the primer says of Vitest (task 001-234). */
+/** What `squeal checks` says Squeal does not run of Vitest (task 001-234, row 005-128). */
 export interface VitestCoverage {
   /**
    * Whether the daemon builds a Vitest runner here, by its own rule (spec 003
@@ -22,13 +22,6 @@ export interface VitestCoverage {
    * configured.
    */
   readonly vitest: boolean;
-  /** The config file Vitest finds at the root, as Vitest looks for it; `null` without one. */
-  readonly vitestConfig: string | null;
-  /**
-   * Policy `vitest.excludeProjects` while Vitest is built: projects Squeal
-   * never runs (001 D11, task 001-349). Absent or empty: none.
-   */
-  readonly vitestExcluded?: readonly string[];
   /**
    * Policy `vitest.exclude` while Vitest is built: test-file globs Squeal
    * never lists or runs (004 D7, task 004-81). Absent or empty: none.
@@ -41,12 +34,8 @@ export interface VitestContext {
   readonly scripts: Readonly<Record<string, string>>;
 }
 
-/** A Vitest-only repository whose root is not read yet: what `PRIMER` says. */
-const UNCONFIGURED: VitestCoverage = { vitest: true, vitestConfig: null };
-
-/** Vitest's own config lookup at the root: these names, in this order, each with these extensions. */
-const CONFIG_NAMES = ["vitest.config", "vite.config"];
-const CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
+/** A Vitest-only repository whose root is not read yet. */
+const UNCONFIGURED: VitestCoverage = { vitest: true };
 
 /** Vitest's reporters flag, with its value next or after `=`. */
 const REPORTER = "--reporter";
@@ -54,32 +43,21 @@ const REPORTER = "--reporter";
 const SILENT_VALUES: ReadonlySet<string> = new Set(["true", "false", "yes", "no", "passed-only"]);
 
 /**
- * Vitest as the harness knows it (spec 016 D5). It is the fallback of 003
- * D7, and the primer names it whenever the daemon builds it (spec 003
- * lessons, defect 1: told "Vitest", agents ran node:test themselves; review
- * wave 13aa, B1: a node:test-only repository is never told Vitest is
- * covered). Its commands are recognized from the worktree root only.
+ * Vitest as the harness knows it (spec 016 D5), the fallback of 003 D7. Its
+ * commands are recognized from the worktree root only.
  */
 export const VITEST = {
   runner: "vitest",
   name: "Vitest",
-  fallback: true,
   unconfigured: UNCONFIGURED,
   projects: () => [],
   coverage({ policy, root, configured }): VitestCoverage {
     const vitest = !configured || vitestDetected(root);
     return {
       vitest,
-      vitestConfig: vitest ? configFile(root) : null,
-      vitestExcluded: vitest ? policy.vitest.excludeProjects : [],
       vitestExcludedFiles: vitest ? policy.vitest.exclude : [],
     };
   },
-  built: (coverage) => coverage.vitest,
-  covered: (coverage) => ({
-    config: coverage.vitestConfig,
-    excludedProjects: coverage.vitestExcluded ?? [],
-  }),
   // Spec 004 D8 as amended 2026-10-18 (task 004-81): the `vitest.exclude` globs, named.
   excluded(coverage) {
     const globs = coverage.vitestExcludedFiles ?? [];
@@ -208,14 +186,4 @@ function rootScripts(root: string): Readonly<Record<string, string>> {
   } catch {
     return {};
   }
-}
-
-/** The config file Vitest finds at `root`, or `null`. */
-function configFile(root: string): string | null {
-  for (const name of CONFIG_NAMES) {
-    for (const extension of CONFIG_EXTENSIONS) {
-      if (existsSync(join(root, `${name}${extension}`))) return `${name}${extension}`;
-    }
-  }
-  return null;
 }
