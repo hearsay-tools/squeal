@@ -1,0 +1,5 @@
+Revision: 8 · baa65884 + 4, dirty
+Selected: test/hang.test.ts
+Pending (1):
+  1 in the vitest tier of 4 test files running since 07:56:24: test/hang.test.ts; no command runs it sooner (a running tier is not interrupted)
+Named test files have no verdict: results are as of revision 8; the daemon did not answer its sync, so they may not hold the latest edits. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `squeal status --wait 60000 test/hang.test.ts`

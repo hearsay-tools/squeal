@@ -1,0 +1,19 @@
+07:18:07 load 2.97 7.68 7.41 2/360 1487581
+07:18:07 b-stop0 exit=0 ms=134 :: No daemon running for ~/work/011-394/syn-b; it stays stopped until `squeal start`: no edit or Git operation starts one || 
+07:18:08 a-start exit=0 ms=417 :: More: `squeal status --full` adds the worktree and daemon, the 110 current results inherited from 1 worktree and 2 notes || 
+07:18:08 A: edit shared=8 with hang.on
+07:18:18 a-hang exit=3 ms=513 :: } || Named test files have no verdict: 1 test file still pending at revision 16: 1 in the vitest tier of 4 test files running since 08:18:12. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A fai
+07:18:19 b-start1 exit=0 ms=420 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+07:18:20 b0 exit=3 ms=1013 :: } || Named test files have no verdict: results are as of revision 5; the daemon has not stored its pass over the latest edits. Worktree: known failures 0; not current: 1201 of 1201 test files (1146 queued, 55 stale), 1201 tests (1146 queued, 55 stale). A later pass is not reported. A failure arrives with
+07:18:25 b-run exit=0 ms=4685 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+07:18:25 b1 exit=0 ms=550 :: } || Named test files at revision 5: no known failures; 1 test file, each with a current result. Worktree: known failures 0; not current: 1169 of 1201 test files (4 running, 1111 queued, 54 stale), 1169 tests (4 running, 1111 queued, 54 stale)
+07:18:26 b1-text exit=0 ms=535 :: Named test files at revision 5: no known failures; 1 test file, each with a current result. Worktree: known failures 0; not current: 1165 of 1201 test files (4 running, 1107 queued, 54 stale), 1165 tests (4 running, 1107 queued, 54 stale) || 
+07:18:26 B: restart at 7 s
+07:18:26 b-stop exit=0 ms=268 :: Squeal daemon stopped for ~/work/011-394/syn-b; `squeal stop --until-start` keeps it stopped through edits and Git operations || 
+07:18:26 b-start2 exit=0 ms=425 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+07:18:27 b2 exit=3 ms=1007 :: } || Named test files have no verdict: results are as of revision 5; the daemon has not stored its pass over the latest edits. Worktree: known failures 0; not current: 1201 of 1201 test files (1103 queued, 98 stale), 1201 tests (1103 queued, 98 stale). A later pass is not reported. A failure arrives with
+07:18:30 b-wait-0 exit=0 ms=2787 :: Named test files at revision 5: no known failures; 1 test file, each with a current result, after 2.7 s. Worktree: known failures 0; not current: 1153 of 1201 test files (4 running, 1095 queued, 54 stale), 1153 tests (4 running, 1095 queued, 54 stale) || 
+07:18:30 B: verdict or give-up at 11 s
+07:18:31 b-end-text exit=0 ms=537 :: Named test files at revision 5: no known failures; 1 test file, each with a current result. Worktree: known failures 0; not current: 1149 of 1201 test files (4 running, 1091 queued, 54 stale), 1149 tests (4 running, 1091 queued, 54 stale) || 
+07:18:31 a-end exit=3 ms=566 :: } || Named test files have no verdict: 1 test file still pending at revision 16: 1 in the vitest tier of 4 test files running since 08:18:12. Worktree: known failures 0; not current: 1150 of 1202 test files (4 running, 1146 queued), 1150 tests (4 running, 1146 queued). A later pass is not reported. A fai
+07:18:31 done; load 2.39 7.16 7.24 1/506 1489381

@@ -1,0 +1,5 @@
+Revision: 22 · c11e4edf + 22, dirty
+Selected: packages/cezar/src/delegation/settled-observation.test.ts
+Pending (1):
+  1 Vitest and node:test have not listed revision 22's test files yet; it waits for the run in flight, each of its calls bounded at 966 s: server: packages/cezar/src/delegation/settled-observation.test.ts
+Named test files have no verdict: the deadline passed after 180.5 s: revision 22 is not listed yet (774 test files queued): 1 Vitest and node:test have not listed revision 22's test files yet; it waits for the run in flight, each of its calls bounded at 966 s. Worktree: known failures 0; not current: 1931 of 1931 test files (774 queued, 1157 unknown), 99 tests (99 queued); revision 22 is not listed yet, so test files it adds are not counted. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 180000 packages/cezar/src/delegation/settled-observation.test.ts`

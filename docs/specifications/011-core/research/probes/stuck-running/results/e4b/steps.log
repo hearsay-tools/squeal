@@ -1,0 +1,8 @@
+07:21:12 load 0.73 4.55 6.23 2/324 1502623
+07:21:13 start exit=0 ms=1322 :: More: `squeal status --full` adds the worktree and daemon, the 1825 test files without a result one by one and 6 notes || 
+07:21:58 settle exit=0 ms=44611 :: Returned on quiet: none of the 105 test files the edits since revision 2 affect is pending, at revision 2 after 44.5 s; this wait does not hold for the rest of the worktree; 320 run-loop test files are not current; this repository does not require them before you finish; `squeal run run-loop --wait  || 
+07:21:58 edits begin
+07:23:09 wait-during exit=3 ms=60693 :: Named test files have no verdict: the deadline passed after 60.6 s: revision 22 is not listed yet (774 test files queued): 1 Vitest and node:test have not listed revision 22's test files yet; it waits for the run in flight, each of its calls bounded at 966 s. Worktree: known failures 0; not current: || 
+07:23:09 edits end
+07:26:09 wait-after exit=3 ms=180660 :: Named test files have no verdict: the deadline passed after 180.5 s: revision 22 is not listed yet (774 test files queued): 1 Vitest and node:test have not listed revision 22's test files yet; it waits for the run in flight, each of its calls bounded at 966 s. Worktree: known failures 0; not current || 
+07:26:09 done; load 1.18 2.73 5.00 3/367 1522993

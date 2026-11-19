@@ -1,0 +1,4 @@
+{"rev":12,"hb":886,"daemon":"alive","listed":true,"runnerPartPending":false,"code":3,"result":"none","reason":"pending","files":[{"p":"hang.test.ts","state":"pending","reason":"in the vitest tier of 4 test files running since 08:07:19"}]}
+{"n":"b1-0","t":"07:07:38","dt":14,"p":{"rev":2,"hb":500,"daemon":"alive","listed":true,"runnerPartPending":false,"code":0,"result":"pass","files":[{"p":"hang.test.ts","state":"current","verdict":"pass"}]}}
+{"n":"b2-0","t":"07:07:50","dt":26,"p":{"rev":2,"hb":739,"daemon":"alive","listed":true,"runnerPartPending":false,"code":0,"result":"pass","files":[{"p":"hang.test.ts","state":"current","verdict":"pass"}]}}
+{"n":"a-end","t":"07:07:52","dt":28,"p":{"rev":12,"hb":3885,"daemon":"alive","listed":true,"runnerPartPending":false,"code":3,"result":"none","reason":"pending","files":[{"p":"hang.test.ts","state":"pending","reason":"in the vitest tier of 4 test files running since 08:07:19"}]}}

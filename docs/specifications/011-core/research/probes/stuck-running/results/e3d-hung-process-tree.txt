@@ -1,0 +1,13 @@
+daemon 1487627
+1487627       1 Ssl        00:08 33.5 235092 squeal syn daemon @79489c91 ~/work/011-394/squeal/dist/cli/squeal.mjs daemon ~/…
+1487646 1487627 Sl         00:08 40.3 277188  \_ ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning /hom
+1487814 1487646 SNl        00:03  4.2 76900      \_ ~/.nvm/versions/node/v26.13.0/bin/node --experimental-import-meta-resolve --re
+07:18:26
+1487627       1 Ssl        00:18 16.3 00:00:02 230264 squeal syn daemon @79489c91 ~/work/011-394/squeal/dist/c
+1487646 1487627 Sl         00:17 19.2 00:00:03 275792  \_ ~/.nvm/versions/node/v26.13.0/bin/node --disable-war
+1487814 1487646 SNl        00:13  1.2 00:00:00 76900      \_ ~/.nvm/versions/node/v26.13.0/bin/node --experime
+07:18:20 b0 exit=3 ms=1013 :: } || Named test files have no verdict: results are as of revision 5; the daemon has not stored its pass over the latest edits. Worktree: known failures 0; not current: 1201 of 1201 test files (1146 queued, 55 stale), 1201 tests (1146 queued, 55 stale). A later pass is not reported. A failure arrives with
+07:18:25 b-run exit=0 ms=4685 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+07:18:25 b1 exit=0 ms=550 :: } || Named test files at revision 5: no known failures; 1 test file, each with a current result. Worktree: known failures 0; not current: 1169 of 1201 test files (4 running, 1111 queued, 54 stale), 1169 tests (4 running, 1111 queued, 54 stale)
+07:18:26 b1-text exit=0 ms=535 :: Named test files at revision 5: no known failures; 1 test file, each with a current result. Worktree: known failures 0; not current: 1165 of 1201 test files (4 running, 1107 queued, 54 stale), 1165 tests (4 running, 1107 queued, 54 stale) || 
+07:18:26 B: restart at 7 s

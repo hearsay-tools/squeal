@@ -1,0 +1,4 @@
+07:26:15 load 1.23 2.69 4.96 2/287 1523098
+07:26:18 start exit=0 ms=1302 :: More: `squeal status --full` adds the worktree and daemon, the 1157 test files without a result one by one and 9 notes || 
+07:27:01 wait exit=0 ms=42523 :: Named test files at revision 23: no known failures; 1 test file, each with a current result, after 42.4 s. Worktree: known failures 0; not current: 1921 of 1931 test files (8 running, 756 queued, 1157 unknown) || 
+07:27:01 done; load 1.56 2.56 4.81 8/466 1523877

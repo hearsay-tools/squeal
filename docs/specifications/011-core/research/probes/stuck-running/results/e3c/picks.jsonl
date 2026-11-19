@@ -1,0 +1,5 @@
+{"n":"a-hang","t":"07:12:37","dt":0,"p":{"rev":14,"hb":1256,"daemon":"alive","listed":true,"runnerPartPending":false,"code":3,"result":"none","reason":"pending","files":[{"p":"hang.test.ts","state":"pending","reason":"in the vitest tier of 4 test files running since 08:12:32"}]}}
+{"n":"b0","t":"07:12:41","dt":4,"p":{"rev":3,"hb":4311,"daemon":"alive","listed":true,"runnerPartPending":false,"code":0,"result":"pass","files":[{"p":"hang.test.ts","state":"current","verdict":"pass"}]}}
+{"n":"b1","t":"07:12:42","dt":5,"p":{"rev":3,"hb":463,"daemon":"alive","listed":true,"runnerPartPending":false,"code":0,"result":"pass","files":[{"p":"hang.test.ts","state":"current","verdict":"pass"}]}}
+{"n":"b-end","t":"07:12:48","dt":11,"p":{"rev":3,"hb":518,"daemon":"alive","listed":true,"runnerPartPending":false,"code":0,"result":"pass","files":[{"p":"hang.test.ts","state":"current","verdict":"pass"}]}}
+{"n":"a-end","t":"07:12:50","dt":13,"p":{"rev":14,"hb":3567,"daemon":"alive","listed":true,"runnerPartPending":false,"code":3,"result":"none","reason":"pending","files":[{"p":"hang.test.ts","state":"pending","reason":"in the vitest tier of 4 test files running since 08:12:32"}]}}

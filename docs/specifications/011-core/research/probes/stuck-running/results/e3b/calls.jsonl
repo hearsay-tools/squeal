@@ -1,0 +1,12 @@
+{"t":"07:07:12","name":"a-start","args":"start","exit":0,"ms":518,"load":"7.23 7.42 6.44"}
+{"t":"07:07:13","name":"b-start","args":"start","exit":0,"ms":518,"load":"7.23 7.42 6.44"}
+{"t":"07:07:24","name":"a-hang-json","args":"status --json test/hang.test.ts","exit":3,"ms":570,"load":"7.12 7.39 6.44"}
+{"t":"07:07:27","name":"b-stop1","args":"stop","exit":0,"ms":405,"load":"7.99 7.56 6.50"}
+{"t":"07:07:27","name":"b-start1","args":"start","exit":0,"ms":551,"load":"7.99 7.56 6.50"}
+{"t":"07:07:38","name":"b1-0","args":"status --json test/hang.test.ts","exit":0,"ms":614,"load":"8.62 7.71 6.56"}
+{"t":"07:07:39","name":"b1-text","args":"status test/hang.test.ts","exit":0,"ms":609,"load":"8.62 7.71 6.56"}
+{"t":"07:07:39","name":"b-stop2","args":"stop","exit":0,"ms":306,"load":"8.62 7.71 6.56"}
+{"t":"07:07:40","name":"b-start2","args":"start","exit":0,"ms":537,"load":"8.62 7.71 6.56"}
+{"t":"07:07:50","name":"b2-0","args":"status --json test/hang.test.ts","exit":0,"ms":617,"load":"9.52 7.94 6.65"}
+{"t":"07:07:51","name":"b2-text","args":"status test/hang.test.ts","exit":0,"ms":580,"load":"9.52 7.94 6.65"}
+{"t":"07:07:52","name":"a-end","args":"status --json test/hang.test.ts","exit":3,"ms":620,"load":"9.52 7.94 6.65"}

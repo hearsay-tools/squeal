@@ -1,0 +1,18 @@
+{"t":"06:43:32","name":"start","args":"start","exit":0,"ms":351,"load":"0.26 3.08 5.76"}
+{"t":"06:44:41","name":"baseline","args":"run --all --wait 600000","exit":0,"ms":69496,"load":"2.96 3.28 5.63"}
+{"t":"06:44:42","name":"counts0","args":"status","exit":0,"ms":178,"load":"2.96 3.28 5.63"}
+{"t":"06:45:02","name":"a-hang-json","args":"status --json test/hang.test.ts","exit":3,"ms":505,"load":"2.12 3.07 5.51"}
+{"t":"06:45:15","name":"a-known-wait","args":"status --wait 60000 test/gen/f0007.test.ts","exit":0,"ms":12583,"load":"1.81 2.95 5.43"}
+{"t":"06:45:15","name":"a-known-json","args":"status --json test/gen/f0007.test.ts","exit":0,"ms":539,"load":"1.81 2.95 5.43"}
+{"t":"06:45:16","name":"a-232","args":"status --wait 1000 test/gen/f0007.test.ts","exit":0,"ms":542,"load":"1.81 2.95 5.43"}
+{"t":"06:45:21","name":"b-known-json","args":"status --json test/gen/f0009.test.ts","exit":3,"ms":533,"load":"1.74 2.92 5.40"}
+{"t":"06:46:22","name":"b-run-known","args":"run tests test/gen/f0009.test.ts --wait 60000","exit":3,"ms":60215,"load":"2.58 2.97 5.27"}
+{"t":"06:46:22","name":"b-new-wait","args":"status --wait 60000 test/gen/new0001.test.ts","exit":0,"ms":533,"load":"2.58 2.97 5.27"}
+{"t":"06:46:23","name":"b-hang-json","args":"status --json test/hang.test.ts","exit":3,"ms":515,"load":"2.58 2.97 5.27"}
+{"t":"06:46:23","name":"c-hang-0","args":"status --json test/hang.test.ts","exit":3,"ms":540,"load":"2.58 2.97 5.27"}
+{"t":"06:46:24","name":"c-hang-text","args":"status test/hang.test.ts","exit":3,"ms":507,"load":"2.58 2.97 5.27"}
+{"t":"06:46:24","name":"d-stop","args":"stop","exit":0,"ms":325,"load":"2.58 2.97 5.27"}
+{"t":"06:46:24","name":"d-start","args":"start","exit":0,"ms":412,"load":"2.53 2.95 5.25"}
+{"t":"06:46:40","name":"d-hang-json","args":"status --json test/hang.test.ts","exit":3,"ms":498,"load":"1.97 2.81 5.16"}
+{"t":"06:46:42","name":"d-hang-wait","args":"status --wait 240000 test/hang.test.ts","exit":1,"ms":1516,"load":"1.97 2.81 5.16"}
+{"t":"06:46:42","name":"d-why","args":"why test/hang.test.ts","exit":0,"ms":135,"load":"1.97 2.81 5.16"}

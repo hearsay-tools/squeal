@@ -1,0 +1,19 @@
+07:01:19 load 5.72 6.34 5.67 6/601 1209731
+07:01:20 b-start0 exit=0 ms=386 :: More: `squeal status --full` adds the worktree and daemon and 1 note || 
+07:01:26 b-base exit=0 ms=6729 :: More: `squeal status --full` adds the worktree and daemon, the 2400 current results inherited from 1 worktree and 1 note || 
+07:01:27 b-stop0 exit=0 ms=245 :: Squeal daemon stopped for ~/work/011-394/syn-b; it stays stopped until `squeal start`: no edit or Git operation starts one || 
+07:01:27 a-start exit=0 ms=527 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+07:01:27 A: edit shared=4 with hang.on
+07:01:53 a-hang-json exit=3 ms=532 :: } || Named test files have no verdict: 1 test file still pending at revision 10: 1 in the vitest tier of 4 test files running since 08:01:33. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A fai
+07:01:53 B: edit shared=4 while its daemon is stopped
+07:01:53 b-start1 exit=0 ms=440 :: More: `squeal status --full` adds the worktree and daemon, the 2400 current results inherited from 1 worktree and 2 notes || 
+07:02:04 b1-0 exit=3 ms=535 :: } || Named test files have no verdict: 1 test file without a current result at revision 1 (1 stale): 1 stale, nothing queued it: `squeal retry test/hang.test.ts`. Worktree: known failures 0; not current: 1201 of 1201 test files (1201 stale), 1201 tests (1201 stale)
+07:02:04 b1-text exit=3 ms=533 :: Named test files have no verdict: 1 test file without a current result at revision 1 (1 stale): 1 stale, nothing queued it: `squeal retry test/hang.test.ts`. Worktree: known failures 0; not current: 1201 of 1201 test files (1201 stale), 1201 tests (1201 stale) || 
+07:02:04 B: restart at 11 s after its edit
+07:02:05 b-stop1 exit=0 ms=292 :: Squeal daemon stopped for ~/work/011-394/syn-b; `squeal stop --until-start` keeps it stopped through edits and Git operations || 
+07:02:05 b-start2 exit=0 ms=545 :: More: `squeal status --full` adds the worktree and daemon and 1 note || 
+07:02:16 b2-0 exit=3 ms=580 :: } || Named test files have no verdict: 1 test file without a current result at revision 1 (1 stale): 1 stale, nothing queued it: `squeal retry test/hang.test.ts`. Worktree: known failures 0; not current: 1201 of 1201 test files (1201 stale), 1201 tests (1201 stale)
+07:02:16 B: hang.test.ts left pending at 23 s after its edit
+07:02:16 b2-text exit=3 ms=562 :: Named test files have no verdict: 1 test file without a current result at revision 1 (1 stale): 1 stale, nothing queued it: `squeal retry test/hang.test.ts`. Worktree: known failures 0; not current: 1201 of 1201 test files (1201 stale), 1201 tests (1201 stale) || 
+07:02:17 a-end-json exit=3 ms=565 :: } || Named test files have no verdict: 1 test file still pending at revision 10: 1 in the vitest tier of 4 test files running since 08:01:33. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A fai
+07:02:17 done; load 7.76 6.73 5.85 7/759 1228784

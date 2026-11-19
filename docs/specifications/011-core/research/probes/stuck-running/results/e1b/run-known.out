@@ -1,0 +1,20 @@
+Selected test files of group tests have no verdict: the deadline passed with 1 test file pending at revision 6; their runs go on in the daemon
+Group tests at revision 6: these paths select 1 test file; 1 queued, which run now.
+
+Revision: 6 · baa65884 + 2, dirty
+Known failures: 0; not current: 1199 of 1202 test files (1 running, 1198 queued), 1198 tests (1 running, 1197 queued)
+Earlier failures: 1 pending rerun, 0 stale (not counted until a rerun fails)
+  FAIL  test/hang.test.ts > hang while hang.on exists
+        expected 2 to be 1 // Object.is equality; diff (- Expected, + Received): - 1 | + 2
+        at test/hang.test.ts:8:18, observed at revision 3, pending
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 6 min ago in this worktree at revision 3, load 0.16 per CPU when it ran; no retry asked at these inputs
+Affected checks: 6 passed (3 tests, 3 test files loaded), 2 running (1 test, 1 test file loaded), 2394 queued (1197 tests, 1197 test files loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 6; `squeal run --all` requests one)
+Running: 1 test file: test/hang.test.ts
+Queued: 1198 test files: test/gen/f0001.test.ts, test/gen/f0002.test.ts, test/gen/f0003.test.ts, test/gen/f0004.test.ts, test/gen/f0005.test.ts and 1193 more
+Outstanding:
+  1 test file running since 07:52:01 in the vitest lane; a yield at 07:52:00 cut 1 file after 48 s of its run (to an edit's work; 30 s past its estimate): test/hang.test.ts
+  1198 test files queued behind the vitest tier of 1 test file running since 07:52:01; a yield at 07:52:00 cut 1 file after 48 s of its run (to an edit's work; 30 s past its estimate): test/gen/f0001.test.ts, test/gen/f0002.test.ts, test/gen/f0003.test.ts and 1195 more; `squeal status --wait 60000 <test file>` moves a named one ahead when that tier ends
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 1200 files wait for test runs, which squeal run --all makes; 1 file unknown (1 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes

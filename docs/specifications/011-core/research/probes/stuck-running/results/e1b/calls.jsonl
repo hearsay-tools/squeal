@@ -1,0 +1,12 @@
+{"t":"06:51:06","name":"start","args":"start","exit":0,"ms":519,"load":"4.86 2.52 4.34"}
+{"t":"06:51:12","name":"settle","args":"status --wait 300000","exit":0,"ms":5810,"load":"5.51 2.70 4.39"}
+{"t":"06:51:28","name":"s-0","args":"status --json test/hang.test.ts","exit":3,"ms":564,"load":"6.26 2.99 4.46"}
+{"t":"06:51:43","name":"s-1","args":"status --json test/hang.test.ts","exit":3,"ms":560,"load":"5.80 3.06 4.46"}
+{"t":"06:51:59","name":"s-2","args":"status --json test/hang.test.ts","exit":3,"ms":549,"load":"5.05 3.02 4.42"}
+{"t":"06:52:15","name":"s-3","args":"status --json test/hang.test.ts","exit":3,"ms":583,"load":"4.86 3.10 4.42"}
+{"t":"06:53:15","name":"run-known","args":"run tests test/gen/f0011.test.ts --wait 60000","exit":3,"ms":60257,"load":"7.29 4.20 4.72"}
+{"t":"06:53:30","name":"s-4","args":"status --json test/hang.test.ts","exit":3,"ms":538,"load":"6.94 4.28 4.74"}
+{"t":"06:53:46","name":"s-5","args":"status --json test/hang.test.ts","exit":3,"ms":558,"load":"7.03 4.43 4.78"}
+{"t":"06:54:02","name":"s-6","args":"status --json test/hang.test.ts","exit":3,"ms":572,"load":"6.64 4.47 4.79"}
+{"t":"06:54:17","name":"s-7","args":"status --json test/hang.test.ts","exit":3,"ms":616,"load":"6.45 4.53 4.80"}
+{"t":"06:54:17","name":"why","args":"why test/hang.test.ts","exit":0,"ms":163,"load":"6.45 4.53 4.80"}

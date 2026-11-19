@@ -1,0 +1,2 @@
+{"t":"07:26:18","name":"start","args":"start","exit":0,"ms":1302,"load":"1.23 2.69 4.96"}
+{"t":"07:27:01","name":"wait","args":"status --wait 150000 packages/cezar/src/delegation/settled-observation.test.ts","exit":0,"ms":42523,"load":"1.56 2.56 4.81"}

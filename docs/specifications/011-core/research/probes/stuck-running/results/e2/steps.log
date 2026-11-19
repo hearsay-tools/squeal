@@ -1,0 +1,19 @@
+06:56:18 load 5.75 5.30 5.08 6/628 1136135
+06:56:18 start exit=0 ms=505 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+06:56:18 edit shared=3 with hang.on
+06:56:44 a-hang-json exit=3 ms=527 :: } || Named test files have no verdict: 1 test file still pending at revision 8: 1 in the vitest tier of 4 test files running since 07:56:24. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A fail
+06:56:44 daemon pid 1136220
+06:56:44 daemon stopped (SIGSTOP)
+06:58:00 b-paused-json exit=3 ms=1039 :: } || Named test files have no verdict at revision 8: the daemon's heartbeat is late: the last one was 1 min 17 s ago, at 2026-11-19T06:56:43.794Z; the daemon may be busy or stopped; `squeal start` starts one once it has exited. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 
+06:58:01 b-paused-text exit=3 ms=997 :: Named test files have no verdict at revision 8: the daemon's heartbeat is late: the last one was 1 min 18 s ago, at 2026-11-19T06:56:43.794Z; the daemon may be busy or stopped; `squeal start` starts one once it has exited. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running,  || 
+06:58:01 daemon continued
+06:58:12 c-resumed-json exit=3 ms=591 :: } || Named test files have no verdict: 1 test file still pending at revision 8: 1 in the vitest tier of 4 test files running since 07:56:24. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A fail
+06:58:12 daemon killed (SIGKILL)
+06:58:18 d-dead-json exit=3 ms=1073 :: } || Named test files have no verdict: results are as of revision 8; the daemon did not answer its sync, so they may not hold the latest edits. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A f
+06:58:19 d-dead-text exit=3 ms=1041 :: Named test files have no verdict: results are as of revision 8; the daemon did not answer its sync, so they may not hold the latest edits. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not reported. A f || 
+06:58:19 d-dead-full exit=0 ms=248 ::   2026-11-19T06:58:01.611Z, revision 8: coverage: 2 completed test files got no record since this daemon started: 2 no-result (its run's result was not found at its key); the last: test/gen/f0007.test.ts: its run's result was not found at its key || 
+06:58:20 e-start exit=0 ms=549 :: More: `squeal status --full` adds the worktree and daemon and 2 notes || 
+06:58:30 e-hang-json exit=3 ms=561 :: } || Named test files have no verdict: 1 test file still pending at revision 8: 1 in the vitest tier of 4 test files running since 07:58:25, 1 of them ended. Worktree: known failures 0; not current: 1202 of 1202 test files (4 running, 1198 queued), 1202 tests (4 running, 1198 queued). A later pass is not
+06:58:30 hang.on removed
+06:58:32 e-hang-wait exit=0 ms=1600 :: Named test files at revision 9: no known failures; 1 test file, each with a current result, after 1.4 s. Worktree: known failures 0; not current: 1198 of 1202 test files (4 running, 1194 queued), 1198 tests (4 running, 1194 queued) || 
+06:58:32 done; load 9.35 6.73 5.63 14/672 1164169

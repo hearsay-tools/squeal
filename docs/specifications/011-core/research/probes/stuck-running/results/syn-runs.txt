@@ -1,0 +1,29 @@
+== hang.test
+06:44:40 06:44:41 79489c rev0 1f completed 288ms
+06:44:41 06:44:41 79489c rev0 1f completed 218ms
+06:44:42 06:45:14 79489c rev1 4f completed 31101ms
+06:46:28 06:46:40 79489c rev2 4f completed 12355ms
+06:46:40 06:46:41 79489c rev3 4f completed 286ms
+06:46:41 06:46:41 79489c rev3 1f completed 214ms
+06:51:13 06:52:01 79489c rev5 4f completed 47678ms
+06:52:01 06:54:02 79489c rev6 1f timed-out 121097ms
+06:56:22 06:56:24 79489c rev7 4f completed 1584ms
+06:56:24 open 79489c rev8 4f null 
+06:58:25 06:58:31 79489c rev8 4f completed 6348ms
+06:58:31 06:58:32 79489c rev9 1f completed 273ms
+07:01:25 07:01:26 b70556 rev0 1f completed 342ms
+07:01:33 07:02:18 79489c rev10 4f completed 44338ms
+07:07:18 07:07:19 79489c rev11 4f completed 1585ms
+07:07:19 07:07:52 79489c rev12 4f completed 32494ms
+07:07:25 07:07:25 b70556 rev2 4f completed 449ms
+07:12:32 07:12:51 79489c rev14 4f completed 18294ms
+07:12:40 07:12:40 b70556 rev3 4f completed 319ms
+07:18:12 07:18:32 79489c rev16 4f completed 20253ms
+07:18:24 07:18:24 b70556 rev5 4f completed 296ms
+== f0009
+06:43:35 06:43:46 79489c rev0 200f completed 10724ms
+== f0011
+06:43:35 06:43:46 79489c rev0 200f completed 10724ms
+== new000
+06:45:17 06:45:17 79489c rev2 4f completed 299ms
+06:54:02 06:54:03 79489c rev6 4f completed 400ms

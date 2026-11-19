@@ -1,0 +1,15 @@
+Selected test files of group tests have no verdict: the deadline passed with 1 test file pending at revision 2; their runs go on in the daemon
+Group tests at revision 2: these paths select 1 test file; 1 queued, which run now.
+
+Revision: 2 · a639ad89 + 2, dirty
+Known failures: 0; not current: 398 of 1202 test files (4 running, 394 queued), 398 tests (4 running, 394 queued)
+Affected checks: 1608 passed (804 tests, 804 test files loaded), 8 running (4 tests, 4 test files loaded), 788 queued (394 tests, 394 test files loaded)
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 2; `squeal run --all` requests one)
+Running: 4 test files: test/gen/f0020.test.ts, test/gen/f0598.test.ts, test/gen/f0787.test.ts, test/gen/f1062.test.ts
+Queued: 394 test files: test/gen/f0001.test.ts, test/gen/f0002.test.ts, test/gen/f0003.test.ts, test/gen/f0004.test.ts, test/gen/f0005.test.ts and 389 more
+Outstanding:
+  4 test files in the vitest tier of 4 test files running since 07:46:21; a yield at 07:45:12 cut 1 file after 31 s of its run (to a promoted file; 30 s past its estimate): test/gen/f0020.test.ts, test/gen/f0598.test.ts, test/gen/f0787.test.ts and 1 more; no command runs them sooner (a running tier is not interrupted)
+  394 test files queued behind the vitest tier of 4 test files running since 07:46:21; a yield at 07:45:12 cut 1 file after 31 s of its run (to a promoted file; 30 s past its estimate): test/gen/f0001.test.ts, test/gen/f0002.test.ts, test/gen/f0003.test.ts and 391 more; `squeal status --wait 60000 <test file>` moves a named one ahead when that tier ends
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 0 untested; 398 files wait for test runs, which squeal run --all makes; 5 files unknown (4 from a test file with no coverage record, 1 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note

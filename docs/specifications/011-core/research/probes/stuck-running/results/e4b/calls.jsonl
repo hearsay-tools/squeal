@@ -1,0 +1,4 @@
+{"t":"07:21:13","name":"start","args":"start","exit":0,"ms":1322,"load":"0.73 4.55 6.23"}
+{"t":"07:21:58","name":"settle","args":"status --wait 120000","exit":0,"ms":44611,"load":"1.56 4.22 6.04"}
+{"t":"07:23:09","name":"wait-during","args":"status --wait 60000 packages/cezar/src/delegation/settled-observation.test.ts","exit":3,"ms":60693,"load":"2.11 3.83 5.77"}
+{"t":"07:26:09","name":"wait-after","args":"status --wait 180000 packages/cezar/src/delegation/settled-observation.test.ts","exit":3,"ms":180660,"load":"1.18 2.73 5.00"}
