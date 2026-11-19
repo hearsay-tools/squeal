@@ -100,6 +100,26 @@ async function closuresOf(
 }
 
 /**
+ * The case's `closures`, then (row 011-414) `closuresAfter`'s edits, each
+ * invalidated, and its closures read again, after the first ones.
+ */
+async function caseClosures(
+  adapter: Omit<RunnerAdapter, "traits">,
+  root: string,
+  input: VitestInput,
+): Promise<unknown[] | undefined> {
+  const first = await closuresOf(adapter, input.closures);
+  const after = input.closuresAfter;
+  if (after === undefined) return first;
+  for (const edit of after.edits) {
+    const kind = existsSync(join(root, edit.path)) ? "change" : "add";
+    writeTree(root, { [edit.path]: edit.text });
+    await adapter.invalidate([{ path: edit.path, kind }]);
+  }
+  return [...(first ?? []), ...((await closuresOf(adapter, after.closures)) ?? [])];
+}
+
+/**
  * Once open: each project's environment files when the case asks, as its
  * keys (row 011-88). Row 020-15b: its global setups read too; they enter no
  * key, so reading them must leave every output as it was.
@@ -264,7 +284,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   try {
     await withTmpDir(tmp, () => adapter.open());
     environments = await openedReads(adapter, input);
-    closures = await closuresOf(adapter, input.closures);
+    closures = await caseClosures(adapter, root, input);
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
