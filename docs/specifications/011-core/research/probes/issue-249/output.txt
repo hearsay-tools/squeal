@@ -1,0 +1,7 @@
+{"uptime":"10:24:23 up 4 days, 13:27,  3 users,  load average: 10.01, 11.05, 12.51","cpus":24,"load":[10.01,11.05,12.51],"node":"v26.13.0","sha":"6b490e0fa1d58cf4c889140a56be445401d6f49a","version":"0.1.566"}
+{"phase":"run","end":"completed","outcomes":["pass","pass","pass"]}
+{"phase":"closure","file":"test/a.test.ts","observedManifests":[],"runnerManifests":[],"declared":[]}
+{"phase":"closure","file":"test/b.test.ts","observedManifests":[],"runnerManifests":[],"declared":[]}
+{"phase":"closure","file":"test/data.test.ts","observedManifests":["package.json"],"runnerManifests":[],"declared":["package.json"]}
+{"phase":"scripts-only-edit","selectedByReverseIndex":["test/data.test.ts"],"keyChanged":[{"file":"test/a.test.ts","changed":false},{"file":"test/b.test.ts","changed":false},{"file":"test/data.test.ts","changed":true}]}
+{"phase":"declared-only-control","keyChanged":[{"file":"test/a.test.ts","changed":false},{"file":"test/b.test.ts","changed":false},{"file":"test/data.test.ts","changed":true}]}
