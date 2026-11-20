@@ -11,7 +11,7 @@ The vision, the styleguide, the spec's `status.md` for decisions already made, a
 
 ## 2. Verify
 
-Prefer an experiment when it is cheap: a fixture under `research/probes/<topic>/`, marked throwaway in its README, `node_modules` out of git. Otherwise fetch the source with bash: the official docs page, or a repository at a revision cloned to read. Quote or cite the fetched text. A claim without a fetched source or a run probe is not a finding. Do not search the open web beyond the sources the brief or the docs name.
+Prefer an experiment when it is cheap: a fixture under `research/probes/<topic>/`, marked throwaway in its README, `node_modules` out of git. Otherwise fetch the source with bash: the official docs page, or a repository at a revision cloned to read. Quote or cite the fetched text. A claim without a fetched source or a run probe is not a finding. Do not search the open web beyond the sources the brief or the docs name. For a performance question, read the benchmark first: past scorecards and raw session logs in `bench/results/`, and the cells in `bench/README.md`; add a cell or run one (`bench/boat-run.sh`) before writing a new probe.
 
 ## 3. Tag
 
