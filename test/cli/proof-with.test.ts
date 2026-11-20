@@ -318,7 +318,10 @@ describe("squeal proof: an unchanged test's changed files (row 023-21, D5.2)", {
     });
     expect(result.code, result.why).toBe(3);
     expect(result.out).toContain(`${TEST}: not comparable`);
-    expect(result.out).toContain(`${direct}: proven\n`);
+    // Row 023-30 (R5): a test added since the base is a changed test: its verdict line says so.
+    expect(result.out).toContain(
+      `${direct}: proven: the new test fails on the old code. This is not the file's result at ${short(base)}; that is \`squeal status --at ${short(base)} ${direct} --run\`\n`,
+    );
     expect(result.out).toContain(
       `Warning: --with support/unused.ts: no named test imports it at ${short(head)}.\n`,
     );
