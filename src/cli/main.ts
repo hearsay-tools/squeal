@@ -268,11 +268,21 @@ Usage:
                                 difference of the export's environment from this
                                 worktree's; --dry-run writes nothing
   squeal ci record [--out <dir>] -- <command> [args...]
-                                In CI: run the project's Vitest command unchanged and
-                                exit with its code; also write one part per Vitest
-                                process into --out (default squeal-parts/): each test
-                                file's outcome, checks, duration and observed reads,
+                                In CI: run the project's Vitest or node:test command
+                                unchanged and exit with its code; also write one part
+                                per Vitest process and per node --test process into
+                                --out (default squeal-parts/): each test file's
+                                outcome, checks, duration and observed reads or loads,
                                 and each project's environment; other runners only run.
+                                node:test (a nodeTest entry in squeal.config.json):
+                                add Squeal's reporter to the node --test command:
+                                --test-reporter="$SQUEAL_NODE_TEST_REPORTER"
+                                --test-reporter-destination=stderr. It prints nothing;
+                                a node --test process without it records no file. A
+                                run with --test-isolation=none, --test-name-pattern,
+                                --test-skip-pattern, --test-only or --watch records no
+                                file either. Run it on the developers' Node.
+                                Vitest:
                                 The part holds each test file's coverage record. With
                                 no coverage of the run's own, it adds Squeal's coverage
                                 provider to the run (not when Node lacks
