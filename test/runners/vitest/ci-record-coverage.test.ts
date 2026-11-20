@@ -13,7 +13,7 @@ import { MATH_FILES, recordCovered } from "./ci-coverage-kit.js";
 /*
  * Spec 020 D13.1 (row 020-08a): `squeal ci record` adds Squeal's coverage
  * provider to the project's own Vitest run and writes each completed whole
- * file's record into its `squeal-ci-part/4` part. The records equal the
+ * file's record into its `squeal-ci-part/5` part. The records equal the
  * ones the gate's own collector (`collectEvidence`, row 020-03) makes of
  * the same files: one mapping, two ways to run.
  */
@@ -27,7 +27,7 @@ describe("squeal ci record with Squeal's coverage provider (spec 020 D13)", () =
     expect(run.code, run.said).toBe(0);
     expect(run.parts).toHaveLength(1);
     const part = run.parts[0] as Part;
-    expect(part.format).toBe("squeal-ci-part/4");
+    expect(part.format).toBe("squeal-ci-part/5");
     expect(part.header.coverage).toEqual({
       provider: "squeal",
       collector: "squeal",
