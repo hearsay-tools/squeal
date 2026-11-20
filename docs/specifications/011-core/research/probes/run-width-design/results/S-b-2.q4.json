@@ -1,0 +1,46 @@
+{
+ "label": "S-b-2",
+ "daemons": 2,
+ "user": " 02:40:20 up 15:20,  3 users,  load average: 4.11, 7.65, 7.74",
+ "spanS": 572.1,
+ "filesFinished": 590,
+ "filesPerMin": 61.9,
+ "machine": {
+  "meanBusy": 6.89,
+  "meanLoad1": 8.1,
+  "overshoot": {
+   "samplesAtOrAbove11_5BusyPct": 0,
+   "samplesRunnableAboveCpusPct": 33.33,
+   "meanRunnable": 9.72,
+   "maxRunnable": 23
+  },
+  "underUse": {
+   "samplesWithQueue": 114,
+   "meanIdleCoresWhileQueued": 5.11,
+   "samplesBelow9BusyWhileQueuedPct": 57.89
+  },
+  "liveWorkers": {
+   "mean": 5.43,
+   "max": 14,
+   "secondsAboveCpusPct": 0.35
+  }
+ },
+ "perDaemon": [
+  {
+   "copy": 1,
+   "runs": 20,
+   "vitestTiers": 15,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 572.1
+  },
+  {
+   "copy": 2,
+   "runs": 12,
+   "vitestTiers": 7,
+   "filesFinished": 295,
+   "meanWidth": null,
+   "lastEndS": 401.5
+  }
+ ]
+}

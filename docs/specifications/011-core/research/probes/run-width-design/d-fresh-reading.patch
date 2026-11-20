@@ -1,0 +1,44 @@
+diff --git a/src/core/capacity/pool.ts b/src/core/capacity/pool.ts
+index 6b7f0a801..9d8d2fbd3 100644
+--- a/src/core/capacity/pool.ts
++++ b/src/core/capacity/pool.ts
+@@ -448,6 +448,8 @@ class LockFilePool implements PermitPool {
+         const wanted = Math.max(1, Math.floor(workers));
+         const returned = lease.permits.splice(wanted);
+         for (const db of returned) db.close();
++        // PROBE 011-413 (d): workers that ended count no more; the next window starts now.
++        if (returned.length > 0) pool.#restartWindow();
+         // A tier's tail calls this at each file's end (row 011-97): no change writes no mark.
+         if (returned.length === 0 && lease.want === wanted) return;
+         lease.want = wanted;
+@@ -462,11 +464,20 @@ class LockFilePool implements PermitPool {
+   #release(lease: Lease): void {
+     if (!this.#leases.delete(lease)) return;
+     for (const db of lease.permits.splice(0)) db.close();
++    // PROBE 011-413 (d): the ended tier counts no more; the next window starts now.
++    this.#restartWindow();
+     if (this.#leases.size === 0) this.#idleSince = this.#now();
+     if (this.#active()) this.#republish();
+     else this.#deactivate();
+   }
+ 
++  /** PROBE 011-413 (d): own cores are the held workers until a window that starts now is measured. */
++  #restartWindow(): void {
++    this.#measured = null;
++    this.#tree?.reset();
++    this.#read();
++  }
++
+   #active(): boolean {
+     return this.#leases.size > 0 || this.#edits.size > 0;
+   }
+@@ -598,7 +609,8 @@ class LockFilePool implements PermitPool {
+     const now = this.#now();
+     const fresh = (): boolean =>
+       this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
+-    if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
++    // PROBE 011-413 (d): every gate reads the window since the last read, once it is 1 s old.
++    if (this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+     return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
+   }
+ 

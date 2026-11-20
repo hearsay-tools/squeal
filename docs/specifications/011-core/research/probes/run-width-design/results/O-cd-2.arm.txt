@@ -1,0 +1,9 @@
+arm=cd cli=~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs
+08eacef5e9eb7914b45acc1754c71b123dffc92f843006b6a79e609b6057d69b  ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs
+path=packages/contract/src/ci-wait.ts
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-O-cd-2.scope
+pid=3872526 squeal squawk daemon @6e328e2a ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/796e796e/squawk 
+pid=3872573 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/squawk --runner vitest 
+pid=3872574 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/squawk --runner node-test 
+pid=3872580 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/squawk --runner node-test 
+pid=3872651 ~/.nvm/versions/node/v26.13.0/bin/node ~/work/796e796e/squawk/packages/cezar/scripts/product-identity.mjs 

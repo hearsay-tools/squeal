@@ -1,0 +1,3 @@
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-warm.scope
+pid=2528760 squeal squawk daemon @6e328e2a ~/work/796e796e/squeal-base/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/796e796e/squawk 
+pid=2528780 git ls-files -z --cached --others --exclude-standard 

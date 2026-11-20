@@ -1,0 +1,29 @@
+diff --git a/src/core/capacity/pool.ts b/src/core/capacity/pool.ts
+index 6b7f0a801..d46367caf 100644
+--- a/src/core/capacity/pool.ts
++++ b/src/core/capacity/pool.ts
+@@ -249,6 +249,8 @@ class LockFilePool implements PermitPool {
+   readonly #backgroundShare: number;
+   /** The busy CPUs below which a background tier takes a permit (D18). */
+   readonly #ceiling: number;
++  /** PROBE 011-413 (b): since when backlog looks were offered under half the fair share. */
++  #narrowSince: number | null = null;
+   /** The last look's grant was the floor's (D18). */
+   #floored = false;
+   /** The last look read the host's busy cores. */
+@@ -300,7 +302,14 @@ class LockFilePool implements PermitPool {
+       .filter((o) => servedBefore(o, lane, rank))
+       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
+     const gated = this.#gated(others, inUse, target, kind, lane, rank, fewest);
+-    const allowed = Math.min(target, gated);
++    let allowed = Math.min(target, gated);
++    // PROBE 011-413 (b): a backlog tier granted under half its fair share is refused and looks
++    // again every 2 s, for at most one mark refresh (10 s) since the first such narrow look.
++    if (kind === "backlog" && allowed >= fewest && allowed < Math.ceil(entitled / 2)) {
++      this.#narrowSince ??= now;
++      if (now - this.#narrowSince < MARK_REFRESH_MS) allowed = 0;
++    }
++    if (allowed > 0 && (allowed >= Math.ceil(entitled / 2) || kind !== "backlog")) this.#narrowSince = null;
+     const permits = allowed < fewest ? [] : this.#take(allowed, reserve);
+     // A tier that runs `fewest` workers on fewer permits would run more than it holds.
+     if (permits.length < fewest) for (const db of permits.splice(0)) db.close();

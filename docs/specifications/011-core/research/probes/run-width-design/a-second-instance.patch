@@ -1,0 +1,93 @@
+diff --git a/src/core/scheduler/beside.ts b/src/core/scheduler/beside.ts
+index d298f43b7..c6d8ceff4 100644
+--- a/src/core/scheduler/beside.ts
++++ b/src/core/scheduler/beside.ts
+@@ -54,6 +54,12 @@ export function besideFiles(
+   }
+   for (const tier of inFlight) if (tier.beside === true) lanes.delete(tier.lane);
+   const overrun = overrunLanes(context, inFlight, at);
++  // PROBE 011-413 (a): a lane whose backlog tier holds few permits takes a backlog tier beside it.
++  const narrow = narrowLanes(context, inFlight);
++  if (lanes.size === 0 && overrun.size === 0 && narrow.size > 0) {
++    const takes = (ref: TestFileRef) => narrow.has(laneOf(context, ref)) && !queue.isRecent(ref);
++    return queue.hasFast(takes) ? Object.assign(takes, { narrowBacklog: true }) : null;
++  }
+   if (lanes.size === 0 && overrun.size === 0) return null;
+   const inLanes = (ref: TestFileRef) => lanes.has(laneOf(context, ref));
+   const sums = new Map<number, number>();
+@@ -97,3 +103,25 @@ export function besideDone(
+     (ref) => ledger.queue.isPromoted(ref, at) && laneOf(context, ref) === lane,
+   );
+ }
++
++/** PROBE 011-413 (a): a backlog tier holding at most this many permits leaves room beside it. */
++export const PROBE_NARROW_PERMITS = 4;
++
++/**
++ * PROBE 011-413 (a): the lanes whose runner cancels a run, whose backlog tier
++ * in flight (not a batch's, not beside) holds at most `PROBE_NARROW_PERMITS`
++ * permits now (a narrow grant, or a wide tier's tail), and that hold no tier
++ * beside it.
++ */
++export function narrowLanes(context: SchedulerContext, inFlight: readonly Tier[]): Set<string> {
++  const lanes = new Set<string>();
++  for (const tier of inFlight) {
++    const first = tier.files[0]?.file.ref;
++    if (tier.kind !== "backlog" || tier.promoted === true || tier.beside === true) continue;
++    if (tier.lease === undefined || first === undefined || !cancels(context, first)) continue;
++    if (tier.cancel?.signal.aborted === true) continue;
++    if (tier.lease.permits <= PROBE_NARROW_PERMITS) lanes.add(tier.lane);
++  }
++  for (const tier of inFlight) if (tier.beside === true) lanes.delete(tier.lane);
++  return lanes;
++}
+diff --git a/src/core/scheduler/overrun.ts b/src/core/scheduler/overrun.ts
+index ec5a66bb7..2d843cad5 100644
+--- a/src/core/scheduler/overrun.ts
++++ b/src/core/scheduler/overrun.ts
+@@ -4,6 +4,7 @@ import { isGroupLane } from "../types/scheduler.js";
+ import type { LaneWaits, TierOverrun } from "../types/standing.js";
+ import type { SchedulerContext } from "./context.js";
+ import type { Ledger } from "./ledger.js";
++import { narrowLanes } from "./beside.js";
+ import { cancels, laneOf, type Tier } from "./tiers.js";
+ import type { WakeSlot, Wakes } from "./wakes.js";
+ import { unfinished } from "./yield-waits.js";
+@@ -125,6 +126,11 @@ export function nextOverrun(
+ ): EpochMs | null {
+   let next: EpochMs | null = null;
+   const besideHeld = new Set(inFlight.filter((t) => t.beside === true).map((t) => t.lane));
++  // PROBE 011-413 (a): while a lane's backlog tier is narrow and files wait, look every 2 s.
++  for (const lane of narrowLanes(context, inFlight)) {
++    if (ledger.queue.hasFast((ref) => laneOf(context, ref) === lane && !ledger.queue.isRecent(ref)))
++      next = (at + 2_000) as EpochMs;
++  }
+   for (const tier of inFlight) {
+     if (besideHeld.has(tier.lane)) continue;
+     const when = overrunAt(context, tier);
+diff --git a/src/core/scheduler/tier-pick.ts b/src/core/scheduler/tier-pick.ts
+index d08ae11a1..3bfc84ad0 100644
+--- a/src/core/scheduler/tier-pick.ts
++++ b/src/core/scheduler/tier-pick.ts
+@@ -36,7 +36,11 @@ export function shapeOf(
+   const asEdit = p.asEdit && batch !== null;
+   // A tier beside another is an edit's (row 011-269), also when it takes backlog files beside a
+   // tier that overruns (row 011-399): `runner.tierSize` files, no grant, in the second instance.
+-  const backlog = !p.rest && p.beside === null && (batch !== null || !view.hasFirstGroup(free));
++  // PROBE 011-413 (a): beside a narrow backlog tier, the tier is a backlog tier with a grant.
++  const narrowBeside =
++    p.beside !== null && (p.beside as { narrowBacklog?: boolean }).narrowBacklog === true;
++  const backlog =
++    !p.rest && (p.beside === null || narrowBeside) && (batch !== null || !view.hasFirstGroup(free));
+   const turn = !backlog && (p.turnDue || p.rest);
+   const size =
+     batch !== null
+@@ -48,6 +52,8 @@ export function shapeOf(
+         : runner.tierSize;
+   const offer = backlog && !asEdit ? asks.offer(size, poolKind(view.checkpointActive())) : 0;
+   const budget = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
++  // PROBE 011-413 (a): a second instance only for at least 3 workers.
++  if (narrowBeside && offer < 3) return { free, batch, asEdit, backlog, turn, size: 0, offer, budget };
+   return { free, batch, asEdit, backlog, turn, size, offer, budget };
+ }
+ 

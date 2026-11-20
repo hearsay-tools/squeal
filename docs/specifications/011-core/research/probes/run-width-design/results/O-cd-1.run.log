@@ -1,0 +1,9 @@
+O-cd-1 daemon=3684363
+idle at 2026-11-20T02:20:05Z
+started O-cd-1-sampler pid 3685582
+started O-cd-1-queue pid 3685590
+started O-cd-1-workers pid 3685599
+started O-cd-1-permits pid 3685610
+idle at 2026-11-20T02:31:21Z
+done O-cd-1
+arm O-cd-1 done 2026-11-20T02:31:25Z

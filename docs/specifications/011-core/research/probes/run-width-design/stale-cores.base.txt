@@ -1,0 +1,6 @@
+A node slot held, tree 9.5 during the tier: first tier grant 8; offer right after the end 0; next tier grant right after the end 0; offer after the next refresh 8
+B node slot held, tree 8.2 during the tier: first tier grant 8; offer right after the end 1; next tier grant right after the end 1; offer after the next refresh 8
+C node slot held, tree 7.2 during the tier: first tier grant 8; offer right after the end 2; next tier grant right after the end 2; offer after the next refresh 8
+D no other lease, tree 8.2 during the tier: first tier grant 9; offer right after the end 9; next tier grant right after the end 9; offer after the next refresh 9
+E second daemon waits; copy 1's tier ends at t=20 s: grant at each look: t=14s 0, t=16s 0, t=18s 0, t=20s 1
+F copy 1's next tier beside copy 2's narrow one: copy 2 holds 1, copy 1 gets 6 of the ceiling's 9

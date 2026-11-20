@@ -1,0 +1,12 @@
+2026-11-20T02:20:12Z
+ 03:20:12 up 16:00,  3 users,  load average: 0.94, 5.31, 6.78
+    PID     ELAPSED %CPU COMMAND
+3685557       00:00 50.0 ~/.nvm/versions/node/v26.13.0/bin/node --import /tmp/squeal-1001/tmp/e60341ccaa851529/squeal-oxlint-10jbRa/preload.
+3684410       00:27 48.3 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/pl
+3684363       00:28 29.8 squeal squawk daemon @6e328e2a ~/work/796e796e/squeal-cd/plugins/claude-code/dist/cli/squeal.mjs daemon ~
+3684417       00:27  1.2 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/pl
+3684411       00:27  1.0 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-cd/pl
+     17    16:00:41  0.4 [rcu_preempt]
+   2266    16:00:16  0.1 /usr/bin/containerd
+2026-11-20T02:31:22Z
+ 03:31:22 up 16:11,  3 users,  load average: 6.43, 8.72, 7.92

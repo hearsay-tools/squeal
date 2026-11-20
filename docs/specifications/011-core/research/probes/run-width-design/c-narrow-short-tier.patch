@@ -1,0 +1,45 @@
+diff --git a/src/core/scheduler/tier-pick.ts b/src/core/scheduler/tier-pick.ts
+index d08ae11a1..8b341947e 100644
+--- a/src/core/scheduler/tier-pick.ts
++++ b/src/core/scheduler/tier-pick.ts
+@@ -1,3 +1,4 @@
++import { availableParallelism } from "node:os";
+ import { testFileId } from "../keys/reverse-index.js";
+ import type { TestFileRef } from "../types/keys.js";
+ import { BacklogWall, backlogBudget } from "./backlog.js";
+@@ -9,6 +10,9 @@ import type { Pass } from "./tier-pass.js";
+ import type { PlanAsks, QueueView } from "./tier-plan.js";
+ import type { TierFile } from "./tiers.js";
+ 
++/** PROBE 011-413 (c): the ceiling's workers, 75% of the CPUs (D18's default share). */
++const PROBE_FULL_WIDTH = Math.max(1, Math.floor(availableParallelism() * 0.75));
++
+ /** What a pass selects, decided before its files are picked. */
+ export interface Shape {
+   readonly free: (ref: TestFileRef) => boolean;
+@@ -47,7 +51,10 @@ export function shapeOf(
+         ? asks.backlogSize(view.fastSize())
+         : runner.tierSize;
+   const offer = backlog && !asEdit ? asks.offer(size, poolKind(view.checkpointActive())) : 0;
+-  const budget = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
++  const full = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
++  // PROBE 011-413 (c): a backlog tier offered fewer workers than the ceiling (D18) gets a budget
++  // cut in proportion, so a narrow tier ends soon and the next selection reads a new grant.
++  const budget = backlog && batch === null && !asEdit ? full * Math.min(1, offer / PROBE_FULL_WIDTH) : full;
+   return { free, batch, asEdit, backlog, turn, size, offer, budget };
+ }
+ 
+diff --git a/src/core/scheduler/tier-width.ts b/src/core/scheduler/tier-width.ts
+index 6434352a2..b77b7f96d 100644
+--- a/src/core/scheduler/tier-width.ts
++++ b/src/core/scheduler/tier-width.ts
+@@ -51,7 +51,8 @@ export function grantFit(
+     let files = picked;
+     let { trimmed } = pick;
+     if (pick.backlog && pick.slot === null && grant < Math.min(pick.width, pick.offer)) {
+-      const fits = new BacklogWall(pick.budget);
++      // PROBE 011-413 (c): the budget, cut for the offer, is cut again for a smaller grant.
++      const fits = new BacklogWall(pick.budget * Math.min(1, grant / Math.max(1, pick.offer)));
+       const keep = picked.findIndex(
+         (p) =>
+           !fits.take(

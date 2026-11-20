@@ -1,0 +1,10 @@
+S-a-1     copy 2 54f from 155.4: 6 beside, first +60.0 s | copy 2 75f from 256.9: 2 beside, first +60.0 s | copy 2 55f from 338.8: 1 beside, first +66.2 s
+S-a-2     copy 1 106f from 155: 9 beside, first +60.0 s | copy 1 57f from 294: 1 beside, first +63.8 s | copy 2 200f from 144.7: 1 beside, first +61.1 s
+S-b-1     copy 1 200f from 149.3: 2 beside, first +62.2 s | copy 2 94f from 160.5: 6 beside, first +60.0 s | copy 2 92f from 307.9: 2 beside, first +80.0 s
+S-b-2     copy 1 56f from 208.3: 6 beside, first +60.0 s | copy 1 74f from 311.7: 1 beside, first +60.3 s
+S-base-1  copy 1 88f from 173.1: 6 beside, first +60.0 s | copy 1 77f from 291.9: 1 beside, first +62.4 s | copy 2 200f from 161.2: 2 beside, first +60.0 s
+S-base-2  copy 1 200f from 143.1: 1 beside, first +60.7 s | copy 2 101f from 143.1: 7 beside, first +60.0 s | copy 2 91f from 248.5: 1 beside, first +62.1 s
+S-cd-1    copy 2 200f from 139.3: 1 beside, first +60.8 s
+S-cd-2    none
+S-d-1     copy 1 140f from 201.4: 2 beside, first +60.1 s
+S-d-2     copy 1 62f from 162.2: 14 beside, first +60.0 s | copy 1 103f from 361: 1 beside, first +77.0 s | copy 2 200f from 151.7: 2 beside, first +62.4 s

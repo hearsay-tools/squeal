@@ -1,0 +1,20 @@
+{
+ "label": "O-base-1",
+ "count": 1,
+ "busy": {
+  "min": 9.8,
+  "p50": 9.8,
+  "max": 9.8
+ },
+ "episodes": [
+  {
+   "atS": 163.6,
+   "heldS": 2,
+   "lines": 1
+  }
+ ],
+ "heldTotalS": 2,
+ "sample": [
+  "[3495348] squeal daemon: the background ceiling refused a backlog tier: 9.8 busy CPUs, ceiling 9 (0.75 of 12 CPUs)"
+ ]
+}

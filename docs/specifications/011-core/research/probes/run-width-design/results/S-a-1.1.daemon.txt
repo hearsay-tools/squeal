@@ -1,0 +1,5 @@
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-S-a-1-1.scope
+pid=2899551 squeal q4-1 daemon @ee447c33 ~/work/796e796e/squeal-a/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/796e796e/q4-1 
+pid=2899598 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-a/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/q4-1 --runner vitest 
+pid=2899599 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-a/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/q4-1 --runner node-test 
+pid=2899605 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/796e796e/squeal-a/plugins/claude-code/dist/cli/squeal.mjs runner-host ~/work/796e796e/q4-1 --runner node-test 
