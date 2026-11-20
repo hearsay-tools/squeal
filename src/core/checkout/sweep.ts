@@ -60,6 +60,8 @@ export interface SweepOptions {
   /** Its checkout dirs: the cache's and the git folder's. */
   readonly dirs: readonly AbsolutePath[];
   readonly lockWaitMs?: number;
+  /** Row 023-31 (D6): told which processes left under a swept checkout were ended. */
+  readonly note?: ((text: string) => void) | undefined;
 }
 
 /** D6: removes the checkouts of `dirs` whose owner is dead, and folders with no marker. */
@@ -73,7 +75,7 @@ export async function sweepCheckouts(options: SweepOptions): Promise<ListedCheck
         if (marker !== null && owner !== "dead") continue;
         // A marker of another repository's checkout is left to that repository's sweep.
         if (marker !== null && marker.commonDir !== options.commonDir) continue;
-        await removeTree({ ...listed, commonDir: options.commonDir });
+        await removeTree({ ...listed, commonDir: options.commonDir }, options.note);
         swept.push(listed);
       }
       return swept;

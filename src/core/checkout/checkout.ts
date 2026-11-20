@@ -8,6 +8,7 @@ import { runGit } from "../fs/git.js";
 import { lstatOrNull } from "../fs/git-layout.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { LeaseProcess } from "../types/daemon-writes.js";
+import { endLeftUnder, leftUnderText } from "./left-under.js";
 import { readMarker, runPath, treePath, writeMarker } from "./marker.js";
 
 /*
@@ -164,6 +165,8 @@ export interface RemoveCheckoutOptions {
   /** The run's process group: SIGTERM, then SIGKILL after `STOP_GRACE_MS`. */
   readonly group?: number;
   readonly lockWaitMs?: number;
+  /** Row 023-31 (D6): told which processes left under the checkout were ended. */
+  readonly note?: ((text: string) => void) | undefined;
 }
 
 /** D4.8: stop the group, then unlock, `remove --force`, delete the folder and `prune`, under the lock. */
@@ -172,20 +175,29 @@ export async function removeCheckout(
   options: RemoveCheckoutOptions = {},
 ): Promise<void> {
   if (options.group !== undefined) await stopGroup(options.group);
-  await withCheckoutLock(checkout.commonDir, () => removeTree(checkout), options.lockWaitMs);
+  await withCheckoutLock(
+    checkout.commonDir,
+    () => removeTree(checkout, options.note),
+    options.lockWaitMs,
+  );
 }
 
 /**
  * The removal steps, for a caller that holds the lock. Each step goes on when
  * the one before failed. First the install group the marker records is
- * stopped (review wave-5 B3), so no install outlives its checkout.
+ * stopped (review wave-5 B3), so no install outlives its checkout. Then
+ * every process left under the folder is ended, and `note` names them
+ * (row 023-31, D6).
  */
 export async function removeTree(
   checkout: Pick<Checkout, "folder" | "tree" | "commonDir">,
+  note?: (text: string) => void,
 ): Promise<void> {
   const { commonDir, tree } = checkout;
   const group = readMarker(checkout.folder)?.group;
   if (group !== undefined) await stopRecordedGroup(group).catch(() => {});
+  const left = leftUnderText(await endLeftUnder(checkout.folder).catch(() => null));
+  if (left !== null) note?.(left);
   const lenient = { okCodes: [0, 1, 128], timeoutMs: GIT_TIMEOUT_MS };
   await runGit(commonDir, ["worktree", "unlock", tree], lenient).catch(() => "");
   await runGit(commonDir, ["worktree", "remove", "--force", tree], lenient).catch(() => "");
