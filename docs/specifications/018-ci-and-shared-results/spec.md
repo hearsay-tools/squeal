@@ -245,7 +245,7 @@ D8 and D9 on a fixture with two shards: the union, a refused environment mismatc
 
 # Third slice: node:test results from CI
 
-Stage: proposed 2026-11-20 by the coordinator (fe95a218) for the human's review. Written from `research/ci-other-runners.md` and the human's answers there (2026-11-20, task 7eba4a3d). pytest is out of this slice.
+Stage: approved by the human 2026-11-20 ("Design: Approve"); building in wave 19 (`tasks/wave-19.md`). Written from `research/ci-other-runners.md` and the human's answers there (2026-11-20, task 7eba4a3d). pytest is out of this slice.
 
 ## Problem
 

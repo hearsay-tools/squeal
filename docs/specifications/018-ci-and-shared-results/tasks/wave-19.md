@@ -1,0 +1,22 @@
+# Wave 19: node:test results from CI
+
+The human, 2026-11-20: "Design: Approve" (spec D22 to D29, rows 018-47 to 018-50), and "Consider sending easier tasks to grok 4.6 or GLM-5.3 where applicable". Read `research/ci-other-runners.md` for the evidence; do not redo it. Rows 018-47, 018-49 and 018-50 run in parallel; 018-48 starts from 018-47's part format commit. One candidate, one review, one release.
+
+Every row: test first; `squeal status --wait 60000 <changed-path>...` before finishing; no full suite; no `pnpm run build` in a worker tree. `KEY_FORMAT_VERSION`, `NODE_TEST_ADAPTER_VERSION` and `squeal-results/1` do not move; a changed line on the key validity path needs a validity case (`test/keys/key-format.test.ts`). Final message: decisions the spec did not settle, any type change.
+
+## 018-47 `squeal ci record` records node:test
+
+Shape: slice. Spec D22 to D25, D8. Starting seam: `src/cli/ci.ts` `record`, beside `src/runners/vitest/ci-record.ts`; a new `src/runners/node-test/ci-record.ts` (and `ci-runs.ts`) in the node:test folder. First edit: the part format 5 types in `src/core/ci/parts.ts` (`runner: "vitest" | "node-test"`, the `nodeTest` header), committed alone first, since 018-48 builds on it. Then: move the plain-Node evidence hooks (`evidence*.cjs`, `descriptors.cjs`, `children.cjs`, `clock.cjs`) from `src/runners/vitest/ci-runtime/` to a shared folder under `src/runners/` (no `adapter.ts`; `test/runners/boundaries.test.ts`) and `src/harness/build.ts` `CI_RUNTIME`; the recorder's CI mode (`runtime/recorder.cjs`, D24); `dist/ci/node-test-reporter.mjs` sharing the daemon reporter's encoding (D23); checks through `run/report.ts` and `identity.ts`, never a copy. Owns those files and `ci record --help`. Leaves alone: `src/cli/ci-export.ts`, `src/core/ci/export*.ts`, `src/core/keys/`, `ci/`, `README.md`.
+Done when: the D22 to D25 tests of the spec's third-slice Testing section pass, including stdout unchanged on Node 22, 24 and 26 and the open question 1 fixture (ESM, CJS, `--import tsx`, a spawned child) giving evidence for every load. Use /worker.
+
+## 018-48 `squeal ci export` keys node:test parts
+
+Shape: slice. Spec D26, D9, D2. Baseline: 018-47's part format commit. Starting seam: `src/cli/ci-export.ts` (today refuses without Vitest and always builds `createVitestAdapter`); `ciExport` in `src/core/ci/export.ts` already takes any `RunnerAdapter`. Owns `src/cli/ci-export.ts`, `src/core/ci/export*.ts`, `src/core/ci/reuse.ts` if needed. Leaves alone 018-47's files and `src/core/keys/`. Done when: the D26 tests pass, a CI-shaped clone's export equals a daemon-made export of the same content and its import makes every node:test file current in a developer clone; a Vitest export is unchanged beside node:test parts. Use /worker.
+
+## 018-49 import treats node:test's coverage marker as equal for passes
+
+Shape: slice, small. Spec D27, D10, D11. Starting seam: `importDifferences` in `src/core/keys/environment-descriptor.ts` (returns early unless both sides are `vitest`). D11's re-key (`src/core/store/transfer-rekey.ts`), status (`src/core/status/import-environment.ts`) and the part comparison (`src/core/ci/export-check.ts`) already call it, so it stays the one owner; expect to change only `environment-descriptor.ts`. The node:test marker: `coverageMarker` in `src/runners/node-test/adapter-environment.ts` (config field `coverage`). Owns `environment-descriptor.ts` and its tests; a needed edit in `export-check.ts` (018-48's) goes to the coordinator first. Done when: the marker on one side, both or neither, with or without children, compares equal for a pass; every other node:test field stays keyed; Vitest unchanged; key-format alarm quiet. Use /worker.
+
+## 018-50 the CI action and README for node:test
+
+Shape: slice, small. Spec D28, D23.1, D20.2. Starting seam: `ci/setup.sh` and `ci/action.yml`: write `SQUEAL_NODE_TEST_REPORTER` (the absolute path of `dist/ci/node-test-reporter.mjs` in the action's checkout) to `$GITHUB_ENV`, also when setup fails. README CI section: the node:test step with the reporter pair, on the developers' Node, an unrecorded run on another Node may stay. The reporter file itself is 018-47's: test against its path, not its content. Owns `ci/`, `README.md` and their tests. Done when: action tests show the variable set and naming the file in both the working and the failed setup; README text matches D23's command. Use /worker.
