@@ -82,14 +82,28 @@ export function temp(): AbsolutePath {
   return dir;
 }
 
-/** A committed git worktree holding `files`, with the repository's `node_modules` linked in. */
-export function project(files: Readonly<Record<string, string>> = FILES): AbsolutePath {
+/**
+ * Which of the repository's packages the project gets: only `tsx`, so no
+ * Vitest resolves and node:test records alone, or all of `node_modules`,
+ * so Vitest's recording wraps the command too.
+ */
+export type Packages = "tsx" | "all";
+
+/** A committed git worktree holding `files`, with the repository's packages linked in. */
+export function project(
+  files: Readonly<Record<string, string>> = FILES,
+  packages: Packages = "tsx",
+): AbsolutePath {
   const root = join(temp(), "root");
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), content);
   }
-  symlinkSync(join(REPO, "node_modules"), join(root, "node_modules"));
+  if (packages === "all") symlinkSync(join(REPO, "node_modules"), join(root, "node_modules"));
+  else {
+    mkdirSync(join(root, "node_modules"));
+    symlinkSync(realpathSync(join(REPO, "node_modules/tsx")), join(root, "node_modules/tsx"));
+  }
   writeFileSync(join(root, ".gitignore"), "node_modules\n");
   execFileSync("git", ["init", "-q"], { cwd: root });
   execFileSync("git", ["add", "."], { cwd: root });
