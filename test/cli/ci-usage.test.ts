@@ -73,6 +73,14 @@ describe("squeal ci", () => {
     const { io, text } = capture(BASE);
     expect(await main(["ci", "--help"], io)).toBe(0);
     expect(text()).toContain("squeal ci record [--out <dir>] -- <command>");
+    // Spec 018 D28 (row 018-47): the reporter variable and the refused flags.
+    const help = text().replace(/\s+/g, " ");
+    expect(help).toContain(
+      '--test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr',
+    );
+    expect(help).toContain(
+      "--test-isolation=none, --test-name-pattern, --test-skip-pattern, --test-only or --watch",
+    );
     // Spec 020 D13.6 and D19.4: when the provider is added, when the project's is read, when neither.
     const said = text().replace(/\s+/g, " ");
     expect(said).toContain(
