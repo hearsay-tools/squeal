@@ -173,12 +173,13 @@ async function throughGate(input: NowRunInput): Promise<NowRunEnd> {
   const place = { folder, tree: root, run, commit: "HEAD", commonDir: input.commonDir };
   const states = new Map<string, SideState>();
   const durations = storedDurations(root);
+  const policy = readPolicy(root);
   let problem: string | null = null;
   try {
     const end = await runBatches({
       files: input.files,
       refOf: (ref) => ref,
-      policy: readPolicy(root),
+      policy,
       timeoutSeconds: input.timeoutSeconds,
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
       endMs: input.endMs,
@@ -222,7 +223,11 @@ async function throughGate(input: NowRunInput): Promise<NowRunEnd> {
 /**
  * A batch's answer in the working tree: the files it did not run, by
  * `testFileId`. A file that ended needs no state here: the current side
- * is read again from the store after the run.
+ * is read again from the store after the run. Review wave-18 B2: a stop
+ * is the budget; a gate that rejected at its setup is left to the batch
+ * loop, which marks its files `not run (setup)` with their group and text;
+ * a child that gave no answer otherwise is a problem of its own, counted
+ * neither as budget nor as setup.
  */
 function readNow(
   files: readonly TestFileRef[],
@@ -230,9 +235,10 @@ function readNow(
 ): { states: Map<string, SideState>; problem: string | null } {
   const states = new Map<string, SideState>();
   if ("error" in answer) {
-    const budget = answer.stopped === true;
-    for (const ref of files) states.set(testFileId(ref), { state: "not run", reason: "budget" });
-    return { states, problem: budget ? null : answer.error };
+    if (answer.stopped === true)
+      for (const ref of files) states.set(testFileId(ref), { state: "not run", reason: "budget" });
+    const setup = answer.setup !== undefined && answer.setup.length > 0;
+    return { states, problem: answer.stopped === true || setup ? null : answer.error };
   }
   for (const ref of files) {
     const runs = answer.result.runs.filter((r) => r.path === ref.path);

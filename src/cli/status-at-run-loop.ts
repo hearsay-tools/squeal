@@ -1,11 +1,12 @@
 import { testFileId } from "../core/keys/reverse-index.js";
+import { groupView } from "../core/scheduler/slow.js";
 import type { RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { SideState } from "./status-at-report.js";
 import { Batches, type BatchTime, stopMargin } from "./status-at-run-batches.js";
 import type { RunAnswer } from "./status-at-run-child.js";
-import { lotOf, setupVerdict } from "./status-at-run-setup.js";
+import { lotOf, type SetupFailure, setupVerdict } from "./status-at-run-setup.js";
 
 /*
  * Row 023-19 (P3), moved here by row 023-29: `--run`'s selection in
@@ -118,6 +119,7 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
       ended !== null && ended.stopped !== true ? ended : { error: "budget", stopped: true };
     if (answer.stopped === true) timedOut = true;
     await loop.readBack(unstarted, answer);
+    afterSetup(loop, unstarted, answer);
   }
   return { gateMs, timedOut: timedOut || cut, cut, batches: batches.ran() };
 }
@@ -128,7 +130,13 @@ function afterSetup<F>(
   files: readonly F[],
   answer: RunAnswer,
 ): ((file: F) => SideState | null) | null {
-  if (!("result" in answer) || answer.setup === undefined || answer.setup.length === 0) return null;
+  if (answer.setup === undefined || answer.setup.length === 0) return null;
+  if ("error" in answer) {
+    // Review wave-18 B2: the gate rejected before it ran a file; a stop is never one.
+    if (answer.stopped === true) return null;
+    rejected(loop, files, answer.setup);
+    return null;
+  }
   const verdict = setupVerdict(loop.policy, answer.setup, files, loop.refOf, loop.stateOf);
   for (const file of files) {
     const state = verdict.states.get(testFileId(loop.refOf(file)));
@@ -149,4 +157,14 @@ function stoppedPath<F>(
     loop.setState(file, states[i] as SideState);
   });
   return true;
+}
+
+/** B2: every file of a batch whose gate rejected at its setup: `not run (setup)`, with its group. */
+function rejected<F>(loop: BatchLoop<F>, files: readonly F[], told: readonly SetupFailure[]): void {
+  const view = groupView(loop.policy);
+  const text = told.map((f) => f.text).join("; ");
+  for (const file of files) {
+    const setup = `${view.of(loop.refOf(file)).name}: ${text}`;
+    loop.setState(file, { state: "not run", reason: "setup", setup });
+  }
 }

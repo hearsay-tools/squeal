@@ -73,7 +73,18 @@ export type RunAnswer =
       /** Row 023-29 (R3): the runs that failed to start, as the gate's notes told them. */
       readonly setup?: readonly SetupFailure[];
     }
-  | { readonly error: string; readonly stopped?: true; readonly record?: GateFilesProgress };
+  | {
+      readonly error: string;
+      readonly stopped?: true;
+      readonly record?: GateFilesProgress;
+      /**
+       * Row 023-29 (review wave-18 B2): the gate rejected before it ran a
+       * file (a runner that cannot start, a config that throws): its setup
+       * notes, else its error's first line. Absent for a stop or a child
+       * that gave no answer.
+       */
+      readonly setup?: readonly SetupFailure[];
+    };
 
 /** The request file this process was given, taken out of `env` at once; `undefined` when none. */
 export function takeRunRequest(env: NodeJS.ProcessEnv = process.env): string | undefined {
@@ -109,7 +120,10 @@ export async function runChild(request: string): Promise<number> {
     });
     answer = setup.length === 0 ? { result } : { result, setup };
   } catch (error) {
-    answer = { error: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    // Review wave-18 B2: the gate's own setup error; the notes it told first are kept.
+    const told = setup.length > 0 ? setup : [{ runner: "", text: message.split("\n")[0] ?? "" }];
+    answer = { error: message, setup: told };
   }
   writeFileSync(asked.answer, JSON.stringify(answer));
   return 0;
