@@ -137,7 +137,16 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
   // Row 015-47: every file is seeded before any is judged.
   if (start || input.reseed) {
     const seed = cache.seed(() => beginSeed(input, start, summary));
-    const seeded = store.transaction(() => seed.advance(input, countOf, slice));
+    // Review of the rebuild (N2): the seed moves on only with its batch, written or not yet.
+    const mark = seed.mark();
+    let seeded: ReturnType<Seed["advance"]>;
+    try {
+      seeded = store.transaction(() => seed.advance(input, countOf, slice));
+    } catch (error) {
+      seed.restore(mark);
+      throw error;
+    }
+    if (store.unsettled()) cache.seedPosted(mark);
     if (seeded === "uncounted") return null;
     // Row 021-36: the walk reads the pending states the seed wrote; handed over, they are read next step.
     if (seeded === "more" || store.unsettled()) return SEEDING;

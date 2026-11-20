@@ -50,6 +50,8 @@ export class Seed {
   readonly #came = new Map<string, Set<string>>();
   /** The moves and removals `follow` was given and `advance` has not read yet, in order. */
   readonly #followed: Followed[] = [];
+  /** How many moves and removals `follow` was given: `restore` keeps those after its mark. */
+  #given = 0;
   /** Row 015-64: the checks seeded, and the files left out, which a move into one does not seed. */
   readonly #checks: Pick<CoverageChecks, "measures" | "excluded">;
 
@@ -104,10 +106,49 @@ export class Seed {
     }
   }
 
+  /**
+   * Review of the rebuild of row 021-36, N2: where the seed is now, for
+   * `restore` when the batch that seeds from here fails unwritten. Its
+   * files stay those it began with.
+   */
+  mark(): SeedMark {
+    const copy = (sets: ReadonlyMap<string, ReadonlySet<string>>) =>
+      new Map([...sets].map(([path, keys]) => [path, new Set(keys)]));
+    return {
+      next: this.#next,
+      had: new Map(this.#had),
+      left: copy(this.#left),
+      came: copy(this.#came),
+      followed: [...this.#followed],
+      given: this.#given,
+    };
+  }
+
+  /**
+   * Back to `mark`: what was seeded since is seeded again. Moves given
+   * since are kept; one `advance` read since would be read again.
+   */
+  restore(mark: SeedMark): void {
+    const since = Math.min(this.#given - mark.given, this.#followed.length);
+    const given = this.#followed.slice(this.#followed.length - since);
+    this.#next = mark.next;
+    this.#had.clear();
+    for (const [path, had] of mark.had) this.#had.set(path, had);
+    for (const [into, from] of [
+      [this.#left, mark.left],
+      [this.#came, mark.came],
+    ] as const) {
+      into.clear();
+      for (const [path, keys] of from) into.set(path, new Set(keys));
+    }
+    this.#followed.splice(0, this.#followed.length, ...mark.followed, ...given);
+  }
+
   /** An edit's moves and removals (D2), as the complexity pass applied them to its states. */
   follow(report: Pick<PassReport, "moves" | "removed">): void {
     for (const { from, to } of report.moves) this.#followed.push({ from, to });
     for (const check of report.removed) this.#followed.push({ from: check, to: null });
+    this.#given += report.moves.length + report.removed.length;
   }
 
   /** Reads what `follow` was given, one move or removal each time `work` allows; true once all is read. */
@@ -258,5 +299,14 @@ export class Seed {
 
 type Fn = FileCount["functions"][number];
 type Store = CoverageStepInput["store"];
+/** What `Seed.mark` keeps, for `Seed.restore`. */
+export interface SeedMark {
+  readonly next: number;
+  readonly had: ReadonlyMap<string, ReadonlySet<string> | null>;
+  readonly left: ReadonlyMap<string, ReadonlySet<string>>;
+  readonly came: ReadonlyMap<string, ReadonlySet<string>>;
+  readonly followed: readonly Followed[];
+  readonly given: number;
+}
 /** A move `follow` was given, or a removal, whose `to` is `null`. */
 type Followed = { readonly from: CodeCheckId; readonly to: CodeCheckId | null };

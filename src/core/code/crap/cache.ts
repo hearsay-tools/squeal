@@ -10,7 +10,7 @@ import type { CodeCoverageRepo } from "../store/types.js";
 import { type FileCondition, fileCondition } from "./file.js";
 import { LoaderMap } from "./loader-map.js";
 import type { LoaderBuild, Loaders } from "./loaders.js";
-import type { Seed } from "./seed.js";
+import type { Seed, SeedMark } from "./seed.js";
 
 /**
  * Row 015-42 (011-197): what a chain of coverage steps keeps, so a step
@@ -34,6 +34,8 @@ export class StepCache {
   #build: LoaderBuild | null = null;
   /** The seed at coverage's start or a recount, until a step judges after it (row 015-47). */
   #seed: Seed | null = null;
+  /** Where the seed was before its batches not written yet (review of the rebuild of 021-36, N2). */
+  #seedMark: SeedMark | null = null;
   readonly #conditions = new Map<RelativePath, FileCondition>();
   /** By path: the signature, and the blob, counter version and threshold it was made at. */
   readonly #signatures = new Map<RelativePath, { readonly at: string; readonly value: string }>();
@@ -78,6 +80,32 @@ export class StepCache {
    */
   dropSeed(): void {
     this.#seed = null;
+    this.#seedMark = null;
+  }
+
+  /**
+   * Spec 021 D22.3, review of the rebuild of row 021-36 (N2): the seed
+   * went past `mark` in a batch not written yet. The earliest such mark
+   * holds until `seedSettled`.
+   */
+  seedPosted(mark: SeedMark): void {
+    this.#seedMark ??= mark;
+  }
+
+  /**
+   * Waits for `sent`, the store's batches so far: once written, the seed's
+   * progress holds; when one failed, the seed goes back to its mark, so the
+   * next step seeds those files again, and the failure is thrown.
+   */
+  async seedSettled(sent: Promise<void>): Promise<void> {
+    try {
+      await sent;
+    } catch (error) {
+      if (this.#seedMark !== null) this.#seed?.restore(this.#seedMark);
+      throw error;
+    } finally {
+      this.#seedMark = null;
+    }
   }
 
   /** An edit's moves and removals, for the seed in progress (D2; review 0.1.311 B1). */

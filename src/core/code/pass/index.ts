@@ -203,8 +203,9 @@ export function createCodePass(options: CodePassOptions): CodePass {
       await nextTurn();
     }
     coverageStep(opened, policy, report);
-    // Row 021-36: a step's batch that failed fails this run, as a write that threw at once did.
-    await opened.sent();
+    // Row 021-36: a step's batch that failed fails this run, as a write that threw at once did,
+    // and a seed in it goes back to seed those files again (review of the rebuild, N2).
+    await cache.seedSettled(opened.sent());
   };
   /** The next coverage step, once the step before had its own time back. */
   const paced = () => {
