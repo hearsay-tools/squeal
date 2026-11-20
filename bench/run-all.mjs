@@ -60,7 +60,42 @@ const { values: o } = parseArgs({
 const HERE = import.meta.dirname;
 const out = o.out;
 mkdirSync(out, { recursive: true });
-const chosen = o.cells ? CELLS.filter((c) => o.cells.split(",").includes(c.name)) : CELLS;
+/**
+ * Named groups for `--cells`: `@<group>` stands for its cells, and groups and
+ * cells mix (`--cells @worktrees,churn`). An axis group varies one factor from
+ * `ref`; an area group holds the cells a kind of change is most likely to move,
+ * for a first, cheaper check before the full run (README, "Subsets first").
+ */
+export const GROUPS = {
+  // Axes: one factor at a time, with ref as the fixed point.
+  size: ["size-s", "ref", "size-l"],
+  worktrees: ["ref", "wt-3", "wt-6"],
+  load: ["ref", "load-50", "load-100"],
+  store: ["ref", "store-1.7g", "store-7g", "churn"],
+  lists: ["store-7g", "store-7g-wt3", "store-7g-wt3-nolists", "store-7g-lists1d"],
+  // Areas: where a change of that kind shows first.
+  quick: ["ref", "wt-3"],
+  hooks: ["ref", "wt-3", "stress"],
+  contention: ["wt-3", "wt-6", "stress", "store-7g-wt3"],
+  scheduler: ["ref", "wt-3", "load-50", "size-l"],
+  all: [],
+};
+GROUPS.all = CELLS.map((c) => c.name);
+function selectCells(spec) {
+  if (!spec) return CELLS;
+  const names = new Set();
+  for (const part of spec.split(",")) {
+    const group = part.startsWith("@") ? GROUPS[part.slice(1)] : null;
+    if (part.startsWith("@") && !group)
+      throw new Error(`no cell group ${part}; groups: ${Object.keys(GROUPS).join(", ")}`);
+    for (const n of group ?? [part]) {
+      if (!CELLS.some((c) => c.name === n)) throw new Error(`no cell ${n}`);
+      names.add(n);
+    }
+  }
+  return CELLS.filter((c) => names.has(c.name));
+}
+const chosen = selectCells(o.cells);
 const log = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
 
 // Machine facts and a single-thread calibration: SHA-256 over 1 MiB for 3 s.

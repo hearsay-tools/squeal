@@ -22,6 +22,28 @@ node bench/run-all.mjs --plugin "$PWD/plugins/claude-code" --out /tmp/sq-bench
 
 Do not run it on a shared development host. Each cell starts real daemons, and the load cells keep every vCPU busy on purpose.
 
+## Subsets first
+
+`--cells` takes cell names and named groups, mixed: `--cells @worktrees,churn`. For performance work, run the group a change is likely to move, as a pair with the release it starts from, and run every cell only when that group shows a change:
+
+```sh
+bench/boat-run.sh --ref squeal--v0.1.579 --ref . --cells @contention   # stage 1: the likely cells, about 1.5 h
+bench/boat-run.sh --ref squeal--v0.1.579 --ref .                       # stage 2: every cell, only if stage 1 moved
+```
+
+| Group | Cells | Use it for |
+|---|---|---|
+| `@quick` | ref, wt-3 | any change, a first check in about 1 h paired |
+| `@hooks` | ref, wt-3, stress | hooks, delivery, `squeal status` |
+| `@contention` | wt-3, wt-6, stress, store-7g-wt3 | store writes, locks, the store process |
+| `@scheduler` | ref, wt-3, load-50, size-l | scheduling, catch-up, the edit cut |
+| `@store` | ref, store-1.7g, store-7g, churn | store size, prune, the integrity check |
+| `@lists` | store-7g, store-7g-wt3, store-7g-wt3-nolists, store-7g-lists1d | module lists (`loaded_modules`) |
+| `@size`, `@worktrees`, `@load` | one axis each, with ref | how one factor scales |
+| `@all` | every cell | the default |
+
+A paired cell takes about 35 minutes (about 45 with an aged store). `--steps 12` halves the sessions for a rough first look; `--repeat 3` shows whether a difference is larger than run-to-run noise. The groups live in `run-all.mjs` (`GROUPS`).
+
 ## The machine
 
 The boat.dev $20 plan (`box_20`) offers three sizes:
