@@ -58,7 +58,10 @@ export interface NodeTestSettings {
   readonly graph: AbsolutePath;
   /** Where the reporter writes each `node --test` process's events. */
   readonly events: AbsolutePath;
-  /** The variables the `nodeTest` entries' `env` names (D25): the reporter writes their values. */
+  /**
+   * The variables the `nodeTest` entries' `env` names (D25) and the policy's
+   * `env.allowlist` (review of 0.1.579 B2): the reporter writes their values.
+   */
   readonly variables: readonly string[];
 }
 
@@ -77,6 +80,8 @@ export interface NodeTestRecordingOptions {
   readonly env: NodeJS.ProcessEnv;
   /** The project's `nodeTest` entries in this checkout's `squeal.config.json`. */
   readonly entries: readonly NodeTestProject[];
+  /** The policy's `env.allowlist`: keyed for every runner (D1), so recorded too (B2). */
+  readonly allowlist: readonly string[];
   /** The repository's object format: the evidence hashes files as git does. */
   readonly objectFormat: ObjectFormat;
   /** Where the private directory goes; default the OS temp directory. */
@@ -114,7 +119,8 @@ export function startNodeTestRecording(
   const graph = join(temp, "graph");
   const events = join(temp, "events");
   for (const dir of [graph, events]) mkdirSync(dir);
-  const variables = [...new Set(options.entries.flatMap((entry) => Object.keys(entry.env)))];
+  const named = options.entries.flatMap((entry) => Object.keys(entry.env));
+  const variables = [...new Set([...named, ...options.allowlist])];
   const settings = { nodeTest: { graph, events, variables: variables.sort() } };
   const hooks = [runtime.hook, recorder];
   const addition = { hooks, settings, env: { [NODE_TEST_REPORTER_VARIABLE]: runtime.reporter } };

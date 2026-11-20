@@ -34,6 +34,7 @@ function entry(name: string, files: readonly string[], more: Partial<NodeTestEnt
     argv: ["--import", "tsx"],
     nodeOptions: [],
     env: {},
+    allowlisted: {},
     node: { version: "v26.13.0", nodeBuild: BUILD },
     files: new Set(files),
     ...more,
@@ -228,6 +229,41 @@ describe("assignNodeTest (spec 018 D26)", () => {
       'node:test ran with another value of SECRET than project "unit" sets: left out (1 test file)',
     ]);
     expect(other.lines.join("\n")).not.toContain("s3cr3t");
+  });
+
+  it("leaves out an entry whose run saw another value of an allow-listed variable, or did not say (review of 0.1.579 B2)", () => {
+    const allowlisted = { MODE: configFieldHash("local") };
+    const unit = entry("unit", ["test/a.test.ts"], { allowlisted });
+    const scripts = entry("scripts", ["scripts/x.test.ts"], { argv: [], allowlisted });
+    const neighbour = part({
+      name: "s.json",
+      files: ["scripts/x.test.ts"],
+      run: { execArgv: ["--test"], env: { MODE: configFieldHash("local") } },
+    });
+    const ran = (env: PartNodeTest["env"]) => [
+      part({ files: ["test/a.test.ts"], run: { env } }),
+      neighbour,
+    ];
+
+    const same = assignNodeTest(ran({ MODE: configFieldHash("local") }), [unit, scripts], COMMIT);
+    expect(kept(same)).toEqual(["unit:test/a.test.ts", "scripts:scripts/x.test.ts"]);
+
+    const other = assignNodeTest(ran({ MODE: configFieldHash("ci") }), [unit, scripts], COMMIT);
+    expect(kept(other)).toEqual(["scripts:scripts/x.test.ts"]);
+    expect(other.lines).toEqual([
+      'node:test of project "unit" ran with another value of MODE than this job\'s environment: left out (1 test file)',
+    ]);
+
+    const unsaid = assignNodeTest(ran({}), [unit, scripts], COMMIT);
+    expect(kept(unsaid)).toEqual(["scripts:scripts/x.test.ts"]);
+    expect(unsaid.lines).toEqual([
+      'the node:test parts of project "unit" do not say what MODE held: left out (1 test file)',
+    ]);
+
+    const unset = entry("unit", ["test/a.test.ts"], { allowlisted: { MODE: null } });
+    expect(kept(assignNodeTest(ran({ MODE: null }), [unset], COMMIT))).toEqual([
+      "unit:test/a.test.ts",
+    ]);
   });
 
   it("takes an entry's own --test-shard set when complete, apart from other entries' (D26.4)", () => {

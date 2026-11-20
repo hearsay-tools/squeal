@@ -11,6 +11,7 @@ import {
   type PartNodeTest,
   writePart,
 } from "../../src/core/ci/parts.js";
+import { readPolicy } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { configFieldHash } from "../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
@@ -68,9 +69,14 @@ export async function recordNodeTest(
       cwd: environment.root ?? "",
       version: environment.runnerVersion,
       nodeBuild: config.nodeBuild,
-      env: Object.fromEntries(
-        Object.entries(project.env).map(([name, value]) => [name, configFieldHash(value)]),
-      ),
+      env: Object.fromEntries([
+        // Review of 0.1.579 B2: the allow-listed variables as this process has them, as `ci record` writes them.
+        ...readPolicy(real).env.allowlist.map((name) => {
+          const value = process.env[name];
+          return [name, value === undefined ? null : configFieldHash(value)];
+        }),
+        ...Object.entries(project.env).map(([name, value]) => [name, configFieldHash(value)]),
+      ]),
       nodeOptions: [],
       ...(preloads.length === 0 ? {} : { preloads: [...preloads] }),
       ...run,
