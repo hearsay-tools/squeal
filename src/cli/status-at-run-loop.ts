@@ -34,8 +34,11 @@ export interface BatchLoop<F> {
   /** `performance.now()` at which this side's share of the budget ends. */
   readonly endMs: number;
   readonly secondsOf: (ref: TestFileRef) => number | null;
-  /** Before each batch after the first (the commit side's whole-checkout check). */
-  readonly beforeLater?: () => Promise<void>;
+  /**
+   * Before each batch, after the side's budget allows it (the commit side's
+   * whole-checkout check, which itself skips the checkout's first child).
+   */
+  readonly beforeEach?: () => Promise<void>;
   /**
    * One batch in a gate child: its paths and (review wave-18 B3) its own
    * files by project and path, which alone it may run; the gate's budget
@@ -99,7 +102,7 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     const left = Math.floor((loop.endMs - performance.now()) / 1000);
     const gateSeconds = left - stopMargin(left);
     if (gateSeconds < 1) break;
-    if (batches.ran().length > 0) await loop.beforeLater?.();
+    await loop.beforeEach?.();
     const first = lotOfSlot(slots[0] as string);
     const same = slots.filter((slot) => lotOfSlot(slot) === first);
     const take = same.slice(0, batches.next(same, seconds));

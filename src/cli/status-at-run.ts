@@ -139,6 +139,8 @@ export function atRun(input: AtRunInput): AtRun {
   let durationsOf: (ref: TestFileRef) => number | null = () => null;
   let changed: Changed | null = null;
   let batchTimes: readonly BatchTime[] = [];
+  /** The gate children started in the checkout, over every pass. */
+  let children = 0;
 
   const whileOpen = selector(
     { root: input.root, commit, allMissing: args.allMissing, named: new Set(input.named ?? []) },
@@ -205,15 +207,18 @@ export function atRun(input: AtRunInput): AtRun {
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
       endMs: until,
       secondsOf: (ref) => durationsOf(ref),
-      // Review wave-13 B1: 023-07's whole-checkout check before every later batch. A test of an
-      // earlier batch may have changed a tracked path; from then on nothing is the commit's.
-      beforeLater: async () => {
-        if (changed !== null) return;
+      // Review wave-13 B1: 023-07's whole-checkout check before every child but the checkout's
+      // first. A test of an earlier batch may have changed a tracked path; from then on nothing
+      // is the commit's. Review wave-18 re-review 2: counted over every pass, so a second pass
+      // after the working tree's turn checks too, even when the first pass ended no file.
+      beforeEach: async () => {
+        if (children === 0 || changed !== null) return;
         const path = await checkoutChange(input.root, checkout.tree, checkout.commit);
         if (path !== null) changed = { path, by: "run" };
       },
-      run: (batch, budgetSeconds, stopAfterSeconds) =>
-        runInChild({
+      run: (batch, budgetSeconds, stopAfterSeconds) => {
+        children++;
+        return runInChild({
           relaunch: input.relaunch,
           checkout,
           files: batch.paths,
@@ -225,7 +230,8 @@ export function atRun(input: AtRunInput): AtRun {
           store: changed === null,
           env: input.env,
           forward: input.forward,
-        }),
+        });
+      },
       readBack: (files, answer) => readBack(checkout, files, keyed, answer),
       stateOf: (file) => states.get(testFileId(file.ref)),
       setState: (file, state) => states.set(testFileId(file.ref), state),
