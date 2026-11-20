@@ -2,6 +2,7 @@ import { ABSENT_LISTING, listedDirectory } from "../keys/observed.js";
 import type { RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
 import { type InputEvidence, type Uncertified, uncertifiedWhy } from "./inputs.js";
+import { ownValue } from "./own-map.js";
 import { PART_FORMAT, type Part } from "./parts.js";
 
 /*
@@ -50,7 +51,8 @@ export function endpointHash(
   const committed = commit(path);
   if (absent(committed)) return null;
   const { stable } = ends;
-  const hash = Object.hasOwn(stable, path) ? stable[path] : committed;
+  const held = ownValue(stable, path);
+  const hash = held === undefined ? committed : held;
   return hash === undefined || absent(hash) ? null : hash;
 }
 
