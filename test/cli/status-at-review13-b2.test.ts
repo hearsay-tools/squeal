@@ -151,7 +151,8 @@ describe(
       const stopped = await run(
         f,
         { commit: a, json: true, run: all(20) },
-        { cacheRoot: f.cacheRoot, install: linkInstall().install },
+        // Row 023-29: A is HEAD; the tree is made dirty, and only the commit side runs.
+        { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) },
       );
       expect(atOf(stopped.out)).toMatchObject({
         state: "pass",

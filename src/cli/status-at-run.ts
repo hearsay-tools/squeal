@@ -128,6 +128,8 @@ export function atRun(input: AtRunInput): AtRun {
   let timedOut = false;
   let estimate: RunEstimate | null = null;
   let leftOut: readonly KeyedFile[] = [];
+  // R4: read while the stored durations are open; after `close()` every lookup reads none.
+  let leftSeconds: number | null = null;
   let overheadMs = 0;
   let durationsOf: (ref: TestFileRef) => number | null = () => null;
   let changed: Changed | null = null;
@@ -162,6 +164,7 @@ export function atRun(input: AtRunInput): AtRun {
       if (again.length > 0 && again.length < run.length)
         await runFiles(checkout, again, keyed, endMs);
       leftOut = budgetLeft(run);
+      leftSeconds = estimateOf(leftOut, durationsOf).seconds;
     } finally {
       durations?.close();
     }
@@ -261,7 +264,7 @@ export function atRun(input: AtRunInput): AtRun {
       left: notRun,
       ran: ran.length,
       gateMs,
-      estimate: estimateOf(leftOut, durationsOf).seconds,
+      estimate: leftSeconds,
     };
     // R4: the fit from this run's rate on each side, both sides in one rerun.
     const left = notRun + (now?.use.how === "gate" ? now.use.notRun : 0);
