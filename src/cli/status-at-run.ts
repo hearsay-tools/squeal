@@ -6,7 +6,6 @@ import { checkoutChange } from "../core/commit/at-keys-verify.js";
 import type { Changed } from "../core/commit/at-keys-walk.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
-import { shellWord } from "../core/text.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { storedDurations } from "./code-gate-durations.js";
@@ -19,10 +18,11 @@ import {
   tellsEstimate,
 } from "./status-at-run-batches.js";
 import { type RunAnswer, runInChild } from "./status-at-run-child.js";
-import { rerunFit, type SideFit, setupCounts } from "./status-at-run-fit.js";
+import type { SideFit } from "./status-at-run-fit.js";
 import { runBatches } from "./status-at-run-loop.js";
 import { outcomesOf } from "./status-at-run-outcome.js";
 import { noResult, type Selection, selector } from "./status-at-run-select.js";
+import { runUse } from "./status-at-run-use.js";
 
 /*
  * Spec 023 D4 (row 023-07): `squeal status --at <commit> --run`. In the
@@ -253,53 +253,25 @@ export function atRun(input: AtRunInput): AtRun {
     for (const [id, state] of outcomes) states.set(id, state);
   }
 
-  const use = (now?: NowPart): RunUse => {
-    const all = [...states.values()];
-    const ran = all.filter(
-      (s) => s.state === "pass" || s.state === "fail" || (s.state === "not comparable" && s.ran),
+  const use = (now?: NowPart): RunUse =>
+    runUse(
+      {
+        call: { given: input.given, paths: input.paths, allMissing: args.allMissing },
+        timeoutSeconds: args.timeoutSeconds,
+        usedMs: Math.round(elapsed()),
+        overheadMs,
+        gateMs,
+        states: [...states.values()],
+        selected: selection.run.length,
+        notSelected: selection.unselected?.size ?? 0,
+        changed,
+        timedOut: timedOut || leftOut.length > 0,
+        estimate,
+        leftSeconds,
+        batches: batchTimes,
+      },
+      now,
     );
-    const notRun = all.filter((s) => s.state === "not run" && s.reason === "budget").length;
-    const notPrepared = all.filter((s) => s.state === "not run" && s.reason === "prepare").length;
-    const here: SideFit = {
-      left: notRun,
-      ran: ran.length,
-      gateMs,
-      estimate: leftSeconds,
-    };
-    // R4: the fit from this run's rate on each side, both sides in one rerun.
-    const left = notRun + (now?.use.how === "gate" ? now.use.notRun : 0);
-    const fit =
-      left === 0 ? null : rerunFit(overheadMs, now === undefined ? [here] : [here, now.fit]);
-    return {
-      timeoutSeconds: args.timeoutSeconds,
-      usedMs: Math.round(elapsed()),
-      gateMs,
-      selected: selection.run.length,
-      notSelected: selection.unselected?.size ?? 0,
-      ran: ran.length,
-      stored: ran.filter((s) => "origin" in s && s.origin.stored === true).length,
-      notStored: ran.flatMap((s) =>
-        "origin" in s && s.origin.notStored !== undefined ? [s.origin.notStored] : [],
-      ),
-      changed: changed?.path ?? null,
-      changedBy: changed?.by ?? null,
-      notRun,
-      notComparable: all.filter((s) => s.state === "not comparable").length,
-      timedOut: timedOut || leftOut.length > 0,
-      estimate,
-      rerun: fit !== null && "seconds" in fit ? rerunCommand(input, fit.seconds) : null,
-      ...(fit !== null && "needs" in fit
-        ? { rerunNeeds: { seconds: fit.needs, from: fit.from } }
-        : {}),
-      batches: batchTimes.map((b) => ({
-        paths: b.paths,
-        seconds: Math.round(b.seconds * 10) / 10,
-      })),
-      setupFailed: setupCounts(all),
-      ...(notPrepared === 0 ? {} : { notPrepared }),
-      ...(now === undefined ? {} : { now: now.use }),
-    };
-  };
 
   const state = (ref: TestFileRef, keyed: SideState): SideState => {
     const id = testFileId(ref);
@@ -312,18 +284,4 @@ export function atRun(input: AtRunInput): AtRun {
   const selects = () => selection.selects ?? null;
   const { timeoutSeconds } = args;
   return { whileOpen, beforeRemove, state, selects, endMs, timeoutSeconds, use };
-}
-
-/** 020's rerun line: this call's own arguments with `seconds` as its `--timeout`. */
-function rerunCommand(input: AtRunInput, seconds: number): string {
-  const words = [
-    "squeal status --at",
-    shellWord(input.given),
-    ...input.paths.map(shellWord),
-    "--run",
-    ...(input.args.allMissing ? ["--all-missing"] : []),
-    "--timeout",
-    String(seconds),
-  ];
-  return words.join(" ");
 }
