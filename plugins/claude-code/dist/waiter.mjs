@@ -2749,7 +2749,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.572";
+  if (true) return "0.1.575";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -8378,6 +8378,436 @@ CREATE INDEX coverage_parts_used ON coverage_parts (used_at);
 `
 };
 
+// src/core/delivery/held-connection.ts
+var HoldingConnection = class extends Connection {
+  #held = false;
+  #savepoints = 0;
+  /** Calls of the plain `transaction` or `read` in progress: no hold starts inside one. */
+  #inside = 0;
+  /** The database file, which this thread's holds are kept by. */
+  #file;
+  constructor(db) {
+    super(db);
+    this.#file = fileOf2(db);
+  }
+  /** Whether a held transaction is open. */
+  get held() {
+    return this.#held;
+  }
+  run(sql, ...params) {
+    this.#notBlocked();
+    return super.run(sql, ...params);
+  }
+  transaction(fn) {
+    if (!this.#held) {
+      this.#notBlocked();
+      return this.#plain(() => super.transaction(fn));
+    }
+    const name2 = `squeal_held_${++this.#savepoints}`;
+    this.db.exec(`SAVEPOINT ${name2}`);
+    try {
+      const result = fn();
+      this.db.exec(`RELEASE ${name2}`);
+      return result;
+    } catch (error) {
+      this.db.exec(`ROLLBACK TO ${name2}; RELEASE ${name2}`);
+      throw error;
+    } finally {
+      this.#savepoints--;
+    }
+  }
+  read(fn) {
+    return this.#held ? fn() : this.#plain(() => super.read(fn));
+  }
+  /**
+   * Opens a `BEGIN IMMEDIATE` transaction and leaves it open; `null` when one
+   * is already open, held or not, so the caller writes in that one instead.
+   * Spec 021 D3: opened while this thread holds another database, it never
+   * waits, since the wait would keep that one's lock: a busy database fails
+   * it at once.
+   */
+  hold() {
+    if (this.#held || this.#inside > 0) return null;
+    this.#notBlocked();
+    this.#begin();
+    this.#held = true;
+    holders.set(this.#file, this);
+    let open2 = true;
+    const end = () => {
+      open2 = false;
+      this.#held = false;
+      release(this.#file, this);
+    };
+    return {
+      commit: () => {
+        if (!open2) return;
+        try {
+          this.db.exec("COMMIT");
+        } catch (error) {
+          rollback(this.db);
+          throw error;
+        } finally {
+          end();
+        }
+      },
+      rollback: () => {
+        if (!open2) return;
+        end();
+        rollback(this.db);
+      }
+    };
+  }
+  /** Closing rolls an open hold back (SQLite does), and it no longer holds the database for this thread. */
+  close() {
+    if (this.#held) {
+      this.#held = false;
+      release(this.#file, this);
+    }
+    super.close();
+  }
+  /** The wait for this database's hold by another connection of this thread; `null` when none holds it. */
+  heldElsewhere() {
+    const other = holders.get(this.#file);
+    if (other === void 0 || other === this) return null;
+    return new Promise((resolve7) => waiters.push({ file: this.#file, resolve: resolve7 }));
+  }
+  /**
+   * A write here while another connection of this thread holds the database
+   * would wait on that hold with the thread blocked, so the hold could never
+   * end: it fails at once as busy instead, and the hook goes silent.
+   */
+  #notBlocked() {
+    const other = holders.get(this.#file);
+    if (other !== void 0 && other !== this) throw threadBusy();
+  }
+  /** `BEGIN IMMEDIATE`, with no busy wait while this thread holds another database. */
+  #begin() {
+    if (![...holders.keys()].some((file) => file !== this.#file)) {
+      this.db.exec("BEGIN IMMEDIATE");
+      return;
+    }
+    const own = Number(Object.values(this.db.prepare("PRAGMA busy_timeout").get() ?? {})[0]);
+    this.db.exec("PRAGMA busy_timeout = 0");
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+    } finally {
+      this.db.exec(`PRAGMA busy_timeout = ${own}`);
+    }
+  }
+  #plain(fn) {
+    this.#inside++;
+    try {
+      return fn();
+    } finally {
+      this.#inside--;
+    }
+  }
+};
+var holders = /* @__PURE__ */ new Map();
+var waiters = [];
+function release(file, holder) {
+  if (holders.get(file) !== holder) return;
+  holders.delete(file);
+  const ready = waiters.filter((w) => w.file === file);
+  waiters = waiters.filter((w) => w.file !== file);
+  for (const waiter2 of ready) waiter2.resolve();
+}
+function fileOf2(db) {
+  const rows = db.prepare("PRAGMA database_list").all();
+  const file = rows.find((row) => row.name === "main")?.file;
+  return typeof file === "string" ? file : "";
+}
+function threadBusy() {
+  return Object.assign(new Error("database is locked: a delivery of this thread holds it"), {
+    code: "ERR_SQLITE_ERROR",
+    errcode: 5
+  });
+}
+function holdingAny() {
+  return holders.size > 0;
+}
+function holdFree(connection, boundMs) {
+  const wait = connection?.heldElsewhere() ?? null;
+  if (wait === null) return null;
+  let timer;
+  const bound = new Promise((done) => {
+    timer = setTimeout(done, boundMs);
+  });
+  return Promise.race([wait, bound]).finally(() => clearTimeout(timer));
+}
+
+// src/core/delivery/sent-meta.ts
+var READ = "SELECT value FROM meta WHERE key = ?";
+var SETS = /* @__PURE__ */ new Set([
+  "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+  "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value"
+]);
+var DELETE = "DELETE FROM meta WHERE key = ?";
+function readsMeta(sql) {
+  return sql === READ;
+}
+function overlaidMeta(sql, params, pending) {
+  if (sql !== READ || pending.length === 0) return void 0;
+  const key = params[0];
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const write2 = pending[i];
+    if (write2.params[0] !== key) continue;
+    if (SETS.has(write2.sql)) return { value: write2.params[1] };
+    if (write2.sql === DELETE) return null;
+  }
+  return void 0;
+}
+
+// src/core/delivery/sending-connection.ts
+var NeedsLease = class extends Error {
+  constructor() {
+    super("squeal: a store write needs the worktree's write lease first");
+  }
+};
+var SendingConnection = class extends HoldingConnection {
+  #direct = false;
+  #depth = 0;
+  #batch = [];
+  #held = null;
+  /** Batches sent outside a hold and not yet written. */
+  #unsent = 0;
+  #sending = /* @__PURE__ */ new Set();
+  #failure = null;
+  #closing = false;
+  #sender;
+  constructor(db, sender) {
+    super(db);
+    this.#sender = sender;
+    db.exec("PRAGMA query_only = 1");
+  }
+  /** Whether the store is written here: no daemon took the writes. */
+  get direct() {
+    return this.#direct;
+  }
+  get held() {
+    return this.#direct ? super.held : this.#held !== null;
+  }
+  /**
+   * Runs `work`, then waits until its batches are written and ends the lease
+   * unless a hold keeps it. A write before the lease (`NeedsLease`) takes
+   * it, through `acquire`, and runs `work` again: nothing was kept by then.
+   * `acquire` says whether a daemon took the lease; when none does, this
+   * connection writes the store itself from then on.
+   */
+  async unit(work, acquire) {
+    for (let tries = 0; ; tries++) {
+      try {
+        const result = await work();
+        await this.settle();
+        return result;
+      } catch (error) {
+        if (!(error instanceof NeedsLease) || tries > 0) {
+          await this.settle().catch(() => {
+          });
+          throw error;
+        }
+        if (!await acquire()) this.#becomeDirect();
+      }
+    }
+  }
+  /** Writes the store here from now on: no daemon serves. Before any write. */
+  writeDirectly() {
+    this.#becomeDirect();
+  }
+  /** Waits until every batch sent so far is written, then ends the lease unless a hold keeps it. */
+  async settle() {
+    try {
+      await this.sent();
+    } finally {
+      if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+    }
+  }
+  /** Row 021-36: whether a batch sent is not written yet (or a failed one not yet told). */
+  get unsettled() {
+    return this.#sending.size > 0 || this.#failure !== null;
+  }
+  /** Waits until every batch sent so far is written; rethrows the first that failed. */
+  async sent() {
+    while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
+    this.#rethrow();
+  }
+  /** Throws the first failed batch not yet told, once. */
+  #rethrow() {
+    const failure2 = this.#failure;
+    if (failure2 === null) return;
+    this.#failure = null;
+    this.#sender.surfaced?.();
+    throw failure2;
+  }
+  run(sql, ...params) {
+    if (this.#direct) return super.run(sql, ...params);
+    if (this.#depth > 0) {
+      this.#batch.push({ sql, params });
+      return 0;
+    }
+    return this.transaction(() => this.run(sql, ...params));
+  }
+  get(sql, ...params) {
+    if (this.#direct) return super.get(sql, ...params);
+    this.#readable();
+    if (!readsMeta(sql)) return super.get(sql, ...params);
+    const overlaid = overlaidMeta(sql, params, this.#pending());
+    return overlaid === void 0 ? super.get(sql, ...params) : overlaid;
+  }
+  all(sql, ...params) {
+    if (this.#direct) return super.all(sql, ...params);
+    this.#readable();
+    return super.all(sql, ...params);
+  }
+  transaction(fn) {
+    if (this.#direct) return super.transaction(fn);
+    const outer = this.#depth === 0;
+    if (outer) {
+      if (this.#held === null && !this.#sender.leased) throw new NeedsLease();
+      if (this.#sender.post !== void 0) this.#rethrow();
+      this.#readable();
+      this.db.exec("BEGIN");
+    }
+    const mark = this.#batch.length;
+    this.#depth++;
+    try {
+      const result = fn();
+      if (outer) {
+        this.db.exec("COMMIT");
+        this.#end(this.#batch);
+      }
+      return result;
+    } catch (error) {
+      this.#batch.length = mark;
+      if (outer) {
+        this.#batch = [];
+        rollback(this.db);
+      }
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
+  read(fn) {
+    if (this.#direct) return super.read(fn);
+    if (this.#depth > 0) return fn();
+    this.#readable();
+    this.db.exec("BEGIN");
+    this.#depth++;
+    try {
+      const result = fn();
+      this.db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      rollback(this.db);
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
+  /**
+   * Keeps every batch from now until the hold's commit, which sends them as
+   * one and ends the lease once they are written; its rollback drops them
+   * and ends the lease. `null` inside a transaction or a hold, as
+   * `HoldingConnection.hold` is. Needs the lease (`NeedsLease`).
+   */
+  hold() {
+    if (this.#direct) return super.hold();
+    if (this.#held !== null || this.#depth > 0) return null;
+    if (!this.#sender.leased) throw new NeedsLease();
+    this.#readable();
+    const held = [];
+    this.#held = held;
+    let open2 = true;
+    return {
+      commit: () => {
+        if (!open2) return;
+        open2 = false;
+        this.#held = null;
+        this.#track(this.#send(held, true), false);
+      },
+      rollback: () => {
+        if (!open2) return;
+        open2 = false;
+        this.#held = null;
+        this.#track(this.#sender.release(), false);
+      }
+    };
+  }
+  heldElsewhere() {
+    return this.#direct ? super.heldElsewhere() : null;
+  }
+  /**
+   * Closes once every batch sent is written, since one the daemon does not
+   * take is written here. A hold left open is dropped and its lease ended:
+   * a live process keeps its lease until then (review 0.1.442 B3).
+   */
+  close() {
+    if (this.#held !== null || this.#sender.leased && !this.#direct) {
+      this.#held = null;
+      this.#track(this.#sender.release(), false);
+    }
+    if (this.#sending.size === 0) {
+      super.close();
+      return;
+    }
+    if (this.#closing) return;
+    this.#closing = true;
+    void Promise.allSettled([...this.#sending]).then(() => super.close());
+  }
+  /** A read now would miss writes not yet written: it must wait for them (`sent`). */
+  #readable() {
+    if (this.#unsent > 0) {
+      throw new Error("squeal: a store read before this hook's writes were written (await sent())");
+    }
+  }
+  /** What a read here must see before the store has it: the hold's batch, then the open one. */
+  #pending() {
+    if (this.#held === null) return this.#depth > 0 ? this.#batch : [];
+    return this.#depth > 0 ? [...this.#held, ...this.#batch] : this.#held;
+  }
+  #end(batch) {
+    this.#batch = [];
+    if (batch.length === 0) return;
+    if (this.#sender.post !== void 0) this.#track(this.#sender.post(batch), false);
+    else if (this.#held !== null) this.#held.push(...batch);
+    else this.#track(this.#send(batch, false), true);
+  }
+  /** Sends `batch`; when no daemon takes it, writes it here and stays direct. */
+  async #send(batch, release2) {
+    if (batch.length === 0) {
+      if (release2) await this.#sender.release();
+      return;
+    }
+    if (await this.#sender.send(batch, release2) === "written") return;
+    this.#becomeDirect();
+    super.transaction(() => {
+      for (const { sql, params } of batch) super.run(sql, ...params);
+    });
+  }
+  #track(sending, unsent) {
+    if (unsent) this.#unsent++;
+    const tracked = sending.then(
+      () => {
+      },
+      (error) => {
+        this.#failure ??= error;
+      }
+    );
+    const done = tracked.finally(() => {
+      if (unsent) this.#unsent--;
+      this.#sending.delete(done);
+    });
+    this.#sending.add(done);
+  }
+  /** From now on the store is written here, as `HoldingConnection` writes it. */
+  #becomeDirect() {
+    if (this.#direct) return;
+    this.#direct = true;
+    this.db.exec("PRAGMA query_only = 0");
+  }
+};
+
 // src/core/code/store/counts.ts
 var LANGUAGES = [
   "typescript",
@@ -8639,7 +9069,7 @@ var PART_CACHE_LIMIT = 8192;
 var UPSERT = `INSERT INTO coverage (result_key, provider_version, record, recorded_at) VALUES (?, ?, ?, ?)
   ON CONFLICT DO UPDATE SET record = excluded.record,
     recorded_at = max(excluded.recorded_at, recorded_at + 1)`;
-function createCoverageRepo(conn) {
+function createCoverageRepo(conn, sent) {
   const indexed = conn.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'index' AND name = ?", INDEX) !== null;
   const by = indexed ? `coverage INDEXED BY ${INDEX}` : "coverage";
   let parted = false;
@@ -8689,43 +9119,63 @@ function createCoverageRepo(conn) {
     put(key, record, at) {
       conn.run(UPSERT, key.resultKey, key.providerVersion, record, at);
     },
-    putParts(key, record, at) {
-      conn.transaction(() => {
+    async putParts(key, record, at) {
+      const hashes = JSON.stringify(record.parts.map((p) => p.hash));
+      const stored4 = conn.transaction(() => {
         const before = storedAt2(key);
-        const stored4 = before === null ? at : Math.max(at, before + 1);
+        const stored5 = before === null ? at : Math.max(at, before + 1);
         const known = /* @__PURE__ */ new Map();
         for (const row of conn.all(
-          `SELECT j.key AS i, p.id, p.used_at FROM json_each(?) j
-             JOIN coverage_parts p ON p.hash = j.value`,
-          JSON.stringify(record.parts.map((p) => p.hash))
+          `SELECT j.key AS i, p.used_at FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+          hashes
         )) {
-          const hash3 = record.parts[num(row, "i")]?.hash ?? "";
-          known.set(hash3, { id: num(row, "id"), usedAt: num(row, "used_at") });
+          known.set(record.parts[num(row, "i")]?.hash ?? "", num(row, "used_at"));
         }
-        const stale = [...known.values()].filter((p) => p.usedAt < stored4 - PART_REFRESH_MS).map((p) => p.id);
-        const ids = record.parts.map((part) => {
-          const found2 = known.get(part.hash);
-          if (found2 !== void 0) return found2.id;
-          const made = conn.get(
-            "INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?) RETURNING id",
+        for (const part of record.parts) {
+          if (known.has(part.hash)) continue;
+          known.set(part.hash, stored5);
+          conn.run(
+            `INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?)
+             ON CONFLICT (hash) DO UPDATE SET used_at = max(used_at, excluded.used_at)`,
             part.hash,
             part.bytes,
-            stored4
-          );
-          const id = made === null ? 0 : num(made, "id");
-          known.set(part.hash, { id, usedAt: stored4 });
-          return id;
-        });
-        if (stale.length > 0) {
-          conn.run(
-            "UPDATE coverage_parts SET used_at = ? WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
-            stored4,
-            JSON.stringify(stale),
-            stored4 - PART_REFRESH_MS
+            stored5
           );
         }
-        conn.run(UPSERT, key.resultKey, key.providerVersion, manifestBytes(record, ids), stored4);
+        const stale = [...known].filter(([, usedAt]) => usedAt < stored5 - PART_REFRESH_MS);
+        if (stale.length > 0) {
+          conn.run(
+            `UPDATE coverage_parts SET used_at = ?
+             WHERE hash IN (SELECT value FROM json_each(?)) AND used_at < ?`,
+            stored5,
+            JSON.stringify(stale.map(([hash3]) => hash3)),
+            stored5 - PART_REFRESH_MS
+          );
+        }
+        return stored5;
       });
+      if (sent !== void 0) await sent();
+      conn.transaction(() => {
+        const ids = /* @__PURE__ */ new Map();
+        for (const row of conn.all(
+          `SELECT j.value AS hash, p.id FROM json_each(?) j JOIN coverage_parts p ON p.hash = j.value`,
+          hashes
+        )) {
+          ids.set(str(row, "hash"), num(row, "id"));
+        }
+        const listed3 = record.parts.map((part) => ids.get(part.hash));
+        if (listed3.some((id) => id === void 0)) {
+          throw new Error("squeal code store: a coverage part is missing after its insert");
+        }
+        conn.run(
+          UPSERT,
+          key.resultKey,
+          key.providerVersion,
+          manifestBytes(record, listed3),
+          stored4
+        );
+      });
+      if (sent !== void 0) await sent();
     }
   };
 }
@@ -8741,6 +9191,11 @@ for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
 
 // src/core/code/coverage/record.ts
 var COVERAGE_RECORD_VERSION = 4;
+
+// src/core/code/store/staged.ts
+var SUFFIX = " recount";
+var stagedId = (worktreeId) => `${worktreeId}${SUFFIX}`;
+var isStagedId = (id) => id.endsWith(SUFFIX);
 
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
@@ -8837,7 +9292,7 @@ function* pruneCodeSlices(conn, options, counts) {
   yield* vacuum2(conn);
 }
 function deadWorktrees(conn, live) {
-  const kept2 = new Set(live);
+  const kept2 = /* @__PURE__ */ new Set([...live, ...live.map((id) => stagedId(id))]);
   const found2 = new Set(
     PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row) => str(row, "id")))
   );
@@ -8900,14 +9355,14 @@ function findCodeCheckId(conn, check) {
   const row = conn.get(`SELECT id FROM checks WHERE ${CHECK_WHERE2}`, ...checkParams2(check));
   return row === null ? null : num(row, "id");
 }
-function ensureCodeCheckId(conn, check) {
+var CHECK_ID = `(SELECT id FROM checks WHERE ${CHECK_WHERE2})`;
+function ensureCodeCheck(conn, check) {
+  const params = checkParams2(check);
   conn.run(
     "INSERT INTO checks (path, qualified_name, occurrence) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-    ...checkParams2(check)
+    ...params
   );
-  const id = findCodeCheckId(conn, check);
-  if (id === null) throw new Error("squeal code store: check row missing after insert");
-  return id;
+  return params;
 }
 var CHECK_COLUMNS2 = "c.path, c.qualified_name, c.occurrence";
 function checkFrom2(row) {
@@ -8977,13 +9432,13 @@ function createStateRepo(conn) {
         for (const state of states) {
           conn.run(
             `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
-               counted_at, blob, changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               counted_at, blob, changed_at) VALUES (?, ${CHECK_ID}, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT (worktree_id, check_id, measure) DO UPDATE SET
                outcome = excluded.outcome, value = excluded.value, threshold = excluded.threshold,
                counted_at = excluded.counted_at, blob = excluded.blob,
                changed_at = excluded.changed_at`,
             state.worktreeId,
-            ensureCodeCheckId(conn, state.check),
+            ...ensureCodeCheck(conn, state.check),
             state.measure,
             state.outcome,
             state.value,
@@ -9048,23 +9503,24 @@ function createStateRepo(conn) {
       conn.transaction(() => {
         const fromId2 = findCodeCheckId(conn, from);
         if (fromId2 === null) return;
-        const toId = ensureCodeCheckId(conn, to);
+        const toId = ensureCodeCheck(conn, to);
         for (const table of ["states", "views"]) {
           conn.run(
-            `UPDATE OR REPLACE ${table} SET check_id = ? WHERE worktree_id = ? AND check_id = ?`,
-            toId,
+            `UPDATE OR REPLACE ${table} SET check_id = ${CHECK_ID}
+             WHERE worktree_id = ? AND check_id = ?`,
+            ...toId,
             worktreeId,
             fromId2
           );
         }
         conn.run(
-          "DELETE FROM transitions WHERE worktree_id = ? AND check_id = ?",
+          `DELETE FROM transitions WHERE worktree_id = ? AND check_id = ${CHECK_ID}`,
           worktreeId,
-          toId
+          ...toId
         );
         conn.run(
-          "UPDATE transitions SET check_id = ? WHERE worktree_id = ? AND check_id = ?",
-          toId,
+          `UPDATE transitions SET check_id = ${CHECK_ID} WHERE worktree_id = ? AND check_id = ?`,
+          ...toId,
           worktreeId,
           fromId2
         );
@@ -9072,7 +9528,13 @@ function createStateRepo(conn) {
     },
     adopt(worktreeId, staged, measure2, removed) {
       return conn.transaction(() => {
-        const written2 = conn.run(
+        const staging = conn.get(
+          "SELECT count(*) AS n FROM states WHERE worktree_id = ? AND measure = ?",
+          staged,
+          measure2
+        );
+        const written2 = staging === null ? 0 : num(staging, "n");
+        conn.run(
           `INSERT INTO states (worktree_id, check_id, measure, outcome, value, threshold,
              counted_at, blob, changed_at, edited_revision, edited_at)
            SELECT ?, check_id, measure, outcome, value, threshold, counted_at, blob, changed_at,
@@ -9124,10 +9586,6 @@ function toEdit(row) {
   };
 }
 
-// src/core/code/store/staged.ts
-var SUFFIX = " recount";
-var isStagedId = (id) => id.endsWith(SUFFIX);
-
 // src/core/code/store/transitions.ts
 var KINDS2 = [
   "first-seen-fail",
@@ -9143,9 +9601,10 @@ function createTransitionRepo2(conn) {
       conn.transaction(() => {
         for (const t of transitions) {
           conn.run(
-            `INSERT INTO transitions (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO transitions (${COLUMNS})
+             VALUES (?, ${CHECK_ID}, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             t.worktreeId,
-            ensureCodeCheckId(conn, t.check),
+            ...ensureCodeCheck(conn, t.check),
             t.measure,
             t.kind,
             t.from,
@@ -9163,7 +9622,7 @@ function createTransitionRepo2(conn) {
       return conn.transaction(() => {
         const row = conn.get("SELECT count(*) AS n FROM transitions WHERE worktree_id = ?", staged);
         if (row === null || num(row, "n") !== expected) return 0;
-        return conn.run(
+        conn.run(
           `INSERT INTO transitions (${COLUMNS})
            SELECT ?, check_id, measure, kind, from_outcome, to_outcome, from_value, to_value,
              threshold, revision, at
@@ -9171,6 +9630,7 @@ function createTransitionRepo2(conn) {
           worktreeId,
           staged
         );
+        return expected;
       });
     },
     dropStaged(staged) {
@@ -9228,12 +9688,12 @@ function createViewRepo2(conn) {
         for (const entry3 of entries) {
           conn.run(
             `INSERT INTO views (worktree_id, session_id, agent_id, check_id, measure, outcome,
-               threshold, told, told_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               threshold, told, told_at) VALUES (?, ?, ?, ${CHECK_ID}, ?, ?, ?, ?, ?)
              ON CONFLICT (worktree_id, session_id, agent_id, check_id, measure) DO UPDATE SET
                outcome = excluded.outcome, threshold = excluded.threshold,
                told = excluded.told, told_at = excluded.told_at`,
             ...consumerParams2(consumer),
-            ensureCodeCheckId(conn, entry3.check),
+            ...ensureCodeCheck(conn, entry3.check),
             entry3.measure,
             entry3.outcome,
             entry3.threshold,
@@ -9285,6 +9745,9 @@ function toEntry(row) {
 
 // src/core/code/store/store.ts
 function createCodeStore(conn, schemaVersion, path) {
+  const posting = conn instanceof SendingConnection;
+  const sent = posting ? () => conn.sent() : async () => {
+  };
   return {
     path,
     schemaVersion,
@@ -9294,11 +9757,13 @@ function createCodeStore(conn, schemaVersion, path) {
     states: createStateRepo(conn),
     transitions: createTransitionRepo2(conn),
     views: createViewRepo2(conn),
-    coverage: createCoverageRepo(conn),
+    coverage: createCoverageRepo(conn, posting ? sent : void 0),
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
     pruneSlices: (options, counts) => pruneCodeSlices(conn, options, counts),
+    sent,
+    unsettled: () => posting && conn.unsettled,
     close: () => conn.close()
   };
 }
@@ -9313,6 +9778,15 @@ function createMetaRepo2(conn) {
         "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
         key,
         value
+      );
+    },
+    setWhilePresent(key, value, present) {
+      conn.run(
+        `INSERT INTO meta (key, value) SELECT ?, ? WHERE EXISTS (SELECT 1 FROM meta WHERE key = ?)
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+        key,
+        value,
+        present
       );
     },
     delete(key) {
@@ -9376,164 +9850,6 @@ function makeIndexes2(db) {
     rollback(db);
     throw error;
   }
-}
-
-// src/core/delivery/held-connection.ts
-var HoldingConnection = class extends Connection {
-  #held = false;
-  #savepoints = 0;
-  /** Calls of the plain `transaction` or `read` in progress: no hold starts inside one. */
-  #inside = 0;
-  /** The database file, which this thread's holds are kept by. */
-  #file;
-  constructor(db) {
-    super(db);
-    this.#file = fileOf2(db);
-  }
-  /** Whether a held transaction is open. */
-  get held() {
-    return this.#held;
-  }
-  run(sql, ...params) {
-    this.#notBlocked();
-    return super.run(sql, ...params);
-  }
-  transaction(fn) {
-    if (!this.#held) {
-      this.#notBlocked();
-      return this.#plain(() => super.transaction(fn));
-    }
-    const name2 = `squeal_held_${++this.#savepoints}`;
-    this.db.exec(`SAVEPOINT ${name2}`);
-    try {
-      const result = fn();
-      this.db.exec(`RELEASE ${name2}`);
-      return result;
-    } catch (error) {
-      this.db.exec(`ROLLBACK TO ${name2}; RELEASE ${name2}`);
-      throw error;
-    } finally {
-      this.#savepoints--;
-    }
-  }
-  read(fn) {
-    return this.#held ? fn() : this.#plain(() => super.read(fn));
-  }
-  /**
-   * Opens a `BEGIN IMMEDIATE` transaction and leaves it open; `null` when one
-   * is already open, held or not, so the caller writes in that one instead.
-   * Spec 021 D3: opened while this thread holds another database, it never
-   * waits, since the wait would keep that one's lock: a busy database fails
-   * it at once.
-   */
-  hold() {
-    if (this.#held || this.#inside > 0) return null;
-    this.#notBlocked();
-    this.#begin();
-    this.#held = true;
-    holders.set(this.#file, this);
-    let open2 = true;
-    const end = () => {
-      open2 = false;
-      this.#held = false;
-      release(this.#file, this);
-    };
-    return {
-      commit: () => {
-        if (!open2) return;
-        try {
-          this.db.exec("COMMIT");
-        } catch (error) {
-          rollback(this.db);
-          throw error;
-        } finally {
-          end();
-        }
-      },
-      rollback: () => {
-        if (!open2) return;
-        end();
-        rollback(this.db);
-      }
-    };
-  }
-  /** Closing rolls an open hold back (SQLite does), and it no longer holds the database for this thread. */
-  close() {
-    if (this.#held) {
-      this.#held = false;
-      release(this.#file, this);
-    }
-    super.close();
-  }
-  /** The wait for this database's hold by another connection of this thread; `null` when none holds it. */
-  heldElsewhere() {
-    const other = holders.get(this.#file);
-    if (other === void 0 || other === this) return null;
-    return new Promise((resolve7) => waiters.push({ file: this.#file, resolve: resolve7 }));
-  }
-  /**
-   * A write here while another connection of this thread holds the database
-   * would wait on that hold with the thread blocked, so the hold could never
-   * end: it fails at once as busy instead, and the hook goes silent.
-   */
-  #notBlocked() {
-    const other = holders.get(this.#file);
-    if (other !== void 0 && other !== this) throw threadBusy();
-  }
-  /** `BEGIN IMMEDIATE`, with no busy wait while this thread holds another database. */
-  #begin() {
-    if (![...holders.keys()].some((file) => file !== this.#file)) {
-      this.db.exec("BEGIN IMMEDIATE");
-      return;
-    }
-    const own = Number(Object.values(this.db.prepare("PRAGMA busy_timeout").get() ?? {})[0]);
-    this.db.exec("PRAGMA busy_timeout = 0");
-    try {
-      this.db.exec("BEGIN IMMEDIATE");
-    } finally {
-      this.db.exec(`PRAGMA busy_timeout = ${own}`);
-    }
-  }
-  #plain(fn) {
-    this.#inside++;
-    try {
-      return fn();
-    } finally {
-      this.#inside--;
-    }
-  }
-};
-var holders = /* @__PURE__ */ new Map();
-var waiters = [];
-function release(file, holder) {
-  if (holders.get(file) !== holder) return;
-  holders.delete(file);
-  const ready = waiters.filter((w) => w.file === file);
-  waiters = waiters.filter((w) => w.file !== file);
-  for (const waiter2 of ready) waiter2.resolve();
-}
-function fileOf2(db) {
-  const rows = db.prepare("PRAGMA database_list").all();
-  const file = rows.find((row) => row.name === "main")?.file;
-  return typeof file === "string" ? file : "";
-}
-function threadBusy() {
-  return Object.assign(new Error("database is locked: a delivery of this thread holds it"), {
-    code: "ERR_SQLITE_ERROR",
-    errcode: 5
-  });
-}
-function holdingAny() {
-  return holders.size > 0;
-}
-function holdFree(connection, boundMs) {
-  const wait = connection?.heldElsewhere() ?? null;
-  if (wait === null) return null;
-  let timer;
-  const bound = new Promise((done) => {
-    timer = setTimeout(done, boundMs);
-  });
-  return Promise.race([wait, bound]).finally(() => clearTimeout(timer));
 }
 
 // src/core/delivery/code-source.ts
@@ -14728,266 +15044,6 @@ function leaseBusy(holder) {
 function writeBusy() {
   return busy("the daemon has not written this batch yet");
 }
-
-// src/core/delivery/sent-meta.ts
-var READ = "SELECT value FROM meta WHERE key = ?";
-var SETS = /* @__PURE__ */ new Set([
-  "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-  "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value"
-]);
-var DELETE = "DELETE FROM meta WHERE key = ?";
-function readsMeta(sql) {
-  return sql === READ;
-}
-function overlaidMeta(sql, params, pending) {
-  if (sql !== READ || pending.length === 0) return void 0;
-  const key = params[0];
-  for (let i = pending.length - 1; i >= 0; i--) {
-    const write2 = pending[i];
-    if (write2.params[0] !== key) continue;
-    if (SETS.has(write2.sql)) return { value: write2.params[1] };
-    if (write2.sql === DELETE) return null;
-  }
-  return void 0;
-}
-
-// src/core/delivery/sending-connection.ts
-var NeedsLease = class extends Error {
-  constructor() {
-    super("squeal: a store write needs the worktree's write lease first");
-  }
-};
-var SendingConnection = class extends HoldingConnection {
-  #direct = false;
-  #depth = 0;
-  #batch = [];
-  #held = null;
-  /** Batches sent outside a hold and not yet written. */
-  #unsent = 0;
-  #sending = /* @__PURE__ */ new Set();
-  #failure = null;
-  #closing = false;
-  #sender;
-  constructor(db, sender) {
-    super(db);
-    this.#sender = sender;
-    db.exec("PRAGMA query_only = 1");
-  }
-  /** Whether the store is written here: no daemon took the writes. */
-  get direct() {
-    return this.#direct;
-  }
-  get held() {
-    return this.#direct ? super.held : this.#held !== null;
-  }
-  /**
-   * Runs `work`, then waits until its batches are written and ends the lease
-   * unless a hold keeps it. A write before the lease (`NeedsLease`) takes
-   * it, through `acquire`, and runs `work` again: nothing was kept by then.
-   * `acquire` says whether a daemon took the lease; when none does, this
-   * connection writes the store itself from then on.
-   */
-  async unit(work, acquire) {
-    for (let tries = 0; ; tries++) {
-      try {
-        const result = await work();
-        await this.settle();
-        return result;
-      } catch (error) {
-        if (!(error instanceof NeedsLease) || tries > 0) {
-          await this.settle().catch(() => {
-          });
-          throw error;
-        }
-        if (!await acquire()) this.#becomeDirect();
-      }
-    }
-  }
-  /** Writes the store here from now on: no daemon serves. Before any write. */
-  writeDirectly() {
-    this.#becomeDirect();
-  }
-  /** Waits until every batch sent so far is written, then ends the lease unless a hold keeps it. */
-  async settle() {
-    try {
-      await this.sent();
-    } finally {
-      if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
-    }
-  }
-  /** Waits until every batch sent so far is written; rethrows the first that failed. */
-  async sent() {
-    while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
-    const failure2 = this.#failure;
-    this.#failure = null;
-    if (failure2 !== null) throw failure2;
-  }
-  run(sql, ...params) {
-    if (this.#direct) return super.run(sql, ...params);
-    if (this.#depth > 0) {
-      this.#batch.push({ sql, params });
-      return 0;
-    }
-    return this.transaction(() => this.run(sql, ...params));
-  }
-  get(sql, ...params) {
-    if (this.#direct) return super.get(sql, ...params);
-    this.#readable();
-    if (!readsMeta(sql)) return super.get(sql, ...params);
-    const overlaid = overlaidMeta(sql, params, this.#pending());
-    return overlaid === void 0 ? super.get(sql, ...params) : overlaid;
-  }
-  all(sql, ...params) {
-    if (this.#direct) return super.all(sql, ...params);
-    this.#readable();
-    return super.all(sql, ...params);
-  }
-  transaction(fn) {
-    if (this.#direct) return super.transaction(fn);
-    const outer = this.#depth === 0;
-    if (outer) {
-      if (this.#held === null && !this.#sender.leased) throw new NeedsLease();
-      this.#readable();
-      this.db.exec("BEGIN");
-    }
-    const mark = this.#batch.length;
-    this.#depth++;
-    try {
-      const result = fn();
-      if (outer) {
-        this.db.exec("COMMIT");
-        this.#end(this.#batch);
-      }
-      return result;
-    } catch (error) {
-      this.#batch.length = mark;
-      if (outer) {
-        this.#batch = [];
-        rollback(this.db);
-      }
-      throw error;
-    } finally {
-      this.#depth--;
-    }
-  }
-  read(fn) {
-    if (this.#direct) return super.read(fn);
-    if (this.#depth > 0) return fn();
-    this.#readable();
-    this.db.exec("BEGIN");
-    this.#depth++;
-    try {
-      const result = fn();
-      this.db.exec("COMMIT");
-      return result;
-    } catch (error) {
-      rollback(this.db);
-      throw error;
-    } finally {
-      this.#depth--;
-    }
-  }
-  /**
-   * Keeps every batch from now until the hold's commit, which sends them as
-   * one and ends the lease once they are written; its rollback drops them
-   * and ends the lease. `null` inside a transaction or a hold, as
-   * `HoldingConnection.hold` is. Needs the lease (`NeedsLease`).
-   */
-  hold() {
-    if (this.#direct) return super.hold();
-    if (this.#held !== null || this.#depth > 0) return null;
-    if (!this.#sender.leased) throw new NeedsLease();
-    this.#readable();
-    const held = [];
-    this.#held = held;
-    let open2 = true;
-    return {
-      commit: () => {
-        if (!open2) return;
-        open2 = false;
-        this.#held = null;
-        this.#track(this.#send(held, true), false);
-      },
-      rollback: () => {
-        if (!open2) return;
-        open2 = false;
-        this.#held = null;
-        this.#track(this.#sender.release(), false);
-      }
-    };
-  }
-  heldElsewhere() {
-    return this.#direct ? super.heldElsewhere() : null;
-  }
-  /**
-   * Closes once every batch sent is written, since one the daemon does not
-   * take is written here. A hold left open is dropped and its lease ended:
-   * a live process keeps its lease until then (review 0.1.442 B3).
-   */
-  close() {
-    if (this.#held !== null || this.#sender.leased && !this.#direct) {
-      this.#held = null;
-      this.#track(this.#sender.release(), false);
-    }
-    if (this.#sending.size === 0) {
-      super.close();
-      return;
-    }
-    if (this.#closing) return;
-    this.#closing = true;
-    void Promise.allSettled([...this.#sending]).then(() => super.close());
-  }
-  /** A read now would miss writes not yet written: it must wait for them (`sent`). */
-  #readable() {
-    if (this.#unsent > 0) {
-      throw new Error("squeal: a store read before this hook's writes were written (await sent())");
-    }
-  }
-  /** What a read here must see before the store has it: the hold's batch, then the open one. */
-  #pending() {
-    if (this.#held === null) return this.#depth > 0 ? this.#batch : [];
-    return this.#depth > 0 ? [...this.#held, ...this.#batch] : this.#held;
-  }
-  #end(batch) {
-    this.#batch = [];
-    if (batch.length === 0) return;
-    if (this.#held !== null) this.#held.push(...batch);
-    else this.#track(this.#send(batch, false), true);
-  }
-  /** Sends `batch`; when no daemon takes it, writes it here and stays direct. */
-  async #send(batch, release2) {
-    if (batch.length === 0) {
-      if (release2) await this.#sender.release();
-      return;
-    }
-    if (await this.#sender.send(batch, release2) === "written") return;
-    this.#becomeDirect();
-    super.transaction(() => {
-      for (const { sql, params } of batch) super.run(sql, ...params);
-    });
-  }
-  #track(sending, unsent) {
-    if (unsent) this.#unsent++;
-    const tracked = sending.then(
-      () => {
-      },
-      (error) => {
-        this.#failure ??= error;
-      }
-    );
-    const done = tracked.finally(() => {
-      if (unsent) this.#unsent--;
-      this.#sending.delete(done);
-    });
-    this.#sending.add(done);
-  }
-  /** From now on the store is written here, as `HoldingConnection` writes it. */
-  #becomeDirect() {
-    if (this.#direct) return;
-    this.#direct = true;
-    this.db.exec("PRAGMA query_only = 0");
-  }
-};
 
 // src/core/delivery/sent-store.ts
 function openSentStore(commonDir, options) {

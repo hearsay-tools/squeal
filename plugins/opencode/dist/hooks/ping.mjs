@@ -962,6 +962,10 @@ for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 
+// src/core/code/store/states.ts
+var CHECK_WHERE = "path = ? AND qualified_name = ? AND occurrence = ?";
+var CHECK_ID = `(SELECT id FROM checks WHERE ${CHECK_WHERE})`;
+
 // src/runners/node-test/describe.ts
 var UNCONFIGURED = { nodeTest: [] };
 var NODE_TEST = {

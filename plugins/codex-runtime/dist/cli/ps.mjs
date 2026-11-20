@@ -915,6 +915,26 @@ function poolDirs(places) {
   return [...new Set(envs.map((env) => slowSlotDir(env, userDir)))];
 }
 
+// src/core/ps/store-processes.ts
+function storeProcessOf(pid, args) {
+  const at = args.indexOf("store-process");
+  if (at < 1 || !SCRIPT.test(args[at - 1] ?? "")) return null;
+  const flag3 = args.indexOf("--store", at);
+  return {
+    pid,
+    file: flag3 < 0 ? "code" : args[flag3 + 1] ?? "code",
+    commonDir: args[at + 1] ?? null
+  };
+}
+function storeProcessLines(stores) {
+  if (stores.length === 0) return [];
+  return [
+    "",
+    "Store processes",
+    ...stores.map((s) => `  ${s.pid}  ${s.file}.sqlite of ${s.commonDir ?? "an unknown clone"}`)
+  ];
+}
+
 // src/core/ps/discover.ts
 var START_MARGIN_MS = 1e3;
 var SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
@@ -929,11 +949,14 @@ var discover = (source, table, places, locks = source.locks()) => {
     unknown.push({ what: HOLDERS, why });
   }
   const daemons = [];
+  const stores = [];
   for (const row2 of table.values()) {
     if (!NODE_COMMS.has(row2.comm)) continue;
     if (row2.uid !== null && row2.uid !== places.uid) continue;
     const args = source.cmdline(row2.pid);
     const at = args === null ? -1 : daemonVerbAt(args);
+    const store = args === null || at >= 0 ? null : storeProcessOf(row2.pid, args);
+    if (store !== null) stores.push(store);
     if (args === null || at < 0) continue;
     const daemon = found(source, row2, args, at, locks);
     if (daemon.worktreeId === null) {
@@ -942,7 +965,8 @@ var discover = (source, table, places, locks = source.locks()) => {
     }
     daemons.push(daemon);
   }
-  return { daemons, sockets: socketFiles(source, places, daemons), unknown };
+  const sockets = socketFiles(source, places, daemons);
+  return { daemons, sockets, unknown, ...stores.length === 0 ? {} : { storeProcesses: stores } };
 };
 function lockedAgain(source, discovery, [first, second]) {
   const both = first !== null && second !== null;
@@ -2185,6 +2209,7 @@ var render = (snapshot, { full }) => {
     lines.push("", "Files no live process uses");
     for (const file of snapshot.files) lines.push(...fileLines2(file));
   }
+  lines.push(...storeProcessLines(snapshot.storeProcesses ?? []));
   const checkouts = snapshot.checkouts ?? [];
   if (checkouts.length > 0) {
     lines.push("", "Temporary checkouts");
@@ -4348,7 +4373,8 @@ async function takeSnapshot(options) {
     unknown = [...unknown, { what: "checkouts", why: `not read: ${why}` }];
   }
   const flags = checkouts.reduce((n, c) => n + c.flags.length, 0);
-  return { ...shape, checkouts, flags: shape.flags + flags, unknown };
+  const storeProcesses = read.model.discovery.storeProcesses ?? [];
+  return { ...shape, checkouts, storeProcesses, flags: shape.flags + flags, unknown };
 }
 async function readWindow(o) {
   const { source, places } = o;

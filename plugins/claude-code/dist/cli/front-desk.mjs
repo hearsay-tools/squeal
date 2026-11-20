@@ -434,7 +434,7 @@ function quoteEnd(sql, start) {
 }
 
 // src/core/daemon/write-protocol.ts
-var TYPES = /* @__PURE__ */ new Set(["lease", "release", "write", "write-status"]);
+var TYPES = /* @__PURE__ */ new Set(["lease", "release", "write", "write-status", "write-cancel"]);
 function isWriteRequest(request) {
   return TYPES.has(request.type);
 }
@@ -466,13 +466,14 @@ function parseWriteRequest(request) {
       return {
         type: "release",
         worktreeId: request.worktreeId,
-        token: request.token
+        token: request.token,
+        ...request.leaving === true ? { leaving: true } : {}
       };
     case "write":
       return parseWrite(request);
     case "write-status":
-      if (typeof request.requestId !== "string") return '"requestId" must be a string';
-      return { type: "write-status", requestId: request.requestId };
+    case "write-cancel":
+      return parseWriteQuery(request);
     case "import":
       return parseImport(request);
     case "import-status":
@@ -487,6 +488,15 @@ function parseWriteRequest(request) {
       return void 0;
   }
 }
+function parseWriteQuery(request) {
+  if (request.type === "write-status") {
+    if (typeof request.requestId !== "string") return '"requestId" must be a string';
+    return { type: "write-status", requestId: request.requestId };
+  }
+  if (!isText2(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText2(request.seq)) return '"seq" must be a non-empty string';
+  return { type: "write-cancel", worktreeId: request.worktreeId, seq: request.seq };
+}
 function parseWrite(request) {
   const { worktreeId, storeSchema, token, release } = request;
   if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
@@ -495,13 +505,32 @@ function parseWrite(request) {
   if (typeof release !== "boolean") return '"release" must be true or false';
   const batch = parseBatch(request.batch);
   if (typeof batch === "string") return batch;
+  const queued = parseQueued(request);
+  if (typeof queued === "string") return queued;
   return {
     type: "write",
     worktreeId,
     storeSchema,
     token,
     release,
-    batch
+    batch,
+    ...queued
+  };
+}
+var KINDS = /* @__PURE__ */ new Set(["edit", "record", "prune"]);
+function parseQueued(request) {
+  const { kind, splittable, seq } = request;
+  if (kind !== void 0 && !KINDS.has(kind)) {
+    return '"kind" must be "edit", "record" or "prune"';
+  }
+  if (splittable !== void 0 && typeof splittable !== "boolean") {
+    return '"splittable" must be true or false';
+  }
+  if (seq !== void 0 && !isText2(seq)) return '"seq" must be a non-empty string';
+  return {
+    ...kind === void 0 ? {} : { kind },
+    ...splittable === void 0 ? {} : { splittable },
+    ...seq === void 0 ? {} : { seq }
   };
 }
 function parseImport(request) {
@@ -916,6 +945,8 @@ var WriteDesk = class {
         return this.release(request);
       case "write-status":
         return this.status(request);
+      case "write-cancel":
+        return errorResponse("a daemon cancels no write");
     }
   }
   lease(request) {
@@ -934,6 +965,10 @@ var WriteDesk = class {
     };
     remember(this.#issued, token);
     return this.#leaseAnswer(token, null);
+  }
+  /** Spec 021 D22.2 (row 021-36): whether a client holds the lease now, its process alive. */
+  get leased() {
+    return this.#current() !== null;
   }
   release(request) {
     const refused = this.#otherWorktree(request.worktreeId) ?? this.#unknownToken(request.token);
@@ -974,7 +1009,7 @@ var WriteDesk = class {
       lease.until = this.#now() + LEASE_TTL_MS;
       if (lease.releasing && lease.pending === 0 && this.#lease === lease) this.#lease = null;
     };
-    this.#context.requestWrite(request.batch).then(
+    this.#context.requestWrite(request.batch, request).then(
       () => settle(null),
       (error) => settle(error instanceof Error ? error.message : String(error))
     );
