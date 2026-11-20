@@ -71,6 +71,7 @@ export async function recordNodeTest(
       env: Object.fromEntries(
         Object.entries(project.env).map(([name, value]) => [name, configFieldHash(value)]),
       ),
+      nodeOptions: [],
       ...(preloads.length === 0 ? {} : { preloads: [...preloads] }),
       ...run,
     };

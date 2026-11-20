@@ -25,6 +25,12 @@ export interface NodeTestEntryHere {
   /** Relative to the root, `/`-separated; `""` at the root. */
   readonly cwd: RelativePath;
   readonly argv: readonly string[];
+  /**
+   * Review of 0.1.579 B1: the Node options its processes get here from
+   * `NODE_OPTIONS`, as the daemon's adapter reads them, without Squeal's
+   * recorders. Node reads them before `argv`.
+   */
+  readonly nodeOptions: readonly string[];
   readonly env: Readonly<Record<string, string>>;
   /** Its Node's probe here (D18), or `null` when that Node does not run. */
   readonly node: { readonly version: string; readonly nodeBuild: string } | null;
@@ -174,9 +180,13 @@ function processOf(
   if (nodeTest === undefined) {
     return { named, unusable: "a node:test part without its nodeTest header", entries: [] };
   }
-  const argv = entryArgv(nodeTest.execArgv);
+  const flags = recordedFlags(nodeTest);
+  if (flags === null) {
+    const unusable = "a node:test part that does not say what NODE_OPTIONS its process had";
+    return { named, unusable, entries: [] };
+  }
   const matched = entries.filter(
-    (entry) => entry.cwd === nodeTest.cwd && sameList(entry.argv, argv),
+    (entry) => entry.cwd === nodeTest.cwd && sameList(entryFlags(entry), flags),
   );
   return { named, unusable: partUnusable(named.part, head), entries: matched };
 }
@@ -248,11 +258,28 @@ function assigned(
   });
 }
 
+/**
+ * The Node flags a recorded process ran with, in the order Node reads them
+ * (`NODE_OPTIONS`', then `execArgv`), without those the daemon sets itself
+ * (D26.1; review of 0.1.579 B1); `null` when the part does not say its
+ * `NODE_OPTIONS`.
+ */
+function recordedFlags(nodeTest: PartNodeTest): string[] | null {
+  if (!Array.isArray(nodeTest.nodeOptions)) return null;
+  return entryArgv([...nodeTest.nodeOptions, ...nodeTest.execArgv]);
+}
+
+/** The flags the daemon gives an entry's processes here, as `recordedFlags` reads a part's. */
+function entryFlags(entry: NodeTestEntryHere): string[] {
+  return [...entryArgv(entry.nodeOptions), ...entry.argv];
+}
+
 function unmatchedText(part: Part): string {
   const nodeTest = part.header.nodeTest as PartNodeTest;
   const where = nodeTest.cwd === "" ? "the root" : nodeTest.cwd;
-  const flags = JSON.stringify(entryArgv(nodeTest.execArgv));
-  return `no nodeTest entry here runs in ${where} with flags ${flags}`;
+  const flags = JSON.stringify(recordedFlags(nodeTest));
+  const options = (nodeTest.nodeOptions ?? []).length > 0 ? ", NODE_OPTIONS first" : "";
+  return `no nodeTest entry here runs in ${where} with flags ${flags}${options}`;
 }
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {

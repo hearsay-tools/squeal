@@ -108,6 +108,14 @@ export interface PartNodeTest {
    */
   readonly env: Readonly<Record<string, string | null>>;
   /**
+   * Review of 0.1.579 B1: the Node options the process got from
+   * `NODE_OPTIONS`, as Node splits them, without the hooks `ci record`
+   * added and without Squeal's recorders; `[]` when it got none. Node reads
+   * them before `execArgv`, so `ci export` matches them, then `execArgv`,
+   * to an entry (D26.1). Absent: the process's files are left out.
+   */
+  readonly nodeOptions?: readonly string[];
+  /**
    * The project files the part's test file processes loaded before their
    * entry (`observedClosure`'s `preloadPaths`), sorted: the daemon reports
    * them as start-up paths (`RunReport.environmentObserved`, spec 016 D4),
