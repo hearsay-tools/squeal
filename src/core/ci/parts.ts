@@ -108,6 +108,13 @@ export interface PartNodeTest {
    */
   readonly env: Readonly<Record<string, string | null>>;
   /**
+   * The project files the part's test file processes loaded before their
+   * entry (`observedClosure`'s `preloadPaths`), sorted: the daemon reports
+   * them as start-up paths (`RunReport.environmentObserved`, spec 016 D4),
+   * which join the environment. Absent: none seen.
+   */
+  readonly preloads?: readonly RelativePath[];
+  /**
    * Why the part holds no test file: the process ran with a flag D25
    * refuses (`--test-isolation=none`, a name filter, `--test-only`,
    * `--watch`), or left no event of Squeal's reporter (D23.5). Absent:

@@ -37,6 +37,7 @@ const NODE_PART: Part = {
       version: "v24.21.0",
       nodeBuild: "b".repeat(64),
       env: { TZ: "c".repeat(64), LANG: null },
+      preloads: ["test/setup.mjs"],
     },
   },
   projects: [],
