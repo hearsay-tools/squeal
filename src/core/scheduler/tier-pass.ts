@@ -202,7 +202,7 @@ function candidateOf(
   const kind = backlog || (turnTier && slot !== null) ? "backlog" : turnTier ? "turn" : "edit";
   const width = slot !== null ? 1 : granted ? widest(view, files) : 0;
   const atGrant = grantFit(view, [...files], {
-    ...{ budget: shape.budget, offer, width, slot, trimmed: pick.trimmed, backlog, batch },
+    ...{ budgetAt: shape.budgetAt, offer, width, slot, trimmed: pick.trimmed, backlog, batch },
     tierSize: view.runner.tierSize,
   });
   return {
