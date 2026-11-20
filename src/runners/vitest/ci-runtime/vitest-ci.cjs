@@ -277,18 +277,6 @@ function vitestClass(load) {
   return null;
 }
 
-/** The evidence's settings in `SQUEAL_CI_RECORD`, or `null`. */
-function readEvidence() {
-  try {
-    const value = JSON.parse(process.env[VARIABLE] ?? "")?.evidence;
-    if (typeof value?.out !== "string" || typeof value.root !== "string") return null;
-    const skip = Array.isArray(value.skip) ? value.skip.filter((s) => typeof s === "string") : [];
-    return { out: value.out, root: value.root, skip, format: value.format };
-  } catch {
-    return null;
-  }
-}
-
 const settings = readSettings();
 
 // Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
@@ -301,7 +289,8 @@ try {
 } catch {}
 
 try {
-  require("./shared.cjs").shared("evidence-hooks.cjs").installEvidence(readEvidence());
+  const hooks = require("./shared.cjs").shared("evidence-hooks.cjs");
+  hooks.installEvidence(hooks.evidenceSettings());
 } catch {}
 
 if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
