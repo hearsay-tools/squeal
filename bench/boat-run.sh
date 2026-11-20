@@ -59,7 +59,7 @@ retry boat push "$ID" plugins/claude-code --to /home/user/claude-code >/dev/null
 retry boat push "$ID" bench --to /home/user/bench >/dev/null
 ARGS="--plugin /home/user/claude-code --out /home/user/results --steps $STEPS"
 [ -n "$CELLS" ] && ARGS="$ARGS --cells $CELLS"
-retry boat ssh "$ID" -- "cd /home/user && { pgrep -f bench/run-all.mjs >/dev/null || (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &); }"
+retry boat ssh "$ID" -- "cd /home/user && { pgrep -f '[b]ench/run-all.mjs' >/dev/null || (setsid nohup node bench/run-all.mjs $ARGS > run.log 2>&1 < /dev/null &); }"
 echo "started on $ID; progress: boat ssh $ID -- tail -f /home/user/run.log"
 
 until boat ssh "$ID" -- 'test -f /home/user/results/scorecard.md' >/dev/null 2>&1; do
