@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixture, git, linkInstall, ref } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { prove, resultRows } from "./proof-kit.js";
-import { clean, run } from "./status-at-kit.js";
+import { atHead, clean, run } from "./status-at-kit.js";
 
 /*
  * Review wave-11 B1 (row 023-18): a run file's outcome is read at the key the
@@ -37,7 +37,9 @@ function mutating() {
   const a = git(f.root, "rev-parse", "HEAD").trim();
   f.commit({ "data/a.txt": "2\n" });
   const b = git(f.root, "rev-parse", "HEAD").trim();
-  return { f, a, b, options: { cacheRoot: f.cacheRoot, install: linkInstall().install } };
+  // Row 023-29: B is HEAD; the tree is made dirty, and only the commit side runs.
+  const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) };
+  return { f, a, b, options };
 }
 
 interface Row {

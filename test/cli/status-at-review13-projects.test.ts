@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SideState } from "../../src/cli/status-at-report.js";
 import { fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
 import { SLOW } from "../scheduler/cleanup.js";
-import { clean, run } from "./status-at-kit.js";
+import { atHead, clean, run } from "./status-at-kit.js";
 
 /*
  * Review wave-13 third look (the human, 2026-11-19, "A: key per project"):
@@ -47,7 +47,7 @@ describe("review wave-13 third look: each project's own outcome after a stop", S
   it("reports the failing project's failure and the passing project's pass", async () => {
     const f = twoProjects(true);
     const head = git(f.root, "rev-parse", "HEAD").trim();
-    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) };
     const stopped = await run(
       f,
       { commit: head, json: true, run: { allMissing: true, timeoutSeconds: 20 } },
@@ -77,7 +77,7 @@ describe("review wave-13 third look: each project's own outcome after a stop", S
   it("control, no hold: the answer's projects disagree, so neither is told", async () => {
     const f = twoProjects(false);
     const head = git(f.root, "rev-parse", "HEAD").trim();
-    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install };
+    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, ...atHead(f) };
     const answered = await run(
       f,
       { commit: head, json: true, run: { allMissing: true, timeoutSeconds: 60 } },

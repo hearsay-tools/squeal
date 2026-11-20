@@ -47,6 +47,8 @@ export interface LoopEnd {
   /** The children's time in ms; `null` when none started. */
   readonly gateMs: number | null;
   readonly timedOut: boolean;
+  /** A batch's gate ran out of time, or its child was stopped: a file may have been cut mid-run. */
+  readonly cut: boolean;
   readonly batches: readonly BatchTime[];
 }
 
@@ -78,6 +80,7 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
   const stops: ((file: F) => SideState | null)[] = [];
   let gateMs: number | null = null;
   let timedOut = false;
+  let cut = false;
   let ended: { readonly error: string; readonly stopped?: true } | null = null;
   while (paths.length > 0 && ended === null) {
     const left = Math.floor((loop.endMs - performance.now()) / 1000);
@@ -95,11 +98,11 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     const took = performance.now() - started;
     gateMs = (gateMs ?? 0) + Math.round(took);
     batches.took(take.length, took / 1000);
-    if ("result" in answer && answer.result.timedOut) timedOut = true;
+    if ("result" in answer && answer.result.timedOut) cut = true;
     // A child that could not run or answer stops the batches: the next would end alike.
     if ("error" in answer) {
       ended = answer;
-      if (answer.stopped === true) timedOut = true;
+      if (answer.stopped === true) cut = true;
     }
     await loop.readBack(files, answer);
     const stop = afterSetup(loop, files, answer);
@@ -116,7 +119,7 @@ export async function runBatches<F>(loop: BatchLoop<F>): Promise<LoopEnd> {
     if (answer.stopped === true) timedOut = true;
     await loop.readBack(unstarted, answer);
   }
-  return { gateMs, timedOut, batches: batches.ran() };
+  return { gateMs, timedOut: timedOut || cut, cut, batches: batches.ran() };
 }
 
 /** R3: a batch's failed setups: its files' states set; what stops later files; `null` when none. */

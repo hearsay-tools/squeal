@@ -71,7 +71,13 @@ describe("status --at --run at its budget (row 023-19, P3)", SLOW, () => {
   it("keeps and reports a batch that completed, and ends at the budget when a later one cannot", async () => {
     const { f, a } = held();
     const budget = 45;
-    const options = { cacheRoot: f.cacheRoot, install: linkInstall().install, batchFiles: 1 };
+    // Row 023-29: the commit side only, which this test holds at its budget.
+    const options = {
+      cacheRoot: f.cacheRoot,
+      install: linkInstall().install,
+      batchFiles: 1,
+      workingTree: false,
+    } as const;
     const ran = await run(
       f,
       { commit: a, json: true, run: { allMissing: false, timeoutSeconds: budget } },
@@ -114,7 +120,11 @@ describe("status --at --run at its budget (row 023-19, P3)", SLOW, () => {
         `squeal: --run: 4 test files with no result at ${a.slice(0, 9)} to run, up to \\d+ at once: about \\d+ s from the stored durations of 2 \\(the others at their median\\); the budget is 3 s, the checkout and install included; to narrow it, name test files or folders: squeal status --at ${a} <path>\\.\\.\\. --run\n`,
       ),
     );
-    expect(cut.out).toContain("4 not run (budget). A rerun that fits:");
+    // Row 023-29 (R4): 900 s each, stored: no rerun up to the cap fits, so none is offered.
+    expect(cut.out).toMatch(
+      /\n8 not run \(budget: 4 at [0-9a-f]{9}, 4 now\); from their stored durations they need about \d+ (min|h)/,
+    );
+    expect(cut.out).not.toContain("A rerun that fits");
     clean(f);
   });
 });

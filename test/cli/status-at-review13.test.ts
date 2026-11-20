@@ -5,7 +5,7 @@ import { type Fixture, fixture, git, linkInstall, ref } from "../commit/at-keys-
 import { SLOW } from "../scheduler/cleanup.js";
 import { result } from "../store/helpers.js";
 import { liveDaemon } from "./status-at-daemon.js";
-import { clean, run, testOf, withStore } from "./status-at-kit.js";
+import { atHead, clean, run, testOf, withStore } from "./status-at-kit.js";
 import { alive, gone } from "./status-at-processes.js";
 
 /*
@@ -24,10 +24,12 @@ const ON = { "squeal.config.json": "{}\n" };
 const INCLUDE = {
   "vitest.config.mjs": 'export default { test: { include: ["test/*.test.ts"] } };\n',
 };
+// Row 023-29: these runs are at HEAD; the tree is made dirty and only the commit side runs.
 const options = (f: Fixture, batchFiles?: number) => ({
   cacheRoot: f.cacheRoot,
   install: linkInstall().install,
   ...(batchFiles === undefined ? {} : { batchFiles }),
+  ...atHead(f),
 });
 const all = (seconds: number) => ({ allMissing: true, timeoutSeconds: seconds });
 const diff = (seconds: number) => ({ allMissing: false, timeoutSeconds: seconds });

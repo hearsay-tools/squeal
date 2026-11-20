@@ -78,11 +78,19 @@ export interface AtRunInput {
   /** Row 023-19, for tests: each batch's paths; else sized from this machine (`Batches`). */
   readonly batchFiles?: number;
   /**
-   * Row 023-29 (R1): how many files the working tree's side runs after
-   * this one, given the selection; this side takes its share of what is
-   * left of the budget by its own count. Absent: none.
+   * Row 023-29 (R1): the working tree's side, which runs while the
+   * checkout is open, between this side's first pass and its leftovers, so
+   * the time either side leaves unused goes to the other. Absent: none.
    */
-  readonly nowCount?: (selection: Selection) => number;
+  readonly now?: NowTurn;
+}
+
+/** R1: the working tree's turn inside the commit side's run. */
+export interface NowTurn {
+  /** Chooses the working tree's files from the commit side's selection; their count. */
+  files(selection: Selection): number;
+  /** Runs them (or what is left of them) until `endMs` (`performance.now()`). */
+  run(endMs: number): Promise<void>;
 }
 
 /** R1: the working tree's side, for the report and the rerun's fit. */
@@ -146,32 +154,47 @@ export function atRun(input: AtRunInput): AtRun {
         const call = { given: input.given, paths: input.paths, allMissing: args.allMissing };
         input.note(estimateText(estimate, commit, args.timeoutSeconds, call));
       }
-      if (run.length > 0) await runFiles(checkout, run, keyed);
-      leftOut = run.filter((f) => {
-        const s = states.get(testFileId(f.ref));
-        return s?.state === "not run" && s.reason === "budget";
-      });
+      // R1: each side a share of what is left by its count; what one leaves unused goes on.
+      const now = input.now?.files(selection) ?? 0;
+      if (run.length > 0) await runFiles(checkout, run, keyed, shareEnd(run.length, now));
+      if (now > 0) await input.now?.run(shareEnd(now, budgetLeft(run).length));
+      const again = budgetLeft(run);
+      if (again.length > 0 && again.length < run.length)
+        await runFiles(checkout, again, keyed, endMs);
+      leftOut = budgetLeft(run);
     } finally {
       durations?.close();
     }
   };
 
-  /** P3 and R3 through `runBatches`, in this side's share of the budget (R1). */
+  /** R1: when a side with `mine` files to run ends, beside `other` files of the other side. */
+  const shareEnd = (mine: number, other: number): number => {
+    const now = performance.now();
+    return now + Math.max(0, endMs - now) * (mine / (mine + other));
+  };
+
+  /** The files of `run` the budget left not run. */
+  const budgetLeft = (run: readonly KeyedFile[]) =>
+    run.filter((f) => {
+      const s = states.get(testFileId(f.ref));
+      return s?.state === "not run" && s.reason === "budget";
+    });
+
+  /** P3 and R3 through `runBatches`, until `until`; a second pass runs the first's leftovers. */
   async function runFiles(
     checkout: Checkout,
     run: readonly KeyedFile[],
     keyed: readonly KeyedFile[],
+    until: number,
   ): Promise<void> {
-    overheadMs = elapsed();
-    const now = input.nowCount?.(selection) ?? 0;
-    const share = (endMs - performance.now()) * (run.length / (run.length + now));
+    if (batchTimes.length === 0) overheadMs = elapsed();
     const end = await runBatches({
       files: run,
       refOf: (file) => file.ref,
       policy: readPolicy(checkout.tree),
       timeoutSeconds: args.timeoutSeconds,
       ...(input.batchFiles === undefined ? {} : { batchFiles: input.batchFiles }),
-      endMs: performance.now() + share,
+      endMs: until,
       secondsOf: (ref) => durationsOf(ref),
       // Review wave-13 B1: 023-07's whole-checkout check before every later batch. A test of an
       // earlier batch may have changed a tracked path; from then on nothing is the commit's.
@@ -196,9 +219,10 @@ export function atRun(input: AtRunInput): AtRun {
       stateOf: (file) => states.get(testFileId(file.ref)),
       setState: (file, state) => states.set(testFileId(file.ref), state),
     });
-    gateMs = end.gateMs;
-    timedOut = end.timedOut;
-    batchTimes = end.batches;
+    if (end.gateMs !== null) gateMs = (gateMs ?? 0) + end.gateMs;
+    // A file stopped mid-run, or one the last pass left: the budget cut the run.
+    timedOut = timedOut || end.cut;
+    batchTimes = [...batchTimes, ...end.batches];
   }
 
   /** One batch's files read back (row 023-18, D1: at the key the gate kept each at). */
@@ -258,7 +282,7 @@ export function atRun(input: AtRunInput): AtRun {
       changedBy: changed?.by ?? null,
       notRun,
       notComparable: all.filter((s) => s.state === "not comparable").length,
-      timedOut,
+      timedOut: timedOut || leftOut.length > 0,
       estimate,
       rerun: fit !== null && "seconds" in fit ? rerunCommand(input, fit.seconds) : null,
       ...(fit !== null && "needs" in fit

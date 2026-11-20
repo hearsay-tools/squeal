@@ -5,7 +5,7 @@ import { expect } from "vitest";
 import { type AtArgs, type AtOptions, statusAtCommand } from "../../src/cli/status-at.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { Store } from "../../src/core/types/store.js";
-import { type Fixture, git, linkInstall } from "../commit/at-keys-fixture.js";
+import { type Fixture, git, linkInstall, write } from "../commit/at-keys-fixture.js";
 
 /*
  * Row 023-06: what the `status --at` fixture tests share: a test file's
@@ -69,4 +69,15 @@ export async function run(
 export function clean(f: Fixture): void {
   expect(f.checkouts()).toEqual([]);
   expect(git(f.root, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+}
+
+/**
+ * Row 023-29: for a test of the commit side's run at HEAD. An untracked
+ * file makes the tree dirty, so `--at HEAD --run` compares instead of
+ * refusing (R2), with the same selection (the diff HEAD..HEAD is empty);
+ * the options keep `--run` off the working tree (R1).
+ */
+export function atHead(f: Fixture): { readonly workingTree: false } {
+  write(f.root, { "scratch.txt": "dirty\n" });
+  return { workingTree: false };
 }

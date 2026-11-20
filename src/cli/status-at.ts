@@ -10,7 +10,7 @@ import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
 import { daemonAdapters } from "./code-gate-stored.js";
 import type { CliIo } from "./main.js";
-import { fillNow, nowCount } from "./status-at-both.js";
+import { workingTree } from "./status-at-both.js";
 import { commitSide } from "./status-at-commit.js";
 import { headRefusal, nextOf, nextProbe } from "./status-at-next.js";
 import { listLate, nowSide } from "./status-at-now.js";
@@ -44,6 +44,8 @@ const INSTALL_TIMEOUT_MS = 300_000;
  */
 export type AtOptions = Pick<CheckoutOptions, "cacheRoot" | "install"> & {
   readonly batchFiles?: number;
+  /** Tests of the commit side's run only: `false` keeps `--run` off the working tree (R1). */
+  readonly workingTree?: false;
 };
 
 export interface AtArgs {
@@ -186,9 +188,18 @@ export async function statusAtCommand(
     io.stderr(`squeal: keying test files at ${commit.slice(0, 9)} in a temporary checkout\n`);
   const note = (text: string) => io.stderr(`squeal: ${text}\n`);
   const runArgs = args.run ?? null;
-  const { batchFiles, ...checkoutOptions } = options;
+  const { batchFiles, workingTree: onTree, ...checkoutOptions } = options;
   const forward = (text: string) => (args.json ? undefined : io.stderr(text));
   const batch = batchFiles === undefined ? {} : { batchFiles };
+  // Row 023-29 (R1): the working tree's side, which takes its turn inside the commit side's run.
+  const tree = workingTree({
+    now,
+    read: input,
+    timeoutSeconds: runArgs?.timeoutSeconds ?? 0,
+    relaunch: io.relaunch,
+    forward,
+    ...batch,
+  });
   const ran = startRun(args, runArgs, {
     root,
     commonDir,
@@ -200,7 +211,7 @@ export async function statusAtCommand(
     note,
     forward,
     ...batch,
-    nowCount: nowCount(now),
+    ...(onTree === false ? {} : { now: tree }),
   });
   // Row 023-24 (Q1): without `--run`, what it would run, for the report's last line.
   const probe =
@@ -221,8 +232,7 @@ export async function statusAtCommand(
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
   const listed = await listLate(input, now, refs);
   // Row 023-29 (R1): `--run` fills the working tree's side too, then reads it again.
-  const fill = { refs, current: listed, read: input, relaunch: io.relaunch, forward, ...batch };
-  const both = ran === null ? null : await fillNow({ ...fill, ran });
+  const both = ran === null || onTree === false ? null : await tree.finish(ran, refs, listed);
   const current = both?.current ?? listed;
   const files = compareSides(refs, state, current.state);
   const head = await readHead(root);
