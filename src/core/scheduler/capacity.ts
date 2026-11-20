@@ -1,6 +1,7 @@
 import { availableParallelism } from "node:os";
 import {
   backgroundCeiling,
+  backlogShareSlots,
   DEFAULT_BACKGROUND_SHARE,
   isBackgroundShare,
 } from "../capacity/background.js";
@@ -60,7 +61,7 @@ export class TierCapacity {
       : DEFAULT_BACKGROUND_SHARE;
     const ceiling = backgroundCeiling(this.#backgroundShare, cpus ?? availableParallelism());
     const slots = Math.max(1, Math.floor(hostSlots ?? defaultHostSlots()));
-    this.#fullWidth = Math.min(ceiling, slots, project?.slots ?? Infinity);
+    this.#fullWidth = Math.min(backlogShareSlots(ceiling, slots), project?.slots ?? Infinity);
     this.#pool = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId },
@@ -133,10 +134,12 @@ export class TierCapacity {
   }
 
   /**
-   * The most workers a backlog tier may get: the background ceiling's busy
-   * CPUs (spec 021 D18), or the slots, the host's or the project's, when
-   * fewer. A backlog tier's wall budget is scaled by its offer's share of
-   * it (row 011-418), so a tier offered all the slots is not cut.
+   * The most workers a backlog tier may get: the workers the background
+   * ceiling admits (spec 021 D18), its busy CPUs rounded up, which a
+   * backlog tier's fair shares divide (row 011-424), or the slots, the
+   * host's or the project's, when fewer. A backlog tier's wall budget is
+   * scaled by its offer's share of it (row 011-418), so a tier offered all
+   * of them is not cut.
    */
   fullWidth(): number {
     return this.#fullWidth;
@@ -177,6 +180,15 @@ export class TierCapacity {
     } catch {
       return want;
     }
+  }
+
+  /**
+   * A lane's wait for quiet holds `files` backlog files and ends soon (row
+   * 011-424): the pool mark states them as demand, with no grant; 0 ends
+   * it. It never throws: a mark that cannot be written states nothing.
+   */
+  expectBacklog(files: number): void {
+    this.#pool.expectBacklog(files);
   }
 
   close(): void {

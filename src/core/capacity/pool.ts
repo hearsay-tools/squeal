@@ -10,6 +10,7 @@ import type { PoolGate } from "../types/standing.js";
 import {
   backgroundCeiling,
   backgroundOf,
+  backlogShareSlots,
   ceilingRefusalLine,
   DEFAULT_BACKGROUND_SHARE,
   isBackgroundShare,
@@ -24,6 +25,7 @@ import {
   type TreeCpu,
 } from "./cores.js";
 import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
+import { QuietDemand } from "./quiet-demand.js";
 import { fairShares } from "./share.js";
 
 /** The numbers of the user-level `capacity` keys (spec 001 D11), injected by the daemon. */
@@ -144,6 +146,15 @@ export interface PermitPool {
    * hold. `null` before the first.
    */
   gate(): PoolGate | null;
+  /**
+   * A lane's wait for quiet holds `files` backlog files and ends soon (spec
+   * 011 C4 step 5 and C10 as amended, row 011-424): the mark states them as
+   * demand with no grant, so the other daemons' fair shares count them as a
+   * waiter's; 0 ends it, and so does the next `acquire`. Written when it
+   * changes and at most every `QUIET_DEMAND_WRITE_MS` when not. It takes
+   * nothing and never throws.
+   */
+  expectBacklog(files: number): void;
   /** Releases every lease and clears the mark. */
   close(): void;
 }
@@ -210,6 +221,11 @@ interface Lease {
  *   when that is more (row 011-182). A lease that ends or returns permits
  *   starts a new window, and the held workers stand for the tree's cores
  *   until it is measured (row 011-417).
+ * - A backlog tier's fair share divides the workers the background ceiling
+ *   admits, not the slots (`backlogShareSlots`, row 011-424). A lane's
+ *   wait for quiet that will end soon states its backlog files in the mark
+ *   with no grant (`expectBacklog`), so two daemons whose waits end
+ *   together start at fair shares of the ceiling.
  * - A backlog tier has no grants term (spec 021 D18, row 021-18): each
  *   permit needs those cores below the ceiling, `backgroundShare` of the
  *   CPUs, alone; the slots do not bound it (row 011-404, gh-225). When no daemon's mark states a
@@ -251,6 +267,10 @@ class LockFilePool implements PermitPool {
   readonly #backgroundShare: number;
   /** The busy CPUs below which a background tier takes a permit (D18). */
   readonly #ceiling: number;
+  /** The workers a backlog tier's fair shares divide (row 011-424). */
+  readonly #backlogSlots: number;
+  /** What a lane's wait for quiet states in the mark (row 011-424). */
+  readonly #quiet = new QuietDemand();
   /** The last look's grant was the floor's (D18). */
   #floored = false;
   /** The last look read the host's busy cores. */
@@ -268,6 +288,7 @@ class LockFilePool implements PermitPool {
       ? options.backgroundShare
       : DEFAULT_BACKGROUND_SHARE;
     this.#ceiling = backgroundCeiling(this.#backgroundShare, this.#cpus);
+    this.#backlogSlots = backlogShareSlots(this.#ceiling, this.#hostSlots);
     this.#refusals =
       options.log === undefined ? null : new RefusalEpisodes(options.log, SLOT_WAITER_FRESH_MS);
     this.#tree = options.cores === undefined ? createTreeCpu() : options.cores;
@@ -288,12 +309,15 @@ class LockFilePool implements PermitPool {
     const now = this.#now();
     this.#forget(now);
     this.#idleSince = null;
+    // The tier that asks states its own demand from now on (row 011-424).
+    this.#quiet.end();
     const wanted = Math.max(1, Math.floor(want));
     const fewest = Math.min(wanted, Math.max(1, Math.floor(least)));
     const { others, inUse, demand, shares, entitled, target } = this.#share(
       wanted,
       lane,
       now,
+      kind,
       fewest,
     );
     const slow = lane === "slow";
@@ -344,7 +368,7 @@ class LockFilePool implements PermitPool {
   offer(want: number, lane: PoolLane = "fast", kind: PoolTierKind = "checkpoint"): number {
     if (this.#closed) return 0;
     const now = this.#now();
-    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now);
+    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now, kind);
     return Math.min(target, this.#gated(others, inUse, target, kind, lane, this.#since ?? now));
   }
 
@@ -371,6 +395,21 @@ class LockFilePool implements PermitPool {
     return this.#gate;
   }
 
+  expectBacklog(files: number): void {
+    if (this.#closed) return;
+    const now = this.#now();
+    if (!this.#quiet.state(files, now)) return;
+    this.#forget(now);
+    try {
+      if (this.#marked()) {
+        this.#prepareDir();
+        this.#publish(this.#demand() + this.#pending + this.#quiet.want, this.#inUse());
+      } else this.#clear();
+    } catch {
+      // A mark that cannot be written now: the next look writes it again.
+    }
+  }
+
   close(): void {
     this.#closed = true;
     for (const lease of this.#leases) for (const db of lease.permits.splice(0)) db.close();
@@ -388,8 +427,11 @@ class LockFilePool implements PermitPool {
     );
   }
 
-  /** What a tier of `wanted` workers, `least` at the fewest, is entitled to now, and what it may take. */
-  #share(wanted: number, lane: PoolLane, now: number, least = 1) {
+  /**
+   * What a tier of `kind` of `wanted` workers, `least` at the fewest, is
+   * entitled to now, and what it may take.
+   */
+  #share(wanted: number, lane: PoolLane, now: number, kind: PoolTierKind, least = 1) {
     const { dir, owner, project } = this.#options;
     const others = readMarks(dir, owner.worktreeId, now);
     const inUse = this.#inUse();
@@ -403,7 +445,8 @@ class LockFilePool implements PermitPool {
       ...(project === undefined ? {} : { project }),
     };
     // An edit's mark, `want` 0, states CPU and no backlog demand (row 011-98).
-    const shares = fairShares(this.#hostSlots, [me, ...others.filter((o) => o.want > 0)]);
+    const total = kind === "backlog" ? this.#backlogSlots : this.#hostSlots;
+    const shares = fairShares(total, [me, ...others.filter((o) => o.want > 0)]);
     const entitled = Math.min(wanted, Math.max(0, (shares.get(me.id) ?? 0) - inUse));
     let target = entitled;
     if (project !== undefined) {
@@ -491,6 +534,11 @@ class LockFilePool implements PermitPool {
     return this.#leases.size > 0 || this.#edits.size > 0;
   }
 
+  /** The daemon has a mark to keep: a tier runs, it waits, or a wait for quiet states demand. */
+  #marked(): boolean {
+    return this.#active() || this.#pending > 0 || this.#since !== null || this.#quiet.want > 0;
+  }
+
   /** A tier starts: the mark is refreshed from now on, and if none ran, the tree's window begins. */
   #activate(): void {
     if (this.#timer !== null) return;
@@ -500,11 +548,15 @@ class LockFilePool implements PermitPool {
     this.#startRefresh();
   }
 
-  /** The last tier ended: no refresh and no mark until the next. */
+  /**
+   * The last tier ended: no refresh, and no mark until the next unless a
+   * wait for quiet states demand, which its look keeps writing.
+   */
   #deactivate(): void {
     this.#stopRefresh();
     this.#measured = null;
-    this.#clear();
+    if (!this.#closed && this.#quiet.want > 0) this.#republish();
+    else this.#clear();
   }
 
   /** A waiter that has neither held a lease nor looked for 30 s is no longer one. True when one was. */
@@ -673,7 +725,7 @@ class LockFilePool implements PermitPool {
   #republish(): void {
     this.#forget(this.#now());
     try {
-      this.#publish(this.#demand() + this.#pending, this.#inUse());
+      this.#publish(this.#demand() + this.#pending + this.#quiet.want, this.#inUse());
     } catch {
       // `#mark` is set before the write, so the refresh writes this one.
     }

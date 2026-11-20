@@ -234,6 +234,43 @@ export function quietSleepMs(
   return Math.min(QUIET_RECHECK_MS, Math.max(0, Math.min(...until) - now));
 }
 
+/**
+ * A lane's wait for catch-up states its held files in the pool mark this
+ * long before it ends (spec 011 C4 step 5 and C10 as amended, row 011-424):
+ * a daemon whose wait ends first then leaves this one its fair share. A
+ * rule, not a measure of the host: an edit restarts the wait at
+ * `CATCHUP_QUIET_MS`, beyond it, so it withdraws the demand at the next
+ * look, and a wait states demand only after 90 s of quiet.
+ */
+export const QUIET_DEMAND_LEAD_MS = 30_000;
+
+/** The most files a wait for quiet states as demand: more than any share of the ceiling. */
+export const QUIET_DEMAND_FILES = 64;
+
+/**
+ * The catch-up files queued in the lanes whose catch-up's wait ends within
+ * `QUIET_DEMAND_LEAD_MS` of `now`, at most `QUIET_DEMAND_FILES` (row
+ * 011-424): what the lanes' first backlog tiers will ask for when the waits
+ * end. 0 when none. The wait after a cancel, `BACKLOG_QUIET_MS`, states
+ * nothing: it is shorter than the lead, so an edit that starts it again
+ * would never withdraw its demand.
+ */
+export function quietDemand(context: SchedulerContext, ledger: Ledger, now: EpochMs): number {
+  const { quiet } = context;
+  if (quiet === undefined) return 0;
+  const soon = new Set<string>();
+  for (const [lane, end] of quiet.catchUpEnds(now))
+    if (end - now <= QUIET_DEMAND_LEAD_MS) soon.add(lane);
+  if (soon.size === 0) return 0;
+  const { queue } = ledger;
+  let files = 0;
+  queue.hasFast((ref) => {
+    if (soon.has(laneOf(context, ref)) && queue.isCatchUp(ref)) files++;
+    return files >= QUIET_DEMAND_FILES;
+  });
+  return files;
+}
+
 /*
  * Status reads the waits from one `quiet` meta row of the worktree, with
  * the `yields` row's liveness rules: the row carries when it was written,

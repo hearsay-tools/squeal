@@ -5,7 +5,7 @@ import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import { runnable } from "./focused.js";
 import type { Ledger } from "./ledger.js";
-import { quietHolds, quietSleepMs } from "./quiet.js";
+import { quietDemand, quietHolds, quietSleepMs } from "./quiet.js";
 import type { CutFiles } from "./sharing.js";
 import { backlogSlot } from "./slots.js";
 import type { PlanAsks, QueueView } from "./tier-plan.js";
@@ -77,7 +77,11 @@ export function liveView(
     fastSize: () => queue.fastSize,
     batchTurn: () => queue.batchTurn(),
     quietHolds: (ref, lane, tier, now) => quietHolds(context, ledger, ref, lane, tier, now),
-    quietWakeMs: (now) => quietSleepMs(context, ledger, now),
+    quietWakeMs: (now) => {
+      // Row 011-424: each look at the waits states the catch-up they hold in the pool mark.
+      context.capacity?.expectBacklog(quietDemand(context, ledger, now));
+      return quietSleepMs(context, ledger, now);
+    },
     focusedSize: () => queue.focused.size,
     focusRunnable: (entry) => runnable(context, ledger, entry),
   };

@@ -23,6 +23,19 @@ export function backgroundCeiling(share: number, cpus: number): number {
 }
 
 /**
+ * The workers a backlog tier's fair shares divide (spec 011 C10 as amended,
+ * row 011-424): the permits the ceiling admits on an idle host, its busy
+ * CPUs rounded up, at most `hostSlots` and at least 1. One daemon alone
+ * gets what the gate gave it before (`gatedPermits` takes a permit while the
+ * cores are below the ceiling). Two daemons' shares fill the ceiling
+ * together: 5 + 4 of 9, where shares of the 11 slots gave 6, and the gate
+ * left the second 3 (`research/simultaneous-demand.md`).
+ */
+export function backlogShareSlots(ceiling: number, hostSlots: number): number {
+  return Math.max(1, Math.min(hostSlots, Math.ceil(ceiling)));
+}
+
+/**
  * The permits a mark's background tiers hold. A mark from a release before
  * row 021-18 does not say, so its whole grant counts.
  */

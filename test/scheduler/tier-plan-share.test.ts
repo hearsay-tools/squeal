@@ -138,7 +138,7 @@ describe("TierCapacity.fullWidth (row 011-418)", () => {
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
   });
 
-  it("is the background ceiling, or the host's or the project's slots when fewer", () => {
+  it("is the workers the background ceiling admits, or the host's or the project's slots when fewer", () => {
     const root = mkdtempSync(join(tmpdir(), "squeal-full-width-"));
     roots.push(root);
     const dir = join(root, "squeal-uid");
@@ -152,6 +152,8 @@ describe("TierCapacity.fullWidth (row 011-418)", () => {
       // 12 CPUs, 11 slots: the ceiling, 0.75 of 12 = 9, binds.
       expect(fullWidth({ cpus: 12, hostSlots: 11 })).toBe(9);
       expect(fullWidth({ cpus: 12, hostSlots: 11, backgroundShare: 0.5 })).toBe(6);
+      // Row 011-424: 10 CPUs, ceiling 7.5, admit 8 workers, the backlog shares' total.
+      expect(fullWidth({ cpus: 10, hostSlots: 9 })).toBe(8);
       // Slots below the ceiling bind: a tier offered all of them is not cut.
       expect(fullWidth({ cpus: 64, hostSlots: 4 })).toBe(4);
       expect(fullWidth({ cpus: 12, hostSlots: 11, project: { id: "/p", slots: 2 } })).toBe(2);
