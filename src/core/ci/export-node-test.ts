@@ -32,6 +32,12 @@ export interface NodeTestEntryHere {
    */
   readonly nodeOptions: readonly string[];
   readonly env: Readonly<Record<string, string>>;
+  /**
+   * Review of 0.1.579 B2: each variable of the policy's `env.allowlist`
+   * that `env` does not set, as this job's environment holds it, which the
+   * keys hold (D1): `configFieldHash` of its value, `null` when unset.
+   */
+  readonly allowlisted: Readonly<Record<string, string | null>>;
   /** Its Node's probe here (D18), or `null` when that Node does not run. */
   readonly node: { readonly version: string; readonly nodeBuild: string } | null;
   /** The test files its adapter lists here. */
@@ -223,7 +229,30 @@ function entryRefusal(entry: NodeTestEntryHere, parts: readonly NamedPart[]): st
   if (variables.length > 0) {
     return `node:test ran with another value of ${variables.join(", ")} than ${project} sets`;
   }
-  return shardsRefusal(project, parts);
+  return allowlistRefusal(project, entry, runs) ?? shardsRefusal(project, parts);
+}
+
+/**
+ * B2: the variables of `env.allowlist` the entry does not set must have
+ * had, in every process, the value this job's environment gives the keys;
+ * a part that does not say (made before, or by a checkout of another
+ * allowlist) leaves the entry out. Named, never shown.
+ */
+function allowlistRefusal(
+  project: string,
+  entry: NodeTestEntryHere,
+  runs: readonly PartNodeTest[],
+): string | null {
+  const names = Object.keys(entry.allowlisted).sort(compare);
+  const unknown = names.filter((name) => runs.some((run) => !Object.hasOwn(run.env, name)));
+  if (unknown.length > 0) {
+    return `the node:test parts of ${project} do not say what ${unknown.join(", ")} held`;
+  }
+  const other = names.filter((name) =>
+    runs.some((run) => run.env[name] !== entry.allowlisted[name]),
+  );
+  if (other.length === 0) return null;
+  return `node:test of ${project} ran with another value of ${other.join(", ")} than this job's environment`;
 }
 
 /** D26.4: the processes of one entry are each shard of one `--test-shard` count, once; `null` when so. */

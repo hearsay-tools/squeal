@@ -103,7 +103,8 @@ export interface PartNodeTest {
   readonly nodeBuild: string;
   /**
    * Each variable a `nodeTest` entry's `env` names in the recording
-   * checkout's `squeal.config.json`, as a test file's process saw it:
+   * checkout's `squeal.config.json`, and each of its `env.allowlist`
+   * (review of 0.1.579 B2), as a test file's process saw it:
    * `configFieldHash` of its value, `null` when unset. Never a value.
    */
   readonly env: Readonly<Record<string, string | null>>;

@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CiExport, ciExport } from "../../src/core/ci/export.js";
 import { type Part, readPart } from "../../src/core/ci/parts.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
@@ -39,11 +39,20 @@ const UNIT: NodeTestProject = {
   include: ["nt/*.test.mjs"],
 };
 
+/**
+ * Review of 0.1.579 B2: an allow-listed variable, set alike in the CI job,
+ * the export and the developer's daemon: keys stay equal and the import holds.
+ */
+const GLOBAL = "FIXTURE_GLOBAL";
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 function fixture(dir: string): string {
   return committed(dir, {
     "package.json": JSON.stringify({ name: "ci-export-node-test", private: true, type: "module" }),
     "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["test/**/*.test.ts"] } });\n`,
-    "squeal.config.json": JSON.stringify({ nodeTest: [UNIT] }),
+    "squeal.config.json": JSON.stringify({ env: { allowlist: [GLOBAL] }, nodeTest: [UNIT] }),
     "src/upper.mjs": "export const upper = (text) => text.toUpperCase();\n",
     "data/b.txt": "b\n",
     "nt/pre.mjs":
@@ -59,6 +68,7 @@ function policy(): Policy {
   return {
     ...DEFAULT_POLICY,
     observe: { runtimeInputs: true },
+    env: { allowlist: [GLOBAL] },
     nodeTest: [UNIT],
     baseline: { onStart: "lookup-then-run-missing" },
   };
@@ -139,6 +149,7 @@ describe("ci export of node:test parts (spec 018 D26)", () => {
   it("keys them as a daemon that ran the same content, beside Vitest's, and an import makes them current", {
     timeout: 300_000,
   }, async () => {
+    vi.stubEnv(GLOBAL, "same everywhere");
     const origin = fixture(scratch("ci-export-node-test"));
     const base = dirname(origin);
     const out = join(base, "parts");

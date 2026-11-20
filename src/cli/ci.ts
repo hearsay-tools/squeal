@@ -166,7 +166,15 @@ async function startFor(
   let nodeTest: NodeTestRecording | null = null;
   if (policy.nodeTest.length > 0) {
     const entries = policy.nodeTest;
-    const started = startNodeTestRecording({ paths, env, entries, objectFormat, ...tempDir });
+    const allowlist = policy.env.allowlist;
+    const started = startNodeTestRecording({
+      paths,
+      env,
+      entries,
+      allowlist,
+      objectFormat,
+      ...tempDir,
+    });
     if (typeof started === "string") return started;
     nodeTest = started;
   }

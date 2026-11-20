@@ -1,6 +1,7 @@
 import { projectEnv } from "../../runners/node-test/recorders.js";
 import { tokenizeNodeOptions } from "../../runners/process/node-options.js";
 import { compare } from "../fs/compare.js";
+import { configFieldHash } from "../keys/environment-descriptor.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import type { AbsolutePath, ProjectName, RelativePath } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
@@ -46,11 +47,27 @@ export async function nodeTestEntries(
       // B1: as the adapter reads them (`nodeOptionsOf`), from this job's env.
       nodeOptions: tokenizeNodeOptions(projectEnv(entry, env).NODE_OPTIONS ?? "") ?? [],
       env: entry.env,
+      allowlisted: allowlisted(policy.env.allowlist, entry.env, env),
       node: nodeOf(environment),
       files: new Set(listed.filter((f) => f.project === entry.name).map((f) => f.path)),
     });
   }
   return entries;
+}
+
+/** B2: each allow-listed variable `own` does not set, hashed as this job's `env` holds it. */
+function allowlisted(
+  allowlist: readonly string[],
+  own: Readonly<Record<string, string>>,
+  env: NodeJS.ProcessEnv,
+): Record<string, string | null> {
+  const names = allowlist.filter((name) => !Object.hasOwn(own, name));
+  return Object.fromEntries(
+    names.map((name) => {
+      const value = env[name];
+      return [name, value === undefined ? null : configFieldHash(value)];
+    }),
+  );
 }
 
 function nodeOf(environment: RunnerEnvironment): NodeTestEntryHere["node"] {
