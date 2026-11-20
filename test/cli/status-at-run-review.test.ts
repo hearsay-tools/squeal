@@ -112,13 +112,16 @@ describe("status --at --run, review wave-7 regressions (row 023-07)", SLOW, () =
       "vitest.config.mjs":
         'export default { test: { include: ["test/*.test.ts"], globals: true } };\n',
     });
-    const config = await run(f, { commit: a, json: true, run: RUN }, options(f));
+    // Row 023-29: the commit side only. A working tree run here would store both files at the
+    // keys B has, and the second call would find results at B and select nothing.
+    const commitOnly = { ...options(f), workingTree: false } as const;
+    const config = await run(f, { commit: a, json: true, run: RUN }, commitOnly);
     expect(JSON.parse(config.out).run).toMatchObject({ selected: 2, ran: 2 });
     expect(atOf(config.out, TEST.path)?.state).toBe("pass");
 
     const b = head(f);
     f.commit({ "data/x.json": '{ "changed": true }\n' });
-    const input = await run(f, { commit: b, json: true, run: RUN }, options(f));
+    const input = await run(f, { commit: b, json: true, run: RUN }, commitOnly);
     expect(JSON.parse(input.out).run).toMatchObject({ selected: 1, ran: 1 });
     expect(atOf(input.out, "test/data.test.ts")).toMatchObject({
       state: "pass",
