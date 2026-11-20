@@ -1,10 +1,12 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { NODE_TEST_UNASSIGNED } from "../../../src/core/ci/parts.js";
+import { configFieldHash } from "../../../src/core/keys/environment-descriptor.js";
 import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { probeNode } from "../../../src/runners/node-test/adapter-environment.js";
 import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 import {
+  FILES,
   nodeTestCommand,
   project,
   record,
@@ -99,4 +101,42 @@ describe("ci record of a node:test command", () => {
       expect(ts?.observed?.paths).toEqual(["lib/c.ts", "test/ts.test.ts"]);
     },
   );
+});
+
+describe("ci record of a node:test command's variables and children", () => {
+  it("hashes each variable an entry's env names, as the processes saw it", SLOW, async () => {
+    const config = {
+      nodeTest: [
+        { name: "a", env: { TZ: "UTC" }, include: ["test/esm.test.mjs"] },
+        { name: "b", env: { LANG: "C" }, include: ["test/cjs.test.cjs"] },
+      ],
+    };
+    const root = project({ ...FILES, "squeal.config.json": JSON.stringify(config) });
+    const { LANG: _lang, ...env } = process.env;
+    const command = [process.execPath, "--test", ...reporterPair(), "test/esm.test.mjs"];
+    const recorded = await record(root, command, { ...env, TZ: "UTC" });
+    expect(recorded.code, recorded.stderr).toBe(0);
+    expect(recorded.parts[0]?.header.nodeTest?.env).toEqual({
+      LANG: null,
+      TZ: configFieldHash("UTC"),
+    });
+  });
+
+  it("keeps a child's loads when the test starts it with an env of its own", SLOW, async () => {
+    const spawns = [
+      'import { execFileSync } from "node:child_process";',
+      'import { test } from "node:test";',
+      'test("spawns", () => { execFileSync(process.execPath, ["lib/child.mjs"], { env: { PATH: process.env.PATH } }); });',
+    ].join("\n");
+    const root = project({ ...FILES, "test/spawn.test.mjs": `${spawns}\n` });
+    const command = [process.execPath, "--test", ...reporterPair(), "test/spawn.test.mjs"];
+    const recorded = await record(root, command);
+    expect(recorded.code, recorded.stderr).toBe(0);
+    const [file] = recorded.parts[0]?.testFiles ?? [];
+    expect(file?.observed?.paths).toEqual(["lib/child.mjs", "lib/d.mjs", "test/spawn.test.mjs"]);
+    expect(file?.observed?.direct).toEqual(["lib/child.mjs", "lib/d.mjs"]);
+    for (const path of file?.observed?.paths ?? []) {
+      expect(recorded.parts[0]?.evidence[path], path).toMatch(/^[0-9a-f]{40}$/);
+    }
+  });
 });

@@ -11,7 +11,8 @@ import { nodeTestCommand, project, reporterPair, TEST_FILES, temp } from "./ci-r
  * code stay the project's. With the reporter pair, `squeal ci record` prints
  * to stdout what the same command prints without it, durations aside, on
  * every Node it runs on: this test's own, and Node 22, 24 and 26 where this
- * host has them (nvm's). A failing test's exit code passes through.
+ * host has them (nvm's), with evidence for every load on each. A failing
+ * test's exit code passes through.
  */
 
 const SLOW = { timeout: 180_000 } as const;
@@ -60,6 +61,12 @@ describe("the recorded command's output", () => {
       parts.flatMap(({ part }) => part.testFiles.map((f) => f.path)),
       recorded.stderr,
     ).toEqual(TEST_FILES);
+    // Open question 1: every module each file's processes loaded has evidence on this Node too.
+    for (const { part } of parts) {
+      for (const path of part.testFiles.flatMap((f) => f.observed?.paths ?? [])) {
+        expect(part.evidence[path], `${path} on ${node}`).toMatch(/^[0-9a-f]{40}$/);
+      }
+    }
   });
 
   it("passes a failing command's exit code through", SLOW, () => {
