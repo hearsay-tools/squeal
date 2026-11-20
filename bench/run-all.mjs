@@ -22,6 +22,11 @@ export const CELLS = [
   { name: "load-50", files: 500, worktrees: 1, load: 50 },
   { name: "load-100", files: 500, worktrees: 1, load: 100 },
   { name: "stress", files: 500, worktrees: 6, load: 100 },
+  // Store age (age-store.mjs): the reference cell on a store with a week of history.
+  // 70 rounds: Squeal's own week of results per test file, at 500 test files (about 1.7 GB).
+  // 326 rounds: the loaded_modules row count of Squeal's own store, 7.2 GB on 2026-11-20.
+  { name: "store-1.7g", files: 500, worktrees: 1, load: 0, ageRounds: 70 },
+  { name: "store-7g", files: 500, worktrees: 1, load: 0, ageRounds: 326 },
 ];
 
 const { values: o } = parseArgs({
@@ -116,6 +121,8 @@ for (const c of cells) {
       join(out, "cells", c.name),
       "--steps",
       o.steps,
+      "--age-rounds",
+      String(c.ageRounds ?? 0),
     ],
     { timeoutMs: 7_200_000 },
   );

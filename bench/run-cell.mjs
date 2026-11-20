@@ -50,6 +50,7 @@ const { values: o } = parseArgs({
     steps: { type: "string", default: "24" },
     idle: { type: "string", default: "60000" },
     seed: { type: "string", default: "1" },
+    "age-rounds": { type: "string", default: "0" },
   },
 });
 const HERE = import.meta.dirname;
@@ -73,6 +74,7 @@ const cell = {
   files: Number(o.files),
   worktrees: Number(o.worktrees),
   load: Number(o.load),
+  ageRounds: Number(o["age-rounds"]),
   phases: {},
 };
 
@@ -137,6 +139,33 @@ cell.phases.runAll = {
   tail: full.stdout.slice(-600) + full.stderr.slice(-600),
 };
 cell.phases.runAll.busyMean = meanBusy(fullMark.sample);
+
+// 4b. Store age: stop the daemon, add history (age-store.mjs), start again on the aged store.
+if (Number(o["age-rounds"]) > 0) {
+  log(`age store: ${o["age-rounds"]} rounds`);
+  await squeal(main, ["stop"], 60_000);
+  for (let i = 0; i < 100 && daemonPids().size > 0; i++) await sleep(200);
+  const aged = await timed(
+    NODE,
+    [join(HERE, "age-store.mjs"), join(main, ".git/squeal/store.sqlite"), o["age-rounds"], main],
+    { env, timeoutMs: 3_600_000 },
+  );
+  cell.phases.age = {
+    ms: aged.ms,
+    code: aged.code,
+    ...(() => {
+      try {
+        return JSON.parse(aged.stdout.trim().split("\n").pop());
+      } catch {
+        return { err: aged.stderr.slice(-800) };
+      }
+    })(),
+  };
+  const s1 = await squeal(main, ["start"], 120_000);
+  cell.phases.startAged = { ms: s1.ms, code: s1.code };
+  const st = await squeal(main, ["status", "--json"], 120_000);
+  cell.phases.firstStatusAged = { ms: st.ms, code: st.code };
+}
 
 // 5. Start in the other worktrees.
 cell.phases.startOthers = [];

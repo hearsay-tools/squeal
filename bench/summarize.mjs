@@ -78,7 +78,7 @@ function cellValues(cellDir) {
       by("status").map((s) => s.statusJsonMs),
       0.95,
     ),
-    "cmd.start.main": p.startMain?.ms ?? null,
+    "cmd.start.main": p.startAged?.ms ?? p.startMain?.ms ?? null,
     "cmd.start.others.max": p.startOthers?.length
       ? Math.max(...p.startOthers.map((s) => s.ms))
       : null,
@@ -153,13 +153,13 @@ lines.push(
   "",
 );
 lines.push(
-  `| Cell | Files | Worktrees | Load | Score | Sessions failed |`,
-  `|---|---:|---:|---:|---:|---:|`,
+  `| Cell | Files | Worktrees | Load | Aged rounds | Score | Sessions failed |`,
+  `|---|---:|---:|---:|---:|---:|---:|`,
 );
 for (const n of names) {
   const c = results[n].cell;
   lines.push(
-    `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${scores[n]?.toFixed(0)} | ${results[n].sessionsFailed} |`,
+    `| ${n} | ${c.files} | ${c.worktrees} | ${c.load}% | ${c.ageRounds ?? 0} | ${scores[n]?.toFixed(0)} | ${results[n].sessionsFailed} |`,
   );
 }
 lines.push(

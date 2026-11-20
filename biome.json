@@ -13,6 +13,7 @@
       "!test/fixtures",
       "!evals/ledgerline",
       "!evals/results",
+      "!bench/results",
       "!plugins/codex-runtime",
       "!plugins/codex/seed"
     ]
