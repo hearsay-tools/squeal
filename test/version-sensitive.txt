@@ -240,3 +240,5 @@ test/ci-action/wrapper
 # unnamed (review 0.1.441 B1).
 test/runners/vitest/observe-fidelity
 test/cli/proof-with-node-test
+# Spec 018 D26 (row 018-48): ci export keys real node:test runs as the daemon keys them.
+test/ci/export-node-test-parity
