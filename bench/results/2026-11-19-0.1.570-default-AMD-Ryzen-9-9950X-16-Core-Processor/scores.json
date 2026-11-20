@@ -185,7 +185,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "size-s": {
       "hook.preToolUse.p95": 89.64523799999586,
@@ -217,7 +221,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "size-l": {
       "hook.preToolUse.p95": 242.89736930000362,
@@ -249,7 +257,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "wt-3": {
       "hook.preToolUse.p95": 177.41737340001848,
@@ -281,7 +293,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "wt-6": {
       "hook.preToolUse.p95": 253.15966414995046,
@@ -313,7 +329,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "load-50": {
       "hook.preToolUse.p95": 467.06167750004147,
@@ -345,7 +365,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "load-100": {
       "hook.preToolUse.p95": 651.2884542999437,
@@ -377,7 +401,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "stress": {
       "hook.preToolUse.p95": 787.5729263999965,
@@ -409,7 +437,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     }
   }
 }

@@ -112,7 +112,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "store-7g": {
       "hook.preToolUse.p95": 211.90991650000774,
@@ -144,7 +148,11 @@
       "store.prune.doneMin": null,
       "store.prune.s": null,
       "store.fullCheck.s": null,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     },
     "churn": {
       "hook.preToolUse.p95": 127.29172269998226,
@@ -176,7 +184,11 @@
       "store.prune.doneMin": 1.4173666666666667,
       "store.prune.s": 19.997,
       "store.fullCheck.s": 76.657,
-      "session.failed": 0
+      "session.failed": 0,
+      "notice.falseAlarm": 0,
+      "notice.unnamed": 0,
+      "notice.wrongTest": 0,
+      "notice.wrongSession": 0
     }
   }
 }

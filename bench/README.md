@@ -100,7 +100,7 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 
 ### Score
 
-**Correctness is a gate.** A wrong verdict, a missed push (failure or recovery), a hook call over its 2 s timeout or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
+**Correctness is a gate.** A wrong verdict, a missed push (failure or recovery), a false alarm, a notice that names the wrong test or reaches the wrong session, a hook call over its 2 s timeout or a session that crashed, in any cell, marks the whole run **FAILED**, whatever its points. These metrics have no partial credit: Squeal's promise is "PASS → FAIL: notify", and a fast wrong answer is worse than a slow right one.
 
 **Speed is scored in five areas of equal weight:** Hooks, Commands, Verdicts, Resources and Store. A metric within its healthy limit scores 1, within its warn limit 0.5, beyond it 0. An area's score is the mean of its scored metrics. A cell's score is the mean of its areas × 100, so an area with four metrics weighs the same as one with two. A metric that does not apply to a cell (starting other worktrees, with one worktree) is left out. The overall score is the mean of the cell scores, so it compares only between runs of the same cells; the cell scores always compare. "report" metrics have no limit: they are recorded so a change can be compared with an earlier run. `bench/results/TREND.md` lists every committed run.
 
@@ -125,6 +125,10 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `session.verdict.wrong` | 0 (gate) | | A settled verdict that disagrees with the truth. This should never happen |
 | `session.failed` | 0 (gate) | | A scripted session that crashed or timed out |
 | `hook.overTimeout` | 0 (gate) | | Hook calls over 2 s. Every hook in `hooks.json` has `timeout: 2`; Claude Code kills a slower call and drops its output. The scripted session allows 30 s, so it records the time instead of losing the call |
+| `notice.falseAlarm` | 0 (gate) | | A FAIL line pushed while the session has broken nothing (after a benign edit, a status check or the broad edit). "Silence is a feature" |
+| `notice.unnamed` | 0 (gate) | | A failure notice after a break that names neither the edited file nor a test the break reaches |
+| `notice.wrongTest` | 0 (gate) | | A FAIL line for a test file the session's break does not reach (the module and the modules that import it) |
+| `notice.wrongSession` | 0 (gate) | | A FAIL line for a test another worktree's open break reaches: a notice delivered to the wrong session |
 | `session.broad.verdict` | ≤ 180 s | ≤ 300 s | Edit to `src/core.ts` until the whole suite is current. Catch-up waits 120 s of quiet by design, so 180 s allows about 60 s of running |
 | **Resources** | | | |
 | `res.idleCpu.maxPct` | ≤ 1% | ≤ 5% | Daemon CPU, children included, over 60 s with no edits, as % of one core |
@@ -136,6 +140,16 @@ Each cell (`run-cell.mjs`) starts from a fresh store and runs these phases in or
 | `store.size`, `store.results` | report | | `store.sqlite` + WAL + `code.sqlite` in MiB, and rows in `results` |
 | `store.prune.doneMin` | ≤ 12 min | ≤ 20 min | Churn cell: from the restart until no result past retention is left. Prune is asked every 6 minutes, so 12 allows two asks |
 | `store.prune.s`, `store.fullCheck.s` | report | | Churn cell: how long the prune deleted for, and the restart until the integrity check passed |
+
+## When to run
+
+Agreed with the human on 2026-11-20; `docs/process.md` step 6c holds the same rule.
+
+1. **Weekly.** A full run (every cell) on the latest release tag: `bench/boat-run.sh --ref squeal--v<version>`, about 4 hours of sandbox time. A cockpit automation starts it on Mondays at 06:00 Europe/Warsaw. The task commits the results directory and `results/TREND.md` as a docs commit and reports to the human.
+2. **On demand, for performance work.** A row that changes the store, the daemon, the scheduler, the hooks or delivery runs `ref` and the cells it targets, on the release it starts from and on its candidate, on the same CPU model. The comparison goes into the row's notes before review. It is evidence for the review, not a gate.
+3. **Never a release gate.** As with the evals (human, 2026-10-19).
+4. **What a result triggers.** A correctness failure goes to the human at once. A cell that drops 15 points or more against the last run on the same CPU model is re-run on the previous release on that CPU model; if the drop holds, it goes to the human, who decides whether it becomes a row. The first weekly run repeats `ref` three times to measure run-to-run noise; the 15-point threshold is set again from that.
+5. **Where.** Only on boat.dev sandboxes, never on the shared development host or the lab VM.
 
 ## Files
 

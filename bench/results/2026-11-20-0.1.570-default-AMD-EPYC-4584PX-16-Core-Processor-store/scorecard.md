@@ -2,7 +2,7 @@
 
 Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU · 7.8 GiB · SHA-256 2128 MiB/s · 2026-11-20T08:03:57.795Z
 
-**Correctness: PASS** (no wrong verdict, missed push, hook over its 2 s timeout or failed session in any cell)
+**Correctness: PASS** (no wrong verdict, missed, false or misaddressed notice, hook over its 2 s timeout or failed session in any cell)
 
 **Overall score: 65 / 100** (mean of the cell scores; a cell is the mean of its 5 areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)
 
@@ -59,6 +59,10 @@ Squeal 0.1.570 · Node v24.22.1 · AMD EPYC 4584PX 16-Core Processor · 4 vCPU �
 | **Correctness** | | |  |  |  |
 | Verdicts that disagree with the truth (`session.verdict.wrong`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | Hook calls over the 2 s timeout, which Claude Code kills and whose output it drops (`hook.overTimeout`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL notices when this session had broken nothing (`notice.falseAlarm`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| Failure notices that name neither the edited file nor a test it broke (`notice.unnamed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL lines for a test the session's break does not reach (`notice.wrongTest`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
+| FAIL lines for another worktree's break (`notice.wrongSession`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | Scripted sessions that crashed (`session.failed`) | 0 (gate) |  | 0 ✅ | 0 ✅ | 0 ✅ |
 | **Verdicts** | | |  |  |  |
 | Edit every test imports until the whole suite is current (`session.broad.verdict`) | ≤ 180 | ≤ 300 | 164 s ✅ | 160 s ✅ | 166 s ✅ |

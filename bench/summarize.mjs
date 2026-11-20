@@ -155,6 +155,34 @@ export const METRICS = [
     group: "Correctness",
   },
   {
+    id: "notice.falseAlarm",
+    what: "FAIL notices when this session had broken nothing",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "notice.unnamed",
+    what: "Failure notices that name neither the edited file nor a test it broke",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "notice.wrongTest",
+    what: "FAIL lines for a test the session's break does not reach",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
+    id: "notice.wrongSession",
+    what: "FAIL lines for another worktree's break",
+    unit: "",
+    gate: true,
+    group: "Correctness",
+  },
+  {
     id: "session.failed",
     what: "Scripted sessions that crashed",
     unit: "",
@@ -236,8 +264,9 @@ function cellValues(cellDir) {
   const cell = JSON.parse(readFileSync(join(cellDir, "cell.json"), "utf8"));
   const rows = [];
   for (const f of readdirSync(cellDir).filter((f) => /^session-wt\d+\.jsonl$/.test(f))) {
+    const wt = Number(/wt(\d+)/.exec(f)[1]);
     for (const line of readFileSync(join(cellDir, f), "utf8").trim().split("\n"))
-      if (line) rows.push(JSON.parse(line));
+      if (line) rows.push({ ...JSON.parse(line), wt });
   }
   const steps = rows.filter((r) => r.kind === "step");
   const by = (type) => steps.filter((s) => s.type === type);
@@ -248,8 +277,87 @@ function cellValues(cellDir) {
     ...resourceValues(cell),
     ...storeValues(cell, cellDir),
     "session.failed": cell.phases.sessions.filter((x) => x.code !== 0).length,
+    ...noticeValues(rows, cell.files),
   };
   return { cell, v };
+}
+
+const GROUP = 25;
+const FAIL_LINE = /(^|\n|-> )FAIL\b/;
+
+/** Module `i` and every module that imports it, directly or not (gen-project.mjs's tree). */
+function reach(i, files) {
+  const out = new Set([i]);
+  const base = i - (i % GROUP);
+  for (let j = i + 1; j < Math.min(base + GROUP, files); j++) {
+    const parent = base + Math.floor(((j % GROUP) - 1) / 2);
+    if (out.has(parent)) out.add(j);
+  }
+  return out;
+}
+
+/**
+ * Checks every pushed notice against what the session had broken. A hook row
+ * belongs to the step whose row follows it in the session's log; a break holds
+ * from its break step to the end of its fix step.
+ */
+function noticeValues(rows, files) {
+  const counts = { falseAlarm: 0, unnamed: 0, wrongTest: 0, wrongSession: 0 };
+  const { notices, breaks } = collectNotices(rows, files);
+  for (const n of notices) judgeNotice(n, breaks, counts);
+  return {
+    "notice.falseAlarm": counts.falseAlarm,
+    "notice.unnamed": counts.unnamed,
+    "notice.wrongTest": counts.wrongTest,
+    "notice.wrongSession": counts.wrongSession,
+  };
+}
+
+/** FAIL notices with the step they came in and the session's open break; every break's interval. */
+function collectNotices(rows, files) {
+  const notices = [];
+  const breaks = [];
+  for (const wt of new Set(rows.map((r) => r.wt))) {
+    let pending = [];
+    let open = null;
+    for (const r of rows.filter((x) => x.wt === wt)) {
+      if (r.kind === "hook") {
+        if (r.hook === "post-tool-batch" && r.text && FAIL_LINE.test(r.text)) pending.push(r);
+        continue;
+      }
+      if (r.kind !== "step") continue;
+      if (r.type === "break") {
+        const from = pending[0]?.t ?? r.t - r.verdictMs;
+        open = { wt, from, set: reach(r.module, files), module: r.module };
+      }
+      for (const h of pending) notices.push({ wt, t: h.t, step: r, text: h.text, open });
+      if (r.type === "fix" && open) {
+        breaks.push({ ...open, to: r.t });
+        open = null;
+      }
+      pending = [];
+    }
+  }
+  return { notices, breaks };
+}
+
+function judgeNotice(n, breaks, counts) {
+  if (!n.open || !["break", "fix"].includes(n.step.type)) {
+    counts.falseAlarm++;
+    return;
+  }
+  const failed = [...n.text.matchAll(/(?:^|\n)FAIL\s+test\/m(\d+)\.test\.ts/g)].map((m) =>
+    Number(m[1]),
+  );
+  const names =
+    n.text.includes(`src/m${n.open.module}.ts`) || failed.some((k) => n.open.set.has(k));
+  if (n.step.type === "break" && !names) counts.unnamed++;
+  for (const k of new Set(failed)) {
+    if (n.open.set.has(k)) continue;
+    const other = breaks.some((b) => b.wt !== n.wt && b.from <= n.t && n.t <= b.to && b.set.has(k));
+    if (other) counts.wrongSession++;
+    else counts.wrongTest++;
+  }
 }
 
 function hookValues(rows) {
@@ -404,7 +512,7 @@ lines.push(
 );
 lines.push(
   failed.length === 0
-    ? "**Correctness: PASS** (no wrong verdict, missed push, hook over its 2 s timeout or failed session in any cell)"
+    ? "**Correctness: PASS** (no wrong verdict, missed, false or misaddressed notice, hook over its 2 s timeout or failed session in any cell)"
     : `**Correctness: FAILED** in ${failed.map((n) => `${n} (${gateFails[n].join(", ")})`).join("; ")}`,
   "",
   `**Overall score: ${overall?.toFixed(0)} / 100** (mean of the cell scores; a cell is the mean of its ${AREAS.length} areas, each the mean of its metrics: healthy 1, warn 0.5, fail 0)`,
