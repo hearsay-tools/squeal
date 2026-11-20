@@ -25,6 +25,13 @@ const BASE = existsSync("/tmp") ? "/tmp" : tmpdir();
 /** The relative path of the bundled CLI in a checkout of Squeal. */
 export const CLI = "plugins/claude-code/dist/cli/squeal.mjs";
 
+/** The relative path of the node:test reporter in a checkout of Squeal (D23.1). */
+export const NODE_TEST_REPORTER = "plugins/claude-code/dist/ci/node-test-reporter.mjs";
+
+/** A reporter that consumes events and yields nothing (D23.3, D23.4). 018-47 owns the real file. */
+export const NODE_TEST_REPORTER_STUB =
+  "export default async function* (source) { for await (const _ of source) {} }\n";
+
 /** Squeal's own floor, `engines.node` without its `>=`. */
 export const FLOOR = (
   JSON.parse(readFileSync(join(REPO, "package.json"), "utf8")) as { engines: { node: string } }
@@ -93,6 +100,10 @@ export function checkout(
     mkdirSync(dirname(join(root, CLI)), { recursive: true });
     writeFileSync(join(root, CLI), cli);
   }
+  // Spec 018 D23.1: the reporter sits beside the bundled CLI. 018-47 owns
+  // its contents; tests here only need the path to exist in the checkout.
+  mkdirSync(dirname(join(root, NODE_TEST_REPORTER)), { recursive: true });
+  writeFileSync(join(root, NODE_TEST_REPORTER), NODE_TEST_REPORTER_STUB);
   const files = join(root, "files");
   mkdirSync(files);
   for (const name of ["summary.md", "path", "env", "log"]) writeFileSync(join(files, name), "");

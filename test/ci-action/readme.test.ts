@@ -43,11 +43,12 @@ describe("the README's CI setup", () => {
   it("reads contents in every job but the export, and runs the action after setup-node", () => {
     const [workflow] = blocks("yaml");
     expect(workflow).toMatch(/^permissions:\n {2}contents: read\n/m);
-    const { test, "squeal-export": exported } = jobs();
+    const { test, "node-test": nodeTest, "squeal-export": exported } = jobs();
     expect(test).not.toContain("contents: write");
+    expect(nodeTest).not.toContain("contents: write");
     expect(exported).toContain("permissions:\n      contents: write\n");
-    expect(exported).toContain("needs: test\n");
-    for (const job of [test ?? "", exported ?? ""]) {
+    expect(exported).toContain("needs: [test, node-test]\n");
+    for (const job of [test ?? "", nodeTest ?? "", exported ?? ""]) {
       const node = job.indexOf("uses: actions/setup-node@");
       expect(node).toBeGreaterThan(-1);
       expect(job.indexOf("uses: hearsay-tools/squeal/ci@v0\n")).toBeGreaterThan(node);
@@ -55,6 +56,18 @@ describe("the README's CI setup", () => {
     // A named artifact that is missing fails the step; a pattern that matches none does not.
     expect(exported).toMatch(/download-artifact@v\d+\n {8}with:\n {10}pattern: /);
     expect(exported).not.toMatch(/download-artifact@v\d+\n {8}with:\n {10}name: /);
+  });
+
+  it("records node:test with Squeal's reporter on the developers' Node", () => {
+    const text = section();
+    expect(text).toContain(
+      '--test-reporter="$SQUEAL_NODE_TEST_REPORTER" --test-reporter-destination=stderr',
+    );
+    expect(text).toContain("--test-reporter=spec --test-reporter-destination=stdout");
+    const { "node-test": nodeTest, "squeal-export": exported } = jobs();
+    expect(nodeTest).toContain("node-version-file: .node-version");
+    expect(exported).toContain("node-version-file: .node-version");
+    expect(text).toMatch(/unrecorded node:test run on another Node/);
   });
 
   it("sets a shared.ref that Squeal reads", () => {
@@ -70,6 +83,7 @@ describe("the README's CI setup", () => {
       .split("\n")
       .flatMap((line) => /^ *- run: (squeal .+)$/.exec(line)?.[1] ?? []);
     expect(lines.map((line) => line.split(" ").slice(0, 3).join(" "))).toEqual([
+      "squeal ci record",
       "squeal ci record",
       "squeal ci export",
       "squeal ci publish",

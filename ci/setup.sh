@@ -1,7 +1,8 @@
 #!/bin/sh
 # The one step of Squeal's GitHub Action (spec 018 D20, ci/action.yml). It
-# puts ci/bin on the job's PATH, so the job's later steps have `squeal`, and
-# checks that Squeal can run with the node on the PATH. It always exits 0.
+# puts ci/bin on the job's PATH, so the job's later steps have `squeal`,
+# writes SQUEAL_NODE_TEST_REPORTER (D23.1), and checks that Squeal can run
+# with the node on the PATH. It always exits 0.
 # When Squeal cannot run, it warns in the job log and the step summary, and
 # `squeal` passes through (ci/lib.sh). When the CLI does not start on a Node
 # that meets the floor, it tells `squeal` so through $GITHUB_ENV.
@@ -10,11 +11,17 @@ case $0 in
   *) squeal_ci_action=. ;;
 esac
 squeal_ci_action=$(cd "$squeal_ci_action" && pwd)
-squeal_ci_root=$squeal_ci_action/..
+squeal_ci_root=$(cd "$squeal_ci_action/.." && pwd)
 . "$squeal_ci_action/lib.sh"
 
 if [ -n "${GITHUB_PATH-}" ]; then
   printf '%s\n' "$squeal_ci_action/bin" >>"$GITHUB_PATH"
+fi
+
+# Spec 018 D23.1: later steps name this path as --test-reporter. Write it
+# also when Squeal cannot run: the file is in this checkout (D20.2).
+if [ -n "${GITHUB_ENV-}" ]; then
+  { printf 'SQUEAL_NODE_TEST_REPORTER=%s\n' "$squeal_ci_root/plugins/claude-code/dist/ci/node-test-reporter.mjs" >>"$GITHUB_ENV"; } 2>/dev/null || :
 fi
 
 squeal_ci_passes="The squeal command passes through: squeal ci record runs the command without recording, and squeal ci export and squeal ci publish do nothing. Each squeal call checks again, so a Node that a later step puts on the PATH counts there."
