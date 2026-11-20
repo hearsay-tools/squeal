@@ -21,7 +21,7 @@ import type { FileHash } from "../types/keys.js";
  * content. While `squeal ci record` runs the command, every process records
  * the content of each input at the moment it read it, a listing's names at
  * the moment it listed, a path's absence at the moment it probed, and each
- * path it wrote (`src/runners/vitest/ci-runtime/evidence.cjs`). `squeal ci
+ * path it wrote (`src/runners/ci-runtime/evidence.cjs`). `squeal ci
  * export` keys a file only when every input of its closure has such
  * evidence, none of it cancelled by a write, equal to the export's checkout.
  * Nothing is hashed after the command, and neither a clean checkout nor a
