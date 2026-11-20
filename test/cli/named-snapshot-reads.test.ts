@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
+import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { fixedSelection, readVerdict } from "../../src/cli/verdict.js";
 import { namedSnapshot } from "../../src/cli/wait/snapshot.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
@@ -53,6 +54,8 @@ const synced = (): SyncState => ({
 });
 const sync = (): DaemonSync => ({ current: synced, stop: () => {} });
 const OPTIONS = { now: () => NOW, settleMs: 0, sync };
+/** The named wait's options: its first decided read is its last (row 011-421). */
+const WAIT = { ...OPTIONS, timeoutMs: 5_000, pollMs: 20 };
 
 /** A CI export of A, B and C, each at `key(path)`. */
 function bundle(runId: string, key: (path: string) => string): ResultsBundle {
@@ -143,5 +146,44 @@ describe("a named snapshot reads the worktree's states once (row 011-411)", () =
     // Before row 011-411: two more, the verdict's and the named files'.
     expect(snapshotOnly).toBe(1);
     expect(counter.whole).toBe(snapshotOnly);
+  });
+});
+
+describe("a named wait's last read reads the worktree's states once (row 011-421)", () => {
+  it("gives the text and JSON the separate reads gave", async () => {
+    const { repo, store } = worktree();
+
+    const got = await waitForNamed(repo.main, [B, C], WAIT);
+
+    if (got.outcome === "unavailable") throw new Error("unavailable");
+    expect(got.outcome).toBe("settled");
+    expect(got.result.imports?.length).toBe(3);
+    // Before row 011-421: the verdict, then the snapshot, then the named files, each reading every state.
+    const left = new Set((got.leftForPause ?? []).map(testFileId));
+    const held = got.selection.files.filter((f) => !left.has(testFileId(f)));
+    const result = buildSnapshot(store, repo.main, NOW);
+    const before = {
+      ...got,
+      verdict: readVerdict(store, repo.mainId, held, fixedSelection(got.selection.paths)),
+      files: readNamedFiles(store, repo.mainId, repo.main, got.selection.files, result.daemon, NOW),
+      result,
+    };
+    expect(JSON.stringify({ ...got, waitedMs: 0 })).toBe(
+      JSON.stringify({ ...before, waitedMs: 0 }),
+    );
+    expect(namedText(got, NOW)).toBe(namedText(before, NOW));
+    expect(namedText(got, NOW)).toMatch(/fail/);
+  });
+
+  it("reads every state of the worktree only for its snapshot (011-411 follow-up)", async () => {
+    const { repo, store } = worktree();
+    countWhole(store);
+    counter.whole = 0;
+
+    const got = await waitForNamed(repo.main, [B, C], WAIT);
+
+    expect(got.outcome).toBe("settled");
+    // Before row 011-421: three, the verdict's, the snapshot's and the named files'.
+    expect(counter.whole).toBe(1);
   });
 });
