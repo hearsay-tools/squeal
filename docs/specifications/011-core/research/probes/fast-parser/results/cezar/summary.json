@@ -1,0 +1,260 @@
+{
+  "root": "<root>",
+  "cpus": 24,
+  "cpu": "AMD Ryzen 9 5950X 16-Core Processor",
+  "versions": {
+    "vitest": "4.1.10",
+    "vite": "8.1.4",
+    "rolldown": "1.1.5",
+    "esModuleLexer": "3.0.3",
+    "babelParser": "7.29.13"
+  },
+  "testFiles": 1786,
+  "projects": [
+    "server",
+    "contract",
+    "api-client",
+    "web",
+    "e2e"
+  ],
+  "vite": {
+    "cold": {
+      "wallMs": 16657.1,
+      "cpuMs": 21923.9,
+      "load1": 3.3
+    },
+    "warm": {
+      "wallMs": 2813.5,
+      "cpuMs": 2893.8,
+      "load1": 2.86
+    },
+    "coldPerFileMs": 9.3,
+    "warmPerFileMs": 1.6
+  },
+  "related": {
+    "sample": 6,
+    "times": [
+      {
+        "wallMs": 4591.4,
+        "cpuMs": 6012.4,
+        "load1": 2.86
+      },
+      {
+        "wallMs": 4258.1,
+        "cpuMs": 6180.2,
+        "load1": 3.35
+      },
+      {
+        "wallMs": 4305.4,
+        "cpuMs": 5538.5,
+        "load1": 3.56
+      },
+      {
+        "wallMs": 4150.7,
+        "cpuMs": 5448.6,
+        "load1": 3.68
+      },
+      {
+        "wallMs": 4201.5,
+        "cpuMs": 6146.7,
+        "load1": 3.46
+      },
+      {
+        "wallMs": 3769.1,
+        "cpuMs": 4729.6,
+        "load1": 3.35
+      }
+    ]
+  },
+  "fast": {
+    "oxc-strip": {
+      "cold": {
+        "wallMs": 2972.2,
+        "cpuMs": 3299.6,
+        "load1": 3.4
+      },
+      "coldParse": {
+        "parseMs": 1098.4,
+        "resolveMs": 723.8,
+        "resolveCalls": 3959,
+        "filesParsed": 3338
+      },
+      "warm": {
+        "wallMs": 854.8,
+        "cpuMs": 875.7,
+        "load1": 3.4
+      },
+      "reparse": {
+        "wallMs": 891.7,
+        "cpuMs": 902.1,
+        "load1": 3.4,
+        "files": 3338,
+        "perFileMs": 0.3
+      },
+      "relatedReverse": {
+        "wallMs": 7.1,
+        "cpuMs": 8,
+        "load1": 3.4
+      },
+      "relatedDiffer": [],
+      "differ": {
+        "files": 0,
+        "missing": 0,
+        "packages": 0,
+        "builtins": 0,
+        "any": 0
+      }
+    },
+    "oxc-parse": {
+      "cold": {
+        "wallMs": 4607.4,
+        "cpuMs": 5831.5,
+        "load1": 3.4
+      },
+      "coldParse": {
+        "parseMs": 3414,
+        "resolveMs": 33.3,
+        "resolveCalls": 19,
+        "filesParsed": 3338
+      },
+      "warm": {
+        "wallMs": 899.6,
+        "cpuMs": 927.6,
+        "load1": 3.29
+      },
+      "reparse": {
+        "wallMs": 3426.4,
+        "cpuMs": 4602.6,
+        "load1": 3.18,
+        "files": 3338,
+        "perFileMs": 1
+      },
+      "relatedReverse": {
+        "wallMs": 9.8,
+        "cpuMs": 10.2,
+        "load1": 3.18
+      },
+      "relatedDiffer": [],
+      "differ": {
+        "files": 0,
+        "missing": 0,
+        "packages": 0,
+        "builtins": 0,
+        "any": 0
+      }
+    },
+    "babel": {
+      "cold": {
+        "wallMs": 9440.6,
+        "cpuMs": 12005.1,
+        "load1": 3.18
+      },
+      "coldParse": {
+        "parseMs": 8302.3,
+        "resolveMs": 0,
+        "resolveCalls": 0,
+        "filesParsed": 3338
+      },
+      "warm": {
+        "wallMs": 910.2,
+        "cpuMs": 926.2,
+        "load1": 3.88
+      },
+      "reparse": {
+        "wallMs": 7717.2,
+        "cpuMs": 8119.5,
+        "load1": 3.88,
+        "files": 3338,
+        "perFileMs": 2.3
+      },
+      "relatedReverse": {
+        "wallMs": 10.8,
+        "cpuMs": 10.8,
+        "load1": 3.59
+      },
+      "relatedDiffer": [],
+      "differ": {
+        "files": 0,
+        "missing": 0,
+        "packages": 0,
+        "builtins": 0,
+        "any": 0
+      }
+    },
+    "lexer-ts": {
+      "cold": {
+        "wallMs": 1250.7,
+        "cpuMs": 1304,
+        "load1": 3.59
+      },
+      "coldParse": {
+        "parseMs": 229.4,
+        "resolveMs": 13.8,
+        "resolveCalls": 3,
+        "filesParsed": 3069
+      },
+      "warm": {
+        "wallMs": 886.9,
+        "cpuMs": 893.4,
+        "load1": 3.59
+      },
+      "reparse": {
+        "wallMs": 116,
+        "cpuMs": 119.8,
+        "load1": 3.59,
+        "files": 3069,
+        "perFileMs": 0
+      },
+      "relatedReverse": {
+        "wallMs": 10.5,
+        "cpuMs": 11.8,
+        "load1": 3.59
+      },
+      "relatedDiffer": [
+        "packages/cezar/src/autosave-group.ts",
+        "packages/cezar/src/home/legacy-merge.ts",
+        "packages/web/src/components/sidebar-archive.ts",
+        "packages/web/src/routes/task-flows.css"
+      ],
+      "differ": {
+        "files": 232,
+        "missing": 0,
+        "packages": 229,
+        "builtins": 3,
+        "any": 235
+      }
+    }
+  },
+  "adapter": {
+    "testFiles": 1786,
+    "cold": {
+      "wallMs": 26441.1,
+      "cpuMs": 32625.3,
+      "load1": 3.59
+    },
+    "warm": {
+      "wallMs": 4035.7,
+      "cpuMs": 4109.1,
+      "load1": 4.93
+    },
+    "coldPerFileMs": 14.8,
+    "warmPerFileMs": 2.3,
+    "affected": [
+      {
+        "wallMs": 5674.3,
+        "cpuMs": 8223.4,
+        "load1": 5.02
+      },
+      {
+        "wallMs": 7271.1,
+        "cpuMs": 8562.2,
+        "load1": 10.22
+      },
+      {
+        "wallMs": 7227.6,
+        "cpuMs": 8638.1,
+        "load1": 11.25
+      }
+    ]
+  }
+}

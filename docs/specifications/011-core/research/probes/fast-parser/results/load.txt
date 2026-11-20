@@ -1,0 +1,5 @@
+ 17:27:16 up  6:05,  2 users,  load average: 3.28, 5.26, 8.60
+squeal exit 0
+ 17:28:43 up  6:07,  2 users,  load average: 3.41, 4.86, 8.17
+cezar exit 0
+ 17:30:54 up  6:09,  2 users,  load average: 14.16, 7.00, 8.41

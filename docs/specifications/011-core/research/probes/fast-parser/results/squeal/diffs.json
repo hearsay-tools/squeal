@@ -1,0 +1,54 @@
+{
+ "oxc-strip": {
+  "counts": {
+   "files": 0,
+   "missing": 0,
+   "packages": 0,
+   "builtins": 0,
+   "any": 0
+  },
+  "edges": [],
+  "perTest": {},
+  "edgesTotal": 0,
+  "perTestTotal": 0
+ },
+ "oxc-parse": {
+  "counts": {
+   "files": 0,
+   "missing": 0,
+   "packages": 0,
+   "builtins": 0,
+   "any": 0
+  },
+  "edges": [],
+  "perTest": {},
+  "edgesTotal": 0,
+  "perTestTotal": 0
+ },
+ "babel": {
+  "counts": {
+   "files": 0,
+   "missing": 0,
+   "packages": 0,
+   "builtins": 0,
+   "any": 0
+  },
+  "edges": [],
+  "perTest": {},
+  "edgesTotal": 0,
+  "perTestTotal": 0
+ },
+ "lexer-ts": {
+  "counts": {
+   "files": 0,
+   "missing": 0,
+   "packages": 0,
+   "builtins": 0,
+   "any": 0
+  },
+  "edges": [],
+  "perTest": {},
+  "edgesTotal": 0,
+  "perTestTotal": 0
+ }
+}
