@@ -47,9 +47,10 @@
 #   test/integration/pi-wake.test.ts.
 #
 # Exempt: they name node:test but check nothing node:test does on this Node.
-# They read or write policy, setup, primer, report or eval-record text,
+# They read or write policy, setup, primer, report or eval-record text or a CI part,
 # drive timers or signals, or check only that the host is asked (no node:test
 # run). Node 22 only.
+#   test/ci/parts-format.test.ts
 #   test/cli/code-gate-children.test.ts
 #   test/cli/code-gate-prepare-cancel.test.ts
 #   test/cli/codex.test.ts
