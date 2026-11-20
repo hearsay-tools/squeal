@@ -7,7 +7,7 @@
 "use strict";
 const fs = require("node:fs");
 const { createHash } = require("node:crypto");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 const { projectFile } = require("./coverage-drops.cjs");
 
 /** Row 013-08: each Vite server of the instance may load the provider, by its path and real path. */

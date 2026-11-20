@@ -231,4 +231,16 @@ function installEvidence(settings) {
   } catch {}
 }
 
-module.exports = { installEvidence };
+/** The evidence's settings in `SQUEAL_CI_RECORD` (`evidence`), or `null`. */
+function evidenceSettings() {
+  try {
+    const value = JSON.parse(process.env.SQUEAL_CI_RECORD ?? "")?.evidence;
+    if (typeof value?.out !== "string" || typeof value.root !== "string") return null;
+    const skip = Array.isArray(value.skip) ? value.skip.filter((s) => typeof s === "string") : [];
+    return { out: value.out, root: value.root, skip, format: value.format };
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { evidenceSettings, installEvidence };

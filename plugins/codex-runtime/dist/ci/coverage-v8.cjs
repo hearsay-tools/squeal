@@ -14,7 +14,7 @@
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 
 /** D19.2: the Vitest minors whose V8 provider Squeal has tested records from. */
 const TESTED = ["4.1", "5.0"];

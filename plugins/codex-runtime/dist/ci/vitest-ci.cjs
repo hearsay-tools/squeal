@@ -48,7 +48,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
 const { installWatch, watchWorkers } = require("./inspector.cjs");
 
@@ -277,18 +277,6 @@ function vitestClass(load) {
   return null;
 }
 
-/** The evidence's settings in `SQUEAL_CI_RECORD`, or `null`. */
-function readEvidence() {
-  try {
-    const value = JSON.parse(process.env[VARIABLE] ?? "")?.evidence;
-    if (typeof value?.out !== "string" || typeof value.root !== "string") return null;
-    const skip = Array.isArray(value.skip) ? value.skip.filter((s) => typeof s === "string") : [];
-    return { out: value.out, root: value.root, skip, format: value.format };
-  } catch {
-    return null;
-  }
-}
-
 const settings = readSettings();
 
 // Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
@@ -301,7 +289,8 @@ try {
 } catch {}
 
 try {
-  require("./evidence-hooks.cjs").installEvidence(readEvidence());
+  const hooks = require("./shared.cjs").shared("evidence-hooks.cjs");
+  hooks.installEvidence(hooks.evidenceSettings());
 } catch {}
 
 if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
@@ -309,7 +298,7 @@ if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
   try {
     const root = vitestPackage(process.argv[1]);
     if (root !== null) {
-      require("./children.cjs").markNested();
+      require("./shared.cjs").shared("children.cjs").markNested();
       if (!settings.nested) install(settings, root);
     }
   } catch {}
