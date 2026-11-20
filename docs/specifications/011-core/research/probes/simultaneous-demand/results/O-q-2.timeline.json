@@ -1,0 +1,439 @@
+{
+ "label": "O-q-2",
+ "edits": [
+  [
+   0,
+   "packages/contract/src/ci-wait.ts"
+  ]
+ ],
+ "windowS": 887.4,
+ "lastRunEndS": 857.4,
+ "distinctFinished": 892,
+ "fileRunsPicked": 892,
+ "fileRunsFinished": 892,
+ "vitestRuns": 16,
+ "nodeRuns": 8,
+ "vitestBusyS": 740.5,
+ "vitestSumFileS": 4883.1,
+ "nodeSumFileS": 312.1,
+ "firstNodeStart": 36,
+ "lastNodeEnd": 259.9,
+ "gaps": [
+  [
+   44.4,
+   0.9
+  ],
+  [
+   51.1,
+   1.8
+  ],
+  [
+   72.5,
+   83.1
+  ],
+  [
+   188.9,
+   1.6
+  ],
+  [
+   248.2,
+   0.9
+  ],
+  [
+   321.3,
+   1
+  ],
+  [
+   330.1,
+   0.6
+  ],
+  [
+   398.9,
+   1.5
+  ],
+  [
+   482.4,
+   1.7
+  ],
+  [
+   575.4,
+   1.3
+  ],
+  [
+   656.6,
+   1.3
+  ],
+  [
+   736.8,
+   0.7
+  ],
+  [
+   797.2,
+   0.7
+  ],
+  [
+   832.9,
+   0.8
+  ]
+ ],
+ "hb": {
+  "samples": 451,
+  "max": 7804,
+  "over10s": 0,
+  "over6s": 1
+ },
+ "cpu": {
+  "scopeCpuS": 5974,
+  "daemonCpuS": 550,
+  "meanBusy": 6.83,
+  "maxLoad1": 15.15,
+  "meanLoad1": 9.46,
+  "sampleS": 894
+ },
+ "queueEvery60": [
+  [
+   -14.9,
+   405,
+   0
+  ],
+  [
+   45.2,
+   1285,
+   7
+  ],
+  [
+   105.2,
+   1277,
+   1
+  ],
+  [
+   165.3,
+   1077,
+   201
+  ],
+  [
+   225.4,
+   877,
+   201
+  ],
+  [
+   285.5,
+   691,
+   186
+  ],
+  [
+   345.6,
+   582,
+   101
+  ],
+  [
+   405.7,
+   523,
+   59
+  ],
+  [
+   465.7,
+   523,
+   59
+  ],
+  [
+   525.8,
+   483,
+   40
+  ],
+  [
+   585.9,
+   454,
+   29
+  ],
+  [
+   646,
+   454,
+   29
+  ],
+  [
+   706.1,
+   431,
+   23
+  ],
+  [
+   766.2,
+   415,
+   16
+  ],
+  [
+   826.3,
+   406,
+   9
+  ],
+  [
+   886.4,
+   405,
+   0
+  ]
+ ],
+ "log": [
+  "2.2  squeal daemon: long write: store.sqlite write lock held 1804 ms by reconcileBatch < process.processTicksAndRejections < #pass; 37615 rows written",
+  "4.9  squeal daemon: long write: code.sqlite write lock held 548 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "35.4  squeal daemon: long write: store.sqlite write lock held 1369 ms by storeClosures < applyRunnerPart < process.processTicksAndRejections; 5269 rows written",
+  "36  squeal daemon: long write: store.sqlite write lock held 352 ms by startTier < act < startNext; 246 rows written",
+  "36.4  squeal daemon: long write: store.sqlite write lock held 403 ms by startTier < act < startNext; 11 rows written",
+  "36.9  squeal daemon: long write: store.sqlite write lock held 456 ms by startTier < act < startNext; 9 rows written",
+  "37.4  squeal daemon: long write: store.sqlite write lock held 416 ms by startTier < act < startNext; 29 rows written",
+  "37.8  squeal daemon: long write: store.sqlite write lock held 337 ms by startTier < act < startNext; 17 rows written",
+  "39.5  squeal daemon: long write: store.sqlite write lock held 661 ms by #write < Ledger.commit < Object.commit; 16 rows written",
+  "39.9  squeal daemon: long write: store.sqlite write lock held 305 ms by startTier < act < startNext; 11 rows written",
+  "40.5  squeal daemon: long write: store.sqlite write lock held 324 ms by startTier < act < startNext; 43 rows written",
+  "40.9  squeal daemon: long write: store.sqlite write lock held 311 ms by startTier < act < startNext; 19 rows written",
+  "41.2  squeal daemon: long write: store.sqlite write lock held 261 ms by startTier < act < startNext; 83 rows written",
+  "43  squeal daemon: long write: store.sqlite write lock held 758 ms by #write < Ledger.commit < Object.commit; 91 rows written",
+  "45.2  squeal daemon: long write: store.sqlite write lock held 823 ms by #write < #record; 488 rows written",
+  "45.7  squeal daemon: long write: store.sqlite write lock held 358 ms by startTier < act < startNext; 101 rows written",
+  "51.9  squeal daemon: long write: store.sqlite write lock held 768 ms by #write < #record; 199 rows written",
+  "52.8  squeal daemon: long write: store.sqlite write lock held 782 ms by #write < Ledger.commit < Object.commit; 64 rows written",
+  "53.2  squeal daemon: long write: store.sqlite write lock held 286 ms by startTier < act < startNext; 265 rows written",
+  "73.4  squeal daemon: long write: store.sqlite write lock held 848 ms by #write < #record; 527 rows written",
+  "101.1  squeal daemon: long write: store.sqlite write lock held 560 ms by #write < Ledger.commit < Object.commit; 28 rows written",
+  "156.2  squeal daemon: long write: store.sqlite write lock held 607 ms by startTier < act < startNext; 8419 rows written",
+  "190.2  squeal daemon: long write: store.sqlite write lock held 1311 ms by #write < #record; 16644 rows written",
+  "191  squeal daemon: long write: store.sqlite write lock held 493 ms by startTier < act < startNext; 5323 rows written",
+  "213.6  squeal daemon: long write: code.sqlite write lock held 736 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "249  squeal daemon: long write: store.sqlite write lock held 812 ms by #write < #record; 10447 rows written",
+  "249.5  squeal daemon: long write: store.sqlite write lock held 366 ms by startTier < act < startNext; 6401 rows written",
+  "260.4  squeal daemon: long write: store.sqlite write lock held 528 ms by #write < Ledger.commit < Object.commit; 124 rows written",
+  "312.7  squeal daemon: long write: code.sqlite write lock held 410 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "313.6  squeal daemon: long write: code.sqlite write lock held 406 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "322  squeal daemon: long write: store.sqlite write lock held 713 ms by #write < #record; 177 rows written",
+  "322.6  squeal daemon: long write: store.sqlite write lock held 299 ms by startTier < act < startNext; 125 rows written",
+  "329.4  squeal daemon: long write: store.sqlite write lock held 875 ms by #write < #record; 12618 rows written",
+  "329.9  squeal daemon: busy, heap in use 1397 MiB over twice the last live size of 236 MiB: a last-resort GC took private memory from 2287 to 1023 MiB in a 226 ms pause; 478 MiB of heap in use after it",
+  "330.5  squeal daemon: long write: store.sqlite write lock held 441 ms by #write < #record; 301 rows written",
+  "331.1  squeal daemon: long write: store.sqlite write lock held 408 ms by startTier < act < startNext; 5363 rows written",
+  "356.6  squeal daemon: coverage: packages/cezar/src/workflows/turn-path-fact-values.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-a608ea5b-2438-419",
+  "356.6  squeal daemon: coverage: 1 completed test file got no record since this daemon started: 1 map-error (its payload did not map); the last: packages/cezar/src/workflows/turn-path-fact-values.test.ts: Error: Error: ENOENT: no suc",
+  "360.1  squeal daemon: coverage: packages/cezar/src/delegation/task-access.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-1560e17a-b00d-486e-9aff-3f",
+  "360.1  squeal daemon: coverage: 2 completed test files got no record since this daemon started: 2 map-error (its payload did not map); the last: packages/cezar/src/delegation/task-access.test.ts: Error: Error: ENOENT: no such file o",
+  "360.1  squeal daemon: coverage: packages/cezar/src/workflows/retention-wiring.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-4e62cef9-5a1c-4bef-a30",
+  "360.1  squeal daemon: coverage: packages/cezar/src/workflows/usage-limit-worker-continue.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-d29fcaad-16",
+  "360.1  squeal daemon: coverage: 4 completed test files got no record since this daemon started: 4 map-error (its payload did not map); the last: packages/cezar/src/workflows/usage-limit-worker-continue.test.ts: Error: Error: ENOENT:",
+  "389.3  squeal daemon: long write: code.sqlite write lock held 802 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "390.6  squeal daemon: long write: code.sqlite write lock held 519 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "398.7  squeal daemon: busy, heap in use 1126 MiB over twice the last live size of 478 MiB: a last-resort GC took private memory from 1639 to 1098 MiB in a 297 ms pause; 617 MiB of heap in use after it",
+  "400.1  squeal daemon: long write: store.sqlite write lock held 1224 ms by #write < #record; 10626 rows written",
+  "400.7  squeal daemon: long write: store.sqlite write lock held 320 ms by startTier < act < startNext; 3623 rows written",
+  "483.6  squeal daemon: long write: store.sqlite write lock held 1232 ms by #write < #record; 7225 rows written",
+  "484.8  squeal daemon: long write: store.sqlite write lock held 726 ms by startTier < act < startNext; 2299 rows written",
+  "501.2  squeal daemon: coverage: packages/cezar/src/workflows/memory-guard.test.ts: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-776257ec-9692-4b89-8d90-c1",
+  "501.3  squeal daemon: coverage: packages/web/src/routes/reports-restore.test.tsx: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-6c68e485-7ee1-4790-b675-c90",
+  "503  squeal daemon: coverage: packages/web/src/routes/task-thread/review-panel.test.tsx: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-d20edad1-2b58-40b2",
+  "503.3  squeal daemon: coverage: packages/web/src/routes/settings/sidebar-section.test.tsx: Error: Error: ENOENT: no such file or directory, open '/tmp/squeal-1001/tmp/40aa141d8d16caad/coverage-5AO2p4/.tmp/coverage-38e022d6-95a4-4b6e",
+  "503.3  squeal daemon: coverage: 8 completed test files got no record since this daemon started: 8 map-error (its payload did not map); the last: packages/web/src/routes/settings/sidebar-section.test.tsx: Error: Error: ENOENT: no suc",
+  "563  squeal daemon: long write: code.sqlite write lock held 1404 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "576.5  squeal daemon: long write: store.sqlite write lock held 1088 ms by #write < #record; 4559 rows written",
+  "577  squeal daemon: long write: store.sqlite write lock held 327 ms by startTier < act < startNext; 1649 rows written",
+  "657.6  squeal daemon: long write: store.sqlite write lock held 957 ms by #write < #record; 3270 rows written",
+  "658.2  squeal daemon: long write: store.sqlite write lock held 336 ms by startTier < act < startNext; 1203 rows written",
+  "737.4  squeal daemon: long write: store.sqlite write lock held 1101 ms by #write < #record; 2384 rows written",
+  "737.9  squeal daemon: long write: store.sqlite write lock held 373 ms by startTier < act < startNext; 1095 rows written",
+  "797.8  squeal daemon: long write: store.sqlite write lock held 701 ms by #write < #record; 2193 rows written",
+  "798.2  squeal daemon: long write: store.sqlite write lock held 261 ms by startTier < act < startNext; 339 rows written",
+  "833.3  squeal daemon: long write: store.sqlite write lock held 507 ms by #write < #record; 670 rows written",
+  "844.8  squeal daemon: long write: code.sqlite write lock held 528 ms by runCoverageStep < squeal.mjs:73879 < Pace.measure; 1 row written",
+  "857.9  squeal daemon: long write: store.sqlite write lock held 892 ms by #write < #record; 162 rows written"
+ ],
+ "vitestRunList": [
+  {
+   "id": "fc6c22c7",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 35.6,
+   "end": 44.4,
+   "files": 4,
+   "finished": 4,
+   "sumS": 2.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6bea387f",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 45.3,
+   "end": 51.1,
+   "files": 4,
+   "finished": 4,
+   "sumS": 8.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "6cf1558e",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 52.9,
+   "end": 72.5,
+   "files": 4,
+   "finished": 4,
+   "sumS": 33.4,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "ef6ee5d2",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 155.6,
+   "end": 188.9,
+   "files": 200,
+   "finished": 200,
+   "sumS": 166.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "af25d2d2",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 190.5,
+   "end": 248.2,
+   "files": 200,
+   "finished": 200,
+   "sumS": 362.6,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "9f69949a",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 249.1,
+   "end": 328.5,
+   "files": 186,
+   "finished": 186,
+   "sumS": 550,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "df85422c",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 311.9,
+   "end": 321.3,
+   "files": 4,
+   "finished": 4,
+   "sumS": 18.1,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "72bb0726",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 322.3,
+   "end": 330.1,
+   "files": 4,
+   "finished": 4,
+   "sumS": 16,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "9196be2c",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 330.7,
+   "end": 398.9,
+   "files": 101,
+   "finished": 101,
+   "sumS": 529.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "5f96f10b",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 400.4,
+   "end": 482.4,
+   "files": 59,
+   "finished": 59,
+   "sumS": 653.7,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "a18d4ba3",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 484.1,
+   "end": 575.4,
+   "files": 40,
+   "finished": 40,
+   "sumS": 714.2,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "2fcbd7ba",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 576.7,
+   "end": 656.6,
+   "files": 29,
+   "finished": 29,
+   "sumS": 579.5,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "583ee668",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 657.9,
+   "end": 736.8,
+   "files": 23,
+   "finished": 23,
+   "sumS": 567.3,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "155447de",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 737.5,
+   "end": 797.2,
+   "files": 16,
+   "finished": 16,
+   "sumS": 402.8,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "8822c0a7",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 797.9,
+   "end": 832.9,
+   "files": 9,
+   "finished": 9,
+   "sumS": 257,
+   "width": null,
+   "state": "completed"
+  },
+  {
+   "id": "31599e13",
+   "rev": 9,
+   "lane": "vitest",
+   "start": 833.7,
+   "end": 857.4,
+   "files": 1,
+   "finished": 1,
+   "sumS": 21.6,
+   "width": null,
+   "state": "completed"
+  }
+ ],
+ "firstEndOf": []
+}

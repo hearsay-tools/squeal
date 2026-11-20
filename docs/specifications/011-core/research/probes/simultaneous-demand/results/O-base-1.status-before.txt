@@ -1,0 +1,10 @@
+Revision: 0
+Known failures: 0; not current: 417 of 1931 test files (417 unknown)
+Affected checks: 32206 passed (30692 tests, 1514 test files loaded), 0 running, 0 queued, 27 skipped (27 tests)
+Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 0 (the counts are for revision 0; `squeal run --all` requests one)
+run-loop: 320 test files; 320 not run at revision 0. Squeal has not queued them; `squeal run run-loop --wait 60000` runs them now and waits for their results.
+browser: 97 test files; 97 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Complexity: 5 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 87 functions over CRAP 30, 1473 untested; 3755 files wait for the imports of 1931 test files; squeal code lists them.
+Lint: linting, 640 of 3471 files.
+More: `squeal status --full` adds the worktree and daemon, the 417 test files without a result one by one and 14 notes

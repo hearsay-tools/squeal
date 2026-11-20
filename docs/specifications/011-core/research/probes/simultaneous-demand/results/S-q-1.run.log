@@ -1,0 +1,10 @@
+idle at 2026-11-20T11:47:55Z
+idle at 2026-11-20T11:48:15Z
+started S-q-1-sampler pid 348974
+started S-q-1-workers pid 348982
+started S-q-1-queue-1 pid 348992
+started S-q-1-queue-2 pid 349003
+started S-q-1-marks pid 349014
+idle at 2026-11-20T11:58:36Z
+idle at 2026-11-20T11:59:46Z
+q4 S-q-1 done 2026-11-20T11:59:52Z

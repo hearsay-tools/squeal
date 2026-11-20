@@ -1,0 +1,2 @@
+1 B's quiet holds backlog when A asks: A grant 5; B grant at its quiet's end 4
+2 A alone (no other daemon): A grant 9

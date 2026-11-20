@@ -1,0 +1,13 @@
+Squeal daemon spawned for ~/work/0d5248b3/squawk
+
+Revision: 5 · c11e4edf + 5, dirty
+Known failures: 0; not current: 417 of 1931 test files (405 queued, 12 unknown)
+Affected checks: 32206 passed (30692 tests, 1514 test files loaded), 0 running, 0 queued, 27 skipped (27 tests)
+Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 0 (the counts are for revision 5; `squeal run --all` requests one)
+run-loop: 320 test files; 308 pending; 12 not run at revision 5. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run run-loop --wait 60000` runs them now and waits for their results.
+browser: 97 test files; 97 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.
+Queued: 405 test files: e2e: packages/web/e2e/activity.e2e.ts, e2e: packages/web/e2e/agent-browser-tabs.e2e.ts, e2e: packages/web/e2e/agents-dock.e2e.ts, e2e: packages/web/e2e/artifact-project-links.e2e.ts, e2e: packages/web/e2e/assistant-line-breaks.e2e.ts and 400 more
+Complexity: 5 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 74 functions over CRAP 30, 1278 untested; 2467 files wait for test runs, which squeal run --all makes; 986 files unknown (8 because no test Squeal runs loads them, 834 from a test file with no coverage record, 144 from a skipped test); squeal code lists them.
+Lint: 0 files with findings, 0 since the oldest registered session started; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 12 test files without a result one by one and 13 notes

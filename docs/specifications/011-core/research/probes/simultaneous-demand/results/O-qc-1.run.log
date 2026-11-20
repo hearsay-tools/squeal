@@ -1,0 +1,10 @@
+~/work/0d5248b3/probe/start-daemon.sh: line 23: /proc/1069808/cmdline: No such file or directory
+O-qc-1 daemon=1069683
+idle at 2026-11-20T13:23:35Z
+started O-qc-1-sampler pid 1070783
+started O-qc-1-queue pid 1070791
+started O-qc-1-workers pid 1070800
+started O-qc-1-permits pid 1070811
+idle at 2026-11-20T13:37:03Z
+done O-qc-1
+arm O-qc-1 done 2026-11-20T13:37:08Z

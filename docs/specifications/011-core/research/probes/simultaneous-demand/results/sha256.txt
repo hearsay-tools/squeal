@@ -1,0 +1,3 @@
+0e7c64b16bfb4951aef3a42412fca954ff17b2834b6167cb05e6291509480205  squeal-base/plugins/claude-code/dist/cli/squeal.mjs
+0b54648907548f32d9add0e308747e1c1f26b0f5226b3448c1900e376753d639  squeal-q/plugins/claude-code/dist/cli/squeal.mjs
+991e459d1be1408df87b46170fb6608478ec07fc488cf800847ee1bb59b2cce1  squeal-qc/plugins/claude-code/dist/cli/squeal.mjs

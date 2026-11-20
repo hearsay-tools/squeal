@@ -1,0 +1,9 @@
+O-qc-2 daemon=1258007
+idle at 2026-11-20T13:39:04Z
+started O-qc-2-sampler pid 1258900
+started O-qc-2-queue pid 1258908
+started O-qc-2-workers pid 1258917
+started O-qc-2-permits pid 1258928
+idle at 2026-11-20T13:54:24Z
+done O-qc-2
+arm O-qc-2 done 2026-11-20T13:54:29Z

@@ -1,0 +1,270 @@
+From 33c46c3230d8048ed9db88ba998f0b492093d334 Mon Sep 17 00:00:00 2001
+From: Wiktor Jarka <wjarka@users.noreply.github.com>
+Date: Fri, 20 Nov 2026 04:07:56 +0100
+Subject: [PATCH] fix(011-417): a backlog tier's gate reads fresh CPU
+
+When a lease ends or returns permits, the pool counts the workers it
+still holds until a window that starts then is measured. A backlog
+gate reads the host again once the last reading is 1 s old, not 30 s.
+Tests: research 011-413 probe cases A to C and E, and the shrink path.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/core/capacity/pool.ts           |  36 +++++--
+ test/capacity/fresh-reading.test.ts | 147 ++++++++++++++++++++++++++++
+ test/capacity/host-gate.test.ts     |   6 +-
+ 3 files changed, 179 insertions(+), 10 deletions(-)
+ create mode 100644 test/capacity/fresh-reading.test.ts
+
+diff --git a/src/core/capacity/pool.ts b/src/core/capacity/pool.ts
+index 6b7f0a801..ff0720379 100644
+--- a/src/core/capacity/pool.ts
++++ b/src/core/capacity/pool.ts
+@@ -207,7 +207,9 @@ interface Lease {
+  *   C10 Size as amended 2026-10-21, row 011-98). Beside the tree it reads
+  *   the host's busy cores over the same window; a backlog tier's cores
+  *   start at what the host used beyond the tree, plus the tree's cores now,
+- *   when that is more (row 011-182).
++ *   when that is more (row 011-182). A lease that ends or returns permits
++ *   starts a new window, and the held workers stand for the tree's cores
++ *   until it is measured (row 011-417).
+  * - A backlog tier has no grants term (spec 021 D18, row 021-18): each
+  *   permit needs those cores below the ceiling, `backgroundShare` of the
+  *   CPUs, alone; the slots do not bound it (row 011-404, gh-225). When no daemon's mark states a
+@@ -448,6 +450,8 @@ class LockFilePool implements PermitPool {
+         const wanted = Math.max(1, Math.floor(workers));
+         const returned = lease.permits.splice(wanted);
+         for (const db of returned) db.close();
++        // The returned workers' CPU counts no more (row 011-417).
++        if (returned.length > 0) pool.#restartWindow();
+         // A tier's tail calls this at each file's end (row 011-97): no change writes no mark.
+         if (returned.length === 0 && lease.want === wanted) return;
+         lease.want = wanted;
+@@ -463,8 +467,24 @@ class LockFilePool implements PermitPool {
+     if (!this.#leases.delete(lease)) return;
+     for (const db of lease.permits.splice(0)) db.close();
+     if (this.#leases.size === 0) this.#idleSince = this.#now();
+-    if (this.#active()) this.#republish();
+-    else this.#deactivate();
++    if (!this.#active()) {
++      this.#deactivate();
++      return;
++    }
++    // The ended tier's CPU counts no more, though another lease keeps the pool active (row 011-417).
++    this.#restartWindow();
++    this.#republish();
++  }
++
++  /**
++   * A lease ended or returned permits (011 C10 Size, row 011-417): the
++   * daemon's cores are the workers it still holds until a window that
++   * starts now is measured, not the last window's, which counted them.
++   */
++  #restartWindow(): void {
++    this.#measured = null;
++    this.#tree?.reset();
++    this.#read();
+   }
+ 
+   #active(): boolean {
+@@ -589,16 +609,18 @@ class LockFilePool implements PermitPool {
+   /**
+    * A backlog tier's view of the host (row 011-182): its busy cores beyond
+    * this daemon's tree over the last window, plus `cores`, what the tree's
+-   * tiers use now, so a tier of its own that ended since counts no more. A
+-   * window older than a mark's freshness is read again, over the time since
+-   * the last read, once that is `HOST_WINDOW_MIN_MS`. `null` with none.
++   * tiers use now, so a tier of its own that ended since counts no more.
++   * The window is read again, over the time since the last read, once that
++   * is `HOST_WINDOW_MIN_MS` (row 011-417: a window up to 30 s old gave a
++   * waiting daemon the floor on an idle host). One older than a mark's
++   * freshness counts nothing. `null` with none.
+    */
+   #busy(cores: number): number | null {
+     if (this.#host === null) return null;
+     const now = this.#now();
+     const fresh = (): boolean =>
+       this.#beyond !== null && now - this.#beyond.at < SLOT_WAITER_FRESH_MS;
+-    if (!fresh() && this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
++    if (this.#readAt !== null && now - this.#readAt >= HOST_WINDOW_MIN_MS) this.#read();
+     return fresh() && this.#beyond !== null ? this.#beyond.cores + cores : null;
+   }
+ 
+diff --git a/test/capacity/fresh-reading.test.ts b/test/capacity/fresh-reading.test.ts
+new file mode 100644
+index 000000000..8c8a319e5
+--- /dev/null
++++ b/test/capacity/fresh-reading.test.ts
+@@ -0,0 +1,147 @@
++import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { afterEach, beforeEach, describe, expect, test } from "vitest";
++import type { HostCpu, TreeCpu } from "../../src/core/capacity/cores.js";
++import { clearMark, type PoolMark, writeMark } from "../../src/core/capacity/marks.js";
++import { createPermitPool, type PermitPool } from "../../src/core/capacity/pool.js";
++
++/*
++ * 011 C10 Size, row 011-417 (research `run-width-design.md` section 1, probe
++ * `stale-cores.ts`): a backlog tier's gate counts this daemon's cores now and
++ * the host's over a window at most 1 s old. The machine has 12 CPUs, 11 slots
++ * and the default ceiling of 9 busy CPUs, the lab VM's numbers. This daemon's
++ * tree and the host are fakes whose cores the test sets; another daemon is a mark.
++ */
++
++let root: string;
++let dir: string;
++const pools: PermitPool[] = [];
++
++beforeEach(() => {
++  root = mkdtempSync(join(tmpdir(), "squeal-fresh-reading-test-"));
++  dir = join(root, "squeal-uid");
++  mkdirSync(dir, { recursive: true, mode: 0o700 });
++});
++
++afterEach(() => {
++  for (const pool of pools.splice(0)) pool.close();
++  rmSync(root, { recursive: true, force: true });
++});
++
++/** A reader whose next read gives `cores`, and that counts its reads. */
++function fake(cores: number): TreeCpu & HostCpu & { cores: number; reads: number } {
++  return {
++    cores,
++    reads: 0,
++    read() {
++      this.reads++;
++      return this.cores;
++    },
++    reset() {},
++  };
++}
++
++function daemon(
++  id: string,
++  tree: TreeCpu,
++  host: HostCpu,
++  options: { refreshMs?: number; now?: () => number } = {},
++): PermitPool {
++  const pool = createPermitPool({
++    dir,
++    owner: { pid: process.pid, worktreeId: id },
++    hostSlots: 11,
++    cpus: 12,
++    cores: tree,
++    host,
++    ...options,
++  });
++  pools.push(pool);
++  return pool;
++}
++
++describe("a lease that ends or shrinks beside another (row 011-417, cases A to C)", () => {
++  /**
++   * A node:test slot holds 1 permit; a 9-wide tier starts beside it, and the
++   * tree and the host read `during` cores by the next refresh. Its tier's
++   * workers go; the slot's one worker stays.
++   */
++  async function wideTierRan(during: number) {
++    const tree = fake(0);
++    const host = fake(0);
++    const me = daemon("me", tree, host, { refreshMs: 20 });
++    const slot = me.acquire(1, "fast", 1, "backlog");
++    const tier = me.acquire(9, "fast", 1, "backlog");
++    expect(slot?.grant).toBe(1);
++    expect(tier?.grant).toBe(8);
++    tree.cores = during;
++    host.cores = during;
++    const reads = host.reads;
++    await expect.poll(() => host.reads).toBeGreaterThan(reads);
++    return { me, tree, host, tier };
++  }
++
++  test.each([9.5, 8.2, 7.2])(
++    "after a tier at %s cores ends, the next tier asks at once and gets 8 permits",
++    async (during) => {
++      const { me, tree, host, tier } = await wideTierRan(during);
++      tier?.shrinkTo(2);
++      tier?.release();
++      tree.cores = 1;
++      host.cores = 1;
++      // Before row 011-417: 0, 1 or 2, the ended tier's measured cores until the next refresh.
++      expect(me.offer(9, "fast", "backlog")).toBe(8);
++      expect(me.acquire(9, "fast", 1, "backlog")?.grant).toBe(8);
++    },
++  );
++
++  test("a tier that returns permits counts the workers it keeps, not the window that ran them all", async () => {
++    const { me, tree, host, tier } = await wideTierRan(9.5);
++    tree.cores = 3;
++    host.cores = 3;
++    tier?.shrinkTo(2);
++    // The slot's worker and the tier's 2: 3 cores of the 9, so 6 permits, not 0 at 9.5.
++    expect(me.offer(9, "fast", "backlog")).toBe(6);
++  });
++
++  test("once the window that starts at the end is measured, its cores count", async () => {
++    const { me, tree, host, tier } = await wideTierRan(9.5);
++    tier?.release();
++    // The slot's file turned heavy: 4 cores, not the 1 worker it holds.
++    tree.cores = 4;
++    host.cores = 4;
++    const reads = host.reads;
++    await expect.poll(() => host.reads).toBeGreaterThan(reads + 1);
++    expect(me.offer(9, "fast", "backlog")).toBe(5);
++  });
++});
++
++describe("a waiting daemon reads the host again once its reading is 1 s old (row 011-417, case E)", () => {
++  test("when the other daemon's tier ends, the waiter gets the ceiling's 9, not the floor's 1", () => {
++    let clock = Date.now();
++    const host = fake(9.6);
++    const copy2 = daemon("copy2", fake(0), host, { now: () => clock });
++    // Copy 1 holds 9 background permits at 9.6 cores, and the host reads 9.6 busy.
++    const copy1: PoolMark = {
++      id: "copy1",
++      want: 9,
++      grant: 9,
++      since: null,
++      cores: 9.6,
++      background: 9,
++    };
++    writeMark(dir, copy1);
++    // The window opened at construction is over 1 s old at the first look; then a look each 2 s.
++    clock += 1_500;
++    for (let t = 0; t < 20; t += 2) {
++      expect(copy2.acquire(9, "fast", 1, "backlog")).toBeNull();
++      clock += 2_000;
++    }
++    // At t = 20 s copy 1's tier ends: its mark goes and the host reads 0.3 busy.
++    clearMark(dir, "copy1");
++    host.cores = 0.3;
++    // Before row 011-417: 1, the floor, on the 9.6 cores of a window read 20 s before.
++    expect(copy2.acquire(9, "fast", 1, "backlog")?.grant).toBe(9);
++  });
++});
+diff --git a/test/capacity/host-gate.test.ts b/test/capacity/host-gate.test.ts
+index bebd1c091..fad166ff6 100644
+--- a/test/capacity/host-gate.test.ts
++++ b/test/capacity/host-gate.test.ts
+@@ -198,14 +198,14 @@ describe("the pool's gate on a busy host (row 011-182)", () => {
+     expect(me.acquire(10, "fast", 1, "backlog")?.grant).toBe(10);
+   });
+ 
+-  test("a window older than a mark's freshness is read again, once the last read is a second old", () => {
++  test("a backlog gate reads the window again once the last read is a second old (row 011-417)", () => {
+     let clock = Date.now();
+     const host = fake(1);
+     const me = daemon("me", host, { now: () => clock });
+     expect(me.offer(10, "fast", "backlog")).toBe(10);
+     host.cores = 23.9;
+-    // Within the window's freshness the gate keeps the last window's cores.
+-    clock += SLOT_WAITER_FRESH_MS - 1;
++    // Within a second the gate keeps the last window's cores; then it reads again.
++    clock += HOST_WINDOW_MIN_MS - 1;
+     expect(me.offer(10, "fast", "backlog")).toBe(10);
+     clock += 1;
+     expect(me.offer(10, "fast", "backlog")).toBe(1);
+-- 
+2.43.0
+

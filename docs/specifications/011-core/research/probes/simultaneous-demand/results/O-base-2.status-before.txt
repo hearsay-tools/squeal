@@ -1,0 +1,14 @@
+Revision: 10 · c11e4edf + 10
+Known failures: 0; not current: 471 of 1931 test files (4 running, 401 queued, 54 stale, 12 unknown), 991 tests (991 stale)
+Affected checks: 31161 passed (29701 tests, 1460 test files loaded), 0 running, 0 queued, 27 skipped (27 tests), 1045 stale (991 tests, 54 test files loaded); 405 test files without checks yet: 4 running, 401 queued
+Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 0 (the counts are for revision 10; `squeal run --all` requests one)
+run-loop: 320 test files; 308 pending, running 4 run-loop files since 15:13: packages/cezar/src/core/harness-claude-contract-parity.test.ts, packages/cezar/src/core/harness-claude-owned-input-parity.test.ts and 2 more (no earlier run); 12 not run at revision 10. Squeal runs the pending ones when the agent pauses and has not queued the rest; `squeal run run-loop --wait 60000` runs them now and waits for their results.
+browser: 97 test files; 97 pending, waiting for `squeal run browser`. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.
+Running: 4 test files: server: packages/cezar/src/core/harness-claude-contract-parity.test.ts, server: packages/cezar/src/core/harness-claude-owned-input-parity.test.ts, server: packages/cezar/src/core/harness-claude-owned-workflows-parity.test.ts, server: packages/cezar/src/core/harness-claude-ownership-parity.test.ts
+Queued: 401 test files: e2e: packages/web/e2e/activity.e2e.ts, e2e: packages/web/e2e/agent-browser-tabs.e2e.ts, e2e: packages/web/e2e/agents-dock.e2e.ts, e2e: packages/web/e2e/artifact-project-links.e2e.ts, e2e: packages/web/e2e/assistant-line-breaks.e2e.ts and 396 more
+Outstanding:
+  54 test files last passed at other inputs, nothing queued them (the baseline is lookup-only): server: packages/cezar/src/automations/task-template.test.ts, server: packages/cezar/src/core/codex-approvals.test.ts, server: packages/cezar/src/core/mock-scenario.test.ts and 51 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 471 test files not current here
+Complexity: 5 functions over 20, 0 since the oldest registered session started; squeal code lists them.
+Coverage: 74 functions over CRAP 30, 1276 untested; 3755 files wait for the imports of 1931 test files; squeal code lists them.
+Lint: linting, 0 of 3471 files.
+More: `squeal status --full` adds the worktree and daemon, the 12 test files without a result one by one and 14 notes

@@ -1,0 +1,10 @@
+idle at 2026-11-20T11:33:17Z
+idle at 2026-11-20T11:33:37Z
+started S-base-1-sampler pid 277404
+started S-base-1-workers pid 277423
+started S-base-1-queue-1 pid 277442
+started S-base-1-queue-2 pid 277448
+started S-base-1-marks pid 277465
+idle at 2026-11-20T11:43:07Z
+idle at 2026-11-20T11:44:58Z
+q4 S-base-1 done 2026-11-20T11:45:04Z

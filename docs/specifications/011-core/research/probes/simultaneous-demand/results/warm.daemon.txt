@@ -1,0 +1,2 @@
+cgroup=/sys/fs/cgroup/user.slice/user-1001.slice/user@1001.service/app.slice/sq-warm.scope
+pid=3338 squeal squawk daemon @6e21ca97 ~/work/0d5248b3/squeal-base/plugins/claude-code/dist/cli/squeal.mjs daemon ~/work/0d5248b3/squawk 

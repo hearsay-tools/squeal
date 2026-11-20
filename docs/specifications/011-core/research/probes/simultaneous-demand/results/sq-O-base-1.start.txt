@@ -1,0 +1,12 @@
+Squeal daemon spawned for ~/work/0d5248b3/squawk
+
+Revision: 0
+Known failures: 0; not current: 417 of 1931 test files (417 unknown)
+Affected checks: 32206 passed (30692 tests, 1514 test files loaded), 0 running, 0 queued, 27 skipped (27 tests)
+Full-suite checkpoint: none completed at any revision; only the fast lane completed, at revision 0 (the counts are for revision 0; `squeal run --all` requests one)
+run-loop: 320 test files; 320 not run at revision 0. Squeal has not queued them; `squeal run run-loop --wait 60000` runs them now and waits for their results.
+browser: 97 test files; 97 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Complexity: 5 functions over 20; squeal code lists them.
+Coverage: 87 functions over CRAP 30, 1473 untested; 3274 files wait for test runs, which squeal run --all makes; 27 files wait for coverage records; 152 files unknown (8 because no test Squeal runs loads them, 144 from a skipped test); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 417 test files without a result one by one and 11 notes

@@ -1,0 +1,10 @@
+idle at 2026-11-20T12:27:01Z
+idle at 2026-11-20T12:27:21Z
+started S-q-2-sampler pid 560110
+started S-q-2-workers pid 560118
+started S-q-2-queue-1 pid 560133
+started S-q-2-queue-2 pid 560139
+started S-q-2-marks pid 560150
+idle at 2026-11-20T12:35:29Z
+idle at 2026-11-20T12:35:59Z
+q4 S-q-2 done 2026-11-20T12:36:02Z

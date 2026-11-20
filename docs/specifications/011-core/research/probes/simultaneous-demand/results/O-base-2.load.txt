@@ -1,0 +1,12 @@
+2026-11-20T14:14:01Z
+ 15:14:01 up  3:52,  1 user,  load average: 1.26, 6.04, 8.04
+    PID     ELAPSED %CPU COMMAND
+1638402       00:00  162 ~/.nvm/versions/node/v26.13.0/bin/node --import ~/work/0d5248b3/squawk/node_modules/.pnpm/tsx@4.23.0/node
+1638428       00:00  127 ~/.nvm/versions/node/v26.13.0/bin/node --import ~/work/0d5248b3/squawk/node_modules/.pnpm/tsx@4.23.0/node
+1638445       00:00  120 node ~/work/0d5248b3/squawk/packages/cezar/scripts/mock-claude.mjs --input-format stream-json --output-format strea
+1638434       00:00  110 node ~/work/0d5248b3/squawk/packages/cezar/scripts/mock-claude.mjs --input-format stream-json --output-format strea
+1638366       00:00 94.8 node ~/work/0d5248b3/squawk/packages/cezar/scripts/mock-claude.mjs --input-format stream-json --output-format strea
+1637410       00:06 70.0 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/
+1637096       00:28 68.5 ~/.nvm/versions/node/v26.13.0/bin/node --disable-warning=ExperimentalWarning ~/work/0d5248b3/squeal-base/
+2026-11-20T14:29:15Z
+ 15:29:15 up  4:07,  1 user,  load average: 6.35, 10.21, 9.63
