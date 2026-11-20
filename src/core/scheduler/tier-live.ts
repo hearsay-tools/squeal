@@ -113,6 +113,7 @@ export function liveAsks(context: SchedulerContext, ledger: Ledger, now?: EpochM
     backlogSize: (queued) => claims.backlogSize(queued, now),
     // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
     offer: (want, kind) => context.capacity?.offer(want, kind) ?? defaultHostSlots(),
+    fullWidth: () => context.capacity?.fullWidth() ?? null,
     endPass: () => ledger.commit(),
     claimsWaiting: () => claims.waiting,
   };

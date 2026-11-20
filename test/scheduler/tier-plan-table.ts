@@ -48,6 +48,8 @@ export interface Table {
   readonly batchTurn?: boolean;
   /** What the pool offers; the want when absent. */
   readonly offer?: number;
+  /** The most workers a backlog tier may get (row 011-418); none, `null`, when absent. */
+  readonly fullWidth?: number;
   readonly tierSize?: number;
   readonly backlogTierSize?: number;
   readonly timeoutMs?: number | null;
@@ -195,6 +197,7 @@ export function tableOf(table: Table) {
       log.push(`offer ${want}`);
       return table.offer ?? want;
     },
+    fullWidth: () => table.fullWidth ?? null,
     endPass: () => {
       log.push("end");
     },

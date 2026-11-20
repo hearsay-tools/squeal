@@ -125,6 +125,7 @@ const YIELD_ASKS: PlanAsks = {
   held: () => false,
   backlogSize: (queued) => queued,
   offer: (want) => want,
+  fullWidth: () => null,
   endPass: () => {},
   claimsWaiting: () => false,
 };
