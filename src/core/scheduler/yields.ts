@@ -188,6 +188,15 @@ export class TierYields implements CutFiles {
     return this.#standing.get(tier.runId)?.kind === "named";
   }
 
+  /**
+   * `tier` is published as overrunning (row 011-419, review 0.1.576 B2): a
+   * file of it that ends is progress, so the check withdraws the overrun
+   * and states its bound again from that end.
+   */
+  overrunPublished(tier: Tier): boolean {
+    return this.#overruns.published.has(tier.runId);
+  }
+
   cutPastEstimate(file: FileState): boolean {
     const cut = this.#cut.get(file.id);
     return cut?.past === true && holds(file, cut);
@@ -313,6 +322,8 @@ export interface ReachView {
   tier(runId: string): Tier | undefined;
   /** `TierYields.standsNamed`. */
   standsNamed(tier: Tier): boolean;
+  /** `TierYields.overrunPublished` (row 011-419). */
+  overrunPublished(tier: Tier): boolean;
 }
 
 const NONE: YieldReach = { reach: "none" };
@@ -329,7 +340,8 @@ const ADOPT: YieldReach = { reach: "adopt-then-check" };
  * - A file end, only when a revision changed an input of its tier (every
  *   file left may now be re-keyed, row 011-54) or the tier stands `named`
  *   (the ended file may have ranked first, review `reviews/0.1.296.md` B1,
- *   R398); queued, adopting first.
+ *   R398) or is published as overrunning (the end is progress: the overrun
+ *   is withdrawn, row 011-419, review 0.1.576 B2); queued, adopting first.
  * - The yield bound's wake: a tier past its estimate (row 011-107) or one
  *   only promoted files held by claims or with stored results wait for
  *   (row 011-123); queued, adopting first.
@@ -346,11 +358,8 @@ export function yieldReach(event: SchedulerEvent, view: ReachView): YieldReach {
       return CHECK;
     case "tier-started":
       return event.beside ? CHECK : NONE;
-    case "file-ended": {
-      const tier = view.tier(event.runId);
-      if (tier === undefined) return NONE;
-      return tier.changes.size > 0 || view.standsNamed(tier) ? ADOPT : NONE;
-    }
+    case "file-ended":
+      return fileEndReach(view.tier(event.runId), view);
     case "wake":
       return event.reason === "yield-bound" ? ADOPT : NONE;
     case "asked":
@@ -372,6 +381,13 @@ export function yieldReach(event: SchedulerEvent, view: ReachView): YieldReach {
       );
     }
   }
+}
+
+/** A file end of `tier` in flight (`yieldReach`): adopt, then check, when the end can change a decision. */
+function fileEndReach(tier: Tier | undefined, view: ReachView): YieldReach {
+  if (tier === undefined) return NONE;
+  const reaches = tier.changes.size > 0 || view.standsNamed(tier) || view.overrunPublished(tier);
+  return reaches ? ADOPT : NONE;
 }
 
 /** `meta` key of `worktreeId`'s tiers in flight and whether each yields: `{ at, tiers }` (row 011-209: and more). */

@@ -7,7 +7,7 @@ Worker 47956aef, wave 125 W3, 2026-11-20. Shape: repair. Source: `research/run-w
 - `src/core/scheduler/tiers.ts`: `Tier.lastEnded?: { at, step }` (additive, mutable). `executeTier`'s `fileEnded` sets it each time the runner names a file ended: the scheduler's clock, then the calendar steps' total, read in that order as at a tier's start (`newTier`).
 - `src/core/scheduler/overrun.ts`: `reportedOverrunAt` counts the threshold from `lastProgress(context, tier)`, the later of the stepped start and the stepped last end (`Tier.lastEnded` moved by `CalendarSteps.since`). The threshold itself is unchanged: `max(10 × last-known time, 60 s)` of each unfinished file, the tier's estimate plus 60 s for a file with no known time. `overrunAt`, `overrunLanes`, `nextOverrun` and `Overruns` read it through `reportedOverrunAt`, so admission, the wake and the published row all follow.
 - The published overrun's `startedAt` (status's age, `ranMs`) and `deadline` still count from the tier's stepped start: the file has been in a running tier since then, and the deadline is `runner.timeoutMs` from the run's start. Only `at` (since when it overruns) moves to the threshold after the last progress. All three stay on one elapsed-time basis (review 0.1.567 B2): each is a stored reading moved by the calendar steps since.
-- No change was needed in `yields.ts`, `yield-waits.ts` or the status texts. A file end queues a step (`file-ended`), whose yield check calls `Overruns.check`; a wake armed at the old bound fires early, re-reads the bound and re-arms.
+- ~~No change was needed in `yields.ts`.~~ Wrong, see the repair below: a file end reaches the yield check only through `yieldReach`, which placed it for a changed or `named` tier only. A wake armed at the old bound still fires early, re-reads the bound and re-arms.
 
 ## Behaviour change to note
 
@@ -21,6 +21,18 @@ A published overrun is withdrawn when a file of the tier ends: `Overruns.check` 
   3. As 2 with the calendar set back 1 h after the last end: the overrun comes at the same elapsed time, `at` = last end − 1 h + 60 s. Without stepping `lastEnded`, the bound would sit 1 h ahead.
 - The 011-399 and 011-405 tests needed no change: their fake runner names no file ended, so their tiers' last progress is their start and every expected age and time stands.
 - `reportsEnds` moved from `tier-yields-named.test.ts` to `tier-yields-fixture.ts` (exported, unchanged) so `overrun-fixture.ts`'s `hungTier` can report file ends; `hungTier` gains an optional `tierSize` (default 4) and returns `end`.
+
+## Repair: review 0.1.576 B2
+
+The review proved a published overrun stayed published after a file of its tier ended: `yieldReach` returned `none` for a `file-ended` event on a tier with no input change and no `named` standing, so `Overruns.check` never ran for it.
+
+- `src/core/scheduler/yields.ts`: `TierYields.overrunPublished(tier)` (whether `Overruns.published` holds it); `ReachView.overrunPublished` (required, additive); `yieldReach` places a file end as `adopt-then-check` also when its tier is published as overrunning. The branch moved to `fileEndReach`, so `yieldReach` stays at complexity 20. The check is the existing one under the scheduler's lock: `Overruns.check` reads the bound from the new progress, withdraws the row, and re-arms the wake. The hold rule is unchanged (a held check decides nothing, `decideYields` returns `null`), and the busy-store rule too (the check's publish).
+- `src/core/scheduler/step-live.ts`: one line passes `overrunPublished` to the port, as `standsNamed` is passed. Outside the files W3 owns; it is the port's only builder.
+- Why only published tiers: a file end of a tier not yet overrunning needs no check, as its old wake comes early and re-arms from the new progress. So a Vitest tier's file ends do not each cost a yield check.
+- Tests (`test/scheduler/overrun-progress.test.ts`), both red with the reach change undone:
+  4. The review's sequence with `hung()`: +60 s publishes the overrun and starts the beside tier; +5 s the three mates end: no overrun, the beside tier runs on; at last end + 60 s − 1 ms nothing for H's tier; at last end + 60 s it returns with `startedAt` = start, `deadline` = start + 600 s, `laneWaits: "either"`, H only; two runs in the lane, no third.
+  5. A progressing beside tier: both tiers published at +120 s; +5 s three of the beside tier's files end: only the first tier's overrun stays; 60 s later the beside tier's returns, `at` = its last end + 60 s, naming its one unfinished file; still two runs.
+- `decide-yields.test.ts` gains the reach row for a published tier; `step.test.ts`'s fake ports gain `overrunPublished`.
 
 ## Proposed spec text (the coordinator lands it)
 

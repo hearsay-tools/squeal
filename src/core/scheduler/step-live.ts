@@ -176,6 +176,7 @@ export class StepLive {
     yields: {
       tier: (runId) => this.host.inFlight.get(runId)?.tier,
       standsNamed: (tier) => this.host.yields.standsNamed(tier),
+      overrunPublished: (tier) => this.host.yields.overrunPublished(tier),
     },
     startNext: (admitted, at, fly) => {
       const { context, ledger } = this.host.started();

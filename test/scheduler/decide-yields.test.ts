@@ -311,10 +311,12 @@ describe("yieldReach: which scheduler events reach the yield check (row 011-354)
   const changed = { runId: "run-changed", changes: new Set(["src/a.ts"]) } as unknown as Tier;
   const named = { runId: "run-named", changes: new Set() } as unknown as Tier;
   const plain = { runId: "run-plain", changes: new Set() } as unknown as Tier;
-  const inFlight = new Map([changed, named, plain].map((tier) => [tier.runId, tier]));
+  const overran = { runId: "run-overran", changes: new Set() } as unknown as Tier;
+  const inFlight = new Map([changed, named, plain, overran].map((tier) => [tier.runId, tier]));
   const reachView = {
     tier: (runId: string) => inFlight.get(runId),
     standsNamed: (tier: Tier) => tier === named,
+    overrunPublished: (tier: Tier) => tier === overran,
   };
   const check: YieldReach = { reach: "check", trigger: null };
   const adopt: YieldReach = { reach: "adopt-then-check" };
@@ -345,7 +347,12 @@ describe("yieldReach: which scheduler events reach the yield check (row 011-354)
       adopt,
     ],
     [
-      "a file end of a tier neither changed nor named",
+      "row 011-419 (review 0.1.576 B2): a file end of a tier published as overrunning",
+      { kind: "file-ended", runId: overran.runId },
+      adopt,
+    ],
+    [
+      "a file end of a tier neither changed, named nor overrunning",
       { kind: "file-ended", runId: plain.runId },
       none,
     ],
