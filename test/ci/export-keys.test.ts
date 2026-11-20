@@ -170,7 +170,9 @@ async function exported(
       root,
       worktreeId: "0123456789abcdef" as WorktreeId,
       store,
-      runner: async () => runner(ran.listed ?? ["test/a.test.ts", "test/b.test.ts"], ran.inspected),
+      runners: async () => [
+        runner(ran.listed ?? ["test/a.test.ts", "test/b.test.ts"], ran.inspected),
+      ],
       policy: DEFAULT_POLICY,
       squealVersion: SQUEAL,
       env: {},
@@ -210,6 +212,7 @@ describe("ci export's keys (spec 018 D9)", () => {
       inspector: 0,
       unwatched: 0,
       absolute: 0,
+      nodeTestLeftOut: 0,
     });
     const [only] = result.bundle.testFiles;
     expect(only?.path).toBe("test/a.test.ts");

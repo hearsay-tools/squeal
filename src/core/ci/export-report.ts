@@ -1,6 +1,8 @@
+import { testFileId } from "../keys/reverse-index.js";
+import type { DaemonKeying } from "../scheduler/daemon-keying.js";
 import type { ProjectName, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { CheckRunResult, LoadedList, RunReport } from "../types/runner.js";
+import type { CheckRunResult, LoadedList, RunnerClosure, RunReport } from "../types/runner.js";
 import { withLoaded } from "./loaded-inputs.js";
 import type { PartFile } from "./parts.js";
 
@@ -25,6 +27,30 @@ export function partsReport(
   );
   const { loaded: _lists, ...report } = withLoaded(plainReport(files), lists, environmentFiles);
   return report;
+}
+
+/**
+ * Keys `passed` as a daemon's start and record do (`DaemonKeying`): each
+ * file the runner lists by its closure, then with what its shard observed
+ * beyond it, stored in the job's store. Returns the runner's closures and
+ * the report of the files keyed; a file the runner does not list, or whose
+ * closure fails, is in neither, and a file `leftOut` names by its closure
+ * is only counted.
+ */
+export async function keyFiles(
+  keying: DaemonKeying,
+  passed: readonly PartFile[],
+  leftOut: (file: PartFile, closure: RunnerClosure) => boolean,
+): Promise<{ closures: ReadonlyMap<string, RunnerClosure>; report: RunReport; inspected: number }> {
+  const { closures, leftOut: inspected } = await keying.keyFiles(passed, { leftOut });
+  const { keys } = keying;
+  const environmentFiles = (project: ProjectName) => new Set(keys.environmentFiles(project));
+  const report = partsReport(
+    passed.filter((file) => closures.has(testFileId(refOf(file)))),
+    environmentFiles,
+  );
+  await keying.grow(report);
+  return { closures, report, inspected };
 }
 
 function plainReport(files: readonly PartFile[]): RunReport {

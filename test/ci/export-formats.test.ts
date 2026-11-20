@@ -79,7 +79,7 @@ async function exportOf(origin: string, out: string, name: string): Promise<Resu
     root,
     worktreeId: worktreeIdFor(root),
     store: openRepoStore(join(scratch(`ci-formats-store-${name}`), "common")),
-    runner: () => createVitestAdapter({ root, observe: () => true }),
+    runners: async () => [await createVitestAdapter({ root, observe: () => true })],
     policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: true } },
     squealVersion: SQUEAL,
     env: process.env,
