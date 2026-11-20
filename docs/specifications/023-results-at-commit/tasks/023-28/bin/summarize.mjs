@@ -25,7 +25,7 @@ const atCalls = (cmd) =>
   [...cmd.matchAll(/squeal\s+status\b([^|;&\n]*)/g)]
     .map((m) => ({ args: m[1], rev: /--at[ =](\S+)/.exec(m[1])?.[1] }))
     .filter((c) => c.rev)
-    .map((c) => ({ ...c, run: /--run\b/.test(c.args), head: /^(HEAD|8be977ad6\w*|20f03a431\w*)$/.test(c.rev) }));
+    .map((c) => ({ ...c, run: /--run\b/.test(c.args), head: /^(HEAD|8be977a\w*|20f03a4\w*)$/.test(c.rev) }));
 const rows = [];
 for (const id of readdirSync(logs).sort()) {
   const dir = join(logs, id);
@@ -64,7 +64,7 @@ for (const id of readdirSync(logs).sort()) {
         const call = calls.get(c.tool_use_id);
         const text = typeof c.content === "string" ? c.content : (c.content ?? []).map((x) => x.text ?? "").join("");
         const took = t - call.t;
-        if (!call.background && /^Command running in background with ID/.test(text))
+        if (!call.background && /^Command running in background with ID|moved to the background/.test(text))
           s.overruns.push(`${call.t.toFixed(0)}s +${took.toFixed(0)}s ${call.cmd}`);
         else if (took >= 120) s.long.push(`${call.t.toFixed(0)}s +${took.toFixed(0)}s ${call.name} ${call.cmd}`);
       }
