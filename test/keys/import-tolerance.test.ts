@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { coverageMarker } from "../../src/core/code/coverage/record.js";
 import {
   configFieldHash,
   describeDifferences,
@@ -162,5 +163,97 @@ describe("import tolerance (018 D10)", () => {
     expect(importDifferences(fake({ allowOnly: false }), fake({ allowOnly: true }))).toMatchObject([
       { part: "config", names: ["allowOnly"] },
     ]);
+  });
+});
+
+/*
+ * Spec 018 D27: for an imported node:test pass, the config's coverage
+ * marker compares as equal whether it is present on one side, both or
+ * neither, in either form (with or without children), as D10 tolerates
+ * Vitest's coverage options. CI records node:test without Squeal's
+ * coverage; a developer's daemon runs with it (coverage on by default),
+ * and a pass without coverage implies the same pass with it. Every other
+ * node:test field stays keyed, and Vitest's own tolerance is unchanged.
+ */
+
+/** A resolved node:test config as a developer's daemon has it: Squeal's coverage marker (rows 015-86, 020 D12). */
+const NODE = {
+  node: "node",
+  nodeBuild: "a".repeat(64),
+  argv: [],
+  env: [],
+  cwd: "",
+  include: ["test/*.test.mjs"],
+  exclude: [],
+  coverage: coverageMarker(false),
+};
+
+const node = (config: object) => descriptor(config, { runnerName: "node-test" });
+
+describe("node:test import tolerance (018 D27)", () => {
+  for (const [name, exported, here, keyed] of [
+    ["only in the export", NODE, { ...NODE, coverage: undefined }, true],
+    ["only here", { ...NODE, coverage: undefined }, NODE, true],
+    ["on both sides, another form", NODE, { ...NODE, coverage: coverageMarker(true) }, true],
+    [
+      "only in the export, with children",
+      { ...NODE, coverage: coverageMarker(true) },
+      { ...NODE, coverage: undefined },
+      true,
+    ],
+    [
+      "only here, with children",
+      { ...NODE, coverage: undefined },
+      { ...NODE, coverage: coverageMarker(true) },
+      true,
+    ],
+    ["on neither side", { ...NODE, coverage: undefined }, { ...NODE, coverage: undefined }, false],
+  ] as const) {
+    it(`a pass with the marker ${name} compares as equal`, () => {
+      if (keyed) {
+        expect(describeDifferences(node(exported), node(here))).not.toEqual([]);
+      }
+      expect(importDifferences(node(exported), node(here))).toEqual([]);
+    });
+  }
+
+  it("keys the marker outside the import; a pass re-keys onto this worktree's field (D11)", () => {
+    const without = { ...NODE, coverage: undefined };
+    expect(describeDifferences(node(NODE), node(without))).toMatchObject([
+      { part: "config", names: ["coverage"] },
+    ]);
+    expect(node(NODE).config.coverage).toBe(configFieldHash(coverageMarker(false)));
+  });
+
+  for (const [name, change] of [
+    ["node", { node: "node26" }],
+    ["nodeBuild", { nodeBuild: "b".repeat(64) }],
+    ["argv", { argv: ["--test"] }],
+    ["env", { env: [["SQUEAL_X", "1"]] }],
+    ["cwd", { cwd: "packages/app" }],
+    ["include", { include: ["test/unit/*.test.ts"] }],
+    ["exclude", { exclude: ["vendor"] }],
+  ] as const) {
+    it(`a changed ${name} stays keyed`, () => {
+      expect(importDifferences(node({ ...NODE, ...change }), node(NODE))).toMatchObject([
+        { part: "config", names: [name] },
+      ]);
+    });
+  }
+
+  it("keeps Vitest's own tolerated fields keyed for node:test", () => {
+    expect(
+      importDifferences(node({ ...NODE, watch: true }), node({ ...NODE, watch: false })),
+    ).toMatchObject([{ part: "config", names: ["watch"] }]);
+    expect(
+      importDifferences(node({ ...NODE, allowOnly: false }), node({ ...NODE, allowOnly: true })),
+    ).toMatchObject([{ part: "config", names: ["allowOnly"] }]);
+  });
+
+  it("changes nothing for Vitest: the marker tolerance stays D10's coverage options", () => {
+    expect(importDifferences(descriptor(CI), descriptor(HERE))).toEqual([]);
+    expect(
+      importDifferences(descriptor({ ...HERE, coverage: undefined }), descriptor(HERE)),
+    ).toEqual([]);
   });
 });
