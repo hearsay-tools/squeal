@@ -84,8 +84,12 @@ export interface AtRunInput {
 export interface AtRun {
   readonly whileOpen: WhileOpen;
   readonly beforeRemove: BeforeRemove;
-  /** The commit side this command's run gave `ref`; `undefined` when the run did not touch it. */
-  state(ref: TestFileRef): SideState | undefined;
+  /**
+   * The commit side of `ref`: what this command's run gave it, else
+   * `keyed`, the keying's own state, marked (R8) when it has no result and
+   * the change did not select it.
+   */
+  state(ref: TestFileRef, keyed: SideState): SideState;
   /** D1's budget use, for the report. */
   use(): RunUse;
 }
@@ -241,6 +245,7 @@ export function atRun(input: AtRunInput): AtRun {
       usedMs: Math.round(elapsed()),
       gateMs,
       selected: selection.run.length,
+      notSelected: selection.unselected?.size ?? 0,
       ran: ran.length,
       stored: ran.filter((s) => "origin" in s && s.origin.stored === true).length,
       notStored: ran.flatMap((s) =>
@@ -270,7 +275,15 @@ export function atRun(input: AtRunInput): AtRun {
     return Math.max(60, Math.ceil(seconds / 60) * 60);
   };
 
-  return { whileOpen, beforeRemove, state: (ref) => states.get(testFileId(ref)), use };
+  const state = (ref: TestFileRef, keyed: SideState): SideState => {
+    const id = testFileId(ref);
+    const ran = states.get(id);
+    if (ran !== undefined) return ran;
+    const unselected = keyed.state === "no result" && selection.unselected?.has(id) === true;
+    return unselected ? { ...keyed, notSelected: true } : keyed;
+  };
+
+  return { whileOpen, beforeRemove, state, use };
 }
 
 /** 020's rerun line: this call's own arguments with `seconds` as its `--timeout`. */

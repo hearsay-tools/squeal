@@ -27,6 +27,21 @@ export interface Selection {
   readonly run: readonly KeyedFile[];
   /** The states of files with no result that are not run for a reason of their own. */
   readonly states: ReadonlyMap<string, SideState>;
+  /**
+   * Row 023-29 (R8): the files with no result the change did not select, by
+   * `testFileId`; empty with `--all-missing`. Absent: no selection was made.
+   */
+  readonly unselected?: ReadonlySet<string>;
+  /**
+   * Row 023-29 (R1): what the change selects, for the working tree's side:
+   * the ids the diff selects at the commit (`null` with `--all-missing`:
+   * every file) and the paths the diff changes (a test file new since the
+   * commit is one of them).
+   */
+  readonly selects?: {
+    readonly ids: ReadonlySet<string> | null;
+    readonly paths: ReadonlySet<RelativePath>;
+  };
 }
 
 /** A file with a key and no stored result at it. */
@@ -45,7 +60,12 @@ export function selector(
     const missing = keyed.filter(noResult);
     const chosen = input.allMissing ? null : await diffSelected(input, open);
     const wanted = missing.filter((f) => chosen === null || chosen.has(testFileId(f.ref)));
-    into(await refuse({ ...input, tree: open.tree }, keyed, wanted));
+    const unselected = new Set(
+      missing.filter((f) => !wanted.includes(f)).map((f) => testFileId(f.ref)),
+    );
+    const paths = new Set(input.allMissing ? [] : await changedSince(input.root, input.commit));
+    const selects = { ids: chosen, paths };
+    into({ ...(await refuse({ ...input, tree: open.tree }, keyed, wanted)), unselected, selects });
   };
 }
 

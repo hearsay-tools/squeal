@@ -17,6 +17,11 @@ export interface RunUse {
   readonly gateMs: number | null;
   /** The files with no result at their key that the selection chose to run. */
   readonly selected: number;
+  /**
+   * Row 023-29 (R8): the files with no result at the commit the change did
+   * not select, which did not run; absent from a report before it.
+   */
+  readonly notSelected?: number;
   /** Of those, the ones that ended with a pass or a fail. */
   readonly ran: number;
   /** Of those, the ones the shared store holds at their key after the run (B7). */
@@ -63,11 +68,18 @@ function notStoredLines(reasons: readonly string[], unstored: number): string[] 
 /** Row 023-07: what `--run` ran, of how much budget, and the rerun that fits. */
 export function runLines(run: RunUse, at: string): string[] {
   const used = `${(run.usedMs / 1000).toFixed(1)} s of the ${run.timeoutSeconds} s budget`;
+  const unselected = run.notSelected ?? 0;
+  // R8: with files the change did not select, the count says it is of the selected ones only.
+  const which = unselected === 0 ? "" : " that the change selects";
   const lines = [
     run.selected === 0
-      ? `--run: no file with no result at ${at} to run (${used})`
-      : `--run: ${run.ran} of ${run.selected} test files with no result at ${at} ran in its checkout, ${run.stored} stored at its keys (${used})`,
+      ? `--run: no file with no result at ${at}${which} to run (${used})`
+      : `--run: ${run.ran} of ${run.selected} test files with no result at ${at}${which} ran in its checkout, ${run.stored} stored at its keys (${used})`,
   ];
+  if (unselected > 0)
+    lines.push(
+      `${unselected} more with no result at ${at} not selected by the change did not run; \`--all-missing\` runs ${unselected === 1 ? "it" : "them"}`,
+    );
   const unstored = run.ran - run.stored;
   if (unstored > 0 && run.changed !== null)
     lines.push(

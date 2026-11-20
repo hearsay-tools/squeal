@@ -64,10 +64,18 @@ function detail(name: string, side: SideState): string | null {
   return null;
 }
 
-/** What a file's line says after its path: both sides, then their details. */
-function changeText(f: FileReport, at: string): string {
+/**
+ * What a file's line says after its path: both sides, then their details.
+ * Row 023-29 (R8): a file `--run` did not select says so at its commit
+ * side, for one file (`many` false) or a group.
+ */
+function changeText(f: FileReport, at: string, many = false): string {
   const parts = [detail(`at ${at}`, f.at), detail("now", f.now)].filter((p) => p !== null);
   const more = parts.length === 0 ? "" : ` (${parts.join("; ")})`;
+  if (f.at.state === "no result" && f.at.notSelected === true) {
+    const runs = `\`--all-missing\` runs ${many ? "them" : "it"}`;
+    return `no result at ${at}, not selected by the change; ${runs}; now ${word(f.now)}${more}`;
+  }
   return `${word(f.at)} -> ${word(f.now)}${more}`;
 }
 
@@ -101,7 +109,8 @@ export function fileLines(
     }
     folded = true;
     const paths = group.map((f) => f.ref.path);
-    lines.push(`${group.length} test files: ${text}: ${listPaths(paths, GROUP_SHOWN)}`);
+    const many = changeText(group[0] as FileReport, at, true);
+    lines.push(`${group.length} test files: ${many}: ${listPaths(paths, GROUP_SHOWN)}`);
   }
   return { lines, folded };
 }

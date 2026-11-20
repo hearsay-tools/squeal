@@ -53,6 +53,8 @@ export type SideState =
       readonly key: string;
       /** The daemon's run for the key is queued or running. */
       readonly pending?: "queued" | "running";
+      /** Row 023-29 (R8): with `--run`, at the commit: the change did not select it, so it did not run. */
+      readonly notSelected?: true;
     }
   | { readonly state: "absent" }
   | { readonly state: "not determined"; readonly reason: string }

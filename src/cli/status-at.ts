@@ -215,7 +215,7 @@ export async function statusAtCommand(
     note,
     ...hooksOf(ran, probe, runArgs),
   });
-  const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref) ?? at.state(ref);
+  const state = ran === null ? at.state : (ref: TestFileRef) => ran.state(ref, at.state(ref));
   const sides = { now: now.sources, at: at.sources, failed: at.failure !== null };
   const { refs, unmatched } = unionRefs(now.refs, at.refs, paths, sides, root, commit);
   // Row 023-19 (P5): the files a listing daemon does not list yet, keyed in the working tree.
