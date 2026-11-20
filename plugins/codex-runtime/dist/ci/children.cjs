@@ -8,9 +8,13 @@
 // back into the env the caller passed (`env: {}` too), as the daemon's
 // recorder does for itself (`observe/spawn.cjs`). That recorder loads first,
 // so its wrappers run inside these and still put its own preload first. The
-// hook is an `--import` of its `file:` URL, or a `--require` where that env
-// already runs a `--require`, as `squeal ci record` chose for the command
-// (`recorderOption`).
+// hooks are the files the settings name in `hooks`, in their order: Vitest's
+// (`vitest-ci.cjs`), node:test's (`node-test-ci.cjs` and the module recorder,
+// spec 018 D24, row 018-47), or both. Each is an `--import` of its `file:`
+// URL, or a `--require` where that env already runs a `--require`, as
+// `squeal ci record` chose for the command (`recorderOption`). Each other
+// `SQUEAL_CI_` variable of this process the env lacks goes with them, so a
+// child a node:test file starts keeps that file's name (D24.2).
 //
 // An env whose `SQUEAL_CI_RECORD` is another value (a test that runs
 // `squeal ci record` itself) keeps it, and the hook cannot follow that
@@ -44,7 +48,8 @@ const workerThreads = require("node:worker_threads");
 const { pathToFileURL } = require("node:url");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
-const HOOK = path.join(__dirname, "vitest-ci.cjs");
+/** The prefix of the variables a child keeps from this process (D24.2). */
+const CARRIED = "SQUEAL_CI_";
 /** A `--require` or `-r` token in `NODE_OPTIONS`. */
 const REQUIRE = /(^|\s)(-r|--require)(=|\s|$)/;
 /** Vitest's own name for a test worker's state on `globalThis`. */
@@ -65,6 +70,18 @@ function nestedOf(settings) {
     return JSON.stringify({ ...value, nested: true });
   } catch {
     return settings;
+  }
+}
+
+/** The hooks `settings` names, absolute paths, in their order; none when it names none. */
+function hooksOf(settings) {
+  try {
+    const hooks = JSON.parse(settings)?.hooks;
+    return Array.isArray(hooks)
+      ? hooks.filter((h) => typeof h === "string" && path.isAbsolute(h))
+      : [];
+  } catch {
+    return [];
   }
 }
 
@@ -119,7 +136,10 @@ function wrapChildren(replace, evidence) {
   const settings = process.env[VARIABLE];
   if (typeof settings !== "string") return;
   const nested = nestedOf(settings);
-  const url = pathToFileURL(HOOK).href;
+  const hooks = hooksOf(settings).map((file) => ({ file, url: pathToFileURL(file).href }));
+  /** This process's `SQUEAL_CI_` variables but the settings, read at each spawn. */
+  const carriedNames = () =>
+    Object.keys(process.env).filter((name) => name.startsWith(CARRIED) && name !== VARIABLE);
   /** Whether `env` names another recording, whose child this run cannot follow. */
   const foreign = (env) => {
     const own = env[VARIABLE];
@@ -143,14 +163,21 @@ function wrapChildren(replace, evidence) {
     }
     const want = settingsFor(env);
     const options = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS : "";
-    const loads = options.includes(HOOK) || options.includes(url);
-    if (loads && own === want) return env;
+    const missing = hooks.filter(
+      ({ file, url }) => !options.includes(file) && !options.includes(url),
+    );
+    const lacking = carriedNames().filter((name) => env[name] === undefined);
+    if (missing.length === 0 && lacking.length === 0 && own === want) return env;
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
     out[VARIABLE] = want;
-    if (!loads) {
-      const option = REQUIRE.test(options) ? `--require ${quote(HOOK)}` : `--import ${quote(url)}`;
-      out.NODE_OPTIONS = options.trim() === "" ? option : `${option} ${options}`;
+    for (const name of lacking) out[name] = process.env[name];
+    if (missing.length > 0) {
+      const require = REQUIRE.test(options);
+      const added = missing
+        .map(({ file, url }) => (require ? `--require ${quote(file)}` : `--import ${quote(url)}`))
+        .join(" ");
+      out.NODE_OPTIONS = options.trim() === "" ? added : `${added} ${options}`;
     }
     return out;
   };

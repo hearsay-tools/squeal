@@ -12696,7 +12696,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.578";
+  if (true) return "0.1.579";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -14963,9 +14963,13 @@ function describeDifferences(a, b) {
   return differences;
 }
 var CI_FIELDS = ["watch", "coverage"];
+var NODE_TEST_CI_FIELDS = ["coverage"];
 var ONLY_REJECTED = configFieldHash(false);
 var ONLY_ALLOWED = configFieldHash(true);
 function importDifferences(exported, local) {
+  if (exported.runnerName === "node-test" && local.runnerName === "node-test") {
+    return tolerating(exported, local, NODE_TEST_CI_FIELDS);
+  }
   if (exported.runnerName !== "vitest" || local.runnerName !== "vitest") {
     return describeDifferences(exported, local);
   }
@@ -14974,9 +14978,13 @@ function importDifferences(exported, local) {
   if (exported.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
     tolerated.add("allowOnly");
   }
+  return tolerating(exported, local, tolerated);
+}
+function tolerating(exported, local, tolerated) {
+  const leftOut2 = new Set(tolerated);
   const keyed = (d) => ({
     ...d,
-    config: Object.fromEntries(Object.entries(d.config).filter(([name2]) => !tolerated.has(name2)))
+    config: Object.fromEntries(Object.entries(d.config).filter(([name2]) => !leftOut2.has(name2)))
   });
   return describeDifferences(keyed(exported), keyed(local));
 }

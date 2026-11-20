@@ -23,7 +23,7 @@
 // daemon does (review of 0.1.493 B1).
 "use strict";
 const path = require("node:path");
-const clock = require("./clock.cjs");
+const clock = require("./shared.cjs").shared("clock.cjs");
 const {
   isFiltered,
   isolateOff,
