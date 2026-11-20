@@ -23,15 +23,18 @@ import type { InputEvidence } from "./inputs.js";
  * and the shared check names; format 3 the read-time evidence, in place of
  * format 2's input hashes after the run and checkout state; format 4 (spec
  * 020 D13, row 020-08a) Squeal's coverage provider in the run and each test
- * file's coverage record, or why it has none. A format 3 part reads as a
- * part with no records. A part may also hold what recording cost (row
- * 018-29, `RecordingCost`), which no key, export or refusal reads.
+ * file's coverage record, or why it has none; format 5 (spec 018 D25, row
+ * 018-47) the runner, `"vitest"` or `"node-test"`, and a node:test part's
+ * `nodeTest` header. A format 3 part reads as a part with no records, and
+ * a format 3 or 4 part as a Vitest part. A part may also hold what
+ * recording cost (row 018-29, `RecordingCost`), which no key, export or
+ * refusal reads.
  */
 
-export const PART_FORMAT = "squeal-ci-part/4";
+export const PART_FORMAT = "squeal-ci-part/5";
 
-/** The formats `readPart` reads: this one, and format 3, which holds no record. */
-export const PART_FORMATS = ["squeal-ci-part/3", PART_FORMAT] as const;
+/** The formats `readPart` reads: this one, format 4, and format 3, which holds no record. */
+export const PART_FORMATS = ["squeal-ci-part/3", "squeal-ci-part/4", PART_FORMAT] as const;
 
 export type PartFormat = (typeof PART_FORMATS)[number];
 
@@ -53,10 +56,14 @@ export interface PartShard {
   readonly count: number;
 }
 
+/** Format 5: the runner whose process the part records, as its adapter's `runnerName`; formats 3 and 4 hold `"vitest"`. */
+export type PartRunner = "vitest" | "node-test";
+
 export interface PartHeader {
   readonly squealVersion: string;
   readonly keyFormat: number;
-  readonly runner: "vitest";
+  readonly runner: PartRunner;
+  /** Vitest's version; for node:test, the Node version (`PartNodeTest.version`). */
   readonly runnerVersion: string;
   /** `HEAD` of the checkout the command ran in; `null` before the first commit. */
   readonly commit: string | null;
@@ -73,7 +80,44 @@ export interface PartHeader {
   readonly coverage?: PartCoverage;
   /** Row 018-29: what recording cost the command; absent in a part of an older Squeal. */
   readonly cost?: RecordingCost;
+  /** Format 5, in a node:test part only: the `node --test` process the part records (D25). */
+  readonly nodeTest?: PartNodeTest;
 }
+
+/**
+ * Spec 018 D25 (row 018-47): the `node --test` process of a node:test
+ * part, which `ci export` matches to a `nodeTest` entry and its Node
+ * (D26). Its `--test-shard` is the header's `shard`. A node:test part has
+ * no `projects` and no coverage: Vitest's fields stay Vitest's. Each of its
+ * files' `project` is `NODE_TEST_UNASSIGNED`, since the export checkout's
+ * adapter says which entry lists a file (D26.1).
+ */
+export interface PartNodeTest {
+  /** The process's `process.execArgv`, as Node gave it: `ci export` drops the flags the daemon sets itself (D26.1). */
+  readonly execArgv: readonly string[];
+  /** The process's working directory relative to the root, `/`-separated; `""` at the root. */
+  readonly cwd: RelativePath;
+  /** The probe's `process.version`, as `NodeProbe.version`. */
+  readonly version: string;
+  /** The hash of the probe's build fields, by the daemon's own function, as `NodeProbe.build` (D12). */
+  readonly nodeBuild: string;
+  /**
+   * Each variable a `nodeTest` entry's `env` names in the recording
+   * checkout's `squeal.config.json`, as a test file's process saw it:
+   * `configFieldHash` of its value, `null` when unset. Never a value.
+   */
+  readonly env: Readonly<Record<string, string | null>>;
+  /**
+   * Why the part holds no test file: the process ran with a flag D25
+   * refuses (`--test-isolation=none`, a name filter, `--test-only`,
+   * `--watch`), or left no event of Squeal's reporter (D23.5). Absent:
+   * the files are the process's.
+   */
+  readonly noFiles?: string;
+}
+
+/** The `project` of each file in a node:test part (D25): the export assigns its entry (D26.1). */
+export const NODE_TEST_UNASSIGNED: ProjectName = "";
 
 /**
  * Row 018-29 (spec 018 D8): what recording cost one `squeal ci record`
@@ -250,7 +294,7 @@ export interface PartFile {
 }
 
 export interface Part {
-  /** `PART_FORMAT` as written; format 3 as read. */
+  /** `PART_FORMAT` as written; format 3 or 4 as read. */
   readonly format: PartFormat;
   readonly header: PartHeader;
   readonly projects: readonly PartProject[];
