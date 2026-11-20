@@ -338,3 +338,87 @@ D22 to D24 on a node:test fixture shaped like cezar's commands: ESM and CJS test
 
 1. Whether module loads that Node reads outside the `fs` calls (ESM, a `--import tsx` loader) get evidence through the load step as D24 says. The record row proves it on the fixture; a file without evidence is left out, never keyed wrong.
 2. The recorded run's real CPU and wall cost in cezar's CI. Owner: the D29 measurement.
+
+# Fourth slice: inputs nothing touched
+
+Stage: proposed 2026-11-20 by the coordinator (fe95a218) for the human's review (the human: "Nothing-read: Yes, write the spec"). Written from `research/unread-inputs.md` (row 018-56) and `research/node-test-left-out.md` (row 018-55).
+
+## Problem
+
+D9 certifies a test file only when every input in its key has evidence taken at its read in the file's own command. Many inputs are never read there:
+- a module that another shard loads lazily;
+- a directory listing;
+- a file declared in `squeal.config.json` `inputs` that only `git`, a shell or nothing reads.
+
+In cezar's newest merge-group run (44808547913), 583 of 1,749 test files were left out for this reason, and 1,163 (66%) were exported. In the run that recorded node:test (44805319389), 113 of the 116 node:test files left out had only this cause. No input of these files differed from the commit; the export only lacked proof (`unread-inputs.md` 3).
+
+## Goals
+
+1. An input that no hooked process of the file's own command read, listed or wrote is certified when it had the commit's content at the start and at the end of the command.
+2. In cezar, at least 98% of the test files of a merge-group run are exported (measured: 99% on both replayed runs).
+3. No key, `KEY_FORMAT_VERSION` or adapter version changes. Every input with read-time evidence keeps D9's rule.
+4. The remaining risk is the one D8's condition already names. `ci record --help` and the README say it.
+
+## Non-goals
+
+- Certifying an input from another shard's read alone (`unread-inputs.md` 1: not sound).
+- Narrowing closures to what a run loaded (`unread-inputs.md` 2: costs local exactness, and does not help declared inputs).
+- Certifying absent paths or paths `.gitignore` hides.
+- The node:test graph keying fixes of `node-test-left-out.md` recommendation 2: a later row.
+
+## Design
+
+### D30. Endpoint hashes in `ci record`
+
+`squeal ci record` hashes the checkout twice in its own process: before it starts the command, and after every process of the command has exited. It hashes every path git does not ignore, and the listing of each directory that holds one, as the key holds them (`hereOf`: a file by its blob id, a listing by its names hash). It runs no `git status` and starts no other program for this. A path whose two hashes are equal is **stable**. Cost measured: about 1 s per end for cezar's 4,967 tracked files (24 MB) at a host load of about 40. The time joins the cost line of row 018-29.
+
+### D31. Touched paths
+
+A path is **touched** by the command when a hooked process wrote it, read it with two contents, removed a tree above it, or listed a directory that later changed. When a child or Worker withheld its paths (row 018-23), every path is touched. Today `readRecorded` drops written and conflicting paths without a trace. It now returns them as the touched set, so a part can tell "unread" apart from "cancelled".
+
+### D32. The part, format 6
+
+`PART_FORMAT` becomes `squeal-ci-part/6`. A part adds:
+- `stable`: the stable paths whose content differs from the commit's tree, each with its hash. Paths equal to the commit are implied by `commit`, so the part stays small.
+- `touched`: the command's touched paths, or `"all"`.
+
+Every part of one command carries the same two fields. Readers accept formats 3 to 6. A part of format 3 to 5 keeps today's rule.
+
+### D33. The rule at export
+
+`FileReuse.evidence` (`src/core/ci/reuse.ts`) is the one owner for `ci export` and the gate's `--parts` (020 D13.2, row 020-52). It certifies an input that has no read-time evidence in the file's own part when all of these hold:
+1. The input is not in the part's `touched` set.
+2. The input is stable in that part.
+3. The input is present and not ignored, here and at the commit.
+4. Its hash at the start, at the end and in the export checkout are equal.
+
+Any other input keeps D9's rule. An input with read-time evidence never falls back to this rule. Its evidence decides, as today. The export report counts files certified this way apart, so a run says how much of its export rests on the rule.
+
+### D34. The risk, stated
+
+What remains: a program outside Node changes an input and restores it within the command, and only a program outside Node reads the changed content. Example: a shell overwrites `config.txt`, a test reads it with `cat` and passes, and the shell restores it before the step ends. The export then shares a pass that belongs to the temporary content. Today's export already does this when any Node process read the file first. D8's condition, accepted on 2026-11-09, covers it. The rule makes it possible without that first read. D8's condition and `ci record --help` are amended to say so. A change that is not restored makes the end hash differ, and the input stays left out.
+
+## Testing
+
+The six fixtures of `unread-inputs.md` 1, run through `ci record` and `ci export`, with these outcomes:
+- a module that a shell changes and restores, read by Vitest: left out;
+- a module that a shell generates and removes: left out;
+- a file that Node writes and restores: left out;
+- a committed file that only `cat` reads: exported, correct;
+- a file that a shell changes, `cat` reads and `git checkout` restores: exported, the documented residual of D34, pinned as such;
+- the same with a Node read first: exported, as today.
+
+Also:
+- an input that a shell changes and does not restore stays left out;
+- an absent input and an ignored input are never certified by the rule;
+- a withheld child makes every path touched;
+- a listing that a shell changes and keeps stays left out;
+- parts of format 5 export exactly as today;
+- the export report counts files certified by the rule.
+
+Acceptance in cezar: the first merge-group run after the release exports at least 98% of its Vitest files. The key-format alarm and `test/version-sensitive.test.ts` stay quiet.
+
+## Open questions
+
+1. The cost of listing hashes and the size of a format 6 part on a real shard. The record row measures both on cezar's shard 3 fixture shape.
+2. Whether the gate (`squeal code --base --parts`) uses the rule as is. `FileReuse` is shared, so it does unless the review finds a difference.
