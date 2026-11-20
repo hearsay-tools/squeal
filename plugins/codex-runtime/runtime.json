@@ -40,7 +40,7 @@
       "mode": 420
     },
     "dist/ci/evidence-hooks.cjs": {
-      "sha256": "0522704c40f081b4e1a48a13b1c025836027c91891cb47be7239dbe657dc70b4",
+      "sha256": "6bc4fd683eca987e97a6dce755de2abc9a91e243b4eb5eeb09dcaf752c31d505",
       "mode": 420
     },
     "dist/ci/evidence.cjs": {
@@ -60,7 +60,7 @@
       "mode": 420
     },
     "dist/ci/node-test-reporter.mjs": {
-      "sha256": "955b4c6e4776c4c52c492f2e2d38eb8bb8bc0adfecf00e0aee2f5e4a4de15e76",
+      "sha256": "72db6d90719f20e5d2ed01b148ffdb2dda10dcb0c6b0babf5511a9b69f9094d2",
       "mode": 420
     },
     "dist/ci/shared.cjs": {
@@ -88,7 +88,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "c80bad0817b003b29dfdc05deb0cb139d72f27b7ece626ce1ddcc6679e16ae15",
+      "sha256": "09e5bf16992ccb61f566ff6b9c9cf10d22001a535b64baeb671f6c186c34b180",
       "mode": 493
     },
     "dist/cli/store-relay.mjs": {

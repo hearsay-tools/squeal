@@ -167,7 +167,25 @@ function named(specifier, parentURL) {
 
 const withoutQuery = (url) => new URL(url.href.replace(/[?#].*$/, ""));
 
-/** Each module Node resolves is read; a failed resolve reads the path it names, absent. */
+/**
+ * Review of 0.1.579 S1: the `package.json` scoping `location` (a `file:`
+ * URL or an absolute path), read where Node's module loader looks it up
+ * (`module.findPackageJSON`, Node's own reader and cache), while the module
+ * resolves: Node reads it there without an `fs` call these hooks see. A
+ * Node without that lookup takes none, so a file it holds is left out (D9).
+ */
+function manifest(evidence, location) {
+  if (typeof module_.findPackageJSON !== "function" || location === undefined) return;
+  try {
+    const found = module_.findPackageJSON(location);
+    if (typeof found === "string") evidence.read(found);
+  } catch {}
+}
+
+/**
+ * Each module Node resolves is read, with the manifests scoping it and its
+ * importer; a failed resolve reads the path it names, absent.
+ */
 function wrapModules(evidence) {
   if (typeof module_.registerHooks !== "function") return;
   module_.registerHooks({
@@ -184,7 +202,13 @@ function wrapModules(evidence) {
       }
       try {
         if (typeof resolved?.url === "string" && resolved.url.startsWith("file:")) {
-          evidence.read(withoutQuery(new URL(resolved.url)));
+          const url = withoutQuery(new URL(resolved.url));
+          evidence.read(url);
+          manifest(evidence, url);
+        }
+        const parent = context?.parentURL;
+        if (typeof parent === "string" && parent.startsWith("file:")) {
+          manifest(evidence, withoutQuery(new URL(parent)));
         }
       } catch {}
       return resolved;
@@ -197,6 +221,7 @@ function wrapProcess(evidence) {
   const evaluated = process.execArgv.some((arg) => /^(-[a-z]*[ep]|--eval|--print)(=|$)/.test(arg));
   if (workerThreads.isMainThread && !evaluated && typeof process.argv[1] === "string") {
     evidence.read(process.argv[1]);
+    manifest(evidence, path.resolve(process.argv[1]));
   }
   process.on("exit", evidence.flush);
   replace(
